@@ -26,3 +26,4 @@ This log records broad project changes so humans and agents can recover context 
 | 2026-06-01T23:19:45Z | CREATED | 20260601-login-system-plan | Added a plan for Django-backed login, a proper Next.js login portal, and authenticated workspace gating. |
 | 2026-06-01T23:45:00Z | MODIFIED | 20260601-login-routing | Routed public login handoff to the app portal and reserved lab dashboard URL shape in nginx and Next.js. |
 | 2026-06-01T23:52:00Z | CREATED | 20260601-django-session-auth | Added Django session auth endpoints with CSRF, CORS credentials, and tests for login, me, and logout. |
+| 2026-06-02T00:02:00Z | CREATED | 20260601-login-portal | Built the Next.js sign-in portal with CSRF-aware session login and a documented auth API contract. |
