@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "apps.core",
+    "apps.accounts",
 ]
 
 MIDDLEWARE = [
@@ -100,6 +101,21 @@ CORS_ALLOWED_ORIGINS = env.list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
     default=["http://localhost:3000"],
 )
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = env.list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    default=["http://localhost:3000"],
+)
+
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
