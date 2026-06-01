@@ -1,0 +1,47 @@
+---
+import PageIntro from "@/components/landing/PageIntro.astro";
+import PublicLayout from "@/layouts/PublicLayout.astro";
+---
+
+<PublicLayout
+  title="Solutions"
+  description="Role-based use cases for PIs, trainees, grant writers, and lab administrators using Mycelium."
+>
+  <PageIntro
+    eyebrow="Solutions"
+    title="Solutions for every lab role"
+    description="From principal investigators to administrators, Mycelium adapts monitoring, alerts, and evidence views to how each member contributes."
+  />
+  <section class="pb-14">
+    <div class="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8">
+      <ul class="space-y-4">
+        <li class="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h2 class="font-medium text-[var(--text-primary)]">Principal investigators</h2>
+          <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+            Field pulse, strategic focus, and funding alignment without losing source
+            traceability.
+          </p>
+        </li>
+        <li class="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h2 class="font-medium text-[var(--text-primary)]">Students and postdocs</h2>
+          <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+            Literature discovery, fellowship paths, and project angles tied to member
+            profiles.
+          </p>
+        </li>
+        <li class="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h2 class="font-medium text-[var(--text-primary)]">Grant writers</h2>
+          <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+            Evidence-backed narratives, prior-work links, and deadline-aware lists.
+          </p>
+        </li>
+        <li class="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h2 class="font-medium text-[var(--text-primary)]">Lab administrators</h2>
+          <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+            Coordination across deadlines, coverage, and reporting with clear ownership.
+          </p>
+        </li>
+      </ul>
+    </div>
+  </section>
+</PublicLayout>

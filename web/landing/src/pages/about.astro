@@ -1,0 +1,41 @@
+---
+import PageIntro from "@/components/landing/PageIntro.astro";
+import PublicLayout from "@/layouts/PublicLayout.astro";
+---
+
+<PublicLayout
+  title="About"
+  description="Mission, trust, and the Mylo brand story behind Mycelium lab intelligence."
+>
+  <PageIntro
+    eyebrow="About"
+    title="A calm research partner—not a hype machine"
+    description="Mycelium exists because research teams need living profiles of their goals, people, and evidence—not another generic chatbot. We build for explainability, permissions, and human review."
+  />
+  <section class="pb-14">
+    <div class="mx-auto w-full max-w-3xl space-y-6 px-4 sm:px-6 lg:px-8">
+      <article class="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Mission</h2>
+        <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+          Help labs answer what changed, what matters, and what to do next—with sources,
+          uncertainty, and eligibility called out clearly.
+        </p>
+      </article>
+      <article class="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Trust</h2>
+        <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+          Object-level authorization, auditability, and review workflows are core—not
+          optional add-ons for sensitive lab data.
+        </p>
+      </article>
+      <article class="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Mylo</h2>
+        <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+          Mylo is the mushroom scout who guides discovery and alerts. He is functional
+          product voice, not decoration—and he stays respectful of serious research
+          culture.
+        </p>
+      </article>
+    </div>
+  </section>
+</PublicLayout>

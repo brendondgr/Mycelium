@@ -1,0 +1,61 @@
+---
+import { MobileNav } from "@/components/site/MobileNav";
+import { primaryNav, siteName } from "@/data/site";
+
+const ctaHref = "/demo";
+---
+
+<header
+  class="sticky top-0 z-40 border-b border-border/70 bg-[color-mix(in_srgb,var(--background)_88%,transparent)] backdrop-blur-md"
+>
+  <div
+    class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8"
+  >
+    <a
+      class="inline-flex min-h-11 items-center gap-2 rounded-md font-display text-lg font-semibold tracking-tight text-[var(--text-primary)]"
+      href="/"
+    >
+      <span
+        class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+        aria-hidden="true"
+      >
+        M
+      </span>
+      <span>{siteName}</span>
+    </a>
+
+    <nav class="hidden items-center gap-1 lg:flex" aria-label="Primary">
+      {
+        primaryNav.map((item) => (
+          <a
+            class="rounded-md px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-secondary hover:text-[var(--text-primary)]"
+            href={item.href}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="flex items-center gap-2 sm:gap-3">
+      <a
+        class="hidden min-h-11 items-center rounded-full px-4 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] sm:inline-flex"
+        href="/login"
+      >
+        Log in
+      </a>
+      <a
+        class="hidden min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-brand-primary-hover sm:inline-flex"
+        href={ctaHref}
+      >
+        Get started
+      </a>
+      <MobileNav
+        client:load
+        links={primaryNav}
+        loginHref="/login"
+        ctaHref={ctaHref}
+      />
+    </div>
+  </div>
+</header>

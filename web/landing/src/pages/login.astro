@@ -1,0 +1,35 @@
+---
+import PageIntro from "@/components/landing/PageIntro.astro";
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import { appLoginUrl } from "@/data/site";
+---
+
+<PublicLayout
+  title="Log in"
+  description="Sign in to the Mycelium authenticated workspace."
+>
+  <PageIntro
+    eyebrow="Log in"
+    title="Enter the Mycelium workspace"
+    description="Authentication and lab data live in the authenticated app. The public site links here without embedding signed-in logic."
+  />
+  <section class="pb-14">
+    <div class="mx-auto w-full max-w-xl px-4 sm:px-6 lg:px-8">
+      <div class="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+        <p class="text-sm leading-6 text-[var(--text-secondary)]">
+          Continue to the app to sign in and access your lab profile.
+        </p>
+        <a
+          class="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:bg-brand-primary-hover"
+          href={appLoginUrl}
+        >
+          Open workspace
+        </a>
+        <p class="mt-4 text-xs text-[var(--text-muted)]">
+          New lab?
+          <a class="underline-offset-2 hover:underline" href="/demo">Request a demo</a>
+        </p>
+      </div>
+    </div>
+  </section>
+</PublicLayout>

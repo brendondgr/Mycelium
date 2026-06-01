@@ -1,0 +1,36 @@
+---
+import PageIntro from "@/components/landing/PageIntro.astro";
+import PublicLayout from "@/layouts/PublicLayout.astro";
+---
+
+<PublicLayout
+  title="Product"
+  description="Explore how Mycelium connects literature, evidence graphs, grants, fellowships, and lab strategy."
+>
+  <PageIntro
+    eyebrow="Product"
+    title="Evidence-backed lab intelligence"
+    description="Mycelium turns lab goals into monitored literature, structured claims, opportunity alerts, and reviewed reports. This page will expand with output examples and workflow detail."
+  />
+  <section class="pb-14">
+    <div class="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8">
+      <div class="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Coming soon</h2>
+        <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+          Product storytelling, sample reports, and dashboard walkthroughs will live
+          here. For now, explore the
+          <a class="font-medium text-primary underline-offset-2 hover:underline" href="/">
+            front page preview
+          </a>
+          or request a demo.
+        </p>
+        <a
+          class="mt-6 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-brand-primary-hover"
+          href="/demo"
+        >
+          Request a demo
+        </a>
+      </div>
+    </div>
+  </section>
+</PublicLayout>

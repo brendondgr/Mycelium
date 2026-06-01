@@ -1,10 +1,22 @@
 ---
+layout: ../layouts/PublicLayout.astro
 title: Research Notes
+description: Public research notes and product writing from Mycelium.
 ---
 
-import "../styles/global.css";
+import PageIntro from "@/components/landing/PageIntro.astro";
 
-# Research Notes
+<PageIntro
+  eyebrow="Resources"
+  title="Research Notes"
+  description="Mycelium uses MDX for public research notes, product writing, documentation, and sample reports on the landing site."
+/>
 
-Mycelium uses MDX for public research notes, product writing, documentation,
-and sample reports on the landing site.
+<section class="pb-14">
+  <div class="mx-auto w-full max-w-3xl px-4 prose prose-neutral sm:px-6 lg:px-8">
+    <p>
+      This page is a starting point for longer-form content. Add MDX articles here as
+      the launch library grows.
+    </p>
+  </div>
+</section>

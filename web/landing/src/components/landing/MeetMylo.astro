@@ -1,0 +1,62 @@
+---
+const heroImage = "/images/mylo-hero.png";
+---
+
+<section
+  id="meet-mylo"
+  class="border-b border-border py-14 sm:py-16"
+  aria-labelledby="meet-mylo-heading"
+>
+  <div class="mx-auto grid w-full max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
+    <div>
+      <p class="text-sm font-medium uppercase tracking-[0.12em] text-primary">Meet Mylo</p>
+      <h2
+        id="meet-mylo-heading"
+        class="font-display mt-2 text-2xl font-semibold text-[var(--text-primary)] sm:text-3xl"
+      >
+        Your lab&apos;s research scout—not wallpaper
+      </h2>
+      <p class="mt-4 text-base leading-7 text-[var(--text-secondary)]">
+        Mylo guides discovery, surfaces grant and fellowship matches, and explains
+        what changed in your evidence graph. He shows up where the product is
+        acting like a guide: alerts, onboarding, empty states, and strategic nudges.
+      </p>
+      <ul class="mt-6 space-y-3 text-sm leading-6 text-[var(--text-secondary)]">
+        <li class="flex gap-2">
+          <span class="mt-1 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true"></span>
+          Literature scans with clear source links for human review.
+        </li>
+        <li class="flex gap-2">
+          <span class="mt-1 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true"></span>
+          Opportunity alerts that name fit, deadlines, and uncertainty.
+        </li>
+        <li class="flex gap-2">
+          <span class="mt-1 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true"></span>
+          Gentle prompts that respect reduced-motion and serious lab workflows.
+        </li>
+      </ul>
+      <a
+        class="mt-8 inline-flex min-h-11 items-center rounded-full border border-border bg-card px-6 text-sm font-medium text-[var(--text-primary)] transition hover:bg-secondary"
+        href="/about"
+      >
+        Learn about Mylo and the mission
+      </a>
+    </div>
+
+    <figure class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <img
+        src={heroImage}
+        alt=""
+        class="h-full max-h-80 w-full object-cover object-center opacity-95"
+        width="1672"
+        height="941"
+        loading="lazy"
+        decoding="async"
+      />
+      <figcaption class="border-t border-border px-5 py-4 text-sm text-[var(--text-secondary)]">
+        Mylo connects papers, people, projects, and funding signals—always with room
+        for your team to approve what ships.
+      </figcaption>
+    </figure>
+  </div>
+</section>

@@ -1,0 +1,29 @@
+---
+import PageIntro from "@/components/landing/PageIntro.astro";
+import PublicLayout from "@/layouts/PublicLayout.astro";
+---
+
+<PublicLayout
+  title="Resources"
+  description="Research notes, documentation, and launch content for Mycelium."
+>
+  <PageIntro
+    eyebrow="Resources"
+    title="Resources for research teams"
+    description="Public notes, documentation, and sample outputs will be published here as Mycelium launches."
+  />
+  <section class="pb-14">
+    <div class="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8">
+      <div class="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Research notes</h2>
+        <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+          MDX-powered research notes and product writing are available on the
+          <a class="font-medium text-primary underline-offset-2 hover:underline" href="/research">
+            research notes
+          </a>
+          page.
+        </p>
+      </div>
+    </div>
+  </section>
+</PublicLayout>
