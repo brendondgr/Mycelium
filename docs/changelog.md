@@ -30,3 +30,4 @@ This log records broad project changes so humans and agents can recover context 
 | 2026-06-02T00:06:00Z | MODIFIED | 20260601-workspace-gating | Gated the authenticated workspace behind session checks with a placeholder shell and sign-out. |
 | 2026-06-02T00:12:00Z | CREATED | 20260601-lab-permissions-foundation | Added lab, membership, audit, and permission helpers with admin registration and access tests. |
 | 2026-06-02T00:20:00Z | CORRECTED | 20260601-login-hydration | Suppressed root layout hydration warnings when browser extensions alter the document body before React loads. |
+| 2026-06-02T00:30:00Z | CORRECTED | 20260601-login-hydration | Moved layout classes off the document body and strip extension-injected classes before hydration to stop login page mismatches. |
