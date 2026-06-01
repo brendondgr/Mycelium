@@ -1,0 +1,7 @@
+---
+description: Apply when planning a website, dashboard, web app, or API-backed frontend before UI implementation.
+alwaysApply: false
+---
+
+Canonical instructions live in `docs/skills/website-architecture.md`. Use this rule when route maps, auth boundaries, data flow, and web app structure need to be defined first.
+

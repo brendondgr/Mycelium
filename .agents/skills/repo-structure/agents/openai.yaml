@@ -1,0 +1,5 @@
+interface:
+  display_name: "Repository Structure"
+  short_description: "Define and enforce repository layout"
+  default_prompt: "Use this skill when repository layout, folder boundaries, documentation structure, or project organization needs to be defined or revised."
+

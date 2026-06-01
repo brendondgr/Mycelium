@@ -1,0 +1,5 @@
+interface:
+  display_name: "Website Architecture"
+  short_description: "Plan routes, data flow, and web app structure"
+  default_prompt: "Use this skill when a website or web app needs its application mode, routes, auth boundaries, data flow, and repository layout defined before implementation."
+

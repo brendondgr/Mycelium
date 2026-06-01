@@ -1,0 +1,7 @@
+---
+description: Apply when designing or implementing responsive, mobile-first web experiences that need touch-friendly behavior and no overflow.
+alwaysApply: false
+---
+
+Canonical instructions live in `docs/skills/mobile-friendly.md`. Use this rule when layouts, components, or pages must behave well on phones and small tablets.
+

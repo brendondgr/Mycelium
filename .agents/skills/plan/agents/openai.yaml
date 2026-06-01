@@ -1,0 +1,5 @@
+interface:
+  display_name: "Plan"
+  short_description: "Create and refine implementation plans"
+  default_prompt: "Use this skill when you need a clear implementation plan, roadmap, or staged sequence of work before coding."
+

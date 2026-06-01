@@ -1,0 +1,7 @@
+---
+description: Apply when defining or enforcing repository layout, documentation structure, or top-level folder organization.
+alwaysApply: false
+---
+
+Canonical instructions live in `docs/skills/repo-structure.md`. Use this rule when repository layout needs to be established or reviewed.
+

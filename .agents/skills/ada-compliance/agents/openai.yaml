@@ -1,0 +1,5 @@
+interface:
+  display_name: "ADA Compliance"
+  short_description: "Audit and implement WCAG-aligned accessibility"
+  default_prompt: "Use this skill when a web page, component, or interaction needs an accessibility audit or changes to meet WCAG 2.2 AA expectations."
+

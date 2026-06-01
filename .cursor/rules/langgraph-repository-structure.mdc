@@ -1,0 +1,6 @@
+---
+description: Apply when organizing a LangGraph repository, including graphs, state, tools, prompts, and deployment files.
+alwaysApply: false
+---
+
+Canonical instructions live in `docs/skills/repo-structure.md`. Use this rule when LangGraph repo structure or agent boundaries need to be defined.

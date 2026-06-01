@@ -1,0 +1,5 @@
+interface:
+  display_name: "Mobile Friendly"
+  short_description: "Design responsive mobile-first experiences"
+  default_prompt: "Use this skill when a layout, component, or page needs mobile-first responsiveness, touch-friendly targets, or overflow-safe behavior."
+

@@ -1,0 +1,5 @@
+interface:
+  display_name: "UI Frontend"
+  short_description: "Design and implement accessible frontend UI"
+  default_prompt: "Use this skill when frontend UI, layout, responsiveness, accessibility, motion, or component polish needs to be designed or implemented."
+
