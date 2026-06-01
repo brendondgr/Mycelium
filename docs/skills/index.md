@@ -1,10 +1,10 @@
-# Skill Registry
+# Mycelium Skill Registry
 
-Canonical skill definitions live in this directory.
+Canonical skill definitions for this repository live in `docs/skills/`.
 
-The skill folders at the repository root contain only `SKILL.md` entrypoints
-plus compatibility pointers. Read the files here when you need the actual
-behavioral guidance.
+The folders under `.agents/skills/`, `.claude/skills/`, and `.cursor/rules/`
+are tool entrypoints that should point back to these canonical docs. Keep the
+behavioral guidance here so all agents share the same project assumptions.
 
 ## Canonical Skills
 
@@ -12,8 +12,17 @@ behavioral guidance.
 | --- | --- | --- |
 | Plan creation | [planner.md](./planner.md) | `plan/` |
 | Repository structure | [repo-structure.md](./repo-structure.md) | `repo-structure/` |
-| ADA compliance | [ada-compliance.md](./ada-compliance.md) | `ada-compliance/` |
-| Mobile friendly | [mobile-friendly.md](./mobile-friendly.md) | `mobile-friendly/` |
 | Website architecture | [website-architecture.md](./website-architecture.md) | `website-architecture/` |
 | UI frontend | [ui-frontend.md](./ui-frontend.md) | `ui-frontend/` |
-| LangGraph repository structure | Merged into [repo-structure.md](./repo-structure.md) | no separate folder |
+| Mobile friendly | [mobile-friendly.md](./mobile-friendly.md) | `mobile-friendly/` |
+| ADA compliance | [ada-compliance.md](./ada-compliance.md) | `ada-compliance/` |
+
+## Project Defaults
+
+- Mycelium is a lab intelligence platform for research discovery, lab memory,
+  grants, fellowships, reports, and knowledge graph backed evidence trails.
+- The planned stack is Next.js, React, Tailwind, Django, Django REST Framework,
+  Celery, Redis, Postgres with pgvector, Neo4j, object storage, Nginx, and
+  Docker Compose.
+- Future build and run commands should be launched from the repository root.
+  The preferred single-command path is a root-level `compose.yaml`.

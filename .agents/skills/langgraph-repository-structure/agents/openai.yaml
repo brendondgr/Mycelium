@@ -1,4 +1,0 @@
-interface:
-  display_name: "LangGraph Repository Structure"
-  short_description: "Alias for the unified repository structure skill"
-  default_prompt: "Use the repository-structure skill when a LangGraph project needs its repository layout, graph wiring, state boundaries, or deployment files defined."

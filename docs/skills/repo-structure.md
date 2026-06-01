@@ -1,76 +1,76 @@
 # Repository Structure Skill
 
-Use this skill when defining, documenting, or enforcing repository layout.
-It covers generic repo conventions and decides when a project needs a more
-specific structural skill.
+Use this skill when defining, documenting, or enforcing the Mycelium repository
+layout.
 
 ## Core Rules
 
+- Treat Mycelium as a full-stack monorepo with root-level orchestration.
 - Keep project documentation in `docs/`.
-- Keep reusable shared code in clearly named top-level packages or folders.
-- Avoid dumping unrelated files into `misc/`, `utils/`, or `helpers/`.
-- Prefer small, purpose-based folders over one oversized generic bucket.
-- Use `uv` for Python package and environment management.
+- Keep future frontend, backend, worker, and infrastructure code separated by
+  service boundary.
+- Avoid catch-all folders such as `misc/`, `utils/`, or `helpers/`.
+- Do not add dependency scaffolding unless the user explicitly asks for it.
+- Build and run workflows should be designed from the repository root.
 
-## Web and UI Projects
+## Planned Layout
 
-- If the project is a website, dashboard, web app, or API-backed frontend,
-  pair this skill with `website-architecture` before generating files.
-- Use `ui-frontend` only after the site structure, routes, data flow, and
-  frontend/backend boundary are defined.
-- All web-specific runtime files should live under the root `web/` directory.
-
-## LangGraph Projects
-
-- LangGraph projects are a first-class case of repository structure, not a
-  separate system.
-- Keep graph wiring, node behavior, state, tools, prompts, services, tests,
-  and deployment files separated.
-- Keep the compiled graph thin and explicit.
-- Keep agent-specific state apart from shared state.
-- Keep prompt text out of node bodies when it can live in its own file.
-- Prefer one graph per file and one node per responsibility.
-
-### Recommended Layout
+Use this as the target structure when the app is scaffolded:
 
 ```text
-root/
-├── langgraph.json
-├── pyproject.toml
+mycelium/
+├── README.md
+├── compose.yaml
 ├── .env.example
 ├── docs/
-├── scripts/
-├── tests/
-└── src/<package>/
-    ├── __init__.py
-    ├── main.py
-    ├── config.py
-    ├── core_state/
-    ├── shared_tools/
-    ├── services/
-    └── agents/
-        ├── orchestrator/
-        │   ├── graph.py
-        │   ├── nodes.py
-        │   ├── state.py
-        │   └── prompts.py
-        └── planner/
-            ├── graph.py
-            ├── nodes.py
-            ├── state.py
-            └── prompts.py
+│   ├── skills/
+│   ├── architecture.md
+│   ├── api-contract.md
+│   ├── security.md
+│   └── deployment.md
+├── frontend/
+│   └── Next.js app
+├── backend/
+│   └── Django project and apps
+├── infra/
+│   ├── nginx/
+│   └── docker/
+└── scripts/
 ```
 
-### LangGraph Validation
+`compose.yaml` should eventually start the frontend, Django API, workers,
+Redis, Postgres, Neo4j, object storage, and Nginx from the root. Until those
+services exist, documentation may describe the plan without creating empty
+runtime files.
 
-- Confirm the repo can answer three questions quickly: where is the state
-  defined, where is the graph wired, and where is the tool logic implemented?
-- Put experiments in a separate folder, not beside production graph code.
-- Keep integration code and observability helpers in their own areas.
+## Service Boundaries
 
-## Structure Expectations
+- `frontend/`: Next.js App Router, React UI, Tailwind, shadcn/ui and Radix UI
+  components, charts, tables, graph views, reports, and app shell routes.
+- `backend/`: Django API, auth, labs, memberships, permissions, reports,
+  documents, opportunities, jobs, audit logs, graph orchestration, and admin.
+- `backend` workers: Celery tasks for literature scans, grant and fellowship
+  matching, report generation, PDF processing, graph updates, and alerts.
+- `infra/`: Nginx config, Dockerfiles, Compose support, deployment notes, and
+  environment examples.
+- `docs/`: architecture, API contracts, security notes, deployment guidance,
+  design system notes, and canonical skills.
 
-- Document the selected layout in `docs/structure.md` when the repo is being
-  initialized or reorganized.
-- For Python projects, keep lightweight tests in a top-level `tests/`
-  directory and split by behavior or subsystem.
+## Data Ownership
+
+- Postgres is the source of truth for users, labs, permissions, projects,
+  reports, jobs, opportunities, notifications, audit logs, and billing records.
+- pgvector or Qdrant handles semantic retrieval over papers, notes, reports,
+  grant text, and document chunks.
+- Neo4j stores structured relationships for lab profiles, people, projects,
+  claims, evidence, papers, opportunities, and research goals.
+- Object storage stores PDFs, uploaded files, generated reports, exports, and
+  figures.
+- Redis supports Celery, caching, job state, and short-lived coordination.
+
+## Validation
+
+- A new contributor should be able to identify the frontend, Django API, worker
+  layer, infra files, docs, and root run command without guessing.
+- The browser must never talk directly to Postgres, Neo4j, Redis, object
+  storage, workers, or vector stores.

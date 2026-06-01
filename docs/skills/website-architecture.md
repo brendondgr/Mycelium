@@ -1,46 +1,87 @@
 # Website Architecture Skill
 
-Use this skill when planning or scaffolding a website, dashboard, web app, or
-API-backed frontend before any UI code is generated.
+Use this skill when planning, scaffolding, or restructuring Mycelium's public
+site, authenticated lab app, Django API, or Dockerized deployment.
 
 ## Core Rules
 
-- All site code, assets, routes, and runtime files belong under `web/`.
-- All repository documentation belongs under `docs/`.
-- Define structure before generating pages or components.
+- Use Next.js as the Node frontend server for the public site and authenticated
+  lab workspace.
+- Use Django as the backend API and orchestration layer.
+- Route public app pages through Next.js and API/admin traffic through Django.
+- Keep frontend code in `frontend/` and backend code in `backend/`.
+- Plan build, run, and deployment commands from the repository root.
+- Prefer a root-level `compose.yaml` as the future single-command local and
+  deployment entrypoint.
+
+## Runtime Shape
+
+```text
+Browser
+  -> Nginx
+  -> Next.js frontend for /, /app, /login, dashboards, reports, and UI routes
+  -> Django API for /api and /admin
+  -> Postgres, Redis/Celery, Neo4j, vector search, and object storage
+```
+
+The Node server renders the frontend. Django owns business logic, auth,
+permissions, orchestration, data access, admin, and job creation.
 
 ## Required Planning Artifact
 
-Before implementation, define:
+Before generating web code, define:
 
-1. Application mode.
+1. Application mode: public route, authenticated app route, or backend API.
 2. User roles and auth boundaries.
 3. Route map.
 4. Data-flow map.
 5. Frontend/backend boundary.
 6. Repository layout.
-7. Required documentation files.
-8. Build, run, and test commands.
+7. Required docs.
+8. Root-level build, run, and test commands.
 
-## What Each Route Must Include
+## Route Expectations
 
-- Path.
-- Purpose.
-- Required auth level.
-- Data dependencies.
-- Primary page, layout, or component ownership.
-- Backend endpoints used, if any.
+Public routes should cover landing, product explanation, use cases, demo,
+pricing or pilot information, blog or docs, contact, and login entry.
+
+Authenticated routes should use a lab-aware shape such as:
+
+```text
+/app/[labSlug]/dashboard
+/app/[labSlug]/research-feed
+/app/[labSlug]/papers
+/app/[labSlug]/projects
+/app/[labSlug]/members
+/app/[labSlug]/goals
+/app/[labSlug]/grants
+/app/[labSlug]/fellowships
+/app/[labSlug]/reports
+/app/[labSlug]/knowledge-graph
+/app/[labSlug]/settings
+```
+
+Every authenticated route must state required role, lab membership checks, data
+dependencies, API endpoints, loading states, empty states, and error states.
 
 ## Backend and API Contracts
 
-- If a backend exists, define request and response ownership, validation
-  boundaries, and shared schema locations.
-- Create `docs/api-contract.md` when the frontend depends on an explicit API
-  contract.
+- Django REST Framework is the default API layer unless a later decision
+  replaces it.
+- Django should own accounts, labs, memberships, object-level permissions,
+  projects, reports, documents, opportunities, jobs, graph operations, audit
+  logs, and admin workflows.
+- Use Django or Celery for long-running research scans, grant matching,
+  fellowship matching, extraction, report generation, and graph updates.
+- Create `docs/api-contract.md` before the frontend depends on explicit API
+  payloads.
 
-## Validation
+## Security Baseline
 
-- Confirm the route map and data flow before UI generation.
-- Confirm the final layout is concrete enough that another agent can scaffold
-  the project without guessing.
-
+- Nginx is the public entrypoint for TLS, routing, rate limits, static/media
+  handling, request limits, compression, and security headers.
+- The frontend must call Django only through approved API routes.
+- Every lab-scoped endpoint must enforce authentication, lab membership,
+  role permission, object-level permission, and audit logging where sensitive.
+- Do not expose database, graph, queue, object storage, or worker services to
+  the browser.
