@@ -21,3 +21,4 @@ This log records broad project changes so humans and agents can recover context 
 | 2026-06-01T15:59:27Z | MODIFIED | 20260601-git-commit-rules | Clarified that every completed project change should be committed, including small documentation and rule updates. |
 | 2026-06-01T16:05:48Z | CREATED | 20260601-landing-pages-plan | Added a frontend shell plan for the public landing pages and hero direction. |
 | 2026-06-01T17:11:30Z | MODIFIED | 20260601-landing-frontend-shell | Implemented the public landing shell with hero, sections, navigation, route pages, and shared layout. |
+| 2026-06-01T17:25:00Z | MODIFIED | 20260601-landing-hero-layout | Made the front-page hero image full-bleed edge to edge and removed rounded corners and scroll hint. |
