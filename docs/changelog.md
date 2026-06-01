@@ -23,3 +23,4 @@ This log records broad project changes so humans and agents can recover context 
 | 2026-06-01T17:11:30Z | MODIFIED | 20260601-landing-frontend-shell | Implemented the public landing shell with hero, sections, navigation, route pages, and shared layout. |
 | 2026-06-01T17:25:00Z | MODIFIED | 20260601-landing-hero-layout | Made the front-page hero image full-bleed edge to edge and removed rounded corners and scroll hint. |
 | 2026-06-01T22:41:29Z | MODIFIED | 20260601-landing-hero-image | Restored the real hero artwork in the landing public assets and removed the front-page tint overlay so Mylo displays more clearly. |
+| 2026-06-01T23:19:45Z | CREATED | 20260601-login-system-plan | Added a plan for Django-backed login, a proper Next.js login portal, and authenticated workspace gating. |
