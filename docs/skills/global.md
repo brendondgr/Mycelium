@@ -37,7 +37,30 @@ Use this guidance at the start of every Mycelium session before planning, editin
 - For Python/backend validation, prefer `uv run --project web/backend ...`.
 - For docs-only changes, at minimum check Markdown formatting and links when practical.
 
+## Change Log Rules
+
+- Update `docs/changelog.md` whenever a session changes tracked project files.
+- Use the active log format version declared in the changelog header.
+- Add entries only under `## Entries`; do not edit or delete previous entries.
+- Keep entries general and outcome-focused. Describe the purpose or result, not line-by-line edits.
+- Use exactly one controlled action type: `CREATED`, `MODIFIED`, `DELETED`, `REVIEWED`, `EXECUTED`, `RENAMED`, `MOVED`, `CORRECTED`, or `SUMMARIZED`.
+- Use a correlation ID in the form `YYYYMMDD-topic-slug`, where the date is the local session date and the slug briefly names the task.
+- Use UTC timestamps in ISO 8601 format, such as `2026-06-01T15:58:33Z`.
+- If a prior entry needs correction, append a new `CORRECTED` entry that names the prior entry ID or correlation ID.
+- When the entries become noisy, add a `SUMMARIZED` digest entry for the period and archive or move raw historical detail only when the user explicitly requests it.
+
+Required entry schema:
+
+```markdown
+| Timestamp | Action | Correlation ID | Summary |
+| --- | --- | --- | --- |
+| 2026-06-01T15:58:33Z | MODIFIED | 20260601-global-changelog-schema | Added structured changelog rules for consistent agent updates. |
+```
+
 ## Final Steps
 
-- If changes are made to the code, commit to GitHub without accrediting yourself to it.
-- Update the change log in `docs/changelog.md` with a brief, non-technical description of the change and its motivation. 
+- Update the change log using the schema above.
+- Create a git commit for every completed change set, no matter how small.
+- Commit documentation, configuration, tests, code, and rule updates; do not skip commits for small or docs-only changes.
+- Keep commits focused on the current task and avoid staging unrelated user changes.
+- Use a concise human-authored commit message without AI attribution, assistant signatures, or co-author trailers.
