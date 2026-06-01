@@ -5,12 +5,14 @@ site, authenticated lab app, Django API, or Dockerized deployment.
 
 ## Core Rules
 
-- Use Next.js as the Node web server for the public site and authenticated
-  lab workspace.
+- Use Astro for the public landing/content site.
+- Use Next.js as the Node web server for the authenticated lab workspace and
+  dynamic React application.
 - Use Django as the backend API and orchestration layer.
-- Route public app pages through Next.js and API/admin traffic through Django.
-- Keep the Next.js app, Django backend, local infrastructure, and Node install
-  state inside `web/`.
+- Route public site traffic through Astro, authenticated app traffic through
+  Next.js, and API/admin traffic through Django.
+- Keep the Astro site, Next.js app, Django backend, local infrastructure, and
+  Node install state inside `web/`.
 - Plan build, run, and deployment commands from the repository root.
 - Root scripts should launch commands from the repository root while delegating
   runtime files to `web/`.
@@ -21,13 +23,15 @@ site, authenticated lab app, Django API, or Dockerized deployment.
 ```text
 Browser
   -> Nginx
-  -> Next.js web app for /, /app, /login, dashboards, reports, and UI routes
+  -> Astro public site for /, /research, docs, marketing, and content routes
+  -> Next.js web app for /app, /login, dashboards, reports, and UI routes
   -> Django API for /api and /admin
   -> Postgres, Redis/Celery, Neo4j, vector search, and object storage
 ```
 
-The Node server renders the web app. Django owns business logic, auth,
-permissions, orchestration, data access, admin, and job creation.
+Astro owns the public static/content-heavy site. Next.js renders the dynamic lab
+workspace. Django owns business logic, auth, permissions, orchestration, data
+access, admin, and job creation.
 
 ## Required Planning Artifact
 

@@ -1,27 +1,33 @@
 {
-  "name": "web",
+  "name": "@mycelium/web",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "app",
+    "landing",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "next": "16.2.6",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "dev": "concurrently -n landing,app,backend -c yellow,green,blue \"npm run dev:landing\" \"npm run dev:app\" \"npm run dev:backend\"",
+    "dev:landing": "npm --workspace @mycelium/landing run dev -- --host 0.0.0.0 --port 4321",
+    "dev:app": "npm --workspace @mycelium/app run dev -- --hostname 0.0.0.0 --port 3000",
+    "dev:backend": "uv run --project backend python backend/manage.py runserver 0.0.0.0:8000",
+    "build": "npm --workspace @mycelium/config run build && npm --workspace @mycelium/landing run build && npm --workspace @mycelium/app run build",
+    "lint": "npm --workspace @mycelium/landing run lint && npm --workspace @mycelium/app run lint",
+    "start:landing": "npm --workspace @mycelium/landing run preview -- --host 0.0.0.0 --port 4321",
+    "start:app": "npm --workspace @mycelium/app run start -- --hostname 0.0.0.0 --port 3000"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
     "concurrently": "^9.2.1",
-    "eslint-config-next": "16.2.6",
-    "tailwindcss": "^4",
+    "eslint": "^9",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.15"
+    },
+    "postcss": "^8.5.15",
+    "yaml": "^2.9.0",
+    "yaml-language-server": "^1.23.0"
   }
 }

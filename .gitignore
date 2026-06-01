@@ -59,6 +59,7 @@ celerybeat.pid
 # Frontend artifacts
 node_modules/
 .next/
+.astro/
 out/
 dist/
 coverage/

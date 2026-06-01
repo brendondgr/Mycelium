@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+
 const features = [
   "Living lab profiles",
   "Research and evidence tracking",
@@ -35,18 +37,16 @@ export default function Home() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <a
-            className="inline-flex min-h-11 items-center rounded-md bg-[var(--brand-primary)] px-5 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
-            href="/app"
-          >
-            Open workspace
-          </a>
-          <a
-            className="inline-flex min-h-11 items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-[var(--surface-alt)]"
-            href={`${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api"}/health/`}
-          >
-            API health
-          </a>
+          <Button asChild size="lg">
+            <a href="/app">Open workspace</a>
+          </Button>
+          <Button asChild variant="secondary" size="lg">
+            <a
+              href={`${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api"}/health/`}
+            >
+              API health
+            </a>
+          </Button>
         </div>
       </section>
     </main>

@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npm --prefix web exec concurrently -n web,backend -c green,blue \"npm run dev:web\" \"npm run dev:backend\"",
-    "dev:web": "npm --prefix web run dev -- --hostname 0.0.0.0 --port 3000",
+    "dev": "npm --prefix web run dev",
+    "dev:landing": "npm --prefix web run dev:landing",
+    "dev:web": "npm --prefix web run dev:app",
     "dev:backend": "uv run --project web/backend python web/backend/manage.py runserver 0.0.0.0:8000",
     "build": "npm --prefix web run build",
     "lint": "npm --prefix web run lint && uv run --project web/backend ruff check --cache-dir web/backend/.ruff_cache web/backend",

@@ -62,14 +62,16 @@ focus           #B8D99A
 
 ## UI Stack
 
-- Next.js App Router and React for public pages and the authenticated lab app.
-- Tailwind for styling and tokens.
-- shadcn/ui and Radix UI for accessible app primitives.
-- Recharts for dashboards and metrics.
+- Astro, Tailwind, MDX, GSAP, and light React islands for the public landing
+  site.
+- Next.js App Router and React for the authenticated lab app.
+- Shared Tailwind v4 color tokens in `web/packages/config/src/theme.css`.
+- shadcn/ui and Radix UI for accessible React primitives.
+- Framer Motion for dynamic app transitions and workflow motion.
 - TanStack Table for sortable, filterable research, opportunity, and member
   tables.
+- TanStack Query for API-backed app state.
 - React Hook Form and Zod for forms.
-- React Flow for workflow diagrams.
 - Cytoscape.js first for knowledge graph exploration; consider Sigma.js later
   if graph scale demands it.
 - TipTap for editable reports, citations, comments, and rich text sections.

@@ -33,8 +33,18 @@ mycelium/
 |   |-- package.json
 |   |-- package-lock.json
 |   |-- node_modules/
-|   |-- src/
-|   |-- public/
+|   |-- landing/
+|   |   |-- astro.config.mjs
+|   |   |-- src/
+|   |   `-- components.json
+|   |-- app/
+|   |   |-- next.config.ts
+|   |   |-- src/
+|   |   |-- public/
+|   |   `-- components.json
+|   |-- packages/
+|   |   `-- config/
+|   |       `-- src/theme.css
 |   |-- backend/
 |   |   |-- pyproject.toml
 |   |   |-- uv.lock
@@ -53,9 +63,15 @@ state belong under `web/`; root config is for editing and orchestration.
 
 ## Service Boundaries
 
-- `web/`: Next.js App Router, React UI, Tailwind, shadcn/ui and Radix UI
-  components, charts, tables, graph views, reports, app shell routes, backend,
-  and local infrastructure.
+- `web/`: Node workspace root and install state for public site, dynamic app,
+  shared config, backend, and local infrastructure.
+- `web/landing/`: Astro public site, Tailwind, MDX, GSAP, React islands, and
+  public marketing/content routes.
+- `web/app/`: Next.js App Router, React UI, Tailwind, shadcn/ui and Radix UI
+  components, Framer Motion, Cytoscape.js, TanStack Query/Table, React Hook
+  Form, graph views, reports, and authenticated app shell routes.
+- `web/packages/config/`: shared Tailwind v4 color tokens and design-system
+  configuration used by both Astro and Next.js.
 - `web/backend/`: Django API, auth, labs, memberships, permissions, reports,
   documents, opportunities, jobs, audit logs, graph orchestration, and admin.
 - `web/backend` workers: Celery tasks for literature scans, grant and

@@ -1,0 +1,72 @@
+---
+import "../styles/global.css";
+
+const pillars = [
+  "Lab profiles",
+  "Evidence graphs",
+  "Grant alerts",
+  "Fellowship matching",
+];
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Mycelium is living intelligence for research labs."
+    />
+    <title>Mycelium</title>
+  </head>
+  <body>
+    <main class="min-h-screen bg-background text-foreground">
+      <section
+        class="mx-auto grid min-h-screen w-full max-w-6xl content-center gap-12 px-6 py-16 sm:px-10 lg:px-12"
+      >
+        <div class="max-w-3xl">
+          <p class="mb-4 text-sm font-medium uppercase tracking-wide text-primary">
+            Mycelium
+          </p>
+          <h1
+            class="text-4xl font-semibold leading-tight text-[var(--text-primary)] sm:text-6xl"
+          >
+            Living intelligence for research labs.
+          </h1>
+          <p class="mt-6 max-w-2xl text-lg leading-8 text-[var(--text-secondary)]">
+            A public landing site for a lab intelligence platform that connects
+            research goals, papers, grants, fellowships, and evidence-backed
+            reports.
+          </p>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {
+            pillars.map((pillar) => (
+              <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
+                <p class="text-base font-medium text-card-foreground">
+                  {pillar}
+                </p>
+              </div>
+            ))
+          }
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+          <a
+            class="inline-flex min-h-11 items-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-brand-primary-hover"
+            href="http://localhost:3000"
+          >
+            Open app
+          </a>
+          <a
+            class="inline-flex min-h-11 items-center rounded-md border border-border bg-card px-5 text-sm font-medium text-card-foreground transition hover:bg-secondary"
+            href="/research"
+          >
+            Read research notes
+          </a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
