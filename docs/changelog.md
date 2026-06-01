@@ -28,3 +28,4 @@ This log records broad project changes so humans and agents can recover context 
 | 2026-06-01T23:52:00Z | CREATED | 20260601-django-session-auth | Added Django session auth endpoints with CSRF, CORS credentials, and tests for login, me, and logout. |
 | 2026-06-02T00:02:00Z | CREATED | 20260601-login-portal | Built the Next.js sign-in portal with CSRF-aware session login and a documented auth API contract. |
 | 2026-06-02T00:06:00Z | MODIFIED | 20260601-workspace-gating | Gated the authenticated workspace behind session checks with a placeholder shell and sign-out. |
+| 2026-06-02T00:12:00Z | CREATED | 20260601-lab-permissions-foundation | Added lab, membership, audit, and permission helpers with admin registration and access tests. |
