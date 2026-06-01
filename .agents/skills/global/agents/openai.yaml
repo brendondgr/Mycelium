@@ -1,0 +1,4 @@
+interface:
+  display_name: "Global"
+  short_description: "Load Mycelium project direction"
+  default_prompt: "Use this skill at the start of every Mycelium session to load the project purpose, style direction, goals, and global repository rules."

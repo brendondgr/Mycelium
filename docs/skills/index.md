@@ -10,6 +10,7 @@ behavioral guidance here so all agents share the same project assumptions.
 
 | Skill | Canonical Doc | Entry Folder |
 | --- | --- | --- |
+| Global project guidance | [global.md](./global.md) | `global/` |
 | Plan creation | [planner.md](./planner.md) | `plan/` |
 | Repository structure | [repo-structure.md](./repo-structure.md) | `repo-structure/` |
 | Website architecture | [website-architecture.md](./website-architecture.md) | `website-architecture/` |
@@ -21,6 +22,8 @@ behavioral guidance here so all agents share the same project assumptions.
 
 - Mycelium is a lab intelligence platform for research discovery, lab memory,
   grants, fellowships, reports, and knowledge graph backed evidence trails.
+- Canonical project direction lives in `docs/purpose.md`, `docs/styles.md`,
+  and `docs/goals.md`; agents should load `global` before starting work.
 - The planned stack is Next.js, React, Tailwind, Django, Django REST Framework,
   Celery, Redis, Postgres with pgvector, Neo4j, object storage, Nginx, and
   Docker Compose.

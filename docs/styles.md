@@ -1,0 +1,201 @@
+# Mycelium Style Guide
+
+Mycelium should feel like a warm, intelligent research workspace hidden inside a living forest network. The product blends research productivity, AI intelligence, organic mycelium networks, friendly mascot guidance, and soft SaaS dashboard design.
+
+The core balance is important: Mycelium should be imaginative and memorable, but still mature enough for researchers, labs, faculty, and institutional partners to take seriously.
+
+## Visual Direction
+
+Use these words as design anchors:
+
+- Organic
+- Scholarly
+- Warm
+- Botanical
+- Soft-tech
+- Research-focused
+- Trustworthy
+- Friendly
+- Living network
+
+Avoid visual choices that feel overly childish, too fantasy-driven, too corporate, neon AI, generic SaaS blue, or crowded with illustration.
+
+The design metaphor is a research dashboard mixed with a botanical field guide and an AI assistant platform. The interface should carry the serious work. Mylo should provide personality.
+
+## Brand Feel
+
+The visual identity is warm botanical SaaS. Use cream backgrounds, forest and moss greens, sage accents, mushroom beige, soft brown, and restrained gold. The design should feel calm, alive, and readable rather than sterile or flashy.
+
+The dark theme should not be pure black or generic dark-dashboard blue. It should feel like a deep forest at night with a softly glowing research network.
+
+Gold should be used sparingly. It represents valuable signals: grants, fellowships, deadlines, important findings, and opportunity alerts.
+
+## Color Palette
+
+Light theme:
+
+| Role | Color | Use |
+| --- | --- | --- |
+| Background | `#F8F4EC` | Main page background |
+| Surface | `#FFFDF8` | Cards, modals, panels |
+| Surface Alt | `#EFE7D7` | Secondary panels and sidebars |
+| Primary | `#5E7A3E` | Primary actions and brand states |
+| Primary Hover | `#4D6733` | Hover and pressed states |
+| Secondary | `#8DA66F` | Icons, tabs, subtle highlights |
+| Accent | `#C9A35A` | Opportunities and important signals |
+| Accent Soft | `#E7D8B8` | Alert backgrounds and soft badges |
+| Text Primary | `#2E3627` | Main text |
+| Text Secondary | `#5F6853` | Supporting text |
+| Text Muted | `#7F8775` | Helper text and placeholders |
+| Border | `#D9D0BE` | Cards and inputs |
+| Divider | `#E8E0D1` | Separators |
+
+Dark theme:
+
+| Role | Color | Use |
+| --- | --- | --- |
+| Background | `#161B14` | Main app background |
+| Surface | `#1D241A` | Cards and panels |
+| Surface Alt | `#253021` | Raised UI blocks |
+| Primary | `#8DA66F` | Primary actions |
+| Primary Hover | `#A0B77F` | Hover and pressed states |
+| Secondary | `#6F8A56` | Supporting UI elements |
+| Accent | `#D3AE66` | Opportunities and important signals |
+| Accent Soft | `#5B4A2A` | Dark accent surfaces |
+| Text Primary | `#F2EBDD` | Main text |
+| Text Secondary | `#C9C1B2` | Supporting text |
+| Text Muted | `#9E988B` | Helper text and placeholders |
+| Border | `#394431` | Cards and inputs |
+| Divider | `#2B3427` | Separators |
+| Focus | `#B8D99A` | Focus rings and subtle glow |
+
+## Typography
+
+Use a dual-type system:
+
+- Headings should feel scholarly, organic, field-guide-like, and premium. Fraunces is the preferred direction; Lora, Cormorant Garamond, Playfair Display, or Libre Baskerville can also fit.
+- UI and body text should be clean, readable, and functional. Inter or Manrope are the preferred directions; DM Sans, Geist, or Nunito Sans can also work.
+
+Use large serif type for major marketing moments and important section headings. Use the sans-serif for navigation, buttons, dashboards, forms, labels, reports, and dense app surfaces.
+
+## Mylo
+
+Mylo is the mushroom scout and agent of the product. He searches, connects, alerts, and guides. He should be a functional part of the interface, not just decoration.
+
+Use Mylo in places where the system is acting like a guide:
+
+- Hero and brand moments
+- Onboarding prompts
+- Empty states
+- Loading states
+- Research discovery moments
+- Grant or fellowship alerts
+- Knowledge graph updates
+- Success and error states
+
+Mylo should stay cute but not childish. Keep expressions curious, observant, gentle, and helpful. Avoid making him overly goofy or placing him in every card.
+
+Preferred Mylo direction:
+
+> A small mushroom scout with a soft spore-like body, mushroom-cap hood, curious eyes, a research satchel, and subtle glowing mycelium threads that connect papers, people, projects, grants, and ideas.
+
+## Layout And Components
+
+Use spacious, structured layouts with clear hierarchy. The public site should be persuasive, warm, and content-forward. The authenticated app should be denser, calmer, and built for repeated research workflows.
+
+Core UI language:
+
+- Soft panels
+- Rounded cards
+- Pill buttons
+- Thin borders
+- Warm shadows
+- Green circular icon containers
+- Faint mycelium network lines
+- Subtle gold opportunity states
+
+Use mycelium and root-network motifs as low-opacity connective tissue: background lines, section dividers, graph previews, loading animation, and dashboard visual language. Do not let the motif compete with content.
+
+Cards should be readable and soft. Avoid harsh black borders, pure white surfaces, heavy shadows, and excessive nested cards.
+
+## Public Site Direction
+
+The public site should explain what Mycelium does, who it serves, why it is different from generic AI tools, and what the outputs look like.
+
+The front page should generally move through:
+
+- Floating navigation
+- Hero with Mylo and clear product promise
+- Feature strip
+- Product dashboard preview
+- How it works
+- Use cases
+- Meet Mylo
+- Final call to action
+- Footer
+
+The dashboard preview should prove product value, not only look pretty. It should show research pulse, knowledge connections, opportunity alerts, project snapshots, and next actions.
+
+## App Direction
+
+The authenticated workspace should feel like a quiet research operations dashboard. It should prioritize scanning, comparison, review, and action.
+
+App surfaces should support:
+
+- Lab goals
+- Research feeds
+- Papers and claims
+- Projects
+- Members
+- Grants
+- Fellowships
+- Reports
+- Knowledge graph exploration
+- Notifications and settings
+
+Every app view should account for loading, empty, populated, error, permission denied, job running, and stale-data states.
+
+## Voice And Copy
+
+Mycelium should speak like a calm research assistant, not a toy and not a hype machine.
+
+Use copy like:
+
+- "I found 12 papers relevant to your lab goals."
+- "This fellowship matches your profile and timeline."
+- "Three new papers strengthen your current proposal angle."
+- "Your knowledge graph has 18 new connections."
+
+Avoid copy like:
+
+- "Supercharge your lab with AI magic."
+- "Amazing discoveries await."
+- "Revolutionize everything instantly."
+
+The voice should be confident, concise, source-aware, and useful. When uncertainty exists, name it clearly.
+
+## Motion
+
+Motion should be slow, soft, subtle, and purposeful. Good motion includes gentle Mylo movement, softly pulsing nodes, graph lines drawing in, feature bubbles fading in, and cards lifting slightly on hover.
+
+Avoid fast motion, constant bouncing, distracting backgrounds, or animation that makes research work feel less serious. Respect reduced-motion preferences.
+
+## Accessibility And Responsiveness
+
+The design should work across desktop, tablet, and mobile. Do not force dense dashboard previews into narrow screens. Simplify responsibly.
+
+Do not rely on color alone for scores, alerts, chart states, graph meaning, or opportunity fit. Use labels, icons, shape, text, and layout in addition to color.
+
+The product should meet WCAG 2.2 AA expectations for contrast, semantics, keyboard navigation, focus behavior, forms, and dynamic content.
+
+## Mistakes To Avoid
+
+- Making Mylo or the interface too cute for a research-lab audience
+- Using too much illustration where product evidence is needed
+- Weak information hierarchy across many features
+- Large blocks of undifferentiated text
+- Generic AI imagery, neon gradients, or robotic visuals
+- Blue corporate SaaS defaults
+- Decorative graphs that do not explain research value
+- Alerts without explanations
+- Recommendations that hide uncertainty or eligibility limits
