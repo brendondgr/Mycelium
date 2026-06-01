@@ -1,0 +1,19 @@
+{
+  "name": "mycelium",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n frontend,backend -c green,blue \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "npm --workspace frontend run dev -- --hostname 0.0.0.0 --port 3000",
+    "dev:backend": "uv run --project backend python backend/manage.py runserver 0.0.0.0:8000",
+    "build": "npm --workspace frontend run build",
+    "lint": "npm --workspace frontend run lint && uv run --project backend ruff check backend",
+    "test": "uv run --project backend pytest backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

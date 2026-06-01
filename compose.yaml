@@ -1,0 +1,92 @@
+services:
+  nginx:
+    image: nginx:1.29-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+  frontend:
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm --workspace frontend run dev -- --hostname 0.0.0.0 --port 3000"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api
+
+  backend:
+    image: ghcr.io/astral-sh/uv:python3.13-bookworm
+    working_dir: /app
+    command: sh -c "uv sync --project backend && uv run --project backend python backend/manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env.example
+    depends_on:
+      - postgres
+      - redis
+      - neo4j
+      - minio
+
+  worker:
+    image: ghcr.io/astral-sh/uv:python3.13-bookworm
+    working_dir: /app
+    command: sh -c "uv sync --project backend && uv run --project backend celery -A config worker --loglevel=info"
+    volumes:
+      - .:/app
+    env_file:
+      - .env.example
+    depends_on:
+      - backend
+      - redis
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: mycelium
+      POSTGRES_USER: mycelium
+      POSTGRES_PASSWORD: mycelium
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+
+  neo4j:
+    image: neo4j:5-community
+    environment:
+      NEO4J_AUTH: neo4j/change-me
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j-data:/data
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: mycelium
+      MINIO_ROOT_PASSWORD: change-me
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+volumes:
+  postgres-data:
+  neo4j-data:
+  minio-data:
