@@ -40,6 +40,13 @@ services:
       - .:/app
     env_file:
       - .env.example
+    environment:
+      DATABASE_URL: postgres://mycelium:mycelium@postgres:5432/mycelium
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      NEO4J_URI: bolt://neo4j:7687
+      S3_ENDPOINT_URL: http://minio:9000
     depends_on:
       - postgres
       - redis
@@ -54,6 +61,13 @@ services:
       - .:/app
     env_file:
       - .env.example
+    environment:
+      DATABASE_URL: postgres://mycelium:mycelium@postgres:5432/mycelium
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      NEO4J_URI: bolt://neo4j:7687
+      S3_ENDPOINT_URL: http://minio:9000
     depends_on:
       - backend
       - redis

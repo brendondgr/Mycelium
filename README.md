@@ -29,6 +29,48 @@ app, Django backend, Nginx config, and Node install state live.
 Editable orchestration config such as `compose.yaml`, `.env.example`, and the
 root `package.json` stays at the repository root.
 
+## Docker Backend Setup
+
+The preferred local backend path is Docker Compose. The backend container uses
+the `ghcr.io/astral-sh/uv:python3.13-bookworm` image, installs the Python
+environment from `web/backend/`, and runs the Django development server on port
+8000.
+
+Prerequisites:
+
+- Docker Desktop or another Docker Compose compatible runtime.
+- The root `.env.example` file, which is already wired into the backend
+  service for local defaults. `compose.yaml` overrides service URLs such as
+  Postgres and Redis so containers talk over the Compose network.
+
+Start the Django backend and its local service dependencies:
+
+```sh
+docker compose up backend
+```
+
+This starts Postgres, Redis, Neo4j, MinIO, and the Django backend. The backend
+is available at:
+
+- API health check: `http://localhost:8000/api/health/`
+- Django admin route: `http://localhost:8000/admin/`
+
+Stop the backend container stack:
+
+```sh
+docker compose down
+```
+
+To run the full local web stack through Docker Compose, including Nginx, Astro,
+Next.js, and the backend:
+
+```sh
+docker compose up
+```
+
+Nginx is exposed at `http://localhost:8080`, with landing traffic routed to
+Astro, app traffic routed to Next.js, and API/admin traffic routed to Django.
+
 ## Root Commands
 
 - `npm run dev`: run Astro, Next.js, and Django together.
@@ -38,6 +80,8 @@ root `package.json` stays at the repository root.
 - `npm run build`: build the shared config, Astro landing site, and Next.js app.
 - `npm run lint`: check Astro, Next.js, and backend Python linting.
 - `npm run test`: run backend tests.
+- `npm run compose:up`: run the full Docker Compose stack.
+- `npm run compose:down`: stop the Docker Compose stack.
 
 ## Documentation
 
