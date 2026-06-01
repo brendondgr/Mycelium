@@ -2,8 +2,11 @@ export const siteName = "Mycelium";
 
 export const siteTagline = "Living intelligence for research labs";
 
-export const appLoginUrl =
-  import.meta.env.PUBLIC_APP_URL ?? "http://localhost:3000";
+const appBaseUrl = (
+  import.meta.env.PUBLIC_APP_URL ?? "http://localhost:3000"
+).replace(/\/$/, "");
+
+export const appLoginUrl = `${appBaseUrl}/login`;
 
 export const primaryNav = [
   { href: "/product", label: "Product" },
