@@ -2,18 +2,14 @@
   "name": "mycelium",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "frontend"
-  ],
   "scripts": {
-    "dev": "concurrently -n frontend,backend -c green,blue \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "dev:frontend": "npm --workspace frontend run dev -- --hostname 0.0.0.0 --port 3000",
-    "dev:backend": "uv run --project backend python backend/manage.py runserver 0.0.0.0:8000",
-    "build": "npm --workspace frontend run build",
-    "lint": "npm --workspace frontend run lint && uv run --project backend ruff check backend",
-    "test": "uv run --project backend pytest backend"
-  },
-  "devDependencies": {
-    "concurrently": "^9.2.1"
+    "dev": "npm --prefix web exec concurrently -n web,backend -c green,blue \"npm run dev:web\" \"npm run dev:backend\"",
+    "dev:web": "npm --prefix web run dev -- --hostname 0.0.0.0 --port 3000",
+    "dev:backend": "uv run --project web/backend python web/backend/manage.py runserver 0.0.0.0:8000",
+    "build": "npm --prefix web run build",
+    "lint": "npm --prefix web run lint && uv run --project web/backend ruff check --cache-dir web/backend/.ruff_cache web/backend",
+    "test": "uv run --project web/backend pytest web/backend",
+    "compose:up": "docker compose up",
+    "compose:down": "docker compose down"
   }
 }

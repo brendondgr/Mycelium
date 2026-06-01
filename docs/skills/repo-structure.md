@@ -7,10 +7,10 @@ layout.
 
 - Treat Mycelium as a full-stack monorepo with root-level orchestration.
 - Keep project documentation in `docs/`.
-- Keep future frontend, backend, worker, and infrastructure code separated by
-  service boundary.
+- Keep web frontend, backend, worker, and infrastructure implementation under
+  `web/`, separated by service boundary.
+- Keep editable orchestration config at the repository root when possible.
 - Avoid catch-all folders such as `misc/`, `utils/`, or `helpers/`.
-- Do not add dependency scaffolding unless the user explicitly asks for it.
 - Build and run workflows should be designed from the repository root.
 
 ## Planned Layout
@@ -19,40 +19,49 @@ Use this as the target structure when the app is scaffolded:
 
 ```text
 mycelium/
-├── README.md
-├── compose.yaml
-├── .env.example
-├── docs/
-│   ├── skills/
-│   ├── architecture.md
-│   ├── api-contract.md
-│   ├── security.md
-│   └── deployment.md
-├── frontend/
-│   └── Next.js app
-├── backend/
-│   └── Django project and apps
-├── infra/
-│   ├── nginx/
-│   └── docker/
-└── scripts/
+|-- README.md
+|-- package.json
+|-- compose.yaml
+|-- .env.example
+|-- docs/
+|   |-- skills/
+|   |-- architecture.md
+|   |-- api-contract.md
+|   |-- security.md
+|   `-- deployment.md
+|-- web/
+|   |-- package.json
+|   |-- package-lock.json
+|   |-- node_modules/
+|   |-- src/
+|   |-- public/
+|   |-- backend/
+|   |   |-- pyproject.toml
+|   |   |-- uv.lock
+|   |   |-- manage.py
+|   |   |-- config/
+|   |   `-- apps/
+|   `-- infra/
+|       |-- nginx/
+|       `-- docker/
+`-- scripts/
 ```
 
-`compose.yaml` should eventually start the frontend, Django API, workers,
-Redis, Postgres, Neo4j, object storage, and Nginx from the root. Until those
-services exist, documentation may describe the plan without creating empty
-runtime files.
+Root scripts should call into `web/` so the website and Django server can still
+be built and run from the repository root. Implementation files and install
+state belong under `web/`; root config is for editing and orchestration.
 
 ## Service Boundaries
 
-- `frontend/`: Next.js App Router, React UI, Tailwind, shadcn/ui and Radix UI
-  components, charts, tables, graph views, reports, and app shell routes.
-- `backend/`: Django API, auth, labs, memberships, permissions, reports,
+- `web/`: Next.js App Router, React UI, Tailwind, shadcn/ui and Radix UI
+  components, charts, tables, graph views, reports, app shell routes, backend,
+  and local infrastructure.
+- `web/backend/`: Django API, auth, labs, memberships, permissions, reports,
   documents, opportunities, jobs, audit logs, graph orchestration, and admin.
-- `backend` workers: Celery tasks for literature scans, grant and fellowship
-  matching, report generation, PDF processing, graph updates, and alerts.
-- `infra/`: Nginx config, Dockerfiles, Compose support, deployment notes, and
-  environment examples.
+- `web/backend` workers: Celery tasks for literature scans, grant and
+  fellowship matching, report generation, PDF processing, graph updates, and
+  alerts.
+- `web/infra/`: Nginx config, Dockerfiles, deployment support, and local infra.
 - `docs/`: architecture, API contracts, security notes, deployment guidance,
   design system notes, and canonical skills.
 
@@ -70,7 +79,7 @@ runtime files.
 
 ## Validation
 
-- A new contributor should be able to identify the frontend, Django API, worker
-  layer, infra files, docs, and root run command without guessing.
+- A new contributor should be able to identify root config, the web app, Django
+  API, worker layer, infra files, docs, and root run command without guessing.
 - The browser must never talk directly to Postgres, Neo4j, Redis, object
   storage, workers, or vector stores.

@@ -25,4 +25,5 @@ behavioral guidance here so all agents share the same project assumptions.
   Celery, Redis, Postgres with pgvector, Neo4j, object storage, Nginx, and
   Docker Compose.
 - Future build and run commands should be launched from the repository root.
-  The preferred single-command path is a root-level `compose.yaml`.
+  Root scripts should delegate application files to `web/`, while editable
+  orchestration config such as `compose.yaml` stays at the root.

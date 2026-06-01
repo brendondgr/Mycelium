@@ -4,15 +4,15 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./web/infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - frontend
+      - web
       - backend
 
-  frontend:
+  web:
     image: node:24-alpine
-    working_dir: /app
-    command: sh -c "npm install && npm --workspace frontend run dev -- --hostname 0.0.0.0 --port 3000"
+    working_dir: /app/web
+    command: sh -c "npm install && npm run dev -- --hostname 0.0.0.0 --port 3000"
     ports:
       - "3000:3000"
     volumes:
@@ -23,7 +23,7 @@ services:
   backend:
     image: ghcr.io/astral-sh/uv:python3.13-bookworm
     working_dir: /app
-    command: sh -c "uv sync --project backend && uv run --project backend python backend/manage.py runserver 0.0.0.0:8000"
+    command: sh -c "uv sync --project web/backend && uv run --project web/backend python web/backend/manage.py runserver 0.0.0.0:8000"
     ports:
       - "8000:8000"
     volumes:
@@ -39,7 +39,7 @@ services:
   worker:
     image: ghcr.io/astral-sh/uv:python3.13-bookworm
     working_dir: /app
-    command: sh -c "uv sync --project backend && uv run --project backend celery -A config worker --loglevel=info"
+    command: sh -c "uv sync --project web/backend && uv run --project web/backend celery -A config worker --loglevel=info"
     volumes:
       - .:/app
     env_file:

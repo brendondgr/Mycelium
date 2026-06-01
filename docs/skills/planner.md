@@ -22,7 +22,7 @@ sequenced work breakdowns for Mycelium before coding.
 - Data: Postgres as source of truth, pgvector or Qdrant for semantic retrieval,
   Neo4j for relationship graphs, object storage for files and exports.
 - Deployment: Nginx in front of Next.js and Django, Docker Compose first, with
-  root-level build and run commands.
+  root-level commands that delegate runtime files to `web/`.
 
 ## Output Shape
 
@@ -36,6 +36,6 @@ sequenced work breakdowns for Mycelium before coding.
 ## Validation
 
 - Confirm root-level run expectations are clear.
-- Confirm frontend/backend ownership is not ambiguous.
+- Confirm web/backend ownership is not ambiguous.
 - Confirm security-sensitive flows mention auth, lab membership, object-level
   permission, and logging.

@@ -7,7 +7,7 @@ ROOT_DIR = BASE_DIR.parent
 
 env = environ.FileAwareEnv(DEBUG=(bool, False))
 
-environ.Env.read_env(ROOT_DIR / ".env")
+environ.Env.read_env(ROOT_DIR.parent / ".env")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="django-insecure-local-dev-only")
 DEBUG = env("DJANGO_DEBUG", default=False)

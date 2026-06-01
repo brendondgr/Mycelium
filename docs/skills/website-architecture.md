@@ -5,26 +5,28 @@ site, authenticated lab app, Django API, or Dockerized deployment.
 
 ## Core Rules
 
-- Use Next.js as the Node frontend server for the public site and authenticated
+- Use Next.js as the Node web server for the public site and authenticated
   lab workspace.
 - Use Django as the backend API and orchestration layer.
 - Route public app pages through Next.js and API/admin traffic through Django.
-- Keep frontend code in `frontend/` and backend code in `backend/`.
+- Keep the Next.js app, Django backend, local infrastructure, and Node install
+  state inside `web/`.
 - Plan build, run, and deployment commands from the repository root.
-- Prefer a root-level `compose.yaml` as the future single-command local and
-  deployment entrypoint.
+- Root scripts should launch commands from the repository root while delegating
+  runtime files to `web/`.
+- Keep editable orchestration config at the root when the tool supports it.
 
 ## Runtime Shape
 
 ```text
 Browser
   -> Nginx
-  -> Next.js frontend for /, /app, /login, dashboards, reports, and UI routes
+  -> Next.js web app for /, /app, /login, dashboards, reports, and UI routes
   -> Django API for /api and /admin
   -> Postgres, Redis/Celery, Neo4j, vector search, and object storage
 ```
 
-The Node server renders the frontend. Django owns business logic, auth,
+The Node server renders the web app. Django owns business logic, auth,
 permissions, orchestration, data access, admin, and job creation.
 
 ## Required Planning Artifact
@@ -73,14 +75,14 @@ dependencies, API endpoints, loading states, empty states, and error states.
   logs, and admin workflows.
 - Use Django or Celery for long-running research scans, grant matching,
   fellowship matching, extraction, report generation, and graph updates.
-- Create `docs/api-contract.md` before the frontend depends on explicit API
+- Create `docs/api-contract.md` before the web app depends on explicit API
   payloads.
 
 ## Security Baseline
 
 - Nginx is the public entrypoint for TLS, routing, rate limits, static/media
   handling, request limits, compression, and security headers.
-- The frontend must call Django only through approved API routes.
+- The web app must call Django only through approved API routes.
 - Every lab-scoped endpoint must enforce authentication, lab membership,
   role permission, object-level permission, and audit logging where sensitive.
 - Do not expose database, graph, queue, object storage, or worker services to
