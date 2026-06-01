@@ -38,6 +38,9 @@ export default function Home() {
 
         <div className="flex flex-wrap gap-3">
           <Button asChild size="lg">
+            <a href="/login">Sign in</a>
+          </Button>
+          <Button asChild variant="secondary" size="lg">
             <a href="/app">Open workspace</a>
           </Button>
           <Button asChild variant="secondary" size="lg">
