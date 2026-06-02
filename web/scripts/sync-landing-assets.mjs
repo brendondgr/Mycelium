@@ -15,6 +15,10 @@ const ASSETS = [
     src: "art/frontpage/MyloHero.png",
     dest: "landing/public/images/mylo-hero.png",
   },
+  {
+    src: "art/frontpage/ConnectedWorkspace.png",
+    dest: "landing/public/images/connected-workspace.png",
+  },
 ];
 
 let copied = 0;
