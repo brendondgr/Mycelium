@@ -32,3 +32,4 @@ This log records broad project changes so humans and agents can recover context 
 | 2026-06-02T00:20:00Z | CORRECTED | 20260601-login-hydration | Suppressed root layout hydration warnings when browser extensions alter the document body before React loads. |
 | 2026-06-02T00:30:00Z | CORRECTED | 20260601-login-hydration | Moved layout classes off the document body and strip extension-injected classes before hydration to stop login page mismatches. |
 | 2026-06-02T01:10:00Z | CORRECTED | 20260601-login-fetch-and-form | Fixed login API routing through the Next proxy, blocked GET credential leakage, and sanitized accidental query-string passwords. |
+| 2026-06-02T19:19:05Z | MODIFIED | 20260602-connected-workspace-section | Updated the front-page workspace section with connected workspace artwork, scaled feature cards, and responsive landing content. |

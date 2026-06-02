@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Leaf, ShieldCheck, Users as UsersIcon } from "lucide-react";
+import { Leaf } from "lucide-react";
 
 import { features } from "@/data/landing";
 import { cn } from "@/lib/utils";
@@ -19,12 +19,6 @@ function IconBubble({ children, className }: { children: ReactNode; className?: 
 
 const workspaceImage = "/images/connected-workspace.png";
 
-const trustBadges = [
-  { label: "Transparent", icon: ShieldCheck },
-  { label: "Citable", icon: Leaf },
-  { label: "Collaborative", icon: UsersIcon },
-] as const;
-
 export function FeatureStrip() {
   return (
     <section
@@ -35,13 +29,13 @@ export function FeatureStrip() {
         src={workspaceImage}
         alt=""
         aria-hidden="true"
-        className="absolute left-1/2 top-1/2 -z-20 h-auto w-[72rem] max-w-none -translate-x-1/2 -translate-y-1/2 opacity-70 sm:w-[86rem] lg:w-[98rem] xl:w-[108rem]"
+        className="absolute left-1/2 top-1/2 -z-20 h-auto min-h-full w-full max-w-none -translate-x-1/2 -translate-y-1/2 object-center"
         width="1916"
         height="821"
         loading="lazy"
         decoding="async"
       />
-      <div className="absolute inset-0 -z-10 bg-[#f8f4ec]/84 backdrop-blur-[1px] lg:bg-[#f8f4ec]/72" />
+      <div className="absolute inset-0 -z-10 bg-[#f8f4ec]/76 backdrop-blur-[1px] lg:bg-[#f8f4ec]/60" />
 
       <div className="mx-auto grid w-full max-w-[94rem] gap-8 px-4 sm:px-6 md:px-8 lg:grid-cols-[0.86fr_1.18fr] lg:gap-10 lg:px-10 xl:gap-12 xl:px-12">
         <div className="flex max-w-[30rem] flex-col items-start">
@@ -52,7 +46,7 @@ export function FeatureStrip() {
 
           <h2
             id="features-heading"
-            className="font-display mt-6 max-w-[30rem] text-[clamp(2.25rem,8.4vw,3.25rem)] font-medium leading-[1.06] text-[#1f2b1d] sm:text-[clamp(2.75rem,5vw,3.75rem)] lg:text-[clamp(3rem,4.35vw,4.25rem)]"
+            className="font-display mt-6 max-w-[27rem] text-[clamp(2rem,7.2vw,2.75rem)] font-medium leading-[1.02] text-[#1f2b1d] sm:text-[clamp(2.35rem,4.2vw,3.25rem)] lg:text-[clamp(2.5rem,3.55vw,3.5rem)]"
           >
             One <span className="italic text-[#3f6e34]">connected</span>
             <span className="block">workspace for</span>
@@ -84,7 +78,7 @@ export function FeatureStrip() {
           {features.map(({ title, description, icon: Icon }) => (
             <article
               key={title}
-              className="grid min-h-[9.25rem] grid-cols-[2.75rem_1fr] items-start gap-3.5 rounded-lg border border-[#7d6237]/18 bg-card/90 p-4 shadow-[0_14px_34px_rgb(52_39_20/7%)] backdrop-blur-md sm:grid-cols-[3.25rem_1fr] sm:p-5"
+              className="grid min-h-[9.25rem] grid-cols-[2.75rem_1fr] items-center gap-3.5 rounded-2xl border border-[#7d6237]/18 bg-card/90 p-4 shadow-[0_14px_34px_rgb(52_39_20/7%)] backdrop-blur-md sm:grid-cols-[3.25rem_1fr] sm:p-5"
             >
               <IconBubble className="size-11 sm:size-12">
                 <Icon aria-hidden className="size-5" />
@@ -97,28 +91,6 @@ export function FeatureStrip() {
               </div>
             </article>
           ))}
-        </div>
-
-        <div className="rounded-lg border border-[#7d6237]/15 bg-[#fffaee]/85 p-4 shadow-[0_10px_26px_rgb(52_39_20/5%)] backdrop-blur-sm md:p-5 lg:col-span-2 lg:flex lg:min-h-[4.5rem] lg:items-center lg:justify-between lg:gap-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <IconBubble className="size-10">
-              <Leaf aria-hidden className="size-4" />
-            </IconBubble>
-            <p className="text-lg font-bold text-[#3f6e34]">Explainable by design</p>
-            <span className="hidden h-7 w-px bg-border sm:block" aria-hidden="true" />
-            <p className="max-w-[28rem] text-sm leading-6 text-[#3a4437]">
-              Every recommendation shows the why—so your team stays confident and in control.
-            </p>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2.5 lg:mt-0">
-            {trustBadges.map(({ label, icon: BadgeIcon }) => (
-              <span key={label} className="inline-flex items-center gap-2 text-sm text-[#3a5434]">
-                <BadgeIcon aria-hidden className="size-4" />
-                {label}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
     </section>
