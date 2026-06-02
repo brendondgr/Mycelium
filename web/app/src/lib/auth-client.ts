@@ -1,11 +1,5 @@
 import type { AuthErrorBody, AuthUser } from "@/lib/auth-types";
-
-const DEFAULT_PUBLIC_API = "/api";
-
-export function getPublicApiBase(): string {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_PUBLIC_API;
-  return base.replace(/\/$/, "");
-}
+import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 
 function readCsrfToken(): string | null {
   if (typeof document === "undefined") {
@@ -25,7 +19,7 @@ async function parseJson<T>(response: Response): Promise<T | null> {
 }
 
 export async function ensureCsrfCookie(): Promise<void> {
-  const response = await fetch(`${getPublicApiBase()}/auth/csrf/`, {
+  const response = await fetch(buildApiUrl(getPublicApiBase(), "auth", "csrf"), {
     method: "GET",
     credentials: "include",
     cache: "no-store",
@@ -43,7 +37,7 @@ export async function login(
   await ensureCsrfCookie();
   const csrfToken = readCsrfToken();
 
-  const response = await fetch(`${getPublicApiBase()}/auth/login/`, {
+  const response = await fetch(buildApiUrl(getPublicApiBase(), "auth", "login"), {
     method: "POST",
     credentials: "include",
     headers: {
@@ -86,7 +80,7 @@ export async function logout(): Promise<void> {
   await ensureCsrfCookie();
   const csrfToken = readCsrfToken();
 
-  const response = await fetch(`${getPublicApiBase()}/auth/logout/`, {
+  const response = await fetch(buildApiUrl(getPublicApiBase(), "auth", "logout"), {
     method: "POST",
     credentials: "include",
     headers: {

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/auth/login-form";
+import { LoginQuerySanitizer } from "@/components/auth/login-query-sanitizer";
 import { getCurrentUser } from "@/lib/auth-server";
 
 export const metadata = {
@@ -16,6 +17,7 @@ export default async function LoginPage() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <LoginQuerySanitizer />
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <section className="space-y-6">

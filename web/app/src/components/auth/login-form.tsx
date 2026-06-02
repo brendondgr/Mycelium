@@ -20,8 +20,12 @@ export function LoginForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    void submitCredentials();
+  }
+
+  async function submitCredentials() {
     setFormError(null);
 
     const nextFieldErrors: { username?: string; password?: string } = {};
@@ -59,6 +63,8 @@ export function LoginForm() {
   return (
     <form
       className="space-y-5"
+      method="post"
+      action="/login"
       onSubmit={handleSubmit}
       noValidate
       aria-busy={isBusy}

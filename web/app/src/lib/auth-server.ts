@@ -1,16 +1,7 @@
 import { cookies } from "next/headers";
 
+import { buildApiUrl, getServerApiBase } from "@/lib/api-url";
 import type { AuthUser } from "@/lib/auth-types";
-
-const DEFAULT_INTERNAL_API = "http://127.0.0.1:8000/api";
-
-function getServerApiBase(): string {
-  const base =
-    process.env.API_INTERNAL_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    DEFAULT_INTERNAL_API;
-  return base.replace(/\/$/, "");
-}
 
 async function parseJson<T>(response: Response): Promise<T | null> {
   try {
@@ -28,7 +19,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     return null;
   }
 
-  const response = await fetch(`${getServerApiBase()}/auth/me/`, {
+  const response = await fetch(buildApiUrl(getServerApiBase(), "auth", "me"), {
     headers: { Cookie: cookieHeader },
     cache: "no-store",
   });
