@@ -24,6 +24,9 @@ out/
 dist/
 .astro/
 
+# generated from web/art via npm run sync:assets
+landing/public/images/mylo-hero.png
+
 # misc
 .DS_Store
 *.pem

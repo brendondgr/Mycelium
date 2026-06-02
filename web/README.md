@@ -12,3 +12,7 @@
 
 Run commands from the repository root when possible. The root `package.json`
 delegates into this workspace so Node install state remains under `web/`.
+
+Landing hero images are copied from `art/` into `landing/public/images/` by
+`npm run sync:assets`. That step runs automatically before `npm run dev`,
+`npm run dev:landing`, and `npm run build`.

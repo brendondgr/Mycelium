@@ -8,11 +8,12 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n landing,app,backend -c yellow,green,blue \"npm run dev:landing\" \"npm run dev:app\" \"npm run dev:backend\"",
+    "sync:assets": "node scripts/sync-landing-assets.mjs",
+    "dev": "npm run sync:assets && concurrently -n landing,app,backend -c yellow,green,blue \"npm run dev:landing\" \"npm run dev:app\" \"npm run dev:backend\"",
     "dev:landing": "npm --workspace @mycelium/landing run dev -- --host 0.0.0.0 --port 4321",
     "dev:app": "npm --workspace @mycelium/app run dev -- --hostname 0.0.0.0 --port 3000",
     "dev:backend": "uv run --project backend python backend/manage.py runserver 0.0.0.0:8000",
-    "build": "npm --workspace @mycelium/config run build && npm --workspace @mycelium/landing run build && npm --workspace @mycelium/app run build",
+    "build": "npm run sync:assets && npm --workspace @mycelium/config run build && npm --workspace @mycelium/landing run build && npm --workspace @mycelium/app run build",
     "lint": "npm --workspace @mycelium/landing run lint && npm --workspace @mycelium/app run lint",
     "start:landing": "npm --workspace @mycelium/landing run preview -- --host 0.0.0.0 --port 4321",
     "start:app": "npm --workspace @mycelium/app run start -- --hostname 0.0.0.0 --port 3000"
