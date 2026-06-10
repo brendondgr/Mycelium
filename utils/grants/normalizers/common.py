@@ -42,7 +42,7 @@ def stringify(value: Any) -> str:
     if isinstance(value, bool | int | float):
         return str(value)
     if isinstance(value, str):
-        return value.strip()
+        return " ".join(value.split())
     if isinstance(value, dict):
         compact = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return compact
