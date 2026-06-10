@@ -34,3 +34,4 @@ This log records broad project changes so humans and agents can recover context 
 | 2026-06-02T01:10:00Z | CORRECTED | 20260601-login-fetch-and-form | Fixed login API routing through the Next proxy, blocked GET credential leakage, and sanitized accidental query-string passwords. |
 | 2026-06-02T19:19:05Z | MODIFIED | 20260602-connected-workspace-section | Updated the front-page workspace section with connected workspace artwork, scaled feature cards, and responsive landing content. |
 | 2026-06-10T17:22:20Z | CREATED | 20260610-project-brief-markdown | Added a Markdown version of the Mycelium project brief alongside the source PDF. |
+| 2026-06-10T19:22:37Z | CREATED | 20260610-grants-prototype-ingest | Added a prototype grants ingest utility for sampling public funding sources into normalized CSV files. |
