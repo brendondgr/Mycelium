@@ -68,14 +68,23 @@ Next.js, and the backend:
 docker compose up
 ```
 
-Nginx is exposed at `http://localhost:8080`, with landing traffic routed to
+Nginx is exposed at `http://localhost:9911`, with landing traffic routed to
 Astro, app traffic routed to Next.js, and API/admin traffic routed to Django.
+
+If the landing container cannot resolve `@mycelium/config/theme.css`, reset
+container volumes so `node_modules` is recreated inside Docker:
+
+```sh
+docker compose down -v
+docker compose up
+```
 
 ## Root Commands
 
-- `npm run dev`: run Astro, Next.js, and Django together.
+- `npm run dev`: run the dev gateway, Astro, Next.js, and Django together on
+  **http://localhost:9911**.
 - `npm run dev:landing`: run only the Astro landing site on port 4321.
-- `npm run dev:web`: run only the Next.js app on port 3000.
+- `npm run dev:web`: run only the Next.js app on port 3001 (bypasses gateway).
 - `npm run dev:backend`: run only the Django server on port 8000.
 - `npm run build`: build the shared config, Astro landing site, and Next.js app.
 - `npm run lint`: check Astro, Next.js, and backend Python linting.

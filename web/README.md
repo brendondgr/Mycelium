@@ -13,6 +13,33 @@
 Run commands from the repository root when possible. The root `package.json`
 delegates into this workspace so Node install state remains under `web/`.
 
+## Local development (single origin)
+
+`npm run dev` from the repository root starts a dev gateway on port **9911**
+alongside Astro, Next.js, and Django. Browse **http://localhost:9911** and use
+path-based routing:
+
+| Path | Service |
+| --- | --- |
+| `/` and public pages | Astro landing (internal `:4321`) |
+| `/login`, `/app/*`, `/_next/*` | Next.js app (internal `:3001`) |
+| `/api/*`, `/admin/*` | Django (internal `:8000`) |
+
+Direct ports remain available for focused debugging (`:4321`, `:3001`, `:8000`).
+
+## Docker (single origin)
+
+`docker compose up` from the repository root exposes the same path map through
+Nginx at **http://localhost:9911**.
+
+If workspace packages fail to resolve inside containers after a host-side
+`npm install`, reset Docker volumes:
+
+```sh
+docker compose down -v
+docker compose up
+```
+
 Landing hero images are copied from `art/` into `landing/public/images/` by
 `npm run sync:assets`. That step runs automatically before `npm run dev`,
 `npm run dev:landing`, and `npm run build`.
