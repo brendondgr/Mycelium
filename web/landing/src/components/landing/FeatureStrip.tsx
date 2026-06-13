@@ -29,7 +29,7 @@ export function FeatureStrip() {
         src={workspaceImage}
         alt=""
         aria-hidden="true"
-        className="absolute left-1/2 top-1/2 -z-20 h-auto min-h-full w-full max-w-none -translate-x-1/2 -translate-y-1/2 object-center"
+        className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
         width="1916"
         height="821"
         loading="lazy"

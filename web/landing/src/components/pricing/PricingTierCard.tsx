@@ -26,32 +26,22 @@ export function PricingTierCard({ tier }: PricingTierCardProps) {
         </span>
       ) : null}
 
-      <div className="flex items-start gap-3">
+      <div className="text-center">
         <span
-          className={cn(
-            "inline-flex shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary",
-            tier.featured ? "size-12" : "size-10",
-          )}
+          className="mx-auto inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary"
           aria-hidden="true"
         >
-          <Icon className={tier.featured ? "size-6" : "size-5"} />
+          <Icon className="size-5" />
         </span>
-        <div>
-          <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">
-            {tier.name}
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{tier.audience}</p>
-        </div>
+        <h3 className="mt-4 text-sm font-semibold uppercase tracking-[0.14em] text-primary">
+          {tier.name}
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{tier.audience}</p>
       </div>
 
-      <div className="mt-6">
-        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span
-            className={cn(
-              "font-semibold tracking-tight text-[var(--text-primary)]",
-              tier.featured ? "text-[2.75rem] leading-none sm:text-5xl" : "text-4xl",
-            )}
-          >
+      <div className="mt-6 text-center">
+        <p className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-1">
+          <span className="text-4xl font-semibold tracking-tight text-[var(--text-primary)]">
             {tier.price}
           </span>
           <span className="text-sm text-[var(--text-secondary)]">{tier.priceUnit}</span>
