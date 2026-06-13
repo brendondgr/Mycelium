@@ -36,3 +36,4 @@ This log records broad project changes so humans and agents can recover context 
 | 2026-06-10T17:22:20Z | CREATED | 20260610-project-brief-markdown | Added a Markdown version of the Mycelium project brief alongside the source PDF. |
 | 2026-06-10T19:22:37Z | CREATED | 20260610-grants-prototype-ingest | Added a prototype grants ingest utility for sampling public funding sources into normalized CSV files. |
 | 2026-06-12T18:00:00Z | MODIFIED | 20260612-pricing-page-tiers | Replaced the pilot pricing placeholder with Spore, Mycelium Lab, and Canopy tiers plus Mylo Bot add-ons on a light-themed layout.
+| 2026-06-12T22:50:00Z | MODIFIED | 20260612-pricing-comparison-table | Added a full plan comparison table below the pricing trial footer on the public pricing page.

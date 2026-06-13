@@ -1,5 +1,6 @@
 import { ArrowUpRight } from "lucide-react";
 
+import { PricingComparison } from "@/components/pricing/PricingComparison";
 import { PricingAddons } from "@/components/pricing/PricingAddons";
 import { PricingTierCard } from "@/components/pricing/PricingTierCard";
 import { pricingFooter, pricingHero, pricingTiers } from "@/data/pricing";
@@ -44,6 +45,8 @@ export function PricingSection() {
           </a>
         </p>
       </footer>
+
+      <PricingComparison />
     </div>
   );
 }
