@@ -38,7 +38,7 @@ export function FeatureStrip() {
       <div className="absolute inset-0 -z-10 bg-[#f8f4ec]/76 backdrop-blur-[1px] lg:bg-[#f8f4ec]/60" />
 
       <div className="mx-auto grid w-full max-w-[94rem] gap-8 px-4 sm:px-6 md:px-8 lg:grid-cols-[0.86fr_1.18fr] lg:gap-10 lg:px-10 xl:gap-12 xl:px-12">
-        <div className="flex max-w-[30rem] flex-col items-start">
+        <div className="mx-auto flex max-w-[30rem] flex-col items-center text-center">
           <div className="inline-flex min-h-9 items-center gap-2 rounded-full border border-primary/30 bg-[#f6f8e7]/80 px-4 text-xs font-bold uppercase text-[#3f5f2e] shadow-sm backdrop-blur-sm">
             <Leaf aria-hidden className="size-3.5" />
             <span>Mycelium</span>
