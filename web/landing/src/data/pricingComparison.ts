@@ -1,6 +1,8 @@
 export type ComparisonCell =
-  | { kind: "included" }
-  | { kind: "text"; value: string; italic?: boolean };
+  | { kind: "check" }
+  | { kind: "cross" }
+  | { kind: "partial"; value: string }
+  | { kind: "text"; value: string };
 
 export type ComparisonRow = {
   feature: string;
@@ -20,9 +22,28 @@ export const pricingComparison = {
   title: "Everything included, at a glance",
   subtitle: "All paid plans include a 14-day free trial. No credit card required.",
   plans: [
-    { id: "spore", name: "Spore", price: "$10 / user / mo" },
-    { id: "lab", name: "Mycelium Lab", price: "$12.50 / member / mo" },
-    { id: "canopy", name: "Canopy", price: "$20 / member / mo" },
+    {
+      id: "spore",
+      name: "Spore",
+      price: "$10",
+      priceUnit: "/ user / mo",
+      pillClass: "bg-[#eaf3de] text-[#3b6d11]",
+    },
+    {
+      id: "lab",
+      name: "Mycelium Lab",
+      price: "$12.50",
+      priceUnit: "/ member / mo",
+      pillClass: "bg-[#e1f5ee] text-[#0f6e56]",
+      highlighted: true,
+    },
+    {
+      id: "canopy",
+      name: "Canopy",
+      price: "$20",
+      priceUnit: "/ member / mo",
+      pillClass: "bg-[#e6f1fb] text-[#185fa5]",
+    },
   ],
   categories: [
     {
@@ -37,21 +58,21 @@ export const pricingComparison = {
         {
           feature: "PI / Co-PI seats",
           description: "Named principal investigators on the account",
-          spore: { kind: "included" },
+          spore: { kind: "cross" },
           lab: { kind: "text", value: "Up to 5" },
           canopy: { kind: "text", value: "Unlimited" },
         },
         {
           feature: "Admin panel & billing controls",
-          spore: { kind: "included" },
-          lab: { kind: "text", value: "Basic", italic: true },
-          canopy: { kind: "included" },
+          spore: { kind: "cross" },
+          lab: { kind: "partial", value: "Basic" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Multi-lab / department coordination",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "cross" },
+          lab: { kind: "cross" },
+          canopy: { kind: "check" },
         },
       ],
     },
@@ -60,9 +81,9 @@ export const pricingComparison = {
       rows: [
         {
           feature: "Daily literature digests",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "check" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Research topics monitored",
@@ -72,22 +93,22 @@ export const pricingComparison = {
         },
         {
           feature: "Paper relevance scoring",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "check" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Custom research topic feeds",
           description: "Tailored source lists and alert rules",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "cross" },
+          lab: { kind: "cross" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Weekly opportunity report",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "check" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
       ],
     },
@@ -96,29 +117,29 @@ export const pricingComparison = {
       rows: [
         {
           feature: "Grant alerts",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "check" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Fellowship matching",
           description: "Personalized to each researcher's profile and stage",
-          spore: { kind: "text", value: "Personal only", italic: true },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "partial", value: "Personal only" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Deadline tracking & reminders",
-          spore: { kind: "text", value: "Email only", italic: true },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "partial", value: "Email only" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Grant fit explanations",
           description: "Why a grant matches the lab's current goals",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "check" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
       ],
     },
@@ -127,34 +148,34 @@ export const pricingComparison = {
       rows: [
         {
           feature: "Personal lab profile",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "check" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Shared lab profile & goals",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "cross" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Knowledge graph",
           description: "Connected view of papers, people, projects, and opportunities",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "cross" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Team opportunity dashboard",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "cross" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Usage & engagement analytics",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "cross" },
+          lab: { kind: "cross" },
+          canopy: { kind: "check" },
         },
       ],
     },
@@ -163,23 +184,23 @@ export const pricingComparison = {
       rows: [
         {
           feature: "Email digest delivery",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "check" },
+          lab: { kind: "check" },
+          canopy: { kind: "check" },
         },
         {
           feature: "Mylo Bot — Discord & Slack",
           description: "Add-on pricing applies",
-          spore: { kind: "included" },
-          lab: { kind: "text", value: "+$10 / mo" },
-          canopy: { kind: "text", value: "+$25 / mo" },
+          spore: { kind: "cross" },
+          lab: { kind: "partial", value: "+$10 / mo" },
+          canopy: { kind: "partial", value: "+$25 / mo" },
         },
         {
           feature: "API access",
           description: "For custom workflows and internal tooling",
-          spore: { kind: "included" },
-          lab: { kind: "included" },
-          canopy: { kind: "included" },
+          spore: { kind: "cross" },
+          lab: { kind: "cross" },
+          canopy: { kind: "check" },
         },
       ],
     },
@@ -194,20 +215,24 @@ export const pricingComparison = {
         },
         {
           feature: "Onboarding assistance",
-          spore: { kind: "text", value: "Self-serve", italic: true },
-          lab: { kind: "text", value: "Guided setup", italic: true },
-          canopy: { kind: "included" },
+          spore: { kind: "partial", value: "Self-serve" },
+          lab: { kind: "partial", value: "Guided setup" },
+          canopy: { kind: "check" },
         },
       ],
     },
   ],
-  footnote:
-    "Mycelium Lab requires a minimum of 3 members and supports up to 15 members and 5 PIs/Co-PIs. · Canopy requires a minimum of 15 members with no upper limit. · All prices are billed monthly. Annual billing discounts available on request.",
 } as const satisfies {
   eyebrow: string;
   title: string;
   subtitle: string;
-  plans: ReadonlyArray<{ id: string; name: string; price: string }>;
+  plans: ReadonlyArray<{
+    id: string;
+    name: string;
+    price: string;
+    priceUnit: string;
+    pillClass: string;
+    highlighted?: boolean;
+  }>;
   categories: ReadonlyArray<ComparisonCategory>;
-  footnote: string;
 };

@@ -27,7 +27,6 @@ export type PricingAddon = {
   description: string;
   price: string;
   availability: string;
-  variant: "discord" | "slack";
 };
 
 export const pricingHero = {
@@ -99,19 +98,17 @@ export const pricingAddons = [
     id: "lab-bot",
     name: "Lab bot",
     description:
-      "Surface digests, grant alerts, and evidence updates in your lab Discord channel.",
+      "Surface digests, grant alerts, and evidence updates in your lab's Discord or Slack channels.",
     price: "+$10 / month",
     availability: "Available on Mycelium Lab",
-    variant: "discord",
   },
   {
     id: "department-bot",
     name: "Department bot",
     description:
-      "Route alerts and digests across multiple channels with role-aware delivery.",
+      "Route alerts and digests across multiple Discord and Slack channels with role-aware delivery.",
     price: "+$25 / month",
     availability: "Available on Canopy",
-    variant: "slack",
   },
 ] as const satisfies ReadonlyArray<PricingAddon>;
 

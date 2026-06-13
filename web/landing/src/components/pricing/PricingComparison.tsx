@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import { Fragment } from "react";
 
 import type { ComparisonCell } from "@/data/pricingComparison";
@@ -6,65 +6,83 @@ import { pricingComparison } from "@/data/pricingComparison";
 import { cn } from "@/lib/utils";
 
 function ComparisonCellContent({ cell }: { cell: ComparisonCell }) {
-  if (cell.kind === "included") {
+  if (cell.kind === "check") {
     return (
-      <span className="inline-flex items-center justify-center">
-        <Check aria-hidden className="size-4 text-primary" strokeWidth={2.5} />
+      <span className="inline-flex items-center justify-center text-primary">
+        <Check aria-hidden className="size-4" strokeWidth={2.5} />
         <span className="sr-only">Included</span>
       </span>
     );
   }
 
-  return (
-    <span
-      className={cn(
-        "text-sm text-[var(--text-secondary)]",
-        cell.italic && "italic text-muted-foreground",
-      )}
-    >
-      {cell.value}
-    </span>
-  );
+  if (cell.kind === "cross") {
+    return (
+      <span className="inline-flex items-center justify-center text-border">
+        <Minus aria-hidden className="size-4" strokeWidth={2} />
+        <span className="sr-only">Not included</span>
+      </span>
+    );
+  }
+
+  if (cell.kind === "partial") {
+    return (
+      <span className="text-[11px] italic text-[var(--text-secondary)]">{cell.value}</span>
+    );
+  }
+
+  return <span className="text-xs text-[var(--text-primary)]">{cell.value}</span>;
 }
+
+const planCellKeys = ["spore", "lab", "canopy"] as const;
 
 export function PricingComparison() {
   return (
-    <section className="mt-16 sm:mt-20" aria-labelledby="pricing-comparison-heading">
-      <div className="mx-auto max-w-3xl text-center">
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-primary">
-          {pricingComparison.eyebrow}
-        </p>
-        <h2
-          id="pricing-comparison-heading"
-          className="font-display mt-3 text-2xl font-semibold text-[var(--text-primary)] sm:text-3xl"
-        >
-          {pricingComparison.title}
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
-          {pricingComparison.subtitle}
-        </p>
-      </div>
+    <section className="py-8 sm:py-10" aria-labelledby="pricing-comparison-heading">
+      <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#7a9e6e]">
+        {pricingComparison.eyebrow}
+      </p>
+      <h2
+        id="pricing-comparison-heading"
+        className="mt-1.5 text-[22px] font-medium text-[var(--text-primary)]"
+      >
+        {pricingComparison.title}
+      </h2>
+      <p className="mt-1.5 text-[13px] text-[var(--text-secondary)]">
+        {pricingComparison.subtitle}
+      </p>
 
-      <div className="mt-10 overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-        <table className="w-full min-w-[44rem] border-collapse text-left">
-          <caption className="sr-only">Feature comparison across Spore, Mycelium Lab, and Canopy</caption>
+      <div className="mt-7 overflow-x-auto">
+        <table className="w-full min-w-[40rem] border-collapse text-[13px]">
+          <caption className="sr-only">
+            Feature comparison across Spore, Mycelium Lab, and Canopy
+          </caption>
           <thead>
-            <tr className="border-b border-border">
-              <th
-                scope="col"
-                className="w-[34%] px-4 py-5 text-left sm:px-6"
-              />
+            <tr className="border-b border-border/80">
+              <th scope="col" className="w-[38%] px-4 py-2.5 text-left" />
               {pricingComparison.plans.map((plan) => (
                 <th
                   key={plan.id}
                   scope="col"
-                  className="px-3 py-5 text-center sm:px-4"
+                  className={cn(
+                    "px-4 py-2.5 text-center text-xs font-medium text-[var(--text-secondary)]",
+                    "highlighted" in plan && plan.highlighted && "text-[#7a9e6e]",
+                  )}
                 >
-                  <div className="inline-flex flex-col items-center gap-2">
-                    <span className="rounded-full border border-border bg-surface-alt px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+                  <div className="flex flex-col items-center gap-1">
+                    <span
+                      className={cn(
+                        "inline-block rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wide",
+                        plan.pillClass,
+                      )}
+                    >
                       {plan.name}
                     </span>
-                    <span className="text-sm text-[var(--text-secondary)]">{plan.price}</span>
+                    <span className="text-[15px] font-medium text-[var(--text-primary)]">
+                      {plan.price}
+                    </span>
+                    <span className="text-[10px] text-[var(--text-secondary)]">
+                      {plan.priceUnit}
+                    </span>
                   </div>
                 </th>
               ))}
@@ -73,39 +91,38 @@ export function PricingComparison() {
           <tbody>
             {pricingComparison.categories.map((category) => (
               <Fragment key={category.title}>
-                <tr className="border-b border-border bg-surface-alt/70">
-                  <th
+                <tr>
+                  <td
                     colSpan={4}
-                    scope="colgroup"
-                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:px-6"
+                    className="border-t border-border/80 bg-surface-alt px-4 pb-1 pt-3.5 text-[10.5px] font-medium uppercase tracking-[0.09em] text-[var(--text-secondary)]"
                   >
                     {category.title}
-                  </th>
+                  </td>
                 </tr>
                 {category.rows.map((row) => (
                   <tr
                     key={row.feature}
-                    className="border-b border-border last:border-b-0 even:bg-[color-mix(in_srgb,var(--surface-alt)_35%,transparent)]"
+                    className="border-b border-border/80 transition-colors hover:bg-surface-alt"
                   >
-                    <th scope="row" className="px-4 py-4 align-top font-normal sm:px-6">
-                      <div className="pr-4">
-                        <p className="text-sm font-medium text-[var(--text-primary)]">{row.feature}</p>
-                        {"description" in row && row.description ? (
-                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                            {row.description}
-                          </p>
-                        ) : null}
-                      </div>
+                    <th scope="row" className="px-4 py-2.5 text-left font-normal">
+                      <span className="text-[13px] text-[var(--text-primary)]">{row.feature}</span>
+                      {"description" in row && row.description ? (
+                        <span className="mt-0.5 block text-[11px] text-[var(--text-secondary)]">
+                          {row.description}
+                        </span>
+                      ) : null}
                     </th>
-                    <td className="px-3 py-4 text-center align-middle sm:px-4">
-                      <ComparisonCellContent cell={row.spore} />
-                    </td>
-                    <td className="px-3 py-4 text-center align-middle sm:px-4">
-                      <ComparisonCellContent cell={row.lab} />
-                    </td>
-                    <td className="px-3 py-4 text-center align-middle sm:px-4">
-                      <ComparisonCellContent cell={row.canopy} />
-                    </td>
+                    {planCellKeys.map((planKey, index) => (
+                      <td
+                        key={planKey}
+                        className={cn(
+                          "px-2 py-2.5 text-center align-middle",
+                          index === 1 && "bg-primary/[0.04]",
+                        )}
+                      >
+                        <ComparisonCellContent cell={row[planKey]} />
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </Fragment>
@@ -114,8 +131,12 @@ export function PricingComparison() {
         </table>
       </div>
 
-      <p className="mt-6 text-center text-xs leading-6 text-muted-foreground sm:text-sm">
-        {pricingComparison.footnote}
+      <p className="mt-5 text-[11px] leading-[1.7] text-[var(--text-secondary)]">
+        <span className="font-medium text-[var(--text-primary)]">Mycelium Lab</span> requires a
+        minimum of 3 members and supports up to 15 members and 5 PIs/Co-PIs. &nbsp;·&nbsp;
+        <span className="font-medium text-[var(--text-primary)]">Canopy</span> requires a minimum
+        of 15 members with no upper limit. &nbsp;·&nbsp; All prices are billed monthly. Annual
+        billing discounts available on request.
       </p>
     </section>
   );

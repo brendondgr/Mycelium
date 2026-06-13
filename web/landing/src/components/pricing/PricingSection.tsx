@@ -1,7 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 
-import { PricingComparison } from "@/components/pricing/PricingComparison";
 import { PricingAddons } from "@/components/pricing/PricingAddons";
+import { PricingComparison } from "@/components/pricing/PricingComparison";
 import { PricingTierCard } from "@/components/pricing/PricingTierCard";
 import { pricingFooter, pricingHero, pricingTiers } from "@/data/pricing";
 
@@ -30,7 +30,9 @@ export function PricingSection() {
 
       <PricingAddons />
 
-      <footer className="mt-16 border-t border-border pt-10 text-center sm:mt-20 sm:pt-12">
+      <PricingComparison />
+
+      <footer className="mt-10 border-t border-border pt-10 text-center sm:mt-12 sm:pt-12">
         <p className="text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
           {pricingFooter.trial}
         </p>
@@ -45,8 +47,6 @@ export function PricingSection() {
           </a>
         </p>
       </footer>
-
-      <PricingComparison />
     </div>
   );
 }
