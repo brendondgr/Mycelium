@@ -38,4 +38,6 @@ This log records broad project changes so humans and agents can recover context 
 | 2026-06-12T18:00:00Z | MODIFIED | 20260612-pricing-page-tiers | Replaced the pilot pricing placeholder with Spore, Mycelium Lab, and Canopy tiers plus Mylo Bot add-ons on a light-themed layout.
 | 2026-06-12T22:50:00Z | MODIFIED | 20260612-pricing-comparison-table | Added a full plan comparison table below the pricing trial footer on the public pricing page.
 | 2026-06-12T23:00:00Z | MODIFIED | 20260612-pricing-table-addons | Corrected the pricing comparison table to match the reference layout, clarified Discord and Slack add-ons, and moved the trial footer below the table.
-| 2026-06-13T03:45:00Z | MODIFIED | 20260612-dev-gateway-routing | Routed local dev and Docker through port 9911 with a dev gateway, fixed Compose workspace linking, and aligned CORS origins for single-origin browsing.
+| 2026-06-13T03:45:00Z | MODIFIED | 20260612-dev-gateway-routing | Routed local dev and Docker through port 9911 with a dev gateway, fixed Compose workspace linking, and aligned CORS origins for single-origin browsing. |
+| 2026-06-14T04:17:40Z | MODIFIED | 20260614-goals-roadmap-alignment | Aligned the goals checklist with the five-month first-draft roadmap, including phased milestones, build sequence rules, and deferred later-phase features. |
+| 2026-06-14T04:25:00Z | MODIFIED | 20260614-goals-weekly-breakdown | Restructured the goals document as a 20-week checklist with per-week milestones aligned to the development roadmap. |
