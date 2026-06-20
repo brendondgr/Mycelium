@@ -192,3 +192,32 @@ Failures here corrupt the *measurement* of the planner, not the planner itself. 
 ## 8. The single load-bearing principle
 
 For the planner specifically: **the model drafts the plan, but a deterministic self-evaluation gate — checking the draft against the live-source view and the source cards — decides whether it ships.** Every mitigation above is either feeding that gate good ground truth (discovery, card consistency, declared join keys) or making the gate strict enough to catch bad plans and bounded enough to terminate. The planner is validated when that gate provably accepts good plans, rejects unroutable ones, and degrades to an honest partial plan when it can't converge.
+
+---
+
+## 9. Implementation traceability
+
+Implemented in `web/backend/apps/planner/`. Each failure mode maps to the module that mitigates it and the test that proves it.
+
+| # | Mitigation | Module | Test |
+|---|------------|--------|------|
+| 1.1 | Reason over introspected fields; gate re-checks consistency | `cards.py` (`validate_card_consistency`), `gate.py` | `test_cards`, `test_gate::test_gate_rechecks_card_consistency_before_trusting_it` |
+| 1.2 | Join only on a declared canonical key present in both cards | `cards.py` (`supports_cross_source_join`), `gate.py` | `test_cards::test_cross_source_join_keys`, `test_gate::test_gate_rejects_cross_source_join_not_present_in_both` |
+| 1.3 / 2.1 | Fresh live-source view; dead source marked unsupported | `discovery.py`, `drafting.py` | `test_discovery::test_down_source_is_excluded_not_fatal`, `test_drafting::test_down_source_part_is_marked_unsupported_not_fabricated` |
+| 2.2 | Content probe, not socket probe | `discovery.py` (`probe_source`) | `test_discovery::test_up_but_empty_graph_is_not_live_by_node_count`, `..._missing_expected_labels...` |
+| 2.3 | Probe-specific short timeout, enforced with a thread guard | `discovery.py` (`_inspect_with_timeout`) | `test_discovery::test_hanging_probe_times_out_and_is_treated_as_down` |
+| 2.4 | Re-probe per request, cached briefly | `discovery.py` (`SourceProber`), `planner.py` | `test_discovery::test_live_view_is_cached_then_reprobed_after_ttl`, `test_planner::test_agent_reprobes_liveness_each_request` |
+| 3.1 | Card-grounded routing + recorded rationale | `drafting.py` | `test_drafting::test_routes_evidence_question_to_evidence_graph_only` |
+| 3.3 | Mark unsupported; never fabricate | `drafting.py` | `test_drafting::test_out_of_scope_request_is_marked_unsupported` |
+| 3.4 | State the assumption made | `drafting.py` (`_assumptions`) | `test_drafting` (assumption assertions) |
+| 3.5 | Plan schema requires per-sub-question limits within card bounds | `schema.py`, `gate.py` | `test_schema`, `test_gate::test_gate_rejects_limits_over_card_bounds` |
+| 4.1 / 4.2 | Deterministic validation before emit | `gate.py` (`evaluate_plan`) | `test_gate` (full module) |
+| 4.3 | Structural validity, not phrasing | `gate.py`, `schema.py` | `test_gate::test_gate_accepts_honest_partial_plan` |
+| 5.1 | Max-iterations cap → honest partial plan | `loop.py` (`run_react_loop`, `degrade_plan`) | `test_loop::test_loop_degrades_to_partial_after_iteration_cap` |
+| 5.2 | Feed the gate's rejection reason into the next revise | `loop.py`, `drafting.py` | `test_loop::test_loop_revises_using_gate_feedback` |
+| 5.3 | Non-degeneracy assertion in the gate | `gate.py` | `test_gate::test_gate_rejects_degenerate_plan` |
+| 6.1 | Score the plan directly vs expected plans | `evaluation.py` | `test_evaluation` (scorer tests) |
+| 6.2 | Fixed expected-plan set incl. out-of-scope and partial | `eval_dataset.py` | `test_evaluation::test_dataset_exercises_unsupported_and_out_of_scope_paths` |
+| 6.3 | Held-out regression split | `eval_dataset.py` (`HOLDOUT_CASES`) | `test_evaluation::test_holdout_set_passes_as_regression_check` |
+
+The drafter (`HeuristicDrafter`) is a deterministic, offline stand-in for the "LLM drafts" role; `PlanDrafter` is the protocol an LLM-backed drafter implements. The load-bearing safety property — *deterministic code grades* — holds regardless of which drafter is used.

@@ -2,6 +2,13 @@
 
 from dataclasses import replace
 
+from apps.planner.cards import (
+    CardRegistry,
+    EdgePattern,
+    ProbeExpectations,
+    SafetyLimits,
+    SourceCard,
+)
 from apps.planner.gate import evaluate_plan, sub_question_errors
 from apps.planner.schema import Plan, SubQuestion, UnsupportedPart
 
@@ -214,6 +221,43 @@ def test_gate_short_circuits_on_schema_errors():
 
     assert not result.accepted
     assert any("missing source-selection rationale" in r for r in result.reasons)
+
+
+def test_gate_rechecks_card_consistency_before_trusting_it():
+    # A live source whose card prose drifts from its structure (briefing 1.1):
+    # the edge pattern references label 'B' that is not in node_labels.
+    inconsistent = SourceCard(
+        name="bad_graph",
+        title="Bad Graph",
+        description="card drift",
+        node_labels=frozenset({"A"}),
+        relationship_types=frozenset({"R"}),
+        allowed_edge_patterns=(EdgePattern("A", "R", "B"),),
+        safety=SafetyLimits(max_traversal_depth=2, max_result_rows=10),
+        probe=ProbeExpectations(expected_labels=frozenset({"A"})),
+    )
+    registry = CardRegistry([inconsistent])
+    live = live_view_for(registry)
+    plan = Plan(
+        request="x",
+        target_sources=("bad_graph",),
+        sub_questions=(
+            SubQuestion(
+                id="q1",
+                text="touch A",
+                source="bad_graph",
+                entities=("A",),
+                rationale="A exists in the card",
+                max_traversal_depth=1,
+                max_result_rows=5,
+            ),
+        ),
+    )
+
+    result = evaluate_plan(plan, registry, live)
+
+    assert not result.accepted
+    assert any("card is inconsistent" in r for r in result.reasons)
 
 
 def test_sub_question_errors_isolates_one_sub_question():
