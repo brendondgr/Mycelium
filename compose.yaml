@@ -10,10 +10,21 @@ services:
       - web
       - backend
 
+  # One-shot install so landing and web never race on the shared
+  # web-node-modules volume (concurrent npm installs corrupt the workspace
+  # symlinks with EEXIST). Both dev servers wait for this to finish.
+  web-deps:
+    image: node:24-alpine
+    working_dir: /app/web
+    command: sh -c "npm install && npm run sync:assets"
+    volumes:
+      - .:/app
+      - web-node-modules:/app/web/node_modules
+
   landing:
     image: node:24-alpine
     working_dir: /app/web
-    command: sh -c "npm install && npm run sync:assets && npm run dev:landing"
+    command: sh -c "npm run dev:landing"
     ports:
       - "4321:4321"
     volumes:
@@ -21,11 +32,14 @@ services:
       - web-node-modules:/app/web/node_modules
     environment:
       PUBLIC_APP_URL: http://localhost:9911
+    depends_on:
+      web-deps:
+        condition: service_completed_successfully
 
   web:
     image: node:24-alpine
     working_dir: /app/web
-    command: sh -c "npm install && npm run sync:assets && npm run dev:app:docker"
+    command: sh -c "npm run dev:app:docker"
     ports:
       - "3000:3000"
     volumes:
@@ -33,11 +47,23 @@ services:
       - web-node-modules:/app/web/node_modules
     environment:
       NEXT_PUBLIC_API_BASE_URL: /api
+    depends_on:
+      web-deps:
+        condition: service_completed_successfully
+
+  # One-shot dependency sync so backend and worker never race on the shared
+  # web/backend/.venv bind mount. Both processes wait for this to finish.
+  backend-deps:
+    image: ghcr.io/astral-sh/uv:python3.13-bookworm
+    working_dir: /app
+    command: sh -c "uv sync --project web/backend"
+    volumes:
+      - .:/app
 
   backend:
     image: ghcr.io/astral-sh/uv:python3.13-bookworm
     working_dir: /app
-    command: sh -c "uv sync --project web/backend && uv run --project web/backend python web/backend/manage.py runserver 0.0.0.0:8000"
+    command: sh -c "uv run --project web/backend python web/backend/manage.py runserver 0.0.0.0:8000"
     ports:
       - "8000:8000"
     volumes:
@@ -54,15 +80,22 @@ services:
       DJANGO_CORS_ALLOWED_ORIGINS: http://localhost:9911
       DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:9911
     depends_on:
-      - postgres
-      - redis
-      - neo4j
-      - minio
+      backend-deps:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      neo4j:
+        condition: service_started
+      minio:
+        condition: service_started
 
   worker:
     image: ghcr.io/astral-sh/uv:python3.13-bookworm
     working_dir: /app
-    command: sh -c "uv sync --project web/backend && uv run --project web/backend celery -A config worker --loglevel=info"
+    # Run celery from web/backend so the `config` package is importable.
+    command: sh -c "uv run --directory web/backend celery -A config worker --loglevel=info"
     volumes:
       - .:/app
     env_file:
@@ -75,8 +108,10 @@ services:
       NEO4J_URI: bolt://neo4j:7687
       S3_ENDPOINT_URL: http://minio:9000
     depends_on:
-      - backend
-      - redis
+      backend-deps:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
 
   postgres:
     image: pgvector/pgvector:pg17
