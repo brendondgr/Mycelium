@@ -6,9 +6,9 @@ from apps.planner.cards import CardRegistry
 from apps.planner.discovery import (
     GraphSnapshot,
     LiveSourceView,
-    ProbeResult,
     ProbeUnreachable,
     StaticInspector,
+    static_live_view,
 )
 from apps.planner.fixtures import default_registry
 from apps.planner.schema import Plan, SubQuestion
@@ -19,24 +19,7 @@ def live_view_for(
 ) -> LiveSourceView:
     """An all-live view for a registry, optionally marking some sources down."""
 
-    down_set = set(down)
-    results = []
-    for card in registry:
-        if card.name in down_set:
-            results.append(
-                ProbeResult(card.name, live=False, reason="down for test")
-            )
-        else:
-            results.append(
-                ProbeResult(
-                    card.name,
-                    live=True,
-                    reason="ok",
-                    observed_labels=card.node_labels,
-                    observed_node_count=card.probe.min_node_count + 5,
-                )
-            )
-    return LiveSourceView(results)
+    return static_live_view(registry, down=down)
 
 
 def valid_plan() -> Plan:

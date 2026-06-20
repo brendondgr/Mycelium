@@ -95,6 +95,33 @@ class LiveSourceView:
         return tuple(self._results.values())
 
 
+def static_live_view(
+    registry: CardRegistry, down: Iterable[str] = ()
+) -> LiveSourceView:
+    """Build a live-source view without probing, marking ``down`` sources dead.
+
+    Useful for deterministic evaluation and offline planning, where liveness is
+    asserted directly rather than discovered.
+    """
+
+    down_set = set(down)
+    results = []
+    for card in registry:
+        if card.name in down_set:
+            results.append(ProbeResult(card.name, live=False, reason="marked down"))
+        else:
+            results.append(
+                ProbeResult(
+                    card.name,
+                    live=True,
+                    reason="assumed live",
+                    observed_labels=card.node_labels,
+                    observed_node_count=card.probe.min_node_count,
+                )
+            )
+    return LiveSourceView(results)
+
+
 def _inspect_with_timeout(
     inspector: GraphInspector, card: SourceCard, timeout: float
 ) -> GraphSnapshot:
