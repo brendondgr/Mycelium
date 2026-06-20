@@ -3,7 +3,13 @@
 from collections.abc import Iterable
 
 from apps.planner.cards import CardRegistry
-from apps.planner.discovery import LiveSourceView, ProbeResult
+from apps.planner.discovery import (
+    GraphSnapshot,
+    LiveSourceView,
+    ProbeResult,
+    ProbeUnreachable,
+    StaticInspector,
+)
 from apps.planner.fixtures import default_registry
 from apps.planner.schema import Plan, SubQuestion
 
@@ -68,6 +74,27 @@ def valid_plan() -> Plan:
             ),
         ),
     )
+
+
+def healthy_inspector(
+    registry: CardRegistry, down: Iterable[str] = ()
+) -> StaticInspector:
+    """A StaticInspector where every source passes its content probe.
+
+    Sources named in ``down`` instead raise to simulate a dead backend.
+    """
+
+    down_set = set(down)
+    snapshots: dict = {}
+    for card in registry:
+        if card.name in down_set:
+            snapshots[card.name] = ProbeUnreachable("down for test")
+        else:
+            snapshots[card.name] = GraphSnapshot(
+                present_labels=card.node_labels,
+                node_count=card.probe.min_node_count + 5,
+            )
+    return StaticInspector(snapshots)
 
 
 def default_setup():
