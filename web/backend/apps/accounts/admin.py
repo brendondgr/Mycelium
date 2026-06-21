@@ -1,6 +1,21 @@
 from django.contrib import admin
 
-from .models import AuditEvent, Department, DeptMembership, Lab, LabMembership
+from .models import (
+    AuditEvent,
+    Department,
+    DeptMembership,
+    Lab,
+    LabMembership,
+    Profile,
+)
+
+
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "academic_title", "institution", "updated_at")
+    list_filter = ("academic_title",)
+    search_fields = ("user__username", "institution")
+    readonly_fields = ("created_at", "updated_at")
 
 
 @admin.register(Department)
