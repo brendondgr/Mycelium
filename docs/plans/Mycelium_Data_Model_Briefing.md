@@ -1,7 +1,7 @@
 # Mycelium — Core Data Model Briefing
 
 **Scope:** Relational data model for organization structure, profiles, projects, relevance scoring, and billing
-**Status:** Design agreed — ready to translate into Django models / migrations
+**Status:** Implemented (June 21, 2026) across the `accounts`, `research`, `content`, and `billing` apps; migrations verified on SQLite and Postgres. See the as-built notes in §10.
 **Last updated:** June 21, 2026
 
 ---
@@ -347,15 +347,24 @@ Department is the structural and billing ceiling for now. Building Institution a
 | D12 | Payer lives on `Seat`, not `Subscription` | Lets one Canopy department mix payers — dept-paid, self-paid, lab-paid |
 | D13 | `Seat` is the universal billing unit across tiers | One mechanism for Spore/Lab/Canopy; seat count = active seats |
 
+### As-built decisions (implementation)
+
+| # | Decision | Rationale |
+|---|---|---|
+| D14 | `academic_title` and `institution` live on the one-to-one `Profile`, not on `auth.User` | Django's default user model can't carry them without a disruptive custom-user swap; `Profile` is the user extension and stays one row per person, so the attributes remain person-global as designed |
+| D15 | New entity tables use UUID PKs; existing `Lab` / `LabMembership` keep their integer keys | Honors the briefing's `uuid (PK)` intent for new tables without a destructive re-key of the live `accounts` tables; mixed FK column types are handled natively by Django |
+| D16 | `CONTENT_ITEM` ships as a single table with a `type` enum (paper / grant / fellowship) | Resolves the open question in favor of shared columns/queries; type-specific fields can move to siblings later if needed |
+| D17 | Polymorphic relations use nullable typed FK columns + a generic `exactly_one` check constraint, with a derived discriminator property | Realizes D11 with one reusable helper (`apps.core.db`) and keeps the stored discriminator from drifting (derive, don't duplicate) |
+
 ---
 
 ## 11. Open questions & deferred scope
 
 - [ ] **Free-tier feature boundary.** Confirmed: account + basic usage + very basic search, no personalization. Exact edges (e.g. is *any* digest shown? topic cap?) still to finalize.
-- [ ] **Content tables:** single `ContentItem` with a `type` enum vs three sibling tables (Paper/Grant/Fellowship). Trade-off: shared columns/queries vs type-specific fields.
+- [x] **Content tables:** resolved (D16) — single `ContentItem` with a `type` enum. Revisit only if type-specific fields proliferate.
 - [ ] **External `Person` vs `User`.** Graph node `Person` includes external co-authors with no account. Decide where the User↔Person link lives when the graph phase starts.
 - [ ] **Seat lifecycle.** When are `Seat` rows created and revoked relative to membership changes — auto-provisioned on join, or explicitly assigned? And what's the default `payer_type` when a member joins a Canopy department (department-paid vs prompt-to-choose)?
-- [ ] **pgvector verification.** "Verify scaffold + enable pgvector" — Phase 0 dependency, confirm before scoring work.
+- [x] **pgvector verification.** Extension enabled (`core.0001_enable_pgvector`) and the embedding-column migrations now depend on it, so a fresh database provisions cleanly; the full suite passes on Postgres. Embedding columns are nullable with the vector dimension intentionally left unlocked until a scoring model is chosen.
 
 ---
 
