@@ -58,11 +58,11 @@ Establish project architecture, authentication, core data models, and the first 
 
 #### Week 1 · Jun 14–20
 
-- [ ] Finalize repo structure and tech stack: Django backend, Postgres, Celery, and clear app boundaries (`auth`, `labs`, `scraper`, `graph`, `reports`).
-- [ ] Separate public content, authenticated app behavior, backend orchestration, background work, and data storage responsibilities.
-- [ ] Configure Postgres and define environment and secrets management.
+- [x] Finalize repo structure and tech stack: Django backend, Postgres, Celery, and clear app boundaries. *(As built: identity and labs consolidated into `accounts`; `core`, `research`, `content`, and `billing` apps added; `scraper`, `graph`, and `reports` remain planned. Documented in [architecture.md](architecture.md).)*
+- [x] Separate public content, authenticated app behavior, backend orchestration, background work, and data storage responsibilities.
+- [x] Configure Postgres and define environment and secrets management. *(`django-environ` with a git-ignored `.env`; variables documented in `.env.example`.)*
 
-**Milestone:** Django project running locally with Postgres connected.
+**Milestone:** Django project running locally with Postgres connected. *(Verified — Postgres with pgvector enabled.)*
 
 #### Week 2 · Jun 21–27
 

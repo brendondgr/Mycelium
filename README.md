@@ -94,6 +94,10 @@ docker compose up
 
 ## Documentation
 
+- `docs/architecture.md` records the finalized repo structure, tech stack,
+  service boundaries, data ownership, and environment/secrets management.
+- `docs/purpose.md`, `docs/goals.md`, and `docs/styles.md` hold the canonical
+  product direction; `docs/api-contract.md` holds committed API shapes.
 - `docs/chats/` contains source conversations that define the product,
   architecture, and visual direction.
 - `docs/skills/` contains canonical agent guidance for planning, repository
