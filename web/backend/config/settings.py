@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.research",
     "apps.content",
+    "apps.billing",
     "apps.planner",
 ]
 
