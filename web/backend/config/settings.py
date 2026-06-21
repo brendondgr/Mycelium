@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.accounts",
     "apps.research",
+    "apps.content",
     "apps.planner",
 ]
 
