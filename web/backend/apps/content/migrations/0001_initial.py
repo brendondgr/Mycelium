@@ -14,6 +14,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('accounts', '0004_backfill_profiles'),
+        ('core', '0001_enable_pgvector'),
         ('research', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]

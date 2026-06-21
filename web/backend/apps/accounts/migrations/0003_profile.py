@@ -12,6 +12,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('accounts', '0002_org_hierarchy'),
+        ('core', '0001_enable_pgvector'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
