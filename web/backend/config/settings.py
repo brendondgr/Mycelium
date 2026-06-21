@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "apps.core",
     "apps.accounts",
+    "apps.research",
     "apps.planner",
 ]
 
