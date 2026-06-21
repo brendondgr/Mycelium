@@ -10,6 +10,17 @@ The checklist below is chronological by week. It is meant to guide what should g
 
 **June 14 – November 14, 2026** · **November 14, 2026** — end-to-end system that can onboard a lab, ingest external sources, filter and score items, connect entities in a graph, and produce a personalized weekly digest with opportunity matching and exportable reports.
 
+## Progress (as of June 21, 2026)
+
+Ahead of the weekly sequence, the full relational data model is implemented across the `accounts`, `research`, `content`, and `billing` apps and verified on SQLite and Postgres:
+
+- **Organization & identity** — departments, labs, lab and department memberships, permission roles, academic titles, and PI lead flags.
+- **Research context** — one profile per user (interests, skills, eligibility, funding needs, and an interest embedding) and projects scoped to a user, lab, or department.
+- **Matching layer** — deduplicated content items (papers, grants, fellowships) and per-target relevance scores, with `pgvector` embedding columns staged for scoring.
+- **Billing & entitlements** — subscriptions and per-seat billing, tier-based feature resolution, and derived department membership.
+
+The database is seeded with several hundred demo users across varied lab and department arrangements for exploration. Relevance scoring, scrapers, the knowledge graph, and onboarding UI remain to be built per the weekly plan below.
+
 ## Build Sequence
 
 These ordering rules apply throughout the first draft and should not be reversed:
@@ -55,14 +66,14 @@ Establish project architecture, authentication, core data models, and the first 
 
 #### Week 2 · Jun 21–27
 
-- [ ] Build account, lab, membership, and role foundations before exposing private lab information.
-- [ ] Implement auth per the API contract: session cookies, CSRF, login/logout/me endpoints, and role scaffolding (PI, student, staff, admin).
+- [x] Build account, lab, membership, and role foundations before exposing private lab information.
+- [x] Implement auth per the API contract: session cookies, CSRF, login/logout/me endpoints, and role scaffolding (PI, student, staff, admin).
 
-**Milestone:** Auth endpoints passing integration tests.
+**Milestone:** Auth endpoints passing integration tests. *(Done — session auth plus the organization model land with permission roles and academic titles.)*
 
 #### Week 3 · Jun 28–Jul 4
 
-- [ ] Define core data models: Paper, Grant, Fellowship, Lab, Person, Project, and ResearchArea.
+- [x] Define core data models: Paper, Grant, Fellowship, Lab, Person, Project, and ResearchArea. *(As built: a unified ContentItem covers papers, grants, and fellowships; Lab and Project are implemented; research areas are captured as profile and project interests; Person is deferred to the graph phase.)*
 - [ ] Build the scraper framework: base scraper class, rate limiting, retry logic, and source registry.
 
 **Milestone:** All core models migrated; base scraper framework in place.
@@ -86,10 +97,10 @@ Teach the system what a lab looks like and what matters to it. Build the profile
 
 #### Week 5 · Jul 14–20
 
-- [ ] Create lab profiles that capture research areas, goals, projects, methods, datasets, tools, funding priorities, collaborators, deadlines, and strategic needs.
-- [ ] Create individual researcher profiles that capture interests, skills, career goals, projects, eligibility constraints, funding needs, and development plans.
+- [ ] Create lab profiles that capture research areas, goals, projects, methods, datasets, tools, funding priorities, collaborators, deadlines, and strategic needs. *(Partial: lab-scoped Projects carry goals, methods, datasets, deadlines, and strategic needs; a consolidated lab-profile surface and shared-profile content are still to come.)*
+- [x] Create individual researcher profiles that capture interests, skills, career goals, projects, eligibility constraints, funding needs, and development plans.
 
-**Milestone:** Profile schemas defined and migrated.
+**Milestone:** Profile schemas defined and migrated. *(Researcher Profile schema done and migrated.)*
 
 #### Week 6 · Jul 21–27
 
