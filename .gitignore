@@ -80,6 +80,9 @@ neo4j-data/
 minio-data/
 qdrant-data/
 
+# Generated demo credentials (plaintext passwords) — never commit
+data/logins/
+
 # Generated or uploaded runtime files
 uploads/
 exports/

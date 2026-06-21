@@ -1,20 +1,29 @@
 """Populate the database with demo departments, labs, and people.
 
 Generates a clean, varied organisation structure so the data model can be
-explored. Every record it creates is marked as demo data — users get a
-``@demo.mycelium.test`` email and labs get a ``demo-`` slug prefix — so the
-command can safely clear and regenerate without touching real data.
+explored. Every user gets an individual login — name, username,
+``@demo.mycelium.test`` email, role, and a unique password — and the full
+credential list is written to ``data/logins/demo_users.csv`` so you can sign in
+as any of them. Every record is marked as demo data (users by email domain,
+labs by a ``demo-`` slug prefix), so the command can safely clear and
+regenerate, or delete, without touching real data.
 
+    # create/refresh demo data and write the credentials file
     uv run --project web/backend python web/backend/manage.py seed_demo
     uv run --project web/backend python web/backend/manage.py seed_demo --users 600
+    # add more without clearing existing demo data
     uv run --project web/backend python web/backend/manage.py seed_demo --no-clear
+    # delete all demo users, labs, departments, and the credentials file
+    uv run --project web/backend python web/backend/manage.py seed_demo --delete
 """
 
 import argparse
+import csv
 import random
-from collections import Counter
+from collections import Counter, defaultdict
+from pathlib import Path
 
-from django.contrib.auth.hashers import make_password
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -31,7 +40,9 @@ from apps.accounts.models import (
 )
 
 DEMO_DOMAIN = "demo.mycelium.test"
-DEMO_PASSWORD = "demo-pass-123"
+LOGINS_FILENAME = "demo_users.csv"
+# Unambiguous alphabet for generated passwords (no 0/O, 1/l/I).
+PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 FIRST_NAMES = [
     "Ana", "Liam", "Mei", "Omar", "Sofia", "Kenji", "Priya", "Diego", "Yuki",
@@ -128,15 +139,40 @@ class Command(BaseCommand):
             default=True,
             help="Clear existing demo data first (default: --clear).",
         )
+        parser.add_argument(
+            "--delete",
+            action="store_true",
+            help="Delete all demo data and the credentials file, then exit.",
+        )
+        parser.add_argument(
+            "--logins-dir",
+            default=None,
+            help="Directory for the credentials CSV (default: data/logins/).",
+        )
 
     def handle(self, *args, **options) -> None:
+        logins_path = self._logins_path(options["logins_dir"])
+
+        if options["delete"]:
+            with transaction.atomic():
+                self._clear()
+            removed = self._remove_logins(logins_path)
+            self.stdout.write(self.style.SUCCESS("Deleted all demo data."))
+            if removed:
+                self.stdout.write(f"  Removed credentials file: {logins_path}")
+            return
+
         random.seed(options["seed"])
-        self.password_hash = make_password(DEMO_PASSWORD)
+        self.passwords: dict[int, str] = {}
         self.used_usernames: set[str] = set()
         self.used_slugs: set[str] = set()
         self.dept_labs: dict[str, list[Lab]] = {}
 
         target = options["users"]
+        self.stdout.write(
+            f"Creating ~{target} demo users with individual logins "
+            f"(hashing passwords, this can take ~{max(2, target // 11)}s)..."
+        )
 
         with transaction.atomic():
             if options["clear"]:
@@ -148,7 +184,8 @@ class Command(BaseCommand):
             self._create_pi_cross_memberships(departments)
             self._fill_unaffiliated(target)
 
-        self._print_summary()
+        self._export_logins(logins_path)
+        self._print_summary(logins_path)
 
     # -- generation helpers ------------------------------------------------
 
@@ -215,14 +252,16 @@ class Command(BaseCommand):
         )
         resolved_areas = areas or random.sample(FIELDS, k=random.randint(1, 3))
 
+        password = self._password()
         user = User(
             username=username,
             email=f"{username}@{DEMO_DOMAIN}",
             first_name=first,
             last_name=last,
         )
-        user.password = self.password_hash
+        user.set_password(password)  # hashes with the project's real hashers
         user.save()  # post_save signal creates the Profile
+        self.passwords[user.id] = password
 
         Profile.objects.filter(user=user).update(
             academic_title=resolved_title,
@@ -230,6 +269,9 @@ class Command(BaseCommand):
             interests=self._make_interests(resolved_title, resolved_areas),
         )
         return user
+
+    def _password(self) -> str:
+        return "".join(random.choice(PASSWORD_ALPHABET) for _ in range(12))
 
     # -- structure builders ------------------------------------------------
 
@@ -388,12 +430,107 @@ class Command(BaseCommand):
                 institution=random.choice([*INSTITUTIONS, "", ""]),
             )
 
+    # -- credentials export ------------------------------------------------
+
+    def _logins_path(self, logins_dir: str | None) -> Path:
+        if logins_dir:
+            return Path(logins_dir) / LOGINS_FILENAME
+        # settings.BASE_DIR is web/backend; the repo root is two levels up.
+        repo_root = Path(settings.BASE_DIR).parent.parent
+        return repo_root / "data" / "logins" / LOGINS_FILENAME
+
+    def _remove_logins(self, logins_path: Path) -> bool:
+        if logins_path.exists():
+            logins_path.unlink()
+            return True
+        return False
+
+    def _export_logins(self, logins_path: Path) -> int:
+        """Write every demo user's credentials to a CSV, role first.
+
+        The ``role`` column is the headline: ``department`` (department head),
+        ``lab`` (lab leader / PI), or ``user`` (everyone else).
+        """
+        domain = f"@{DEMO_DOMAIN}"
+        dept_heads = dict(
+            Department.objects.filter(owner__email__endswith=domain).values_list(
+                "owner_id", "name"
+            )
+        )
+        lab_leads: dict[int, tuple[str, str]] = {}
+        for uid, lab_name, dept_name in LabMembership.objects.filter(
+            is_lead=True, user__email__endswith=domain
+        ).values_list("user_id", "lab__name", "lab__department__name"):
+            lab_leads.setdefault(uid, (lab_name, dept_name or ""))
+
+        labs_by_user: dict[int, list[str]] = defaultdict(list)
+        for uid, lab_name in LabMembership.objects.filter(
+            user__email__endswith=domain
+        ).values_list("user_id", "lab__name"):
+            labs_by_user[uid].append(lab_name)
+        depts_by_user: dict[int, list[str]] = defaultdict(list)
+        for uid, dept_name in DeptMembership.objects.filter(
+            user__email__endswith=domain
+        ).values_list("user_id", "department__name"):
+            depts_by_user[uid].append(dept_name)
+        profiles = {
+            uid: (title, institution)
+            for uid, title, institution in Profile.objects.filter(
+                user__email__endswith=domain
+            ).values_list("user_id", "academic_title", "institution")
+        }
+
+        rows = []
+        for uid, username, email, first, last in User.objects.filter(
+            email__endswith=domain
+        ).values_list("id", "username", "email", "first_name", "last_name"):
+            if uid in dept_heads:
+                role, affiliation = "department", f"heads {dept_heads[uid]}"
+            elif uid in lab_leads:
+                lab_name, dept_name = lab_leads[uid]
+                where = f" ({dept_name})" if dept_name else " (standalone)"
+                role, affiliation = "lab", f"leads {lab_name}{where}"
+            elif labs_by_user.get(uid):
+                role, affiliation = "user", "member of " + ", ".join(labs_by_user[uid])
+            elif depts_by_user.get(uid):
+                role = "user"
+                affiliation = "dept member of " + ", ".join(depts_by_user[uid])
+            else:
+                role, affiliation = "user", "unaffiliated"
+            title, institution = profiles.get(uid, ("", ""))
+            rows.append(
+                {
+                    "role": role,
+                    "name": f"{first} {last}".strip(),
+                    "username": username,
+                    "email": email,
+                    "password": self.passwords.get(uid, ""),
+                    "academic_title": title,
+                    "institution": institution,
+                    "affiliation": affiliation,
+                }
+            )
+
+        role_rank = {"department": 0, "lab": 1, "user": 2}
+        rows.sort(key=lambda r: (role_rank[r["role"]], r["name"]))
+
+        logins_path.parent.mkdir(parents=True, exist_ok=True)
+        fields = [
+            "role", "name", "username", "email", "password",
+            "academic_title", "institution", "affiliation",
+        ]
+        with logins_path.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(rows)
+        return len(rows)
+
     # -- reporting ---------------------------------------------------------
 
     def _demo_user_count(self) -> int:
         return User.objects.filter(email__endswith=f"@{DEMO_DOMAIN}").count()
 
-    def _print_summary(self) -> None:
+    def _print_summary(self, logins_path: Path) -> None:
         domain = f"@{DEMO_DOMAIN}"
         users = User.objects.filter(email__endswith=domain)
         labs = Lab.objects.filter(slug__startswith="demo-")
@@ -455,6 +592,8 @@ class Command(BaseCommand):
         write("  Academic titles:        " + ", ".join(
             f"{title}={count}" for title, count in sorted(titles.items())
         ))
-        write(self.style.SUCCESS(
-            f"  Sign in as any user with password: {DEMO_PASSWORD}"
-        ))
+        write(self.style.SUCCESS(f"  Credentials written to: {logins_path}"))
+        write(
+            "  Role column: department (head) / lab (leader) / user. "
+            "Sign in with the username + password from the file."
+        )
