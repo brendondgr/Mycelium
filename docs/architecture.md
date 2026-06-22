@@ -83,8 +83,8 @@ apps; ingestion, graph, and reporting are planned apps not yet built.
 |---|---|
 | `core` | Shared infrastructure: health endpoint, the pgvector extension migration, and the polymorphic exactly-one-FK helper |
 | `accounts` | Identity & organization: users, profiles, departments, labs, memberships, permission roles, academic titles, audit events, plus derived-membership services. Owns session auth (CSRF, login/logout/me) |
-| `research` | Research context: projects (scoped to a user, lab, or department) and project membership |
-| `content` | Matching layer: deduplicated content items (papers, grants, fellowships) and per-target relevance scores |
+| `research` | Research context: projects (scoped to a user, lab, or department), project membership, and project visibility over the org hierarchy (members; lab heads; the department head above any involved lab) |
+| `content` | Matching layer: deduplicated content items (papers, grants, fellowships) keyed by source + external id, and per-target relevance scores |
 | `billing` | Subscriptions, per-seat billing, and tier-based entitlement resolution |
 | `planner` | Knowledge-graph query planning agent (routing, liveness, self-evaluation) |
 | _planned_ | `scraper` (ingestion + source registry), `graph` (Neo4j orchestration), `reports` (digests, reports, alerts) |

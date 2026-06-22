@@ -74,6 +74,8 @@ Establish project architecture, authentication, core data models, and the first 
 #### Week 3 · Jun 28–Jul 4
 
 - [x] Define core data models: Paper, Grant, Fellowship, Lab, Person, Project, and ResearchArea. *(As built: a unified ContentItem covers papers, grants, and fellowships; Lab and Project are implemented; research areas are captured as profile and project interests; Person is deferred to the graph phase.)*
+- [x] Add project visibility over the org hierarchy: members see their projects, lab heads see their lab's projects, and a department head always sees every project of every lab under them (`Project.objects.visible_to`).
+- [x] Give content items a per-source dedup key (`source` + `external_id`, plus `source_url`) so re-scraping upserts instead of duplicating. *(The Week 4 deduplication item builds on this.)*
 - [ ] Build the scraper framework: base scraper class, rate limiting, retry logic, and source registry.
 
 **Milestone:** All core models migrated; base scraper framework in place.

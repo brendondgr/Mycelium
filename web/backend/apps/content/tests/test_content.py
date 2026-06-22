@@ -93,3 +93,37 @@ def test_distinct_targets_share_a_content_item(paper: ContentItem, user: User) -
     RelevanceScore.objects.create(content=paper, target_user=other, score=0.7)
 
     assert paper.scores.count() == 2
+
+
+@pytest.mark.django_db
+def test_external_id_dedups_per_source() -> None:
+    ContentItem.objects.create(
+        type=ContentItem.Type.PAPER, source="arXiv", external_id="2406.00001"
+    )
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ContentItem.objects.create(
+            type=ContentItem.Type.PAPER, source="arXiv", external_id="2406.00001"
+        )
+
+
+@pytest.mark.django_db
+def test_same_external_id_allowed_across_sources() -> None:
+    ContentItem.objects.create(
+        type=ContentItem.Type.PAPER, source="arXiv", external_id="10.1/x"
+    )
+    # A different source may legitimately reuse the same identifier string.
+    ContentItem.objects.create(
+        type=ContentItem.Type.PAPER, source="OpenAlex", external_id="10.1/x"
+    )
+
+    assert ContentItem.objects.filter(external_id="10.1/x").count() == 2
+
+
+@pytest.mark.django_db
+def test_blank_external_id_is_exempt_from_dedup() -> None:
+    # Manually-entered items without a source id must not collide with each other.
+    ContentItem.objects.create(type=ContentItem.Type.GRANT, source="manual")
+    ContentItem.objects.create(type=ContentItem.Type.GRANT, source="manual")
+
+    assert ContentItem.objects.filter(source="manual").count() == 2

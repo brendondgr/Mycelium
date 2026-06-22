@@ -2,6 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from pgvector.django import VectorField
 
 from apps.core.db import exactly_one, validate_exactly_one
@@ -29,6 +30,23 @@ class ContentItem(models.Model):
         max_length=120,
         help_text="OpenAlex, arXiv, NIH Reporter, grants.gov, etc.",
     )
+    external_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text=(
+            "The source's own stable identifier — arXiv id, DOI, NIH project "
+            "number, grants.gov opportunity id. Together with ``source`` this "
+            "is the dedup key: re-scraping the same item updates it in place "
+            "instead of inserting a duplicate."
+        ),
+    )
+    source_url = models.URLField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Canonical URL for the item at its source.",
+    )
     embedding = VectorField(null=True, blank=True)
     metadata = models.JSONField(
         default=dict,
@@ -41,6 +59,18 @@ class ContentItem(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["type", "source"]),
+            models.Index(fields=["source", "external_id"]),
+        ]
+        constraints = [
+            # Partial unique key: one row per (source, external_id) whenever the
+            # source gave us an id. Rows without an external_id are exempt so
+            # manually-entered items aren't blocked, but scrapers should always
+            # set it so re-runs upsert rather than duplicate.
+            models.UniqueConstraint(
+                fields=["source", "external_id"],
+                condition=~Q(external_id=""),
+                name="content_item_unique_source_external_id",
+            ),
         ]
 
     def __str__(self) -> str:

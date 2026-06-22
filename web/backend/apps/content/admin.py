@@ -5,9 +5,9 @@ from .models import ContentItem, RelevanceScore
 
 @admin.register(ContentItem)
 class ContentItemAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "type", "source", "created_at")
+    list_display = ("__str__", "type", "source", "external_id", "created_at")
     list_filter = ("type", "source")
-    search_fields = ("source",)
+    search_fields = ("source", "external_id", "source_url")
     readonly_fields = ("created_at",)
 
 

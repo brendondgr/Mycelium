@@ -3,7 +3,12 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
-from apps.accounts.models import Department, Lab
+from apps.accounts.models import (
+    Department,
+    DeptMembership,
+    Lab,
+    LabMembership,
+)
 from apps.research.models import Project, ProjectMember
 
 
@@ -79,3 +84,101 @@ def test_project_member_is_unique(user: User, lab: Lab) -> None:
         ProjectMember.objects.create(project=project, user=user)
 
     assert list(project.members.all()) == [user]
+
+
+# --- Visibility cascade (Project.objects.visible_to) -----------------------
+
+
+def make_user(name: str) -> User:
+    return User.objects.create_user(username=name, password="pass-123")
+
+
+def make_lab(department: Department | None = None) -> Lab:
+    return Lab.objects.create(
+        name="Forest Lab", slug="forest-lab", department=department
+    )
+
+
+@pytest.mark.django_db
+def test_member_sees_project(lab: Lab) -> None:
+    member = make_user("member")
+    project = Project.objects.create(scope_lab=lab, name="Roadmap")
+    ProjectMember.objects.create(project=project, user=member)
+
+    assert project.is_visible_to(member)
+    assert list(Project.objects.visible_to(member)) == [project]
+
+
+@pytest.mark.django_db
+def test_personal_owner_sees_own_project() -> None:
+    owner = make_user("owner")
+    project = Project.objects.create(scope_user=owner, name="Personal")
+
+    assert project.is_visible_to(owner)
+
+
+@pytest.mark.django_db
+def test_lab_head_sees_lab_project_but_plain_member_does_not(lab: Lab) -> None:
+    head = make_user("pi")
+    grunt = make_user("grunt")
+    LabMembership.objects.create(user=head, lab=lab, is_lead=True)
+    LabMembership.objects.create(
+        user=grunt, lab=lab, role=LabMembership.Role.MEMBER
+    )
+    project = Project.objects.create(scope_lab=lab, name="Lab roadmap")
+
+    assert project.is_visible_to(head)
+    # A rank-and-file lab member is NOT a head and is not a project member.
+    assert not project.is_visible_to(grunt)
+
+
+@pytest.mark.django_db
+def test_department_owner_sees_lab_project(department: Department) -> None:
+    # department.owner is the `user` fixture.
+    lab = make_lab(department)
+    project = Project.objects.create(scope_lab=lab, name="Lab roadmap")
+
+    assert project.is_visible_to(department.owner)
+
+
+@pytest.mark.django_db
+def test_department_admin_sees_lab_project(department: Department) -> None:
+    admin = make_user("dept-admin")
+    DeptMembership.objects.create(
+        user=admin, department=department, role=DeptMembership.Role.ADMIN
+    )
+    lab = make_lab(department)
+    project = Project.objects.create(scope_lab=lab, name="Lab roadmap")
+
+    assert project.is_visible_to(admin)
+
+
+@pytest.mark.django_db
+def test_department_head_sees_department_project(department: Department) -> None:
+    project = Project.objects.create(scope_department=department, name="Dept review")
+
+    assert project.is_visible_to(department.owner)
+
+
+@pytest.mark.django_db
+def test_unrelated_user_sees_nothing(department: Department) -> None:
+    outsider = make_user("outsider")
+    lab = make_lab(department)
+    Project.objects.create(scope_lab=lab, name="Lab roadmap")
+    Project.objects.create(scope_department=department, name="Dept review")
+
+    assert list(Project.objects.visible_to(outsider)) == []
+
+
+@pytest.mark.django_db
+def test_other_department_head_does_not_see_unrelated_lab(
+    department: Department,
+) -> None:
+    other_head = make_user("other-head")
+    other_dept = Department.objects.create(owner=other_head, name="Chemistry")
+    lab = make_lab(department)
+    project = Project.objects.create(scope_lab=lab, name="Lab roadmap")
+
+    # other_head heads a different department, so the lab project is invisible.
+    assert not project.is_visible_to(other_head)
+    assert other_dept.owner == other_head
