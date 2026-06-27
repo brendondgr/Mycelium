@@ -1,6 +1,10 @@
 # Auth — Sign-Up & Onboarding Buildout
 
-**Status:** In progress
+**Status:** Complete — backend service + registration endpoint + hardening scaffold and the
+signup/onboarding frontend are built, validated (239 backend tests, lint, build all green), and
+committed. Smoke checklist verified via integration tests (CSRF, register per account type,
+duplicate-email atomicity, session set, onboarding profile PATCH); seed_demo unaffected
+(not refactored to use the service this sprint — left as a deliberate, low-risk follow-up).
 **Scope:** Add user registration (Personal / Lab / Department), a `/signup` page, and the
 onboarding intake UI on top of the existing session-auth layer (login/logout/me already built).
 **Design source:** `Mycelium Auth Flow.dc.html` (login → signup → verify email → 5-step intake →

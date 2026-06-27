@@ -106,7 +106,7 @@ Teach the system what a lab looks like and what matters to it. Build the profile
 
 #### Week 6 · Jul 21–27
 
-- [ ] Build profile onboarding flow (API endpoints and minimal input surface). *(Partial: the backend onboarding flow is built — a research-interests contract with one validation gate, a three-source author importer (OpenAlex, Semantic Scholar, Google Scholar) producing a profile draft, author-based auto-provisioning, the bounded Mylo intake agent, and REST endpoints for import / intake session / confirm-and-save. The minimal Next.js input surface is still to come.)*
+- [x] Build profile onboarding flow (API endpoints and minimal input surface). *(Backend: a research-interests contract with one validation gate, a three-source author importer (OpenAlex, Semantic Scholar, Google Scholar) producing a profile draft, author-based auto-provisioning, the bounded Mylo intake agent, and REST endpoints for import / intake session / confirm-and-save. Frontend: a `/signup` portal with personal/lab/department account types funnelling through a workspace-provisioning service and an atomic `register` endpoint, then an onboarding intake surface that captures role, institution, and research interests into the profile. Auth hardening (email-verify flag, registration rate limit, reserved names) is scaffolded.)*
 - [ ] Enforce object-level permissions for every lab-scoped object and action. *(Partial: object-level permissions enforced for the interest-profile surfaces — a user edits their own profile, a lab lead/owner/admin edits the lab profile, a department owner/admin edits the department profile; remaining lab-scoped objects still to follow.)*
 
 **Milestone:** Lab and researcher onboarding working with enforced permissions.
