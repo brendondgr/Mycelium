@@ -203,6 +203,11 @@ class Profile(models.Model):
         blank=True,
         help_text="Derived from interests; the interest relevance target.",
     )
+    embedding_text = models.TextField(
+        blank=True,
+        default="",
+        help_text="Canonical text the embedding hook (re)embeds; vector dim deferred.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

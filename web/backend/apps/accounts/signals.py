@@ -1,7 +1,8 @@
 from django.conf import settings
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
+from .embedding import apply_embedding
 from .models import Department, DeptProfile, Lab, LabProfile, Profile
 
 
@@ -10,6 +11,14 @@ def ensure_profile(sender, instance, created, **kwargs) -> None:
     """Guarantee one profile per user (briefing §3 PROFILE, decision D5)."""
     if created:
         Profile.objects.get_or_create(user=instance)
+
+
+@receiver(pre_save, sender=Profile)
+@receiver(pre_save, sender=LabProfile)
+@receiver(pre_save, sender=DeptProfile)
+def embed_interest_surface(sender, instance, **kwargs) -> None:
+    """Build the canonical text and (re)embed before each save (brief Phase F)."""
+    apply_embedding(instance)
 
 
 @receiver(post_save, sender=Lab)
