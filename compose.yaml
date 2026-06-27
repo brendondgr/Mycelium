@@ -131,7 +131,7 @@ services:
   redis:
     image: redis:8-alpine
     ports:
-      - "6379:6379"
+      - "6380:6380"
 
   neo4j:
     image: neo4j:5-community
