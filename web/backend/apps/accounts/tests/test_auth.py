@@ -293,6 +293,37 @@ def test_register_reserved_username_returns_400(api_client: Client) -> None:
     assert "username" in response.json()
 
 
+@pytest.mark.django_db
+def test_register_then_onboarding_handoff(api_client: Client) -> None:
+    """The exact frontend handoff: register, then one profile PATCH."""
+    assert _register(api_client, _personal_payload()).status_code == 201
+
+    api_client.get("/api/auth/csrf/")
+    csrf = api_client.cookies["csrftoken"].value
+    response = api_client.patch(
+        "/api/auth/profile/me/",
+        data={
+            "academic_title": "pi",
+            "institution": "Northgate University",
+            "interests": {
+                "version": 1,
+                "areas": ["Microbial Ecology", "Genomics"],
+                "statement": "We study soil microbial communities under drought.",
+                "keywords": ["metagenomics", "field sampling"],
+            },
+        },
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf,
+    )
+
+    assert response.status_code == 200
+    profile = User.objects.get(username="newuser").profile
+    assert profile.academic_title == "pi"
+    assert profile.institution == "Northgate University"
+    assert profile.interests["areas"] == ["Microbial Ecology", "Genomics"]
+    assert profile.interests["keywords"] == ["metagenomics", "field sampling"]
+
+
 # -- Email verification (scaffold) + throttling --------------------------------
 
 

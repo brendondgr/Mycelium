@@ -140,6 +140,68 @@ export async function register(input: RegisterInput): Promise<AuthUser> {
   };
 }
 
+export type OnboardingInterests = {
+  version: number;
+  areas: string[];
+  statement?: string;
+  keywords?: string[];
+};
+
+export type OnboardingPayload = {
+  academic_title?: string;
+  institution?: string;
+  interests: OnboardingInterests;
+};
+
+/** Mark the signed-in user's email verified (scaffold; non-blocking). */
+export async function verifyEmail(): Promise<void> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "verify-email"),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not verify your email. Try again in a moment.");
+  }
+}
+
+/** Persist onboarding answers onto the caller's own profile (one PATCH). */
+export async function saveOnboarding(payload: OnboardingPayload): Promise<void> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "profile", "me"),
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await parseJson<Record<string, unknown>>(response);
+    throw new Error(
+      firstFieldError(body) ??
+        "Could not save your onboarding answers. Try again.",
+    );
+  }
+}
+
 export async function logout(): Promise<void> {
   await ensureCsrfCookie();
   const csrfToken = readCsrfToken();
