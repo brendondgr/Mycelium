@@ -69,7 +69,7 @@ Single-origin routing through Nginx at `http://localhost:9911`:
 | Path | Service |
 |---|---|
 | `/` and public pages | Astro landing |
-| `/login`, `/app/*`, `/_next/*` | Next.js app |
+| `/login`, `/signup`, `/app/*`, `/_next/*` | Next.js app |
 | `/api/*`, `/admin/*` | Django |
 
 ## Backend app boundaries (as built)

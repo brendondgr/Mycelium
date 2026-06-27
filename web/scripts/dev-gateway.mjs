@@ -31,6 +31,9 @@ function resolveTarget(pathname) {
   if (pathname === "/login" || pathname.startsWith("/login/")) {
     return APP_TARGET;
   }
+  if (pathname === "/signup" || pathname.startsWith("/signup/")) {
+    return APP_TARGET;
+  }
   if (pathname === "/app" || pathname.startsWith("/app/")) {
     return APP_TARGET;
   }

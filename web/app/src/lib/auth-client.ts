@@ -1,5 +1,28 @@
-import type { AuthErrorBody, AuthUser } from "@/lib/auth-types";
+import type {
+  AuthErrorBody,
+  AuthUser,
+  RegisterInput,
+} from "@/lib/auth-types";
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
+
+/** Pull the first human-readable message out of a DRF error body. */
+function firstFieldError(body: Record<string, unknown> | null): string | null {
+  if (!body) {
+    return null;
+  }
+  for (const value of Object.values(body)) {
+    if (typeof value === "string" && value) {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      const first = value.find((v) => typeof v === "string" && v);
+      if (typeof first === "string") {
+        return first;
+      }
+    }
+  }
+  return null;
+}
 
 function readCsrfToken(): string | null {
   if (typeof document === "undefined") {
@@ -65,6 +88,47 @@ export async function login(
 
   if (!body?.id) {
     throw new Error("Sign-in failed. Unexpected response from the server.");
+  }
+
+  return {
+    id: body.id,
+    username: body.username,
+    email: body.email,
+    is_staff: body.is_staff,
+    is_superuser: body.is_superuser,
+  };
+}
+
+export async function register(input: RegisterInput): Promise<AuthUser> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "register"),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+      },
+      body: JSON.stringify(input),
+    },
+  );
+
+  const body = await parseJson<AuthUser & Record<string, unknown>>(response);
+
+  if (!response.ok) {
+    const message =
+      firstFieldError(body) ??
+      (response.status === 403
+        ? "Sign-up was blocked. Refresh the page and try again."
+        : "Sign-up failed. Check your details and try again.");
+    throw new Error(message);
+  }
+
+  if (!body?.id) {
+    throw new Error("Sign-up failed. Unexpected response from the server.");
   }
 
   return {

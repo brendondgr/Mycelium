@@ -145,6 +145,16 @@ export function LoginForm() {
             : "Sign in"}
       </Button>
 
+      <p className="text-center text-sm text-[var(--text-secondary)]">
+        New to Mycelium?{" "}
+        <a
+          className="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          href="/signup"
+        >
+          Create an account
+        </a>
+      </p>
+
       <p className="text-center text-sm text-[var(--text-muted)]">
         <a
           className="underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -152,8 +162,6 @@ export function LoginForm() {
         >
           Back to the public site
         </a>
-        <span aria-hidden="true"> · </span>
-        <span>Account help coming soon</span>
       </p>
     </form>
   );
