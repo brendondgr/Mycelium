@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='profile',
             name='openalex_id',
-            field=models.CharField(blank=True, db_index=True, default='', help_text='OpenAlex author id (e.g. A5023888391). Lets a profile be re-imported.', max_length=40),
+            field=models.CharField(blank=True, db_index=True, default='', help_text='OpenAlex author id (e.g. A5023888391); lets a profile re-import.', max_length=40),
         ),
         migrations.AddField(
             model_name='profile',

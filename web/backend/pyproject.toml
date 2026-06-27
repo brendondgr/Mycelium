@@ -16,6 +16,14 @@ dependencies = [
     "redis>=5.2.0,<6.0.0",
 ]
 
+[project.optional-dependencies]
+# Google Scholar author import. Kept optional (and lazily imported) because
+# `scholarly` is heavy and rate-limit-prone; OpenAlex/Semantic Scholar need no
+# extra. Install with: uv sync --extra scrapers
+scrapers = [
+    "scholarly>=1.7.0,<2.0.0",
+]
+
 [dependency-groups]
 dev = [
     "django-stubs[compatible-mypy]>=5.2.0,<6.0.0",

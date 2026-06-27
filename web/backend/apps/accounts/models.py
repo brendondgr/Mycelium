@@ -184,7 +184,7 @@ class Profile(models.Model):
         blank=True,
         default="",
         db_index=True,
-        help_text="OpenAlex author id (e.g. A5023888391). Lets a profile be re-imported.",
+        help_text="OpenAlex author id (e.g. A5023888391); lets a profile re-import.",
     )
     scholar_id = models.CharField(
         max_length=40,

@@ -164,3 +164,11 @@ LLM_REASONING = env("LLM_REASONING", default="medium")
 # How reasoning levels are sent to the server: "effort" maps to vLLM's
 # `reasoning_effort`; "thinking" toggles `chat_template_kwargs.enable_thinking`.
 LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
+
+# Author-import sources (apps.accounts.intake). Keys are optional: OpenAlex works
+# without one (a polite `mailto` is encouraged), and Semantic Scholar's key only
+# raises rate limits. Google Scholar needs no key but the optional `scholarly`
+# package (install the `scrapers` extra).
+OPENALEX_API_KEY = env("OPEN_ALEX_API_KEY", default="")
+OPENALEX_MAILTO = env("OPENALEX_MAILTO", default="")
+SEMANTIC_SCHOLAR_API_KEY = env("SEMANTIC_SCHOLAR_API_KEY", default="")
