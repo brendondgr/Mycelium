@@ -81,7 +81,7 @@ apps; ingestion, graph, and reporting are planned apps not yet built.
 
 | App | Responsibility |
 |---|---|
-| `core` | Shared infrastructure: health endpoint, the pgvector extension migration, and the polymorphic exactly-one-FK helper |
+| `core` | Shared infrastructure: health endpoint, the pgvector extension migration, the polymorphic exactly-one-FK helper, and the OpenAI-compatible LLM client (`apps/core/llm.py`) |
 | `accounts` | Identity & organization: users, profiles, departments, labs, memberships, permission roles, academic titles, audit events, plus derived-membership services. Owns session auth (CSRF, login/logout/me) |
 | `research` | Research context: projects (scoped to a user, lab, or department), project membership, and project visibility over the org hierarchy (members; lab heads; the department head above any involved lab) |
 | `content` | Matching layer: deduplicated content items (papers, grants, fellowships) keyed by source + external id, and per-target relevance scores |
@@ -121,6 +121,18 @@ apps; ingestion, graph, and reporting are planned apps not yet built.
 | Frontend wiring | `NEXT_PUBLIC_API_BASE_URL`, `API_INTERNAL_URL` |
 | Data services | `DATABASE_URL`, `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` |
 | Object storage | `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME` |
+| LLM | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_TIMEOUT`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`, `LLM_REASONING`, `LLM_REASONING_STYLE` |
+
+The LLM group configures an OpenAI-compatible endpoint (a self-hosted **vLLM**
+server is the reference target). `apps/core/llm.py` exposes a reusable
+`LLMClient` that future features (planner drafting, relevance rationales, digest
+and report drafting) route through. It supports structured **reasoning levels**
+(`none`/`low`/`medium`/`high`) sent either as vLLM's `reasoning_effort`
+(`LLM_REASONING_STYLE=effort`) or as a `chat_template_kwargs.enable_thinking`
+toggle (`thinking`), and reads back the server's separated `reasoning_content`.
+The server's reasoning parser and tool definitions are assumed to be configured
+server-side. The client lazily imports the `openai` SDK and accepts an injected
+transport, so importing it requires no SDK and tests run fully offline.
 
 Secrets (`DJANGO_SECRET_KEY`, database credentials, `NEO4J_PASSWORD`, S3 keys)
 come only from `.env` or the deployment environment. In production, `DEBUG` is

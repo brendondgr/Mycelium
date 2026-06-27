@@ -148,3 +148,19 @@ S3_ENDPOINT_URL = env("S3_ENDPOINT_URL", default="")
 S3_ACCESS_KEY_ID = env("S3_ACCESS_KEY_ID", default="")
 S3_SECRET_ACCESS_KEY = env("S3_SECRET_ACCESS_KEY", default="")
 S3_BUCKET_NAME = env("S3_BUCKET_NAME", default="")
+
+# LLM (OpenAI-compatible endpoint, e.g. a vLLM server). The base URL points at
+# any OpenAI-compatible `/v1` API; the API key is required by the OpenAI SDK but
+# is ignored by vLLM (use "EMPTY"). Reasoning controls assume the server already
+# has its reasoning parser and tooling configured (see apps/core/llm.py).
+LLM_BASE_URL = env("LLM_BASE_URL", default="http://localhost:8001/v1")
+LLM_API_KEY = env("LLM_API_KEY", default="EMPTY")
+LLM_MODEL = env("LLM_MODEL", default="")
+LLM_TIMEOUT = env.float("LLM_TIMEOUT", default=60.0)
+LLM_TEMPERATURE = env.float("LLM_TEMPERATURE", default=0.2)
+LLM_MAX_TOKENS = env.int("LLM_MAX_TOKENS", default=1024)
+# Default reasoning level: one of "none", "low", "medium", "high".
+LLM_REASONING = env("LLM_REASONING", default="medium")
+# How reasoning levels are sent to the server: "effort" maps to vLLM's
+# `reasoning_effort`; "thinking" toggles `chat_template_kwargs.enable_thinking`.
+LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
