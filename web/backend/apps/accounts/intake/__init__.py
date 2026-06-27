@@ -8,6 +8,7 @@ future ``scraper`` app's job. The three source adapters
 interchangeable downstream.
 """
 
+from .agent import IntakeAgent, IntakeState
 from .drafts import AuthorProfileDraft
 from .importer import AuthorImportError, import_author
 from .resolve import ResolutionError, ResolvedAuthor, resolve
@@ -16,6 +17,8 @@ __all__ = [
     "AuthorProfileDraft",
     "AuthorImportError",
     "import_author",
+    "IntakeAgent",
+    "IntakeState",
     "ResolutionError",
     "ResolvedAuthor",
     "resolve",
