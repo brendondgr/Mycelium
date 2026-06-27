@@ -99,15 +99,15 @@ Teach the system what a lab looks like and what matters to it. Build the profile
 
 #### Week 5 · Jul 14–20
 
-- [ ] Create lab profiles that capture research areas, goals, projects, methods, datasets, tools, funding priorities, collaborators, deadlines, and strategic needs. *(Partial: lab-scoped Projects carry goals, methods, datasets, deadlines, and strategic needs; a consolidated lab-profile surface and shared-profile content are still to come.)*
+- [ ] Create lab profiles that capture research areas, goals, projects, methods, datasets, tools, funding priorities, collaborators, deadlines, and strategic needs. *(Partial: lab-scoped Projects carry goals, methods, datasets, deadlines, and strategic needs; a consolidated `LabProfile`/`DeptProfile` interest surface now exists (statement, areas, funding/strategic needs, interests contract, embeddings) with a derived member+project aggregate; shared-profile content is still to come.)*
 - [x] Create individual researcher profiles that capture interests, skills, career goals, projects, eligibility constraints, funding needs, and development plans.
 
 **Milestone:** Profile schemas defined and migrated. *(Researcher Profile schema done and migrated.)*
 
 #### Week 6 · Jul 21–27
 
-- [ ] Build profile onboarding flow (API endpoints and minimal input surface).
-- [ ] Enforce object-level permissions for every lab-scoped object and action.
+- [ ] Build profile onboarding flow (API endpoints and minimal input surface). *(Partial: the backend onboarding flow is built — a research-interests contract with one validation gate, a three-source author importer (OpenAlex, Semantic Scholar, Google Scholar) producing a profile draft, author-based auto-provisioning, the bounded Mylo intake agent, and REST endpoints for import / intake session / confirm-and-save. The minimal Next.js input surface is still to come.)*
+- [ ] Enforce object-level permissions for every lab-scoped object and action. *(Partial: object-level permissions enforced for the interest-profile surfaces — a user edits their own profile, a lab lead/owner/admin edits the lab profile, a department owner/admin edits the department profile; remaining lab-scoped objects still to follow.)*
 
 **Milestone:** Lab and researcher onboarding working with enforced permissions.
 

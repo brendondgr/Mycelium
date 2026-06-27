@@ -42,35 +42,43 @@ import box / confirmation card) is **deferred** to a follow-up.
 
 ## Ordered phases (each ends green + committed)
 
-- [ ] **A. `interests` contract** — `apps/accounts/interests.py` DRF
+- [x] **A. `interests` contract** — `apps/accounts/interests.py` DRF
   `InterestsContract` + `validate_interests()` gate; data migration stamps
   existing rows to `{version: 1, ...}` and coerces the seeder's string `seeking`
   → list; update seeder to emit `version` + list `seeking`. *Test:
-  `test_interests_contract.py`.*
-- [ ] **B. Profile external IDs + provisioning + login export** — indexed
+  `test_interests_contract.py` (10).*
+- [x] **B. Profile external IDs + provisioning + login export** — indexed
   `orcid`/`openalex_id`/`scholar_id` on `Profile` (migration only);
   `apps/accounts/provisioning.py::provision_from_author(identifier, source)` with
   an injectable importer; `seed_demo` gains the 3 ID columns + a `--from-authors
-  FILE` mode. *Tests: `test_profile_external_ids.py`, `test_provision_from_author.py`.*
-- [ ] **C. Author importer** — `apps/accounts/intake/`: `drafts.py`
+  FILE` mode. *Tests: `test_profile_external_ids.py` (4), `test_provision_from_author.py` (5).*
+- [x] **C. Author importer** — `apps/accounts/intake/`: `drafts.py`
   (`AuthorProfileDraft`), `resolve.py`, `retrievers/{scholar,openalex,semantic}.py`,
   `normalizers/{scholar,openalex,semantic}.py`, `aggregate.py`. Scholar uses the
   verified `select_publications` (10 cited + 10 recent, deduped, ≤20). *Tests:
-  `test_scholar_selection.py`, `test_adapter_parity.py`.*
-- [ ] **D. Lab & Dept interest surfaces** — `LabProfile` / `DeptProfile`
+  `test_scholar_selection.py` (7), `test_adapter_parity.py` (6).*
+- [x] **D. Lab & Dept interest surfaces** — `LabProfile` / `DeptProfile`
   one-to-one models auto-created via `post_save`; a derived-aggregate service
-  (source gathering now, vector blend deferred). *Test: `test_lab_dept_profile.py`.*
-- [ ] **E. Mylo intake agent** — `apps/accounts/intake/agent.py`: bounded
+  (source gathering now, vector blend deferred). *Test: `test_lab_dept_profile.py` (7).*
+- [x] **E. Mylo intake agent** — `apps/accounts/intake/agent.py`: bounded
   schema-filling loop (≤4 turns), structured output validated against the
   contract, deterministic form fallback (no hard model dependency). *Test:
-  `test_import_to_profile.py`.*
-- [ ] **F. Embedding hook** — `apps/accounts/embedding.py`: canonical-text blob +
+  `test_import_to_profile.py` (6).*
+- [x] **F. Embedding hook** — `apps/accounts/embedding.py`: canonical-text blob +
   pluggable embedder seam; `pre_save` wiring for Profile/LabProfile/DeptProfile
-  persists `embedding_text`, leaves vector NULL. *Test: `test_embedding_hook.py`.*
-- [ ] **G. API + object-level permissions (backend)** — serializers + DRF views +
+  persists `embedding_text`, leaves vector NULL. *Test: `test_embedding_hook.py` (8).*
+- [x] **G. API + object-level permissions (backend)** — serializers + DRF views +
   urls for: profile read/update (own), lab/dept profile read/update (lead/admin /
   owner/admin), import-from-author, intake session, confirm-and-save. Precondition
-  guards. *Tests: permission/endpoint tests + `test_intake_ordering.py`.*
+  guards. *Tests: `test_profile_api.py` (8), `test_intake_api.py` (6), `test_intake_ordering.py` (4).*
+
+## Outcome
+
+All phases A–G (backend) complete, each committed on `feat/intake-author-import`.
+Full suite **218 passed** on both SQLite and a fresh pgvector Postgres
+(`test_mycelium`), confirming the new `VectorField` migration orders after
+`core.0001_enable_pgvector`. `ruff` clean, no migration drift. The Next.js intake
+UI remains deferred per the agreed scope.
 
 ## Public interfaces / artifacts that change
 
