@@ -225,15 +225,18 @@ class Command(BaseCommand):
 
     def _make_interests(self, title: str, areas: list[str]) -> dict:
         interests = {
+            "version": 1,
             "areas": areas,
             "skills": random.sample(SKILLS, k=random.randint(2, 5)),
         }
         if title in (AcademicTitle.PI, AcademicTitle.POSTDOC, AcademicTitle.RESEARCHER):
             interests["funding_needs"] = random.sample(FUNDERS, k=random.randint(1, 2))
         if title == AcademicTitle.STUDENT:
-            interests["seeking"] = random.choice(
-                ["PhD position", "summer internship", "fellowship", "lab rotation"]
-            )
+            interests["seeking"] = [
+                random.choice(
+                    ["PhD position", "summer internship", "fellowship", "lab rotation"]
+                )
+            ]
         return interests
 
     def _make_user(

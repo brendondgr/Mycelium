@@ -1,5 +1,9 @@
+from django import forms
 from django.contrib import admin
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError
 
+from .interests import validate_interests
 from .models import (
     AuditEvent,
     Department,
@@ -10,8 +14,37 @@ from .models import (
 )
 
 
+def _flatten_drf_error(detail) -> str:
+    """Render a DRF validation ``detail`` into a single admin-friendly string."""
+    parts: list[str] = []
+    if isinstance(detail, dict):
+        for key, value in detail.items():
+            parts.append(f"{key}: {_flatten_drf_error(value)}")
+    elif isinstance(detail, list):
+        parts.extend(_flatten_drf_error(item) for item in detail)
+    else:
+        parts.append(str(detail))
+    return "; ".join(parts)
+
+
+class ProfileAdminForm(forms.ModelForm):
+    """Run ``interests`` through the shared contract gate on admin save."""
+
+    class Meta:
+        model = Profile
+        fields = "__all__"
+
+    def clean_interests(self):
+        data = self.cleaned_data.get("interests")
+        try:
+            return validate_interests(data)
+        except DRFValidationError as exc:
+            raise DjangoValidationError(_flatten_drf_error(exc.detail)) from exc
+
+
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
+    form = ProfileAdminForm
     list_display = ("user", "academic_title", "institution", "updated_at")
     list_filter = ("academic_title",)
     search_fields = ("user__username", "institution")
