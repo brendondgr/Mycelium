@@ -2,6 +2,7 @@ import dataclasses
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -13,6 +14,8 @@ from rest_framework.permissions import SAFE_METHODS, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from apps.billing.services import provision_workspace
 
 from .intake import (
     AuthorImportError,
@@ -32,8 +35,10 @@ from .serializers import (
     DeptProfileSerializer,
     LabProfileSerializer,
     ProfileSerializer,
+    RegisterSerializer,
     user_to_dict,
 )
+from .services import record_audit_event
 
 INVALID_CREDENTIALS_MESSAGE = "Invalid username or password."
 
@@ -67,6 +72,55 @@ def login_view(request: Request) -> Response:
 
     login(request, user)
     return Response(user_to_dict(user))
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def register_view(request: Request) -> Response:
+    """Create a user + workspace in one atomic step, then log them in.
+
+    Two phases inside one transaction: create the ``User`` (the post_save signal
+    creates the ``Profile``), then ``provision_workspace`` builds the org +
+    billing rows. A failure in either phase rolls back the whole thing, so a
+    half-built account never persists.
+    """
+    serializer = RegisterSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)  # -> 400 with field errors
+    data = serializer.validated_data
+
+    with transaction.atomic():
+        user = User.objects.create_user(
+            username=data["username"],
+            email=data["email"],
+            password=data["password"],  # hashed by the project's password hashers
+            first_name=data.get("first_name", ""),
+            last_name=data.get("last_name", ""),
+        )  # post_save signal creates the Profile
+
+        result = provision_workspace(
+            user,
+            data["account_type"],
+            org_name=data.get("org_name", ""),
+            institution=data.get("institution", ""),
+        )
+
+        record_audit_event(
+            actor=user,
+            action="account.register",
+            target_type="user",
+            target_id=str(user.pk),
+            metadata={
+                "account_type": data["account_type"],
+                "tier": result.subscription.tier,
+                "lab_id": str(result.lab.id) if result.lab else None,
+                "department_id": (
+                    str(result.department.id) if result.department else None
+                ),
+            },
+        )
+
+    login(request, user)  # set the session immediately, same as login_view
+    return Response(user_to_dict(user), status=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])

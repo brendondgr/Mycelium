@@ -1,11 +1,48 @@
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
+
+from apps.accounts.models import (
+    Department,
+    DeptMembership,
+    Lab,
+    LabMembership,
+    Profile,
+)
+from apps.billing.models import Seat, Subscription, Tier
 
 
 @pytest.fixture
 def api_client() -> Client:
     return Client(enforce_csrf_checks=True)
+
+
+def _register(client: Client, payload: dict):
+    """POST a registration with a fresh CSRF token, mirroring the login flow."""
+    client.get("/api/auth/csrf/")
+    csrf = client.cookies["csrftoken"].value
+    return client.post(
+        "/api/auth/register/",
+        data=payload,
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf,
+    )
+
+
+def _personal_payload(**overrides) -> dict:
+    payload = {
+        "username": "newuser",
+        "email": "new@example.com",
+        "password": "safe-pass-123",
+        "password_confirm": "safe-pass-123",
+        "first_name": "Jamie",
+        "last_name": "Rivera",
+        "account_type": "personal",
+    }
+    payload.update(overrides)
+    return payload
 
 
 @pytest.fixture
@@ -97,3 +134,151 @@ def test_logout_clears_session(api_client: Client, user: User) -> None:
     )
     assert logout.status_code == 204
     assert api_client.get("/api/auth/me/").status_code == 401
+
+
+# -- Registration --------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_register_personal_creates_user_and_seat(api_client: Client) -> None:
+    response = _register(api_client, _personal_payload())
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["username"] == "newuser"
+    assert body["email"] == "new@example.com"
+
+    user = User.objects.get(username="newuser")
+    assert Profile.objects.filter(user=user).exists()
+
+    sub = Subscription.objects.get(scope_user=user)
+    assert sub.tier == Tier.FREE
+    seat = Seat.objects.get(subscription=sub, member=user)
+    assert seat.payer_user == user
+
+    # No org rows for a personal account.
+    assert Lab.objects.count() == 0
+    assert Department.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_register_lab_makes_founder_owner_pi(api_client: Client) -> None:
+    response = _register(
+        api_client,
+        _personal_payload(
+            username="leadpi",
+            email="pi@example.com",
+            account_type="lab",
+            org_name="Rivera Lab",
+        ),
+    )
+
+    assert response.status_code == 201
+    user = User.objects.get(username="leadpi")
+    lab = Lab.objects.get(slug="rivera-lab")
+    membership = LabMembership.objects.get(user=user, lab=lab)
+    assert membership.role == LabMembership.Role.OWNER
+    assert membership.is_lead is True
+
+    sub = Subscription.objects.get(scope_lab=lab)
+    assert sub.tier == Tier.LAB
+
+
+@pytest.mark.django_db
+def test_register_department_makes_founder_owner(api_client: Client) -> None:
+    response = _register(
+        api_client,
+        _personal_payload(
+            username="deptowner",
+            email="dept@example.com",
+            account_type="department",
+            org_name="Molecular Systems",
+            institution="Northgate University",
+        ),
+    )
+
+    assert response.status_code == 201
+    user = User.objects.get(username="deptowner")
+    dept = Department.objects.get(owner=user)
+    assert dept.name == "Molecular Systems"
+    assert DeptMembership.objects.filter(
+        user=user, department=dept, role=DeptMembership.Role.OWNER
+    ).exists()
+
+    sub = Subscription.objects.get(scope_department=dept)
+    assert sub.tier == Tier.CANOPY
+
+
+@pytest.mark.django_db
+def test_register_duplicate_email_returns_400(api_client: Client) -> None:
+    User.objects.create_user(
+        username="existing", email="taken@example.com", password="safe-pass-123"
+    )
+    response = _register(api_client, _personal_payload(email="TAKEN@example.com"))
+
+    assert response.status_code == 400
+    assert "email" in response.json()
+
+
+@pytest.mark.django_db
+def test_register_duplicate_username_returns_400(api_client: Client) -> None:
+    User.objects.create_user(username="newuser", password="safe-pass-123")
+    response = _register(api_client, _personal_payload())
+
+    assert response.status_code == 400
+    assert "username" in response.json()
+
+
+@pytest.mark.django_db
+def test_register_password_mismatch_returns_400(api_client: Client) -> None:
+    response = _register(
+        api_client, _personal_payload(password_confirm="different-pass-123")
+    )
+
+    assert response.status_code == 400
+    assert "password_confirm" in response.json()
+
+
+@pytest.mark.django_db
+def test_register_weak_password_rejected(api_client: Client) -> None:
+    response = _register(
+        api_client, _personal_payload(password="password", password_confirm="password")
+    )
+
+    assert response.status_code == 400
+    assert "password" in response.json()
+
+
+@pytest.mark.django_db
+def test_register_lab_without_org_name_returns_400(api_client: Client) -> None:
+    response = _register(
+        api_client, _personal_payload(account_type="lab", org_name="")
+    )
+
+    assert response.status_code == 400
+    assert "org_name" in response.json()
+
+
+@pytest.mark.django_db
+def test_register_sets_session(api_client: Client) -> None:
+    response = _register(api_client, _personal_payload())
+    assert response.status_code == 201
+
+    me = api_client.get("/api/auth/me/")
+    assert me.status_code == 200
+    assert me.json()["username"] == "newuser"
+
+
+@pytest.mark.django_db
+def test_register_is_atomic() -> None:
+    client = Client(enforce_csrf_checks=True, raise_request_exception=False)
+    with patch(
+        "apps.accounts.views.provision_workspace",
+        side_effect=RuntimeError("boom"),
+    ):
+        response = _register(client, _personal_payload())
+
+    assert response.status_code >= 500
+    # The user (and its profile) must have rolled back — no orphan account.
+    assert not User.objects.filter(username="newuser").exists()
+    assert Profile.objects.count() == 0

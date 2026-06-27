@@ -43,6 +43,42 @@ Errors:
 - `400` — `{ "non_field_errors": ["Enter both username and password."] }`
 - `401` — `{ "non_field_errors": ["Invalid username or password."] }`
 
+### `POST /api/auth/register/`
+
+Creates the user and provisions a starting workspace in one atomic step, then
+sets the session (the caller is logged in on success).
+
+Request:
+
+```json
+{
+  "username": "string",
+  "email": "string",
+  "password": "string",
+  "password_confirm": "string",
+  "first_name": "string (optional)",
+  "last_name": "string (optional)",
+  "account_type": "personal | lab | department",
+  "org_name": "string (required for lab/department)",
+  "institution": "string (optional)"
+}
+```
+
+`account_type` chooses what is provisioned: `personal` creates a user-scoped
+subscription (Free) and a self-paid seat; `lab` also creates a Lab with the
+founder as owner + PI lead (Lab tier); `department` also creates a Department the
+founder owns (Canopy tier). Every account gets one founding seat.
+
+Success `201` — same user summary as login (id, username, email, is_staff,
+is_superuser); session set.
+
+Errors:
+
+- `400` — field errors, e.g. `{ "email": ["An account with that email already exists."] }`,
+  `{ "password_confirm": ["Passwords do not match."] }`,
+  `{ "org_name": ["A lab name is required."] }`.
+- `403` — CSRF missing or blocked.
+
 ### `POST /api/auth/logout/`
 
 Success `204` with empty body. Requires CSRF header when using session auth.
