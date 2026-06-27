@@ -208,6 +208,10 @@ class Profile(models.Model):
         default="",
         help_text="Canonical text the embedding hook (re)embeds; vector dim deferred.",
     )
+    is_verified = models.BooleanField(
+        default=False,
+        help_text="Email verified. Non-blocking at signup; gates sensitive actions.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

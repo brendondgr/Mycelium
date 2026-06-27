@@ -88,3 +88,13 @@ Success `204` with empty body. Requires CSRF header when using session auth.
 Success `200` — same user summary as login.
 
 `401` with empty body when anonymous.
+
+### `POST /api/auth/verify-email/`
+
+Marks the signed-in caller's email verified (scaffold). Verification is
+non-blocking at signup; this only flips `Profile.is_verified`. Real token
+signing, email templates, and SMTP delivery are deferred.
+
+Success `200` — `{ "is_verified": true }`.
+
+`401` / `403` when anonymous.

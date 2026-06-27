@@ -129,7 +129,19 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
+    # Per-endpoint throttles opt in by scope; registration caps anonymous
+    # account creation so the open AllowAny endpoint can't be hammered.
+    "DEFAULT_THROTTLE_RATES": {
+        "register": env("DJANGO_REGISTER_THROTTLE_RATE", default="20/hour"),
+    },
 }
+
+# Email: console backend in dev (messages print to the runserver console). A real
+# transactional provider is wired in via this env var for non-dev environments.
+EMAIL_BACKEND = env(
+    "DJANGO_EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
 
 CELERY_BROKER_URL = env(
     "CELERY_BROKER_URL",

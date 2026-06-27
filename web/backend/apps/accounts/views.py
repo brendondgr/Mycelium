@@ -7,12 +7,17 @@ from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import (
+    api_view,
+    permission_classes,
+    throttle_classes,
+)
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import SAFE_METHODS, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from apps.billing.services import provision_workspace
@@ -41,6 +46,12 @@ from .serializers import (
 from .services import record_audit_event
 
 INVALID_CREDENTIALS_MESSAGE = "Invalid username or password."
+
+
+class RegisterRateThrottle(AnonRateThrottle):
+    """Throttle anonymous account creation (rate from DEFAULT_THROTTLE_RATES)."""
+
+    scope = "register"
 
 
 @api_view(["GET"])
@@ -76,6 +87,7 @@ def login_view(request: Request) -> Response:
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([RegisterRateThrottle])
 def register_view(request: Request) -> Response:
     """Create a user + workspace in one atomic step, then log them in.
 
@@ -141,6 +153,21 @@ def me(request: Request) -> Response:
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
     return Response(user_to_dict(user))
+
+
+@api_view(["POST"])
+def verify_email_view(request: Request) -> Response:
+    """Mark the caller's email verified (scaffold).
+
+    Email verification is non-blocking this sprint: a signed-in user confirms
+    their own email. Real token signing, email templates, and SMTP delivery are
+    deferred; the endpoint and the ``Profile.is_verified`` flag are wired so the
+    flow exists end to end.
+    """
+    profile = request.user.profile
+    profile.is_verified = True
+    profile.save()
+    return Response({"is_verified": True})
 
 
 # -- Profile read/update (object-level permissions, brief Phase G) -------------

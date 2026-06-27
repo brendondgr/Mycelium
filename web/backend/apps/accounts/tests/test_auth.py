@@ -11,6 +11,7 @@ from apps.accounts.models import (
     LabMembership,
     Profile,
 )
+from apps.accounts.views import RegisterRateThrottle
 from apps.billing.models import Seat, Subscription, Tier
 
 
@@ -282,3 +283,64 @@ def test_register_is_atomic() -> None:
     # The user (and its profile) must have rolled back — no orphan account.
     assert not User.objects.filter(username="newuser").exists()
     assert Profile.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_register_reserved_username_returns_400(api_client: Client) -> None:
+    response = _register(api_client, _personal_payload(username="admin"))
+
+    assert response.status_code == 400
+    assert "username" in response.json()
+
+
+# -- Email verification (scaffold) + throttling --------------------------------
+
+
+@pytest.mark.django_db
+def test_verify_email_flips_flag(api_client: Client) -> None:
+    assert _register(api_client, _personal_payload()).status_code == 201
+
+    api_client.get("/api/auth/csrf/")
+    csrf = api_client.cookies["csrftoken"].value
+    response = api_client.post(
+        "/api/auth/verify-email/",
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_verified"] is True
+    assert User.objects.get(username="newuser").profile.is_verified is True
+
+
+@pytest.mark.django_db
+def test_verify_email_requires_auth(api_client: Client) -> None:
+    api_client.get("/api/auth/csrf/")
+    csrf = api_client.cookies["csrftoken"].value
+    response = api_client.post(
+        "/api/auth/verify-email/",
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf,
+    )
+
+    assert response.status_code in (401, 403)
+
+
+@pytest.mark.django_db
+def test_register_is_rate_limited() -> None:
+    # DRF binds THROTTLE_RATES on the class at import, so patch it directly
+    # rather than via override_settings (which the class never re-reads).
+    # Use a fresh anonymous client per request: AnonRateThrottle only counts
+    # anonymous requests (keyed by IP), and a successful register logs the
+    # client in — both clients share the 127.0.0.1 bucket.
+    with patch.object(RegisterRateThrottle, "THROTTLE_RATES", {"register": "1/min"}):
+        first = _register(
+            Client(enforce_csrf_checks=True),
+            _personal_payload(username="rl1", email="rl1@example.com"),
+        )
+        assert first.status_code == 201
+        second = _register(
+            Client(enforce_csrf_checks=True),
+            _personal_payload(username="rl2", email="rl2@example.com"),
+        )
+        assert second.status_code == 429

@@ -8,6 +8,11 @@ from apps.billing.services import ACCOUNT_TYPES
 from .interests import validate_interests as _validate_interests_contract
 from .models import DeptProfile, LabProfile, Profile
 
+# Usernames that collide with top-level routes or reserved app paths.
+RESERVED_USERNAMES = frozenset(
+    {"login", "logout", "signup", "register", "app", "api", "admin", "me", "auth"}
+)
+
 
 def user_to_dict(user: User) -> dict[str, object]:
     return {
@@ -47,6 +52,8 @@ class RegisterSerializer(serializers.Serializer):
     )
 
     def validate_username(self, value: str) -> str:
+        if value.strip().lower() in RESERVED_USERNAMES:
+            raise serializers.ValidationError("That username is reserved.")
         if User.objects.filter(username__iexact=value).exists():
             raise serializers.ValidationError("That username is already taken.")
         return value
@@ -104,10 +111,11 @@ class ProfileSerializer(_ContractInterestsMixin):
             "openalex_id",
             "scholar_id",
             "interests",
+            "is_verified",
             "embedding_text",
             "updated_at",
         ]
-        read_only_fields = ["embedding_text", "updated_at"]
+        read_only_fields = ["is_verified", "embedding_text", "updated_at"]
 
 
 class LabProfileSerializer(_ContractInterestsMixin):
