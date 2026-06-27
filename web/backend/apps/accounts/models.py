@@ -172,6 +172,27 @@ class Profile(models.Model):
         default=AcademicTitle.RESEARCHER,
     )
     institution = models.CharField(max_length=255, blank=True, default="")
+    orcid = models.CharField(
+        max_length=40,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="ORCID iD (bare, e.g. 0000-0002-1825-0097). Audit trail for imports.",
+    )
+    openalex_id = models.CharField(
+        max_length=40,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="OpenAlex author id (e.g. A5023888391). Lets a profile be re-imported.",
+    )
+    scholar_id = models.CharField(
+        max_length=40,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Google Scholar author id (the scholar_id query param).",
+    )
     interests = models.JSONField(
         default=dict,
         blank=True,
