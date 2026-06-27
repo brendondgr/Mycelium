@@ -210,6 +210,73 @@ class Profile(models.Model):
         return f"Profile<{self.user}>"
 
 
+class _InterestSurface(models.Model):
+    """Shared interest-profile fields for labs and departments (brief Phase D).
+
+    Mirrors :class:`Profile`: a free-form ``interests`` contract JSON, a curated
+    ``embedding``, and a ``derived_embedding`` blended from member and project
+    embeddings at score time. ``embedding_text`` is the canonical text the
+    embedding hook persists now while the vector dimension stays unlocked.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    statement = models.TextField(blank=True, default="")
+    areas = models.JSONField(default=list, blank=True)
+    funding_needs = models.JSONField(default=list, blank=True)
+    strategic_needs = models.JSONField(default=list, blank=True)
+    interests = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Curated interests contract (apps.accounts.interests).",
+    )
+    embedding = VectorField(
+        null=True,
+        blank=True,
+        help_text="Curated vector, derived from the contract text.",
+    )
+    derived_embedding = VectorField(
+        null=True,
+        blank=True,
+        help_text="Vector blended from member and project embeddings.",
+    )
+    embedding_text = models.TextField(
+        blank=True,
+        default="",
+        help_text="Canonical text the embedding hook (re)embeds; vector dim deferred.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+class LabProfile(_InterestSurface):
+    """One interest profile per lab, auto-created via ``post_save`` on Lab."""
+
+    lab = models.OneToOneField(
+        Lab,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+
+    def __str__(self) -> str:
+        return f"LabProfile<{self.lab}>"
+
+
+class DeptProfile(_InterestSurface):
+    """One interest profile per department, auto-created via ``post_save``."""
+
+    department = models.OneToOneField(
+        Department,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+
+    def __str__(self) -> str:
+        return f"DeptProfile<{self.department}>"
+
+
 class AuditEvent(models.Model):
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,

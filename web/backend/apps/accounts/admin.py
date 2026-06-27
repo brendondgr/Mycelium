@@ -8,8 +8,10 @@ from .models import (
     AuditEvent,
     Department,
     DeptMembership,
+    DeptProfile,
     Lab,
     LabMembership,
+    LabProfile,
     Profile,
 )
 
@@ -77,6 +79,20 @@ class DeptMembershipAdmin(admin.ModelAdmin):
     list_display = ("user", "department", "role", "created_at")
     list_filter = ("role", "department")
     search_fields = ("user__username", "department__name")
+
+
+@admin.register(LabProfile)
+class LabProfileAdmin(admin.ModelAdmin):
+    list_display = ("lab", "updated_at")
+    search_fields = ("lab__name", "lab__slug")
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(DeptProfile)
+class DeptProfileAdmin(admin.ModelAdmin):
+    list_display = ("department", "updated_at")
+    search_fields = ("department__name",)
+    readonly_fields = ("created_at", "updated_at")
 
 
 @admin.register(AuditEvent)
