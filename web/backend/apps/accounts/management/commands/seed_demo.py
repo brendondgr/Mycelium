@@ -25,7 +25,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.db.models import Count
 from django.utils.text import slugify
@@ -149,6 +149,15 @@ class Command(BaseCommand):
             default=None,
             help="Directory for the credentials CSV (default: data/logins/).",
         )
+        parser.add_argument(
+            "--from-authors",
+            default=None,
+            help=(
+                "Provision real profiles from a CSV of authors (columns: "
+                "source,identifier) using the live importer, instead of "
+                "fabricating interests. Marks them as demo data."
+            ),
+        )
 
     def handle(self, *args, **options) -> None:
         logins_path = self._logins_path(options["logins_dir"])
@@ -162,8 +171,19 @@ class Command(BaseCommand):
                 self.stdout.write(f"  Removed credentials file: {logins_path}")
             return
 
-        random.seed(options["seed"])
         self.passwords: dict[int, str] = {}
+
+        if options["from_authors"]:
+            self._seed_from_authors(
+                options["from_authors"], clear=options["clear"]
+            )
+            self._export_logins(logins_path)
+            self.stdout.write(
+                self.style.SUCCESS(f"  Credentials written to: {logins_path}")
+            )
+            return
+
+        random.seed(options["seed"])
         self.used_usernames: set[str] = set()
         self.used_slugs: set[str] = set()
         self.dept_labs: dict[str, list[Lab]] = {}
@@ -433,6 +453,51 @@ class Command(BaseCommand):
                 institution=random.choice([*INSTITUTIONS, "", ""]),
             )
 
+    def _seed_from_authors(self, csv_path: str, *, clear: bool) -> None:
+        """Provision real profiles from a CSV using the live author importer.
+
+        The CSV needs ``source`` and ``identifier`` columns. Each row hits the
+        network through ``provision_from_author`` (so this is a manual, on-demand
+        mode, never part of the test suite). Failures are reported and skipped.
+        """
+        from apps.accounts.provisioning import provision_from_author
+
+        path = Path(csv_path)
+        if not path.exists():
+            raise CommandError(f"authors file not found: {path}")
+
+        with path.open(newline="", encoding="utf-8") as fh:
+            authors = [row for row in csv.DictReader(fh)]
+
+        with transaction.atomic():
+            if clear:
+                self._clear()
+
+        created = 0
+        for row in authors:
+            source = (row.get("source") or "").strip()
+            identifier = (row.get("identifier") or row.get("id") or "").strip()
+            if not source or not identifier:
+                self.stderr.write(f"  skip (missing source/identifier): {row}")
+                continue
+            try:
+                result = provision_from_author(
+                    identifier, source, email_domain=DEMO_DOMAIN
+                )
+            except Exception as exc:  # noqa: BLE001 - report and continue
+                self.stderr.write(f"  skip {source}:{identifier}: {exc}")
+                continue
+            self.passwords[result.user.id] = result.credentials["password"]
+            created += 1
+            self.stdout.write(
+                f"  provisioned {result.credentials['username']} "
+                f"from {source}:{identifier}"
+            )
+
+        self.stdout.write(
+            self.style.SUCCESS(f"Provisioned {created} author profile(s).")
+        )
+
     # -- credentials export ------------------------------------------------
 
     def _logins_path(self, logins_dir: str | None) -> Path:
@@ -477,10 +542,17 @@ class Command(BaseCommand):
         ).values_list("user_id", "department__name"):
             depts_by_user[uid].append(dept_name)
         profiles = {
-            uid: (title, institution)
-            for uid, title, institution in Profile.objects.filter(
+            row[0]: row[1:]
+            for row in Profile.objects.filter(
                 user__email__endswith=domain
-            ).values_list("user_id", "academic_title", "institution")
+            ).values_list(
+                "user_id",
+                "academic_title",
+                "institution",
+                "orcid",
+                "openalex_id",
+                "scholar_id",
+            )
         }
 
         rows = []
@@ -500,7 +572,9 @@ class Command(BaseCommand):
                 affiliation = "dept member of " + ", ".join(depts_by_user[uid])
             else:
                 role, affiliation = "user", "unaffiliated"
-            title, institution = profiles.get(uid, ("", ""))
+            title, institution, orcid, openalex_id, scholar_id = profiles.get(
+                uid, ("", "", "", "", "")
+            )
             rows.append(
                 {
                     "role": role,
@@ -511,6 +585,9 @@ class Command(BaseCommand):
                     "academic_title": title,
                     "institution": institution,
                     "affiliation": affiliation,
+                    "orcid": orcid,
+                    "openalex_id": openalex_id,
+                    "scholar_id": scholar_id,
                 }
             )
 
@@ -521,6 +598,7 @@ class Command(BaseCommand):
         fields = [
             "role", "name", "username", "email", "password",
             "academic_title", "institution", "affiliation",
+            "orcid", "openalex_id", "scholar_id",
         ]
         with logins_path.open("w", newline="", encoding="utf-8") as fh:
             writer = csv.DictWriter(fh, fieldnames=fields)
