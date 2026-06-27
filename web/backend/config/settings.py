@@ -30,7 +30,6 @@ INSTALLED_APPS = [
     "apps.research",
     "apps.content",
     "apps.billing",
-    "apps.planner",
 ]
 
 MIDDLEWARE = [
