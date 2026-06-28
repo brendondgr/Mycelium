@@ -12,6 +12,7 @@ from .agent import IntakeAgent, IntakeState
 from .drafts import AuthorProfileDraft
 from .importer import AuthorImportError, import_author
 from .resolve import ResolutionError, ResolvedAuthor, resolve
+from .statement import draft_statement
 
 __all__ = [
     "AuthorProfileDraft",
@@ -22,4 +23,5 @@ __all__ = [
     "ResolutionError",
     "ResolvedAuthor",
     "resolve",
+    "draft_statement",
 ]
