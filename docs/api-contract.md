@@ -115,9 +115,12 @@ source plus an **optional** résumé/CV upload. `multipart/form-data` fields:
 | `resume` | optional | A PDF or text file (≤ 5 MB). Parsed and discarded — never stored. |
 
 At least one of (`source` + `identifier`) or `resume` must be present. The
-importer takes ~10 most-cited and ~10 most-recent works from the site, merges
-them with the résumé, and drafts a natural-language statement (language model
-when configured, deterministic template otherwise).
+importer takes ~10 most-cited and ~10 most-recent works (titles + abstracts +
+declared interests) from the site and the raw résumé text, then asks the
+configured language model to return all five interest fields at once
+(`statement`, `areas`, `keywords`, `methods`, `skills`). When no model is
+available it falls back to the structured author draft, so the endpoint always
+returns a contract-valid profile.
 
 Success `200` — `{ "draft": { … }, "interests": { "version": 1, "areas": [...],
 "keywords": [...], "methods": [...], "skills": [...], "statement": "…",
