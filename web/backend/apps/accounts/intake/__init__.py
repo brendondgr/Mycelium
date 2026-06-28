@@ -16,6 +16,7 @@ from .merge import merge_drafts
 from .resolve import ResolutionError, ResolvedAuthor, resolve
 from .resume import draft_from_resume, extract_text, parse_resume
 from .statement import draft_statement
+from .synthesize import build_corpus, synthesize_interests
 
 __all__ = [
     "AuthorProfileDraft",
@@ -32,4 +33,6 @@ __all__ = [
     "extract_profile_fields",
     "parse_resume",
     "merge_drafts",
+    "build_corpus",
+    "synthesize_interests",
 ]

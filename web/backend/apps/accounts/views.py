@@ -26,10 +26,9 @@ from .intake import (
     AuthorImportError,
     IntakeAgent,
     ResolutionError,
-    draft_statement,
+    extract_text,
     import_author,
-    merge_drafts,
-    parse_resume,
+    synthesize_interests,
 )
 from .interests import validate_interests
 from .models import Department, Lab, WatchPreference
@@ -350,12 +349,13 @@ class SynthesizeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        drafts = []
+        site_draft = None
+        resume_text = ""
         provenance: dict[str, str] = {}
 
         if has_site:
             try:
-                drafts.append(import_author(identifier, source))
+                site_draft = import_author(identifier, source)
             except ResolutionError as exc:
                 return Response(
                     {"non_field_errors": [str(exc)]},
@@ -369,12 +369,10 @@ class SynthesizeView(APIView):
 
         if upload is not None:
             try:
-                drafts.append(
-                    parse_resume(
-                        upload.read(),
-                        content_type=getattr(upload, "content_type", "") or "",
-                        filename=getattr(upload, "name", "") or "",
-                    )
+                resume_text = extract_text(
+                    upload.read(),
+                    content_type=getattr(upload, "content_type", "") or "",
+                    filename=getattr(upload, "name", "") or "",
                 )
             except AuthorImportError as exc:
                 # A bad upload is the caller's error, not an upstream failure.
@@ -383,12 +381,13 @@ class SynthesizeView(APIView):
                 )
             provenance["resume"] = "uploaded"
 
-        draft = merge_drafts(*drafts)
-        statement = draft_statement(draft)
-        interests = draft.to_interests(statement=statement)
-        if provenance:
-            interests.setdefault("sources", {}).update(provenance)
-
+        # The LLM reads the gathered text and fills every field in one call; the
+        # structured draft is the deterministic fallback when no model is up.
+        draft, interests = synthesize_interests(
+            site_draft=site_draft,
+            resume_text=resume_text,
+            provenance=provenance,
+        )
         return Response(
             {"draft": dataclasses.asdict(draft), "interests": interests}
         )

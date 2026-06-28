@@ -186,6 +186,35 @@ def test_pdf_without_pypdf_returns_400_not_500(client, user, monkeypatch) -> Non
 
 
 @pytest.mark.django_db
+def test_llm_drives_fields_when_model_available(client, user, monkeypatch) -> None:
+    import json as _json
+
+    from apps.accounts.intake import extract as extract_module
+
+    # Simulate a configured, reachable model returning a structured profile.
+    llm_json = _json.dumps(
+        {
+            "statement": "I research post-quantum cryptography.",
+            "areas": ["post-quantum cryptography"],
+            "keywords": ["lattice-based cryptography"],
+            "methods": ["cryptanalysis"],
+            "skills": ["Rust"],
+        }
+    )
+    monkeypatch.setattr(extract_module, "_settings_complete", lambda _prompt: llm_json)
+    client.force_authenticate(user)
+
+    resp = client.post(URL, {"resume": _resume_file()}, format="multipart")
+    assert resp.status_code == 200
+    interests = resp.data["interests"]
+    # The model's fields win over the résumé heuristic's.
+    assert interests["statement"] == "I research post-quantum cryptography."
+    assert interests["areas"] == ["post-quantum cryptography"]
+    assert interests["skills"] == ["Rust"]
+    assert interests["sources"]["resume"] == "uploaded"
+
+
+@pytest.mark.django_db
 def test_requires_authentication(client) -> None:
     resp = client.post(URL, {"resume": _resume_file()}, format="multipart")
     assert resp.status_code in (401, 403)
