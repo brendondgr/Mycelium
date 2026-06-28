@@ -12,6 +12,7 @@ from .agent import IntakeAgent, IntakeState
 from .drafts import AuthorProfileDraft
 from .importer import AuthorImportError, import_author
 from .resolve import ResolutionError, ResolvedAuthor, resolve
+from .resume import draft_from_resume, extract_text, parse_resume
 from .statement import draft_statement
 
 __all__ = [
@@ -24,4 +25,7 @@ __all__ = [
     "ResolvedAuthor",
     "resolve",
     "draft_statement",
+    "draft_from_resume",
+    "extract_text",
+    "parse_resume",
 ]

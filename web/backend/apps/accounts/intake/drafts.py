@@ -24,6 +24,7 @@ class AuthorProfileDraft:
     areas: list[str] = field(default_factory=list)
     keywords: list[str] = field(default_factory=list)
     methods: list[str] = field(default_factory=list)
+    skills: list[str] = field(default_factory=list)
     coauthors: list[str] = field(default_factory=list)
     external_ids: dict[str, str] = field(default_factory=dict)
     evidence: list[dict[str, Any]] = field(default_factory=list)
@@ -31,10 +32,11 @@ class AuthorProfileDraft:
     def to_interests(self, *, statement: str = "") -> dict[str, Any]:
         """Render a contract-valid ``Profile.interests`` payload (brief Phase A).
 
-        Only import-sourced keys are filled here (``areas``/``keywords``/
-        ``methods``/``sources``); chat-sourced keys (``skills``, ``funding_needs``,
-        ``eligibility``, ``seeking``, ``exclusions``) are left for the Mylo intake
-        agent to gather.
+        Fills the keys an import/résumé can ground (``areas``/``keywords``/
+        ``methods``/``skills``/``sources``); the remaining chat-sourced keys
+        (``funding_needs``, ``eligibility``, ``seeking``, ``exclusions``) are left
+        for the Mylo intake agent to gather. Most adapters leave ``skills`` empty
+        — a résumé is the source that populates it.
         """
 
         interests: dict[str, Any] = {
@@ -47,6 +49,8 @@ class AuthorProfileDraft:
             interests["keywords"] = list(self.keywords)
         if self.methods:
             interests["methods"] = list(self.methods)
+        if self.skills:
+            interests["skills"] = list(self.skills)
 
         sources: dict[str, Any] = {k: v for k, v in self.external_ids.items() if v}
         if self.evidence:

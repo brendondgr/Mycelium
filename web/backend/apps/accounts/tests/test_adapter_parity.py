@@ -29,6 +29,7 @@ def test_normalizers_agree_on_keys() -> None:
         "areas",
         "keywords",
         "methods",
+        "skills",
         "coauthors",
         "external_ids",
         "evidence",
