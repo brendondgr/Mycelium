@@ -10,6 +10,7 @@ interchangeable downstream.
 
 from .agent import IntakeAgent, IntakeState
 from .drafts import AuthorProfileDraft
+from .extract import extract_profile_fields
 from .importer import AuthorImportError, import_author
 from .merge import merge_drafts
 from .resolve import ResolutionError, ResolvedAuthor, resolve
@@ -28,6 +29,7 @@ __all__ = [
     "draft_statement",
     "draft_from_resume",
     "extract_text",
+    "extract_profile_fields",
     "parse_resume",
     "merge_drafts",
 ]
