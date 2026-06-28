@@ -24,3 +24,56 @@ export type RegisterInput = {
   org_name?: string;
   institution?: string;
 };
+
+/** A single publication source the onboarding importer can pull an author from. */
+export type ResearchSource = "openalex" | "semantic" | "scholar";
+
+/** The contract-shaped research interests stored on a profile. */
+export type ResearchInterests = {
+  version: number;
+  areas: string[];
+  statement?: string;
+  keywords?: string[];
+  methods?: string[];
+  skills?: string[];
+  sources?: Record<string, unknown>;
+};
+
+/** The aggregated author draft returned alongside synthesized interests. */
+export type ResearchDraft = {
+  display_name: string;
+  institution: string;
+  areas: string[];
+  keywords: string[];
+  methods: string[];
+  skills: string[];
+  coauthors: string[];
+  external_ids: Record<string, string>;
+  evidence: Array<Record<string, unknown>>;
+};
+
+export type SynthesizeResult = {
+  draft: ResearchDraft;
+  interests: ResearchInterests;
+};
+
+/** Inputs to the synthesize call: at most one site, plus an optional résumé. */
+export type SynthesizeInput = {
+  source?: ResearchSource;
+  identifier?: string;
+  resume?: File | null;
+};
+
+export type WatchCadence = "daily" | "weekly" | "realtime";
+
+export type WatchPreference = {
+  topics: string[];
+  categories: string[];
+  cadence: WatchCadence;
+};
+
+/** Person-global profile basics captured in onboarding (role + institution). */
+export type ProfileBasics = {
+  academic_title?: string;
+  institution?: string;
+};

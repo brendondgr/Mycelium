@@ -29,30 +29,34 @@ function buildMainPath(count: number, width: number, cy: number): string {
   return d;
 }
 
-// Generate a short side-filament path from a node point.
+// Generate a short side-filament path from a node point. `wobble` is a
+// deterministic per-filament curve offset (kept out of Math.random so server
+// and client render identically — no hydration mismatch).
 function filamentPath(
   x: number,
   y: number,
   angle: number,
   length: number,
+  wobble: number,
 ): string {
   const ex = x + Math.cos(angle) * length;
   const ey = y + Math.sin(angle) * length;
   const cpx = x + Math.cos(angle) * length * 0.5;
-  const cpy = y + Math.sin(angle) * length * 0.5 + (Math.random() > 0.5 ? 4 : -4);
+  const cpy = y + Math.sin(angle) * length * 0.5 + wobble;
   return `M ${x} ${y} Q ${cpx} ${cpy} ${ex} ${ey}`;
 }
 
-// Pre-computed filament descriptors so they're stable across renders.
+// Pre-computed filament descriptors so they're stable across renders. `wobble`
+// is a fixed per-filament control-point offset (deterministic, not random).
 const FILAMENTS = [
-  { nodeIndex: 0, angle: -Math.PI / 4, length: 18 },
-  { nodeIndex: 0, angle: Math.PI / 3.5, length: 14 },
-  { nodeIndex: 1, angle: -Math.PI / 5, length: 20 },
-  { nodeIndex: 2, angle: Math.PI / 4, length: 16 },
-  { nodeIndex: 2, angle: -Math.PI / 3, length: 12 },
-  { nodeIndex: 3, angle: Math.PI / 3.5, length: 22 },
-  { nodeIndex: 3, angle: -Math.PI / 5, length: 15 },
-  { nodeIndex: 4, angle: Math.PI / 4, length: 18 },
+  { nodeIndex: 0, angle: -Math.PI / 4, length: 18, wobble: 4 },
+  { nodeIndex: 0, angle: Math.PI / 3.5, length: 14, wobble: -4 },
+  { nodeIndex: 1, angle: -Math.PI / 5, length: 20, wobble: 4 },
+  { nodeIndex: 2, angle: Math.PI / 4, length: 16, wobble: -4 },
+  { nodeIndex: 2, angle: -Math.PI / 3, length: 12, wobble: 4 },
+  { nodeIndex: 3, angle: Math.PI / 3.5, length: 22, wobble: -4 },
+  { nodeIndex: 3, angle: -Math.PI / 5, length: 15, wobble: 4 },
+  { nodeIndex: 4, angle: Math.PI / 4, length: 18, wobble: -4 },
 ];
 
 const VIEW_WIDTH = 480;
@@ -137,7 +141,7 @@ export default function MyceliumBranch({
         return (
           <path
             key={fi}
-            d={filamentPath(node.x, node.y, f.angle, f.length)}
+            d={filamentPath(node.x, node.y, f.angle, f.length, f.wobble)}
             stroke="var(--brand-secondary)"
             strokeWidth="1"
             fill="none"

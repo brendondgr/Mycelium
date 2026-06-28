@@ -5,7 +5,20 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { MyloMark } from "@/components/brand/mylo-mark";
-import { saveOnboarding, verifyEmail } from "@/lib/auth-client";
+import MyceliumBranch from "@/components/onboarding/mycelium-branch";
+import OnboardingStage from "@/components/onboarding/onboarding-stage";
+import {
+  confirmInterests,
+  saveProfileBasics,
+  saveWatch,
+  synthesizeProfile,
+  verifyEmail,
+} from "@/lib/auth-client";
+import type {
+  ResearchInterests,
+  ResearchSource,
+  WatchCadence,
+} from "@/lib/auth-types";
 import { cn } from "@/lib/utils";
 
 const inputClass =
@@ -19,78 +32,90 @@ const ROLES = [
   { label: "Staff Scientist", value: "staff" },
 ];
 
-const AREAS = [
-  "Genomics",
-  "Neuroscience",
-  "Microbial Ecology",
-  "Machine Learning",
-  "Climate Science",
-  "Materials",
-  "Public Health",
-  "Bioinformatics",
-  "Immunology",
-  "Synthetic Biology",
-  "Ecology",
-  "Chemistry",
+type SourceOption = {
+  value: ResearchSource;
+  label: string;
+  tagline: string;
+  idLabel: string;
+  placeholder: string;
+  help: string;
+};
+
+const SOURCES: SourceOption[] = [
+  {
+    value: "openalex",
+    label: "OpenAlex",
+    tagline: "Open catalog of works & authors",
+    idLabel: "OpenAlex author ID or ORCID",
+    placeholder: "A5023888391 or 0000-0002-1825-0097",
+    help: "The A… id in your OpenAlex author-page URL, or your ORCID.",
+  },
+  {
+    value: "semantic",
+    label: "Semantic Scholar",
+    tagline: "AI-powered paper graph",
+    idLabel: "Semantic Scholar author ID",
+    placeholder: "1741101",
+    help: "The number in your Semantic Scholar author-page URL.",
+  },
+  {
+    value: "scholar",
+    label: "Google Scholar",
+    tagline: "Your public Scholar profile",
+    idLabel: "Google Scholar profile ID",
+    placeholder: "ZQt7m3kAAAAJ",
+    help: "The user= value in your Scholar profile URL.",
+  },
 ];
 
-// Step 2 / 4 collect preferences with no backend home yet — captured for the UX
-// but intentionally not persisted this sprint (see plan A3).
-const GOALS = [
-  { id: "track", label: "Track a fast-moving field", desc: "Daily watch on new papers & preprints." },
-  { id: "proposal", label: "Build a grant or proposal", desc: "Gather evidence and map claims." },
-  { id: "review", label: "Run a literature review", desc: "Synthesize a body of work fast." },
-  { id: "collaborators", label: "Find collaborators", desc: "Surface people on adjacent problems." },
-  { id: "funding", label: "Monitor fellowships & funding", desc: "Get matched opportunities on time." },
-  { id: "strengthen", label: "Strengthen a current paper", desc: "Find support and counter-evidence." },
-];
-
-const WATCH = [
-  { key: "papers", label: "New papers & preprints", desc: "Relevant to your areas and goals." },
+const WATCH_CATEGORIES = [
+  { key: "papers", label: "New papers & preprints", desc: "Relevant to your areas and keywords." },
   { key: "grants", label: "Grant deadlines", desc: "Funding that fits your profile." },
   { key: "fellowships", label: "Fellowships", desc: "Matched to your stage and timeline." },
-  { key: "retractions", label: "Retractions & corrections", desc: "When work you cited changes." },
   { key: "collaborators", label: "Potential collaborators", desc: "People on adjacent problems." },
+  { key: "retractions", label: "Retractions & corrections", desc: "When work you cited changes." },
   { key: "graph", label: "Knowledge-graph updates", desc: "New connections across your network." },
 ];
 
-const CADENCES = [
+const CADENCES: { id: WatchCadence; label: string }[] = [
   { id: "daily", label: "Daily digest" },
   { id: "weekly", label: "Weekly digest" },
   { id: "realtime", label: "Real-time" },
 ];
 
-const KEYWORD_SUGGESTIONS = [
-  "CRISPR",
-  "meta-analysis",
-  "Bayesian models",
-  "field sampling",
-  "scRNA-seq",
-  "remote sensing",
-];
-
 const STEP_LABELS = [
-  "Your profile",
-  "Research areas",
-  "Your goals",
-  "Research focus",
-  "Alerts & cadence",
+  "About you",
+  "Import your research",
+  "Review profile",
+  "What Milo watches",
 ];
 
+const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 const DEMO_CODE = ["4", "8", "2", "9", "1", "3"];
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function dedupe(items: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of items) {
+    const key = item.trim().toLowerCase();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      out.push(item.trim());
+    }
+  }
+  return out;
+}
+
 function Chip({
   selected,
-  disabled,
   onClick,
   children,
 }: {
   selected: boolean;
-  disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -98,10 +123,9 @@ function Chip({
     <button
       type="button"
       aria-pressed={selected}
-      disabled={disabled}
       onClick={onClick}
       className={cn(
-        "rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+        "rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         selected
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-card text-[var(--text-secondary)] hover:border-brand-secondary",
@@ -109,6 +133,68 @@ function Chip({
     >
       {children}
     </button>
+  );
+}
+
+function TokenField({
+  label,
+  items,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  items: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+}) {
+  const [draft, setDraft] = useState("");
+
+  function add(raw?: string) {
+    const value = (raw ?? draft).trim();
+    if (!value) {
+      return;
+    }
+    if (!items.some((item) => item.toLowerCase() === value.toLowerCase())) {
+      onChange([...items, value]);
+    }
+    setDraft("");
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-[var(--text-primary)]">{label}</p>
+      <div className="flex flex-wrap items-center gap-2 rounded-md border border-input bg-card p-2">
+        {items.map((item) => (
+          <span
+            key={item}
+            className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground"
+          >
+            {item}
+            <button
+              type="button"
+              aria-label={`Remove ${item}`}
+              onClick={() => onChange(items.filter((value) => value !== item))}
+              className="text-[var(--text-muted)] hover:text-foreground"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              add();
+            }
+          }}
+          onBlur={() => add()}
+          placeholder={placeholder}
+          className="min-w-40 flex-1 bg-transparent px-1 py-1 text-sm text-foreground outline-none"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -122,24 +208,42 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
     "verify",
   );
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState(1);
 
+  // Step 0 — about you
   const [role, setRole] = useState("researcher");
   const [institution, setInstitution] = useState("");
+
+  // Step 1 — import
+  const [source, setSource] = useState<ResearchSource | "">("");
+  const [identifier, setIdentifier] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeName, setResumeName] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [imported, setImported] = useState(false);
+
+  // Step 2 — review (research interests)
+  const [statement, setStatement] = useState("");
   const [areas, setAreas] = useState<string[]>([]);
-  const [goals, setGoals] = useState<string[]>([]);
-  const [focusText, setFocusText] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
-  const [keywordDraft, setKeywordDraft] = useState("");
-  const [watch, setWatch] = useState<Record<string, boolean>>({
+  const [methods, setMethods] = useState<string[]>([]);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [draftSources, setDraftSources] = useState<Record<string, unknown>>({});
+
+  // Step 3 — watch
+  const [watchTopics, setWatchTopics] = useState<string[]>([]);
+  const [watchCats, setWatchCats] = useState<Record<string, boolean>>({
     papers: true,
     grants: true,
     fellowships: true,
-    retractions: false,
     collaborators: false,
+    retractions: false,
     graph: true,
   });
-  const [cadence, setCadence] = useState("weekly");
+  const [cadence, setCadence] = useState<WatchCadence>("weekly");
 
+  // Verify (scaffold)
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [verifyError, setVerifyError] = useState("");
   const [verifyResent, setVerifyResent] = useState(false);
@@ -148,28 +252,32 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  function toggle(list: string[], value: string): string[] {
-    return list.includes(value)
-      ? list.filter((v) => v !== value)
-      : [...list, value];
+  const sourceOption = SOURCES.find((option) => option.value === source) ?? null;
+  const hasImportInput = Boolean((source && identifier.trim()) || resumeFile);
+
+  function goStep(target: number, dir: number) {
+    setDirection(dir);
+    setStep(target);
+    window.scrollTo(0, 0);
   }
 
-  function addKeyword(raw?: string) {
-    const value = (raw ?? keywordDraft).trim();
-    if (!value) {
-      return;
-    }
-    setKeywords((prev) =>
-      prev.some((k) => k.toLowerCase() === value.toLowerCase())
-        ? prev
-        : [...prev, value],
-    );
-    setKeywordDraft("");
+  function applyInterests(interests: ResearchInterests) {
+    setStatement(interests.statement ?? "");
+    setAreas(interests.areas ?? []);
+    setKeywords(interests.keywords ?? []);
+    setMethods(interests.methods ?? []);
+    setSkills(interests.skills ?? []);
+    setDraftSources(interests.sources ?? {});
+    const seed = dedupe([
+      ...(interests.areas ?? []),
+      ...(interests.keywords ?? []),
+    ]).slice(0, 12);
+    setWatchTopics((prev) => (prev.length ? prev : seed));
   }
 
   // -- verify --------------------------------------------------------------
   async function verifyAndContinue() {
-    if (code.some((d) => d === "")) {
+    if (code.some((digit) => digit === "")) {
       setVerifyError("Enter all 6 digits, or skip for now.");
       return;
     }
@@ -188,19 +296,70 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
   function enterIntake() {
     setScreen("intake");
     setStep(0);
+    setDirection(1);
     window.scrollTo(0, 0);
   }
 
-  // -- intake nav ----------------------------------------------------------
-  const intakeBlocked = step === 1 && areas.length < 1;
-
-  function next() {
-    if (intakeBlocked) {
+  // -- import --------------------------------------------------------------
+  function onResumeChange(file: File | null) {
+    setImportError(null);
+    if (!file) {
+      setResumeFile(null);
+      setResumeName("");
       return;
     }
-    if (step < 4) {
-      setStep(step + 1);
-      window.scrollTo(0, 0);
+    if (file.size > MAX_RESUME_BYTES) {
+      setImportError("That file is larger than 5 MB. Try a smaller one.");
+      return;
+    }
+    setResumeFile(file);
+    setResumeName(file.name);
+  }
+
+  async function runImport() {
+    setImportError(null);
+    if (!hasImportInput) {
+      goStep(2, 1); // nothing to import — fall through to manual entry
+      return;
+    }
+    setImporting(true);
+    try {
+      const { interests } = await synthesizeProfile({
+        source: source || undefined,
+        identifier: identifier.trim() || undefined,
+        resume: resumeFile,
+      });
+      applyInterests(interests);
+      setImported(true);
+      goStep(2, 1);
+    } catch (error) {
+      setImportError(
+        error instanceof Error
+          ? error.message
+          : "Could not build your profile. Try again.",
+      );
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  // -- navigation ----------------------------------------------------------
+  const reviewBlocked = step === 2 && areas.length < 1;
+
+  function primaryAction() {
+    if (step === 0) {
+      goStep(1, 1);
+      return;
+    }
+    if (step === 1) {
+      void runImport();
+      return;
+    }
+    if (step === 2) {
+      if (reviewBlocked) {
+        return;
+      }
+      goStep(3, 1);
       return;
     }
     void finish();
@@ -208,43 +367,61 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
 
   function back() {
     if (step > 0) {
-      setStep(step - 1);
-      window.scrollTo(0, 0);
+      goStep(step - 1, -1);
     } else {
       setScreen("verify");
     }
   }
 
+  function primaryLabel(): string {
+    if (step === 1) {
+      return importing ? "Growing…" : hasImportInput ? "Grow my profile" : "Continue";
+    }
+    if (step === 3) {
+      return "Enter Mycelium";
+    }
+    return "Continue";
+  }
+
   async function finish() {
     setSubmitError(null);
-    const interests: {
-      version: number;
-      areas: string[];
-      statement?: string;
-      keywords?: string[];
-    } = { version: 1, areas };
-    if (focusText.trim()) {
-      interests.statement = focusText.trim();
+    const interests: ResearchInterests = { version: 1, areas };
+    if (statement.trim()) {
+      interests.statement = statement.trim();
     }
     if (keywords.length) {
       interests.keywords = keywords;
     }
+    if (methods.length) {
+      interests.methods = methods;
+    }
+    if (skills.length) {
+      interests.skills = skills;
+    }
+    if (Object.keys(draftSources).length) {
+      interests.sources = draftSources;
+    }
+
+    const categories = WATCH_CATEGORIES.filter((c) => watchCats[c.key]).map(
+      (c) => c.key,
+    );
 
     setScreen("building");
     try {
       await Promise.all([
-        saveOnboarding({
+        saveProfileBasics({
           academic_title: role,
           ...(institution.trim() ? { institution: institution.trim() } : {}),
-          interests,
         }),
+        confirmInterests(interests),
+        saveWatch({ topics: watchTopics, categories, cadence }),
         wait(1400),
       ]);
       router.replace("/app");
       router.refresh();
     } catch (error) {
       setScreen("intake");
-      setStep(4);
+      setStep(3);
       setSubmitError(
         error instanceof Error
           ? error.message
@@ -253,6 +430,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
     }
   }
 
+  // -- building ------------------------------------------------------------
   if (screen === "building") {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
@@ -287,6 +465,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
     );
   }
 
+  // -- verify --------------------------------------------------------------
   if (screen === "verify") {
     return (
       <div className="mx-auto w-full max-w-md text-center">
@@ -311,14 +490,14 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
               maxLength={1}
               aria-label={`Digit ${index + 1}`}
               onChange={(event) => {
-                const v = event.target.value.replace(/\D/g, "").slice(-1);
+                const value = event.target.value.replace(/\D/g, "").slice(-1);
                 setCode((prev) => {
                   const nextCode = [...prev];
-                  nextCode[index] = v;
+                  nextCode[index] = value;
                   return nextCode;
                 });
                 setVerifyError("");
-                if (v && index < 5) {
+                if (value && index < 5) {
                   codeRefs.current[index + 1]?.focus();
                 }
               }}
@@ -397,7 +576,343 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
     );
   }
 
-  // -- intake --------------------------------------------------------------
+  // -- intake panels -------------------------------------------------------
+  const cardClass =
+    "rounded-2xl border border-border bg-card p-6 shadow-[0_12px_34px_-22px_rgba(70,80,50,0.45)] sm:p-8";
+
+  const panelAbout = (
+    <div className={cardClass}>
+      <div className="space-y-6">
+        <div>
+          <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
+            First, tell us about you
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            This calibrates how Mylo weights papers, methods, and opportunities.
+          </p>
+        </div>
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-[var(--text-primary)]">Your role</p>
+          <div className="flex flex-wrap gap-2">
+            {ROLES.map((option) => (
+              <Chip
+                key={option.value}
+                selected={role === option.value}
+                onClick={() => setRole(option.value)}
+              >
+                {option.label}
+              </Chip>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-[var(--text-primary)]"
+            htmlFor="institution"
+          >
+            Institution{" "}
+            <span className="text-[var(--text-muted)]">(optional)</span>
+          </label>
+          <input
+            id="institution"
+            type="text"
+            value={institution}
+            onChange={(event) => setInstitution(event.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const panelImport = (
+    <div className={cardClass}>
+      <div className="space-y-5">
+        <div>
+          <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
+            Let Mylo build your research profile
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Pick one source and Mylo reads your most-cited and most-recent work.
+            Add a résumé too, if you like — you can edit everything next.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-[var(--text-primary)]">
+            Choose one source{" "}
+            <span className="text-[var(--text-muted)]">(optional)</span>
+          </p>
+          <div
+            role="radiogroup"
+            aria-label="Publication source"
+            className="grid gap-3 sm:grid-cols-3"
+          >
+            {SOURCES.map((option) => {
+              const selected = source === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setSource(selected ? "" : option.value)}
+                  className={cn(
+                    "rounded-lg border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selected
+                      ? "border-primary bg-secondary"
+                      : "border-border bg-card hover:border-brand-secondary",
+                  )}
+                >
+                  <span className="block text-sm font-semibold text-[var(--text-primary)]">
+                    {option.label}
+                  </span>
+                  <span className="mt-1 block text-xs text-[var(--text-muted)]">
+                    {option.tagline}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {sourceOption ? (
+          <div className="space-y-2">
+            <label
+              className="text-sm font-medium text-[var(--text-primary)]"
+              htmlFor="author-id"
+            >
+              {sourceOption.idLabel}
+            </label>
+            <input
+              id="author-id"
+              type="text"
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
+              placeholder={sourceOption.placeholder}
+              className={inputClass}
+            />
+            <p className="text-xs text-[var(--text-muted)]">{sourceOption.help}</p>
+          </div>
+        ) : null}
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-[var(--text-primary)]">
+            Upload a résumé or CV{" "}
+            <span className="text-[var(--text-muted)]">(optional)</span>
+          </p>
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-card px-4 py-3 text-sm transition hover:border-brand-secondary focus-within:ring-2 focus-within:ring-ring">
+            <span className={resumeName ? "text-foreground" : "text-[var(--text-muted)]"}>
+              {resumeName || "Choose a PDF or text file"}
+            </span>
+            <span className="rounded-full border border-border px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
+              Browse
+            </span>
+            <input
+              type="file"
+              accept=".pdf,.txt,.text,.md,.markdown,text/plain,application/pdf"
+              className="sr-only"
+              onChange={(event) =>
+                onResumeChange(event.target.files?.[0] ?? null)
+              }
+            />
+          </label>
+          {resumeName ? (
+            <button
+              type="button"
+              onClick={() => onResumeChange(null)}
+              className="text-xs font-medium text-[var(--text-secondary)] underline-offset-2 hover:underline"
+            >
+              Remove file
+            </button>
+          ) : null}
+          <p className="text-xs text-[var(--text-muted)]">
+            Mylo reads it to draft your interests, then discards the file.
+          </p>
+        </div>
+
+        {importError ? (
+          <p
+            className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            role="alert"
+          >
+            {importError}
+          </p>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => goStep(2, 1)}
+          className="text-sm font-medium text-brand-secondary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Skip — I&rsquo;ll add my interests manually
+        </button>
+      </div>
+    </div>
+  );
+
+  const panelReview = (
+    <div className={cardClass}>
+      <div className="space-y-5">
+        <div>
+          <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
+            Review your research profile
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {imported
+              ? "Mylo drafted this from your sources. Edit anything — add or remove freely."
+              : "Add your research interests below. A statement and a few areas are enough to start."}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-[var(--text-primary)]"
+            htmlFor="statement"
+          >
+            Research statement
+          </label>
+          <textarea
+            id="statement"
+            value={statement}
+            onChange={(event) => setStatement(event.target.value)}
+            placeholder="A sentence or two about what you research and how."
+            className={cn(inputClass, "min-h-28 py-3 leading-relaxed")}
+          />
+        </div>
+
+        <TokenField
+          label="Research areas"
+          items={areas}
+          onChange={setAreas}
+          placeholder="Add an area and press Enter"
+        />
+        {areas.length < 1 ? (
+          <p className="text-xs text-destructive">
+            Add at least one research area to continue.
+          </p>
+        ) : null}
+
+        <TokenField
+          label="Keywords"
+          items={keywords}
+          onChange={setKeywords}
+          placeholder="Add a keyword and press Enter"
+        />
+        <TokenField
+          label="Methods"
+          items={methods}
+          onChange={setMethods}
+          placeholder="Add a method and press Enter"
+        />
+        <TokenField
+          label="Skills"
+          items={skills}
+          onChange={setSkills}
+          placeholder="Add a skill and press Enter"
+        />
+      </div>
+    </div>
+  );
+
+  const panelWatch = (
+    <div className={cardClass}>
+      <div className="space-y-5">
+        <div>
+          <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
+            What should Mylo keep an eye on?
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            These topics seed your radar — they came from your interests, but add
+            or remove anything you want Mylo to monitor.
+          </p>
+        </div>
+
+        <TokenField
+          label="Watch topics"
+          items={watchTopics}
+          onChange={setWatchTopics}
+          placeholder="Add a topic and press Enter"
+        />
+
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-[var(--text-primary)]">
+            Signals to surface
+          </p>
+          <div className="flex flex-col">
+            {WATCH_CATEGORIES.map((category) => {
+              const on = watchCats[category.key];
+              return (
+                <div
+                  key={category.key}
+                  className="flex items-center gap-4 border-b border-[var(--divider)] py-3"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">
+                      {category.label}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {category.desc}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={on}
+                    aria-label={category.label}
+                    onClick={() =>
+                      setWatchCats((prev) => ({
+                        ...prev,
+                        [category.key]: !prev[category.key],
+                      }))
+                    }
+                    className={cn(
+                      "relative h-6 w-11 flex-none rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      on ? "bg-primary" : "bg-border",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all",
+                        on ? "left-[22px]" : "left-0.5",
+                      )}
+                    />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-[var(--text-primary)]">
+            How often should Mylo check in?
+          </p>
+          <div className="flex gap-1 rounded-lg bg-surface-alt p-1">
+            {CADENCES.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={cadence === option.id}
+                onClick={() => setCadence(option.id)}
+                className={cn(
+                  "flex-1 rounded-md px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  cadence === option.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-[var(--text-secondary)]",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const panels = [panelAbout, panelImport, panelReview, panelWatch];
+
   return (
     <div className="mx-auto w-full max-w-2xl">
       <div className="mb-4 flex items-center gap-4">
@@ -407,312 +922,45 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
             Let&rsquo;s tune your research radar
           </p>
           <p className="text-sm text-[var(--text-secondary)]">
-            Step {step + 1} of 5 · {STEP_LABELS[step]}
+            Step {step + 1} of {STEP_LABELS.length} · {STEP_LABELS[step]}
           </p>
         </div>
       </div>
-      <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-surface-alt">
-        <div
-          className="h-full rounded-full bg-primary transition-all"
-          style={{ width: `${((step + 1) / 5) * 100}%` }}
-        />
+
+      <MyceliumBranch
+        steps={STEP_LABELS.length}
+        current={step}
+        className="mb-6 h-10"
+      />
+
+      <OnboardingStage current={step} direction={direction} steps={panels} />
+
+      {submitError ? (
+        <p
+          className="mt-5 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          role="alert"
+        >
+          {submitError}
+        </p>
+      ) : null}
+
+      <div className="mt-6 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={back}
+          className="text-sm font-medium text-[var(--text-secondary)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Back
+        </button>
+        <Button
+          className="rounded-full"
+          onClick={primaryAction}
+          disabled={importing || reviewBlocked}
+        >
+          {primaryLabel()}
+        </Button>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-[0_12px_34px_-22px_rgba(70,80,50,0.45)] sm:p-8">
-        {submitError ? (
-          <p
-            className="mb-5 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-            role="alert"
-          >
-            {submitError}
-          </p>
-        ) : null}
-
-        {step === 0 ? (
-          <div className="space-y-6">
-            <div>
-              <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
-                First, tell us about you
-              </h2>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                This calibrates how Mylo weights papers, methods, and
-                opportunities.
-              </p>
-            </div>
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-[var(--text-primary)]">
-                Your role
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {ROLES.map((r) => (
-                  <Chip
-                    key={r.value}
-                    selected={role === r.value}
-                    onClick={() => setRole(r.value)}
-                  >
-                    {r.label}
-                  </Chip>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label
-                className="text-sm font-medium text-[var(--text-primary)]"
-                htmlFor="institution"
-              >
-                Institution{" "}
-                <span className="text-[var(--text-muted)]">(optional)</span>
-              </label>
-              <input
-                id="institution"
-                type="text"
-                value={institution}
-                onChange={(event) => setInstitution(event.target.value)}
-                className={inputClass}
-              />
-            </div>
-          </div>
-        ) : null}
-
-        {step === 1 ? (
-          <div className="space-y-4">
-            <div>
-              <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
-                What are you exploring?
-              </h2>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                Pick the areas closest to your work — Mylo seeds your knowledge
-                graph from these.{" "}
-                {areas.length ? (
-                  <span className="text-[var(--text-muted)]">
-                    ({areas.length} selected)
-                  </span>
-                ) : null}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {AREAS.map((area) => (
-                <Chip
-                  key={area}
-                  selected={areas.includes(area)}
-                  onClick={() => setAreas((prev) => toggle(prev, area))}
-                >
-                  {area}
-                </Chip>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {step === 2 ? (
-          <div className="space-y-4">
-            <div>
-              <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
-                What do you want Mycelium to help with?
-              </h2>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                Pick all that apply — Mylo prioritizes these across your
-                dashboard.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {GOALS.map((g) => {
-                const selected = goals.includes(g.id);
-                return (
-                  <button
-                    key={g.id}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => setGoals((prev) => toggle(prev, g.id))}
-                    className={cn(
-                      "rounded-lg border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      selected
-                        ? "border-primary bg-secondary"
-                        : "border-border bg-card hover:border-brand-secondary",
-                    )}
-                  >
-                    <span className="block text-sm font-semibold text-[var(--text-primary)]">
-                      {g.label}
-                    </span>
-                    <span className="mt-1 block text-xs text-[var(--text-muted)]">
-                      {g.desc}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-
-        {step === 3 ? (
-          <div className="space-y-5">
-            <div>
-              <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
-                Tell us about your current research
-              </h2>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                A sentence or two helps Mylo find the right papers and people.
-                You can refine this anytime.
-              </p>
-            </div>
-            <textarea
-              value={focusText}
-              onChange={(event) => setFocusText(event.target.value)}
-              placeholder="e.g. We study how soil microbial communities respond to drought, using metagenomics and multi-year field sampling."
-              className={cn(inputClass, "min-h-28 py-3 leading-relaxed")}
-            />
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-[var(--text-primary)]">
-                Keywords &amp; methods
-              </p>
-              <div className="flex flex-wrap items-center gap-2 rounded-md border border-input bg-card p-2">
-                {keywords.map((k) => (
-                  <span
-                    key={k}
-                    className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground"
-                  >
-                    {k}
-                    <button
-                      type="button"
-                      aria-label={`Remove ${k}`}
-                      onClick={() =>
-                        setKeywords((prev) => prev.filter((x) => x !== k))
-                      }
-                      className="text-[var(--text-muted)] hover:text-foreground"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                <input
-                  value={keywordDraft}
-                  onChange={(event) => setKeywordDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      addKeyword();
-                    }
-                  }}
-                  placeholder="Type a keyword and press Enter"
-                  className="min-w-40 flex-1 bg-transparent px-1 py-1 text-sm text-foreground outline-none"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="text-xs text-[var(--text-muted)]">Try:</span>
-                {KEYWORD_SUGGESTIONS.filter(
-                  (s) =>
-                    !keywords.some((k) => k.toLowerCase() === s.toLowerCase()),
-                )
-                  .slice(0, 5)
-                  .map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => addKeyword(s)}
-                      className="rounded-full border border-dashed border-border px-3 py-1 text-xs font-medium text-[var(--text-secondary)] transition hover:border-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      + {s}
-                    </button>
-                  ))}
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {step === 4 ? (
-          <div className="space-y-5">
-            <div>
-              <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
-                What should Mylo keep an eye on?
-              </h2>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                Toggle the signals you care about. Mylo only alerts when
-                something clears your relevance bar.
-              </p>
-            </div>
-            <div className="flex flex-col">
-              {WATCH.map((w) => {
-                const on = watch[w.key];
-                return (
-                  <div
-                    key={w.key}
-                    className="flex items-center gap-4 border-b border-[var(--divider)] py-3"
-                  >
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-[var(--text-primary)]">
-                        {w.label}
-                      </p>
-                      <p className="text-xs text-[var(--text-muted)]">
-                        {w.desc}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={on}
-                      aria-label={w.label}
-                      onClick={() =>
-                        setWatch((prev) => ({ ...prev, [w.key]: !prev[w.key] }))
-                      }
-                      className={cn(
-                        "relative h-6 w-11 flex-none rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        on ? "bg-primary" : "bg-border",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all",
-                          on ? "left-[22px]" : "left-0.5",
-                        )}
-                      />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-[var(--text-primary)]">
-                How often should Mylo check in?
-              </p>
-              <div className="flex gap-1 rounded-lg bg-surface-alt p-1">
-                {CADENCES.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    aria-pressed={cadence === c.id}
-                    onClick={() => setCadence(c.id)}
-                    className={cn(
-                      "flex-1 rounded-md px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      cadence === c.id
-                        ? "bg-primary text-primary-foreground"
-                        : "text-[var(--text-secondary)]",
-                    )}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mt-7 flex items-center justify-between border-t border-[var(--divider)] pt-5">
-          <button
-            type="button"
-            onClick={back}
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Back
-          </button>
-          <Button
-            className="rounded-full"
-            onClick={next}
-            disabled={intakeBlocked}
-          >
-            {step < 4 ? "Continue" : "Enter Mycelium"}
-          </Button>
-        </div>
-      </div>
       <p className="mt-4 text-center text-xs text-[var(--text-muted)]">
         You can change any of this later in Settings.
       </p>
