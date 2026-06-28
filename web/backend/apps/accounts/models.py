@@ -286,6 +286,52 @@ class DeptProfile(_InterestSurface):
         return f"DeptProfile<{self.department}>"
 
 
+class WatchCadence(models.TextChoices):
+    """How often Milo surfaces what it is watching for a user."""
+
+    DAILY = "daily", "Daily"
+    WEEKLY = "weekly", "Weekly"
+    REALTIME = "realtime", "Real-time"
+
+
+class WatchPreference(models.Model):
+    """What Milo should keep an eye on for one user.
+
+    Captured in the final onboarding step ("what should Milo keep an eye on")
+    and editable later: the topics to monitor (research areas and keywords,
+    seeded from the user's interests), which kinds of signals to surface, and how
+    often. One row per user, created on first save — no signal backfill, so
+    existing users get a row the first time they set their watch.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="watch",
+    )
+    topics = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Research areas/keywords Milo monitors (seeded from interests).",
+    )
+    categories = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Signal kinds to surface: papers, grants, fellowships, etc.",
+    )
+    cadence = models.CharField(
+        max_length=20,
+        choices=WatchCadence.choices,
+        default=WatchCadence.WEEKLY,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"WatchPreference<{self.user}>"
+
+
 class AuditEvent(models.Model):
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,

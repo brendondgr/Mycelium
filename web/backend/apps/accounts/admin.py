@@ -13,6 +13,7 @@ from .models import (
     LabMembership,
     LabProfile,
     Profile,
+    WatchPreference,
 )
 
 
@@ -92,6 +93,14 @@ class LabProfileAdmin(admin.ModelAdmin):
 class DeptProfileAdmin(admin.ModelAdmin):
     list_display = ("department", "updated_at")
     search_fields = ("department__name",)
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(WatchPreference)
+class WatchPreferenceAdmin(admin.ModelAdmin):
+    list_display = ("user", "cadence", "updated_at")
+    list_filter = ("cadence",)
+    search_fields = ("user__username",)
     readonly_fields = ("created_at", "updated_at")
 
 

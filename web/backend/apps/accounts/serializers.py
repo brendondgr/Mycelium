@@ -6,7 +6,7 @@ from rest_framework import serializers
 from apps.billing.services import ACCOUNT_TYPES
 
 from .interests import validate_interests as _validate_interests_contract
-from .models import DeptProfile, LabProfile, Profile
+from .models import DeptProfile, LabProfile, Profile, WatchPreference
 
 # Usernames that collide with top-level routes or reserved app paths.
 RESERVED_USERNAMES = frozenset(
@@ -146,3 +146,37 @@ class DeptProfileSerializer(_ContractInterestsMixin):
             "updated_at",
         ]
         read_only_fields = ["embedding_text", "updated_at"]
+
+
+class WatchPreferenceSerializer(serializers.ModelSerializer):
+    """Read/update what Milo keeps an eye on for the caller (own only)."""
+
+    _MAX_ITEMS = 50
+
+    class Meta:
+        model = WatchPreference
+        fields = ["topics", "categories", "cadence", "updated_at"]
+        read_only_fields = ["updated_at"]
+
+    def _clean_string_list(self, value: object, field: str) -> list[str]:
+        if not isinstance(value, list):
+            raise serializers.ValidationError({field: ["must be a list of strings"]})
+        cleaned: list[str] = []
+        seen: set[str] = set()
+        for item in value:
+            text = " ".join(str(item).split())
+            key = text.casefold()
+            if text and key not in seen:
+                seen.add(key)
+                cleaned.append(text)
+        if len(cleaned) > self._MAX_ITEMS:
+            raise serializers.ValidationError(
+                {field: [f"at most {self._MAX_ITEMS} items"]}
+            )
+        return cleaned
+
+    def validate_topics(self, value: object) -> list[str]:
+        return self._clean_string_list(value, "topics")
+
+    def validate_categories(self, value: object) -> list[str]:
+        return self._clean_string_list(value, "categories")

@@ -27,6 +27,8 @@ urlpatterns = [
         views.DeptProfileView.as_view(),
         name="dept-profile",
     ),
+    # What Milo keeps an eye on (own only).
+    path("watch/me/", views.MyWatchView.as_view(), name="watch-me"),
     # Author import + intake session.
     path("intake/import/", views.ImportAuthorView.as_view(), name="intake-import"),
     path(

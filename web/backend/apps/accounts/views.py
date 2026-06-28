@@ -32,7 +32,7 @@ from .intake import (
     parse_resume,
 )
 from .interests import validate_interests
-from .models import Department, Lab
+from .models import Department, Lab, WatchPreference
 from .permissions import (
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
@@ -44,6 +44,7 @@ from .serializers import (
     LabProfileSerializer,
     ProfileSerializer,
     RegisterSerializer,
+    WatchPreferenceSerializer,
     user_to_dict,
 )
 from .services import record_audit_event
@@ -215,6 +216,20 @@ class DeptProfileView(RetrieveUpdateAPIView):
         elif not user_can_edit_dept_profile(user, department):
             raise PermissionDenied("Only the owner or an admin can edit this profile.")
         return department.profile
+
+
+class MyWatchView(RetrieveUpdateAPIView):
+    """Read or update what Milo keeps an eye on for the caller (own only).
+
+    The row is created on first access, so a user who never finished the watch
+    step still gets sensible defaults (weekly cadence, no topics).
+    """
+
+    serializer_class = WatchPreferenceSerializer
+
+    def get_object(self) -> WatchPreference:
+        watch, _ = WatchPreference.objects.get_or_create(user=self.request.user)
+        return watch
 
 
 # -- Author import + intake session (brief Phase G) ---------------------------
