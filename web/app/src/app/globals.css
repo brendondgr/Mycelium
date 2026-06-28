@@ -4,6 +4,8 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-fraunces);
+  --font-inter: var(--font-inter);
 }
 
 * {
@@ -14,4 +16,21 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
+}
+
+/* Gentle Mylo float for brand/loading moments; disabled under reduced motion. */
+@keyframes mylo-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mylo-float {
+    animation: mylo-float 6s ease-in-out infinite;
+  }
 }

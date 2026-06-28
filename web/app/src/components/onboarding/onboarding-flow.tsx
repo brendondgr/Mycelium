@@ -255,9 +255,29 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
 
   if (screen === "building") {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <MyloMark className="h-20 w-[72px] motion-safe:animate-pulse" />
-        <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
+        <div className="relative h-[200px] w-[240px]">
+          <svg viewBox="0 0 240 200" className="absolute inset-0 h-full w-full">
+            <g stroke="var(--brand-secondary)" strokeWidth="1.6" fill="none">
+              <path d="M120 110 L54 56" />
+              <path d="M120 110 L196 60" />
+              <path d="M120 110 L40 150" />
+              <path d="M120 110 L200 148" />
+              <path d="M120 110 L120 30" />
+            </g>
+            <g>
+              <circle cx="54" cy="56" r="6" fill="var(--primary)" className="motion-safe:animate-pulse" />
+              <circle cx="196" cy="60" r="6" fill="var(--brand-accent)" className="motion-safe:animate-pulse" />
+              <circle cx="40" cy="150" r="6" fill="var(--brand-secondary)" className="motion-safe:animate-pulse" />
+              <circle cx="200" cy="148" r="6" fill="var(--primary)" className="motion-safe:animate-pulse" />
+              <circle cx="120" cy="30" r="6" fill="var(--brand-accent)" className="motion-safe:animate-pulse" />
+            </g>
+          </svg>
+          <div className="absolute left-1/2 top-[55%] h-[82px] w-[74px] -translate-x-1/2 -translate-y-1/2">
+            <MyloMark className="mylo-float h-full w-full" />
+          </div>
+        </div>
+        <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
           Weaving your knowledge graph…
         </h2>
         <p className="max-w-sm text-[var(--text-secondary)]">
@@ -270,8 +290,8 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
   if (screen === "verify") {
     return (
       <div className="mx-auto w-full max-w-md text-center">
-        <MyloMark className="mx-auto mb-4 h-16 w-[58px]" />
-        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+        <MyloMark className="mylo-float mx-auto mb-4 h-16 w-[58px]" />
+        <h1 className="font-serif text-3xl font-semibold text-[var(--text-primary)]">
           Check your inbox
         </h1>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
@@ -311,7 +331,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
                   codeRefs.current[index - 1]?.focus();
                 }
               }}
-              className="h-14 w-12 rounded-md border border-input bg-card text-center text-xl font-semibold text-foreground shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-14 w-12 rounded-xl border border-border bg-surface text-center font-serif text-2xl font-semibold text-foreground outline-none transition focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/20"
             />
           ))}
         </div>
@@ -323,7 +343,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
         ) : null}
 
         <Button
-          className="mx-auto mt-6 w-full max-w-xs"
+          className="mx-auto mt-6 w-full max-w-xs rounded-full"
           size="lg"
           disabled={busy}
           onClick={() => void verifyAndContinue()}
@@ -398,7 +418,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
         />
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-[0_12px_34px_-22px_rgba(70,80,50,0.45)] sm:p-8">
         {submitError ? (
           <p
             className="mb-5 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
@@ -411,7 +431,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
         {step === 0 ? (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+              <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
                 First, tell us about you
               </h2>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -457,7 +477,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
         {step === 1 ? (
           <div className="space-y-4">
             <div>
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+              <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
                 What are you exploring?
               </h2>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -487,7 +507,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
         {step === 2 ? (
           <div className="space-y-4">
             <div>
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+              <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
                 What do you want Mycelium to help with?
               </h2>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -527,7 +547,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
         {step === 3 ? (
           <div className="space-y-5">
             <div>
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+              <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
                 Tell us about your current research
               </h2>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -602,7 +622,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
         {step === 4 ? (
           <div className="space-y-5">
             <div>
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+              <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
                 What should Mylo keep an eye on?
               </h2>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -684,7 +704,11 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
           >
             Back
           </button>
-          <Button onClick={next} disabled={intakeBlocked}>
+          <Button
+            className="rounded-full"
+            onClick={next}
+            disabled={intakeBlocked}
+          >
             {step < 4 ? "Continue" : "Enter Mycelium"}
           </Button>
         </div>

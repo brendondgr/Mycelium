@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
 import { LoginForm } from "@/components/auth/login-form";
 import { LoginQuerySanitizer } from "@/components/auth/login-query-sanitizer";
 import { getCurrentUser } from "@/lib/auth-server";
@@ -9,6 +10,12 @@ export const metadata = {
   description: "Sign in to the Mycelium research workspace.",
 };
 
+const QUOTES: { text: string; tone: "green" | "gold" }[] = [
+  { text: "I found 12 papers relevant to your lab goals.", tone: "green" },
+  { text: "This fellowship matches your profile and timeline.", tone: "gold" },
+  { text: "Your knowledge graph has 18 new connections.", tone: "green" },
+];
+
 export default async function LoginPage() {
   const user = await getCurrentUser();
   if (user) {
@@ -16,40 +23,49 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main
+      className="flex min-h-screen bg-background text-foreground"
+      style={{ fontFamily: "var(--font-inter)" }}
+    >
       <LoginQuerySanitizer />
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <section className="space-y-6">
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-primary">
-              Mycelium
-            </p>
-            <h1 className="max-w-xl text-4xl font-semibold leading-tight text-[var(--text-primary)] sm:text-5xl">
-              Sign in to your research workspace
-            </h1>
-            <p className="max-w-lg text-lg leading-8 text-[var(--text-secondary)]">
-              Connect papers, people, grants, and evidence-backed plans in one
-              living lab memory. Use your lab account credentials to enter the
-              private workspace.
-            </p>
-            <div
-              aria-hidden="true"
-              className="hidden h-40 max-w-md rounded-2xl border border-border bg-[radial-gradient(circle_at_30%_20%,var(--brand-accent-soft),transparent_55%),linear-gradient(135deg,var(--surface-alt),var(--card))] lg:block"
-            />
-          </section>
 
-          <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-            <div className="mb-6 space-y-2">
-              <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
-                Workspace sign-in
-              </h2>
-              <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                Session authentication is handled by Django. No passwords are
-                stored in the browser.
-              </p>
-            </div>
+      <AuthBrandPanel
+        heading="Your research, woven into a living network."
+        description="Mylo scouts the literature, surfaces grants and fellowships on time, and keeps your lab's knowledge graph growing while you work."
+      >
+        <ul className="space-y-3">
+          {QUOTES.map((quote) => (
+            <li
+              key={quote.text}
+              className="flex items-center gap-3 text-sm text-brand-panel-foreground/85"
+            >
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 flex-none rounded-full"
+                style={{
+                  background:
+                    quote.tone === "gold"
+                      ? "var(--brand-accent)"
+                      : "var(--brand-secondary)",
+                }}
+              />
+              &ldquo;{quote.text}&rdquo;
+            </li>
+          ))}
+        </ul>
+      </AuthBrandPanel>
+
+      <div className="flex flex-1 items-center justify-center px-6 py-10 sm:px-10">
+        <div className="w-full max-w-sm">
+          <h2 className="font-serif text-3xl font-semibold text-[var(--text-primary)]">
+            Welcome back
+          </h2>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            Sign in to your research workspace.
+          </p>
+          <div className="mt-7">
             <LoginForm />
-          </section>
+          </div>
         </div>
       </div>
     </main>

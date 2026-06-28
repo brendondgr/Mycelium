@@ -6,8 +6,11 @@ import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { login } from "@/lib/auth-client";
 
-const landingUrl =
-  process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:11050";
+const fieldClass =
+  "w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-[var(--text-muted)] focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
+
+const labelClass =
+  "block text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]";
 
 export function LoginForm() {
   const router = useRouter();
@@ -62,7 +65,7 @@ export function LoginForm() {
 
   return (
     <form
-      className="space-y-5"
+      className="space-y-4"
       method="post"
       action="/login"
       onSubmit={handleSubmit}
@@ -71,18 +74,28 @@ export function LoginForm() {
     >
       {formError ? (
         <p
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
           role="alert"
         >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+            className="flex-none"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
           {formError}
         </p>
       ) : null}
 
-      <div className="space-y-2">
-        <label
-          className="text-sm font-medium text-[var(--text-primary)]"
-          htmlFor="username"
-        >
+      <div className="space-y-1.5">
+        <label className={labelClass} htmlFor="username">
           Username
         </label>
         <input
@@ -90,13 +103,14 @@ export function LoginForm() {
           name="username"
           type="text"
           autoComplete="username"
+          placeholder="jrivera"
           required
           value={username}
           disabled={isBusy}
           aria-invalid={Boolean(fieldErrors.username)}
           aria-describedby={fieldErrors.username ? "username-error" : undefined}
           onChange={(event) => setUsername(event.target.value)}
-          className="min-h-11 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+          className={fieldClass}
         />
         {fieldErrors.username ? (
           <p className="text-sm text-destructive" id="username-error" role="alert">
@@ -105,25 +119,26 @@ export function LoginForm() {
         ) : null}
       </div>
 
-      <div className="space-y-2">
-        <label
-          className="text-sm font-medium text-[var(--text-primary)]"
-          htmlFor="password"
-        >
-          Password
-        </label>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label className={labelClass} htmlFor="password">
+            Password
+          </label>
+          <span className="text-xs font-medium text-brand-secondary">Forgot?</span>
+        </div>
         <input
           id="password"
           name="password"
           type="password"
           autoComplete="current-password"
+          placeholder="••••••••"
           required
           value={password}
           disabled={isBusy}
           aria-invalid={Boolean(fieldErrors.password)}
           aria-describedby={fieldErrors.password ? "password-error" : undefined}
           onChange={(event) => setPassword(event.target.value)}
-          className="min-h-11 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+          className={fieldClass}
         />
         {fieldErrors.password ? (
           <p className="text-sm text-destructive" id="password-error" role="alert">
@@ -133,7 +148,7 @@ export function LoginForm() {
       </div>
 
       <Button
-        className="w-full"
+        className="mt-2 w-full rounded-full"
         disabled={isBusy}
         size="lg"
         type="submit"
@@ -145,24 +160,18 @@ export function LoginForm() {
             : "Sign in"}
       </Button>
 
-      <p className="text-center text-sm text-[var(--text-secondary)]">
-        New to Mycelium?{" "}
-        <a
-          className="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          href="/signup"
-        >
-          Create an account
-        </a>
-      </p>
+      <div className="flex items-center gap-3 py-1 text-xs font-medium tracking-wide text-[var(--text-muted)]">
+        <span className="h-px flex-1 bg-[var(--divider)]" />
+        NEW TO MYCELIUM?
+        <span className="h-px flex-1 bg-[var(--divider)]" />
+      </div>
 
-      <p className="text-center text-sm text-[var(--text-muted)]">
-        <a
-          className="underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          href={landingUrl}
-        >
-          Back to the public site
-        </a>
-      </p>
+      <a
+        href="/signup"
+        className="block w-full rounded-full border border-border bg-surface px-4 py-3 text-center text-sm font-semibold text-[var(--text-primary)] transition hover:border-brand-secondary hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Create an account
+      </a>
     </form>
   );
 }

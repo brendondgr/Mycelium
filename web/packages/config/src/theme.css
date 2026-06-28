@@ -25,6 +25,8 @@
   --color-brand-secondary: var(--brand-secondary);
   --color-brand-accent: var(--brand-accent);
   --color-brand-accent-soft: var(--brand-accent-soft);
+  --color-brand-panel: var(--brand-panel);
+  --color-brand-panel-foreground: var(--brand-panel-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --radius-sm: calc(var(--radius) - 4px);
@@ -61,6 +63,9 @@
   --brand-secondary: #8da66f;
   --brand-accent: #c9a35a;
   --brand-accent-soft: #e7d8b8;
+  /* Fixed forest-green brand surface (auth panels, marketing heroes). */
+  --brand-panel: #2f3b24;
+  --brand-panel-foreground: #f2ebdd;
   --text-primary: #2e3627;
   --text-secondary: #5f6853;
   --text-muted: #7f8775;

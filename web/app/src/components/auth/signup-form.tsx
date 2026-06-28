@@ -8,23 +8,50 @@ import { register } from "@/lib/auth-client";
 import type { AccountType } from "@/lib/auth-types";
 import { cn } from "@/lib/utils";
 
-const inputClass =
-  "min-h-11 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60";
+const fieldClass =
+  "w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-[var(--text-muted)] focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
 
-const labelClass = "text-sm font-medium text-[var(--text-primary)]";
+const labelClass =
+  "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]";
+
+const errorClass = "mt-1.5 text-xs font-medium text-destructive";
+
+function IconPersonal() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+    </svg>
+  );
+}
+
+function IconLab() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+      <path d="M9 3v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V3" />
+      <path d="M8 3h8" />
+    </svg>
+  );
+}
+
+function IconDepartment() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+      <path d="M3 21V8l9-5 9 5v13" />
+      <path d="M3 21h18M9 21v-6h6v6" />
+    </svg>
+  );
+}
 
 const ACCOUNT_OPTIONS: {
   value: AccountType;
   title: string;
   caption: string;
+  icon: React.ReactNode;
 }[] = [
-  { value: "personal", title: "Personal", caption: "Spore · just you" },
-  { value: "lab", title: "Lab", caption: "Lab · you lead a PI group" },
-  {
-    value: "department",
-    title: "Department",
-    caption: "Canopy · institutional",
-  },
+  { value: "personal", title: "Personal", caption: "Spore · just you", icon: <IconPersonal /> },
+  { value: "lab", title: "Lab", caption: "Lab · you lead a PI group", icon: <IconLab /> },
+  { value: "department", title: "Department", caption: "Canopy · institutional", icon: <IconDepartment /> },
 ];
 
 type FieldKey =
@@ -123,22 +150,26 @@ export function SignupForm() {
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit} noValidate aria-busy={isBusy}>
+    <form className="space-y-4" onSubmit={handleSubmit} noValidate aria-busy={isBusy}>
       {formError ? (
         <p
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
           role="alert"
         >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="flex-none">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
           {formError}
         </p>
       ) : null}
 
-      <fieldset className="space-y-2">
+      <fieldset>
         <legend className={labelClass}>Account type</legend>
         <div
           role="radiogroup"
           aria-label="Account type"
-          className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+          className="grid grid-cols-3 gap-2.5"
         >
           {ACCOUNT_OPTIONS.map((option) => {
             const selected = accountType === option.value;
@@ -149,19 +180,42 @@ export function SignupForm() {
                 role="radio"
                 aria-checked={selected}
                 disabled={isBusy}
-                onClick={() => setAccountType(option.value)}
+                onClick={() => {
+                  setAccountType(option.value);
+                  setFieldErrors((prev) => ({ ...prev, org_name: undefined }));
+                }}
                 className={cn(
-                  "flex flex-col gap-1 rounded-lg border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+                  "flex flex-col gap-3 rounded-2xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
                   selected
-                    ? "border-primary bg-secondary"
+                    ? "border-primary bg-[color-mix(in_srgb,var(--primary)_8%,var(--card))]"
                     : "border-border bg-card hover:border-brand-secondary",
                 )}
               >
-                <span className="text-sm font-semibold text-[var(--text-primary)]">
-                  {option.title}
+                <span className="flex items-start justify-between">
+                  <span
+                    className="flex h-9 w-9 items-center justify-center rounded-lg"
+                    style={{
+                      background:
+                        "color-mix(in srgb, var(--primary) 12%, var(--card))",
+                    }}
+                  >
+                    {option.icon}
+                  </span>
+                  {selected ? (
+                    <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    </span>
+                  ) : null}
                 </span>
-                <span className="text-xs text-[var(--text-muted)]">
-                  {option.caption}
+                <span>
+                  <span className="block text-sm font-semibold text-[var(--text-primary)]">
+                    {option.title}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-[var(--text-muted)]">
+                    {option.caption}
+                  </span>
                 </span>
               </button>
             );
@@ -170,7 +224,7 @@ export function SignupForm() {
       </fieldset>
 
       {needsOrgName ? (
-        <div className="space-y-2">
+        <div>
           <label className={labelClass} htmlFor="org_name">
             {orgLabel}
           </label>
@@ -178,15 +232,18 @@ export function SignupForm() {
             id="org_name"
             name="org_name"
             type="text"
+            placeholder={
+              accountType === "lab" ? "e.g. Rivera Lab" : "e.g. Molecular Systems"
+            }
             value={orgName}
             disabled={isBusy}
             aria-invalid={Boolean(fieldErrors.org_name)}
             aria-describedby={fieldErrors.org_name ? "org_name-error" : undefined}
             onChange={(event) => setOrgName(event.target.value)}
-            className={inputClass}
+            className={fieldClass}
           />
           {fieldErrors.org_name ? (
-            <p className="text-sm text-destructive" id="org_name-error" role="alert">
+            <p className={errorClass} id="org_name-error" role="alert">
               {fieldErrors.org_name}
             </p>
           ) : null}
@@ -194,57 +251,60 @@ export function SignupForm() {
       ) : null}
 
       {accountType === "department" ? (
-        <div className="space-y-2">
+        <div>
           <label className={labelClass} htmlFor="institution">
-            Institution <span className="text-[var(--text-muted)]">(optional)</span>
+            Institution
           </label>
           <input
             id="institution"
             name="institution"
             type="text"
+            placeholder="Northgate University"
             value={institution}
             disabled={isBusy}
             onChange={(event) => setInstitution(event.target.value)}
-            className={inputClass}
+            className={fieldClass}
           />
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
           <label className={labelClass} htmlFor="first_name">
-            First name <span className="text-[var(--text-muted)]">(optional)</span>
+            First name
           </label>
           <input
             id="first_name"
             name="first_name"
             type="text"
             autoComplete="given-name"
+            placeholder="Jamie"
             value={firstName}
             disabled={isBusy}
             onChange={(event) => setFirstName(event.target.value)}
-            className={inputClass}
+            className={fieldClass}
           />
         </div>
-        <div className="space-y-2">
+        <div>
           <label className={labelClass} htmlFor="last_name">
-            Last name <span className="text-[var(--text-muted)]">(optional)</span>
+            Last name
           </label>
           <input
             id="last_name"
             name="last_name"
             type="text"
             autoComplete="family-name"
+            placeholder="Rivera"
             value={lastName}
             disabled={isBusy}
             onChange={(event) => setLastName(event.target.value)}
-            className={inputClass}
+            className={fieldClass}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
           <label className={labelClass} htmlFor="username">
             Username
           </label>
@@ -253,21 +313,22 @@ export function SignupForm() {
             name="username"
             type="text"
             autoComplete="username"
+            placeholder="jrivera"
             required
             value={username}
             disabled={isBusy}
             aria-invalid={Boolean(fieldErrors.username)}
             aria-describedby={fieldErrors.username ? "username-error" : undefined}
             onChange={(event) => setUsername(event.target.value)}
-            className={inputClass}
+            className={fieldClass}
           />
           {fieldErrors.username ? (
-            <p className="text-sm text-destructive" id="username-error" role="alert">
+            <p className={errorClass} id="username-error" role="alert">
               {fieldErrors.username}
             </p>
           ) : null}
         </div>
-        <div className="space-y-2">
+        <div>
           <label className={labelClass} htmlFor="email">
             Email
           </label>
@@ -276,24 +337,25 @@ export function SignupForm() {
             name="email"
             type="email"
             autoComplete="email"
+            placeholder="jamie@lab.edu"
             required
             value={email}
             disabled={isBusy}
             aria-invalid={Boolean(fieldErrors.email)}
             aria-describedby={fieldErrors.email ? "email-error" : undefined}
             onChange={(event) => setEmail(event.target.value)}
-            className={inputClass}
+            className={fieldClass}
           />
           {fieldErrors.email ? (
-            <p className="text-sm text-destructive" id="email-error" role="alert">
+            <p className={errorClass} id="email-error" role="alert">
               {fieldErrors.email}
             </p>
           ) : null}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
           <label className={labelClass} htmlFor="password">
             Password
           </label>
@@ -302,29 +364,31 @@ export function SignupForm() {
             name="password"
             type="password"
             autoComplete="new-password"
+            placeholder="8+ characters"
             required
             value={password}
             disabled={isBusy}
             aria-invalid={Boolean(fieldErrors.password)}
             aria-describedby={fieldErrors.password ? "password-error" : undefined}
             onChange={(event) => setPassword(event.target.value)}
-            className={inputClass}
+            className={fieldClass}
           />
           {fieldErrors.password ? (
-            <p className="text-sm text-destructive" id="password-error" role="alert">
+            <p className={errorClass} id="password-error" role="alert">
               {fieldErrors.password}
             </p>
           ) : null}
         </div>
-        <div className="space-y-2">
+        <div>
           <label className={labelClass} htmlFor="password_confirm">
-            Confirm password
+            Confirm
           </label>
           <input
             id="password_confirm"
             name="password_confirm"
             type="password"
             autoComplete="new-password"
+            placeholder="Re-enter password"
             required
             value={confirm}
             disabled={isBusy}
@@ -333,21 +397,22 @@ export function SignupForm() {
               fieldErrors.password_confirm ? "password_confirm-error" : undefined
             }
             onChange={(event) => setConfirm(event.target.value)}
-            className={inputClass}
+            className={fieldClass}
           />
           {fieldErrors.password_confirm ? (
-            <p
-              className="text-sm text-destructive"
-              id="password_confirm-error"
-              role="alert"
-            >
+            <p className={errorClass} id="password_confirm-error" role="alert">
               {fieldErrors.password_confirm}
             </p>
           ) : null}
         </div>
       </div>
 
-      <Button className="w-full" disabled={isBusy} size="lg" type="submit">
+      <Button
+        className="mt-2 w-full rounded-full"
+        disabled={isBusy}
+        size="lg"
+        type="submit"
+      >
         {status === "loading"
           ? "Creating account…"
           : status === "success"
