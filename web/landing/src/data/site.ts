@@ -3,7 +3,7 @@ export const siteName = "Mycelium";
 export const siteTagline = "Living intelligence for research labs";
 
 const appBaseUrl = (
-  import.meta.env.PUBLIC_APP_URL ?? "http://localhost:9911"
+  import.meta.env.PUBLIC_APP_URL ?? "http://localhost:11050"
 ).replace(/\/$/, "");
 
 export const appLoginUrl = `${appBaseUrl}/login`;

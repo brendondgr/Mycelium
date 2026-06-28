@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { login } from "@/lib/auth-client";
 
 const landingUrl =
-  process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:4321";
+  process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:11050";
 
 export function LoginForm() {
   const router = useRouter();

@@ -64,7 +64,7 @@ store** — only to the public site and, through the Next.js proxy, the Django A
 | Background work | Celery workers | Research scans, matching, extraction, graph updates, reports, digests |
 | Data storage | Postgres / Neo4j / Redis / S3 | Durable records, relationships, queue/cache, blobs |
 
-Single-origin routing through Nginx at `http://localhost:9911`:
+Single-origin routing through Nginx at `http://localhost:11050`:
 
 | Path | Service |
 |---|---|
@@ -143,7 +143,7 @@ replace the `change-me` placeholders.
 
 | Goal | Command |
 |---|---|
-| Full stack, single origin | `docker compose up` → `http://localhost:9911` |
+| Full stack, single origin | `docker compose up` (or `python run.py`) → `http://localhost:11050` |
 | Backend + data services only | `docker compose up backend` |
 | Dev gateway (host processes) | `npm run dev` |
 | Backend management command | `uv run --project web/backend python web/backend/manage.py <cmd>` |

@@ -34,7 +34,7 @@ root `package.json` stays at the repository root.
 The preferred local backend path is Docker Compose. The backend container uses
 the `ghcr.io/astral-sh/uv:python3.13-bookworm` image, installs the Python
 environment from `web/backend/`, and runs the Django development server on port
-8000.
+8000 inside the container, published on host port 11350.
 
 Prerequisites:
 
@@ -52,8 +52,8 @@ docker compose up backend
 This starts Postgres, Redis, Neo4j, MinIO, and the Django backend. The backend
 is available at:
 
-- API health check: `http://localhost:8000/api/health/`
-- Django admin route: `http://localhost:8000/admin/`
+- API health check: `http://localhost:11350/api/health/`
+- Django admin route: `http://localhost:11350/admin/`
 
 Stop the backend container stack:
 
@@ -68,7 +68,7 @@ Next.js, and the backend:
 docker compose up
 ```
 
-Nginx is exposed at `http://localhost:9911`, with landing traffic routed to
+Nginx is exposed at `http://localhost:11050`, with landing traffic routed to
 Astro, app traffic routed to Next.js, and API/admin traffic routed to Django.
 
 If the landing container cannot resolve `@mycelium/config/theme.css`, reset
@@ -82,7 +82,7 @@ docker compose up
 ## Root Commands
 
 - `npm run dev`: run the dev gateway, Astro, Next.js, and Django together on
-  **http://localhost:9911**.
+  **http://localhost:11050**.
 - `npm run dev:landing`: run only the Astro landing site on port 4321.
 - `npm run dev:web`: run only the Next.js app on port 3001 (bypasses gateway).
 - `npm run dev:backend`: run only the Django server on port 8000.

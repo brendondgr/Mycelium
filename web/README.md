@@ -15,8 +15,8 @@ delegates into this workspace so Node install state remains under `web/`.
 
 ## Local development (single origin)
 
-`npm run dev` from the repository root starts a dev gateway on port **9911**
-alongside Astro, Next.js, and Django. Browse **http://localhost:9911** and use
+`npm run dev` from the repository root starts a dev gateway on port **11050**
+alongside Astro, Next.js, and Django. Browse **http://localhost:11050** and use
 path-based routing:
 
 | Path | Service |
@@ -30,7 +30,10 @@ Direct ports remain available for focused debugging (`:4321`, `:3001`, `:8000`).
 ## Docker (single origin)
 
 `docker compose up` from the repository root exposes the same path map through
-Nginx at **http://localhost:9911**.
+Nginx at **http://localhost:11050**. Host-published ports follow the
+`11050 + 100·n` scheme (landing `:11150`, app `:11250`, Django `:11350`,
+Postgres `:11450`, Redis `:11550`, Neo4j `:11650`/`:11750`, MinIO
+`:11850`/`:11950`).
 
 If workspace packages fail to resolve inside containers after a host-side
 `npm install`, reset Docker volumes:

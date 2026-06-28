@@ -1,7 +1,7 @@
 import http from "node:http";
 import httpProxy from "http-proxy";
 
-const GATEWAY_PORT = Number(process.env.DEV_GATEWAY_PORT ?? 9911);
+const GATEWAY_PORT = Number(process.env.DEV_GATEWAY_PORT ?? 11050);
 const LANDING_TARGET = process.env.LANDING_TARGET ?? "http://127.0.0.1:4321";
 const APP_TARGET = process.env.APP_TARGET ?? "http://127.0.0.1:3001";
 const API_TARGET = process.env.API_TARGET ?? "http://127.0.0.1:8000";

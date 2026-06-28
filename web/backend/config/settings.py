@@ -102,13 +102,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOWED_ORIGINS = env.list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:9911"],
+    default=["http://localhost:11050"],
 )
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = env.list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
-    default=["http://localhost:9911"],
+    default=["http://localhost:11050"],
 )
 
 SESSION_COOKIE_HTTPONLY = True
@@ -144,14 +144,14 @@ EMAIL_BACKEND = env(
 
 CELERY_BROKER_URL = env(
     "CELERY_BROKER_URL",
-    default=env("REDIS_URL", default="redis://localhost:6379/0"),
+    default=env("REDIS_URL", default="redis://localhost:11550/0"),
 )
 CELERY_RESULT_BACKEND = env(
     "CELERY_RESULT_BACKEND",
-    default="redis://localhost:6379/1",
+    default="redis://localhost:11550/1",
 )
 
-NEO4J_URI = env("NEO4J_URI", default="bolt://localhost:7687")
+NEO4J_URI = env("NEO4J_URI", default="bolt://localhost:11750")
 NEO4J_USERNAME = env("NEO4J_USERNAME", default="neo4j")
 NEO4J_PASSWORD = env("NEO4J_PASSWORD", default="")
 

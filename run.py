@@ -35,12 +35,12 @@ COMPOSE_FILE = ROOT / "compose.yaml"
 
 # App/gateway URLs worth surfacing after the stack comes up.
 URLS = [
-    ("Gateway (nginx)", "http://localhost:9911"),
-    ("Next.js app", "http://localhost:3000"),
-    ("Astro landing", "http://localhost:4321"),
-    ("Django API", "http://localhost:8000/api/health/"),
-    ("MinIO console", "http://localhost:9001"),
-    ("Neo4j browser", "http://localhost:7474"),
+    ("Gateway (nginx)", "http://localhost:11050"),
+    ("Next.js app", "http://localhost:11250"),
+    ("Astro landing", "http://localhost:11150"),
+    ("Django API", "http://localhost:11350/api/health/"),
+    ("MinIO console", "http://localhost:11950"),
+    ("Neo4j browser", "http://localhost:11650"),
 ]
 
 
