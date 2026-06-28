@@ -1,5 +1,3 @@
-import Script from "next/script";
-
 /**
  * Browser extensions (e.g. injecting `vc-init` on <body>) can alter the DOM
  * before React hydrates. This runs before Next.js hydration to drop known
@@ -27,8 +25,9 @@ const guardScript = `
 
 export function BodyHydrationGuard() {
   return (
-    <Script id="mycelium-body-hydration-guard" strategy="beforeInteractive">
-      {guardScript}
-    </Script>
+    <script
+      id="mycelium-body-hydration-guard"
+      dangerouslySetInnerHTML={{ __html: guardScript }}
+    />
   );
 }
