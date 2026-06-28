@@ -97,6 +97,17 @@ def test_extract_text_rejects_textless_file() -> None:
         extract_text(b"hi", content_type="text/plain")  # under the min-length floor
 
 
+def test_pdf_without_pypdf_fails_gracefully(monkeypatch) -> None:
+    import sys
+
+    # Simulate a backend whose deps are out of date (pypdf not installed): the
+    # import must raise a handled AuthorImportError, never an uncaught 500.
+    monkeypatch.setitem(sys.modules, "pypdf", None)
+    pdf = _make_pdf("Research Interests: robotics, control theory")
+    with pytest.raises(AuthorImportError):
+        extract_text(pdf, content_type="application/pdf", filename="cv.pdf")
+
+
 # -- heuristic drafting (no model) --------------------------------------------
 
 

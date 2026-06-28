@@ -45,6 +45,35 @@ def _resume_file() -> SimpleUploadedFile:
     return SimpleUploadedFile("cv.txt", RESUME_TEXT, content_type="text/plain")
 
 
+def _resume_pdf() -> SimpleUploadedFile:
+    """A minimal valid one-page PDF carrying a Research Interests line."""
+    content = (
+        b"BT /F1 12 Tf 72 720 Td (Research Interests: robotics, control theory) Tj ET"
+    )
+    objects = [
+        b"<</Type/Catalog/Pages 2 0 R>>",
+        b"<</Type/Pages/Kids[3 0 R]/Count 1>>",
+        b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]"
+        b"/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>",
+        b"<</Length " + str(len(content)).encode() + b">>\nstream\n" + content
+        + b"\nendstream",
+        b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+    ]
+    out = b"%PDF-1.4\n"
+    offsets: list[int] = []
+    for index, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += str(index).encode() + b" 0 obj\n" + body + b"\nendobj\n"
+    xref_pos = len(out)
+    size = len(objects) + 1
+    out += b"xref\n0 " + str(size).encode() + b"\n0000000000 65535 f \n"
+    for offset in offsets:
+        out += f"{offset:010d} 00000 n \n".encode()
+    out += b"trailer\n<</Size " + str(size).encode() + b"/Root 1 0 R>>\n"
+    out += b"startxref\n" + str(xref_pos).encode() + b"\n%%EOF"
+    return SimpleUploadedFile("cv.pdf", out, content_type="application/pdf")
+
+
 # -- validation ---------------------------------------------------------------
 
 
@@ -134,6 +163,26 @@ def test_site_and_resume_merge(client, user, monkeypatch) -> None:
     assert "compilers" in areas  # from the résumé
     assert "COBOL" in resp.data["interests"]["skills"]
     assert resp.data["interests"]["sources"]["resume"] == "uploaded"
+
+
+@pytest.mark.django_db
+def test_pdf_resume_is_parsed(client, user) -> None:
+    client.force_authenticate(user)
+    resp = client.post(URL, {"resume": _resume_pdf()}, format="multipart")
+    assert resp.status_code == 200
+    assert "robotics" in resp.data["interests"]["areas"]
+
+
+@pytest.mark.django_db
+def test_pdf_without_pypdf_returns_400_not_500(client, user, monkeypatch) -> None:
+    import sys
+
+    # An out-of-date backend (no pypdf) must surface a clean 400, never a 500.
+    monkeypatch.setitem(sys.modules, "pypdf", None)
+    client.force_authenticate(user)
+    resp = client.post(URL, {"resume": _resume_pdf()}, format="multipart")
+    assert resp.status_code == 400
+    assert "resume" in resp.data
 
 
 @pytest.mark.django_db

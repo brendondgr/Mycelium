@@ -92,7 +92,16 @@ def extract_text(
 
 
 def _extract_pdf_text(data: bytes) -> str:
-    from pypdf import PdfReader  # lazy: importing this module needs no pypdf
+    try:
+        from pypdf import PdfReader  # lazy: importing this module needs no pypdf
+    except ImportError as exc:
+        # The backend dependencies are out of date (pypdf not installed). Fail
+        # gracefully as a client-visible error instead of a 500, and keep text
+        # résumés working. Resolve by syncing backend deps (e.g. `uv sync`).
+        raise AuthorImportError(
+            "PDF résumés aren't supported on this server yet; "
+            "paste a text résumé or try again later."
+        ) from exc
 
     try:
         reader = PdfReader(io.BytesIO(data))

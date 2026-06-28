@@ -98,14 +98,15 @@ export default function MyceliumBranch({
       aria-hidden="true"
       role="presentation"
     >
-      {/* Faint full-path underlay (future, always drawn) */}
+      {/* Un-grown (future) path underlay — a darker neutral so the timeline
+          ahead stays clearly visible against the grown green. */}
       <path
         d={mainPath}
-        stroke="var(--border)"
-        strokeWidth="1.5"
+        stroke="var(--text-muted)"
+        strokeWidth="2"
         strokeDasharray="4 5"
         fill="none"
-        opacity="0.5"
+        opacity="0.7"
       />
 
       {/* Grown portion of the main branch (animated pathLength) */}
@@ -145,7 +146,7 @@ export default function MyceliumBranch({
             stroke="var(--brand-secondary)"
             strokeWidth="1"
             fill="none"
-            opacity={isReached ? 0.4 : 0.15}
+            opacity={isReached ? 0.45 : 0.28}
             strokeLinecap="round"
           />
         );
@@ -158,9 +159,9 @@ export default function MyceliumBranch({
         const isFuture = i > clampedCurrent;
 
         const r = isActive ? NODE_R_ACTIVE : isReached ? NODE_R_REACHED : NODE_R_FUTURE;
-        const fill = isFuture ? "var(--surface)" : "var(--primary)";
-        const stroke = isFuture ? "var(--border)" : "var(--brand-secondary)";
-        const opacity = isFuture ? 0.45 : 1;
+        const fill = isFuture ? "var(--surface-alt)" : "var(--primary)";
+        const stroke = isFuture ? "var(--text-muted)" : "var(--brand-secondary)";
+        const opacity = isFuture ? 0.85 : 1;
 
         if (shouldReduceMotion) {
           return (
