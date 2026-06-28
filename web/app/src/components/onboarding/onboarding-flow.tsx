@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { MyloMark } from "@/components/brand/mylo-mark";
 import MyceliumBranch from "@/components/onboarding/mycelium-branch";
 import OnboardingStage from "@/components/onboarding/onboarding-stage";
+import ProfileSynthesisProgress, {
+  type SynthesisStage,
+} from "@/components/onboarding/profile-synthesis-progress";
 import {
   confirmInterests,
   saveProfileBasics,
@@ -92,6 +95,11 @@ const STEP_LABELS = [
 
 const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 const DEMO_CODE = ["4", "8", "2", "9", "1", "3"];
+
+// Minimum time each early synthesis stage is shown so the user can read the
+// narration even when the request returns quickly. The final (language-model)
+// stage is held open until the real request resolves.
+const SYNTH_STAGE_MS = 850;
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -204,9 +212,9 @@ type OnboardingFlowProps = {
 
 export function OnboardingFlow({ email }: OnboardingFlowProps) {
   const router = useRouter();
-  const [screen, setScreen] = useState<"verify" | "intake" | "building">(
-    "verify",
-  );
+  const [screen, setScreen] = useState<
+    "verify" | "intake" | "synthesizing" | "building"
+  >("verify");
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
 
@@ -222,6 +230,9 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [imported, setImported] = useState(false);
+  const [synthStages, setSynthStages] = useState<SynthesisStage[]>([]);
+  const [synthStage, setSynthStage] = useState(0);
+  const [synthDone, setSynthDone] = useState(false);
 
   // Step 2 — review (research interests)
   const [statement, setStatement] = useState("");
@@ -316,31 +327,83 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
     setResumeName(file.name);
   }
 
+  // The narrated stages mirror the real synthesize pipeline and adapt to what
+  // the user actually provided (a source, a résumé, or both).
+  function buildSynthStages(): SynthesisStage[] {
+    const stages: SynthesisStage[] = [];
+    if (sourceOption) {
+      stages.push({
+        label: `Reading your most-cited and recent work on ${sourceOption.label}`,
+      });
+      stages.push({ label: "Gathering abstracts and key passages" });
+    }
+    if (resumeFile) {
+      stages.push({ label: "Reading your résumé" });
+    }
+    stages.push({ label: "Asking the language model to synthesize it all" });
+    stages.push({
+      label: "Drafting your statement, areas, keywords, methods, and skills",
+    });
+    return stages;
+  }
+
   async function runImport() {
     setImportError(null);
     if (!hasImportInput) {
       goStep(2, 1); // nothing to import — fall through to manual entry
       return;
     }
+
+    const stages = buildSynthStages();
+    const lastStage = stages.length - 1;
+    setSynthStages(stages);
+    setSynthStage(0);
+    setSynthDone(false);
     setImporting(true);
-    try {
-      const { interests } = await synthesizeProfile({
-        source: source || undefined,
-        identifier: identifier.trim() || undefined,
-        resume: resumeFile,
-      });
-      applyInterests(interests);
-      setImported(true);
-      goStep(2, 1);
-    } catch (error) {
-      setImportError(
-        error instanceof Error
-          ? error.message
-          : "Could not build your profile. Try again.",
-      );
-    } finally {
-      setImporting(false);
+    setScreen("synthesizing");
+    window.scrollTo(0, 0);
+
+    // Start the real request immediately; settle it into a result object so a
+    // fast failure during the timed walk never surfaces as an unhandled
+    // rejection.
+    const settled = synthesizeProfile({
+      source: source || undefined,
+      identifier: identifier.trim() || undefined,
+      resume: resumeFile,
+    }).then(
+      (value) => ({ ok: true as const, value }),
+      (error) => ({ ok: false as const, error }),
+    );
+
+    // Walk through the early stages on a timer, then hold on the final stage
+    // until the language model actually returns.
+    for (let index = 0; index < lastStage; index += 1) {
+      setSynthStage(index);
+      await wait(SYNTH_STAGE_MS);
     }
+    setSynthStage(lastStage);
+
+    const result = await settled;
+    setImporting(false);
+
+    if (result.ok) {
+      applyInterests(result.value.interests);
+      setImported(true);
+      setSynthDone(true);
+      await wait(650); // let the completed checklist register
+      setScreen("intake");
+      goStep(2, 1);
+      return;
+    }
+
+    // Surface the failure back on the import step.
+    setScreen("intake");
+    setStep(1);
+    setImportError(
+      result.error instanceof Error
+        ? result.error.message
+        : "Could not build your profile. Try again.",
+    );
   }
 
   // -- navigation ----------------------------------------------------------
@@ -428,6 +491,19 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
           : "Could not save your answers. Try again.",
       );
     }
+  }
+
+  // -- synthesizing --------------------------------------------------------
+  if (screen === "synthesizing") {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center">
+        <ProfileSynthesisProgress
+          stages={synthStages}
+          active={synthStage}
+          done={synthDone}
+        />
+      </div>
+    );
   }
 
   // -- building ------------------------------------------------------------
