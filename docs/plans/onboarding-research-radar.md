@@ -1,7 +1,12 @@
 # Onboarding — Animated Research Radar & Source Import
 
 **Branch:** `claude/loving-diffie-7d7888` (merged to `main` on completion; no push)
-**Status:** In progress
+**Status:** Complete — Phases 1–8 implemented, validated, and committed. The step
+transition was rebuilt on CSS transforms after in-browser verification showed the
+animation-library version left the active step off-screen. Backend: 214 tests pass
+on SQLite and a fresh pgvector Postgres; `ruff` clean; no migration drift. Frontend:
+ESLint and `next build` (TypeScript) clean; the flow was walked step-by-step in a
+real browser (verify → about → import → review → watch, plus back-navigation).
 
 ## 1. Objective
 

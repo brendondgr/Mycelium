@@ -16,7 +16,8 @@ class CsrfDebugMiddleware:
             referer = request.META.get("HTTP_REFERER", "<none>")
             host = request.META.get("HTTP_HOST", "<none>")
             logger.warning(
-                "CSRF_DEBUG %s %s | cookie=%s | header=%s | match=%s | session=%s | origin=%s | host=%s | referer=%s",
+                "CSRF_DEBUG %s %s | cookie=%s | header=%s | match=%s | "
+                "session=%s | origin=%s | host=%s | referer=%s",
                 request.method,
                 request.path,
                 csrf_cookie[:8] if len(csrf_cookie) > 8 else csrf_cookie,
