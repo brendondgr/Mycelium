@@ -41,6 +41,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "config.debug_middleware.CsrfDebugMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -183,3 +184,30 @@ LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
 OPENALEX_API_KEY = env("OPEN_ALEX_API_KEY", default="")
 OPENALEX_MAILTO = env("OPENALEX_MAILTO", default="")
 SEMANTIC_SCHOLAR_API_KEY = env("SEMANTIC_SCHOLAR_API_KEY", default="")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "django.security.csrf": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+        "mycelium.csrf_debug": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}
