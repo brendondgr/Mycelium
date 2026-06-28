@@ -11,6 +11,7 @@ interchangeable downstream.
 from .agent import IntakeAgent, IntakeState
 from .drafts import AuthorProfileDraft
 from .importer import AuthorImportError, import_author
+from .merge import merge_drafts
 from .resolve import ResolutionError, ResolvedAuthor, resolve
 from .resume import draft_from_resume, extract_text, parse_resume
 from .statement import draft_statement
@@ -28,4 +29,5 @@ __all__ = [
     "draft_from_resume",
     "extract_text",
     "parse_resume",
+    "merge_drafts",
 ]

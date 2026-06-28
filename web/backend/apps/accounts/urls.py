@@ -29,6 +29,11 @@ urlpatterns = [
     ),
     # Author import + intake session.
     path("intake/import/", views.ImportAuthorView.as_view(), name="intake-import"),
+    path(
+        "intake/synthesize/",
+        views.SynthesizeView.as_view(),
+        name="intake-synthesize",
+    ),
     path("intake/session/", views.IntakeSessionView.as_view(), name="intake-session"),
     path("intake/confirm/", views.ConfirmIntakeView.as_view(), name="intake-confirm"),
 ]

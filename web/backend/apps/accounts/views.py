@@ -26,7 +26,10 @@ from .intake import (
     AuthorImportError,
     IntakeAgent,
     ResolutionError,
+    draft_statement,
     import_author,
+    merge_drafts,
+    parse_resume,
 )
 from .interests import validate_interests
 from .models import Department, Lab
@@ -284,3 +287,93 @@ class ConfirmIntakeView(APIView):
         profile.interests = validated
         profile.save()
         return Response(ProfileSerializer(profile).data)
+
+
+# Sources the onboarding import box accepts. Exactly one site may be used per
+# synthesize call (a single ``source`` field); a résumé is additive (brief D4).
+SYNTHESIZE_SOURCES = {"openalex", "semantic", "scholar", "orcid"}
+
+
+class SynthesizeView(APIView):
+    """Build one interest draft from an optional author id and/or a résumé upload.
+
+    Accepts ``multipart/form-data`` with optional ``source`` + ``identifier`` (at
+    most one site) and an optional ``resume`` file; at least one source is
+    required. Imports the site, parses the résumé, merges them, and drafts a
+    natural-language statement — then returns ``{draft, interests}`` without
+    saving (``confirm`` performs the save). Résumé bytes are parsed and discarded.
+    """
+
+    def post(self, request: Request) -> Response:
+        source = str(request.data.get("source", "")).strip().lower()
+        identifier = str(request.data.get("identifier", "")).strip()
+        upload = request.FILES.get("resume")
+
+        has_site = bool(source or identifier)
+        if has_site and (not source or not identifier):
+            return Response(
+                {
+                    "non_field_errors": [
+                        "Provide both 'source' and 'identifier' to import from a site."
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if source and source not in SYNTHESIZE_SOURCES:
+            return Response(
+                {"source": [f"unknown source {source!r}."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not has_site and upload is None:
+            return Response(
+                {
+                    "non_field_errors": [
+                        "Provide an author id (source + identifier) and/or a "
+                        "résumé file."
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        drafts = []
+        provenance: dict[str, str] = {}
+
+        if has_site:
+            try:
+                drafts.append(import_author(identifier, source))
+            except ResolutionError as exc:
+                return Response(
+                    {"non_field_errors": [str(exc)]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            except AuthorImportError as exc:
+                return Response(
+                    {"non_field_errors": [str(exc)]},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        if upload is not None:
+            try:
+                drafts.append(
+                    parse_resume(
+                        upload.read(),
+                        content_type=getattr(upload, "content_type", "") or "",
+                        filename=getattr(upload, "name", "") or "",
+                    )
+                )
+            except AuthorImportError as exc:
+                # A bad upload is the caller's error, not an upstream failure.
+                return Response(
+                    {"resume": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST
+                )
+            provenance["resume"] = "uploaded"
+
+        draft = merge_drafts(*drafts)
+        statement = draft_statement(draft)
+        interests = draft.to_interests(statement=statement)
+        if provenance:
+            interests.setdefault("sources", {}).update(provenance)
+
+        return Response(
+            {"draft": dataclasses.asdict(draft), "interests": interests}
+        )

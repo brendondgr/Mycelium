@@ -98,3 +98,52 @@ signing, email templates, and SMTP delivery are deferred.
 Success `200` — `{ "is_verified": true }`.
 
 `401` / `403` when anonymous.
+
+## Profile & onboarding intake
+
+All endpoints below require an authenticated session.
+
+### `POST /api/auth/intake/synthesize/`
+
+Builds an editable research-interest draft from **at most one** publication
+source plus an **optional** résumé/CV upload. `multipart/form-data` fields:
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `source` | with `identifier` | One of `openalex`, `semantic`, `scholar`, `orcid`. |
+| `identifier` | with `source` | The author id for that source. |
+| `resume` | optional | A PDF or text file (≤ 5 MB). Parsed and discarded — never stored. |
+
+At least one of (`source` + `identifier`) or `resume` must be present. The
+importer takes ~10 most-cited and ~10 most-recent works from the site, merges
+them with the résumé, and drafts a natural-language statement (language model
+when configured, deterministic template otherwise).
+
+Success `200` — `{ "draft": { … }, "interests": { "version": 1, "areas": [...],
+"keywords": [...], "methods": [...], "skills": [...], "statement": "…",
+"sources": { … } } }`. The `interests` object is contract-valid and ready to
+post to `confirm`.
+
+`400` for a missing/partial/unknown source or an unreadable/oversize/unsupported
+file (`{ "resume": ["…"] }`). `502` when an upstream source fails.
+
+### `POST /api/auth/intake/import/`
+
+JSON `{ "identifier", "source" }` → `{ "draft", "interests" }` from a single
+source (no résumé, no statement). The lighter sibling of `synthesize`.
+
+### `POST /api/auth/intake/session/`
+
+Drives one stateless step of the bounded Mylo intake loop. Body
+`{ "interests", "free_text"?, "answer"? }` → `{ "interests", "question",
+"summary", "done" }`.
+
+### `POST /api/auth/intake/confirm/`
+
+Validates `{ "interests" }` against the contract and saves it onto the caller's
+own profile. Success `200` returns the profile; `400` on contract violation.
+
+### `GET` / `PATCH` `/api/auth/profile/me/`
+
+Reads or updates the caller's own profile (`academic_title`, `institution`,
+`interests`, external ids). `interests` is validated against the contract.
