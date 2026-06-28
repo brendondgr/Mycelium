@@ -74,7 +74,22 @@ def normalize(raw: dict[str, Any]) -> AuthorProfileDraft:
                 "year": work.get("publication_year"),
                 "source_id": _bare_id(work.get("id")),
                 "cited_by": work.get("cited_by_count"),
+                "abstract": _abstract(work.get("abstract_inverted_index")),
             }
         )
 
     return draft
+
+
+def _abstract(inverted_index: Any) -> str:
+    """Reconstruct an abstract from OpenAlex's word -> positions inverted index."""
+
+    if not isinstance(inverted_index, dict):
+        return ""
+    positions: list[tuple[int, str]] = []
+    for word, locations in inverted_index.items():
+        for location in locations or []:
+            if isinstance(location, int):
+                positions.append((location, str(word)))
+    positions.sort()
+    return " ".join(word for _, word in positions)

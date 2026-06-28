@@ -13,7 +13,9 @@ from ._http import fetch_json
 
 S2_BASE = "https://api.semanticscholar.org/graph/v1"
 AUTHOR_FIELDS = "name,affiliations,externalIds,homepage"
-PAPER_FIELDS = "title,year,fieldsOfStudy,s2FieldsOfStudy,citationCount,authors"
+PAPER_FIELDS = (
+    "title,year,fieldsOfStudy,s2FieldsOfStudy,citationCount,authors,abstract"
+)
 MAX_PAPERS = 100
 
 

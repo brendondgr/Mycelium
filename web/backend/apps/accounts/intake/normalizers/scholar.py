@@ -59,6 +59,7 @@ def normalize(raw: dict[str, Any]) -> AuthorProfileDraft:
                 "year": _year_or_none(bib.get("pub_year")),
                 "source_id": pub.get("author_pub_id"),
                 "cited_by": pub.get("num_citations"),
+                "abstract": bib.get("abstract") or "",
             }
         )
 
