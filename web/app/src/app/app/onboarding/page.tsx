@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
 
   return (
     <main
-      className="min-h-screen bg-background text-foreground"
+      className="min-h-screen overflow-x-hidden bg-background text-foreground"
       style={{ fontFamily: "var(--font-inter)" }}
     >
       <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center px-4 py-10 sm:px-6">

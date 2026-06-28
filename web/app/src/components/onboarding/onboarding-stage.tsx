@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -14,29 +14,15 @@ export type OnboardingStageProps = {
   className?: string;
 };
 
-// The active card spans CARD_WIDTH of the stage and is centered; because the
-// adjacent panels are translated by exactly the card width, the previous and
-// next cards sit flush beside it (no overlap, nothing hidden behind), showing a
-// translucent slice on each side. A soft edge mask fades those slices out so
-// there is no hard cut-off line.
-const PEEK_OPACITY = 0.5;
-const PEEK_SCALE = 0.92;
+// A coverflow "deck": the active card is crisp and centred; the previous and
+// next cards stay (mostly) fully visible as translucent, scaled-down cards that
+// drop slightly and sit to the sides — bleeding into the page margins rather
+// than being clipped to a sliver. Tune these to taste.
+const SIDE_SCALE = 0.86; // how much smaller the side cards are
+const SIDE_DROP = 18; // px the side cards drop ("moves down into the left")
+const SIDE_OPACITY = 0.5; // translucency of the side cards
 const SLIDE_EASE = "cubic-bezier(0.32, 0.01, 0.12, 1)";
-const SLIDE_MS = 550;
-const EDGE_FADE = "linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%)";
-
-/** True on viewports wide enough to comfortably show side cards. */
-function useIsWide(): boolean {
-  const [wide, setWide] = useState(true);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 640px)");
-    const update = () => setWide(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-  return wide;
-}
+const SLIDE_MS = 560;
 
 export default function OnboardingStage({
   current,
@@ -44,15 +30,10 @@ export default function OnboardingStage({
   className,
 }: OnboardingStageProps) {
   const reduce = useReducedMotion();
-  const wide = useIsWide();
   const panelRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [height, setHeight] = useState<number | undefined>(undefined);
 
-  // On wide screens the active card is narrower so a clear slice of the
-  // previous/next cards shows; on phones it is near-full-width with a hint.
-  const cardWidth = wide ? 70 : 90;
-
-  // Drive the stage height from the active panel so short steps don't leave a
+  // Drive the stage height from the active card so short steps don't leave a
   // tall gap and the container resizes smoothly between steps.
   useLayoutEffect(() => {
     const el = panelRefs.current[current];
@@ -64,20 +45,21 @@ export default function OnboardingStage({
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [current, steps, cardWidth]);
+  }, [current, steps]);
 
-  const panelTransition = reduce
+  const transition = reduce
     ? undefined
     : `transform ${SLIDE_MS}ms ${SLIDE_EASE}, opacity ${SLIDE_MS}ms ease`;
 
   return (
+    // overflow-visible lets the side cards extend into the page margins (the
+    // onboarding page clips the viewport with overflow-x-hidden). `--peek` is the
+    // sideways travel per step, smaller on wide screens where there is more room.
     <div
-      className={cn("relative w-full overflow-hidden", className)}
+      className={cn("relative w-full [--peek:78%] sm:[--peek:60%]", className)}
       style={{
         height,
         transition: reduce ? undefined : `height ${SLIDE_MS}ms ease`,
-        WebkitMaskImage: EDGE_FADE,
-        maskImage: EDGE_FADE,
       }}
     >
       {steps.map((panel, index) => {
@@ -93,24 +75,20 @@ export default function OnboardingStage({
             className="absolute inset-x-0 top-0 w-full"
             aria-hidden={!isActive}
             inert={isActive ? undefined : true}
-            style={{
-              pointerEvents: isActive ? "auto" : "none",
-              transform: `translateX(${offset * cardWidth}%)`,
-              transition: panelTransition,
-            }}
+            style={
+              {
+                "--off": String(offset),
+                zIndex: isActive ? 30 : isNeighbour ? 20 : 10,
+                pointerEvents: isActive ? "auto" : "none",
+                transform: `translateX(calc(var(--off) * var(--peek))) translateY(${
+                  isActive ? 0 : SIDE_DROP
+                }px) scale(${isActive ? 1 : SIDE_SCALE})`,
+                opacity: isActive ? 1 : isNeighbour ? SIDE_OPACITY : 0,
+                transition,
+              } as React.CSSProperties
+            }
           >
-            <div
-              className="mx-auto"
-              style={{
-                width: `${cardWidth}%`,
-                opacity: isActive ? 1 : isNeighbour ? PEEK_OPACITY : 0,
-                transform: `scale(${isActive ? 1 : PEEK_SCALE})`,
-                transformOrigin: offset < 0 ? "right center" : "left center",
-                transition: panelTransition,
-              }}
-            >
-              {panel}
-            </div>
+            <div className="mx-auto w-[86%] sm:w-[66%]">{panel}</div>
           </div>
         );
       })}
