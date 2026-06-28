@@ -1,6 +1,6 @@
 ---
 import { MobileNav } from "@/components/site/MobileNav";
-import { primaryNav, siteName } from "@/data/site";
+import { appLoginUrl, primaryNav, siteName } from "@/data/site";
 
 const ctaHref = "/demo";
 ---
@@ -40,7 +40,7 @@ const ctaHref = "/demo";
     <div class="flex items-center gap-2 sm:gap-3">
       <a
         class="hidden min-h-11 items-center rounded-full px-4 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] sm:inline-flex"
-        href="/login"
+        href={appLoginUrl}
       >
         Log in
       </a>
@@ -53,7 +53,7 @@ const ctaHref = "/demo";
       <MobileNav
         client:load
         links={primaryNav}
-        loginHref="/login"
+        loginHref={appLoginUrl}
         ctaHref={ctaHref}
       />
     </div>
