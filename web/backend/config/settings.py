@@ -103,13 +103,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOWED_ORIGINS = env.list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:11050"],
+    default=["http://localhost:11050", "http://localhost:11250"],
 )
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = env.list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
-    default=["http://localhost:11050"],
+    default=["http://localhost:11050", "http://localhost:11250"],
 )
 
 SESSION_COOKIE_HTTPONLY = True
