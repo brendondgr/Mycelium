@@ -2,6 +2,9 @@ export type AuthUser = {
   id: number;
   username: string;
   email: string;
+  /** Display name (full name when set, else username) and avatar initials. */
+  name?: string;
+  initials?: string;
   is_staff: boolean;
   is_superuser: boolean;
   /** False until the user finishes profile onboarding (saves research areas). */

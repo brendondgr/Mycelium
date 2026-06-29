@@ -1,5 +1,11 @@
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
-import type { LabMember, MyLab, Project } from "@/lib/portal/types";
+import type {
+  LabMember,
+  MyLab,
+  Project,
+  ProfileData,
+  WatchData,
+} from "@/lib/portal/types";
 
 /**
  * Browser-side reads for the workspace dashboard. GET-only, so no CSRF token is
@@ -37,4 +43,18 @@ export async function fetchProjects(labSlug?: string): Promise<Project[]> {
   const base = buildApiUrl(getPublicApiBase(), "projects");
   const url = labSlug ? `${base}?lab=${encodeURIComponent(labSlug)}` : base;
   return getJson<Project[]>(url, "Could not load your projects.");
+}
+
+export async function fetchProfile(): Promise<ProfileData> {
+  return getJson<ProfileData>(
+    buildApiUrl(getPublicApiBase(), "auth", "profile", "me"),
+    "Could not load your profile.",
+  );
+}
+
+export async function fetchWatch(): Promise<WatchData> {
+  return getJson<WatchData>(
+    buildApiUrl(getPublicApiBase(), "auth", "watch", "me"),
+    "Could not load your watch settings.",
+  );
 }

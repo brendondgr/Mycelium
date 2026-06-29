@@ -1,5 +1,7 @@
 /** Shapes returned by the workspace read endpoints (see docs/api-contract.md). */
 
+import type { ResearchInterests, WatchCadence } from "@/lib/auth-types";
+
 export type LabRole = "owner" | "admin" | "member" | "viewer";
 
 /** One of the signed-in user's lab memberships — powers the workspace switcher. */
@@ -41,6 +43,26 @@ export type Project = {
   member_count: number;
   members: ProjectMember[];
   updated_at: string;
+};
+
+/** The caller's own research profile (from `/api/auth/profile/me/`). */
+export type ProfileData = {
+  academic_title: string;
+  institution: string;
+  orcid: string;
+  openalex_id: string;
+  scholar_id: string;
+  interests: ResearchInterests;
+  is_verified: boolean;
+  embedding_text: string;
+  updated_at: string;
+};
+
+/** What Milo watches for the caller (from `/api/auth/watch/me/`). */
+export type WatchData = {
+  topics: string[];
+  categories: string[];
+  cadence: WatchCadence;
 };
 
 /** Synthetic "All labs" scope the switcher prepends client-side. */

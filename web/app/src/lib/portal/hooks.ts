@@ -2,7 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchLabMembers, fetchMyLabs, fetchProjects } from "@/lib/portal/client";
+import {
+  fetchLabMembers,
+  fetchMyLabs,
+  fetchProfile,
+  fetchProjects,
+  fetchWatch,
+} from "@/lib/portal/client";
 import { ALL_LABS_SLUG } from "@/lib/portal/types";
 
 /** The signed-in user's labs (workspace switcher). */
@@ -34,6 +40,24 @@ export function useLabMembers(slug?: string) {
     queryKey: ["portal", "members", slug ?? "none"],
     queryFn: () => fetchLabMembers(slug as string),
     enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** The caller's own research profile. */
+export function useProfile() {
+  return useQuery({
+    queryKey: ["portal", "profile"],
+    queryFn: fetchProfile,
+    staleTime: 60_000,
+  });
+}
+
+/** What Milo watches for the caller. */
+export function useWatch() {
+  return useQuery({
+    queryKey: ["portal", "watch"],
+    queryFn: fetchWatch,
     staleTime: 60_000,
   });
 }
