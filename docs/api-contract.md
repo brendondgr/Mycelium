@@ -33,10 +33,17 @@ Success `200` — authenticated user summary:
   "id": 1,
   "username": "string",
   "email": "string",
+  "name": "string",
+  "initials": "AB",
   "is_staff": false,
-  "is_superuser": false
+  "is_superuser": false,
+  "onboarding_completed": false
 }
 ```
+
+`name` is the full name when set (else the username) and `initials` is its
+one- or two-letter avatar form; the dashboard greets and labels the user with
+these. `onboarding_completed` is false until research interests are saved.
 
 Errors:
 

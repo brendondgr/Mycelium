@@ -1,7 +1,14 @@
 # Portal Home — Authenticated Lab Dashboard
 
 **Branch:** `claude/portal-home-dashboard` (merged to `main` on completion; no push)
-**Status:** In progress — planning complete; implementation underway.
+**Status:** Complete — Phases 0–7 implemented, browser-verified, and committed.
+Backend: 277 tests pass on SQLite and a fresh pgvector Postgres; `ruff` clean; no
+migration drift. Frontend: ESLint + `next build` (TypeScript) clean. The dashboard
+was walked in a real browser as a seeded PI across two lab scopes and both themes —
+real labs/projects/members/profile/watch render, unbuilt sections show honest
+placeholders, section transitions animate, and the theme toggle persists with no
+console errors. Backend endpoints also answer their no-trailing-slash form so a
+slash-stripping dev proxy cannot trigger a redirect loop.
 
 ## 1. Objective
 

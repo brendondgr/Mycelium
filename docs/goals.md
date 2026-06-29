@@ -255,7 +255,7 @@ Close the loop end-to-end. Test the system against real lab use cases, document 
 
 These features belong after the first draft. Design or note them where helpful, but do not block the November 14 target on them.
 
-- [ ] Add full dashboards that answer what changed, what matters, what needs review, and what the lab should do next.
+- [ ] Add full dashboards that answer what changed, what matters, what needs review, and what the lab should do next. *(Partial, ahead of sequence: the authenticated home feed at `/app` is now a compartmentalized "Portal Home" dashboard — a workspace switcher, sidebar, and eight sections. Overview, Projects, Goals, and Members read the signed-in account's real labs, projects, members, profile, and watch settings; Daily Reports, Opportunities, Deadlines, and Reports are honest "coming soon" states until their scoring/digest pipelines exist.)*
 - [ ] Add Discord and Slack integration for alerts and digests.
 - [ ] Add collaboration suggestions based on missing expertise, adjacent researchers, team skills, project needs, and proposal requirements.
 - [ ] Add a skill matrix that shows current strengths, gaps, training needs, and possible internal collaborators.
