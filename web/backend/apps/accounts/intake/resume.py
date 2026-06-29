@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import re
 from collections.abc import Callable
 from typing import Any
@@ -22,6 +23,8 @@ from typing import Any
 from .aggregate import aggregate
 from .drafts import AuthorProfileDraft
 from .errors import AuthorImportError
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "MAX_RESUME_BYTES",
@@ -163,6 +166,10 @@ def draft_from_resume(
     try:
         fields = _parse_llm_payload(ask(_build_prompt(text)))
     except Exception:
+        logger.warning(
+            "LLM résumé extraction failed; using heuristic fallback.",
+            exc_info=True,
+        )
         fields = None
     if fields is None:
         fields = _heuristic_fields(text)
@@ -181,15 +188,20 @@ def draft_from_resume(
 def _settings_complete(prompt: str) -> str | None:
     from apps.core.llm import LLMMessage, build_llm_client
 
+    # Honor the configured reasoning level and token budget; a small hardcoded
+    # cap starves reasoning models (see apps/accounts/intake/extract.py).
     client = build_llm_client()
     response = client.complete(
         [
             LLMMessage("system", _SYSTEM_PROMPT),
             LLMMessage("user", prompt),
-        ],
-        reasoning="low",
-        max_tokens=500,
+        ]
     )
+    if response.finish_reason == "length" and not (response.content or "").strip():
+        logger.warning(
+            "LLM résumé response was truncated (finish_reason=length) before "
+            "producing any answer; raise LLM_MAX_TOKENS."
+        )
     return response.content
 
 

@@ -11,8 +11,11 @@ deterministic fallback keeps the flow working offline and in CI.
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["FIELD_KEYS", "ProfileFields", "extract_profile_fields"]
 
@@ -58,14 +61,32 @@ def extract_profile_fields(
     corpus = (text or "").strip()
     if corpus:
         ask = complete if complete is not None else _settings_complete
-        parsed: ProfileFields | None = None
+        raw: str | None = None
         try:
-            parsed = _parse_fields(ask(_build_prompt(corpus)))
+            raw = ask(_build_prompt(corpus))
         except Exception:
-            # Any failure (no model, no SDK, network, bad response) -> fall back.
-            parsed = None
-        if parsed is not None and _has_signal(parsed):
-            return parsed
+            # Any failure (no model, no SDK, network, bad response) -> fall back,
+            # but make the reason visible: a silent fallback is indistinguishable
+            # from "the model is ignoring me".
+            logger.warning(
+                "LLM profile extraction failed; using deterministic fallback.",
+                exc_info=True,
+            )
+        else:
+            parsed = _parse_fields(raw)
+            if parsed is not None and _has_signal(parsed):
+                return parsed
+            if parsed is None:
+                logger.warning(
+                    "LLM returned no parseable JSON for profile extraction; "
+                    "using fallback. Response head: %r",
+                    (raw or "")[:300],
+                )
+            else:
+                logger.warning(
+                    "LLM profile extraction returned only empty fields; "
+                    "using fallback."
+                )
 
     if fallback is not None:
         return _normalize(fallback())
@@ -75,15 +96,22 @@ def extract_profile_fields(
 def _settings_complete(prompt: str) -> str | None:
     from apps.core.llm import LLMMessage, build_llm_client
 
+    # Use the configured reasoning level and token budget (LLM_REASONING /
+    # LLM_MAX_TOKENS). A hardcoded small cap here starves reasoning models: the
+    # reasoning trace eats the budget and the JSON answer is truncated to
+    # nothing, which then looks like the model "only filled skills".
     client = build_llm_client()
     response = client.complete(
         [
             LLMMessage("system", _SYSTEM_PROMPT),
             LLMMessage("user", prompt),
-        ],
-        reasoning="medium",
-        max_tokens=700,
+        ]
     )
+    if response.finish_reason == "length" and not (response.content or "").strip():
+        logger.warning(
+            "LLM response was truncated (finish_reason=length) before producing "
+            "any answer; raise LLM_MAX_TOKENS so the model can finish."
+        )
     return response.content
 
 
