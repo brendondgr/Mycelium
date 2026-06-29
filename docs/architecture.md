@@ -87,7 +87,8 @@ apps; ingestion, graph, and reporting are planned apps not yet built.
 | `content` | Matching layer: deduplicated content items (papers, grants, fellowships) keyed by source + external id, and per-target relevance scores |
 | `billing` | Subscriptions, per-seat billing, and tier-based entitlement resolution |
 | `planner` | Knowledge-graph query planning agent (routing, liveness, self-evaluation) |
-| _planned_ | `scraper` (ingestion + source registry), `graph` (Neo4j orchestration), `reports` (digests, reports, alerts) |
+| `scraper` | Literature ingestion: ported OpenAlex/PubMed/Semantic Scholar source scrapers + registry, a publication-date scan window (today −2mo → +1mo), cross-source and against-store de-duplication, optional fastembed embedding, and upsert into `content.ContentItem`. Triggered by a Celery task or `scan_literature` management command — a placeholder wired to no schedule or member profile yet |
+| _planned_ | `graph` (Neo4j orchestration), `reports` (digests, reports, alerts) |
 
 ## Data ownership
 

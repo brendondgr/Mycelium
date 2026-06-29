@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Django API and orchestration backend for Mycelium."
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "aiohttp>=3.10.0,<4.0.0",
     "celery>=5.5.0,<6.0.0",
     "django>=5.2.0,<6.0.0",
     "django-cors-headers>=4.7.0,<5.0.0",
@@ -23,6 +24,13 @@ dependencies = [
 # extra. Install with: uv sync --extra scrapers
 scrapers = [
     "scholarly>=1.7.0,<2.0.0",
+]
+# Local article embeddings for the literature-scan RAG store (apps.scraper).
+# Kept optional and lazily imported because fastembed pulls the ONNX runtime and
+# downloads model weights on first use. Install with: uv sync --extra embeddings
+embeddings = [
+    "fastembed>=0.8.0,<1.0.0",
+    "numpy>=2.0.0",
 ]
 
 [dependency-groups]

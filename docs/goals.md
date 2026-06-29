@@ -76,15 +76,15 @@ Establish project architecture, authentication, core data models, and the first 
 - [x] Define core data models: Paper, Grant, Fellowship, Lab, Person, Project, and ResearchArea. *(As built: a unified ContentItem covers papers, grants, and fellowships; Lab and Project are implemented; research areas are captured as profile and project interests; Person is deferred to the graph phase.)*
 - [x] Add project visibility over the org hierarchy: members see their projects, lab heads see their lab's projects, and a department head always sees every project of every lab under them (`Project.objects.visible_to`).
 - [x] Give content items a per-source dedup key (`source` + `external_id`, plus `source_url`) so re-scraping upserts instead of duplicating. *(The Week 4 deduplication item builds on this.)*
-- [ ] Build the scraper framework: base scraper class, rate limiting, retry logic, and source registry.
+- [x] Build the scraper framework: base scraper class, rate limiting, retry logic, and source registry. *(As built in `apps/scraper`: a `BaseScraper` with an async rate limiter + retry/backoff, OpenAlex/PubMed/Semantic Scholar source scrapers and a name→class registry, a publication-date scan window (today −2mo → +1mo), cross-source and against-store de-duplication, optional fastembed embedding, and upsert into `content.ContentItem` — exposed as a `scan_literature` Celery task and management command. A placeholder: not yet scheduled or fed by member profiles.)*
 
 **Milestone:** All core models migrated; base scraper framework in place.
 
 #### Week 4 · Jul 5–14
 
 - [ ] Ingest from at least five external sources: arXiv, Semantic Scholar, NIH Reporter, grants.gov, and one fellowship source (NSF GRFP or similar).
-- [ ] Implement deduplication and reliable raw ingestion into durable storage.
-- [ ] Set up Celery for background jobs.
+- [x] Implement deduplication and reliable raw ingestion into durable storage. *(Done for papers via `apps/scraper.ingest.scan`: cross-source identifier/fuzzy de-dup, an against-store skip so existing items are not re-embedded, and idempotent `ContentItem` upserts keyed by `(source, external_id)`. Breadth across the five sources below is still pending.)*
+- [ ] Set up Celery for background jobs. *(Partial: the `scan_literature` Celery task is registered and ready; Celery Beat scheduling is not yet configured.)*
 
 **Milestone:** Month 1 complete — 5+ sources ingesting reliably.
 

@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "apps.research",
     "apps.content",
     "apps.billing",
+    "apps.scraper",
 ]
 
 MIDDLEWARE = [
@@ -184,6 +185,16 @@ LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
 OPENALEX_API_KEY = env("OPEN_ALEX_API_KEY", default="")
 OPENALEX_MAILTO = env("OPENALEX_MAILTO", default="")
 SEMANTIC_SCHOLAR_API_KEY = env("SEMANTIC_SCHOLAR_API_KEY", default="")
+
+# Literature scan (apps.scraper). PubMed's key is optional (it only raises the
+# NCBI rate limit). The contact email is OpenAlex/NCBI etiquette; it falls back
+# to OPENALEX_MAILTO. The embedding model matches the ResearchScraper reranker
+# and runs via the optional `embeddings` extra (`uv sync --extra embeddings`).
+PUBMED_API_KEY = env("PUBMED_API_KEY", default="")
+SCRAPER_CONTACT_EMAIL = env("SCRAPER_CONTACT_EMAIL", default=OPENALEX_MAILTO)
+SCRAPER_EMBEDDING_MODEL = env(
+    "SCRAPER_EMBEDDING_MODEL", default="BAAI/bge-small-en-v1.5"
+)
 
 LOGGING = {
     "version": 1,
