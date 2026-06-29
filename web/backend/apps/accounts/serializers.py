@@ -21,6 +21,8 @@ def user_to_dict(user: User) -> dict[str, object]:
         "id": user.pk,
         "username": user.username,
         "email": user.email,
+        "name": display_name(user),
+        "initials": initials(user),
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
         "onboarding_completed": is_onboarding_complete(user),

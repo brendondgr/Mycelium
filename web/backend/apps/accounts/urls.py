@@ -17,6 +17,7 @@ urlpatterns = [
     path("me", views.me, name="auth-me-no-slash"),
     # Interest-profile read/update (object-level permissions).
     path("profile/me/", views.MyProfileView.as_view(), name="profile-me"),
+    path("profile/me", views.MyProfileView.as_view(), name="profile-me-no-slash"),
     # The caller's lab memberships (workspace switcher) + a lab's member roster.
     path("labs/", views.MyLabsView.as_view(), name="my-labs"),
     path("labs", views.MyLabsView.as_view(), name="my-labs-no-slash"),
@@ -24,6 +25,11 @@ urlpatterns = [
         "labs/<slug:slug>/members/",
         views.LabMembersView.as_view(),
         name="lab-members",
+    ),
+    path(
+        "labs/<slug:slug>/members",
+        views.LabMembersView.as_view(),
+        name="lab-members-no-slash",
     ),
     path(
         "labs/<slug:slug>/profile/",
@@ -37,6 +43,7 @@ urlpatterns = [
     ),
     # What Milo keeps an eye on (own only).
     path("watch/me/", views.MyWatchView.as_view(), name="watch-me"),
+    path("watch/me", views.MyWatchView.as_view(), name="watch-me-no-slash"),
     # Author import + intake session.
     path("intake/import/", views.ImportAuthorView.as_view(), name="intake-import"),
     path(
