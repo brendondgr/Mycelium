@@ -4,9 +4,10 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from apps.billing.services import ACCOUNT_TYPES
+from apps.core.people import display_name, initials
 
 from .interests import validate_interests as _validate_interests_contract
-from .models import DeptProfile, LabProfile, Profile, WatchPreference
+from .models import DeptProfile, LabMembership, LabProfile, Profile, WatchPreference
 from .services import is_onboarding_complete
 
 # Usernames that collide with top-level routes or reserved app paths.
@@ -182,3 +183,39 @@ class WatchPreferenceSerializer(serializers.ModelSerializer):
 
     def validate_categories(self, value: object) -> list[str]:
         return self._clean_string_list(value, "categories")
+
+
+class MyLabSerializer(serializers.Serializer):
+    """One of the caller's lab memberships, for the workspace switcher.
+
+    Serialized from a :class:`LabMembership` so the caller's ``role`` and
+    ``is_lead`` (PI) flag travel with the lab. The frontend turns these into a
+    display label; the backend stays honest and sends the raw role.
+    """
+
+    slug = serializers.CharField(source="lab.slug")
+    name = serializers.CharField(source="lab.name")
+    role = serializers.CharField()
+    is_lead = serializers.BooleanField()
+    department = serializers.SerializerMethodField()
+
+    def get_department(self, membership: LabMembership):
+        dept = membership.lab.department
+        return dept.name if dept else None
+
+
+class LabMemberSerializer(serializers.Serializer):
+    """A lab member as a read-only display row (from a ``LabMembership``)."""
+
+    username = serializers.CharField(source="user.username")
+    name = serializers.SerializerMethodField()
+    initials = serializers.SerializerMethodField()
+    email = serializers.CharField(source="user.email")
+    role = serializers.CharField()
+    is_lead = serializers.BooleanField()
+
+    def get_name(self, membership: LabMembership) -> str:
+        return display_name(membership.user)
+
+    def get_initials(self, membership: LabMembership) -> str:
+        return initials(membership.user)

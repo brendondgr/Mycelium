@@ -17,6 +17,14 @@ urlpatterns = [
     path("me", views.me, name="auth-me-no-slash"),
     # Interest-profile read/update (object-level permissions).
     path("profile/me/", views.MyProfileView.as_view(), name="profile-me"),
+    # The caller's lab memberships (workspace switcher) + a lab's member roster.
+    path("labs/", views.MyLabsView.as_view(), name="my-labs"),
+    path("labs", views.MyLabsView.as_view(), name="my-labs-no-slash"),
+    path(
+        "labs/<slug:slug>/members/",
+        views.LabMembersView.as_view(),
+        name="lab-members",
+    ),
     path(
         "labs/<slug:slug>/profile/",
         views.LabProfileView.as_view(),

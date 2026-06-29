@@ -158,3 +158,55 @@ created on first access with defaults. Body / response:
 `{ "topics": [...], "categories": [...], "cadence": "daily|weekly|realtime" }`.
 `topics` and `categories` are deduped string lists (≤ 50 each); an unknown
 cadence or a non-list value returns `400`.
+
+## Workspace reads (labs, members, projects)
+
+Read-only endpoints that back the authenticated dashboard. All require a session.
+
+### `GET /api/auth/labs/`
+
+The caller's lab memberships, for the workspace switcher. Success `200` — a list:
+
+```json
+[
+  { "slug": "reyes-lab", "name": "Reyes Lab", "role": "owner", "is_lead": true, "department": "Biology" }
+]
+```
+
+`role` is the raw membership role (`owner | admin | member | viewer`); `is_lead`
+marks a PI. `department` is the lab's department name or `null`. The frontend
+derives a human label (e.g. lead → "PI"). `401`/`403` when anonymous.
+
+### `GET /api/auth/labs/<slug>/members/`
+
+The roster of a lab the caller can access (any member may read). Success `200`:
+
+```json
+[
+  { "username": "lena", "name": "Lena Reyes", "initials": "LR", "email": "l@uni.edu", "role": "owner", "is_lead": true }
+]
+```
+
+Leads sort first. `403` for a non-member, `404` for an unknown slug.
+
+### `GET /api/projects/?lab=<slug>`
+
+Projects the caller may see under the lab/department visibility cascade
+(`Project.objects.visible_to`). The optional `lab` query param narrows to one
+lab's projects and never widens visibility. Success `200`:
+
+```json
+[
+  {
+    "id": "uuid", "name": "Drought study", "scope": "lab",
+    "scope_name": "Reyes Lab", "goals": { "...": "..." },
+    "status": "On track", "progress": 68, "member_count": 3,
+    "members": [{ "username": "lena", "name": "Lena Reyes", "initials": "LR" }],
+    "updated_at": "..."
+  }
+]
+```
+
+`scope` is `user | lab | department`. `status` and `progress` are read out of the
+free-form `goals` JSON when an author set them, else `null` (the model has no such
+columns). `401`/`403` when anonymous.

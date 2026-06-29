@@ -13,7 +13,7 @@ from rest_framework.decorators import (
     throttle_classes,
 )
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import SAFE_METHODS, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -31,7 +31,7 @@ from .intake import (
     synthesize_interests,
 )
 from .interests import validate_interests
-from .models import Department, Lab, WatchPreference
+from .models import Department, Lab, LabMembership, WatchPreference
 from .permissions import (
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
@@ -40,7 +40,9 @@ from .permissions import (
 )
 from .serializers import (
     DeptProfileSerializer,
+    LabMemberSerializer,
     LabProfileSerializer,
+    MyLabSerializer,
     ProfileSerializer,
     RegisterSerializer,
     WatchPreferenceSerializer,
@@ -229,6 +231,38 @@ class MyWatchView(RetrieveUpdateAPIView):
     def get_object(self) -> WatchPreference:
         watch, _ = WatchPreference.objects.get_or_create(user=self.request.user)
         return watch
+
+
+# -- Lab membership reads (workspace switcher + members list) ------------------
+
+
+class MyLabsView(ListAPIView):
+    """The labs the caller belongs to, with their role and PI flag (own only)."""
+
+    serializer_class = MyLabSerializer
+
+    def get_queryset(self):
+        return (
+            LabMembership.objects.filter(user=self.request.user)
+            .select_related("lab", "lab__department")
+            .order_by("lab__name")
+        )
+
+
+class LabMembersView(ListAPIView):
+    """Members of a lab the caller can access (any member may read the roster)."""
+
+    serializer_class = LabMemberSerializer
+
+    def get_queryset(self):
+        lab = get_object_or_404(Lab, slug=self.kwargs["slug"])
+        if not user_has_lab_access(self.request.user, lab):
+            raise PermissionDenied("You do not have access to this lab.")
+        return (
+            LabMembership.objects.filter(lab=lab)
+            .select_related("user")
+            .order_by("-is_lead", "user__username")
+        )
 
 
 # -- Author import + intake session (brief Phase G) ---------------------------
