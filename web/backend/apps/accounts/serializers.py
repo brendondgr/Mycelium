@@ -7,6 +7,7 @@ from apps.billing.services import ACCOUNT_TYPES
 
 from .interests import validate_interests as _validate_interests_contract
 from .models import DeptProfile, LabProfile, Profile, WatchPreference
+from .services import is_onboarding_complete
 
 # Usernames that collide with top-level routes or reserved app paths.
 RESERVED_USERNAMES = frozenset(
@@ -21,6 +22,7 @@ def user_to_dict(user: User) -> dict[str, object]:
         "email": user.email,
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
+        "onboarding_completed": is_onboarding_complete(user),
     }
 
 

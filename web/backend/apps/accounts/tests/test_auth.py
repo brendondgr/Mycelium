@@ -324,6 +324,28 @@ def test_register_then_onboarding_handoff(api_client: Client) -> None:
     assert profile.interests["keywords"] == ["metagenomics", "field sampling"]
 
 
+@pytest.mark.django_db
+def test_me_reports_onboarding_completion(api_client: Client) -> None:
+    """`/me` flips onboarding_completed false -> true once interests are saved."""
+    assert _register(api_client, _personal_payload()).status_code == 201
+
+    fresh = api_client.get("/api/auth/me/")
+    assert fresh.status_code == 200
+    assert fresh.json()["onboarding_completed"] is False
+
+    api_client.get("/api/auth/csrf/")
+    csrf = api_client.cookies["csrftoken"].value
+    api_client.patch(
+        "/api/auth/profile/me/",
+        data={"interests": {"version": 1, "areas": ["Genomics"]}},
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf,
+    )
+
+    done = api_client.get("/api/auth/me/")
+    assert done.json()["onboarding_completed"] is True
+
+
 # -- Email verification (scaffold) + throttling --------------------------------
 
 

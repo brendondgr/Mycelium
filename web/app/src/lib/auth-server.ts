@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { buildApiUrl, getServerApiBase } from "@/lib/api-url";
 import type { AuthUser } from "@/lib/auth-types";
@@ -38,4 +39,23 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   }
 
   return body;
+}
+
+/**
+ * Gate a workspace page on a signed-in, fully onboarded user.
+ *
+ * Anonymous visitors are sent to `/login`; signed-in users who have not finished
+ * onboarding are forced to `/app/onboarding` and cannot reach workspace pages
+ * until they complete it. Every authenticated page under `/app` (except the
+ * onboarding flow itself) should call this instead of `getCurrentUser`.
+ */
+export async function requireOnboardedUser(): Promise<AuthUser> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+  if (!user.onboarding_completed) {
+    redirect("/app/onboarding");
+  }
+  return user;
 }

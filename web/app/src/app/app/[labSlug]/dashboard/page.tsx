@@ -1,10 +1,13 @@
 import Link from "next/link";
 
+import { requireOnboardedUser } from "@/lib/auth-server";
+
 type LabDashboardPageProps = {
   params: Promise<{ labSlug: string }>;
 };
 
 export default async function LabDashboardPage({ params }: LabDashboardPageProps) {
+  await requireOnboardedUser();
   const { labSlug } = await params;
 
   return (

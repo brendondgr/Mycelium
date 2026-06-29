@@ -21,6 +21,20 @@ def record_audit_event(
     )
 
 
+def is_onboarding_complete(user: User) -> bool:
+    """True once the user has finished profile onboarding.
+
+    The intake confirm step (``POST /api/auth/intake/confirm/``) persists
+    ``Profile.interests`` with a required, non-empty ``areas`` list. Its presence
+    is the canonical "onboarded" marker: a freshly registered user starts with an
+    empty interests dict and only gains ``areas`` after completing onboarding.
+    """
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        return False
+    return bool((profile.interests or {}).get("areas"))
+
+
 def get_lab_for_user(user: User, slug: str) -> Lab | None:
     if user.is_superuser:
         return Lab.objects.filter(slug=slug).first()

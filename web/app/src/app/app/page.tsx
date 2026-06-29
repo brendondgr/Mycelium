@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { LogoutButton } from "@/components/auth/logout-button";
-import { getCurrentUser } from "@/lib/auth-server";
+import { requireOnboardedUser } from "@/lib/auth-server";
 
 const workspaceAreas = [
   "Research feed",
@@ -12,10 +11,7 @@ const workspaceAreas = [
 ];
 
 export default async function WorkspacePage() {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
+  const user = await requireOnboardedUser();
 
   return (
     <main className="min-h-screen bg-background text-foreground">

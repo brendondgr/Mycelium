@@ -101,6 +101,7 @@ export async function login(
     email: body.email,
     is_staff: body.is_staff,
     is_superuser: body.is_superuser,
+    onboarding_completed: Boolean(body.onboarding_completed),
   };
 }
 
@@ -142,6 +143,7 @@ export async function register(input: RegisterInput): Promise<AuthUser> {
     email: body.email,
     is_staff: body.is_staff,
     is_superuser: body.is_superuser,
+    onboarding_completed: Boolean(body.onboarding_completed),
   };
 }
 

@@ -4,6 +4,8 @@ export type AuthUser = {
   email: string;
   is_staff: boolean;
   is_superuser: boolean;
+  /** False until the user finishes profile onboarding (saves research areas). */
+  onboarding_completed: boolean;
 };
 
 export type AuthErrorBody = {
