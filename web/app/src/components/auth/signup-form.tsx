@@ -187,9 +187,17 @@ export function SignupForm() {
                 className={cn(
                   "flex flex-col gap-3 rounded-2xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
                   selected
-                    ? "border-primary bg-[color-mix(in_srgb,var(--primary)_8%,var(--card))]"
+                    ? "border-primary"
                     : "border-border bg-card hover:border-brand-secondary",
                 )}
+                style={
+                  selected
+                    ? {
+                        backgroundColor:
+                          "color-mix(in srgb, var(--primary) 8%, var(--card))",
+                      }
+                    : undefined
+                }
               >
                 <span className="flex items-start justify-between">
                   <span
