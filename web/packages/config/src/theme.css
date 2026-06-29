@@ -29,6 +29,9 @@
   --color-brand-panel-foreground: var(--brand-panel-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-clay: var(--clay);
+  --color-clay-soft: var(--clay-soft);
+  --color-divider: var(--divider);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -72,6 +75,11 @@
   --divider: #e8e0d1;
   --success: #6f8f4e;
   --warning: #b88a3b;
+  /* Terracotta — urgency/deadline signals on the dashboard (not opportunity gold). */
+  --clay: #a85a3c;
+  --clay-soft: #f0ddcf;
+  /* Warm, soft dashboard card shadow (style guide: warm shadows, not harsh). */
+  --shadow: 0 1px 2px rgba(46, 54, 39, 0.05), 0 8px 20px rgba(46, 54, 39, 0.05);
   --radius: 0.5rem;
 }
 
@@ -110,4 +118,7 @@
   --divider: #2b3427;
   --success: #94b36b;
   --warning: #d0a257;
+  --clay: #d98c6a;
+  --clay-soft: #3a2a22;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 26px rgba(0, 0, 0, 0.32);
 }

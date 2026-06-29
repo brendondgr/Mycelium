@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { AppShell } from "@/components/layout/app-shell";
 import { BodyHydrationGuard } from "@/components/layout/body-hydration-guard";
+import { ThemeScript } from "@/components/layout/theme-script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,6 +50,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
+        <ThemeScript />
         <BodyHydrationGuard />
         <AppShell>
           <Providers>{children}</Providers>
