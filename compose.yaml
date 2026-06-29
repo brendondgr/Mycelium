@@ -74,8 +74,17 @@ services:
       - "${BACKEND_PORT:-11350}:8000"
     volumes:
       - .:/app
+    # `.env.example` ships safe defaults; a developer's `.env` (optional)
+    # overrides them — later files win, so LLM_* and any other overrides in
+    # `.env` actually reach the container.
     env_file:
       - .env.example
+      - path: .env
+        required: false
+    # Let the container reach services bound to the host (e.g. a vLLM server on
+    # localhost): set LLM_BASE_URL to http://host.docker.internal:<port>/v1.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DATABASE_URL: postgres://mycelium:mycelium@postgres:5432/mycelium
       REDIS_URL: redis://redis:6379/0
@@ -86,9 +95,6 @@ services:
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
       DJANGO_CORS_ALLOWED_ORIGINS: http://localhost:11050,http://localhost:11250
       DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:11050,http://localhost:11250
-      # LLM_* come from .env.example. The endpoint is external (no compose
-      # service); to reach a vLLM server on the host, override LLM_BASE_URL with
-      # http://host.docker.internal:8001/v1 in your .env.
     depends_on:
       backend-deps:
         condition: service_completed_successfully
@@ -109,8 +115,14 @@ services:
     restart: on-failure
     volumes:
       - .:/app
+    # `.env` (optional) overrides the `.env.example` defaults — later files win.
     env_file:
       - .env.example
+      - path: .env
+        required: false
+    # Reach host-bound services (e.g. a vLLM server) via host.docker.internal.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DATABASE_URL: postgres://mycelium:mycelium@postgres:5432/mycelium
       REDIS_URL: redis://redis:6379/0
@@ -118,7 +130,6 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       NEO4J_URI: bolt://neo4j:7687
       S3_ENDPOINT_URL: http://minio:9000
-      # LLM_* come from .env.example; override LLM_BASE_URL for a host-run server.
     depends_on:
       backend-deps:
         condition: service_completed_successfully
