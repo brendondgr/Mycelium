@@ -61,7 +61,9 @@ services:
   backend-deps:
     image: ghcr.io/astral-sh/uv:python3.13-bookworm
     working_dir: /app
-    command: sh -c "uv sync --project web/backend"
+    # `--extra scrapers` pulls in `scholarly` so Google Scholar import works.
+    # This shared venv (web/backend/.venv) is used by both backend and worker.
+    command: sh -c "uv sync --project web/backend --extra scrapers"
     volumes:
       - .:/app
 
