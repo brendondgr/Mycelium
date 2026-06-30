@@ -51,11 +51,6 @@ INTAKE_FIELDS: tuple[IntakeField, ...] = (
         "career_stage",
     ),
     IntakeField(
-        "methods",
-        "Which methods or techniques do you mainly use? (comma-separated)",
-        "list",
-    ),
-    IntakeField(
         "funding_needs",
         "What kinds of funding are you looking for? (comma-separated, or 'none')",
         "list",
@@ -172,7 +167,7 @@ class IntakeAgent:
         statement = interests.get("statement")
         if statement:
             lines.append(f"  Summary: {statement}")
-        for key in ("areas", "methods", "keywords", "funding_needs", "exclusions"):
+        for key in ("areas", "keywords", "funding_needs", "exclusions"):
             values = interests.get(key)
             if values:
                 label = key.replace("_", " ").title()

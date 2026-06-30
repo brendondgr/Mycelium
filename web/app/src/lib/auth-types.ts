@@ -39,7 +39,6 @@ export type ResearchInterests = {
   areas: string[];
   statement?: string;
   keywords?: string[];
-  methods?: string[];
   skills?: string[];
   sources?: Record<string, unknown>;
 };
@@ -50,7 +49,6 @@ export type ResearchDraft = {
   institution: string;
   areas: string[];
   keywords: string[];
-  methods: string[];
   skills: string[];
   coauthors: string[];
   external_ids: Record<string, string>;

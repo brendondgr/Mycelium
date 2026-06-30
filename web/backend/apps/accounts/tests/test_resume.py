@@ -115,7 +115,6 @@ def test_heuristic_extracts_sectioned_fields() -> None:
     draft = draft_from_resume(RESUME_TEXT, complete=lambda _p: None)
     assert isinstance(draft, AuthorProfileDraft)
     assert "computational mathematics" in draft.areas
-    assert "formal proofs" in draft.methods
     assert "Python" in draft.skills
     assert "recursion" in draft.keywords
     assert draft.display_name == "Ada Lovelace"

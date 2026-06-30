@@ -37,6 +37,7 @@ from apps.accounts.models import (
     Lab,
     LabMembership,
     Profile,
+    WatchPreference,
 )
 
 DEMO_DOMAIN = "demo.mycelium.test"
@@ -286,10 +287,17 @@ class Command(BaseCommand):
         user.save()  # post_save signal creates the Profile
         self.passwords[user.id] = password
 
+        interests = self._make_interests(resolved_title, resolved_areas)
         Profile.objects.filter(user=user).update(
             academic_title=resolved_title,
             institution=institution or "",
-            interests=self._make_interests(resolved_title, resolved_areas),
+            interests=interests,
+        )
+        # Watch topics are the sole source of literature-scan queries, so give
+        # every demo user a radar seeded from their research areas.
+        WatchPreference.objects.update_or_create(
+            user=user,
+            defaults={"topics": list(interests["areas"])},
         )
         return user
 

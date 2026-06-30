@@ -26,15 +26,22 @@ def test_user_reads_and_updates_own_profile(client: APIClient) -> None:
 
     resp = client.patch(
         "/api/auth/profile/me/",
-        {"institution": "Cascadia", "interests": {"version": 1, "areas": ["genomics"]}},
+        {
+            "institution": "Cascadia",
+            "interests": {
+                "version": 1,
+                "areas": ["genomics"],
+                "keywords": ["genome sequencing"],
+            },
+        },
         format="json",
     )
     assert resp.status_code == 200
     user.profile.refresh_from_db()
     assert user.profile.institution == "Cascadia"
     assert user.profile.interests["areas"] == ["genomics"]
-    # The embedding hook ran on save.
-    assert "Areas: genomics" in user.profile.embedding_text
+    # The embedding hook ran on save; Profile embeds statement + keywords only.
+    assert "Keywords: genome sequencing" in user.profile.embedding_text
 
 
 @pytest.mark.django_db

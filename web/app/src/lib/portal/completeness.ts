@@ -31,9 +31,8 @@ export function computeCompleteness(
       done: Boolean(interests.statement && interests.statement.trim()),
     },
     {
-      label: "Keywords & methods",
-      done:
-        (interests.keywords?.length ?? 0) + (interests.methods?.length ?? 0) > 0,
+      label: "Keywords",
+      done: (interests.keywords?.length ?? 0) > 0,
     },
     {
       label: "Institution",

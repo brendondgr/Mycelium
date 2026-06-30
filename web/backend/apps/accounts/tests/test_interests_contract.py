@@ -15,7 +15,6 @@ def test_valid_v1_payload_accepted() -> None:
         "version": 1,
         "statement": "I study cortical circuits.",
         "areas": ["computational neuroscience"],
-        "methods": ["electrophysiology"],
         "keywords": ["cortex", "spiking"],
         "skills": ["Python"],
         "funding_needs": ["NIH"],

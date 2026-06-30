@@ -36,7 +36,6 @@ def merge_drafts(*drafts: AuthorProfileDraft | None) -> AuthorProfileDraft:
             merged.institution = draft.institution
         merged.areas.extend(draft.areas)
         merged.keywords.extend(draft.keywords)
-        merged.methods.extend(draft.methods)
         merged.skills.extend(draft.skills)
         merged.coauthors.extend(draft.coauthors)
         merged.evidence.extend(draft.evidence)

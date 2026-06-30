@@ -3,7 +3,7 @@
 This is the engine behind onboarding's "Grow my profile": given the gathered
 text about a researcher — their works' titles, declared interests, and/or an
 uploaded résumé — one call to the configured language model returns a single JSON
-object holding every interest field at once (statement, areas, keywords, methods,
+object holding every interest field at once (statement, areas, keywords,
 skills). When no model is configured (or the call fails), an injectable
 deterministic fallback keeps the flow working offline and in CI.
 """
@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["FIELD_KEYS", "ProfileFields", "extract_profile_fields"]
 
-# The five interest fields the model fills (everything a profile needs from text).
-FIELD_KEYS = ("statement", "areas", "keywords", "methods", "skills")
+# The interest fields the model fills (everything a profile needs from text).
+FIELD_KEYS = ("statement", "areas", "keywords", "skills")
 
 ProfileFields = dict[str, Any]
 CompleteFn = Callable[[str], str | None]
@@ -35,7 +35,6 @@ _SYSTEM_PROMPT = (
     '  "statement": a 2-4 sentence first-person research summary,\n'
     '  "areas": list of research areas or fields,\n'
     '  "keywords": list of specific topics or keywords,\n'
-    '  "methods": list of techniques or methodologies,\n'
     '  "skills": list of tools, languages, and technical skills.\n'
     "Ground every value in the supplied text — do not invent topics, "
     "affiliations, or accomplishments. Use an empty string or empty list when "
@@ -50,7 +49,7 @@ def extract_profile_fields(
     complete: CompleteFn | None = None,
     fallback: FallbackFn | None = None,
 ) -> ProfileFields:
-    """Return ``{statement, areas, keywords, methods, skills}`` for ``text``.
+    """Return ``{statement, areas, keywords, skills}`` for ``text``.
 
     Tries the LLM seam first (``complete``; defaults to the configured endpoint).
     If the model is unavailable, errors, or returns nothing usable, calls
@@ -143,7 +142,6 @@ def _normalize(data: ProfileFields) -> ProfileFields:
         "statement": _as_str(data.get("statement") or data.get("summary")),
         "areas": _as_list(data.get("areas")),
         "keywords": _as_list(data.get("keywords")),
-        "methods": _as_list(data.get("methods")),
         "skills": _as_list(data.get("skills")),
     }
 
@@ -153,13 +151,12 @@ def _has_signal(fields: ProfileFields) -> bool:
         fields["statement"]
         or fields["areas"]
         or fields["keywords"]
-        or fields["methods"]
         or fields["skills"]
     )
 
 
 def _empty() -> ProfileFields:
-    return {"statement": "", "areas": [], "keywords": [], "methods": [], "skills": []}
+    return {"statement": "", "areas": [], "keywords": [], "skills": []}
 
 
 def _as_str(value: Any) -> str:

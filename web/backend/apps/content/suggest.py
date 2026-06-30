@@ -123,9 +123,8 @@ def _profile_text(interests: dict) -> str:
     if statement:
         bits.append(statement)
     for label, key in (
-        ("Areas", "areas"),
+        ("Research focus", "areas"),
         ("Keywords", "keywords"),
-        ("Methods", "methods"),
     ):
         values = _clean_list(interests.get(key))
         if values:
@@ -225,7 +224,7 @@ def _overlap_term(interests: dict, item: ContentItem) -> str:
     haystack = f"{meta.get('title', '')} {meta.get('abstract', '')}".casefold()
     if not haystack.strip():
         return ""
-    for key in ("keywords", "areas", "methods"):
+    for key in ("keywords", "areas"):
         for term in _clean_list(interests.get(key)):
             if term.casefold() in haystack:
                 return term

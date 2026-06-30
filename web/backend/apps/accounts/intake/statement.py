@@ -1,6 +1,6 @@
 """Natural-language research statement synthesis from an author draft.
 
-The importer aggregates *signal* (areas, keywords, methods, a few representative
+The importer aggregates *signal* (areas, keywords, a few representative
 work titles); this module turns that signal into the first-person research
 *statement* a researcher would write about their own focus — the prose the
 onboarding review step pre-fills and the user then edits.
@@ -29,7 +29,7 @@ _DEFAULT_MAX_CHARS = 700
 
 _SYSTEM_PROMPT = (
     "You write concise, first-person research statements for a scholar's profile. "
-    "Given a researcher's areas, keywords, methods, and a few representative work "
+    "Given a researcher's areas, keywords, and a few representative work "
     "titles, write 2-4 plain sentences summarizing what they research and how. "
     "Write in the first person ('I research...'). Ground every claim in the "
     "provided signal — do not invent topics, affiliations, or accomplishments. "
@@ -48,10 +48,10 @@ def draft_statement(
     Tries the LLM seam first (``complete``; defaults to the configured endpoint),
     and falls back to a deterministic template when the model is unavailable,
     unconfigured, errors, or returns blank text. Returns ``""`` when the draft
-    carries no usable signal (no areas, keywords, or methods).
+    carries no usable signal (no areas or keywords).
     """
 
-    if not (draft.areas or draft.keywords or draft.methods):
+    if not (draft.areas or draft.keywords):
         return ""
 
     ask = complete if complete is not None else _settings_complete
@@ -100,8 +100,6 @@ def _build_prompt(draft: AuthorProfileDraft) -> str:
         lines.append("Research areas: " + ", ".join(draft.areas[:12]))
     if draft.keywords:
         lines.append("Keywords: " + ", ".join(draft.keywords[:15]))
-    if draft.methods:
-        lines.append("Methods: " + ", ".join(draft.methods[:10]))
     titles = [
         str(item.get("title", "")).strip()
         for item in draft.evidence
@@ -124,9 +122,6 @@ def _fallback_statement(draft: AuthorProfileDraft, max_chars: int) -> str:
     if keywords:
         lead = "Recurring themes in my work include" if parts else "My work explores"
         parts.append(f"{lead} {keywords}.")
-    methods = _humanize(draft.methods[:4])
-    if methods:
-        parts.append(f"I work primarily with {methods}.")
     return _truncate(" ".join(parts), max_chars)
 
 

@@ -16,7 +16,6 @@ from .drafts import AuthorProfileDraft
 
 AREA_CAP = 12
 KEYWORD_CAP = 20
-METHOD_CAP = 12
 SKILL_CAP = 15
 COAUTHOR_CAP = 25
 
@@ -46,7 +45,6 @@ def aggregate(
     *,
     area_cap: int = AREA_CAP,
     keyword_cap: int = KEYWORD_CAP,
-    method_cap: int = METHOD_CAP,
     skill_cap: int = SKILL_CAP,
     coauthor_cap: int = COAUTHOR_CAP,
 ) -> AuthorProfileDraft:
@@ -56,7 +54,6 @@ def aggregate(
         draft,
         areas=rank_terms(draft.areas, cap=area_cap),
         keywords=rank_terms(draft.keywords, cap=keyword_cap),
-        methods=rank_terms(draft.methods, cap=method_cap),
         skills=rank_terms(draft.skills, cap=skill_cap),
         coauthors=rank_terms(draft.coauthors, cap=coauthor_cap),
     )

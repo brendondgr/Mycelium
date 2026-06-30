@@ -68,8 +68,6 @@ def build_corpus(draft: AuthorProfileDraft | None, resume_text: str) -> str:
             parts.append("Declared areas: " + ", ".join(draft.areas))
         if draft.keywords:
             parts.append("Keywords: " + ", ".join(draft.keywords))
-        if draft.methods:
-            parts.append("Methods: " + ", ".join(draft.methods))
         titles = [
             str(item.get("title", "")).strip()
             for item in draft.evidence
@@ -100,7 +98,6 @@ def _fields_from_draft(draft: AuthorProfileDraft) -> ProfileFields:
         "statement": draft_statement(draft, complete=lambda _prompt: None),
         "areas": list(draft.areas),
         "keywords": list(draft.keywords),
-        "methods": list(draft.methods),
         "skills": list(draft.skills),
     }
 
@@ -118,8 +115,6 @@ def _interests_from_fields(
         interests["statement"] = fields["statement"]
     if fields["keywords"]:
         interests["keywords"] = list(fields["keywords"])
-    if fields["methods"]:
-        interests["methods"] = list(fields["methods"])
     if fields["skills"]:
         interests["skills"] = list(fields["skills"])
 

@@ -3,11 +3,21 @@
 For one user this strings the existing pieces into the daily loop the product has
 been building toward:
 
-    profile interests ─► literature scan (ingest fresh papers + embed them)
-                      ─► embed the profile into the same space
+    watch topics      ─► literature scan (ingest fresh papers + embed them)
+    profile interests ─► embed the profile (statement + keywords) into that space
                       ─► pgvector retrieve the nearest papers (RAG)
+                      ─► re-rank by research focus (weighted areas boost)
                       ─► language-model suggestions (with a deterministic fallback)
                       ─► persist as RelevanceScore rows (score + digest signals)
+
+The two halves draw on *different* parts of the profile, by design:
+
+- The **search** is driven solely by the user's :class:`WatchPreference` topics —
+  the one place that decides what literature gets pulled in at all.
+- The **ranking** uses the profile's semantic vector (statement + keywords) for
+  retrieval, then the declared research focus (``interests.areas``) as a weighted
+  re-rank boost; the focus and keywords are also handed to the language model so
+  it can judge and explain why a paper matters to *this* researcher.
 
 It runs for *every* user (see :mod:`apps.content.tasks`); a single run is scoped
 here so it can be tested and triggered in isolation. Every external seam — the
@@ -22,6 +32,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 
@@ -31,6 +42,7 @@ from apps.scraper.window import ScanWindow
 
 from . import embeddings
 from .models import RelevanceScore
+from .ranking import DEFAULT_FOCUS_WEIGHT, RankedHit, rerank_by_focus
 from .retrieval import retrieve_for_vector
 from .suggest import CompleteFn, generate_suggestions
 
@@ -52,7 +64,7 @@ class RunResult:
     """A JSON-able report of one user's run."""
 
     username: str
-    status: str  # ok | no_profile | no_interests | no_embedder | no_results
+    status: str  # ok | no_profile | no_watch_topics | no_embedder | no_results
     queries: list[str] = field(default_factory=list)
     scanned_new: int = 0
     embedded: int = 0
@@ -66,19 +78,29 @@ class RunResult:
         return asdict(self)
 
 
-def build_queries(interests: dict, *, limit: int = DEFAULT_QUERY_LIMIT) -> list[str]:
-    """Search terms for a profile: its research areas then specific keywords."""
-    interests = interests or {}
+def build_queries(topics: list[str], *, limit: int = DEFAULT_QUERY_LIMIT) -> list[str]:
+    """Dedupe and cap the user's watch topics into literature-scan queries.
+
+    The watch topics are the *sole* source of search terms — nothing in the
+    interests profile drives the scan. Order is preserved (the user's stated
+    priority); duplicates collapse case-insensitively.
+    """
     terms: list[str] = []
     seen: set[str] = set()
-    for key in ("areas", "keywords"):
-        for value in interests.get(key) or []:
-            text = " ".join(str(value).split())
-            fold = text.casefold()
-            if text and fold not in seen:
-                seen.add(fold)
-                terms.append(text)
+    for value in topics or []:
+        text = " ".join(str(value).split())
+        fold = text.casefold()
+        if text and fold not in seen:
+            seen.add(fold)
+            terms.append(text)
     return terms[:limit]
+
+
+def _watch_topics(user: User) -> list[str]:
+    """The user's watch topics, or an empty list if they never set any."""
+    watch = getattr(user, "watch", None)
+    topics = getattr(watch, "topics", None) or []
+    return [str(topic) for topic in topics]
 
 
 def run_for_user(
@@ -90,6 +112,7 @@ def run_for_user(
     query_limit: int = DEFAULT_QUERY_LIMIT,
     top_k: int = DEFAULT_TOP_K,
     suggestion_limit: int = DEFAULT_SUGGESTIONS,
+    focus_weight: float | None = None,
     embed: bool = True,
     persist: bool = True,
     complete: CompleteFn | None = None,
@@ -97,8 +120,10 @@ def run_for_user(
     scan_embedder=None,
     log: Callable[[str], None] | None = None,
 ) -> RunResult:
-    """Run the scan → RAG → suggest pipeline for one user and store the result."""
+    """Run the scan → RAG → re-rank → suggest pipeline for one user and store it."""
     username = user.get_username()
+    if focus_weight is None:
+        focus_weight = getattr(settings, "AREA_FOCUS_WEIGHT", DEFAULT_FOCUS_WEIGHT)
 
     def emit(message: str) -> None:
         if log is not None:
@@ -110,11 +135,14 @@ def run_for_user(
         return RunResult(username, "no_profile", note="user has no profile")
 
     interests = profile.interests or {}
-    queries = build_queries(interests, limit=query_limit)
+
+    # The search is driven *only* by the user's watch topics — the profile's
+    # areas/keywords shape ranking, never the scan query set.
+    queries = build_queries(_watch_topics(user), limit=query_limit)
     if not queries:
-        emit("no areas/keywords in profile; skipping")
+        emit("no watch topics set; skipping (nothing to search for)")
         return RunResult(
-            username, "no_interests", note="profile has no areas/keywords"
+            username, "no_watch_topics", note="user has no watch topics to search"
         )
 
     emit(
@@ -162,10 +190,23 @@ def run_for_user(
             embedded=summary.embedded,
             note="no embedded papers to retrieve yet",
         )
-    emit(f"retrieved {len(hits)} papers (top_k={top_k})")
+
+    # Re-rank the semantic hits by research focus: a paper that names one of the
+    # user's focus areas is nudged up. With no areas this is an order-preserving
+    # no-op, so retrieval order survives unchanged.
+    areas = interests.get("areas") or []
+    ranked = rerank_by_focus(hits, areas, weight=focus_weight)
+    boosted = sum(1 for hit in ranked if hit.focus_overlap > 0)
+    emit(
+        f"retrieved {len(ranked)} papers (top_k={top_k}); "
+        f"{boosted} focus-boosted (weight={focus_weight})"
+    )
 
     suggestions = generate_suggestions(
-        interests, hits, limit=suggestion_limit, complete=complete
+        interests,
+        [(hit.item, hit.similarity) for hit in ranked],
+        limit=suggestion_limit,
+        complete=complete,
     )
     llm = sum(1 for s in suggestions if s["source"] == "llm")
     emit(
@@ -174,7 +215,7 @@ def run_for_user(
     )
 
     if persist:
-        _persist(user, hits, suggestions)
+        _persist(user, ranked, suggestions)
 
     return RunResult(
         username,
@@ -182,25 +223,31 @@ def run_for_user(
         queries=queries,
         scanned_new=summary.new,
         embedded=summary.embedded,
-        retrieved=len(hits),
+        retrieved=len(ranked),
         suggestions=len(suggestions),
         llm=llm,
         fallback=len(suggestions) - llm,
     )
 
 
-def _persist(user: User, hits, suggestions) -> None:
+def _persist(user: User, ranked: list[RankedHit], suggestions) -> None:
     """Upsert one RelevanceScore per retrieved item; flag the suggested subset.
 
-    A single ``run_at`` stamp marks this run so the daily-report endpoint can show
-    the latest run's suggestions and ignore items promoted by earlier runs.
+    The persisted ``score`` is the blended focus-weighted score the digest ranks
+    by; ``signals`` keeps the raw similarity and focus boost alongside it so the
+    ranking stays auditable. A single ``run_at`` stamp marks this run so the
+    daily-report endpoint can show the latest run's suggestions and ignore items
+    promoted by earlier runs.
     """
     run_at = timezone.now().isoformat()
     suggested = {s["content_id"]: s for s in suggestions}
-    for item, similarity in hits:
+    for hit in ranked:
+        item = hit.item
         promoted = suggested.get(str(item.id))
         signals = {
-            "similarity": round(float(similarity), 4),
+            "similarity": round(hit.similarity, 4),
+            "focus_overlap": round(hit.focus_overlap, 4),
+            "focus_areas": hit.matched_areas,
             "run_at": run_at,
             "suggested": promoted is not None,
         }
@@ -214,5 +261,5 @@ def _persist(user: User, hits, suggestions) -> None:
         RelevanceScore.objects.update_or_create(
             content=item,
             target_user=user,
-            defaults={"score": round(float(similarity), 6), "signals": signals},
+            defaults={"score": round(hit.score, 6), "signals": signals},
         )

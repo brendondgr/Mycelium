@@ -9,7 +9,6 @@ def _draft(**kwargs) -> AuthorProfileDraft:
         institution="Analytical Engine Institute",
         areas=["computational mathematics", "theory of computation"],
         keywords=["recursion", "algorithms"],
-        methods=["formal proofs", "simulation"],
         evidence=[{"title": "Notes on the Analytical Engine"}],
     )
     base.update(kwargs)
@@ -19,23 +18,22 @@ def _draft(**kwargs) -> AuthorProfileDraft:
 # -- deterministic fallback (no model) ----------------------------------------
 
 
-def test_fallback_weaves_areas_keywords_methods() -> None:
+def test_fallback_weaves_areas_keywords() -> None:
     # No `complete` seam and no configured model -> deterministic template.
     statement = draft_statement(_draft(), complete=lambda _prompt: None)
     assert statement
     assert "computational mathematics" in statement
     assert "recursion" in statement
-    assert "formal proofs" in statement
 
 
 def test_fallback_from_areas_only() -> None:
-    draft = _draft(keywords=[], methods=[], evidence=[])
+    draft = _draft(keywords=[], evidence=[])
     statement = draft_statement(draft, complete=lambda _prompt: None)
     assert "computational mathematics" in statement
 
 
 def test_empty_draft_returns_empty_string() -> None:
-    draft = AuthorProfileDraft(display_name="Nobody")  # no areas/keywords/methods
+    draft = AuthorProfileDraft(display_name="Nobody")  # no areas/keywords
     assert draft_statement(draft, complete=lambda _prompt: "anything") == ""
 
 

@@ -60,13 +60,11 @@ def test_answers_fill_contract_fields() -> None:
         state,
         {
             "eligibility": "postdoc",
-            "methods": "formal proofs, simulation",
             "funding_needs": "NSF",
             "exclusions": "none",
         },
     )
     assert state.done
-    assert state.interests["methods"] == ["formal proofs", "simulation"]
     assert state.interests["eligibility"]["career_stage"] == "postdoc"
     assert state.interests["funding_needs"] == ["NSF"]
 
@@ -78,7 +76,7 @@ def test_answers_fill_contract_fields() -> None:
 def test_import_draft_confirms_and_saves_valid_profile() -> None:
     agent = IntakeAgent()
     state = agent.start(draft=_draft())
-    state = _run(agent, state, {"eligibility": "pi", "methods": "modeling"})
+    state = _run(agent, state, {"eligibility": "pi"})
 
     # Confirmation summary shown before save.
     summary = agent.summary(state)
@@ -97,7 +95,8 @@ def test_import_draft_confirms_and_saves_valid_profile() -> None:
     assert "computational mathematics" in profile.interests["areas"]
     assert profile.interests["sources"]["openalex"] == "A5023888391"
     # The embedding hook (Phase F) wrote the canonical text on save.
-    assert "Areas:" in profile.embedding_text
+    # Profile embeds statement + keywords only (areas are excluded).
+    assert profile.embedding_text != ""
 
 
 @pytest.mark.django_db

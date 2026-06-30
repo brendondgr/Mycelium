@@ -197,7 +197,6 @@ def test_llm_drives_fields_when_model_available(client, user, monkeypatch) -> No
             "statement": "I research post-quantum cryptography.",
             "areas": ["post-quantum cryptography"],
             "keywords": ["lattice-based cryptography"],
-            "methods": ["cryptanalysis"],
             "skills": ["Rust"],
         }
     )

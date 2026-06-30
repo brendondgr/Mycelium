@@ -39,16 +39,19 @@ def build_canonical_text(
     *,
     statement: str = "",
     areas: Iterable | None = None,
-    methods: Iterable | None = None,
     keywords: Iterable | None = None,
 ) -> str:
-    """One canonical text blob: statement + joined areas/methods/keywords."""
+    """One canonical text blob: statement + joined areas/keywords.
+
+    ``areas`` is optional and excluded for a user Profile (research focus drives
+    the weighted re-rank, not the embedding vector); lab/dept surfaces still pass
+    their curated ``areas`` column so an institutional vector stays broad.
+    """
     parts: list[str] = []
     if statement and statement.strip():
         parts.append(statement.strip())
     for label, items in (
         ("Areas", areas),
-        ("Methods", methods),
         ("Keywords", keywords),
     ):
         cleaned = _clean(items)
@@ -60,22 +63,21 @@ def build_canonical_text(
 def canonical_text(instance) -> str:
     """Canonical text for a Profile or a lab/dept interest surface.
 
-    Profile draws purely from its ``interests`` contract; lab/dept surfaces
-    prefer their curated columns, falling back to the contract.
+    A user Profile embeds only ``statement`` + ``keywords`` — its research focus
+    (``areas``) is reserved for the weighted re-rank and the LLM, not the vector.
+    Lab/dept surfaces prefer their curated columns (including ``areas``), falling
+    back to the contract.
     """
     interests = getattr(instance, "interests", None) or {}
     if hasattr(instance, "user"):  # Profile
         return build_canonical_text(
             statement=interests.get("statement", ""),
-            areas=interests.get("areas", []),
-            methods=interests.get("methods", []),
             keywords=interests.get("keywords", []),
         )
     # LabProfile / DeptProfile carry curated columns alongside the contract.
     return build_canonical_text(
         statement=getattr(instance, "statement", "") or interests.get("statement", ""),
         areas=getattr(instance, "areas", None) or interests.get("areas", []),
-        methods=interests.get("methods", []),
         keywords=interests.get("keywords", []),
     )
 

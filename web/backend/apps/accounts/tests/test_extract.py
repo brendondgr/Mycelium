@@ -14,7 +14,6 @@ LLM_JSON = json.dumps(
         "statement": "I research computational mathematics and early computing.",
         "areas": ["computational mathematics", "theory of computation"],
         "keywords": ["recursion", "analytical engine"],
-        "methods": ["formal proofs"],
         "skills": ["mechanical computation"],
     }
 )
@@ -25,7 +24,6 @@ def test_llm_json_fills_every_field() -> None:
     assert fields["statement"].startswith("I research")
     assert "computational mathematics" in fields["areas"]
     assert "recursion" in fields["keywords"]
-    assert fields["methods"] == ["formal proofs"]
     assert fields["skills"] == ["mechanical computation"]
 
 
@@ -51,7 +49,6 @@ def test_non_json_answer_uses_fallback() -> None:
         "statement": "fallback",
         "areas": ["fb"],
         "keywords": [],
-        "methods": [],
         "skills": [],
     }
     fields = extract_profile_fields(
@@ -88,7 +85,6 @@ def test_no_fallback_returns_empty_shape() -> None:
         "statement": "",
         "areas": [],
         "keywords": [],
-        "methods": [],
         "skills": [],
     }
 

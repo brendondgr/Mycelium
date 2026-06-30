@@ -43,7 +43,6 @@ function ResearchFocusCard() {
   const areas = interests?.areas ?? [];
   const statement = interests?.statement?.trim() ?? "";
   const keywords = interests?.keywords ?? [];
-  const methods = interests?.methods ?? [];
   const skills = interests?.skills ?? [];
 
   return (
@@ -80,10 +79,9 @@ function ResearchFocusCard() {
         </p>
       )}
 
-      {/* Keyword / method / skill chip groups */}
+      {/* Keyword / skill chip groups */}
       {[
         { label: "Keywords", items: keywords },
-        { label: "Methods", items: methods },
         { label: "Skills", items: skills },
       ]
         .filter(({ items }) => items.length > 0)

@@ -18,12 +18,10 @@ def test_build_canonical_text_joins_sections() -> None:
     text = build_canonical_text(
         statement="I study cortical circuits.",
         areas=["neuroscience", "computation"],
-        methods=["electrophysiology"],
         keywords=["cortex"],
     )
     assert "I study cortical circuits." in text
     assert "Areas: neuroscience, computation" in text
-    assert "Methods: electrophysiology" in text
     assert "Keywords: cortex" in text
 
 
@@ -40,12 +38,15 @@ def test_save_builds_embedding_text() -> None:
         "version": 1,
         "statement": "studying genomes",
         "areas": ["genomics"],
+        "keywords": ["genome sequencing"],
     }
     profile.save()
 
     profile.refresh_from_db()
+    # Profile embedding includes statement and keywords (areas excluded).
     assert "studying genomes" in profile.embedding_text
-    assert "Areas: genomics" in profile.embedding_text
+    assert "Keywords: genome sequencing" in profile.embedding_text
+    assert "Areas:" not in profile.embedding_text
 
 
 @pytest.mark.django_db
@@ -65,10 +66,11 @@ def test_save_fires_reembed_trigger(reset_embedder) -> None:
     embedding.set_embedder(recording_embedder)
     user = User.objects.create_user(username="emb3", password="pass-123")
     profile = user.profile
-    profile.interests = {"version": 1, "areas": ["robotics"]}
+    # Profile embedding includes keywords (areas are excluded for Profile).
+    profile.interests = {"version": 1, "areas": ["robotics"], "keywords": ["ROS"]}
     profile.save()
 
-    assert any("Areas: robotics" in text for text in calls)
+    assert any("Keywords: ROS" in text for text in calls)
 
 
 def test_apply_embedding_sets_vector_in_memory(reset_embedder) -> None:

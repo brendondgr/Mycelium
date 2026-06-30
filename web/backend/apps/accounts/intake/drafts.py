@@ -23,7 +23,6 @@ class AuthorProfileDraft:
     institution: str = ""
     areas: list[str] = field(default_factory=list)
     keywords: list[str] = field(default_factory=list)
-    methods: list[str] = field(default_factory=list)
     skills: list[str] = field(default_factory=list)
     coauthors: list[str] = field(default_factory=list)
     external_ids: dict[str, str] = field(default_factory=dict)
@@ -33,7 +32,7 @@ class AuthorProfileDraft:
         """Render a contract-valid ``Profile.interests`` payload (brief Phase A).
 
         Fills the keys an import/résumé can ground (``areas``/``keywords``/
-        ``methods``/``skills``/``sources``); the remaining chat-sourced keys
+        ``skills``/``sources``); the remaining chat-sourced keys
         (``funding_needs``, ``eligibility``, ``seeking``, ``exclusions``) are left
         for the Mylo intake agent to gather. Most adapters leave ``skills`` empty
         — a résumé is the source that populates it.
@@ -47,8 +46,6 @@ class AuthorProfileDraft:
             interests["statement"] = statement
         if self.keywords:
             interests["keywords"] = list(self.keywords)
-        if self.methods:
-            interests["methods"] = list(self.methods)
         if self.skills:
             interests["skills"] = list(self.skills)
 

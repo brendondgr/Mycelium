@@ -38,7 +38,6 @@ def test_llm_fields_drive_the_interests() -> None:
             "statement": "I research quantum-safe cryptography.",
             "areas": ["post-quantum cryptography", "network security"],
             "keywords": ["lattice-based cryptography"],
-            "methods": ["cryptanalysis"],
             "skills": ["Rust", "Qiskit"],
         }
     )

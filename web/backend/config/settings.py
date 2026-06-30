@@ -198,6 +198,11 @@ LLM_REASONING = env("LLM_REASONING", default="medium")
 # `reasoning_effort`; "thinking" toggles `chat_template_kwargs.enable_thinking`.
 LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
 
+# Daily-suggestion ranking (apps.content.ranking). Weight applied to a paper's
+# research-focus overlap when re-ranking retrieved papers: blended score =
+# similarity + AREA_FOCUS_WEIGHT * focus_overlap. 0 disables the focus boost.
+AREA_FOCUS_WEIGHT = env.float("AREA_FOCUS_WEIGHT", default=0.25)
+
 # Author-import sources (apps.accounts.intake). Keys are optional: OpenAlex works
 # without one (a polite `mailto` is encouraged), and Semantic Scholar's key only
 # raises rate limits. Google Scholar needs no key but the optional `scholarly`

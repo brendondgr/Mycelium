@@ -6,21 +6,33 @@ single gate enforces the schema (brief Phase A). The validator is a DRF
 serializer because DRF is already the project's API layer; there is no Pydantic
 dependency to reach for.
 
-The shape (``version: 1``):
+Each field has one deliberate job in the scan → retrieve → rank → suggest
+pipeline; the table's "Feeds" column is the contract for what reads it:
 
-| Key            | Type      | Required | Feeds                          |
-|----------------|-----------|----------|--------------------------------|
-| ``version``    | int       | system   | migration safety               |
-| ``statement``  | str       | no       | embedding (primary text)       |
-| ``areas``      | list[str] | yes      | embedding, keyword overlap     |
-| ``methods``    | list[str] | no       | scoring signal, graph          |
-| ``keywords``   | list[str] | no       | keyword overlap                |
-| ``skills``     | list[str] | no       | fellowship matching            |
-| ``funding_needs`` | list[str] | no    | grant matching                 |
-| ``eligibility``| dict      | no       | grant/fellowship gating        |
-| ``seeking``    | list[str] | no       | fellowship matching (students) |
-| ``exclusions`` | list[str] | no       | noise reduction                |
-| ``sources``    | dict      | no       | provenance / audit             |
+| Key            | Type      | Required | Feeds                              |
+|----------------|-----------|----------|------------------------------------|
+| ``version``    | int       | system   | migration safety                   |
+| ``statement``  | str       | no       | embedding (primary text), LLM      |
+| ``areas``      | list[str] | yes      | focus re-rank boost + LLM judgment |
+| ``keywords``   | list[str] | no       | embedding + LLM (semantic match)   |
+| ``skills``     | list[str] | no       | fellowship matching (future)       |
+| ``funding_needs`` | list[str] | no    | grant matching                     |
+| ``eligibility``| dict      | no       | grant/fellowship gating            |
+| ``seeking``    | list[str] | no       | fellowship matching (students)     |
+| ``exclusions`` | list[str] | no       | noise reduction                    |
+| ``sources``    | dict      | no       | provenance / audit                 |
+
+Notes on the fields with a non-obvious role:
+
+- ``areas`` ("research focus") does *not* drive the literature search and is
+  *not* baked into the embedding vector. It feeds the weighted re-rank
+  (``apps.content.ranking``) as a focus boost and is handed to the language model
+  to judge and explain match strength. The actual search queries come from a
+  separate per-user ``WatchPreference`` (the sole source of search terms).
+- ``keywords`` (with ``statement``) is the semantic fingerprint that *is*
+  embedded and retrieved against.
+- ``skills`` is collected and stored but not yet consumed by any matcher; it is
+  parked for the planned fellowship-matching feature.
 """
 
 from __future__ import annotations
@@ -43,7 +55,6 @@ class InterestsContract(serializers.Serializer):
     version = serializers.IntegerField(required=False)
     statement = serializers.CharField(required=False, allow_blank=True)
     areas = _str_list()  # required: a profile must declare its research areas
-    methods = _str_list(required=False)
     keywords = _str_list(required=False)
     skills = _str_list(required=False)
     funding_needs = _str_list(required=False)

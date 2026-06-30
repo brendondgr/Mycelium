@@ -45,7 +45,7 @@ _SYSTEM_PROMPT = (
     "You extract a researcher's interest profile from their résumé/CV. "
     "Return ONLY a JSON object with these keys: display_name (string), "
     "institution (string), areas (list of research areas/fields), keywords "
-    "(list of specific topics), methods (list of techniques/methodologies), "
+    "(list of specific topics), "
     "skills (list of tools, languages, and technical skills). Use only what the "
     "text supports; use empty strings/lists when unsure. No prose, no markdown."
 )
@@ -179,7 +179,6 @@ def draft_from_resume(
         institution=str(fields.get("institution", "")),
         areas=list(fields.get("areas", [])),
         keywords=list(fields.get("keywords", [])),
-        methods=list(fields.get("methods", [])),
         skills=list(fields.get("skills", [])),
     )
     return aggregate(draft)
@@ -232,7 +231,6 @@ def _parse_llm_payload(raw: str | None) -> dict[str, Any] | None:
         "institution": _as_str(data.get("institution") or data.get("affiliation")),
         "areas": _as_list(data.get("areas")),
         "keywords": _as_list(data.get("keywords")),
-        "methods": _as_list(data.get("methods")),
         "skills": _as_list(data.get("skills")),
     }
 
@@ -255,7 +253,6 @@ _SECTION_PATTERNS: dict[str, str] = {
         r"research interests|areas? of (?:research|interest|expertise|specialization)"
         r"|research areas?|fields? of (?:research|study)"
     ),
-    "methods": r"methods?|techniques|methodolog(?:y|ies)|approaches",
     "skills": (
         r"technical skills|core competencies|competencies|skills"
         r"|programming languages|languages|tools|technologies"
@@ -278,7 +275,6 @@ def _heuristic_fields(text: str) -> dict[str, Any]:
     found: dict[str, list[str]] = {
         "areas": [],
         "keywords": [],
-        "methods": [],
         "skills": [],
     }
     current: str | None = None

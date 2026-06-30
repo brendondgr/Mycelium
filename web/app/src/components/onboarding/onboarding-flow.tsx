@@ -238,7 +238,6 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
   const [statement, setStatement] = useState("");
   const [areas, setAreas] = useState<string[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
-  const [methods, setMethods] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [draftSources, setDraftSources] = useState<Record<string, unknown>>({});
 
@@ -276,7 +275,6 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
     setStatement(interests.statement ?? "");
     setAreas(interests.areas ?? []);
     setKeywords(interests.keywords ?? []);
-    setMethods(interests.methods ?? []);
     setSkills(interests.skills ?? []);
     setDraftSources(interests.sources ?? {});
     const seed = dedupe([
@@ -342,7 +340,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
     }
     stages.push({ label: "Asking the language model to synthesize it all" });
     stages.push({
-      label: "Drafting your statement, areas, keywords, methods, and skills",
+      label: "Drafting your statement, areas, keywords, and skills",
     });
     return stages;
   }
@@ -454,9 +452,6 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
     }
     if (keywords.length) {
       interests.keywords = keywords;
-    }
-    if (methods.length) {
-      interests.methods = methods;
     }
     if (skills.length) {
       interests.skills = skills;
@@ -664,7 +659,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
             First, tell us about you
           </h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            This calibrates how Mylo weights papers, methods, and opportunities.
+            This calibrates how Mylo weights papers and opportunities.
           </p>
         </div>
         <div className="space-y-3">
@@ -867,7 +862,11 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
           <p className="text-xs text-destructive">
             Add at least one research area to continue.
           </p>
-        ) : null}
+        ) : (
+          <p className="text-xs text-[var(--text-muted)]">
+            Used to judge how strongly a paper matches you — and to explain why.
+          </p>
+        )}
 
         <TokenField
           label="Keywords"
@@ -875,18 +874,19 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
           onChange={setKeywords}
           placeholder="Add a keyword and press Enter"
         />
-        <TokenField
-          label="Methods"
-          items={methods}
-          onChange={setMethods}
-          placeholder="Add a method and press Enter"
-        />
+        <p className="text-xs text-[var(--text-muted)]">
+          Your semantic fingerprint — Mylo uses these to find and rank papers.
+        </p>
+
         <TokenField
           label="Skills"
           items={skills}
           onChange={setSkills}
           placeholder="Add a skill and press Enter"
         />
+        <p className="text-xs text-[var(--text-muted)]">
+          Saved for future fellowship matching. Not used for search yet.
+        </p>
       </div>
     </div>
   );
@@ -899,8 +899,9 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
             What should Mylo keep an eye on?
           </h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            These topics seed your radar — they came from your interests, but add
-            or remove anything you want Mylo to monitor.
+            These topics are exactly what Mylo searches for when scanning for new
+            papers — they&rsquo;re the only thing that drives your literature
+            search. They were seeded from your interests; add or remove anything.
           </p>
         </div>
 

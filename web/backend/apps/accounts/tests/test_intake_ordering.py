@@ -22,7 +22,7 @@ from apps.content.guards import (
 def test_import_refuses_an_unvalidated_contract() -> None:
     # A before C/E: writing interests without going through the contract fails.
     with pytest.raises(ValidationError):
-        validate_interests({"methods": ["proofs"]})  # missing required areas
+        validate_interests({"skills": ["Python"]})  # missing required areas
 
 
 def test_empty_draft_yields_a_form_only_flow() -> None:

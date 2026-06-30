@@ -6,6 +6,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.db import connection
 
+from apps.accounts.models import WatchPreference
 from apps.content import embeddings
 from apps.content.models import ContentItem, RelevanceScore
 from apps.content.pipeline import build_queries, run_for_user
@@ -36,32 +37,39 @@ def _no_search(*_args, **_kwargs):
     return []
 
 
+def _set_watch(user: User, topics: list[str]) -> None:
+    """Give a user the watch topics that now drive the literature scan."""
+    WatchPreference.objects.update_or_create(user=user, defaults={"topics": topics})
+
+
 # -- pure ---------------------------------------------------------------------
 
 
-def test_build_queries_uses_areas_then_keywords() -> None:
-    interests = {"areas": ["AI", "Graphs"], "keywords": ["rag", "AI"]}
+def test_build_queries_dedupes_and_preserves_order() -> None:
+    # The watch topics are the sole search source; order is the user's priority,
+    # duplicates collapse case-insensitively.
+    topics = ["Knowledge Graphs", "RAG", "knowledge graphs", "biomedical"]
 
-    assert build_queries(interests, limit=10) == ["AI", "Graphs", "rag"]
+    assert build_queries(topics, limit=10) == ["Knowledge Graphs", "RAG", "biomedical"]
 
 
 def test_build_queries_respects_limit() -> None:
-    interests = {"areas": ["a", "b", "c"], "keywords": ["d"]}
-
-    assert build_queries(interests, limit=2) == ["a", "b"]
+    assert build_queries(["a", "b", "c", "d"], limit=2) == ["a", "b"]
 
 
 # -- graceful degradation (no pgvector needed) --------------------------------
 
 
 @pytest.mark.django_db
-def test_no_interests_short_circuits() -> None:
+def test_no_watch_topics_short_circuits() -> None:
     user = User.objects.create_user("nobody", password="x")
-    # Fresh profile has empty interests.
+    user.profile.interests = {"areas": ["AI"]}
+    user.profile.save()
+    # No watch topics set -> nothing to search for, even with interests present.
 
     result = run_for_user(user, search_fn=_no_search)
 
-    assert result.status == "no_interests"
+    assert result.status == "no_watch_topics"
 
 
 @pytest.mark.django_db
@@ -69,6 +77,7 @@ def test_no_embedder_reports_cleanly() -> None:
     user = User.objects.create_user("someone", password="x")
     user.profile.interests = {"areas": ["Knowledge Graphs"]}
     user.profile.save()
+    _set_watch(user, ["Knowledge Graphs"])
     embeddings.set_embedder(None)
 
     result = run_for_user(user, search_fn=_no_search)
@@ -93,6 +102,8 @@ def _profile_user(username: str) -> User:
         "keywords": ["biomedical knowledge discovery"],
     }
     user.profile.save()
+    # Watch topics drive the scan; without them the run short-circuits.
+    _set_watch(user, ["knowledge graphs", "biomedical knowledge discovery"])
     return user
 
 
@@ -124,6 +135,9 @@ def test_full_pipeline_persists_scores_and_suggestions(pgvector) -> None:
     assert scores[near.id].score > scores[far.id].score
     assert scores[near.id].signals["suggested"] is True
     assert scores[near.id].signals["source"] == "fallback"
+    # The focus re-rank breakdown is persisted alongside the raw similarity.
+    assert "focus_overlap" in scores[near.id].signals
+    assert "focus_areas" in scores[near.id].signals
     # Profile embedding was persisted for the future scoring phase.
     user.profile.refresh_from_db()
     assert user.profile.embedding is not None
