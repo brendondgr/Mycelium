@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
@@ -152,6 +153,18 @@ CELERY_RESULT_BACKEND = env(
     "CELERY_RESULT_BACKEND",
     default="redis://localhost:11550/1",
 )
+
+# Scheduled background work. Celery Beat (the `beat` compose service) reads this
+# and enqueues the task on the worker. The hour is UTC (USE_TZ / TIME_ZONE above);
+# CELERY_DAILY_SUGGESTIONS_HOUR lets a deployment shift it without a code change.
+CELERY_BEAT_SCHEDULE = {
+    "daily-research-suggestions": {
+        "task": "apps.content.run_daily_suggestions",
+        "schedule": crontab(
+            hour=env.int("CELERY_DAILY_SUGGESTIONS_HOUR", default=6), minute=0
+        ),
+    },
+}
 
 NEO4J_URI = env("NEO4J_URI", default="bolt://localhost:11750")
 NEO4J_USERNAME = env("NEO4J_USERNAME", default="neo4j")

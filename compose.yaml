@@ -144,6 +144,31 @@ services:
       redis:
         condition: service_healthy
 
+  # Celery Beat: enqueues the scheduled jobs (the daily research-suggestion run)
+  # onto the worker. Its schedule lives in config.settings (CELERY_BEAT_SCHEDULE).
+  beat:
+    image: ghcr.io/astral-sh/uv:python3.13-bookworm
+    working_dir: /app
+    # Keep the schedule state file off the bind mount (in the container's /tmp).
+    command: sh -c "uv run --directory web/backend celery -A config beat --loglevel=info --schedule /tmp/celerybeat-schedule"
+    restart: on-failure
+    volumes:
+      - .:/app
+    env_file:
+      - .env.example
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://mycelium:mycelium@postgres:5432/mycelium
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      backend-deps:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
   postgres:
     image: pgvector/pgvector:pg17
     environment:
