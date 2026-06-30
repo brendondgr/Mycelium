@@ -19,7 +19,7 @@ const QUOTES: { text: string; tone: "green" | "gold" }[] = [
 export default async function LoginPage() {
   const user = await getCurrentUser();
   if (user) {
-    redirect("/app");
+    redirect("/app/overview");
   }
 
   return (

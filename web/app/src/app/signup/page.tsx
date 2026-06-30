@@ -18,7 +18,7 @@ const CHECKLIST = [
 export default async function SignupPage() {
   const user = await getCurrentUser();
   if (user) {
-    redirect("/app");
+    redirect("/app/overview");
   }
 
   return (

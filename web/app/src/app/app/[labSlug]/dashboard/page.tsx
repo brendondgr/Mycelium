@@ -25,7 +25,7 @@ export default async function LabDashboardPage({ params }: LabDashboardPageProps
         </p>
         <Link
           className="mt-8 inline-flex min-h-11 items-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-brand-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          href="/app"
+          href="/app/overview"
         >
           Back to workspace
         </Link>

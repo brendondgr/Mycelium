@@ -7,20 +7,20 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { useMyLabs, useProjects } from "@/lib/portal/hooks";
+import {
+  SECTION_ROUTES,
+  projectIdFromPathname,
+  projectRoute,
+  sectionFromPathname,
+} from "@/lib/portal/routes";
 import { useTheme, type Theme } from "@/lib/portal/theme";
 import { ALL_LABS_SLUG, type MyLab, type Project } from "@/lib/portal/types";
 
-export type SectionKey =
-  | "overview"
-  | "daily"
-  | "opportunities"
-  | "deadlines"
-  | "projects"
-  | "goals"
-  | "members"
-  | "reports";
+export type { SectionKey } from "@/lib/portal/routes";
+import type { SectionKey } from "@/lib/portal/routes";
 
 /** Minimal identity the dashboard renders (name/initials for the header + greeting). */
 export type PortalUser = {
@@ -78,9 +78,16 @@ export function PortalProvider({
   user: PortalUser;
   children: React.ReactNode;
 }) {
-  const [section, setSection] = useState<SectionKey>("overview");
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [projectsExpanded, setProjectsExpanded] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Navigation is derived from the URL — the route is the source of truth.
+  const section = sectionFromPathname(pathname);
+  const activeProjectId = projectIdFromPathname(pathname);
+
+  const [projectsExpanded, setProjectsExpanded] = useState<boolean>(() =>
+    pathname.startsWith(SECTION_ROUTES.projects),
+  );
   const [labScope, setLabScopeState] = useState<string>(ALL_LABS_SLUG);
 
   const { theme, toggleTheme } = useTheme();
@@ -109,22 +116,25 @@ export function PortalProvider({
     return `all ${count} of your lab${count === 1 ? "" : "s"}`;
   }, [currentLab, labs.length]);
 
-  const goToSection = useCallback((next: SectionKey) => {
-    setSection(next);
-    setActiveProjectId(null);
-  }, []);
+  const goToSection = useCallback(
+    (next: SectionKey) => {
+      router.push(SECTION_ROUTES[next]);
+    },
+    [router],
+  );
 
   const openProjectsList = useCallback(() => {
-    setSection("projects");
-    setActiveProjectId(null);
     setProjectsExpanded(true);
-  }, []);
+    router.push(SECTION_ROUTES.projects);
+  }, [router]);
 
-  const openProject = useCallback((id: string) => {
-    setSection("projects");
-    setActiveProjectId(id);
-    setProjectsExpanded(true);
-  }, []);
+  const openProject = useCallback(
+    (id: string) => {
+      setProjectsExpanded(true);
+      router.push(projectRoute(id));
+    },
+    [router],
+  );
 
   const toggleProjectsExpanded = useCallback(
     () => setProjectsExpanded((open) => !open),
@@ -133,8 +143,6 @@ export function PortalProvider({
 
   const setLabScope = useCallback((slug: string) => {
     setLabScopeState(slug);
-    // Leaving a project open under a different scope can show a stale detail.
-    setActiveProjectId(null);
   }, []);
 
   const value: PortalContextValue = {

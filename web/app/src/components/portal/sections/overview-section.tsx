@@ -11,6 +11,7 @@ import {
 } from "@/components/portal/icons";
 
 import { MyloSummaryCard } from "@/components/portal/sections/mylo-summary-card";
+import { DailyDigestPanel } from "@/components/portal/sections/daily-digest-panel";
 import { StatCard } from "@/components/portal/sections/stat-card";
 import { NextActions } from "@/components/portal/sections/next-actions";
 import { ProfileNudge } from "@/components/portal/sections/profile-nudge";
@@ -73,9 +74,10 @@ export function OverviewSection() {
         </p>
       </div>
 
-      {/* Mylo summary */}
-      <div className="mb-[22px]">
+      {/* Research radar (left) + daily report synopsis & notices (right) */}
+      <div className="mb-[22px] grid gap-[22px] grid-cols-1 lg:grid-cols-[1.5fr_1fr] lg:items-stretch">
         <MyloSummaryCard />
+        <DailyDigestPanel />
       </div>
 
       {/* Stat grid */}
@@ -103,7 +105,7 @@ export function OverviewSection() {
               ? undefined
               : `${completeness.doneCount}/${completeness.total} complete`
           }
-          onClick={() => goToSection("goals" as SectionKey)}
+          onClick={() => goToSection("profile" as SectionKey)}
         />
         <StatCard
           icon={<ReportIcon size={16} />}
@@ -116,7 +118,7 @@ export function OverviewSection() {
               ? undefined
               : `${cadenceLabel} digest`
           }
-          onClick={() => goToSection("goals" as SectionKey)}
+          onClick={() => goToSection("profile" as SectionKey)}
         />
       </div>
 

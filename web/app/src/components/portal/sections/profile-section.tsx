@@ -263,15 +263,15 @@ function WatchCard() {
 }
 
 // ---------------------------------------------------------------------------
-// GoalsSection
+// ProfileSection
 // ---------------------------------------------------------------------------
 
-export function GoalsSection() {
+export function ProfileSection() {
   return (
     <div>
       <SectionHeader
-        title="Goals & profile"
-        subtitle="What you're working toward, and what Mylo uses to find matches."
+        title="Profile"
+        subtitle="Your research focus and goals — what Mylo uses to find matches."
       />
 
       <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">

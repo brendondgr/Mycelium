@@ -47,7 +47,7 @@ export function NextActions() {
       iconBg: tintClass,
       title: "Finish your research profile",
       sub: `${completeness.doneCount}/${completeness.total} sections done`,
-      onClick: () => goToSection("goals" as SectionKey),
+      onClick: () => goToSection("profile" as SectionKey),
     });
   }
 
@@ -61,7 +61,7 @@ export function NextActions() {
       iconBg: tintClass,
       title: "Tell Mylo what to watch",
       sub: "Add topics so Mylo can monitor literature for you",
-      onClick: () => goToSection("goals" as SectionKey),
+      onClick: () => goToSection("profile" as SectionKey),
     });
   }
 

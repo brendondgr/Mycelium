@@ -41,7 +41,7 @@ export default function Home() {
             <a href="/login">Sign in</a>
           </Button>
           <Button asChild variant="secondary" size="lg">
-            <a href="/app">Open workspace</a>
+            <a href="/app/overview">Open workspace</a>
           </Button>
           <Button asChild variant="secondary" size="lg">
             <a

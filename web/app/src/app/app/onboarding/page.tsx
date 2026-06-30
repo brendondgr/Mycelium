@@ -15,7 +15,7 @@ export default async function OnboardingPage() {
   }
   // Onboarding is a one-time gate: finished users skip straight to the workspace.
   if (user.onboarding_completed) {
-    redirect("/app");
+    redirect("/app/overview");
   }
 
   return (

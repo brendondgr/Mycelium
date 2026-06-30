@@ -480,7 +480,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
         saveWatch({ topics: watchTopics, categories, cadence }),
         wait(1400),
       ]);
-      router.replace("/app");
+      router.replace("/app/overview");
       router.refresh();
     } catch (error) {
       setScreen("intake");

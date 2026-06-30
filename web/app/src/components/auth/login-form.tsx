@@ -49,7 +49,7 @@ export function LoginForm() {
     try {
       await login(username.trim(), password);
       setStatus("success");
-      router.replace("/app");
+      router.replace("/app/overview");
       router.refresh();
     } catch (error) {
       setStatus("idle");

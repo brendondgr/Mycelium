@@ -18,11 +18,11 @@ import { cn } from "@/lib/utils";
 
 const ITEMS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: "overview", label: "Overview", icon: <GridIcon size={15} /> },
+  { key: "profile", label: "Profile", icon: <TargetIcon size={15} /> },
   { key: "daily", label: "Daily", icon: <ReportIcon size={15} /> },
   { key: "opportunities", label: "Opportunities", icon: <SparkleIcon size={15} /> },
   { key: "deadlines", label: "Deadlines", icon: <CalendarIcon size={15} /> },
   { key: "projects", label: "Projects", icon: <FolderIcon size={15} /> },
-  { key: "goals", label: "Goals", icon: <TargetIcon size={15} /> },
   { key: "members", label: "Members", icon: <MembersIcon size={15} /> },
   { key: "reports", label: "Reports", icon: <DocumentIcon size={15} /> },
 ];

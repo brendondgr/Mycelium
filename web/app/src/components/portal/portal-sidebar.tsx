@@ -35,6 +35,12 @@ export function PortalSidebar() {
           active={section === "overview"}
           onClick={() => goToSection("overview")}
         />
+        <SidebarNavItem
+          icon={<TargetIcon size={18} />}
+          label="Profile"
+          active={section === "profile"}
+          onClick={() => goToSection("profile")}
+        />
       </nav>
 
       <GroupLabel>Research</GroupLabel>
@@ -62,12 +68,6 @@ export function PortalSidebar() {
 
       <GroupLabel>Lab</GroupLabel>
       <nav className="flex flex-col gap-0.5">
-        <SidebarNavItem
-          icon={<TargetIcon size={18} />}
-          label="Goals & profile"
-          active={section === "goals"}
-          onClick={() => goToSection("goals")}
-        />
         <SidebarNavItem
           icon={<MembersIcon size={18} />}
           label="Members"
