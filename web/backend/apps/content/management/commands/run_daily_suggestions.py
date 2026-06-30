@@ -32,8 +32,18 @@ class Command(BaseCommand):
             metavar="USERNAME",
             help="Limit to this user. Repeat for several. Default: all active users.",
         )
-        parser.add_argument("--months-back", type=int, default=2)
-        parser.add_argument("--months-forward", type=int, default=1)
+        parser.add_argument(
+            "--days-back",
+            type=int,
+            default=2,
+            help="How many days back to scan publication dates (default 2).",
+        )
+        parser.add_argument(
+            "--days-forward",
+            type=int,
+            default=7,
+            help="How many days forward (ahead-of-print) to scan (default 7).",
+        )
         parser.add_argument(
             "--source",
             action="append",
@@ -69,8 +79,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         usernames = [u for u in (options.get("usernames") or []) if u and u.strip()]
         common = dict(
-            months_back=options["months_back"],
-            months_forward=options["months_forward"],
+            days_back=options["days_back"],
+            days_forward=options["days_forward"],
             sources=options.get("sources"),
             query_limit=options["query_limit"],
             top_k=options["top_k"],

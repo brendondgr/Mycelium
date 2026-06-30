@@ -26,6 +26,7 @@ from django.utils import timezone
 
 from apps.accounts.embedding import canonical_text
 from apps.scraper.ingest import SearchFn, scan
+from apps.scraper.window import ScanWindow
 
 from . import embeddings
 from .models import RelevanceScore
@@ -34,10 +35,15 @@ from .suggest import CompleteFn, generate_suggestions
 
 logger = logging.getLogger(__name__)
 
-# Sensible defaults for a daily run; the command/task can override them.
+# Sensible defaults for a daily run; the command/task can override them. The
+# window is intentionally tight — a daily run only needs the freshest papers, so
+# it scans the last couple of days plus the next week of ahead-of-print records
+# (a months-wide window pulls tens of thousands of papers to surface a handful).
 DEFAULT_QUERY_LIMIT = 6
 DEFAULT_TOP_K = 20
 DEFAULT_SUGGESTIONS = 5
+DEFAULT_DAYS_BACK = 2
+DEFAULT_DAYS_FORWARD = 7
 
 
 @dataclass
@@ -77,8 +83,8 @@ def build_queries(interests: dict, *, limit: int = DEFAULT_QUERY_LIMIT) -> list[
 def run_for_user(
     user: User,
     *,
-    months_back: int = 2,
-    months_forward: int = 1,
+    days_back: int = DEFAULT_DAYS_BACK,
+    days_forward: int = DEFAULT_DAYS_FORWARD,
     sources: list[str] | None = None,
     query_limit: int = DEFAULT_QUERY_LIMIT,
     top_k: int = DEFAULT_TOP_K,
@@ -103,8 +109,7 @@ def run_for_user(
 
     summary = scan(
         queries,
-        months_back=months_back,
-        months_forward=months_forward,
+        window=ScanWindow.around_today_days(days_back, days_forward),
         sources=sources,
         embed=embed,
         search_fn=search_fn,

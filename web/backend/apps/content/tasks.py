@@ -30,8 +30,8 @@ def select_users(usernames: list[str] | None) -> list[User]:
 def run_daily_suggestions(
     usernames: list[str] | None = None,
     *,
-    months_back: int = 2,
-    months_forward: int = 1,
+    days_back: int = 2,
+    days_forward: int = 7,
     sources: list[str] | None = None,
     query_limit: int = 6,
     top_k: int = 20,
@@ -44,8 +44,8 @@ def run_daily_suggestions(
         try:
             result = run_for_user(
                 user,
-                months_back=months_back,
-                months_forward=months_forward,
+                days_back=days_back,
+                days_forward=days_forward,
                 sources=sources,
                 query_limit=query_limit,
                 top_k=top_k,
