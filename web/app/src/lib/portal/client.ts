@@ -1,5 +1,6 @@
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import type {
+  DailyReport,
   LabMember,
   MyLab,
   Project,
@@ -56,5 +57,12 @@ export async function fetchWatch(): Promise<WatchData> {
   return getJson<WatchData>(
     buildApiUrl(getPublicApiBase(), "auth", "watch", "me"),
     "Could not load your watch settings.",
+  );
+}
+
+export async function fetchDailyReport(): Promise<DailyReport> {
+  return getJson<DailyReport>(
+    buildApiUrl(getPublicApiBase(), "daily-report"),
+    "Could not load your daily report.",
   );
 }

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import {
+  fetchDailyReport,
   fetchLabMembers,
   fetchMyLabs,
   fetchProfile,
@@ -58,6 +59,15 @@ export function useWatch() {
   return useQuery({
     queryKey: ["portal", "watch"],
     queryFn: fetchWatch,
+    staleTime: 60_000,
+  });
+}
+
+/** The caller's current daily research-suggestion digest. */
+export function useDailyReport() {
+  return useQuery({
+    queryKey: ["portal", "daily-report"],
+    queryFn: fetchDailyReport,
     staleTime: 60_000,
   });
 }

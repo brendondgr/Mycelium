@@ -67,3 +67,27 @@ export type WatchData = {
 
 /** Synthetic "All labs" scope the switcher prepends client-side. */
 export const ALL_LABS_SLUG = "__all__";
+
+/** One research-article suggestion (from `/api/daily-report/`). */
+export type Suggestion = {
+  content_id: string;
+  title: string;
+  source: string;
+  url: string;
+  venue: string;
+  year: number | null;
+  authors: string[];
+  score: number;
+  rank: number | null;
+  headline: string;
+  reason: string;
+  /** "llm" when Mylo wrote the reason, "fallback" when it was templated. */
+  origin: "llm" | "fallback";
+};
+
+/** The signed-in user's current daily digest (from `/api/daily-report/`). */
+export type DailyReport = {
+  /** ISO timestamp of the run that produced these, or null when none has run. */
+  generated_at: string | null;
+  suggestions: Suggestion[];
+};
