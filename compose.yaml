@@ -62,8 +62,10 @@ services:
     image: ghcr.io/astral-sh/uv:python3.13-bookworm
     working_dir: /app
     # `--extra scrapers` pulls in `scholarly` so Google Scholar import works.
-    # This shared venv (web/backend/.venv) is used by both backend and worker.
-    command: sh -c "uv sync --project web/backend --extra scrapers"
+    # `--extra embeddings` pulls in fastembed + numpy so the literature scan and
+    # the daily suggestion pipeline can embed papers and profiles for pgvector
+    # retrieval. This shared venv (web/backend/.venv) is used by backend + worker.
+    command: sh -c "uv sync --project web/backend --extra scrapers --extra embeddings"
     volumes:
       - .:/app
 
