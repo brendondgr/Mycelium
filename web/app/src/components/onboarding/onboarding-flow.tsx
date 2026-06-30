@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { MyloMark } from "@/components/brand/mylo-mark";
@@ -12,11 +13,13 @@ import ProfileSynthesisProgress, {
 } from "@/components/onboarding/profile-synthesis-progress";
 import {
   confirmInterests,
+  getWatch,
   saveProfileBasics,
   saveWatch,
   synthesizeProfile,
   verifyEmail,
 } from "@/lib/auth-client";
+import { fetchProfile } from "@/lib/portal/client";
 import type {
   ResearchInterests,
   ResearchSource,
@@ -208,13 +211,23 @@ function TokenField({
 
 type OnboardingFlowProps = {
   email: string;
+  /**
+   * "onboard" is the first-run gate (starts on email verify, ends in the
+   * workspace). "edit" re-enters the same flow from the profile page,
+   * prefilled with the user's saved answers, and returns there on save.
+   */
+  mode?: "onboard" | "edit";
 };
 
-export function OnboardingFlow({ email }: OnboardingFlowProps) {
+export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const editing = mode === "edit";
   const [screen, setScreen] = useState<
     "verify" | "intake" | "synthesizing" | "building"
-  >("verify");
+  >(editing ? "intake" : "verify");
+  // Edit mode prefills from the saved profile; gate the form until it loads.
+  const [hydrated, setHydrated] = useState(!editing);
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
 
@@ -285,6 +298,59 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
     ]).slice(0, 12);
     setWatchTopics((prev) => (prev.length ? prev : seed));
   }
+
+  // -- edit prefill --------------------------------------------------------
+  // In edit mode, load the saved profile + watch settings once and seed the
+  // form so the user revises what is already there rather than starting blank.
+  useEffect(() => {
+    if (!editing) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [profile, watch] = await Promise.all([
+          fetchProfile(),
+          getWatch().catch(() => null),
+        ]);
+        if (cancelled) {
+          return;
+        }
+        if (ROLES.some((option) => option.value === profile.academic_title)) {
+          setRole(profile.academic_title);
+        }
+        setInstitution(profile.institution ?? "");
+        const interests = profile.interests;
+        if (interests) {
+          setStatement(interests.statement ?? "");
+          setAreas(interests.areas ?? []);
+          setKeywords(interests.keywords ?? []);
+          setMethods(interests.methods ?? []);
+          setSkills(interests.skills ?? []);
+          setDraftSources(interests.sources ?? {});
+        }
+        if (watch) {
+          setWatchTopics(watch.topics ?? []);
+          setWatchCats(
+            WATCH_CATEGORIES.reduce<Record<string, boolean>>((acc, category) => {
+              acc[category.key] = watch.categories.includes(category.key);
+              return acc;
+            }, {}),
+          );
+          setCadence(watch.cadence ?? "weekly");
+        }
+      } catch {
+        // Leave the form at its defaults; the user can still fill it in.
+      } finally {
+        if (!cancelled) {
+          setHydrated(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editing]);
 
   // -- verify --------------------------------------------------------------
   async function verifyAndContinue() {
@@ -431,6 +497,9 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
   function back() {
     if (step > 0) {
       goStep(step - 1, -1);
+    } else if (editing) {
+      // Step 0 in edit mode has no verify screen behind it — leave the flow.
+      router.push("/app/profile");
     } else {
       setScreen("verify");
     }
@@ -441,6 +510,9 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
       return importing ? "Growing…" : hasImportInput ? "Grow my profile" : "Continue";
     }
     if (step === 3) {
+      if (editing) {
+        return busy ? "Saving…" : "Save changes";
+      }
       return "Enter Mycelium";
     }
     return "Continue";
@@ -469,17 +541,41 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
       (c) => c.key,
     );
 
+    const saves = (): Promise<unknown>[] => [
+      saveProfileBasics({
+        academic_title: role,
+        ...(institution.trim() ? { institution: institution.trim() } : {}),
+      }),
+      confirmInterests(interests),
+      saveWatch({ topics: watchTopics, categories, cadence }),
+    ];
+
+    // Edit mode: save in place and return to the profile with fresh data —
+    // no first-run "weaving" animation, no jump to the overview.
+    if (editing) {
+      setBusy(true);
+      try {
+        await Promise.all(saves());
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["portal", "profile"] }),
+          queryClient.invalidateQueries({ queryKey: ["portal", "watch"] }),
+        ]);
+        router.push("/app/profile");
+        router.refresh();
+      } catch (error) {
+        setBusy(false);
+        setSubmitError(
+          error instanceof Error
+            ? error.message
+            : "Could not save your changes. Try again.",
+        );
+      }
+      return;
+    }
+
     setScreen("building");
     try {
-      await Promise.all([
-        saveProfileBasics({
-          academic_title: role,
-          ...(institution.trim() ? { institution: institution.trim() } : {}),
-        }),
-        confirmInterests(interests),
-        saveWatch({ topics: watchTopics, categories, cadence }),
-        wait(1400),
-      ]);
+      await Promise.all([...saves(), wait(1400)]);
       router.replace("/app/overview");
       router.refresh();
     } catch (error) {
@@ -491,6 +587,18 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
           : "Could not save your answers. Try again.",
       );
     }
+  }
+
+  // -- edit prefill loading ------------------------------------------------
+  if (editing && !hydrated) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
+        <MyloMark className="mylo-float h-14 w-[50px]" />
+        <p className="text-sm text-[var(--text-secondary)]">
+          Loading your profile…
+        </p>
+      </div>
+    );
   }
 
   // -- synthesizing --------------------------------------------------------
@@ -995,7 +1103,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
         <MyloMark className="h-12 w-11 flex-none" />
         <div className="flex-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">
-            Let&rsquo;s tune your research radar
+            {editing ? "Edit your research radar" : "Let’s tune your research radar"}
           </p>
           <p className="text-sm text-[var(--text-secondary)]">
             Step {step + 1} of {STEP_LABELS.length} · {STEP_LABELS[step]}
@@ -1031,7 +1139,7 @@ export function OnboardingFlow({ email }: OnboardingFlowProps) {
         <Button
           className="rounded-full"
           onClick={primaryAction}
-          disabled={importing || reviewBlocked}
+          disabled={importing || reviewBlocked || busy}
         >
           {primaryLabel()}
         </Button>
