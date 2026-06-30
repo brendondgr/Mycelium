@@ -19,6 +19,7 @@ crash.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 
 from django.contrib.auth.models import User
@@ -94,19 +95,32 @@ def run_for_user(
     complete: CompleteFn | None = None,
     search_fn: SearchFn | None = None,
     scan_embedder=None,
+    log: Callable[[str], None] | None = None,
 ) -> RunResult:
     """Run the scan → RAG → suggest pipeline for one user and store the result."""
+    username = user.get_username()
+
+    def emit(message: str) -> None:
+        if log is not None:
+            log(f"[{username}] {message}")
+
     profile = getattr(user, "profile", None)
     if profile is None:
-        return RunResult(user.get_username(), "no_profile", note="user has no profile")
+        emit("no profile; skipping")
+        return RunResult(username, "no_profile", note="user has no profile")
 
     interests = profile.interests or {}
     queries = build_queries(interests, limit=query_limit)
     if not queries:
+        emit("no areas/keywords in profile; skipping")
         return RunResult(
-            user.get_username(), "no_interests", note="profile has no areas/keywords"
+            username, "no_interests", note="profile has no areas/keywords"
         )
 
+    emit(
+        f"start: {len(queries)} queries, "
+        f"window {days_back}d back / {days_forward}d fwd"
+    )
     summary = scan(
         queries,
         window=ScanWindow.around_today_days(days_back, days_forward),
@@ -114,14 +128,19 @@ def run_for_user(
         embed=embed,
         search_fn=search_fn,
         embedder=scan_embedder,
+        log=log,
     )
 
     # Embed the profile into the *same* space as the papers and persist it so a
     # later scoring phase finds the interest vector ready.
     profile_vector = embeddings.embed_text(canonical_text(profile))
     if profile_vector is None:
+        emit(
+            "no embedder; stopping "
+            f"({summary.embedding_skipped_reason or 'unavailable'})"
+        )
         return RunResult(
-            user.get_username(),
+            username,
             "no_embedder",
             queries=queries,
             scanned_new=summary.new,
@@ -134,32 +153,39 @@ def run_for_user(
 
     hits = retrieve_for_vector(profile_vector, limit=top_k)
     if not hits:
+        emit("no embedded papers to retrieve yet")
         return RunResult(
-            user.get_username(),
+            username,
             "no_results",
             queries=queries,
             scanned_new=summary.new,
             embedded=summary.embedded,
             note="no embedded papers to retrieve yet",
         )
+    emit(f"retrieved {len(hits)} papers (top_k={top_k})")
 
     suggestions = generate_suggestions(
         interests, hits, limit=suggestion_limit, complete=complete
+    )
+    llm = sum(1 for s in suggestions if s["source"] == "llm")
+    emit(
+        f"suggestions: {len(suggestions)} ({llm} llm / "
+        f"{len(suggestions) - llm} fallback)"
     )
 
     if persist:
         _persist(user, hits, suggestions)
 
     return RunResult(
-        user.get_username(),
+        username,
         "ok",
         queries=queries,
         scanned_new=summary.new,
         embedded=summary.embedded,
         retrieved=len(hits),
         suggestions=len(suggestions),
-        llm=sum(1 for s in suggestions if s["source"] == "llm"),
-        fallback=sum(1 for s in suggestions if s["source"] == "fallback"),
+        llm=llm,
+        fallback=len(suggestions) - llm,
     )
 
 

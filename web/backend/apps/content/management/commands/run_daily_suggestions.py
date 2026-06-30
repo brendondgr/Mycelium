@@ -14,9 +14,11 @@ The same code path the Beat schedule uses, exposed for testing and manual runs.
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from apps.content.pipeline import run_for_user
+from apps.content.runlog import new_run_log
 from apps.content.tasks import run_daily_suggestions, select_users
 
 
@@ -100,11 +102,25 @@ class Command(BaseCommand):
 
         complete = (lambda _prompt: None) if options["no_llm"] else None
         persist = not options["dry_run"]
-        for user in users:
-            result = run_for_user(
-                user, complete=complete, persist=persist, **common
-            )
-            self._report(result)
+        # Verbose, timestamped log to a file AND echoed live to the console.
+        runlog = new_run_log(
+            settings.DAILY_SUGGESTIONS_LOG_DIR,
+            label="cli",
+            echo=lambda text: self.stdout.write(text),
+        )
+        self.stdout.write(self.style.SUCCESS(f"Run log: {runlog.path}"))
+        try:
+            for user in users:
+                result = run_for_user(
+                    user,
+                    complete=complete,
+                    persist=persist,
+                    log=runlog.line,
+                    **common,
+                )
+                self._report(result)
+        finally:
+            runlog.close()
 
     def _report(self, result) -> None:
         line = (

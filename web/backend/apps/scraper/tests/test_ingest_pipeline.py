@@ -27,6 +27,28 @@ def _fake_embedder(texts):
 
 
 @pytest.mark.django_db
+def test_scan_emits_verbose_log_and_timings():
+    records = [
+        _record("OpenAlex", "W1", title="A", doi="10.1/a", abstract="x"),
+        _record("PubMed", "2", title="B", pmid="2"),
+    ]
+    lines: list[str] = []
+    summary = scan(
+        ["q"], search_fn=_search(records), embedder=_fake_embedder, log=lines.append
+    )
+
+    joined = "\n".join(lines)
+    assert "scan start" in joined
+    assert "search done" in joined
+    assert "cross-source dedup" in joined
+    assert "embed:" in joined
+    assert "tally:" in joined
+    assert {"search", "dedup", "against_store", "embed", "upsert", "total"} <= set(
+        summary.timings
+    )
+
+
+@pytest.mark.django_db
 def test_scan_ingests_new_papers_with_embeddings():
     records = [
         _record(
