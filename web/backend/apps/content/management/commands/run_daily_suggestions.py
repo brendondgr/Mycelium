@@ -14,9 +14,11 @@ The same code path the Beat schedule uses, exposed for testing and manual runs.
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from apps.content.pipeline import run_for_user
+from apps.content.runlog import new_run_log
 from apps.content.tasks import run_daily_suggestions, select_users
 
 
@@ -32,8 +34,18 @@ class Command(BaseCommand):
             metavar="USERNAME",
             help="Limit to this user. Repeat for several. Default: all active users.",
         )
-        parser.add_argument("--months-back", type=int, default=2)
-        parser.add_argument("--months-forward", type=int, default=1)
+        parser.add_argument(
+            "--days-back",
+            type=int,
+            default=2,
+            help="How many days back to scan publication dates (default 2).",
+        )
+        parser.add_argument(
+            "--days-forward",
+            type=int,
+            default=7,
+            help="How many days forward (ahead-of-print) to scan (default 7).",
+        )
         parser.add_argument(
             "--source",
             action="append",
@@ -69,8 +81,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         usernames = [u for u in (options.get("usernames") or []) if u and u.strip()]
         common = dict(
-            months_back=options["months_back"],
-            months_forward=options["months_forward"],
+            days_back=options["days_back"],
+            days_forward=options["days_forward"],
             sources=options.get("sources"),
             query_limit=options["query_limit"],
             top_k=options["top_k"],
@@ -90,11 +102,25 @@ class Command(BaseCommand):
 
         complete = (lambda _prompt: None) if options["no_llm"] else None
         persist = not options["dry_run"]
-        for user in users:
-            result = run_for_user(
-                user, complete=complete, persist=persist, **common
-            )
-            self._report(result)
+        # Verbose, timestamped log to a file AND echoed live to the console.
+        runlog = new_run_log(
+            settings.DAILY_SUGGESTIONS_LOG_DIR,
+            label="cli",
+            echo=lambda text: self.stdout.write(text),
+        )
+        self.stdout.write(self.style.SUCCESS(f"Run log: {runlog.path}"))
+        try:
+            for user in users:
+                result = run_for_user(
+                    user,
+                    complete=complete,
+                    persist=persist,
+                    log=runlog.line,
+                    **common,
+                )
+                self._report(result)
+        finally:
+            runlog.close()
 
     def _report(self, result) -> None:
         line = (

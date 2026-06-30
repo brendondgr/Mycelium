@@ -166,6 +166,13 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# Where the daily suggestion run writes its verbose, timestamped log (one file
+# per run). Under the repo's data/ dir by default so it is readable on the host.
+DAILY_SUGGESTIONS_LOG_DIR = env(
+    "DAILY_SUGGESTIONS_LOG_DIR",
+    default=str(ROOT_DIR.parent / "data" / "logs" / "daily-suggestions"),
+)
+
 NEO4J_URI = env("NEO4J_URI", default="bolt://localhost:11750")
 NEO4J_USERNAME = env("NEO4J_USERNAME", default="neo4j")
 NEO4J_PASSWORD = env("NEO4J_PASSWORD", default="")

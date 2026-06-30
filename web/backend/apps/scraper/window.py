@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 
 def shift_months(moment: datetime, months: int) -> datetime:
@@ -39,6 +39,15 @@ class ScanWindow:
         return cls(
             since=shift_months(now, -abs(months_back)),
             until=shift_months(now, abs(months_forward)),
+        )
+
+    @classmethod
+    def around_today_days(cls, days_back: int, days_forward: int) -> ScanWindow:
+        """A tight day-level window — used by the daily run (e.g. 2 back, 7 ahead)."""
+        now = datetime.now(UTC)
+        return cls(
+            since=now - timedelta(days=abs(days_back)),
+            until=now + timedelta(days=abs(days_forward)),
         )
 
     @property
