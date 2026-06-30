@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
@@ -100,9 +102,6 @@ function ResearchFocusCard() {
           </div>
         ))}
 
-      <p className="mt-4 text-[11.5px] text-[var(--text-muted)]">
-        Editing your profile from the dashboard is coming soon.
-      </p>
     </Card>
   );
 }
@@ -270,6 +269,11 @@ export function ProfileSection() {
       <SectionHeader
         title="Profile"
         subtitle="Your research focus and goals — what Mylo uses to find matches."
+        action={
+          <Button asChild className="rounded-full">
+            <Link href="/app/onboarding?edit=1">Edit profile</Link>
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">
