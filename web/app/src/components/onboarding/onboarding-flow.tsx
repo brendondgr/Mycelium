@@ -323,7 +323,6 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           setStatement(interests.statement ?? "");
           setAreas(interests.areas ?? []);
           setKeywords(interests.keywords ?? []);
-          setMethods(interests.methods ?? []);
           setSkills(interests.skills ?? []);
           setDraftSources(interests.sources ?? {});
         }
