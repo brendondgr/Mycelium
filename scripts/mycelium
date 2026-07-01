@@ -1,0 +1,276 @@
+#!/usr/bin/env python3
+"""mycelium — manage the Mycelium Docker Compose stack.
+
+Usage:
+    mycelium start           start all services (detached)
+    mycelium stop            stop all services
+    mycelium restart         stop then start (default)
+    mycelium status          show container state and live endpoint health
+    mycelium logs            follow combined logs (Ctrl-C to exit)
+    mycelium build           rebuild images then start
+    mycelium install-service copy .service files to /etc/systemd/system/ and enable boot startup
+"""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
+# This script lives at <repo>/scripts/mycelium, so parent.parent = repo root.
+ROOT = Path(__file__).resolve().parent.parent
+COMPOSE_FILE = ROOT / "compose.yaml"
+
+ENDPOINTS = [
+    ("Gateway",       "http://localhost:11050"),
+    ("Astro landing", "http://localhost:11150"),
+    ("Next.js app",   "http://localhost:11250"),
+    ("Django API",    "http://localhost:11350/api/health/"),
+    ("Neo4j browser", "http://localhost:11650"),
+    ("MinIO console", "http://localhost:11950"),
+]
+
+# ── ANSI helpers ──────────────────────────────────────────────────────────────
+
+_COLOR = sys.stdout.isatty()
+
+def _c(code: str, text: str) -> str:
+    return f"\033[{code}m{text}\033[0m" if _COLOR else text
+
+def green(t: str)  -> str: return _c("32", t)
+def red(t: str)    -> str: return _c("31", t)
+def bold(t: str)   -> str: return _c("1",  t)
+def dim(t: str)    -> str: return _c("2",  t)
+def yellow(t: str) -> str: return _c("33", t)
+
+# ── Docker Compose helpers ────────────────────────────────────────────────────
+
+def _compose() -> list[str]:
+    if shutil.which("docker"):
+        probe = subprocess.run(
+            ["docker", "compose", "version"], capture_output=True
+        )
+        if probe.returncode == 0:
+            return ["docker", "compose"]
+    if shutil.which("docker-compose"):
+        return ["docker-compose"]
+    sys.exit("Docker Compose not found. Install Docker Desktop or the Compose plugin.")
+
+
+def _run(cmd: list[str]) -> int:
+    return subprocess.run(cmd, cwd=ROOT).returncode
+
+
+def _run_capture(cmd: list[str]) -> str:
+    result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    return result.stdout
+
+
+# ── URL health check ──────────────────────────────────────────────────────────
+
+def _check(url: str, timeout: int = 4) -> bool:
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            return r.status < 500
+    except Exception:
+        return False
+
+
+def _check_all() -> dict[str, bool]:
+    results: dict[str, bool] = {}
+    with ThreadPoolExecutor(max_workers=len(ENDPOINTS)) as pool:
+        futures = {pool.submit(_check, url): (name, url) for name, url in ENDPOINTS}
+        for future in as_completed(futures):
+            name, _ = futures[future]
+            results[name] = future.result()
+    return results
+
+
+# ── Commands ──────────────────────────────────────────────────────────────────
+
+def cmd_start(base: list[str], build: bool = False) -> int:
+    cmd = [*base, "up", "-d"]
+    if build:
+        cmd.append("--build")
+    code = _run(cmd)
+    if code == 0:
+        print()
+        print(bold("Stack is starting in the background."))
+        print(dim("  mycelium status   — check health"))
+        print(dim("  mycelium logs     — follow logs"))
+        print(dim("  mycelium stop     — shut down"))
+    return code
+
+
+def cmd_stop(base: list[str]) -> int:
+    return _run([*base, "down", "--remove-orphans"])
+
+
+def cmd_restart(base: list[str], build: bool = False) -> int:
+    cmd_stop(base)
+    return cmd_start(base, build)
+
+
+def cmd_logs(base: list[str]) -> int:
+    return _run([*base, "logs", "-f", "--tail", "100"])
+
+
+def cmd_status(base: list[str]) -> int:
+    W_NAME = 16
+    W_URL  = 36
+
+    # ── container table ──────────────────────────────────────────────────────
+    raw = _run_capture([*base, "ps", "--format", "table {{.Service}}\t{{.State}}\t{{.Status}}"])
+    lines = [l for l in raw.strip().splitlines() if l.strip()]
+
+    print()
+    print(bold("  Mycelium — Container Status"))
+    print(dim("  " + "─" * 54))
+
+    if len(lines) <= 1:
+        print(yellow("  No containers found — stack may be stopped."))
+    else:
+        header, *rows = lines
+        # header: "SERVICE   STATE   STATUS"
+        print(dim(f"  {header}"))
+        print(dim("  " + "─" * 54))
+        for row in rows:
+            parts = row.split(None, 2)
+            if not parts:
+                continue
+            service = parts[0] if len(parts) > 0 else ""
+            state   = parts[1] if len(parts) > 1 else ""
+            status  = parts[2] if len(parts) > 2 else ""
+            if "running" in state.lower() or "running" in status.lower():
+                dot = green("●")
+            elif "exited" in state.lower() or "exited" in status.lower():
+                dot = red("●")
+            else:
+                dot = yellow("●")
+            print(f"  {dot} {service:<22} {dim(status)}")
+
+    # ── endpoint table ───────────────────────────────────────────────────────
+    print()
+    print(bold("  Endpoints"))
+    print(dim("  " + "─" * 54))
+    print(dim(f"  {'Service':<{W_NAME}} {'URL':<{W_URL}} Health"))
+    print(dim("  " + "─" * 54))
+
+    print(dim("  Checking endpoints…"), end="\r", flush=True)
+    health = _check_all()
+    print(" " * 30, end="\r")  # clear the "checking" line
+
+    for name, url in ENDPOINTS:
+        up = health.get(name, False)
+        badge = green("● UP  ") if up else red("● DOWN")
+        # shorten the URL for the health-check display URL (strip trailing path)
+        display_url = url.split("/api/")[0] if "/api/" in url else url
+        print(f"  {name:<{W_NAME}} {display_url:<{W_URL}} {badge}")
+
+    print()
+    return 0
+
+
+# ── Service installation ──────────────────────────────────────────────────────
+
+SYSTEMD_DIR = Path("/etc/systemd/system")
+SERVICE_FILES = ["mycelium.service", "mycelium-update.service"]
+
+
+def cmd_install_service() -> int:
+    if not SYSTEMD_DIR.exists():
+        print(red("  /etc/systemd/system not found — is this a systemd system?"), file=sys.stderr)
+        return 1
+
+    # Must be root (or have write access via sudo) to install into /etc/systemd/system
+    import os
+    if os.geteuid() != 0:
+        print(red("  install-service must be run with sudo:"), file=sys.stderr)
+        print(f"    sudo mycelium install-service", file=sys.stderr)
+        return 1
+
+    print()
+    any_missing = False
+    for name in SERVICE_FILES:
+        src = ROOT / name
+        if not src.exists():
+            print(red(f"  ✗ {name} not found in repo root ({src})"))
+            any_missing = True
+    if any_missing:
+        return 1
+
+    for name in SERVICE_FILES:
+        src = ROOT / name
+        dst = SYSTEMD_DIR / name
+        shutil.copy2(src, dst)
+        dst.chmod(0o644)
+        print(green(f"  ✓ copied  {name}  →  {dst}"))
+
+    # daemon-reload
+    r = subprocess.run(["systemctl", "daemon-reload"])
+    if r.returncode != 0:
+        print(red("  ✗ systemctl daemon-reload failed"), file=sys.stderr)
+        return r.returncode
+    print(dim("  ✓ daemon-reload"))
+
+    # enable the main service
+    r = subprocess.run(["systemctl", "enable", "mycelium.service"])
+    if r.returncode != 0:
+        print(red("  ✗ systemctl enable failed"), file=sys.stderr)
+        return r.returncode
+    print(green("  ✓ mycelium.service enabled — will start automatically on next boot"))
+
+    print()
+    print(bold("  Done. To start the stack now:"))
+    print(dim("    sudo systemctl start mycelium.service"))
+    print(dim("    mycelium status"))
+    print()
+    return 0
+
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+def main() -> int:
+    if not COMPOSE_FILE.exists():
+        sys.exit(f"compose.yaml not found at {COMPOSE_FILE}. Run from the repo root.")
+
+    action = sys.argv[1] if len(sys.argv) > 1 else "restart"
+    build  = "--build" in sys.argv or "-b" in sys.argv
+
+    if action in ("-h", "--help", "help"):
+        print(__doc__)
+        return 0
+
+    if action == "install-service":
+        return cmd_install_service()
+
+    base = _compose()
+
+    base = _compose()
+
+    dispatch = {
+        "start":   lambda: cmd_start(base, build),
+        "up":      lambda: cmd_start(base, build),
+        "stop":    lambda: cmd_stop(base),
+        "down":    lambda: cmd_stop(base),
+        "restart": lambda: cmd_restart(base, build),
+        "status":  lambda: cmd_status(base),
+        "logs":    lambda: cmd_logs(base),
+        "build":   lambda: cmd_start(base, build=True),
+    }
+
+    fn = dispatch.get(action)
+    if fn is None:
+        print(f"Unknown command: {action!r}", file=sys.stderr)
+        print("Valid commands: start, stop, restart, status, logs, build, install-service", file=sys.stderr)
+        return 1
+
+    return fn()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

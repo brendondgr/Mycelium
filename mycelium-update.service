@@ -1,0 +1,34 @@
+[Unit]
+Description=Mycelium — pull latest images and rolling restart
+Documentation=https://github.com/brendondgr/mycelium
+# Only run while the main stack service is active
+After=mycelium.service
+Requires=mycelium.service
+
+[Service]
+Type=oneshot
+
+WorkingDirectory=/home/bdgr/Agents/Mycelium
+
+# Pull fresh images for every service defined in compose.yaml
+ExecStart=/usr/bin/docker compose pull --quiet
+# Rebuild and restart any services whose image changed; leave unchanged ones running
+ExecStart=/usr/bin/docker compose up -d --build --remove-orphans
+
+# Let a slow pull/build take up to 15 minutes before giving up
+TimeoutStartSec=900
+
+User=bdgr
+Group=bdgr
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+# Not enabled by default — trigger manually or pair with a .timer unit:
+#   sudo systemctl start mycelium-update.service
+# To run nightly at 03:00, create /etc/systemd/system/mycelium-update.timer:
+#   [Unit]  Description=Nightly Mycelium update
+#   [Timer] OnCalendar=03:00  Persistent=true
+#   [Install] WantedBy=timers.target
+WantedBy=multi-user.target
