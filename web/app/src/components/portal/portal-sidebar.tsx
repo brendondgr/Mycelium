@@ -52,6 +52,12 @@ export function PortalSidebar() {
           onClick={() => goToSection("daily")}
         />
         <SidebarNavItem
+          icon={<DocumentIcon size={18} />}
+          label="Research Papers"
+          active={section === "papers"}
+          onClick={() => goToSection("papers")}
+        />
+        <SidebarNavItem
           icon={<SparkleIcon size={18} />}
           label="Opportunities"
           active={section === "opportunities"}

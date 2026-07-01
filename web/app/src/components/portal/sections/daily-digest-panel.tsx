@@ -62,7 +62,7 @@ export function DailyDigestPanel() {
       <div className="mb-[9px] flex items-center gap-2">
         <BellIcon size={14} className="text-primary" aria-hidden="true" />
         <span className="text-[10.5px] font-semibold uppercase tracking-[.09em] text-primary">
-          Daily report{when ? ` · ${when}` : ""}
+          Research papers{when ? ` · ${when}` : ""}
         </span>
       </div>
 
@@ -80,7 +80,7 @@ export function DailyDigestPanel() {
                 <button
                   key={s.content_id}
                   type="button"
-                  onClick={() => goToSection("daily" as SectionKey)}
+                  onClick={() => goToSection("papers" as SectionKey)}
                   className="group flex w-full items-start gap-2.5 rounded-xl border border-[var(--divider)] bg-surface-alt/40 px-3 py-2.5 text-left transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_13%,transparent)] text-[11px] font-semibold text-primary">
@@ -131,10 +131,10 @@ export function DailyDigestPanel() {
       {/* Footer link */}
       <button
         type="button"
-        onClick={() => goToSection("daily" as SectionKey)}
+        onClick={() => goToSection("papers" as SectionKey)}
         className="mt-4 inline-flex items-center gap-1.5 self-start text-[13px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
       >
-        Open daily report
+        View research papers
         <ArrowRightIcon size={14} aria-hidden="true" />
       </button>
     </Card>

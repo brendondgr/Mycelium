@@ -35,7 +35,12 @@ def test_llm_path_uses_model_ranking() -> None:
         return json.dumps(
             {
                 "suggestions": [
-                    {"paper": 2, "headline": "Graphs for Care", "reason": "On topic."},
+                    {
+                        "paper": 2,
+                        "match": 92,
+                        "headline": "Graphs for Care",
+                        "reason": "On topic.",
+                    },
                     {"paper": 1, "headline": "Graph Methods", "reason": "Methods."},
                 ]
             }
@@ -48,6 +53,29 @@ def test_llm_path_uses_model_ranking() -> None:
     assert out[0]["headline"] == "Graphs for Care"
     assert all(s["source"] == "llm" for s in out)
     assert out[0]["similarity"] == 0.78
+    # The model's percent match is carried through, clamped to 0–100.
+    assert out[0]["match_percent"] == 92
+    # A pick with no "match" falls back to the similarity-derived proxy.
+    assert out[1]["match_percent"] == 81  # round(0.81 * 100)
+
+
+def test_llm_match_is_clamped_and_defaulted() -> None:
+    hits = _hits()
+
+    def complete(_prompt: str) -> str:
+        return json.dumps(
+            {
+                "suggestions": [
+                    {"paper": 1, "match": 150, "headline": "A", "reason": "r"},
+                    {"paper": 2, "match": "oops", "headline": "B", "reason": "r"},
+                ]
+            }
+        )
+
+    out = generate_suggestions(INTERESTS, hits, complete=complete)
+
+    assert out[0]["match_percent"] == 100  # clamped down from 150
+    assert out[1]["match_percent"] == 78  # garbled -> similarity proxy (0.78)
 
 
 def test_limit_caps_llm_suggestions() -> None:
@@ -71,6 +99,8 @@ def test_fallback_when_no_model() -> None:
     assert all(s["source"] == "fallback" for s in out)
     # Order follows similarity (already sorted desc).
     assert out[0]["content_id"] == str(hits[0][0].id)
+    # Fallback match is the similarity-derived proxy (0.81 -> 81).
+    assert out[0]["match_percent"] == 81
 
 
 def test_fallback_reason_names_overlapping_interest() -> None:

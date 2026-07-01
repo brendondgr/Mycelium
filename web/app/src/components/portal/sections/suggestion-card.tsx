@@ -21,6 +21,42 @@ function metaLine(suggestion: Suggestion): string {
   return parts.join(" · ");
 }
 
+/** A paper at or above this percent match is highlighted as a strong fit. */
+const STRONG_MATCH = 75;
+
+/**
+ * The model's percent match for this researcher. Text always carries the value
+ * ("87% match" / "Strong"), so color is never the only signal; the accent tone
+ * only reinforces a strong fit.
+ */
+function MatchBadge({ percent }: { percent: number }) {
+  const strong = percent >= STRONG_MATCH;
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
+      style={
+        strong
+          ? {
+              borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
+              backgroundColor: "color-mix(in srgb, var(--accent) 14%, transparent)",
+              color: "var(--accent)",
+            }
+          : {
+              borderColor: "var(--border)",
+              backgroundColor: "var(--surface-alt)",
+              color: "var(--text-secondary)",
+            }
+      }
+      aria-label={`${percent} percent match to your research profile${
+        strong ? ", a strong match" : ""
+      }`}
+    >
+      <span aria-hidden="true">{percent}%</span>
+      <span className="text-[var(--text-muted)]">match</span>
+    </span>
+  );
+}
+
 /**
  * One research-article suggestion: rank, headline, why-it-matters reason, and a
  * link to the source. The gold "Mylo pick" chip marks a language-model reason;
@@ -44,16 +80,21 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
             {suggestion.headline}
           </h3>
         </div>
-        <Pill tone={isMylo ? "accent" : "neutral"} className="shrink-0">
-          {isMylo ? (
-            <>
-              <SparkleIcon size={12} aria-hidden="true" />
-              Mylo pick
-            </>
-          ) : (
-            "Topical match"
-          )}
-        </Pill>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          {typeof suggestion.match_percent === "number" ? (
+            <MatchBadge percent={suggestion.match_percent} />
+          ) : null}
+          <Pill tone={isMylo ? "accent" : "neutral"} className="shrink-0">
+            {isMylo ? (
+              <>
+                <SparkleIcon size={12} aria-hidden="true" />
+                Mylo pick
+              </>
+            ) : (
+              "Topical match"
+            )}
+          </Pill>
+        </div>
       </div>
 
       <p className="mt-1.5 text-xs text-[var(--text-muted)]">

@@ -78,6 +78,8 @@ export type Suggestion = {
   year: number | null;
   authors: string[];
   score: number;
+  /** The model's 0–100 percent match for this researcher (null if unscored). */
+  match_percent: number | null;
   rank: number | null;
   headline: string;
   reason: string;
@@ -85,9 +87,25 @@ export type Suggestion = {
   origin: "llm" | "fallback";
 };
 
+/**
+ * A plain roll-up of the day's suggested papers (from `/api/daily-report/`).
+ * Powers the Daily Report page; the papers themselves live on Research Papers.
+ */
+export type DailyReportSummary = {
+  paper_count: number;
+  strong_matches: number;
+  top_match: number | null;
+  average_match: number | null;
+  themes: string[];
+  sources: string[];
+  headline: string;
+};
+
 /** The signed-in user's current daily digest (from `/api/daily-report/`). */
 export type DailyReport = {
   /** ISO timestamp of the run that produced these, or null when none has run. */
   generated_at: string | null;
+  /** The day's summary, or null when no run has produced suggestions yet. */
+  summary: DailyReportSummary | null;
   suggestions: Suggestion[];
 };
