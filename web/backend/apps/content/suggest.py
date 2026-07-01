@@ -30,20 +30,23 @@ CompleteFn = Callable[[str], str | None]
 Suggestion = dict[str, Any]
 
 #: How many candidates we show the model, and how many suggestions we return.
-_MAX_CANDIDATES = 12
-_DEFAULT_LIMIT = 5
+_MAX_CANDIDATES = 16
+_DEFAULT_LIMIT = 10
 _ABSTRACT_CHARS = 600
 
 _SYSTEM_PROMPT = (
     "You are Mylo, a research scout. Given a researcher's interest profile and a "
     "numbered list of candidate papers, choose the ones most worth their "
-    "attention and explain why. Return ONLY one JSON object:\n"
-    '  {"suggestions": [{"paper": <number>, "headline": <short title-case '
-    'phrase>, "reason": <1-2 sentences, second person, why THIS researcher '
-    'should read it>}]}\n'
+    "attention and explain why. For each pick, judge how well the paper fits "
+    "THIS researcher — their statement, research focus, and keywords — and give "
+    "an integer percent match from 0 to 100 (100 = a near-perfect fit; be "
+    "honest and use the full range). Return ONLY one JSON object:\n"
+    '  {"suggestions": [{"paper": <number>, "match": <integer 0-100>, '
+    '"headline": <short title-case phrase>, "reason": <1-2 sentences, second '
+    'person, why THIS researcher should read it>}]}\n'
     "Rank best first. Only use papers from the list (reference them by their "
-    "number). Ground every reason in the paper and the profile — do not invent "
-    "findings. No prose outside the JSON, no markdown fences."
+    "number). Ground every reason and match score in the paper and the profile "
+    "— do not invent findings. No prose outside the JSON, no markdown fences."
 )
 
 
@@ -69,7 +72,7 @@ def generate_suggestions(
     ask = complete if complete is not None else _settings_complete
     raw: str | None = None
     try:
-        raw = ask(_build_prompt(interests, shown))
+        raw = ask(_build_prompt(interests, shown, limit=limit))
     except Exception:
         logger.warning(
             "LLM suggestion generation failed; using similarity fallback.",
@@ -92,7 +95,10 @@ def generate_suggestions(
 
 
 def _build_prompt(
-    interests: dict, shown: Sequence[tuple[ContentItem, float]]
+    interests: dict,
+    shown: Sequence[tuple[ContentItem, float]],
+    *,
+    limit: int = _DEFAULT_LIMIT,
 ) -> str:
     parts = [
         f"Researcher profile:\n{_profile_text(interests)}",
@@ -112,7 +118,7 @@ def _build_prompt(
         if abstract:
             line += f"\n    {abstract}"
         parts.append(line)
-    parts.append(f"\nReturn the {_DEFAULT_LIMIT} best as JSON.")
+    parts.append(f"\nReturn the {limit} best as JSON.")
     return "\n".join(parts)
 
 
@@ -171,6 +177,7 @@ def _parse(
                 rank=len(out) + 1,
                 headline=_clean(row.get("headline")) or _title(item),
                 reason=_clean(row.get("reason")) or _fallback_reason({}, item),
+                match_percent=_as_match(row.get("match"), similarity),
                 source="llm",
             )
         )
@@ -185,6 +192,24 @@ def _as_index(value: Any, count: int) -> int | None:
     except (TypeError, ValueError):
         return None
     return n - 1 if 1 <= n <= count else None
+
+
+def _as_match(value: Any, similarity: float) -> int:
+    """Clamp the model's percent-match to 0–100; fall back to similarity.
+
+    The model judges fit against the researcher's profile; when it omits or
+    garbles the number we derive an honest proxy from the retrieval similarity
+    so every suggestion still carries a match score.
+    """
+    try:
+        return max(0, min(100, round(float(value))))
+    except (TypeError, ValueError):
+        return _similarity_match(similarity)
+
+
+def _similarity_match(similarity: float) -> int:
+    """A deterministic percent-match proxy from cosine similarity [0, 1]."""
+    return max(0, min(100, round(float(similarity) * 100)))
 
 
 # -- fallback -----------------------------------------------------------------
@@ -205,6 +230,7 @@ def _fallback(
                 rank=rank,
                 headline=_title(item),
                 reason=_fallback_reason(interests, item),
+                match_percent=_similarity_match(similarity),
                 source="fallback",
             )
         )
@@ -241,6 +267,7 @@ def _suggestion(
     rank: int,
     headline: str,
     reason: str,
+    match_percent: int,
     source: str,
 ) -> Suggestion:
     return {
@@ -248,6 +275,7 @@ def _suggestion(
         "rank": rank,
         "headline": headline,
         "reason": reason,
+        "match_percent": match_percent,
         "similarity": round(float(similarity), 4),
         "source": source,
     }

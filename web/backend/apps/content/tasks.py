@@ -14,7 +14,7 @@ from celery import shared_task
 from django.conf import settings
 from django.contrib.auth.models import User
 
-from .pipeline import run_for_user
+from .pipeline import DEFAULT_SUGGESTIONS, run_for_user
 from .runlog import new_run_log
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ def run_daily_suggestions(
     sources: list[str] | None = None,
     query_limit: int = 6,
     top_k: int = 20,
-    suggestion_limit: int = 5,
+    suggestion_limit: int = DEFAULT_SUGGESTIONS,
     embed: bool = True,
 ) -> list[dict]:
     """Run the pipeline for every selected user; return each user's summary."""

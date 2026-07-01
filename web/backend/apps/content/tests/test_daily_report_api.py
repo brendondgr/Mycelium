@@ -22,7 +22,9 @@ def _paper(title: str) -> ContentItem:
     )
 
 
-def _suggest(user, paper, *, rank, run_at, score=0.8, suggested=True) -> RelevanceScore:
+def _suggest(
+    user, paper, *, rank, run_at, score=0.8, suggested=True, match=80, focus_areas=None
+) -> RelevanceScore:
     return RelevanceScore.objects.create(
         content=paper,
         target_user=user,
@@ -33,6 +35,8 @@ def _suggest(user, paper, *, rank, run_at, score=0.8, suggested=True) -> Relevan
             "rank": rank,
             "headline": f"Headline {rank}",
             "reason": f"Reason {rank}",
+            "match_percent": match,
+            "focus_areas": focus_areas or [],
             "source": "llm",
         },
     )
@@ -51,15 +55,29 @@ def test_empty_when_no_run(client: APIClient) -> None:
     resp = client.get("/api/daily-report/")
 
     assert resp.status_code == 200
-    assert resp.data == {"generated_at": None, "suggestions": []}
+    assert resp.data == {"generated_at": None, "summary": None, "suggestions": []}
 
 
 @pytest.mark.django_db
 def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
     user = User.objects.create_user("brendon", password="x")
     old = _suggest(user, _paper("Old"), rank=1, run_at="2026-06-28T00:00:00")
-    _suggest(user, _paper("Second"), rank=2, run_at="2026-06-29T00:00:00")
-    first = _suggest(user, _paper("First"), rank=1, run_at="2026-06-29T00:00:00")
+    _suggest(
+        user,
+        _paper("Second"),
+        rank=2,
+        run_at="2026-06-29T00:00:00",
+        match=60,
+        focus_areas=["Knowledge Graphs"],
+    )
+    first = _suggest(
+        user,
+        _paper("First"),
+        rank=1,
+        run_at="2026-06-29T00:00:00",
+        match=90,
+        focus_areas=["Knowledge Graphs"],
+    )
 
     client.force_authenticate(user)
     resp = client.get("/api/daily-report/")
@@ -69,11 +87,27 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
     titles = [s["title"] for s in resp.data["suggestions"]]
     assert titles == ["First", "Second"]  # latest run only, rank order
     assert old.content.metadata["title"] == "Old"  # excluded
-    assert {"headline", "reason", "source", "url", "venue", "year"} <= set(
-        resp.data["suggestions"][0]
-    )
+    assert {
+        "headline",
+        "reason",
+        "source",
+        "url",
+        "venue",
+        "year",
+        "match_percent",
+    } <= set(resp.data["suggestions"][0])
     assert resp.data["suggestions"][0]["origin"] == "llm"
+    assert resp.data["suggestions"][0]["match_percent"] == 90
     assert first.signals["rank"] == 1
+
+    # The daily summary rolls up today's suggested papers (latest run only).
+    summary = resp.data["summary"]
+    assert summary["paper_count"] == 2
+    assert summary["strong_matches"] == 1  # only the 90% match clears the bar
+    assert summary["top_match"] == 90
+    assert summary["average_match"] == 75  # round((90 + 60) / 2)
+    assert summary["themes"] == ["Knowledge Graphs"]
+    assert "2 papers matched" in summary["headline"]
 
 
 @pytest.mark.django_db

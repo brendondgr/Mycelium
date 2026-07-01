@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 # (a months-wide window pulls tens of thousands of papers to surface a handful).
 DEFAULT_QUERY_LIMIT = 6
 DEFAULT_TOP_K = 20
-DEFAULT_SUGGESTIONS = 5
+DEFAULT_SUGGESTIONS = 10
 DEFAULT_DAYS_BACK = 2
 DEFAULT_DAYS_FORWARD = 7
 
@@ -256,6 +256,7 @@ def _persist(user: User, ranked: list[RankedHit], suggestions) -> None:
                 rank=promoted["rank"],
                 headline=promoted["headline"],
                 reason=promoted["reason"],
+                match_percent=promoted["match_percent"],
                 source=promoted["source"],
             )
         RelevanceScore.objects.update_or_create(

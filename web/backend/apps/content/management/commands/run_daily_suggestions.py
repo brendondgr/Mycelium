@@ -17,7 +17,7 @@ from __future__ import annotations
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from apps.content.pipeline import run_for_user
+from apps.content.pipeline import DEFAULT_SUGGESTIONS, run_for_user
 from apps.content.runlog import new_run_log
 from apps.content.tasks import run_daily_suggestions, select_users
 
@@ -55,7 +55,7 @@ class Command(BaseCommand):
         )
         parser.add_argument("--query-limit", type=int, default=6)
         parser.add_argument("--top-k", type=int, default=20)
-        parser.add_argument("--suggestions", type=int, default=5)
+        parser.add_argument("--suggestions", type=int, default=DEFAULT_SUGGESTIONS)
         parser.add_argument(
             "--no-llm",
             action="store_true",

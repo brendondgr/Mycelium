@@ -19,6 +19,7 @@ class SuggestionSerializer(serializers.Serializer):
     year = serializers.SerializerMethodField()
     authors = serializers.SerializerMethodField()
     score = serializers.FloatField()
+    match_percent = serializers.SerializerMethodField()
     rank = serializers.SerializerMethodField()
     headline = serializers.SerializerMethodField()
     reason = serializers.SerializerMethodField()
@@ -45,6 +46,11 @@ class SuggestionSerializer(serializers.Serializer):
     def get_authors(self, score: RelevanceScore) -> list[str]:
         authors = self._meta(score).get("authors")
         return authors[:6] if isinstance(authors, list) else []
+
+    def get_match_percent(self, score: RelevanceScore):
+        # The language model's 0–100 fit judgement for this researcher (a
+        # similarity-derived proxy when the model was unavailable).
+        return score.signals.get("match_percent")
 
     def get_rank(self, score: RelevanceScore):
         return score.signals.get("rank")
