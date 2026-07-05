@@ -23,7 +23,9 @@ for the layout standard.
 | An authenticated app page/route | `web/app/src/app/app/**` (Next.js App Router) |
 | A React component used in the portal | `web/app/src/components/portal/` |
 | Onboarding / profile-edit flow (UI) | `web/app/src/components/onboarding/` + route `app/app/onboarding/` |
-| Onboarding / profile intake (backend) | `web/backend/apps/accounts/intake/` |
+| Lab overview / onboarding / switch (UI) | `web/app/src/components/portal/sections/{lab-overview-section,lab-onboarding,labs-section}.tsx`, `portal/{lab-switcher,portal-sidebar}.tsx` |
+| Onboarding / profile intake (backend) | `web/backend/apps/accounts/intake/` (`lab.py` = lab profile synthesis) |
+| Lab watch + lab profile synthesis (backend) | `web/backend/apps/accounts/` — `LabWatchPreference` model, `LabWatchView` + `LabIntakeSynthesizeView` (`views.py`, `urls.py`) |
 | Login / signup / logout (UI) | `web/app/src/components/auth/` + routes `app/src/app/{login,signup}` |
 | Session auth, CSRF, `/me` (backend) | `web/backend/apps/accounts/` (`views.py`, `urls.py`) |
 | Users, labs, departments, memberships, roles | `web/backend/apps/accounts/models.py` |
