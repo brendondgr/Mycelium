@@ -37,6 +37,11 @@ def user_can_edit_lab_profile(user: UserOrAnon, lab: Lab) -> bool:
     ).exists() or user_can_manage_lab(user, lab)
 
 
+def user_can_invite_to_lab(user: UserOrAnon, lab: Lab) -> bool:
+    """A lab's PI (lead) or owner/admin may invite people to it."""
+    return user_can_edit_lab_profile(user, lab)
+
+
 def user_has_department_access(user: UserOrAnon, department: Department) -> bool:
     if not user.is_authenticated:
         return False

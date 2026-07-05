@@ -36,6 +36,33 @@ urlpatterns = [
         views.LabProfileView.as_view(),
         name="lab-profile",
     ),
+    # Lab invitations: managers invite + list; invitees see and answer their own.
+    path(
+        "labs/<slug:slug>/invitations/",
+        views.LabInvitationsView.as_view(),
+        name="lab-invitations",
+    ),
+    path(
+        "labs/<slug:slug>/invitations",
+        views.LabInvitationsView.as_view(),
+        name="lab-invitations-no-slash",
+    ),
+    path("invitations/", views.MyInvitationsView.as_view(), name="my-invitations"),
+    path(
+        "invitations",
+        views.MyInvitationsView.as_view(),
+        name="my-invitations-no-slash",
+    ),
+    path(
+        "invitations/<uuid:pk>/respond/",
+        views.InvitationRespondView.as_view(),
+        name="invitation-respond",
+    ),
+    path(
+        "invitations/<uuid:pk>/respond",
+        views.InvitationRespondView.as_view(),
+        name="invitation-respond-no-slash",
+    ),
     path(
         "departments/<uuid:pk>/profile/",
         views.DeptProfileView.as_view(),

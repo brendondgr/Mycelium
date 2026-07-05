@@ -166,9 +166,10 @@ created on first access with defaults. Body / response:
 `topics` and `categories` are deduped string lists (≤ 50 each); an unknown
 cadence or a non-list value returns `400`.
 
-## Workspace reads (labs, members, projects)
+## Workspace (labs, members, projects)
 
-Read-only endpoints that back the authenticated dashboard. All require a session.
+Endpoints that back the authenticated dashboard. All require a session. Reads are
+listed first; lab creation and project creation are documented inline.
 
 ### `GET /api/auth/labs/`
 
@@ -184,6 +185,13 @@ The caller's lab memberships, for the workspace switcher. Success `200` — a li
 marks a PI. `department` is the lab's department name or `null`. The frontend
 derives a human label (e.g. lead → "PI"). `401`/`403` when anonymous.
 
+### `POST /api/auth/labs/`
+
+Create a new lab after the account already exists. Body `{ "name": "Ocean Lab" }`.
+The caller becomes the lab OWNER and PI lead, and a `LAB` subscription + founding
+seat are provisioned (same path as a signup lab). Success `201` returns the new
+membership in the `GET /api/auth/labs/` row shape. `400` if `name` is blank.
+
 ### `GET /api/auth/labs/<slug>/members/`
 
 The roster of a lab the caller can access (any member may read). Success `200`:
@@ -195,6 +203,45 @@ The roster of a lab the caller can access (any member may read). Success `200`:
 ```
 
 Leads sort first. `403` for a non-member, `404` for an unknown slug.
+
+## Lab invitations
+
+A lab lead or owner/admin invites people; the invitee accepts, rejects, or
+ignores. All require a session.
+
+### `POST /api/auth/labs/<slug>/invitations/`
+
+Invite by email or username: body `{ "identifier": "jsmith" | "jsmith@uni.edu",
+"role": "member" }` (`role` optional, defaults to `member`). An email is matched
+to an existing account when possible; an email with no account stays a **pending**
+invite (`invitee` null) claimed when that person signs up. A username with no
+account is a `400`. Also `400` if the target is already a member or already has a
+pending invite. `403` for non-managers. Success `201` returns the invitation.
+
+### `GET /api/auth/labs/<slug>/invitations/`
+
+The lab's invitations (managers only). Success `200` — a list of
+`{ id, lab_slug, role, status, invited_email, invited_username, invitee, inviter,
+created_at, responded_at }`. `403` for non-managers.
+
+### `GET /api/auth/invitations/`
+
+The caller's **pending** invitations — the notifications-panel feed. Success
+`200`:
+
+```json
+[
+  { "id": "uuid", "lab_slug": "reyes-lab", "lab_name": "Reyes Lab", "role": "member", "inviter": "Lena Reyes", "created_at": "..." }
+]
+```
+
+### `POST /api/auth/invitations/<id>/respond/`
+
+The invitee answers: body `{ "action": "accept" | "reject" | "ignore" }`. Accept
+creates the `LabMembership` (idempotent). Reject and ignore add no membership;
+ignore silently dismisses it from the feed. Success `200`
+`{ "id": "...", "status": "accepted" | "rejected" | "ignored" }`. `403` if the
+invitation is not addressed to the caller; `409` if it was already answered.
 
 ### `GET /api/projects/?lab=<slug>`
 
@@ -217,3 +264,11 @@ lab's projects and never widens visibility. Success `200`:
 `scope` is `user | lab | department`. `status` and `progress` are read out of the
 free-form `goals` JSON when an author set them, else `null` (the model has no such
 columns). `401`/`403` when anonymous.
+
+### `POST /api/projects/`
+
+Create a project. Body `{ "name": "Oceanography", "lab": "reyes-lab",
+"goals": { "...": "..." } }`. With `lab`, the project is scoped to that lab and
+requires manage rights on it (owner/admin); without `lab`, it is a personal
+project scoped to the caller. `goals` is optional. Success `201`. `400` for a
+blank name; `403` when the caller cannot manage the named lab.

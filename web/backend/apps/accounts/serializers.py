@@ -7,7 +7,14 @@ from apps.billing.services import ACCOUNT_TYPES
 from apps.core.people import display_name, initials
 
 from .interests import validate_interests as _validate_interests_contract
-from .models import DeptProfile, LabMembership, LabProfile, Profile, WatchPreference
+from .models import (
+    DeptProfile,
+    LabInvitation,
+    LabMembership,
+    LabProfile,
+    Profile,
+    WatchPreference,
+)
 from .services import is_onboarding_complete
 
 # Usernames that collide with top-level routes or reserved app paths.
@@ -221,3 +228,38 @@ class LabMemberSerializer(serializers.Serializer):
 
     def get_initials(self, membership: LabMembership) -> str:
         return initials(membership.user)
+
+
+class MyInvitationSerializer(serializers.Serializer):
+    """A pending lab invitation addressed to the caller, for the notifications panel."""
+
+    id = serializers.UUIDField(read_only=True)
+    lab_slug = serializers.CharField(source="lab.slug", read_only=True)
+    lab_name = serializers.CharField(source="lab.name", read_only=True)
+    role = serializers.CharField(read_only=True)
+    inviter = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(read_only=True)
+
+    def get_inviter(self, invitation: LabInvitation) -> str | None:
+        return display_name(invitation.inviter) if invitation.inviter else None
+
+
+class LabInvitationSerializer(serializers.Serializer):
+    """A lab invitation as seen by a lab manager (roster of sent invites)."""
+
+    id = serializers.UUIDField(read_only=True)
+    lab_slug = serializers.CharField(source="lab.slug", read_only=True)
+    role = serializers.CharField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    invited_email = serializers.CharField(read_only=True)
+    invited_username = serializers.CharField(read_only=True)
+    invitee = serializers.SerializerMethodField()
+    inviter = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(read_only=True)
+    responded_at = serializers.DateTimeField(read_only=True)
+
+    def get_invitee(self, invitation: LabInvitation) -> str | None:
+        return display_name(invitation.invitee) if invitation.invitee else None
+
+    def get_inviter(self, invitation: LabInvitation) -> str | None:
+        return display_name(invitation.inviter) if invitation.inviter else None

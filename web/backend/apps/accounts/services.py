@@ -1,7 +1,17 @@
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.db.models import QuerySet
+from django.utils import timezone
+from rest_framework.serializers import ValidationError
 
-from .models import AuditEvent, Department, DeptMembership, Lab, LabMembership
+from .models import (
+    AuditEvent,
+    Department,
+    DeptMembership,
+    Lab,
+    LabInvitation,
+    LabMembership,
+)
 
 
 def record_audit_event(
@@ -76,3 +86,158 @@ def effective_member_count(department: Department) -> int:
 def lab_lead_count(lab: Lab) -> int:
     """Count PIs (lead memberships) of a lab — checked against per-tier PI caps."""
     return LabMembership.objects.filter(lab=lab, is_lead=True).count()
+
+
+# -- Lab invitations -----------------------------------------------------------
+
+
+def invite_to_lab(
+    *,
+    lab: Lab,
+    inviter: User,
+    identifier: str,
+    role: str = LabMembership.Role.MEMBER,
+) -> LabInvitation:
+    """Create a pending invitation from an email or username.
+
+    An email is matched to an existing account when possible, otherwise kept as
+    a pending email invite (claimed on signup). A username must match an existing
+    account. Raises DRF ``ValidationError`` for empty input, an unknown username,
+    an existing member, or a duplicate pending invite.
+    """
+    identifier = (identifier or "").strip()
+    if not identifier:
+        raise ValidationError({"identifier": ["An email or username is required."]})
+
+    invitee: User | None = None
+    invited_email = ""
+    invited_username = ""
+
+    if "@" in identifier:
+        invited_email = identifier.lower()
+        invitee = User.objects.filter(email__iexact=invited_email).first()
+    else:
+        invited_username = identifier
+        invitee = User.objects.filter(username__iexact=identifier).first()
+        if invitee is None:
+            raise ValidationError(
+                {
+                    "identifier": [
+                        "No Mycelium user found with that username. Use an email "
+                        "address to invite someone without an account.",
+                    ]
+                }
+            )
+
+    if invitee is not None and LabMembership.objects.filter(
+        lab=lab, user=invitee
+    ).exists():
+        raise ValidationError(
+            {"identifier": ["That person is already a member of this lab."]}
+        )
+
+    pending = LabInvitation.objects.filter(
+        lab=lab, status=LabInvitation.Status.PENDING
+    )
+    if invitee is not None:
+        pending = pending.filter(invitee=invitee)
+    else:
+        pending = pending.filter(invited_email=invited_email, invitee__isnull=True)
+    if pending.exists():
+        raise ValidationError(
+            {"identifier": ["There is already a pending invitation for that person."]}
+        )
+
+    if role not in dict(LabMembership.Role.choices):
+        role = LabMembership.Role.MEMBER
+
+    invitation = LabInvitation.objects.create(
+        lab=lab,
+        inviter=inviter,
+        invitee=invitee,
+        invited_email=invited_email,
+        invited_username=invited_username,
+        role=role,
+    )
+    record_audit_event(
+        actor=inviter,
+        action="lab.invite",
+        target_type="lab_invitation",
+        target_id=str(invitation.id),
+        metadata={
+            "lab_id": str(lab.id),
+            "role": role,
+            "invitee_id": invitee.id if invitee else None,
+            "invited_email": invited_email,
+        },
+    )
+    return invitation
+
+
+@transaction.atomic
+def accept_invitation(invitation: LabInvitation, user: User) -> LabMembership:
+    """Accept: add the lab membership (idempotent) and mark the invite accepted."""
+    membership, _ = LabMembership.objects.get_or_create(
+        lab=invitation.lab,
+        user=user,
+        defaults={"role": invitation.role},
+    )
+    _close_invitation(
+        invitation, user, LabInvitation.Status.ACCEPTED, "lab.invitation.accept"
+    )
+    return membership
+
+
+def decline_invitation(
+    invitation: LabInvitation, user: User, *, ignore: bool = False
+) -> None:
+    """Reject (definitive decline) or ignore (silent dismiss) an invitation."""
+    if ignore:
+        _close_invitation(
+            invitation, user, LabInvitation.Status.IGNORED, "lab.invitation.ignore"
+        )
+    else:
+        _close_invitation(
+            invitation, user, LabInvitation.Status.REJECTED, "lab.invitation.reject"
+        )
+
+
+def _close_invitation(
+    invitation: LabInvitation, user: User, status: str, action: str
+) -> None:
+    invitation.status = status
+    invitation.responded_at = timezone.now()
+    invitation.save(update_fields=["status", "responded_at"])
+    record_audit_event(
+        actor=user,
+        action=action,
+        target_type="lab_invitation",
+        target_id=str(invitation.id),
+        metadata={"lab_id": str(invitation.lab_id)},
+    )
+
+
+def claim_pending_invitations(user: User) -> int:
+    """Attach pending email invites to a freshly registered user (not auto-accept).
+
+    Matches pending, unclaimed invites by email so the new user sees them in the
+    notifications panel. Skips a lab where the user already has a pending invite
+    to avoid colliding with the one-live-invite-per-lab constraint.
+    """
+    if not user.email:
+        return 0
+    claimed = 0
+    invites = LabInvitation.objects.filter(
+        status=LabInvitation.Status.PENDING,
+        invitee__isnull=True,
+        invited_email__iexact=user.email,
+    )
+    for invite in invites:
+        if LabInvitation.objects.filter(
+            lab=invite.lab, invitee=user, status=LabInvitation.Status.PENDING
+        ).exists():
+            continue
+        invite.invitee = user
+        invite.save(update_fields=["invitee"])
+        claimed += 1
+    return claimed

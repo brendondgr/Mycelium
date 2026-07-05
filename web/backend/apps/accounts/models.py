@@ -332,6 +332,97 @@ class WatchPreference(models.Model):
         return f"WatchPreference<{self.user}>"
 
 
+class LabInvitation(models.Model):
+    """A PI/manager's invitation for a person to join a lab.
+
+    The target is resolved from an email or username at invite time. An email
+    with no matching account yet stays a *pending email* invite (``invitee``
+    null); it is claimed onto the account when that person signs up with the same
+    email (``claim_pending_invitations``). Accepting creates a
+    :class:`LabMembership` in addition to the invitee's existing account. Reject
+    is a definitive decline; ignore silently dismisses it from the invitee's feed.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+        REJECTED = "rejected", "Rejected"
+        IGNORED = "ignored", "Ignored"
+        CANCELLED = "cancelled", "Cancelled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lab = models.ForeignKey(
+        Lab,
+        on_delete=models.CASCADE,
+        related_name="invitations",
+    )
+    inviter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="sent_lab_invitations",
+    )
+    invitee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="lab_invitations",
+        help_text="Resolved recipient; null until a pending email invite is claimed.",
+    )
+    invited_email = models.EmailField(
+        blank=True,
+        default="",
+        help_text="Normalized email the invite was addressed to (for pending invites).",
+    )
+    invited_username = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        help_text="Username the invite was addressed to (audit/display).",
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=LabMembership.Role.choices,
+        default=LabMembership.Role.MEMBER,
+        help_text="Membership role granted on accept.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # At most one live invite per person per lab, and per pending email.
+            models.UniqueConstraint(
+                fields=["lab", "invitee"],
+                condition=models.Q(status="pending", invitee__isnull=False),
+                name="accounts_unique_pending_lab_invite_user",
+            ),
+            models.UniqueConstraint(
+                fields=["lab", "invited_email"],
+                condition=models.Q(status="pending") & ~models.Q(invited_email=""),
+                name="accounts_unique_pending_lab_invite_email",
+            ),
+            # An invite must target either a resolved user or an email.
+            models.CheckConstraint(
+                condition=models.Q(invitee__isnull=False)
+                | ~models.Q(invited_email=""),
+                name="accounts_lab_invite_has_target",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        who = self.invitee or self.invited_email or self.invited_username
+        return f"Invite<{who} -> {self.lab} ({self.status})>"
+
+
 class AuditEvent(models.Model):
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,

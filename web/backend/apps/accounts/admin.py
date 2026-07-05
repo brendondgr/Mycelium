@@ -10,6 +10,7 @@ from .models import (
     DeptMembership,
     DeptProfile,
     Lab,
+    LabInvitation,
     LabMembership,
     LabProfile,
     Profile,
@@ -102,6 +103,28 @@ class WatchPreferenceAdmin(admin.ModelAdmin):
     list_filter = ("cadence",)
     search_fields = ("user__username",)
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(LabInvitation)
+class LabInvitationAdmin(admin.ModelAdmin):
+    list_display = (
+        "lab",
+        "invitee",
+        "invited_email",
+        "invited_username",
+        "role",
+        "status",
+        "created_at",
+    )
+    list_filter = ("status", "role", "lab")
+    search_fields = (
+        "lab__name",
+        "lab__slug",
+        "invitee__username",
+        "invited_email",
+        "invited_username",
+    )
+    readonly_fields = ("created_at", "responded_at")
 
 
 @admin.register(AuditEvent)

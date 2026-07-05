@@ -55,6 +55,27 @@ def _unique_lab_slug(name: str) -> str:
 
 
 @transaction.atomic
+def create_lab_workspace(user: User, name: str) -> ProvisionResult:
+    """Create one lab with its founder as OWNER + PI lead, plus billing rows.
+
+    Shared by signup (``provision_workspace``) and the "create a lab after my
+    account exists" endpoint so the org + billing rows never drift between the
+    two paths. The founder is the lab's PI (``is_lead``) and pays for their own
+    founding seat. ``Lab.profile`` is created by the ``post_save`` signal.
+    """
+    lab = Lab.objects.create(name=name, slug=_unique_lab_slug(name))
+    LabMembership.objects.create(
+        user=user,
+        lab=lab,
+        role=LabMembership.Role.OWNER,
+        is_lead=True,
+    )
+    sub = Subscription.objects.create(tier=Tier.LAB, scope_lab=lab)
+    seat = Seat.objects.create(subscription=sub, member=user, payer_user=user)
+    return ProvisionResult(subscription=sub, seat=seat, lab=lab)
+
+
+@transaction.atomic
 def provision_workspace(
     user: User,
     account_type: str,
@@ -76,16 +97,7 @@ def provision_workspace(
         return ProvisionResult(subscription=sub, seat=seat)
 
     if account_type == "lab":
-        lab = Lab.objects.create(name=org_name, slug=_unique_lab_slug(org_name))
-        LabMembership.objects.create(
-            user=user,
-            lab=lab,
-            role=LabMembership.Role.OWNER,
-            is_lead=True,
-        )
-        sub = Subscription.objects.create(tier=Tier.LAB, scope_lab=lab)
-        seat = Seat.objects.create(subscription=sub, member=user, payer_user=user)
-        return ProvisionResult(subscription=sub, seat=seat, lab=lab)
+        return create_lab_workspace(user, org_name)
 
     if account_type == "department":
         dept = Department.objects.create(

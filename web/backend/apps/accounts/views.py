@@ -20,7 +20,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from apps.billing.services import provision_workspace
+from apps.billing.services import create_lab_workspace, provision_workspace
 
 from .intake import (
     AuthorImportError,
@@ -31,24 +31,39 @@ from .intake import (
     synthesize_interests,
 )
 from .interests import validate_interests
-from .models import Department, Lab, LabMembership, WatchPreference
+from .models import (
+    Department,
+    Lab,
+    LabInvitation,
+    LabMembership,
+    WatchPreference,
+)
 from .permissions import (
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
+    user_can_invite_to_lab,
     user_has_department_access,
     user_has_lab_access,
 )
 from .serializers import (
     DeptProfileSerializer,
+    LabInvitationSerializer,
     LabMemberSerializer,
     LabProfileSerializer,
+    MyInvitationSerializer,
     MyLabSerializer,
     ProfileSerializer,
     RegisterSerializer,
     WatchPreferenceSerializer,
     user_to_dict,
 )
-from .services import record_audit_event
+from .services import (
+    accept_invitation,
+    claim_pending_invitations,
+    decline_invitation,
+    invite_to_lab,
+    record_audit_event,
+)
 
 INVALID_CREDENTIALS_MESSAGE = "Invalid username or password."
 
@@ -120,6 +135,9 @@ def register_view(request: Request) -> Response:
             org_name=data.get("org_name", ""),
             institution=data.get("institution", ""),
         )
+
+        # Surface any lab invitations that were sent to this email before signup.
+        claim_pending_invitations(user)
 
         record_audit_event(
             actor=user,
@@ -237,7 +255,12 @@ class MyWatchView(RetrieveUpdateAPIView):
 
 
 class MyLabsView(ListAPIView):
-    """The labs the caller belongs to, with their role and PI flag (own only)."""
+    """List the caller's labs, or create a new one with the caller as PI.
+
+    ``GET`` returns the caller's memberships (workspace switcher). ``POST`` lets
+    an existing user start another lab: it provisions the lab, makes them
+    OWNER + PI lead, and returns the new membership in the same ``MyLab`` shape.
+    """
 
     serializer_class = MyLabSerializer
 
@@ -246,6 +269,29 @@ class MyLabsView(ListAPIView):
             LabMembership.objects.filter(user=self.request.user)
             .select_related("lab", "lab__department")
             .order_by("lab__name")
+        )
+
+    def post(self, request: Request) -> Response:
+        name = str(request.data.get("name", "")).strip()
+        if not name:
+            return Response(
+                {"name": ["A lab name is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        result = create_lab_workspace(request.user, name)
+        record_audit_event(
+            actor=request.user,
+            action="lab.create",
+            target_type="lab",
+            target_id=str(result.lab.id),
+            metadata={"name": name},
+        )
+        membership = (
+            LabMembership.objects.select_related("lab", "lab__department")
+            .get(user=request.user, lab=result.lab)
+        )
+        return Response(
+            MyLabSerializer(membership).data, status=status.HTTP_201_CREATED
         )
 
 
@@ -263,6 +309,87 @@ class LabMembersView(ListAPIView):
             .select_related("user")
             .order_by("-is_lead", "user__username")
         )
+
+
+# -- Lab invitations -----------------------------------------------------------
+
+
+class LabInvitationsView(APIView):
+    """A lab manager lists the lab's invitations and invites new people.
+
+    Only a PI (lead) or owner/admin may invite or see the invitation roster.
+    Invite by email (matched to an account, else kept pending) or by username.
+    """
+
+    def _get_lab(self) -> Lab:
+        lab = get_object_or_404(Lab, slug=self.kwargs["slug"])
+        if not user_can_invite_to_lab(self.request.user, lab):
+            raise PermissionDenied("Only a lab lead or admin can manage invitations.")
+        return lab
+
+    def get(self, request: Request, slug: str) -> Response:
+        lab = self._get_lab()
+        invitations = lab.invitations.select_related(
+            "lab", "invitee", "inviter"
+        ).all()
+        return Response(LabInvitationSerializer(invitations, many=True).data)
+
+    def post(self, request: Request, slug: str) -> Response:
+        lab = self._get_lab()
+        invitation = invite_to_lab(
+            lab=lab,
+            inviter=request.user,
+            identifier=str(request.data.get("identifier", "")),
+            role=str(request.data.get("role", "") or LabMembership.Role.MEMBER),
+        )  # raises ValidationError -> 400 on bad input / duplicate / member
+        return Response(
+            LabInvitationSerializer(invitation).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class MyInvitationsView(ListAPIView):
+    """The caller's pending lab invitations — the notifications-panel feed."""
+
+    serializer_class = MyInvitationSerializer
+
+    def get_queryset(self):
+        return (
+            LabInvitation.objects.filter(
+                invitee=self.request.user,
+                status=LabInvitation.Status.PENDING,
+            )
+            .select_related("lab", "inviter")
+            .order_by("-created_at")
+        )
+
+
+class InvitationRespondView(APIView):
+    """The invitee accepts, rejects, or ignores one of their invitations."""
+
+    def post(self, request: Request, pk) -> Response:
+        invitation = get_object_or_404(LabInvitation, pk=pk)
+        if invitation.invitee_id != request.user.id:
+            raise PermissionDenied("This invitation is not addressed to you.")
+        if invitation.status != LabInvitation.Status.PENDING:
+            return Response(
+                {"detail": "This invitation has already been answered."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        action = str(request.data.get("action", "")).strip().lower()
+        if action == "accept":
+            accept_invitation(invitation, request.user)
+        elif action == "reject":
+            decline_invitation(invitation, request.user, ignore=False)
+        elif action == "ignore":
+            decline_invitation(invitation, request.user, ignore=True)
+        else:
+            return Response(
+                {"action": ["Must be one of: accept, reject, ignore."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({"id": str(invitation.id), "status": invitation.status})
 
 
 # -- Author import + intake session (brief Phase G) ---------------------------

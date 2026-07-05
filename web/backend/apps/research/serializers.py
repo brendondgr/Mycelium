@@ -69,3 +69,32 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_member_count(self, project: Project) -> int:
         return project.members.count()
+
+
+class ProjectCreateSerializer(serializers.ModelSerializer):
+    """Create a project scoped to a lab (``lab`` slug) or the caller (personal).
+
+    ``lab`` is a write-only convenience field; the view resolves it to
+    ``scope_lab`` after a manage-permission check, or falls back to a personal
+    project scoped to the caller. Kept intentionally basic: name + optional goals.
+    """
+
+    lab = serializers.SlugField(write_only=True, required=False, allow_blank=True)
+
+    class Meta:
+        model = Project
+        fields = ["id", "name", "goals", "lab"]
+        read_only_fields = ["id"]
+
+    def validate_name(self, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("A project name is required.")
+        return value
+
+    def validate_goals(self, value):
+        if value in (None, ""):
+            return {}
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("goals must be an object.")
+        return value
