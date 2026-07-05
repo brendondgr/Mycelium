@@ -17,7 +17,7 @@ import {
   sectionFromPathname,
 } from "@/lib/portal/routes";
 import { useTheme, type Theme } from "@/lib/portal/theme";
-import { ALL_LABS_SLUG, type MyLab, type Project } from "@/lib/portal/types";
+import { PERSONAL_SLUG, type MyLab, type Project } from "@/lib/portal/types";
 
 export type { SectionKey } from "@/lib/portal/routes";
 import type { SectionKey } from "@/lib/portal/routes";
@@ -88,7 +88,7 @@ export function PortalProvider({
   const [projectsExpanded, setProjectsExpanded] = useState<boolean>(() =>
     pathname.startsWith(SECTION_ROUTES.projects),
   );
-  const [labScope, setLabScopeState] = useState<string>(ALL_LABS_SLUG);
+  const [labScope, setLabScopeState] = useState<string>(PERSONAL_SLUG);
 
   const { theme, toggleTheme } = useTheme();
   const labsQuery = useMyLabs();
@@ -109,12 +109,8 @@ export function PortalProvider({
     if (currentLab) {
       return currentLab.name;
     }
-    const count = labs.length;
-    if (count === 0) {
-      return "your workspace";
-    }
-    return `all ${count} of your lab${count === 1 ? "" : "s"}`;
-  }, [currentLab, labs.length]);
+    return "your personal workspace";
+  }, [currentLab]);
 
   const goToSection = useCallback(
     (next: SectionKey) => {

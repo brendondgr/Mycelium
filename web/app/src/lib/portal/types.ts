@@ -89,8 +89,12 @@ export type WatchData = {
   cadence: WatchCadence;
 };
 
-/** Synthetic "All labs" scope the switcher prepends client-side. */
-export const ALL_LABS_SLUG = "__all__";
+/**
+ * The default, non-lab scope: the caller's own personal workspace. The account
+ * is always a personal one that can additionally view labs, so this — not an
+ * "all labs" aggregate — is the primary switcher option.
+ */
+export const PERSONAL_SLUG = "__personal__";
 
 /** One research-article suggestion (from `/api/daily-report/`). */
 export type Suggestion = {

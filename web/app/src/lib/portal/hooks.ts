@@ -19,7 +19,7 @@ import {
   respondToInvitation,
   updateLabProfile,
 } from "@/lib/portal/mutations";
-import { ALL_LABS_SLUG, type InvitationAction } from "@/lib/portal/types";
+import { PERSONAL_SLUG, type InvitationAction } from "@/lib/portal/types";
 
 /** The signed-in user's labs (workspace switcher). */
 export function useMyLabs() {
@@ -32,10 +32,10 @@ export function useMyLabs() {
 
 /**
  * Projects visible to the user, optionally scoped to one lab. Passing the
- * synthetic "All labs" slug (or nothing) returns the full visible set.
+ * personal-workspace slug (or nothing) returns the full visible set.
  */
 export function useProjects(labSlug?: string) {
-  const scoped = labSlug && labSlug !== ALL_LABS_SLUG ? labSlug : undefined;
+  const scoped = labSlug && labSlug !== PERSONAL_SLUG ? labSlug : undefined;
   return useQuery({
     queryKey: ["portal", "projects", scoped ?? "all"],
     queryFn: () => fetchProjects(scoped),
@@ -43,9 +43,9 @@ export function useProjects(labSlug?: string) {
   });
 }
 
-/** Members of a single lab. Disabled for the synthetic "All labs" scope. */
+/** Members of a single lab. Disabled for the personal-workspace scope. */
 export function useLabMembers(slug?: string) {
-  const enabled = Boolean(slug && slug !== ALL_LABS_SLUG);
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
   return useQuery({
     queryKey: ["portal", "members", slug ?? "none"],
     queryFn: () => fetchLabMembers(slug as string),
@@ -90,9 +90,9 @@ export function useMyInvitations() {
   });
 }
 
-/** A single lab's collective purpose & goals. Disabled for the "All labs" scope. */
+/** A single lab's collective purpose & goals. Disabled for the personal scope. */
 export function useLabProfile(slug?: string) {
-  const enabled = Boolean(slug && slug !== ALL_LABS_SLUG);
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
   return useQuery({
     queryKey: ["portal", "lab-profile", slug ?? "none"],
     queryFn: () => fetchLabProfile(slug as string),

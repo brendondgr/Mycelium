@@ -3,13 +3,14 @@
 import { ChevronDownIcon, SporeNode } from "@/components/portal/icons";
 import { roleLabel, usePortal } from "@/components/portal/portal-context";
 import { useDismissable } from "@/lib/portal/use-dismissable";
-import { ALL_LABS_SLUG } from "@/lib/portal/types";
+import { PERSONAL_SLUG } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Workspace context switcher. Lists the signed-in user's labs (with their role)
- * plus an "All labs" overview scope; selecting one rescopes projects and the
- * member roster. Personal accounts with no labs show a static label.
+ * Workspace context switcher. The primary option is the caller's personal
+ * workspace; each lab they belong to is listed below it (with their role).
+ * Selecting one rescopes the sidebar, projects, and member roster. Personal
+ * accounts with no labs show a static label.
  */
 export function LabSwitcher() {
   const { labs, labsLoading, labScope, setLabScope, currentLab } = usePortal();
@@ -30,7 +31,7 @@ export function LabSwitcher() {
     );
   }
 
-  const label = currentLab ? currentLab.name : "All labs";
+  const label = currentLab ? currentLab.name : "Personal workspace";
 
   return (
     <div ref={ref} className="relative shrink-0">
@@ -55,11 +56,11 @@ export function LabSwitcher() {
             Switch context
           </p>
           <SwitcherItem
-            label="All labs"
-            meta="Overview"
-            active={labScope === ALL_LABS_SLUG}
+            label="Personal workspace"
+            meta="You"
+            active={labScope === PERSONAL_SLUG}
             onSelect={() => {
-              setLabScope(ALL_LABS_SLUG);
+              setLabScope(PERSONAL_SLUG);
               setOpen(false);
             }}
           />
