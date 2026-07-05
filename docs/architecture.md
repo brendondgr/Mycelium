@@ -77,7 +77,7 @@ Single-origin routing through Nginx at `http://localhost:11050`:
 The Django apps below realize the conceptual `auth` / `labs` / `scraper` /
 `graph` / `reports` boundaries from the early plan. Identity and labs were
 consolidated into `accounts`; the matching and billing layers became their own
-apps; ingestion, graph, and reporting are planned apps not yet built.
+apps; the planner, graph, and reporting apps are planned but not yet built.
 
 | App | Responsibility |
 |---|---|
@@ -86,9 +86,8 @@ apps; ingestion, graph, and reporting are planned apps not yet built.
 | `research` | Research context: projects (scoped to a user, lab, or department), project membership, and project visibility over the org hierarchy (members; lab heads; the department head above any involved lab) |
 | `content` | Matching layer: deduplicated content items (papers, grants, fellowships) keyed by source + external id, and per-target relevance scores |
 | `billing` | Subscriptions, per-seat billing, and tier-based entitlement resolution |
-| `planner` | Knowledge-graph query planning agent (routing, liveness, self-evaluation) |
 | `scraper` | Literature ingestion: ported OpenAlex/PubMed/Semantic Scholar source scrapers + registry, a publication-date scan window (today −2mo → +1mo), cross-source and against-store de-duplication, optional fastembed embedding, and upsert into `content.ContentItem`. Triggered by a Celery task or `scan_literature` management command — a placeholder wired to no schedule or member profile yet |
-| _planned_ | `graph` (Neo4j orchestration), `reports` (digests, reports, alerts) |
+| _planned_ | `planner` (knowledge-graph query-planning agent — routing, liveness, self-evaluation; early logic currently in `accounts/intake/agent.py` and `core/llm.py`), `graph` (Neo4j orchestration), `reports` (digests, reports, alerts) |
 
 ## Data ownership
 

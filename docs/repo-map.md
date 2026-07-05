@@ -86,9 +86,9 @@ data ownership live in [`architecture.md`](architecture.md#backend-app-boundarie
 | `billing` | `entitlements.py`, `services.py` (subscriptions, per-seat, tiers) |
 | `scraper` | `sources/` (openalex, pubmed, semanticscholar + `base`, `registry`, `dedup`, `record`), `ingest.py`, `window.py` (scan window), `embedding.py`, `tasks.py`, `management/commands/scan_literature` |
 
-> The `planner` app (knowledge-graph query-planning agent) named in `architecture.md`
-> is **not yet built** as a Django app. Its early logic currently lives in
-> `accounts/intake/agent.py` and `core/llm.py`. `graph` and `reports` are likewise planned.
+> The `planner`, `graph`, and `reports` apps are **planned, not yet built** (see
+> `architecture.md`). The planner's early logic currently lives in
+> `accounts/intake/agent.py` and `core/llm.py`.
 
 `accounts/intake/` (profile onboarding pipeline):
 `retrievers/` (openalex, scholar, semantic) → `normalizers/` → `extract.py` /
