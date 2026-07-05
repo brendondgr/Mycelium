@@ -19,6 +19,12 @@
 .next/
 out/
 
+# stray build/verification leftovers — must stay ignored so Tailwind's oxide
+# scanner (which honors .gitignore) never reads their minified/binary output.
+.next-stale-*/
+tmp-*stale*/
+dist-verify*/
+
 # production
 /build
 dist/
