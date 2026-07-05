@@ -28,7 +28,7 @@ for the layout standard.
 | Session auth, CSRF, `/me` (backend) | `web/backend/apps/accounts/` (`views.py`, `urls.py`) |
 | Users, labs, departments, memberships, roles | `web/backend/apps/accounts/models.py` |
 | Projects & project visibility | `web/backend/apps/research/` |
-| Daily research suggestions pipeline | `web/backend/apps/content/` (`pipeline.py`, `ranking.py`, `retrieval.py`, `suggest.py`) |
+| Daily research suggestions pipeline | `web/backend/apps/content/` (`pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`) |
 | Papers/grants/fellowships content items & scores | `web/backend/apps/content/models.py` |
 | Literature scraping / source adapters | `web/backend/apps/scraper/` (`sources/`, `ingest.py`, `window.py`) |
 | The LLM client | `web/backend/apps/core/llm.py` |
@@ -82,7 +82,7 @@ data ownership live in [`architecture.md`](architecture.md#backend-app-boundarie
 | `core` | `llm.py` (LLM client), `db.py` (exactly-one-FK helper), `people.py`, `views.py` (health) |
 | `accounts` | `intake/` (profile import→synthesize, see below), `services.py`, `provisioning.py`, `permissions.py`, `aggregates.py`, `embedding.py`, `interests.py`, `signals.py`, `management/commands/` |
 | `research` | projects scoped to user/lab/department + visibility rules |
-| `content` | `pipeline.py`, `retrieval.py` (pgvector), `ranking.py`, `suggest.py`, `embeddings.py`, `guards.py`, `runlog.py`, `tasks.py` (Celery), `management/commands/` |
+| `content` | `pipeline.py`, `interests_query.py` (per-interest queries), `retrieval.py` (pgvector), `lexical.py` (BM25), `fusion.py` (RRF + cross-interest combine), `ranking.py`, `suggest.py`, `embeddings.py`, `guards.py`, `runlog.py`, `tasks.py` (Celery), `management/commands/` |
 | `billing` | `entitlements.py`, `services.py` (subscriptions, per-seat, tiers) |
 | `scraper` | `sources/` (openalex, pubmed, semanticscholar + `base`, `registry`, `dedup`, `record`), `ingest.py`, `window.py` (scan window), `embedding.py`, `tasks.py`, `management/commands/scan_literature` |
 

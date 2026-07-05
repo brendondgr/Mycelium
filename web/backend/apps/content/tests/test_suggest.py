@@ -1,4 +1,4 @@
-"""Suggestion generation: LLM seam when reachable, similarity fallback otherwise."""
+"""Suggestion generation: the two-tier (top-N LLM + fallback tail) digest."""
 
 import json
 
@@ -28,7 +28,12 @@ def _hits():
     return [(a, 0.81), (b, 0.78), (c, 0.40)]
 
 
-def test_llm_path_uses_model_ranking() -> None:
+def _many(n: int):
+    """n candidates with descending scores, so we can probe the tier boundary."""
+    return [(_paper(f"Paper {i}", "graph"), 1.0 - i * 0.01) for i in range(n)]
+
+
+def test_llm_ranks_top_slice_then_fallback_fills_the_rest() -> None:
     hits = _hits()
 
     def complete(_prompt: str) -> str:
@@ -48,15 +53,49 @@ def test_llm_path_uses_model_ranking() -> None:
 
     out = generate_suggestions(INTERESTS, hits, complete=complete)
 
-    assert [s["rank"] for s in out] == [1, 2]
-    assert out[0]["content_id"] == str(hits[1][0].id)  # model put paper 2 first
+    assert [s["rank"] for s in out] == [1, 2, 3]
+    # The model put paper 2 first; its two picks lead as source="llm".
+    assert out[0]["content_id"] == str(hits[1][0].id)
     assert out[0]["headline"] == "Graphs for Care"
-    assert all(s["source"] == "llm" for s in out)
+    assert out[0]["source"] == "llm"
     assert out[0]["similarity"] == 0.78
-    # The model's percent match is carried through, clamped to 0–100.
-    assert out[0]["match_percent"] == 92
-    # A pick with no "match" falls back to the similarity-derived proxy.
-    assert out[1]["match_percent"] == 81  # round(0.81 * 100)
+    assert out[0]["match_percent"] == 92  # carried through, clamped to 0-100
+    assert out[1]["source"] == "llm"
+    assert out[1]["match_percent"] == 81  # no "match" -> similarity proxy (0.81)
+    # The paper the model did not pick is filled in deterministically.
+    assert out[2]["content_id"] == str(hits[2][0].id)
+    assert out[2]["source"] == "fallback"
+
+
+def test_only_top_llm_limit_papers_are_llm_ranked() -> None:
+    hits = _many(25)
+
+    def complete(_prompt: str) -> str:
+        # The model ranks every paper it is shown, best first.
+        rows = [
+            {"paper": i + 1, "match": 90, "headline": "h", "reason": "r"}
+            for i in range(25)
+        ]
+        return json.dumps({"suggestions": rows})
+
+    out = generate_suggestions(
+        INTERESTS, hits, llm_limit=10, surface_limit=25, complete=complete
+    )
+
+    # Exactly the top 10 are LLM-ranked; the model was only ever shown those 10,
+    # so any paper beyond rank 10 must be a deterministic fallback.
+    assert len(out) == 25
+    assert [s["source"] for s in out[:10]] == ["llm"] * 10
+    assert [s["source"] for s in out[10:]] == ["fallback"] * 15
+
+
+def test_surface_limit_caps_total_suggestions() -> None:
+    out = generate_suggestions(
+        INTERESTS, _many(25), surface_limit=5, complete=lambda _p: None
+    )
+
+    assert len(out) == 5
+    assert [s["rank"] for s in out] == [1, 2, 3, 4, 5]
 
 
 def test_llm_match_is_clamped_and_defaulted() -> None:
@@ -78,28 +117,18 @@ def test_llm_match_is_clamped_and_defaulted() -> None:
     assert out[1]["match_percent"] == 78  # garbled -> similarity proxy (0.78)
 
 
-def test_limit_caps_llm_suggestions() -> None:
-    hits = _hits()
-
-    def complete(_prompt: str) -> str:
-        rows = [{"paper": i, "headline": f"h{i}", "reason": "r"} for i in (1, 2, 3)]
-        return json.dumps({"suggestions": rows})
-
-    out = generate_suggestions(INTERESTS, hits, complete=complete, limit=2)
-
-    assert len(out) == 2
-
-
 def test_fallback_when_no_model() -> None:
     hits = _hits()
 
-    out = generate_suggestions(INTERESTS, hits, complete=lambda _p: None, limit=2)
+    out = generate_suggestions(
+        INTERESTS, hits, surface_limit=2, complete=lambda _p: None
+    )
 
     assert [s["rank"] for s in out] == [1, 2]
     assert all(s["source"] == "fallback" for s in out)
-    # Order follows similarity (already sorted desc).
+    # Order follows score (already sorted desc).
     assert out[0]["content_id"] == str(hits[0][0].id)
-    # Fallback match is the similarity-derived proxy (0.81 -> 81).
+    # Fallback match is the score-derived proxy (0.81 -> 81).
     assert out[0]["match_percent"] == 81
 
 
@@ -123,7 +152,7 @@ def test_fallback_on_raising_model() -> None:
     def boom(_prompt: str) -> str:
         raise RuntimeError("endpoint down")
 
-    out = generate_suggestions(INTERESTS, _hits(), complete=boom, limit=1)
+    out = generate_suggestions(INTERESTS, _hits(), surface_limit=1, complete=boom)
 
     assert len(out) == 1 and out[0]["source"] == "fallback"
 
@@ -140,7 +169,7 @@ def test_out_of_range_paper_index_is_skipped() -> None:
             {"suggestions": [{"paper": 99, "headline": "x", "reason": "y"}]}
         )
 
-    # The only row references a non-existent paper -> nothing usable -> fallback.
+    # The only row references a non-existent paper -> no llm picks -> all fallback.
     out = generate_suggestions(INTERESTS, hits, complete=complete)
 
     assert out and all(s["source"] == "fallback" for s in out)

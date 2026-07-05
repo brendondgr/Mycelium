@@ -1,11 +1,20 @@
-"""Turn RAG-retrieved papers into ranked, explained research suggestions.
+"""Turn fused, ranked papers into a two-tier explained research digest.
 
-Retrieval gives us the papers nearest a researcher's interests; this module turns
-that ordered candidate list into a short digest: the few most worth their
-attention, each with a one-line headline and a plain-language reason it matters to
-*them*. The language model does the selecting and justifying when it is reachable;
-a deterministic fallback (rank by similarity, template the reason from interest
-overlap) keeps the pipeline producing suggestions offline and in CI.
+Retrieval + fusion give us the papers most relevant to a researcher's interests;
+this module turns that ordered candidate list into the daily digest with a
+deliberate two-tier shape (a product requirement):
+
+- **Surface the top ``surface_limit`` papers** (default 25) so the researcher sees
+  the full breadth of what matched today.
+- **Only the top ``llm_limit`` papers** (default 10) are sent to the language model
+  for a bespoke headline, reason, and percent-match judgement. Papers ranked below
+  that carry a deterministic fallback ranking (score-derived match, templated
+  reason) — cheaper and stable, and honest that the model only vetted the top slice.
+
+The language model does the selecting and justifying for the top slice when it is
+reachable; a deterministic fallback (rank by score, template the reason from
+interest overlap) fills the rest and keeps the pipeline producing suggestions
+offline and in CI.
 
 Mirrors :mod:`apps.accounts.intake.extract`: an injectable ``complete`` seam, a
 tolerant JSON parser, and a fallback that never raises — so a missing or flaky
@@ -29,9 +38,10 @@ CompleteFn = Callable[[str], str | None]
 #: ``signals`` and the daily-report API response).
 Suggestion = dict[str, Any]
 
-#: How many candidates we show the model, and how many suggestions we return.
-_MAX_CANDIDATES = 16
-_DEFAULT_LIMIT = 10
+#: Two-tier digest defaults: how many papers we surface in total, and how many of
+#: those top papers the language model ranks and explains.
+_DEFAULT_SURFACE_LIMIT = 25
+_DEFAULT_LLM_LIMIT = 10
 _ABSTRACT_CHARS = 600
 
 _SYSTEM_PROMPT = (
@@ -54,23 +64,71 @@ def generate_suggestions(
     interests: dict,
     hits: Sequence[tuple[ContentItem, float]],
     *,
-    limit: int = _DEFAULT_LIMIT,
+    llm_limit: int = _DEFAULT_LLM_LIMIT,
+    surface_limit: int = _DEFAULT_SURFACE_LIMIT,
     complete: CompleteFn | None = None,
 ) -> list[Suggestion]:
-    """Return up to ``limit`` ranked suggestions for ``hits``.
+    """Return the two-tier digest: up to ``surface_limit`` ranked suggestions.
 
-    ``hits`` is the retrieval output (``(ContentItem, similarity)``), already in
-    descending similarity. Tries the model first (``complete`` seam, defaults to
-    the configured endpoint); falls back to a similarity ranking with templated
-    reasons whenever the model is unavailable, errors, or returns nothing usable.
+    ``hits`` is the fused, ranked candidate list (``(ContentItem, score)``), best
+    first. The top ``llm_limit`` go to the model for bespoke headlines/reasons/match
+    scores; the model's picks lead (``source="llm"``). Every remaining surfaced
+    paper is filled in deterministically (``source="fallback"``), preserving score
+    order, up to ``surface_limit`` total. When the model is unavailable, errors, or
+    returns nothing usable, the whole list is the deterministic fallback.
     """
     candidates = list(hits)
     if not candidates:
         return []
 
-    shown = candidates[:_MAX_CANDIDATES]
+    surfaced = candidates[:surface_limit]
+    llm_subset = surfaced[:llm_limit]
+
+    llm = _llm_suggestions(interests, llm_subset, limit=llm_limit, complete=complete)
+    picked = {s["content_id"] for s in llm}
+
+    # Fill the remaining surfaced slots deterministically, in score order. This
+    # also covers any of the top ``llm_limit`` the model chose to skip.
+    out: list[Suggestion] = list(llm)
+    for item, score in surfaced:
+        if len(out) >= surface_limit:
+            break
+        if str(item.id) in picked:
+            continue
+        out.append(
+            _suggestion(
+                item,
+                score,
+                rank=len(out) + 1,
+                headline=_title(item),
+                reason=_fallback_reason(interests, item),
+                match_percent=_similarity_match(score),
+                source="fallback",
+            )
+        )
+
+    # Renumber ranks 1..N so the LLM picks and the fallback tail form one sequence.
+    for rank, suggestion in enumerate(out, start=1):
+        suggestion["rank"] = rank
+    return out
+
+
+def _llm_suggestions(
+    interests: dict,
+    shown: Sequence[tuple[ContentItem, float]],
+    *,
+    limit: int,
+    complete: CompleteFn | None,
+) -> list[Suggestion]:
+    """Ask the model to rank+explain ``shown``; ``[]`` if it can't be used.
+
+    Returns the model's picks (``source="llm"``) or an empty list on any failure
+    (unreachable, error, or unparseable) — the caller then fills everything with
+    the deterministic fallback.
+    """
+    if not shown:
+        return []
     ask = complete if complete is not None else _settings_complete
-    raw: str | None = None
     try:
         raw = ask(_build_prompt(interests, shown, limit=limit))
     except Exception:
@@ -78,17 +136,15 @@ def generate_suggestions(
             "LLM suggestion generation failed; using similarity fallback.",
             exc_info=True,
         )
-    else:
-        parsed = _parse(raw, shown, limit=limit)
-        if parsed:
-            return parsed
+        return []
+    parsed = _parse(raw, shown, limit=limit)
+    if not parsed:
         logger.warning(
             "LLM returned no usable suggestions; using similarity fallback. "
             "Response head: %r",
             (raw or "")[:300],
         )
-
-    return _fallback(interests, candidates, limit=limit)
+    return parsed
 
 
 # -- prompt -------------------------------------------------------------------
@@ -98,7 +154,7 @@ def _build_prompt(
     interests: dict,
     shown: Sequence[tuple[ContentItem, float]],
     *,
-    limit: int = _DEFAULT_LIMIT,
+    limit: int = _DEFAULT_LLM_LIMIT,
 ) -> str:
     parts = [
         f"Researcher profile:\n{_profile_text(interests)}",
@@ -213,28 +269,6 @@ def _similarity_match(similarity: float) -> int:
 
 
 # -- fallback -----------------------------------------------------------------
-
-
-def _fallback(
-    interests: dict,
-    candidates: Sequence[tuple[ContentItem, float]],
-    *,
-    limit: int,
-) -> list[Suggestion]:
-    out: list[Suggestion] = []
-    for rank, (item, similarity) in enumerate(candidates[:limit], start=1):
-        out.append(
-            _suggestion(
-                item,
-                similarity,
-                rank=rank,
-                headline=_title(item),
-                reason=_fallback_reason(interests, item),
-                match_percent=_similarity_match(similarity),
-                source="fallback",
-            )
-        )
-    return out
 
 
 def _fallback_reason(interests: dict, item: ContentItem) -> str:

@@ -41,6 +41,11 @@ function SkeletonCard() {
 export function ResearchPapersSection() {
   const { data, isLoading, isError } = useDailyReport();
   const suggestions = data?.suggestions ?? [];
+  // The top tier is ranked and explained by the language model ("Mylo pick"); the
+  // rest are surfaced by the fusion scoring with deterministic reasons. The tail
+  // begins where the LLM-ranked cards end.
+  const llmCount = suggestions.filter((s) => s.origin === "llm").length;
+  const hasTail = llmCount > 0 && llmCount < suggestions.length;
 
   const subtitle: React.ReactNode = (() => {
     if (isLoading) return "Gathering today's papers…";
@@ -49,8 +54,9 @@ export function ResearchPapersSection() {
       const count = `Top ${suggestions.length} paper${
         suggestions.length === 1 ? "" : "s"
       }`;
+      const ranked = llmCount > 0 ? `, top ${llmCount} ranked by Mylo` : "";
       return when
-        ? `${count}, ranked by match · gathered ${when}.`
+        ? `${count}${ranked} · gathered ${when}.`
         : `${count}, ranked by match to your research.`;
     }
     return "Your daily paper suggestions, ranked by how well they match your research.";
@@ -83,19 +89,31 @@ export function ResearchPapersSection() {
         <>
           <div className="space-y-4">
             {suggestions.map((suggestion, index) => (
-              <div
-                key={suggestion.content_id}
-                className="portal-fade-up"
-                style={{ animationDelay: `${index * 60}ms` }}
-              >
-                <SuggestionCard suggestion={suggestion} />
-              </div>
+              <React.Fragment key={suggestion.content_id}>
+                {hasTail && index === llmCount ? (
+                  <div
+                    className="flex items-center gap-3 pt-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]"
+                    role="separator"
+                  >
+                    <span className="h-px flex-1 bg-[var(--border)]" />
+                    Also surfaced
+                    <span className="h-px flex-1 bg-[var(--border)]" />
+                  </div>
+                ) : null}
+                <div
+                  className="portal-fade-up"
+                  style={{ animationDelay: `${index * 60}ms` }}
+                >
+                  <SuggestionCard suggestion={suggestion} />
+                </div>
+              </React.Fragment>
             ))}
           </div>
           <p className="mt-5 text-xs text-[var(--text-muted)]">
             Ranked from your research profile by Milo. The match score reflects how
-            well each paper fits your interests; reasons marked “Mylo pick” were
-            written by the language model, others are topical matches.
+            well each paper fits your interests. The top papers marked “Mylo pick”
+            were ranked and explained by the language model; those under “Also
+            surfaced” are further matches scored by topic and interest overlap.
           </p>
         </>
       )}
