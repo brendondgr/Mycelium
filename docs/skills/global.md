@@ -8,6 +8,7 @@ Use this guidance at the start of every Mycelium session before planning, editin
 - Read `docs/styles.md` before design, frontend, copy, mascot, dashboard, or UX decisions.
 - Read `docs/goals.md` before sequencing work, proposing features, or deciding what should come next.
 - Read the task-specific skill from `docs/skills/` when the work touches planning, repository structure, website architecture, frontend UI, mobile behavior, or accessibility.
+- Read `docs/repo-map.md` to locate code by path before searching the tree; keep it updated when top-level areas move.
 
 ## Project Defaults
 

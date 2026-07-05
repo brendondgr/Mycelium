@@ -3,6 +3,10 @@
 Use this skill when defining, documenting, or enforcing the Mycelium repository
 layout.
 
+This skill describes the **target** layout and boundaries. For the **actual**
+current file-level layout and a task→path lookup, see
+[`../repo-map.md`](../repo-map.md); keep it in sync when top-level areas move.
+
 ## Core Rules
 
 - Treat Mycelium as a full-stack monorepo with root-level orchestration.

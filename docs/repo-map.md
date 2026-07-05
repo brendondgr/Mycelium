@@ -1,0 +1,108 @@
+# Mycelium Repository Map
+
+**Purpose:** locate code without searching. Read this first when you need to find
+where a feature lives, then open the specific file. This map replaces blind
+`find` / `grep` / `ls` sweeps — those burn tokens; this file is one read.
+
+**Keep it accurate:** when you add, move, or rename a top-level area (a Django app,
+an app route group, a `lib/` module, an infra file), update the matching row here
+in the same change. This map is only useful while it is trusted.
+
+**See also (don't duplicate):** [`architecture.md`](architecture.md) for the *why*
+(service boundaries, data ownership, tech stack), [`api-contract.md`](api-contract.md)
+for committed HTTP shapes, [`skills/repo-structure.md`](skills/repo-structure.md)
+for the layout standard.
+
+---
+
+## Where do I look for…? (task → location)
+
+| I need to work on… | Start here |
+|---|---|
+| A public marketing/landing page | `web/landing/src/pages/*.astro` (+ `.mdx`) |
+| An authenticated app page/route | `web/app/src/app/app/**` (Next.js App Router) |
+| A React component used in the portal | `web/app/src/components/portal/` |
+| Onboarding / profile-edit flow (UI) | `web/app/src/components/onboarding/` + route `app/app/onboarding/` |
+| Onboarding / profile intake (backend) | `web/backend/apps/accounts/intake/` |
+| Login / signup / logout (UI) | `web/app/src/components/auth/` + routes `app/src/app/{login,signup}` |
+| Session auth, CSRF, `/me` (backend) | `web/backend/apps/accounts/` (`views.py`, `urls.py`) |
+| Users, labs, departments, memberships, roles | `web/backend/apps/accounts/models.py` |
+| Projects & project visibility | `web/backend/apps/research/` |
+| Daily research suggestions pipeline | `web/backend/apps/content/` (`pipeline.py`, `ranking.py`, `retrieval.py`, `suggest.py`) |
+| Papers/grants/fellowships content items & scores | `web/backend/apps/content/models.py` |
+| Literature scraping / source adapters | `web/backend/apps/scraper/` (`sources/`, `ingest.py`, `window.py`) |
+| The LLM client | `web/backend/apps/core/llm.py` |
+| Billing / subscriptions / entitlements | `web/backend/apps/billing/` |
+| Knowledge-graph query planner (agent) | not a standalone app yet — logic in `accounts/intake/agent.py` + `core/llm.py` |
+| Django settings / URLs / Celery / ASGI | `web/backend/config/` |
+| Frontend → API calls & data hooks | `web/app/src/lib/` and `web/app/src/lib/portal/` |
+| Shared design tokens / theme | `web/packages/config/src/theme.css` |
+| Nginx / gateway routing | `web/infra/nginx/` |
+| Root run/build commands | `run.py`, `package.json`, `compose.yaml` |
+| Env vars / secrets contract | `.env.example` (documented in `architecture.md`) |
+
+---
+
+## Frontend — `web/app/` (Next.js App Router)
+
+```text
+web/app/src/
+├── app/                         # routes (App Router)
+│   ├── layout.tsx, page.tsx     # root shell + entry
+│   ├── login/, signup/          # auth pages
+│   └── app/                     # authenticated area
+│       ├── onboarding/          # first-run + profile-edit flow
+│       ├── [labSlug]/dashboard/ # per-lab dashboard
+│       └── (workspace)/         # portal shell + pages:
+│           #   overview, daily, research-papers, deadlines,
+│           #   members, opportunities, projects/[projectId],
+│           #   profile, reports  (layout.tsx = workspace chrome)
+├── components/
+│   ├── auth/                    # login/signup/logout forms + brand panel
+│   ├── onboarding/              # onboarding flow, stages, synthesis progress
+│   ├── portal/                  # header, sidebar, nav, search, shell (+ primitives/, sections/)
+│   ├── brand/, layout/, ui/     # brand marks, layout wrappers, shadcn/ui primitives
+└── lib/
+    ├── api-url.ts, auth-*.ts    # API base URL + auth client/server/types
+    ├── utils.ts
+    └── portal/                  # client, hooks, routes, types, theme, completeness
+```
+
+`web/landing/` is the separate **Astro** public site (`src/pages/`, `src/components/`,
+`src/data/`, `src/layouts/`). `web/art/` holds source art assets (logo, Mylo, frontpage).
+
+## Backend — `web/backend/apps/` (Django + DRF + Celery)
+
+Each app has the usual `models.py` / `views.py` / `serializers.py` / `urls.py` /
+`admin.py`; only the notable extras are listed. Conceptual responsibilities and
+data ownership live in [`architecture.md`](architecture.md#backend-app-boundaries-as-built).
+
+| App | Notable files beyond the CRUD basics |
+|---|---|
+| `core` | `llm.py` (LLM client), `db.py` (exactly-one-FK helper), `people.py`, `views.py` (health) |
+| `accounts` | `intake/` (profile import→synthesize, see below), `services.py`, `provisioning.py`, `permissions.py`, `aggregates.py`, `embedding.py`, `interests.py`, `signals.py`, `management/commands/` |
+| `research` | projects scoped to user/lab/department + visibility rules |
+| `content` | `pipeline.py`, `retrieval.py` (pgvector), `ranking.py`, `suggest.py`, `embeddings.py`, `guards.py`, `runlog.py`, `tasks.py` (Celery), `management/commands/` |
+| `billing` | `entitlements.py`, `services.py` (subscriptions, per-seat, tiers) |
+| `scraper` | `sources/` (openalex, pubmed, semanticscholar + `base`, `registry`, `dedup`, `record`), `ingest.py`, `window.py` (scan window), `embedding.py`, `tasks.py`, `management/commands/scan_literature` |
+
+> The `planner` app (knowledge-graph query-planning agent) named in `architecture.md`
+> is **not yet built** as a Django app. Its early logic currently lives in
+> `accounts/intake/agent.py` and `core/llm.py`. `graph` and `reports` are likewise planned.
+
+`accounts/intake/` (profile onboarding pipeline):
+`retrievers/` (openalex, scholar, semantic) → `normalizers/` → `extract.py` /
+`resolve.py` / `merge.py` / `aggregate.py` → `synthesize.py` / `statement.py` →
+`drafts.py`, `importer.py`, `resume.py`, `agent.py`, `errors.py`.
+
+`web/backend/config/`: `settings.py`, `urls.py`, `celery.py`, `asgi.py`, `wsgi.py`,
+`debug_middleware.py`. `web/backend/templates/` + `static/` serve Django admin/health.
+
+## Other top-level areas
+
+| Path | What |
+|---|---|
+| `docs/` | canonical direction (`purpose`, `styles`, `goals`), `architecture.md`, `api-contract.md`, `changelog.md`, `skills/`, `plans/`, `chats/`, `Resources/` |
+| `compose.yaml`, `run.py`, `package.json` | root orchestration; `run.py` / `npm run *` delegate into `web/` |
+| `scripts/`, `mycelium*.service` | management scripts + systemd units |
+| `web/infra/nginx/` | single-origin gateway routing |
