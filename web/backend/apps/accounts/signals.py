@@ -3,7 +3,14 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 from .embedding import apply_embedding
-from .models import Department, DeptProfile, Lab, LabProfile, Profile
+from .models import (
+    Department,
+    DeptProfile,
+    Lab,
+    LabProfile,
+    LabWatchPreference,
+    Profile,
+)
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
@@ -23,9 +30,10 @@ def embed_interest_surface(sender, instance, **kwargs) -> None:
 
 @receiver(post_save, sender=Lab)
 def ensure_lab_profile(sender, instance, created, **kwargs) -> None:
-    """One interest profile per lab (brief Phase D), mirroring Profile."""
+    """One interest profile + watch row per lab, mirroring Profile/WatchPreference."""
     if created:
         LabProfile.objects.get_or_create(lab=instance)
+        LabWatchPreference.objects.get_or_create(lab=instance)
 
 
 @receiver(post_save, sender=Department)

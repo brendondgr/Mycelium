@@ -36,6 +36,18 @@ urlpatterns = [
         views.LabProfileView.as_view(),
         name="lab-profile",
     ),
+    # What Milo keeps an eye on for a lab (members read; lead/admin edit).
+    path(
+        "labs/<slug:slug>/watch/",
+        views.LabWatchView.as_view(),
+        name="lab-watch",
+    ),
+    # LLM-assisted lab profile synthesis from the PI's free text (no save).
+    path(
+        "labs/<slug:slug>/intake/synthesize/",
+        views.LabIntakeSynthesizeView.as_view(),
+        name="lab-intake-synthesize",
+    ),
     # Lab invitations: managers invite + list; invitees see and answer their own.
     path(
         "labs/<slug:slug>/invitations/",

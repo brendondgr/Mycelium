@@ -12,6 +12,7 @@ from .models import (
     LabInvitation,
     LabMembership,
     LabProfile,
+    LabWatchPreference,
     Profile,
     WatchPreference,
 )
@@ -192,6 +193,13 @@ class WatchPreferenceSerializer(serializers.ModelSerializer):
 
     def validate_categories(self, value: object) -> list[str]:
         return self._clean_string_list(value, "categories")
+
+
+class LabWatchPreferenceSerializer(WatchPreferenceSerializer):
+    """Read/update what Milo keeps an eye on for a lab (same shape as a user's)."""
+
+    class Meta(WatchPreferenceSerializer.Meta):
+        model = LabWatchPreference
 
 
 class MyLabSerializer(serializers.Serializer):

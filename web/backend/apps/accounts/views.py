@@ -29,6 +29,7 @@ from .intake import (
     extract_text,
     import_author,
     synthesize_interests,
+    synthesize_lab_interests,
 )
 from .interests import validate_interests
 from .models import (
@@ -36,6 +37,7 @@ from .models import (
     Lab,
     LabInvitation,
     LabMembership,
+    LabWatchPreference,
     WatchPreference,
 )
 from .permissions import (
@@ -50,6 +52,7 @@ from .serializers import (
     LabInvitationSerializer,
     LabMemberSerializer,
     LabProfileSerializer,
+    LabWatchPreferenceSerializer,
     MyInvitationSerializer,
     MyLabSerializer,
     ProfileSerializer,
@@ -219,6 +222,27 @@ class LabProfileView(RetrieveUpdateAPIView):
         elif not user_can_edit_lab_profile(user, lab):
             raise PermissionDenied("Only a lab lead or admin can edit this profile.")
         return lab.profile
+
+
+class LabWatchView(RetrieveUpdateAPIView):
+    """Lab members read what Milo watches for the lab; the lead / owner / admin edit it.
+
+    The row is auto-created with the lab, but ``get_or_create`` guards labs that
+    predate the watch model so an old lab still gets sensible defaults.
+    """
+
+    serializer_class = LabWatchPreferenceSerializer
+
+    def get_object(self) -> LabWatchPreference:
+        lab = get_object_or_404(Lab, slug=self.kwargs["slug"])
+        user = self.request.user
+        if self.request.method in SAFE_METHODS:
+            if not user_has_lab_access(user, lab):
+                raise PermissionDenied("You do not have access to this lab.")
+        elif not user_can_edit_lab_profile(user, lab):
+            raise PermissionDenied("Only a lab lead or admin can edit this.")
+        watch, _ = LabWatchPreference.objects.get_or_create(lab=lab)
+        return watch
 
 
 class DeptProfileView(RetrieveUpdateAPIView):
@@ -552,3 +576,42 @@ class SynthesizeView(APIView):
         return Response(
             {"draft": dataclasses.asdict(draft), "interests": interests}
         )
+
+
+class LabIntakeSynthesizeView(APIView):
+    """Draft a lab's ``{statement, areas, keywords}`` from the PI's free text.
+
+    The onboarding form posts the lab ``description``, any ``areas`` already
+    typed, and optional pasted ``source_text`` (paper titles/abstracts, member
+    profiles, portfolios). The LLM reads it all and fills the fields; a
+    deterministic fallback keeps the flow working with no model. Nothing is saved
+    — the client reviews, then PATCHes the lab profile to persist.
+    """
+
+    def post(self, request: Request, slug: str) -> Response:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_can_edit_lab_profile(request.user, lab):
+            raise PermissionDenied("Only a lab lead or admin can edit this profile.")
+
+        description = str(request.data.get("description", "")).strip()
+        source_text = str(request.data.get("source_text", "")).strip()
+        raw_areas = request.data.get("areas") or []
+        areas_hint = [str(a) for a in raw_areas] if isinstance(raw_areas, list) else []
+
+        if not description and not source_text and not areas_hint:
+            return Response(
+                {
+                    "non_field_errors": [
+                        "Describe the lab or add focus areas / source material "
+                        "to synthesize a profile."
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = synthesize_lab_interests(
+            description=description,
+            areas_hint=areas_hint,
+            source_text=source_text,
+        )
+        return Response(result)

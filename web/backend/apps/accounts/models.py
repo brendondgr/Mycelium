@@ -332,6 +332,43 @@ class WatchPreference(models.Model):
         return f"WatchPreference<{self.user}>"
 
 
+class LabWatchPreference(models.Model):
+    """What Milo should keep an eye on for one lab.
+
+    The lab-level counterpart of :class:`WatchPreference`: the shared topics a
+    lab monitors (seeded from its collective purpose), which signals to surface,
+    and how often. One row per lab, auto-created via ``post_save`` on Lab so a
+    lab always has sensible defaults even before onboarding sets its watch.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lab = models.OneToOneField(
+        Lab,
+        on_delete=models.CASCADE,
+        related_name="watch",
+    )
+    topics = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Research areas/keywords Milo monitors for the lab.",
+    )
+    categories = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Signal kinds to surface: papers, grants, conferences, etc.",
+    )
+    cadence = models.CharField(
+        max_length=20,
+        choices=WatchCadence.choices,
+        default=WatchCadence.WEEKLY,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"LabWatchPreference<{self.lab}>"
+
+
 class LabInvitation(models.Model):
     """A PI/manager's invitation for a person to join a lab.
 
