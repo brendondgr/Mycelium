@@ -29,7 +29,7 @@ crash.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
 
 from django.conf import settings
@@ -115,6 +115,36 @@ def _watch_topics(user: User) -> list[str]:
     return [str(topic) for topic in topics]
 
 
+def gather_scan_queries(
+    users: Sequence[User],
+    *,
+    per_user_limit: int = DEFAULT_QUERY_LIMIT,
+    global_limit: int | None = None,
+    log: Callable[[str], None] | None = None,
+) -> list[str]:
+    """The deduped union of every user's watch topics — the global scan term set.
+
+    Phase 1 of the batch run searches this union *once* instead of re-searching
+    each user's overlapping topics per user. Each user contributes up to
+    ``per_user_limit`` normalized topics (their stated priority); across users the
+    terms collapse case-insensitively, order-preserving. ``global_limit`` caps the
+    total (logged, never silent) to bound a pathological run.
+    """
+    terms: list[str] = []
+    seen: set[str] = set()
+    for user in users:
+        for term in build_queries(_watch_topics(user), limit=per_user_limit):
+            fold = term.casefold()
+            if fold not in seen:
+                seen.add(fold)
+                terms.append(term)
+    if global_limit is not None and len(terms) > global_limit:
+        if log is not None:
+            log(f"gathered {len(terms)} unique terms; capping to {global_limit}")
+        terms = terms[:global_limit]
+    return terms
+
+
 def run_for_user(
     user: User,
     *,
@@ -135,19 +165,14 @@ def run_for_user(
     scan_embedder=None,
     log: Callable[[str], None] | None = None,
 ) -> RunResult:
-    """Run the scan → retrieve → fuse → suggest pipeline for one user and store it.
+    """Scan *this* user's watch topics, then recommend — the single-user path.
 
-    When the profile declares research ``areas`` these become per-interest search
-    queries: each is retrieved via a pgvector channel and a BM25 channel, fused
-    with RRF, normalized, and combined across interests so papers matching several
-    interests are preferred (see :mod:`apps.content.fusion`). With no ``areas`` the
-    run falls back to the original single-vector retrieval unchanged. Either way the
-    top ``surface_limit`` papers are surfaced and the top ``suggestion_limit`` are
-    handed to the LLM for bespoke ranking.
+    Convenience for the ``--user`` CLI and tests: it ingests just this user's
+    topics and then recommends. The batch daily run (:func:`run_daily_batch`)
+    instead ingests every user's topics *once* and then recommends per user; both
+    share :func:`recommend_for_user` for the recommend half.
     """
     username = user.get_username()
-    if focus_weight is None:
-        focus_weight = getattr(settings, "AREA_FOCUS_WEIGHT", DEFAULT_FOCUS_WEIGHT)
 
     def emit(message: str) -> None:
         if log is not None:
@@ -157,8 +182,6 @@ def run_for_user(
     if profile is None:
         emit("no profile; skipping")
         return RunResult(username, "no_profile", note="user has no profile")
-
-    interests = profile.interests or {}
 
     # The search is driven *only* by the user's watch topics — the profile's
     # areas/keywords shape ranking, never the scan query set.
@@ -183,21 +206,89 @@ def run_for_user(
         log=log,
     )
 
+    return recommend_for_user(
+        user,
+        query_limit=query_limit,
+        top_k=top_k,
+        suggestion_limit=suggestion_limit,
+        surface_limit=surface_limit,
+        pool_per_interest=pool_per_interest,
+        beta=beta,
+        focus_weight=focus_weight,
+        complete=complete,
+        persist=persist,
+        log=log,
+        scan_summary=summary,
+    )
+
+
+def recommend_for_user(
+    user: User,
+    *,
+    query_limit: int = DEFAULT_QUERY_LIMIT,
+    top_k: int = DEFAULT_TOP_K,
+    suggestion_limit: int = DEFAULT_SUGGESTIONS,
+    surface_limit: int = DEFAULT_SURFACE,
+    pool_per_interest: int = DEFAULT_POOL_PER_INTEREST,
+    beta: float = DEFAULT_BETA,
+    focus_weight: float | None = None,
+    complete: CompleteFn | None = None,
+    persist: bool = True,
+    log: Callable[[str], None] | None = None,
+    scan_summary=None,
+) -> RunResult:
+    """Retrieve → fuse → suggest for one user against the *already-populated* store.
+
+    The recommend half of the pipeline, with **no scanning of its own** — it reads
+    whatever papers the ingest phase already stored. When the profile declares
+    research ``areas`` these become per-interest queries fused via BM25 + pgvector
+    RRF so papers matching several interests are preferred; with no ``areas`` it
+    falls back to single-vector retrieval. ``scan_summary`` (when a caller just
+    scanned for this user) only feeds the reported ``scanned_new``/``embedded``
+    counts; the batch path leaves it ``None`` since ingestion was global.
+    """
+    username = user.get_username()
+    if focus_weight is None:
+        focus_weight = getattr(settings, "AREA_FOCUS_WEIGHT", DEFAULT_FOCUS_WEIGHT)
+
+    def emit(message: str) -> None:
+        if log is not None:
+            log(f"[{username}] {message}")
+
+    scanned_new = scan_summary.new if scan_summary is not None else 0
+    embedded = scan_summary.embedded if scan_summary is not None else 0
+    skip_reason = (
+        scan_summary.embedding_skipped_reason if scan_summary is not None else None
+    )
+
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        emit("no profile; skipping")
+        return RunResult(username, "no_profile", note="user has no profile")
+
+    interests = profile.interests or {}
+
+    # Only recommend to users who opted into monitoring (have watch topics) —
+    # identical to the single-user gate, so batch and CLI stay consistent.
+    queries = build_queries(_watch_topics(user), limit=query_limit)
+    if not queries:
+        emit("no watch topics set; skipping (nothing to recommend against)")
+        return RunResult(
+            username, "no_watch_topics", note="user has no watch topics"
+        )
+
     # Embed the profile into the *same* space as the papers and persist it so a
     # later scoring phase finds the interest vector ready.
     profile_vector = embeddings.embed_text(canonical_text(profile))
     if profile_vector is None:
-        emit(
-            "no embedder; stopping "
-            f"({summary.embedding_skipped_reason or 'unavailable'})"
-        )
+        emit(f"no embedder; stopping ({skip_reason or 'unavailable'})")
         return RunResult(
             username,
             "no_embedder",
             queries=queries,
-            scanned_new=summary.new,
-            embedded=summary.embedded,
-            note=summary.embedding_skipped_reason or "no embedder available",
+            scanned_new=scanned_new,
+            embedded=embedded,
+            note=skip_reason or "no embedder available",
         )
     if persist:
         type(profile).objects.filter(pk=profile.pk).update(embedding=profile_vector)
@@ -233,8 +324,8 @@ def run_for_user(
             username,
             "no_results",
             queries=queries,
-            scanned_new=summary.new,
-            embedded=summary.embedded,
+            scanned_new=scanned_new,
+            embedded=embedded,
             interests=len(search_ints),
             note="no embedded papers to retrieve yet",
         )
@@ -259,14 +350,127 @@ def run_for_user(
         username,
         "ok",
         queries=queries,
-        scanned_new=summary.new,
-        embedded=summary.embedded,
+        scanned_new=scanned_new,
+        embedded=embedded,
         retrieved=retrieved_count,
         interests=len(search_ints),
         suggestions=len(suggestions),
         llm=llm,
         fallback=len(suggestions) - llm,
     )
+
+
+@dataclass
+class BatchResult:
+    """One batch run: the global ingest stats plus each user's recommend result."""
+
+    ingest: dict = field(default_factory=dict)
+    results: list[RunResult] = field(default_factory=list)
+
+    def as_dict(self) -> dict:
+        return {"ingest": self.ingest, "users": [r.as_dict() for r in self.results]}
+
+
+def run_daily_batch(
+    users: Sequence[User],
+    *,
+    days_back: int = DEFAULT_DAYS_BACK,
+    days_forward: int = DEFAULT_DAYS_FORWARD,
+    sources: list[str] | None = None,
+    query_limit: int = DEFAULT_QUERY_LIMIT,
+    global_query_limit: int | None = None,
+    top_k: int = DEFAULT_TOP_K,
+    suggestion_limit: int = DEFAULT_SUGGESTIONS,
+    surface_limit: int = DEFAULT_SURFACE,
+    pool_per_interest: int = DEFAULT_POOL_PER_INTEREST,
+    beta: float = DEFAULT_BETA,
+    focus_weight: float | None = None,
+    embed: bool = True,
+    persist: bool = True,
+    complete: CompleteFn | None = None,
+    search_fn: SearchFn | None = None,
+    scan_embedder=None,
+    log: Callable[[str], None] | None = None,
+) -> BatchResult:
+    """Two-phase daily run: ingest every user's topics once, then recommend per user.
+
+    **Phase 1 (ingest, once):** gather the deduped union of all users' watch topics
+    (:func:`gather_scan_queries`) and run a single :func:`~apps.scraper.ingest.scan`
+    over it — so a topic shared by many users is searched once, not once per user,
+    and all genuinely-new papers are embedded together in one batched pass.
+
+    **Phase 2 (recommend, per user):** retrieve + fuse + suggest for each user
+    against the now-populated store, doing **no scanning per user**. A failure for
+    one user is caught and logged so it never sinks the batch.
+    """
+
+    def emit(message: str) -> None:
+        if log is not None:
+            log(message)
+
+    queries = gather_scan_queries(
+        users, per_user_limit=query_limit, global_limit=global_query_limit, log=log
+    )
+    summary = None
+    if queries:
+        emit(
+            f"ingest: {len(queries)} unique term(s) across {len(users)} user(s), "
+            f"window {days_back}d back / {days_forward}d fwd"
+        )
+        summary = scan(
+            queries,
+            window=ScanWindow.around_today_days(days_back, days_forward),
+            sources=sources,
+            embed=embed,
+            search_fn=search_fn,
+            embedder=scan_embedder,
+            log=log,
+        )
+        emit(
+            f"ingest done: {summary.new} new / {summary.embedded} embedded / "
+            f"{summary.upserted} upserted"
+        )
+    else:
+        emit("ingest: no watch topics across any user; nothing to scan")
+
+    results: list[RunResult] = []
+    for user in users:
+        username = user.get_username()
+        try:
+            results.append(
+                recommend_for_user(
+                    user,
+                    query_limit=query_limit,
+                    top_k=top_k,
+                    suggestion_limit=suggestion_limit,
+                    surface_limit=surface_limit,
+                    pool_per_interest=pool_per_interest,
+                    beta=beta,
+                    focus_weight=focus_weight,
+                    complete=complete,
+                    persist=persist,
+                    log=log,
+                )
+            )
+        except Exception:
+            logger.exception("recommend failed for %s", username)
+            emit(f"[{username}] ERROR (see worker log)")
+            results.append(RunResult(username, "error", note="recommend failed"))
+
+    return BatchResult(ingest=_ingest_summary(queries, summary), results=results)
+
+
+def _ingest_summary(queries: list[str], summary) -> dict:
+    """The global ingest stats as a JSON-able dict for the batch return/log."""
+    data: dict = {"unique_queries": len(queries)}
+    if summary is not None:
+        data.update(
+            new=summary.new,
+            embedded=summary.embedded,
+            upserted=summary.upserted,
+            embedding_skipped_reason=summary.embedding_skipped_reason,
+        )
+    return data
 
 
 #: A row to persist: the item, its ranking score, and the signal breakdown to

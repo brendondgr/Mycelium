@@ -1,9 +1,11 @@
 """Celery entry point for the daily research-suggestion pipeline.
 
-Runs :func:`apps.content.pipeline.run_for_user` for each selected user. Scoped to
-all active users by default; pass ``usernames`` to limit it (the daily Beat
-schedule and the management command both call through here). A failure for one
-user is logged and skipped so one bad profile never sinks the whole batch.
+Runs :func:`apps.content.pipeline.run_daily_batch`: **one** global ingest (gather
+every selected user's watch topics, search + embed once) followed by a per-user
+recommend pass — so a topic shared by many users is searched once, not per user.
+Scoped to all active users by default; pass ``usernames`` to limit it (the daily
+Beat schedule and the management command both call through here). A failure for
+one user is caught inside the batch so one bad profile never sinks the run.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from celery import shared_task
 from django.conf import settings
 from django.contrib.auth.models import User
 
-from .pipeline import DEFAULT_SUGGESTIONS, run_for_user
+from .pipeline import DEFAULT_SUGGESTIONS, run_daily_batch
 from .runlog import new_run_log
 
 logger = logging.getLogger(__name__)
@@ -39,38 +41,30 @@ def run_daily_suggestions(
     top_k: int = 20,
     suggestion_limit: int = DEFAULT_SUGGESTIONS,
     embed: bool = True,
-) -> list[dict]:
-    """Run the pipeline for every selected user; return each user's summary."""
+) -> dict:
+    """Ingest once, then recommend per user; return the ingest + per-user summary."""
     users = select_users(usernames)
-    results: list[dict] = []
     runlog = new_run_log(settings.DAILY_SUGGESTIONS_LOG_DIR, label="beat")
     runlog.line(f"daily run start: {len(users)} user(s)")
     logger.info("daily suggestions run log: %s", runlog.path)
     try:
-        for user in users:
-            try:
-                result = run_for_user(
-                    user,
-                    days_back=days_back,
-                    days_forward=days_forward,
-                    sources=sources,
-                    query_limit=query_limit,
-                    top_k=top_k,
-                    suggestion_limit=suggestion_limit,
-                    embed=embed,
-                    log=runlog.line,
-                )
-            except Exception:
-                logger.exception("daily suggestions failed for %s", user.get_username())
-                runlog.line(f"[{user.get_username()}] ERROR (see worker log)")
-                results.append({"username": user.get_username(), "status": "error"})
-            else:
-                runlog.line(
-                    f"[{result.username}] done: {result.status} "
-                    f"({result.suggestions} suggestions)"
-                )
-                results.append(result.as_dict())
+        batch = run_daily_batch(
+            users,
+            days_back=days_back,
+            days_forward=days_forward,
+            sources=sources,
+            query_limit=query_limit,
+            top_k=top_k,
+            suggestion_limit=suggestion_limit,
+            embed=embed,
+            log=runlog.line,
+        )
+        for result in batch.results:
+            runlog.line(
+                f"[{result.username}] done: {result.status} "
+                f"({result.suggestions} suggestions)"
+            )
         runlog.line("daily run complete")
     finally:
         runlog.close()
-    return results
+    return batch.as_dict()

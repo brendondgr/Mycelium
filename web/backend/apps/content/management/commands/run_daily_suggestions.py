@@ -17,7 +17,7 @@ from __future__ import annotations
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from apps.content.pipeline import DEFAULT_SUGGESTIONS, run_for_user
+from apps.content.pipeline import DEFAULT_SUGGESTIONS, run_daily_batch
 from apps.content.runlog import new_run_log
 from apps.content.tasks import run_daily_suggestions, select_users
 
@@ -110,17 +110,28 @@ class Command(BaseCommand):
         )
         self.stdout.write(self.style.SUCCESS(f"Run log: {runlog.path}"))
         try:
-            for user in users:
-                result = run_for_user(
-                    user,
-                    complete=complete,
-                    persist=persist,
-                    log=runlog.line,
-                    **common,
-                )
-                self._report(result)
+            # One global ingest (search + embed shared topics once), then a
+            # per-user recommend pass over the shared store.
+            batch = run_daily_batch(
+                users,
+                complete=complete,
+                persist=persist,
+                log=runlog.line,
+                **common,
+            )
         finally:
             runlog.close()
+
+        ingest = batch.ingest
+        self.stdout.write(
+            self.style.SUCCESS(
+                "Ingest: "
+                f"{ingest.get('unique_queries', 0)} unique term(s), "
+                f"{ingest.get('new', 0)} new / {ingest.get('embedded', 0)} embedded."
+            )
+        )
+        for result in batch.results:
+            self._report(result)
 
     def _report(self, result) -> None:
         line = (

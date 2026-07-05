@@ -9,7 +9,12 @@ from django.db import connection
 from apps.accounts.models import WatchPreference
 from apps.content import embeddings
 from apps.content.models import ContentItem, RelevanceScore
-from apps.content.pipeline import build_queries, run_for_user
+from apps.content.pipeline import (
+    build_queries,
+    gather_scan_queries,
+    run_daily_batch,
+    run_for_user,
+)
 
 # A tiny deterministic embedder shared by the profile and the papers so cosine
 # distance is meaningful without loading fastembed.
@@ -55,6 +60,44 @@ def test_build_queries_dedupes_and_preserves_order() -> None:
 
 def test_build_queries_respects_limit() -> None:
     assert build_queries(["a", "b", "c", "d"], limit=2) == ["a", "b"]
+
+
+# -- global scan-term gathering (batch phase 1) -------------------------------
+
+
+@pytest.mark.django_db
+def test_gather_scan_queries_unions_and_dedupes() -> None:
+    u1 = User.objects.create_user("g1", password="x")
+    u2 = User.objects.create_user("g2", password="x")
+    u3 = User.objects.create_user("g3", password="x")
+    _set_watch(u1, ["Knowledge Graphs", "RAG"])
+    _set_watch(u2, ["knowledge graphs", "Biomedical NLP"])  # dup of u1's first
+    _set_watch(u3, [])  # contributes nothing
+
+    terms = gather_scan_queries([u1, u2, u3])
+
+    # Deduped case-insensitively across users, order-preserving (first seen wins).
+    assert terms == ["Knowledge Graphs", "RAG", "Biomedical NLP"]
+
+
+@pytest.mark.django_db
+def test_gather_scan_queries_respects_per_user_and_global_limits() -> None:
+    u1 = User.objects.create_user("g4", password="x")
+    u2 = User.objects.create_user("g5", password="x")
+    _set_watch(u1, ["a", "b", "c"])
+    _set_watch(u2, ["d", "e", "f"])
+
+    # Each user contributes at most per_user_limit; the global cap trims the union.
+    assert gather_scan_queries([u1, u2], per_user_limit=2) == ["a", "b", "d", "e"]
+    assert gather_scan_queries([u1, u2], per_user_limit=2, global_limit=3) == [
+        "a",
+        "b",
+        "d",
+    ]
+
+
+def test_gather_scan_queries_empty_users() -> None:
+    assert gather_scan_queries([]) == []
 
 
 # -- graceful degradation (no pgvector needed) --------------------------------
@@ -257,3 +300,65 @@ def test_dry_run_persists_nothing(pgvector) -> None:
 
     assert result.status == "ok"
     assert RelevanceScore.objects.filter(target_user=user).count() == 0
+
+
+# -- batch run: ingest once, recommend per user -------------------------------
+
+
+@pytest.mark.django_db
+def test_batch_scans_shared_terms_once_and_recommends_all(pgvector) -> None:
+    """The core efficiency win: a shared topic is searched once, not per user."""
+    embeddings.set_embedder(_fake_embed)
+    # One paper already in the shared store for everyone to be recommended from.
+    _vpaper("p", "graph health", [1.0, 1.0, 0.0, 0.0])
+
+    calls: list[list[str]] = []
+
+    def counting_search(queries, _window, _sources):
+        calls.append(list(queries))
+        return []  # no NEW papers; the pre-loaded one stays
+
+    _set_watch(_profile_user("b1", areas=["graph"], keywords=[]), ["graph", "health"])
+    _set_watch(_profile_user("b2", areas=["graph"], keywords=[]), ["graph"])  # shares
+    _set_watch(_profile_user("b3", areas=["health"], keywords=[]), ["health"])  # shares
+    # Fresh instances, exactly as select_users returns them in production (no
+    # stale cached watch relations from the setup above).
+    users = list(User.objects.filter(username__in=["b1", "b2", "b3"]).order_by("id"))
+
+    result = run_daily_batch(
+        users,
+        search_fn=counting_search,
+        embed=False,
+        complete=lambda _p: None,
+    )
+
+    # Phase 1: the sources were hit exactly once, over the deduped union — NOT
+    # once per user (that would be three calls / re-searching "graph" & "health").
+    assert len(calls) == 1
+    assert calls[0] == ["graph", "health"]
+    assert result.ingest["unique_queries"] == 2
+    # Phase 2: every user got a recommendation from the shared store.
+    assert [r.status for r in result.results] == ["ok", "ok", "ok"]
+    for username in ("b1", "b2", "b3"):
+        assert RelevanceScore.objects.filter(target_user__username=username).exists()
+
+
+@pytest.mark.django_db
+def test_batch_skips_users_without_topics(pgvector) -> None:
+    embeddings.set_embedder(_fake_embed)
+    _vpaper("p", "graph health", [1.0, 1.0, 0.0, 0.0])
+
+    _set_watch(_profile_user("has-topics", areas=["graph"], keywords=[]), ["graph"])
+    # A user who opted out of monitoring (no watch topics).
+    _set_watch(_profile_user("no-topics", areas=["graph"], keywords=[]), [])
+    users = list(
+        User.objects.filter(username__in=["has-topics", "no-topics"]).order_by("id")
+    )
+
+    result = run_daily_batch(
+        users, search_fn=_no_search, embed=False, complete=lambda _p: None
+    )
+
+    by_name = {r.username: r.status for r in result.results}
+    assert by_name["has-topics"] == "ok"
+    assert by_name["no-topics"] == "no_watch_topics"
