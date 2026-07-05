@@ -6,6 +6,7 @@ import type {
   InvitationAction,
   LabProfileData,
   MyLab,
+  WatchData,
 } from "@/lib/portal/types";
 
 /**
@@ -120,7 +121,7 @@ export function updateLabProfile(
   payload: Partial<
     Pick<
       LabProfileData,
-      "statement" | "areas" | "funding_needs" | "strategic_needs"
+      "statement" | "areas" | "funding_needs" | "strategic_needs" | "interests"
     >
   >,
 ): Promise<LabProfileData> {
@@ -129,5 +130,38 @@ export function updateLabProfile(
     buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "profile"),
     payload,
     "Could not save the lab's purpose and goals.",
+  );
+}
+
+/** Update what Milo watches for a lab. */
+export function updateLabWatch(
+  slug: string,
+  payload: Partial<WatchData>,
+): Promise<WatchData> {
+  return sendJson<WatchData>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "watch"),
+    payload,
+    "Could not save the lab's watch settings.",
+  );
+}
+
+/** The draft a lab synthesis returns for the review step (nothing is saved). */
+export type LabSynthesisResult = {
+  statement: string;
+  areas: string[];
+  keywords: string[];
+};
+
+/** Draft a lab's statement/areas/keywords from the PI's free text (LLM-assisted). */
+export function synthesizeLabProfile(
+  slug: string,
+  input: { description: string; areas: string[]; source_text: string },
+): Promise<LabSynthesisResult> {
+  return sendJson<LabSynthesisResult>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "intake", "synthesize"),
+    input,
+    "Could not synthesize the lab profile. You can fill it in manually.",
   );
 }

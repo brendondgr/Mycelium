@@ -62,6 +62,31 @@ export function LabsSection() {
     </button>
   );
 
+  // When a lab is the active workspace, this page is that lab's management —
+  // no list of other labs (switch labs from the workspace switcher instead).
+  if (currentLab) {
+    return (
+      <div>
+        <SectionHeader
+          title={`Manage ${currentLab.name}`}
+          subtitle="Switch labs from the workspace switcher in the top bar."
+          action={createAction}
+        />
+        <LabDetail lab={currentLab} />
+
+        {showCreate ? (
+          <CreateLabModal
+            onClose={() => setShowCreate(false)}
+            onCreated={(slug) => {
+              setLabScope(slug);
+              setShowCreate(false);
+            }}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div>
       <SectionHeader
@@ -108,13 +133,9 @@ export function LabsSection() {
             ))}
           </div>
 
-          {currentLab ? (
-            <LabDetail lab={currentLab} />
-          ) : (
-            <p className="mt-6 text-sm text-[var(--text-muted)]">
-              Select a lab above to view its purpose, members, and projects.
-            </p>
-          )}
+          <p className="mt-6 text-sm text-[var(--text-muted)]">
+            Select a lab to make it your active workspace, then manage it here.
+          </p>
         </>
       )}
 
@@ -176,10 +197,7 @@ function LabDetail({ lab }: { lab: MyLab }) {
   const canManage = canManageLab(lab);
 
   return (
-    <div className="mt-6 space-y-4">
-      <h2 className="font-serif text-[20px] font-semibold text-[var(--text-primary)]">
-        {lab.name}
-      </h2>
+    <div className="space-y-4">
       <LabPurposeCard lab={lab} canManage={canManage} />
       {canManage ? <InviteCard lab={lab} /> : null}
       <MembersCard lab={lab} />

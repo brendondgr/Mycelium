@@ -6,6 +6,7 @@ import {
   fetchDailyReport,
   fetchLabMembers,
   fetchLabProfile,
+  fetchLabWatch,
   fetchMyInvitations,
   fetchMyLabs,
   fetchProfile,
@@ -17,7 +18,9 @@ import {
   createProject,
   inviteToLab,
   respondToInvitation,
+  synthesizeLabProfile,
   updateLabProfile,
+  updateLabWatch,
 } from "@/lib/portal/mutations";
 import { PERSONAL_SLUG, type InvitationAction } from "@/lib/portal/types";
 
@@ -155,5 +158,36 @@ export function useUpdateLabProfile(slug: string) {
     onSuccess: (data) => {
       queryClient.setQueryData(["portal", "lab-profile", slug], data);
     },
+  });
+}
+
+/** What Milo watches for a lab. Disabled for the personal-workspace scope. */
+export function useLabWatch(slug?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
+  return useQuery({
+    queryKey: ["portal", "lab-watch", slug ?? "none"],
+    queryFn: () => fetchLabWatch(slug as string),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** Save a lab's watch settings, updating the cached copy in place. */
+export function useUpdateLabWatch(slug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof updateLabWatch>[1]) =>
+      updateLabWatch(slug, payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["portal", "lab-watch", slug], data);
+    },
+  });
+}
+
+/** Draft a lab profile from the PI's free text (LLM-assisted, nothing saved). */
+export function useSynthesizeLabProfile(slug: string) {
+  return useMutation({
+    mutationFn: (input: Parameters<typeof synthesizeLabProfile>[1]) =>
+      synthesizeLabProfile(slug, input),
   });
 }

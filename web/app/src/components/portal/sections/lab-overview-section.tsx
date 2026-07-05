@@ -1,0 +1,226 @@
+"use client";
+
+import { roleLabel, usePortal, type SectionKey } from "@/components/portal/portal-context";
+import {
+  CalendarIcon,
+  DocumentIcon,
+  FolderIcon,
+  MembersIcon,
+  SparkleIcon,
+} from "@/components/portal/icons";
+import { Card } from "@/components/portal/primitives/card";
+import { Pill } from "@/components/portal/primitives/pill";
+import { StatCard } from "@/components/portal/sections/stat-card";
+import { LabOnboarding } from "@/components/portal/sections/lab-onboarding";
+import {
+  useLabMembers,
+  useLabProfile,
+  useLabWatch,
+  useProjects,
+} from "@/lib/portal/hooks";
+import type { MyLab } from "@/lib/portal/types";
+
+/** Time-of-day greeting word from the hour (0–23). */
+function timeOfDay(hour: number): "morning" | "afternoon" | "evening" {
+  if (hour < 12) return "morning";
+  if (hour < 18) return "afternoon";
+  return "evening";
+}
+
+function firstName(name: string): string {
+  return name.split(" ")[0] ?? name;
+}
+
+function canManage(lab: MyLab): boolean {
+  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
+}
+
+/**
+ * The lab's front page — the landing view when a lab is the active workspace.
+ * Modeled on the personal overview: a greeting, the date, and daily,
+ * purpose-driven metrics (papers recommended, grants found, conferences
+ * matching). When the lab has no profile yet, a manager sees inline onboarding
+ * here instead; a member sees an honest "not set up yet" state.
+ */
+export function LabOverviewSection({ lab }: { lab: MyLab }) {
+  const { user, goToSection } = usePortal();
+  const profileQuery = useLabProfile(lab.slug);
+  const watchQuery = useLabWatch(lab.slug);
+  const membersQuery = useLabMembers(lab.slug);
+  const projectsQuery = useProjects(lab.slug);
+
+  const profile = profileQuery.data;
+  const manage = canManage(lab);
+
+  const now = new Date();
+  const greeting = timeOfDay(now.getHours());
+  const first = firstName(user.name || user.username);
+  const dateLabel = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
+  const profileEmpty =
+    !profileQuery.isLoading &&
+    !!profile &&
+    !profile.statement &&
+    (profile.areas?.length ?? 0) === 0;
+
+  // Onboarding gate: an unconfigured lab either onboards (manager) or explains
+  // itself (member) before any metrics are worth showing.
+  if (profileEmpty) {
+    return (
+      <div>
+        <Greeting greeting={greeting} first={first} dateLabel={dateLabel} lab={lab} />
+        {manage ? (
+          <LabOnboarding lab={lab} onDone={() => profileQuery.refetch()} />
+        ) : (
+          <Card className="p-6">
+            <p className="text-[14px] text-[var(--text-secondary)]">
+              This lab hasn&apos;t set up its research profile yet. Once a lab
+              lead describes its purpose and focus, Mylo can start surfacing
+              papers, grants, and conferences here.
+            </p>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  const memberCount = membersQuery.data?.length ?? null;
+  const projectCount = projectsQuery.data?.length ?? null;
+  const watch = watchQuery.data;
+
+  return (
+    <div>
+      <Greeting greeting={greeting} first={first} dateLabel={dateLabel} lab={lab} />
+
+      {/* Purpose-driven daily metrics. Papers / grants / conferences are honest
+          placeholders until their matching pipelines exist. */}
+      <div className="mb-[26px] grid gap-[22px] [grid-template-columns:repeat(auto-fit,minmax(212px,1fr))]">
+        <StatCard
+          icon={<DocumentIcon size={16} />}
+          label="Articles recommended today"
+          value={null}
+          sub="Coming soon"
+        />
+        <StatCard
+          icon={<SparkleIcon size={16} />}
+          label="Grants found"
+          value={null}
+          sub="Coming soon"
+        />
+        <StatCard
+          icon={<CalendarIcon size={16} />}
+          label="Conferences matching"
+          value={null}
+          sub="Coming soon"
+        />
+        <StatCard
+          icon={<MembersIcon size={16} />}
+          label="Members"
+          value={memberCount}
+          onClick={() => goToSection("members" as SectionKey)}
+        />
+        <StatCard
+          icon={<FolderIcon size={16} />}
+          label="Projects"
+          value={projectCount}
+          onClick={() => goToSection("labs" as SectionKey)}
+        />
+      </div>
+
+      {/* Lab purpose summary (left) + watch summary (right) */}
+      <div className="grid gap-[22px] grid-cols-1 lg:grid-cols-[1.5fr_1fr] lg:items-start">
+        <Card className="p-5">
+          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+            Lab purpose
+          </h2>
+          {profile?.statement ? (
+            <p className="text-[14px] leading-relaxed text-[var(--text-secondary)]">
+              {profile.statement}
+            </p>
+          ) : (
+            <p className="text-[13.5px] text-[var(--text-muted)]">
+              No statement yet.
+            </p>
+          )}
+          {profile && profile.areas.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {profile.areas.map((area) => (
+                <Pill key={area} tone="neutral">
+                  {area}
+                </Pill>
+              ))}
+            </div>
+          ) : null}
+          {manage ? (
+            <button
+              type="button"
+              className="mt-4 rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => goToSection("labs" as SectionKey)}
+            >
+              Manage lab
+            </button>
+          ) : null}
+        </Card>
+
+        <Card className="p-5">
+          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+            What Mylo watches
+          </h2>
+          {watch && watch.topics.length > 0 ? (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {watch.topics.slice(0, 8).map((topic) => (
+                  <Pill key={topic} tone="neutral">
+                    {topic}
+                  </Pill>
+                ))}
+              </div>
+              <p className="mt-3 text-[12px] text-[var(--text-muted)]">
+                {watch.categories.length} signal type
+                {watch.categories.length === 1 ? "" : "s"} ·{" "}
+                {watch.cadence === "realtime"
+                  ? "Real-time"
+                  : watch.cadence === "daily"
+                    ? "Daily digest"
+                    : "Weekly digest"}
+              </p>
+            </>
+          ) : (
+            <p className="text-[13.5px] text-[var(--text-muted)]">
+              Milo isn&apos;t watching anything specific for this lab yet.
+            </p>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function Greeting({
+  greeting,
+  first,
+  dateLabel,
+  lab,
+}: {
+  greeting: string;
+  first: string;
+  dateLabel: string;
+  lab: MyLab;
+}) {
+  return (
+    <div className="mb-[22px]">
+      <h1 className="m-0 mb-[6px] font-serif text-[31px] font-semibold leading-[1.12] tracking-[-0.015em] text-[var(--text-primary)]">
+        Good {greeting}, {first}
+      </h1>
+      <p className="m-0 text-[14px] text-[var(--text-secondary)]">
+        {dateLabel} · You&apos;re viewing{" "}
+        <span className="font-medium text-[var(--text-primary)]">{lab.name}</span>{" "}
+        · {roleLabel(lab)}
+      </p>
+    </div>
+  );
+}

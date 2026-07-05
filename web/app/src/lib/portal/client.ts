@@ -10,6 +10,8 @@ import type {
   WatchData,
 } from "@/lib/portal/types";
 
+/* Re-exported shape: a lab's watch settings share the user's WatchData shape. */
+
 /**
  * Browser-side reads for the workspace dashboard. GET-only, so no CSRF token is
  * needed; `credentials: "include"` carries the session cookie through the Next
@@ -82,5 +84,13 @@ export async function fetchLabProfile(slug: string): Promise<LabProfileData> {
   return getJson<LabProfileData>(
     buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "profile"),
     "Could not load the lab's purpose and goals.",
+  );
+}
+
+/** What Milo watches for a lab (same shape as a user's watch settings). */
+export async function fetchLabWatch(slug: string): Promise<WatchData> {
+  return getJson<WatchData>(
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "watch"),
+    "Could not load the lab's watch settings.",
   );
 }

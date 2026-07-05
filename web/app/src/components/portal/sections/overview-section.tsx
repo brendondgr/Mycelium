@@ -15,6 +15,7 @@ import { DailyDigestPanel } from "@/components/portal/sections/daily-digest-pane
 import { StatCard } from "@/components/portal/sections/stat-card";
 import { NextActions } from "@/components/portal/sections/next-actions";
 import { ProfileNudge } from "@/components/portal/sections/profile-nudge";
+import { LabOverviewSection } from "@/components/portal/sections/lab-overview-section";
 
 /** Derive time-of-day greeting word from the hour (0–23). */
 function timeOfDay(hour: number): "morning" | "afternoon" | "evening" {
@@ -33,9 +34,15 @@ function firstName(name: string): string {
  * the greeting, Mylo summary, stat grid, next-actions list, and profile nudge.
  */
 export function OverviewSection() {
-  const { user, scopeLabel, goToSection, projects, labs } = usePortal();
+  const { user, scopeLabel, goToSection, projects, labs, currentLab } =
+    usePortal();
   const profileQuery = useProfile();
   const watchQuery = useWatch();
+
+  // When a lab is the active workspace, its overview replaces the personal one.
+  if (currentLab) {
+    return <LabOverviewSection lab={currentLab} />;
+  }
 
   const completeness = computeCompleteness(profileQuery.data);
   const watch = watchQuery.data;
