@@ -1,4 +1,13 @@
-@import "tailwindcss";
+/*
+ * source("../") scopes Tailwind's automatic class detection to ./src. Without
+ * it the scanner walks the whole app dir, including stray non-gitignored build
+ * leftovers (stale ".next-stale-" and "tmp-stale" verification dirs) whose
+ * minified and binary content yields corrupted candidates that break CSS
+ * compilation with a bogus "Missed semicolon" error. This comment must precede
+ * the import: CSS allows comments before @import, but a stray star-slash would
+ * close it early. See docs/changelog.md (20260705-tailwind-source-scope).
+ */
+@import "tailwindcss" source("../");
 @import "@mycelium/config/theme.css";
 
 @theme inline {

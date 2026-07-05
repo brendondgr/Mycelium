@@ -4,6 +4,8 @@
 !.env.example
 !**/.env.example
 *.local
+.next-stale-*
+tmp-root-stale*
 
 # Python
 __pycache__/
