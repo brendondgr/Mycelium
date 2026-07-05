@@ -29,7 +29,7 @@ function firstFieldError(body: Record<string, unknown> | null): string | null {
   return null;
 }
 
-function readCsrfToken(): string | null {
+export function readCsrfToken(): string | null {
   if (typeof document === "undefined") {
     return null;
   }

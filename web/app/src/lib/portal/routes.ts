@@ -13,6 +13,7 @@ export type SectionKey =
   | "opportunities"
   | "deadlines"
   | "projects"
+  | "labs"
   | "members"
   | "reports";
 
@@ -25,6 +26,7 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   opportunities: "/app/opportunities",
   deadlines: "/app/deadlines",
   projects: "/app/projects",
+  labs: "/app/labs",
   members: "/app/members",
   reports: "/app/reports",
 };
@@ -47,6 +49,7 @@ export function sectionFromPathname(pathname: string): SectionKey {
     "opportunities",
     "deadlines",
     "projects",
+    "labs",
     "members",
     "reports",
     "overview",

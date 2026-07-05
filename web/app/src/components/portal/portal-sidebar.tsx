@@ -76,20 +76,9 @@ export function PortalSidebar() {
       <nav className="flex flex-col gap-0.5">
         <SidebarNavItem
           icon={<MembersIcon size={18} />}
-          label="Members"
-          active={section === "members"}
-          onClick={() => goToSection("members")}
-        />
-        <SidebarNavItem
-          icon={<DocumentIcon size={18} />}
-          label="Reports"
-          active={section === "reports"}
-          onClick={() => goToSection("reports")}
-          trailing={
-            <span className="rounded-full border border-dashed border-border px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
-              Soon
-            </span>
-          }
+          label="Labs"
+          active={section === "labs"}
+          onClick={() => goToSection("labs")}
         />
       </nav>
     </aside>

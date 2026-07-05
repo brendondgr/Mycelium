@@ -24,8 +24,7 @@ const ITEMS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: "opportunities", label: "Opportunities", icon: <SparkleIcon size={15} /> },
   { key: "deadlines", label: "Deadlines", icon: <CalendarIcon size={15} /> },
   { key: "projects", label: "Projects", icon: <FolderIcon size={15} /> },
-  { key: "members", label: "Members", icon: <MembersIcon size={15} /> },
-  { key: "reports", label: "Reports", icon: <DocumentIcon size={15} /> },
+  { key: "labs", label: "Labs", icon: <MembersIcon size={15} /> },
 ];
 
 /**

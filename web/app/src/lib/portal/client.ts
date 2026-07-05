@@ -2,6 +2,8 @@ import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import type {
   DailyReport,
   LabMember,
+  LabProfileData,
+  MyInvitation,
   MyLab,
   Project,
   ProfileData,
@@ -64,5 +66,21 @@ export async function fetchDailyReport(): Promise<DailyReport> {
   return getJson<DailyReport>(
     buildApiUrl(getPublicApiBase(), "daily-report"),
     "Could not load your daily report.",
+  );
+}
+
+/** The caller's pending lab invitations — powers the notifications panel. */
+export async function fetchMyInvitations(): Promise<MyInvitation[]> {
+  return getJson<MyInvitation[]>(
+    buildApiUrl(getPublicApiBase(), "auth", "invitations"),
+    "Could not load your invitations.",
+  );
+}
+
+/** A lab's collective purpose & goals. */
+export async function fetchLabProfile(slug: string): Promise<LabProfileData> {
+  return getJson<LabProfileData>(
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "profile"),
+    "Could not load the lab's purpose and goals.",
   );
 }

@@ -29,6 +29,30 @@ export type ProjectMember = {
   initials: string;
 };
 
+/** A pending lab invitation addressed to the caller (notifications panel). */
+export type MyInvitation = {
+  id: string;
+  lab_slug: string;
+  lab_name: string;
+  role: LabRole;
+  inviter: string | null;
+  created_at: string;
+};
+
+/** How an invitee answers an invitation. */
+export type InvitationAction = "accept" | "reject" | "ignore";
+
+/** A lab's collective purpose & goals (from `/api/auth/labs/<slug>/profile/`). */
+export type LabProfileData = {
+  statement: string;
+  areas: string[];
+  funding_needs: string[];
+  strategic_needs: string[];
+  interests: Record<string, unknown>;
+  embedding_text: string;
+  updated_at: string;
+};
+
 export type ProjectScope = "user" | "lab" | "department";
 
 export type Project = {
