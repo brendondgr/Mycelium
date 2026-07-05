@@ -38,7 +38,7 @@ for the layout standard.
 | Frontend → API calls & data hooks | `web/app/src/lib/` and `web/app/src/lib/portal/` |
 | Shared design tokens / theme | `web/packages/config/src/theme.css` |
 | Nginx / gateway routing | `web/infra/nginx/` |
-| Root run/build commands | `run.py`, `package.json`, `compose.yaml` |
+| Root run/build commands | `run.py`, `manual_search.py` (trigger the daily search on demand), `package.json`, `compose.yaml` |
 | Env vars / secrets contract | `.env.example` (documented in `architecture.md`) |
 
 ---
