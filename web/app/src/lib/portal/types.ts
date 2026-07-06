@@ -183,6 +183,8 @@ export type ConferenceOpportunity = OpportunityBase & {
   event_dates: string;
   deadlines: string;
   keywords: string;
+  /** Semicolon-delimited subject categories — clean tags (unlike keywords). */
+  matched_subjects: string;
 };
 
 /** A ranked opportunity feed for one area. */

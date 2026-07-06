@@ -2,7 +2,6 @@
 
 import * as React from "react";
 
-import { Pill } from "@/components/portal/primitives/pill";
 import { BookmarkIcon, SparkleIcon } from "@/components/portal/icons";
 import { useSaveOpportunity } from "@/lib/portal/hooks";
 
@@ -18,27 +17,33 @@ function matchTier(percent: number): { token: string; word: string } {
 }
 
 /**
- * The model's percent match, color-coded by strength: green ≥ 85, amber 60–84,
- * terracotta below 60. The chip always carries the number and a word ("88%
- * strong"), so color is never the only signal — it only reinforces the fit.
- * Null percent (the fallback tail) renders nothing.
+ * The model's percent match. The number is always dark and bold for legibility;
+ * the fit tier (strong ≥ 85, fair 60–84, low below) shows as a small colored dot
+ * and the aria-label, so color reinforces but never replaces the reading. Null
+ * percent (the fallback tail) renders nothing.
  */
 export function MatchBadge({ percent }: { percent: number | null }) {
   if (typeof percent !== "number") return null;
   const { token, word } = matchTier(percent);
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1"
       style={{
-        borderColor: `color-mix(in srgb, var(${token}) 45%, transparent)`,
-        backgroundColor: `color-mix(in srgb, var(${token}) 14%, transparent)`,
-        color: `color-mix(in srgb, var(${token}) 72%, var(--text-primary))`,
+        borderColor: `color-mix(in srgb, var(${token}) 35%, var(--border))`,
+        backgroundColor: `color-mix(in srgb, var(${token}) 10%, var(--surface))`,
       }}
       aria-label={`${percent} percent match to your research profile, a ${word} match`}
     >
-      <span aria-hidden="true">{percent}%</span>
-      <span aria-hidden="true" className="font-medium opacity-80">
-        {word}
+      <span
+        aria-hidden="true"
+        className="h-2 w-2 rounded-full"
+        style={{ backgroundColor: `var(${token})` }}
+      />
+      <span className="text-sm font-bold leading-none text-[var(--text-primary)]">
+        {percent}%
+      </span>
+      <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+        match
       </span>
     </span>
   );
@@ -46,14 +51,20 @@ export function MatchBadge({ percent }: { percent: number | null }) {
 
 /**
  * The "New" tag for a fresh, high-fit item pinned to the top for its first week.
- * Carries an icon + text (never color alone) so the distinction is clear.
+ * A solid green pill (with an icon + text, never color alone) so it's unmistakable.
  */
 export function NewTag() {
   return (
-    <Pill tone="accent" className="shrink-0">
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold"
+      style={{
+        backgroundColor: "var(--success)",
+        color: "var(--destructive-foreground)",
+      }}
+    >
       <SparkleIcon size={12} aria-hidden="true" />
-      New — worth a look
-    </Pill>
+      New
+    </span>
   );
 }
 

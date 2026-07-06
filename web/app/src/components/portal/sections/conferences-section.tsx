@@ -21,11 +21,14 @@ import type { ConferenceOpportunity } from "@/lib/portal/types";
 
 function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
   const where = conf.location || conf.country;
-  const keywords = conf.keywords
-    .split(/[;,]/)
-    .map((k) => k.trim())
-    .filter(Boolean)
-    .slice(0, 4);
+  // Use the semicolon-delimited subject categories, not the space-joined
+  // `keywords` blob, so the tags render as real, separate chips.
+  const subjects = conf.matched_subjects
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const shownSubjects = subjects.slice(0, 4);
+  const moreSubjects = subjects.length - shownSubjects.length;
 
   return (
     <Card className="flex h-full flex-col p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
@@ -41,26 +44,31 @@ function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
         {conf.title}
       </h3>
 
-      <dl className="mt-2 space-y-1 text-xs text-[var(--text-secondary)]">
+      <dl className="mt-2.5 space-y-1.5 text-sm text-[var(--text-secondary)]">
         {where ? (
-          <div className="flex gap-1.5">
-            <dt className="text-[var(--text-muted)]">Where</dt>
-            <dd>{where}</dd>
+          <div className="flex gap-2">
+            <dt className="w-12 shrink-0 font-medium text-[var(--text-muted)]">
+              Where
+            </dt>
+            <dd className="min-w-0">{where}</dd>
           </div>
         ) : null}
         {conf.event_dates ? (
-          <div className="flex gap-1.5">
-            <dt className="text-[var(--text-muted)]">When</dt>
+          <div className="flex gap-2">
+            <dt className="w-12 shrink-0 font-medium text-[var(--text-muted)]">
+              When
+            </dt>
             <dd>{conf.event_dates}</dd>
           </div>
         ) : null}
-        {conf.deadline_date ? (
-          <div className="flex items-center gap-1.5 font-medium text-[var(--accent)]">
-            <CalendarIcon size={13} aria-hidden="true" />
-            <dd>{deadlineLabel(conf.deadline_kind, conf.deadline_date)}</dd>
-          </div>
-        ) : null}
       </dl>
+
+      {conf.deadline_date ? (
+        <p className="mt-2.5 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--destructive)]">
+          <CalendarIcon size={15} aria-hidden="true" />
+          {deadlineLabel(conf.deadline_kind, conf.deadline_date)}
+        </p>
+      ) : null}
 
       {conf.reason ? (
         <p className="mt-2.5 text-sm leading-relaxed text-[var(--text-secondary)]">
@@ -68,16 +76,21 @@ function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
         </p>
       ) : null}
 
-      {keywords.length > 0 ? (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {keywords.map((kw) => (
+      {shownSubjects.length > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {shownSubjects.map((subject) => (
             <span
-              key={kw}
-              className="rounded-full bg-[var(--surface-alt)] px-2 py-0.5 text-[11px] text-[var(--text-muted)]"
+              key={subject}
+              className="rounded-full border border-[var(--border)] bg-[var(--surface-alt)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]"
             >
-              {kw}
+              {subject}
             </span>
           ))}
+          {moreSubjects > 0 ? (
+            <span className="px-1 text-xs font-medium text-[var(--text-muted)]">
+              +{moreSubjects} more
+            </span>
+          ) : null}
         </div>
       ) : null}
 
