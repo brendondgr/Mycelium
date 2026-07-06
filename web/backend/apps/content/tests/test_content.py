@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
 from apps.accounts.models import Lab
-from apps.content.models import ContentItem, RelevanceScore
+from apps.content.models import ContentItem, RelevanceScore, SavedOpportunity
 from apps.research.models import Project
 
 
@@ -127,3 +127,69 @@ def test_blank_external_id_is_exempt_from_dedup() -> None:
     ContentItem.objects.create(type=ContentItem.Type.GRANT, source="manual")
 
     assert ContentItem.objects.filter(source="manual").count() == 2
+
+
+@pytest.mark.django_db
+def test_conference_type_available() -> None:
+    conf = ContentItem.objects.create(
+        type=ContentItem.Type.CONFERENCE,
+        source="pivot",
+        external_id="80246426",
+    )
+    assert conf.type == "conference"
+    assert conf.get_type_display() == "Conference"
+
+
+@pytest.mark.django_db
+def test_saved_opportunity_unique_per_user_content(
+    paper: ContentItem, user: User
+) -> None:
+    SavedOpportunity.objects.create(
+        user=user,
+        content=paper,
+        area=SavedOpportunity.Area.GRANT,
+        title="A grant",
+    )
+    with pytest.raises(IntegrityError), transaction.atomic():
+        SavedOpportunity.objects.create(
+            user=user,
+            content=paper,
+            area=SavedOpportunity.Area.GRANT,
+            title="A grant (dup)",
+        )
+
+
+@pytest.mark.django_db
+def test_saved_opportunity_survives_content_prune(
+    paper: ContentItem, user: User
+) -> None:
+    """Pruning the global item must not destroy a user's saved deadline."""
+    saved = SavedOpportunity.objects.create(
+        user=user,
+        content=paper,
+        area=SavedOpportunity.Area.GRANT,
+        title="Amazon Research Awards",
+        deadline_date="2026-11-12",
+        deadline_kind=SavedOpportunity.DeadlineKind.APPLICATION,
+        snapshot={"title": "Amazon Research Awards", "amount": "Upper: $70,000 USD"},
+    )
+
+    paper.delete()  # the daily prune removes an expired ContentItem
+    saved.refresh_from_db()
+
+    assert saved.content_id is None  # SET_NULL, not cascade-deleted
+    assert saved.title == "Amazon Research Awards"
+    assert saved.snapshot["amount"] == "Upper: $70,000 USD"
+    assert str(saved.deadline_date) == "2026-11-12"
+
+
+@pytest.mark.django_db
+def test_saved_opportunity_allows_null_content_duplicates(user: User) -> None:
+    # Two pruned saves (content=None) must not collide under the partial unique key.
+    SavedOpportunity.objects.create(
+        user=user, area=SavedOpportunity.Area.CONFERENCE, title="One"
+    )
+    SavedOpportunity.objects.create(
+        user=user, area=SavedOpportunity.Area.CONFERENCE, title="Two"
+    )
+    assert SavedOpportunity.objects.filter(user=user, content__isnull=True).count() == 2

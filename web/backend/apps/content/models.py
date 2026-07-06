@@ -13,16 +13,17 @@ TARGET_FIELDS = ("target_user", "target_project", "target_lab", "target_departme
 class ContentItem(models.Model):
     """Global, deduplicated content from external sources (briefing §3).
 
-    Single table with a ``type`` discriminator (paper / grant / fellowship)
-    rather than three sibling tables — see briefing open question on content
-    table shape. The embedding is scored against profile / project / lab / dept
-    targets.
+    Single table with a ``type`` discriminator (paper / grant / fellowship /
+    conference) rather than sibling tables — see briefing open question on
+    content table shape. The embedding is scored against profile / project /
+    lab / dept targets.
     """
 
     class Type(models.TextChoices):
         PAPER = "paper", "Paper"
         GRANT = "grant", "Grant"
         FELLOWSHIP = "fellowship", "Fellowship"
+        CONFERENCE = "conference", "Conference"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     type = models.CharField(max_length=20, choices=Type.choices)
@@ -169,3 +170,84 @@ class RelevanceScore(models.Model):
 
     def __str__(self) -> str:
         return f"{self.content} → {self.target_type} ({self.score:.3f})"
+
+
+class SavedOpportunity(models.Model):
+    """A grant / conference / fellowship a user has saved to their deadlines.
+
+    Backs the save system and the Deadlines page. The link to the global
+    :class:`ContentItem` is ``SET_NULL`` and a display + deadline **snapshot** is
+    stored at save time, so the daily prune of expired opportunities never
+    destroys a user's saved deadline — the Deadlines view reads the snapshot even
+    after the source item is gone. One save per ``(user, content)``.
+    """
+
+    class Area(models.TextChoices):
+        GRANT = "grant", "Grant"
+        CONFERENCE = "conference", "Conference"
+        FELLOWSHIP = "fellowship", "Fellowship"
+
+    class DeadlineKind(models.TextChoices):
+        APPLICATION = "application", "Application"
+        ABSTRACT = "abstract", "Abstract"
+        MANUSCRIPT = "manuscript", "Manuscript"
+        EVENT = "event", "Event"
+        OTHER = "other", "Other"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="saved_opportunities",
+    )
+    content = models.ForeignKey(
+        ContentItem,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="saves",
+        help_text="Global source item; nulled if the item is later pruned.",
+    )
+    area = models.CharField(max_length=20, choices=Area.choices)
+    title = models.CharField(max_length=500, help_text="Snapshot at save time.")
+    url = models.URLField(max_length=500, blank=True, default="")
+    subtitle = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Snapshot of sponsor (grant) or location (conference).",
+    )
+    deadline_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="The actionable date this save is tracking (snapshot).",
+    )
+    deadline_kind = models.CharField(
+        max_length=20,
+        choices=DeadlineKind.choices,
+        default=DeadlineKind.OTHER,
+    )
+    snapshot = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Full display fields captured at save time (survives prune).",
+    )
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["deadline_date", "created_at"]
+        indexes = [
+            models.Index(fields=["user", "deadline_date"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content"],
+                condition=Q(content__isnull=False),
+                name="content_saved_opportunity_unique_user_content",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} saved {self.area}: {self.title[:40]}"
