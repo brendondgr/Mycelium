@@ -35,7 +35,7 @@ function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {conf.is_new ? <NewTag /> : null}
-          <MatchBadge percent={conf.match_percent} />
+          <MatchBadge percent={conf.match_percent} origin={conf.origin} />
         </div>
         <SaveButton contentId={conf.content_id} saved={conf.saved} />
       </div>
@@ -47,7 +47,7 @@ function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
       <dl className="mt-2.5 space-y-1.5 text-sm text-[var(--text-secondary)]">
         {where ? (
           <div className="flex gap-2">
-            <dt className="w-12 shrink-0 font-medium text-[var(--text-muted)]">
+            <dt className="w-12 shrink-0 font-bold text-[var(--text-muted)]">
               Where
             </dt>
             <dd className="min-w-0">{where}</dd>
@@ -55,7 +55,7 @@ function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
         ) : null}
         {conf.event_dates ? (
           <div className="flex gap-2">
-            <dt className="w-12 shrink-0 font-medium text-[var(--text-muted)]">
+            <dt className="w-12 shrink-0 font-bold text-[var(--text-muted)]">
               When
             </dt>
             <dd>{conf.event_dates}</dd>

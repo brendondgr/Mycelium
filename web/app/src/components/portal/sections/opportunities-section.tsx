@@ -45,7 +45,7 @@ function GrantRow({ grant }: { grant: GrantOpportunity }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {grant.is_new ? <NewTag /> : null}
-            <MatchBadge percent={grant.match_percent} />
+            <MatchBadge percent={grant.match_percent} origin={grant.origin} />
           </div>
           <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
             {grant.title}
