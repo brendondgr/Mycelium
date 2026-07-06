@@ -149,6 +149,11 @@ export function SaveButton({
       };
 
   if (variant === "icon") {
+    // Colors live in className (not inline style) so the hover state can take
+    // effect; each state keeps a clear icon-to-background contrast.
+    const iconTone = saved
+      ? "border-[color-mix(in_srgb,var(--accent)_45%,transparent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-accent hover:bg-[color-mix(in_srgb,var(--accent)_24%,transparent)]"
+      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] hover:text-accent";
     return (
       <button
         type="button"
@@ -157,8 +162,7 @@ export function SaveButton({
         aria-pressed={saved}
         aria-label={label}
         title={label}
-        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors disabled:opacity-60"
-        style={tone}
+        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${iconTone}`}
       >
         <BookmarkIcon size={14} aria-hidden="true" />
       </button>

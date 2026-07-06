@@ -2,6 +2,8 @@ from datetime import date
 
 from rest_framework import serializers
 
+from apps.scraper.pivot.normalize import normalize_amount
+
 from .models import RelevanceScore, SavedOpportunity
 
 
@@ -160,7 +162,9 @@ class GrantSerializer(_OpportunitySerializer):
         return self._meta(score).get("sponsor") or ""
 
     def get_amount(self, score: RelevanceScore) -> str:
-        return self._meta(score).get("amount") or ""
+        # Distil at read time too: rows ingested before the normalizer existed
+        # still carry a whole budget paragraph, which would spam the card.
+        return normalize_amount(self._meta(score).get("amount") or "")
 
     def get_matched_topics(self, score: RelevanceScore) -> str:
         return self._meta(score).get("matched_topics") or ""
