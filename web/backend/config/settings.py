@@ -165,6 +165,15 @@ CELERY_BEAT_SCHEDULE = {
             hour=env.int("CELERY_DAILY_SUGGESTIONS_HOUR", default=6), minute=0
         ),
     },
+    # Grants/conferences run an hour before papers (1am) so the opportunity
+    # corpus is refreshed and pruned before the day's matching. Same pattern as
+    # above; CELERY_DAILY_OPPORTUNITIES_HOUR shifts it without a code change.
+    "daily-opportunities": {
+        "task": "apps.content.run_daily_opportunities",
+        "schedule": crontab(
+            hour=env.int("CELERY_DAILY_OPPORTUNITIES_HOUR", default=1), minute=0
+        ),
+    },
 }
 
 # Where the daily suggestion run writes its verbose, timestamped log (one file

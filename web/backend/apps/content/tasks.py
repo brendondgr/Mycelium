@@ -16,6 +16,7 @@ from celery import shared_task
 from django.conf import settings
 from django.contrib.auth.models import User
 
+from .opportunities import run_daily_opportunities_batch
 from .pipeline import DEFAULT_SUGGESTIONS, run_daily_batch
 from .runlog import new_run_log
 
@@ -65,6 +66,43 @@ def run_daily_suggestions(
                 f"({result.suggestions} suggestions)"
             )
         runlog.line("daily run complete")
+    finally:
+        runlog.close()
+    return batch.as_dict()
+
+
+@shared_task(name="apps.content.run_daily_opportunities")
+def run_daily_opportunities(
+    usernames: list[str] | None = None,
+    *,
+    ingest: bool = True,
+    prune: bool = True,
+    embed: bool = True,
+) -> dict:
+    """Refresh + prune the Pivot corpus, then match grants/conferences per user.
+
+    The opportunity twin of :func:`run_daily_suggestions`, wired to its own 1am
+    Beat schedule. Ingest is best-effort (a no-op without a saved Pivot session),
+    so the job reliably re-matches and prunes the existing corpus every night.
+    """
+    users = select_users(usernames)
+    runlog = new_run_log(settings.DAILY_SUGGESTIONS_LOG_DIR, label="opportunities")
+    runlog.line(f"daily opportunities start: {len(users)} user(s)")
+    logger.info("daily opportunities run log: %s", runlog.path)
+    try:
+        batch = run_daily_opportunities_batch(
+            users,
+            ingest=ingest,
+            prune=prune,
+            embed=embed,
+            log=runlog.line,
+        )
+        for result in batch.results:
+            runlog.line(
+                f"[{result.username}:{result.area}] done: {result.status} "
+                f"({result.suggestions} scored, {result.new} new)"
+            )
+        runlog.line("daily opportunities complete")
     finally:
         runlog.close()
     return batch.as_dict()
