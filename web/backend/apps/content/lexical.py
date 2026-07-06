@@ -46,6 +46,11 @@ def _tokenize(text: str) -> list[str]:
 
 def _item_text(item: ContentItem) -> str:
     meta = item.metadata or {}
+    # Pivot grants/conferences carry a prebuilt ``search_text`` (title/scope +
+    # context); papers use title+abstract. Prefer the explicit field when present.
+    prebuilt = meta.get("search_text")
+    if prebuilt:
+        return str(prebuilt)
     return f"{meta.get('title', '')} {meta.get('abstract', '')}"
 
 

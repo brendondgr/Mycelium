@@ -106,3 +106,8 @@ docs/_build/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Pivot-RP (ProQuest) grants/conferences ingestion secrets
+storage_state.json
+**/pivot/storage_state.json
+pivot.db

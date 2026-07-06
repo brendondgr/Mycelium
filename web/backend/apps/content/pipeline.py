@@ -301,8 +301,9 @@ def recommend_for_user(
     search_ints = search_interests(interests)
     retrieved_count = 0
     if search_ints:
-        pairs, rows, retrieved_count = _fuse_interests(
+        pairs, rows, retrieved_count = fuse_interests_pool(
             search_ints,
+            content_type=ContentItem.Type.PAPER,
             surface_limit=surface_limit,
             pool_per_interest=pool_per_interest,
             beta=beta,
@@ -478,9 +479,10 @@ def _ingest_summary(queries: list[str], summary) -> dict:
 PersistRow = tuple[ContentItem, float, dict]
 
 
-def _fuse_interests(
+def fuse_interests_pool(
     search_ints: list[SearchInterest],
     *,
+    content_type: str = ContentItem.Type.PAPER,
     surface_limit: int,
     pool_per_interest: int,
     beta: float,
@@ -490,8 +492,9 @@ def _fuse_interests(
 
     Builds one candidate pool (the union of each interest's vector ANN pull),
     indexes it once for BM25, fuses the two channels per interest, combines across
-    interests, and reserves each interest's best paper before truncating to
-    ``surface_limit``.
+    interests, and reserves each interest's best item before truncating to
+    ``surface_limit``. ``content_type`` scopes retrieval to papers (default) or
+    grants/conferences, so the grants/conferences matcher reuses this unchanged.
     """
     pool: dict[str, ContentItem] = {}
     vector_hits: dict[str, list[Hit]] = {}
@@ -500,7 +503,9 @@ def _fuse_interests(
         if vector is None:
             continue
         unified: list[Hit] = []
-        for item, similarity in retrieve_for_vector(vector, limit=pool_per_interest):
+        for item, similarity in retrieve_for_vector(
+            vector, content_type=content_type, limit=pool_per_interest
+        ):
             key = str(item.id)
             pool.setdefault(key, item)
             unified.append((pool[key], similarity))
