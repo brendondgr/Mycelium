@@ -43,7 +43,7 @@ for the layout standard.
 | Frontend → API calls & data hooks | `web/app/src/lib/` and `web/app/src/lib/portal/` |
 | Shared design tokens / theme | `web/packages/config/src/theme.css` |
 | Nginx / gateway routing | `web/infra/nginx/` |
-| Root run/build commands | `run.py`, `manual_search.py` (papers) / `manual_opportunities.py` (grants/conferences matching), `pivot.py` (full Pivot login→scrape→import→distribute flow), `package.json`, `compose.yaml` |
+| Root run/build commands | `run.py`, `manual_search.py` (papers) / `manual_opportunities.py` (grants/conferences matching), `pivot.py` (`all` = one in-process scrape→dedup→recommend; also `login`/`scrape`/`import`/`distribute`), `package.json`, `compose.yaml` |
 | Env vars / secrets contract | `.env.example` (documented in `architecture.md`) |
 
 ---

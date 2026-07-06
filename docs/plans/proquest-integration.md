@@ -155,12 +155,19 @@ pivot.py                                   # full interactive flow: login (host)
                                            #   distribute (container)
 ```
 
-**Interactive operator flow (`pivot.py`).** login + scrape open a real Chromium
-window so they run on the **host** (needs `uv sync --extra pivot` +
-`playwright install chromium`); import + distribute need Postgres/Redis so they run
-**inside the backend container**. The repo is bind-mounted, so the saved
-`storage_state.json` and the scraped `data/pivot/*.json` cross the boundary. login
-is deliberately separate from `all` (a human must complete SSO/MFA).
+**Operator flow (`pivot.py`, one in-process runner).** `uv run --project
+web/backend pivot.py all` does the whole thing in a single process: best-effort
+scrape → de-duplicate + prune into the content store (+embed) → recommend/rank to
+every user. It bootstraps Django and calls `run_daily_opportunities_batch(ingest=
+True)`, so it degrades gracefully — with no saved session or browser it logs, skips
+the scrape, and still dedups + recommends the existing corpus. Granular steps share
+the runner: `login` (interactive SSO, its own step since a human does MFA),
+`scrape` (browser → `data/pivot/*.json`), `import` (JSON → store), `distribute`
+(recommend on the existing corpus). Scraping needs a display + the `pivot` extra +
+`playwright install chromium`; dedup/recommend need `DATABASE_URL` + the
+`embeddings` extra. Verified end-to-end on pgvector: `pivot.py all` surfaced and
+persisted the matching grant for a seeded user while correctly excluding an
+off-topic one.
 
 Direction of dependency stays legal: `content` already imports `scraper`
 (`run_daily_batch` calls `scraper.ingest.scan`); the Pivot deadline/status helpers
