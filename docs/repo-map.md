@@ -24,6 +24,7 @@ for the layout standard.
 | A React component used in the portal | `web/app/src/components/portal/` |
 | Onboarding / profile-edit flow (UI) | `web/app/src/components/onboarding/` + route `app/app/onboarding/` |
 | Lab overview / onboarding / switch (UI) | `web/app/src/components/portal/sections/{lab-overview-section,lab-onboarding,labs-section}.tsx`, `portal/{lab-switcher,portal-sidebar}.tsx` |
+| Grants page + filter rail / fellowships / conferences (UI) | `web/app/src/components/portal/sections/{opportunities-section,grant-filters,fellowships-section,conferences-section}.tsx`. Grants (`/app/opportunities`) has a client-side filter rail (`grant-filters.tsx`, pure `filterAndSortGrants`); fellowships is a frontend-only placeholder page (no backend feed) |
 | Onboarding / profile intake (backend) | `web/backend/apps/accounts/intake/` (`lab.py` = lab profile synthesis) |
 | Lab watch + lab profile synthesis (backend) | `web/backend/apps/accounts/` — `LabWatchPreference` model, `LabWatchView` + `LabIntakeSynthesizeView` (`views.py`, `urls.py`) |
 | Login / signup / logout (UI) | `web/app/src/components/auth/` + routes `app/src/app/{login,signup}` |
@@ -59,9 +60,10 @@ web/app/src/
 │       ├── onboarding/          # first-run + profile-edit flow
 │       ├── [labSlug]/dashboard/ # per-lab dashboard
 │       └── (workspace)/         # portal shell + pages:
-│           #   overview, daily, research-papers, deadlines,
-│           #   members, opportunities, projects/[projectId],
-│           #   profile, reports  (layout.tsx = workspace chrome)
+│           #   overview, daily, research-papers, opportunities (= Grants),
+│           #   fellowships, conferences, deadlines, members,
+│           #   projects/[projectId], profile, reports
+│           #   (layout.tsx = workspace chrome)
 ├── components/
 │   ├── auth/                    # login/signup/logout forms + brand panel
 │   ├── onboarding/              # onboarding flow, stages, synthesis progress

@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -7,13 +9,19 @@ import {
   ArrowRightIcon,
   BankIcon,
   CalendarIcon,
-  SparkleIcon,
 } from "@/components/portal/icons";
 import {
   MatchBadge,
   NewTag,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
+import {
+  DEFAULT_GRANT_FILTERS,
+  GrantFilters,
+  deriveGrantFilterOptions,
+  filterAndSortGrants,
+  type GrantFilterState,
+} from "@/components/portal/sections/grant-filters";
 import { useGrants } from "@/lib/portal/hooks";
 import type { GrantOpportunity } from "@/lib/portal/types";
 
@@ -164,98 +172,103 @@ function GrantSkeleton() {
   );
 }
 
-function GrantsColumn() {
-  const { data, isLoading, isError } = useGrants();
-  const grants = data?.items ?? [];
-
+function GrantsList({ grants }: { grants: GrantOpportunity[] }) {
   return (
-    <section aria-labelledby="grants-heading">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-accent">
-          <BankIcon size={16} />
-        </span>
-        <h2
-          id="grants-heading"
-          className="font-serif text-xl font-semibold text-[var(--text-primary)]"
+    <div className="space-y-3.5">
+      {grants.map((grant, index) => (
+        <div
+          key={grant.content_id}
+          className="portal-fade-up"
+          style={{ animationDelay: `${index * 50}ms` }}
         >
-          Grants
-        </h2>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-3.5">
-          <GrantSkeleton />
-          <GrantSkeleton />
+          <GrantRow grant={grant} />
         </div>
-      ) : isError ? (
-        <EmptyState
-          icon={<BankIcon size={26} className="text-accent" />}
-          title="Couldn't load your grants"
-          description="Something went wrong fetching your funding matches. Please try again in a moment."
-        />
-      ) : grants.length === 0 ? (
-        <EmptyState
-          icon={<BankIcon size={26} className="text-accent" />}
-          badge="Coming soon"
-          title="Your grant matches are on their way"
-          description="Once Milo's nightly funding scan runs against your research profile, your best-fit grants — each with a percent-match score, its deadline, and why it fits — will appear here, newest strong matches pinned to the top."
-        />
-      ) : (
-        <div className="space-y-3.5">
-          {grants.map((grant, index) => (
-            <div
-              key={grant.content_id}
-              className="portal-fade-up"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <GrantRow grant={grant} />
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function FellowshipsColumn() {
-  return (
-    <section aria-labelledby="fellowships-heading">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_13%,transparent)] text-primary">
-          <SparkleIcon size={16} />
-        </span>
-        <h2
-          id="fellowships-heading"
-          className="font-serif text-xl font-semibold text-[var(--text-primary)]"
-        >
-          Fellowships
-        </h2>
-      </div>
-      <EmptyState
-        icon={<SparkleIcon size={26} className="text-accent" />}
-        badge="In progress"
-        title="Fellowship matching is being designed"
-        description="Fellowships are matched to a person's stage, eligibility, and timeline — a distinct approach we're still shaping. They'll join this column once the matcher is ready."
-      />
-    </section>
+      ))}
+    </div>
   );
 }
 
 /**
- * The Opportunities page: a two-column layout with matched funding (grants) on
- * the left in a scannable, detail-forward row format, and fellowships on the
- * right as an honest work-in-progress. Conferences live on their own page.
+ * The Grants page: matched funding opportunities in a scannable, detail-forward
+ * row format, with a left-hand filter rail (match strength, deadline, sponsor,
+ * matched topic, source, sort) that narrows the already-fetched feed in memory.
+ * Fellowships and Conferences live on their own pages.
  */
 export function OpportunitiesSection() {
+  const { data, isLoading, isError } = useGrants();
+  const grants = React.useMemo(() => data?.items ?? [], [data]);
+  const [filters, setFilters] = React.useState<GrantFilterState>(
+    DEFAULT_GRANT_FILTERS,
+  );
+
+  const options = React.useMemo(
+    () => deriveGrantFilterOptions(grants),
+    [grants],
+  );
+  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const visible = React.useMemo(
+    () => filterAndSortGrants(grants, filters, today),
+    [grants, filters, today],
+  );
+
+  const showRail = !isLoading && !isError && grants.length > 0;
+
   return (
     <div>
       <SectionHeader
-        title="Opportunities"
-        subtitle="Grants and fellowships matched to your profile and timeline."
+        title="Grants"
+        subtitle="Funding matched to your research profile and timeline."
       />
-      <div className="grid grid-cols-1 gap-x-8 gap-y-8 lg:grid-cols-[1.5fr_1fr]">
-        <GrantsColumn />
-        <FellowshipsColumn />
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+        {showRail ? (
+          <GrantFilters
+            options={options}
+            filters={filters}
+            onChange={setFilters}
+            resultCount={visible.length}
+            totalCount={grants.length}
+          />
+        ) : null}
+
+        <div className="min-w-0 flex-1">
+          {isLoading ? (
+            <div className="space-y-3.5">
+              <GrantSkeleton />
+              <GrantSkeleton />
+              <GrantSkeleton />
+            </div>
+          ) : isError ? (
+            <EmptyState
+              icon={<BankIcon size={26} className="text-accent" />}
+              title="Couldn't load your grants"
+              description="Something went wrong fetching your funding matches. Please try again in a moment."
+            />
+          ) : grants.length === 0 ? (
+            <EmptyState
+              icon={<BankIcon size={26} className="text-accent" />}
+              badge="Coming soon"
+              title="Your grant matches are on their way"
+              description="Once Milo's nightly funding scan runs against your research profile, your best-fit grants — each with a percent-match score, its deadline, and why it fits — will appear here, newest strong matches pinned to the top."
+            />
+          ) : visible.length === 0 ? (
+            <EmptyState
+              icon={<BankIcon size={26} className="text-accent" />}
+              title="No grants match these filters"
+              description="Try widening your filters to see more of your matched funding opportunities."
+              action={
+                <button
+                  type="button"
+                  onClick={() => setFilters(DEFAULT_GRANT_FILTERS)}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                >
+                  Clear all filters
+                </button>
+              }
+            />
+          ) : (
+            <GrantsList grants={visible} />
+          )}
+        </div>
       </div>
     </div>
   );

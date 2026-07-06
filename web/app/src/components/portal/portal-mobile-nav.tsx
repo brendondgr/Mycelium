@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BankIcon,
   CalendarIcon,
   ConferenceIcon,
   DocumentIcon,
@@ -22,7 +23,8 @@ const ITEMS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: "profile", label: "Profile", icon: <TargetIcon size={15} /> },
   { key: "daily", label: "Daily", icon: <ReportIcon size={15} /> },
   { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },
-  { key: "opportunities", label: "Opportunities", icon: <SparkleIcon size={15} /> },
+  { key: "opportunities", label: "Grants", icon: <BankIcon size={15} /> },
+  { key: "fellowships", label: "Fellowships", icon: <SparkleIcon size={15} /> },
   { key: "conferences", label: "Conferences", icon: <ConferenceIcon size={15} /> },
   { key: "deadlines", label: "Deadlines", icon: <CalendarIcon size={15} /> },
   { key: "projects", label: "Projects", icon: <FolderIcon size={15} /> },

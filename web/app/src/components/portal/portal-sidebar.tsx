@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BankIcon,
   CalendarIcon,
   ConferenceIcon,
   DocumentIcon,
@@ -61,10 +62,16 @@ export function PortalSidebar() {
           onClick={() => goToSection("papers")}
         />
         <SidebarNavItem
-          icon={<SparkleIcon size={18} />}
-          label="Opportunities"
+          icon={<BankIcon size={18} />}
+          label="Grants"
           active={section === "opportunities"}
           onClick={() => goToSection("opportunities")}
+        />
+        <SidebarNavItem
+          icon={<SparkleIcon size={18} />}
+          label="Fellowships"
+          active={section === "fellowships"}
+          onClick={() => goToSection("fellowships")}
         />
         <SidebarNavItem
           icon={<ConferenceIcon size={18} />}
