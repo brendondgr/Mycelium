@@ -32,7 +32,7 @@ for the layout standard.
 | Projects & project visibility | `web/backend/apps/research/` (list/create + lab-projects browse + self-join/leave/add-member in `views.py`) |
 | Daily research suggestions pipeline | `web/backend/apps/content/` (`pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`) |
 | Daily grants/conferences matching (1am) | `web/backend/apps/content/` (`opportunities.py`, `opportunity_llm.py`, `pinning.py`) + task/command `run_daily_opportunities`; root `manual_opportunities.py` |
-| Pivot-RP (ProQuest) grants/conferences ingest | `web/backend/apps/scraper/pivot/` (`importer.py`, `ingest.py`, `records.py`, `grants.py`, `conferences.py`, `scrape.py`, `login.py`) + command `ingest_pivot` |
+| Pivot-RP (ProQuest) grants/conferences ingest | `web/backend/apps/scraper/pivot/` (`importer.py`, `ingest.py`, `records.py`, `grants.py`, `conferences.py`, `scrape.py`, `login.py`); commands `pivot_login` / `scrape_pivot` / `ingest_pivot`; root runner `pivot.py` (login → scrape → import → distribute) |
 | Opportunities / conferences / deadlines / saves API | `web/backend/apps/content/{views,serializers,urls}.py` |
 | Papers/grants/fellowships/conferences items, scores, saves | `web/backend/apps/content/models.py` (`ContentItem`, `RelevanceScore`, `SavedOpportunity`) |
 | Literature scraping / source adapters | `web/backend/apps/scraper/` (`sources/`, `ingest.py`, `window.py`) |
@@ -43,7 +43,7 @@ for the layout standard.
 | Frontend → API calls & data hooks | `web/app/src/lib/` and `web/app/src/lib/portal/` |
 | Shared design tokens / theme | `web/packages/config/src/theme.css` |
 | Nginx / gateway routing | `web/infra/nginx/` |
-| Root run/build commands | `run.py`, `manual_search.py` (trigger the daily search on demand), `package.json`, `compose.yaml` |
+| Root run/build commands | `run.py`, `manual_search.py` (papers) / `manual_opportunities.py` (grants/conferences matching), `pivot.py` (full Pivot login→scrape→import→distribute flow), `package.json`, `compose.yaml` |
 | Env vars / secrets contract | `.env.example` (documented in `architecture.md`) |
 
 ---

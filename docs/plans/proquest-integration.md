@@ -135,7 +135,9 @@ web/backend/apps/scraper/pivot/            # vendored "collect" side (Playwright
   importer.py       # read tool JSON / SQLite -> normalized records
   ingest.py         # upsert records into content.ContentItem (+embed) + PRUNE expired
   scrape.py         # best-effort Playwright refresh guard (session present? else skip)
-  management/commands/ingest_pivot.py
+  management/commands/pivot_login.py   # runnable interactive SSO login (host)
+  management/commands/scrape_pivot.py  # browser scrape -> JSON files (host)
+  management/commands/ingest_pivot.py  # JSON/DB/scrape -> ContentItem (+prune)
 
 web/backend/apps/content/                  # "match / score / persist / serve" side
   opportunities.py      # per-user grants+conferences matching (reuses retrieval/fusion/ranking/suggest)
@@ -148,7 +150,17 @@ web/backend/apps/content/                  # "match / score / persist / serve" s
   management/commands/run_daily_opportunities.py
 
 manual_opportunities.py                    # root wrapper (twin of manual_search.py)
+pivot.py                                   # full interactive flow: login (host) →
+                                           #   scrape (host) → import (container) →
+                                           #   distribute (container)
 ```
+
+**Interactive operator flow (`pivot.py`).** login + scrape open a real Chromium
+window so they run on the **host** (needs `uv sync --extra pivot` +
+`playwright install chromium`); import + distribute need Postgres/Redis so they run
+**inside the backend container**. The repo is bind-mounted, so the saved
+`storage_state.json` and the scraped `data/pivot/*.json` cross the boundary. login
+is deliberately separate from `all` (a human must complete SSO/MFA).
 
 Direction of dependency stays legal: `content` already imports `scraper`
 (`run_daily_batch` calls `scraper.ingest.scan`); the Pivot deadline/status helpers
