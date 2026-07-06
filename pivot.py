@@ -1,44 +1,36 @@
 #!/usr/bin/env python3
 """One entry point for the Pivot-RP (ProQuest) grants/conferences flow.
 
-The headline command does the whole thing in a single process:
+The ONE command — login (only if needed) + the full run, in a single process:
 
     uv run pivot.py all
-        # 1. scrape every user's watched grants + all conferences (best-effort)
+        # 0. install Chromium if missing, and open the login window the FIRST
+        #    time (or whenever no session is saved) — complete SSO/MFA once
+        # 1. scrape every user's watched grants + all conferences
         # 2. de-duplicate + prune expired into the content store, embed new ones
         # 3. recommend/rank the fresh matches to every user
 
-Granular steps (same in-process runner):
+So the very first run logs you in and then does everything; later runs reuse the
+saved session and skip straight to the scrape. In a non-interactive shell (cron)
+it skips the login prompt and just dedups + recommends the existing corpus, so it
+never blocks.
 
-    uv run pivot.py login        # interactive SSO -> save session
+Granular steps (same in-process runner), if you want them separately:
+
+    uv run pivot.py login        # force a fresh interactive SSO -> save session
     uv run pivot.py scrape        # browser scrape -> data/pivot/*.json
     uv run pivot.py import         # data/pivot/*.json -> content store
-    uv run pivot.py distribute     # recommend on the existing corpus
+    uv run pivot.py distribute     # recommend on the existing corpus (no scrape)
 
-(Run from the repo root: the root pyproject.toml provides the environment. The
-stack must be up — ``python run.py up`` — so ``DATABASE_URL`` resolves.)
+Run from the repo root: the root pyproject.toml provides the environment (Chromium
+is auto-installed on first scrape — no ``uv sync --extra`` needed). The stack must
+be up (``python run.py up``) so ``DATABASE_URL`` resolves. The saved session lives
+at ``storage_state.json`` (``PIVOT_STORAGE_STATE`` overrides the path) and expires
+after ~1h idle — re-run ``pivot.py login`` when a scrape says it's expired.
 
 Flags pass through: ``all`` / ``distribute`` accept ``--user <name>`` (repeatable),
 ``--no-llm`` (deterministic scoring), ``--dry-run`` (persist nothing); ``all`` also
-takes ``--no-scrape`` (skip the browser step, just dedup + recommend the existing
-corpus) and ``--no-prune``.
-
-What the environment needs:
-
-  * **Scraping** (``login`` / ``scrape``, and the scrape inside ``all``) opens a
-    real Chromium window, so run it where there's a display, with the browser
-    extra installed once:
-        uv sync --project web/backend --extra pivot
-        uv run --project web/backend playwright install chromium
-    The session (``storage_state.json``, path overridable via
-    ``PIVOT_STORAGE_STATE``) is reused so you never re-enter a password.
-  * **De-dup + recommend** need Postgres/pgvector + the embeddings extra, so
-    ``DATABASE_URL`` must point at the running database (``python run.py up``).
-
-``all`` is best-effort about scraping: with no session or browser it logs, skips
-the scrape, and still dedups + recommends whatever is already stored — so it never
-hard-fails a nightly run. (``login`` is deliberately its own step: a human has to
-complete SSO/MFA at the browser.)
+takes ``--no-scrape`` (skip login + scrape, just dedup + recommend) and ``--no-prune``.
 """
 
 from __future__ import annotations
@@ -87,6 +79,11 @@ def _recommend(rest: list[str], *, ingest: bool) -> int:
     from apps.content.opportunities import run_daily_opportunities_batch
     from apps.content.tasks import select_users
 
+    # The one-command path: before scraping, make sure a browser is installed and
+    # a login session exists — logging in interactively only when one is missing.
+    if ingest and not getattr(args, "no_scrape", False):
+        _prepare_scrape()
+
     users = select_users(args.usernames)
     print(f"Running for {len(users)} user(s)…", flush=True)
     complete = (lambda _prompt: None) if args.no_llm else None
@@ -105,20 +102,49 @@ def _recommend(rest: list[str], *, ingest: bool) -> int:
     return 0
 
 
+def _ensure_chromium() -> None:
+    """Install the Chromium browser Playwright needs (idempotent, fast if present)."""
+    import subprocess
+
+    print("Ensuring the Chromium browser is installed (one-time)…", flush=True)
+    subprocess.run(
+        [sys.executable, "-m", "playwright", "install", "chromium"], check=False
+    )
+
+
+def _prepare_scrape() -> None:
+    """Make the environment scrape-ready: a browser, and a login session.
+
+    Installs Chromium if missing, then — when no saved session exists — opens the
+    interactive login so ``pivot.py all`` is a single command (login + run). In a
+    non-interactive shell it skips login and lets the run dedup + recommend the
+    existing corpus rather than blocking on a prompt.
+    """
+    from apps.scraper.pivot.common import state_exists
+
+    _ensure_chromium()
+    if state_exists():
+        return
+    if not sys.stdin.isatty():
+        print(
+            "No saved Pivot session and not an interactive terminal — skipping the "
+            "scrape; will de-duplicate + recommend the existing corpus."
+        )
+        return
+    print("No saved Pivot session — opening the login window; complete SSO/MFA…")
+    from apps.scraper.pivot.login import login
+
+    login()
+
+
 def _login() -> int:
     _bootstrap_django()
     from apps.scraper.pivot.common import STATE_PATH, state_exists
 
     print(f"Session will be saved to: {STATE_PATH}")
-    try:
-        from apps.scraper.pivot.login import login
-    except Exception as exc:  # pragma: no cover - import guard
-        sys.exit(
-            "Could not start the browser. Install the extra first:\n"
-            "  uv sync --project web/backend --extra pivot\n"
-            "  uv run --project web/backend playwright install chromium\n"
-            f"(error: {exc})"
-        )
+    _ensure_chromium()
+    from apps.scraper.pivot.login import login
+
     login()
     return 0 if state_exists() else 1
 
