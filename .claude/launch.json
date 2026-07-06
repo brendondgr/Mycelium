@@ -15,6 +15,21 @@
         "3001"
       ],
       "port": 3001
+    },
+    {
+      "name": "landing",
+      "cwd": "web/landing",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "4322"
+      ],
+      "port": 4322
     }
   ]
 }
