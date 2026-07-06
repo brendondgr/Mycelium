@@ -39,13 +39,18 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, type, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
 
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        // Default to "button" so a <Button> placed inside a <form> never
+        // silently defaults to type="submit" and triggers a native submit
+        // (which caused a browser "resend form data?" redirect prompt).
+        // When rendering asChild (e.g. an <a>), leave type untouched.
+        type={asChild ? type : (type ?? "button")}
         {...props}
       />
     );
