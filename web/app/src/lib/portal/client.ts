@@ -50,6 +50,14 @@ export async function fetchProjects(labSlug?: string): Promise<Project[]> {
   return getJson<Project[]>(url, "Could not load your projects.");
 }
 
+/** Every project of a lab (any lab member may browse them to join). */
+export async function fetchLabProjects(slug: string): Promise<Project[]> {
+  return getJson<Project[]>(
+    buildApiUrl(getPublicApiBase(), "projects", "lab", slug),
+    "Could not load the lab's projects.",
+  );
+}
+
 export async function fetchProfile(): Promise<ProfileData> {
   return getJson<ProfileData>(
     buildApiUrl(getPublicApiBase(), "auth", "profile", "me"),

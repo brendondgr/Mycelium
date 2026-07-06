@@ -29,7 +29,7 @@ for the layout standard.
 | Login / signup / logout (UI) | `web/app/src/components/auth/` + routes `app/src/app/{login,signup}` |
 | Session auth, CSRF, `/me` (backend) | `web/backend/apps/accounts/` (`views.py`, `urls.py`) |
 | Users, labs, departments, memberships, roles | `web/backend/apps/accounts/models.py` |
-| Projects & project visibility | `web/backend/apps/research/` |
+| Projects & project visibility | `web/backend/apps/research/` (list/create + lab-projects browse + self-join/leave/add-member in `views.py`) |
 | Daily research suggestions pipeline | `web/backend/apps/content/` (`pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`) |
 | Papers/grants/fellowships content items & scores | `web/backend/apps/content/models.py` |
 | Literature scraping / source adapters | `web/backend/apps/scraper/` (`sources/`, `ingest.py`, `window.py`) |

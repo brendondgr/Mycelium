@@ -19,7 +19,8 @@ import {
   useInviteToLab,
   useLabMembers,
   useLabProfile,
-  useProjects,
+  useLabProjects,
+  useProjectMembership,
   useUpdateLabProfile,
 } from "@/lib/portal/hooks";
 import type { LabProfileData, MyLab } from "@/lib/portal/types";
@@ -547,8 +548,11 @@ function ProjectsCard({
   lab: MyLab;
   canManage: boolean;
 }) {
-  const { data: projects, isLoading } = useProjects(lab.slug);
+  // Every lab member sees all of the lab's projects here so they can decide to
+  // join — members are not auto-added to projects.
+  const { data: projects, isLoading } = useLabProjects(lab.slug);
   const create = useCreateProject();
+  const { join, leave } = useProjectMembership();
   const [name, setName] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
 
@@ -568,6 +572,8 @@ function ProjectsCard({
     );
   };
 
+  const busy = join.isPending || leave.isPending;
+
   return (
     <DetailCard title="Projects">
       {isLoading ? (
@@ -577,13 +583,39 @@ function ProjectsCard({
           No projects yet. Each project can represent a distinct focus area.
         </p>
       ) : (
-        <ul className="flex flex-wrap gap-2">
+        <ul className="space-y-2">
           {projects.map((project) => (
-            <li key={project.id}>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-3 py-1.5 text-[13px] text-[var(--text-secondary)]">
-                <FolderIcon size={13} />
-                {project.name}
+            <li
+              key={project.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-alt px-3.5 py-2.5"
+            >
+              <span className="flex min-w-0 items-center gap-2 text-[13.5px] text-[var(--text-primary)]">
+                <FolderIcon size={14} className="shrink-0 text-brand-secondary" />
+                <span className="truncate font-medium">{project.name}</span>
+                <span className="shrink-0 text-[12px] text-[var(--text-muted)]">
+                  {project.member_count} member
+                  {project.member_count === 1 ? "" : "s"}
+                </span>
               </span>
+              {project.is_member ? (
+                <button
+                  type="button"
+                  onClick={() => leave.mutate(project.id)}
+                  disabled={busy}
+                  className="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                >
+                  Leave
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => join.mutate(project.id)}
+                  disabled={busy}
+                  className={cn(PRIMARY_BUTTON, "shrink-0")}
+                >
+                  Join
+                </button>
+              )}
             </li>
           ))}
         </ul>

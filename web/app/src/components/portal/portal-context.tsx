@@ -51,6 +51,12 @@ export type PortalContextValue = {
   currentLab: MyLab | null;
   scopeLabel: string;
 
+  // Lab onboarding editor (re-run the setup flow on an existing lab)
+  labOnboardingEdit: boolean;
+  setLabOnboardingEdit: (editing: boolean) => void;
+  /** Activate a lab and open its setup/edit flow on the overview. */
+  openLabEditor: (slug: string) => void;
+
   // Projects (scoped to labScope)
   projects: Project[];
   projectsLoading: boolean;
@@ -89,6 +95,7 @@ export function PortalProvider({
     pathname.startsWith(SECTION_ROUTES.projects),
   );
   const [labScope, setLabScopeState] = useState<string>(PERSONAL_SLUG);
+  const [labOnboardingEdit, setLabOnboardingEdit] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
   const labsQuery = useMyLabs();
@@ -137,9 +144,20 @@ export function PortalProvider({
     [],
   );
 
+  // Switching labs leaves any in-progress edit flow behind.
   const setLabScope = useCallback((slug: string) => {
     setLabScopeState(slug);
+    setLabOnboardingEdit(false);
   }, []);
+
+  const openLabEditor = useCallback(
+    (slug: string) => {
+      setLabScopeState(slug);
+      setLabOnboardingEdit(true);
+      router.push(SECTION_ROUTES.overview);
+    },
+    [router],
+  );
 
   const value: PortalContextValue = {
     user,
@@ -156,6 +174,9 @@ export function PortalProvider({
     setLabScope,
     currentLab,
     scopeLabel,
+    labOnboardingEdit,
+    setLabOnboardingEdit,
+    openLabEditor,
     projects,
     projectsLoading: projectsQuery.isLoading,
     projectsError: projectsQuery.isError,

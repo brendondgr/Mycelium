@@ -37,19 +37,40 @@ const PRIMARY_BUTTON =
 const GHOST_BUTTON =
   "rounded-full border border-border bg-surface px-4 py-2 text-[13px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
+/** Prefilled values for editing an already-configured lab. */
+export type LabOnboardingInitial = {
+  statement: string;
+  areas: string[];
+  keywords: string[];
+  watchTopics: string[];
+  watchCats: string[];
+  cadence: WatchCadence;
+};
+
 /**
  * Inline lab onboarding, shown on the lab overview when a lab has no profile
- * yet. It captures the lab's purpose (statement), research focus (areas), and
- * tags (keywords) — optionally drafted from the PI's description plus pasted
- * source material by the LLM — then what Milo watches, and saves both the lab
- * profile and its watch settings. Modeled on the personal onboarding flow.
+ * yet, or re-opened in edit mode to fix an existing lab. It captures the lab's
+ * purpose (statement), research focus (areas), and tags (keywords) — optionally
+ * drafted from the PI's description plus pasted source material by the LLM —
+ * then what Milo watches, and saves both the lab profile and its watch
+ * settings. Modeled on the personal onboarding flow.
+ *
+ * In edit mode the parent renders this only once its profile/watch queries have
+ * settled and passes ``initial`` so state can be lazily seeded without an
+ * effect (avoids the set-state-in-effect lint rule).
  */
 export function LabOnboarding({
   lab,
+  mode = "create",
+  initial,
   onDone,
+  onCancel,
 }: {
   lab: MyLab;
+  mode?: "create" | "edit";
+  initial?: LabOnboardingInitial;
   onDone?: () => void;
+  onCancel?: () => void;
 }) {
   const synthesize = useSynthesizeLabProfile(lab.slug);
   const saveProfile = useUpdateLabProfile(lab.slug);
@@ -59,23 +80,28 @@ export function LabOnboarding({
 
   // Step 1 — purpose & focus (+ optional source material for the LLM).
   const [description, setDescription] = React.useState("");
-  const [statement, setStatement] = React.useState("");
-  const [areas, setAreas] = React.useState<string[]>([]);
-  const [keywords, setKeywords] = React.useState<string[]>([]);
+  const [statement, setStatement] = React.useState(initial?.statement ?? "");
+  const [areas, setAreas] = React.useState<string[]>(initial?.areas ?? []);
+  const [keywords, setKeywords] = React.useState<string[]>(
+    initial?.keywords ?? [],
+  );
   const [sourceText, setSourceText] = React.useState("");
   const [synthError, setSynthError] = React.useState<string | null>(null);
   const [synthNote, setSynthNote] = React.useState<string | null>(null);
 
   // Step 2 — what Milo watches.
-  const [watchTopics, setWatchTopics] = React.useState<string[]>([]);
-  const [watchCats, setWatchCats] = React.useState<string[]>([
-    "papers",
-    "grants",
-    "conferences",
-  ]);
-  const [cadence, setCadence] = React.useState<WatchCadence>("weekly");
+  const [watchTopics, setWatchTopics] = React.useState<string[]>(
+    initial?.watchTopics ?? [],
+  );
+  const [watchCats, setWatchCats] = React.useState<string[]>(
+    initial?.watchCats ?? ["papers", "grants", "conferences"],
+  );
+  const [cadence, setCadence] = React.useState<WatchCadence>(
+    initial?.cadence ?? "weekly",
+  );
 
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const editing = mode === "edit";
 
   function runSynthesis() {
     setSynthError(null);
@@ -154,7 +180,7 @@ export function LabOnboarding({
         <MyloMark className="mt-0.5 h-9 w-9 shrink-0" />
         <div>
           <h2 className="font-serif text-[22px] font-semibold leading-tight text-[var(--text-primary)]">
-            Set up {lab.name}
+            {editing ? `Edit ${lab.name}` : `Set up ${lab.name}`}
           </h2>
           <p className="mt-1 text-[13.5px] text-[var(--text-secondary)]">
             Tell Mylo what this lab works on. This is what lets paper, grant, and
@@ -276,7 +302,14 @@ export function LabOnboarding({
             placeholder="Add a keyword, press Enter"
           />
 
-          <div className="flex justify-end pt-1">
+          <div className="flex justify-between pt-1">
+            {editing && onCancel ? (
+              <button type="button" className={GHOST_BUTTON} onClick={onCancel}>
+                Cancel
+              </button>
+            ) : (
+              <span />
+            )}
             <button
               type="button"
               className={PRIMARY_BUTTON}
@@ -407,7 +440,7 @@ export function LabOnboarding({
               onClick={finish}
               disabled={saving}
             >
-              {saving ? "Saving…" : "Finish setup"}
+              {saving ? "Saving…" : editing ? "Save changes" : "Finish setup"}
             </button>
           </div>
         </div>

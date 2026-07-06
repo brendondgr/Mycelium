@@ -4,14 +4,16 @@ import {
   CalendarIcon,
   DocumentIcon,
   GridIcon,
-  MembersIcon,
+  PlusIcon,
   ReportIcon,
   SparkleIcon,
   TargetIcon,
 } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
+import { LabNavItem } from "@/components/portal/lab-nav-item";
 import { ProjectsNav } from "@/components/portal/projects-nav";
 import { SidebarNavItem } from "@/components/portal/sidebar-nav-item";
+import { PERSONAL_SLUG } from "@/lib/portal/types";
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -23,7 +25,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 
 /** The left workspace navigation (desktop). Mobile uses a separate tab strip. */
 export function PortalSidebar() {
-  const { section, goToSection, currentLab } = usePortal();
+  const { section, goToSection, labs, setLabScope } = usePortal();
 
   return (
     <aside className="sticky top-[61px] hidden max-h-[calc(100vh-61px)] w-[244px] shrink-0 self-start overflow-y-auto border-r border-[var(--divider)] px-3.5 pb-6 pt-[18px] lg:block">
@@ -72,13 +74,19 @@ export function PortalSidebar() {
         <ProjectsNav />
       </nav>
 
-      <GroupLabel>{currentLab ? currentLab.name : "Lab"}</GroupLabel>
+      <GroupLabel>Labs</GroupLabel>
       <nav className="flex flex-col gap-0.5">
+        {labs.map((lab) => (
+          <LabNavItem key={lab.slug} lab={lab} />
+        ))}
         <SidebarNavItem
-          icon={<MembersIcon size={18} />}
-          label={currentLab ? "Manage lab" : "Labs"}
+          icon={<PlusIcon size={18} />}
+          label={labs.length === 0 ? "Create a lab" : "Browse & create"}
           active={section === "labs"}
-          onClick={() => goToSection("labs")}
+          onClick={() => {
+            setLabScope(PERSONAL_SLUG);
+            goToSection("labs");
+          }}
         />
       </nav>
     </aside>

@@ -65,6 +65,8 @@ export type Project = {
   status: string | null;
   progress: number | null;
   member_count: number;
+  /** Whether the signed-in user belongs to this project. */
+  is_member: boolean;
   members: ProjectMember[];
   updated_at: string;
 };

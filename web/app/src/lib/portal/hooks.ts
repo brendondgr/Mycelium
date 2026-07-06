@@ -6,6 +6,7 @@ import {
   fetchDailyReport,
   fetchLabMembers,
   fetchLabProfile,
+  fetchLabProjects,
   fetchLabWatch,
   fetchMyInvitations,
   fetchMyLabs,
@@ -14,9 +15,12 @@ import {
   fetchWatch,
 } from "@/lib/portal/client";
 import {
+  addProjectMember,
   createLab,
   createProject,
   inviteToLab,
+  joinProject,
+  leaveProject,
   respondToInvitation,
   synthesizeLabProfile,
   updateLabProfile,
@@ -144,8 +148,43 @@ export function useCreateProject() {
       createProject(input.name, input.labSlug),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
     },
   });
+}
+
+/** Every project of a lab (any lab member may browse them to join). */
+export function useLabProjects(slug?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
+  return useQuery({
+    queryKey: ["portal", "lab-projects", slug ?? "none"],
+    queryFn: () => fetchLabProjects(slug as string),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Join / leave / add-member on a project, refreshing both project lists. */
+export function useProjectMembership() {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
+    queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
+  };
+  const join = useMutation({
+    mutationFn: (id: string) => joinProject(id),
+    onSuccess: invalidate,
+  });
+  const leave = useMutation({
+    mutationFn: (id: string) => leaveProject(id),
+    onSuccess: invalidate,
+  });
+  const addMember = useMutation({
+    mutationFn: (input: { id: string; username: string }) =>
+      addProjectMember(input.id, input.username),
+    onSuccess: invalidate,
+  });
+  return { join, leave, addMember };
 }
 
 /** Save a lab's purpose & goals, updating the cached copy in place. */

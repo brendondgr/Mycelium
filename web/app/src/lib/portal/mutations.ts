@@ -115,6 +115,39 @@ export function createProject(
   );
 }
 
+/** The caller joins a lab/department project they are eligible for. */
+export function joinProject(id: string): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "join"),
+    undefined,
+    "Could not join the project.",
+  );
+}
+
+/** The caller leaves a project they belong to. */
+export function leaveProject(id: string): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "leave"),
+    undefined,
+    "Could not leave the project.",
+  );
+}
+
+/** A lab manager adds another lab member to one of the lab's projects. */
+export function addProjectMember(
+  id: string,
+  username: string,
+): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "members"),
+    { username },
+    "Could not add the member.",
+  );
+}
+
 /** Update a lab's collective purpose & goals. */
 export function updateLabProfile(
   slug: string,

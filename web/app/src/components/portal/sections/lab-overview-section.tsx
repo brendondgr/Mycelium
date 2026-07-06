@@ -15,8 +15,8 @@ import { LabOnboarding } from "@/components/portal/sections/lab-onboarding";
 import {
   useLabMembers,
   useLabProfile,
+  useLabProjects,
   useLabWatch,
-  useProjects,
 } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
 
@@ -43,11 +43,12 @@ function canManage(lab: MyLab): boolean {
  * here instead; a member sees an honest "not set up yet" state.
  */
 export function LabOverviewSection({ lab }: { lab: MyLab }) {
-  const { user, goToSection } = usePortal();
+  const { user, goToSection, labOnboardingEdit, setLabOnboardingEdit } =
+    usePortal();
   const profileQuery = useLabProfile(lab.slug);
   const watchQuery = useLabWatch(lab.slug);
   const membersQuery = useLabMembers(lab.slug);
-  const projectsQuery = useProjects(lab.slug);
+  const projectsQuery = useLabProjects(lab.slug);
 
   const profile = profileQuery.data;
   const manage = canManage(lab);
@@ -66,6 +67,47 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
     !!profile &&
     !profile.statement &&
     (profile.areas?.length ?? 0) === 0;
+
+  // Edit mode: a manager re-runs the setup flow to fix an existing lab. Wait for
+  // the profile + watch queries so the flow can be seeded from real values, then
+  // pass them as ``initial`` (lazy state seed — no set-state-in-effect).
+  if (labOnboardingEdit && manage) {
+    const watch = watchQuery.data;
+    const ready = !profileQuery.isLoading && !watchQuery.isLoading;
+    return (
+      <div>
+        <Greeting greeting={greeting} first={first} dateLabel={dateLabel} lab={lab} />
+        {ready ? (
+          <LabOnboarding
+            lab={lab}
+            mode="edit"
+            initial={{
+              statement: profile?.statement ?? "",
+              areas: profile?.areas ?? [],
+              keywords: Array.isArray(profile?.interests?.keywords)
+                ? (profile?.interests?.keywords as string[])
+                : [],
+              watchTopics: watch?.topics ?? [],
+              watchCats: watch?.categories?.length
+                ? watch.categories
+                : ["papers", "grants", "conferences"],
+              cadence: watch?.cadence ?? "weekly",
+            }}
+            onDone={() => {
+              setLabOnboardingEdit(false);
+              profileQuery.refetch();
+              watchQuery.refetch();
+            }}
+            onCancel={() => setLabOnboardingEdit(false)}
+          />
+        ) : (
+          <Card className="p-6">
+            <div className="h-24 animate-pulse rounded-xl bg-surface-alt" />
+          </Card>
+        )}
+      </div>
+    );
+  }
 
   // Onboarding gate: an unconfigured lab either onboards (manager) or explains
   // itself (member) before any metrics are worth showing.
@@ -156,13 +198,22 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
             </div>
           ) : null}
           {manage ? (
-            <button
-              type="button"
-              className="mt-4 rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => goToSection("labs" as SectionKey)}
-            >
-              Manage lab
-            </button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => setLabOnboardingEdit(true)}
+              >
+                Edit setup
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => goToSection("labs" as SectionKey)}
+              >
+                Manage lab
+              </button>
+            </div>
           ) : null}
         </Card>
 

@@ -114,7 +114,7 @@ function InvitationRow({ invitation }: { invitation: MyInvitation }) {
           Accept
         </ResponseButton>
         <ResponseButton
-          tone="plain"
+          tone="reject"
           disabled={respond.isPending}
           onClick={() => act("reject")}
         >
@@ -144,11 +144,17 @@ function ResponseButton({
   onClick,
   children,
 }: {
-  tone: "accept" | "plain";
+  tone: "accept" | "reject" | "plain";
   disabled: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const toneClass =
+    tone === "accept"
+      ? "bg-primary text-[#fffdf8] hover:bg-[var(--primary-hover)]"
+      : tone === "reject"
+        ? "border border-destructive/40 bg-transparent text-destructive hover:bg-destructive hover:text-[var(--destructive-foreground)]"
+        : "border border-border bg-surface text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-primary)]";
   return (
     <button
       type="button"
@@ -156,9 +162,7 @@ function ResponseButton({
       onClick={onClick}
       className={cn(
         "rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
-        tone === "accept"
-          ? "bg-primary text-[#fffdf8] hover:bg-[var(--primary-hover)]"
-          : "border border-border bg-surface text-[var(--text-secondary)] hover:bg-surface-alt",
+        toneClass,
       )}
     >
       {children}

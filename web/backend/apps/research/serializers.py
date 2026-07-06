@@ -33,6 +33,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
     member_count = serializers.SerializerMethodField()
+    is_member = serializers.SerializerMethodField()
     members = ProjectMemberSerializer(many=True, read_only=True)
 
     class Meta:
@@ -46,6 +47,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "status",
             "progress",
             "member_count",
+            "is_member",
             "members",
             "updated_at",
         ]
@@ -69,6 +71,13 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_member_count(self, project: Project) -> int:
         return project.members.count()
+
+    def get_is_member(self, project: Project) -> bool:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return False
+        return any(m.id == user.id for m in project.members.all())
 
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
