@@ -6,6 +6,7 @@ import { SectionHeader } from "@/components/portal/primitives/section-header";
 import {
   ArrowRightIcon,
   BankIcon,
+  CalendarIcon,
   SparkleIcon,
 } from "@/components/portal/icons";
 import {
@@ -69,7 +70,7 @@ function GrantRow({ grant }: { grant: GrantOpportunity }) {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--destructive)]"
               title={`Deadline ${due}`}
             >
-              <span aria-hidden="true">📅</span>
+              <CalendarIcon size={13} aria-hidden="true" />
               {due}
             </span>
           ) : null}
@@ -78,7 +79,7 @@ function GrantRow({ grant }: { grant: GrantOpportunity }) {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
               title={`Funding ${grant.amount}`}
             >
-              <span aria-hidden="true">💰</span>
+              <BankIcon size={13} aria-hidden="true" />
               {grant.amount}
             </span>
           ) : null}
