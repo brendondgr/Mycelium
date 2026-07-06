@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .normalize import normalize_amount
 from .status import opportunity_status
 
 PIVOT_SOURCE = "pivot"
@@ -93,10 +94,14 @@ def build_pivot_item(area: str, rec: dict, *, today: str) -> PivotItem | None:
         deadline_date = status.get("apply_deadline") or ""
         prune_after = deadline_date  # a grant expires at its application deadline
         next_kind = "application" if deadline_date else ""
+        # Some grants dump a budget paragraph into Amount; distill it to a concise
+        # figure/range and feed the clean value to both metadata and record_text.
+        amount = normalize_amount(rec.get("amount") or "")
+        rec = {**rec, "amount": amount}
         metadata = {
             "title": title,
             "sponsor": subtitle,
-            "amount": (rec.get("amount") or "").strip(),
+            "amount": amount,
             "website": (rec.get("website") or "").strip(),
             "deadline": (rec.get("deadline") or "").strip(),
             "deadline_date": deadline_date,

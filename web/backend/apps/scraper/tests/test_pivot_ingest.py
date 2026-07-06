@@ -10,7 +10,17 @@ from django.contrib.auth.models import User
 
 from apps.content.models import ContentItem, SavedOpportunity
 from apps.scraper.pivot.ingest import ingest_pivot, prune_expired, upsert_pivot_items
+from apps.scraper.pivot.normalize import normalize_amount
 from apps.scraper.pivot.records import build_pivot_item
+
+# A grant that put a whole budget paragraph in its Amount field (the real NIH
+# Common Fund UG3/UH3 case) — the amount distiller must reduce this to a range.
+_BUDGET_PROSE = (
+    "The NIH Common Fund intends to commit funds for approximately 6-8 UG3/UH3 "
+    "awards. Applicants should request a budget appropriate for the proposed "
+    "scope of work, not to exceed $450,000 in direct costs per year for UG3 and "
+    "$800,000 for UH3 phases. The total project period may not exceed six years."
+)
 
 TODAY = "2026-07-05"
 
@@ -75,6 +85,45 @@ def test_build_grant_item_maps_fields():
     assert item.metadata["prune_after"] == "2026-11-12"
     assert item.metadata["next_kind"] == "application"
     assert "agentic ai" in item.text.lower()
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("$450,000", "$450,000"),  # tidy value: unchanged
+        ("Upper: $70,000 USD", "Upper: $70,000 USD"),  # short prose: kept
+        ("", ""),
+        (_BUDGET_PROSE, "$450,000–$800,000"),  # paragraph -> range
+        ("$450,000–$800,000", "$450,000–$800,000"),  # idempotent
+        ("$1.5 million", "$1.5 million"),  # short, unchanged
+        (  # long prose, one figure -> single amount
+            "Applicants may request up to $2,500,000 in total costs over the "
+            "full multi-year project period, subject to available funds.",
+            "$2,500,000",
+        ),
+        (  # long prose with a scale word
+            "The foundation expects to make several awards and anticipates "
+            "committing roughly $3.5 million per awardee across the program.",
+            "$3,500,000",
+        ),
+        (  # long prose naming no dollar figure -> dropped
+            "Budget guidance will be provided to invited applicants after the "
+            "preliminary review stage is complete; see the full solicitation.",
+            "",
+        ),
+    ],
+)
+def test_normalize_amount_distills_prose(raw, expected):
+    assert normalize_amount(raw) == expected
+
+
+def test_build_grant_item_distills_budget_paragraph():
+    item = build_pivot_item("grants", _grant(amount=_BUDGET_PROSE), today=TODAY)
+    # The stored amount is the concise range, and the paragraph never leaks into
+    # the embedding/BM25 document text.
+    assert item.metadata["amount"] == "$450,000–$800,000"
+    assert "not to exceed" not in item.text
+    assert "total project period" not in item.text.lower()
 
 
 def test_build_conference_item_parses_deadline_and_event():
