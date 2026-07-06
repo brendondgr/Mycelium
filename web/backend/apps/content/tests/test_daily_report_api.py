@@ -129,3 +129,37 @@ def test_excludes_unsuggested_and_other_users(client: APIClient) -> None:
 
     titles = [s["title"] for s in resp.data["suggestions"]]
     assert titles == ["Mine"]
+
+
+@pytest.mark.django_db
+def test_excludes_grants_and_conferences(client: APIClient) -> None:
+    """Grants/conferences persist suggested rows too — they must NOT leak here."""
+    user = User.objects.create_user("me", password="x")
+    _suggest(user, _paper("A paper"), rank=1, run_at="2026-07-05T00:00:00")
+
+    # A grant suggestion for the same user, from a *newer* run — it has its own
+    # page (Opportunities) and must never appear in the Research Papers feed.
+    grant = ContentItem.objects.create(
+        type=ContentItem.Type.GRANT,
+        source="pivot",
+        external_id="g1",
+        metadata={"title": "A grant"},
+    )
+    RelevanceScore.objects.create(
+        content=grant,
+        target_user=user,
+        score=0.9,
+        signals={
+            "suggested": True,
+            "run_at": "2026-07-06T00:00:00",  # newer than the paper run
+            "rank": 1,
+            "area": "grant",
+        },
+    )
+
+    client.force_authenticate(user)
+    resp = client.get("/api/daily-report/")
+
+    titles = [s["title"] for s in resp.data["suggestions"]]
+    assert titles == ["A paper"]
+    assert resp.data["generated_at"] == "2026-07-05T00:00:00"

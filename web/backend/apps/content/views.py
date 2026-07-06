@@ -39,10 +39,14 @@ class DailyReportView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # Papers only: grants/conferences also persist suggested RelevanceScore
+        # rows for this user, and they have their own pages (Opportunities /
+        # Conferences). Filtering by content type keeps this feed to papers.
         scores = [
             score
             for score in RelevanceScore.objects.filter(
-                target_user=request.user
+                target_user=request.user,
+                content__type=ContentItem.Type.PAPER,
             ).select_related("content")
             if score.signals.get("suggested")
         ]
