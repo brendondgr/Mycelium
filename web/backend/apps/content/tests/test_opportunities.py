@@ -17,6 +17,7 @@ from apps.content.models import ContentItem, RelevanceScore
 from apps.content.opportunities import (
     match_opportunities_for_user,
     opportunity_search_interests,
+    run_daily_opportunities_batch,
 )
 from apps.content.opportunity_llm import generate_opportunity_suggestions
 from apps.content.pinning import compute_pins
@@ -219,3 +220,47 @@ def test_match_grants_end_to_end(pgvector):
         user, "grants", complete=lambda _p: None, today="2026-07-05"
     )
     assert scores.count() == before
+
+
+@pytest.mark.django_db
+def test_batch_scores_units_concurrently(pgvector):
+    """The batch scores (user, area) units in parallel, not one at a time."""
+    import threading
+    import time
+
+    embeddings.set_embedder(_fake_embed)
+    for name in ("u1", "u2", "u3"):
+        _profile_user(name)
+    ingest_pivot(
+        [("grants", _grant("g1", "Knowledge Graphs for biomedical health"))],
+        embedder=_fake_embed,
+        prune=False,
+        today="2026-07-05",
+    )
+
+    # A slow model call that records how many run at the same time.
+    lock = threading.Lock()
+    state = {"live": 0, "peak": 0}
+
+    def slow_complete(_prompt):
+        with lock:
+            state["live"] += 1
+            state["peak"] = max(state["peak"], state["live"])
+        time.sleep(0.2)
+        with lock:
+            state["live"] -= 1
+        return None  # deterministic fallback; we only care about concurrency
+
+    batch = run_daily_opportunities_batch(
+        [u for u in User.objects.filter(username__in=("u1", "u2", "u3"))],
+        areas=("grants",),
+        ingest=False,
+        prune=False,
+        concurrency=12,
+        complete=slow_complete,
+        today="2026-07-05",
+    )
+
+    ok = [r for r in batch.results if r.status == "ok"]
+    assert len(ok) == 3  # every user scored + persisted
+    assert state["peak"] >= 2  # units ran concurrently, not serially

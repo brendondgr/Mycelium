@@ -16,8 +16,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 
@@ -33,6 +35,11 @@ logger = logging.getLogger(__name__)
 DEFAULT_SURFACE = 25
 DEFAULT_LLM_LIMIT = 10
 DEFAULT_POOL_PER_INTEREST = 100
+# How many per-(user, area) LLM scoring calls run at once. The model call is the
+# slow step (a self-hosted vLLM can be ~100s/request), so scoring units serially
+# is the dominant cost; the endpoint handles many at once. Overridable via
+# settings.OPPORTUNITY_LLM_CONCURRENCY.
+DEFAULT_LLM_CONCURRENCY = 12
 
 # area -> ContentItem.type
 AREAS: dict[str, str] = {
@@ -85,6 +92,154 @@ def opportunity_search_interests(
     return search_interests(interests)
 
 
+@dataclass
+class _MatchJob:
+    """A prepared per-(user, area) unit, ready for the (parallel) LLM scoring step.
+
+    The retrieve+fuse work (DB + embedder) is already done; scoring reads only
+    these in-memory fields, so it touches no ORM/embedder and is safe to run in a
+    worker thread alongside other units.
+    """
+
+    user: User
+    username: str
+    area: str
+    content_type: str
+    interests: dict
+    profile_meta: dict
+    pairs: list
+    rows: list
+    pool: int
+    percentile: float
+    llm_limit: int
+    surface_limit: int
+
+
+def _prepare_match(
+    user: User,
+    area: str,
+    *,
+    surface_limit: int,
+    llm_limit: int,
+    pool_per_interest: int,
+    beta: float,
+    percentile: float,
+    log: Callable[[str], None] | None,
+) -> tuple[_MatchJob | None, OppRunResult | None]:
+    """DB phase — retrieve + fuse. Returns a job to score, or a short-circuit result."""
+    if area not in AREAS:
+        raise ValueError(f"unknown opportunity area {area!r}")
+    content_type = AREAS[area]
+    username = user.get_username()
+
+    def emit(message: str) -> None:
+        if log is not None:
+            log(f"[{username}:{area}] {message}")
+
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        emit("no profile; skipping")
+        return None, OppRunResult(
+            username, area, "no_profile", note="user has no profile"
+        )
+
+    interests = profile.interests or {}
+    search_ints = opportunity_search_interests(interests, _watch_topics(user))
+    if not search_ints:
+        emit("no research interests or watch topics; skipping")
+        return None, OppRunResult(
+            username, area, "no_interests", note="no interests/topics to match on"
+        )
+
+    pairs, rows, pool = fuse_interests_pool(
+        search_ints,
+        content_type=content_type,
+        surface_limit=surface_limit,
+        pool_per_interest=pool_per_interest,
+        beta=beta,
+        emit=emit,
+    )
+    if not pairs:
+        emit("no embedded opportunities to retrieve yet")
+        return None, OppRunResult(
+            username, area, "no_results", note="no embedded opportunities yet"
+        )
+
+    job = _MatchJob(
+        user=user,
+        username=username,
+        area=area,
+        content_type=content_type,
+        interests=interests,
+        profile_meta={
+            "academic_title": getattr(profile, "academic_title", ""),
+            "institution": getattr(profile, "institution", ""),
+        },
+        pairs=pairs,
+        rows=rows,
+        pool=pool,
+        percentile=percentile,
+        llm_limit=llm_limit,
+        surface_limit=surface_limit,
+    )
+    return job, None
+
+
+def _score_job(
+    job: _MatchJob, *, complete: Callable[[str], str | None] | None
+) -> list[dict]:
+    """LLM phase — pure (no ORM / embedder), so it is safe to run in a thread pool."""
+    return generate_opportunity_suggestions(
+        job.content_type,
+        job.interests,
+        job.profile_meta,
+        job.pairs,
+        llm_limit=job.llm_limit,
+        surface_limit=job.surface_limit,
+        complete=complete,
+    )
+
+
+def _finalize_match(
+    job: _MatchJob,
+    suggestions: list[dict],
+    *,
+    persist: bool,
+    today: str | None,
+    log: Callable[[str], None] | None,
+) -> OppRunResult:
+    """DB phase — New/pin + persist. Runs on the main thread (own connection)."""
+
+    def emit(message: str) -> None:
+        if log is not None:
+            log(f"[{job.username}:{job.area}] {message}")
+
+    items_by_id = {str(item.id): item for item, _score in job.pairs}
+    pins = compute_pins(
+        suggestions, items_by_id, today=today, percentile=job.percentile
+    )
+    new_count = sum(1 for p in pins.values() if p["is_new"])
+    llm = sum(1 for s in suggestions if s["source"] == "llm")
+    emit(
+        f"scored {len(suggestions)} ({llm} llm / {len(suggestions) - llm} fallback), "
+        f"{new_count} new over {job.pool} candidates"
+    )
+    if persist:
+        # Store the singular content type as the signal's ``area`` so it lines up
+        # with ``content.type`` and the API filter (grant/conference, not plural).
+        _persist(job.user, job.content_type, job.rows, suggestions, pins, today=today)
+    return OppRunResult(
+        job.username,
+        job.area,
+        "ok",
+        retrieved=job.pool,
+        suggestions=len(suggestions),
+        llm=llm,
+        fallback=len(suggestions) - llm,
+        new=new_count,
+    )
+
+
 def match_opportunities_for_user(
     user: User,
     area: str,
@@ -99,85 +254,21 @@ def match_opportunities_for_user(
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppRunResult:
-    """Retrieve → fuse → score → pin → persist one area for one user."""
-    if area not in AREAS:
-        raise ValueError(f"unknown opportunity area {area!r}")
-    content_type = AREAS[area]
-    username = user.get_username()
-
-    def emit(message: str) -> None:
-        if log is not None:
-            log(f"[{username}:{area}] {message}")
-
-    profile = getattr(user, "profile", None)
-    if profile is None:
-        emit("no profile; skipping")
-        return OppRunResult(username, area, "no_profile", note="user has no profile")
-
-    interests = profile.interests or {}
-    search_ints = opportunity_search_interests(interests, _watch_topics(user))
-    if not search_ints:
-        emit("no research interests or watch topics; skipping")
-        return OppRunResult(
-            username, area, "no_interests", note="no interests/topics to match on"
-        )
-
-    pairs, rows, pool = fuse_interests_pool(
-        search_ints,
-        content_type=content_type,
+    """Retrieve → fuse → score → pin → persist one area for one user (serial)."""
+    job, short = _prepare_match(
+        user,
+        area,
         surface_limit=surface_limit,
+        llm_limit=llm_limit,
         pool_per_interest=pool_per_interest,
         beta=beta,
-        emit=emit,
+        percentile=percentile,
+        log=log,
     )
-    if not pairs:
-        emit("no embedded opportunities to retrieve yet")
-        return OppRunResult(
-            username, area, "no_results", note="no embedded opportunities yet"
-        )
-
-    profile_meta = {
-        "academic_title": getattr(profile, "academic_title", ""),
-        "institution": getattr(profile, "institution", ""),
-    }
-    suggestions = generate_opportunity_suggestions(
-        content_type,
-        interests,
-        profile_meta,
-        pairs,
-        llm_limit=llm_limit,
-        surface_limit=surface_limit,
-        complete=complete,
-    )
-
-    items_by_id = {str(item.id): item for item, _score in pairs}
-    pins = compute_pins(
-        suggestions, items_by_id, today=today, percentile=percentile
-    )
-    new_count = sum(1 for p in pins.values() if p["is_new"])
-
-    llm = sum(1 for s in suggestions if s["source"] == "llm")
-    emit(
-        f"scored {len(suggestions)} ({llm} llm / {len(suggestions) - llm} fallback), "
-        f"{new_count} new over {pool} candidates"
-    )
-
-    if persist:
-        # Store the singular content type as the signal's ``area`` so it lines up
-        # with ``content.type`` and the API filter (grant/conference, not the
-        # plural request label).
-        _persist(user, content_type, rows, suggestions, pins, today=today)
-
-    return OppRunResult(
-        username,
-        area,
-        "ok",
-        retrieved=pool,
-        suggestions=len(suggestions),
-        llm=llm,
-        fallback=len(suggestions) - llm,
-        new=new_count,
-    )
+    if short is not None:
+        return short
+    suggestions = _score_job(job, complete=complete)
+    return _finalize_match(job, suggestions, persist=persist, today=today, log=log)
 
 
 def run_opportunities_for_user(
@@ -223,6 +314,7 @@ def run_daily_opportunities_batch(
     embed: bool = True,
     persist: bool = True,
     percentile: float = DEFAULT_PERCENTILE,
+    concurrency: int | None = None,
     complete: Callable[[str], str | None] | None = None,
     today: str | None = None,
     log: Callable[[str], None] | None = None,
@@ -232,9 +324,16 @@ def run_daily_opportunities_batch(
     Phase 1 (ingest, best-effort): try a Playwright refresh of the Pivot corpus —
     a no-op that logs and continues when no saved session exists — then prune
     expired items so the pool stays current even on nights with no fresh scrape.
-    Phase 2 (match, per user): grants + conferences for each user; a failure for
-    one user is caught so it never sinks the batch.
+    Phase 2 (match): each ``(user, area)`` unit is *prepared* (retrieve + fuse,
+    serial DB work), then all prepared units are **scored by the model
+    concurrently** (up to ``concurrency`` at once — the LLM call is the slow step
+    and shouldn't be issued one at a time), then *finalized* (New/pin + persist,
+    serial DB writes). A failure for one unit is caught so it never sinks the run.
     """
+    if concurrency is None:
+        concurrency = getattr(
+            settings, "OPPORTUNITY_LLM_CONCURRENCY", DEFAULT_LLM_CONCURRENCY
+        )
 
     def emit(message: str) -> None:
         if log is not None:
@@ -263,24 +362,78 @@ def run_daily_opportunities_batch(
         ingest_summary = {"pruned": prune_expired(today=today, log=log)}
 
     results: list[OppRunResult] = []
+
+    # Phase 2a — prepare every unit (serial DB reads: retrieve + fuse + embed).
+    jobs: list[_MatchJob] = []
     for user in users:
-        try:
-            results.extend(
-                run_opportunities_for_user(
+        for area in areas:
+            try:
+                job, short = _prepare_match(
                     user,
-                    areas=areas,
+                    area,
+                    surface_limit=DEFAULT_SURFACE,
+                    llm_limit=DEFAULT_LLM_LIMIT,
+                    pool_per_interest=DEFAULT_POOL_PER_INTEREST,
+                    beta=DEFAULT_BETA,
                     percentile=percentile,
-                    complete=complete,
-                    persist=persist,
-                    today=today,
                     log=log,
+                )
+            except Exception:
+                logger.exception(
+                    "prepare failed for %s:%s", user.get_username(), area
+                )
+                results.append(
+                    OppRunResult(
+                        user.get_username(), area, "error", note="prepare failed"
+                    )
+                )
+                continue
+            if short is not None:
+                results.append(short)
+            elif job is not None:
+                jobs.append(job)
+
+    # Phase 2b — score the prepared units with the model CONCURRENTLY (the slow
+    # step). Pure LLM I/O, no ORM, so a thread pool is safe.
+    scored: dict[int, list[dict] | None] = {}
+    if jobs:
+        workers = max(1, min(concurrency, len(jobs)))
+        emit(f"scoring {len(jobs)} unit(s), up to {workers} concurrent LLM call(s)…")
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(_score_job, job, complete=complete): idx
+                for idx, job in enumerate(jobs)
+            }
+            for future in as_completed(futures):
+                idx = futures[future]
+                try:
+                    scored[idx] = future.result()
+                except Exception:
+                    logger.exception(
+                        "scoring failed for %s:%s", jobs[idx].username, jobs[idx].area
+                    )
+                    scored[idx] = None
+
+    # Phase 2c — finalize (serial DB writes: New/pin + persist).
+    for idx, job in enumerate(jobs):
+        suggestions = scored.get(idx)
+        if suggestions is None:
+            results.append(
+                OppRunResult(job.username, job.area, "error", note="scoring failed")
+            )
+            continue
+        try:
+            results.append(
+                _finalize_match(
+                    job, suggestions, persist=persist, today=today, log=log
                 )
             )
         except Exception:
-            logger.exception("opportunity match failed for %s", user.get_username())
-            emit(f"[{user.get_username()}] ERROR (see log)")
+            logger.exception(
+                "finalize failed for %s:%s", job.username, job.area
+            )
             results.append(
-                OppRunResult(user.get_username(), "*", "error", note="match failed")
+                OppRunResult(job.username, job.area, "error", note="finalize failed")
             )
     return OppBatchResult(ingest=ingest_summary, results=results)
 

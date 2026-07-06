@@ -64,6 +64,8 @@ def _parse(rest: list[str], *, scrape_flags: bool) -> argparse.Namespace:
                     help="Deterministic scoring instead of the language model.")
     ap.add_argument("--dry-run", action="store_true",
                     help="Run the pipeline but persist nothing.")
+    ap.add_argument("--concurrency", type=int, default=None,
+                    help="Max concurrent LLM scoring calls (default: 12).")
     if scrape_flags:
         ap.add_argument("--no-scrape", action="store_true",
                         help="Skip the browser scrape; dedup + recommend the corpus.")
@@ -95,6 +97,7 @@ def _recommend(rest: list[str], *, ingest: bool) -> int:
         ingest=ingest and not getattr(args, "no_scrape", False),
         prune=not getattr(args, "no_prune", False),
         persist=not args.dry_run,
+        concurrency=args.concurrency,
         complete=complete,
         log=lambda m: print(m, flush=True),
     )
