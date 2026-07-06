@@ -150,6 +150,8 @@ class GrantSerializer(_OpportunitySerializer):
     sponsor = serializers.SerializerMethodField()
     amount = serializers.SerializerMethodField()
     matched_topics = serializers.SerializerMethodField()
+    posted = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
 
     def get_title(self, score: RelevanceScore) -> str:
         return self._meta(score).get("title") or "Untitled grant"
@@ -163,6 +165,15 @@ class GrantSerializer(_OpportunitySerializer):
     def get_matched_topics(self, score: RelevanceScore) -> str:
         return self._meta(score).get("matched_topics") or ""
 
+    def get_posted(self, score: RelevanceScore) -> str:
+        # When Milo first surfaced this grant (ISO); drives the "Posted" line.
+        return score.signals.get("first_seen") or ""
+
+    def get_description(self, score: RelevanceScore) -> str:
+        # A human-readable blurb: the AI summary if present, else the abstract.
+        meta = self._meta(score)
+        return meta.get("ai_summary") or meta.get("abstract") or ""
+
 
 class ConferenceSerializer(_OpportunitySerializer):
     """A matched conference for the Conferences page (card format)."""
@@ -173,6 +184,7 @@ class ConferenceSerializer(_OpportunitySerializer):
     event_dates = serializers.SerializerMethodField()
     deadlines = serializers.SerializerMethodField()
     keywords = serializers.SerializerMethodField()
+    matched_subjects = serializers.SerializerMethodField()
 
     def get_title(self, score: RelevanceScore) -> str:
         return self._meta(score).get("name") or "Untitled conference"
@@ -192,6 +204,11 @@ class ConferenceSerializer(_OpportunitySerializer):
 
     def get_keywords(self, score: RelevanceScore) -> str:
         return self._meta(score).get("keywords") or ""
+
+    def get_matched_subjects(self, score: RelevanceScore) -> str:
+        # Semicolon-delimited subject categories — clean, chippable topic tags
+        # (unlike ``keywords``, which Pivot returns space-joined).
+        return self._meta(score).get("matched_subjects") or ""
 
 
 class SavedDeadlineSerializer(serializers.Serializer):

@@ -12,7 +12,11 @@ import {
   CalendarIcon,
   ConferenceIcon,
 } from "@/components/portal/icons";
-import { SaveButton, deadlineLabel } from "@/components/portal/sections/opportunity-bits";
+import {
+  SaveButton,
+  deadlineKindLabel,
+  deadlineLabel,
+} from "@/components/portal/sections/opportunity-bits";
 import { useDeadlines } from "@/lib/portal/hooks";
 import type { SavedDeadline } from "@/lib/portal/types";
 
@@ -26,6 +30,10 @@ function daysLabel(days: number | null): string {
 function DeadlineRow({ item }: { item: SavedDeadline }) {
   const AreaIcon = item.area === "conference" ? ConferenceIcon : BankIcon;
   const urgent = item.within_week;
+  // Say what the countdown is for, e.g. "Abstract — 16 days left".
+  const kind = deadlineKindLabel(item.deadline_kind, item.area);
+  const countdown = daysLabel(item.days_remaining);
+  const countdownLabel = kind ? `${kind} — ${countdown}` : countdown;
 
   return (
     <Card
@@ -60,7 +68,7 @@ function DeadlineRow({ item }: { item: SavedDeadline }) {
               {urgent ? <AlertTriangleIcon size={12} aria-hidden="true" /> : (
                 <CalendarIcon size={12} aria-hidden="true" />
               )}
-              {daysLabel(item.days_remaining)}
+              {countdownLabel}
             </span>
           </div>
           <p className="mt-0.5 text-xs text-[var(--text-muted)]">

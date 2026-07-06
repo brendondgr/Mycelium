@@ -170,6 +170,10 @@ export type GrantOpportunity = OpportunityBase & {
   sponsor: string;
   amount: string;
   matched_topics: string;
+  /** When Milo first surfaced this grant (ISO or ""). */
+  posted: string;
+  /** A human-readable blurb (AI summary or abstract), or "". */
+  description: string;
 };
 
 /** A matched conference (from `/api/opportunities/conferences/`). */

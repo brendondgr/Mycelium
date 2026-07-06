@@ -5,6 +5,7 @@ import * as React from "react";
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ArrowRightIcon, SparkleIcon } from "@/components/portal/icons";
+import { MatchBadge } from "@/components/portal/sections/opportunity-bits";
 import type { Suggestion } from "@/lib/portal/types";
 
 function metaLine(suggestion: Suggestion): string {
@@ -19,42 +20,6 @@ function metaLine(suggestion: Suggestion): string {
     );
   }
   return parts.join(" · ");
-}
-
-/** A paper at or above this percent match is highlighted as a strong fit. */
-const STRONG_MATCH = 75;
-
-/**
- * The model's percent match for this researcher. Text always carries the value
- * ("87% match" / "Strong"), so color is never the only signal; the accent tone
- * only reinforces a strong fit.
- */
-function MatchBadge({ percent }: { percent: number }) {
-  const strong = percent >= STRONG_MATCH;
-  return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
-      style={
-        strong
-          ? {
-              borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
-              backgroundColor: "color-mix(in srgb, var(--accent) 14%, transparent)",
-              color: "var(--accent)",
-            }
-          : {
-              borderColor: "var(--border)",
-              backgroundColor: "var(--surface-alt)",
-              color: "var(--text-secondary)",
-            }
-      }
-      aria-label={`${percent} percent match to your research profile${
-        strong ? ", a strong match" : ""
-      }`}
-    >
-      <span aria-hidden="true">{percent}%</span>
-      <span className="text-[var(--text-muted)]">match</span>
-    </span>
-  );
 }
 
 /**
@@ -80,10 +45,8 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
             {suggestion.headline}
           </h3>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          {typeof suggestion.match_percent === "number" ? (
-            <MatchBadge percent={suggestion.match_percent} />
-          ) : null}
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <MatchBadge percent={suggestion.match_percent} />
           <Pill tone={isMylo ? "accent" : "neutral"} className="shrink-0">
             {isMylo ? (
               <>

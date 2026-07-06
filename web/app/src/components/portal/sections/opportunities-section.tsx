@@ -5,7 +5,12 @@ import * as React from "react";
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
-import { ArrowRightIcon, BankIcon, SparkleIcon } from "@/components/portal/icons";
+import {
+  ArrowRightIcon,
+  BankIcon,
+  CalendarIcon,
+  SparkleIcon,
+} from "@/components/portal/icons";
 import {
   MatchBadge,
   NewTag,
@@ -15,42 +20,117 @@ import {
 import { useGrants } from "@/lib/portal/hooks";
 import type { GrantOpportunity } from "@/lib/portal/types";
 
+/** A compact fact chip (funding amount, application due date) beside the hosts. */
+function DetailTag({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-alt)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]">
+      {icon}
+      {children}
+    </span>
+  );
+}
+
+/** Format an ISO first-seen date for the "Posted" line ("Jul 6, 2026"). */
+function postedLabel(iso: string): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function GrantRow({ grant }: { grant: GrantOpportunity }) {
-  const meta = [
-    grant.sponsor,
-    grant.amount,
-    deadlineLabel(grant.deadline_kind, grant.deadline_date),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const dueLabel = deadlineLabel(grant.deadline_kind, grant.deadline_date);
+  const posted = postedLabel(grant.posted);
   const topics = grant.matched_topics
     .split(";")
     .map((t) => t.trim())
     .filter(Boolean)
     .slice(0, 5);
+  const isMylo = grant.origin === "llm";
+  const hasChips = grant.is_new || Boolean(grant.amount) || Boolean(dueLabel);
 
   return (
     <Card className="p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-      {/* Ranking + save sit at the top so fit and the deadline read first. */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          {grant.is_new ? <NewTag /> : null}
+      {/* Title shares its row with the fit score and a round save bookmark. */}
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="min-w-0 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+          {grant.title}
+        </h3>
+        <div className="flex shrink-0 items-center gap-2">
           <MatchBadge percent={grant.match_percent} />
+          <SaveButton
+            contentId={grant.content_id}
+            saved={grant.saved}
+            variant="icon"
+          />
         </div>
-        <SaveButton contentId={grant.content_id} saved={grant.saved} />
       </div>
 
-      <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
-        {grant.title}
-      </h3>
-      {meta ? (
-        <p className="mt-1 text-xs font-medium text-[var(--text-secondary)]">{meta}</p>
+      {/* Hosts on the left; the funding amount and due date as chips on the right. */}
+      {grant.sponsor || hasChips ? (
+        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+          {grant.sponsor ? (
+            <p className="min-w-0 text-xs font-medium text-[var(--text-secondary)]">
+              {grant.sponsor}
+            </p>
+          ) : (
+            <span aria-hidden="true" />
+          )}
+          {hasChips ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {grant.is_new ? <NewTag /> : null}
+              {grant.amount ? (
+                <DetailTag icon={<BankIcon size={12} aria-hidden="true" />}>
+                  {grant.amount}
+                </DetailTag>
+              ) : null}
+              {dueLabel ? (
+                <DetailTag icon={<CalendarIcon size={12} aria-hidden="true" />}>
+                  {dueLabel}
+                </DetailTag>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
-      {grant.reason ? (
-        <p className="mt-2.5 text-sm leading-relaxed text-[var(--text-secondary)]">
-          {grant.reason}
+      {posted ? (
+        <p className="mt-2 text-xs text-[var(--text-muted)]">Posted {posted}</p>
+      ) : null}
+
+      {grant.description ? (
+        <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+          {grant.description}
         </p>
+      ) : null}
+
+      {/* Milo's read on why this fits the user, with his mark (like the Lab editor). */}
+      {grant.reason ? (
+        <div className="mt-2.5 flex items-start gap-2">
+          {isMylo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/mylo-headshot.webp"
+              alt=""
+              width={20}
+              height={20}
+              className="mt-0.5 h-5 w-5 shrink-0 rounded-full object-cover"
+            />
+          ) : null}
+          <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+            {grant.reason}
+          </p>
+        </div>
       ) : null}
 
       {topics.length > 0 ? (
