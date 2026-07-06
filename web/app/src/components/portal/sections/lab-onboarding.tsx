@@ -2,10 +2,12 @@
 
 import * as React from "react";
 
-import { MyloMark } from "@/components/brand/mylo-mark";
 import { Chip, TokenField, dedupe, inputClass } from "@/components/onboarding/fields";
+import { CloseIcon, DocumentIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
 import {
+  useLabProfile,
+  useLabWatch,
   useSynthesizeLabProfile,
   useUpdateLabProfile,
   useUpdateLabWatch,
@@ -30,7 +32,8 @@ const CADENCES: { id: WatchCadence; label: string }[] = [
   { id: "realtime", label: "Real-time" },
 ];
 
-const STEP_LABELS = ["Purpose & focus", "What Milo watches", "Review & finish"];
+const DEFAULT_CATS = ["papers", "grants", "conferences"];
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 const PRIMARY_BUTTON =
   "inline-flex items-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
@@ -38,7 +41,7 @@ const GHOST_BUTTON =
   "rounded-full border border-border bg-surface px-4 py-2 text-[13px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
 /** Prefilled values for editing an already-configured lab. */
-export type LabOnboardingInitial = {
+export type LabEditorInitial = {
   statement: string;
   areas: string[];
   keywords: string[];
@@ -48,72 +51,141 @@ export type LabOnboardingInitial = {
 };
 
 /**
- * Inline lab onboarding, shown on the lab overview when a lab has no profile
- * yet, or re-opened in edit mode to fix an existing lab. It captures the lab's
- * purpose (statement), research focus (areas), and tags (keywords) — optionally
- * drafted from the PI's description plus pasted source material by the LLM —
- * then what Milo watches, and saves both the lab profile and its watch
- * settings. Modeled on the personal onboarding flow.
- *
- * In edit mode the parent renders this only once its profile/watch queries have
- * settled and passes ``initial`` so state can be lazily seeded without an
- * effect (avoids the set-state-in-effect lint rule).
+ * The lab setup/edit surface. A thin wrapper that reuses the already-cached lab
+ * profile + watch queries (so opening "Edit setup" is instant — no extra
+ * round-trips) and hands the settled values to the single-page form as
+ * ``initial`` (lazy state seed — no set-state-in-effect).
  */
-export function LabOnboarding({
+export function LabEditor({
   lab,
   mode = "create",
-  initial,
   onDone,
   onCancel,
 }: {
   lab: MyLab;
   mode?: "create" | "edit";
-  initial?: LabOnboardingInitial;
+  onDone?: () => void;
+  onCancel?: () => void;
+}) {
+  const profileQuery = useLabProfile(lab.slug);
+  const watchQuery = useLabWatch(lab.slug);
+
+  // Create mode starts blank; edit mode waits for the (usually cached) values.
+  const ready =
+    mode === "create" || (!profileQuery.isLoading && !watchQuery.isLoading);
+
+  if (!ready) {
+    return (
+      <Card accent="primary-rule" className="p-6">
+        <div className="h-40 animate-pulse rounded-xl bg-surface-alt" />
+      </Card>
+    );
+  }
+
+  const profile = profileQuery.data;
+  const watch = watchQuery.data;
+  const initial: LabEditorInitial | undefined =
+    mode === "edit"
+      ? {
+          statement: profile?.statement ?? "",
+          areas: profile?.areas ?? [],
+          keywords: Array.isArray(profile?.interests?.keywords)
+            ? (profile?.interests?.keywords as string[])
+            : [],
+          watchTopics: watch?.topics ?? [],
+          watchCats: watch?.categories?.length ? watch.categories : DEFAULT_CATS,
+          cadence: watch?.cadence ?? "weekly",
+        }
+      : undefined;
+
+  return (
+    <LabEditorForm
+      key={`${lab.slug}:${mode}`}
+      lab={lab}
+      mode={mode}
+      initial={initial}
+      onDone={() => {
+        onDone?.();
+        profileQuery.refetch();
+        watchQuery.refetch();
+      }}
+      onCancel={onCancel}
+    />
+  );
+}
+
+/**
+ * Single-page lab setup: describe the lab + drop source files / paste profile
+ * links, let Milo draft the purpose/areas/keywords, review and adjust, set what
+ * Milo watches, and save — all on one page.
+ */
+function LabEditorForm({
+  lab,
+  mode,
+  initial,
+  onDone,
+  onCancel,
+}: {
+  lab: MyLab;
+  mode: "create" | "edit";
+  initial?: LabEditorInitial;
   onDone?: () => void;
   onCancel?: () => void;
 }) {
   const synthesize = useSynthesizeLabProfile(lab.slug);
   const saveProfile = useUpdateLabProfile(lab.slug);
   const saveWatch = useUpdateLabWatch(lab.slug);
+  const editing = mode === "edit";
 
-  const [step, setStep] = React.useState(0);
-
-  // Step 1 — purpose & focus (+ optional source material for the LLM).
+  // Source material for Milo's draft.
   const [description, setDescription] = React.useState("");
+  const [files, setFiles] = React.useState<File[]>([]);
+  const [links, setLinks] = React.useState("");
+  const [synthError, setSynthError] = React.useState<string | null>(null);
+  const [synthNote, setSynthNote] = React.useState<string | null>(null);
+
+  // The (draftable, editable) profile fields.
   const [statement, setStatement] = React.useState(initial?.statement ?? "");
   const [areas, setAreas] = React.useState<string[]>(initial?.areas ?? []);
   const [keywords, setKeywords] = React.useState<string[]>(
     initial?.keywords ?? [],
   );
-  const [sourceText, setSourceText] = React.useState("");
-  const [synthError, setSynthError] = React.useState<string | null>(null);
-  const [synthNote, setSynthNote] = React.useState<string | null>(null);
 
-  // Step 2 — what Milo watches.
+  // What Milo watches.
   const [watchTopics, setWatchTopics] = React.useState<string[]>(
     initial?.watchTopics ?? [],
   );
   const [watchCats, setWatchCats] = React.useState<string[]>(
-    initial?.watchCats ?? ["papers", "grants", "conferences"],
+    initial?.watchCats ?? DEFAULT_CATS,
   );
   const [cadence, setCadence] = React.useState<WatchCadence>(
     initial?.cadence ?? "weekly",
   );
-
   const [saveError, setSaveError] = React.useState<string | null>(null);
-  const editing = mode === "edit";
 
   function runSynthesis() {
     setSynthError(null);
     setSynthNote(null);
+    const linkList = links
+      .split(/[\n,]/)
+      .map((l) => l.trim())
+      .filter(Boolean);
     synthesize.mutate(
-      { description, areas, source_text: sourceText },
+      { description, areas, links: linkList, files },
       {
         onSuccess: (result) => {
           if (result.statement) setStatement(result.statement);
           if (result.areas?.length) setAreas(dedupe(result.areas));
           if (result.keywords?.length) setKeywords(dedupe(result.keywords));
-          setSynthNote("Mylo drafted a profile below — edit anything before continuing.");
+          if (watchTopics.length === 0) {
+            setWatchTopics(
+              dedupe([...(result.areas ?? []), ...(result.keywords ?? [])]).slice(
+                0,
+                12,
+              ),
+            );
+          }
+          setSynthNote("Milo drafted the profile below — edit anything before saving.");
         },
         onError: (e) => setSynthError((e as Error).message),
       },
@@ -126,18 +198,14 @@ export function LabOnboarding({
     );
   }
 
-  function goWatch() {
-    // Seed watch topics from the lab's focus + tags when the user hasn't set any.
-    if (watchTopics.length === 0) {
-      setWatchTopics(dedupe([...areas, ...keywords]).slice(0, 12));
-    }
-    setStep(1);
-  }
-
   function finish() {
     setSaveError(null);
     const cleanAreas = dedupe(areas);
     const cleanKeywords = dedupe(keywords);
+    const seedTopics = watchTopics.length
+      ? watchTopics
+      : dedupe([...cleanAreas, ...cleanKeywords]).slice(0, 12);
+
     const profilePayload: Parameters<typeof saveProfile.mutate>[0] = {
       statement: statement.trim(),
       areas: cleanAreas,
@@ -155,11 +223,7 @@ export function LabOnboarding({
     saveProfile.mutate(profilePayload, {
       onSuccess: () => {
         saveWatch.mutate(
-          {
-            topics: dedupe(watchTopics),
-            categories: watchCats,
-            cadence,
-          },
+          { topics: dedupe(seedTopics), categories: watchCats, cadence },
           {
             onSuccess: () => onDone?.(),
             onError: (e) => setSaveError((e as Error).message),
@@ -171,285 +235,308 @@ export function LabOnboarding({
   }
 
   const saving = saveProfile.isPending || saveWatch.isPending;
-  const canContinueStep1 = statement.trim().length > 0 || areas.length > 0;
+  const canSave = statement.trim().length > 0 || areas.length > 0;
 
   return (
     <Card accent="primary-rule" className="p-6">
       {/* Header */}
-      <div className="mb-5 flex items-start gap-3">
-        <MyloMark className="mt-0.5 h-9 w-9 shrink-0" />
-        <div>
-          <h2 className="font-serif text-[22px] font-semibold leading-tight text-[var(--text-primary)]">
-            {editing ? `Edit ${lab.name}` : `Set up ${lab.name}`}
-          </h2>
-          <p className="mt-1 text-[13.5px] text-[var(--text-secondary)]">
-            Tell Mylo what this lab works on. This is what lets paper, grant, and
-            conference matching understand the lab&apos;s purpose later.
+      <div className="mb-6">
+        <h1 className="m-0 font-serif text-[26px] font-semibold leading-tight text-[var(--text-primary)]">
+          Describe the lab.
+        </h1>
+        <p className="mt-1.5 max-w-xl text-[14px] text-[var(--text-secondary)]">
+          Describe your lab and Milo will create the rest of it for you.
+        </p>
+      </div>
+
+      {/* Describe + source material — three columns */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Field label="Lab description">
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={6}
+            placeholder="e.g. We study coral-reef resilience under ocean warming, combining remote sensing with machine learning."
+            className={cn(inputClass, "min-h-36 resize-y py-2")}
+          />
+        </Field>
+
+        <Field label="Source files">
+          <DropZone files={files} onChange={setFiles} />
+        </Field>
+
+        <Field label="Source links">
+          <textarea
+            value={links}
+            onChange={(e) => setLinks(e.target.value)}
+            rows={6}
+            placeholder={
+              "Paste profile links (one per line):\n" +
+              "https://scholar.google.com/citations?user=…\n" +
+              "https://www.semanticscholar.org/author/…"
+            }
+            className={cn(inputClass, "min-h-36 resize-y py-2")}
+          />
+          <p className="mt-1 text-[11.5px] text-[var(--text-muted)]">
+            Google Scholar, Semantic Scholar, OpenAlex, or ORCID profiles.
           </p>
+        </Field>
+      </div>
+
+      {/* Draft with Milo */}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          className={PRIMARY_BUTTON}
+          onClick={runSynthesis}
+          disabled={
+            synthesize.isPending ||
+            (!description.trim() && !links.trim() && files.length === 0)
+          }
+        >
+          {/* Small decorative brand mark — a plain img is right here. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/mylo-headshot.webp"
+            alt=""
+            width={20}
+            height={20}
+            className="h-5 w-5 rounded-full object-cover"
+          />
+          {synthesize.isPending ? "Milo is drafting…" : "Draft with Milo"}
+        </button>
+        {synthNote ? (
+          <span className="text-[12.5px] text-primary">{synthNote}</span>
+        ) : (
+          <span className="text-[12px] text-[var(--text-muted)]">
+            Optional — you can also fill everything in by hand.
+          </span>
+        )}
+      </div>
+      {synthError ? (
+        <p className="mt-2 text-[12.5px] text-clay" role="alert">
+          {synthError}
+        </p>
+      ) : null}
+
+      <Divider />
+
+      {/* Milo's draft — editable */}
+      <SectionTitle>The lab profile</SectionTitle>
+      <div className="space-y-4">
+        <Field label="Statement of purpose">
+          <textarea
+            value={statement}
+            onChange={(e) => setStatement(e.target.value)}
+            rows={3}
+            placeholder="The lab's shared research purpose."
+            className={cn(inputClass, "min-h-20 resize-y py-2")}
+          />
+        </Field>
+        <TokenField
+          label="Research focus areas"
+          items={areas}
+          onChange={setAreas}
+          placeholder="Add an area, press Enter"
+        />
+        <TokenField
+          label="Tags & keywords"
+          items={keywords}
+          onChange={setKeywords}
+          placeholder="Add a keyword, press Enter"
+        />
+      </div>
+
+      <Divider />
+
+      {/* What Milo watches */}
+      <SectionTitle>What Milo watches</SectionTitle>
+      <div className="space-y-4">
+        <TokenField
+          label="Topics Milo monitors for the lab"
+          items={watchTopics}
+          onChange={setWatchTopics}
+          placeholder="Add a topic, press Enter"
+        />
+        <div>
+          <p className="mb-2 text-[13px] font-medium text-[var(--text-primary)]">
+            Signals to surface
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {WATCH_CATEGORIES.map((category) => {
+              const on = watchCats.includes(category.key);
+              return (
+                <button
+                  key={category.key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleCat(category.key)}
+                  className={cn(
+                    "flex items-start gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    on
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-surface hover:bg-surface-alt",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border text-[10px]",
+                      on ? "border-primary bg-primary text-[#fffdf8]" : "border-border",
+                    )}
+                  >
+                    {on ? "✓" : ""}
+                  </span>
+                  <span>
+                    <span className="block text-[13.5px] font-medium text-[var(--text-primary)]">
+                      {category.label}
+                    </span>
+                    <span className="block text-[12px] text-[var(--text-muted)]">
+                      {category.desc}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-[13px] font-medium text-[var(--text-primary)]">
+            How often
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CADENCES.map((option) => (
+              <Chip
+                key={option.id}
+                selected={cadence === option.id}
+                onClick={() => setCadence(option.id)}
+              >
+                {option.label}
+              </Chip>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Step indicator */}
-      <ol className="mb-5 flex flex-wrap gap-x-4 gap-y-1" aria-label="Onboarding steps">
-        {STEP_LABELS.map((labelText, i) => (
-          <li
-            key={labelText}
-            aria-current={i === step ? "step" : undefined}
-            className={cn(
-              "flex items-center gap-1.5 text-[12.5px] font-medium",
-              i === step
-                ? "text-[var(--text-primary)]"
-                : i < step
-                  ? "text-primary"
-                  : "text-[var(--text-muted)]",
-            )}
-          >
-            <span
-              className={cn(
-                "flex h-5 w-5 items-center justify-center rounded-full text-[11px]",
-                i <= step ? "bg-primary text-[#fffdf8]" : "bg-surface-alt",
-              )}
-            >
-              {i + 1}
-            </span>
-            {labelText}
-          </li>
-        ))}
-      </ol>
+      {saveError ? (
+        <p className="mt-4 text-[12.5px] text-clay" role="alert">
+          {saveError}
+        </p>
+      ) : null}
 
-      {/* Step body */}
-      {step === 0 ? (
-        <div className="space-y-4">
-          <label className="block">
-            <span className="mb-1 block text-[13px] font-medium text-[var(--text-primary)]">
-              Describe the lab in a sentence or two
-            </span>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              placeholder="e.g. We study coral-reef resilience under ocean warming, combining remote sensing with machine learning."
-              className={cn(inputClass, "min-h-20 resize-y py-2")}
-            />
-          </label>
-
-          <details className="rounded-md border border-border bg-surface-alt/50 px-3 py-2">
-            <summary className="cursor-pointer text-[13px] font-medium text-[var(--text-secondary)]">
-              Add source material for Mylo (optional)
-            </summary>
-            <p className="mt-2 text-[12px] text-[var(--text-muted)]">
-              Paste representative paper titles or abstracts, members&apos;
-              profiles, or portfolio blurbs. Mylo reads them to draft the lab
-              profile more accurately.
-            </p>
-            <textarea
-              value={sourceText}
-              onChange={(e) => setSourceText(e.target.value)}
-              rows={4}
-              placeholder="Paste titles, abstracts, or member bios here…"
-              className={cn(inputClass, "mt-2 min-h-24 resize-y py-2")}
-            />
-          </details>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className={GHOST_BUTTON}
-              onClick={runSynthesis}
-              disabled={
-                synthesize.isPending ||
-                (!description.trim() && !sourceText.trim() && areas.length === 0)
-              }
-            >
-              {synthesize.isPending ? "Mylo is drafting…" : "✨ Draft with Mylo"}
-            </button>
-            <span className="text-[12px] text-[var(--text-muted)]">
-              Optional — you can also fill everything in by hand.
-            </span>
-          </div>
-          {synthNote ? (
-            <p className="text-[12.5px] text-primary">{synthNote}</p>
-          ) : null}
-          {synthError ? (
-            <p className="text-[12.5px] text-clay" role="alert">
-              {synthError}
-            </p>
-          ) : null}
-
-          <label className="block">
-            <span className="mb-1 block text-[13px] font-medium text-[var(--text-primary)]">
-              Statement of purpose
-            </span>
-            <textarea
-              value={statement}
-              onChange={(e) => setStatement(e.target.value)}
-              rows={3}
-              placeholder="The lab's shared research purpose."
-              className={cn(inputClass, "min-h-20 resize-y py-2")}
-            />
-          </label>
-
-          <TokenField
-            label="Research focus areas"
-            items={areas}
-            onChange={setAreas}
-            placeholder="Add an area, press Enter"
-          />
-          <TokenField
-            label="Tags & keywords"
-            items={keywords}
-            onChange={setKeywords}
-            placeholder="Add a keyword, press Enter"
-          />
-
-          <div className="flex justify-between pt-1">
-            {editing && onCancel ? (
-              <button type="button" className={GHOST_BUTTON} onClick={onCancel}>
-                Cancel
-              </button>
-            ) : (
-              <span />
-            )}
-            <button
-              type="button"
-              className={PRIMARY_BUTTON}
-              onClick={goWatch}
-              disabled={!canContinueStep1}
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      ) : step === 1 ? (
-        <div className="space-y-4">
-          <TokenField
-            label="Topics Milo monitors for the lab"
-            items={watchTopics}
-            onChange={setWatchTopics}
-            placeholder="Add a topic, press Enter"
-          />
-
-          <div>
-            <p className="mb-2 text-[13px] font-medium text-[var(--text-primary)]">
-              Signals to surface
-            </p>
-            <div className="space-y-2">
-              {WATCH_CATEGORIES.map((category) => {
-                const on = watchCats.includes(category.key);
-                return (
-                  <button
-                    key={category.key}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => toggleCat(category.key)}
-                    className={cn(
-                      "flex w-full items-start gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      on
-                        ? "border-primary bg-primary/5"
-                        : "border-border bg-surface hover:bg-surface-alt",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border text-[10px]",
-                        on
-                          ? "border-primary bg-primary text-[#fffdf8]"
-                          : "border-border",
-                      )}
-                    >
-                      {on ? "✓" : ""}
-                    </span>
-                    <span>
-                      <span className="block text-[13.5px] font-medium text-[var(--text-primary)]">
-                        {category.label}
-                      </span>
-                      <span className="block text-[12px] text-[var(--text-muted)]">
-                        {category.desc}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-[13px] font-medium text-[var(--text-primary)]">
-              How often
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {CADENCES.map((option) => (
-                <Chip
-                  key={option.id}
-                  selected={cadence === option.id}
-                  onClick={() => setCadence(option.id)}
-                >
-                  {option.label}
-                </Chip>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-between pt-1">
-            <button type="button" className={GHOST_BUTTON} onClick={() => setStep(0)}>
-              Back
-            </button>
-            <button type="button" className={PRIMARY_BUTTON} onClick={() => setStep(2)}>
-              Continue
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <ReviewRow label="Statement">
-            {statement.trim() ? (
-              <p className="text-[13.5px] leading-relaxed text-[var(--text-secondary)]">
-                {statement}
-              </p>
-            ) : (
-              <Muted>No statement yet.</Muted>
-            )}
-          </ReviewRow>
-          <ReviewRow label="Focus areas">
-            <ChipList items={areas} />
-          </ReviewRow>
-          <ReviewRow label="Tags & keywords">
-            <ChipList items={keywords} />
-          </ReviewRow>
-          <ReviewRow label="Milo watches">
-            <ChipList items={watchTopics} />
-            <p className="mt-1 text-[12px] text-[var(--text-muted)]">
-              {watchCats.length} signal type{watchCats.length === 1 ? "" : "s"} ·{" "}
-              {CADENCES.find((c) => c.id === cadence)?.label}
-            </p>
-          </ReviewRow>
-
-          {saveError ? (
-            <p className="text-[12.5px] text-clay" role="alert">
-              {saveError}
-            </p>
-          ) : null}
-
-          <div className="flex justify-between pt-1">
-            <button type="button" className={GHOST_BUTTON} onClick={() => setStep(1)}>
-              Back
-            </button>
-            <button
-              type="button"
-              className={PRIMARY_BUTTON}
-              onClick={finish}
-              disabled={saving}
-            >
-              {saving ? "Saving…" : editing ? "Save changes" : "Finish setup"}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Footer */}
+      <div className="mt-6 flex items-center justify-end gap-2">
+        {editing && onCancel ? (
+          <button type="button" className={GHOST_BUTTON} onClick={onCancel}>
+            Cancel
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={PRIMARY_BUTTON}
+          onClick={finish}
+          disabled={saving || !canSave}
+        >
+          {saving ? "Saving…" : editing ? "Save changes" : "Finish setup"}
+        </button>
+      </div>
     </Card>
   );
 }
 
-function ReviewRow({
+// -- Drag-and-drop file input ------------------------------------------------
+
+function DropZone({
+  files,
+  onChange,
+}: {
+  files: File[];
+  onChange: (next: File[]) => void;
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = React.useState(false);
+
+  function addFiles(list: FileList | null) {
+    if (!list) return;
+    const incoming = Array.from(list).filter((f) => f.size <= MAX_FILE_BYTES);
+    const merged = [...files];
+    for (const f of incoming) {
+      if (!merged.some((m) => m.name === f.name && m.size === f.size)) {
+        merged.push(f);
+      }
+    }
+    onChange(merged);
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          addFiles(e.dataTransfer.files);
+        }}
+        className={cn(
+          "flex min-h-36 w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed px-3 py-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          dragging
+            ? "border-primary bg-primary/5"
+            : "border-input bg-card hover:bg-surface-alt",
+        )}
+      >
+        <DocumentIcon size={20} className="text-brand-secondary" />
+        <span className="text-[13px] font-medium text-[var(--text-primary)]">
+          Drop files here
+        </span>
+        <span className="text-[11.5px] text-[var(--text-muted)]">
+          or click to browse · PDF or text
+        </span>
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        accept=".pdf,.txt,.md,.doc,.docx,application/pdf,text/plain"
+        className="hidden"
+        onChange={(e) => {
+          addFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      {files.length > 0 ? (
+        <ul className="mt-2 space-y-1">
+          {files.map((file) => (
+            <li
+              key={`${file.name}:${file.size}`}
+              className="flex items-center justify-between gap-2 rounded-md bg-surface-alt px-2.5 py-1.5 text-[12px]"
+            >
+              <span className="truncate text-[var(--text-secondary)]">
+                {file.name}
+              </span>
+              <button
+                type="button"
+                aria-label={`Remove ${file.name}`}
+                onClick={() =>
+                  onChange(files.filter((f) => f !== file))
+                }
+                className="shrink-0 text-[var(--text-muted)] hover:text-foreground"
+              >
+                <CloseIcon size={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function Field({
   label,
   children,
 }: {
@@ -457,33 +544,23 @@ function ReviewRow({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+    <label className="block">
+      <span className="mb-1.5 block text-[13px] font-medium text-[var(--text-primary)]">
         {label}
-      </p>
+      </span>
       {children}
-    </div>
+    </label>
   );
 }
 
-function ChipList({ items }: { items: string[] }) {
-  if (items.length === 0) {
-    return <Muted>None added.</Muted>;
-  }
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {items.map((item) => (
-        <span
-          key={item}
-          className="inline-flex items-center rounded-full border border-border bg-surface-alt px-2.5 py-1 text-[12.5px] text-[var(--text-secondary)]"
-        >
-          {item}
-        </span>
-      ))}
-    </div>
+    <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      {children}
+    </h2>
   );
 }
 
-function Muted({ children }: { children: React.ReactNode }) {
-  return <p className="text-[13px] text-[var(--text-muted)]">{children}</p>;
+function Divider() {
+  return <div className="my-6 border-t border-[var(--divider)]" />;
 }

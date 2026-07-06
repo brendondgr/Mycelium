@@ -77,30 +77,15 @@ export function LabNavItem({ lab }: { lab: MyLab }) {
 
       {open ? (
         <div className="ml-4 mt-0.5 flex flex-col border-l border-[var(--divider)] pl-2">
-          <MenuItem
-            onClick={() => {
-              activate();
-              setOpen(false);
-            }}
-          >
-            Open overview
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              openLabEditor(lab.slug);
-              setOpen(false);
-            }}
-          >
-            Edit setup
-          </MenuItem>
+          <MenuItem onClick={activate}>Open Overview</MenuItem>
+          <MenuItem onClick={() => openLabEditor(lab.slug)}>Edit Setup</MenuItem>
           <MenuItem
             onClick={() => {
               setLabScope(lab.slug);
               goToSection("labs");
-              setOpen(false);
             }}
           >
-            Manage &amp; invite
+            Manage &amp; Invite
           </MenuItem>
         </div>
       ) : null}

@@ -2,8 +2,10 @@
 
 import pytest
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
+from apps.accounts.intake.lab import source_text_from_links
 from apps.accounts.models import Lab, LabMembership, LabWatchPreference
 
 
@@ -134,3 +136,64 @@ def test_plain_member_cannot_synthesize(
         format="json",
     )
     assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_synthesize_accepts_a_source_file(
+    client: APIClient, lab: Lab, lead: User
+) -> None:
+    client.force_authenticate(lead)
+    upload = SimpleUploadedFile(
+        "notes.txt",
+        b"The group works on tidal energy modeling and coastal sensor networks.",
+        content_type="text/plain",
+    )
+    resp = client.post(
+        f"/api/auth/labs/{lab.slug}/intake/synthesize/",
+        {"description": "", "files": upload},
+        format="multipart",
+    )
+    # File text alone is enough source material to synthesize (fallback path).
+    assert resp.status_code == 200
+    assert resp.data["statement"] or resp.data["areas"] or resp.data["keywords"] == []
+
+
+@pytest.mark.django_db
+def test_synthesize_accepts_a_link(
+    client: APIClient, lab: Lab, lead: User
+) -> None:
+    client.force_authenticate(lead)
+    # An unrecognized link is kept as a source hint, so the request still drafts.
+    resp = client.post(
+        f"/api/auth/labs/{lab.slug}/intake/synthesize/",
+        {"description": "", "links": "https://example.org/our-lab"},
+        format="multipart",
+    )
+    assert resp.status_code == 200
+
+
+class _FakeDraft:
+    display_name = "Dr. Reef"
+    evidence = [{"title": "Coral bleaching under warming seas"}]
+    areas = ["Coral ecology"]
+    keywords = ["bleaching", "reefs"]
+
+
+def test_source_text_from_links_imports_recognized_and_hints_the_rest() -> None:
+    calls: list[tuple[str, str]] = []
+
+    def fake_import(identifier: str, source: str):
+        calls.append((source, identifier))
+        return _FakeDraft()
+
+    text = source_text_from_links(
+        [
+            "https://scholar.google.com/citations?user=ZQt7m3kAAAAJ",
+            "https://example.org/unknown",
+        ],
+        import_fn=fake_import,
+    )
+    # The Scholar link is detected + imported; the unknown link is kept verbatim.
+    assert calls == [("scholar", "ZQt7m3kAAAAJ")]
+    assert "Coral bleaching under warming seas" in text
+    assert "https://example.org/unknown" in text

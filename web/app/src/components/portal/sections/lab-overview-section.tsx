@@ -11,7 +11,7 @@ import {
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
 import { StatCard } from "@/components/portal/sections/stat-card";
-import { LabOnboarding } from "@/components/portal/sections/lab-onboarding";
+import { LabEditor } from "@/components/portal/sections/lab-onboarding";
 import {
   useLabMembers,
   useLabProfile,
@@ -43,8 +43,7 @@ function canManage(lab: MyLab): boolean {
  * here instead; a member sees an honest "not set up yet" state.
  */
 export function LabOverviewSection({ lab }: { lab: MyLab }) {
-  const { user, goToSection, labOnboardingEdit, setLabOnboardingEdit } =
-    usePortal();
+  const { user, goToSection, setLabOnboardingEdit } = usePortal();
   const profileQuery = useLabProfile(lab.slug);
   const watchQuery = useLabWatch(lab.slug);
   const membersQuery = useLabMembers(lab.slug);
@@ -68,64 +67,22 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
     !profile.statement &&
     (profile.areas?.length ?? 0) === 0;
 
-  // Edit mode: a manager re-runs the setup flow to fix an existing lab. Wait for
-  // the profile + watch queries so the flow can be seeded from real values, then
-  // pass them as ``initial`` (lazy state seed — no set-state-in-effect).
-  if (labOnboardingEdit && manage) {
-    const watch = watchQuery.data;
-    const ready = !profileQuery.isLoading && !watchQuery.isLoading;
-    return (
-      <div>
-        <Greeting greeting={greeting} first={first} dateLabel={dateLabel} lab={lab} />
-        {ready ? (
-          <LabOnboarding
-            lab={lab}
-            mode="edit"
-            initial={{
-              statement: profile?.statement ?? "",
-              areas: profile?.areas ?? [],
-              keywords: Array.isArray(profile?.interests?.keywords)
-                ? (profile?.interests?.keywords as string[])
-                : [],
-              watchTopics: watch?.topics ?? [],
-              watchCats: watch?.categories?.length
-                ? watch.categories
-                : ["papers", "grants", "conferences"],
-              cadence: watch?.cadence ?? "weekly",
-            }}
-            onDone={() => {
-              setLabOnboardingEdit(false);
-              profileQuery.refetch();
-              watchQuery.refetch();
-            }}
-            onCancel={() => setLabOnboardingEdit(false)}
-          />
-        ) : (
-          <Card className="p-6">
-            <div className="h-24 animate-pulse rounded-xl bg-surface-alt" />
-          </Card>
-        )}
-      </div>
-    );
-  }
-
-  // Onboarding gate: an unconfigured lab either onboards (manager) or explains
-  // itself (member) before any metrics are worth showing.
+  // Onboarding gate: an unconfigured lab either onboards (manager: the single-
+  // page editor owns its own header) or explains itself (member).
   if (profileEmpty) {
+    if (manage) {
+      return <LabEditor lab={lab} mode="create" onDone={() => profileQuery.refetch()} />;
+    }
     return (
       <div>
         <Greeting greeting={greeting} first={first} dateLabel={dateLabel} lab={lab} />
-        {manage ? (
-          <LabOnboarding lab={lab} onDone={() => profileQuery.refetch()} />
-        ) : (
-          <Card className="p-6">
-            <p className="text-[14px] text-[var(--text-secondary)]">
-              This lab hasn&apos;t set up its research profile yet. Once a lab
-              lead describes its purpose and focus, Mylo can start surfacing
-              papers, grants, and conferences here.
-            </p>
-          </Card>
-        )}
+        <Card className="p-6">
+          <p className="text-[14px] text-[var(--text-secondary)]">
+            This lab hasn&apos;t set up its research profile yet. Once a lab lead
+            describes its purpose and focus, Mylo can start surfacing papers,
+            grants, and conferences here.
+          </p>
+        </Card>
       </div>
     );
   }

@@ -16,6 +16,13 @@ import { StatCard } from "@/components/portal/sections/stat-card";
 import { NextActions } from "@/components/portal/sections/next-actions";
 import { ProfileNudge } from "@/components/portal/sections/profile-nudge";
 import { LabOverviewSection } from "@/components/portal/sections/lab-overview-section";
+import { LabEditor } from "@/components/portal/sections/lab-onboarding";
+import type { MyLab } from "@/lib/portal/types";
+
+/** A member with owner/admin/PI rights on a lab may run its setup/edit flow. */
+function canManageLab(lab: MyLab): boolean {
+  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
+}
 
 /** Derive time-of-day greeting word from the hour (0–23). */
 function timeOfDay(hour: number): "morning" | "afternoon" | "evening" {
@@ -34,13 +41,33 @@ function firstName(name: string): string {
  * the greeting, Mylo summary, stat grid, next-actions list, and profile nudge.
  */
 export function OverviewSection() {
-  const { user, scopeLabel, goToSection, projects, labs, currentLab } =
-    usePortal();
+  const {
+    user,
+    scopeLabel,
+    goToSection,
+    projects,
+    labs,
+    currentLab,
+    labOnboardingEdit,
+    setLabOnboardingEdit,
+  } = usePortal();
   const profileQuery = useProfile();
   const watchQuery = useWatch();
 
   // When a lab is the active workspace, its overview replaces the personal one.
+  // Opening "Edit setup" renders the editor directly here so the heavier lab
+  // overview (member + project fetches) never mounts — the edit page loads fast.
   if (currentLab) {
+    if (labOnboardingEdit && canManageLab(currentLab)) {
+      return (
+        <LabEditor
+          lab={currentLab}
+          mode="edit"
+          onDone={() => setLabOnboardingEdit(false)}
+          onCancel={() => setLabOnboardingEdit(false)}
+        />
+      );
+    }
     return <LabOverviewSection lab={currentLab} />;
   }
 

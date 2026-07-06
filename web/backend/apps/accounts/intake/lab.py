@@ -14,11 +14,15 @@ never hard-depends on a running model.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+import logging
+from collections.abc import Callable, Iterable, Sequence
+from urllib.parse import parse_qs, urlparse
 
 from .extract import extract_profile_fields
 
-__all__ = ["synthesize_lab_interests"]
+logger = logging.getLogger(__name__)
+
+__all__ = ["synthesize_lab_interests", "source_text_from_links"]
 
 CompleteFn = Callable[[str], str | None]
 
@@ -163,3 +167,89 @@ def _truncate(text: str, max_chars: int) -> str:
         return text
     clipped = text[:max_chars].rsplit(" ", 1)[0].rstrip(",.;: ")
     return f"{clipped}…"
+
+
+# -- Source links --------------------------------------------------------------
+
+
+def _detect_author(url: str) -> tuple[str, str] | None:
+    """Map an academic-profile URL to a ``(source, identifier)`` pair for import.
+
+    Recognizes Google Scholar (``?user=``), Semantic Scholar / OpenAlex (last
+    path segment), and ORCID. Returns ``None`` for anything else.
+    """
+    try:
+        parsed = urlparse(url.strip())
+    except ValueError:
+        return None
+    host = (parsed.netloc or "").lower()
+    tail = parsed.path.rstrip("/").rsplit("/", 1)[-1]
+    if "scholar.google" in host:
+        uid = (parse_qs(parsed.query).get("user") or [""])[0]
+        return ("scholar", uid) if uid else None
+    if "semanticscholar.org" in host:
+        return ("semantic", tail) if tail else None
+    if "openalex.org" in host:
+        return ("openalex", tail) if tail else None
+    if "orcid.org" in host:
+        return ("orcid", tail) if tail else None
+    return None
+
+
+def source_text_from_links(
+    links: Iterable[str],
+    *,
+    import_fn: Callable[[str, str], object] | None = None,
+    max_links: int = 5,
+) -> str:
+    """Best-effort corpus text from pasted academic-profile links.
+
+    Each recognized link (Scholar / Semantic Scholar / OpenAlex / ORCID) is
+    imported for its representative work titles, areas, and keywords. Anything
+    that can't be recognized or imported is kept as a plain-URL hint so the model
+    still sees it. Never raises — bad links are skipped, so drafting is robust.
+    """
+    if import_fn is None:
+        from .importer import import_author as import_fn  # local: avoid cycle
+
+    chunks: list[str] = []
+    for raw in list(links)[:max_links]:
+        url = (raw or "").strip()
+        if not url:
+            continue
+        detected = _detect_author(url)
+        if detected is None:
+            chunks.append(url)
+            continue
+        source, ident = detected
+        try:
+            draft = import_fn(ident, source)
+        except Exception:
+            logger.info("Could not import source link %r; keeping as a hint.", url)
+            chunks.append(url)
+            continue
+        chunks.append(_draft_to_text(draft) or url)
+    return "\n\n".join(chunk for chunk in chunks if chunk)
+
+
+def _draft_to_text(draft: object) -> str:
+    parts: list[str] = []
+    name = getattr(draft, "display_name", "")
+    if name:
+        parts.append(f"Researcher: {name}")
+    evidence = getattr(draft, "evidence", None) or []
+    titles = [
+        str(item.get("title", "")).strip()
+        for item in evidence
+        if isinstance(item, dict) and str(item.get("title", "")).strip()
+    ][:8]
+    if titles:
+        parts.append("Representative works:")
+        parts.extend(f"- {title}" for title in titles)
+    areas = getattr(draft, "areas", None) or []
+    if areas:
+        parts.append("Areas: " + ", ".join(areas[:12]))
+    keywords = getattr(draft, "keywords", None) or []
+    if keywords:
+        parts.append("Keywords: " + ", ".join(keywords[:15]))
+    return "\n".join(parts)

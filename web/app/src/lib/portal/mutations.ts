@@ -186,15 +186,53 @@ export type LabSynthesisResult = {
   keywords: string[];
 };
 
-/** Draft a lab's statement/areas/keywords from the PI's free text (LLM-assisted). */
-export function synthesizeLabProfile(
+/**
+ * Draft a lab's statement/areas/keywords from the PI's description plus source
+ * material — dropped files (parsed to text server-side) and pasted profile links
+ * (imported best-effort). Sent as multipart so files ride along.
+ */
+export async function synthesizeLabProfile(
   slug: string,
-  input: { description: string; areas: string[]; source_text: string },
+  input: {
+    description: string;
+    areas: string[];
+    links: string[];
+    files: File[];
+  },
 ): Promise<LabSynthesisResult> {
-  return sendJson<LabSynthesisResult>(
-    "POST",
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+
+  const form = new FormData();
+  form.append("description", input.description);
+  form.append("areas", JSON.stringify(input.areas));
+  form.append("links", input.links.join("\n"));
+  for (const file of input.files) {
+    form.append("files", file);
+  }
+
+  const response = await fetch(
     buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "intake", "synthesize"),
-    input,
-    "Could not synthesize the lab profile. You can fill it in manually.",
+    {
+      method: "POST",
+      credentials: "include",
+      headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
+      body: form,
+    },
   );
+
+  let parsed: (LabSynthesisResult & Record<string, unknown>) | null = null;
+  try {
+    parsed = (await response.json()) as LabSynthesisResult &
+      Record<string, unknown>;
+  } catch {
+    parsed = null;
+  }
+  if (!response.ok) {
+    throw new Error(
+      firstError(parsed) ??
+        "Could not synthesize the lab profile. You can fill it in manually.",
+    );
+  }
+  return parsed as LabSynthesisResult;
 }

@@ -1,4 +1,5 @@
 import dataclasses
+import json
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
@@ -28,6 +29,7 @@ from .intake import (
     ResolutionError,
     extract_text,
     import_author,
+    source_text_from_links,
     synthesize_interests,
     synthesize_lab_interests,
 )
@@ -578,14 +580,40 @@ class SynthesizeView(APIView):
         )
 
 
-class LabIntakeSynthesizeView(APIView):
-    """Draft a lab's ``{statement, areas, keywords}`` from the PI's free text.
+def _as_str_list(value) -> list[str]:
+    """Normalize a field to a list of non-empty strings.
 
-    The onboarding form posts the lab ``description``, any ``areas`` already
-    typed, and optional pasted ``source_text`` (paper titles/abstracts, member
-    profiles, portfolios). The LLM reads it all and fills the fields; a
-    deterministic fallback keeps the flow working with no model. Nothing is saved
-    — the client reviews, then PATCHes the lab profile to persist.
+    Handles a real list, a JSON-encoded array string, or a plain string with
+    newline/comma-separated items (how the multipart form sends areas + links).
+    """
+    if isinstance(value, (list, tuple)):
+        items = value
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except (json.JSONDecodeError, ValueError):
+            parsed = None
+        if isinstance(parsed, list):
+            items = parsed
+        else:
+            items = [part for chunk in text.splitlines() for part in chunk.split(",")]
+    else:
+        return []
+    return [s for s in (str(item).strip() for item in items) if s]
+
+
+class LabIntakeSynthesizeView(APIView):
+    """Draft a lab's ``{statement, areas, keywords}`` from the PI's own words.
+
+    Accepts ``multipart/form-data`` (or JSON): the lab ``description``, any
+    ``areas`` already typed, uploaded source ``files`` (résumés, papers — parsed
+    to text and discarded), and pasted source ``links`` (Google Scholar /
+    Semantic Scholar / OpenAlex / ORCID profiles, imported best-effort). The LLM
+    reads it all and fills the fields; a deterministic fallback keeps the flow
+    working with no model. Nothing is saved — the client reviews, then PATCHes.
     """
 
     def post(self, request: Request, slug: str) -> Response:
@@ -594,9 +622,28 @@ class LabIntakeSynthesizeView(APIView):
             raise PermissionDenied("Only a lab lead or admin can edit this profile.")
 
         description = str(request.data.get("description", "")).strip()
-        source_text = str(request.data.get("source_text", "")).strip()
-        raw_areas = request.data.get("areas") or []
-        areas_hint = [str(a) for a in raw_areas] if isinstance(raw_areas, list) else []
+        areas_hint = _as_str_list(request.data.get("areas"))
+        links = _as_str_list(request.data.get("links"))
+        uploads = request.FILES.getlist("files")
+
+        # Assemble source material: pasted-link imports + extracted file text.
+        source_chunks: list[str] = []
+        if links:
+            link_text = source_text_from_links(links)
+            if link_text:
+                source_chunks.append(link_text)
+        for upload in uploads:
+            try:
+                text = extract_text(
+                    upload.read(),
+                    content_type=getattr(upload, "content_type", "") or "",
+                    filename=getattr(upload, "name", "") or "",
+                )
+            except AuthorImportError:
+                continue  # skip an unreadable file rather than fail the draft
+            if text.strip():
+                source_chunks.append(text)
+        source_text = "\n\n".join(source_chunks).strip()
 
         if not description and not source_text and not areas_hint:
             return Response(

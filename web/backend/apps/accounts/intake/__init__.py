@@ -12,7 +12,7 @@ from .agent import IntakeAgent, IntakeState
 from .drafts import AuthorProfileDraft
 from .extract import extract_profile_fields
 from .importer import AuthorImportError, import_author
-from .lab import synthesize_lab_interests
+from .lab import source_text_from_links, synthesize_lab_interests
 from .merge import merge_drafts
 from .resolve import ResolutionError, ResolvedAuthor, resolve
 from .resume import draft_from_resume, extract_text, parse_resume
@@ -37,4 +37,5 @@ __all__ = [
     "build_corpus",
     "synthesize_interests",
     "synthesize_lab_interests",
+    "source_text_from_links",
 ]
