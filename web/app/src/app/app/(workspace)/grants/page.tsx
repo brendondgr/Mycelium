@@ -1,7 +1,7 @@
 import { OpportunitiesSection } from "@/components/portal/sections/opportunities-section";
 
-export const metadata = { title: "Opportunities · Mycelium" };
+export const metadata = { title: "Grants · Mycelium" };
 
-export default function OpportunitiesPage() {
+export default function GrantsPage() {
   return <OpportunitiesSection />;
 }

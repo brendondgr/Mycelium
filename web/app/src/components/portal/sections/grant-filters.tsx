@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { CloseIcon } from "@/components/portal/icons";
+import { ChevronDownIcon, CloseIcon } from "@/components/portal/icons";
 import { cn } from "@/lib/utils";
 import type { GrantOpportunity } from "@/lib/portal/types";
 
@@ -25,7 +25,7 @@ export type GrantFilterState = {
   kinds: string[];
   /** Selected sponsors (empty = all). */
   sponsors: string[];
-  /** Selected matched topics; a grant passes if it matches any (empty = all). */
+  /** Selected matched topics; a grant passes only if it matches all (empty = all). */
   topics: string[];
   /** Only items still inside their "New" pin window. */
   newOnly: boolean;
@@ -145,7 +145,8 @@ export function filterAndSortGrants(
     if (f.sponsors.length && !f.sponsors.includes(g.sponsor)) return false;
     if (f.topics.length) {
       const gt = splitTopics(g.matched_topics);
-      if (!gt.some((t) => f.topics.includes(t))) return false;
+      // Inclusive AND: the grant must match every selected topic.
+      if (!f.topics.every((t) => gt.includes(t))) return false;
     }
     if (f.newOnly && !g.is_new) return false;
     if (f.savedOnly && !g.saved) return false;
@@ -201,6 +202,51 @@ function FilterGroup({
         {label}
       </p>
       {children}
+    </div>
+  );
+}
+
+/**
+ * A collapsible facet group. Long facet lists (Sponsor, Matched topic) start
+ * collapsed so the rail stays scannable; the count of active selections shows
+ * in the header while collapsed. Keyboard-operable via the native button.
+ */
+function CollapsibleFilterGroup({
+  label,
+  activeCount,
+  defaultOpen = false,
+  children,
+}: {
+  label: string;
+  activeCount?: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  return (
+    <div className="border-t border-[var(--divider)] pt-3.5 first:border-t-0 first:pt-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]"
+      >
+        <span className="min-w-0 flex-1 text-left">{label}</span>
+        {activeCount ? (
+          <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[#fffdf8]">
+            {activeCount}
+          </span>
+        ) : null}
+        <ChevronDownIcon
+          size={13}
+          aria-hidden="true"
+          className={cn(
+            "shrink-0 transition-transform duration-200 motion-reduce:transition-none",
+            open ? "rotate-180" : "",
+          )}
+        />
+      </button>
+      {open ? <div className="mt-2">{children}</div> : null}
     </div>
   );
 }
@@ -313,7 +359,7 @@ export function GrantFilters({
 
       <div
         className={cn(
-          "lg:sticky lg:top-[77px] lg:block lg:max-h-[calc(100vh-93px)] lg:overflow-y-auto",
+          "lg:sticky lg:top-0 lg:block lg:max-h-[calc(100vh-125px)] lg:overflow-y-auto",
           open ? "block" : "hidden",
         )}
       >
@@ -418,7 +464,10 @@ export function GrantFilters({
           </FilterGroup>
 
           {options.sponsors.length > 0 ? (
-            <FilterGroup label="Sponsor">
+            <CollapsibleFilterGroup
+              label="Sponsor"
+              activeCount={filters.sponsors.length}
+            >
               <div className="max-h-52 overflow-y-auto pr-1">
                 {options.sponsors.map((s) => (
                   <CheckRow
@@ -432,11 +481,17 @@ export function GrantFilters({
                   />
                 ))}
               </div>
-            </FilterGroup>
+            </CollapsibleFilterGroup>
           ) : null}
 
           {options.topics.length > 0 ? (
-            <FilterGroup label="Matched topic">
+            <CollapsibleFilterGroup
+              label="Matched topic"
+              activeCount={filters.topics.length}
+            >
+              <p className="mb-1.5 text-[11px] leading-snug text-[var(--text-muted)]">
+                Selecting more than one shows grants matching every topic.
+              </p>
               <div className="max-h-52 overflow-y-auto pr-1">
                 {options.topics.map((t) => (
                   <CheckRow
@@ -450,7 +505,7 @@ export function GrantFilters({
                   />
                 ))}
               </div>
-            </FilterGroup>
+            </CollapsibleFilterGroup>
           ) : null}
         </div>
       </div>

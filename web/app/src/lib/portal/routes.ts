@@ -25,7 +25,7 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   profile: "/app/profile",
   daily: "/app/daily",
   papers: "/app/research-papers",
-  opportunities: "/app/opportunities",
+  opportunities: "/app/grants",
   fellowships: "/app/fellowships",
   conferences: "/app/conferences",
   deadlines: "/app/deadlines",

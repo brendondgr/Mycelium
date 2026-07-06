@@ -29,14 +29,14 @@ export function WorkspaceShell({
   return (
     <PortalProvider user={user}>
       <div
-        className="flex min-h-screen flex-col bg-background text-foreground"
+        className="flex h-screen flex-col overflow-hidden bg-background text-foreground"
         style={{ fontFamily: "var(--font-inter)" }}
       >
         <PortalHeader />
         <PortalMobileNav />
-        <div className="flex flex-1 items-start">
+        <div className="flex min-h-0 flex-1">
           <PortalSidebar />
-          <main className="min-w-0 flex-1 px-4 py-7 sm:px-6 lg:px-9 lg:py-8">
+          <main className="min-w-0 flex-1 overflow-y-auto px-4 py-7 sm:px-6 lg:px-9 lg:py-8">
             <SectionStage stageKey={pathname}>{children}</SectionStage>
           </main>
         </div>

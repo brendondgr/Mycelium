@@ -20,6 +20,7 @@ import {
   GrantFilters,
   deriveGrantFilterOptions,
   filterAndSortGrants,
+  hasActiveGrantFilters,
   type GrantFilterState,
 } from "@/components/portal/sections/grant-filters";
 import { useGrants } from "@/lib/portal/hooks";
@@ -194,12 +195,16 @@ function GrantsList({ grants }: { grants: GrantOpportunity[] }) {
  * matched topic, source, sort) that narrows the already-fetched feed in memory.
  * Fellowships and Conferences live on their own pages.
  */
+/** How many of the top recommended grants to show before "Show all". */
+const DEFAULT_GRANT_LIMIT = 25;
+
 export function OpportunitiesSection() {
   const { data, isLoading, isError } = useGrants();
   const grants = React.useMemo(() => data?.items ?? [], [data]);
   const [filters, setFilters] = React.useState<GrantFilterState>(
     DEFAULT_GRANT_FILTERS,
   );
+  const [showAll, setShowAll] = React.useState(false);
 
   const options = React.useMemo(
     () => deriveGrantFilterOptions(grants),
@@ -210,6 +215,16 @@ export function OpportunitiesSection() {
     () => filterAndSortGrants(grants, filters, today),
     [grants, filters, today],
   );
+
+  // Filters always search the full feed. With no active filter, cap the view to
+  // the top recommended grants until the user opts into the full list.
+  const filtersActive = hasActiveGrantFilters(filters);
+  const capped = !filtersActive && !showAll;
+  const displayed = React.useMemo(
+    () => (capped ? visible.slice(0, DEFAULT_GRANT_LIMIT) : visible),
+    [visible, capped],
+  );
+  const hiddenCount = visible.length - displayed.length;
 
   const showRail = !isLoading && !isError && grants.length > 0;
 
@@ -266,7 +281,23 @@ export function OpportunitiesSection() {
               }
             />
           ) : (
-            <GrantsList grants={visible} />
+            <>
+              <GrantsList grants={displayed} />
+              {hiddenCount > 0 ? (
+                <div className="mt-5 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAll(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    Show all {grants.length} grants
+                    <span className="text-[var(--text-muted)]">
+                      (+{hiddenCount} more)
+                    </span>
+                  </button>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
       </div>

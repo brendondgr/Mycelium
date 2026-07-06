@@ -24,7 +24,7 @@ for the layout standard.
 | A React component used in the portal | `web/app/src/components/portal/` |
 | Onboarding / profile-edit flow (UI) | `web/app/src/components/onboarding/` + route `app/app/onboarding/` |
 | Lab overview / onboarding / switch (UI) | `web/app/src/components/portal/sections/{lab-overview-section,lab-onboarding,labs-section}.tsx`, `portal/{lab-switcher,portal-sidebar}.tsx` |
-| Grants page + filter rail / fellowships / conferences (UI) | `web/app/src/components/portal/sections/{opportunities-section,grant-filters,fellowships-section,conferences-section}.tsx`. Grants (`/app/opportunities`) has a client-side filter rail (`grant-filters.tsx`, pure `filterAndSortGrants`); fellowships is a frontend-only placeholder page (no backend feed) |
+| Grants page + filter rail / fellowships / conferences (UI) | `web/app/src/components/portal/sections/{opportunities-section,grant-filters,fellowships-section,conferences-section}.tsx`. Grants (`/app/grants`) has a client-side filter rail (`grant-filters.tsx`, pure `filterAndSortGrants` — collapsible sponsor/topic facets, AND-inclusive topic match; list caps to top 25 until "Show all"); fellowships is a frontend-only placeholder page (no backend feed) |
 | Onboarding / profile intake (backend) | `web/backend/apps/accounts/intake/` (`lab.py` = lab profile synthesis) |
 | Lab watch + lab profile synthesis (backend) | `web/backend/apps/accounts/` — `LabWatchPreference` model, `LabWatchView` + `LabIntakeSynthesizeView` (`views.py`, `urls.py`) |
 | Login / signup / logout (UI) | `web/app/src/components/auth/` + routes `app/src/app/{login,signup}` |

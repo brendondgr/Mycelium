@@ -30,7 +30,7 @@ export function PortalSidebar() {
   const { section, goToSection, labs, setLabScope } = usePortal();
 
   return (
-    <aside className="sticky top-[61px] hidden max-h-[calc(100vh-61px)] w-[244px] shrink-0 self-start overflow-y-auto border-r border-[var(--divider)] px-3.5 pb-6 pt-[18px] lg:block">
+    <aside className="hidden h-full w-[244px] shrink-0 overflow-y-auto border-r border-[var(--divider)] px-3.5 pb-6 pt-[18px] lg:block">
       <GroupLabel>Workspace</GroupLabel>
       <nav className="mb-[18px] flex flex-col gap-0.5">
         <SidebarNavItem
