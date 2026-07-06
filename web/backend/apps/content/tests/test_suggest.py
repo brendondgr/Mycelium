@@ -61,10 +61,11 @@ def test_llm_ranks_top_slice_then_fallback_fills_the_rest() -> None:
     assert out[0]["similarity"] == 0.78
     assert out[0]["match_percent"] == 92  # carried through, clamped to 0-100
     assert out[1]["source"] == "llm"
-    assert out[1]["match_percent"] == 81  # no "match" -> similarity proxy (0.81)
-    # The paper the model did not pick is filled in deterministically.
+    assert out[1]["match_percent"] is None  # model gave no "match" -> no percent
+    # The paper the model did not pick is a cross-embedding match: no percent.
     assert out[2]["content_id"] == str(hits[2][0].id)
     assert out[2]["source"] == "fallback"
+    assert out[2]["match_percent"] is None
 
 
 def test_only_top_llm_limit_papers_are_llm_ranked() -> None:
@@ -98,7 +99,7 @@ def test_surface_limit_caps_total_suggestions() -> None:
     assert [s["rank"] for s in out] == [1, 2, 3, 4, 5]
 
 
-def test_llm_match_is_clamped_and_defaulted() -> None:
+def test_llm_match_is_clamped_or_dropped() -> None:
     hits = _hits()
 
     def complete(_prompt: str) -> str:
@@ -114,7 +115,7 @@ def test_llm_match_is_clamped_and_defaulted() -> None:
     out = generate_suggestions(INTERESTS, hits, complete=complete)
 
     assert out[0]["match_percent"] == 100  # clamped down from 150
-    assert out[1]["match_percent"] == 78  # garbled -> similarity proxy (0.78)
+    assert out[1]["match_percent"] is None  # garbled -> no fabricated percent
 
 
 def test_fallback_when_no_model() -> None:
@@ -128,8 +129,8 @@ def test_fallback_when_no_model() -> None:
     assert all(s["source"] == "fallback" for s in out)
     # Order follows score (already sorted desc).
     assert out[0]["content_id"] == str(hits[0][0].id)
-    # Fallback match is the score-derived proxy (0.81 -> 81).
-    assert out[0]["match_percent"] == 81
+    # Cross-embedding matches never carry a fabricated percent.
+    assert all(s["match_percent"] is None for s in out)
 
 
 def test_fallback_reason_names_overlapping_interest() -> None:

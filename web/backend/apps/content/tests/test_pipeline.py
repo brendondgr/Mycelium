@@ -260,7 +260,11 @@ def test_llm_suggestions_counted(pgvector) -> None:
 
     def complete(_prompt: str) -> str:
         return json.dumps(
-            {"suggestions": [{"paper": 1, "headline": "Top", "reason": "Fits you."}]}
+            {
+                "suggestions": [
+                    {"paper": 1, "match": 88, "headline": "Top", "reason": "Fits you."}
+                ]
+            }
         )
 
     result = run_for_user(user, search_fn=_no_search, complete=complete)
@@ -269,9 +273,8 @@ def test_llm_suggestions_counted(pgvector) -> None:
     top = RelevanceScore.objects.get(target_user=user, content=near)
     assert top.signals["source"] == "llm"
     assert top.signals["headline"] == "Top"
-    # A percent match is persisted for every suggested paper.
-    assert isinstance(top.signals["match_percent"], int)
-    assert 0 <= top.signals["match_percent"] <= 100
+    # The language model's percent match is persisted for LLM-ranked papers.
+    assert top.signals["match_percent"] == 88
 
 
 @pytest.mark.django_db

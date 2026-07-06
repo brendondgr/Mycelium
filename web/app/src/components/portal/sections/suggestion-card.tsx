@@ -91,7 +91,7 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
                 Mylo pick
               </>
             ) : (
-              "Topical match"
+              "Cross-embedding match"
             )}
           </Pill>
         </div>

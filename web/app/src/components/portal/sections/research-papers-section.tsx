@@ -33,31 +33,35 @@ function SkeletonCard() {
   );
 }
 
+/** How many papers show by default; the rest are cross-embedding matches. */
+const PRIMARY_COUNT = 10;
+
 /**
- * The Research Papers page: today's ranked paper suggestions, each with a
- * percent-match badge and a why-it-matters reason. Fed by the same daily run as
- * the Daily Report summary, but this is where the individual papers live.
+ * The Research Papers page: the top papers ranked and percent-matched by the
+ * language model, with the remaining cross-embedding matches tucked behind a
+ * "show more" toggle (ranked by recommendation, no model percent). Fed by the
+ * same daily run as the Daily Report summary.
  */
 export function ResearchPapersSection() {
   const { data, isLoading, isError } = useDailyReport();
   const suggestions = data?.suggestions ?? [];
-  // The top tier is ranked and explained by the language model ("Mylo pick"); the
-  // rest are surfaced by the fusion scoring with deterministic reasons. The tail
-  // begins where the LLM-ranked cards end.
-  const llmCount = suggestions.filter((s) => s.origin === "llm").length;
-  const hasTail = llmCount > 0 && llmCount < suggestions.length;
+  const [showMore, setShowMore] = React.useState(false);
+
+  // The first PRIMARY_COUNT are the language-model-ranked papers (each with a
+  // percent match); the rest are the cross-embedding tail, in recommendation
+  // order, revealed on demand.
+  const primary = suggestions.slice(0, PRIMARY_COUNT);
+  const extra = suggestions.slice(PRIMARY_COUNT);
 
   const subtitle: React.ReactNode = (() => {
     if (isLoading) return "Gathering today's papers…";
     if (suggestions.length > 0) {
       const when = formatWhen(data?.generated_at ?? null);
-      const count = `Top ${suggestions.length} paper${
-        suggestions.length === 1 ? "" : "s"
-      }`;
-      const ranked = llmCount > 0 ? `, top ${llmCount} ranked by Mylo` : "";
+      const count = `Top ${primary.length} paper${primary.length === 1 ? "" : "s"}`;
+      const more = extra.length > 0 ? ` · ${extra.length} more matches` : "";
       return when
-        ? `${count}${ranked} · gathered ${when}.`
-        : `${count}, ranked by match to your research.`;
+        ? `${count}, ranked by Mylo${more} · gathered ${when}.`
+        : `${count}, ranked by Mylo${more}.`;
     }
     return "Your daily paper suggestions, ranked by how well they match your research.";
   })();
@@ -88,32 +92,53 @@ export function ResearchPapersSection() {
       ) : (
         <>
           <div className="space-y-4">
-            {suggestions.map((suggestion, index) => (
-              <React.Fragment key={suggestion.content_id}>
-                {hasTail && index === llmCount ? (
-                  <div
-                    className="flex items-center gap-3 pt-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]"
-                    role="separator"
-                  >
-                    <span className="h-px flex-1 bg-[var(--border)]" />
-                    Also surfaced
-                    <span className="h-px flex-1 bg-[var(--border)]" />
-                  </div>
-                ) : null}
-                <div
-                  className="portal-fade-up"
-                  style={{ animationDelay: `${index * 60}ms` }}
-                >
-                  <SuggestionCard suggestion={suggestion} />
-                </div>
-              </React.Fragment>
+            {primary.map((suggestion, index) => (
+              <div
+                key={suggestion.content_id}
+                className="portal-fade-up"
+                style={{ animationDelay: `${index * 60}ms` }}
+              >
+                <SuggestionCard suggestion={suggestion} />
+              </div>
             ))}
           </div>
+
+          {extra.length > 0 ? (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setShowMore((open) => !open)}
+                aria-expanded={showMore}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+              >
+                {showMore
+                  ? "Hide cross-embedding matches"
+                  : `Show ${extra.length} more cross-embedding match${
+                      extra.length === 1 ? "" : "es"
+                    }`}
+              </button>
+
+              {showMore ? (
+                <div className="mt-4 space-y-4">
+                  {extra.map((suggestion, index) => (
+                    <div
+                      key={suggestion.content_id}
+                      className="portal-fade-up"
+                      style={{ animationDelay: `${index * 60}ms` }}
+                    >
+                      <SuggestionCard suggestion={suggestion} />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <p className="mt-5 text-xs text-[var(--text-muted)]">
-            Ranked from your research profile by Milo. The match score reflects how
-            well each paper fits your interests. The top papers marked “Mylo pick”
-            were ranked and explained by the language model; those under “Also
-            surfaced” are further matches scored by topic and interest overlap.
+            The top papers marked “Mylo pick” were ranked and percent-matched by the
+            language model — the percent reflects how well it judges each paper fits
+            your research. The cross-embedding matches are further papers found by
+            embedding similarity, listed in recommendation order (no model percent).
           </p>
         </>
       )}

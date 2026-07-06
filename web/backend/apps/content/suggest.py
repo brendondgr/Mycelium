@@ -7,9 +7,10 @@ deliberate two-tier shape (a product requirement):
 - **Surface the top ``surface_limit`` papers** (default 25) so the researcher sees
   the full breadth of what matched today.
 - **Only the top ``llm_limit`` papers** (default 10) are sent to the language model
-  for a bespoke headline, reason, and percent-match judgement. Papers ranked below
-  that carry a deterministic fallback ranking (score-derived match, templated
-  reason) — cheaper and stable, and honest that the model only vetted the top slice.
+  for a bespoke headline, reason, and percent-match judgement. The percent match is
+  *only* ever the model's — papers ranked below (the cross-embedding tail) carry a
+  templated reason and **no percent** (``match_percent=None``), honest that the
+  model only vetted the top slice and that the fusion score is a ranking, not a %.
 
 The language model does the selecting and justifying for the top slice when it is
 reachable; a deterministic fallback (rank by score, template the reason from
@@ -102,7 +103,11 @@ def generate_suggestions(
                 rank=len(out) + 1,
                 headline=_title(item),
                 reason=_fallback_reason(interests, item),
-                match_percent=_similarity_match(score),
+                # Cross-embedding matches carry no percent — the percent is the
+                # language model's meaning judgement, and these papers never went
+                # through it. (The fusion ``score`` is a ranking score, not a
+                # 0-100 similarity, so scaling it would just read as "100%".)
+                match_percent=None,
                 source="fallback",
             )
         )
@@ -233,7 +238,7 @@ def _parse(
                 rank=len(out) + 1,
                 headline=_clean(row.get("headline")) or _title(item),
                 reason=_clean(row.get("reason")) or _fallback_reason({}, item),
-                match_percent=_as_match(row.get("match"), similarity),
+                match_percent=_as_match(row.get("match")),
                 source="llm",
             )
         )
@@ -250,22 +255,18 @@ def _as_index(value: Any, count: int) -> int | None:
     return n - 1 if 1 <= n <= count else None
 
 
-def _as_match(value: Any, similarity: float) -> int:
-    """Clamp the model's percent-match to 0–100; fall back to similarity.
+def _as_match(value: Any) -> int | None:
+    """The model's percent-match clamped to 0–100, or ``None`` if it gave none.
 
-    The model judges fit against the researcher's profile; when it omits or
-    garbles the number we derive an honest proxy from the retrieval similarity
-    so every suggestion still carries a match score.
+    The percent is *only* ever the language model's meaning judgement, so when the
+    model omits or garbles the number we return ``None`` (no badge) rather than
+    fabricating one from the ranking score — a researcher should never see a
+    percent that the model did not actually assign.
     """
     try:
         return max(0, min(100, round(float(value))))
     except (TypeError, ValueError):
-        return _similarity_match(similarity)
-
-
-def _similarity_match(similarity: float) -> int:
-    """A deterministic percent-match proxy from cosine similarity [0, 1]."""
-    return max(0, min(100, round(float(similarity) * 100)))
+        return None
 
 
 # -- fallback -----------------------------------------------------------------
@@ -301,7 +302,7 @@ def _suggestion(
     rank: int,
     headline: str,
     reason: str,
-    match_percent: int,
+    match_percent: int | None,
     source: str,
 ) -> Suggestion:
     return {
