@@ -102,6 +102,8 @@ export const PERSONAL_SLUG = "__personal__";
 export type Suggestion = {
   content_id: string;
   title: string;
+  /** The paper's abstract; shown on the card and searched over. */
+  abstract: string;
   source: string;
   url: string;
   venue: string;
@@ -110,6 +112,10 @@ export type Suggestion = {
   score: number;
   /** The model's 0–100 percent match for this researcher (null if unscored). */
   match_percent: number | null;
+  /** Interest label -> [0,1] fusion score; drives the derived per-category %. */
+  per_interest: Record<string, number>;
+  /** Interest labels this paper matched — the source of the page's filter chips. */
+  matched_interests: string[];
   rank: number | null;
   headline: string;
   reason: string;

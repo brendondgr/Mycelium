@@ -28,8 +28,22 @@ function metaLine(suggestion: Suggestion): string {
  * a neutral chip marks a templated topical match — color is never the only
  * signal, the chip always carries text. Lifts gently on hover (reduced-motion
  * aware via the global transition).
+ *
+ * When the reader is filtering by interest (`focusMode`), the badge shows a
+ * `displayPercent` derived from that paper's per-interest fusion scores with a
+ * neutral dot — that number is not Mylo's holistic judgement, so it never wears
+ * the headshot. Unfiltered, the badge shows the language model's own percent and
+ * (when Mylo authored it) its headshot, matching the Grants page.
  */
-export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
+export function SuggestionCard({
+  suggestion,
+  displayPercent,
+  focusMode = false,
+}: {
+  suggestion: Suggestion;
+  displayPercent?: number;
+  focusMode?: boolean;
+}) {
   const isMylo = suggestion.origin === "llm";
 
   return (
@@ -46,7 +60,14 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
           </h3>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <MatchBadge percent={suggestion.match_percent} />
+          {focusMode ? (
+            <MatchBadge percent={displayPercent ?? null} />
+          ) : (
+            <MatchBadge
+              percent={suggestion.match_percent}
+              origin={suggestion.origin}
+            />
+          )}
           <Pill tone={isMylo ? "accent" : "neutral"} className="shrink-0">
             {isMylo ? (
               <>
@@ -54,7 +75,7 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
                 Mylo pick
               </>
             ) : (
-              "Cross-embedding match"
+              "Cross-topics match"
             )}
           </Pill>
         </div>
@@ -64,9 +85,41 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
         {metaLine(suggestion)}
       </p>
 
-      <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
-        {suggestion.reason}
-      </p>
+      {suggestion.abstract ? (
+        <p className="mt-3 line-clamp-5 text-sm leading-relaxed text-[var(--text-secondary)]">
+          {suggestion.abstract}
+        </p>
+      ) : null}
+
+      {/* Mylo's read on why this fits — a soft primary field flags the AI note,
+          matching the Grants page. A templated topical match stays a plain line. */}
+      {suggestion.reason ? (
+        isMylo ? (
+          <div
+            className="mt-3 flex items-start gap-2.5 rounded-xl border p-3"
+            style={{
+              borderColor: "color-mix(in srgb, var(--primary) 30%, transparent)",
+              backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/mylo-headshot.webp"
+              alt=""
+              width={24}
+              height={24}
+              className="mt-0.5 h-6 w-6 shrink-0 rounded-full object-cover"
+            />
+            <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+              {suggestion.reason}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+            {suggestion.reason}
+          </p>
+        )
+      ) : null}
 
       {suggestion.url ? (
         <a

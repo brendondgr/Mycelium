@@ -18,12 +18,26 @@ def _paper(title: str) -> ContentItem:
         source="OpenAlex",
         external_id=title,
         source_url="https://example.org/p",
-        metadata={"title": title, "venue": "Nature", "year": 2026},
+        metadata={
+            "title": title,
+            "abstract": f"Abstract of {title}",
+            "venue": "Nature",
+            "year": 2026,
+        },
     )
 
 
 def _suggest(
-    user, paper, *, rank, run_at, score=0.8, suggested=True, match=80, focus_areas=None
+    user,
+    paper,
+    *,
+    rank,
+    run_at,
+    score=0.8,
+    suggested=True,
+    match=80,
+    focus_areas=None,
+    per_interest=None,
 ) -> RelevanceScore:
     return RelevanceScore.objects.create(
         content=paper,
@@ -37,6 +51,7 @@ def _suggest(
             "reason": f"Reason {rank}",
             "match_percent": match,
             "focus_areas": focus_areas or [],
+            "per_interest": per_interest or {},
             "source": "llm",
         },
     )
@@ -77,6 +92,7 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
         run_at="2026-06-29T00:00:00",
         match=90,
         focus_areas=["Knowledge Graphs"],
+        per_interest={"Knowledge Graphs": 0.82},
     )
 
     client.force_authenticate(user)
@@ -87,6 +103,7 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
     titles = [s["title"] for s in resp.data["suggestions"]]
     assert titles == ["First", "Second"]  # latest run only, rank order
     assert old.content.metadata["title"] == "Old"  # excluded
+    top = resp.data["suggestions"][0]
     assert {
         "headline",
         "reason",
@@ -95,9 +112,17 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
         "venue",
         "year",
         "match_percent",
-    } <= set(resp.data["suggestions"][0])
-    assert resp.data["suggestions"][0]["origin"] == "llm"
-    assert resp.data["suggestions"][0]["match_percent"] == 90
+        "abstract",
+        "per_interest",
+        "matched_interests",
+    } <= set(top)
+    assert top["origin"] == "llm"
+    assert top["match_percent"] == 90
+    # The page reads the abstract, the per-interest fusion scores, and the
+    # matched interest labels (chips) straight off the suggestion.
+    assert top["abstract"] == "Abstract of First"
+    assert top["per_interest"] == {"Knowledge Graphs": 0.82}
+    assert top["matched_interests"] == ["Knowledge Graphs"]
     assert first.signals["rank"] == 1
 
     # The daily summary rolls up today's suggested papers (latest run only).

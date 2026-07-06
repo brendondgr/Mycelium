@@ -17,6 +17,7 @@ class SuggestionSerializer(serializers.Serializer):
 
     content_id = serializers.SerializerMethodField()
     title = serializers.SerializerMethodField()
+    abstract = serializers.SerializerMethodField()
     source = serializers.CharField(source="content.source")
     url = serializers.SerializerMethodField()
     venue = serializers.SerializerMethodField()
@@ -24,6 +25,8 @@ class SuggestionSerializer(serializers.Serializer):
     authors = serializers.SerializerMethodField()
     score = serializers.FloatField()
     match_percent = serializers.SerializerMethodField()
+    per_interest = serializers.SerializerMethodField()
+    matched_interests = serializers.SerializerMethodField()
     rank = serializers.SerializerMethodField()
     headline = serializers.SerializerMethodField()
     reason = serializers.SerializerMethodField()
@@ -37,6 +40,11 @@ class SuggestionSerializer(serializers.Serializer):
 
     def get_title(self, score: RelevanceScore) -> str:
         return self._meta(score).get("title") or "Untitled paper"
+
+    def get_abstract(self, score: RelevanceScore) -> str:
+        # The paper's abstract (same metadata field the BM25 channel indexes);
+        # the Research Papers page shows it and searches over it client-side.
+        return self._meta(score).get("abstract") or ""
 
     def get_url(self, score: RelevanceScore) -> str:
         return self._meta(score).get("pdf_url") or score.content.source_url or ""
@@ -55,6 +63,16 @@ class SuggestionSerializer(serializers.Serializer):
         # The language model's 0–100 fit judgement for this researcher (a
         # similarity-derived proxy when the model was unavailable).
         return score.signals.get("match_percent")
+
+    def get_per_interest(self, score: RelevanceScore) -> dict:
+        # {interest label -> [0,1] fusion score} for the multi-interest path; the
+        # page derives a per-interest "focus %" from this when the reader filters
+        # by category. Empty on the single-vector fallback path (no declared areas).
+        return score.signals.get("per_interest") or {}
+
+    def get_matched_interests(self, score: RelevanceScore) -> list:
+        # The interest labels this paper matched — the source of the page's chips.
+        return score.signals.get("focus_areas") or []
 
     def get_rank(self, score: RelevanceScore):
         return score.signals.get("rank")
