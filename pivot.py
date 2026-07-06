@@ -76,6 +76,7 @@ def _recommend(rest: list[str], *, ingest: bool) -> int:
     """Run the batch pipeline in-process: (optional scrape+dedup+prune) + recommend."""
     args = _parse(rest, scrape_flags=ingest)
     _bootstrap_django()
+    _ensure_migrated()
     from apps.content.opportunities import run_daily_opportunities_batch
     from apps.content.tasks import select_users
 
@@ -100,6 +101,27 @@ def _recommend(rest: list[str], *, ingest: bool) -> int:
     new = sum(r.new for r in batch.results)
     print(f"\n[done] {ok}/{len(batch.results)} runs ok, {new} new item(s) surfaced.")
     return 0
+
+
+def _ensure_migrated() -> None:
+    """Apply any pending database migrations (idempotent; no-op when up to date).
+
+    Guards the exact failure where the running database predates a new migration
+    (e.g. a table this feature added does not exist yet), turning a deep ORM
+    traceback into a one-line, self-healing step. Safe: it only applies the
+    migrations already committed in the repo — the same as running ``migrate``.
+    """
+    from django.db import DEFAULT_DB_ALIAS, connections
+    from django.db.migrations.executor import MigrationExecutor
+
+    executor = MigrationExecutor(connections[DEFAULT_DB_ALIAS])
+    plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
+    if not plan:
+        return
+    print(f"Applying {len(plan)} pending database migration(s)…", flush=True)
+    from django.core.management import call_command
+
+    call_command("migrate", verbosity=0)
 
 
 def _ensure_chromium() -> None:
@@ -187,6 +209,7 @@ def _scrape(rest: list[str]) -> int:
 
 def _import(rest: list[str]) -> int:
     _bootstrap_django()
+    _ensure_migrated()
     from apps.scraper.pivot.importer import load_json
     from apps.scraper.pivot.ingest import ingest_pivot
 
