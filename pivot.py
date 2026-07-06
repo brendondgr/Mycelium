@@ -3,17 +3,20 @@
 
 The headline command does the whole thing in a single process:
 
-    uv run --project web/backend pivot.py all
+    uv run pivot.py all
         # 1. scrape every user's watched grants + all conferences (best-effort)
         # 2. de-duplicate + prune expired into the content store, embed new ones
         # 3. recommend/rank the fresh matches to every user
 
 Granular steps (same in-process runner):
 
-    uv run --project web/backend pivot.py login        # interactive SSO -> save session
-    uv run --project web/backend pivot.py scrape        # browser scrape -> data/pivot/*.json
-    uv run --project web/backend pivot.py import         # data/pivot/*.json -> content store
-    uv run --project web/backend pivot.py distribute     # recommend on the existing corpus
+    uv run pivot.py login        # interactive SSO -> save session
+    uv run pivot.py scrape        # browser scrape -> data/pivot/*.json
+    uv run pivot.py import         # data/pivot/*.json -> content store
+    uv run pivot.py distribute     # recommend on the existing corpus
+
+(Run from the repo root: the root pyproject.toml provides the environment. The
+stack must be up — ``python run.py up`` — so ``DATABASE_URL`` resolves.)
 
 Flags pass through: ``all`` / ``distribute`` accept ``--user <name>`` (repeatable),
 ``--no-llm`` (deterministic scoring), ``--dry-run`` (persist nothing); ``all`` also
