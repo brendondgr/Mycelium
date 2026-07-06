@@ -136,18 +136,22 @@ def _llm_suggestions(
     ask = complete if complete is not None else _settings_complete
     try:
         raw = ask(_build_prompt(interests, shown, limit=limit))
-    except Exception:
+    except Exception as exc:
+        # An unreachable model is an expected degradation — one concise line, not
+        # a full traceback — then fall back to the deterministic digest.
         logger.warning(
-            "LLM suggestion generation failed; using similarity fallback.",
-            exc_info=True,
+            "LLM suggestion generation unavailable (%s); using similarity fallback.",
+            exc,
         )
         return []
+    if not raw:
+        return []  # no model / empty response — fall back quietly
     parsed = _parse(raw, shown, limit=limit)
     if not parsed:
         logger.warning(
-            "LLM returned no usable suggestions; using similarity fallback. "
+            "LLM returned unparseable suggestions; using similarity fallback. "
             "Response head: %r",
-            (raw or "")[:300],
+            raw[:300],
         )
     return parsed
 

@@ -127,16 +127,19 @@ def _llm_suggestions(
     ask = complete if complete is not None else _settings_complete(area)
     try:
         raw = ask(_build_prompt(area, interests, profile_meta, shown, limit=limit))
-    except Exception:
-        logger.warning(
-            "LLM opportunity scoring failed; using fallback.", exc_info=True
-        )
+    except Exception as exc:
+        # A missing/unreachable model is an expected degradation (e.g. the vLLM
+        # endpoint is down), so log one concise line — not a full traceback per
+        # user/area — and fall back to deterministic scoring.
+        logger.warning("LLM opportunity scoring unavailable (%s); using fallback.", exc)
         return []
+    if not raw:
+        return []  # no model / empty response — fall back quietly
     parsed = _parse(raw, shown, limit=limit)
     if not parsed:
         logger.warning(
-            "LLM returned no usable opportunity scores; using fallback. Head: %r",
-            (raw or "")[:300],
+            "LLM returned unparseable opportunity scores; using fallback. Head: %r",
+            raw[:300],
         )
     return parsed
 

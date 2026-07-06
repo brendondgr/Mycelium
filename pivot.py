@@ -77,6 +77,8 @@ def _recommend(rest: list[str], *, ingest: bool) -> int:
     args = _parse(rest, scrape_flags=ingest)
     _bootstrap_django()
     _ensure_migrated()
+    if not args.no_llm:
+        _fix_llm_host()
     from apps.content.opportunities import run_daily_opportunities_batch
     from apps.content.tasks import select_users
 
@@ -101,6 +103,26 @@ def _recommend(rest: list[str], *, ingest: bool) -> int:
     new = sum(r.new for r in batch.results)
     print(f"\n[done] {ok}/{len(batch.results)} runs ok, {new} new item(s) surfaced.")
     return 0
+
+
+def _fix_llm_host() -> None:
+    """Make the LLM endpoint reachable from a host run.
+
+    ``LLM_BASE_URL`` is configured for the containers as
+    ``http://host.docker.internal:<port>/v1`` — a hostname that only resolves
+    inside Docker. ``pivot.py`` runs on the host, where the same vLLM tunnel is at
+    ``localhost``. Rewrite it for this process so host runs actually score with the
+    model instead of always falling back. The containers' own config is untouched.
+    """
+    from django.conf import settings
+
+    url = getattr(settings, "LLM_BASE_URL", "") or ""
+    if "host.docker.internal" in url:
+        settings.LLM_BASE_URL = url.replace("host.docker.internal", "localhost")
+        print(
+            f"note: LLM endpoint rewritten for host run -> {settings.LLM_BASE_URL}",
+            flush=True,
+        )
 
 
 def _ensure_migrated() -> None:
