@@ -1,6 +1,8 @@
+from datetime import date
+
 from rest_framework import serializers
 
-from .models import RelevanceScore
+from .models import RelevanceScore, SavedOpportunity
 
 
 class SuggestionSerializer(serializers.Serializer):
@@ -64,3 +66,176 @@ class SuggestionSerializer(serializers.Serializer):
     def get_origin(self, score: RelevanceScore) -> str:
         # "llm" when the language model wrote the reason, else "fallback".
         return score.signals.get("source") or "fallback"
+
+
+class _OpportunitySerializer(serializers.Serializer):
+    """Shared read shape for a matched grant/conference (a :class:`RelevanceScore`).
+
+    Flattens the score + its content item + the pipeline's ``signals`` into what the
+    Opportunities / Conferences pages render: the ranking (percent, rank, reason),
+    the "New"/pin state, the actionable deadline, and whether the user saved it.
+    Subclasses add the area-specific display fields. ``today`` (ISO) is passed in
+    the serializer context so the pin/deadline states are evaluated once per request.
+    """
+
+    content_id = serializers.SerializerMethodField()
+    url = serializers.SerializerMethodField()
+    score = serializers.FloatField()
+    match_percent = serializers.SerializerMethodField()
+    rank = serializers.SerializerMethodField()
+    headline = serializers.SerializerMethodField()
+    reason = serializers.SerializerMethodField()
+    origin = serializers.SerializerMethodField()
+    is_new = serializers.SerializerMethodField()
+    pinned = serializers.SerializerMethodField()
+    deadline_date = serializers.SerializerMethodField()
+    deadline_kind = serializers.SerializerMethodField()
+    status_summary = serializers.SerializerMethodField()
+    saved = serializers.SerializerMethodField()
+
+    def _meta(self, score: RelevanceScore) -> dict:
+        return (score.content.metadata or {}) if score.content_id else {}
+
+    def _today(self) -> str:
+        return self.context.get("today", "")
+
+    def get_content_id(self, score: RelevanceScore) -> str:
+        return str(score.content_id)
+
+    def get_url(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("website") or (
+            score.content.source_url if score.content_id else ""
+        )
+
+    def get_match_percent(self, score: RelevanceScore):
+        return score.signals.get("match_percent")
+
+    def get_rank(self, score: RelevanceScore):
+        return score.signals.get("rank")
+
+    def get_headline(self, score: RelevanceScore) -> str:
+        return score.signals.get("headline") or ""
+
+    def get_reason(self, score: RelevanceScore) -> str:
+        return score.signals.get("reason") or ""
+
+    def get_origin(self, score: RelevanceScore) -> str:
+        return score.signals.get("source") or "fallback"
+
+    def get_pinned(self, score: RelevanceScore) -> bool:
+        # Pinned (and the "New" tag shows) while the one-week window is still open.
+        pinned_until = score.signals.get("pinned_until")
+        return bool(pinned_until and pinned_until >= self._today())
+
+    def get_is_new(self, score: RelevanceScore) -> bool:
+        return bool(score.signals.get("is_new")) and self.get_pinned(score)
+
+    def get_deadline_date(self, score: RelevanceScore) -> str:
+        return score.signals.get("deadline_date") or ""
+
+    def get_deadline_kind(self, score: RelevanceScore) -> str:
+        return score.signals.get("next_kind") or ""
+
+    def get_status_summary(self, score: RelevanceScore) -> str:
+        return score.signals.get("status_summary") or ""
+
+    def get_saved(self, score: RelevanceScore) -> bool:
+        return str(score.content_id) in self.context.get("saved_ids", set())
+
+
+class GrantSerializer(_OpportunitySerializer):
+    """A matched funding opportunity for the Opportunities page (grants column)."""
+
+    title = serializers.SerializerMethodField()
+    sponsor = serializers.SerializerMethodField()
+    amount = serializers.SerializerMethodField()
+    matched_topics = serializers.SerializerMethodField()
+
+    def get_title(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("title") or "Untitled grant"
+
+    def get_sponsor(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("sponsor") or ""
+
+    def get_amount(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("amount") or ""
+
+    def get_matched_topics(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("matched_topics") or ""
+
+
+class ConferenceSerializer(_OpportunitySerializer):
+    """A matched conference for the Conferences page (card format)."""
+
+    title = serializers.SerializerMethodField()
+    location = serializers.SerializerMethodField()
+    country = serializers.SerializerMethodField()
+    event_dates = serializers.SerializerMethodField()
+    deadlines = serializers.SerializerMethodField()
+    keywords = serializers.SerializerMethodField()
+
+    def get_title(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("name") or "Untitled conference"
+
+    def get_location(self, score: RelevanceScore) -> str:
+        meta = self._meta(score)
+        return ", ".join(p for p in (meta.get("location"), meta.get("country")) if p)
+
+    def get_country(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("country") or ""
+
+    def get_event_dates(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("event_dates") or ""
+
+    def get_deadlines(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("deadlines") or ""
+
+    def get_keywords(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("keywords") or ""
+
+
+class SavedDeadlineSerializer(serializers.Serializer):
+    """One saved deadline for the Deadlines page (reads the save snapshot).
+
+    Backed by the save snapshot, not the live item, so it survives the daily prune
+    of expired opportunities. ``days_remaining`` / ``within_week`` are computed
+    from ``today`` in the serializer context.
+    """
+
+    id = serializers.UUIDField(read_only=True)
+    content_id = serializers.SerializerMethodField()
+    area = serializers.CharField()
+    title = serializers.CharField()
+    url = serializers.CharField()
+    subtitle = serializers.CharField()
+    deadline_date = serializers.DateField()
+    deadline_kind = serializers.CharField()
+    note = serializers.CharField()
+    days_remaining = serializers.SerializerMethodField()
+    within_week = serializers.SerializerMethodField()
+
+    def get_content_id(self, saved: SavedOpportunity):
+        return str(saved.content_id) if saved.content_id else None
+
+    def get_days_remaining(self, saved: SavedOpportunity):
+        return _days_until(saved.deadline_date, self.context.get("today_date"))
+
+    def get_within_week(self, saved: SavedOpportunity) -> bool:
+        days = self.get_days_remaining(saved)
+        return days is not None and 0 <= days <= 7
+
+
+def _days_until(deadline, today_date) -> int | None:
+    """Whole days from ``today_date`` to ``deadline`` (``None`` if no deadline).
+
+    Tolerates a string deadline (a freshly-created row not yet round-tripped
+    through the DB carries the ISO string it was saved with).
+    """
+    if not deadline or today_date is None:
+        return None
+    if isinstance(deadline, str):
+        try:
+            deadline = date.fromisoformat(deadline[:10])
+        except ValueError:
+            return None
+    return (deadline - today_date).days

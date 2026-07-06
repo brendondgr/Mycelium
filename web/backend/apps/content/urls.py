@@ -7,4 +7,37 @@ urlpatterns = [
     # (matches the workspace read endpoints).
     path("daily-report/", views.DailyReportView.as_view(), name="daily-report"),
     path("daily-report", views.DailyReportView.as_view(), name="daily-report-no-slash"),
+    # Opportunities (personal workspace): grants + conferences feeds, the save
+    # system, deadlines, and the notification-bell alerts.
+    path(
+        "opportunities/grants/",
+        views.GrantsView.as_view(),
+        name="opportunities-grants",
+    ),
+    path("opportunities/grants", views.GrantsView.as_view()),
+    path(
+        "opportunities/conferences/",
+        views.ConferencesView.as_view(),
+        name="opportunities-conferences",
+    ),
+    path("opportunities/conferences", views.ConferencesView.as_view()),
+    path(
+        "opportunities/save/",
+        views.SaveOpportunityView.as_view(),
+        name="opportunity-save",
+    ),
+    path("opportunities/save", views.SaveOpportunityView.as_view()),
+    path(
+        "opportunities/save/<uuid:content_id>/",
+        views.SaveOpportunityView.as_view(),
+        name="opportunity-unsave",
+    ),
+    path(
+        "opportunities/save/<uuid:content_id>",
+        views.SaveOpportunityView.as_view(),
+    ),
+    path("deadlines/", views.DeadlinesView.as_view(), name="deadlines"),
+    path("deadlines", views.DeadlinesView.as_view()),
+    path("notifications/", views.NotificationsView.as_view(), name="notifications"),
+    path("notifications", views.NotificationsView.as_view()),
 ]

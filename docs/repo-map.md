@@ -31,7 +31,10 @@ for the layout standard.
 | Users, labs, departments, memberships, roles | `web/backend/apps/accounts/models.py` |
 | Projects & project visibility | `web/backend/apps/research/` (list/create + lab-projects browse + self-join/leave/add-member in `views.py`) |
 | Daily research suggestions pipeline | `web/backend/apps/content/` (`pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`) |
-| Papers/grants/fellowships content items & scores | `web/backend/apps/content/models.py` |
+| Daily grants/conferences matching (1am) | `web/backend/apps/content/` (`opportunities.py`, `opportunity_llm.py`, `pinning.py`) + task/command `run_daily_opportunities`; root `manual_opportunities.py` |
+| Pivot-RP (ProQuest) grants/conferences ingest | `web/backend/apps/scraper/pivot/` (`importer.py`, `ingest.py`, `records.py`, `grants.py`, `conferences.py`, `scrape.py`, `login.py`) + command `ingest_pivot` |
+| Opportunities / conferences / deadlines / saves API | `web/backend/apps/content/{views,serializers,urls}.py` |
+| Papers/grants/fellowships/conferences items, scores, saves | `web/backend/apps/content/models.py` (`ContentItem`, `RelevanceScore`, `SavedOpportunity`) |
 | Literature scraping / source adapters | `web/backend/apps/scraper/` (`sources/`, `ingest.py`, `window.py`) |
 | The LLM client | `web/backend/apps/core/llm.py` |
 | Billing / subscriptions / entitlements | `web/backend/apps/billing/` |
@@ -84,9 +87,9 @@ data ownership live in [`architecture.md`](architecture.md#backend-app-boundarie
 | `core` | `llm.py` (LLM client), `db.py` (exactly-one-FK helper), `people.py`, `views.py` (health) |
 | `accounts` | `intake/` (profile import→synthesize, see below), `services.py`, `provisioning.py`, `permissions.py`, `aggregates.py`, `embedding.py`, `interests.py`, `signals.py`, `management/commands/` |
 | `research` | projects scoped to user/lab/department + visibility rules |
-| `content` | `pipeline.py`, `interests_query.py` (per-interest queries), `retrieval.py` (pgvector), `lexical.py` (BM25), `fusion.py` (RRF + cross-interest combine), `ranking.py`, `suggest.py`, `embeddings.py`, `guards.py`, `runlog.py`, `tasks.py` (Celery), `management/commands/` |
+| `content` | papers **and** grants/conferences. Daily papers: `pipeline.py`, `interests_query.py`, `retrieval.py` (pgvector), `lexical.py` (BM25), `fusion.py`, `ranking.py`, `suggest.py`. Opportunities: `opportunities.py` (per-user grants/conf match, reuses `fuse_interests_pool`), `opportunity_llm.py` (scope/eligibility/topic scoring), `pinning.py` (New + 1-week pin). `embeddings.py`, `guards.py`, `runlog.py`, `tasks.py` (Celery — `run_daily_suggestions` 6am, `run_daily_opportunities` 1am), `management/commands/` |
 | `billing` | `entitlements.py`, `services.py` (subscriptions, per-seat, tiers) |
-| `scraper` | `sources/` (openalex, pubmed, semanticscholar + `base`, `registry`, `dedup`, `record`), `ingest.py`, `window.py` (scan window), `embedding.py`, `tasks.py`, `management/commands/scan_literature` |
+| `scraper` | `sources/` (openalex, pubmed, semanticscholar + `base`, `registry`, `dedup`, `record`), `ingest.py`, `window.py` (scan window), `embedding.py`, `tasks.py`, `management/commands/scan_literature`. `pivot/` = vendored Pivot-RP (ProQuest) grants/conferences: `importer.py`/`ingest.py` (upsert+prune into `ContentItem`), `records.py`, `normalize.py`, `deadlines.py`, `status.py`, Playwright `grants.py`/`conferences.py`/`login.py`/`scrape.py` (optional `pivot` extra); command `ingest_pivot` |
 
 > The `planner`, `graph`, and `reports` apps are **planned, not yet built** (see
 > `architecture.md`). The planner's early logic currently lives in

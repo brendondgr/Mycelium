@@ -272,3 +272,89 @@ Create a project. Body `{ "name": "Oceanography", "lab": "reyes-lab",
 requires manage rights on it (owner/admin); without `lab`, it is a personal
 project scoped to the caller. `goals` is optional. Success `201`. `400` for a
 blank name; `403` when the caller cannot manage the named lab.
+
+## Research & opportunities (personal workspace)
+
+Base path: `/api/`. All require authentication; each returns the signed-in user's
+own data only. Papers come from `GET /api/daily-report/` (the daily research
+digest). Grants and conferences come from the daily 1am opportunity matching.
+
+### `GET /api/opportunities/grants/`
+
+The user's ranked funding opportunities from the latest run, pinned-first (a
+brand-new high-fit grant floats to the top for its first week). Success `200`:
+
+```json
+{
+  "generated_at": "2026-07-05T01:00:00+00:00",
+  "items": [
+    {
+      "content_id": "uuid", "title": "Amazon Agentic AI Award", "sponsor": "Amazon",
+      "amount": "Upper: $70,000 USD", "matched_topics": "Agentic AI; Knowledge Graphs",
+      "url": "https://...", "score": 1.19, "match_percent": 88, "rank": 1,
+      "headline": "Strong Fit", "reason": "Aligns with your agentic AI work.",
+      "origin": "llm", "is_new": true, "pinned": true,
+      "deadline_date": "2026-11-12", "deadline_kind": "application",
+      "status_summary": "Application due 2026-11-12", "saved": false
+    }
+  ]
+}
+```
+
+`match_percent` is the model's 0–100 fit judgement (null on the fallback tail).
+`is_new`/`pinned` hold while the one-week window is open. `saved` reflects whether
+the user has saved the item to their deadlines. `generated_at` is `null` before
+the first run.
+
+### `GET /api/opportunities/conferences/`
+
+Same shape for conferences (card format), with `location`, `country`,
+`event_dates`, `deadlines`, and `keywords` instead of the grant fields.
+
+### `POST /api/opportunities/save/`
+
+Save a grant/conference to the user's deadlines. Body `{ "content_id": "uuid",
+"note": "optional" }`. Snapshots the display + deadline fields so the saved
+deadline survives the daily prune of expired items. Success `201` with the saved
+deadline. `400` without `content_id`; `404` if it is not a grant/conference.
+
+### `DELETE /api/opportunities/save/<content_id>/`
+
+Remove the user's save for that item. `204` on success, `404` if not saved.
+
+### `GET /api/deadlines/`
+
+All the user's saved deadlines, soonest first. Success `200`:
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid", "content_id": "uuid", "area": "grant",
+      "title": "Amazon Agentic AI Award", "url": "https://...", "subtitle": "Amazon",
+      "deadline_date": "2026-11-12", "deadline_kind": "application", "note": "",
+      "days_remaining": 5, "within_week": true
+    }
+  ]
+}
+```
+
+`content_id` is `null` once the source item has been pruned (the snapshot
+remains). `days_remaining`/`within_week` are relative to today.
+
+### `GET /api/notifications/`
+
+Deadline alerts for the header bell: saved items due within a week. Success `200`:
+
+```json
+{
+  "count": 1,
+  "items": [
+    {
+      "id": "uuid", "content_id": "uuid", "area": "grant", "title": "Amazon Award",
+      "url": "https://...", "deadline_date": "2026-07-09", "days_remaining": 4,
+      "message": "“Amazon Award” — less than a week left (4 days left)."
+    }
+  ]
+}
+```
