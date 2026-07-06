@@ -89,11 +89,9 @@ export function OverviewSection() {
   // Watch stats
   const watchTopicsCount = watch?.topics?.length ?? null;
   const cadenceLabel = watch
-    ? watch.cadence === "realtime"
-      ? "Real-time"
-      : watch.cadence === "daily"
-        ? "Daily"
-        : "Weekly"
+    ? watch.cadence === "daily"
+      ? "Daily"
+      : "Weekly"
     : null;
 
   return (

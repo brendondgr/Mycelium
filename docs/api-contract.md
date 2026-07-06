@@ -162,7 +162,7 @@ Reads or updates the caller's own profile (`academic_title`, `institution`,
 
 Reads or updates what Milo keeps an eye on for the caller (own only). The row is
 created on first access with defaults. Body / response:
-`{ "topics": [...], "categories": [...], "cadence": "daily|weekly|realtime" }`.
+`{ "topics": [...], "categories": [...], "cadence": "daily|weekly" }`.
 `topics` and `categories` are deduped string lists (≤ 50 each); an unknown
 cadence or a non-list value returns `400`.
 

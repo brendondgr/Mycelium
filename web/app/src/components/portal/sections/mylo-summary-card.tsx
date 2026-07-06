@@ -33,12 +33,7 @@ export function MyloSummaryCard() {
     detail = "Loading your watch preferences…";
   } else if (watch && watch.topics.length > 0) {
     const topicCount = watch.topics.length;
-    const cadenceLabel =
-      watch.cadence === "realtime"
-        ? "real-time"
-        : watch.cadence === "daily"
-          ? "daily"
-          : "weekly";
+    const cadenceLabel = watch.cadence === "daily" ? "daily" : "weekly";
     detail = `I'm watching ${topicCount} topic${topicCount === 1 ? "" : "s"} across literature databases and funding sources. You're set to receive a ${cadenceLabel} digest — I'll flag new papers, open grants, and fellowships that match your interests.`;
   } else if (completeness.percent === 100) {
     detail =

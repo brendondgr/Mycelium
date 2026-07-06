@@ -67,7 +67,7 @@ export type SynthesizeInput = {
   resume?: File | null;
 };
 
-export type WatchCadence = "daily" | "weekly" | "realtime";
+export type WatchCadence = "daily" | "weekly";
 
 export type WatchPreference = {
   topics: string[];

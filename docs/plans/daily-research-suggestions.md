@@ -41,7 +41,7 @@ happened yet.
 - `apps/scraper/ingest.py::scan(queries, *, window=None, months_back=2, months_forward=1, sources=None, embed=True, search_fn=None, embedder=None) -> ScanSummary` upserts global `content.ContentItem(type="paper")` rows and embeds new ones with fastembed when available. `apps/scraper/tasks.py::scan_literature` wraps it; `scan_literature` management command is the CLI.
 - `apps/scraper/embedding.py::get_default_embedder()` returns a batch `Callable[[list[str]], list[list[float]]]` (unit-normalized) or `None` if fastembed/numpy are missing. `build_article_text(record)` = title + abstract.
 - `accounts.Profile` (`user.profile`): `interests` JSON contract (`statement`, `areas`, `keywords`, `methods`, `skills`, …), `embedding` (pgvector, currently NULL), `embedding_text`. `accounts/embedding.py::canonical_text(profile)` builds the blob; `set_embedder` installs a global single-text embedder (no-op by default).
-- `accounts.WatchPreference` (`user.watch`): `topics`, `categories`, `cadence` (daily/weekly/realtime). Brendon: rich topics, categories incl. `papers`, cadence `weekly`.
+- `accounts.WatchPreference` (`user.watch`): `topics`, `categories`, `cadence` (daily/weekly). Brendon: rich topics, categories incl. `papers`, cadence `weekly`.
 - `content.RelevanceScore`: FK `content`, polymorphic target (exactly one of user/project/lab/dept), `score` float, `signals` JSON, unique `(content, target_user)`, default order `-score`.
 - `apps/core/llm.py`: `build_llm_client()` → `LLMClient.complete(messages, …) -> LLMResponse(content, reasoning, finish_reason, …)`. `accounts/intake/extract.py` is the canonical LLM→JSON→fallback pattern to mirror. `llm_check` command verifies reachability.
 - Celery app `config/celery.py` (`autodiscover_tasks`), Redis broker; **no Beat schedule and no beat service yet**. `compose.yaml` has `worker` but no `beat`.
@@ -97,7 +97,7 @@ happened yet.
 
 - Grants/fellowships (papers only), opportunity/deadline scoring, and the other "coming soon" sections.
 - Lab/department/project targets (user target only for now).
-- Per-cadence gating logic beyond a daily run + a `cadence` note (weekly/real-time refinement later).
+- Per-cadence gating logic beyond a daily run + a `cadence` note (weekly refinement later).
 - Notifications/digests over email/Slack/Discord.
 - Relevance-tuning UI, audit-log surfacing, and write actions.
 - `django-celery-beat` DB scheduler (static `CELERY_BEAT_SCHEDULE` is enough now).

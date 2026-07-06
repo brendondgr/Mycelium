@@ -190,11 +190,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
               <p className="mt-3 text-[12px] text-[var(--text-muted)]">
                 {watch.categories.length} signal type
                 {watch.categories.length === 1 ? "" : "s"} ·{" "}
-                {watch.cadence === "realtime"
-                  ? "Real-time"
-                  : watch.cadence === "daily"
-                    ? "Daily digest"
-                    : "Weekly digest"}
+                {watch.cadence === "daily" ? "Daily digest" : "Weekly digest"}
               </p>
             </>
           ) : (

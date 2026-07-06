@@ -89,7 +89,6 @@ const WATCH_CATEGORIES = [
 const CADENCES: { id: WatchCadence; label: string }[] = [
   { id: "daily", label: "Daily digest" },
   { id: "weekly", label: "Weekly digest" },
-  { id: "realtime", label: "Real-time" },
 ];
 
 const STEP_LABELS = [

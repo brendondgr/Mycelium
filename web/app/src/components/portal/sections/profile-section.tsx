@@ -219,8 +219,7 @@ function WatchCard() {
   const categories = watch?.categories ?? [];
   const cadence = watch?.cadence ?? "weekly";
 
-  const cadenceLabel =
-    cadence === "realtime" ? "real-time" : cadence === "daily" ? "daily" : "weekly";
+  const cadenceLabel = cadence === "daily" ? "daily" : "weekly";
 
   return (
     <Card className="p-[22px]">

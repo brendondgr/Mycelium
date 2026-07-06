@@ -291,7 +291,6 @@ class WatchCadence(models.TextChoices):
 
     DAILY = "daily", "Daily"
     WEEKLY = "weekly", "Weekly"
-    REALTIME = "realtime", "Real-time"
 
 
 class WatchPreference(models.Model):
