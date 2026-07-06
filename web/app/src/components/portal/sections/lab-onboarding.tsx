@@ -283,7 +283,7 @@ function LabEditorForm({
       </div>
 
       {/* Draft with Milo */}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-2.5 flex flex-wrap items-center gap-3">
         <button
           type="button"
           className={PRIMARY_BUTTON}
@@ -320,44 +320,65 @@ function LabEditorForm({
 
       <Divider />
 
-      {/* Milo's draft — editable */}
+      {/* Milo's draft — editable. Statement (left) · areas + keywords (right). */}
       <SectionTitle>The lab profile</SectionTitle>
-      <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <Field label="Statement of purpose">
           <textarea
             value={statement}
             onChange={(e) => setStatement(e.target.value)}
-            rows={3}
+            rows={6}
             placeholder="The lab's shared research purpose."
-            className={cn(inputClass, "min-h-20 resize-y py-2")}
+            className={cn(inputClass, "min-h-36 resize-y py-2")}
           />
         </Field>
-        <TokenField
-          label="Research focus areas"
-          items={areas}
-          onChange={setAreas}
-          placeholder="Add an area, press Enter"
-        />
-        <TokenField
-          label="Tags & keywords"
-          items={keywords}
-          onChange={setKeywords}
-          placeholder="Add a keyword, press Enter"
-        />
+        <div className="space-y-4">
+          <TokenField
+            label="Research focus areas"
+            items={areas}
+            onChange={setAreas}
+            placeholder="Add an area, press Enter"
+          />
+          <TokenField
+            label="Tags & keywords"
+            items={keywords}
+            onChange={setKeywords}
+            placeholder="Add a keyword, press Enter"
+          />
+        </div>
       </div>
 
       <Divider />
 
-      {/* What Milo watches */}
+      {/* What Milo watches. Topics + cadence (left) · signals (two columns right). */}
       <SectionTitle>What Milo watches</SectionTitle>
-      <div className="space-y-4">
-        <TokenField
-          label="Topics Milo monitors for the lab"
-          items={watchTopics}
-          onChange={setWatchTopics}
-          placeholder="Add a topic, press Enter"
-        />
-        <div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="space-y-4">
+          <TokenField
+            label="Topics Milo monitors for the lab"
+            items={watchTopics}
+            onChange={setWatchTopics}
+            placeholder="Add a topic, press Enter"
+          />
+          <div>
+            <p className="mb-2 text-[13px] font-medium text-[var(--text-primary)]">
+              How often
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {CADENCES.map((option) => (
+                <Chip
+                  key={option.id}
+                  selected={cadence === option.id}
+                  onClick={() => setCadence(option.id)}
+                >
+                  {option.label}
+                </Chip>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
           <p className="mb-2 text-[13px] font-medium text-[var(--text-primary)]">
             Signals to surface
           </p>
@@ -396,22 +417,6 @@ function LabEditorForm({
                 </button>
               );
             })}
-          </div>
-        </div>
-        <div>
-          <p className="mb-2 text-[13px] font-medium text-[var(--text-primary)]">
-            How often
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {CADENCES.map((option) => (
-              <Chip
-                key={option.id}
-                selected={cadence === option.id}
-                onClick={() => setCadence(option.id)}
-              >
-                {option.label}
-              </Chip>
-            ))}
           </div>
         </div>
       </div>
