@@ -68,7 +68,7 @@ def fetch_author(
     scholar_id: str,
     *,
     scholarly_api: Any | None = None,
-    delay: float = 1.0,
+    delay: float = 0.25,
     fill_abstracts: bool = True,
 ) -> dict[str, Any]:
     """Fetch an author and the chosen ≤20 publications (filled abstracts)."""
