@@ -1,12 +1,17 @@
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import type {
+  ConferenceOpportunity,
   DailyReport,
+  GrantOpportunity,
   LabMember,
   LabProfileData,
   MyInvitation,
   MyLab,
+  NotificationFeed,
+  OpportunityFeed,
   Project,
   ProfileData,
+  SavedDeadline,
   WatchData,
 } from "@/lib/portal/types";
 
@@ -76,6 +81,40 @@ export async function fetchDailyReport(): Promise<DailyReport> {
   return getJson<DailyReport>(
     buildApiUrl(getPublicApiBase(), "daily-report"),
     "Could not load your daily report.",
+  );
+}
+
+/** The user's ranked funding opportunities (Opportunities page, grants column). */
+export async function fetchGrants(): Promise<OpportunityFeed<GrantOpportunity>> {
+  return getJson<OpportunityFeed<GrantOpportunity>>(
+    buildApiUrl(getPublicApiBase(), "opportunities", "grants"),
+    "Could not load your grants.",
+  );
+}
+
+/** The user's ranked conferences (Conferences page). */
+export async function fetchConferences(): Promise<
+  OpportunityFeed<ConferenceOpportunity>
+> {
+  return getJson<OpportunityFeed<ConferenceOpportunity>>(
+    buildApiUrl(getPublicApiBase(), "opportunities", "conferences"),
+    "Could not load your conferences.",
+  );
+}
+
+/** The user's saved deadlines (Deadlines page). */
+export async function fetchDeadlines(): Promise<{ items: SavedDeadline[] }> {
+  return getJson<{ items: SavedDeadline[] }>(
+    buildApiUrl(getPublicApiBase(), "deadlines"),
+    "Could not load your deadlines.",
+  );
+}
+
+/** Deadline alerts due within a week (the header bell). */
+export async function fetchNotifications(): Promise<NotificationFeed> {
+  return getJson<NotificationFeed>(
+    buildApiUrl(getPublicApiBase(), "notifications"),
+    "Could not load your notifications.",
   );
 }
 

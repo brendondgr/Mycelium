@@ -2,6 +2,7 @@
 
 import {
   CalendarIcon,
+  ConferenceIcon,
   DocumentIcon,
   FolderIcon,
   GridIcon,
@@ -22,6 +23,7 @@ const ITEMS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: "daily", label: "Daily", icon: <ReportIcon size={15} /> },
   { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },
   { key: "opportunities", label: "Opportunities", icon: <SparkleIcon size={15} /> },
+  { key: "conferences", label: "Conferences", icon: <ConferenceIcon size={15} /> },
   { key: "deadlines", label: "Deadlines", icon: <CalendarIcon size={15} /> },
   { key: "projects", label: "Projects", icon: <FolderIcon size={15} /> },
   { key: "labs", label: "Labs", icon: <MembersIcon size={15} /> },

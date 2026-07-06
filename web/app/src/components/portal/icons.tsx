@@ -93,6 +93,16 @@ export function CalendarIcon(props: IconProps) {
   );
 }
 
+/** A speaker at a podium — conferences / calls for papers. */
+export function ConferenceIcon(props: IconProps) {
+  return (
+    <Svg strokeWidth={1.6} {...props}>
+      <circle cx="12" cy="5" r="2" />
+      <path d="M12 7.5v4.5M9 20v-6l3-2 3 2v6M7 12l5-2 5 2" />
+    </Svg>
+  );
+}
+
 export function SparkleIcon(props: IconProps) {
   return (
     <Svg strokeWidth={1.6} {...props}>

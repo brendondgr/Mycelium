@@ -6,6 +6,7 @@ import type {
   InvitationAction,
   LabProfileData,
   MyLab,
+  SavedDeadline,
   WatchData,
 } from "@/lib/portal/types";
 
@@ -235,4 +236,34 @@ export async function synthesizeLabProfile(
     );
   }
   return parsed as LabSynthesisResult;
+}
+
+/** Save a grant/conference to the user's deadlines. */
+export function saveOpportunity(
+  contentId: string,
+  note?: string,
+): Promise<SavedDeadline> {
+  return sendJson<SavedDeadline>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "opportunities", "save"),
+    note ? { content_id: contentId, note } : { content_id: contentId },
+    "Could not save this to your deadlines.",
+  );
+}
+
+/** Remove the user's save for a grant/conference. */
+export async function unsaveOpportunity(contentId: string): Promise<void> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "opportunities", "save", contentId),
+    {
+      method: "DELETE",
+      credentials: "include",
+      headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
+    },
+  );
+  if (!response.ok && response.status !== 404) {
+    throw new Error("Could not remove this from your deadlines.");
+  }
 }

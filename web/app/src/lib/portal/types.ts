@@ -139,3 +139,82 @@ export type DailyReport = {
   summary: DailyReportSummary | null;
   suggestions: Suggestion[];
 };
+
+/* -- Opportunities: grants, conferences, deadlines -------------------------- */
+
+/** Fields shared by a matched grant and a matched conference. */
+type OpportunityBase = {
+  content_id: string;
+  title: string;
+  url: string;
+  score: number;
+  /** The model's 0–100 fit judgement (null on the fallback tail). */
+  match_percent: number | null;
+  rank: number | null;
+  headline: string;
+  reason: string;
+  origin: "llm" | "fallback";
+  /** New + pinned to the top for its first week (a fresh, high-fit item). */
+  is_new: boolean;
+  pinned: boolean;
+  /** The actionable date (application/abstract/manuscript/event), ISO or "". */
+  deadline_date: string;
+  deadline_kind: string;
+  status_summary: string;
+  /** Whether the user has saved this to their deadlines. */
+  saved: boolean;
+};
+
+/** A matched funding opportunity (from `/api/opportunities/grants/`). */
+export type GrantOpportunity = OpportunityBase & {
+  sponsor: string;
+  amount: string;
+  matched_topics: string;
+};
+
+/** A matched conference (from `/api/opportunities/conferences/`). */
+export type ConferenceOpportunity = OpportunityBase & {
+  location: string;
+  country: string;
+  event_dates: string;
+  deadlines: string;
+  keywords: string;
+};
+
+/** A ranked opportunity feed for one area. */
+export type OpportunityFeed<T> = {
+  generated_at: string | null;
+  items: T[];
+};
+
+/** One saved deadline (from `/api/deadlines/`). */
+export type SavedDeadline = {
+  id: string;
+  content_id: string | null;
+  area: "grant" | "conference" | "fellowship";
+  title: string;
+  url: string;
+  subtitle: string;
+  deadline_date: string | null;
+  deadline_kind: string;
+  note: string;
+  days_remaining: number | null;
+  within_week: boolean;
+};
+
+/** One deadline alert for the header bell (from `/api/notifications/`). */
+export type DeadlineAlert = {
+  id: string;
+  content_id: string | null;
+  area: "grant" | "conference" | "fellowship";
+  title: string;
+  url: string;
+  deadline_date: string;
+  days_remaining: number;
+  message: string;
+};
+
+export type NotificationFeed = {
+  count: number;
+  items: DeadlineAlert[];
+};

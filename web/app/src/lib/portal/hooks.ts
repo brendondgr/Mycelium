@@ -3,13 +3,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  fetchConferences,
   fetchDailyReport,
+  fetchDeadlines,
+  fetchGrants,
   fetchLabMembers,
   fetchLabProfile,
   fetchLabProjects,
   fetchLabWatch,
   fetchMyInvitations,
   fetchMyLabs,
+  fetchNotifications,
   fetchProfile,
   fetchProjects,
   fetchWatch,
@@ -22,7 +26,9 @@ import {
   joinProject,
   leaveProject,
   respondToInvitation,
+  saveOpportunity,
   synthesizeLabProfile,
+  unsaveOpportunity,
   updateLabProfile,
   updateLabWatch,
 } from "@/lib/portal/mutations";
@@ -86,6 +92,62 @@ export function useDailyReport() {
     queryFn: fetchDailyReport,
     staleTime: 60_000,
   });
+}
+
+/** The user's ranked funding opportunities (Opportunities page). */
+export function useGrants() {
+  return useQuery({
+    queryKey: ["portal", "grants"],
+    queryFn: fetchGrants,
+    staleTime: 60_000,
+  });
+}
+
+/** The user's ranked conferences (Conferences page). */
+export function useConferences() {
+  return useQuery({
+    queryKey: ["portal", "conferences"],
+    queryFn: fetchConferences,
+    staleTime: 60_000,
+  });
+}
+
+/** The user's saved deadlines (Deadlines page + Overview). */
+export function useDeadlines() {
+  return useQuery({
+    queryKey: ["portal", "deadlines"],
+    queryFn: fetchDeadlines,
+    staleTime: 30_000,
+  });
+}
+
+/** Deadline alerts due within a week (the header notification bell). */
+export function useNotifications() {
+  return useQuery({
+    queryKey: ["portal", "notifications"],
+    queryFn: fetchNotifications,
+    staleTime: 60_000,
+  });
+}
+
+/** Save or unsave a grant/conference; refreshes the feeds, deadlines, and bell. */
+export function useSaveOpportunity() {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    for (const key of ["grants", "conferences", "deadlines", "notifications"]) {
+      queryClient.invalidateQueries({ queryKey: ["portal", key] });
+    }
+  };
+  const save = useMutation({
+    mutationFn: ({ contentId, note }: { contentId: string; note?: string }) =>
+      saveOpportunity(contentId, note),
+    onSuccess: invalidate,
+  });
+  const unsave = useMutation({
+    mutationFn: (contentId: string) => unsaveOpportunity(contentId),
+    onSuccess: invalidate,
+  });
+  return { save, unsave };
 }
 
 /** The caller's pending lab invitations (notifications panel). */

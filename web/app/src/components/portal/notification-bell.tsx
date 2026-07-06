@@ -2,31 +2,43 @@
 
 import * as React from "react";
 
-import { BellIcon } from "@/components/portal/icons";
-import { roleLabel } from "@/components/portal/portal-context";
+import { AlertTriangleIcon, ArrowRightIcon, BellIcon } from "@/components/portal/icons";
+import { roleLabel, usePortal } from "@/components/portal/portal-context";
 import { IconButton } from "@/components/portal/primitives/icon-button";
-import { useMyInvitations, useRespondInvitation } from "@/lib/portal/hooks";
+import {
+  useMyInvitations,
+  useNotifications,
+  useRespondInvitation,
+} from "@/lib/portal/hooks";
 import { useDismissable } from "@/lib/portal/use-dismissable";
-import type { InvitationAction, MyInvitation } from "@/lib/portal/types";
+import type {
+  DeadlineAlert,
+  InvitationAction,
+  MyInvitation,
+} from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Notifications entry point. The feed is the caller's pending lab invitations:
- * each can be accepted (joins the lab), rejected, or ignored (silently
- * dismissed). Closes on outside click / Escape via the shared popover hook.
+ * Notifications entry point. The feed combines the caller's pending lab
+ * invitations (accept / reject / ignore) with deadline alerts for saved grants
+ * and conferences due within a week. Closes on outside click / Escape via the
+ * shared popover hook.
  */
 export function NotificationBell() {
   const { open, setOpen, ref } = useDismissable<HTMLDivElement>();
+  const { goToSection } = usePortal();
   const { data, isLoading, isError } = useMyInvitations();
+  const notifications = useNotifications();
   const invitations = data ?? [];
-  const count = invitations.length;
+  const alerts = notifications.data?.items ?? [];
+  const count = invitations.length + alerts.length;
 
   return (
     <div ref={ref} className="relative">
       <IconButton
         label={
           count > 0
-            ? `Notifications — ${count} pending invitation${count === 1 ? "" : "s"}`
+            ? `Notifications — ${count} new item${count === 1 ? "" : "s"}`
             : "Notifications"
         }
         aria-haspopup="dialog"
@@ -68,6 +80,16 @@ export function NotificationBell() {
             </p>
           ) : (
             <ul className="max-h-[60vh] divide-y divide-[var(--divider)] overflow-y-auto">
+              {alerts.map((alert) => (
+                <DeadlineAlertRow
+                  key={alert.id}
+                  alert={alert}
+                  onView={() => {
+                    setOpen(false);
+                    goToSection("deadlines");
+                  }}
+                />
+              ))}
               {invitations.map((invitation) => (
                 <InvitationRow key={invitation.id} invitation={invitation} />
               ))}
@@ -76,6 +98,41 @@ export function NotificationBell() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+function DeadlineAlertRow({
+  alert,
+  onView,
+}: {
+  alert: DeadlineAlert;
+  onView: () => void;
+}) {
+  return (
+    <li className="px-4 py-3">
+      <div className="flex items-start gap-2">
+        <AlertTriangleIcon
+          size={15}
+          aria-hidden="true"
+          className="mt-0.5 shrink-0 text-accent"
+        />
+        <div className="min-w-0">
+          <p className="text-sm text-[var(--text-primary)]">{alert.message}</p>
+          <button
+            type="button"
+            onClick={onView}
+            className="group mt-1 inline-flex items-center gap-1 text-[12.5px] font-semibold text-primary hover:underline"
+          >
+            View in Deadlines
+            <ArrowRightIcon
+              size={12}
+              aria-hidden="true"
+              className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+            />
+          </button>
+        </div>
+      </div>
+    </li>
   );
 }
 

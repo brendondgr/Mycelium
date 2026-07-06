@@ -2,6 +2,7 @@
 
 import {
   CalendarIcon,
+  ConferenceIcon,
   DocumentIcon,
   GridIcon,
   PlusIcon,
@@ -64,6 +65,12 @@ export function PortalSidebar() {
           label="Opportunities"
           active={section === "opportunities"}
           onClick={() => goToSection("opportunities")}
+        />
+        <SidebarNavItem
+          icon={<ConferenceIcon size={18} />}
+          label="Conferences"
+          active={section === "conferences"}
+          onClick={() => goToSection("conferences")}
         />
         <SidebarNavItem
           icon={<CalendarIcon size={18} />}
