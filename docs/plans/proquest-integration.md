@@ -4,7 +4,8 @@
 the Docker stack bind-mounts `/home/bdgr/Agents/Mycelium`, and Preview is pinned
 to the main checkout, so a separate worktree cannot run the real stack; fast-forward
 merged to `main` on completion; **not pushed**).
-**Status:** In progress.
+**Status:** Complete. Backend + frontend built and verified (404 backend tests green
+on pgvector; app type-check, scoped lint, and full production build pass).
 
 ## 1. Objective
 
