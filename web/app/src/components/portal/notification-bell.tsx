@@ -151,7 +151,7 @@ function ResponseButton({
 }) {
   const toneClass =
     tone === "accept"
-      ? "bg-primary text-[#fffdf8] hover:bg-[var(--primary-hover)]"
+      ? "bg-primary text-[#fffdf8] hover:bg-[var(--brand-primary-hover)]"
       : tone === "reject"
         ? "border border-destructive/40 bg-transparent text-destructive hover:bg-destructive hover:text-[var(--destructive-foreground)]"
         : "border border-border bg-surface text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-primary)]";

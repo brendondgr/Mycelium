@@ -31,10 +31,18 @@ urlpatterns = [
         views.LabMembersView.as_view(),
         name="lab-members-no-slash",
     ),
+    # Both slash and no-slash variants: the browser reaches these through the
+    # Next `/api` proxy, which strips the trailing slash — and Django's
+    # APPEND_SLASH cannot redirect a POST/PATCH, so a slash-only route 500s.
     path(
         "labs/<slug:slug>/profile/",
         views.LabProfileView.as_view(),
         name="lab-profile",
+    ),
+    path(
+        "labs/<slug:slug>/profile",
+        views.LabProfileView.as_view(),
+        name="lab-profile-no-slash",
     ),
     # What Milo keeps an eye on for a lab (members read; lead/admin edit).
     path(
@@ -42,11 +50,21 @@ urlpatterns = [
         views.LabWatchView.as_view(),
         name="lab-watch",
     ),
+    path(
+        "labs/<slug:slug>/watch",
+        views.LabWatchView.as_view(),
+        name="lab-watch-no-slash",
+    ),
     # LLM-assisted lab profile synthesis from the PI's free text (no save).
     path(
         "labs/<slug:slug>/intake/synthesize/",
         views.LabIntakeSynthesizeView.as_view(),
         name="lab-intake-synthesize",
+    ),
+    path(
+        "labs/<slug:slug>/intake/synthesize",
+        views.LabIntakeSynthesizeView.as_view(),
+        name="lab-intake-synthesize-no-slash",
     ),
     # Lab invitations: managers invite + list; invitees see and answer their own.
     path(
