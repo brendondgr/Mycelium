@@ -7,7 +7,8 @@ from apps.content.ranking import focus_overlap, rerank_by_focus
 
 def _item(title: str = "", abstract: str = ""):
     # rerank only reads ``.metadata``, so a lightweight stand-in avoids the DB.
-    return SimpleNamespace(id=title or "x", metadata={"title": title, "abstract": abstract})
+    meta = {"title": title, "abstract": abstract}
+    return SimpleNamespace(id=title or "x", metadata=meta)
 
 
 def test_focus_overlap_is_fraction_of_areas_present() -> None:
