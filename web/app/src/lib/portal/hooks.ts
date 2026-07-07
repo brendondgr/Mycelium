@@ -6,6 +6,7 @@ import {
   fetchConferences,
   fetchDailyReport,
   fetchDeadlines,
+  fetchFellowships,
   fetchGrants,
   fetchLabMembers,
   fetchLabProfile,
@@ -112,6 +113,15 @@ export function useConferences() {
   });
 }
 
+/** The user's matched fellowships (Fellowships page). */
+export function useFellowships() {
+  return useQuery({
+    queryKey: ["portal", "fellowships"],
+    queryFn: fetchFellowships,
+    staleTime: 60_000,
+  });
+}
+
 /** The user's saved deadlines (Deadlines page + Overview). */
 export function useDeadlines() {
   return useQuery({
@@ -130,11 +140,17 @@ export function useNotifications() {
   });
 }
 
-/** Save or unsave a grant/conference; refreshes the feeds, deadlines, and bell. */
+/** Save or unsave a grant/conference/fellowship; refreshes the feeds, deadlines, and bell. */
 export function useSaveOpportunity() {
   const queryClient = useQueryClient();
   const invalidate = () => {
-    for (const key of ["grants", "conferences", "deadlines", "notifications"]) {
+    for (const key of [
+      "grants",
+      "conferences",
+      "fellowships",
+      "deadlines",
+      "notifications",
+    ]) {
       queryClient.invalidateQueries({ queryKey: ["portal", key] });
     }
   };

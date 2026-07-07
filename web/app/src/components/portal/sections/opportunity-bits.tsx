@@ -28,7 +28,7 @@ export function MatchBadge({
   origin,
 }: {
   percent: number | null;
-  origin?: "llm" | "fallback";
+  origin?: "llm" | "fallback" | "rules";
 }) {
   if (typeof percent !== "number") return null;
   const { token, word } = matchTier(percent);

@@ -159,7 +159,7 @@ type OpportunityBase = {
   rank: number | null;
   headline: string;
   reason: string;
-  origin: "llm" | "fallback";
+  origin: "llm" | "fallback" | "rules";
   /** New + pinned to the top for its first week (a fresh, high-fit item). */
   is_new: boolean;
   pinned: boolean;
@@ -229,4 +229,39 @@ export type DeadlineAlert = {
 export type NotificationFeed = {
   count: number;
   items: DeadlineAlert[];
+};
+
+/**
+ * A matched fellowship opportunity (from `/api/opportunities/fellowships/`).
+ * Matched by the deterministic eligibility rule engine; origin is always
+ * "rules" (no LLM or fuse scoring).
+ */
+export type FellowshipOpportunity = OpportunityBase & {
+  /** Structured award class: "fellowship" | "scholarship" | "internship" | "award" | "prize". */
+  award_class: string;
+  /** Human-readable funding amount string (may include range or note). */
+  amount: string;
+  /** Short clarifying note about the amount (e.g. "per year" or "stipend"). */
+  amount_note: string;
+  /**
+   * Deadline semantics: "true" | "anticipated" | "rolling" | "continuous" |
+   * "varies" | "unknown".
+   */
+  deadline_type: string;
+  /** Broad research fields associated with this fellowship. */
+  fields: string[];
+  /** Eligible academic stages (e.g. "doctoral_dissertation", "postdoc"). */
+  stages: string[];
+  /** Citizenship requirements (e.g. "us", "international"). */
+  citizenship: string[];
+  /** Award type labels (e.g. "Stipend", "Travel grant"). */
+  award_types: string[];
+  /** Limiting conditions (e.g. "Women only", "Illinois affiliation required"). */
+  limits: string[];
+  /** Human eligibility bullet lines (why the user qualifies or conditionally fits). */
+  eligibility: string[];
+  /** Contact email for the fellowship administrator, or "". */
+  contact_email: string;
+  /** ISO date the fellowship was first posted/seen, or "". */
+  posted: string;
 };

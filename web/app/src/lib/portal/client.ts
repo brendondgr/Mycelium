@@ -2,6 +2,7 @@ import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import type {
   ConferenceOpportunity,
   DailyReport,
+  FellowshipOpportunity,
   GrantOpportunity,
   LabMember,
   LabProfileData,
@@ -99,6 +100,16 @@ export async function fetchConferences(): Promise<
   return getJson<OpportunityFeed<ConferenceOpportunity>>(
     buildApiUrl(getPublicApiBase(), "opportunities", "conferences"),
     "Could not load your conferences.",
+  );
+}
+
+/** The user's matched fellowships (Fellowships page). */
+export async function fetchFellowships(): Promise<
+  OpportunityFeed<FellowshipOpportunity>
+> {
+  return getJson<OpportunityFeed<FellowshipOpportunity>>(
+    buildApiUrl(getPublicApiBase(), "opportunities", "fellowships"),
+    "Could not load your fellowships.",
   );
 }
 

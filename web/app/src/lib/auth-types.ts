@@ -33,6 +33,26 @@ export type RegisterInput = {
 /** A single publication source the onboarding importer can pull an author from. */
 export type ResearchSource = "openalex" | "semantic" | "scholar";
 
+/**
+ * Fellowship eligibility block stored inside `interests.eligibility`.
+ * Sent to the backend via `confirmInterests`; returned on profile GET.
+ * The pre-existing `career_stage` key is preserved if present.
+ */
+export type ProfileEligibility = {
+  citizenship: "us" | "international";
+  /** Academic stage used by the rule engine to filter fellowships. */
+  stage: "masters" | "doctoral_early" | "doctoral_dissertation" | "postdoc" | "";
+  /** Broad discipline buckets matched against fellowship field restrictions. */
+  fields: string[];
+  /**
+   * Opt-in restriction groups the user belongs to.
+   * Subset of ["Women", "Equity"].
+   */
+  eligible_restrictions: string[];
+  /** Pre-existing key — never dropped; set only by other code paths. */
+  career_stage?: string;
+};
+
 /** The contract-shaped research interests stored on a profile. */
 export type ResearchInterests = {
   version: number;
@@ -41,6 +61,8 @@ export type ResearchInterests = {
   keywords?: string[];
   skills?: string[];
   sources?: Record<string, unknown>;
+  /** Fellowship eligibility block — optional until the user completes step 4. */
+  eligibility?: ProfileEligibility;
 };
 
 /** The aggregated author draft returned alongside synthesized interests. */

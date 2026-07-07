@@ -11,6 +11,7 @@ import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { CheckIcon, TargetIcon } from "@/components/portal/icons";
 import { useProfile, useWatch } from "@/lib/portal/hooks";
 import { computeCompleteness } from "@/lib/portal/completeness";
+import type { ProfileEligibility } from "@/lib/auth-types";
 
 // ---------------------------------------------------------------------------
 // Research focus card (LEFT)
@@ -259,6 +260,145 @@ function WatchCard() {
 }
 
 // ---------------------------------------------------------------------------
+// Eligibility helpers
+// ---------------------------------------------------------------------------
+
+const CITIZENSHIP_LABEL: Record<ProfileEligibility["citizenship"], string> = {
+  us: "US citizen / permanent resident",
+  international: "International student",
+};
+
+const STAGE_LABEL: Record<ProfileEligibility["stage"], string> = {
+  masters: "Master's",
+  doctoral_early: "Early doctoral",
+  doctoral_dissertation: "Dissertation research / write-up",
+  postdoc: "Postdoc / beyond",
+  "": "Not specified",
+};
+
+// ---------------------------------------------------------------------------
+// Fellowship eligibility card
+// ---------------------------------------------------------------------------
+
+function EligibilityCard() {
+  const { data: profile, isLoading, isError } = useProfile();
+
+  if (isLoading) {
+    return (
+      <Card className="p-[22px]">
+        <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
+          Fellowship eligibility
+        </h2>
+        <p className="text-sm text-[var(--text-muted)]">Loading…</p>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card className="p-[22px]">
+        <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
+          Fellowship eligibility
+        </h2>
+        <p className="text-sm text-[var(--text-muted)]">
+          Couldn&apos;t load your eligibility details.
+        </p>
+      </Card>
+    );
+  }
+
+  const eligibility = profile?.interests?.eligibility;
+
+  if (!eligibility) {
+    return (
+      <Card className="p-[22px]">
+        <h2 className="mb-2 text-base font-semibold text-[var(--text-primary)]">
+          Fellowship eligibility
+        </h2>
+        <p className="text-sm text-[var(--text-muted)]">
+          Fellowship matching uses your eligibility profile — citizenship,
+          career stage, and field. Set it from{" "}
+          <Link
+            href="/app/onboarding?edit=1"
+            className="font-medium text-primary underline-offset-2 hover:underline"
+          >
+            Edit profile
+          </Link>
+          .
+        </p>
+      </Card>
+    );
+  }
+
+  const citizenshipLabel = CITIZENSHIP_LABEL[eligibility.citizenship] ?? eligibility.citizenship;
+  const stageLabel = STAGE_LABEL[eligibility.stage] ?? eligibility.stage;
+  const fields = eligibility.fields ?? [];
+  const restrictions = eligibility.eligible_restrictions ?? [];
+
+  return (
+    <Card className="p-[22px]">
+      <h2 className="mb-4 text-base font-semibold text-[var(--text-primary)]">
+        Fellowship eligibility
+      </h2>
+
+      <div className="space-y-3">
+        {/* Citizenship */}
+        <div className="flex flex-col gap-0.5">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+            Citizenship
+          </p>
+          <p className="text-sm text-[var(--text-primary)]">{citizenshipLabel}</p>
+        </div>
+
+        {/* Stage */}
+        <div className="flex flex-col gap-0.5">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+            Career stage
+          </p>
+          <p className="text-sm text-[var(--text-primary)]">{stageLabel}</p>
+        </div>
+
+        {/* Broad fields */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+            Broad fields
+          </p>
+          {fields.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {fields.map((field) => (
+                <Pill key={field} tone="primary">
+                  {field}
+                </Pill>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--text-muted)]">None selected</p>
+          )}
+        </div>
+
+        {/* Restriction groups */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+            Eligible restriction groups
+          </p>
+          {restrictions.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {restrictions.map((r) => (
+                <Pill key={r} tone="accent">
+                  {r}
+                </Pill>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--text-muted)]">None selected</p>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // ProfileSection
 // ---------------------------------------------------------------------------
 
@@ -279,9 +419,10 @@ export function ProfileSection() {
         {/* LEFT — research focus */}
         <ResearchFocusCard />
 
-        {/* RIGHT — stacked completeness + watch */}
+        {/* RIGHT — stacked completeness + eligibility + watch */}
         <div className="flex flex-col gap-[22px]">
           <ProfileCompletenessCard />
+          <EligibilityCard />
           <WatchCard />
         </div>
       </div>

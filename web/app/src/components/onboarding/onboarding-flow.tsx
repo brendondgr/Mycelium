@@ -27,6 +27,7 @@ import {
 } from "@/lib/auth-client";
 import { fetchProfile } from "@/lib/portal/client";
 import type {
+  ProfileEligibility,
   ResearchInterests,
   ResearchSource,
   WatchCadence,
@@ -95,8 +96,33 @@ const STEP_LABELS = [
   "About you",
   "Import your research",
   "Review profile",
+  "Fellowship eligibility",
   "What Milo watches",
 ];
+
+/** Fellowship eligibility constants */
+const CITIZENSHIP_OPTIONS: { value: ProfileEligibility["citizenship"]; label: string }[] = [
+  { value: "us", label: "US citizen / permanent resident" },
+  { value: "international", label: "International student" },
+];
+
+const STAGE_OPTIONS: { value: ProfileEligibility["stage"]; label: string }[] = [
+  { value: "masters", label: "Master's" },
+  { value: "doctoral_early", label: "Early doctoral" },
+  { value: "doctoral_dissertation", label: "Dissertation research / write-up" },
+  { value: "postdoc", label: "Postdoc / beyond" },
+  { value: "", label: "Not applicable" },
+];
+
+const FIELD_OPTIONS = [
+  "Social Sciences",
+  "Sciences/Engineering/Math",
+  "Professional Programs",
+  "Fine Arts",
+  "Humanities",
+];
+
+const RESTRICTION_OPTIONS = ["Women", "Equity"];
 
 const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 const DEMO_CODE = ["4", "8", "2", "9", "1", "3"];
@@ -155,7 +181,15 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   const [skills, setSkills] = useState<string[]>([]);
   const [draftSources, setDraftSources] = useState<Record<string, unknown>>({});
 
-  // Step 3 — watch
+  // Step 3 — fellowship eligibility
+  const [eligCitizenship, setEligCitizenship] = useState<ProfileEligibility["citizenship"]>("us");
+  const [eligStage, setEligStage] = useState<ProfileEligibility["stage"]>("");
+  const [eligFields, setEligFields] = useState<string[]>([]);
+  const [eligRestrictions, setEligRestrictions] = useState<string[]>([]);
+  // Preserve any pre-existing career_stage (set by other code paths, not this step).
+  const [eligCareerStage, setEligCareerStage] = useState<string | undefined>(undefined);
+
+  // Step 4 — watch
   const [watchTopics, setWatchTopics] = useState<string[]>([]);
   const [watchCats, setWatchCats] = useState<Record<string, boolean>>({
     papers: true,
@@ -183,6 +217,17 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     setDirection(dir);
     setStep(target);
     window.scrollTo(0, 0);
+  }
+
+  /**
+   * Derive a sensible default career stage from a role value.
+   * Used to pre-select in the eligibility step when the user is not in edit
+   * mode (edit mode loads from the saved profile instead).
+   */
+  function stageFromRole(roleValue: string): ProfileEligibility["stage"] {
+    if (roleValue === "postdoc") return "postdoc";
+    if (roleValue === "student") return "doctoral_early";
+    return "";
   }
 
   function applyInterests(interests: ResearchInterests) {
@@ -226,6 +271,14 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           setKeywords(interests.keywords ?? []);
           setSkills(interests.skills ?? []);
           setDraftSources(interests.sources ?? {});
+          if (interests.eligibility) {
+            const elig = interests.eligibility;
+            setEligCitizenship(elig.citizenship ?? "us");
+            setEligStage(elig.stage ?? "");
+            setEligFields(elig.fields ?? []);
+            setEligRestrictions(elig.eligible_restrictions ?? []);
+            setEligCareerStage(elig.career_stage);
+          }
         }
         if (watch) {
           setWatchTopics(watch.topics ?? []);
@@ -389,6 +442,10 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
       goStep(3, 1);
       return;
     }
+    if (step === 3) {
+      goStep(4, 1);
+      return;
+    }
     void finish();
   }
 
@@ -407,7 +464,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     if (step === 1) {
       return importing ? "Growing…" : hasImportInput ? "Grow my profile" : "Continue";
     }
-    if (step === 3) {
+    if (step === 4) {
       if (editing) {
         return busy ? "Saving…" : "Save changes";
       }
@@ -431,6 +488,18 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     if (Object.keys(draftSources).length) {
       interests.sources = draftSources;
     }
+    // Always attach the eligibility block (defaults are safe); preserve any
+    // existing career_stage that was loaded from the profile in edit mode.
+    const eligibility: ProfileEligibility = {
+      citizenship: eligCitizenship,
+      stage: eligStage,
+      fields: eligFields,
+      eligible_restrictions: eligRestrictions,
+    };
+    if (eligCareerStage !== undefined) {
+      eligibility.career_stage = eligCareerStage;
+    }
+    interests.eligibility = eligibility;
 
     const categories = WATCH_CATEGORIES.filter((c) => watchCats[c.key]).map(
       (c) => c.key,
@@ -475,7 +544,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
       router.refresh();
     } catch (error) {
       setScreen("intake");
-      setStep(3);
+      setStep(4);
       setSubmitError(
         error instanceof Error
           ? error.message
@@ -677,7 +746,15 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
               <Chip
                 key={option.value}
                 selected={role === option.value}
-                onClick={() => setRole(option.value)}
+                onClick={() => {
+                  setRole(option.value);
+                  // In new onboarding, seed a sensible default stage so the
+                  // eligibility step feels pre-filled. Edit mode loads the
+                  // saved profile value instead, so we skip the override there.
+                  if (!editing) {
+                    setEligStage(stageFromRole(option.value));
+                  }
+                }}
               >
                 {option.label}
               </Chip>
@@ -899,6 +976,129 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     </div>
   );
 
+  const panelEligibility = (
+    <div className={cardClass}>
+      <div className="space-y-5">
+        <div>
+          <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
+            Fellowship eligibility
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Fellowships are matched by eligibility, not just topics. These
+            answers let Mylo filter to opportunities you can actually apply for.
+            You can skip anything — defaults apply and you can always update
+            this later.
+          </p>
+        </div>
+
+        {/* Citizenship */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-[var(--text-primary)]">
+            Citizenship status
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CITIZENSHIP_OPTIONS.map((option) => (
+              <Chip
+                key={option.value}
+                selected={eligCitizenship === option.value}
+                onClick={() => setEligCitizenship(option.value)}
+              >
+                {option.label}
+              </Chip>
+            ))}
+          </div>
+        </div>
+
+        {/* Career stage */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-[var(--text-primary)]">
+            Career stage
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {STAGE_OPTIONS.map((option) => (
+              <Chip
+                key={option.value === "" ? "__none__" : option.value}
+                selected={eligStage === option.value}
+                onClick={() => setEligStage(option.value)}
+              >
+                {option.label}
+              </Chip>
+            ))}
+          </div>
+        </div>
+
+        {/* Broad fields */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-[var(--text-primary)]">
+            Broad fields{" "}
+            <span className="text-[var(--text-muted)]">(select any that apply)</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {FIELD_OPTIONS.map((field) => (
+              <Chip
+                key={field}
+                selected={eligFields.includes(field)}
+                onClick={() =>
+                  setEligFields((prev) =>
+                    prev.includes(field)
+                      ? prev.filter((f) => f !== field)
+                      : [...prev, field],
+                  )
+                }
+              >
+                {field}
+              </Chip>
+            ))}
+          </div>
+          <p className="text-xs text-[var(--text-muted)]">
+            Used to match fellowships to your discipline — leave empty if
+            you&rsquo;re not sure.
+          </p>
+        </div>
+
+        {/* Restriction groups */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-[var(--text-primary)]">
+            Eligible restriction groups{" "}
+            <span className="text-[var(--text-muted)]">(optional)</span>
+          </p>
+          <div className="flex flex-col gap-2">
+            {RESTRICTION_OPTIONS.map((group) => {
+              const checked = eligRestrictions.includes(group);
+              return (
+                <label
+                  key={group}
+                  className="flex cursor-pointer items-center gap-3"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() =>
+                      setEligRestrictions((prev) =>
+                        prev.includes(group)
+                          ? prev.filter((r) => r !== group)
+                          : [...prev, group],
+                      )
+                    }
+                    className="h-4 w-4 rounded border border-border bg-card accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <span className="text-sm font-medium text-[var(--text-primary)]">
+                    {group}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <p className="text-xs text-[var(--text-muted)]">
+            Some fellowships are restricted to specific groups. Select any that
+            apply to you — this is optional and only used to surface more
+            relevant opportunities.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
   const panelWatch = (
     <div className={cardClass}>
       <div className="space-y-5">
@@ -996,7 +1196,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     </div>
   );
 
-  const panels = [panelAbout, panelImport, panelReview, panelWatch];
+  const panels = [panelAbout, panelImport, panelReview, panelEligibility, panelWatch];
 
   return (
     <div className="mx-auto w-full max-w-2xl">

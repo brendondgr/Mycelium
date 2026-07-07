@@ -21,6 +21,7 @@ export function computeCompleteness(
   profile: ProfileData | undefined,
 ): Completeness {
   const interests = profile?.interests ?? { version: 1, areas: [] };
+  const eligibility = interests.eligibility;
   const items: CompletenessItem[] = [
     {
       label: "Research areas",
@@ -42,6 +43,13 @@ export function computeCompleteness(
       label: "Linked publication source",
       done: Boolean(
         profile?.orcid || profile?.openalex_id || profile?.scholar_id,
+      ),
+    },
+    {
+      label: "Fellowship eligibility",
+      done: Boolean(
+        eligibility &&
+          ((eligibility.fields?.length ?? 0) > 0 || Boolean(eligibility.stage)),
       ),
     },
   ];
