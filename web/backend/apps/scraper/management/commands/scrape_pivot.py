@@ -33,9 +33,9 @@ class Command(BaseCommand):
         parser.add_argument(
             "--area",
             action="append",
-            choices=["grants", "conferences"],
+            choices=["grants", "conferences", "fellowships"],
             dest="areas",
-            help="Limit to an area (repeatable). Default: both.",
+            help="Limit to an area (repeatable). Default: all three.",
         )
         parser.add_argument(
             "--out",
@@ -44,17 +44,24 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        from apps.scraper.pivot.common import state_exists
+        areas = tuple(options.get("areas") or ("grants", "conferences", "fellowships"))
 
-        if not state_exists():
-            raise CommandError(
-                "No saved session — run 'pivot_login' first (and on a machine "
-                "with a display)."
-            )
+        # Pivot SSO session is only required for grants + conferences.
+        pivot_areas = [a for a in areas if a in ("grants", "conferences")]
+        if pivot_areas:
+            from apps.scraper.pivot.common import state_exists
+
+            if not state_exists():
+                if set(areas) == {"fellowships"}:
+                    pass  # fellowships-only scrape needs no session
+                else:
+                    raise CommandError(
+                        "No saved session — run 'pivot_login' first (and on a machine "
+                        "with a display). Pass --area fellowships to scrape only the "
+                        "public fellowship site without a session."
+                    )
 
         from apps.scraper.pivot.scrape import refresh
-
-        areas = tuple(options.get("areas") or ("grants", "conferences"))
         topics = [t for t in (options.get("topics") or []) if t and t.strip()]
         if "grants" in areas and not topics:
             self.stdout.write(

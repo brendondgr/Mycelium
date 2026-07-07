@@ -47,7 +47,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--area",
-            choices=["grants", "conferences"],
+            choices=["grants", "conferences", "fellowships"],
             help="Area for --source json when it can't be inferred from the file.",
         )
         parser.add_argument(

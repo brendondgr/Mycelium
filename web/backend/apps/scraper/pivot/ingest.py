@@ -33,6 +33,10 @@ from .records import PIVOT_SOURCE, PivotItem, build_pivot_item
 # An embedder maps a batch of texts to vectors, or ``None`` when unavailable.
 Embedder = Callable[[Sequence[str]], list[list[float]] | None]
 
+# All sources this ingest layer manages. Upsert keys on (source, external_id);
+# prune covers all sources in this set.
+OPPORTUNITY_SOURCES = (PIVOT_SOURCE, "illinois-fellowship-finder")
+
 Log = Callable[[str], None]
 
 
@@ -94,7 +98,7 @@ def upsert_pivot_items(
         meta["search_text"] = item.text
 
         existing = ContentItem.objects.filter(
-            source=PIVOT_SOURCE, external_id=item.external_id
+            source=item.source, external_id=item.external_id
         ).first()
         if existing is not None:
             old = existing.metadata or {}
@@ -113,7 +117,7 @@ def upsert_pivot_items(
             meta["last_seen"] = now_iso
             obj = ContentItem.objects.create(
                 type=item.type,
-                source=PIVOT_SOURCE,
+                source=item.source,
                 external_id=item.external_id,
                 source_url=item.source_url,
                 metadata=meta,
@@ -141,17 +145,23 @@ def upsert_pivot_items(
 
 
 def prune_expired(*, today: str | None = None, log: Log | None = None) -> int:
-    """Delete Pivot grants/conferences whose actionable date has passed.
+    """Delete Pivot grants/conferences/fellowships whose actionable date has passed.
 
-    Grants expire at their application deadline; conferences at their event date.
+    Grants expire at their application deadline; conferences at their event date;
+    fellowships at their ``prune_after`` (set only for "true" hard deadlines —
+    rolling/anticipated/continuous entries are never pruned).
     Unknown dates are kept (can't prove they're past) — the same rule as
     :func:`apps.scraper.pivot.status.is_visible`.
     """
     log = log or _noop
     today = _today_iso(today)
     qs = ContentItem.objects.filter(
-        source=PIVOT_SOURCE,
-        type__in=[ContentItem.Type.GRANT, ContentItem.Type.CONFERENCE],
+        source__in=OPPORTUNITY_SOURCES,
+        type__in=[
+            ContentItem.Type.GRANT,
+            ContentItem.Type.CONFERENCE,
+            ContentItem.Type.FELLOWSHIP,
+        ],
     ).only("id", "metadata")
     expired_ids = [
         c.id
@@ -177,7 +187,7 @@ def ingest_pivot(
 ) -> PivotIngestSummary:
     """Ingest ``(area, raw_record)`` pairs: build → upsert → embed → prune.
 
-    ``area`` is the tool's plural label ("grants" / "conferences").
+    ``area`` is the tool's plural label ("grants" / "conferences" / "fellowships").
     """
     log = log or _noop
     today = _today_iso(today)

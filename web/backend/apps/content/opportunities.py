@@ -45,6 +45,7 @@ DEFAULT_LLM_CONCURRENCY = 12
 AREAS: dict[str, str] = {
     "grants": ContentItem.Type.GRANT,
     "conferences": ContentItem.Type.CONFERENCE,
+    "fellowships": ContentItem.Type.FELLOWSHIP,
 }
 
 
@@ -113,6 +114,165 @@ class _MatchJob:
     percentile: float
     llm_limit: int
     surface_limit: int
+
+
+@dataclass
+class _FellowshipMatchJob:
+    """A prepared fellowship unit — no embeddings, no LLM.
+
+    All fellowship items are loaded from the DB; scoring is the deterministic
+    rule engine (:mod:`.fellowships`). Safe to run in the same thread pool as
+    the LLM jobs because it is pure computation.
+    """
+
+    user: User
+    username: str
+    area: str = "fellowships"
+    content_type: str = ContentItem.Type.FELLOWSHIP
+    items: list = None           # list[ContentItem]
+    elig: object = None          # Elig dataclass
+    percentile: float = DEFAULT_PERCENTILE
+    today: str = ""
+
+    def __post_init__(self):
+        if self.items is None:
+            self.items = []
+
+
+def _prepare_fellowship_match(
+    user: User,
+    *,
+    percentile: float,
+    today: str | None,
+    log: Callable[[str], None] | None,
+) -> tuple[_FellowshipMatchJob | None, OppRunResult | None]:
+    """DB phase for fellowships — load all items + build Elig (no embedding)."""
+    username = user.get_username()
+
+    def emit(message: str) -> None:
+        if log is not None:
+            log(f"[{username}:fellowships] {message}")
+
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        emit("no profile; skipping")
+        return None, OppRunResult(
+            username, "fellowships", "no_profile", note="user has no profile"
+        )
+
+    from .fellowships import eligibility_from_profile
+
+    elig = eligibility_from_profile(profile)
+
+    items = list(
+        ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP).only(
+            "id", "metadata"
+        )
+    )
+    if not items:
+        emit("no fellowship ContentItems in corpus yet")
+        return None, OppRunResult(
+            username, "fellowships", "no_results", note="no fellowship items in DB"
+        )
+
+    emit(f"loaded {len(items)} fellowship items")
+    from django.utils import timezone as tz
+
+    job = _FellowshipMatchJob(
+        user=user,
+        username=username,
+        items=items,
+        elig=elig,
+        percentile=percentile,
+        today=today or tz.now().date().isoformat(),
+    )
+    return job, None
+
+
+def _score_fellowship_job(job: _FellowshipMatchJob) -> list[dict]:
+    """Rule-engine scoring — pure, no ORM, safe to run in the thread pool."""
+    from .fellowships import match_fellowships
+
+    return match_fellowships(job.items, job.elig, job.today)
+
+
+def _finalize_fellowship_match(
+    job: _FellowshipMatchJob,
+    suggestions: list[dict],
+    *,
+    persist: bool,
+    log: Callable[[str], None] | None,
+) -> OppRunResult:
+    """DB phase — compute pins + persist RelevanceScore rows for fellowships."""
+
+    def emit(message: str) -> None:
+        if log is not None:
+            log(f"[{job.username}:fellowships] {message}")
+
+    items_by_id = {str(item.id): item for item in job.items}
+    pins = compute_pins(
+        suggestions, items_by_id, today=job.today, percentile=job.percentile
+    )
+    new_count = sum(1 for p in pins.values() if p["is_new"])
+    emit(f"scored {len(suggestions)} eligible fellowships, {new_count} new")
+
+    if persist:
+        _persist_fellowships(job.user, suggestions, items_by_id, pins, today=job.today)
+
+    return OppRunResult(
+        job.username,
+        "fellowships",
+        "ok",
+        retrieved=len(job.items),
+        suggestions=len(suggestions),
+        llm=0,
+        fallback=len(suggestions),
+        new=new_count,
+    )
+
+
+def _persist_fellowships(
+    user: User,
+    suggestions: list[dict],
+    items_by_id: dict,
+    pins: dict,
+    *,
+    today: str | None,
+) -> None:
+    """Upsert one RelevanceScore per surfaced fellowship, with eligibility signals."""
+    run_at = timezone.now().isoformat()
+    for s in suggestions:
+        cid = s["content_id"]
+        item = items_by_id.get(cid)
+        meta = (item.metadata or {}) if item else {}
+        pin = pins.get(cid, {})
+        signals = {
+            "area": ContentItem.Type.FELLOWSHIP,
+            "run_at": run_at,
+            "suggested": True,
+            "is_new": pin.get("is_new", False),
+            "pinned_until": pin.get("pinned_until"),
+            "first_seen": pin.get("first_seen", meta.get("first_seen", "")),
+            "deadline_date": meta.get("deadline_date", ""),
+            "next_kind": meta.get("next_kind", ""),
+            "status": s.get("status", ""),
+            "status_summary": s.get("status_summary", ""),
+            "rank": s["rank"],
+            "headline": s["headline"],
+            "reason": s["reason"],
+            "match_percent": s["match_percent"],
+            "source": s["source"],
+            "tier": s["tier"],
+            "gates_failed": s.get("gates_failed", []),
+            "reasons": s.get("reasons", []),
+            "fit": s.get("fit", 0.0),
+        }
+        if item:
+            RelevanceScore.objects.update_or_create(
+                content=item,
+                target_user=user,
+                defaults={"score": round(s.get("fit", 0.0), 6), "signals": signals},
+            )
 
 
 def _prepare_match(
@@ -271,6 +431,24 @@ def match_opportunities_for_user(
     return _finalize_match(job, suggestions, persist=persist, today=today, log=log)
 
 
+def match_fellowships_for_user(
+    user: User,
+    *,
+    percentile: float = DEFAULT_PERCENTILE,
+    persist: bool = True,
+    today: str | None = None,
+    log: Callable[[str], None] | None = None,
+) -> OppRunResult:
+    """Rule-engine fellowship matching for one user (serial, no LLM)."""
+    job, short = _prepare_fellowship_match(
+        user, percentile=percentile, today=today, log=log
+    )
+    if short is not None:
+        return short
+    suggestions = _score_fellowship_job(job)
+    return _finalize_fellowship_match(job, suggestions, persist=persist, log=log)
+
+
 def run_opportunities_for_user(
     user: User,
     *,
@@ -278,7 +456,22 @@ def run_opportunities_for_user(
     **kwargs,
 ) -> list[OppRunResult]:
     """Match every requested area for one user (grants + conferences by default)."""
-    return [match_opportunities_for_user(user, area, **kwargs) for area in areas]
+    results = []
+    for area in areas:
+        if area == "fellowships":
+            # fellowships use the deterministic rule engine, not the LLM pipeline
+            results.append(
+                match_fellowships_for_user(
+                    user,
+                    percentile=kwargs.get("percentile", DEFAULT_PERCENTILE),
+                    persist=kwargs.get("persist", True),
+                    today=kwargs.get("today"),
+                    log=kwargs.get("log"),
+                )
+            )
+        else:
+            results.append(match_opportunities_for_user(user, area, **kwargs))
+    return results
 
 
 @dataclass
@@ -308,7 +501,7 @@ def _union_watch_topics(users) -> list[str]:
 def run_daily_opportunities_batch(
     users,
     *,
-    areas: tuple[str, ...] = ("grants", "conferences"),
+    areas: tuple[str, ...] = ("grants", "conferences", "fellowships"),
     ingest: bool = True,
     prune: bool = True,
     embed: bool = True,
@@ -364,58 +557,90 @@ def run_daily_opportunities_batch(
     results: list[OppRunResult] = []
 
     # Phase 2a — prepare every unit (serial DB reads: retrieve + fuse + embed).
-    jobs: list[_MatchJob] = []
+    # Fellowship units go into a separate list; they score via rule engine, not LLM.
+    llm_jobs: list[_MatchJob] = []
+    fellowship_jobs: list[_FellowshipMatchJob] = []
+
     for user in users:
         for area in areas:
-            try:
-                job, short = _prepare_match(
-                    user,
-                    area,
-                    surface_limit=DEFAULT_SURFACE,
-                    llm_limit=DEFAULT_LLM_LIMIT,
-                    pool_per_interest=DEFAULT_POOL_PER_INTEREST,
-                    beta=DEFAULT_BETA,
-                    percentile=percentile,
-                    log=log,
-                )
-            except Exception:
-                logger.exception(
-                    "prepare failed for %s:%s", user.get_username(), area
-                )
-                results.append(
-                    OppRunResult(
-                        user.get_username(), area, "error", note="prepare failed"
+            if area == "fellowships":
+                try:
+                    job, short = _prepare_fellowship_match(
+                        user, percentile=percentile, today=today, log=log
                     )
-                )
-                continue
-            if short is not None:
-                results.append(short)
-            elif job is not None:
-                jobs.append(job)
+                except Exception:
+                    logger.exception(
+                        "prepare failed for %s:fellowships", user.get_username()
+                    )
+                    results.append(
+                        OppRunResult(
+                            user.get_username(), "fellowships", "error",
+                            note="prepare failed",
+                        )
+                    )
+                    continue
+                if short is not None:
+                    results.append(short)
+                elif job is not None:
+                    fellowship_jobs.append(job)
+            else:
+                try:
+                    job, short = _prepare_match(
+                        user,
+                        area,
+                        surface_limit=DEFAULT_SURFACE,
+                        llm_limit=DEFAULT_LLM_LIMIT,
+                        pool_per_interest=DEFAULT_POOL_PER_INTEREST,
+                        beta=DEFAULT_BETA,
+                        percentile=percentile,
+                        log=log,
+                    )
+                except Exception:
+                    logger.exception(
+                        "prepare failed for %s:%s", user.get_username(), area
+                    )
+                    results.append(
+                        OppRunResult(
+                            user.get_username(), area, "error", note="prepare failed"
+                        )
+                    )
+                    continue
+                if short is not None:
+                    results.append(short)
+                elif job is not None:
+                    llm_jobs.append(job)
 
-    # Phase 2b — score the prepared units with the model CONCURRENTLY (the slow
-    # step). Pure LLM I/O, no ORM, so a thread pool is safe.
+    # Phase 2b — score prepared units concurrently.  LLM jobs use the language
+    # model; fellowship jobs use the deterministic rule engine (also fast but
+    # submitted to the same pool so all scoring runs in parallel).
+    all_jobs: list = llm_jobs + fellowship_jobs
     scored: dict[int, list[dict] | None] = {}
-    if jobs:
-        workers = max(1, min(concurrency, len(jobs)))
-        emit(f"scoring {len(jobs)} unit(s), up to {workers} concurrent LLM call(s)…")
+    if all_jobs:
+        workers = max(1, min(concurrency, len(all_jobs)))
+        emit(
+            f"scoring {len(llm_jobs)} LLM + {len(fellowship_jobs)} fellowship "
+            f"unit(s), up to {workers} concurrent…"
+        )
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = {
-                executor.submit(_score_job, job, complete=complete): idx
-                for idx, job in enumerate(jobs)
-            }
+            futures = {}
+            for idx, job in enumerate(all_jobs):
+                if isinstance(job, _FellowshipMatchJob):
+                    futures[executor.submit(_score_fellowship_job, job)] = idx
+                else:
+                    futures[executor.submit(_score_job, job, complete=complete)] = idx
             for future in as_completed(futures):
                 idx = futures[future]
+                j = all_jobs[idx]
                 try:
                     scored[idx] = future.result()
                 except Exception:
                     logger.exception(
-                        "scoring failed for %s:%s", jobs[idx].username, jobs[idx].area
+                        "scoring failed for %s:%s", j.username, j.area
                     )
                     scored[idx] = None
 
     # Phase 2c — finalize (serial DB writes: New/pin + persist).
-    for idx, job in enumerate(jobs):
+    for idx, job in enumerate(all_jobs):
         suggestions = scored.get(idx)
         if suggestions is None:
             results.append(
@@ -423,11 +648,18 @@ def run_daily_opportunities_batch(
             )
             continue
         try:
-            results.append(
-                _finalize_match(
-                    job, suggestions, persist=persist, today=today, log=log
+            if isinstance(job, _FellowshipMatchJob):
+                results.append(
+                    _finalize_fellowship_match(
+                        job, suggestions, persist=persist, log=log
+                    )
                 )
-            )
+            else:
+                results.append(
+                    _finalize_match(
+                        job, suggestions, persist=persist, today=today, log=log
+                    )
+                )
         except Exception:
             logger.exception(
                 "finalize failed for %s:%s", job.username, job.area

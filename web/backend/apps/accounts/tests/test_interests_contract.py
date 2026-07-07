@@ -1,4 +1,4 @@
-"""Phase A — the interests contract gate."""
+"""Phase A — the interests contract gate (including eligibility sub-contract)."""
 
 import pytest
 from rest_framework.exceptions import ValidationError
@@ -18,7 +18,7 @@ def test_valid_v1_payload_accepted() -> None:
         "keywords": ["cortex", "spiking"],
         "skills": ["Python"],
         "funding_needs": ["NIH"],
-        "eligibility": {"citizenship": "any"},
+        "eligibility": {"citizenship": "us", "stage": "doctoral_early"},
         "seeking": ["postdoc"],
         "exclusions": ["pure theory"],
         "sources": {"openalex": "A123"},
@@ -79,3 +79,125 @@ def test_stamped_seeder_row_is_contract_valid() -> None:
         "seeking": ["fellowship"],
     }
     assert validate_interests(row)["seeking"] == ["fellowship"]
+
+
+# ---- Eligibility sub-contract -----------------------------------------------
+
+
+def test_eligibility_full_valid_block_accepted() -> None:
+    data = {
+        "areas": ["neuroscience"],
+        "eligibility": {
+            "citizenship": "us",
+            "stage": "doctoral_early",
+            "fields": ["Sciences/Engineering/Math", "Humanities"],
+            "eligible_restrictions": ["Women"],
+        },
+    }
+    validated = validate_interests(data)
+    e = validated["eligibility"]
+    assert e["citizenship"] == "us"
+    assert e["stage"] == "doctoral_early"
+    assert "Sciences/Engineering/Math" in e["fields"]
+    assert "Women" in e["eligible_restrictions"]
+
+
+def test_eligibility_defaults_when_absent() -> None:
+    validated = validate_interests({"areas": ["x"]})
+    assert "eligibility" not in validated   # optional field not defaulted when absent
+
+
+def test_eligibility_empty_block_accepted() -> None:
+    validated = validate_interests({"areas": ["x"], "eligibility": {}})
+    e = validated["eligibility"]
+    assert e["citizenship"] == "us"
+    assert e["stage"] == ""
+    assert e["fields"] == []
+    assert e["eligible_restrictions"] == []
+
+
+def test_eligibility_international_citizenship_accepted() -> None:
+    validated = validate_interests({
+        "areas": ["x"],
+        "eligibility": {"citizenship": "international"},
+    })
+    assert validated["eligibility"]["citizenship"] == "international"
+
+
+def test_eligibility_invalid_citizenship_rejected() -> None:
+    with pytest.raises(ValidationError):
+        validate_interests({
+            "areas": ["x"],
+            "eligibility": {"citizenship": "alien"},
+        })
+
+
+def test_eligibility_invalid_stage_rejected() -> None:
+    with pytest.raises(ValidationError):
+        validate_interests({
+            "areas": ["x"],
+            "eligibility": {"stage": "undergrad"},
+        })
+
+
+def test_eligibility_invalid_field_rejected() -> None:
+    with pytest.raises(ValidationError):
+        validate_interests({
+            "areas": ["x"],
+            "eligibility": {"fields": ["Underwater Basket Weaving"]},
+        })
+
+
+def test_eligibility_invalid_restriction_rejected() -> None:
+    with pytest.raises(ValidationError):
+        validate_interests({
+            "areas": ["x"],
+            "eligibility": {"eligible_restrictions": ["Race"]},
+        })
+
+
+def test_eligibility_career_stage_passthrough() -> None:
+    """intake/agent.py writes career_stage inside eligibility; it must round-trip."""
+    data = {
+        "areas": ["x"],
+        "eligibility": {
+            "citizenship": "us",
+            "stage": "doctoral_early",
+            "career_stage": "phd",  # written by agent; not in formal vocab
+        },
+    }
+    validated = validate_interests(data)
+    assert validated["eligibility"]["career_stage"] == "phd"
+
+
+def test_eligibility_unknown_extra_keys_passthrough() -> None:
+    """Unknown keys inside eligibility pass through (backward compat)."""
+    data = {
+        "areas": ["x"],
+        "eligibility": {
+            "citizenship": "us",
+            "university": "Florida State University",
+            "is_illinois_student": False,
+        },
+    }
+    validated = validate_interests(data)
+    assert validated["eligibility"]["university"] == "Florida State University"
+    assert validated["eligibility"]["is_illinois_student"] is False
+
+
+def test_eligibility_fixture_profile_accepted() -> None:
+    """The real fixture eligibility block from profile.json validates cleanly."""
+    fixture_eligibility = {
+        "citizenship": "us",
+        "stage": "doctoral_early",
+        "fields": ["Sciences/Engineering/Math"],
+        "eligible_restrictions": [],
+    }
+    validated = validate_interests({
+        "areas": ["Artificial Intelligence"],
+        "eligibility": fixture_eligibility,
+    })
+    e = validated["eligibility"]
+    assert e["citizenship"] == "us"
+    assert e["stage"] == "doctoral_early"
+    assert e["fields"] == ["Sciences/Engineering/Math"]

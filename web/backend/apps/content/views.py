@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from .models import ContentItem, RelevanceScore, SavedOpportunity
 from .serializers import (
     ConferenceSerializer,
+    FellowshipSerializer,
     GrantSerializer,
     SavedDeadlineSerializer,
     SuggestionSerializer,
@@ -190,10 +191,23 @@ class ConferencesView(_OpportunityFeedView):
     serializer_class = ConferenceSerializer
 
 
+class FellowshipsView(_OpportunityFeedView):
+    """The signed-in user's matched fellowships (Fellowships page)."""
+
+    content_type = ContentItem.Type.FELLOWSHIP
+    serializer_class = FellowshipSerializer
+
+
 class SaveOpportunityView(APIView):
-    """Save (POST) or unsave (DELETE) a grant/conference to the user's deadlines."""
+    """Save (POST) or unsave (DELETE) an opportunity to the user's deadlines."""
 
     permission_classes = [IsAuthenticated]
+
+    _SAVEABLE_TYPES = [
+        ContentItem.Type.GRANT,
+        ContentItem.Type.CONFERENCE,
+        ContentItem.Type.FELLOWSHIP,
+    ]
 
     def post(self, request):
         content_id = request.data.get("content_id")
@@ -204,11 +218,11 @@ class SaveOpportunityView(APIView):
             )
         item = ContentItem.objects.filter(
             id=content_id,
-            type__in=[ContentItem.Type.GRANT, ContentItem.Type.CONFERENCE],
+            type__in=self._SAVEABLE_TYPES,
         ).first()
         if item is None:
             return Response(
-                {"detail": "No such grant or conference."},
+                {"detail": "No such grant, conference, or fellowship."},
                 status=status.HTTP_404_NOT_FOUND,
             )
         saved = _save_from_item(request.user, item, note=request.data.get("note", ""))
@@ -230,26 +244,33 @@ class SaveOpportunityView(APIView):
 def _save_from_item(user, item: ContentItem, *, note: str) -> SavedOpportunity:
     """Create/update a save, snapshotting the display + deadline fields."""
     meta = item.metadata or {}
-    area = (
-        SavedOpportunity.Area.GRANT
-        if item.type == ContentItem.Type.GRANT
-        else SavedOpportunity.Area.CONFERENCE
-    )
-    if area == SavedOpportunity.Area.GRANT:
+
+    if item.type == ContentItem.Type.GRANT:
+        area = SavedOpportunity.Area.GRANT
         title = meta.get("title") or "Untitled grant"
         subtitle = meta.get("sponsor") or ""
+        url = meta.get("website") or item.source_url or ""
+    elif item.type == ContentItem.Type.FELLOWSHIP:
+        area = SavedOpportunity.Area.FELLOWSHIP
+        title = meta.get("title") or "Untitled fellowship"
+        # award_class is "fellowship" / "scholarship" / etc. — title-case for display.
+        subtitle = (meta.get("award_class") or "fellowship").replace("_", " ").title()
+        url = meta.get("external_url") or meta.get("website") or item.source_url or ""
     else:
+        area = SavedOpportunity.Area.CONFERENCE
         title = meta.get("name") or "Untitled conference"
         subtitle = ", ".join(
             p for p in (meta.get("location"), meta.get("country")) if p
         )
+        url = meta.get("website") or item.source_url or ""
+
     saved, _ = SavedOpportunity.objects.update_or_create(
         user=user,
         content=item,
         defaults={
             "area": area,
             "title": title,
-            "url": meta.get("website") or item.source_url or "",
+            "url": url,
             "subtitle": subtitle,
             "deadline_date": meta.get("deadline_date") or None,
             "deadline_kind": (

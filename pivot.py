@@ -199,22 +199,33 @@ def _login() -> int:
 def _scrape(rest: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="pivot.py scrape")
     ap.add_argument("--topic", action="append", dest="topics", metavar="TEXT",
-                    help="Grant search topic (repeatable). Conferences ignore this.")
-    ap.add_argument("--area", action="append", choices=["grants", "conferences"],
-                    dest="areas", help="Limit to an area (repeatable). Default: both.")
+                    help="Grant search topic (repeatable). Conferences/fellowships ignore this.")
+    ap.add_argument("--area", action="append",
+                    choices=["grants", "conferences", "fellowships"],
+                    dest="areas",
+                    help="Limit to an area (repeatable). Default: all three.")
     ap.add_argument("--out", default=str(PIVOT_DIR),
                     help=f"Output directory (default: {PIVOT_DIR}).")
     args = ap.parse_args(rest)
 
     _bootstrap_django()
-    from apps.scraper.pivot.common import state_exists
 
-    if not state_exists():
-        sys.exit("No saved session — run 'pivot.py login' first (on a machine "
-                 "with a display).")
+    areas = tuple(args.areas or ("grants", "conferences", "fellowships"))
+    pivot_areas = [a for a in areas if a in ("grants", "conferences")]
+
+    if pivot_areas:
+        from apps.scraper.pivot.common import state_exists
+
+        if not state_exists():
+            if set(areas) == {"fellowships"}:
+                pass  # public site only — no session needed
+            else:
+                sys.exit("No saved session — run 'pivot.py login' first (on a machine "
+                         "with a display). Pass --area fellowships to scrape only the "
+                         "public fellowship site without a session.")
+
     from apps.scraper.pivot.scrape import refresh
 
-    areas = tuple(args.areas or ("grants", "conferences"))
     topics = [t for t in (args.topics or []) if t and t.strip()]
     pairs = list(refresh(areas=areas, topics=topics, log=lambda m: print(m, flush=True)))
     if not pairs:
@@ -238,13 +249,27 @@ def _import(rest: list[str]) -> int:
     from apps.scraper.pivot.importer import load_json
     from apps.scraper.pivot.ingest import ingest_pivot
 
+    # Known area -> expected file stem mapping.
+    # Also check for a pivot_fellowships.json from a scrape run, plus the tool's
+    # fellowships.json (same record shape, area inferred from the stem/argument).
+    _AREA_FILES = {
+        "grants": PIVOT_DIR / "pivot_grants.json",
+        "conferences": PIVOT_DIR / "pivot_conferences.json",
+        "fellowships": PIVOT_DIR / "pivot_fellowships.json",
+    }
+
     files = sorted(PIVOT_DIR.glob("pivot_*.json"))
     if not files:
         sys.exit(f"No scraped JSON in {PIVOT_DIR} — run 'pivot.py scrape' first.")
     pairs: list[tuple[str, dict]] = []
     for path in files:
-        area = path.stem.replace("pivot_", "")
-        pairs.extend(load_json(path, area))
+        stem = path.stem  # e.g. "pivot_grants"
+        area = stem.replace("pivot_", "")
+        try:
+            pairs.extend(load_json(path, area))
+        except ValueError:
+            # area not recognised (e.g. a stale file with an unexpected name) — skip
+            print(f"warning: skipping {path.name} (unrecognised area {area!r})")
     summary = ingest_pivot(pairs, prune="--no-prune" not in rest,
                            log=lambda m: print(m, flush=True))
     print(json.dumps(summary.as_dict(), indent=2))

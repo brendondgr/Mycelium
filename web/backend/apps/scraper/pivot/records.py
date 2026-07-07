@@ -22,7 +22,11 @@ from .status import opportunity_status
 PIVOT_SOURCE = "pivot"
 
 # Area label (plural, as the tool uses it) -> ContentItem.type value.
-AREA_TO_TYPE = {"grants": "grant", "conferences": "conference"}
+AREA_TO_TYPE = {
+    "grants": "grant",
+    "conferences": "conference",
+    "fellowships": "fellowship",
+}
 
 
 def _join(*parts) -> str:
@@ -40,6 +44,23 @@ def record_text(rec: dict, area: str) -> str:
             rec.get("amount"),
             rec.get("matched_topics"),
         )
+    if area == "fellowships":
+        # Facet strings add discriminating vocabulary for vector/BM25 search.
+        facets = rec.get("facets") or {}
+        facet_parts = []
+        for bucket in ("field", "citizenship", "stage", "award_type", "limits"):
+            facet_parts.extend(facets.get(bucket) or [])
+        eligibility = rec.get("eligibility") or []
+        eligibility_text = (
+            " ".join(eligibility) if isinstance(eligibility, list) else str(eligibility)
+        )
+        return _join(
+            rec.get("title"),
+            rec.get("blurb"),
+            rec.get("description"),
+            " ".join(facet_parts),
+            eligibility_text,
+        )
     return _join(
         rec.get("name"),
         rec.get("scope"),
@@ -55,13 +76,15 @@ def record_text(rec: dict, area: str) -> str:
 class PivotItem:
     """A normalized Pivot record ready to upsert into ``ContentItem``."""
 
-    type: str  # "grant" | "conference"
+    type: str  # "grant" | "conference" | "fellowship"
     external_id: str
     source_url: str
-    title: str  # display title (grant title / conference name)
-    subtitle: str  # sponsor (grant) / "location, country" (conference)
+    title: str  # display title
+    subtitle: str  # sponsor / "location, country" / award_class title-cased
     text: str  # embedding + BM25 document text
     metadata: dict = field(default_factory=dict)
+    # "pivot" for grants/conferences; rec["source"] for fellowships
+    source: str = PIVOT_SOURCE
 
     @property
     def prune_after(self) -> str:
@@ -73,11 +96,25 @@ class PivotItem:
         return self.metadata.get("deadline_date", "")
 
 
-def build_pivot_item(area: str, rec: dict, *, today: str) -> PivotItem | None:
-    """Build a :class:`PivotItem` from a raw grant/conference record.
+def _coerce_deadline_date(date: str) -> str:
+    """Coerce a YYYY-MM deadline date to the first of that month (YYYY-MM-01).
 
-    ``area`` is the tool's plural label ("grants" / "conferences"). Returns
-    ``None`` for a record missing a stable id (can't dedup it).
+    A full YYYY-MM-DD value is returned unchanged; an empty string is returned
+    as-is; rolling/continuous/varies/suspended/unknown => "".
+    """
+    if not date:
+        return ""
+    if len(date) == 7:  # YYYY-MM
+        return date + "-01"
+    return date  # already YYYY-MM-DD
+
+
+def build_pivot_item(area: str, rec: dict, *, today: str) -> PivotItem | None:
+    """Build a :class:`PivotItem` from a raw grant/conference/fellowship record.
+
+    ``area`` is the tool's plural label ("grants" / "conferences" / "fellowships").
+    Returns ``None`` for a record missing a stable id (can't dedup it) or for a
+    fellowship record whose award_class is "grant" (the Pivot funding feed owns grants).
     """
     kind = AREA_TO_TYPE.get(area)
     if kind is None:
@@ -85,6 +122,12 @@ def build_pivot_item(area: str, rec: dict, *, today: str) -> PivotItem | None:
     external_id = str(rec.get("id") or "").strip()
     if not external_id:
         return None
+
+    if kind == "fellowship":
+        # The Illinois site includes some grants; exclude them — Pivot owns grants.
+        if (rec.get("award_class") or "").strip().lower() == "grant":
+            return None
+        return _build_fellowship_item(rec, external_id, today)
 
     status = opportunity_status(rec, area, today)
 
@@ -154,4 +197,79 @@ def build_pivot_item(area: str, rec: dict, *, today: str) -> PivotItem | None:
         subtitle=subtitle,
         text=record_text(rec, area),
         metadata=metadata,
+    )
+
+
+def _build_fellowship_item(rec: dict, external_id: str, today: str) -> PivotItem:
+    """Build a :class:`PivotItem` for one fellowship record.
+
+    Called exclusively from :func:`build_pivot_item` when ``area == "fellowships"``.
+    Grant exclusion is already done by the caller.
+    """
+    from .fellowships.parsers import deadline_status  # lazy: keeps package import clean
+
+    title = (rec.get("title") or "").strip()
+    award_class = (rec.get("award_class") or "fellowship").strip()
+    subtitle = award_class.title()  # e.g. "Scholarship", "Fellowship"
+
+    # Deadline: structured dict from the record.
+    deadline = rec.get("deadline") or {}
+    deadline_raw_date = (deadline.get("date") or "").strip()
+    deadline_type = (deadline.get("type") or "unknown").strip()
+
+    # Coerce YYYY-MM to YYYY-MM-01 for database sorting; keep "" for dateless types.
+    deadline_date = _coerce_deadline_date(deadline_raw_date)
+
+    # prune_after: only for "true" deadlines with a full YYYY-MM-DD.
+    prune_after = ""
+    if deadline_type == "true" and len(deadline_raw_date) == 10:
+        prune_after = deadline_raw_date
+
+    next_kind = "application" if deadline_date else ""
+
+    ds = deadline_status(deadline, today)
+
+    # Amount.
+    award_amount = rec.get("award_amount") or {}
+    external_url = (rec.get("external_url") or "").strip()
+
+    metadata = {
+        "title": title,
+        "blurb": (rec.get("blurb") or "").strip(),
+        "description": (rec.get("description") or "").strip(),
+        "award_class": award_class,
+        "deadline": deadline,
+        "deadline_date": deadline_date,
+        "deadline_type": deadline_type,
+        "amount_kind": (award_amount.get("kind") or ""),
+        "amount_currency": (award_amount.get("currency") or ""),
+        "amount_min": award_amount.get("min"),
+        "amount_max": award_amount.get("max"),
+        "amount_raw": (award_amount.get("raw") or ""),
+        "amount_note": (award_amount.get("note") or ""),
+        "facets": rec.get("facets") or {},
+        "flags": rec.get("flags") or {},
+        "eligibility": rec.get("eligibility") or [],
+        "external_url": external_url,
+        "contact_email": (rec.get("contact_email") or "").strip(),
+        "note": (rec.get("note") or "").strip(),
+        "website": external_url,  # SavedOpportunity compatibility
+        "next_kind": next_kind,
+        "status": ds["status"],
+        "status_summary": ds["summary"],
+        "prune_after": prune_after,
+    }
+
+    rec_source = (rec.get("source") or "illinois-fellowship-finder").strip()
+    source_url = (rec.get("source_url") or "").strip()
+
+    return PivotItem(
+        type="fellowship",
+        external_id=external_id,
+        source_url=source_url,
+        title=title,
+        subtitle=subtitle,
+        text=record_text(rec, "fellowships"),
+        metadata=metadata,
+        source=rec_source,
     )

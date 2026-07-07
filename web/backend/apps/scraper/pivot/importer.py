@@ -18,6 +18,13 @@ from pathlib import Path
 _SQLITE_AREAS = {
     "grants": {"table": "grants", "json": set()},
     "conferences": {"table": "conferences", "json": {"timeline"}},
+    # The fellowships SQLite store (utils/Fellowships/db.py) uses ``key`` as
+    # the PRIMARY KEY and stores structured fields as JSON TEXT.
+    "fellowships": {
+        "table": "fellowships",
+        "key_col": "key",  # source|id composite key — not used as external_id
+        "json": {"deadline", "award_amount", "eligibility", "facets", "flags"},
+    },
 }
 
 
@@ -32,23 +39,27 @@ def _records_from_json_blob(blob) -> list[dict]:
     return []
 
 
+_VALID_AREAS = frozenset(("grants", "conferences", "fellowships"))
+
+
 def load_json(path: Path, area: str | None = None) -> list[tuple[str, dict]]:
     """Read one JSON file. ``area`` is inferred from the file when possible."""
     blob = json.loads(Path(path).read_text())
     if area is None and isinstance(blob, dict):
         blob_area = blob.get("area")
-        if blob_area in ("grants", "conferences"):
+        if blob_area in _VALID_AREAS:
             area = blob_area
-    if area not in ("grants", "conferences"):
+    if area not in _VALID_AREAS:
         raise ValueError(
-            f"cannot infer area for {path}; pass area='grants' or 'conferences'"
+            f"cannot infer area for {path}; "
+            "pass area='grants', 'conferences', or 'fellowships'"
         )
     return [(area, rec) for rec in _records_from_json_blob(blob)]
 
 
 def load_sqlite(path: Path, area: str | None = None) -> list[tuple[str, dict]]:
-    """Read the grants and/or conferences tables from a ``pivot.db``."""
-    areas = [area] if area in ("grants", "conferences") else list(_SQLITE_AREAS)
+    """Read the grants, conferences, and/or fellowships tables from a ``.db`` file."""
+    areas = [area] if area in _SQLITE_AREAS else list(_SQLITE_AREAS)
     out: list[tuple[str, dict]] = []
     conn = sqlite3.connect(str(path))
     conn.row_factory = sqlite3.Row

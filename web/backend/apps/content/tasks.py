@@ -79,7 +79,10 @@ def run_daily_opportunities(
     prune: bool = True,
     embed: bool = True,
 ) -> dict:
-    """Refresh + prune the Pivot corpus, then match grants/conferences per user.
+    """Refresh + prune the Pivot corpus, then match opportunities per user.
+
+    Covers grants, conferences, and fellowships.  Fellowships are matched via the
+    deterministic rule engine (no LLM call) and are always included.
 
     The opportunity twin of :func:`run_daily_suggestions`, wired to its own 1am
     Beat schedule. Ingest is best-effort (a no-op without a saved Pivot session),
@@ -92,6 +95,7 @@ def run_daily_opportunities(
     try:
         batch = run_daily_opportunities_batch(
             users,
+            areas=("grants", "conferences", "fellowships"),
             ingest=ingest,
             prune=prune,
             embed=embed,

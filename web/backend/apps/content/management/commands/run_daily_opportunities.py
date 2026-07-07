@@ -1,4 +1,4 @@
-"""Match Pivot grants & conferences to every user (the 1am job, on demand).
+"""Match Pivot grants, conferences, and fellowships to every user (the 1am job).
 
     uv run --project web/backend python web/backend/manage.py run_daily_opportunities
     uv run --project web/backend python web/backend/manage.py run_daily_opportunities \
@@ -7,7 +7,8 @@
 Runs inline by default (best for a smoke test); ``--async`` dispatches the Celery
 task. ``--no-ingest`` skips the best-effort scrape (match the existing corpus);
 ``--no-prune`` keeps expired items; ``--no-llm`` uses the deterministic fallback
-scoring; ``--dry-run`` computes but persists nothing.
+scoring for grants/conferences (fellowships always use the rule engine);
+``--dry-run`` computes but persists nothing.
 """
 
 from __future__ import annotations
@@ -81,6 +82,7 @@ class Command(BaseCommand):
 
         batch = run_daily_opportunities_batch(
             users,
+            areas=("grants", "conferences", "fellowships"),
             ingest=not options["no_ingest"],
             prune=not options["no_prune"],
             persist=not options["dry_run"],

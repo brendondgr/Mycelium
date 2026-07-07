@@ -22,6 +22,12 @@ urlpatterns = [
     ),
     path("opportunities/conferences", views.ConferencesView.as_view()),
     path(
+        "opportunities/fellowships/",
+        views.FellowshipsView.as_view(),
+        name="opportunities-fellowships",
+    ),
+    path("opportunities/fellowships", views.FellowshipsView.as_view()),
+    path(
         "opportunities/save/",
         views.SaveOpportunityView.as_view(),
         name="opportunity-save",

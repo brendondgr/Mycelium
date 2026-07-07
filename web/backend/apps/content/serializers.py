@@ -233,6 +233,118 @@ class ConferenceSerializer(_OpportunitySerializer):
         return self._meta(score).get("matched_subjects") or ""
 
 
+class FellowshipSerializer(_OpportunitySerializer):
+    """A matched fellowship for the Fellowships page.
+
+    Emits the frontend contract agreed in the fellowships-integration plan.
+    All eligibility + facet fields come from ``metadata``; ranking fields come
+    from ``signals`` (persisted by the rule engine in ``_persist_fellowships``).
+    """
+
+    title = serializers.SerializerMethodField()
+    award_class = serializers.SerializerMethodField()
+    amount = serializers.SerializerMethodField()
+    amount_note = serializers.SerializerMethodField()
+    deadline_type = serializers.SerializerMethodField()
+    fields = serializers.SerializerMethodField(method_name="get_field_facets")
+    stages = serializers.SerializerMethodField()
+    citizenship = serializers.SerializerMethodField()
+    award_types = serializers.SerializerMethodField()
+    limits = serializers.SerializerMethodField()
+    eligibility = serializers.SerializerMethodField()
+    contact_email = serializers.SerializerMethodField()
+    posted = serializers.SerializerMethodField()
+    tier = serializers.SerializerMethodField()
+    gates_failed = serializers.SerializerMethodField()
+    reasons = serializers.SerializerMethodField()
+    fit = serializers.SerializerMethodField()
+
+    def get_url(self, score: RelevanceScore) -> str:
+        meta = self._meta(score)
+        return (
+            meta.get("external_url")
+            or meta.get("website")
+            or (score.content.source_url if score.content_id else "")
+        )
+
+    def get_title(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("title") or "Untitled fellowship"
+
+    def get_award_class(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("award_class") or "fellowship"
+
+    def get_amount(self, score: RelevanceScore) -> str:
+        """Human-readable amount: prefer amount_raw, else derive from min/max."""
+        meta = self._meta(score)
+        raw = meta.get("amount_raw") or ""
+        if raw:
+            return raw
+        lo = meta.get("amount_min")
+        hi = meta.get("amount_max")
+        cur = meta.get("amount_currency") or ""
+        kind = meta.get("amount_kind") or ""
+        if lo is not None and hi is not None and lo != hi:
+            return f"{cur}${lo:,}–${hi:,}"
+        if hi is not None:
+            return f"Up to {cur}${hi:,}"
+        if lo is not None:
+            return f"{cur}${lo:,}+"
+        if kind == "varies":
+            return "Varies"
+        return ""
+
+    def get_amount_note(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("amount_note") or ""
+
+    def get_deadline_type(self, score: RelevanceScore) -> str:
+        deadline = self._meta(score).get("deadline") or {}
+        return deadline.get("type") or self._meta(score).get("deadline_type") or ""
+
+    def _facets(self, score: RelevanceScore) -> dict:
+        return self._meta(score).get("facets") or {}
+
+    def get_field_facets(self, score: RelevanceScore) -> list:
+        return self._facets(score).get("field") or []
+
+    def get_stages(self, score: RelevanceScore) -> list:
+        return self._facets(score).get("stage") or []
+
+    def get_citizenship(self, score: RelevanceScore) -> list:
+        return self._facets(score).get("citizenship") or []
+
+    def get_award_types(self, score: RelevanceScore) -> list:
+        return self._facets(score).get("award_type") or []
+
+    def get_limits(self, score: RelevanceScore) -> list:
+        return self._facets(score).get("limits") or []
+
+    def get_eligibility(self, score: RelevanceScore) -> list:
+        return self._meta(score).get("eligibility") or []
+
+    def get_contact_email(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("contact_email") or ""
+
+    def get_posted(self, score: RelevanceScore) -> str:
+        first_seen = (
+            score.signals.get("first_seen")
+            or self._meta(score).get("first_seen")
+            or ""
+        )
+        return first_seen[:10] if first_seen else ""
+
+    def get_tier(self, score: RelevanceScore) -> str:
+        return score.signals.get("tier") or ""
+
+    def get_gates_failed(self, score: RelevanceScore) -> list:
+        return score.signals.get("gates_failed") or []
+
+    def get_reasons(self, score: RelevanceScore) -> list:
+        return score.signals.get("reasons") or []
+
+    def get_fit(self, score: RelevanceScore) -> float | None:
+        return score.signals.get("fit")
+
+
 class SavedDeadlineSerializer(serializers.Serializer):
     """One saved deadline for the Deadlines page (reads the save snapshot).
 
