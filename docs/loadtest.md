@@ -77,6 +77,9 @@ uv run loadtest.py --users 200 --window 15m --synthesize
 | `--no-cleanup` | off | keep the fake users (purge manually) |
 | `--purge-cmd` | host `manage.py loadtest_purge` | how cleanup deletes the users |
 | `--no-live` | off | print periodic snapshots instead of the in-place table |
+| `--log-file` | `<out-dir>/loadtest_<run-id>.log` | full run log path |
+| `--log-level` | `INFO` | file log verbosity (`DEBUG`/`INFO`/`WARNING`/`ERROR`) |
+| `--log-requests` | off | log *every* request, not just failures |
 
 ## Live monitoring
 
@@ -88,14 +91,34 @@ mean/p95 latency, error count and breakdown, and throughput.
 
 ## Output
 
-- Printed **summary table** — totals, error breakdown, per-stage count/mean/p95/max,
-  match totals (matched / genuine-LLM / deterministic-fallback), wall-clock, throughput.
+- Printed **summary table** — totals, per-stage count/mean/p95/max, match totals
+  (matched / genuine-LLM / deterministic-fallback), **user failures by stage**, an
+  **error breakdown** (stage + status), and **likely-cause hints**, plus wall-clock
+  and throughput.
+- `loadtest_results/loadtest_<run-id>.log` — **the full run log**: the start config,
+  every failed request with its **full response body** (or the exception), each
+  user's failure stage, the mirrored summary, and cleanup. This is the file to read
+  when the "failed" count is high. Pass `--log-requests` to also log every successful
+  request.
 - `loadtest_results/operations_<run-id>.csv` — **one row per HTTP request**
   (run_id, user_idx, username, stage, area, method, status_code, ok, latency_ms,
   started_at, error).
 - `loadtest_results/summary_<run-id>.csv` — one row per aggregate metric.
 
 `loadtest_results/` is git-ignored.
+
+### Diagnosing failures
+
+The summary and log call out *why* users failed. The most common cause is the
+registration throttle: a run that wasn't given a raised `DJANGO_REGISTER_THROTTLE_RATE`
+hits `HTTP 429 {"detail":"Request was throttled…"}` at the `register` stage — the log
+shows the throttle body and the summary prints a hint to raise the rate (see
+Prerequisites). Note the throttle counts by IP over a rolling hour and is **not**
+reset by deleting the fake users, so after a throttled run you may keep seeing 429s
+until the window clears (or you restart the backend / clear its cache). Other
+diagnosed cases: connection/timeout saturation (lower `--max-concurrency`), HTTP 403
+(CSRF / untrusted origin), and 400 duplicate accounts from a prior run (purge or use
+a fresh `--run-id`).
 
 ## Cleanup
 

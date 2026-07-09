@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import logging
 import math
 import random
 import shutil
@@ -49,12 +50,26 @@ import statistics
 import subprocess
 import sys
 import time
+import traceback
 import uuid
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import httpx
+
+# Full-detail run log (config, every failed request with its body, per-user
+# failure reasons, the final summary). Configured to a file in setup_logging();
+# the console is left for the live dashboard so the two never interleave.
+logger = logging.getLogger("loadtest")
+
+
+def _clip(text: str, limit: int) -> str:
+    """Trim ``text`` to ``limit`` chars, flagging how much was dropped."""
+    text = text or ""
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit]}… (+{len(text) - limit} more chars)"
 
 # The interest catalog + deck selector live in a sibling module (no external deps).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -132,6 +147,8 @@ class Metrics:
 
     errors: int = 0
     errors_by_key: Counter = field(default_factory=Counter)
+    # Which stage a fully-failed user bailed at (csrf / register / exception).
+    user_fail_stage: Counter = field(default_factory=Counter)
     latency_by_stage: dict[str, list[float]] = field(
         default_factory=lambda: defaultdict(list)
     )
@@ -143,7 +160,14 @@ class Metrics:
         self.records.append(rec)
         if not rec.ok:
             self.errors += 1
-            self.errors_by_key[f"{rec.stage} {rec.status_code}"] += 1
+            if rec.status_code:
+                key = f"{rec.stage} {rec.status_code}"
+            else:
+                # No HTTP status → a network exception; key by its type so the
+                # breakdown and the diagnosis can see (e.g.) ConnectError/ReadTimeout.
+                etype = rec.error.split(":", 1)[0] if rec.error else "error"
+                key = f"{rec.stage} {etype}"
+            self.errors_by_key[key] += 1
         if rec.stage == STAGE_MATCH:
             self.match_done += 1
             if rec.ok:
@@ -250,15 +274,34 @@ class UserSim:
             response = await client.request(method, path, **kwargs)
             status_code = response.status_code
             if status_code not in expect:
-                error = f"HTTP {status_code}: {response.text[:120]}"
+                body = response.text
+                error = f"HTTP {status_code}: {body[:120]}"
+                # Full body to the log so failures are diagnosable, not guessed.
+                logger.error(
+                    "user=%05d stage=%-9s area=%-11s %s %s -> HTTP %s\n"
+                    "    response: %s",
+                    self.idx, stage, area or "-", method, path, status_code,
+                    _clip(body.strip(), 1500),
+                )
         except Exception as exc:  # network / timeout / protocol
             error = f"{type(exc).__name__}: {exc}"[:160]
+            logger.error(
+                "user=%05d stage=%-9s area=%-11s %s %s -> %s: %s",
+                self.idx, stage, area or "-", method, path,
+                type(exc).__name__, exc,
+            )
         finally:
             latency_ms = (time.time() - started) * 1000.0
             m.requests_in_flight -= 1
             if stage == STAGE_MATCH:
                 m.match_in_flight -= 1
             ok = status_code in expect
+            if ok and self.cfg.log_requests:
+                logger.info(
+                    "user=%05d stage=%-9s area=%-11s %s %s -> %s (%.0f ms)",
+                    self.idx, stage, area or "-", method, path,
+                    status_code, latency_ms,
+                )
             m.record(
                 OpRecord(
                     user_idx=self.idx,
@@ -282,6 +325,8 @@ class UserSim:
             # 1. CSRF cookie.
             if await self._do(client, STAGE_CSRF, "GET", "/auth/csrf/") is None:
                 m.users_failed += 1
+                m.user_fail_stage[STAGE_CSRF] += 1
+                logger.warning("user=%05d FAILED at stage=csrf", self.idx)
                 return
 
             # 2. Register (creates account + logs in). 201 on success.
@@ -304,6 +349,8 @@ class UserSim:
             )
             if reg is None:
                 m.users_failed += 1
+                m.user_fail_stage[STAGE_REGISTER] += 1
+                logger.warning("user=%05d FAILED at stage=register", self.idx)
                 return
 
             # 3. Profile basics.
@@ -377,9 +424,15 @@ class UserSim:
                         pass
 
             m.users_completed += 1
+            logger.debug("user=%05d completed", self.idx)
         except Exception:
             # Defensive: a bug in the harness must not sink the whole run.
             m.users_failed += 1
+            m.user_fail_stage["exception"] += 1
+            logger.error(
+                "user=%05d FAILED with exception:\n%s",
+                self.idx, traceback.format_exc(),
+            )
 
 
 # --------------------------------------------------------------------------- #
@@ -500,6 +553,9 @@ class Config:
     cleanup: bool
     purge_cmd: str
     refresh_interval: float
+    log_file: Path
+    log_level: str
+    log_requests: bool
 
 
 def pick_categories(rng: random.Random, cfg: Config) -> list[str]:
@@ -628,30 +684,71 @@ def write_csvs(metrics: Metrics, cfg: Config) -> tuple[Path, Path]:
     return ops_path, summary_path
 
 
-def print_summary(metrics: Metrics, cfg: Config, ops_path: Path, summary_path: Path) -> None:
+def diagnose(metrics: Metrics) -> list[str]:
+    """Plain-language hints about *why* users failed, from the error mix."""
+    hints: list[str] = []
+    keys = metrics.errors_by_key
+    if any("429" in k for k in keys):
+        n = sum(v for k, v in keys.items() if "429" in k)
+        hints.append(
+            f"{n} request(s) were throttled (HTTP 429). The register endpoint "
+            "caps anonymous signups (default 20/hour). Start the backend with "
+            "DJANGO_REGISTER_THROTTLE_RATE set high, e.g. 1000000/hour."
+        )
+    if any("403" in k for k in keys):
+        n = sum(v for k, v in keys.items() if "403" in k)
+        hints.append(
+            f"{n} request(s) got HTTP 403 (often a CSRF failure) — the base URL "
+            "host may not be a trusted origin, or the csrf cookie/header was not "
+            "sent. Check CSRF_TRUSTED_ORIGINS and that --base-url matches how the "
+            "server is actually served."
+        )
+    if any(
+        any(tok in k for tok in ("Timeout", "Connect", "Read", "Pool", "Remote"))
+        for k in keys
+    ):
+        hints.append(
+            "Connection/timeout errors — the server or client is saturated. Lower "
+            "--max-concurrency, raise --request-timeout, or widen the --window."
+        )
+    if any("400" in k and "register" in k for k in keys):
+        hints.append(
+            "400 at register — likely duplicate usernames/emails from a prior run "
+            "left in the DB. Purge old load-test users (loadtest_purge) or use a "
+            "fresh --run-id."
+        )
+    return hints
+
+
+def build_summary_lines(
+    metrics: Metrics, cfg: Config, ops_path: Path, summary_path: Path
+) -> list[str]:
+    """The full summary as text lines (shared by the console and the log)."""
     wall = time.time() - metrics.started_at
     line = "=" * 64
-    print("\n" + line)
-    print(f" LOAD TEST SUMMARY · run {cfg.run_id}")
-    print(line)
-    print(f" Target users            {cfg.users}")
-    print(f" Completed               {metrics.users_completed}"
-          f"  ({_pct(metrics.users_completed, cfg.users):.1f}%)")
-    print(f" Failed                  {metrics.users_failed}")
-    print(f" Wall-clock              {_fmt_dur(wall)}  (window {_fmt_dur(cfg.window)})")
-    print(f" Total requests          {metrics.requests_done}")
-    print(f" Total errors            {metrics.errors}")
-    print(f" Match (LLM) calls       {metrics.match_done}")
-    print(f"   matched items         {metrics.matched_total}")
-    print(f"   genuine LLM scores    {metrics.llm_scores}")
-    print(f"   deterministic fallbk  {metrics.fallback_scores}")
-    print(f" Embedding generation    {metrics.embed_gen_done}")
-    print(f" Embedding filter/search {metrics.embed_filter_done}")
-    print(f" Throughput              "
-          f"{(metrics.users_completed / wall * 60.0) if wall else 0:.1f} users/min · "
-          f"{(metrics.requests_done / wall) if wall else 0:.1f} req/s")
-    print(line)
-    print(f" {'stage':<12}{'count':>7}{'mean ms':>10}{'p95 ms':>10}{'max ms':>10}")
+    out = [
+        line,
+        f" LOAD TEST SUMMARY · run {cfg.run_id}",
+        line,
+        f" Target users            {cfg.users}",
+        f" Completed               {metrics.users_completed}"
+        f"  ({_pct(metrics.users_completed, cfg.users):.1f}%)",
+        f" Failed (users)          {metrics.users_failed}",
+        f" Wall-clock              {_fmt_dur(wall)}  (window {_fmt_dur(cfg.window)})",
+        f" Total requests          {metrics.requests_done}",
+        f" Total errors            {metrics.errors}",
+        f" Match (LLM) calls       {metrics.match_done}",
+        f"   matched items         {metrics.matched_total}",
+        f"   genuine LLM scores    {metrics.llm_scores}",
+        f"   deterministic fallbk  {metrics.fallback_scores}",
+        f" Embedding generation    {metrics.embed_gen_done}",
+        f" Embedding filter/search {metrics.embed_filter_done}",
+        f" Throughput              "
+        f"{(metrics.users_completed / wall * 60.0) if wall else 0:.1f} users/min · "
+        f"{(metrics.requests_done / wall) if wall else 0:.1f} req/s",
+        line,
+        f" {'stage':<12}{'count':>7}{'mean ms':>10}{'p95 ms':>10}{'max ms':>10}",
+    ]
     for stage in (
         STAGE_CSRF, STAGE_REGISTER, STAGE_PROFILE, STAGE_SYNTHESIZE,
         STAGE_CONFIRM, STAGE_WATCH, STAGE_MATCH,
@@ -659,16 +756,37 @@ def print_summary(metrics: Metrics, cfg: Config, ops_path: Path, summary_path: P
         samples = metrics.latency_by_stage.get(stage, [])
         n, mean, p95 = _stage_stats(samples)
         if n:
-            print(f" {stage:<12}{n:>7}{mean:>10.0f}{p95:>10.0f}{max(samples):>10.0f}")
+            out.append(f" {stage:<12}{n:>7}{mean:>10.0f}{p95:>10.0f}{max(samples):>10.0f}")
+    if metrics.user_fail_stage:
+        out.append(line)
+        out.append(" User failures by stage:")
+        for key, count in metrics.user_fail_stage.most_common():
+            out.append(f"   {key:<40} {count}")
     if metrics.errors_by_key:
-        print(line)
-        print(" Error breakdown:")
+        out.append(line)
+        out.append(" Error breakdown (stage + status):")
         for key, count in metrics.errors_by_key.most_common():
-            print(f"   {key:<40} {count}")
-    print(line)
-    print(f" operations CSV : {ops_path}")
-    print(f" summary CSV    : {summary_path}")
-    print(line + "\n")
+            out.append(f"   {key:<40} {count}")
+    hints = diagnose(metrics)
+    if hints:
+        out.append(line)
+        out.append(" Likely cause(s):")
+        for hint in hints:
+            out.append(f"   • {hint}")
+    out.append(line)
+    out.append(f" operations CSV : {ops_path}")
+    out.append(f" summary CSV    : {summary_path}")
+    out.append(f" run log        : {cfg.log_file}")
+    out.append(line)
+    return out
+
+
+def print_summary(metrics: Metrics, cfg: Config, ops_path: Path, summary_path: Path) -> None:
+    lines = build_summary_lines(metrics, cfg, ops_path, summary_path)
+    print("\n" + "\n".join(lines) + "\n")
+    # Mirror the whole summary into the run log so the file is self-contained.
+    for text in lines:
+        logger.info("%s", text)
 
 
 # --------------------------------------------------------------------------- #
@@ -678,11 +796,13 @@ def cleanup_users(cfg: Config) -> None:
     """Delete the fake users via the loadtest_purge management command."""
     cmd = cfg.purge_cmd.split() + ["--run-id", cfg.run_id]
     print(f"Cleaning up fake users: {' '.join(cmd)}")
+    logger.info("CLEANUP running: %s", " ".join(cmd))
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     except Exception as exc:
         print(f"  cleanup FAILED to launch: {exc}", file=sys.stderr)
         print(f"  Run manually: {' '.join(cmd)}", file=sys.stderr)
+        logger.error("CLEANUP failed to launch: %s — run manually: %s", exc, " ".join(cmd))
         return
     out = (result.stdout or "").strip()
     err = (result.stderr or "").strip()
@@ -693,6 +813,9 @@ def cleanup_users(cfg: Config) -> None:
         if err:
             print(f"  {err}", file=sys.stderr)
         print(f"  Run manually: {' '.join(cmd)}", file=sys.stderr)
+        logger.error("CLEANUP exited %s: %s", result.returncode, err or out)
+    else:
+        logger.info("CLEANUP ok: %s", out)
 
 
 # --------------------------------------------------------------------------- #
@@ -748,9 +871,17 @@ def build_config(argv: list[str] | None = None) -> Config:
                    default=("uv run --project web/backend python "
                             "web/backend/manage.py loadtest_purge"),
                    help="Command used to delete fake users after the run.")
+    p.add_argument("--log-file", type=Path, default=None,
+                   help="Run log path (default: <out-dir>/loadtest_<run-id>.log).")
+    p.add_argument("--log-level", default="INFO",
+                   choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+                   help="File log verbosity. DEBUG also logs each successful request.")
+    p.add_argument("--log-requests", action="store_true",
+                   help="Log every request (not just failures) to the log file.")
     args = p.parse_args(argv)
 
     run_id = args.run_id.strip() or uuid.uuid4().hex[:8]
+    log_file = args.log_file or (args.out_dir / f"loadtest_{run_id}.log")
     return Config(
         users=args.users,
         window=args.window,
@@ -766,22 +897,50 @@ def build_config(argv: list[str] | None = None) -> Config:
         cleanup=not args.no_cleanup,
         purge_cmd=args.purge_cmd,
         refresh_interval=max(0.1, args.refresh_interval),
+        log_file=log_file,
+        log_level=args.log_level,
+        log_requests=args.log_requests,
     )
+
+
+def setup_logging(cfg: Config) -> None:
+    """Send the full run log to ``cfg.log_file`` (never to the console)."""
+    cfg.log_file.parent.mkdir(parents=True, exist_ok=True)
+    level = logging.DEBUG if cfg.log_requests else getattr(
+        logging, cfg.log_level.upper(), logging.INFO
+    )
+    logger.setLevel(level)
+    logger.handlers.clear()
+    handler = logging.FileHandler(cfg.log_file, mode="w", encoding="utf-8")
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)-7s %(message)s", "%H:%M:%S")
+    )
+    logger.addHandler(handler)
+    logger.propagate = False  # keep log lines out of the live console table
 
 
 def main(argv: list[str] | None = None) -> int:
     cfg = build_config(argv)
+    setup_logging(cfg)
     print(
         f"Load test · {cfg.users} users over {_fmt_dur(cfg.window)} · "
         f"run {cfg.run_id} · base {cfg.base_url}\n"
         f"Catalog: {len(CATALOG)} interests / {len(FIELDS)} fields · "
         f"concurrency {cfg.max_concurrency} · synthesize={cfg.synthesize}\n"
+        f"Run log → {cfg.log_file}\n"
+    )
+    logger.info(
+        "START run=%s users=%d window=%ss base=%s concurrency=%d "
+        "synthesize=%s seed=%d all_categories_fraction=%.2f",
+        cfg.run_id, cfg.users, int(cfg.window), cfg.base_url,
+        cfg.max_concurrency, cfg.synthesize, cfg.seed, cfg.all_categories_fraction,
     )
     interrupted = False
     try:
         metrics = asyncio.run(run_load_test(cfg))
     except KeyboardInterrupt:
         print("\nInterrupted — reporting partial results and cleaning up.")
+        logger.warning("INTERRUPTED by user (KeyboardInterrupt)")
         interrupted = True
         metrics = None  # type: ignore[assignment]
 
@@ -795,6 +954,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Skipping cleanup (--no-cleanup). Purge later with:\n"
               f"  {cfg.purge_cmd} --run-id {cfg.run_id}")
 
+    logger.info("END run=%s (see summary above)", cfg.run_id)
+    print(f"Full run log: {cfg.log_file}")
     return 130 if interrupted else 0
 
 
