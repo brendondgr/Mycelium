@@ -117,3 +117,8 @@ pivot.db
 
 # Load-test run artifacts (CSV reports)
 loadtest_results/
+
+# Locally-downloaded model caches (large binaries) — keep the docs only.
+# FastEmbed recreates models/fastembed/ at runtime (makedirs exist_ok=True).
+/models/*
+!/models/README.md

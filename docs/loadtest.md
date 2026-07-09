@@ -38,13 +38,34 @@ the window if a late starter is still processing), then all fake users are delet
    (nginx). Hit the backend **directly** to stress its compute.
 2. **Raise the registration throttle.** `DEFAULT_THROTTLE_RATES["register"]`
    defaults to `20/hour` per anonymous IP — a bulk run will be throttled (HTTP 429).
-   Start the backend with a high value:
+   Set a high value in your local `.env` (the compose backend reads it) and
+   recreate the backend so it takes effect:
 
    ```
+   # .env
    DJANGO_REGISTER_THROTTLE_RATE=1000000/hour
    ```
+   ```bash
+   docker compose up -d --force-recreate --no-deps backend
+   ```
 
-   (A 1–2 user smoke test stays under the default and needs no change.)
+   The throttle counter lives in the backend's in-process cache, so recreating (or
+   restarting) the backend also **clears an existing block** immediately — deleting
+   the fake users does not (wrong storage). A 1–2 user smoke test stays under the
+   default and needs no change.
+
+3. **Warm the embedding model (first run only).** The match step embeds text with
+   FastEmbed/ONNX. The model persists in `models/fastembed/` (bind-mounted, set via
+   `FASTEMBED_CACHE_PATH` in `compose.yaml`) so it downloads once. If it is missing
+   (e.g. right after a container recreate wiped an old `/tmp` cache), a burst of
+   concurrent first-requests can race the download and return `HTTP 500`. Warm it
+   once before a big concurrent run:
+
+   ```bash
+   docker compose exec -T backend uv run --project web/backend \
+     python web/backend/manage.py shell -c \
+     "from apps.scraper.embedding import get_default_embedder; get_default_embedder()(['warm up'])"
+   ```
 
 ## Running
 

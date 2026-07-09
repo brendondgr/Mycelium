@@ -100,6 +100,10 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       NEO4J_URI: bolt://neo4j:7687
       S3_ENDPOINT_URL: http://minio:9000
+      # Persist the FastEmbed/ONNX model on the bind-mounted disk (repo `models/`)
+      # instead of the container's ephemeral /tmp, so it downloads once and
+      # survives restarts/recreates.
+      FASTEMBED_CACHE_PATH: /app/models/fastembed
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
       DJANGO_CORS_ALLOWED_ORIGINS: http://localhost:11050,http://localhost:11250
       DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:11050,http://localhost:11250
@@ -138,6 +142,8 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       NEO4J_URI: bolt://neo4j:7687
       S3_ENDPOINT_URL: http://minio:9000
+      # Share the same persistent model cache as the backend (repo `models/`).
+      FASTEMBED_CACHE_PATH: /app/models/fastembed
     depends_on:
       backend-deps:
         condition: service_completed_successfully
