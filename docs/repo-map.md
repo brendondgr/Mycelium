@@ -33,6 +33,7 @@ for the layout standard.
 | Projects & project visibility | `web/backend/apps/research/` (list/create + lab-projects browse + self-join/leave/add-member in `views.py`) |
 | Daily research suggestions pipeline | `web/backend/apps/content/` (`pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`) |
 | Daily grants/conferences/fellowships matching (1am) | `web/backend/apps/content/` (`opportunities.py`, `fellowships.py` (rule engine), `opportunity_llm.py`, `pinning.py`) + task/command `run_daily_opportunities`; root `manual_opportunities.py` |
+| On-demand refitting (re-personalize all 4 areas, no scan/ingest) | `web/backend/apps/content/refitting.py` (reuses `recommend_for_user` + `run_opportunities_for_user`) + command `run_refitting` (`--max N\|all`); root `manual_refitting.py` |
 | Pivot-RP (ProQuest) grants/conferences/fellowships ingest | `web/backend/apps/scraper/pivot/` (`importer.py`, `ingest.py`, `records.py`, `grants.py`, `conferences.py`, `fellowships/` (Illinois Fellowship Finder — no Pivot login), `scrape.py` (three areas in parallel), `login.py`); commands `pivot_login` / `scrape_pivot` / `ingest_pivot`; root runner `pivot.py` (login → scrape → import → distribute) |
 | Opportunities / conferences / deadlines / saves API | `web/backend/apps/content/{views,serializers,urls}.py` |
 | Papers/grants/fellowships/conferences items, scores, saves | `web/backend/apps/content/models.py` (`ContentItem`, `RelevanceScore`, `SavedOpportunity`) |
@@ -44,7 +45,7 @@ for the layout standard.
 | Frontend → API calls & data hooks | `web/app/src/lib/` and `web/app/src/lib/portal/` |
 | Shared design tokens / theme | `web/packages/config/src/theme.css` |
 | Nginx / gateway routing | `web/infra/nginx/` |
-| Root run/build commands | `run.py`, `manual_search.py` (papers) / `manual_opportunities.py` (grants/conferences matching), `pivot.py` (`all` = one in-process scrape→dedup→recommend; also `login`/`scrape`/`import`/`distribute`), `package.json`, `compose.yaml` |
+| Root run/build commands | `run.py`, `manual_search.py` (papers) / `manual_opportunities.py` (grants/conferences matching) / `manual_refitting.py` (re-personalize existing top results — LLM re-score, no scan/ingest), `pivot.py` (`all` = one in-process scrape→dedup→recommend; also `login`/`scrape`/`import`/`distribute`), `package.json`, `compose.yaml` |
 | Env vars / secrets contract | `.env.example` (documented in `architecture.md`) |
 
 ---
@@ -89,7 +90,7 @@ data ownership live in [`architecture.md`](architecture.md#backend-app-boundarie
 | `core` | `llm.py` (LLM client), `db.py` (exactly-one-FK helper), `people.py`, `views.py` (health) |
 | `accounts` | `intake/` (profile import→synthesize, see below), `services.py`, `provisioning.py`, `permissions.py`, `aggregates.py`, `embedding.py`, `interests.py`, `signals.py`, `management/commands/` |
 | `research` | projects scoped to user/lab/department + visibility rules |
-| `content` | papers **and** grants/conferences/fellowships. Daily papers: `pipeline.py`, `interests_query.py`, `retrieval.py` (pgvector), `lexical.py` (BM25), `fusion.py`, `ranking.py`, `suggest.py`. Opportunities: `opportunities.py` (per-user grants/conf/fellowship match), `fellowships.py` (deterministic eligibility rule engine — no LLM), `opportunity_llm.py` (scope/eligibility/topic scoring for grants/conferences), `pinning.py` (New + 1-week pin). `embeddings.py`, `guards.py`, `runlog.py`, `tasks.py` (Celery — `run_daily_suggestions` 6am, `run_daily_opportunities` 1am covers all three areas), `management/commands/` |
+| `content` | papers **and** grants/conferences/fellowships. Daily papers: `pipeline.py`, `interests_query.py`, `retrieval.py` (pgvector), `lexical.py` (BM25), `fusion.py`, `ranking.py`, `suggest.py`. Opportunities: `opportunities.py` (per-user grants/conf/fellowship match), `fellowships.py` (deterministic eligibility rule engine — no LLM), `opportunity_llm.py` (scope/eligibility/topic scoring for grants/conferences), `pinning.py` (New + 1-week pin). `refitting.py` (on-demand re-personalize all four areas over existing top results — LLM re-score, no scan/ingest; command `run_refitting`). `embeddings.py`, `guards.py`, `runlog.py`, `tasks.py` (Celery — `run_daily_suggestions` 6am, `run_daily_opportunities` 1am covers all three areas), `management/commands/` |
 | `billing` | `entitlements.py`, `services.py` (subscriptions, per-seat, tiers) |
 | `scraper` | `sources/` (openalex, pubmed, semanticscholar + `base`, `registry`, `dedup`, `record`), `ingest.py`, `window.py` (scan window), `embedding.py`, `tasks.py`, `management/commands/scan_literature`. `pivot/` = vendored Pivot-RP (ProQuest) grants/conferences + Illinois fellowships: `importer.py`/`ingest.py` (upsert+prune into `ContentItem`, keyed per source), `records.py`, `normalize.py`, `deadlines.py`, `status.py`, Playwright `grants.py`/`conferences.py`/`fellowships/`/`login.py`/`scrape.py` (parallel areas; optional `pivot` extra); command `ingest_pivot` |
 
