@@ -24,6 +24,7 @@ import json
 
 from django.core.management.base import BaseCommand, CommandError
 
+from apps.content.opportunities import DEFAULT_SURFACE
 from apps.content.refitting import DEFAULT_AREAS, refit_batch
 from apps.content.tasks import select_users
 
@@ -59,6 +60,17 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
+            "--llm-limit",
+            dest="llm_limit",
+            default=None,
+            metavar="N|all",
+            help=(
+                "How many of each area's surfaced items to send to the model — a "
+                "number or 'all'. Default: each pipeline's own top-10. Use 'all' "
+                "to give every surfaced item genuine LLM feedback (higher GPU load)."
+            ),
+        )
+        parser.add_argument(
             "--no-llm",
             action="store_true",
             help="Use deterministic fallback scoring instead of the language model.",
@@ -84,8 +96,28 @@ class Command(BaseCommand):
             raise CommandError("--max must be at least 1 (or 'all').")
         return limit
 
+    def _parse_llm_limit(self, raw: str | None) -> int | None:
+        """``None`` → pipeline default; ``all`` → every surfaced item; else an int."""
+        if raw is None:
+            return None
+        value = raw.strip().lower()
+        if value == "all":
+            # Cover the whole surfaced set. Both pipelines slice
+            # ``surfaced[:llm_limit]``, so the surfaced count is the effective max.
+            return DEFAULT_SURFACE
+        try:
+            limit = int(value)
+        except ValueError as exc:
+            raise CommandError(
+                f"--llm-limit must be a number or 'all', not {raw!r}."
+            ) from exc
+        if limit < 0:
+            raise CommandError("--llm-limit must be 0 or more (or 'all').")
+        return limit
+
     def handle(self, *args, **options):
         max_users = self._parse_max(options["max_users"])
+        llm_limit = self._parse_llm_limit(options["llm_limit"])
 
         users = select_users(options.get("usernames"))
         if max_users is not None:
@@ -108,6 +140,7 @@ class Command(BaseCommand):
         results = refit_batch(
             users,
             areas=options["areas"],
+            llm_limit=llm_limit,
             complete=complete,
             persist=not options["dry_run"],
             log=self.stdout.write,

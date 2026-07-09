@@ -17,9 +17,15 @@ Any extra arguments are passed straight through to that command.
 issues a round of LLM calls, keep ``--max`` small when smoke-testing so you don't
 overwhelm the model host.
 
+By default only each area's top 10 surfaced items go to the model (the rest are
+filled deterministically). ``--llm-limit all`` sends *every* surfaced item to the
+model instead — use it to give a user full LLM feedback after an LLM outage, at a
+higher GPU cost.
+
 Usage:
-    python manual_refitting.py                          # all users
+    python manual_refitting.py                          # all users, top-10 LLM
     python manual_refitting.py --user brendondgr --max 1  # one user, one refit
+    python manual_refitting.py --user brendondgr --llm-limit all  # full LLM coverage
     python manual_refitting.py --max 5                  # first 5 active users
     python manual_refitting.py --no-llm                 # deterministic fallback
     python manual_refitting.py --dry-run                # run but don't persist

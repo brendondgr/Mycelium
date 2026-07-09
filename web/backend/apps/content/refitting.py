@@ -80,6 +80,7 @@ def refit_user(
     user: User,
     *,
     areas: Sequence[str] = DEFAULT_AREAS,
+    llm_limit: int | None = None,
     complete: CompleteFn | None = None,
     persist: bool = True,
     log: Callable[[str], None] | None = None,
@@ -90,6 +91,12 @@ def refit_user(
     or ingest, re-scoring the existing corpus through the model. ``complete`` is the
     injectable LLM seam (``None`` uses the configured model; a stub forces the
     deterministic fallback); ``persist=False`` computes without writing scores.
+
+    ``llm_limit`` sets how many of each area's surfaced items go to the model
+    (the rest are filled deterministically). ``None`` keeps each pipeline's own
+    default (top 10); a large value (e.g. the surfaced count) gives every surfaced
+    item genuine LLM feedback — the point of a manual recovery refit. It is ignored
+    for fellowships, which score via the deterministic rule engine (no LLM).
     """
     username = user.get_username()
 
@@ -97,12 +104,17 @@ def refit_user(
         if log is not None:
             log(f"[{username}] {message}")
 
+    # Only pass the limit through when set, so ``None`` defers to each pipeline's
+    # own default rather than overriding it with a hardcoded number here.
+    paper_kwargs = {} if llm_limit is None else {"suggestion_limit": llm_limit}
+    opp_kwargs = {} if llm_limit is None else {"llm_limit": llm_limit}
+
     summaries: dict[str, dict] = {}
 
     if PAPER_AREA in areas:
         emit("refit papers (recommend over existing store)")
         paper = recommend_for_user(
-            user, complete=complete, persist=persist, log=log
+            user, complete=complete, persist=persist, log=log, **paper_kwargs
         )
         summaries[PAPER_AREA] = _paper_summary(paper)
 
@@ -110,7 +122,12 @@ def refit_user(
     if opp_areas:
         emit(f"refit opportunities: {', '.join(opp_areas)} (no ingest)")
         for result in run_opportunities_for_user(
-            user, areas=opp_areas, complete=complete, persist=persist, log=log
+            user,
+            areas=opp_areas,
+            complete=complete,
+            persist=persist,
+            log=log,
+            **opp_kwargs,
         ):
             summaries[result.area] = _opportunity_summary(result)
 
@@ -121,6 +138,7 @@ def refit_batch(
     users: Sequence[User],
     *,
     areas: Sequence[str] = DEFAULT_AREAS,
+    llm_limit: int | None = None,
     complete: CompleteFn | None = None,
     persist: bool = True,
     log: Callable[[str], None] | None = None,
@@ -134,6 +152,7 @@ def refit_batch(
                 refit_user(
                     user,
                     areas=areas,
+                    llm_limit=llm_limit,
                     complete=complete,
                     persist=persist,
                     log=log,
