@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import ContentItem, RelevanceScore, SavedOpportunity
+from .onboarding_match import UnknownArea, onboarding_match_area
 from .serializers import (
     ConferenceSerializer,
     FellowshipSerializer,
@@ -18,6 +19,35 @@ from .serializers import (
 #: A suggestion at or above this percent match is called a "strong" match in the
 #: daily summary. Kept here (not a setting) so the label logic stays with the view.
 STRONG_MATCH_THRESHOLD = 75
+
+
+class OnboardingMatchView(APIView):
+    """Match one area for the signed-in user over the existing corpus (own only).
+
+    Drives the post-onboarding live-match window: the frontend POSTs one area at a
+    time (``papers`` | ``grants`` | ``fellowships`` | ``conferences``), each running
+    that area's personalization over the already-scraped store — no scan/ingest —
+    and persisting this user's scores so the workspace pages read them afterward.
+    Returns ``{area, status, matched, llm, fallback, sample}``.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        area = request.data.get("area")
+        if not isinstance(area, str) or not area:
+            return Response(
+                {"detail": "area is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            result = onboarding_match_area(request.user, area)
+        except UnknownArea:
+            return Response(
+                {"detail": f"Unknown area: {area}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(result)
 
 
 class DailyReportView(APIView):

@@ -7,6 +7,13 @@ urlpatterns = [
     # (matches the workspace read endpoints).
     path("daily-report/", views.DailyReportView.as_view(), name="daily-report"),
     path("daily-report", views.DailyReportView.as_view(), name="daily-report-no-slash"),
+    # Post-onboarding live match: one area per POST, over the existing corpus.
+    path(
+        "onboarding/match/",
+        views.OnboardingMatchView.as_view(),
+        name="onboarding-match",
+    ),
+    path("onboarding/match", views.OnboardingMatchView.as_view()),
     # Opportunities (personal workspace): grants + conferences feeds, the save
     # system, deadlines, and the notification-bell alerts.
     path(
