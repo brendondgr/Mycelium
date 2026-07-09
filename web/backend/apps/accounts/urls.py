@@ -101,13 +101,18 @@ urlpatterns = [
     # What Milo keeps an eye on (own only).
     path("watch/me/", views.MyWatchView.as_view(), name="watch-me"),
     path("watch/me", views.MyWatchView.as_view(), name="watch-me-no-slash"),
-    # Author import + intake session.
+    # Author import + intake session. Both slash forms so a dev proxy that strips
+    # the trailing slash still resolves the POST (matches profile/me + watch/me).
     path("intake/import/", views.ImportAuthorView.as_view(), name="intake-import"),
+    path("intake/import", views.ImportAuthorView.as_view()),
     path(
         "intake/synthesize/",
         views.SynthesizeView.as_view(),
         name="intake-synthesize",
     ),
+    path("intake/synthesize", views.SynthesizeView.as_view()),
     path("intake/session/", views.IntakeSessionView.as_view(), name="intake-session"),
+    path("intake/session", views.IntakeSessionView.as_view()),
     path("intake/confirm/", views.ConfirmIntakeView.as_view(), name="intake-confirm"),
+    path("intake/confirm", views.ConfirmIntakeView.as_view()),
 ]

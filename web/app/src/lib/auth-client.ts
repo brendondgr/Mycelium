@@ -1,6 +1,8 @@
 import type {
   AuthErrorBody,
   AuthUser,
+  OnboardingMatchArea,
+  OnboardingMatchResult,
   ProfileBasics,
   RegisterInput,
   ResearchInterests,
@@ -308,6 +310,57 @@ export async function saveWatch(
     throw new Error(
       firstFieldError(body) ?? "Could not save your watch settings.",
     );
+  }
+  return body;
+}
+
+/**
+ * Match one area (papers/grants/fellowships/conferences) for the signed-in user
+ * over the already-scraped corpus, persisting their scores. Drives the live
+ * post-onboarding match window — the caller runs the opted-in areas in turn.
+ *
+ * A slow area must never freeze the flow, so the request is bounded by
+ * ``timeoutMs`` (default 60s); on timeout the fetch is aborted and this rejects,
+ * and the caller marks that area failed and moves on.
+ */
+export async function runOnboardingMatch(
+  area: OnboardingMatchArea,
+  { timeoutMs = 60_000 }: { timeoutMs?: number } = {},
+): Promise<OnboardingMatchResult> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
+  try {
+    response = await fetch(
+      buildApiUrl(getPublicApiBase(), "onboarding", "match"),
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+        },
+        body: JSON.stringify({ area }),
+        signal: controller.signal,
+      },
+    );
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(`Matching ${area} took too long.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const body = await parseJson<OnboardingMatchResult & Record<string, unknown>>(
+    response,
+  );
+  if (!response.ok || !body) {
+    throw new Error(firstFieldError(body) ?? `Could not match ${area}.`);
   }
   return body;
 }

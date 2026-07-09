@@ -97,6 +97,31 @@ export type WatchPreference = {
   cadence: WatchCadence;
 };
 
+/** The four areas the post-onboarding live match can run, in report order. */
+export type OnboardingMatchArea =
+  | "papers"
+  | "grants"
+  | "fellowships"
+  | "conferences";
+
+/** One matched item previewed in the live-match table. */
+export type OnboardingMatchSample = {
+  title: string;
+  match_percent: number | null;
+};
+
+/** The result of matching one area over the existing corpus for the caller. */
+export type OnboardingMatchResult = {
+  area: OnboardingMatchArea;
+  status: string;
+  /** How many items were surfaced for this area. */
+  matched: number;
+  /** How many of those got a genuine language-model score (vs. deterministic). */
+  llm: number;
+  fallback: number;
+  sample: OnboardingMatchSample[];
+};
+
 /** Person-global profile basics captured in onboarding (role + institution). */
 export type ProfileBasics = {
   academic_title?: string;

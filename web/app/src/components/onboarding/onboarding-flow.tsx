@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { MyloMark } from "@/components/brand/mylo-mark";
 import MyceliumBranch from "@/components/onboarding/mycelium-branch";
+import { OnboardingMatch } from "@/components/onboarding/onboarding-match";
 import OnboardingStage from "@/components/onboarding/onboarding-stage";
 import ProfileSynthesisProgress, {
   type SynthesisStage,
@@ -27,6 +28,7 @@ import {
 } from "@/lib/auth-client";
 import { fetchProfile } from "@/lib/portal/client";
 import type {
+  OnboardingMatchArea,
   ProfileEligibility,
   ResearchInterests,
   ResearchSource,
@@ -82,6 +84,7 @@ const WATCH_CATEGORIES = [
   { key: "papers", label: "New papers & preprints", desc: "Relevant to your areas and keywords." },
   { key: "grants", label: "Grant deadlines", desc: "Funding that fits your profile." },
   { key: "fellowships", label: "Fellowships", desc: "Matched to your stage and timeline." },
+  { key: "conferences", label: "Conferences & CFPs", desc: "Meetings and calls for papers in your field." },
   { key: "collaborators", label: "Potential collaborators", desc: "People on adjacent problems." },
   { key: "retractions", label: "Retractions & corrections", desc: "When work you cited changes." },
   { key: "graph", label: "Knowledge-graph updates", desc: "New connections across your network." },
@@ -92,12 +95,34 @@ const CADENCES: { id: WatchCadence; label: string }[] = [
   { id: "weekly", label: "Weekly digest" },
 ];
 
-const STEP_LABELS = [
-  "About you",
-  "Import your research",
-  "Review profile",
-  "Fellowship eligibility",
-  "What Milo watches",
+/**
+ * The onboarding steps, in order. The watch step comes *before* fellowship
+ * eligibility, and eligibility only appears when the user keeps the Fellowships
+ * signal on — so the eligibility questions are only asked of people who actually
+ * want fellowship recommendations.
+ */
+type StepKey = "about" | "import" | "review" | "watch" | "eligibility";
+
+const STEP_LABEL: Record<StepKey, string> = {
+  about: "About you",
+  import: "Import your research",
+  review: "Review profile",
+  watch: "What Milo watches",
+  eligibility: "Fellowship eligibility",
+};
+
+/** Steps every onboarding shows, in order; eligibility is appended when opted in. */
+const BASE_STEP_KEYS: StepKey[] = ["about", "import", "review", "watch"];
+
+/**
+ * The opportunity areas the live post-onboarding match can run, in report order.
+ * Each maps to a watch-category key, so a user only matches the areas they kept on.
+ */
+const MATCH_AREA_ORDER: OnboardingMatchArea[] = [
+  "papers",
+  "grants",
+  "fellowships",
+  "conferences",
 ];
 
 /** Fellowship eligibility constants */
@@ -151,7 +176,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   const queryClient = useQueryClient();
   const editing = mode === "edit";
   const [screen, setScreen] = useState<
-    "verify" | "intake" | "synthesizing" | "building"
+    "verify" | "intake" | "synthesizing" | "building" | "matching"
   >(editing ? "intake" : "verify");
   // Edit mode prefills from the saved profile; gate the form until it loads.
   const [hydrated, setHydrated] = useState(!editing);
@@ -195,11 +220,16 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     papers: true,
     grants: true,
     fellowships: true,
+    conferences: true,
     collaborators: false,
     retractions: false,
     graph: true,
   });
   const [cadence, setCadence] = useState<WatchCadence>("weekly");
+
+  // Areas the live post-onboarding match will run, set from the watch toggles
+  // when the user finishes (first-run only).
+  const [matchAreas, setMatchAreas] = useState<OnboardingMatchArea[]>([]);
 
   // Verify (scaffold)
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
@@ -212,6 +242,15 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
 
   const sourceOption = SOURCES.find((option) => option.value === source) ?? null;
   const hasImportInput = Boolean((source && identifier.trim()) || resumeFile);
+
+  // The live step list: the fellowship-eligibility step is only present when the
+  // user keeps the Fellowships signal on. Toggling it happens on the watch step
+  // (index 3), which sits before eligibility, so the current index stays valid.
+  const stepKeys: StepKey[] = watchCats.fellowships
+    ? [...BASE_STEP_KEYS, "eligibility"]
+    : BASE_STEP_KEYS;
+  const lastStep = stepKeys.length - 1;
+  const currentKey = stepKeys[Math.min(step, lastStep)];
 
   function goStep(target: number, dir: number) {
     setDirection(dir);
@@ -424,26 +463,18 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   }
 
   // -- navigation ----------------------------------------------------------
-  const reviewBlocked = step === 2 && areas.length < 1;
+  const reviewBlocked = currentKey === "review" && areas.length < 1;
 
   function primaryAction() {
-    if (step === 0) {
-      goStep(1, 1);
-      return;
-    }
-    if (step === 1) {
+    if (currentKey === "import") {
       void runImport();
       return;
     }
-    if (step === 2) {
-      if (reviewBlocked) {
-        return;
-      }
-      goStep(3, 1);
+    if (currentKey === "review" && areas.length < 1) {
       return;
     }
-    if (step === 3) {
-      goStep(4, 1);
+    if (step < lastStep) {
+      goStep(step + 1, 1);
       return;
     }
     void finish();
@@ -461,14 +492,14 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   }
 
   function primaryLabel(): string {
-    if (step === 1) {
+    if (currentKey === "import") {
       return importing ? "Growing…" : hasImportInput ? "Grow my profile" : "Continue";
     }
-    if (step === 4) {
+    if (step === lastStep) {
       if (editing) {
         return busy ? "Saving…" : "Save changes";
       }
-      return "Enter Mycelium";
+      return "Find my matches";
     }
     return "Continue";
   }
@@ -537,14 +568,17 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
       return;
     }
 
+    // First-run: save the profile, then hand off to the live match window (which
+    // matches the just-saved interests and, when done, enters the workspace)
+    // instead of jumping straight to the overview.
     setScreen("building");
     try {
-      await Promise.all([...saves(), wait(1400)]);
-      router.replace("/app/overview");
-      router.refresh();
+      await Promise.all([...saves(), wait(1200)]);
+      setMatchAreas(MATCH_AREA_ORDER.filter((area) => watchCats[area]));
+      setScreen("matching");
     } catch (error) {
       setScreen("intake");
-      setStep(4);
+      setStep(lastStep);
       setSubmitError(
         error instanceof Error
           ? error.message
@@ -610,6 +644,19 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           Seeding {areas[0] ?? "your interests"} and queuing your first scan.
         </p>
       </div>
+    );
+  }
+
+  // -- matching (live post-onboarding match) -------------------------------
+  if (screen === "matching") {
+    return (
+      <OnboardingMatch
+        areas={matchAreas}
+        onDone={() => {
+          router.replace("/app/overview");
+          router.refresh();
+        }}
+      />
     );
   }
 
@@ -1196,7 +1243,14 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     </div>
   );
 
-  const panels = [panelAbout, panelImport, panelReview, panelEligibility, panelWatch];
+  const panelByKey: Record<StepKey, ReactNode> = {
+    about: panelAbout,
+    import: panelImport,
+    review: panelReview,
+    watch: panelWatch,
+    eligibility: panelEligibility,
+  };
+  const panels = stepKeys.map((key) => panelByKey[key]);
 
   return (
     <div className="mx-auto w-full max-w-2xl">
@@ -1207,14 +1261,15 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
             {editing ? "Edit your research radar" : "Let’s tune your research radar"}
           </p>
           <p className="text-sm text-[var(--text-secondary)]">
-            Step {step + 1} of {STEP_LABELS.length} · {STEP_LABELS[step]}
+            Step {Math.min(step, lastStep) + 1} of {stepKeys.length} ·{" "}
+            {STEP_LABEL[currentKey]}
           </p>
         </div>
       </div>
 
       <MyceliumBranch
-        steps={STEP_LABELS.length}
-        current={step}
+        steps={stepKeys.length}
+        current={Math.min(step, lastStep)}
         className="mb-6 h-10"
       />
 
