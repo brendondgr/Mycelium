@@ -12,6 +12,7 @@ import {
 } from "@/components/portal/icons";
 import {
   MatchBadge,
+  MyloReason,
   NewTag,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
@@ -108,25 +109,7 @@ function GrantRow({ grant }: { grant: GrantOpportunity }) {
       {/* Milo's read on why this fits — a soft green field flags the AI note. */}
       {grant.reason ? (
         isMylo ? (
-          <div
-            className="mt-3 flex items-start gap-2.5 rounded-xl border p-3"
-            style={{
-              borderColor: "color-mix(in srgb, var(--primary) 30%, transparent)",
-              backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/mylo-headshot.webp"
-              alt=""
-              width={24}
-              height={24}
-              className="mt-0.5 h-6 w-6 shrink-0 rounded-full object-cover"
-            />
-            <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-              {grant.reason}
-            </p>
-          </div>
+          <MyloReason reason={grant.reason} />
         ) : (
           <p className="mt-2.5 text-sm leading-relaxed text-[var(--text-secondary)]">
             {grant.reason}

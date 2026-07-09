@@ -238,7 +238,11 @@ class FellowshipSerializer(_OpportunitySerializer):
 
     Emits the frontend contract agreed in the fellowships-integration plan.
     All eligibility + facet fields come from ``metadata``; ranking fields come
-    from ``signals`` (persisted by the rule engine in ``_persist_fellowships``).
+    from ``signals`` (persisted in ``_persist_fellowships``). ``origin`` is
+    ``"llm"`` when Mylo wrote the tailored report over the eligibility-gated list,
+    or ``"rules"`` when the model was unavailable and the rule engine's own
+    eligibility summary is shown. ``tier`` (qualified/conditional) carries the
+    eligibility verdict independent of the reason's origin.
     """
 
     title = serializers.SerializerMethodField()

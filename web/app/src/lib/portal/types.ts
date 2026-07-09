@@ -233,10 +233,14 @@ export type NotificationFeed = {
 
 /**
  * A matched fellowship opportunity (from `/api/opportunities/fellowships/`).
- * Matched by the deterministic eligibility rule engine; origin is always
- * "rules" (no LLM or fuse scoring).
+ * The deterministic eligibility rule engine gates + fit-ranks these; Mylo's LLM
+ * then writes the tailored `reason` for the top slice (`origin === "llm"`),
+ * falling back to the rule engine's own summary (`origin === "rules"`) when the
+ * model is unavailable. `tier` carries the eligibility verdict either way.
  */
 export type FellowshipOpportunity = OpportunityBase & {
+  /** Eligibility verdict: "qualified" (strong) | "conditional" (possible fit). */
+  tier: string;
   /** Structured award class: "fellowship" | "scholarship" | "internship" | "award" | "prize". */
   award_class: string;
   /** Human-readable funding amount string (may include range or note). */

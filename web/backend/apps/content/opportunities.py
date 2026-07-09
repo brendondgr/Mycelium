@@ -26,7 +26,10 @@ from django.utils import timezone
 from .fusion import DEFAULT_BETA
 from .interests_query import SearchInterest, search_interests
 from .models import ContentItem, RelevanceScore
-from .opportunity_llm import generate_opportunity_suggestions
+from .opportunity_llm import (
+    generate_fellowship_suggestions,
+    generate_opportunity_suggestions,
+)
 from .pinning import DEFAULT_PERCENTILE, compute_pins
 from .pipeline import PersistRow, fuse_interests_pool
 
@@ -118,11 +121,12 @@ class _MatchJob:
 
 @dataclass
 class _FellowshipMatchJob:
-    """A prepared fellowship unit — no embeddings, no LLM.
+    """A prepared fellowship unit — no embeddings.
 
-    All fellowship items are loaded from the DB; scoring is the deterministic
-    rule engine (:mod:`.fellowships`). Safe to run in the same thread pool as
-    the LLM jobs because it is pure computation.
+    All fellowship items are loaded from the DB; the deterministic rule engine
+    (:mod:`.fellowships`) gates them by eligibility, then the fellowship model
+    (:mod:`.opportunity_llm`) writes a tailored report for the top slice. Safe to
+    run in the same thread pool as the grant/conference LLM jobs.
     """
 
     user: User
@@ -131,12 +135,19 @@ class _FellowshipMatchJob:
     content_type: str = ContentItem.Type.FELLOWSHIP
     items: list = None           # list[ContentItem]
     elig: object = None          # Elig dataclass
+    interests: dict = None       # Profile.interests (for the LLM report)
+    profile_meta: dict = None    # career stage / institution (for the LLM report)
     percentile: float = DEFAULT_PERCENTILE
+    llm_limit: int = DEFAULT_LLM_LIMIT
     today: str = ""
 
     def __post_init__(self):
         if self.items is None:
             self.items = []
+        if self.interests is None:
+            self.interests = {}
+        if self.profile_meta is None:
+            self.profile_meta = {}
 
 
 def _prepare_fellowship_match(
@@ -183,17 +194,38 @@ def _prepare_fellowship_match(
         username=username,
         items=items,
         elig=elig,
+        interests=profile.interests or {},
+        profile_meta={
+            "academic_title": getattr(profile, "academic_title", ""),
+            "institution": getattr(profile, "institution", ""),
+        },
         percentile=percentile,
         today=today or tz.now().date().isoformat(),
     )
     return job, None
 
 
-def _score_fellowship_job(job: _FellowshipMatchJob) -> list[dict]:
-    """Rule-engine scoring — pure, no ORM, safe to run in the thread pool."""
+def _score_fellowship_job(
+    job: _FellowshipMatchJob, *, complete: Callable[[str], str | None] | None
+) -> list[dict]:
+    """Eligibility gate (rule engine) + LLM report — pure, safe in the thread pool.
+
+    The rule engine decides eligibility and fit-ranks the survivors; the model
+    then writes a tailored 2-4 sentence report for the top slice. A missing/flaky
+    model degrades to the rule engine's own reason (``source="rules"``).
+    """
     from .fellowships import match_fellowships
 
-    return match_fellowships(job.items, job.elig, job.today)
+    ranked = match_fellowships(job.items, job.elig, job.today)
+    items_by_id = {str(item.id): item for item in job.items}
+    return generate_fellowship_suggestions(
+        job.interests,
+        job.profile_meta,
+        ranked,
+        items_by_id,
+        llm_limit=job.llm_limit,
+        complete=complete,
+    )
 
 
 def _finalize_fellowship_match(
@@ -214,7 +246,11 @@ def _finalize_fellowship_match(
         suggestions, items_by_id, today=job.today, percentile=job.percentile
     )
     new_count = sum(1 for p in pins.values() if p["is_new"])
-    emit(f"scored {len(suggestions)} eligible fellowships, {new_count} new")
+    llm = sum(1 for s in suggestions if s.get("source") == "llm")
+    emit(
+        f"scored {len(suggestions)} eligible fellowships "
+        f"({llm} llm / {len(suggestions) - llm} rules), {new_count} new"
+    )
 
     if persist:
         _persist_fellowships(job.user, suggestions, items_by_id, pins, today=job.today)
@@ -225,8 +261,8 @@ def _finalize_fellowship_match(
         "ok",
         retrieved=len(job.items),
         suggestions=len(suggestions),
-        llm=0,
-        fallback=len(suggestions),
+        llm=llm,
+        fallback=len(suggestions) - llm,
         new=new_count,
     )
 
@@ -435,17 +471,18 @@ def match_fellowships_for_user(
     user: User,
     *,
     percentile: float = DEFAULT_PERCENTILE,
+    complete: Callable[[str], str | None] | None = None,
     persist: bool = True,
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppRunResult:
-    """Rule-engine fellowship matching for one user (serial, no LLM)."""
+    """Eligibility-gate + LLM-report fellowship matching for one user (serial)."""
     job, short = _prepare_fellowship_match(
         user, percentile=percentile, today=today, log=log
     )
     if short is not None:
         return short
-    suggestions = _score_fellowship_job(job)
+    suggestions = _score_fellowship_job(job, complete=complete)
     return _finalize_fellowship_match(job, suggestions, persist=persist, log=log)
 
 
@@ -459,11 +496,13 @@ def run_opportunities_for_user(
     results = []
     for area in areas:
         if area == "fellowships":
-            # fellowships use the deterministic rule engine, not the LLM pipeline
+            # fellowships gate on the rule engine, then get an LLM report — but
+            # they skip the retrieve/fuse embedding pipeline grants/conferences use.
             results.append(
                 match_fellowships_for_user(
                     user,
                     percentile=kwargs.get("percentile", DEFAULT_PERCENTILE),
+                    complete=kwargs.get("complete"),
                     persist=kwargs.get("persist", True),
                     today=kwargs.get("today"),
                     log=kwargs.get("log"),
@@ -610,9 +649,10 @@ def run_daily_opportunities_batch(
                 elif job is not None:
                     llm_jobs.append(job)
 
-    # Phase 2b — score prepared units concurrently.  LLM jobs use the language
-    # model; fellowship jobs use the deterministic rule engine (also fast but
-    # submitted to the same pool so all scoring runs in parallel).
+    # Phase 2b — score prepared units concurrently.  Grant/conference jobs run
+    # retrieve→fuse then the model; fellowship jobs gate on the rule engine then
+    # run the model for the tailored report — both submitted to the same pool so
+    # all model calls run in parallel.
     all_jobs: list = llm_jobs + fellowship_jobs
     scored: dict[int, list[dict] | None] = {}
     if all_jobs:
@@ -625,7 +665,9 @@ def run_daily_opportunities_batch(
             futures = {}
             for idx, job in enumerate(all_jobs):
                 if isinstance(job, _FellowshipMatchJob):
-                    futures[executor.submit(_score_fellowship_job, job)] = idx
+                    futures[
+                        executor.submit(_score_fellowship_job, job, complete=complete)
+                    ] = idx
                 else:
                     futures[executor.submit(_score_job, job, complete=complete)] = idx
             for future in as_completed(futures):

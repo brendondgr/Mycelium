@@ -9,6 +9,10 @@ from the ProQuest tool's multi-agent evaluator:
   researcher (career stage, institution) plausibly apply?" — the tool's two grant
   specialists, folded into one call.
 - **Conferences** are judged on topic & track fit.
+- **Fellowships** are judged on research/interest fit *after* the deterministic
+  eligibility rule engine (:mod:`.fellowships`) has already gated them — the model
+  never re-litigates eligibility; :func:`generate_fellowship_suggestions` overlays
+  its report onto the rule engine's eligible, fit-ranked list.
 
 Same contract as the paper digest: a two-tier list (the top ``llm_limit`` get a
 model percent + bespoke reason, ``source="llm"``; the rest are deterministic
@@ -38,8 +42,10 @@ _TEXT_CHARS = 900
 _JSON_SHAPE = (
     'Return ONLY one JSON object:\n'
     '  {"suggestions": [{"item": <number>, "match": <integer 0-100>, '
-    '"headline": <short title-case phrase>, "reason": <1-2 sentences, second '
-    'person, why THIS researcher should care>}]}\n'
+    '"headline": <short title-case phrase>, "reason": <2-4 sentences, second '
+    "person, that explain concretely WHY this fits the researcher, HOW their "
+    "specific research and methods align with it, and WHAT they could pursue or "
+    'use it for — not a single generic line>}]}\n'
     "Rank best first. Only use items from the list (reference them by number). "
     "Ground every reason and match score in the item and the profile — do not "
     "invent details. No prose outside the JSON, no markdown fences."
@@ -63,6 +69,16 @@ _SYSTEM_PROMPT = {
         "work belongs in this venue's scope and submission tracks. Give an integer "
         "percent match 0-100 (100 = a near-perfect venue; be honest and use the full "
         "range). " + _JSON_SHAPE
+    ),
+    ContentItem.Type.FELLOWSHIP: (
+        "You are Mylo, a research fellowship scout. The researcher has ALREADY "
+        "passed each fellowship's hard eligibility gates (citizenship, academic "
+        "stage, institutional and demographic restrictions), so do NOT re-litigate "
+        "eligibility or lead with it. Judge each fellowship on how well it fits "
+        "THIS researcher's specific research topics, methods, career trajectory, "
+        "and goals, and pick the ones most worth their attention. Give an integer "
+        "percent match 0-100 that reflects research/interest fit (100 = a "
+        "near-perfect fit; be honest and use the full range). " + _JSON_SHAPE
     ),
 }
 
@@ -110,6 +126,64 @@ def generate_opportunity_suggestions(
 
     for rank, suggestion in enumerate(out, start=1):
         suggestion["rank"] = rank
+    return out
+
+
+def generate_fellowship_suggestions(
+    interests: dict,
+    profile_meta: dict,
+    ranked: Sequence[Suggestion],
+    items_by_id: dict[str, ContentItem],
+    *,
+    llm_limit: int = _DEFAULT_LLM_LIMIT,
+    complete: CompleteFn | None = None,
+) -> list[Suggestion]:
+    """Overlay a model-written report onto the top slice of the eligible list.
+
+    ``ranked`` is the deterministic rule engine's eligibility-gated, fit-ranked
+    output (each dict from :func:`apps.content.fellowships.match_fellowships`, with
+    ``source="rules"``). Eligibility is already decided; this only enriches *why
+    it fits the person's research*: the top ``llm_limit`` go to the fellowship
+    model for a bespoke 2-4 sentence reason + percent match, which overlays the
+    rule dict (``source`` becomes ``"llm"``) while the eligibility fields
+    (``tier``/``gates_failed``/``reasons``/``fit``/status) are preserved. When the
+    model is unavailable the rule reason survives unchanged, so nothing regresses.
+    """
+    if not ranked:
+        return []
+
+    top = list(ranked[:llm_limit])
+    pairs = [
+        (items_by_id[s["content_id"]], float(s.get("fit", 0.0)))
+        for s in top
+        if s.get("content_id") in items_by_id
+    ]
+    llm = _llm_suggestions(
+        ContentItem.Type.FELLOWSHIP,
+        interests,
+        profile_meta,
+        pairs,
+        limit=llm_limit,
+        complete=complete,
+    )
+    by_id = {s["content_id"]: s for s in llm}
+
+    out: list[Suggestion] = []
+    for suggestion in ranked:
+        enriched = by_id.get(suggestion["content_id"])
+        if enriched is None:
+            out.append(suggestion)
+            continue
+        # Keep the eligibility verdict; take the model's headline/reason/percent.
+        merged = {
+            **suggestion,
+            "headline": enriched["headline"],
+            "reason": enriched["reason"],
+            "source": "llm",
+        }
+        if enriched.get("match_percent") is not None:
+            merged["match_percent"] = enriched["match_percent"]
+        out.append(merged)
     return out
 
 
@@ -207,6 +281,35 @@ def _candidate_brief(area: str, index: int, item: ContentItem) -> str:
         topics = _clean(meta.get("matched_topics"))
         if topics:
             line += f"\n    Topics: {topics}"
+        return line
+
+    if area == ContentItem.Type.FELLOWSHIP:
+        line = f"[{index}] {_clean(meta.get('title')) or '(untitled fellowship)'}"
+        tail = ", ".join(
+            p
+            for p in (_clean(meta.get("award_class")), _clean(meta.get("amount_raw")))
+            if p
+        )
+        if tail:
+            line += f" — {tail}"
+        deadline = meta.get("deadline") or {}
+        if deadline.get("date"):
+            line += f" (deadline {deadline['date']})"
+        body = _clean(meta.get("description")) or _clean(meta.get("blurb"))
+        if body:
+            line += f"\n    {body[:_TEXT_CHARS]}"
+        facets = meta.get("facets") or {}
+        fields = ", ".join(_clean_list(facets.get("field")))
+        if fields:
+            line += f"\n    Fields: {fields}"
+        stages = ", ".join(_clean_list(facets.get("stage")))
+        if stages:
+            line += f"\n    Stage: {stages}"
+        elig = meta.get("eligibility")
+        if isinstance(elig, list) and elig:
+            elig_text = "; ".join(_clean_list(elig))
+            if elig_text:
+                line += f"\n    Eligibility: {elig_text[:_TEXT_CHARS]}"
         return line
 
     # conference

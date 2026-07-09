@@ -71,6 +71,36 @@ export function MatchBadge({
 }
 
 /**
+ * Mylo's read on why an opportunity fits — the LLM's tailored explanation in a
+ * soft green field led by Mylo's headshot. Shared across the Grants,
+ * Conferences, and Fellowships cards so the AI note reads identically wherever
+ * the language model wrote it (origin === "llm").
+ */
+export function MyloReason({ reason }: { reason: string }) {
+  return (
+    <div
+      className="mt-3 flex items-start gap-2.5 rounded-xl border p-3"
+      style={{
+        borderColor: "color-mix(in srgb, var(--primary) 30%, transparent)",
+        backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+      }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/mylo-headshot.webp"
+        alt=""
+        width={24}
+        height={24}
+        className="mt-0.5 h-6 w-6 shrink-0 rounded-full object-cover"
+      />
+      <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+        {reason}
+      </p>
+    </div>
+  );
+}
+
+/**
  * The "New" tag for a fresh, high-fit item pinned to the top for its first week.
  * A solid green pill (with an icon + text, never color alone) so it's unmistakable.
  */

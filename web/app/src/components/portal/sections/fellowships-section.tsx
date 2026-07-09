@@ -12,6 +12,7 @@ import {
   SparkleIcon,
 } from "@/components/portal/icons";
 import {
+  MyloReason,
   NewTag,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
@@ -78,14 +79,15 @@ function isSoftDeadline(item: FellowshipOpportunity): boolean {
 
 /**
  * The fellowship eligibility tier badge. Two tiers driven by the backend
- * headline:
- *   - "Strong eligibility match" → "Qualified" (green)
- *   - "Possible fit"             → "Possible fit" (amber)
+ * eligibility verdict (`tier`), independent of who wrote the reason — so it
+ * stays correct once Mylo's LLM report replaces the rule-engine headline:
+ *   - "qualified"   → "Qualified" (green)
+ *   - "conditional" → "Possible fit" (amber)
  *
  * The tier is communicated via label + color-dot (never color alone).
  */
 function EligibilityBadge({ item }: { item: FellowshipOpportunity }) {
-  const isQualified = item.headline === "Strong eligibility match";
+  const isQualified = item.tier === "qualified";
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1"
@@ -153,7 +155,7 @@ function AwardClassChip({ awardClass }: { awardClass: string }) {
 function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
   const deadlineLabel = fellowshipDeadlineLabel(item);
   const softDl = isSoftDeadline(item);
-  const isRulesOrigin = item.origin === "rules";
+  const isMylo = item.origin === "llm";
 
   // Compact facet chips: fields + stages, capped at 4 combined
   const facetChips = [...item.fields, ...item.stages].slice(0, 4);
@@ -219,26 +221,11 @@ function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
         <p className="mt-1 text-xs text-[var(--text-muted)]">{item.amount_note}</p>
       ) : null}
 
-      {/* Reason / eligibility rationale — soft highlight when rules-generated */}
+      {/* Mylo's read on why this fellowship fits the researcher — the tailored
+          AI report (origin "llm"); a plain rule-engine summary is the fallback. */}
       {item.reason ? (
-        isRulesOrigin ? (
-          <div
-            className="mt-3 flex items-start gap-2.5 rounded-xl border p-3"
-            style={{
-              borderColor: "color-mix(in srgb, var(--accent) 30%, transparent)",
-              backgroundColor:
-                "color-mix(in srgb, var(--accent) 8%, transparent)",
-            }}
-          >
-            <SparkleIcon
-              size={16}
-              aria-hidden="true"
-              className="mt-0.5 shrink-0 text-[var(--accent)]"
-            />
-            <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-              {item.reason}
-            </p>
-          </div>
+        isMylo ? (
+          <MyloReason reason={item.reason} />
         ) : (
           <p className="mt-2.5 text-sm leading-relaxed text-[var(--text-secondary)]">
             {item.reason}

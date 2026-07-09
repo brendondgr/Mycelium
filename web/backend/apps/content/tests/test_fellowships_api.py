@@ -408,8 +408,10 @@ def test_fellowships_e2e_match_and_signals():
             },
         )
 
+    # complete=lambda _p: None -> model unavailable, so the rule-engine summary is
+    # the fallback reason (source="rules"); keeps this test offline + deterministic.
     result = match_fellowships_for_user(
-        user, today="2026-07-06", persist=True
+        user, today="2026-07-06", persist=True, complete=lambda _p: None
     )
 
     assert result.status == "ok"
@@ -463,8 +465,105 @@ def test_fellowships_e2e_match_and_signals():
 
     # Re-running overwrites, not duplicates.
     before = len(scores)
-    match_fellowships_for_user(user, today="2026-07-06", persist=True)
+    match_fellowships_for_user(
+        user, today="2026-07-06", persist=True, complete=lambda _p: None
+    )
     after = RelevanceScore.objects.filter(
         target_user=user, content__type=ContentItem.Type.FELLOWSHIP
     ).count()
     assert after == before
+
+
+def _seed_fellowship_corpus() -> None:
+    """Create the five _SEED_RECORDS fellowship ContentItems (shared by e2e tests)."""
+    for rec in _SEED_RECORDS:
+        ContentItem.objects.create(
+            type=ContentItem.Type.FELLOWSHIP,
+            source="illinois-fellowship-finder",
+            external_id=rec["eid"],
+            metadata={
+                "title": rec["title"],
+                "award_class": rec["award_class"],
+                "description": f"Supports research aligned with {rec['title']}.",
+                "facets": {
+                    "citizenship": list(rec["citizenship"]),
+                    "stage": list(rec["stage"]),
+                    "field": list(rec["field"]),
+                    "limits": list(rec["limits"]),
+                    "award_type": ["Fellowship/Grant"],
+                    "other": [],
+                },
+                "flags": {
+                    "requires_us_citizenship": False, "open_to_international": True
+                },
+                "deadline": {
+                    "type": rec["deadline_type"],
+                    "date": rec["deadline_date"],
+                    "previous_date": "",
+                    "raw": rec["deadline_date"] or rec["deadline_type"].capitalize(),
+                },
+                "deadline_date": rec["deadline_date"],
+                "next_kind": "application" if rec["deadline_date"] else "",
+                "status": "open",
+                "status_summary": (
+                    f"Deadline {rec['deadline_date']}"
+                    if rec["deadline_date"]
+                    else "Continuous"
+                ),
+                "first_seen": "2026-07-01T00:00:00+00:00",
+                "last_seen": "2026-07-06T00:00:00+00:00",
+            },
+        )
+
+
+@pytest.mark.django_db
+def test_fellowships_e2e_llm_report():
+    """With the model available, the top eligible fellowships get an LLM report.
+
+    The rule engine still gates eligibility (Illinois-only stays excluded, tier
+    is preserved), but the surfaced reason is Mylo's tailored text (source="llm")
+    rather than the concatenated eligibility summary.
+    """
+    user = _profile_user_with_eligibility("e2e_llm_user")
+    _seed_fellowship_corpus()
+
+    def fake_complete(prompt: str) -> str:
+        # A tailored, multi-sentence report for each candidate the prompt lists.
+        rows = ", ".join(
+            f'{{"item": {i}, "match": 90, "headline": "Great Fit {i}", '
+            f'"reason": "This aligns with your neuroscience research. It supports '
+            f'your imaging methods. You could fund your dissertation work."}}'
+            for i in range(1, 6)
+        )
+        return '{"suggestions": [' + rows + "]}"
+
+    result = match_fellowships_for_user(
+        user, today="2026-07-06", persist=True, complete=fake_complete
+    )
+    assert result.status == "ok"
+    assert result.llm >= 1  # at least one report authored by the model
+
+    scores = list(
+        RelevanceScore.objects.filter(
+            target_user=user, content__type=ContentItem.Type.FELLOWSHIP
+        ).select_related("content")
+    )
+    llm_scores = [s for s in scores if s.signals["source"] == "llm"]
+    assert llm_scores, "expected at least one LLM-authored fellowship report"
+
+    top = llm_scores[0]
+    assert top.signals["match_percent"] == 90
+    # A genuine multi-sentence report, not a one-line eligibility summary.
+    assert top.signals["reason"].count(".") >= 2
+    # The eligibility verdict is carried alongside the LLM reason.
+    assert top.signals["tier"] in ("qualified", "conditional")
+    assert top.signals["gates_failed"] == []
+
+    # Illinois-only (hard gate) is still excluded even with the model on.
+    illinois_ids = {
+        str(ci.id)
+        for ci in ContentItem.objects.filter(
+            external_id="9999", type=ContentItem.Type.FELLOWSHIP
+        )
+    }
+    assert illinois_ids.isdisjoint({str(s.content_id) for s in scores})

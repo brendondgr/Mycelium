@@ -384,3 +384,91 @@ def test_match_fellowships_rank_is_1_based():
     assert suggestions[0]["rank"] == 1
     assert suggestions[0]["source"] == "rules"
     assert 0 <= suggestions[0]["match_percent"] <= 100
+
+
+# ---- LLM report overlay (generate_fellowship_suggestions, pure) ---------------
+
+
+class _FakeItem:
+    """Minimal fellowship ContentItem stand-in (only ``.id`` + ``.metadata``)."""
+
+    def __init__(self, cid: str, metadata: dict):
+        self.id = cid
+        self.metadata = metadata
+
+
+def _ranked_stub(cid: str, *, tier: str = "qualified", fit: float = 0.8) -> dict:
+    """A rule-engine suggestion dict as match_fellowships would emit it."""
+    return {
+        "content_id": cid,
+        "tier": tier,
+        "fit": fit,
+        "similarity": fit,
+        "match_percent": round(fit * 100),
+        "gates_failed": [],
+        "reasons": ["US citizen / permanent resident eligible", "Stage matches"],
+        "headline": (
+            "Strong eligibility match" if tier == "qualified" else "Possible fit"
+        ),
+        "reason": "US citizen / permanent resident eligible; Stage matches",
+        "source": "rules",
+        "status": "open",
+        "actionable_date": "",
+        "status_summary": "Continuous",
+        "rank": 1,
+    }
+
+
+def test_generate_fellowship_suggestions_overlays_llm_report():
+    """The model's tailored report replaces the reason; eligibility is preserved."""
+    from apps.content.opportunity_llm import generate_fellowship_suggestions
+
+    ranked = [_ranked_stub("aaa")]
+    items = {
+        "aaa": _FakeItem(
+            "aaa",
+            {
+                "title": "Neuro Fellowship",
+                "award_class": "fellowship",
+                "description": "Supports doctoral neuroscience research.",
+                "facets": {"field": [SCI], "stage": [EARLY]},
+                "eligibility": ["US citizens"],
+            },
+        )
+    }
+
+    def fake_complete(prompt: str) -> str:
+        assert "Neuro Fellowship" in prompt  # the candidate brief reached the model
+        return (
+            '{"suggestions": [{"item": 1, "match": 88, '
+            '"headline": "A Natural Fit For Your Neuro Work", '
+            '"reason": "One. Two. Three."}]}'
+        )
+
+    out = generate_fellowship_suggestions(
+        {}, {}, ranked, items, complete=fake_complete
+    )
+    assert len(out) == 1
+    s = out[0]
+    assert s["source"] == "llm"
+    assert s["match_percent"] == 88
+    assert s["reason"] == "One. Two. Three."
+    # eligibility verdict + facts survive the overlay
+    assert s["tier"] == "qualified"
+    assert s["gates_failed"] == []
+    assert s["reasons"]
+
+
+def test_generate_fellowship_suggestions_falls_back_to_rules():
+    """A missing/empty model keeps the rule-engine reason (no regression)."""
+    from apps.content.opportunity_llm import generate_fellowship_suggestions
+
+    ranked = [_ranked_stub("bbb")]
+    items = {"bbb": _FakeItem("bbb", {"title": "X", "award_class": "fellowship"})}
+
+    out = generate_fellowship_suggestions(
+        {}, {}, ranked, items, complete=lambda _p: None
+    )
+    assert out[0]["source"] == "rules"
+    assert out[0]["reason"] == ranked[0]["reason"]
+    assert out[0]["match_percent"] == ranked[0]["match_percent"]

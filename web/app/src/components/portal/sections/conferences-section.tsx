@@ -12,6 +12,7 @@ import {
 } from "@/components/portal/icons";
 import {
   MatchBadge,
+  MyloReason,
   NewTag,
   SaveButton,
   deadlineLabel,
@@ -70,10 +71,15 @@ function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
         </p>
       ) : null}
 
+      {/* Milo's read on why this venue fits — the AI note when the model wrote it. */}
       {conf.reason ? (
-        <p className="mt-2.5 text-sm leading-relaxed text-[var(--text-secondary)]">
-          {conf.reason}
-        </p>
+        conf.origin === "llm" ? (
+          <MyloReason reason={conf.reason} />
+        ) : (
+          <p className="mt-2.5 text-sm leading-relaxed text-[var(--text-secondary)]">
+            {conf.reason}
+          </p>
+        )
       ) : null}
 
       {shownSubjects.length > 0 ? (

@@ -53,8 +53,9 @@ _SYSTEM_PROMPT = (
     "an integer percent match from 0 to 100 (100 = a near-perfect fit; be "
     "honest and use the full range). Return ONLY one JSON object:\n"
     '  {"suggestions": [{"paper": <number>, "match": <integer 0-100>, '
-    '"headline": <short title-case phrase>, "reason": <1-2 sentences, second '
-    'person, why THIS researcher should read it>}]}\n'
+    '"headline": <short title-case phrase>, "reason": <2-4 sentences, second '
+    "person, that explain concretely WHY this researcher should read it, HOW it "
+    'connects to their work, and WHAT they could take from it>}]}\n'
     "Rank best first. Only use papers from the list (reference them by their "
     "number). Ground every reason and match score in the paper and the profile "
     "— do not invent findings. No prose outside the JSON, no markdown fences."
