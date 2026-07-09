@@ -29,7 +29,7 @@ then deleted via the ``loadtest_purge`` management command.
 Run it (uv installs httpx into an ephemeral env from the header above):
 
     uv run loadtest.py --users 500 --window 30m
-    uv run loadtest.py --users 2 --window 20 --base-url http://127.0.0.1:8000/api
+    uv run loadtest.py --users 2 --window 20 --base-url http://localhost:11350/api
 
 IMPORTANT — registration throttle: the server caps anonymous registration at
 ``DJANGO_REGISTER_THROTTLE_RATE`` (default 20/hour). Start the backend with a high
@@ -846,8 +846,9 @@ def build_config(argv: list[str] | None = None) -> Config:
     p.add_argument("--users", type=int, default=500, help="Number of fake users.")
     p.add_argument("--window", type=parse_window, default="30m",
                    help="Onboarding window (e.g. 30m, 90s, 1h, or seconds).")
-    p.add_argument("--base-url", default="http://127.0.0.1:8000/api",
-                   help="API base URL (hit Django directly to stress the backend).")
+    p.add_argument("--base-url", default="http://localhost:11350/api",
+                   help="API base URL. Defaults to the compose backend published "
+                        "on host :11350 (→ container :8000); hits Django directly.")
     p.add_argument("--max-concurrency", type=int, default=50,
                    help="Max simultaneous in-flight users.")
     p.add_argument("--seed", type=int, default=1337, help="RNG seed (reproducible).")

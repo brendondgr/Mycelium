@@ -71,15 +71,21 @@ the window if a late starter is still processing), then all fake users are delet
 
 `uv run` installs `httpx` from the script's inline metadata automatically:
 
+The default `--base-url` already points at the compose backend (`http://localhost:11350/api`),
+so most runs need no URL flag:
+
 ```bash
 # default: 500 users over 30 minutes
-uv run loadtest.py --users 500 --window 30m --base-url http://localhost:11350/api
+uv run loadtest.py --users 500 --window 30m
 
 # quick smoke test (2 users, 20s window)
-uv run loadtest.py --users 2 --window 20 --base-url http://localhost:11350/api
+uv run loadtest.py --users 2 --window 20
 
 # also exercise the LLM profile-fill (résumé synthesis)
 uv run loadtest.py --users 200 --window 15m --synthesize
+
+# override the target only when it differs (e.g. bare dev server / nginx)
+uv run loadtest.py --users 500 --window 30m --base-url http://127.0.0.1:8000/api
 ```
 
 ### Key flags
@@ -88,7 +94,7 @@ uv run loadtest.py --users 200 --window 15m --synthesize
 |---|---|---|
 | `--users` | 500 | number of fake users |
 | `--window` | `30m` | onboarding window (`30m`, `90s`, `1h`, or bare seconds) |
-| `--base-url` | `http://127.0.0.1:8000/api` | API base (use `:11350` for the compose backend) |
+| `--base-url` | `http://localhost:11350/api` | API base — the compose backend on host `:11350` (→ container `:8000`), hit directly |
 | `--max-concurrency` | 50 | max simultaneous in-flight users |
 | `--seed` | 1337 | RNG seed — reproducible user mix and schedule |
 | `--all-categories-fraction` | 0.8 | fraction of users who enable all four match areas |
