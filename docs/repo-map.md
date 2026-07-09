@@ -47,6 +47,7 @@ for the layout standard.
 | Nginx / gateway routing | `web/infra/nginx/` |
 | Root run/build commands | `run.py`, `manual_search.py` (papers) / `manual_opportunities.py` (grants/conferences matching) / `manual_refitting.py` (re-personalize existing top results — LLM re-score, no scan/ingest), `pivot.py` (`all` = one in-process scrape→dedup→recommend; also `login`/`scrape`/`import`/`distribute`), `package.json`, `compose.yaml` |
 | Env vars / secrets contract | `.env.example` (documented in `architecture.md`) |
+| Onboarding load / stress test | root `loadtest.py` (async HTTP client, `uv run`) + `loadtest_interests.py` (static interest catalog); cleanup command `accounts/management/commands/loadtest_purge.py`; guide `docs/loadtest.md` |
 
 ---
 

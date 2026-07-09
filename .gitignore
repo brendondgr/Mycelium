@@ -114,3 +114,6 @@ Desktop.ini
 storage_state.json
 **/pivot/storage_state.json
 pivot.db
+
+# Load-test run artifacts (CSV reports)
+loadtest_results/

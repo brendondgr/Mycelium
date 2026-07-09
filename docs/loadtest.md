@@ -1,0 +1,125 @@
+# Onboarding load test
+
+`loadtest.py` (repo root) stress-tests Mycelium's **server-side compute** by
+simulating many users onboarding concurrently over a time window. It replays the
+exact API the browser uses, so the load lands on the real hot paths:
+
+- **Embedding generation** — each profile write rebuilds the interest embedding.
+- **Embedding filtering / search** — each per-area match retrieves over pgvector.
+- **LLM recommendation generation** — the match step scores candidates with the model.
+
+Fake users are built **deterministically** from a static interest catalog
+(`loadtest_interests.py`, ~144 interests across 24 fields) — the LLM is exercised
+by the *recommendation* step, not by user generation. The harness is a pure HTTP
+client; cleanup is a Django management command (`loadtest_purge`).
+
+## What each simulated user does
+
+Mirrors `web/app/src/components/onboarding/onboarding-flow.tsx`:
+
+| # | Call | Server effect |
+|---|------|---------------|
+| 1 | `GET /auth/csrf/` | obtain the CSRF cookie |
+| 2 | `POST /auth/register/` | create a **personal** account + workspace, log in |
+| 3 | `PATCH /auth/profile/me/` | role + institution → Profile save → embedding hook |
+| 4 | `POST /auth/intake/synthesize/` | *optional* (`--synthesize`): LLM drafts interests from a résumé |
+| 5 | `POST /auth/intake/confirm/` | save deterministic interests → embedding generation |
+| 6 | `PATCH /auth/watch/me/` | topics + **variable** categories + cadence |
+| 7 | `POST /onboarding/match/` ×N | one per opted-in area (papers/grants/fellowships/conferences): retrieve → fuse → LLM score |
+
+Users start at **random offsets** across the window (bursts allowed — not evenly
+spaced). The run ends only when **every** user has fully finished (it may run past
+the window if a late starter is still processing), then all fake users are deleted.
+
+## Prerequisites
+
+1. The backend + Postgres (pgvector) + Redis running. With the compose stack the
+   API is at `http://localhost:11350/api` (backend direct) or `http://localhost:11050/api`
+   (nginx). Hit the backend **directly** to stress its compute.
+2. **Raise the registration throttle.** `DEFAULT_THROTTLE_RATES["register"]`
+   defaults to `20/hour` per anonymous IP — a bulk run will be throttled (HTTP 429).
+   Start the backend with a high value:
+
+   ```
+   DJANGO_REGISTER_THROTTLE_RATE=1000000/hour
+   ```
+
+   (A 1–2 user smoke test stays under the default and needs no change.)
+
+## Running
+
+`uv run` installs `httpx` from the script's inline metadata automatically:
+
+```bash
+# default: 500 users over 30 minutes
+uv run loadtest.py --users 500 --window 30m --base-url http://localhost:11350/api
+
+# quick smoke test (2 users, 20s window)
+uv run loadtest.py --users 2 --window 20 --base-url http://localhost:11350/api
+
+# also exercise the LLM profile-fill (résumé synthesis)
+uv run loadtest.py --users 200 --window 15m --synthesize
+```
+
+### Key flags
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--users` | 500 | number of fake users |
+| `--window` | `30m` | onboarding window (`30m`, `90s`, `1h`, or bare seconds) |
+| `--base-url` | `http://127.0.0.1:8000/api` | API base (use `:11350` for the compose backend) |
+| `--max-concurrency` | 50 | max simultaneous in-flight users |
+| `--seed` | 1337 | RNG seed — reproducible user mix and schedule |
+| `--all-categories-fraction` | 0.8 | fraction of users who enable all four match areas |
+| `--synthesize` | off | also POST a résumé to `/intake/synthesize` (extra LLM load) |
+| `--out-dir` | `loadtest_results` | where CSV reports are written |
+| `--run-id` | auto | tag for usernames + filenames (`lt_<run-id>_NNNNN`) |
+| `--no-cleanup` | off | keep the fake users (purge manually) |
+| `--purge-cmd` | host `manage.py loadtest_purge` | how cleanup deletes the users |
+| `--no-live` | off | print periodic snapshots instead of the in-place table |
+
+## Live monitoring
+
+While running, a status table refreshes ~2×/s (in place on a TTY; periodic
+snapshots otherwise): users started/done/failed vs target, requests in-flight and
+done, match (LLM) calls in-flight and done with LLM-vs-fallback counts, embedding
+generation and filter/search counts, elapsed vs window-remaining, per-stage
+mean/p95 latency, error count and breakdown, and throughput.
+
+## Output
+
+- Printed **summary table** — totals, error breakdown, per-stage count/mean/p95/max,
+  match totals (matched / genuine-LLM / deterministic-fallback), wall-clock, throughput.
+- `loadtest_results/operations_<run-id>.csv` — **one row per HTTP request**
+  (run_id, user_idx, username, stage, area, method, status_code, ok, latency_ms,
+  started_at, error).
+- `loadtest_results/summary_<run-id>.csv` — one row per aggregate metric.
+
+`loadtest_results/` is git-ignored.
+
+## Cleanup
+
+Fake users carry two markers: the email domain `@loadtest.mycelium.test` and the
+username prefix `lt_`. Deleting a personal-account `User` cascades its whole
+footprint (Profile, Subscription, Seat, RelevanceScore, SavedOpportunity, audit
+rows), so cleanup is just a delete:
+
+```bash
+# runs automatically at the end of a run, or by hand:
+uv run --project web/backend python web/backend/manage.py loadtest_purge            # all
+uv run --project web/backend python web/backend/manage.py loadtest_purge --dry-run  # preview
+uv run --project web/backend python web/backend/manage.py loadtest_purge --run-id 7f3a1c
+```
+
+The email-domain marker is always required, so the command can never match a real
+account; staff/superusers are refused as a second guard. If the backend runs only
+inside Docker, point `--purge-cmd` at the container, e.g.
+`--purge-cmd "docker compose exec -T backend python manage.py loadtest_purge"`.
+
+## Design notes / limitations
+
+- The corpus (papers/grants/fellowships/conferences) is **not** seeded here — on an
+  empty store the match returns `matched=0` without error. Seed via the normal scan/
+  ingest jobs for a realistic recommendation load.
+- Cleanup needs DB access (no HTTP delete-user endpoint exists); it runs on the host
+  by default. For a remote target, run `loadtest_purge` where the DB is reachable.
