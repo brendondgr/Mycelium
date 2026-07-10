@@ -1,10 +1,12 @@
 """The per-user pipeline: query building, graceful degradation, and the RAG run."""
 
 import math
+from datetime import timedelta
 
 import pytest
 from django.contrib.auth.models import User
 from django.db import connection
+from django.utils import timezone
 
 from apps.accounts.models import WatchPreference
 from apps.content import embeddings
@@ -247,6 +249,35 @@ def test_no_areas_falls_back_to_single_vector(pgvector) -> None:
     assert "similarity" in top.signals
     assert "focus_overlap" in top.signals
     assert "per_interest" not in top.signals
+
+
+@pytest.mark.django_db
+def test_recommend_surfaces_only_latest_gather_day(pgvector) -> None:
+    """The freshness gate: only the most recently gathered batch is recommended.
+
+    A paper gathered two days ago is the *stronger* match for the profile, yet it
+    must not resurface — the day-to-day rule keeps the feed to today's batch, so the
+    older paper's exclusion can only be the gather-day gate, not its score.
+    """
+    embeddings.set_embedder(_fake_embed)
+    # Interest "graph" embeds to [1,0,0,0]: the old paper is a perfect match.
+    old = _vpaper("old-strong", "graph", [1.0, 0.0, 0.0, 0.0])
+    ContentItem.objects.filter(pk=old.pk).update(
+        created_at=timezone.now() - timedelta(days=2)
+    )
+    fresh = _vpaper("fresh-weak", "graph health", [0.8, 0.6, 0.0, 0.0])  # today
+    user = _profile_user("fresh-only", areas=["graph"], keywords=[])
+
+    result = run_for_user(user, search_fn=_no_search, complete=lambda _p: None)
+
+    assert result.status == "ok"
+    scored = set(
+        RelevanceScore.objects.filter(target_user=user).values_list(
+            "content_id", flat=True
+        )
+    )
+    assert fresh.id in scored
+    assert old.id not in scored
 
 
 @pytest.mark.django_db

@@ -31,6 +31,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
+from datetime import date
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -52,7 +53,7 @@ from .interests_query import SearchInterest, search_interests
 from .lexical import build_bm25_index, rank_bm25_over
 from .models import ContentItem, RelevanceScore
 from .ranking import DEFAULT_FOCUS_WEIGHT, rerank_by_focus
-from .retrieval import Hit, retrieve_for_vector
+from .retrieval import Hit, latest_gather_date, retrieve_for_vector
 from .suggest import CompleteFn, generate_suggestions
 from .targets import target_for_lab, target_for_project
 
@@ -300,6 +301,11 @@ def recommend_for_user(
     # interests. With areas present we run the multi-interest fusion; with none we
     # fall back to the original single-vector retrieval so those users are
     # unaffected.
+    # Papers are recommended from the freshest batch only: the most recent day any
+    # paper was gathered. This is what keeps the Research Papers page day-to-day —
+    # without it the same best-matching older papers resurface run after run.
+    gathered_on = latest_gather_date()
+
     search_ints = search_interests(interests)
     retrieved_count = 0
     if search_ints:
@@ -310,6 +316,7 @@ def recommend_for_user(
             pool_per_interest=pool_per_interest,
             beta=beta,
             emit=emit,
+            created_on=gathered_on,
         )
     else:
         pairs, rows, retrieved_count = _single_vector(
@@ -319,6 +326,7 @@ def recommend_for_user(
             surface_limit=surface_limit,
             focus_weight=focus_weight,
             emit=emit,
+            created_on=gathered_on,
         )
 
     if not pairs:
@@ -395,6 +403,10 @@ def recommend_for_target(
         if log is not None:
             log(f"[{key}] {message}")
 
+    # Same freshness gate as the personal feed: a lab/project paper feed also only
+    # surfaces the most recently gathered batch, not the whole historical corpus.
+    gathered_on = latest_gather_date()
+
     interests = target.interests or {}
     search_ints = search_interests(interests)
     retrieved_count = 0
@@ -406,6 +418,7 @@ def recommend_for_target(
             pool_per_interest=pool_per_interest,
             beta=beta,
             emit=emit,
+            created_on=gathered_on,
         )
     elif target.embedding_text.strip():
         vector = embeddings.embed_text(target.embedding_text)
@@ -419,6 +432,7 @@ def recommend_for_target(
             surface_limit=surface_limit,
             focus_weight=focus_weight,
             emit=emit,
+            created_on=gathered_on,
         )
     else:
         emit("no interests to recommend on; skipping")
@@ -658,6 +672,7 @@ def fuse_interests_pool(
     pool_per_interest: int,
     beta: float,
     emit: Callable[[str], None],
+    created_on: date | None = None,
 ) -> tuple[list[Hit], list[PersistRow], int]:
     """Retrieve + fuse per interest; return suggest-pairs, persist-rows, pool size.
 
@@ -666,6 +681,8 @@ def fuse_interests_pool(
     interests, and reserves each interest's best item before truncating to
     ``surface_limit``. ``content_type`` scopes retrieval to papers (default) or
     grants/conferences, so the grants/conferences matcher reuses this unchanged.
+    ``created_on`` (papers only) restricts the pool to the freshest gather day; the
+    opportunity matchers leave it ``None`` so grants/conferences span their corpus.
     """
     pool: dict[str, ContentItem] = {}
     vector_hits: dict[str, list[Hit]] = {}
@@ -675,7 +692,10 @@ def fuse_interests_pool(
             continue
         unified: list[Hit] = []
         for item, similarity in retrieve_for_vector(
-            vector, content_type=content_type, limit=pool_per_interest
+            vector,
+            content_type=content_type,
+            limit=pool_per_interest,
+            created_on=created_on,
         ):
             key = str(item.id)
             pool.setdefault(key, item)
@@ -727,14 +747,16 @@ def _single_vector(
     surface_limit: int,
     focus_weight: float,
     emit: Callable[[str], None],
+    created_on: date | None = None,
 ) -> tuple[list[Hit], list[PersistRow], int]:
-    """The original single-vector path, unchanged, for profiles with no ``areas``.
+    """The single-vector path for profiles with no ``areas``.
 
     Retrieves the papers nearest the whole-profile vector and applies the lexical
     focus re-rank (a no-op with no areas). Kept so users who never declared
-    research areas see exactly the behaviour they saw before this change.
+    research areas see the same behaviour, now scoped (like every paper path) to the
+    freshest gather day via ``created_on``.
     """
-    hits = retrieve_for_vector(profile_vector, limit=top_k)
+    hits = retrieve_for_vector(profile_vector, limit=top_k, created_on=created_on)
     if not hits:
         return [], [], 0
 

@@ -5,11 +5,14 @@ SQLite (CI runs them against the Postgres service). The empty-vector guard is
 pure Python and always runs.
 """
 
+from datetime import timedelta
+
 import pytest
 from django.db import connection
+from django.utils import timezone
 
 from apps.content.models import ContentItem
-from apps.content.retrieval import retrieve_for_vector
+from apps.content.retrieval import latest_gather_date, retrieve_for_vector
 
 
 def test_empty_vector_returns_no_hits_without_db() -> None:
@@ -81,3 +84,39 @@ def test_exclude_ids_drops_known_items(pgvector) -> None:
     hits = retrieve_for_vector([1.0, 0.0, 0.0], exclude_ids=[skip.id])
 
     assert [item.id for item, _ in hits] == [keep.id]
+
+
+def _backdate(item: ContentItem, *, days: int) -> ContentItem:
+    """Move an item's gather day into the past (``created_at`` is auto-set)."""
+    ContentItem.objects.filter(pk=item.pk).update(
+        created_at=timezone.now() - timedelta(days=days)
+    )
+    item.refresh_from_db()
+    return item
+
+
+@pytest.mark.django_db
+def test_created_on_restricts_to_gather_day(pgvector) -> None:
+    # The older paper is the *stronger* cosine match, but a different gather day.
+    _backdate(_paper("old", [1.0, 0.0, 0.0]), days=2)
+    _paper("today", [0.9, 0.1, 0.0])  # created now
+
+    hits = retrieve_for_vector(
+        [1.0, 0.0, 0.0], created_on=timezone.localdate(), limit=10
+    )
+
+    assert [item.source for item, _ in hits] == ["today"]
+
+
+@pytest.mark.django_db
+def test_latest_gather_date_is_freshest_embedded_day(pgvector) -> None:
+    assert latest_gather_date() is None  # empty store
+    _backdate(_paper("old", [1.0, 0.0, 0.0]), days=5)
+    fresh = _backdate(_paper("fresh", [0.5, 0.5, 0.0]), days=1)
+    # A *newer* row with no embedding can never be retrieved, so it must not count —
+    # otherwise the gate would point the pipeline at a day with no usable papers.
+    ContentItem.objects.create(
+        type=ContentItem.Type.PAPER, source="no-vec", external_id="no-vec"
+    )
+
+    assert latest_gather_date() == timezone.localdate(fresh.created_at)

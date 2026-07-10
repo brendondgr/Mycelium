@@ -13,7 +13,10 @@ result instead of a database error.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import date
 
+from django.db.models import Max
+from django.utils import timezone
 from pgvector.django import CosineDistance
 
 from .models import ContentItem
@@ -29,14 +32,17 @@ def retrieve_for_vector(
     content_type: str | None = ContentItem.Type.PAPER,
     limit: int = 20,
     exclude_ids: Sequence | None = None,
+    created_on: date | None = None,
 ) -> list[Hit]:
     """Return up to ``limit`` content items nearest ``vector`` by cosine distance.
 
     Only items that actually have an embedding are considered. ``content_type``
     filters by paper/grant/fellowship (pass ``None`` for all types).
-    ``exclude_ids`` drops items already known to the caller. Each hit carries the
-    cosine similarity (``1 - distance``) so callers can threshold or rank without
-    re-querying.
+    ``exclude_ids`` drops items already known to the caller. ``created_on`` (when
+    set) restricts the pool to items *gathered* on that calendar day — the freshness
+    gate the paper feed uses to surface only the latest batch, never the whole
+    historical corpus. Each hit carries the cosine similarity (``1 - distance``) so
+    callers can threshold or rank without re-querying.
     """
     if vector is None or len(vector) == 0:
         return []
@@ -44,6 +50,8 @@ def retrieve_for_vector(
     queryset = ContentItem.objects.filter(embedding__isnull=False)
     if content_type:
         queryset = queryset.filter(type=content_type)
+    if created_on is not None:
+        queryset = queryset.filter(created_at__date=created_on)
     if exclude_ids:
         queryset = queryset.exclude(id__in=list(exclude_ids))
 
@@ -52,6 +60,26 @@ def retrieve_for_vector(
     ).order_by("distance")[:limit]
 
     return [(item, _similarity(item.distance)) for item in queryset]
+
+
+def latest_gather_date(
+    *, content_type: str = ContentItem.Type.PAPER
+) -> date | None:
+    """The freshest day any *embedded* item of ``content_type`` was gathered.
+
+    "Gathered" is ingestion time (``ContentItem.created_at``, set once on first
+    insert and never rewritten by re-scrapes), so this is the date of the freshest
+    batch that can actually be retrieved. Only embedded items count, since a paper
+    with no vector can never surface. Returns ``None`` when the store holds no such
+    item yet. The paper pipeline passes this back into :func:`retrieve_for_vector`
+    as ``created_on`` so a run recommends only the latest batch.
+    """
+    latest = (
+        ContentItem.objects.filter(
+            type=content_type, embedding__isnull=False
+        ).aggregate(latest=Max("created_at"))
+    )["latest"]
+    return timezone.localdate(latest) if latest is not None else None
 
 
 def _similarity(distance: float | None) -> float:
