@@ -79,6 +79,24 @@ def ensure_ready() -> list[str]:
     return base
 
 
+def have_uv() -> bool:
+    """True if the ``uv`` launcher is available on PATH (needed for host runs)."""
+    return shutil.which("uv") is not None
+
+
+def run_host(command: list[str], intro: str | None = None) -> int:
+    """Run a command on the host, from the repo root — NOT inside a container.
+
+    Used for the Pivot scrape, whose Playwright/Chromium browser and saved SSO
+    session live on the host rather than in the backend container. Returns the
+    command's exit code; the caller decides whether a non-zero result is fatal.
+    """
+    if intro:
+        print(intro, flush=True)
+    print(f"\n$ {' '.join(command)}", flush=True)
+    return subprocess.run(command, cwd=ROOT).returncode
+
+
 def run_manage(
     command: str,
     passthrough: list[str] | None = None,

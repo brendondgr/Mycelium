@@ -48,8 +48,8 @@ for the layout standard.
 | Frontend → API calls & data hooks | `web/app/src/lib/` and `web/app/src/lib/portal/` |
 | Shared design tokens / theme | `web/packages/config/src/theme.css` |
 | Nginx / gateway routing | `web/infra/nginx/` |
-| Root run/build commands | `run.py`, `manual_all.py` (root orchestrator — runs search → opportunities → refit for all users, one after another), `pivot.py` (`all` = one in-process scrape→dedup→recommend; also `login`/`scrape`/`import`/`distribute`), `package.json`, `compose.yaml` |
-| Manual pipeline runners (per stage) | `utils/manual/` — `_runner.py` (shared Compose discovery + backend-up guard + `run_manage`), `manual_search.py` (papers), `manual_opportunities.py` (grants/conferences/fellowships matching), `manual_refitting.py` (re-personalize existing top results — LLM re-score, no scan/ingest); the root `manual_all.py` chains all three |
+| Root run/build commands | `run.py`, `manual_all.py` (root orchestrator — host Pivot scrape+import → search → opportunities → refit for all users, one stage after another; scrape stage is non-fatal, needs `uv` + a saved Pivot session), `pivot.py` (`all` = one in-process scrape→dedup→recommend; also `login`/`scrape`/`import`/`distribute`), `package.json`, `compose.yaml` |
+| Manual pipeline runners (per stage) | `utils/manual/` — `_runner.py` (shared Compose discovery + backend-up guard + `run_manage` container exec + `run_host`/`have_uv` for host runs), `manual_search.py` (papers), `manual_opportunities.py` (grants/conferences/fellowships matching), `manual_refitting.py` (re-personalize existing top results — LLM re-score, no scan/ingest); the root `manual_all.py` prepends a host Pivot scrape and then chains all three |
 | Env vars / secrets contract | `.env.example` (documented in `architecture.md`) |
 | Onboarding load / stress test | root `loadtest.py` (async HTTP client, `uv run`) + `loadtest_interests.py` (static interest catalog); cleanup command `accounts/management/commands/loadtest_purge.py`; guide `docs/loadtest.md` |
 
