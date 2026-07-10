@@ -49,6 +49,26 @@ urlpatterns = [
         "opportunities/save/<uuid:content_id>",
         views.SaveOpportunityView.as_view(),
     ),
+    # Institutional recommendation feeds: a lab's aggregate matches and one
+    # project's focus matches (papers + grants + conferences, fellowships excluded).
+    path(
+        "labs/<slug:slug>/recommendations/",
+        views.LabRecommendationsView.as_view(),
+        name="lab-recommendations",
+    ),
+    path(
+        "labs/<slug:slug>/recommendations",
+        views.LabRecommendationsView.as_view(),
+    ),
+    path(
+        "projects/<uuid:pk>/recommendations/",
+        views.ProjectRecommendationsView.as_view(),
+        name="project-recommendations",
+    ),
+    path(
+        "projects/<uuid:pk>/recommendations",
+        views.ProjectRecommendationsView.as_view(),
+    ),
     path("deadlines/", views.DeadlinesView.as_view(), name="deadlines"),
     path("deadlines", views.DeadlinesView.as_view()),
     path("notifications/", views.NotificationsView.as_view(), name="notifications"),

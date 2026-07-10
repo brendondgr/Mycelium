@@ -1,10 +1,16 @@
 from collections import Counter
 
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from apps.accounts.models import Lab
+from apps.accounts.permissions import user_has_lab_access
+from apps.research.models import Project
 
 from .models import ContentItem, RelevanceScore, SavedOpportunity
 from .onboarding_match import UnknownArea, onboarding_match_area
@@ -163,11 +169,16 @@ def _saved_content_ids(user) -> set[str]:
     }
 
 
-def _latest_run_scores(user, content_type: str) -> list[RelevanceScore]:
-    """This user's matched items for the area, from the latest run, pinned-first."""
+def _latest_scores(target_filter: dict, content_type: str) -> list[RelevanceScore]:
+    """A target's matched items for the area, from the latest run, pinned-first.
+
+    ``target_filter`` is the single ``target_*`` FK to read under —
+    ``{"target_user": user}`` for a person, ``{"target_lab": lab}`` /
+    ``{"target_project": project}`` for the institutional feeds.
+    """
     scores = list(
         RelevanceScore.objects.filter(
-            target_user=user, content__type=content_type
+            **target_filter, content__type=content_type
         ).select_related("content")
     )
     if not scores:
@@ -183,6 +194,11 @@ def _latest_run_scores(user, content_type: str) -> list[RelevanceScore]:
 
     current.sort(key=sort_key)
     return current
+
+
+def _latest_run_scores(user, content_type: str) -> list[RelevanceScore]:
+    """The signed-in user's matched items for the area (the personal feeds)."""
+    return _latest_scores({"target_user": user}, content_type)
 
 
 class _OpportunityFeedView(APIView):
@@ -226,6 +242,81 @@ class FellowshipsView(_OpportunityFeedView):
 
     content_type = ContentItem.Type.FELLOWSHIP
     serializer_class = FellowshipSerializer
+
+
+# --------------------------------------------------------------------------- #
+# Lab + project recommendation feeds (the institutional scoring targets)
+# --------------------------------------------------------------------------- #
+
+
+def _recommendations_payload(target_filter: dict, *, user) -> dict:
+    """The combined papers + grants + conferences a lab / project matched.
+
+    Fellowships are omitted: they are an individual-eligibility area, so they never
+    score against a lab or project. ``counts`` powers the lab overview stat cards;
+    the three lists power the project feed and any lab feed. Saves remain personal
+    (a user saves a deadline to *their* deadlines), so ``saved`` reflects the
+    signed-in user regardless of whose recommendations these are.
+    """
+    today = timezone.now().date().isoformat()
+    opp_context = {"today": today, "saved_ids": _saved_content_ids(user)}
+    papers = _latest_scores(target_filter, ContentItem.Type.PAPER)
+    grants = _latest_scores(target_filter, ContentItem.Type.GRANT)
+    conferences = _latest_scores(target_filter, ContentItem.Type.CONFERENCE)
+    run_ats = [
+        rows[0].signals.get("run_at")
+        for rows in (papers, grants, conferences)
+        if rows
+    ]
+    return {
+        "generated_at": max(run_ats) if run_ats else None,
+        "counts": {
+            "papers": len(papers),
+            "grants": len(grants),
+            "conferences": len(conferences),
+        },
+        "papers": SuggestionSerializer(papers, many=True).data,
+        "grants": GrantSerializer(grants, many=True, context=opp_context).data,
+        "conferences": ConferenceSerializer(
+            conferences, many=True, context=opp_context
+        ).data,
+    }
+
+
+class LabRecommendationsView(APIView):
+    """A lab's matched papers/grants/conferences (its aggregate interests).
+
+    Any member of the lab may read them (``user_has_lab_access``); the lab overview
+    reads ``counts`` and a lab feed reads the lists.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, slug):
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_has_lab_access(request.user, lab):
+            raise PermissionDenied("You do not have access to this lab.")
+        return Response(
+            _recommendations_payload({"target_lab": lab}, user=request.user)
+        )
+
+
+class ProjectRecommendationsView(APIView):
+    """One project's matched papers/grants/conferences (its declared focus).
+
+    Gated by the same cascade visibility that guards the project itself, so only
+    people who can see the project can see what Mylo found for it.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        if not project.is_visible_to(request.user):
+            raise PermissionDenied("You do not have access to this project.")
+        return Response(
+            _recommendations_payload({"target_project": project}, user=request.user)
+        )
 
 
 class SaveOpportunityView(APIView):
