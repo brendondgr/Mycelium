@@ -5,11 +5,13 @@ Scrape every source, then recommend, then refit — one stage after another,
 synchronously, for *all* active users, against the running Docker stack.
 
 Stages, in order:
-    1. Scrape opportunity sources (host)   — ``uv run pivot.py scrape`` + ``import``:
-       pull fresh grants, conferences, and fellowships from Pivot-RP / the
-       Illinois fellowship site into the shared content store and embed them.
-       Needs a saved Pivot session (run ``uv run pivot.py login`` once); without
-       one this stage is skipped and the later stages match the existing corpus.
+    1. Scrape opportunity sources (host)   — ``uv run pivot.py`` login + scrape +
+       import: pull fresh grants, conferences, and fellowships from Pivot-RP / the
+       Illinois fellowship site into the shared content store and embed them. When
+       there is no saved Pivot session, this stage first opens the interactive
+       login window (SSO/MFA) to establish one, then scrapes. In a non-interactive
+       shell it cannot prompt, so it skips the scrape and the later stages match
+       the existing corpus.
     2. Search research papers (backend)    — ``run_daily_suggestions``: scan the
        literature sources (OpenAlex / PubMed / SemanticScholar), embed, and
        recommend papers. The paper sources are scraped here, as part of the
@@ -23,9 +25,10 @@ The scrape stage runs on the host because Playwright/Chromium and the saved Pivo
 session live there, not in the backend container (the container has no Playwright,
 which is why its own opportunity ingest silently skips the scrape). Host and
 container share the same Postgres, so a host-side import is visible to the
-backend stages that follow. A scrape hiccup — no session, an expired session, no
-``uv`` — is non-fatal: the run warns and continues to recommend over whatever
-corpus already exists.
+backend stages that follow. Every part of the scrape stage — login, scrape,
+import — is non-fatal: a declined login, an expired session, or no ``uv`` just
+warns and lets the run continue, recommending over whatever corpus already
+exists.
 
 Each stage runs for all users with default settings; this script takes no
 pass-through flags on purpose, so "scrape and recommend everything for everyone"
@@ -37,7 +40,8 @@ Usage:
     python manual_all.py --help # this message
 
 The stack must be up first (``python run.py up``). Requires Docker Compose, plus
-``uv`` on PATH and a saved Pivot session for the scrape stage to pull new items.
+``uv`` on PATH; the scrape stage will log in for you when no Pivot session exists,
+as long as it is run from an interactive terminal with a display for SSO/MFA.
 """
 
 from __future__ import annotations
@@ -57,14 +61,33 @@ CONTAINER_STAGES = [
 ]
 
 
-def scrape_opportunities() -> None:
-    """Scrape fresh grants/conferences/fellowships into the store (host, non-fatal).
+def pivot_session_exists() -> bool:
+    """True if a saved Pivot SSO session is present on the host.
 
-    Runs the host Pivot pipeline — ``uv run pivot.py scrape`` (browser scrape to
-    ``data/pivot/*.json``) then ``uv run pivot.py import`` (dedup + prune + embed
-    into the shared store). Any failure here is logged and swallowed: the daily
-    run should still recommend over the existing corpus, not abort, when the
-    scrape can't run (typically a missing or expired Pivot session).
+    Reuses the scraper's own ``state_exists()`` (which honors ``PIVOT_STORAGE_STATE``)
+    so this check can never drift from where the scraper actually looks. That module
+    is pure-stdlib, so importing it needs no Django setup. If it can't be imported for
+    any reason we report "no session" — the caller then tries to log in, which is the
+    safe direction.
+    """
+    backend = str(Path(__file__).resolve().parent / "web" / "backend")
+    if backend not in sys.path:
+        sys.path.insert(0, backend)
+    try:
+        from apps.scraper.pivot.common import state_exists
+    except Exception:
+        return False
+    return state_exists()
+
+
+def scrape_opportunities() -> None:
+    """Log in if needed, then scrape grants/conferences/fellowships (host, non-fatal).
+
+    Runs the host Pivot pipeline: ``uv run pivot.py login`` first when no session is
+    saved, then ``uv run pivot.py scrape`` (browser scrape to ``data/pivot/*.json``)
+    and ``uv run pivot.py import`` (dedup + prune + embed into the shared store).
+    Every step is logged and swallowed on failure: the daily run should still
+    recommend over the existing corpus, not abort, when the scrape can't run.
     """
     if not have_uv():
         print(
@@ -74,12 +97,37 @@ def scrape_opportunities() -> None:
         )
         return
 
+    # No saved session → log in first so the scrape can actually reach the grant /
+    # conference sources. Login is interactive (SSO/MFA in a browser); in a
+    # non-interactive shell we cannot prompt, so we skip and match the existing corpus.
+    if not pivot_session_exists():
+        if not sys.stdin.isatty():
+            print(
+                "note: no saved Pivot session and not an interactive terminal — cannot "
+                "log in unattended. Skipping the scrape; run `uv run pivot.py login` "
+                "once from a terminal with a display. The later stages will match the "
+                "existing corpus.",
+                flush=True,
+            )
+            return
+        print(
+            "No saved Pivot session — opening the login window; complete SSO/MFA to "
+            "continue…",
+            flush=True,
+        )
+        if run_host(["uv", "run", "pivot.py", "login"]) != 0 or not pivot_session_exists():
+            print(
+                "\nnote: Pivot login did not complete; skipping the scrape. The later "
+                "stages will match the existing corpus.",
+                flush=True,
+            )
+            return
+
     if run_host(["uv", "run", "pivot.py", "scrape"]) != 0:
         print(
-            "\nnote: the Pivot scrape did not complete — most often there is no saved "
-            "session. Run `uv run pivot.py login` once (on a machine with a display) to "
-            "enable scraping. Skipping import; the later stages will match the existing "
-            "corpus.",
+            "\nnote: the Pivot scrape did not complete — the session may have expired. "
+            "Re-run `uv run pivot.py login`. Skipping import; the later stages will "
+            "match the existing corpus.",
             flush=True,
         )
         return
