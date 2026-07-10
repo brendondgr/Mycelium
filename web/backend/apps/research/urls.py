@@ -60,4 +60,56 @@ urlpatterns = [
         views.ProjectMembersView.as_view(),
         name="project-members-no-slash",
     ),
+    # Collaboration surface: share into the feed, read the feed, paste-a-link
+    # ingest, mark-seen, and engagement events. Slash + no-slash for the proxy.
+    path(
+        "projects/<uuid:pk>/shares/",
+        views.ProjectShareView.as_view(),
+        name="project-share",
+    ),
+    path(
+        "projects/<uuid:pk>/shares",
+        views.ProjectShareView.as_view(),
+        name="project-share-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/feed/",
+        views.ProjectFeedView.as_view(),
+        name="project-feed",
+    ),
+    path(
+        "projects/<uuid:pk>/feed",
+        views.ProjectFeedView.as_view(),
+        name="project-feed-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/ingest-link/",
+        views.ProjectIngestLinkView.as_view(),
+        name="project-ingest-link",
+    ),
+    path(
+        "projects/<uuid:pk>/ingest-link",
+        views.ProjectIngestLinkView.as_view(),
+        name="project-ingest-link-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/items/<uuid:content_id>/seen/",
+        views.ProjectItemSeenView.as_view(),
+        name="project-item-seen",
+    ),
+    path(
+        "projects/<uuid:pk>/items/<uuid:content_id>/seen",
+        views.ProjectItemSeenView.as_view(),
+        name="project-item-seen-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/events/",
+        views.ProjectEventView.as_view(),
+        name="project-event",
+    ),
+    path(
+        "projects/<uuid:pk>/events",
+        views.ProjectEventView.as_view(),
+        name="project-event-no-slash",
+    ),
 ]

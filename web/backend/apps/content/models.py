@@ -251,3 +251,157 @@ class SavedOpportunity(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} saved {self.area}: {self.title[:40]}"
+
+
+# --------------------------------------------------------------------------- #
+# Project collaboration (briefing Features A / B / D — the Projects page)
+# --------------------------------------------------------------------------- #
+
+
+class ProjectShare(models.Model):
+    """A content item a member shared into a project's collaboration feed (A).
+
+    The feed unit. Multiple members may re-share the same paper — there is
+    deliberately **no** unique constraint on ``(project, content)``; the feed
+    collapses duplicates by content and credits every co-sharer. Display-dedup and
+    the "already seen by your team" badge come from :class:`ProjectItemSeen`, not
+    from a constraint here.
+    """
+
+    class Source(models.TextChoices):
+        DIGEST = "digest", "Digest"
+        EXTERNAL_LINK = "external_link", "External link"
+        COLLECTION = "collection", "Collection"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        "research.Project",
+        on_delete=models.CASCADE,
+        related_name="shares",
+    )
+    content = models.ForeignKey(
+        ContentItem,
+        on_delete=models.CASCADE,
+        related_name="project_shares",
+    )
+    shared_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="project_shares",
+    )
+    note = models.TextField(
+        blank=True, default="", help_text="The sharer's one-line why."
+    )
+    source = models.CharField(
+        max_length=20, choices=Source.choices, default=Source.DIGEST
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["project", "created_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.shared_by} shared {self.content} → project {self.project_id}"
+
+
+class ProjectItemSeen(models.Model):
+    """The dedup ledger: has this item surfaced in this project, and to whom (B).
+
+    One row per ``(project, content)`` — written the first time an item enters the
+    project by any path (digest match, share, external link). ``first_seen_via``
+    records that first path and never changes; ``seen_by`` grows as members actually
+    view the item in-app. Powers the "already seen by your team" badge and the
+    pre-share dedup check.
+    """
+
+    class Via(models.TextChoices):
+        DIGEST = "digest", "Digest"
+        SHARE = "share", "Share"
+        EXTERNAL_LINK = "external_link", "External link"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        "research.Project",
+        on_delete=models.CASCADE,
+        related_name="seen_items",
+    )
+    content = models.ForeignKey(
+        ContentItem,
+        on_delete=models.CASCADE,
+        related_name="project_seen",
+    )
+    first_seen_at = models.DateTimeField(auto_now_add=True)
+    first_seen_via = models.CharField(max_length=20, choices=Via.choices)
+    seen_by = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="project_items_seen",
+        help_text="Members who have actually viewed the item in-app.",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "content"],
+                name="content_project_item_seen_unique",
+            ),
+        ]
+        indexes = [models.Index(fields=["project", "content"])]
+
+    def __str__(self) -> str:
+        return f"seen[{self.first_seen_via}] {self.content} @ project {self.project_id}"
+
+
+class RelevanceEvent(models.Model):
+    """An append-only engagement event — a weak relevance label (Feature D).
+
+    Every view / save / share / thumb / dismiss is logged with a config-driven
+    weight (``settings.RELEVANCE_EVENT_WEIGHTS``). This is the ground-truth stream a
+    future team-relevance recompute (and the evaluation harness) will read; it never
+    mutates any individual profile. ``project`` is nullable so the same log can carry
+    non-project engagement later.
+    """
+
+    class Action(models.TextChoices):
+        VIEW = "view", "View"
+        SAVE = "save", "Save"
+        SHARE = "share", "Share"
+        THUMBS_UP = "thumbs_up", "Thumbs up"
+        THUMBS_DOWN = "thumbs_down", "Thumbs down"
+        DISMISS = "dismiss", "Dismiss"
+        OPEN_EXTERNAL = "open_external", "Open external"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="relevance_events",
+    )
+    project = models.ForeignKey(
+        "research.Project",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="relevance_events",
+    )
+    content = models.ForeignKey(
+        ContentItem,
+        on_delete=models.CASCADE,
+        related_name="relevance_events",
+    )
+    action = models.CharField(max_length=20, choices=Action.choices)
+    weight = models.FloatField(
+        help_text="Per-action weight at capture time (config-driven)."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["project", "created_at"]),
+            models.Index(fields=["user", "content"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} {self.action} {self.content} ({self.weight:+.2f})"

@@ -1,7 +1,9 @@
+from collections import OrderedDict
+
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import ListAPIView, ListCreateAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -14,6 +16,19 @@ from apps.accounts.permissions import (
     user_has_lab_access,
 )
 from apps.accounts.services import record_audit_event
+from apps.content.collaboration import (
+    mark_seen,
+    project_seen_map,
+    record_event,
+    share_to_project,
+)
+from apps.content.models import (
+    ContentItem,
+    ProjectItemSeen,
+    ProjectShare,
+    RelevanceEvent,
+)
+from apps.core.people import display_name, initials
 
 from .models import Project, ProjectMember
 from .serializers import (
@@ -223,5 +238,254 @@ class ProjectMembersView(APIView):
         ProjectMember.objects.get_or_create(project=project, user=target)
         return Response(
             ProjectSerializer(project, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Project collaboration surface — shared feed, external ingest, seen + events.
+# Papers a team shares into a project. Reuses the same visibility cascade that
+# guards the project itself; writes go through apps.content.collaboration.
+# --------------------------------------------------------------------------- #
+
+
+def _user_is_project_participant(user, project: Project) -> bool:
+    """Who may write into a project's feed.
+
+    A project member, the personal owner, or a lab owner/admin of a lab project.
+    Anyone else who can merely *see* the project must join it first before sharing —
+    so the feed stays the shared workspace of people actually on the project.
+    """
+    if not user.is_authenticated:
+        return False
+    if project.scope_user_id == user.id:
+        return True
+    if ProjectMember.objects.filter(project=project, user=user).exists():
+        return True
+    if project.scope_lab_id is not None and user_can_manage_lab(
+        user, project.scope_lab
+    ):
+        return True
+    return False
+
+
+def _member_brief(user) -> dict:
+    return {
+        "username": user.get_username(),
+        "name": display_name(user),
+        "initials": initials(user),
+    }
+
+
+def _paper_fields(content: ContentItem) -> dict:
+    """The item's display fields for a feed row (mirrors the paper serializer)."""
+    meta = content.metadata or {}
+    authors = meta.get("authors")
+    return {
+        "content_id": str(content.id),
+        "type": content.type,
+        "source": content.source,
+        "title": meta.get("title") or meta.get("name") or "Untitled",
+        "abstract": meta.get("abstract") or "",
+        "url": meta.get("pdf_url") or content.source_url or "",
+        "venue": meta.get("venue") or "",
+        "year": meta.get("year"),
+        "authors": authors[:6] if isinstance(authors, list) else [],
+    }
+
+
+def _project_feed_payload(project: Project) -> dict:
+    """Shares in a project, collapsed by content (co-sharers credited), seen-badged.
+
+    Most-recent share of each item wins the row; earlier sharers become
+    ``co_sharers``. ``seen`` carries the ledger's ``first_seen_via`` +
+    ``seen_by_count`` so the UI can show "also seen by N teammates".
+    """
+    shares = list(
+        ProjectShare.objects.filter(project=project)
+        .select_related("content", "shared_by")
+        .order_by("-created_at")
+    )
+    groups: OrderedDict = OrderedDict()
+    for share in shares:
+        groups.setdefault(share.content_id, []).append(share)
+
+    seen_map = project_seen_map(project, list(groups.keys()))
+    items = []
+    for content_id, group in groups.items():
+        primary = group[0]
+        co_sharers = []
+        credited = {primary.shared_by_id}
+        for share in group[1:]:
+            if share.shared_by_id in credited:
+                continue
+            credited.add(share.shared_by_id)
+            co_sharers.append(_member_brief(share.shared_by))
+        items.append(
+            {
+                **_paper_fields(primary.content),
+                "share_id": str(primary.id),
+                "note": primary.note,
+                "share_source": primary.source,
+                "shared_by": _member_brief(primary.shared_by),
+                "shared_at": primary.created_at.isoformat(),
+                "co_sharers": co_sharers,
+                "share_count": len(group),
+                "seen": seen_map.get(str(content_id)),
+            }
+        )
+    return {"count": len(items), "items": items}
+
+
+def _get_content(request: Request) -> ContentItem:
+    """Resolve the ``content_item`` id from the request body (400/404 on failure)."""
+    content_id = request.data.get("content_item") or request.data.get("content_id")
+    if not content_id:
+        raise ValidationError({"content_item": ["A content_item id is required."]})
+    content = ContentItem.objects.filter(pk=content_id).first()
+    if content is None:
+        raise NotFound("No such content item.")
+    return content
+
+
+def _visible_project(request: Request, pk) -> Project:
+    project = get_object_or_404(
+        Project.objects.select_related("scope_lab", "scope_department", "scope_user"),
+        pk=pk,
+    )
+    if not project.is_visible_to(request.user):
+        raise PermissionDenied("You do not have access to this project.")
+    return project
+
+
+class ProjectShareView(APIView):
+    """Share a content item into a project's collaboration feed (Feature A)."""
+
+    def post(self, request: Request, pk) -> Response:
+        project = _visible_project(request, pk)
+        if not _user_is_project_participant(request.user, project):
+            raise PermissionDenied("Join this project to share into it.")
+        content = _get_content(request)
+        source = request.data.get("source") or ProjectShare.Source.DIGEST
+        if source not in ProjectShare.Source.values:
+            source = ProjectShare.Source.DIGEST
+        share = share_to_project(
+            project,
+            content,
+            request.user,
+            note=str(request.data.get("note", "")),
+            source=source,
+        )
+        record_audit_event(
+            actor=request.user,
+            action="project.share",
+            target_type="project",
+            target_id=str(project.id),
+            metadata={"content_id": str(content.id), "source": source},
+        )
+        return Response(
+            {"share_id": str(share.id), "content_id": str(content.id)},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ProjectFeedView(APIView):
+    """The project's shared feed — readable by anyone who can see the project."""
+
+    def get(self, request: Request, pk) -> Response:
+        project = _visible_project(request, pk)
+        return Response(_project_feed_payload(project))
+
+
+class ProjectIngestLinkView(APIView):
+    """Paste a DOI / arXiv id / URL → resolve, dedup, embed, share (Feature E)."""
+
+    def post(self, request: Request, pk) -> Response:
+        project = _visible_project(request, pk)
+        if not _user_is_project_participant(request.user, project):
+            raise PermissionDenied("Join this project to add papers to it.")
+        raw_input = str(request.data.get("raw_input", "")).strip()
+        if not raw_input:
+            raise ValidationError({"raw_input": ["Paste a DOI, arXiv id, or link."]})
+
+        # Imported here so the scraper (and its optional embedding extra) stays out
+        # of the research app's import graph unless a link is actually ingested.
+        from apps.scraper.resolver import ResolveError, resolve_external
+
+        try:
+            result = resolve_external(raw_input)
+        except ResolveError as exc:
+            return Response(
+                {"detail": str(exc) or "Couldn't find a paper for that link."},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        share = share_to_project(
+            project,
+            result.content_item,
+            request.user,
+            note=str(request.data.get("note", "")),
+            source=ProjectShare.Source.EXTERNAL_LINK,
+        )
+        record_audit_event(
+            actor=request.user,
+            action="project.ingest_link",
+            target_type="project",
+            target_id=str(project.id),
+            metadata={
+                "content_id": str(result.content_item.id),
+                "created": result.created,
+                "embed_status": result.embed_status,
+            },
+        )
+        return Response(
+            {
+                "share_id": str(share.id),
+                "content_id": str(result.content_item.id),
+                "created": result.created,
+                "embed_status": result.embed_status,
+                "title": (result.content_item.metadata or {}).get("title")
+                or "Untitled",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ProjectItemSeenView(APIView):
+    """Record that the caller has viewed an item in the project (Feature B/D)."""
+
+    def post(self, request: Request, pk, content_id) -> Response:
+        project = _visible_project(request, pk)
+        content = get_object_or_404(ContentItem, pk=content_id)
+        seen = mark_seen(
+            project, content, ProjectItemSeen.Via.DIGEST, user=request.user
+        )
+        record_event(
+            request.user, content, RelevanceEvent.Action.VIEW, project=project
+        )
+        return Response(
+            {
+                "content_id": str(content.id),
+                "first_seen_via": seen.first_seen_via,
+                "seen_by_count": seen.seen_by.count(),
+            }
+        )
+
+
+class ProjectEventView(APIView):
+    """Record a weighted engagement event on a project item (Feature D)."""
+
+    def post(self, request: Request, pk) -> Response:
+        project = _visible_project(request, pk)
+        action = str(request.data.get("action", ""))
+        if action not in RelevanceEvent.Action.values:
+            raise ValidationError({"action": ["Unknown engagement action."]})
+        content = _get_content(request)
+        event = record_event(request.user, content, action, project=project)
+        return Response(
+            {
+                "content_id": str(content.id),
+                "action": action,
+                "weight": event.weight,
+            },
             status=status.HTTP_201_CREATED,
         )

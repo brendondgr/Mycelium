@@ -226,6 +226,20 @@ LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
 # similarity + AREA_FOCUS_WEIGHT * focus_overlap. 0 disables the focus boost.
 AREA_FOCUS_WEIGHT = env.float("AREA_FOCUS_WEIGHT", default=0.25)
 
+# Project collaboration (apps.content.collaboration). Per-action weight written on
+# each RelevanceEvent — the weak relevance labels a future team-signal recompute
+# reads. Positive for engagement, negative for rejection. Tunable so the eventual
+# recompute can be calibrated without a migration; unknown actions fall back to 0.
+RELEVANCE_EVENT_WEIGHTS = {
+    "view": env.float("RELEVANCE_WEIGHT_VIEW", default=0.1),
+    "open_external": env.float("RELEVANCE_WEIGHT_OPEN_EXTERNAL", default=0.3),
+    "save": env.float("RELEVANCE_WEIGHT_SAVE", default=0.5),
+    "share": env.float("RELEVANCE_WEIGHT_SHARE", default=0.7),
+    "thumbs_up": env.float("RELEVANCE_WEIGHT_THUMBS_UP", default=1.0),
+    "dismiss": env.float("RELEVANCE_WEIGHT_DISMISS", default=-0.3),
+    "thumbs_down": env.float("RELEVANCE_WEIGHT_THUMBS_DOWN", default=-0.7),
+}
+
 # Author-import sources (apps.accounts.intake). Keys are optional: OpenAlex works
 # without one (a polite `mailto` is encouraged), and Semantic Scholar's key only
 # raises rate limits. Google Scholar needs no key but the optional `scholarly`
