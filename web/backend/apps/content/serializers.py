@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from apps.scraper.pivot.normalize import normalize_amount
 
-from .models import RelevanceScore, SavedOpportunity
+from .models import ContentItem, RelevanceScore, SavedOpportunity
 
 
 class SuggestionSerializer(serializers.Serializer):
@@ -347,6 +347,129 @@ class FellowshipSerializer(_OpportunitySerializer):
 
     def get_fit(self, score: RelevanceScore) -> float | None:
         return score.signals.get("fit")
+
+
+#: Metadata keys tried (in order) for the outbound link, per content type.
+_URL_KEYS = ("pdf_url", "external_url", "website", "url")
+
+#: Metadata keys tried (in order) for the result summary/snippet.
+_SUMMARY_KEYS = ("abstract", "ai_summary", "search_text", "description")
+
+#: How long a summary snippet may get before it is trimmed for the card.
+_SUMMARY_MAX = 400
+
+
+class SearchResultSerializer(serializers.Serializer):
+    """One search hit, read straight off a :class:`ContentItem` (no score row).
+
+    The query-first search path (:mod:`apps.content.search`) ranks the corpus
+    directly, so — unlike the digest/opportunity serializers — this reads the
+    global item, not a per-target :class:`RelevanceScore`. It exposes one unified
+    shape (id/type/title/summary/source/url/created_at + the fused ``score`` and
+    which ``matched_on`` channels) plus the compact type-specific extras the
+    result card renders. ``score``/``matched_on`` come from transient attributes
+    the search module tags onto each item; ``saved`` reads ``saved_ids`` from the
+    serializer context.
+    """
+
+    content_id = serializers.SerializerMethodField()
+    type = serializers.CharField()
+    title = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
+    source = serializers.CharField()
+    url = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField()
+    score = serializers.SerializerMethodField()
+    matched_on = serializers.SerializerMethodField()
+    saved = serializers.SerializerMethodField()
+    # Compact type-specific extras (mostly null off-type; the card branches).
+    authors = serializers.SerializerMethodField()
+    venue = serializers.SerializerMethodField()
+    year = serializers.SerializerMethodField()
+    sponsor = serializers.SerializerMethodField()
+    amount = serializers.SerializerMethodField()
+    location = serializers.SerializerMethodField()
+    event_dates = serializers.SerializerMethodField()
+    award_class = serializers.SerializerMethodField()
+    deadline = serializers.SerializerMethodField()
+
+    def _meta(self, item: ContentItem) -> dict:
+        return item.metadata or {}
+
+    def get_content_id(self, item: ContentItem) -> str:
+        return str(item.id)
+
+    def get_title(self, item: ContentItem) -> str:
+        meta = self._meta(item)
+        return meta.get("title") or meta.get("name") or "Untitled"
+
+    def get_summary(self, item: ContentItem) -> str:
+        meta = self._meta(item)
+        for key in _SUMMARY_KEYS:
+            value = meta.get(key)
+            if value:
+                text = str(value).strip()
+                if len(text) > _SUMMARY_MAX:
+                    text = text[:_SUMMARY_MAX].rstrip() + "…"
+                return text
+        return ""
+
+    def get_url(self, item: ContentItem) -> str:
+        meta = self._meta(item)
+        for key in _URL_KEYS:
+            if meta.get(key):
+                return str(meta[key])
+        return item.source_url or ""
+
+    def get_score(self, item: ContentItem) -> float:
+        return float(getattr(item, "_search_score", 0.0) or 0.0)
+
+    def get_matched_on(self, item: ContentItem) -> list:
+        return list(getattr(item, "_search_matched_on", []) or [])
+
+    def get_saved(self, item: ContentItem) -> bool:
+        return str(item.id) in self.context.get("saved_ids", set())
+
+    def get_authors(self, item: ContentItem) -> list:
+        authors = self._meta(item).get("authors")
+        return authors[:6] if isinstance(authors, list) else []
+
+    def get_venue(self, item: ContentItem) -> str:
+        return self._meta(item).get("venue") or ""
+
+    def get_year(self, item: ContentItem):
+        return self._meta(item).get("year")
+
+    def get_sponsor(self, item: ContentItem) -> str:
+        return self._meta(item).get("sponsor") or ""
+
+    def get_amount(self, item: ContentItem) -> str:
+        meta = self._meta(item)
+        if item.type == ContentItem.Type.GRANT:
+            return normalize_amount(meta.get("amount") or "")
+        return meta.get("amount_raw") or ""
+
+    def get_location(self, item: ContentItem) -> str:
+        meta = self._meta(item)
+        return ", ".join(p for p in (meta.get("location"), meta.get("country")) if p)
+
+    def get_event_dates(self, item: ContentItem) -> str:
+        return self._meta(item).get("event_dates") or ""
+
+    def get_award_class(self, item: ContentItem) -> str:
+        if item.type != ContentItem.Type.FELLOWSHIP:
+            return ""
+        return self._meta(item).get("award_class") or "fellowship"
+
+    def get_deadline(self, item: ContentItem) -> str:
+        """A best-effort deadline string from whatever key the type carries."""
+        meta = self._meta(item)
+        deadline = meta.get("deadline")
+        if isinstance(deadline, dict):
+            deadline = deadline.get("date") or deadline.get("type")
+        return str(
+            meta.get("deadline_date") or deadline or meta.get("deadlines") or ""
+        )
 
 
 class SavedDeadlineSerializer(serializers.Serializer):

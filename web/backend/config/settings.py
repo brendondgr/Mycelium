@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import environ
@@ -24,6 +25,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Postgres full-text search + trigram support for apps.content.search
+    # (SearchVectorField, SearchRank, TrigramWordSimilarity). No-op feature-wise
+    # on SQLite; the search path is Postgres-only and guarded accordingly.
+    "django.contrib.postgres",
     "corsheaders",
     "rest_framework",
     "apps.core",
@@ -269,6 +274,46 @@ FANOUT_COSINE_FLOOR = env.float("FANOUT_COSINE_FLOOR", default=0.35)
 FANOUT_ASYNC = env.bool("FANOUT_ASYNC", default=False)
 # Recompute a project's team profile immediately when its membership changes.
 TEAM_PROFILE_AUTORECOMPUTE = env.bool("TEAM_PROFILE_AUTORECOMPUTE", default=True)
+
+# Unified search (apps.content.search) — the digest retrieval pipeline run
+# query-first over the whole content corpus. Unlike the digest, search never
+# abstains: it always returns the top-k and only flags low confidence as a UI
+# cue. SEARCH_CANDIDATE_POOL bounds how deep the relevance ranking goes (the
+# union of the lexical/semantic/fuzzy channels); pages slice within that pool so
+# deep-page latency stays flat. SEARCH_LOW_CONFIDENCE_COSINE is the display
+# threshold for the "low confidence" cue (top cosine below it), never a gate.
+SEARCH_CANDIDATE_POOL = env.int("SEARCH_CANDIDATE_POOL", default=500)
+SEARCH_PAGE_SIZE = env.int("SEARCH_PAGE_SIZE", default=20)
+SEARCH_MAX_PAGE_SIZE = env.int("SEARCH_MAX_PAGE_SIZE", default=50)
+SEARCH_LOW_CONFIDENCE_COSINE = env.float("SEARCH_LOW_CONFIDENCE_COSINE", default=0.35)
+# Fuzzy (pg_trgm) channel: enabled, with its own bounded pool (typo recovery is a
+# tail signal, so it need not scan as deep as the lexical/semantic pools).
+SEARCH_FUZZY_ENABLED = env.bool("SEARCH_FUZZY_ENABLED", default=True)
+SEARCH_FUZZY_POOL = env.int("SEARCH_FUZZY_POOL", default=200)
+
+# The query-embedding cache (apps.content.query_embedding). A repeated search
+# should skip the model call, so the normalized query → its vector is cached in
+# Redis. It lives in a *dedicated* Redis db (never the Celery broker/result dbs),
+# derived from REDIS_URL by swapping the db number so it is correct on both the
+# host and inside the compose network. Best-effort: a Redis outage degrades to
+# "embed every time", never an error.
+_REDIS_URL = env("REDIS_URL", default="redis://localhost:11550/0")
+SEARCH_CACHE_URL = env(
+    "SEARCH_CACHE_URL", default=re.sub(r"/\d+$", "/2", _REDIS_URL)
+)
+SEARCH_CACHE_TTL = env.int("SEARCH_CACHE_TTL", default=3600)
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+    "search": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": SEARCH_CACHE_URL,
+        "KEY_PREFIX": "mycelium_search",
+        "TIMEOUT": SEARCH_CACHE_TTL,
+    },
+}
 
 # Author-import sources (apps.accounts.intake). Keys are optional: OpenAlex works
 # without one (a polite `mailto` is encouraged), and Semantic Scholar's key only

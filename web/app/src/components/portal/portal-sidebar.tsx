@@ -8,6 +8,7 @@ import {
   GridIcon,
   PlusIcon,
   ReportIcon,
+  SearchIcon,
   SparkleIcon,
   SporeNode,
   TargetIcon,
@@ -45,6 +46,12 @@ export function PortalSidebar() {
           label="Profile"
           active={section === "profile"}
           onClick={() => goToSection("profile")}
+        />
+        <SidebarNavItem
+          icon={<SearchIcon size={18} />}
+          label="Search"
+          active={section === "search"}
+          onClick={() => goToSection("search")}
         />
       </nav>
 

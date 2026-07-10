@@ -413,3 +413,74 @@ export type FellowshipOpportunity = OpportunityBase & {
   /** ISO date the fellowship was first posted/seen, or "". */
   posted: string;
 };
+
+/* ----------------------------------------------------------------------- */
+/* Unified search (GET /api/search/)                                        */
+/* ----------------------------------------------------------------------- */
+
+export type SearchContentType = "paper" | "grant" | "fellowship" | "conference";
+export type SearchSort = "relevance" | "date" | "deadline";
+
+/** One search hit. Type-specific fields are populated per `type`, else "". */
+export type SearchResultItem = {
+  content_id: string;
+  type: SearchContentType;
+  title: string;
+  summary: string;
+  source: string;
+  url: string;
+  created_at: string;
+  /** Fused relevance score (RRF) — for ordering, not display. */
+  score: number;
+  /** Which channels matched this item: "lexical" | "semantic" | "fuzzy". */
+  matched_on: string[];
+  saved: boolean;
+  // Paper
+  authors: string[];
+  venue: string;
+  year: number | null;
+  // Grant
+  sponsor: string;
+  amount: string;
+  // Conference
+  location: string;
+  event_dates: string;
+  // Fellowship
+  award_class: string;
+  // Any type (best-effort)
+  deadline: string;
+};
+
+export type SearchFacetBucket = { value: string; count: number };
+export type SearchFacets = {
+  type: SearchFacetBucket[];
+  source: SearchFacetBucket[];
+};
+
+/** The `GET /api/search/` envelope. */
+export type SearchResponse = {
+  query: string;
+  normalized: string;
+  sort: SearchSort;
+  /** "low" flags a weak top match — a display cue, never an empty page. */
+  confidence: "ok" | "low";
+  count: number;
+  /** True when the relevance pool was capped (more may exist beyond it). */
+  pool_truncated: boolean;
+  facets: SearchFacets;
+  limit: number;
+  offset: number;
+  /** Opaque cursor for the next page, or null at the end. */
+  next_cursor: string | null;
+  results: SearchResultItem[];
+};
+
+/** Query params accepted by `fetchSearch`. */
+export type SearchParams = {
+  q: string;
+  types?: string[];
+  sources?: string[];
+  sort?: SearchSort;
+  cursor?: string;
+  limit?: number;
+};

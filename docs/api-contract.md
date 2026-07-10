@@ -279,6 +279,56 @@ Base path: `/api/`. All require authentication; each returns the signed-in user'
 own data only. Papers come from `GET /api/daily-report/` (the daily research
 digest). Grants and conferences come from the daily 1am opportunity matching.
 
+### `GET /api/search/`
+
+Query-first search across the whole content corpus (papers, grants, fellowships,
+conferences) — the digest retrieval pipeline run against a search box instead of
+a profile. Requires authentication; reads the **global** corpus, so it is not
+user-scoped. Query params:
+
+- `q` — the search text. Blank returns an empty result (not an error).
+- `type` — repeatable/comma (`paper|grant|fellowship|conference`); scopes results.
+- `source` — repeatable/comma; scopes results.
+- `date_from` / `date_to` — ISO dates, filtering on ingest date.
+- `sort` — `relevance` (default) | `date` (newest) | `deadline` (soonest, nulls last).
+- `limit` — page size (bounded). `cursor` — opaque paging cursor from `next_cursor`.
+
+Search **never abstains**: an in-corpus query always returns its best matches,
+blending a lexical (full-text), a semantic (embedding), and a fuzzy (typo)
+channel via reciprocal-rank fusion. `confidence` is `"low"` when the top semantic
+match is weak — a display cue, never an empty page. Success `200`:
+
+```json
+{
+  "query": "protein folding", "normalized": "protein folding",
+  "sort": "relevance", "confidence": "ok",
+  "count": 559, "pool_truncated": true,
+  "facets": {
+    "type": [{ "value": "paper", "count": 85 }, { "value": "grant", "count": 1 }],
+    "source": [{ "value": "PubMed", "count": 50 }]
+  },
+  "limit": 20, "offset": 0, "next_cursor": "20",
+  "results": [
+    {
+      "content_id": "uuid", "type": "paper",
+      "title": "Generalizable Protein Folding Pathway Exploration",
+      "summary": "…", "source": "OpenAlex", "url": "https://…",
+      "created_at": "2026-07-09T…", "score": 0.021,
+      "matched_on": ["lexical", "semantic", "fuzzy"], "saved": false,
+      "authors": ["…"], "venue": "Nature", "year": 2026,
+      "sponsor": "", "amount": "", "location": "", "event_dates": "",
+      "award_class": "", "deadline": ""
+    }
+  ]
+}
+```
+
+The `type` facet counts ignore the `type` filter (so the UI can offer switching
+types); the `source` facet respects it. `pool_truncated` is true when more matches
+exist beyond the bounded relevance pool. Type-specific fields are populated per
+`type` and `""`/`[]`/`null` otherwise. `score` is the fused rank weight (for
+ordering, not display).
+
 ### `GET /api/opportunities/grants/`
 
 The user's ranked funding opportunities from the latest run, pinned-first (a

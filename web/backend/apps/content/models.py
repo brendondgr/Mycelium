@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.contrib.postgres.search import SearchVectorField
 from django.db import models
 from django.db.models import Q
 from pgvector.django import VectorField
@@ -54,6 +55,14 @@ class ContentItem(models.Model):
         blank=True,
         help_text="Authors, venue, deadline, agency, etc.",
     )
+    # Weighted full-text index for query-first search (apps.content.search),
+    # kept in sync from ``metadata`` by a Postgres trigger (title/name = A,
+    # abstract/summary = B, authors/venue/keywords = C). A real nullable column
+    # so ORM inserts still work everywhere; the trigger + GIN index are
+    # Postgres-only (see migration 0004), so it simply stays NULL on SQLite —
+    # search is Postgres-only. ``editable=False`` keeps it out of forms/admin;
+    # the trigger overrides whatever the ORM writes.
+    search_vector = SearchVectorField(null=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -7,6 +7,9 @@ urlpatterns = [
     # (matches the workspace read endpoints).
     path("daily-report/", views.DailyReportView.as_view(), name="daily-report"),
     path("daily-report", views.DailyReportView.as_view(), name="daily-report-no-slash"),
+    # Unified query-first search over the content corpus.
+    path("search/", views.SearchView.as_view(), name="search"),
+    path("search", views.SearchView.as_view(), name="search-no-slash"),
     # Post-onboarding live match: one area per POST, over the existing corpus.
     path(
         "onboarding/match/",
