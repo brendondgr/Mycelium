@@ -18,6 +18,7 @@ import {
 } from "@/components/portal/project-status";
 import { useProjectRecommendations } from "@/lib/portal/hooks";
 import type {
+  InterestedMember,
   ProjectMember,
   Suggestion,
   TargetRecommendations,
@@ -195,7 +196,11 @@ export function ProjectDetailSection() {
           ) : recPapers.length > 0 ? (
             <ul className="divide-y divide-[var(--divider)]">
               {recPapers.map((paper: Suggestion) => (
-                <PaperFeedRow key={paper.content_id} paper={paper} />
+                <PaperFeedRow
+                  key={paper.content_id}
+                  paper={paper}
+                  interested={rec?.interested?.[paper.content_id] ?? []}
+                />
               ))}
             </ul>
           ) : (
@@ -325,7 +330,13 @@ function MatchChip({ match }: { match: number | null }) {
 }
 
 /** One recommended paper in the project feed (title, source, Mylo's reason). */
-function PaperFeedRow({ paper }: { paper: Suggestion }) {
+function PaperFeedRow({
+  paper,
+  interested,
+}: {
+  paper: Suggestion;
+  interested: InterestedMember[];
+}) {
   return (
     <li className="px-5 py-[14px]">
       <div className="flex items-start justify-between gap-3">
@@ -355,7 +366,36 @@ function PaperFeedRow({ paper }: { paper: Suggestion }) {
           {paper.reason}
         </p>
       ) : null}
+      <InterestedRow members={interested} />
     </li>
+  );
+}
+
+/** "Also interested" — lab members who personally matched this same item. */
+function InterestedRow({ members }: { members: InterestedMember[] }) {
+  if (members.length === 0) return null;
+  const shown = members.slice(0, 4);
+  return (
+    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+      <span className="text-[11px] font-medium text-[var(--text-muted)]">
+        Also interested:
+      </span>
+      {shown.map((m) => (
+        <span
+          key={m.username}
+          title={`${m.name} · ${m.match_percent}% match`}
+          className="inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-2 py-[2px] text-[11px] font-medium text-[var(--text-secondary)]"
+        >
+          <Avatar initials={m.initials} seed={m.username} size={16} />
+          {m.name}
+        </span>
+      ))}
+      {members.length > shown.length ? (
+        <span className="text-[11px] text-[var(--text-muted)]">
+          +{members.length - shown.length} more
+        </span>
+      ) : null}
+    </div>
   );
 }
 

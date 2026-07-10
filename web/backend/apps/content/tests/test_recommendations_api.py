@@ -111,3 +111,30 @@ def test_outsider_cannot_read_project_recommendations(client: APIClient) -> None
 def test_recommendations_require_auth(client: APIClient) -> None:
     Lab.objects.create(name="Graph Lab", slug="graph-lab")
     assert client.get("/api/labs/graph-lab/recommendations/").status_code in (401, 403)
+
+
+@pytest.mark.django_db
+def test_interested_members_surface_strong_personal_matches(client: APIClient):
+    """A lab item lists members whose own match for it clears the threshold."""
+    keen = User.objects.create_user(username="keen", password="p")
+    meh = User.objects.create_user(username="meh", password="p")
+    lab = Lab.objects.create(name="Graph Lab", slug="graph-lab")
+    for u in (keen, meh):
+        LabMembership.objects.create(user=u, lab=lab, role=LabMembership.Role.MEMBER)
+
+    paper = _paper("Graph paper")
+    _score(paper, target_lab=lab)
+    # A strong personal match for keen, a weak one for meh.
+    keen_score = _score(paper, target_user=keen)
+    keen_score.signals["match_percent"] = 90
+    keen_score.save()
+    meh_score = _score(paper, target_user=meh)
+    meh_score.signals["match_percent"] = 40
+    meh_score.save()
+
+    client.force_authenticate(keen)
+    resp = client.get("/api/labs/graph-lab/recommendations/")
+    assert resp.status_code == 200
+    interested = resp.data["interested"][str(paper.id)]
+    usernames = {m["username"] for m in interested}
+    assert usernames == {"keen"}  # meh's 40% is below the threshold

@@ -209,11 +209,21 @@ export type OpportunityFeed<T> = {
   items: T[];
 };
 
+/** A member who personally matched a shared item (the "who's interested" layer). */
+export type InterestedMember = {
+  username: string;
+  name: string;
+  initials: string;
+  match_percent: number;
+};
+
 /**
  * A lab's or a project's combined recommendations (from
  * `/api/labs/<slug>/recommendations/` and `/api/projects/<id>/recommendations/`).
  * Papers + grants + conferences the target matched, plus per-area counts for the
  * overview stat cards. Fellowships are excluded — they are individual-only.
+ * `interested` maps a content id to the members who personally matched it strongly,
+ * so the UI can suggest who to connect over a shared item.
  */
 export type TargetRecommendations = {
   generated_at: string | null;
@@ -221,6 +231,7 @@ export type TargetRecommendations = {
   papers: Suggestion[];
   grants: GrantOpportunity[];
   conferences: ConferenceOpportunity[];
+  interested: Record<string, InterestedMember[]>;
 };
 
 /** One saved deadline (from `/api/deadlines/`). */

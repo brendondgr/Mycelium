@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -8,8 +8,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.models import Lab
+from apps.accounts.models import Lab, LabMembership
 from apps.accounts.permissions import user_has_lab_access
+from apps.core.people import display_name, initials
 from apps.research.models import Project
 
 from .models import ContentItem, RelevanceScore, SavedOpportunity
@@ -25,6 +26,10 @@ from .serializers import (
 #: A suggestion at or above this percent match is called a "strong" match in the
 #: daily summary. Kept here (not a setting) so the label logic stays with the view.
 STRONG_MATCH_THRESHOLD = 75
+
+#: A lab member counts as "interested" in a shared item when their *own* match for
+#: it clears this percent — a confident personal fit, not a faint overlap.
+INTEREST_MATCH_THRESHOLD = 70
 
 
 class OnboardingMatchView(APIView):
@@ -249,12 +254,48 @@ class FellowshipsView(_OpportunityFeedView):
 # --------------------------------------------------------------------------- #
 
 
-def _recommendations_payload(target_filter: dict, *, user) -> dict:
+def _interested_members(member_ids, content_ids) -> dict[str, list[dict]]:
+    """Map each item to the lab members whose *own* match for it is strong.
+
+    The seed of collaboration suggestions: an item recommended to the lab also
+    surfaced personally for these members (above :data:`INTEREST_MATCH_THRESHOLD`),
+    so they are the people to connect over it. One query over the members' personal
+    scores, grouped by content — no per-item lookups.
+    """
+    if not member_ids or not content_ids:
+        return {}
+    interested: dict[str, list[dict]] = defaultdict(list)
+    scores = (
+        RelevanceScore.objects.filter(
+            target_user_id__in=member_ids, content_id__in=content_ids
+        )
+        .select_related("target_user")
+        .order_by("-score")
+    )
+    for score in scores:
+        match = score.signals.get("match_percent")
+        if not isinstance(match, int) or match < INTEREST_MATCH_THRESHOLD:
+            continue
+        member = score.target_user
+        interested[str(score.content_id)].append(
+            {
+                "username": member.get_username(),
+                "name": display_name(member),
+                "initials": initials(member),
+                "match_percent": match,
+            }
+        )
+    return interested
+
+
+def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dict:
     """The combined papers + grants + conferences a lab / project matched.
 
     Fellowships are omitted: they are an individual-eligibility area, so they never
     score against a lab or project. ``counts`` powers the lab overview stat cards;
-    the three lists power the project feed and any lab feed. Saves remain personal
+    the three lists power the project feed and any lab feed. ``interested`` maps each
+    item to the lab members who personally matched it strongly (from ``member_ids``),
+    so the UI can suggest who to connect over a shared item. Saves remain personal
     (a user saves a deadline to *their* deadlines), so ``saved`` reflects the
     signed-in user regardless of whose recommendations these are.
     """
@@ -268,6 +309,7 @@ def _recommendations_payload(target_filter: dict, *, user) -> dict:
         for rows in (papers, grants, conferences)
         if rows
     ]
+    content_ids = [s.content_id for s in (*papers, *grants, *conferences)]
     return {
         "generated_at": max(run_ats) if run_ats else None,
         "counts": {
@@ -280,6 +322,7 @@ def _recommendations_payload(target_filter: dict, *, user) -> dict:
         "conferences": ConferenceSerializer(
             conferences, many=True, context=opp_context
         ).data,
+        "interested": _interested_members(list(member_ids), content_ids),
     }
 
 
@@ -296,8 +339,13 @@ class LabRecommendationsView(APIView):
         lab = get_object_or_404(Lab, slug=slug)
         if not user_has_lab_access(request.user, lab):
             raise PermissionDenied("You do not have access to this lab.")
+        member_ids = LabMembership.objects.filter(lab=lab).values_list(
+            "user_id", flat=True
+        )
         return Response(
-            _recommendations_payload({"target_lab": lab}, user=request.user)
+            _recommendations_payload(
+                {"target_lab": lab}, user=request.user, member_ids=member_ids
+            )
         )
 
 
@@ -314,8 +362,20 @@ class ProjectRecommendationsView(APIView):
         project = get_object_or_404(Project, pk=pk)
         if not project.is_visible_to(request.user):
             raise PermissionDenied("You do not have access to this project.")
+        # "Interested" members come from the project's lab (a lab project) or its
+        # own members (a personal project) — the people to connect over an item.
+        if project.scope_lab_id is not None:
+            member_ids = LabMembership.objects.filter(
+                lab_id=project.scope_lab_id
+            ).values_list("user_id", flat=True)
+        else:
+            member_ids = project.members.values_list("id", flat=True)
         return Response(
-            _recommendations_payload({"target_project": project}, user=request.user)
+            _recommendations_payload(
+                {"target_project": project},
+                user=request.user,
+                member_ids=member_ids,
+            )
         )
 
 
