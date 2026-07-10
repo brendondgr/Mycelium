@@ -1,8 +1,24 @@
 from rest_framework import serializers
 
+from apps.content.targets import project_interests, project_watch_topics
 from apps.core.people import display_name, initials
 
 from .models import Project
+
+
+def _clean_list(value) -> list[str]:
+    """Normalize a list-ish value: stringify, trim, drop blanks, dedupe (order-kept)."""
+    if not isinstance(value, (list, tuple)):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        text = " ".join(str(item).split())
+        key = text.casefold()
+        if text and key not in seen:
+            seen.add(key)
+            out.append(text)
+    return out
 
 
 class ProjectMemberSerializer(serializers.Serializer):
@@ -32,6 +48,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     scope_name = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
+    focus = serializers.SerializerMethodField()
     member_count = serializers.SerializerMethodField()
     is_member = serializers.SerializerMethodField()
     members = ProjectMemberSerializer(many=True, read_only=True)
@@ -46,6 +63,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "goals",
             "status",
             "progress",
+            "focus",
             "member_count",
             "is_member",
             "members",
@@ -68,6 +86,20 @@ class ProjectSerializer(serializers.ModelSerializer):
         goals = project.goals if isinstance(project.goals, dict) else {}
         value = goals.get("progress")
         return value if isinstance(value, (int, float)) else None
+
+    def get_focus(self, project: Project) -> dict:
+        """The project's research focus, normalized (drives its recommendations).
+
+        Read through the same builder the matcher uses, so an older project whose
+        focus only lives in legacy ``goals`` fields still reports a sensible shape.
+        """
+        ints = project_interests(project)
+        return {
+            "areas": ints["areas"],
+            "keywords": ints["keywords"],
+            "statement": ints["statement"],
+            "watch_topics": project_watch_topics(project),
+        }
 
     def get_member_count(self, project: Project) -> int:
         return project.members.count()
@@ -107,3 +139,39 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
         if not isinstance(value, dict):
             raise serializers.ValidationError("goals must be an object.")
         return value
+
+
+class ProjectUpdateSerializer(serializers.Serializer):
+    """Edit a project's name and research focus.
+
+    ``focus`` is a purpose-built write field — ``{areas, keywords, statement,
+    watch_topics}`` — that is merged into ``goals.interests`` / ``goals.watch_topics``
+    without disturbing other free-form ``goals`` keys (status, progress, …). This is
+    what gives a project the specific topic its daily recommendations run against.
+    """
+
+    name = serializers.CharField(required=False)
+    focus = serializers.DictField(required=False)
+
+    def validate_name(self, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("A project name cannot be blank.")
+        return value
+
+    def update(self, instance: Project, validated: dict) -> Project:
+        if "name" in validated:
+            instance.name = validated["name"]
+        if "focus" in validated:
+            focus = validated["focus"] or {}
+            goals = dict(instance.goals if isinstance(instance.goals, dict) else {})
+            goals["interests"] = {
+                "areas": _clean_list(focus.get("areas")),
+                "keywords": _clean_list(focus.get("keywords")),
+                "statement": str(focus.get("statement") or "").strip(),
+            }
+            if "watch_topics" in focus:
+                goals["watch_topics"] = _clean_list(focus.get("watch_topics"))
+            instance.goals = goals
+        instance.save()
+        return instance

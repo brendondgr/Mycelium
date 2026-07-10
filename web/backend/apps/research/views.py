@@ -16,7 +16,11 @@ from apps.accounts.permissions import (
 from apps.accounts.services import record_audit_event
 
 from .models import Project, ProjectMember
-from .serializers import ProjectCreateSerializer, ProjectSerializer
+from .serializers import (
+    ProjectCreateSerializer,
+    ProjectSerializer,
+    ProjectUpdateSerializer,
+)
 
 
 class ProjectListView(ListCreateAPIView):
@@ -90,6 +94,55 @@ class LabProjectsView(ListAPIView):
             .select_related("scope_lab")
             .prefetch_related("members")
         )
+
+
+def _user_can_edit(user, project: Project) -> bool:
+    """Who may edit a project's name / focus.
+
+    The personal owner edits their own project; a lab owner/admin edits their lab's
+    projects (mirroring who may create them). Department-scoped projects are not
+    editable through this API yet.
+    """
+    if project.scope_user_id is not None:
+        return project.scope_user_id == user.id
+    if project.scope_lab_id is not None:
+        return user_can_manage_lab(user, project.scope_lab)
+    return False
+
+
+class ProjectDetailView(APIView):
+    """Read one project (any viewer) or edit its name / research focus (managers)."""
+
+    def _get_visible(self, request, pk) -> Project:
+        project = get_object_or_404(
+            Project.objects.select_related(
+                "scope_lab", "scope_department", "scope_user"
+            ).prefetch_related("members"),
+            pk=pk,
+        )
+        if not project.is_visible_to(request.user):
+            raise PermissionDenied("You do not have access to this project.")
+        return project
+
+    def get(self, request: Request, pk) -> Response:
+        project = self._get_visible(request, pk)
+        return Response(ProjectSerializer(project, context={"request": request}).data)
+
+    def patch(self, request: Request, pk) -> Response:
+        project = self._get_visible(request, pk)
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot edit this project.")
+        serializer = ProjectUpdateSerializer(project, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        record_audit_event(
+            actor=request.user,
+            action="project.update",
+            target_type="project",
+            target_id=str(project.id),
+            metadata={"name": project.name},
+        )
+        return Response(ProjectSerializer(project, context={"request": request}).data)
 
 
 def _user_can_join(user, project: Project) -> bool:

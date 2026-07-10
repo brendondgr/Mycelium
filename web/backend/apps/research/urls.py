@@ -16,6 +16,17 @@ urlpatterns = [
         views.LabProjectsView.as_view(),
         name="lab-projects-no-slash",
     ),
+    # Read one project, or PATCH its name / research focus (managers).
+    path(
+        "projects/<uuid:pk>/",
+        views.ProjectDetailView.as_view(),
+        name="project-detail",
+    ),
+    path(
+        "projects/<uuid:pk>",
+        views.ProjectDetailView.as_view(),
+        name="project-detail-no-slash",
+    ),
     # Self-join / leave a project; managers add another member. Both slash and
     # no-slash variants — the Next `/api` proxy strips the trailing slash and
     # Django's APPEND_SLASH cannot redirect a POST (it would 500).
