@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import Client
 
@@ -23,7 +24,7 @@ def api_client() -> Client:
 def _register(client: Client, payload: dict):
     """POST a registration with a fresh CSRF token, mirroring the login flow."""
     client.get("/api/auth/csrf/")
-    csrf = client.cookies["csrftoken"].value
+    csrf = client.cookies[settings.CSRF_COOKIE_NAME].value
     return client.post(
         "/api/auth/register/",
         data=payload,
@@ -60,7 +61,7 @@ def test_csrf_sets_cookie(api_client: Client) -> None:
     response = api_client.get("/api/auth/csrf/")
 
     assert response.status_code == 200
-    assert "csrftoken" in api_client.cookies
+    assert settings.CSRF_COOKIE_NAME in api_client.cookies
 
 
 @pytest.mark.django_db
@@ -73,7 +74,7 @@ def test_me_anonymous_returns_401(api_client: Client) -> None:
 @pytest.mark.django_db
 def test_login_and_me_flow(api_client: Client, user: User) -> None:
     api_client.get("/api/auth/csrf/")
-    csrf = api_client.cookies["csrftoken"].value
+    csrf = api_client.cookies[settings.CSRF_COOKIE_NAME].value
 
     bad = api_client.post(
         "/api/auth/login/",
@@ -103,7 +104,7 @@ def test_login_and_me_flow(api_client: Client, user: User) -> None:
 @pytest.mark.django_db
 def test_login_missing_fields_returns_400(api_client: Client) -> None:
     api_client.get("/api/auth/csrf/")
-    csrf = api_client.cookies["csrftoken"].value
+    csrf = api_client.cookies[settings.CSRF_COOKIE_NAME].value
 
     response = api_client.post(
         "/api/auth/login/",
@@ -118,7 +119,7 @@ def test_login_missing_fields_returns_400(api_client: Client) -> None:
 @pytest.mark.django_db
 def test_logout_clears_session(api_client: Client, user: User) -> None:
     api_client.get("/api/auth/csrf/")
-    csrf = api_client.cookies["csrftoken"].value
+    csrf = api_client.cookies[settings.CSRF_COOKIE_NAME].value
     api_client.post(
         "/api/auth/login/",
         data={"username": user.username, "password": "safe-pass-123"},
@@ -127,7 +128,7 @@ def test_logout_clears_session(api_client: Client, user: User) -> None:
     )
 
     api_client.get("/api/auth/csrf/")
-    logout_csrf = api_client.cookies["csrftoken"].value
+    logout_csrf = api_client.cookies[settings.CSRF_COOKIE_NAME].value
     logout = api_client.post(
         "/api/auth/logout/",
         content_type="application/json",
@@ -299,7 +300,7 @@ def test_register_then_onboarding_handoff(api_client: Client) -> None:
     assert _register(api_client, _personal_payload()).status_code == 201
 
     api_client.get("/api/auth/csrf/")
-    csrf = api_client.cookies["csrftoken"].value
+    csrf = api_client.cookies[settings.CSRF_COOKIE_NAME].value
     response = api_client.patch(
         "/api/auth/profile/me/",
         data={
@@ -334,7 +335,7 @@ def test_me_reports_onboarding_completion(api_client: Client) -> None:
     assert fresh.json()["onboarding_completed"] is False
 
     api_client.get("/api/auth/csrf/")
-    csrf = api_client.cookies["csrftoken"].value
+    csrf = api_client.cookies[settings.CSRF_COOKIE_NAME].value
     api_client.patch(
         "/api/auth/profile/me/",
         data={"interests": {"version": 1, "areas": ["Genomics"]}},
@@ -354,7 +355,7 @@ def test_verify_email_flips_flag(api_client: Client) -> None:
     assert _register(api_client, _personal_payload()).status_code == 201
 
     api_client.get("/api/auth/csrf/")
-    csrf = api_client.cookies["csrftoken"].value
+    csrf = api_client.cookies[settings.CSRF_COOKIE_NAME].value
     response = api_client.post(
         "/api/auth/verify-email/",
         content_type="application/json",
@@ -369,7 +370,7 @@ def test_verify_email_flips_flag(api_client: Client) -> None:
 @pytest.mark.django_db
 def test_verify_email_requires_auth(api_client: Client) -> None:
     api_client.get("/api/auth/csrf/")
-    csrf = api_client.cookies["csrftoken"].value
+    csrf = api_client.cookies[settings.CSRF_COOKIE_NAME].value
     response = api_client.post(
         "/api/auth/verify-email/",
         content_type="application/json",
