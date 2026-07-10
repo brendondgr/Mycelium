@@ -9,7 +9,12 @@ import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { SearchResultCard } from "@/components/portal/sections/search-result-card";
 import { useSearchResults } from "@/lib/portal/hooks";
-import type { SearchFacetBucket, SearchSort } from "@/lib/portal/types";
+import type {
+  SearchContentType,
+  SearchFacetBucket,
+  SearchFacets,
+  SearchSort,
+} from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
 const SORTS: { value: SearchSort; label: string }[] = [
@@ -25,8 +30,29 @@ const TYPE_LABELS: Record<string, string> = {
   conference: "Conferences",
 };
 
+/** The per-type facet field + its rail title (one scalar filter per type). */
+const PER_TYPE_FACET: Record<
+  SearchContentType,
+  { key: keyof SearchFacets & string; title: string }
+> = {
+  paper: { key: "year", title: "Year" },
+  grant: { key: "sponsor", title: "Sponsor" },
+  fellowship: { key: "award_class", title: "Award type" },
+  conference: { key: "country", title: "Country" },
+};
+
+/** Every per-type facet URL param — cleared together with the type selection. */
+const FACET_KEYS = ["year", "sponsor", "award_class", "country"] as const;
+
 function isSort(value: string | null): value is SearchSort {
   return value === "relevance" || value === "date" || value === "deadline";
+}
+
+/** Award-class values are snake tokens ("award_class" → "Award"); prettify them. */
+function titleCase(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function SearchSection() {
@@ -36,7 +62,14 @@ export function SearchSection() {
 
   const q = params.get("q") ?? "";
   const types = params.getAll("type");
-  const sources = params.getAll("source");
+  const facetFilters: Record<string, string[]> = React.useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const key of FACET_KEYS) {
+      const values = params.getAll(key);
+      if (values.length) map[key] = values;
+    }
+    return map;
+  }, [params]);
   const sort: SearchSort = isSort(params.get("sort"))
     ? (params.get("sort") as SearchSort)
     : "relevance";
@@ -75,15 +108,27 @@ export function SearchSection() {
     return () => clearTimeout(id);
   }, [text, q, updateParams]);
 
-  const toggleFacet = (key: "type" | "source", value: string) => {
+  const toggleValue = (sp: URLSearchParams, key: string, value: string) => {
+    const current = sp.getAll(key);
+    sp.delete(key);
+    const next = current.includes(value)
+      ? current.filter((entry) => entry !== value)
+      : [...current, value];
+    next.forEach((entry) => sp.append(key, entry));
+  };
+
+  // A per-type facet only makes sense inside one type, so toggling the type also
+  // clears any per-type facet selection — otherwise a stale year/sponsor filter
+  // would silently scope results after the user switched types.
+  const toggleType = (value: string) => {
     updateParams((sp) => {
-      const current = sp.getAll(key);
-      sp.delete(key);
-      const next = current.includes(value)
-        ? current.filter((entry) => entry !== value)
-        : [...current, value];
-      next.forEach((entry) => sp.append(key, entry));
+      FACET_KEYS.forEach((key) => sp.delete(key));
+      toggleValue(sp, "type", value);
     });
+  };
+
+  const toggleFacet = (key: string, value: string) => {
+    updateParams((sp) => toggleValue(sp, key, value));
   };
 
   const setSort = (value: SearchSort) => {
@@ -96,21 +141,32 @@ export function SearchSection() {
   const clearFilters = () => {
     updateParams((sp) => {
       sp.delete("type");
-      sp.delete("source");
+      FACET_KEYS.forEach((key) => sp.delete(key));
     });
   };
 
-  const query = useSearchResults({ q, types, sources, sort });
+  const query = useSearchResults({ q, types, facetFilters, sort });
   const pages = query.data?.pages ?? [];
   const first = pages[0];
   const results = pages.flatMap((page) => page.results);
-  const facets = first?.facets ?? { type: [], source: [] };
+  const facets: SearchFacets = first?.facets ?? { type: [] };
   const count = first?.count ?? 0;
   const confidence = first?.confidence ?? "ok";
   const poolTruncated = first?.pool_truncated ?? false;
 
+  // The contextual per-type facet: shown only when exactly one type is active
+  // (the backend returns its bucket under that key only then).
+  const activeType =
+    types.length === 1 ? (types[0] as SearchContentType) : null;
+  const perType =
+    activeType && PER_TYPE_FACET[activeType]
+      ? PER_TYPE_FACET[activeType]
+      : null;
+  const perTypeBuckets = perType ? (facets[perType.key] ?? []) : [];
+
   const hasQuery = q.trim().length > 0;
-  const hasFilters = types.length > 0 || sources.length > 0;
+  const hasFilters =
+    types.length > 0 || FACET_KEYS.some((key) => facetFilters[key]?.length);
 
   const subtitle = !hasQuery
     ? "Search across papers, grants, fellowships, and conferences."
@@ -165,21 +221,26 @@ export function SearchSection() {
         />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
-          {/* Facets */}
-          <aside className="min-w-0 space-y-5">
+          {/* Filters — sticky on desktop, scroll within if the list runs long. */}
+          <aside className="min-w-0 space-y-5 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
             <FacetGroup
               title="Type"
               buckets={facets.type}
               active={types}
               labelFor={(value) => TYPE_LABELS[value] ?? value}
-              onToggle={(value) => toggleFacet("type", value)}
+              onToggle={toggleType}
             />
-            <FacetGroup
-              title="Source"
-              buckets={facets.source}
-              active={sources}
-              onToggle={(value) => toggleFacet("source", value)}
-            />
+            {perType ? (
+              <FacetGroup
+                title={perType.title}
+                buckets={perTypeBuckets}
+                active={facetFilters[perType.key] ?? []}
+                labelFor={
+                  perType.key === "award_class" ? titleCase : undefined
+                }
+                onToggle={(value) => toggleFacet(perType.key, value)}
+              />
+            ) : null}
             {hasFilters ? (
               <button
                 type="button"

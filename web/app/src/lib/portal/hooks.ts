@@ -61,7 +61,8 @@ import {
 export type SearchInput = {
   q: string;
   types: string[];
-  sources: string[];
+  /** Per-type facet selections keyed by facet field (year/sponsor/…). */
+  facetFilters: Record<string, string[]>;
   sort: SearchSort;
 };
 
@@ -73,13 +74,17 @@ export type SearchInput = {
  */
 export function useSearchResults(input: SearchInput) {
   const q = input.q.trim();
+  const f = input.facetFilters;
   return useInfiniteQuery({
-    queryKey: ["portal", "search", q, input.types, input.sources, input.sort],
+    queryKey: ["portal", "search", q, input.types, f, input.sort],
     queryFn: ({ pageParam }) =>
       fetchSearch({
         q,
         types: input.types,
-        sources: input.sources,
+        years: f.year,
+        sponsors: f.sponsor,
+        awardClasses: f.award_class,
+        countries: f.country,
         sort: input.sort,
         cursor: pageParam,
       }),

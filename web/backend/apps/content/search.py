@@ -53,16 +53,39 @@ DEFAULT_RRF_K = 60
 SORTS = ("relevance", "date", "deadline")
 
 
+#: Per-type facet field: the one clean scalar ``metadata`` key each content type
+#: carries that makes a good, index-cheap filter. Shown contextually — only when
+#: that type is the sole selected ``type`` (see :func:`run_search`). The filter
+#: value and the facet value are the same ``->>`` text, so a clicked chip always
+#: round-trips back to an exact match.
+TYPE_FACET_FIELD: dict[str, str] = {
+    "paper": "year",
+    "grant": "sponsor",
+    "fellowship": "award_class",
+    "conference": "country",
+}
+
+#: How many rows a facet lists (top-N by count). Bounds noisy high-cardinality
+#: fields (sponsor/country) without hiding the useful head of the distribution.
+FACET_LIMIT = 12
+
+
 @dataclass(frozen=True)
 class SearchFilters:
     """The corpus-scoping filters shared by every channel.
 
     ``types`` empty means "all content types". ``date_from``/``date_to`` filter on
     ``created_at`` (ingest time) — the one timestamp every type reliably carries.
+    The remaining tuples are the per-type metadata facets (:data:`TYPE_FACET_FIELD`):
+    each filters its ``metadata`` key as text, and — since only that type carries
+    the key — naturally scopes to that type.
     """
 
     types: tuple[str, ...] = ()
-    sources: tuple[str, ...] = ()
+    years: tuple[str, ...] = ()
+    sponsors: tuple[str, ...] = ()
+    award_classes: tuple[str, ...] = ()
+    countries: tuple[str, ...] = ()
     date_from: date | None = None
     date_to: date | None = None
 
@@ -117,18 +140,56 @@ def clamp_limit(limit: int | None) -> int:
     return max(1, min(value, ceiling))
 
 
+#: Per-type metadata filter: which :class:`SearchFilters` tuple feeds which
+#: ``metadata`` key. Selecting a value equals its ``->>`` text (see
+#: :func:`_metadata_text_expr`), so the facet the user clicks filters exactly.
+_METADATA_FILTERS: tuple[tuple[str, str], ...] = (
+    ("years", "year"),
+    ("sponsors", "sponsor"),
+    ("award_classes", "award_class"),
+    ("countries", "country"),
+)
+
+
+def _metadata_text_expr(key: str):
+    """The text form of a ``metadata`` key (``metadata->>'key'``), '' when absent.
+
+    Used identically for filtering and faceting so a facet's value round-trips to
+    an exact filter match regardless of the JSON value's underlying type (e.g. a
+    numeric ``year`` still compares as the string the facet emitted).
+    """
+    return Coalesce(
+        KeyTextTransform(key, "metadata"), Value(""), output_field=TextField()
+    )
+
+
 def _apply_filters(
-    qs: QuerySet, filters: SearchFilters, *, include_type: bool
+    qs: QuerySet,
+    filters: SearchFilters,
+    *,
+    include_type: bool,
+    include_metadata: bool = True,
 ) -> QuerySet:
-    """Apply source/date (always) and type (optionally) to a base queryset."""
-    if filters.sources:
-        qs = qs.filter(source__in=list(filters.sources))
+    """Apply date (always), type (optional), and per-type metadata (optional).
+
+    ``include_metadata=False`` drops the per-type facet filters — used when
+    computing a facet's own counts, which must ignore that facet's selection so
+    multi-select stays legible.
+    """
     if filters.date_from is not None:
         qs = qs.filter(created_at__date__gte=filters.date_from)
     if filters.date_to is not None:
         qs = qs.filter(created_at__date__lte=filters.date_to)
     if include_type and filters.types:
         qs = qs.filter(type__in=list(filters.types))
+    if include_metadata:
+        for attr, key in _METADATA_FILTERS:
+            values = getattr(filters, attr)
+            if values:
+                alias = f"_f_{key}"
+                qs = qs.annotate(**{alias: _metadata_text_expr(key)}).filter(
+                    **{f"{alias}__in": list(values)}
+                )
     return qs
 
 
@@ -332,7 +393,7 @@ def _order(
 
 
 def _facet_counts(base: QuerySet, field_name: str, q: str) -> list[dict]:
-    """Count lexical matches grouped by a field, most-common first.
+    """Count lexical matches grouped by a column, most-common first.
 
     Facets are computed from the lexical match set only (one fast aggregate per
     facet) — a documented approximation; the semantic/fuzzy tails are not counted.
@@ -347,6 +408,28 @@ def _facet_counts(base: QuerySet, field_name: str, q: str) -> list[dict]:
     return [{"value": row[field_name], "count": row["n"]} for row in rows]
 
 
+def _metadata_facet_counts(
+    base: QuerySet, key: str, q: str, *, limit: int = FACET_LIMIT
+) -> list[dict]:
+    """Count lexical matches grouped by a ``metadata`` text key, top-N by count.
+
+    The per-type facet counterpart of :func:`_facet_counts`: groups by
+    ``metadata->>key`` (the same expression the filter uses), drops blanks, and
+    caps to ``limit`` so a high-cardinality field (sponsor/country) shows only its
+    useful head. Computed over the lexical match set, like every other facet.
+    """
+    query = _search_query(q)
+    rows = (
+        base.filter(search_vector=query)
+        .annotate(_facet=_metadata_text_expr(key))
+        .exclude(_facet="")
+        .values("_facet")
+        .annotate(n=Count("id"))
+        .order_by("-n", "_facet")[:limit]
+    )
+    return [{"value": row["_facet"], "count": row["n"]} for row in rows]
+
+
 def _empty_result(query: str, sort: str, limit: int, offset: int) -> SearchResult:
     return SearchResult(
         query=query,
@@ -355,7 +438,7 @@ def _empty_result(query: str, sort: str, limit: int, offset: int) -> SearchResul
         count=0,
         pool_truncated=False,
         confidence="ok",
-        facets={"type": [], "source": []},
+        facets={"type": []},
         items=[],
         limit=limit,
         offset=offset,
@@ -423,10 +506,21 @@ def run_search(
         page_items.append(item)
 
     confidence = _confidence(top_cosine)
-    facets = {
-        "type": _facet_counts(base_no_type, "type", normalized),
-        "source": _facet_counts(base_typed, "source", normalized),
-    }
+    # Type facet: counts ignore the type filter (so every type stays selectable),
+    # as before. Per-type facet: only when exactly one type is active — the
+    # contextual "drill into a type, then its filters appear" flow. Its counts
+    # ignore its own selection (include_metadata=False) so multi-select is legible.
+    facets = {"type": _facet_counts(base_no_type, "type", normalized)}
+    if len(filters.types) == 1:
+        field = TYPE_FACET_FIELD.get(filters.types[0])
+        if field:
+            base_type_only = _apply_filters(
+                ContentItem.objects.all(),
+                filters,
+                include_type=True,
+                include_metadata=False,
+            )
+            facets[field] = _metadata_facet_counts(base_type_only, field, normalized)
 
     return SearchResult(
         query=query,

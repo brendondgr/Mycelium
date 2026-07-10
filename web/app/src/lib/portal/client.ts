@@ -238,8 +238,17 @@ export async function fetchSearch(
   for (const type of params.types ?? []) {
     search.append("type", type);
   }
-  for (const source of params.sources ?? []) {
-    search.append("source", source);
+  // Per-type facet filters — each key scopes to its own content type server-side.
+  const facetParams: [string, string[] | undefined][] = [
+    ["year", params.years],
+    ["sponsor", params.sponsors],
+    ["award_class", params.awardClasses],
+    ["country", params.countries],
+  ];
+  for (const [key, values] of facetParams) {
+    for (const value of values ?? []) {
+      search.append(key, value);
+    }
   }
   if (params.sort) {
     search.set("sort", params.sort);

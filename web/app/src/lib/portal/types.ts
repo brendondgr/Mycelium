@@ -435,6 +435,7 @@ export type SearchResultItem = {
   /** Which channels matched this item: "lexical" | "semantic" | "fuzzy". */
   matched_on: string[];
   saved: boolean;
+  // (No `source` — the search path deliberately omits it.)
   // Paper
   authors: string[];
   venue: string;
@@ -452,9 +453,17 @@ export type SearchResultItem = {
 };
 
 export type SearchFacetBucket = { value: string; count: number };
+/**
+ * `type` is always present. The per-type facet (only one) is included only when
+ * exactly one type is selected: papers → `year`, grants → `sponsor`,
+ * fellowships → `award_class`, conferences → `country`.
+ */
 export type SearchFacets = {
   type: SearchFacetBucket[];
-  source: SearchFacetBucket[];
+  year?: SearchFacetBucket[];
+  sponsor?: SearchFacetBucket[];
+  award_class?: SearchFacetBucket[];
+  country?: SearchFacetBucket[];
 };
 
 /** The `GET /api/search/` envelope. */
@@ -479,7 +488,11 @@ export type SearchResponse = {
 export type SearchParams = {
   q: string;
   types?: string[];
-  sources?: string[];
+  /** Per-type facet filters (each scopes to its own type). */
+  years?: string[];
+  sponsors?: string[];
+  awardClasses?: string[];
+  countries?: string[];
   sort?: SearchSort;
   cursor?: string;
   limit?: number;

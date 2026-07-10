@@ -288,7 +288,10 @@ user-scoped. Query params:
 
 - `q` — the search text. Blank returns an empty result (not an error).
 - `type` — repeatable/comma (`paper|grant|fellowship|conference`); scopes results.
-- `source` — repeatable/comma; scopes results.
+- `year` / `sponsor` / `award_class` / `country` — repeatable/comma **per-type
+  facet filters**: papers by `year`, grants by `sponsor`, fellowships by
+  `award_class`, conferences by `country`. Each matches its `metadata` value as
+  text and so naturally scopes to its own type.
 - `date_from` / `date_to` — ISO dates, filtering on ingest date.
 - `sort` — `relevance` (default) | `date` (newest) | `deadline` (soonest, nulls last).
 - `limit` — page size (bounded). `cursor` — opaque paging cursor from `next_cursor`.
@@ -305,14 +308,14 @@ match is weak — a display cue, never an empty page. Success `200`:
   "count": 559, "pool_truncated": true,
   "facets": {
     "type": [{ "value": "paper", "count": 85 }, { "value": "grant", "count": 1 }],
-    "source": [{ "value": "PubMed", "count": 50 }]
+    "year": [{ "value": "2026", "count": 80 }, { "value": "2025", "count": 5 }]
   },
   "limit": 20, "offset": 0, "next_cursor": "20",
   "results": [
     {
       "content_id": "uuid", "type": "paper",
       "title": "Generalizable Protein Folding Pathway Exploration",
-      "summary": "…", "source": "OpenAlex", "url": "https://…",
+      "summary": "…", "url": "https://…",
       "created_at": "2026-07-09T…", "score": 0.021,
       "matched_on": ["lexical", "semantic", "fuzzy"], "saved": false,
       "authors": ["…"], "venue": "Nature", "year": 2026,
@@ -323,11 +326,14 @@ match is weak — a display cue, never an empty page. Success `200`:
 }
 ```
 
-The `type` facet counts ignore the `type` filter (so the UI can offer switching
-types); the `source` facet respects it. `pool_truncated` is true when more matches
-exist beyond the bounded relevance pool. Type-specific fields are populated per
-`type` and `""`/`[]`/`null` otherwise. `score` is the fused rank weight (for
-ordering, not display).
+`facets.type` is always present and its counts ignore the `type` filter (so the
+UI can offer switching types). The **per-type facet** is contextual: it appears
+under its own key (`year`/`sponsor`/`award_class`/`country`) **only when exactly
+one `type` is selected**, is capped to its top values, and its own counts ignore
+its own selection (so multi-select stays legible). `pool_truncated` is true when
+more matches exist beyond the bounded relevance pool. Type-specific result fields
+are populated per `type` and `""`/`[]`/`null` otherwise. `score` is the fused rank
+weight (for ordering, not display).
 
 ### `GET /api/opportunities/grants/`
 

@@ -69,7 +69,6 @@ export function SearchResultCard({ item }: { item: SearchResultItem }) {
           {meta.icon}
           {meta.label}
         </Pill>
-        <span className="text-xs text-[var(--text-muted)]">{item.source}</span>
         {item.deadline ? (
           <Pill tone="clay">
             <CalendarIcon size={12} />

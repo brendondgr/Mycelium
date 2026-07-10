@@ -577,8 +577,9 @@ class SearchView(APIView):
     :mod:`apps.content.search`) over the **global** corpus — the same items the
     opportunity feeds surface post-match — so it reads no lab-scoped data and
     requires only authentication. Query params: ``q`` (required — blank returns an
-    empty result, not an error), repeatable/comma ``type`` and ``source``,
-    ``date_from``/``date_to`` (ISO, on ingest date), ``sort``
+    empty result, not an error), repeatable/comma ``type``, the per-type facet
+    filters ``year``/``sponsor``/``award_class``/``country`` (each scopes to its
+    own type), ``date_from``/``date_to`` (ISO, on ingest date), ``sort``
     (relevance|date|deadline), ``limit``, and ``cursor`` (opaque offset). Search
     never abstains; ``confidence`` is a display cue only.
     """
@@ -592,7 +593,10 @@ class SearchView(APIView):
         types = tuple(t for t in _multi_param(params, "type") if t in _SEARCH_TYPES)
         filters = SearchFilters(
             types=types,
-            sources=_multi_param(params, "source"),
+            years=_multi_param(params, "year"),
+            sponsors=_multi_param(params, "sponsor"),
+            award_classes=_multi_param(params, "award_class"),
+            countries=_multi_param(params, "country"),
             date_from=_parse_date(params.get("date_from")),
             date_to=_parse_date(params.get("date_to")),
         )

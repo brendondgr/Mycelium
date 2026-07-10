@@ -365,7 +365,7 @@ class SearchResultSerializer(serializers.Serializer):
     The query-first search path (:mod:`apps.content.search`) ranks the corpus
     directly, so — unlike the digest/opportunity serializers — this reads the
     global item, not a per-target :class:`RelevanceScore`. It exposes one unified
-    shape (id/type/title/summary/source/url/created_at + the fused ``score`` and
+    shape (id/type/title/summary/url/created_at + the fused ``score`` and
     which ``matched_on`` channels) plus the compact type-specific extras the
     result card renders. ``score``/``matched_on`` come from transient attributes
     the search module tags onto each item; ``saved`` reads ``saved_ids`` from the
@@ -376,7 +376,6 @@ class SearchResultSerializer(serializers.Serializer):
     type = serializers.CharField()
     title = serializers.SerializerMethodField()
     summary = serializers.SerializerMethodField()
-    source = serializers.CharField()
     url = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField()
     score = serializers.SerializerMethodField()

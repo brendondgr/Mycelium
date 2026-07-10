@@ -173,9 +173,44 @@ def test_type_filter_scopes_results_but_type_facet_shows_all(pg) -> None:
     # …but the type facet still counts both, so the user can switch types.
     type_facet = {row["value"]: row["count"] for row in result.facets["type"]}
     assert type_facet == {"paper": 1, "grant": 1}
-    # The source facet respects the active type filter (grant sources only).
-    source_facet = {row["value"] for row in result.facets["source"]}
-    assert source_facet == {"pivot"}
+    # A single selected type exposes that type's own facet (grant → sponsor).
+    assert result.facets["sponsor"] == [{"value": "NSF", "count": 1}]
+    # No stale "source" facet remains on the search path.
+    assert "source" not in result.facets
+
+
+@pytest.mark.django_db
+def test_per_type_facet_is_contextual_to_a_single_type(pg) -> None:
+    # No type selected → only the type facet (per-type facets need a drill-in).
+    _paper("Quantum computing advances")
+    _grant("Quantum sensing grant", sponsor="NSF")
+    result = run_search("quantum")
+    assert set(result.facets) == {"type"}
+
+    # Papers selected → the paper facet is `year`, not sponsor/country.
+    papers = run_search("quantum", filters=SearchFilters(types=("paper",)))
+    assert papers.facets["year"] == [{"value": "2026", "count": 1}]
+    assert "sponsor" not in papers.facets
+
+
+@pytest.mark.django_db
+def test_metadata_facet_filter_scopes_and_counts_ignore_self(pg) -> None:
+    # Two sponsors under the same query; the facet lists both with counts…
+    _grant("Robotics program grant", sponsor="NSF", ext="g-nsf")
+    darpa = _grant("Robotics systems grant", sponsor="DARPA", ext="g-darpa")
+
+    base = run_search("robotics", filters=SearchFilters(types=("grant",)))
+    sponsor_counts = {r["value"]: r["count"] for r in base.facets["sponsor"]}
+    assert sponsor_counts == {"NSF": 1, "DARPA": 1}
+
+    # …selecting one narrows the results but the facet still shows both, so the
+    # user can widen the multi-select (counts ignore the facet's own selection).
+    filtered = run_search(
+        "robotics",
+        filters=SearchFilters(types=("grant",), sponsors=("DARPA",)),
+    )
+    assert [str(i.id) for i in filtered.items] == [str(darpa.id)]
+    assert {r["value"] for r in filtered.facets["sponsor"]} == {"NSF", "DARPA"}
 
 
 @pytest.mark.django_db
@@ -200,7 +235,7 @@ def test_blank_query_returns_empty_never_errors(pg) -> None:
     assert result.count == 0
     assert result.items == []
     assert result.next_offset is None
-    assert result.facets == {"type": [], "source": []}
+    assert result.facets == {"type": []}
 
 
 @pytest.mark.django_db
@@ -403,3 +438,23 @@ def test_endpoint_type_filter_and_saved_flag(pg, client: APIClient) -> None:
     assert resp.status_code == 200
     assert [r["type"] for r in resp.data["results"]] == ["grant"]
     assert resp.data["results"][0]["saved"] is True
+    # "source" is gone from the search payload (facet + per-result field).
+    assert "source" not in resp.data["facets"]
+    assert "source" not in resp.data["results"][0]
+
+
+@pytest.mark.django_db
+def test_endpoint_exposes_and_applies_a_per_type_facet(pg, client: APIClient) -> None:
+    _grant("Ocean sensing grant", sponsor="NSF", ext="g-nsf")
+    _grant("Ocean robotics grant", sponsor="ONR", ext="g-onr")
+    client.force_authenticate(User.objects.create_user("oceanographer", password="x"))
+
+    # A single selected type surfaces its facet key…
+    listed = client.get("/api/search/", {"q": "ocean", "type": "grant"})
+    assert {r["value"] for r in listed.data["facets"]["sponsor"]} == {"NSF", "ONR"}
+
+    # …and the matching param narrows the results.
+    narrowed = client.get(
+        "/api/search/", {"q": "ocean", "type": "grant", "sponsor": "ONR"}
+    )
+    assert [r["title"] for r in narrowed.data["results"]] == ["Ocean robotics grant"]
