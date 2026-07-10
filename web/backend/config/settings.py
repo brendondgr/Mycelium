@@ -24,6 +24,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Postgres full-text search + trigram support for apps.content.search
+    # (SearchVectorField, SearchRank, TrigramWordSimilarity). No-op feature-wise
+    # on SQLite; the search path is Postgres-only and guarded accordingly.
+    "django.contrib.postgres",
     "corsheaders",
     "rest_framework",
     "apps.core",
@@ -225,6 +229,19 @@ LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
 # research-focus overlap when re-ranking retrieved papers: blended score =
 # similarity + AREA_FOCUS_WEIGHT * focus_overlap. 0 disables the focus boost.
 AREA_FOCUS_WEIGHT = env.float("AREA_FOCUS_WEIGHT", default=0.25)
+
+# Unified search (apps.content.search) — the digest retrieval pipeline run
+# query-first over the whole content corpus. Unlike the digest, search never
+# abstains: it always returns the top-k and only flags low confidence as a UI
+# cue. SEARCH_CANDIDATE_POOL bounds how deep the relevance ranking goes (the
+# union of the lexical/semantic/fuzzy channels); pages slice within that pool so
+# deep-page latency stays flat. SEARCH_LOW_CONFIDENCE_COSINE is the display
+# threshold for the "low confidence" cue (top cosine below it), never a gate.
+SEARCH_CANDIDATE_POOL = env.int("SEARCH_CANDIDATE_POOL", default=500)
+SEARCH_PAGE_SIZE = env.int("SEARCH_PAGE_SIZE", default=20)
+SEARCH_MAX_PAGE_SIZE = env.int("SEARCH_MAX_PAGE_SIZE", default=50)
+SEARCH_LOW_CONFIDENCE_COSINE = env.float("SEARCH_LOW_CONFIDENCE_COSINE", default=0.35)
+SEARCH_TRIGRAM_THRESHOLD = env.float("SEARCH_TRIGRAM_THRESHOLD", default=0.3)
 
 # Author-import sources (apps.accounts.intake). Keys are optional: OpenAlex works
 # without one (a polite `mailto` is encouraged), and Semantic Scholar's key only

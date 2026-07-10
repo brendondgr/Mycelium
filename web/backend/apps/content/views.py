@@ -1,4 +1,5 @@
 from collections import Counter, defaultdict
+from datetime import date
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -15,11 +16,13 @@ from apps.research.models import Project
 
 from .models import ContentItem, RelevanceScore, SavedOpportunity
 from .onboarding_match import UnknownArea, onboarding_match_area
+from .search import SearchFilters, run_search
 from .serializers import (
     ConferenceSerializer,
     FellowshipSerializer,
     GrantSerializer,
     SavedDeadlineSerializer,
+    SearchResultSerializer,
     SuggestionSerializer,
 )
 
@@ -513,3 +516,107 @@ class NotificationsView(APIView):
 def _alert_message(title: str, days: int) -> str:
     when = "due today" if days == 0 else f"{days} day{'s' if days != 1 else ''} left"
     return f"“{title}” — less than a week left ({when})."
+
+
+# --------------------------------------------------------------------------- #
+# Unified search
+# --------------------------------------------------------------------------- #
+
+#: The content types search accepts as a `type` filter (all of them).
+_SEARCH_TYPES = set(ContentItem.Type.values)
+
+
+def _multi_param(query_params, key: str) -> tuple[str, ...]:
+    """Collect a repeatable/comma-separated query param into a clean tuple.
+
+    Supports both ``?type=paper&type=grant`` and ``?type=paper,grant``; blanks
+    are dropped and order-preserving duplicates collapse.
+    """
+    values: list[str] = []
+    seen: set[str] = set()
+    for raw in query_params.getlist(key):
+        for part in str(raw).split(","):
+            item = part.strip()
+            if item and item not in seen:
+                seen.add(item)
+                values.append(item)
+    return tuple(values)
+
+
+def _parse_date(value: str | None):
+    """Parse an ISO date, or ``None`` when it is missing/malformed (lenient)."""
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value.strip()[:10])
+    except (ValueError, AttributeError):
+        return None
+
+
+def _parse_offset(query_params) -> int:
+    """Read the paging cursor (an opaque non-negative offset) from the request."""
+    raw = query_params.get("cursor") or query_params.get("offset") or "0"
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        return 0
+
+
+class SearchView(APIView):
+    """Query-first search across the content corpus (papers/grants/etc.).
+
+    ``GET /api/search/?q=…`` runs the shared retrieval pipeline query-first (see
+    :mod:`apps.content.search`) over the **global** corpus — the same items the
+    opportunity feeds surface post-match — so it reads no lab-scoped data and
+    requires only authentication. Query params: ``q`` (required — blank returns an
+    empty result, not an error), repeatable/comma ``type`` and ``source``,
+    ``date_from``/``date_to`` (ISO, on ingest date), ``sort``
+    (relevance|date|deadline), ``limit``, and ``cursor`` (opaque offset). Search
+    never abstains; ``confidence`` is a display cue only.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        params = request.query_params
+        query = params.get("q", "")
+
+        types = tuple(t for t in _multi_param(params, "type") if t in _SEARCH_TYPES)
+        filters = SearchFilters(
+            types=types,
+            sources=_multi_param(params, "source"),
+            date_from=_parse_date(params.get("date_from")),
+            date_to=_parse_date(params.get("date_to")),
+        )
+
+        result = run_search(
+            query,
+            filters=filters,
+            sort=params.get("sort", "relevance"),
+            limit=params.get("limit"),
+            offset=_parse_offset(params),
+        )
+
+        saved_ids = _saved_content_ids(request.user) if result.items else set()
+        serializer = SearchResultSerializer(
+            result.items, many=True, context={"saved_ids": saved_ids}
+        )
+        return Response(
+            {
+                "query": result.query,
+                "normalized": result.normalized,
+                "sort": result.sort,
+                "confidence": result.confidence,
+                "count": result.count,
+                "pool_truncated": result.pool_truncated,
+                "facets": result.facets,
+                "limit": result.limit,
+                "offset": result.offset,
+                "next_cursor": (
+                    str(result.next_offset)
+                    if result.next_offset is not None
+                    else None
+                ),
+                "results": serializer.data,
+            }
+        )
