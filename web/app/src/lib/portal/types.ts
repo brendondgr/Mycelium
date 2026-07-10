@@ -55,6 +55,14 @@ export type LabProfileData = {
 
 export type ProjectScope = "user" | "lab" | "department";
 
+/** A project's research focus — the topic its daily recommendations run against. */
+export type ProjectFocus = {
+  areas: string[];
+  keywords: string[];
+  statement: string;
+  watch_topics: string[];
+};
+
 export type Project = {
   id: string;
   name: string;
@@ -64,6 +72,8 @@ export type Project = {
   /** Optional display hints read from `goals`; null when the author set none. */
   status: string | null;
   progress: number | null;
+  /** Normalized research focus (areas/keywords/statement/watch topics). */
+  focus: ProjectFocus;
   member_count: number;
   /** Whether the signed-in user belongs to this project. */
   is_member: boolean;
@@ -197,6 +207,20 @@ export type ConferenceOpportunity = OpportunityBase & {
 export type OpportunityFeed<T> = {
   generated_at: string | null;
   items: T[];
+};
+
+/**
+ * A lab's or a project's combined recommendations (from
+ * `/api/labs/<slug>/recommendations/` and `/api/projects/<id>/recommendations/`).
+ * Papers + grants + conferences the target matched, plus per-area counts for the
+ * overview stat cards. Fellowships are excluded — they are individual-only.
+ */
+export type TargetRecommendations = {
+  generated_at: string | null;
+  counts: { papers: number; grants: number; conferences: number };
+  papers: Suggestion[];
+  grants: GrantOpportunity[];
+  conferences: ConferenceOpportunity[];
 };
 
 /** One saved deadline (from `/api/deadlines/`). */

@@ -16,6 +16,7 @@ import {
   useLabMembers,
   useLabProfile,
   useLabProjects,
+  useLabRecommendations,
   useLabWatch,
 } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
@@ -48,6 +49,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
   const watchQuery = useLabWatch(lab.slug);
   const membersQuery = useLabMembers(lab.slug);
   const projectsQuery = useLabProjects(lab.slug);
+  const recQuery = useLabRecommendations(lab.slug);
 
   const profile = profileQuery.data;
   const manage = canManage(lab);
@@ -90,31 +92,34 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
   const memberCount = membersQuery.data?.length ?? null;
   const projectCount = projectsQuery.data?.length ?? null;
   const watch = watchQuery.data;
+  const rec = recQuery.data;
+  // Until Mylo has run for this lab there are no scores; say so rather than 0.
+  const recSub = rec && !rec.generated_at ? "Awaiting first run" : undefined;
 
   return (
     <div>
       <Greeting greeting={greeting} first={first} dateLabel={dateLabel} lab={lab} />
 
-      {/* Purpose-driven daily metrics. Papers / grants / conferences are honest
-          placeholders until their matching pipelines exist. */}
+      {/* Purpose-driven daily metrics — the lab's matched papers, grants, and
+          conferences from its aggregate interests (its members + projects). */}
       <div className="mb-[26px] grid gap-[22px] [grid-template-columns:repeat(auto-fit,minmax(212px,1fr))]">
         <StatCard
           icon={<DocumentIcon size={16} />}
-          label="Articles recommended today"
-          value={null}
-          sub="Coming soon"
+          label="Articles matched"
+          value={rec?.counts.papers ?? null}
+          sub={recSub}
         />
         <StatCard
           icon={<SparkleIcon size={16} />}
           label="Grants found"
-          value={null}
-          sub="Coming soon"
+          value={rec?.counts.grants ?? null}
+          sub={recSub}
         />
         <StatCard
           icon={<CalendarIcon size={16} />}
           label="Conferences matching"
-          value={null}
-          sub="Coming soon"
+          value={rec?.counts.conferences ?? null}
+          sub={recSub}
         />
         <StatCard
           icon={<MembersIcon size={16} />}

@@ -14,6 +14,7 @@ import type {
   Project,
   ProfileData,
   SavedDeadline,
+  TargetRecommendations,
   WatchData,
 } from "@/lib/portal/types";
 
@@ -153,5 +154,25 @@ export async function fetchLabWatch(slug: string): Promise<WatchData> {
   return getJson<WatchData>(
     buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "watch"),
     "Could not load the lab's watch settings.",
+  );
+}
+
+/** A lab's matched papers, grants, and conferences (its aggregate interests). */
+export async function fetchLabRecommendations(
+  slug: string,
+): Promise<TargetRecommendations> {
+  return getJson<TargetRecommendations>(
+    buildApiUrl(getPublicApiBase(), "labs", slug, "recommendations"),
+    "Could not load the lab's recommendations.",
+  );
+}
+
+/** One project's matched papers, grants, and conferences (its declared focus). */
+export async function fetchProjectRecommendations(
+  id: string,
+): Promise<TargetRecommendations> {
+  return getJson<TargetRecommendations>(
+    buildApiUrl(getPublicApiBase(), "projects", id, "recommendations"),
+    "Could not load the project's recommendations.",
   );
 }

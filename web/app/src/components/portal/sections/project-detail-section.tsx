@@ -16,7 +16,30 @@ import {
   displayStatus,
   statusPillTone,
 } from "@/components/portal/project-status";
-import type { ProjectMember } from "@/lib/portal/types";
+import { useProjectRecommendations } from "@/lib/portal/hooks";
+import type {
+  ProjectMember,
+  Suggestion,
+  TargetRecommendations,
+} from "@/lib/portal/types";
+
+/** A compact, area-labelled recommendation row for the sidebar. */
+type MiniRec = { key: string; area: string; title: string; match: number | null; url: string };
+
+/** Top few recommendations across areas for the sidebar "Recommended by Mylo" card. */
+function topRecommendations(rec: TargetRecommendations): MiniRec[] {
+  const out: MiniRec[] = [];
+  for (const p of rec.papers.slice(0, 3)) {
+    out.push({ key: `p-${p.content_id}`, area: "Paper", title: p.title, match: p.match_percent, url: p.url });
+  }
+  for (const g of rec.grants.slice(0, 3)) {
+    out.push({ key: `g-${g.content_id}`, area: "Grant", title: g.title, match: g.match_percent, url: g.url });
+  }
+  for (const c of rec.conferences.slice(0, 2)) {
+    out.push({ key: `c-${c.content_id}`, area: "Conference", title: c.title, match: c.match_percent, url: c.url });
+  }
+  return out;
+}
 
 /** Returns a relative time string for a given ISO date string. */
 function relativeTime(isoString: string): string {
@@ -41,6 +64,9 @@ export function ProjectDetailSection() {
   const { projects, activeProjectId, openProjectsList } = usePortal();
 
   const project = projects.find((p) => p.id === activeProjectId);
+  // Hook must run every render (before the early return), so it takes the id
+  // optionally and stays disabled until a project is selected.
+  const recQuery = useProjectRecommendations(project?.id);
 
   const backButton = (
     <button
@@ -70,6 +96,14 @@ export function ProjectDetailSection() {
 
   const goalLabel =
     (typeof goals.goal === "string" && goals.goal) || null;
+
+  const rec = recQuery.data;
+  const recPapers = rec?.papers ?? [];
+  const recTotal = rec
+    ? rec.counts.papers + rec.counts.grants + rec.counts.conferences
+    : 0;
+  const miniRecs = rec ? topRecommendations(rec) : [];
+  const hasFocus = project.focus.areas.length > 0;
 
   return (
     <div>
@@ -151,13 +185,28 @@ export function ProjectDetailSection() {
             </div>
           </div>
 
-          {/* Empty feed state */}
-          <div className="py-8 text-center">
-            <p className="text-sm text-[var(--text-muted)]">
-              No linked articles yet. Mylo will recommend papers for this project
-              once scanning is live.
-            </p>
-          </div>
+          {/* Mylo's recommended papers for this project's focus. */}
+          {recQuery.isLoading ? (
+            <div className="py-8 text-center">
+              <p className="text-sm text-[var(--text-muted)]">
+                Loading recommendations…
+              </p>
+            </div>
+          ) : recPapers.length > 0 ? (
+            <ul className="divide-y divide-[var(--divider)]">
+              {recPapers.map((paper: Suggestion) => (
+                <PaperFeedRow key={paper.content_id} paper={paper} />
+              ))}
+            </ul>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+                {hasFocus
+                  ? "No matching papers yet. Mylo will recommend papers for this project on its next run."
+                  : "Set this project's research focus so Mylo can recommend papers for it."}
+              </p>
+            </div>
+          )}
         </Card>
 
         {/* RIGHT column */}
@@ -202,15 +251,29 @@ export function ProjectDetailSection() {
 
           {/* Recommended by Mylo card */}
           <Card className="p-[22px]">
-            <div className="mb-[3px] flex items-center gap-2">
+            <div className="mb-[10px] flex items-center gap-2">
               <SporeNode size={16} className="text-primary" />
               <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">
                 Recommended by Mylo
               </h2>
             </div>
-            <p className="m-0 text-[12.5px] text-[var(--text-muted)]">
-              Recommendations arrive once your first scan runs.
-            </p>
+            {recQuery.isLoading ? (
+              <p className="m-0 text-[12.5px] text-[var(--text-muted)]">
+                Loading recommendations…
+              </p>
+            ) : recTotal === 0 ? (
+              <p className="m-0 text-[12.5px] text-[var(--text-muted)]">
+                {hasFocus
+                  ? "Recommendations arrive after Mylo's next run."
+                  : "Set this project's focus so Mylo can find matching work."}
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-[13px]">
+                {miniRecs.map((r) => (
+                  <MiniRecRow key={r.key} rec={r} />
+                ))}
+              </ul>
+            )}
           </Card>
 
           {/* Status card */}
@@ -248,5 +311,78 @@ export function ProjectDetailSection() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** A small percent-match chip; muted when the model left the match unscored. */
+function MatchChip({ match }: { match: number | null }) {
+  if (match === null) return null;
+  return (
+    <span className="shrink-0 rounded-full bg-surface-alt px-2 py-[2px] text-[11px] font-semibold text-[var(--text-secondary)]">
+      {match}% match
+    </span>
+  );
+}
+
+/** One recommended paper in the project feed (title, source, Mylo's reason). */
+function PaperFeedRow({ paper }: { paper: Suggestion }) {
+  return (
+    <li className="px-5 py-[14px]">
+      <div className="flex items-start justify-between gap-3">
+        {paper.url ? (
+          <a
+            href={paper.url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[14px] font-semibold leading-snug text-[var(--text-primary)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {paper.title}
+          </a>
+        ) : (
+          <span className="text-[14px] font-semibold leading-snug text-[var(--text-primary)]">
+            {paper.title}
+          </span>
+        )}
+        <MatchChip match={paper.match_percent} />
+      </div>
+      {paper.source ? (
+        <p className="mt-1 text-[11.5px] uppercase tracking-wide text-[var(--text-muted)]">
+          {paper.source}
+        </p>
+      ) : null}
+      {paper.reason ? (
+        <p className="mt-1.5 text-[12.5px] leading-[1.5] text-[var(--text-secondary)]">
+          {paper.reason}
+        </p>
+      ) : null}
+    </li>
+  );
+}
+
+/** One compact cross-area recommendation in the sidebar card. */
+function MiniRecRow({ rec }: { rec: MiniRec }) {
+  return (
+    <li className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+          {rec.area}
+        </span>
+        <MatchChip match={rec.match} />
+      </div>
+      {rec.url ? (
+        <a
+          href={rec.url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[13px] font-medium leading-snug text-[var(--text-primary)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {rec.title}
+        </a>
+      ) : (
+        <span className="text-[13px] font-medium leading-snug text-[var(--text-primary)]">
+          {rec.title}
+        </span>
+      )}
+    </li>
   );
 }

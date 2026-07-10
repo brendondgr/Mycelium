@@ -11,11 +11,13 @@ import {
   fetchLabMembers,
   fetchLabProfile,
   fetchLabProjects,
+  fetchLabRecommendations,
   fetchLabWatch,
   fetchMyInvitations,
   fetchMyLabs,
   fetchNotifications,
   fetchProfile,
+  fetchProjectRecommendations,
   fetchProjects,
   fetchWatch,
 } from "@/lib/portal/client";
@@ -275,6 +277,27 @@ export function useUpdateLabProfile(slug: string) {
     onSuccess: (data) => {
       queryClient.setQueryData(["portal", "lab-profile", slug], data);
     },
+  });
+}
+
+/** A lab's matched papers/grants/conferences. Disabled for the personal scope. */
+export function useLabRecommendations(slug?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
+  return useQuery({
+    queryKey: ["portal", "lab-recommendations", slug ?? "none"],
+    queryFn: () => fetchLabRecommendations(slug as string),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** One project's matched papers/grants/conferences (its declared focus). */
+export function useProjectRecommendations(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "project-recommendations", id ?? "none"],
+    queryFn: () => fetchProjectRecommendations(id as string),
+    enabled: Boolean(id),
+    staleTime: 60_000,
   });
 }
 
