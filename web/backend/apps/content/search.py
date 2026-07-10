@@ -32,8 +32,14 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from django.conf import settings
-from django.contrib.postgres.search import SearchQuery, SearchRank
-from django.db.models import Count, F, QuerySet
+from django.contrib.postgres.search import (
+    SearchQuery,
+    SearchRank,
+    TrigramWordSimilarity,
+)
+from django.db.models import Count, F, QuerySet, TextField, Value
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Coalesce
 from pgvector.django import CosineDistance
 
 from .models import ContentItem
@@ -174,6 +180,37 @@ def _semantic(
     return items, top_cosine
 
 
+def _title_expr():
+    """The title text expression (``title`` then ``name``), matched by the index.
+
+    Mirrors the ``COALESCE(metadata->>'title', metadata->>'name', '')`` GIN
+    trigram index (migration 0005) so the ``%>`` word-similarity prefilter can use
+    the index instead of scanning the corpus.
+    """
+    return Coalesce(
+        KeyTextTransform("title", "metadata"),
+        KeyTextTransform("name", "metadata"),
+        Value(""),
+        output_field=TextField(),
+    )
+
+
+def _fuzzy(base: QuerySet, q: str, *, limit: int) -> list[ContentItem]:
+    """The fuzzy channel: trigram word-similarity on the title, best first.
+
+    Recovers a title query with a typo. The ``__trigram_word_similar`` lookup is
+    the index-backed ``%>`` prefilter (fast); the annotated similarity then orders
+    the survivors. Empty when ``pg_trgm`` is unavailable — the channel just drops.
+    """
+    rows = (
+        base.annotate(title_text=_title_expr())
+        .filter(title_text__trigram_word_similar=q)
+        .annotate(tw_sim=TrigramWordSimilarity(q, "title_text"))
+        .order_by("-tw_sim", "id")[:limit]
+    )
+    return list(rows)
+
+
 def _channels(
     base: QuerySet, q: str, *, pool: int, query_vector: Sequence[float] | None
 ) -> tuple[dict[str, list[str]], dict[str, ContentItem], float | None]:
@@ -183,24 +220,27 @@ def _channels(
     channel name to its ordered list of content ids (best first), ``items_by_id``
     resolves any surfaced id back to its :class:`ContentItem`, and ``top_cosine``
     is the best semantic similarity seen (``None`` when the semantic channel did
-    not run) for the low-confidence cue. Phase 3 adds the fuzzy channel; the
-    fusion downstream is channel-agnostic, so every channel is just one more
-    ordered id list.
+    not run) for the low-confidence cue. The fusion downstream is
+    channel-agnostic, so every channel is just one more ordered id list.
     """
     items_by_id: dict[str, ContentItem] = {}
     channels: dict[str, list[str]] = {}
 
-    lexical = _lexical(base, q, limit=pool)
-    if lexical:
-        channels["lexical"] = [str(item.id) for item in lexical]
-        for item in lexical:
+    def add(name: str, items: list[ContentItem]) -> None:
+        if not items:
+            return
+        channels[name] = [str(item.id) for item in items]
+        for item in items:
             items_by_id.setdefault(str(item.id), item)
 
+    add("lexical", _lexical(base, q, limit=pool))
+
     semantic, top_cosine = _semantic(base, query_vector, limit=pool)
-    if semantic:
-        channels["semantic"] = [str(item.id) for item in semantic]
-        for item in semantic:
-            items_by_id.setdefault(str(item.id), item)
+    add("semantic", semantic)
+
+    if getattr(settings, "SEARCH_FUZZY_ENABLED", True):
+        fuzzy_pool = min(pool, getattr(settings, "SEARCH_FUZZY_POOL", 200))
+        add("fuzzy", _fuzzy(base, q, limit=fuzzy_pool))
 
     return channels, items_by_id, top_cosine
 
@@ -237,18 +277,47 @@ def _matched_on(channels: dict[str, list[str]]) -> dict[str, list[str]]:
     return matched
 
 
+def _deadline_of(item: ContentItem) -> date | None:
+    """A best-effort deadline date from whatever key the item's type carries.
+
+    Grants snapshot ``deadline_date``; fellowships nest ``deadline.date``; papers
+    have none. Unparseable/absent ⇒ ``None`` (sorted last by :func:`_order`).
+    """
+    meta = item.metadata or {}
+    raw = meta.get("deadline_date")
+    if not raw:
+        nested = meta.get("deadline")
+        if isinstance(nested, dict):
+            raw = nested.get("date")
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(str(raw)[:10])
+    except ValueError:
+        return None
+
+
 def _order(
     fused: dict[str, float], items_by_id: dict[str, ContentItem], sort: str
 ) -> list[str]:
     """Order the fused candidate ids by the requested sort mode (deterministic).
 
     ``relevance`` (default) sorts by fused score, breaking ties by recency then
-    id; ``date`` sorts by ``created_at`` (newest first). ``deadline`` is wired in
-    Phase 3 and falls back to relevance until then.
+    id; ``date`` sorts by ``created_at`` (newest first); ``deadline`` sorts by the
+    soonest deadline with items that have none placed last (relevance breaks ties).
     """
     ids = sorted(fused.keys())  # stable, deterministic base order
     if sort == "date":
         ids.sort(key=lambda c: items_by_id[c].created_at, reverse=True)
+        return ids
+    if sort == "deadline":
+        ids.sort(
+            key=lambda c: (
+                _deadline_of(items_by_id[c]) is None,  # nulls last
+                _deadline_of(items_by_id[c]) or date.max,  # soonest first
+                -fused[c],  # then most relevant
+            )
+        )
         return ids
     ids.sort(
         key=lambda c: (fused[c], items_by_id[c].created_at),

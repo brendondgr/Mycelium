@@ -7,12 +7,17 @@ pgvector suite does). The pure fusion/normalization cases always run.
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 from django.contrib.auth.models import User
 from django.db import connection
+from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.content import embeddings
 from apps.content.models import ContentItem, SavedOpportunity
+from apps.content.query_embedding import embed_query
 from apps.content.search import (
     DEFAULT_RRF_K,
     SearchFilters,
@@ -128,10 +133,10 @@ def test_exact_title_ranks_above_body_mention(pg) -> None:
     ids = [str(item.id) for item in result.items]
     assert ids[0] == str(title_hit.id)  # title (weight A) beats body (weight B)
     assert str(body_hit.id) in ids
-    # Every surfaced item is tagged with its fused score + matched channel.
+    # Every surfaced item is tagged with its fused score + matched channels.
     assert result.items[0]._search_score > 0
-    assert result.items[0]._search_matched_on == ["lexical"]
-    assert result.confidence == "ok"  # no semantic channel yet, never abstains
+    assert "lexical" in result.items[0]._search_matched_on
+    assert result.confidence == "ok"  # no semantic channel here, never abstains
 
 
 @pytest.mark.django_db
@@ -241,16 +246,100 @@ def test_low_confidence_cue_when_top_cosine_is_weak(pg, settings) -> None:
 
 @pytest.mark.django_db
 def test_fused_beats_either_single_signal(pg) -> None:
-    # `both` matches lexically (title) AND semantically (vector); the other two
-    # match only one channel each. Matching two channels must rank `both` first.
+    # `both` matches lexically (title) AND semantically (vector). The lexical-only
+    # item has no embedding (absent from the semantic channel); the semantic-only
+    # item's title shares no term with the query (absent from lexical/fuzzy). So
+    # only `both` matches multiple channels, and it must rank first.
     both = _paper("Quantum computing", embedding=[1.0, 0.0, 0.0])
-    _paper("Quantum theory", embedding=[0.0, 0.0, 1.0])  # lexical only
-    _paper("Unrelated topic", embedding=[1.0, 0.0, 0.0])  # semantic only
+    _paper("Quantum theory", embedding=None)  # lexical + fuzzy only
+    _paper("Photonics device", embedding=[1.0, 0.0, 0.0])  # semantic only
 
     result = run_search("quantum", query_vector=[1.0, 0.0, 0.0])
 
     assert str(result.items[0].id) == str(both.id)
-    assert set(result.items[0]._search_matched_on) == {"lexical", "semantic"}
+    assert {"lexical", "semantic"} <= set(result.items[0]._search_matched_on)
+
+
+# --------------------------------------------------------------------------- #
+# Fuzzy channel + sort modes + query-embedding cache
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.django_db
+def test_fuzzy_recovers_a_typo_when_lexical_cannot(pg) -> None:
+    # "Photosynthessis" shares no lexeme with "Photosynthesis", so lexical finds
+    # nothing; only the trigram channel can recover the item.
+    paper = _paper("Photosynthesis")
+
+    result = run_search("Photosynthessis")
+
+    assert [str(i.id) for i in result.items] == [str(paper.id)]
+    assert result.items[0]._search_matched_on == ["fuzzy"]  # lexical missed it
+
+
+@pytest.mark.django_db
+def test_deadline_sort_soonest_first_nulls_last(pg) -> None:
+    grant = ContentItem.objects.create(
+        type=ContentItem.Type.GRANT,
+        source="pivot",
+        external_id="q-grant",
+        metadata={"title": "Quantum grant", "deadline_date": "2026-09-01"},
+    )
+    fellowship = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois",
+        external_id="q-fellow",
+        metadata={"title": "Quantum fellowship", "deadline": {"date": "2026-07-15"}},
+    )
+    paper = _paper("Quantum computing paper")  # no deadline
+
+    result = run_search("quantum", sort="deadline")
+
+    ordered = [str(i.id) for i in result.items]
+    assert ordered == [str(fellowship.id), str(grant.id), str(paper.id)]
+
+
+@pytest.mark.django_db
+def test_date_sort_is_newest_first(pg) -> None:
+    older = _paper("Genomics one", ext="d1")
+    newer = _paper("Genomics two", ext="d2")
+    ContentItem.objects.filter(pk=older.pk).update(
+        created_at=timezone.now() - timedelta(days=3)
+    )
+
+    result = run_search("genomics", sort="date")
+
+    assert [str(i.id) for i in result.items] == [str(newer.id), str(older.id)]
+
+
+def test_embed_query_caches_and_skips_the_model(settings) -> None:
+    """A repeated query is served from cache — the model runs at most once."""
+    settings.CACHES = {
+        "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+        "search": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "search-test",
+        },
+    }
+    from django.core.cache import caches
+
+    caches["search"].clear()
+    calls = {"n": 0}
+
+    def fake(texts: list[str]) -> list[list[float]]:
+        calls["n"] += 1
+        return [[0.1, 0.2, 0.3] for _ in texts]
+
+    embeddings.set_embedder(fake)
+    try:
+        first = embed_query("protein folding")
+        second = embed_query("protein folding")
+    finally:
+        embeddings.reset_embedder()
+
+    assert list(first) == [0.1, 0.2, 0.3]
+    assert list(second) == [0.1, 0.2, 0.3]
+    assert calls["n"] == 1  # second call hit the cache
 
 
 # --------------------------------------------------------------------------- #
@@ -295,7 +384,7 @@ def test_endpoint_returns_shape_and_results(pg, client: APIClient) -> None:
     hit = body["results"][0]
     assert hit["type"] == "paper"
     assert hit["title"] == "Reinforcement learning for robotics"
-    assert hit["matched_on"] == ["lexical"]
+    assert "lexical" in hit["matched_on"]
     assert hit["saved"] is False
 
 

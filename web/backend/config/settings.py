@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import environ
@@ -241,7 +242,34 @@ SEARCH_CANDIDATE_POOL = env.int("SEARCH_CANDIDATE_POOL", default=500)
 SEARCH_PAGE_SIZE = env.int("SEARCH_PAGE_SIZE", default=20)
 SEARCH_MAX_PAGE_SIZE = env.int("SEARCH_MAX_PAGE_SIZE", default=50)
 SEARCH_LOW_CONFIDENCE_COSINE = env.float("SEARCH_LOW_CONFIDENCE_COSINE", default=0.35)
-SEARCH_TRIGRAM_THRESHOLD = env.float("SEARCH_TRIGRAM_THRESHOLD", default=0.3)
+# Fuzzy (pg_trgm) channel: enabled, with its own bounded pool (typo recovery is a
+# tail signal, so it need not scan as deep as the lexical/semantic pools).
+SEARCH_FUZZY_ENABLED = env.bool("SEARCH_FUZZY_ENABLED", default=True)
+SEARCH_FUZZY_POOL = env.int("SEARCH_FUZZY_POOL", default=200)
+
+# The query-embedding cache (apps.content.query_embedding). A repeated search
+# should skip the model call, so the normalized query → its vector is cached in
+# Redis. It lives in a *dedicated* Redis db (never the Celery broker/result dbs),
+# derived from REDIS_URL by swapping the db number so it is correct on both the
+# host and inside the compose network. Best-effort: a Redis outage degrades to
+# "embed every time", never an error.
+_REDIS_URL = env("REDIS_URL", default="redis://localhost:11550/0")
+SEARCH_CACHE_URL = env(
+    "SEARCH_CACHE_URL", default=re.sub(r"/\d+$", "/2", _REDIS_URL)
+)
+SEARCH_CACHE_TTL = env.int("SEARCH_CACHE_TTL", default=3600)
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+    "search": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": SEARCH_CACHE_URL,
+        "KEY_PREFIX": "mycelium_search",
+        "TIMEOUT": SEARCH_CACHE_TTL,
+    },
+}
 
 # Author-import sources (apps.accounts.intake). Keys are optional: OpenAlex works
 # without one (a polite `mailto` is encouraged), and Semantic Scholar's key only
