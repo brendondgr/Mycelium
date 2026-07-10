@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   fetchConferences,
@@ -19,6 +24,7 @@ import {
   fetchProfile,
   fetchProjectRecommendations,
   fetchProjects,
+  fetchSearch,
   fetchWatch,
 } from "@/lib/portal/client";
 import {
@@ -35,7 +41,43 @@ import {
   updateLabProfile,
   updateLabWatch,
 } from "@/lib/portal/mutations";
-import { PERSONAL_SLUG, type InvitationAction } from "@/lib/portal/types";
+import {
+  PERSONAL_SLUG,
+  type InvitationAction,
+  type SearchSort,
+} from "@/lib/portal/types";
+
+export type SearchInput = {
+  q: string;
+  types: string[];
+  sources: string[];
+  sort: SearchSort;
+};
+
+/**
+ * Query-first search, paginated by cursor. Disabled until the (trimmed) query is
+ * non-empty, so an empty box makes no request. The query key includes every
+ * filter so changing a facet or sort refetches from the first page; previous
+ * pages accumulate for the "load more" control.
+ */
+export function useSearchResults(input: SearchInput) {
+  const q = input.q.trim();
+  return useInfiniteQuery({
+    queryKey: ["portal", "search", q, input.types, input.sources, input.sort],
+    queryFn: ({ pageParam }) =>
+      fetchSearch({
+        q,
+        types: input.types,
+        sources: input.sources,
+        sort: input.sort,
+        cursor: pageParam,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    enabled: q.length > 0,
+    staleTime: 30_000,
+  });
+}
 
 /** The signed-in user's labs (workspace switcher). */
 export function useMyLabs() {

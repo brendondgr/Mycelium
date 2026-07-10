@@ -14,6 +14,8 @@ import type {
   Project,
   ProfileData,
   SavedDeadline,
+  SearchParams,
+  SearchResponse,
   TargetRecommendations,
   WatchData,
 } from "@/lib/portal/types";
@@ -175,4 +177,29 @@ export async function fetchProjectRecommendations(
     buildApiUrl(getPublicApiBase(), "projects", id, "recommendations"),
     "Could not load the project's recommendations.",
   );
+}
+
+/** Query-first search across the content corpus (GET /api/search/). */
+export async function fetchSearch(
+  params: SearchParams,
+): Promise<SearchResponse> {
+  const search = new URLSearchParams();
+  search.set("q", params.q);
+  for (const type of params.types ?? []) {
+    search.append("type", type);
+  }
+  for (const source of params.sources ?? []) {
+    search.append("source", source);
+  }
+  if (params.sort) {
+    search.set("sort", params.sort);
+  }
+  if (params.cursor) {
+    search.set("cursor", params.cursor);
+  }
+  if (params.limit) {
+    search.set("limit", String(params.limit));
+  }
+  const url = `${buildApiUrl(getPublicApiBase(), "search")}?${search.toString()}`;
+  return getJson<SearchResponse>(url, "Search failed. Please try again.");
 }

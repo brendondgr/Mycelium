@@ -9,6 +9,7 @@ import {
   GridIcon,
   MembersIcon,
   ReportIcon,
+  SearchIcon,
   SparkleIcon,
   TargetIcon,
 } from "@/components/portal/icons";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 const ITEMS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: "overview", label: "Overview", icon: <GridIcon size={15} /> },
   { key: "profile", label: "Profile", icon: <TargetIcon size={15} /> },
+  { key: "search", label: "Search", icon: <SearchIcon size={15} /> },
   { key: "daily", label: "Daily", icon: <ReportIcon size={15} /> },
   { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },
   { key: "opportunities", label: "Grants", icon: <BankIcon size={15} /> },

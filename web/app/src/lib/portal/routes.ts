@@ -8,6 +8,7 @@
 export type SectionKey =
   | "overview"
   | "profile"
+  | "search"
   | "daily"
   | "papers"
   | "opportunities"
@@ -23,6 +24,7 @@ export type SectionKey =
 export const SECTION_ROUTES: Record<SectionKey, string> = {
   overview: "/app/overview",
   profile: "/app/profile",
+  search: "/app/search",
   daily: "/app/daily",
   papers: "/app/research-papers",
   opportunities: "/app/grants",
@@ -48,6 +50,7 @@ export function sectionFromPathname(pathname: string): SectionKey {
   // Longest-prefix wins; "projects" covers both the list and detail routes.
   const keys: SectionKey[] = [
     "profile",
+    "search",
     "daily",
     "papers",
     "opportunities",
