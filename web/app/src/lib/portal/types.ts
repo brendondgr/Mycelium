@@ -234,6 +234,53 @@ export type TargetRecommendations = {
   interested: Record<string, InterestedMember[]>;
 };
 
+/**
+ * One paper shared into a project's team feed (from
+ * `/api/projects/<id>/feed/`). `shared_by`/`co_sharers` reuse the project
+ * member brief shape (`username`/`name`/`initials`) already defined above.
+ */
+export type ProjectFeedItem = {
+  content_id: string;
+  type: string;
+  source: string;
+  title: string;
+  abstract: string;
+  url: string;
+  venue: string;
+  year: number | null;
+  authors: string[];
+  share_id: string;
+  note: string;
+  share_source: string;
+  shared_by: ProjectMember;
+  shared_at: string;
+  /** Other members who separately shared the same content item. */
+  co_sharers: ProjectMember[];
+  /** Total number of times this item has been shared into the project. */
+  share_count: number;
+  seen: {
+    first_seen_at: string;
+    first_seen_via: string;
+    seen_by_count: number;
+  } | null;
+};
+
+/** A project's team-shared feed (from `/api/projects/<id>/feed/`). */
+export type ProjectFeed = {
+  count: number;
+  items: ProjectFeedItem[];
+};
+
+/** Result of resolving a pasted DOI/article link into a project share. */
+export type IngestLinkResult = {
+  share_id: string;
+  content_id: string;
+  created: boolean;
+  /** "no_abstract" means the paper was added but can't be matched on yet. */
+  embed_status: "ok" | "no_abstract";
+  title: string;
+};
+
 /** One saved deadline (from `/api/deadlines/`). */
 export type SavedDeadline = {
   id: string;

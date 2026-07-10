@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import { Avatar } from "@/components/portal/primitives/avatar";
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
@@ -16,9 +18,16 @@ import {
   displayStatus,
   statusPillTone,
 } from "@/components/portal/project-status";
-import { useProjectRecommendations } from "@/lib/portal/hooks";
+import {
+  useIngestProjectLink,
+  useProjectFeed,
+  useProjectRecommendations,
+  useShareToProject,
+} from "@/lib/portal/hooks";
+import { markProjectItemSeen } from "@/lib/portal/mutations";
 import type {
   InterestedMember,
+  ProjectFeedItem,
   ProjectMember,
   Suggestion,
   TargetRecommendations,
@@ -65,9 +74,10 @@ export function ProjectDetailSection() {
   const { projects, activeProjectId, openProjectsList } = usePortal();
 
   const project = projects.find((p) => p.id === activeProjectId);
-  // Hook must run every render (before the early return), so it takes the id
+  // Hooks must run every render (before the early return), so each takes the id
   // optionally and stays disabled until a project is selected.
   const recQuery = useProjectRecommendations(project?.id);
+  const feedQuery = useProjectFeed(project?.id);
 
   const backButton = (
     <button
@@ -105,6 +115,13 @@ export function ProjectDetailSection() {
     : 0;
   const miniRecs = rec ? topRecommendations(rec) : [];
   const hasFocus = project.focus.areas.length > 0;
+  const feedItems = feedQuery.data?.items ?? [];
+  // Sharing/ingesting is backend-gated on participation (a non-member 403s);
+  // the project's own membership flag lets the UI hide those affordances
+  // upfront instead of reimplementing the gate client-side. A personal project
+  // (scope "user") is only ever visible to its owner and carries no member row,
+  // so its owner collaborates too — matching the backend participant gate.
+  const canCollaborate = project.is_member || project.scope === "user";
 
   return (
     <div>
@@ -161,32 +178,53 @@ export function ProjectDetailSection() {
               Project feed
             </h2>
             <p className="mb-[14px] text-[12.5px] text-[var(--text-muted)]">
-              Articles linked directly to this project.
+              Papers the team has shared, plus articles you paste in directly.
             </p>
 
-            {/* Disabled DOI input row */}
-            <div className="flex gap-2">
-              <label className="flex flex-1 cursor-not-allowed items-center gap-2 rounded-[10px] border border-border bg-surface-alt px-[13px] py-2 opacity-60">
-                <LinkIcon size={15} className="shrink-0 text-[var(--text-muted)]" />
-                <input
-                  placeholder="Paste a DOI or article link…"
-                  disabled
-                  className="min-w-0 flex-1 border-none bg-transparent font-[inherit] text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] disabled:cursor-not-allowed"
-                  aria-label="Paste a DOI or article link (coming soon)"
-                />
-              </label>
-              <button
-                type="button"
-                disabled
-                title="Adding articles — coming soon"
-                className="shrink-0 rounded-[10px] bg-primary px-4 py-2 text-[13px] font-semibold text-[#fffdf8] opacity-50 cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                Add
-              </button>
-            </div>
+            <IngestLinkForm projectId={project.id} canIngest={canCollaborate} />
           </div>
 
-          {/* Mylo's recommended papers for this project's focus. */}
+          {/* The team's shared feed — the primary content of this card. */}
+          {feedQuery.isLoading ? (
+            <div className="py-8 text-center">
+              <p className="text-sm text-[var(--text-muted)]">
+                Loading the shared feed…
+              </p>
+            </div>
+          ) : feedQuery.isError ? (
+            <div className="py-8 text-center">
+              <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+                Couldn&apos;t load the shared feed.
+              </p>
+            </div>
+          ) : feedItems.length > 0 ? (
+            <ul className="divide-y divide-[var(--divider)]">
+              {feedItems.map((item) => (
+                <FeedItemRow
+                  key={item.share_id}
+                  item={item}
+                  projectId={project.id}
+                />
+              ))}
+            </ul>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+                No shared papers yet — paste a link above or share one of
+                Mylo&apos;s picks below.
+              </p>
+            </div>
+          )}
+
+          {/* Mylo's recommended papers for this project's focus, ready to push into the feed. */}
+          <div className="border-t border-[var(--divider)] px-5 pb-[8px] pt-[16px]">
+            <h3 className="mb-[3px] text-[13px] font-semibold text-[var(--text-primary)]">
+              Recommended for this project
+            </h3>
+            <p className="text-[11.5px] text-[var(--text-muted)]">
+              Mylo&apos;s picks for this project&apos;s focus.
+            </p>
+          </div>
           {recQuery.isLoading ? (
             <div className="py-8 text-center">
               <p className="text-sm text-[var(--text-muted)]">
@@ -200,6 +238,8 @@ export function ProjectDetailSection() {
                   key={paper.content_id}
                   paper={paper}
                   interested={rec?.interested?.[paper.content_id] ?? []}
+                  projectId={project.id}
+                  canShare={canCollaborate}
                 />
               ))}
             </ul>
@@ -329,13 +369,161 @@ function MatchChip({ match }: { match: number | null }) {
   );
 }
 
-/** One recommended paper in the project feed (title, source, Mylo's reason). */
+/**
+ * The paste-a-link row at the top of the project feed. Controlled input +
+ * submit that resolves a DOI/article link into a project share. Disabled
+ * (with a hint) when the caller isn't a project member, since the backend
+ * 403s an ingest attempt from a non-participant.
+ */
+function IngestLinkForm({
+  projectId,
+  canIngest,
+}: {
+  projectId: string;
+  canIngest: boolean;
+}) {
+  const ingest = useIngestProjectLink();
+  const [rawInput, setRawInput] = React.useState("");
+  const [result, setResult] = React.useState<{
+    title: string;
+    embedStatus: "ok" | "no_abstract";
+  } | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = rawInput.trim();
+    if (!value || !canIngest || ingest.isPending) {
+      return;
+    }
+    setError(null);
+    setResult(null);
+    ingest.mutate(
+      { id: projectId, rawInput: value },
+      {
+        onSuccess: (data) => {
+          setResult({ title: data.title, embedStatus: data.embed_status });
+          setRawInput("");
+        },
+        onError: (e2) => setError((e2 as Error).message),
+      },
+    );
+  };
+
+  return (
+    <form onSubmit={submit}>
+      <div className="flex gap-2">
+        <label
+          className={
+            canIngest
+              ? "flex flex-1 items-center gap-2 rounded-[10px] border border-border bg-surface-alt px-[13px] py-2 focus-within:ring-2 focus-within:ring-ring"
+              : "flex flex-1 cursor-not-allowed items-center gap-2 rounded-[10px] border border-border bg-surface-alt px-[13px] py-2 opacity-60"
+          }
+        >
+          <LinkIcon size={15} className="shrink-0 text-[var(--text-muted)]" />
+          <input
+            value={rawInput}
+            onChange={(e) => setRawInput(e.target.value)}
+            placeholder="Paste a DOI or article link…"
+            disabled={!canIngest || ingest.isPending}
+            aria-label="Paste a DOI or article link"
+            className="min-w-0 flex-1 border-none bg-transparent font-[inherit] text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] disabled:cursor-not-allowed"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={!canIngest || ingest.isPending || !rawInput.trim()}
+          title={canIngest ? undefined : "Join this project to add papers"}
+          className="shrink-0 rounded-[10px] bg-primary px-4 py-2 text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {ingest.isPending ? "Resolving…" : "Add"}
+        </button>
+      </div>
+      {!canIngest ? (
+        <p className="mt-1.5 text-[11.5px] text-[var(--text-muted)]">
+          Join this project to add papers.
+        </p>
+      ) : null}
+      {result ? (
+        <p className="mt-2 text-[12.5px] text-primary">
+          Added &ldquo;{result.title}&rdquo;
+          {result.embedStatus === "no_abstract"
+            ? " — no abstract found, so Mylo can't match on it yet."
+            : "."}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="mt-2 text-[12.5px] text-clay" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+/**
+ * A small action button that shares a recommendation into the project's team
+ * feed. Idle → pending ("Sharing…") → success ("Shared"); an error renders
+ * inline rather than blocking the row.
+ */
+function ShareToProjectButton({
+  projectId,
+  contentId,
+}: {
+  projectId: string;
+  contentId: string;
+}) {
+  const share = useShareToProject();
+  const [shared, setShared] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleClick = () => {
+    if (share.isPending) return;
+    setError(null);
+    share.mutate(
+      { id: projectId, contentId },
+      {
+        onSuccess: () => setShared(true),
+        onError: (e) => setError((e as Error).message),
+      },
+    );
+  };
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={share.isPending || shared}
+        aria-label={shared ? "Shared to the project feed" : "Share to the project feed"}
+        className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-[var(--text-secondary)] transition-colors hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {shared ? "Shared" : share.isPending ? "Sharing…" : "Share"}
+      </button>
+      {error ? (
+        <span className="text-[11px] text-clay" role="alert">
+          {error}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * One recommended paper in the project feed (title, source, Mylo's reason).
+ * When `canShare` and a `projectId` are given, a "Share" action pushes this
+ * pick into the team's shared feed.
+ */
 function PaperFeedRow({
   paper,
   interested,
+  projectId,
+  canShare,
 }: {
   paper: Suggestion;
   interested: InterestedMember[];
+  projectId?: string;
+  canShare?: boolean;
 }) {
   return (
     <li className="px-5 py-[14px]">
@@ -354,7 +542,15 @@ function PaperFeedRow({
             {paper.title}
           </span>
         )}
-        <MatchChip match={paper.match_percent} />
+        <div className="flex shrink-0 items-center gap-2">
+          <MatchChip match={paper.match_percent} />
+          {canShare && projectId ? (
+            <ShareToProjectButton
+              projectId={projectId}
+              contentId={paper.content_id}
+            />
+          ) : null}
+        </div>
       </div>
       {paper.source ? (
         <p className="mt-1 text-[11.5px] uppercase tracking-wide text-[var(--text-muted)]">
@@ -396,6 +592,115 @@ function InterestedRow({ members }: { members: InterestedMember[] }) {
         </span>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * One row in the team's shared feed: the paper, who shared it (+ their note),
+ * how many others also shared it, and how many members have seen it. Clicking
+ * the outbound link marks the item seen (fire-and-forget) so the seen count
+ * reflects real views.
+ */
+function FeedItemRow({
+  item,
+  projectId,
+}: {
+  item: ProjectFeedItem;
+  projectId: string;
+}) {
+  const markSeen = () => {
+    markProjectItemSeen(projectId, item.content_id).catch(() => {
+      // Best-effort view tracking — a failed ping shouldn't block navigation.
+    });
+  };
+
+  const meta = [
+    item.venue || null,
+    item.year ? String(item.year) : null,
+    item.authors.length > 0 ? item.authors.slice(0, 3).join(", ") : null,
+  ].filter(Boolean);
+
+  const otherSharers = item.co_sharers.slice(0, 3);
+
+  return (
+    <li className="px-5 py-[14px]">
+      <div className="flex items-start justify-between gap-3">
+        {item.url ? (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={markSeen}
+            className="text-[14px] font-semibold leading-snug text-[var(--text-primary)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {item.title}
+          </a>
+        ) : (
+          <span className="text-[14px] font-semibold leading-snug text-[var(--text-primary)]">
+            {item.title}
+          </span>
+        )}
+        {item.seen && item.seen.seen_by_count > 0 ? (
+          <Pill tone="neutral" className="shrink-0">
+            Seen by {item.seen.seen_by_count}
+          </Pill>
+        ) : null}
+      </div>
+
+      {item.source ? (
+        <p className="mt-1 text-[11.5px] uppercase tracking-wide text-[var(--text-muted)]">
+          {item.source}
+        </p>
+      ) : null}
+      {meta.length > 0 ? (
+        <p className="mt-1 text-[12px] text-[var(--text-muted)]">
+          {meta.join(" · ")}
+        </p>
+      ) : null}
+
+      <div className="mt-2.5 flex items-center gap-2">
+        <Avatar
+          initials={item.shared_by.initials}
+          seed={item.shared_by.username}
+          size={20}
+        />
+        <span className="text-[12.5px] font-medium text-[var(--text-secondary)]">
+          {item.shared_by.name}
+        </span>
+        <span className="text-[11px] text-[var(--text-muted)]">
+          shared {relativeTime(item.shared_at)}
+        </span>
+      </div>
+
+      {item.note ? (
+        <p className="mt-1.5 pl-[28px] text-[12.5px] leading-[1.5] text-[var(--text-secondary)]">
+          &ldquo;{item.note}&rdquo;
+        </p>
+      ) : null}
+
+      {item.share_count > 1 ? (
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pl-[28px]">
+          <span className="text-[11px] font-medium text-[var(--text-muted)]">
+            +{item.share_count - 1} also shared:
+          </span>
+          {otherSharers.map((m) => (
+            <span
+              key={m.username}
+              title={m.name}
+              className="inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-2 py-[2px] text-[11px] font-medium text-[var(--text-secondary)]"
+            >
+              <Avatar initials={m.initials} seed={m.username} size={16} />
+              {m.name}
+            </span>
+          ))}
+          {item.co_sharers.length > otherSharers.length ? (
+            <span className="text-[11px] text-[var(--text-muted)]">
+              +{item.co_sharers.length - otherSharers.length} more
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </li>
   );
 }
 

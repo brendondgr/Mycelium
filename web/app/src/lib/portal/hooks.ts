@@ -17,6 +17,7 @@ import {
   fetchMyLabs,
   fetchNotifications,
   fetchProfile,
+  fetchProjectFeed,
   fetchProjectRecommendations,
   fetchProjects,
   fetchWatch,
@@ -25,11 +26,13 @@ import {
   addProjectMember,
   createLab,
   createProject,
+  ingestProjectLink,
   inviteToLab,
   joinProject,
   leaveProject,
   respondToInvitation,
   saveOpportunity,
+  shareToProject,
   synthesizeLabProfile,
   unsaveOpportunity,
   updateLabProfile,
@@ -298,6 +301,47 @@ export function useProjectRecommendations(id?: string) {
     queryFn: () => fetchProjectRecommendations(id as string),
     enabled: Boolean(id),
     staleTime: 60_000,
+  });
+}
+
+/** A project's team-shared feed (papers members pasted in or pushed from Mylo's picks). */
+export function useProjectFeed(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "project-feed", id ?? "none"],
+    queryFn: () => fetchProjectFeed(id as string),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
+/** Share a content item into a project's team feed; refreshes the feed and recommendations. */
+export function useShareToProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; contentId: string; note?: string }) =>
+      shareToProject(input.id, input.contentId, input.note),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-feed", variables.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-recommendations", variables.id],
+      });
+    },
+  });
+}
+
+/** Resolve a pasted DOI/article link into a project share; refreshes the feed. */
+export function useIngestProjectLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; rawInput: string; note?: string }) =>
+      ingestProjectLink(input.id, input.rawInput, input.note),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-feed", variables.id],
+      });
+    },
   });
 }
 

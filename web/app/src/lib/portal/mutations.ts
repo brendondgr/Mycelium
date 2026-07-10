@@ -3,6 +3,7 @@
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import { ensureCsrfCookie, readCsrfToken } from "@/lib/auth-client";
 import type {
+  IngestLinkResult,
   InvitationAction,
   LabProfileData,
   MyLab,
@@ -146,6 +147,81 @@ export function addProjectMember(
     buildApiUrl(getPublicApiBase(), "projects", id, "members"),
     { username },
     "Could not add the member.",
+  );
+}
+
+/**
+ * Share a piece of content (usually one of Mylo's picks) into a project's
+ * team feed. A non-participant gets a 403, which the caller surfaces via the
+ * project's `is_member` flag rather than by parsing this error.
+ */
+export function shareToProject(
+  id: string,
+  contentId: string,
+  note?: string,
+): Promise<{ share_id: string; content_id: string }> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "shares"),
+    note ? { content_item: contentId, note } : { content_item: contentId },
+    "Could not share this to the project.",
+  );
+}
+
+/**
+ * Resolve a pasted DOI/article link into a project share. A resolvable-but-
+ * abstract-less paper still comes back 201 with `embed_status: "no_abstract"`.
+ * An unresolvable link 422s with `{ detail }`; `sendJson`'s generic error
+ * handling already surfaces a top-level `detail` string (same path as a DRF
+ * field error), so that friendly reason reaches the caller untouched.
+ */
+export function ingestProjectLink(
+  id: string,
+  rawInput: string,
+  note?: string,
+): Promise<IngestLinkResult> {
+  return sendJson<IngestLinkResult>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "ingest-link"),
+    note ? { raw_input: rawInput, note } : { raw_input: rawInput },
+    "Couldn't resolve that link. Try a different DOI or URL.",
+  );
+}
+
+/** Record that the caller viewed a project feed item (fire-and-forget). */
+export function markProjectItemSeen(
+  id: string,
+  contentId: string,
+): Promise<{ content_id: string; first_seen_via: string; seen_by_count: number }> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "items", contentId, "seen"),
+    undefined,
+    "Could not record that view.",
+  );
+}
+
+/** Engagement actions the events endpoint accepts for a project content item. */
+export type ProjectEventAction =
+  | "view"
+  | "save"
+  | "share"
+  | "thumbs_up"
+  | "thumbs_down"
+  | "dismiss"
+  | "open_external";
+
+/** Record an engagement event for a project content item. */
+export function recordProjectEvent(
+  id: string,
+  contentId: string,
+  action: ProjectEventAction,
+): Promise<{ content_id: string; action: string; weight: number }> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "events"),
+    { content_item: contentId, action },
+    "Could not record that action.",
   );
 }
 

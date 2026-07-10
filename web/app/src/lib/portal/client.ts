@@ -13,6 +13,7 @@ import type {
   OpportunityFeed,
   Project,
   ProfileData,
+  ProjectFeed,
   SavedDeadline,
   TargetRecommendations,
   WatchData,
@@ -174,5 +175,13 @@ export async function fetchProjectRecommendations(
   return getJson<TargetRecommendations>(
     buildApiUrl(getPublicApiBase(), "projects", id, "recommendations"),
     "Could not load the project's recommendations.",
+  );
+}
+
+/** A project's team-shared feed — papers members pasted in or pushed from Mylo's picks. */
+export async function fetchProjectFeed(id: string): Promise<ProjectFeed> {
+  return getJson<ProjectFeed>(
+    buildApiUrl(getPublicApiBase(), "projects", id, "feed"),
+    "Could not load the project's shared feed.",
   );
 }
