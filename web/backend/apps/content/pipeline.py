@@ -420,8 +420,10 @@ def recommend_for_target(
             emit=emit,
             created_on=gathered_on,
         )
-    elif target.embedding_text.strip():
-        vector = embeddings.embed_text(target.embedding_text)
+    elif target.stored_vector or target.embedding_text.strip():
+        # A project with a recomputed team profile (Feature D) carries its blended
+        # team vector on the target; prefer it over embedding the focus text.
+        vector = target.stored_vector or embeddings.embed_text(target.embedding_text)
         if vector is None:
             emit("no embedder; stopping")
             return RunResult(key, "no_embedder", note="no embedder available")

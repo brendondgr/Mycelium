@@ -73,4 +73,20 @@ urlpatterns = [
     path("deadlines", views.DeadlinesView.as_view()),
     path("notifications/", views.NotificationsView.as_view(), name="notifications"),
     path("notifications", views.NotificationsView.as_view()),
+    # Cross-member suggestions (Feature F): the in-app fan-out feed + dismiss.
+    path(
+        "suggestions/",
+        views.MemberSuggestionsView.as_view(),
+        name="member-suggestions",
+    ),
+    path("suggestions", views.MemberSuggestionsView.as_view()),
+    path(
+        "suggestions/<uuid:pk>/dismiss/",
+        views.MemberSuggestionDismissView.as_view(),
+        name="member-suggestion-dismiss",
+    ),
+    path(
+        "suggestions/<uuid:pk>/dismiss",
+        views.MemberSuggestionDismissView.as_view(),
+    ),
 ]

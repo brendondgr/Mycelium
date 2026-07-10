@@ -13,7 +13,14 @@ from apps.accounts.permissions import user_has_lab_access
 from apps.core.people import display_name, initials
 from apps.research.models import Project
 
-from .models import ContentItem, RelevanceScore, SavedOpportunity
+from .collaboration import record_event
+from .models import (
+    ContentItem,
+    MemberSuggestion,
+    RelevanceEvent,
+    RelevanceScore,
+    SavedOpportunity,
+)
 from .onboarding_match import UnknownArea, onboarding_match_area
 from .serializers import (
     ConferenceSerializer,
@@ -513,3 +520,79 @@ class NotificationsView(APIView):
 def _alert_message(title: str, days: int) -> str:
     when = "due today" if days == 0 else f"{days} day{'s' if days != 1 else ''} left"
     return f"“{title}” — less than a week left ({when})."
+
+
+# --------------------------------------------------------------------------- #
+# Cross-member suggestions (Feature F — the in-app fan-out surface)
+# --------------------------------------------------------------------------- #
+
+
+def _suggestion_payload(suggestion: MemberSuggestion) -> dict:
+    """One in-app suggestion for the bell / Suggested-for-you list."""
+    meta = (suggestion.content.metadata or {}) if suggestion.content_id else {}
+    share = suggestion.origin_share
+    shared_by = share.shared_by if (share and share.shared_by_id) else None
+    return {
+        "id": str(suggestion.id),
+        "content_id": str(suggestion.content_id),
+        "title": meta.get("title") or meta.get("name") or "Untitled",
+        "url": meta.get("pdf_url")
+        or (suggestion.content.source_url if suggestion.content_id else "")
+        or "",
+        "score": round(suggestion.score, 3),
+        "match_percent": round(suggestion.score * 100),
+        "project": {
+            "id": str(suggestion.project_id),
+            "name": suggestion.project.name,
+        },
+        "shared_by": (
+            {
+                "username": shared_by.get_username(),
+                "name": display_name(shared_by),
+                "initials": initials(shared_by),
+            }
+            if shared_by
+            else None
+        ),
+        "created_at": suggestion.created_at.isoformat(),
+    }
+
+
+class MemberSuggestionsView(APIView):
+    """Papers teammates shared that match the signed-in user (Feature F, in-app).
+
+    Only ``suggested=True`` (above-floor) and undismissed rows — the abstentions are
+    persisted for audit but never surfaced.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        suggestions = (
+            MemberSuggestion.objects.filter(
+                user=request.user, suggested=True, dismissed=False
+            )
+            .select_related("content", "project", "origin_share__shared_by")
+            .order_by("-created_at")
+        )
+        items = [_suggestion_payload(s) for s in suggestions]
+        return Response({"count": len(items), "items": items})
+
+
+class MemberSuggestionDismissView(APIView):
+    """Dismiss an in-app suggestion (records a ``dismiss`` engagement event)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        suggestion = get_object_or_404(MemberSuggestion, pk=pk, user=request.user)
+        if not suggestion.dismissed:
+            suggestion.dismissed = True
+            suggestion.save(update_fields=["dismissed"])
+            record_event(
+                request.user,
+                suggestion.content,
+                RelevanceEvent.Action.DISMISS,
+                project=suggestion.project,
+            )
+        return Response({"id": str(suggestion.id), "dismissed": True})

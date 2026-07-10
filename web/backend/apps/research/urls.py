@@ -112,4 +112,45 @@ urlpatterns = [
         views.ProjectEventView.as_view(),
         name="project-event-no-slash",
     ),
+    # Shared collections / reading lists (Feature C).
+    path(
+        "projects/<uuid:pk>/collections/",
+        views.ProjectCollectionsView.as_view(),
+        name="project-collections",
+    ),
+    path(
+        "projects/<uuid:pk>/collections",
+        views.ProjectCollectionsView.as_view(),
+        name="project-collections-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/collections/<uuid:cid>/",
+        views.ProjectCollectionDetailView.as_view(),
+        name="project-collection-detail",
+    ),
+    path(
+        "projects/<uuid:pk>/collections/<uuid:cid>",
+        views.ProjectCollectionDetailView.as_view(),
+        name="project-collection-detail-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/collections/<uuid:cid>/items/",
+        views.ProjectCollectionItemsView.as_view(),
+        name="project-collection-items",
+    ),
+    path(
+        "projects/<uuid:pk>/collections/<uuid:cid>/items",
+        views.ProjectCollectionItemsView.as_view(),
+        name="project-collection-items-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/collections/<uuid:cid>/items/<uuid:content_id>/",
+        views.ProjectCollectionItemDetailView.as_view(),
+        name="project-collection-item-detail",
+    ),
+    path(
+        "projects/<uuid:pk>/collections/<uuid:cid>/items/<uuid:content_id>",
+        views.ProjectCollectionItemDetailView.as_view(),
+        name="project-collection-item-detail-no-slash",
+    ),
 ]

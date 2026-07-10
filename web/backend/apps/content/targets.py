@@ -41,6 +41,10 @@ class MatchTarget:
     profile_meta: dict
     persist_kwargs: dict
     embedding_text: str
+    # A precomputed query vector to use instead of embedding ``embedding_text``.
+    # Set for projects with a recomputed team profile (Feature D) — the blend of
+    # declared focus + members + engagement stored on ``Project.embedding``.
+    stored_vector: list[float] | None = None
 
 
 def _clean(value: Sequence | None) -> list[str]:
@@ -106,9 +110,40 @@ def target_for_lab(lab) -> MatchTarget:
     )
 
 
+def _merge_team_interests(project, interests: dict) -> dict:
+    """Broaden a project's interests with its recomputed team profile (Feature D).
+
+    A project's declared focus leads; its members' aggregated areas/keywords (from
+    :class:`~apps.content.models.ProjectProfile`) are appended and deduped, so the
+    fusion retrieval reflects the whole team, not just the declared focus. A no-op
+    until the team profile has been recomputed.
+    """
+    from .models import ProjectProfile
+
+    # An unsaved project can't have a team profile yet — skip the query so building
+    # a target stays pure for callers that never touch the DB.
+    if getattr(project, "_state", None) is not None and project._state.adding:
+        return interests
+    team = (
+        ProjectProfile.objects.filter(project=project)
+        .values_list("interests", flat=True)
+        .first()
+    )
+    if not team:
+        return interests
+    merged = dict(interests)
+    merged["areas"] = _clean(
+        [*(interests.get("areas") or []), *(team.get("areas") or [])]
+    )[:12]
+    merged["keywords"] = _clean(
+        [*(interests.get("keywords") or []), *(team.get("keywords") or [])]
+    )[:32]
+    return merged
+
+
 def target_for_project(project) -> MatchTarget:
-    """A project: the focus in its ``goals``, scored under ``target_project``."""
-    interests = project_interests(project)
+    """A project: focus in ``goals`` + its team signal, under ``target_project``."""
+    interests = _merge_team_interests(project, project_interests(project))
     return MatchTarget(
         kind="project",
         key=str(project.id),
@@ -120,6 +155,11 @@ def target_for_project(project) -> MatchTarget:
             statement=interests.get("statement", ""),
             areas=interests.get("areas", []),
             keywords=interests.get("keywords", []),
+        ),
+        # If the project's team profile has been recomputed (Feature D), its blended
+        # vector lives on Project.embedding — prefer it over embedding the focus text.
+        stored_vector=(
+            list(project.embedding) if project.embedding is not None else None
         ),
     )
 

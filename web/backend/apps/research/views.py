@@ -1,3 +1,4 @@
+import logging
 from collections import OrderedDict
 
 from django.contrib.auth.models import User
@@ -22,12 +23,17 @@ from apps.content.collaboration import (
     record_event,
     share_to_project,
 )
+from apps.content.fanout import trigger_fanout
 from apps.content.models import (
+    Collection,
+    CollectionItem,
     ContentItem,
     ProjectItemSeen,
+    ProjectProfile,
     ProjectShare,
     RelevanceEvent,
 )
+from apps.content.team_profile import recompute_project_profile
 from apps.core.people import display_name, initials
 
 from .models import Project, ProjectMember
@@ -36,6 +42,31 @@ from .serializers import (
     ProjectSerializer,
     ProjectUpdateSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _maybe_recompute_team(project: "Project") -> None:
+    """Refresh a project's team signal after a membership change (Feature D).
+
+    Inline and best-effort — a recompute failure must never block join/leave/add.
+    Uses stored member vectors only (no on-demand embedding) to keep the request
+    fast; the nightly task / command does the fuller recompute.
+    """
+    from django.conf import settings
+
+    if not settings.TEAM_PROFILE_AUTORECOMPUTE:
+        return
+    try:
+        recompute_project_profile(
+            project,
+            reason=ProjectProfile.Reason.MEMBERSHIP_CHANGE,
+            embed_missing=False,
+        )
+    except Exception:  # pragma: no cover - defensive; membership already changed
+        logger.warning(
+            "team-profile recompute failed for project %s", project.id, exc_info=True
+        )
 
 
 class ProjectListView(ListCreateAPIView):
@@ -191,6 +222,7 @@ class ProjectJoinView(APIView):
                 target_id=str(project.id),
                 metadata={"name": project.name},
             )
+            _maybe_recompute_team(project)
         return Response(
             ProjectSerializer(project, context={"request": request}).data
         )
@@ -201,7 +233,9 @@ class ProjectLeaveView(APIView):
 
     def post(self, request: Request, pk) -> Response:
         project = get_object_or_404(Project, pk=pk)
-        ProjectMember.objects.filter(project=project, user=request.user).delete()
+        deleted, _ = ProjectMember.objects.filter(
+            project=project, user=request.user
+        ).delete()
         record_audit_event(
             actor=request.user,
             action="project.leave",
@@ -209,6 +243,8 @@ class ProjectLeaveView(APIView):
             target_id=str(project.id),
             metadata={"name": project.name},
         )
+        if deleted:
+            _maybe_recompute_team(project)
         return Response(
             ProjectSerializer(project, context={"request": request}).data
         )
@@ -235,7 +271,11 @@ class ProjectMembersView(APIView):
             user=target, lab=project.scope_lab
         ).exists():
             raise ValidationError("That person is not a member of this lab.")
-        ProjectMember.objects.get_or_create(project=project, user=target)
+        _, created = ProjectMember.objects.get_or_create(
+            project=project, user=target
+        )
+        if created:
+            _maybe_recompute_team(project)
         return Response(
             ProjectSerializer(project, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
@@ -376,6 +416,7 @@ class ProjectShareView(APIView):
             note=str(request.data.get("note", "")),
             source=source,
         )
+        trigger_fanout(share)  # Feature F: notify members this may be relevant to
         record_audit_event(
             actor=request.user,
             action="project.share",
@@ -426,6 +467,7 @@ class ProjectIngestLinkView(APIView):
             note=str(request.data.get("note", "")),
             source=ProjectShare.Source.EXTERNAL_LINK,
         )
+        trigger_fanout(share)  # Feature F: notify members this may be relevant to
         record_audit_event(
             actor=request.user,
             action="project.ingest_link",
@@ -489,3 +531,146 @@ class ProjectEventView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+# --------------------------------------------------------------------------- #
+# Shared collections / reading lists (Feature C)
+# --------------------------------------------------------------------------- #
+
+
+def _collection_brief(collection: Collection) -> dict:
+    return {
+        "id": str(collection.id),
+        "name": collection.name,
+        "description": collection.description,
+        "is_archived": collection.is_archived,
+        "item_count": collection.items.count(),
+        "created_by": (
+            _member_brief(collection.created_by) if collection.created_by_id else None
+        ),
+        "created_at": collection.created_at.isoformat(),
+    }
+
+
+def _collection_detail(collection: Collection) -> dict:
+    items = [
+        {
+            **_paper_fields(item.content),
+            "item_id": str(item.id),
+            "note": item.note,
+            "added_by": _member_brief(item.added_by) if item.added_by_id else None,
+            "added_at": item.added_at.isoformat(),
+        }
+        for item in collection.items.select_related("content", "added_by")
+    ]
+    return {**_collection_brief(collection), "items": items}
+
+
+def _get_project_collection(request, pk, cid, *, require_participant=False):
+    project = _visible_project(request, pk)
+    if require_participant and not _user_is_project_participant(request.user, project):
+        raise PermissionDenied("Join this project to change its collections.")
+    collection = get_object_or_404(Collection, pk=cid, project=project)
+    return project, collection
+
+
+class ProjectCollectionsView(APIView):
+    """List a project's collections, or create one (Feature C)."""
+
+    def get(self, request: Request, pk) -> Response:
+        project = _visible_project(request, pk)
+        qs = Collection.objects.filter(project=project)
+        if request.query_params.get("archived") not in ("1", "true", "yes"):
+            qs = qs.filter(is_archived=False)
+        collections = [_collection_brief(c) for c in qs]
+        return Response({"count": len(collections), "items": collections})
+
+    def post(self, request: Request, pk) -> Response:
+        project = _visible_project(request, pk)
+        if not _user_is_project_participant(request.user, project):
+            raise PermissionDenied("Join this project to create a collection.")
+        name = str(request.data.get("name", "")).strip()
+        if not name:
+            raise ValidationError({"name": ["A collection needs a name."]})
+        collection = Collection.objects.create(
+            project=project,
+            name=name[:200],
+            description=str(request.data.get("description", "")),
+            created_by=request.user,
+        )
+        record_audit_event(
+            actor=request.user,
+            action="project.collection_create",
+            target_type="project",
+            target_id=str(project.id),
+            metadata={"collection_id": str(collection.id), "name": collection.name},
+        )
+        return Response(_collection_detail(collection), status=status.HTTP_201_CREATED)
+
+
+class ProjectCollectionDetailView(APIView):
+    """Read one collection (with items) or rename / archive it (Feature C)."""
+
+    def get(self, request: Request, pk, cid) -> Response:
+        _project, collection = _get_project_collection(request, pk, cid)
+        return Response(_collection_detail(collection))
+
+    def patch(self, request: Request, pk, cid) -> Response:
+        _project, collection = _get_project_collection(
+            request, pk, cid, require_participant=True
+        )
+        if "name" in request.data:
+            name = str(request.data.get("name", "")).strip()
+            if not name:
+                raise ValidationError({"name": ["A collection needs a name."]})
+            collection.name = name[:200]
+        if "description" in request.data:
+            collection.description = str(request.data.get("description", ""))
+        if "is_archived" in request.data:
+            collection.is_archived = bool(request.data.get("is_archived"))
+        collection.save()
+        return Response(_collection_detail(collection))
+
+
+class ProjectCollectionItemsView(APIView):
+    """Add a content item to a collection (Feature C).
+
+    A duplicate add is a no-op (unique constraint) returning 200, not 500. Adding
+    from a digest item also marks it seen and logs a ``save`` engagement event.
+    """
+
+    def post(self, request: Request, pk, cid) -> Response:
+        project, collection = _get_project_collection(
+            request, pk, cid, require_participant=True
+        )
+        content = _get_content(request)
+        _item, created = CollectionItem.objects.get_or_create(
+            collection=collection,
+            content=content,
+            defaults={
+                "added_by": request.user,
+                "note": str(request.data.get("note", "")),
+            },
+        )
+        mark_seen(project, content, ProjectItemSeen.Via.SHARE, user=request.user)
+        if created:
+            record_event(
+                request.user, content, RelevanceEvent.Action.SAVE, project=project
+            )
+        return Response(
+            _collection_detail(collection),
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class ProjectCollectionItemDetailView(APIView):
+    """Remove a content item from a collection (Feature C)."""
+
+    def delete(self, request: Request, pk, cid, content_id) -> Response:
+        _project, collection = _get_project_collection(
+            request, pk, cid, require_participant=True
+        )
+        CollectionItem.objects.filter(
+            collection=collection, content_id=content_id
+        ).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

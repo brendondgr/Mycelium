@@ -182,6 +182,14 @@ CELERY_BEAT_SCHEDULE = {
             hour=env.int("CELERY_DAILY_OPPORTUNITIES_HOUR", default=1), minute=0
         ),
     },
+    # Feature D: recompute every project's team-relevance signal nightly, so
+    # engagement that accrued during the day shapes the next day's recommendations.
+    "recompute-project-profiles": {
+        "task": "apps.content.recompute_project_profiles",
+        "schedule": crontab(
+            hour=env.int("CELERY_TEAM_PROFILE_HOUR", default=3), minute=0
+        ),
+    },
 }
 
 # How many per-(user, area) grant/conference LLM scoring calls run concurrently
@@ -239,6 +247,28 @@ RELEVANCE_EVENT_WEIGHTS = {
     "dismiss": env.float("RELEVANCE_WEIGHT_DISMISS", default=-0.3),
     "thumbs_down": env.float("RELEVANCE_WEIGHT_THUMBS_DOWN", default=-0.7),
 }
+
+# Project team-relevance signal (apps.content.team_profile — Feature D). The
+# recomputed team vector blends the project's declared focus, its members' interest
+# vectors, and their recent weighted engagement (each normalized before fusion);
+# it is written to Project.embedding for the recommendation pipeline to read.
+# Engagement decays with a half-life so stale clicks fade. Weights are relative.
+PROJECT_PROFILE_FOCUS_WEIGHT = env.float("PROJECT_PROFILE_FOCUS_WEIGHT", default=1.0)
+PROJECT_PROFILE_MEMBER_WEIGHT = env.float("PROJECT_PROFILE_MEMBER_WEIGHT", default=0.6)
+PROJECT_PROFILE_ENGAGEMENT_WEIGHT = env.float(
+    "PROJECT_PROFILE_ENGAGEMENT_WEIGHT", default=0.4
+)
+PROJECT_PROFILE_HALFLIFE_DAYS = env.float("PROJECT_PROFILE_HALFLIFE_DAYS", default=90.0)
+
+# Cross-member relevance fan-out (apps.content.fanout — Feature F). A shared paper
+# is suggested to a member when the normalized cosine between the item and the
+# member's profile clears this floor; below-floor rows persist as audited
+# abstentions, never sent. ``FANOUT_ASYNC`` routes the trigger through Celery
+# instead of running inline in the share request (needs a running worker).
+FANOUT_COSINE_FLOOR = env.float("FANOUT_COSINE_FLOOR", default=0.35)
+FANOUT_ASYNC = env.bool("FANOUT_ASYNC", default=False)
+# Recompute a project's team profile immediately when its membership changes.
+TEAM_PROFILE_AUTORECOMPUTE = env.bool("TEAM_PROFILE_AUTORECOMPUTE", default=True)
 
 # Author-import sources (apps.accounts.intake). Keys are optional: OpenAlex works
 # without one (a polite `mailto` is encouraged), and Semantic Scholar's key only

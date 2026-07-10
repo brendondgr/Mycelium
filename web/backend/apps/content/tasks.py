@@ -139,3 +139,56 @@ def run_daily_opportunities(
     finally:
         runlog.close()
     return batch.as_dict()
+
+
+@shared_task(name="apps.content.fanout_relevance")
+def fanout_relevance(share_id: str) -> dict:
+    """Score a shared item against each other project member (Feature F).
+
+    The async arm of the cross-member fan-out (used when ``FANOUT_ASYNC`` is on);
+    embeds any member whose profile vector is missing.
+    """
+    from .fanout import fan_out_relevance
+    from .models import ProjectShare
+
+    share = (
+        ProjectShare.objects.filter(id=share_id)
+        .select_related("project", "content")
+        .first()
+    )
+    if share is None:
+        return {"error": "share_not_found", "share_id": str(share_id)}
+    return fan_out_relevance(share, embed_missing=True)
+
+
+@shared_task(name="apps.content.recompute_project_profiles")
+def recompute_project_profiles(project_ids: list[str] | None = None) -> dict:
+    """Recompute team profiles for the given projects, or all of them (Feature D).
+
+    The nightly / on-demand batch arm of the team signal; embeds members whose
+    profile vector is missing. A failure for one project never sinks the run.
+    """
+    from apps.research.models import Project
+
+    from .models import ProjectProfile
+    from .team_profile import recompute_project_profile
+
+    queryset = Project.objects.all()
+    if project_ids:
+        queryset = queryset.filter(id__in=project_ids)
+    done = 0
+    for project in queryset.iterator():
+        try:
+            recompute_project_profile(
+                project,
+                reason=ProjectProfile.Reason.ENGAGEMENT,
+                embed_missing=True,
+            )
+            done += 1
+        except Exception:  # pragma: no cover - one bad project never sinks the run
+            logger.warning(
+                "team-profile recompute failed for project %s",
+                project.id,
+                exc_info=True,
+            )
+    return {"recomputed": done}

@@ -405,3 +405,173 @@ class RelevanceEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} {self.action} {self.content} ({self.weight:+.2f})"
+
+
+class Collection(models.Model):
+    """A shared reading list within a project (briefing Feature C).
+
+    A named, ordered-ish bucket of content items a project curates together —
+    "papers for the Aim 2 review", "methods to try". Archiving hides it from the
+    default list but keeps its items for audit.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        "research.Project",
+        on_delete=models.CASCADE,
+        related_name="collections",
+    )
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_collections",
+    )
+    is_archived = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["project", "is_archived"])]
+
+    def __str__(self) -> str:
+        return f"{self.name} (project {self.project_id})"
+
+
+class CollectionItem(models.Model):
+    """One content item in a shared collection (briefing Feature C).
+
+    ``unique_together (collection, content)`` keeps a paper from being added twice —
+    a duplicate add is a no-op, not an error.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    collection = models.ForeignKey(
+        Collection,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    content = models.ForeignKey(
+        ContentItem,
+        on_delete=models.CASCADE,
+        related_name="collection_items",
+    )
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="added_collection_items",
+    )
+    note = models.TextField(blank=True, default="")
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-added_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["collection", "content"],
+                name="content_collection_item_unique",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.content} in {self.collection_id}"
+
+
+class ProjectProfile(models.Model):
+    """A project's recomputed team-relevance signal (briefing Feature D).
+
+    Separate from any individual :class:`~apps.accounts.models.Profile` — the team
+    signal updates the *project*, never the member (project principle). The derived
+    vector itself is written to ``research.Project.embedding`` (previously unused) so
+    the recommendation pipeline can read it as the project's query vector; this row
+    carries the aggregated interest terms and the recompute bookkeeping.
+    """
+
+    class Reason(models.TextChoices):
+        MEMBERSHIP_CHANGE = "membership_change", "Membership change"
+        ENGAGEMENT = "engagement", "Engagement"
+        MANUAL = "manual", "Manual"
+
+    project = models.OneToOneField(
+        "research.Project",
+        on_delete=models.CASCADE,
+        related_name="team_profile",
+    )
+    interests = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Aggregated / deduped interest terms from members + engagement.",
+    )
+    last_recomputed = models.DateTimeField(null=True, blank=True)
+    recompute_reason = models.CharField(
+        max_length=20, choices=Reason.choices, blank=True, default=""
+    )
+
+    def __str__(self) -> str:
+        return f"team profile for project {self.project_id}"
+
+
+class MemberSuggestion(models.Model):
+    """A shared item scored against one member's profile (briefing Feature F).
+
+    Written by the cross-member fan-out when a paper enters a project: for each
+    other member, the item is scored (normalized cosine, never an RRF rank) against
+    their individual profile. ``suggested=True`` rows are delivered in-app; below-floor
+    rows are still persisted (``suggested=False``) as audited abstentions. One row per
+    ``(user, content)`` — a member is never notified twice for the same paper.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="member_suggestions",
+    )
+    project = models.ForeignKey(
+        "research.Project",
+        on_delete=models.CASCADE,
+        related_name="member_suggestions",
+    )
+    content = models.ForeignKey(
+        ContentItem,
+        on_delete=models.CASCADE,
+        related_name="member_suggestions",
+    )
+    origin_share = models.ForeignKey(
+        ProjectShare,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="suggestions",
+    )
+    score = models.FloatField(help_text="Normalized cosine, member profile vs item.")
+    suggested = models.BooleanField(
+        help_text=(
+            "True = delivered; False = below-floor abstention, persisted for audit."
+        )
+    )
+    floor_used = models.FloatField(
+        help_text="The cosine floor applied at decision time."
+    )
+    delivered_via = models.CharField(max_length=20, blank=True, default="")
+    dismissed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content"],
+                name="content_member_suggestion_unique",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "suggested", "dismissed"]),
+        ]
+
+    def __str__(self) -> str:
+        verb = "suggest" if self.suggested else "abstain"
+        return f"{verb} {self.content} → {self.user} ({self.score:.3f})"

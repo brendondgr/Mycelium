@@ -125,7 +125,88 @@ Activate the **already-present disabled UI** in `project-detail-section.tsx`:
 - Non-participant blocked from share/ingest/event (403); non-visible blocked from feed.
 - No individual `Profile` is mutated; no `RelevanceScore` semantics changed.
 
-## Explicit exclusions
+## Explicit exclusions (Phase 1)
 
-Collections (C), team-profile recompute (D full), cross-member fan-out + notifications (F),
-Slack/Discord, Neo4j/graph signals. All left with clean seams per the brief's graph-later note.
+Slack/Discord, Neo4j/graph signals. (Collections, team-profile recompute, and
+cross-member fan-out moved into Phase 2 below.)
+
+---
+
+# Phase 2 — Collections (C), Team signal (D), Fan-out (F)
+
+**Status:** in progress · same branch `projects-collab`, on top of Phase 1.
+All Project-scoped, all in-app, reusing `ContentItem` embeddings (384-dim) + `RelevanceScore`.
+
+## Feature C — Shared collections / reading lists
+
+**Models (`content` app):**
+- `Collection` — `project`(FK), `name`, `description`, `created_by`(User), `is_archived`
+  (default False), `created_at`.
+- `CollectionItem` — `collection`(FK), `content`(FK ContentItem), `added_by`(User),
+  `note`, `added_at`. `unique_together (collection, content)` (no dupes → 200, not 500).
+
+**Endpoints (research app, project-scoped):**
+- `GET/POST /api/projects/<id>/collections/` — list (excludes archived by default) / create.
+- `GET/PATCH /api/projects/<id>/collections/<cid>/` — detail (with items) / rename / archive.
+- `POST /api/projects/<id>/collections/<cid>/items/` `{content_item, note?}` — add;
+  also `mark_seen(via='share')` + `record_event('save')`.
+- `DELETE /api/projects/<id>/collections/<cid>/items/<content_id>/` — remove.
+Participant gate for writes, visible gate for reads. Archiving hides but preserves items.
+
+## Feature D — Team relevance signal (project profile recompute)
+
+**Model `ProjectProfile`** (OneToOne → Project; **never** touches individual `Profile`):
+`interests`(JSON aggregated terms), `embedding`(VectorField 384), `last_recomputed`,
+`recompute_reason` (membership_change | engagement | manual).
+
+**Service `recompute_project_profile(project, reason)`:**
+1. Member interest vectors: each member's `Profile.embedding`, or embed their canonical
+   interest text on demand when null.
+2. Engagement vectors: `ContentItem.embedding` for items members engaged with, weighted by
+   `RelevanceEvent.weight × time-decay` (90-day half-life, `PROJECT_PROFILE_HALFLIFE_DAYS`).
+   Negative-weight actions (dismiss/thumbs_down) subtract.
+3. **Normalize every vector before combining** (project principle). Weighted centroid of
+   members (`PROJECT_PROFILE_MEMBER_WEIGHT`, default 0.6) + engagement
+   (`PROJECT_PROFILE_ENGAGEMENT_WEIGHT`, default 0.4). Aggregate interest terms too.
+4. Stamp `last_recomputed` / `recompute_reason`.
+
+**Triggers:** membership add/remove (immediate, from join/leave/members endpoints);
+`recompute_project_profiles` management command + Celery task; optional nightly beat.
+**Feeds:** blended into the project's recommendation target so engagement measurably
+shifts ranking (a paper 3 members thumbs-up outranks one 1 member thumbs-up).
+
+## Feature F — Cross-member relevance fan-out + in-app notifications
+
+**Model `MemberSuggestion`:** `user`(recipient), `project`(FK), `content`(FK),
+`origin_share`(FK ProjectShare null), `score`(float normalized cosine), `suggested`(bool),
+`floor_used`(float), `delivered_via`(default 'in_app'), `dismissed`(bool), `created_at`.
+`unique_together (user, content)` — never notify the same member twice for the same paper.
+
+**Task `fanout_relevance(share_id)`** (enqueued from `share_to_project`'s seam):
+1. Load `ContentItem.embedding`; abort if null (no abstract → nothing to score).
+2. For each active project member **except the sharer**:
+   - `member_vector` = `Profile.embedding` or on-demand embed of interest text.
+   - **Score the normalized cosine directly** (never an RRF rank — project principle).
+   - `≥ FANOUT_COSINE_FLOOR` (default 0.35) → `MemberSuggestion(suggested=True)` + deliver
+     in-app; else persist `suggested=False` (abstention, audited), no notify.
+3. Respect `unique_together` — never double-notify.
+Delivery: in-app only (Slack/Discord absent/deferred). Two-tier push margin deferred.
+
+**Read surface:** `GET /api/suggestions/` (own `suggested=True`, undismissed) +
+`POST /api/suggestions/<id>/dismiss/` (records a `dismiss` event). Surfaced in the header
+notification bell alongside deadline alerts, plus a "Suggested for you" list.
+
+## Open decisions — resolved defaults (brief §8)
+D1 weights: set (Phase 1). D3 decay: 90-day half-life. D4 floor: global 0.35, env-tunable
+(`FANOUT_COSINE_FLOOR`); per-member push-margin deferred. D6: **Project-member scope** for
+fan-out (our workspace = project); dept-wide deferred. D7: membership-change immediate +
+nightly beat.
+
+## Validation (Phase 2)
+- C: add/list/archive/remove tests; duplicate add → 200; archive hides but preserves;
+  non-participant 403.
+- D: recompute never mutates any `Profile`; 3× thumbs-up outranks 1×; negative weight lowers
+  a topic's presence; normalize-before-fuse asserted.
+- F: below every floor → 0 `suggested=True`, N audit rows; sharer never suggested to self;
+  re-share never double-notifies; threshold reads cosine, not RRF.
+- Frontend: `tsc` + `eslint` + `next build` clean.
