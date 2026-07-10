@@ -34,8 +34,10 @@ from datetime import date
 from django.conf import settings
 from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import Count, F, QuerySet
+from pgvector.django import CosineDistance
 
 from .models import ContentItem
+from .retrieval import _similarity
 
 #: RRF dampening constant — 60 is the original-paper default (Cormack et al.).
 DEFAULT_RRF_K = 60
@@ -149,6 +151,29 @@ def _lexical(base: QuerySet, q: str, *, limit: int) -> list[ContentItem]:
     return list(rows)
 
 
+def _semantic(
+    base: QuerySet, query_vector: Sequence[float] | None, *, limit: int
+) -> tuple[list[ContentItem], float | None]:
+    """The semantic channel: pgvector cosine ANN, nearest first.
+
+    Reuses the same cosine-distance retrieval as the digest (the shared BGE
+    space). Returns the ordered hits and the top cosine *similarity* (for the
+    low-confidence cue). ``None``/empty query vector (no embedder) ⇒ no channel.
+    """
+    if query_vector is None or len(query_vector) == 0:
+        return [], None
+    rows = (
+        base.filter(embedding__isnull=False)
+        .annotate(distance=CosineDistance("embedding", query_vector))
+        .order_by("distance")[:limit]
+    )
+    items = list(rows)
+    if not items:
+        return [], None
+    top_cosine = _similarity(items[0].distance)
+    return items, top_cosine
+
+
 def _channels(
     base: QuerySet, q: str, *, pool: int, query_vector: Sequence[float] | None
 ) -> tuple[dict[str, list[str]], dict[str, ContentItem], float | None]:
@@ -157,9 +182,10 @@ def _channels(
     Returns ``(channels, items_by_id, top_cosine)`` where ``channels`` maps a
     channel name to its ordered list of content ids (best first), ``items_by_id``
     resolves any surfaced id back to its :class:`ContentItem`, and ``top_cosine``
-    is the best semantic similarity seen (``None`` until Phase 2) for the
-    low-confidence cue. Phase 2/3 extend this with the semantic and fuzzy
-    channels; the fusion downstream is channel-agnostic.
+    is the best semantic similarity seen (``None`` when the semantic channel did
+    not run) for the low-confidence cue. Phase 3 adds the fuzzy channel; the
+    fusion downstream is channel-agnostic, so every channel is just one more
+    ordered id list.
     """
     items_by_id: dict[str, ContentItem] = {}
     channels: dict[str, list[str]] = {}
@@ -170,7 +196,12 @@ def _channels(
         for item in lexical:
             items_by_id.setdefault(str(item.id), item)
 
-    top_cosine: float | None = None
+    semantic, top_cosine = _semantic(base, query_vector, limit=pool)
+    if semantic:
+        channels["semantic"] = [str(item.id) for item in semantic]
+        for item in semantic:
+            items_by_id.setdefault(str(item.id), item)
+
     return channels, items_by_id, top_cosine
 
 

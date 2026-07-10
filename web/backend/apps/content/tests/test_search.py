@@ -82,13 +82,20 @@ def pg(db: None):
 
 
 def _paper(
-    title: str, *, abstract: str = "", authors=None, source="OpenAlex", ext=None
+    title: str,
+    *,
+    abstract: str = "",
+    authors=None,
+    source="OpenAlex",
+    ext=None,
+    embedding=None,
 ):
     return ContentItem.objects.create(
         type=ContentItem.Type.PAPER,
         source=source,
         external_id=ext or title,
         source_url="https://example.org/p",
+        embedding=embedding,
         metadata={
             "title": title,
             "abstract": abstract,
@@ -197,6 +204,53 @@ def test_search_does_not_abstain_on_a_weak_single_match(pg) -> None:
     paper = _paper("Bioinformatics pipelines", abstract="metagenomics workflows")
     result = run_search("metagenomics")
     assert [str(i.id) for i in result.items] == [str(paper.id)]
+
+
+# --------------------------------------------------------------------------- #
+# Semantic channel + RRF fusion (PostgreSQL + pgvector)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.django_db
+def test_semantic_surfaces_item_with_no_keyword_overlap(pg) -> None:
+    # The query shares no lexemes with either title, so only the vector channel
+    # can find anything — and it must, without abstaining.
+    near = _paper("Alpha manuscript", embedding=[1.0, 0.0, 0.0])
+    _paper("Beta manuscript", embedding=[0.0, 1.0, 0.0])
+
+    result = run_search("zzzznonlexical", query_vector=[1.0, 0.0, 0.0])
+
+    # The semantic channel ranks by similarity with no floor (search never
+    # abstains), so the nearest item leads; the weaker one still appears below it.
+    assert str(result.items[0].id) == str(near.id)
+    assert result.items[0]._search_matched_on == ["semantic"]
+    assert result.confidence == "ok"  # top cosine ~1.0
+
+
+@pytest.mark.django_db
+def test_low_confidence_cue_when_top_cosine_is_weak(pg, settings) -> None:
+    settings.SEARCH_LOW_CONFIDENCE_COSINE = 0.35
+    _paper("Alpha manuscript", embedding=[1.0, 0.0, 0.0])
+
+    # Query vector barely aligned with the only item (cosine ~0.2 < floor).
+    result = run_search("zzzznonlexical", query_vector=[0.2, 0.98, 0.0])
+
+    assert result.count == 1  # still returned — a cue, not a gate
+    assert result.confidence == "low"
+
+
+@pytest.mark.django_db
+def test_fused_beats_either_single_signal(pg) -> None:
+    # `both` matches lexically (title) AND semantically (vector); the other two
+    # match only one channel each. Matching two channels must rank `both` first.
+    both = _paper("Quantum computing", embedding=[1.0, 0.0, 0.0])
+    _paper("Quantum theory", embedding=[0.0, 0.0, 1.0])  # lexical only
+    _paper("Unrelated topic", embedding=[1.0, 0.0, 0.0])  # semantic only
+
+    result = run_search("quantum", query_vector=[1.0, 0.0, 0.0])
+
+    assert str(result.items[0].id) == str(both.id)
+    assert set(result.items[0]._search_matched_on) == {"lexical", "semantic"}
 
 
 # --------------------------------------------------------------------------- #

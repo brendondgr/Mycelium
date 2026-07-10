@@ -16,7 +16,8 @@ from apps.research.models import Project
 
 from .models import ContentItem, RelevanceScore, SavedOpportunity
 from .onboarding_match import UnknownArea, onboarding_match_area
-from .search import SearchFilters, run_search
+from .query_embedding import embed_query
+from .search import SearchFilters, normalize_query, run_search
 from .serializers import (
     ConferenceSerializer,
     FellowshipSerializer,
@@ -589,12 +590,19 @@ class SearchView(APIView):
             date_to=_parse_date(params.get("date_to")),
         )
 
+        # Embed the query in the shared corpus space for the semantic channel
+        # (cached by normalized query in Phase 3). The embedder is the slow part,
+        # so the view owns it while the search module stays embedder-free.
+        normalized = normalize_query(query)
+        query_vector = embed_query(normalized) if normalized else None
+
         result = run_search(
             query,
             filters=filters,
             sort=params.get("sort", "relevance"),
             limit=params.get("limit"),
             offset=_parse_offset(params),
+            query_vector=query_vector,
         )
 
         saved_ids = _saved_content_ids(request.user) if result.items else set()
