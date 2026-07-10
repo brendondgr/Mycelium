@@ -31,6 +31,23 @@ def select_users(usernames: list[str] | None) -> list[User]:
     return list(queryset.order_by("id"))
 
 
+def select_targets(usernames: list[str] | None) -> tuple[list, list]:
+    """The labs and lab-scoped projects to also match on a full run.
+
+    Every lab and every lab project is a scoring target; the matcher short-circuits
+    cheaply for any that have not declared a focus, so passing them all is safe. A
+    *targeted* run (``usernames`` given) stays user-scoped and returns nothing here.
+    """
+    if usernames:
+        return [], []
+    from apps.accounts.models import Lab
+    from apps.research.models import Project
+
+    labs = list(Lab.objects.select_related("profile", "watch").order_by("id"))
+    projects = list(Project.objects.filter(scope_lab__isnull=False).order_by("id"))
+    return labs, projects
+
+
 @shared_task(name="apps.content.run_daily_suggestions")
 def run_daily_suggestions(
     usernames: list[str] | None = None,
@@ -45,12 +62,18 @@ def run_daily_suggestions(
 ) -> dict:
     """Ingest once, then recommend per user; return the ingest + per-user summary."""
     users = select_users(usernames)
+    labs, projects = select_targets(usernames)
     runlog = new_run_log(settings.DAILY_SUGGESTIONS_LOG_DIR, label="beat")
-    runlog.line(f"daily run start: {len(users)} user(s)")
+    runlog.line(
+        f"daily run start: {len(users)} user(s), {len(labs)} lab(s), "
+        f"{len(projects)} project(s)"
+    )
     logger.info("daily suggestions run log: %s", runlog.path)
     try:
         batch = run_daily_batch(
             users,
+            labs=labs,
+            projects=projects,
             days_back=days_back,
             days_forward=days_forward,
             sources=sources,
@@ -89,12 +112,18 @@ def run_daily_opportunities(
     so the job reliably re-matches and prunes the existing corpus every night.
     """
     users = select_users(usernames)
+    labs, projects = select_targets(usernames)
     runlog = new_run_log(settings.DAILY_SUGGESTIONS_LOG_DIR, label="opportunities")
-    runlog.line(f"daily opportunities start: {len(users)} user(s)")
+    runlog.line(
+        f"daily opportunities start: {len(users)} user(s), {len(labs)} lab(s), "
+        f"{len(projects)} project(s)"
+    )
     logger.info("daily opportunities run log: %s", runlog.path)
     try:
         batch = run_daily_opportunities_batch(
             users,
+            labs=labs,
+            projects=projects,
             areas=("grants", "conferences", "fellowships"),
             ingest=ingest,
             prune=prune,

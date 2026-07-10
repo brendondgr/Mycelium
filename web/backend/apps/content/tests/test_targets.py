@@ -232,3 +232,94 @@ def test_match_grants_for_lab_target(pgvector):
     scores = RelevanceScore.objects.filter(target_lab=lab, content__type="grant")
     assert scores.exists()
     assert scores.first().signals["area"] == "grant"
+
+
+# -- daily batch + refit fan out to labs and projects -------------------------
+
+
+def _no_search(*_args, **_kwargs):
+    return []
+
+
+@pytest.mark.django_db
+def test_daily_batch_matches_labs_and_projects(pgvector):
+    """A single daily paper run also recommends for labs and their projects."""
+    from apps.content.pipeline import run_daily_batch
+
+    embeddings.set_embedder(_fake_embed)
+    p_both = _vpaper("both", "graph health", [1.0, 1.0, 0.0, 0.0])
+
+    lab = Lab.objects.create(name="Both Lab", slug="both-lab")
+    lab.profile.areas = ["graph"]
+    lab.profile.save()
+    project = Project.objects.create(
+        scope_lab=lab, name="Health project", goals={"interests": {"areas": ["health"]}}
+    )
+
+    result = run_daily_batch(
+        [], labs=[lab], projects=[project], search_fn=_no_search,
+        embed=False, complete=lambda _p: None,
+    )
+
+    statuses = {r.username: r.status for r in result.results}
+    assert statuses["both-lab"] == "ok"
+    assert statuses[str(project.id)] == "ok"
+    assert RelevanceScore.objects.filter(target_lab=lab, content=p_both).exists()
+    assert RelevanceScore.objects.filter(
+        target_project=project, content=p_both
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_daily_opportunities_batch_matches_lab(pgvector):
+    from apps.content.opportunities import run_daily_opportunities_batch
+    from apps.scraper.pivot.ingest import ingest_pivot
+
+    embeddings.set_embedder(_fake_embed)
+    lab = Lab.objects.create(name="Graph Lab", slug="graph-lab")
+    lab.profile.areas = ["graph"]
+    lab.profile.save()
+    ingest_pivot(
+        [
+            (
+                "grants",
+                {
+                    "id": "g",
+                    "title": "graph theory award",
+                    "sponsor": "NSF",
+                    "deadline_date": "2026-12-01",
+                    "url": "https://pivot.proquest.com/funding_opps/g",
+                    "matched_topics": "graph",
+                },
+            )
+        ],
+        embedder=_fake_embed,
+        prune=False,
+        today="2026-07-05",
+    )
+
+    batch = run_daily_opportunities_batch(
+        [], labs=[lab], areas=("grants",), ingest=False, prune=False,
+        complete=lambda _p: None, today="2026-07-05",
+    )
+
+    ok = [r for r in batch.results if r.status == "ok" and r.username == "graph-lab"]
+    assert ok, batch.results
+    assert RelevanceScore.objects.filter(target_lab=lab, content__type="grant").exists()
+
+
+@pytest.mark.django_db
+def test_refit_lab_scores_over_existing_store(pgvector):
+    from apps.content.refitting import refit_lab
+
+    embeddings.set_embedder(_fake_embed)
+    _vpaper("both", "graph health", [1.0, 1.0, 0.0, 0.0])
+    lab = Lab.objects.create(name="Graph Lab", slug="graph-lab")
+    lab.profile.areas = ["graph"]
+    lab.profile.save()
+
+    result = refit_lab(lab, areas=("papers",), complete=lambda _p: None)
+
+    assert result.status == "ok"
+    assert result.areas["papers"]["status"] == "ok"
+    assert RelevanceScore.objects.filter(target_lab=lab).exists()

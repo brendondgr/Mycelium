@@ -586,6 +586,8 @@ def _union_watch_topics(users) -> list[str]:
 def run_daily_opportunities_batch(
     users,
     *,
+    labs=(),
+    projects=(),
     areas: tuple[str, ...] = ("grants", "conferences", "fellowships"),
     ingest: bool = True,
     prune: bool = True,
@@ -597,16 +599,20 @@ def run_daily_opportunities_batch(
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppBatchResult:
-    """Best-effort ingest + prune once, then match every area per user.
+    """Best-effort ingest + prune once, then match every area for every target.
 
     Phase 1 (ingest, best-effort): try a Playwright refresh of the Pivot corpus —
     a no-op that logs and continues when no saved session exists — then prune
     expired items so the pool stays current even on nights with no fresh scrape.
-    Phase 2 (match): each ``(user, area)`` unit is *prepared* (retrieve + fuse,
+    Phase 2 (match): each ``(target, area)`` unit is *prepared* (retrieve + fuse,
     serial DB work), then all prepared units are **scored by the model
     concurrently** (up to ``concurrency`` at once — the LLM call is the slow step
     and shouldn't be issued one at a time), then *finalized* (New/pin + persist,
     serial DB writes). A failure for one unit is caught so it never sinks the run.
+
+    Users match every requested area; labs and projects match grants + conferences
+    only (fellowships gate on individual eligibility, so they never apply to a lab
+    or project).
     """
     if concurrency is None:
         concurrency = getattr(
@@ -694,6 +700,36 @@ def run_daily_opportunities_batch(
                     results.append(short)
                 elif job is not None:
                     llm_jobs.append(job)
+
+    # Lab + project targets: grants + conferences only (no fellowships).
+    from .targets import target_for_lab, target_for_project
+
+    inst_targets = [target_for_lab(lab) for lab in labs]
+    inst_targets += [target_for_project(project) for project in projects]
+    inst_areas = tuple(a for a in areas if a != "fellowships")
+    for target in inst_targets:
+        for area in inst_areas:
+            try:
+                job, short = _prepare_match(
+                    target,
+                    area,
+                    surface_limit=DEFAULT_SURFACE,
+                    llm_limit=DEFAULT_LLM_LIMIT,
+                    pool_per_interest=DEFAULT_POOL_PER_INTEREST,
+                    beta=DEFAULT_BETA,
+                    percentile=percentile,
+                    log=log,
+                )
+            except Exception:
+                logger.exception("prepare failed for %s:%s", target.key, area)
+                results.append(
+                    OppRunResult(target.key, area, "error", note="prepare failed")
+                )
+                continue
+            if short is not None:
+                results.append(short)
+            elif job is not None:
+                llm_jobs.append(job)
 
     # Phase 2b — score prepared units concurrently.  Grant/conference jobs run
     # retrieve→fuse then the model; fellowship jobs gate on the rule engine then

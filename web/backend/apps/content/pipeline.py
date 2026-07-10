@@ -54,6 +54,7 @@ from .models import ContentItem, RelevanceScore
 from .ranking import DEFAULT_FOCUS_WEIGHT, rerank_by_focus
 from .retrieval import Hit, retrieve_for_vector
 from .suggest import CompleteFn, generate_suggestions
+from .targets import target_for_lab, target_for_project
 
 logger = logging.getLogger(__name__)
 
@@ -485,6 +486,8 @@ class BatchResult:
 def run_daily_batch(
     users: Sequence[User],
     *,
+    labs: Sequence = (),
+    projects: Sequence = (),
     days_back: int = DEFAULT_DAYS_BACK,
     days_forward: int = DEFAULT_DAYS_FORWARD,
     sources: list[str] | None = None,
@@ -503,17 +506,20 @@ def run_daily_batch(
     scan_embedder=None,
     log: Callable[[str], None] | None = None,
 ) -> BatchResult:
-    """Two-phase daily run: ingest every user's topics once, then recommend per user.
+    """Two-phase daily run: ingest once, then recommend for every target.
 
-    **Phase 1 (ingest, once):** gather the deduped union of all users' watch topics
-    (:func:`gather_scan_queries`) and run a single :func:`~apps.scraper.ingest.scan`
-    over it — so a topic shared by many users is searched once, not once per user,
-    and all genuinely-new papers are embedded together in one batched pass.
+    **Phase 1 (ingest, once):** gather the deduped union of all targets' watch
+    topics — the users' plus any labs' and projects' — and run a single
+    :func:`~apps.scraper.ingest.scan` over it, so a shared topic is searched once
+    and all new papers are embedded together in one batched pass.
 
-    **Phase 2 (recommend, per user):** retrieve + fuse + suggest for each user
-    against the now-populated store, doing **no scanning per user**. A failure for
-    one user is caught and logged so it never sinks the batch.
+    **Phase 2 (recommend):** retrieve + fuse + suggest against the now-populated
+    store, with no scanning per target — first each user (the watch-gated personal
+    path), then each lab and project (their aggregate / declared focus). A failure
+    for one target is caught and logged so it never sinks the batch.
     """
+    lab_targets = [target_for_lab(lab) for lab in labs]
+    project_targets = [target_for_project(project) for project in projects]
 
     def emit(message: str) -> None:
         if log is not None:
@@ -521,6 +527,15 @@ def run_daily_batch(
 
     queries = gather_scan_queries(
         users, per_user_limit=query_limit, global_limit=global_query_limit, log=log
+    )
+    # Fold the labs' and projects' watch topics into the same shared scan so the
+    # corpus covers their focus too (users still drive the bulk of the terms).
+    queries = _extend_queries(
+        queries,
+        (t.watch_topics for t in (*lab_targets, *project_targets)),
+        per_limit=query_limit,
+        global_limit=global_query_limit,
+        log=log,
     )
     summary = None
     if queries:
@@ -568,7 +583,53 @@ def run_daily_batch(
             emit(f"[{username}] ERROR (see worker log)")
             results.append(RunResult(username, "error", note="recommend failed"))
 
+    # Labs and projects recommend over the *same* store — no scan of their own.
+    for target in (*lab_targets, *project_targets):
+        try:
+            results.append(
+                recommend_for_target(
+                    target,
+                    top_k=top_k,
+                    suggestion_limit=suggestion_limit,
+                    surface_limit=surface_limit,
+                    pool_per_interest=pool_per_interest,
+                    beta=beta,
+                    focus_weight=focus_weight,
+                    complete=complete,
+                    persist=persist,
+                    log=log,
+                )
+            )
+        except Exception:
+            logger.exception("recommend failed for %s %s", target.kind, target.key)
+            emit(f"[{target.key}] ERROR (see worker log)")
+            results.append(RunResult(target.key, "error", note="recommend failed"))
+
     return BatchResult(ingest=_ingest_summary(queries, summary), results=results)
+
+
+def _extend_queries(
+    base: list[str],
+    topics_lists,
+    *,
+    per_limit: int,
+    global_limit: int | None,
+    log: Callable[[str], None] | None,
+) -> list[str]:
+    """Append more targets' watch topics to the scan union (deduped, capped)."""
+    seen = {term.casefold() for term in base}
+    out = list(base)
+    for topics in topics_lists:
+        for term in build_queries(list(topics), limit=per_limit):
+            fold = term.casefold()
+            if fold not in seen:
+                seen.add(fold)
+                out.append(term)
+    if global_limit is not None and len(out) > global_limit:
+        if log is not None:
+            log(f"gathered {len(out)} unique terms; capping to {global_limit}")
+        out = out[:global_limit]
+    return out
 
 
 def _ingest_summary(queries: list[str], summary) -> dict:

@@ -134,6 +134,56 @@ def refit_user(
     return RefitResult(username, "ok", areas=summaries)
 
 
+#: The areas an institutional refit covers (fellowships are individual-only).
+TARGET_AREAS: tuple[str, ...] = ("papers", "grants", "conferences")
+
+
+def refit_target(
+    target,
+    *,
+    areas: Sequence[str] = TARGET_AREAS,
+    complete: CompleteFn | None = None,
+    persist: bool = True,
+    log: Callable[[str], None] | None = None,
+) -> RefitResult:
+    """Re-personalize a lab / project over the existing store (no scan / ingest).
+
+    The institutional counterpart of :func:`refit_user`, for an immediate match
+    after a lab profile or project focus is edited: it re-runs the recommend
+    (papers) and match (grants / conferences) halves against the already-populated
+    corpus. Fellowships are excluded — they are an individual-eligibility area.
+    """
+    from .opportunities import run_opportunities_for_target
+    from .pipeline import recommend_for_target
+
+    summaries: dict[str, dict] = {}
+    if PAPER_AREA in areas:
+        summaries[PAPER_AREA] = _paper_summary(
+            recommend_for_target(target, complete=complete, persist=persist, log=log)
+        )
+    opp_areas = tuple(a for a in areas if a in ("grants", "conferences"))
+    if opp_areas:
+        for result in run_opportunities_for_target(
+            target, areas=opp_areas, complete=complete, persist=persist, log=log
+        ):
+            summaries[result.area] = _opportunity_summary(result)
+    return RefitResult(target.key, "ok", areas=summaries)
+
+
+def refit_lab(lab, **kwargs) -> RefitResult:
+    """Re-personalize one lab's recommendations over the existing store."""
+    from .targets import target_for_lab
+
+    return refit_target(target_for_lab(lab), **kwargs)
+
+
+def refit_project(project, **kwargs) -> RefitResult:
+    """Re-personalize one project's recommendations over the existing store."""
+    from .targets import target_for_project
+
+    return refit_target(target_for_project(project), **kwargs)
+
+
 def refit_batch(
     users: Sequence[User],
     *,
