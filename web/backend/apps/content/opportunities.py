@@ -7,9 +7,11 @@ opportunity-aware model (:mod:`.opportunity_llm`), tags brand-new high-fit items
 (:mod:`.pinning`), and persists one :class:`RelevanceScore` per item — the same
 store the paper digest uses, discriminated by ``content.type`` and a ``signals.area``.
 
-Scope is the personal workspace only (labs are out of scope): the query is built
-from the user's ``Profile.interests`` (research focus + keywords) broadened by their
-``WatchPreference.topics``. Every seam degrades to a clear status instead of a crash.
+The scoring *target* is a :class:`~apps.content.targets.MatchTarget` — a person, a
+lab, or a lab project — so the same engine matches grants + conferences for any of
+them; the query is built from the target's interests (research focus + keywords)
+broadened by its watch topics. Fellowships stay user-only (individual eligibility).
+Every seam degrades to a clear status instead of a crash.
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ from .opportunity_llm import (
 )
 from .pinning import DEFAULT_PERCENTILE, compute_pins
 from .pipeline import PersistRow, fuse_interests_pool
+from .targets import MatchTarget, target_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -98,19 +101,19 @@ def opportunity_search_interests(
 
 @dataclass
 class _MatchJob:
-    """A prepared per-(user, area) unit, ready for the (parallel) LLM scoring step.
+    """A prepared per-(target, area) unit, ready for the (parallel) LLM scoring step.
 
     The retrieve+fuse work (DB + embedder) is already done; scoring reads only
-    these in-memory fields, so it touches no ORM/embedder and is safe to run in a
-    worker thread alongside other units.
+    these in-memory fields (the target carries the interests / profile_meta the
+    model needs), so it touches no ORM/embedder and is safe to run in a worker
+    thread alongside other units. ``username`` is the target's key (a username for
+    a person, a slug/id for a lab or project) kept flat for the result label.
     """
 
-    user: User
+    target: MatchTarget
     username: str
     area: str
     content_type: str
-    interests: dict
-    profile_meta: dict
     pairs: list
     rows: list
     pool: int
@@ -312,7 +315,7 @@ def _persist_fellowships(
 
 
 def _prepare_match(
-    user: User,
+    target: MatchTarget,
     area: str,
     *,
     surface_limit: int,
@@ -322,29 +325,25 @@ def _prepare_match(
     percentile: float,
     log: Callable[[str], None] | None,
 ) -> tuple[_MatchJob | None, OppRunResult | None]:
-    """DB phase — retrieve + fuse. Returns a job to score, or a short-circuit result."""
+    """DB phase — retrieve + fuse. Returns a job to score, or a short-circuit result.
+
+    Target-agnostic: the interests / watch topics come off the :class:`MatchTarget`,
+    so this prepares a unit for a person, a lab, or a project identically.
+    """
     if area not in AREAS:
         raise ValueError(f"unknown opportunity area {area!r}")
     content_type = AREAS[area]
-    username = user.get_username()
+    key = target.key
 
     def emit(message: str) -> None:
         if log is not None:
-            log(f"[{username}:{area}] {message}")
+            log(f"[{key}:{area}] {message}")
 
-    profile = getattr(user, "profile", None)
-    if profile is None:
-        emit("no profile; skipping")
-        return None, OppRunResult(
-            username, area, "no_profile", note="user has no profile"
-        )
-
-    interests = profile.interests or {}
-    search_ints = opportunity_search_interests(interests, _watch_topics(user))
+    search_ints = opportunity_search_interests(target.interests, target.watch_topics)
     if not search_ints:
         emit("no research interests or watch topics; skipping")
         return None, OppRunResult(
-            username, area, "no_interests", note="no interests/topics to match on"
+            key, area, "no_interests", note="no interests/topics to match on"
         )
 
     pairs, rows, pool = fuse_interests_pool(
@@ -358,19 +357,14 @@ def _prepare_match(
     if not pairs:
         emit("no embedded opportunities to retrieve yet")
         return None, OppRunResult(
-            username, area, "no_results", note="no embedded opportunities yet"
+            key, area, "no_results", note="no embedded opportunities yet"
         )
 
     job = _MatchJob(
-        user=user,
-        username=username,
+        target=target,
+        username=key,
         area=area,
         content_type=content_type,
-        interests=interests,
-        profile_meta={
-            "academic_title": getattr(profile, "academic_title", ""),
-            "institution": getattr(profile, "institution", ""),
-        },
         pairs=pairs,
         rows=rows,
         pool=pool,
@@ -387,8 +381,8 @@ def _score_job(
     """LLM phase — pure (no ORM / embedder), so it is safe to run in a thread pool."""
     return generate_opportunity_suggestions(
         job.content_type,
-        job.interests,
-        job.profile_meta,
+        job.target.interests,
+        job.target.profile_meta,
         job.pairs,
         llm_limit=job.llm_limit,
         surface_limit=job.surface_limit,
@@ -423,7 +417,14 @@ def _finalize_match(
     if persist:
         # Store the singular content type as the signal's ``area`` so it lines up
         # with ``content.type`` and the API filter (grant/conference, not plural).
-        _persist(job.user, job.content_type, job.rows, suggestions, pins, today=today)
+        _persist(
+            job.target.persist_kwargs,
+            job.content_type,
+            job.rows,
+            suggestions,
+            pins,
+            today=today,
+        )
     return OppRunResult(
         job.username,
         job.area,
@@ -436,8 +437,8 @@ def _finalize_match(
     )
 
 
-def match_opportunities_for_user(
-    user: User,
+def match_opportunities_for_target(
+    target: MatchTarget,
     area: str,
     *,
     surface_limit: int = DEFAULT_SURFACE,
@@ -450,9 +451,13 @@ def match_opportunities_for_user(
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppRunResult:
-    """Retrieve → fuse → score → pin → persist one area for one user (serial)."""
+    """Retrieve → fuse → score → pin → persist one area for *any* target (serial).
+
+    The engine for a person, a lab, or a project; the score row lands under the
+    target's ``persist_kwargs`` (``target_user`` / ``target_lab`` / ``target_project``).
+    """
     job, short = _prepare_match(
-        user,
+        target,
         area,
         surface_limit=surface_limit,
         llm_limit=llm_limit,
@@ -465,6 +470,13 @@ def match_opportunities_for_user(
         return short
     suggestions = _score_job(job, complete=complete)
     return _finalize_match(job, suggestions, persist=persist, today=today, log=log)
+
+
+def match_opportunities_for_user(
+    user: User, area: str, **kwargs
+) -> OppRunResult:
+    """Retrieve → fuse → score → pin → persist one area for one user (serial)."""
+    return match_opportunities_for_target(target_for_user(user), area, **kwargs)
 
 
 def match_fellowships_for_user(
@@ -511,6 +523,40 @@ def run_opportunities_for_user(
         else:
             results.append(match_opportunities_for_user(user, area, **kwargs))
     return results
+
+
+def run_opportunities_for_target(
+    target: MatchTarget,
+    *,
+    areas: tuple[str, ...] = ("grants", "conferences"),
+    **kwargs,
+) -> list[OppRunResult]:
+    """Match grants + conferences for a lab or project target.
+
+    Fellowships are intentionally excluded: they gate on an *individual's*
+    eligibility (citizenship, career stage, demographic restrictions), which has no
+    meaning for a lab or a project, so institutional targets match funding and
+    conferences only.
+    """
+    return [
+        match_opportunities_for_target(target, area, **kwargs)
+        for area in areas
+        if area != "fellowships"
+    ]
+
+
+def run_opportunities_for_lab(lab, **kwargs) -> list[OppRunResult]:
+    """Match grants + conferences for a lab's aggregate interests."""
+    from .targets import target_for_lab
+
+    return run_opportunities_for_target(target_for_lab(lab), **kwargs)
+
+
+def run_opportunities_for_project(project, **kwargs) -> list[OppRunResult]:
+    """Match grants + conferences for one project's declared focus."""
+    from .targets import target_for_project
+
+    return run_opportunities_for_target(target_for_project(project), **kwargs)
 
 
 @dataclass
@@ -625,7 +671,7 @@ def run_daily_opportunities_batch(
             else:
                 try:
                     job, short = _prepare_match(
-                        user,
+                        target_for_user(user),
                         area,
                         surface_limit=DEFAULT_SURFACE,
                         llm_limit=DEFAULT_LLM_LIMIT,
@@ -713,7 +759,7 @@ def run_daily_opportunities_batch(
 
 
 def _persist(
-    user: User,
+    persist_kwargs: dict,
     area: str,
     rows: list[PersistRow],
     suggestions: list[dict],
@@ -723,9 +769,11 @@ def _persist(
 ) -> None:
     """Upsert one RelevanceScore per surfaced item, with opportunity signals.
 
-    Mirrors the paper pipeline's persist but adds the area discriminator, the
-    New/pin fields, and a deadline snapshot the API / deadlines / notifications
-    read back. A shared ``run_at`` lets the read layer show only the latest run.
+    ``persist_kwargs`` is the single ``target_*`` FK the rows are written under
+    (a user, a lab, or a project). Mirrors the paper pipeline's persist but adds
+    the area discriminator, the New/pin fields, and a deadline snapshot the API /
+    deadlines / notifications read back. A shared ``run_at`` lets the read layer
+    show only the latest run.
     """
     run_at = timezone.now().isoformat()
     promoted_by_id = {s["content_id"]: s for s in suggestions}
@@ -757,6 +805,6 @@ def _persist(
             )
         RelevanceScore.objects.update_or_create(
             content=item,
-            target_user=user,
+            **persist_kwargs,
             defaults={"score": round(score, 6), "signals": signals},
         )

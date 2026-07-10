@@ -75,7 +75,8 @@ class RunResult:
     """A JSON-able report of one user's run."""
 
     username: str
-    status: str  # ok | no_profile | no_watch_topics | no_embedder | no_results
+    # ok | no_profile | no_watch_topics | no_interests | no_embedder | no_results
+    status: str
     queries: list[str] = field(default_factory=list)
     scanned_new: int = 0
     embedded: int = 0
@@ -345,7 +346,7 @@ def recommend_for_user(
     )
 
     if persist:
-        _persist(user, rows, suggestions)
+        _persist({"target_user": user}, rows, suggestions)
 
     return RunResult(
         username,
@@ -359,6 +360,115 @@ def recommend_for_user(
         llm=llm,
         fallback=len(suggestions) - llm,
     )
+
+
+def recommend_for_target(
+    target,
+    *,
+    top_k: int = DEFAULT_TOP_K,
+    suggestion_limit: int = DEFAULT_SUGGESTIONS,
+    surface_limit: int = DEFAULT_SURFACE,
+    pool_per_interest: int = DEFAULT_POOL_PER_INTEREST,
+    beta: float = DEFAULT_BETA,
+    focus_weight: float | None = None,
+    complete: CompleteFn | None = None,
+    persist: bool = True,
+    log: Callable[[str], None] | None = None,
+) -> RunResult:
+    """Retrieve → fuse → suggest research papers for *any* target (lab / project).
+
+    The institutional twin of :func:`recommend_for_user`, over the
+    already-populated store (no scanning). It shares the whole engine —
+    per-interest BM25 + pgvector fusion when the target declares ``areas``, else a
+    single-vector fallback — but drops the user-only bits (the watch-topic opt-in
+    gate and persisting the profile's own vector) and writes each score under the
+    target's ``persist_kwargs`` (``target_lab`` / ``target_project``). A target
+    with no interests at all short-circuits to ``no_interests`` rather than
+    scanning the whole corpus.
+    """
+    key = target.key
+    if focus_weight is None:
+        focus_weight = getattr(settings, "AREA_FOCUS_WEIGHT", DEFAULT_FOCUS_WEIGHT)
+
+    def emit(message: str) -> None:
+        if log is not None:
+            log(f"[{key}] {message}")
+
+    interests = target.interests or {}
+    search_ints = search_interests(interests)
+    retrieved_count = 0
+    if search_ints:
+        pairs, rows, retrieved_count = fuse_interests_pool(
+            search_ints,
+            content_type=ContentItem.Type.PAPER,
+            surface_limit=surface_limit,
+            pool_per_interest=pool_per_interest,
+            beta=beta,
+            emit=emit,
+        )
+    elif target.embedding_text.strip():
+        vector = embeddings.embed_text(target.embedding_text)
+        if vector is None:
+            emit("no embedder; stopping")
+            return RunResult(key, "no_embedder", note="no embedder available")
+        pairs, rows, retrieved_count = _single_vector(
+            vector,
+            interests,
+            top_k=max(top_k, surface_limit),
+            surface_limit=surface_limit,
+            focus_weight=focus_weight,
+            emit=emit,
+        )
+    else:
+        emit("no interests to recommend on; skipping")
+        return RunResult(key, "no_interests", note="no interests/areas to match on")
+
+    if not pairs:
+        emit("no embedded papers to retrieve yet")
+        return RunResult(
+            key,
+            "no_results",
+            interests=len(search_ints),
+            note="no embedded papers to retrieve yet",
+        )
+
+    suggestions = generate_suggestions(
+        interests,
+        pairs,
+        llm_limit=suggestion_limit,
+        surface_limit=surface_limit,
+        complete=complete,
+    )
+    llm = sum(1 for s in suggestions if s["source"] == "llm")
+    emit(
+        f"suggestions: {len(suggestions)} ({llm} llm / "
+        f"{len(suggestions) - llm} fallback)"
+    )
+    if persist:
+        _persist(target.persist_kwargs, rows, suggestions)
+    return RunResult(
+        key,
+        "ok",
+        retrieved=retrieved_count,
+        interests=len(search_ints),
+        suggestions=len(suggestions),
+        llm=llm,
+        fallback=len(suggestions) - llm,
+    )
+
+
+def recommend_for_lab(lab, **kwargs) -> RunResult:
+    """Recommend research papers for a lab's aggregate interests."""
+    from .targets import target_for_lab
+
+    return recommend_for_target(target_for_lab(lab), **kwargs)
+
+
+def recommend_for_project(project, **kwargs) -> RunResult:
+    """Recommend research papers for one project's declared focus."""
+    from .targets import target_for_project
+
+    return recommend_for_target(target_for_project(project), **kwargs)
 
 
 @dataclass
@@ -588,14 +698,19 @@ def _single_vector(
     return pairs, rows, len(ranked)
 
 
-def _persist(user: User, rows: list[PersistRow], suggestions) -> None:
+def _persist(
+    persist_kwargs: dict, rows: list[PersistRow], suggestions
+) -> None:
     """Upsert one RelevanceScore per surfaced item; flag the suggested subset.
 
-    Each row carries its own signal breakdown (fusion's per-interest scores or the
-    single-vector similarity/focus boost); this adds the shared ``run_at`` stamp,
-    the ``suggested`` flag, and the promoted suggestion's rank/headline/reason/match
-    so the ranking stays auditable. The single ``run_at`` stamp lets the daily
-    report show only the latest run's suggestions and ignore earlier ones.
+    ``persist_kwargs`` is the single ``target_*`` FK the rows are written under
+    (``{"target_user": user}`` for the daily pipeline, ``{"target_lab": lab}`` /
+    ``{"target_project": project}`` for the institutional targets). Each row carries
+    its own signal breakdown (fusion's per-interest scores or the single-vector
+    similarity/focus boost); this adds the shared ``run_at`` stamp, the ``suggested``
+    flag, and the promoted suggestion's rank/headline/reason/match so the ranking
+    stays auditable. The single ``run_at`` stamp lets the daily report show only the
+    latest run's suggestions and ignore earlier ones.
     """
     run_at = timezone.now().isoformat()
     suggested = {s["content_id"]: s for s in suggestions}
@@ -612,6 +727,6 @@ def _persist(user: User, rows: list[PersistRow], suggestions) -> None:
             )
         RelevanceScore.objects.update_or_create(
             content=item,
-            target_user=user,
+            **persist_kwargs,
             defaults={"score": round(score, 6), "signals": signals},
         )
