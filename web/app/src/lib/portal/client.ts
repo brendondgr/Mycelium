@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api-error";
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import type {
   ConferenceOpportunity,
@@ -31,7 +32,9 @@ async function getJson<T>(url: string, whatFailed: string): Promise<T> {
     cache: "no-store",
   });
   if (!response.ok) {
-    throw new Error(whatFailed);
+    // Keep the friendly message the UI surfaces, but carry the status so the
+    // query client can skip retrying a 401/403 (deauth) instead of hammering.
+    throw new ApiError(whatFailed, response.status);
   }
   return (await response.json()) as T;
 }

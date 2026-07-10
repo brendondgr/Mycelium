@@ -115,6 +115,14 @@ CSRF_TRUSTED_ORIGINS = env.list(
     default=["http://localhost:11050", "http://localhost:11250"],
 )
 
+# Namespace the auth cookies. Browsers key cookies by domain but NOT by port, so
+# several Django apps on `localhost:<port>` share one cookie jar and Django's
+# default `sessionid`/`csrftoken` names collide — a neighbouring app overwrites
+# Mycelium's session cookie and every authenticated request then 403s. Distinct
+# names isolate Mycelium's session + CSRF cookies from any other local app.
+SESSION_COOKIE_NAME = env("DJANGO_SESSION_COOKIE_NAME", default="mycelium_sessionid")
+CSRF_COOKIE_NAME = env("DJANGO_CSRF_COOKIE_NAME", default="mycelium_csrftoken")
+
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = "Lax"

@@ -36,7 +36,10 @@ export function readCsrfToken(): string | null {
     return null;
   }
 
-  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  // Must match Django's CSRF_COOKIE_NAME (settings.py). Mycelium namespaces its
+  // auth cookies so other localhost apps can't overwrite them, so this is the
+  // prefixed name — not Django's bare `csrftoken` default.
+  const match = document.cookie.match(/(?:^|;\s*)mycelium_csrftoken=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
