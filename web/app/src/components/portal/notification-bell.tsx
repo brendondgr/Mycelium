@@ -2,10 +2,18 @@
 
 import * as React from "react";
 
-import { AlertTriangleIcon, ArrowRightIcon, BellIcon } from "@/components/portal/icons";
+import {
+  AlertTriangleIcon,
+  ArrowRightIcon,
+  BellIcon,
+  CloseIcon,
+  SporeNode,
+} from "@/components/portal/icons";
 import { roleLabel, usePortal } from "@/components/portal/portal-context";
 import { IconButton } from "@/components/portal/primitives/icon-button";
 import {
+  useDismissSuggestion,
+  useMemberSuggestions,
   useMyInvitations,
   useNotifications,
   useRespondInvitation,
@@ -14,6 +22,7 @@ import { useDismissable } from "@/lib/portal/use-dismissable";
 import type {
   DeadlineAlert,
   InvitationAction,
+  MemberSuggestion,
   MyInvitation,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
@@ -29,9 +38,13 @@ export function NotificationBell() {
   const { goToSection } = usePortal();
   const { data, isLoading, isError } = useMyInvitations();
   const notifications = useNotifications();
+  const suggestionsQuery = useMemberSuggestions();
   const invitations = data ?? [];
   const alerts = notifications.data?.items ?? [];
-  const count = invitations.length + alerts.length;
+  const suggestions = suggestionsQuery.data?.items ?? [];
+  const count = invitations.length + alerts.length + suggestions.length;
+  const loading = isLoading || notifications.isLoading || suggestionsQuery.isLoading;
+  const errored = isError || notifications.isError || suggestionsQuery.isError;
 
   return (
     <div ref={ref} className="relative">
@@ -66,11 +79,11 @@ export function NotificationBell() {
             Notifications
           </p>
 
-          {isLoading ? (
+          {loading ? (
             <p className="px-4 py-6 text-center text-sm text-[var(--text-muted)]">
               Loading…
             </p>
-          ) : isError ? (
+          ) : errored ? (
             <p className="px-4 py-6 text-center text-sm text-[var(--text-muted)]">
               Couldn&apos;t load your notifications.
             </p>
@@ -92,6 +105,16 @@ export function NotificationBell() {
               ))}
               {invitations.map((invitation) => (
                 <InvitationRow key={invitation.id} invitation={invitation} />
+              ))}
+              {suggestions.map((suggestion) => (
+                <SuggestionRow
+                  key={suggestion.id}
+                  suggestion={suggestion}
+                  onView={() => {
+                    setOpen(false);
+                    goToSection("suggested");
+                  }}
+                />
               ))}
             </ul>
           )}
@@ -224,5 +247,73 @@ function ResponseButton({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * A paper a teammate shared that closely matches the caller's own profile.
+ * Clicking the title marks it viewed via navigation; the ✕ dismisses it via
+ * the suggestions endpoint, refreshing this feed and the badge count.
+ */
+function SuggestionRow({
+  suggestion,
+  onView,
+}: {
+  suggestion: MemberSuggestion;
+  onView: () => void;
+}) {
+  const dismiss = useDismissSuggestion();
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleDismiss = () => {
+    setError(null);
+    dismiss.mutate(suggestion.id, {
+      onError: (e) => setError((e as Error).message),
+    });
+  };
+
+  return (
+    <li className="px-4 py-3">
+      <div className="flex items-start gap-2">
+        <SporeNode size={15} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          {suggestion.url ? (
+            <a
+              href={suggestion.url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={onView}
+              className="text-sm font-medium text-[var(--text-primary)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {suggestion.title}
+            </a>
+          ) : (
+            <p className="text-sm text-[var(--text-primary)]">{suggestion.title}</p>
+          )}
+          <p className="mt-0.5 text-[12px] text-[var(--text-muted)]">
+            {suggestion.shared_by ? `Shared by ${suggestion.shared_by.name} · ` : ""}
+            {suggestion.project.name}
+            {suggestion.match_percent !== null
+              ? ` · ${suggestion.match_percent}% match`
+              : ""}
+          </p>
+          {error ? (
+            <p className="mt-1 text-[11px] text-clay" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          disabled={dismiss.isPending}
+          aria-label={`Dismiss suggestion: ${suggestion.title}`}
+          title="Dismiss"
+          className="shrink-0 rounded-full p-1 text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        >
+          <CloseIcon size={13} />
+        </button>
+      </div>
+    </li>
   );
 }

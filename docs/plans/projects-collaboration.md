@@ -134,7 +134,7 @@ cross-member fan-out moved into Phase 2 below.)
 
 # Phase 2 — Collections (C), Team signal (D), Fan-out (F)
 
-**Status:** in progress · same branch `projects-collab`, on top of Phase 1.
+**Status:** complete (backend + frontend, verified) · same branch `projects-collab`, on top of Phase 1.
 All Project-scoped, all in-app, reusing `ContentItem` embeddings (384-dim) + `RelevanceScore`.
 
 ## Feature C — Shared collections / reading lists

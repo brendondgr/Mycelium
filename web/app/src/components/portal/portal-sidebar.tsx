@@ -9,6 +9,7 @@ import {
   PlusIcon,
   ReportIcon,
   SparkleIcon,
+  SporeNode,
   TargetIcon,
 } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
@@ -54,6 +55,12 @@ export function PortalSidebar() {
           label="Daily Reports"
           active={section === "daily"}
           onClick={() => goToSection("daily")}
+        />
+        <SidebarNavItem
+          icon={<SporeNode size={18} />}
+          label="Suggested for you"
+          active={section === "suggested"}
+          onClick={() => goToSection("suggested")}
         />
         <SidebarNavItem
           icon={<DocumentIcon size={18} />}

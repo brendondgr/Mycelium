@@ -7,11 +7,17 @@ import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
 import {
+  ChevronDownIcon,
   ChevronLeftIcon,
+  CloseIcon,
   EditIcon,
   LinkIcon,
+  ListIcon,
+  PlusIcon,
   SporeNode,
   TargetIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
 } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
 import {
@@ -19,19 +25,32 @@ import {
   statusPillTone,
 } from "@/components/portal/project-status";
 import {
+  useAddToCollection,
+  useCreateCollection,
   useIngestProjectLink,
+  useProjectCollection,
+  useProjectCollections,
   useProjectFeed,
   useProjectRecommendations,
+  useRemoveFromCollection,
   useShareToProject,
+  useUpdateCollection,
 } from "@/lib/portal/hooks";
-import { markProjectItemSeen } from "@/lib/portal/mutations";
+import { markProjectItemSeen, recordProjectEvent } from "@/lib/portal/mutations";
+import { useDismissable } from "@/lib/portal/use-dismissable";
 import type {
+  CollectionBrief,
   InterestedMember,
   ProjectFeedItem,
   ProjectMember,
   Suggestion,
   TargetRecommendations,
 } from "@/lib/portal/types";
+import { cn } from "@/lib/utils";
+
+/** Shared input style for the small inline forms on this page. */
+const INPUT =
+  "w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /** A compact, area-labelled recommendation row for the sidebar. */
 type MiniRec = { key: string; area: string; title: string; match: number | null; url: string };
@@ -171,88 +190,98 @@ export function ProjectDetailSection() {
 
       {/* Responsive two-column grid */}
       <div className="grid items-start gap-[22px] lg:grid-cols-[1.55fr_1fr]">
-        {/* LEFT: Project feed */}
-        <Card className="overflow-hidden">
-          <div className="border-b border-[var(--divider)] px-5 pb-[14px] pt-[18px]">
-            <h2 className="mb-[3px] text-base font-semibold text-[var(--text-primary)]">
-              Project feed
-            </h2>
-            <p className="mb-[14px] text-[12.5px] text-[var(--text-muted)]">
-              Papers the team has shared, plus articles you paste in directly.
-            </p>
+        {/* LEFT column */}
+        <div className="flex flex-col gap-[22px]">
+          {/* Project feed */}
+          <Card className="overflow-hidden">
+            <div className="border-b border-[var(--divider)] px-5 pb-[14px] pt-[18px]">
+              <h2 className="mb-[3px] text-base font-semibold text-[var(--text-primary)]">
+                Project feed
+              </h2>
+              <p className="mb-[14px] text-[12.5px] text-[var(--text-muted)]">
+                Papers the team has shared, plus articles you paste in directly.
+              </p>
 
-            <IngestLinkForm projectId={project.id} canIngest={canCollaborate} />
-          </div>
+              <IngestLinkForm projectId={project.id} canIngest={canCollaborate} />
+            </div>
 
-          {/* The team's shared feed — the primary content of this card. */}
-          {feedQuery.isLoading ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-[var(--text-muted)]">
-                Loading the shared feed…
-              </p>
-            </div>
-          ) : feedQuery.isError ? (
-            <div className="py-8 text-center">
-              <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
-                Couldn&apos;t load the shared feed.
-              </p>
-            </div>
-          ) : feedItems.length > 0 ? (
-            <ul className="divide-y divide-[var(--divider)]">
-              {feedItems.map((item) => (
-                <FeedItemRow
-                  key={item.share_id}
-                  item={item}
-                  projectId={project.id}
-                />
-              ))}
-            </ul>
-          ) : (
-            <div className="py-8 text-center">
-              <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
-                No shared papers yet — paste a link above or share one of
-                Mylo&apos;s picks below.
-              </p>
-            </div>
-          )}
+            {/* The team's shared feed — the primary content of this card. */}
+            {feedQuery.isLoading ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-[var(--text-muted)]">
+                  Loading the shared feed…
+                </p>
+              </div>
+            ) : feedQuery.isError ? (
+              <div className="py-8 text-center">
+                <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+                  Couldn&apos;t load the shared feed.
+                </p>
+              </div>
+            ) : feedItems.length > 0 ? (
+              <ul className="divide-y divide-[var(--divider)]">
+                {feedItems.map((item) => (
+                  <FeedItemRow
+                    key={item.share_id}
+                    item={item}
+                    projectId={project.id}
+                    canCollaborate={canCollaborate}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <div className="py-8 text-center">
+                <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+                  No shared papers yet — paste a link above or share one of
+                  Mylo&apos;s picks below.
+                </p>
+              </div>
+            )}
 
-          {/* Mylo's recommended papers for this project's focus, ready to push into the feed. */}
-          <div className="border-t border-[var(--divider)] px-5 pb-[8px] pt-[16px]">
-            <h3 className="mb-[3px] text-[13px] font-semibold text-[var(--text-primary)]">
-              Recommended for this project
-            </h3>
-            <p className="text-[11.5px] text-[var(--text-muted)]">
-              Mylo&apos;s picks for this project&apos;s focus.
-            </p>
-          </div>
-          {recQuery.isLoading ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-[var(--text-muted)]">
-                Loading recommendations…
+            {/* Mylo's recommended papers for this project's focus, ready to push into the feed. */}
+            <div className="border-t border-[var(--divider)] px-5 pb-[8px] pt-[16px]">
+              <h3 className="mb-[3px] text-[13px] font-semibold text-[var(--text-primary)]">
+                Recommended for this project
+              </h3>
+              <p className="text-[11.5px] text-[var(--text-muted)]">
+                Mylo&apos;s picks for this project&apos;s focus.
               </p>
             </div>
-          ) : recPapers.length > 0 ? (
-            <ul className="divide-y divide-[var(--divider)]">
-              {recPapers.map((paper: Suggestion) => (
-                <PaperFeedRow
-                  key={paper.content_id}
-                  paper={paper}
-                  interested={rec?.interested?.[paper.content_id] ?? []}
-                  projectId={project.id}
-                  canShare={canCollaborate}
-                />
-              ))}
-            </ul>
-          ) : (
-            <div className="py-8 text-center">
-              <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
-                {hasFocus
-                  ? "No matching papers yet. Mylo will recommend papers for this project on its next run."
-                  : "Set this project's research focus so Mylo can recommend papers for it."}
-              </p>
-            </div>
-          )}
-        </Card>
+            {recQuery.isLoading ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-[var(--text-muted)]">
+                  Loading recommendations…
+                </p>
+              </div>
+            ) : recPapers.length > 0 ? (
+              <ul className="divide-y divide-[var(--divider)]">
+                {recPapers.map((paper: Suggestion) => (
+                  <PaperFeedRow
+                    key={paper.content_id}
+                    paper={paper}
+                    interested={rec?.interested?.[paper.content_id] ?? []}
+                    projectId={project.id}
+                    canShare={canCollaborate}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <div className="py-8 text-center">
+                <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+                  {hasFocus
+                    ? "No matching papers yet. Mylo will recommend papers for this project on its next run."
+                    : "Set this project's research focus so Mylo can recommend papers for it."}
+                </p>
+              </div>
+            )}
+          </Card>
+
+          {/* Collections — shared reading lists the team curates together */}
+          <CollectionsCard
+            projectId={project.id}
+            canCollaborate={canCollaborate}
+          />
+        </div>
 
         {/* RIGHT column */}
         <div className="flex flex-col gap-[22px]">
@@ -462,6 +491,171 @@ function IngestLinkForm({
 }
 
 /**
+ * Quiet thumbs-up / thumbs-down icon buttons that feed the project's
+ * engagement signal (`RelevanceEvent`). Local-only pressed state — there's no
+ * read-back endpoint, so a click just optimistically marks itself active.
+ * Hidden entirely for non-collaborators, since the backend 403s the event.
+ */
+function EngagementButtons({
+  projectId,
+  contentId,
+  canCollaborate,
+}: {
+  projectId: string;
+  contentId: string;
+  canCollaborate: boolean;
+}) {
+  const [pressed, setPressed] = React.useState<"up" | "down" | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  if (!canCollaborate) {
+    return null;
+  }
+
+  const act = (action: "thumbs_up" | "thumbs_down", next: "up" | "down") => {
+    setError(null);
+    recordProjectEvent(projectId, contentId, action)
+      .then(() => setPressed(next))
+      .catch((e) => setError((e as Error).message));
+  };
+
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <button
+        type="button"
+        onClick={() => act("thumbs_up", "up")}
+        aria-pressed={pressed === "up"}
+        aria-label="Mark helpful"
+        title="Helpful"
+        className={cn(
+          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          pressed === "up" &&
+            "bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] text-primary",
+        )}
+      >
+        <ThumbsUpIcon size={13} />
+      </button>
+      <button
+        type="button"
+        onClick={() => act("thumbs_down", "down")}
+        aria-pressed={pressed === "down"}
+        aria-label="Mark not helpful"
+        title="Not helpful"
+        className={cn(
+          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          pressed === "down" && "bg-clay-soft text-clay",
+        )}
+      >
+        <ThumbsDownIcon size={13} />
+      </button>
+      {error ? (
+        <span className="text-[11px] text-clay" role="alert">
+          {error}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * A compact popover that adds a content item to one of the project's
+ * collections. Lists the caller's existing lists (fetched lazily, only while
+ * open) and lets them pick one; the click both adds the item and closes the
+ * popover. Hidden for non-collaborators, since the backend 403s the write.
+ */
+function AddToCollectionButton({
+  projectId,
+  contentId,
+  canCollaborate,
+}: {
+  projectId: string;
+  contentId: string;
+  canCollaborate: boolean;
+}) {
+  const { open, setOpen, ref } = useDismissable<HTMLDivElement>();
+  const collectionsQuery = useProjectCollections(open ? projectId : undefined);
+  const add = useAddToCollection(projectId);
+  const [added, setAdded] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  if (!canCollaborate) {
+    return null;
+  }
+
+  const collections = collectionsQuery.data?.items ?? [];
+
+  const handleAdd = (collection: CollectionBrief) => {
+    setError(null);
+    add.mutate(
+      { collectionId: collection.id, contentId },
+      {
+        onSuccess: () => {
+          setAdded(collection.name);
+          setOpen(false);
+        },
+        onError: (e) => setError((e as Error).message),
+      },
+    );
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={added ? `Added to ${added}` : "Add to a list"}
+        title={added ? `Added to ${added}` : "Add to a list"}
+        className={cn(
+          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          added && "text-primary",
+        )}
+      >
+        <ListIcon size={13} />
+      </button>
+      {open ? (
+        <div
+          role="dialog"
+          aria-label="Add to a list"
+          className="absolute right-0 top-8 z-30 w-[220px] rounded-xl border border-border bg-surface p-1.5 shadow-[var(--shadow)]"
+        >
+          {collectionsQuery.isLoading ? (
+            <p className="px-2.5 py-2 text-[12px] text-[var(--text-muted)]">
+              Loading lists…
+            </p>
+          ) : collections.length === 0 ? (
+            <p className="px-2.5 py-2 text-[12px] text-[var(--text-muted)]">
+              No lists yet — start one in Collections below.
+            </p>
+          ) : (
+            <ul className="max-h-[180px] overflow-y-auto">
+              {collections.map((collection) => (
+                <li key={collection.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleAdd(collection)}
+                    disabled={add.isPending}
+                    className="w-full truncate rounded-lg px-2.5 py-1.5 text-left text-[12.5px] text-[var(--text-primary)] hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                  >
+                    {collection.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {error ? (
+            <p className="px-2.5 pb-1 pt-0.5 text-[11px] text-clay" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * A small action button that shares a recommendation into the project's team
  * feed. Idle → pending ("Sharing…") → success ("Shared"); an error renders
  * inline rather than blocking the row.
@@ -542,13 +736,25 @@ function PaperFeedRow({
             {paper.title}
           </span>
         )}
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           <MatchChip match={paper.match_percent} />
           {canShare && projectId ? (
-            <ShareToProjectButton
-              projectId={projectId}
-              contentId={paper.content_id}
-            />
+            <>
+              <EngagementButtons
+                projectId={projectId}
+                contentId={paper.content_id}
+                canCollaborate={canShare}
+              />
+              <AddToCollectionButton
+                projectId={projectId}
+                contentId={paper.content_id}
+                canCollaborate={canShare}
+              />
+              <ShareToProjectButton
+                projectId={projectId}
+                contentId={paper.content_id}
+              />
+            </>
           ) : null}
         </div>
       </div>
@@ -604,9 +810,11 @@ function InterestedRow({ members }: { members: InterestedMember[] }) {
 function FeedItemRow({
   item,
   projectId,
+  canCollaborate,
 }: {
   item: ProjectFeedItem;
   projectId: string;
+  canCollaborate: boolean;
 }) {
   const markSeen = () => {
     markProjectItemSeen(projectId, item.content_id).catch(() => {
@@ -640,11 +848,23 @@ function FeedItemRow({
             {item.title}
           </span>
         )}
-        {item.seen && item.seen.seen_by_count > 0 ? (
-          <Pill tone="neutral" className="shrink-0">
-            Seen by {item.seen.seen_by_count}
-          </Pill>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {item.seen && item.seen.seen_by_count > 0 ? (
+            <Pill tone="neutral" className="shrink-0">
+              Seen by {item.seen.seen_by_count}
+            </Pill>
+          ) : null}
+          <EngagementButtons
+            projectId={projectId}
+            contentId={item.content_id}
+            canCollaborate={canCollaborate}
+          />
+          <AddToCollectionButton
+            projectId={projectId}
+            contentId={item.content_id}
+            canCollaborate={canCollaborate}
+          />
+        </div>
       </div>
 
       {item.source ? (
@@ -728,6 +948,342 @@ function MiniRecRow({ rec }: { rec: MiniRec }) {
           {rec.title}
         </span>
       )}
+    </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Collections — shared reading lists the project's team curates together.
+// ---------------------------------------------------------------------------
+
+/**
+ * The "Collections" card on the project page: the team's shared, non-archived
+ * reading lists plus an inline create form. Each row expands to show and
+ * manage the list's items.
+ */
+function CollectionsCard({
+  projectId,
+  canCollaborate,
+}: {
+  projectId: string;
+  canCollaborate: boolean;
+}) {
+  const { data, isLoading, isError } = useProjectCollections(projectId);
+  const collections = data?.items ?? [];
+  const [showCreate, setShowCreate] = React.useState(false);
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b border-[var(--divider)] px-5 pb-[14px] pt-[18px]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="mb-[3px] text-base font-semibold text-[var(--text-primary)]">
+              Collections
+            </h2>
+            <p className="text-[12.5px] text-[var(--text-muted)]">
+              Shared reading lists the team curates together.
+            </p>
+          </div>
+          {canCollaborate ? (
+            <button
+              type="button"
+              onClick={() => setShowCreate((v) => !v)}
+              aria-expanded={showCreate}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-[12px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <PlusIcon size={13} />
+              New list
+            </button>
+          ) : null}
+        </div>
+
+        {showCreate ? (
+          <CreateCollectionForm
+            projectId={projectId}
+            onDone={() => setShowCreate(false)}
+          />
+        ) : null}
+      </div>
+
+      {isLoading ? (
+        <div className="py-8 text-center">
+          <p className="text-sm text-[var(--text-muted)]">
+            Loading collections…
+          </p>
+        </div>
+      ) : isError ? (
+        <div className="py-8 text-center">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+            Couldn&apos;t load the project&apos;s collections.
+          </p>
+        </div>
+      ) : collections.length === 0 ? (
+        <div className="py-8 text-center">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+            {canCollaborate
+              ? "No lists yet. Start one to group papers the team wants to revisit."
+              : "No shared lists yet."}
+          </p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-[var(--divider)]">
+          {collections.map((collection) => (
+            <CollectionRow
+              key={collection.id}
+              collection={collection}
+              projectId={projectId}
+              canCollaborate={canCollaborate}
+              expanded={expandedId === collection.id}
+              onToggle={() =>
+                setExpandedId((cur) =>
+                  cur === collection.id ? null : collection.id,
+                )
+              }
+            />
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+/** The inline "New list" form: a name and an optional description. */
+function CreateCollectionForm({
+  projectId,
+  onDone,
+}: {
+  projectId: string;
+  onDone: () => void;
+}) {
+  const create = useCreateCollection(projectId);
+  const [name, setName] = React.useState("");
+  const [description, setDescription] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = name.trim();
+    if (!value || create.isPending) {
+      return;
+    }
+    setError(null);
+    create.mutate(
+      { name: value, description: description.trim() || undefined },
+      {
+        onSuccess: () => {
+          setName("");
+          setDescription("");
+          onDone();
+        },
+        onError: (e2) => setError((e2 as Error).message),
+      },
+    );
+  };
+
+  return (
+    <form className="mt-3 flex flex-col gap-2" onSubmit={submit}>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="List name"
+        aria-label="List name"
+        className={INPUT}
+      />
+      <input
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Description (optional)"
+        aria-label="List description"
+        className={INPUT}
+      />
+      <div className="flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={create.isPending || !name.trim()}
+          className="inline-flex items-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        >
+          {create.isPending ? "Creating…" : "Create list"}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Cancel
+        </button>
+      </div>
+      {error ? (
+        <p className="text-[12.5px] text-clay" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+/**
+ * One collection row: name, item count, creator avatar, and a chevron that
+ * expands it to show and manage the list's items. When expanded and
+ * `canCollaborate`, offers a per-item remove and an archive toggle for the
+ * whole list.
+ */
+function CollectionRow({
+  collection,
+  projectId,
+  canCollaborate,
+  expanded,
+  onToggle,
+}: {
+  collection: CollectionBrief;
+  projectId: string;
+  canCollaborate: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const detailQuery = useProjectCollection(
+    expanded ? projectId : undefined,
+    expanded ? collection.id : undefined,
+  );
+  const remove = useRemoveFromCollection(projectId);
+  const archive = useUpdateCollection(projectId);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const items = detailQuery.data?.items ?? [];
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between gap-3 px-5 py-[14px] text-left transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="min-w-0">
+          <span className="block truncate text-[14px] font-semibold text-[var(--text-primary)]">
+            {collection.name}
+          </span>
+          {collection.description ? (
+            <span className="block truncate text-[12px] text-[var(--text-muted)]">
+              {collection.description}
+            </span>
+          ) : null}
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          <Pill tone="neutral">
+            {collection.item_count} item{collection.item_count === 1 ? "" : "s"}
+          </Pill>
+          {collection.created_by ? (
+            <Avatar
+              initials={collection.created_by.initials}
+              seed={collection.created_by.username}
+              size={20}
+              title={collection.created_by.name}
+            />
+          ) : null}
+          <ChevronDownIcon
+            size={14}
+            aria-hidden="true"
+            className={cn(
+              "text-[var(--text-muted)] transition-transform duration-200 motion-reduce:transition-none",
+              expanded && "rotate-180",
+            )}
+          />
+        </span>
+      </button>
+
+      {expanded ? (
+        <div className="border-t border-[var(--divider)] bg-surface-alt/60 px-5 py-3.5">
+          {canCollaborate ? (
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                archive.mutate(
+                  { collectionId: collection.id, patch: { is_archived: true } },
+                  { onError: (e) => setError((e as Error).message) },
+                );
+              }}
+              disabled={archive.isPending}
+              className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-[11.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              {archive.isPending ? "Archiving…" : "Archive list"}
+            </button>
+          ) : null}
+
+          {detailQuery.isLoading ? (
+            <p className="text-[12.5px] text-[var(--text-muted)]">
+              Loading items…
+            </p>
+          ) : detailQuery.isError ? (
+            <p className="text-[12.5px] text-[var(--text-muted)]">
+              Couldn&apos;t load this list&apos;s items.
+            </p>
+          ) : items.length === 0 ? (
+            <p className="text-[12.5px] text-[var(--text-muted)]">
+              No items in this list yet.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2.5">
+              {items.map((item) => (
+                <li
+                  key={item.content_id}
+                  className="flex items-start justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    {item.url ? (
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[13px] font-medium leading-snug text-[var(--text-primary)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {item.title}
+                      </a>
+                    ) : (
+                      <span className="text-[13px] font-medium leading-snug text-[var(--text-primary)]">
+                        {item.title}
+                      </span>
+                    )}
+                    {item.note ? (
+                      <p className="mt-1 text-[12px] leading-[1.5] text-[var(--text-secondary)]">
+                        &ldquo;{item.note}&rdquo;
+                      </p>
+                    ) : null}
+                  </div>
+                  {canCollaborate ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        remove.mutate(
+                          {
+                            collectionId: collection.id,
+                            contentId: item.content_id,
+                          },
+                          { onError: (e) => setError((e as Error).message) },
+                        );
+                      }}
+                      disabled={remove.isPending}
+                      aria-label={`Remove ${item.title} from ${collection.name}`}
+                      title="Remove from list"
+                      className="shrink-0 rounded-full p-1 text-[var(--text-muted)] transition-colors hover:bg-surface hover:text-clay focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                    >
+                      <CloseIcon size={12} />
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {error ? (
+            <p className="mt-2 text-[11.5px] text-clay" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </li>
   );
 }

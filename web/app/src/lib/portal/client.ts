@@ -1,12 +1,15 @@
 import { ApiError } from "@/lib/api-error";
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import type {
+  CollectionBrief,
+  CollectionDetail,
   ConferenceOpportunity,
   DailyReport,
   FellowshipOpportunity,
   GrantOpportunity,
   LabMember,
   LabProfileData,
+  MemberSuggestionsFeed,
   MyInvitation,
   MyLab,
   NotificationFeed,
@@ -183,5 +186,43 @@ export async function fetchProjectFeed(id: string): Promise<ProjectFeed> {
   return getJson<ProjectFeed>(
     buildApiUrl(getPublicApiBase(), "projects", id, "feed"),
     "Could not load the project's shared feed.",
+  );
+}
+
+/** A project's shared reading lists (non-archived by default). */
+export async function fetchProjectCollections(
+  id: string,
+  options?: { archived?: boolean },
+): Promise<{ count: number; items: CollectionBrief[] }> {
+  const base = buildApiUrl(getPublicApiBase(), "projects", id, "collections");
+  const url = options?.archived ? `${base}?archived=1` : base;
+  return getJson<{ count: number; items: CollectionBrief[] }>(
+    url,
+    "Could not load the project's collections.",
+  );
+}
+
+/** One collection's full detail, including its items. */
+export async function fetchProjectCollection(
+  id: string,
+  collectionId: string,
+): Promise<CollectionDetail> {
+  return getJson<CollectionDetail>(
+    buildApiUrl(
+      getPublicApiBase(),
+      "projects",
+      id,
+      "collections",
+      collectionId,
+    ),
+    "Could not load this collection.",
+  );
+}
+
+/** Papers teammates shared that closely match the caller's own profile. */
+export async function fetchMemberSuggestions(): Promise<MemberSuggestionsFeed> {
+  return getJson<MemberSuggestionsFeed>(
+    buildApiUrl(getPublicApiBase(), "suggestions"),
+    "Could not load your suggestions.",
   );
 }

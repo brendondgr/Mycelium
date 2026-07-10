@@ -271,6 +271,46 @@ export type ProjectFeed = {
   items: ProjectFeedItem[];
 };
 
+/**
+ * One item inside a shared collection (from
+ * `/api/projects/<id>/collections/<cid>/`). Reuses the same content shape as
+ * a feed item, plus who added it and their note.
+ */
+export type CollectionItem = {
+  content_id: string;
+  type: string;
+  source: string;
+  title: string;
+  abstract: string;
+  url: string;
+  venue: string;
+  year: number | null;
+  authors: string[];
+  item_id: string;
+  note: string;
+  added_by: ProjectMember | null;
+  added_at: string;
+};
+
+/**
+ * A project's shared reading list, without its items (from
+ * `/api/projects/<id>/collections/`).
+ */
+export type CollectionBrief = {
+  id: string;
+  name: string;
+  description: string;
+  is_archived: boolean;
+  item_count: number;
+  created_by: ProjectMember | null;
+  created_at: string;
+};
+
+/** A single collection's full detail, including its items. */
+export type CollectionDetail = CollectionBrief & {
+  items: CollectionItem[];
+};
+
 /** Result of resolving a pasted DOI/article link into a project share. */
 export type IngestLinkResult = {
   share_id: string;
@@ -311,6 +351,28 @@ export type DeadlineAlert = {
 export type NotificationFeed = {
   count: number;
   items: DeadlineAlert[];
+};
+
+/**
+ * A paper suggestion surfaced from a teammate's shared item (from
+ * `/api/suggestions/`) — the "Suggested for you" surface. `match_percent` is
+ * the caller's own personal fit for the shared paper.
+ */
+export type MemberSuggestion = {
+  id: string;
+  content_id: string;
+  title: string;
+  url: string;
+  score: number;
+  match_percent: number | null;
+  project: { id: string; name: string };
+  shared_by: ProjectMember | null;
+  created_at: string;
+};
+
+export type MemberSuggestionsFeed = {
+  count: number;
+  items: MemberSuggestion[];
 };
 
 /**

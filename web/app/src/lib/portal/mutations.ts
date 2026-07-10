@@ -3,6 +3,8 @@
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import { ensureCsrfCookie, readCsrfToken } from "@/lib/auth-client";
 import type {
+  CollectionBrief,
+  CollectionDetail,
   IngestLinkResult,
   InvitationAction,
   LabProfileData,
@@ -222,6 +224,100 @@ export function recordProjectEvent(
     buildApiUrl(getPublicApiBase(), "projects", id, "events"),
     { content_item: contentId, action },
     "Could not record that action.",
+  );
+}
+
+/** Create a shared reading list (collection) within a project. */
+export function createCollection(
+  id: string,
+  name: string,
+  description?: string,
+): Promise<CollectionDetail> {
+  return sendJson<CollectionDetail>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "collections"),
+    description ? { name, description } : { name },
+    "Could not create the list.",
+  );
+}
+
+/** Rename, re-describe, or archive/unarchive a collection. */
+export function updateCollection(
+  id: string,
+  collectionId: string,
+  patch: Partial<Pick<CollectionBrief, "name" | "description" | "is_archived">>,
+): Promise<CollectionDetail> {
+  return sendJson<CollectionDetail>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "projects", id, "collections", collectionId),
+    patch,
+    "Could not update the list.",
+  );
+}
+
+/**
+ * Add a content item to a collection. The backend returns 201 for a newly
+ * added item and 200 if it was already in the list — both are success.
+ */
+export function addToCollection(
+  id: string,
+  collectionId: string,
+  contentId: string,
+  note?: string,
+): Promise<CollectionDetail> {
+  return sendJson<CollectionDetail>(
+    "POST",
+    buildApiUrl(
+      getPublicApiBase(),
+      "projects",
+      id,
+      "collections",
+      collectionId,
+      "items",
+    ),
+    note ? { content_item: contentId, note } : { content_item: contentId },
+    "Could not add this to the list.",
+  );
+}
+
+/** Remove a content item from a collection. */
+export async function removeFromCollection(
+  id: string,
+  collectionId: string,
+  contentId: string,
+): Promise<void> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+  const response = await fetch(
+    buildApiUrl(
+      getPublicApiBase(),
+      "projects",
+      id,
+      "collections",
+      collectionId,
+      "items",
+      contentId,
+    ),
+    {
+      method: "DELETE",
+      credentials: "include",
+      headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
+    },
+  );
+  if (!response.ok) {
+    throw new Error("Could not remove this from the list.");
+  }
+}
+
+/** Dismiss a member suggestion so it stops surfacing. */
+export function dismissSuggestion(
+  id: string,
+): Promise<{ id: string; dismissed: boolean }> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "suggestions", id, "dismiss"),
+    undefined,
+    "Could not dismiss this suggestion.",
   );
 }
 

@@ -13,10 +13,13 @@ import {
   fetchLabProjects,
   fetchLabRecommendations,
   fetchLabWatch,
+  fetchMemberSuggestions,
   fetchMyInvitations,
   fetchMyLabs,
   fetchNotifications,
   fetchProfile,
+  fetchProjectCollection,
+  fetchProjectCollections,
   fetchProjectFeed,
   fetchProjectRecommendations,
   fetchProjects,
@@ -24,17 +27,22 @@ import {
 } from "@/lib/portal/client";
 import {
   addProjectMember,
+  addToCollection,
+  createCollection,
   createLab,
   createProject,
+  dismissSuggestion,
   ingestProjectLink,
   inviteToLab,
   joinProject,
   leaveProject,
+  removeFromCollection,
   respondToInvitation,
   saveOpportunity,
   shareToProject,
   synthesizeLabProfile,
   unsaveOpportunity,
+  updateCollection,
   updateLabProfile,
   updateLabWatch,
 } from "@/lib/portal/mutations";
@@ -341,6 +349,124 @@ export function useIngestProjectLink() {
       queryClient.invalidateQueries({
         queryKey: ["portal", "project-feed", variables.id],
       });
+    },
+  });
+}
+
+/** A project's shared reading lists (non-archived by default). */
+export function useProjectCollections(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "project-collections", id ?? "none"],
+    queryFn: () => fetchProjectCollections(id as string),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
+/** One collection's full item list. Disabled until both ids are known. */
+export function useProjectCollection(id?: string, collectionId?: string) {
+  return useQuery({
+    queryKey: [
+      "portal",
+      "project-collection",
+      id ?? "none",
+      collectionId ?? "none",
+    ],
+    queryFn: () => fetchProjectCollection(id as string, collectionId as string),
+    enabled: Boolean(id && collectionId),
+    staleTime: 30_000,
+  });
+}
+
+/** Create a collection; refreshes the project's collection list. */
+export function useCreateCollection(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; description?: string }) =>
+      createCollection(id, input.name, input.description),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-collections", id],
+      });
+    },
+  });
+}
+
+/** Rename, re-describe, or archive/unarchive a collection. */
+export function useUpdateCollection(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      collectionId: string;
+      patch: Parameters<typeof updateCollection>[2];
+    }) => updateCollection(id, input.collectionId, input.patch),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-collections", id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-collection", id, variables.collectionId],
+      });
+    },
+  });
+}
+
+/** Add a content item to a collection; refreshes the list and that collection's detail. */
+export function useAddToCollection(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      collectionId: string;
+      contentId: string;
+      note?: string;
+    }) => addToCollection(id, input.collectionId, input.contentId, input.note),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-collections", id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-collection", id, variables.collectionId],
+      });
+    },
+  });
+}
+
+/** Remove a content item from a collection; refreshes the list and that collection's detail. */
+export function useRemoveFromCollection(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { collectionId: string; contentId: string }) =>
+      removeFromCollection(id, input.collectionId, input.contentId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-collections", id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-collection", id, variables.collectionId],
+      });
+    },
+  });
+}
+
+/** Papers teammates shared that closely match the caller's own profile. */
+export function useMemberSuggestions() {
+  return useQuery({
+    queryKey: ["portal", "member-suggestions"],
+    queryFn: fetchMemberSuggestions,
+    staleTime: 30_000,
+  });
+}
+
+/** Dismiss a member suggestion; refreshes the suggestions feed and the notification bell. */
+export function useDismissSuggestion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => dismissSuggestion(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "member-suggestions"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["portal", "notifications"] });
     },
   });
 }

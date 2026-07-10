@@ -306,3 +306,23 @@ export function ListIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/** Thumbs-up — a lightweight "helpful" engagement signal. */
+export function ThumbsUpIcon(props: IconProps) {
+  return (
+    <Svg strokeWidth={1.7} {...props}>
+      <path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3Z" />
+      <path d="M7 11l4.4-6.9a2 2 0 0 1 3.6 1.2V9h4.2a2 2 0 0 1 1.96 2.4l-1.2 6A2 2 0 0 1 18.02 19H10a3 3 0 0 1-3-3v-5Z" />
+    </Svg>
+  );
+}
+
+/** Thumbs-down — a lightweight "not helpful" engagement signal. */
+export function ThumbsDownIcon(props: IconProps) {
+  return (
+    <Svg strokeWidth={1.7} {...props}>
+      <path d="M17 13V4h3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-3Z" />
+      <path d="M17 13l-4.4 6.9a2 2 0 0 1-3.6-1.2V15H4.8a2 2 0 0 1-1.96-2.4l1.2-6A2 2 0 0 1 5.98 5H14a3 3 0 0 1 3 3v5Z" />
+    </Svg>
+  );
+}
