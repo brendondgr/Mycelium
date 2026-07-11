@@ -33,7 +33,9 @@ function metaLine(suggestion: Suggestion): string {
  * `displayPercent` derived from that paper's per-interest fusion scores with a
  * neutral dot — that number is not Mylo's holistic judgement, so it never wears
  * the headshot. Unfiltered, the badge shows the language model's own percent and
- * (when Mylo authored it) its headshot, matching the Grants page.
+ * (when Mylo authored it) its headshot, matching the Grants page; the
+ * cross-embedding tail (no model percent) falls back to its transformer
+ * `embedding_match` with a neutral dot.
  */
 export function SuggestionCard({
   suggestion,
@@ -64,7 +66,7 @@ export function SuggestionCard({
             <MatchBadge percent={displayPercent ?? null} />
           ) : (
             <MatchBadge
-              percent={suggestion.match_percent}
+              percent={suggestion.match_percent ?? suggestion.embedding_match}
               origin={suggestion.origin}
             />
           )}

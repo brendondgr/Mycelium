@@ -38,6 +38,7 @@ def _suggest(
     match=80,
     focus_areas=None,
     per_interest=None,
+    embedding_match=0.72,
 ) -> RelevanceScore:
     return RelevanceScore.objects.create(
         content=paper,
@@ -50,6 +51,7 @@ def _suggest(
             "headline": f"Headline {rank}",
             "reason": f"Reason {rank}",
             "match_percent": match,
+            "embedding_match": embedding_match,
             "focus_areas": focus_areas or [],
             "per_interest": per_interest or {},
             "source": "llm",
@@ -112,12 +114,15 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
         "venue",
         "year",
         "match_percent",
+        "embedding_match",
         "abstract",
         "per_interest",
         "matched_interests",
     } <= set(top)
     assert top["origin"] == "llm"
     assert top["match_percent"] == 90
+    # The transformer cosine match is exposed as a whole percent for the tail badge.
+    assert top["embedding_match"] == 72
     # The page reads the abstract, the per-interest fusion scores, and the
     # matched interest labels (chips) straight off the suggestion.
     assert top["abstract"] == "Abstract of First"
@@ -132,7 +137,10 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
     assert summary["top_match"] == 90
     assert summary["average_match"] == 75  # round((90 + 60) / 2)
     assert summary["themes"] == ["Knowledge Graphs"]
-    assert "2 papers matched" in summary["headline"]
+    # The summary frames the count against the configurable match threshold.
+    assert isinstance(summary["match_threshold"], int)
+    assert "2 papers met your" in summary["headline"]
+    assert "match threshold" in summary["headline"]
 
 
 @pytest.mark.django_db

@@ -146,22 +146,33 @@ def _build_summary(rows: list[RelevanceScore]) -> dict:
             sources.append(source)
 
     count = len(rows)
+    threshold = _match_threshold_percent()
     return {
         "paper_count": count,
         "strong_matches": strong,
         "top_match": max(matches) if matches else None,
         "average_match": round(sum(matches) / len(matches)) if matches else None,
+        # The embedding-match floor (percent) each surfaced paper had to clear, so the
+        # UI can frame the count as "N papers met the X% match threshold".
+        "match_threshold": threshold,
         "themes": themes,
         "sources": sources,
-        "headline": _summary_headline(count, strong),
+        "headline": _summary_headline(count, strong, threshold),
     }
 
 
-def _summary_headline(count: int, strong: int) -> str:
+def _match_threshold_percent() -> int:
+    """The paper-feed embedding-match threshold as a whole percent, for display."""
+    from django.conf import settings
+
+    return round(getattr(settings, "PAPER_MATCH_THRESHOLD", 0.5) * 100)
+
+
+def _summary_headline(count: int, strong: int, threshold: int) -> str:
     if count == 0:
-        return "No new papers matched your research today."
+        return "No new papers cleared your match threshold today."
     papers = "paper" if count == 1 else "papers"
-    lead = f"{count} {papers} matched your research today"
+    lead = f"{count} {papers} met your {threshold}% match threshold today"
     if strong:
         return f"{lead} — {strong} a strong match."
     return f"{lead}."

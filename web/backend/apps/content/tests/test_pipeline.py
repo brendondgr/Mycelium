@@ -40,6 +40,14 @@ def _reset_embedder():
     embeddings.reset_embedder()
 
 
+@pytest.fixture(autouse=True)
+def _open_match_threshold(settings):
+    """Surface every fused candidate by default, isolating these tests from the
+    production ``PAPER_MATCH_THRESHOLD``. Tests that exercise the threshold set their
+    own value explicitly via ``match_threshold=``."""
+    settings.PAPER_MATCH_THRESHOLD = 0.0
+
+
 def _no_search(*_args, **_kwargs):
     return []
 
@@ -206,6 +214,61 @@ def test_fusion_prefers_multi_interest_paper(pgvector) -> None:
     # Profile embedding is still persisted for downstream scoring.
     user.profile.refresh_from_db()
     assert user.profile.embedding is not None
+
+
+@pytest.mark.django_db
+def test_match_threshold_filters_fusion_by_embedding_cosine(pgvector) -> None:
+    """The paper feed surfaces only candidates whose transformer cosine clears the
+    threshold — a variable-length list — and records that cosine as embedding_match.
+
+    ``p_both`` matches both interests at cosine ~0.71; the single-interest papers
+    match one at ~0.53. A 0.60 threshold keeps only ``p_both``, so the surfaced count
+    is 1 rather than a fixed 25.
+    """
+    embeddings.set_embedder(_fake_embed)
+    p_both = _vpaper("both", "graph health", [1.0, 1.0, 0.0, 0.0])
+    p_one = _vpaper("one", "graph biomedical", [0.5, 0.0, 0.8, 0.0])  # graph only
+    p_two = _vpaper("two", "health public", [0.0, 0.5, 0.0, 0.8])  # health only
+    user = _profile_user("thresholder", areas=["graph", "health"], keywords=[])
+
+    result = run_for_user(
+        user, search_fn=_no_search, complete=lambda _p: None, match_threshold=0.6
+    )
+
+    assert result.status == "ok"
+    scores = {s.content_id: s for s in RelevanceScore.objects.filter(target_user=user)}
+    # Only the two-interest paper cleared the 60% embedding-match threshold.
+    assert set(scores) == {p_both.id}
+    assert p_one.id not in scores
+    assert p_two.id not in scores
+    # Its embedding cosine (~0.71) is recorded for the UI's cross-embedding badge.
+    assert scores[p_both.id].signals["embedding_match"] >= 0.7
+    assert result.suggestions == 1
+
+
+@pytest.mark.django_db
+def test_match_threshold_filters_single_vector_path(pgvector) -> None:
+    """The same threshold gates the no-areas single-vector path, on raw similarity."""
+    embeddings.set_embedder(_fake_embed)
+    strong = _vpaper("strong", "graph", [1.0, 0.0, 0.0, 0.0])  # cosine ~1.0
+    weak = _vpaper("weak", "graph other", [0.5, 0.0, 0.0, 0.87])  # cosine ~0.5
+    user = User.objects.create_user("sv-threshold", password="x")
+    user.profile.interests = {"statement": "graph"}  # no areas -> single-vector
+    user.profile.save()
+    _set_watch(user, ["graph"])
+
+    result = run_for_user(
+        user, search_fn=_no_search, complete=lambda _p: None, match_threshold=0.7
+    )
+
+    assert result.status == "ok"
+    assert result.interests == 0  # single-vector fallback path
+    scored = {
+        s.content_id: s for s in RelevanceScore.objects.filter(target_user=user)
+    }
+    assert strong.id in scored
+    assert weak.id not in scored  # cosine ~0.5 fell below the 0.7 threshold
+    assert scored[strong.id].signals["embedding_match"] >= 0.9
 
 
 @pytest.mark.django_db

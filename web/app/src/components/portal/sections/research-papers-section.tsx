@@ -147,11 +147,17 @@ export function ResearchPapersSection() {
       }.`;
     }
     const when = formatWhen(data?.generated_at ?? null);
-    const count = `Top ${primary.length} paper${primary.length === 1 ? "" : "s"}`;
-    const more = extra.length > 0 ? ` · ${extra.length} more matches` : "";
+    const total = suggestions.length;
+    const threshold = data?.summary?.match_threshold;
+    const papers = `paper${total === 1 ? "" : "s"}`;
+    const met =
+      typeof threshold === "number"
+        ? `${total} ${papers} met your ${threshold}% match threshold`
+        : `${total} ${papers} matched your research`;
+    const ranked = `top ${primary.length} ranked by Mylo`;
     return when
-      ? `${count}, ranked by Mylo${more} · gathered ${when}.`
-      : `${count}, ranked by Mylo${more}.`;
+      ? `${met} — ${ranked} · gathered ${when}.`
+      : `${met} — ${ranked}.`;
   })();
 
   return (
@@ -301,8 +307,9 @@ export function ResearchPapersSection() {
           <p className="mt-5 text-xs text-[var(--text-muted)]">
             The top papers marked “Mylo pick” were ranked and percent-matched by the
             language model — the percent reflects how well it judges each paper fits
-            your research. The cross-topics matches are further papers found by
-            embedding similarity, listed in recommendation order (no model percent).
+            your research. The cross-topics matches are the rest of the papers that
+            cleared your match threshold, each showing its transformer
+            (embedding-similarity) match percent, in recommendation order.
           </p>
         </>
       )}

@@ -69,6 +69,7 @@ function SummaryView({ summary }: { summary: DailyReportSummary }) {
           icon={<DocumentIcon size={16} />}
           label="Papers today"
           value={summary.paper_count}
+          sub={`≥${summary.match_threshold}% match`}
         />
         <StatCard
           icon={<SparkleIcon size={16} />}

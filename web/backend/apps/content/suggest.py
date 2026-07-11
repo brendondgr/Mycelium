@@ -4,8 +4,11 @@ Retrieval + fusion give us the papers most relevant to a researcher's interests;
 this module turns that ordered candidate list into the daily digest with a
 deliberate two-tier shape (a product requirement):
 
-- **Surface the top ``surface_limit`` papers** (default 25) so the researcher sees
-  the full breadth of what matched today.
+- **Surface every candidate passed in** (``surface_limit=None``, the default) so the
+  researcher sees the full breadth of what matched today. The caller (the pipeline)
+  has already filtered the pool by the embedding-match threshold, so the surfaced
+  count is variable — however many papers cleared it. An explicit ``surface_limit``
+  still caps the total when a caller wants a fixed slice.
 - **Only the top ``llm_limit`` papers** (default 10) are sent to the language model
   for a bespoke headline, reason, and percent-match judgement. The percent match is
   *only* ever the model's — papers ranked below (the cross-embedding tail) carry a
@@ -39,9 +42,10 @@ CompleteFn = Callable[[str], str | None]
 #: ``signals`` and the daily-report API response).
 Suggestion = dict[str, Any]
 
-#: Two-tier digest defaults: how many papers we surface in total, and how many of
-#: those top papers the language model ranks and explains.
-_DEFAULT_SURFACE_LIMIT = 25
+#: Two-tier digest defaults: the language model ranks and explains this many of the
+#: top papers. The surface total is unbounded by default (``surface_limit=None``) —
+#: the pipeline decides how many papers to surface by an embedding-match threshold,
+#: not a fixed count.
 _DEFAULT_LLM_LIMIT = 10
 _ABSTRACT_CHARS = 600
 
@@ -67,34 +71,37 @@ def generate_suggestions(
     hits: Sequence[tuple[ContentItem, float]],
     *,
     llm_limit: int = _DEFAULT_LLM_LIMIT,
-    surface_limit: int = _DEFAULT_SURFACE_LIMIT,
+    surface_limit: int | None = None,
     complete: CompleteFn | None = None,
 ) -> list[Suggestion]:
-    """Return the two-tier digest: up to ``surface_limit`` ranked suggestions.
+    """Return the two-tier digest: every candidate surfaced, top ``llm_limit`` ranked.
 
     ``hits`` is the fused, ranked candidate list (``(ContentItem, score)``), best
-    first. The top ``llm_limit`` go to the model for bespoke headlines/reasons/match
-    scores; the model's picks lead (``source="llm"``). Every remaining surfaced
-    paper is filled in deterministically (``source="fallback"``), preserving score
-    order, up to ``surface_limit`` total. When the model is unavailable, errors, or
-    returns nothing usable, the whole list is the deterministic fallback.
+    first — already filtered by the caller (e.g. by an embedding-match threshold), so
+    by default (``surface_limit=None``) *all* of them are surfaced. The top
+    ``llm_limit`` go to the model for bespoke headlines/reasons/match scores; the
+    model's picks lead (``source="llm"``). Every remaining surfaced paper is filled
+    in deterministically (``source="fallback"``), preserving score order. Passing an
+    explicit ``surface_limit`` caps the total to a fixed slice. When the model is
+    unavailable, errors, or returns nothing usable, the whole list is the
+    deterministic fallback.
     """
     candidates = list(hits)
     if not candidates:
         return []
 
-    surfaced = candidates[:surface_limit]
+    surfaced = candidates if surface_limit is None else candidates[:surface_limit]
     llm_subset = surfaced[:llm_limit]
 
     llm = _llm_suggestions(interests, llm_subset, limit=llm_limit, complete=complete)
     picked = {s["content_id"] for s in llm}
 
     # Fill the remaining surfaced slots deterministically, in score order. This
-    # also covers any of the top ``llm_limit`` the model chose to skip.
+    # also covers any of the top ``llm_limit`` the model chose to skip. ``surfaced``
+    # is already the final set (all candidates, or the ``surface_limit`` slice), and
+    # the model's picks are a subset of it, so the result is exactly ``surfaced``.
     out: list[Suggestion] = list(llm)
     for item, score in surfaced:
-        if len(out) >= surface_limit:
-            break
         if str(item.id) in picked:
             continue
         out.append(
