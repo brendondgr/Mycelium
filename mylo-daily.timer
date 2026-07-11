@@ -1,0 +1,28 @@
+[Unit]
+Description=Mycelium — run the daily research pipeline once a day
+Documentation=https://github.com/brendondgr/mycelium
+
+[Timer]
+# 07:00 local time (system timezone) — after the retired in-container hours
+# (opportunities 1am, papers 6am), so nothing overlaps. Adjust to taste.
+OnCalendar=*-*-* 07:00:00
+# If the machine was off at 07:00, run as soon as it is back up rather than
+# skipping the day entirely.
+Persistent=true
+# A small random delay avoids every host that copies this unit hammering the
+# sources at exactly the same second.
+RandomizedDelaySec=300
+Unit=mylo-daily.service
+
+[Install]
+WantedBy=timers.target
+
+# Enable on this (or any) host:
+#     sudo cp mylo-daily.service mylo-daily.timer /etc/systemd/system/
+#     sudo systemctl daemon-reload
+#     sudo systemctl enable --now mylo-daily.timer
+# Check it:
+#     systemctl list-timers mylo-daily.timer
+#     journalctl -u mylo-daily -f
+# Run it once by hand (does not disturb the schedule):
+#     sudo systemctl start mylo-daily.service

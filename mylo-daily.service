@@ -1,0 +1,38 @@
+[Unit]
+Description=Mycelium — daily research run (scrape → search → match → refit → briefing)
+Documentation=https://github.com/brendondgr/mycelium
+# The daily run drives the Docker stack (backend container) and the host Pivot
+# scrape, so the stack should be up first. `Wants` (not `Requires`) on purpose:
+# if the stack unit failed, we still let manual_all.py run so it can REPORT the
+# stack-down condition to Discord rather than silently not running.
+After=mycelium.service network-online.target
+Wants=mycelium.service network-online.target
+
+[Service]
+Type=oneshot
+
+WorkingDirectory=/home/bdgr/Agents/Mycelium
+
+# Run through the root uv virtualenv interpreter (has the runner deps). The
+# scrape stage shells out to `uv` and `docker` by name, so keep them on PATH.
+# ~/.local/bin is included for hosts where uv installs there instead of /usr/bin.
+Environment=PATH=/home/bdgr/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/bdgr/Agents/Mycelium/.venv/bin/python /home/bdgr/Agents/Mycelium/manual_all.py
+
+# The full run (scan + embed + LLM scoring for every user) can take well over an
+# hour. Bound it generously so a genuinely hung run is eventually killed and the
+# next day recovers, without cutting a healthy run short.
+TimeoutStartSec=14400
+
+# Run as the user who owns the repo, the Docker socket auth, the .venv, and the
+# saved Pivot session.
+User=bdgr
+Group=bdgr
+
+# Surface the run via journalctl -u mylo-daily
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+# Not started directly — driven by mylo-daily.timer. See that unit's header.
+WantedBy=multi-user.target

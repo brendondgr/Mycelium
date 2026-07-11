@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 SAMPLE_TEXT = (
     "Dr. Ada Lovelace, Analytical Engine Institute. Research interests: "
@@ -32,17 +32,33 @@ SAMPLE_TEXT = (
 class Command(BaseCommand):
     help = "Check that the configured LLM endpoint is reachable and usable."
 
+    def add_arguments(self, parser) -> None:
+        parser.add_argument(
+            "--strict",
+            action="store_true",
+            help=(
+                "Exit non-zero when the endpoint is missing or unreachable, so "
+                "automation (e.g. the daily run) can detect an LLM outage."
+            ),
+        )
+
     def handle(self, *args: object, **options: object) -> None:
+        strict = bool(options.get("strict"))
         self._print_settings()
         if not settings.LLM_MODEL:
-            self.stderr.write(
-                self.style.ERROR(
-                    "LLM_MODEL is empty — synthesis will always use the "
-                    "deterministic fallback. Set LLM_MODEL to the served model."
-                )
+            message = (
+                "LLM_MODEL is empty — synthesis will always use the "
+                "deterministic fallback. Set LLM_MODEL to the served model."
             )
+            self.stderr.write(self.style.ERROR(message))
+            if strict:
+                raise CommandError(message)
             return
         if not self._ping():
+            if strict:
+                raise CommandError(
+                    "LLM endpoint is unreachable or returned nothing usable."
+                )
             return
         self._extract()
 

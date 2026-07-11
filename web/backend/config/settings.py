@@ -169,24 +169,16 @@ CELERY_RESULT_BACKEND = env(
 )
 
 # Scheduled background work. Celery Beat (the `beat` compose service) reads this
-# and enqueues the task on the worker. The hour is UTC (USE_TZ / TIME_ZONE above);
-# CELERY_DAILY_SUGGESTIONS_HOUR lets a deployment shift it without a code change.
+# and enqueues the task on the worker. The hour is UTC (USE_TZ / TIME_ZONE above).
+#
+# NOTE: the daily research + opportunity run is NOT scheduled here. It now runs on
+# the host via `manual_all.py` (the `mylo-daily.timer` systemd unit), because that
+# flow includes the Pivot opportunity scrape, which needs host-only Playwright and
+# the saved SSO session the backend container does not have. The
+# `run_daily_suggestions` / `run_daily_opportunities` tasks and management commands
+# still exist and are invoked by `manual_all.py`; only their in-container schedule
+# moved. Keep team-profile recompute on Beat — it has no host dependency.
 CELERY_BEAT_SCHEDULE = {
-    "daily-research-suggestions": {
-        "task": "apps.content.run_daily_suggestions",
-        "schedule": crontab(
-            hour=env.int("CELERY_DAILY_SUGGESTIONS_HOUR", default=6), minute=0
-        ),
-    },
-    # Grants/conferences run an hour before papers (1am) so the opportunity
-    # corpus is refreshed and pruned before the day's matching. Same pattern as
-    # above; CELERY_DAILY_OPPORTUNITIES_HOUR shifts it without a code change.
-    "daily-opportunities": {
-        "task": "apps.content.run_daily_opportunities",
-        "schedule": crontab(
-            hour=env.int("CELERY_DAILY_OPPORTUNITIES_HOUR", default=1), minute=0
-        ),
-    },
     # Feature D: recompute every project's team-relevance signal nightly, so
     # engagement that accrued during the day shapes the next day's recommendations.
     "recompute-project-profiles": {
