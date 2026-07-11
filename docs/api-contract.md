@@ -397,7 +397,20 @@ the first run.
 ### `GET /api/opportunities/conferences/`
 
 Same shape for conferences (card format), with `location`, `country`,
-`event_dates`, `deadlines`, and `keywords` instead of the grant fields.
+`event_dates`, `deadlines`, `keywords`, and `matched_subjects` instead of the
+grant fields. It also carries the fields the Conferences filter rail narrows on
+(all additive, read from the item metadata computed at ingest):
+
+- `event_date` — the (first) event date as ISO `YYYY-MM-DD`, or `""` (drives the
+  event-date window filter/sort; `event_dates` stays the human display string).
+- `abstract_open` / `manuscript_open` — booleans, true while that submission
+  window (abstract / full paper) is still upcoming.
+- `status` — submission status: `"open" | "closed" | "unknown"`.
+- `scope` — Pivot scope label (e.g. `"International"`), or `""`.
+
+The `deadline_kind` on the shared base is the next actionable kind
+(`abstract` / `manuscript` / `event`). Continent is derived client-side from
+`country`, so it is not a response field.
 
 ### `POST /api/opportunities/save/`
 

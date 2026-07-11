@@ -236,10 +236,20 @@ export type ConferenceOpportunity = OpportunityBase & {
   location: string;
   country: string;
   event_dates: string;
+  /** The (first) event date as ISO YYYY-MM-DD, or "" — for event-date filters/sort. */
+  event_date: string;
   deadlines: string;
   keywords: string;
   /** Semicolon-delimited subject categories — clean tags (unlike keywords). */
   matched_subjects: string;
+  /** True while an abstract-submission deadline is still upcoming. */
+  abstract_open: boolean;
+  /** True while a full-paper (manuscript) submission deadline is still upcoming. */
+  manuscript_open: boolean;
+  /** Submission status: "open" | "closed" | "unknown". */
+  status: string;
+  /** Pivot scope label (e.g. "International", "National"), or "". */
+  scope: string;
 };
 
 /** A ranked opportunity feed for one area. */

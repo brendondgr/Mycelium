@@ -212,9 +212,14 @@ class ConferenceSerializer(_OpportunitySerializer):
     location = serializers.SerializerMethodField()
     country = serializers.SerializerMethodField()
     event_dates = serializers.SerializerMethodField()
+    event_date = serializers.SerializerMethodField()
     deadlines = serializers.SerializerMethodField()
     keywords = serializers.SerializerMethodField()
     matched_subjects = serializers.SerializerMethodField()
+    abstract_open = serializers.SerializerMethodField()
+    manuscript_open = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    scope = serializers.SerializerMethodField()
 
     def get_title(self, score: RelevanceScore) -> str:
         return self._meta(score).get("name") or "Untitled conference"
@@ -239,6 +244,28 @@ class ConferenceSerializer(_OpportunitySerializer):
         # Semicolon-delimited subject categories — clean, chippable topic tags
         # (unlike ``keywords``, which Pivot returns space-joined).
         return self._meta(score).get("matched_subjects") or ""
+
+    def get_event_date(self, score: RelevanceScore) -> str:
+        # The (first) event date as ISO YYYY-MM-DD, or "" — drives the event-date
+        # window filter/sort. ``event_dates`` remains the human display string.
+        return self._meta(score).get("event_date") or ""
+
+    def get_abstract_open(self, score: RelevanceScore) -> bool:
+        # True while an abstract-submission deadline is still upcoming.
+        return bool(self._meta(score).get("abstract_open"))
+
+    def get_manuscript_open(self, score: RelevanceScore) -> bool:
+        # True while a full-paper (manuscript) submission deadline is still upcoming.
+        return bool(self._meta(score).get("manuscript_open"))
+
+    def get_status(self, score: RelevanceScore) -> str:
+        # Submission status: "open" | "closed" | "unknown". Persisted in signals at
+        # match time; fall back to the item metadata for rows written before it.
+        return score.signals.get("status") or self._meta(score).get("status") or ""
+
+    def get_scope(self, score: RelevanceScore) -> str:
+        # Pivot's scope label (e.g. "International", "National"), or "".
+        return self._meta(score).get("scope") or ""
 
 
 class FellowshipSerializer(_OpportunitySerializer):

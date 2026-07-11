@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/portal/primitives/section-header";
 import {
   ArrowRightIcon,
   CalendarIcon,
+  CheckIcon,
   ConferenceIcon,
 } from "@/components/portal/icons";
 import {
@@ -17,8 +18,39 @@ import {
   SaveButton,
   deadlineLabel,
 } from "@/components/portal/sections/opportunity-bits";
+import {
+  ConferenceFilters,
+  DEFAULT_CONFERENCE_FILTERS,
+  deriveConferenceFilterOptions,
+  filterAndSortConferences,
+  hasActiveConferenceFilters,
+  type ConferenceFilterState,
+} from "@/components/portal/sections/conference-filters";
 import { useConferences } from "@/lib/portal/hooks";
 import type { ConferenceOpportunity } from "@/lib/portal/types";
+
+/** How many of the top matched conferences to show before "Show all". */
+const DEFAULT_CONFERENCE_LIMIT = 24;
+
+/**
+ * A small green "still accepting" pill for an open submission window (abstract
+ * or full paper). Communicated by label + check icon, never color alone.
+ */
+function OpenChip({ label }: { label: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+      style={{
+        borderColor: "color-mix(in srgb, var(--success) 35%, var(--border))",
+        backgroundColor: "color-mix(in srgb, var(--success) 10%, var(--surface))",
+        color: "var(--text-primary)",
+      }}
+    >
+      <CheckIcon size={11} aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
 
 function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
   const where = conf.location || conf.country;
@@ -69,6 +101,14 @@ function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
           <CalendarIcon size={15} aria-hidden="true" />
           {deadlineLabel(conf.deadline_kind, conf.deadline_date)}
         </p>
+      ) : null}
+
+      {/* What's still accepting — the open submission windows for this venue. */}
+      {conf.abstract_open || conf.manuscript_open ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {conf.abstract_open ? <OpenChip label="Abstract open" /> : null}
+          {conf.manuscript_open ? <OpenChip label="Full paper open" /> : null}
+        </div>
       ) : null}
 
       {/* Mylo's read on why this venue fits — the AI note when the model wrote it. */}
@@ -143,11 +183,39 @@ function formatWhen(iso: string | null): string {
 /**
  * The Conferences page: calls for papers matched to the researcher, in
  * recommendation order, as a card grid (percent match and any "New" tag lead
- * each card). Placed directly below Opportunities in the navigation.
+ * each card). A left-hand filter rail (submission status, abstract/paper open,
+ * deadline & event-date windows, continent, country, subject, new/saved, sort)
+ * narrows the already-fetched feed in memory — instant, no refetch. Top-24 cap
+ * before "Show all", matching the Grants / Fellowships pattern.
  */
 export function ConferencesSection() {
   const { data, isLoading, isError } = useConferences();
-  const conferences = data?.items ?? [];
+  const conferences = React.useMemo(() => data?.items ?? [], [data]);
+
+  const [filters, setFilters] = React.useState<ConferenceFilterState>(
+    DEFAULT_CONFERENCE_FILTERS,
+  );
+  const [showAll, setShowAll] = React.useState(false);
+
+  const options = React.useMemo(
+    () => deriveConferenceFilterOptions(conferences),
+    [conferences],
+  );
+  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const visible = React.useMemo(
+    () => filterAndSortConferences(conferences, filters, today),
+    [conferences, filters, today],
+  );
+
+  const filtersActive = hasActiveConferenceFilters(filters);
+  const capped = !filtersActive && !showAll;
+  const displayed = React.useMemo(
+    () => (capped ? visible.slice(0, DEFAULT_CONFERENCE_LIMIT) : visible),
+    [visible, capped],
+  );
+  const hiddenCount = visible.length - displayed.length;
+
+  const showRail = !isLoading && !isError && conferences.length > 0;
 
   const subtitle: React.ReactNode = (() => {
     if (isLoading) return "Gathering conferences that fit your work…";
@@ -167,39 +235,84 @@ export function ConferencesSection() {
     <div>
       <SectionHeader title="Conferences" subtitle={subtitle} />
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
-      ) : isError ? (
-        <EmptyState
-          icon={<ConferenceIcon size={28} />}
-          title="Couldn't load your conferences"
-          description="Something went wrong fetching your conference matches. Please try again in a moment."
-        />
-      ) : conferences.length === 0 ? (
-        <EmptyState
-          icon={<ConferenceIcon size={28} />}
-          badge="Coming soon"
-          title="Your conference matches are on their way"
-          description="Once Mylo's nightly scan of calls for papers runs against your research profile, the venues that best fit your work — each with a percent match and its submission deadline — will appear here as cards."
-        />
-      ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {conferences.map((conf, index) => (
-            <div
-              key={conf.content_id}
-              className="portal-fade-up"
-              style={{ animationDelay: `${index * 45}ms` }}
-            >
-              <ConferenceCard conf={conf} />
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+        {showRail ? (
+          <ConferenceFilters
+            options={options}
+            filters={filters}
+            onChange={setFilters}
+            resultCount={visible.length}
+            totalCount={conferences.length}
+          />
+        ) : null}
+
+        <div className="min-w-0 flex-1">
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
             </div>
-          ))}
+          ) : isError ? (
+            <EmptyState
+              icon={<ConferenceIcon size={28} />}
+              title="Couldn't load your conferences"
+              description="Something went wrong fetching your conference matches. Please try again in a moment."
+            />
+          ) : conferences.length === 0 ? (
+            <EmptyState
+              icon={<ConferenceIcon size={28} />}
+              badge="Coming soon"
+              title="Your conference matches are on their way"
+              description="Once Mylo's nightly scan of calls for papers runs against your research profile, the venues that best fit your work — each with a percent match and its submission deadline — will appear here as cards."
+            />
+          ) : visible.length === 0 ? (
+            <EmptyState
+              icon={<ConferenceIcon size={28} />}
+              title="No conferences match these filters"
+              description="Try widening your filters to see more of your matched conferences."
+              action={
+                <button
+                  type="button"
+                  onClick={() => setFilters(DEFAULT_CONFERENCE_FILTERS)}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                >
+                  Clear all filters
+                </button>
+              }
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {displayed.map((conf, index) => (
+                  <div
+                    key={conf.content_id}
+                    className="portal-fade-up"
+                    style={{ animationDelay: `${index * 45}ms` }}
+                  >
+                    <ConferenceCard conf={conf} />
+                  </div>
+                ))}
+              </div>
+              {hiddenCount > 0 ? (
+                <div className="mt-5 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAll(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    Show all {conferences.length} conferences
+                    <span className="text-[var(--text-muted)]">
+                      (+{hiddenCount} more)
+                    </span>
+                  </button>
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
