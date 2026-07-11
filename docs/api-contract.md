@@ -277,7 +277,39 @@ blank name; `403` when the caller cannot manage the named lab.
 
 Base path: `/api/`. All require authentication; each returns the signed-in user's
 own data only. Papers come from `GET /api/daily-report/` (the daily research
-digest). Grants and conferences come from the daily 1am opportunity matching.
+digest). Grants and conferences come from the daily opportunity matching (run by
+the host `mylo-daily` job). The cross-category summary is `GET /api/daily-briefing/`.
+
+### `GET /api/daily-briefing/`
+
+The "Mylo Report" — the Daily page's three-zone surface. Returns the durable
+`DailyBriefing` written by the daily run's briefing stage: a 2–3 paragraph prose
+summary, per-category counts, and the top showcase items the prose is grounded
+in — scoped to the categories the caller watches
+(`accounts.WatchPreference.categories`). Own briefing only. Success `200`:
+
+```json
+{
+  "generated_at": "2026-07-11T13:00:00+00:00",
+  "categories": ["papers", "grants", "fellowships"],
+  "counts": { "papers": 25, "grants": 25, "fellowships": 40 },
+  "showcase": {
+    "papers": [
+      {
+        "content_id": "…", "type": "paper", "title": "…", "url": "…",
+        "match_percent": 91, "headline": "…", "deadline_date": "", "is_new": false
+      }
+    ],
+    "grants": [ { "…": "…", "deadline_date": "2026-11-12" } ],
+    "fellowships": [ { "…": "…" } ]
+  },
+  "briefing": { "body": "Good morning. Today's scan surfaced …", "origin": "llm" }
+}
+```
+
+`origin` is `"llm"` or `"fallback"` (the deterministic template used when the
+model is down). Before the first run, an honest empty envelope is returned:
+`{"generated_at": null, "categories": [], "counts": {}, "showcase": {}, "briefing": null}`.
 
 ### `GET /api/search/`
 

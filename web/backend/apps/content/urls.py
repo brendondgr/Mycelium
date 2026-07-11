@@ -7,6 +7,13 @@ urlpatterns = [
     # (matches the workspace read endpoints).
     path("daily-report/", views.DailyReportView.as_view(), name="daily-report"),
     path("daily-report", views.DailyReportView.as_view(), name="daily-report-no-slash"),
+    # The cross-category "Mylo Report" briefing (the Daily page's three zones).
+    path("daily-briefing/", views.DailyBriefingView.as_view(), name="daily-briefing"),
+    path(
+        "daily-briefing",
+        views.DailyBriefingView.as_view(),
+        name="daily-briefing-no-slash",
+    ),
     # Unified query-first search over the content corpus.
     path("search/", views.SearchView.as_view(), name="search"),
     path("search", views.SearchView.as_view(), name="search-no-slash"),

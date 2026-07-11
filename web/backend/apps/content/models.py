@@ -584,3 +584,67 @@ class MemberSuggestion(models.Model):
     def __str__(self) -> str:
         verb = "suggest" if self.suggested else "abstain"
         return f"{verb} {self.content} → {self.user} ({self.score:.3f})"
+
+
+class DailyBriefing(models.Model):
+    """One user's current cross-category "Mylo Report".
+
+    A written 2–3 paragraph synthesis over the day's top papers, grants,
+    conferences, and fellowships — gated to the categories the user watches
+    (``accounts.WatchPreference.categories``) — alongside the numeric counts and
+    the top showcase items the prose is grounded in. This is the durable record
+    behind ``GET /api/daily-briefing/`` and the Daily page's three-zone layout.
+
+    One row per user (a OneToOne), replaced in place by each daily run's
+    ``generate_daily_briefing`` stage: the app always serves the newest briefing
+    and the table cannot grow unbounded. ``origin`` records whether the language
+    model wrote the body or the deterministic fallback did, mirroring the paper
+    and opportunity pipelines so the surface is honest when the LLM is down.
+    """
+
+    class Origin(models.TextChoices):
+        LLM = "llm", "LLM"
+        FALLBACK = "fallback", "Fallback"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="daily_briefing",
+    )
+    body = models.TextField(
+        blank=True,
+        default="",
+        help_text="The 2–3 paragraph briefing prose (Mylo's voice).",
+    )
+    origin = models.CharField(
+        max_length=20,
+        choices=Origin.choices,
+        default=Origin.FALLBACK,
+        help_text="Whether the LLM or the deterministic fallback wrote the body.",
+    )
+    categories = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Snapshot of the watched categories this briefing covered.",
+    )
+    counts = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Per-category item counts, e.g. {'papers': 12, 'grants': 3}.",
+    )
+    showcase = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Top items per category the briefing references (grounding).",
+    )
+    generated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When this briefing was last (re)generated.",
+    )
+
+    class Meta:
+        ordering = ["-generated_at"]
+
+    def __str__(self) -> str:
+        return f"DailyBriefing<{self.user}> ({self.origin})"

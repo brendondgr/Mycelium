@@ -17,6 +17,7 @@ from apps.research.models import Project
 from .collaboration import record_event
 from .models import (
     ContentItem,
+    DailyBriefing,
     MemberSuggestion,
     RelevanceEvent,
     RelevanceScore,
@@ -176,6 +177,41 @@ def _summary_headline(count: int, strong: int, threshold: int) -> str:
     if strong:
         return f"{lead} — {strong} a strong match."
     return f"{lead}."
+
+
+class DailyBriefingView(APIView):
+    """The signed-in user's "Mylo Report" — the Daily page's three-zone surface.
+
+    Serves the durable :class:`DailyBriefing` the daily run's briefing stage
+    wrote: the written 2–3 paragraph body, the per-category counts (top-right
+    "Today's Summaries"), and the top showcase items the prose is grounded in
+    (bottom-right). Own briefing only. An honest empty envelope
+    (``generated_at: null``) is the "no run yet" state.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        briefing = DailyBriefing.objects.filter(user=request.user).first()
+        if briefing is None:
+            return Response(
+                {
+                    "generated_at": None,
+                    "categories": [],
+                    "counts": {},
+                    "showcase": {},
+                    "briefing": None,
+                }
+            )
+        return Response(
+            {
+                "generated_at": briefing.generated_at.isoformat(),
+                "categories": briefing.categories,
+                "counts": briefing.counts,
+                "showcase": briefing.showcase,
+                "briefing": {"body": briefing.body, "origin": briefing.origin},
+            }
+        )
 
 
 # --------------------------------------------------------------------------- #
