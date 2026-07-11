@@ -122,6 +122,10 @@ export type Suggestion = {
   score: number;
   /** The model's 0–100 percent match for this researcher (null if unscored). */
   match_percent: number | null;
+  /** The transformer (embedding) cosine match, 0–100, this paper cleared to be
+   * surfaced — shown on the cross-embedding tail in place of the model's percent.
+   * null on legacy rows written before the threshold. */
+  embedding_match: number | null;
   /** Interest label -> [0,1] fusion score; drives the derived per-category %. */
   per_interest: Record<string, number>;
   /** Interest labels this paper matched — the source of the page's filter chips. */
@@ -142,6 +146,8 @@ export type DailyReportSummary = {
   strong_matches: number;
   top_match: number | null;
   average_match: number | null;
+  /** The embedding-match floor (percent) each surfaced paper had to clear. */
+  match_threshold: number;
   themes: string[];
   sources: string[];
   headline: string;

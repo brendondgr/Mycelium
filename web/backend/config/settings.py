@@ -239,6 +239,20 @@ LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
 # similarity + AREA_FOCUS_WEIGHT * focus_overlap. 0 disables the focus boost.
 AREA_FOCUS_WEIGHT = env.float("AREA_FOCUS_WEIGHT", default=0.25)
 
+# Daily research-paper feed sizing (apps.content.pipeline). The Research Papers
+# feed is no longer a fixed top-N: a paper is surfaced only when its transformer
+# (embedding) cosine match to the researcher's interests clears PAPER_MATCH_THRESHOLD
+# — a variable-length list whose size the reader is told ("N papers met the
+# threshold"). It starts deliberately high so the feed is precise; lower it toward
+# 0 to widen the feed. Only the top DEFAULT_SUGGESTIONS of the survivors still go to
+# the language model for a bespoke percent match. PAPER_MATCH_MAX_SURFACE is a
+# backstop cap so a pathological run can never persist an unbounded list. Both are
+# expressed as the raw cosine similarity fraction in [0, 1] (shown as a % in the UI),
+# matching the FANOUT_COSINE_FLOOR convention. Papers only — grant/conference/
+# fellowship matching is unaffected.
+PAPER_MATCH_THRESHOLD = env.float("PAPER_MATCH_THRESHOLD", default=0.5)
+PAPER_MATCH_MAX_SURFACE = env.int("PAPER_MATCH_MAX_SURFACE", default=250)
+
 # Project collaboration (apps.content.collaboration). Per-action weight written on
 # each RelevanceEvent — the weak relevance labels a future team-signal recompute
 # reads. Positive for engagement, negative for rejection. Tunable so the eventual

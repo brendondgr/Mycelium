@@ -66,10 +66,24 @@ logger = logging.getLogger(__name__)
 DEFAULT_QUERY_LIMIT = 6
 DEFAULT_TOP_K = 20
 DEFAULT_SUGGESTIONS = 10  # top papers handed to the LLM for bespoke ranking
-DEFAULT_SURFACE = 25  # total papers surfaced in the daily report
 DEFAULT_POOL_PER_INTEREST = 100  # vector ANN width per interest for the pool
 DEFAULT_DAYS_BACK = 2
 DEFAULT_DAYS_FORWARD = 7
+
+# Fallback paper-feed sizing when the settings are absent (tests, bare configs).
+# In production these come from PAPER_MATCH_THRESHOLD / PAPER_MATCH_MAX_SURFACE.
+_FALLBACK_MATCH_THRESHOLD = 0.5
+_FALLBACK_MAX_SURFACE = 250
+
+
+def _paper_match_threshold() -> float:
+    """The embedding-match floor for surfacing a paper (settings-tunable)."""
+    return getattr(settings, "PAPER_MATCH_THRESHOLD", _FALLBACK_MATCH_THRESHOLD)
+
+
+def _paper_max_surface() -> int:
+    """The backstop cap on how many papers a run may surface (settings-tunable)."""
+    return getattr(settings, "PAPER_MATCH_MAX_SURFACE", _FALLBACK_MAX_SURFACE)
 
 
 @dataclass
@@ -157,7 +171,8 @@ def run_for_user(
     query_limit: int = DEFAULT_QUERY_LIMIT,
     top_k: int = DEFAULT_TOP_K,
     suggestion_limit: int = DEFAULT_SUGGESTIONS,
-    surface_limit: int = DEFAULT_SURFACE,
+    match_threshold: float | None = None,
+    max_surface: int | None = None,
     pool_per_interest: int = DEFAULT_POOL_PER_INTEREST,
     beta: float = DEFAULT_BETA,
     focus_weight: float | None = None,
@@ -214,7 +229,8 @@ def run_for_user(
         query_limit=query_limit,
         top_k=top_k,
         suggestion_limit=suggestion_limit,
-        surface_limit=surface_limit,
+        match_threshold=match_threshold,
+        max_surface=max_surface,
         pool_per_interest=pool_per_interest,
         beta=beta,
         focus_weight=focus_weight,
@@ -231,7 +247,8 @@ def recommend_for_user(
     query_limit: int = DEFAULT_QUERY_LIMIT,
     top_k: int = DEFAULT_TOP_K,
     suggestion_limit: int = DEFAULT_SUGGESTIONS,
-    surface_limit: int = DEFAULT_SURFACE,
+    match_threshold: float | None = None,
+    max_surface: int | None = None,
     pool_per_interest: int = DEFAULT_POOL_PER_INTEREST,
     beta: float = DEFAULT_BETA,
     focus_weight: float | None = None,
@@ -253,6 +270,10 @@ def recommend_for_user(
     username = user.get_username()
     if focus_weight is None:
         focus_weight = getattr(settings, "AREA_FOCUS_WEIGHT", DEFAULT_FOCUS_WEIGHT)
+    if match_threshold is None:
+        match_threshold = _paper_match_threshold()
+    if max_surface is None:
+        max_surface = _paper_max_surface()
 
     def emit(message: str) -> None:
         if log is not None:
@@ -312,21 +333,23 @@ def recommend_for_user(
         pairs, rows, retrieved_count = fuse_interests_pool(
             search_ints,
             content_type=ContentItem.Type.PAPER,
-            surface_limit=surface_limit,
+            surface_limit=max_surface,
             pool_per_interest=pool_per_interest,
             beta=beta,
             emit=emit,
             created_on=gathered_on,
+            match_threshold=match_threshold,
         )
     else:
         pairs, rows, retrieved_count = _single_vector(
             profile_vector,
             interests,
-            top_k=max(top_k, surface_limit),
-            surface_limit=surface_limit,
+            top_k=max(top_k, max_surface),
+            surface_limit=max_surface,
             focus_weight=focus_weight,
             emit=emit,
             created_on=gathered_on,
+            match_threshold=match_threshold,
         )
 
     if not pairs:
@@ -341,11 +364,12 @@ def recommend_for_user(
             note="no embedded papers to retrieve yet",
         )
 
+    # The pipeline has already filtered ``pairs`` by the embedding-match threshold,
+    # so surface all of them; only the top ``suggestion_limit`` go to the model.
     suggestions = generate_suggestions(
         interests,
         pairs,
         llm_limit=suggestion_limit,
-        surface_limit=surface_limit,
         complete=complete,
     )
     llm = sum(1 for s in suggestions if s["source"] == "llm")
@@ -376,7 +400,8 @@ def recommend_for_target(
     *,
     top_k: int = DEFAULT_TOP_K,
     suggestion_limit: int = DEFAULT_SUGGESTIONS,
-    surface_limit: int = DEFAULT_SURFACE,
+    match_threshold: float | None = None,
+    max_surface: int | None = None,
     pool_per_interest: int = DEFAULT_POOL_PER_INTEREST,
     beta: float = DEFAULT_BETA,
     focus_weight: float | None = None,
@@ -398,6 +423,10 @@ def recommend_for_target(
     key = target.key
     if focus_weight is None:
         focus_weight = getattr(settings, "AREA_FOCUS_WEIGHT", DEFAULT_FOCUS_WEIGHT)
+    if match_threshold is None:
+        match_threshold = _paper_match_threshold()
+    if max_surface is None:
+        max_surface = _paper_max_surface()
 
     def emit(message: str) -> None:
         if log is not None:
@@ -414,11 +443,12 @@ def recommend_for_target(
         pairs, rows, retrieved_count = fuse_interests_pool(
             search_ints,
             content_type=ContentItem.Type.PAPER,
-            surface_limit=surface_limit,
+            surface_limit=max_surface,
             pool_per_interest=pool_per_interest,
             beta=beta,
             emit=emit,
             created_on=gathered_on,
+            match_threshold=match_threshold,
         )
     elif target.stored_vector or target.embedding_text.strip():
         # A project with a recomputed team profile (Feature D) carries its blended
@@ -430,11 +460,12 @@ def recommend_for_target(
         pairs, rows, retrieved_count = _single_vector(
             vector,
             interests,
-            top_k=max(top_k, surface_limit),
-            surface_limit=surface_limit,
+            top_k=max(top_k, max_surface),
+            surface_limit=max_surface,
             focus_weight=focus_weight,
             emit=emit,
             created_on=gathered_on,
+            match_threshold=match_threshold,
         )
     else:
         emit("no interests to recommend on; skipping")
@@ -453,7 +484,6 @@ def recommend_for_target(
         interests,
         pairs,
         llm_limit=suggestion_limit,
-        surface_limit=surface_limit,
         complete=complete,
     )
     llm = sum(1 for s in suggestions if s["source"] == "llm")
@@ -511,7 +541,8 @@ def run_daily_batch(
     global_query_limit: int | None = None,
     top_k: int = DEFAULT_TOP_K,
     suggestion_limit: int = DEFAULT_SUGGESTIONS,
-    surface_limit: int = DEFAULT_SURFACE,
+    match_threshold: float | None = None,
+    max_surface: int | None = None,
     pool_per_interest: int = DEFAULT_POOL_PER_INTEREST,
     beta: float = DEFAULT_BETA,
     focus_weight: float | None = None,
@@ -585,7 +616,8 @@ def run_daily_batch(
                     query_limit=query_limit,
                     top_k=top_k,
                     suggestion_limit=suggestion_limit,
-                    surface_limit=surface_limit,
+                    match_threshold=match_threshold,
+                    max_surface=max_surface,
                     pool_per_interest=pool_per_interest,
                     beta=beta,
                     focus_weight=focus_weight,
@@ -607,7 +639,8 @@ def run_daily_batch(
                     target,
                     top_k=top_k,
                     suggestion_limit=suggestion_limit,
-                    surface_limit=surface_limit,
+                    match_threshold=match_threshold,
+                    max_surface=max_surface,
                     pool_per_interest=pool_per_interest,
                     beta=beta,
                     focus_weight=focus_weight,
@@ -675,19 +708,33 @@ def fuse_interests_pool(
     beta: float,
     emit: Callable[[str], None],
     created_on: date | None = None,
+    match_threshold: float | None = None,
 ) -> tuple[list[Hit], list[PersistRow], int]:
     """Retrieve + fuse per interest; return suggest-pairs, persist-rows, pool size.
 
     Builds one candidate pool (the union of each interest's vector ANN pull),
-    indexes it once for BM25, fuses the two channels per interest, combines across
-    interests, and reserves each interest's best item before truncating to
-    ``surface_limit``. ``content_type`` scopes retrieval to papers (default) or
+    indexes it once for BM25, fuses the two channels per interest, and combines
+    across interests. ``content_type`` scopes retrieval to papers (default) or
     grants/conferences, so the grants/conferences matcher reuses this unchanged.
     ``created_on`` (papers only) restricts the pool to the freshest gather day; the
     opportunity matchers leave it ``None`` so grants/conferences span their corpus.
+
+    Two surfacing modes:
+
+    - ``match_threshold is None`` (grants/conferences): reserve each interest's best
+      paper, then truncate to a fixed ``surface_limit`` — the original behaviour,
+      unchanged, so the opportunity matcher is unaffected.
+    - ``match_threshold`` set (the paper feed): surface *every* candidate whose best
+      transformer (embedding) cosine match across the interests clears the threshold
+      — a variable-length list — capped only by ``surface_limit`` as a backstop. Each
+      surfaced row records that cosine as ``embedding_match`` for the UI.
     """
     pool: dict[str, ContentItem] = {}
     vector_hits: dict[str, list[Hit]] = {}
+    # The best raw cosine each candidate earned in *any* interest's vector channel —
+    # the transformer-model match the paper feed thresholds on. Every pool item comes
+    # from a vector pull, so each has at least one cosine here.
+    best_cosine: dict[str, float] = {}
     for interest in search_ints:
         vector = embeddings.embed_text(interest.embed_text)
         if vector is None:
@@ -702,6 +749,8 @@ def fuse_interests_pool(
             key = str(item.id)
             pool.setdefault(key, item)
             unified.append((pool[key], similarity))
+            if similarity > best_cosine.get(key, 0.0):
+                best_cosine[key] = similarity
         vector_hits[interest.label] = unified
 
     if not pool:
@@ -718,18 +767,39 @@ def fuse_interests_pool(
             per_interest_scores[interest.label] = fused
 
     combined = combine_interests(per_interest_scores, pool, beta=beta)
-    surfaced = with_floor_guarantee(combined, per_interest_scores, limit=surface_limit)
+    if match_threshold is None:
+        surfaced = with_floor_guarantee(
+            combined, per_interest_scores, limit=surface_limit
+        )
+        emit(
+            f"fused {len(search_ints)} interest(s) over {len(pool)} candidates; "
+            f"surfaced {len(surfaced)}"
+        )
+        pairs = [(hit.item, hit.combined_score) for hit in surfaced]
+        rows = [_fusion_row(hit) for hit in surfaced]
+        return pairs, rows, len(pool)
+
+    # Threshold mode: keep everything above the embedding-match floor (combined is
+    # already best-first), capped at surface_limit as a backstop.
+    passing = [
+        hit
+        for hit in combined
+        if best_cosine.get(str(hit.item.id), 0.0) >= match_threshold
+    ]
+    surfaced = passing[:surface_limit]
     emit(
         f"fused {len(search_ints)} interest(s) over {len(pool)} candidates; "
-        f"surfaced {len(surfaced)}"
+        f"{len(passing)} cleared the {round(match_threshold * 100)}% match threshold"
+        f"{f' (capped to {surface_limit})' if len(passing) > surface_limit else ''}"
     )
-
     pairs = [(hit.item, hit.combined_score) for hit in surfaced]
-    rows = [_fusion_row(hit) for hit in surfaced]
+    rows = [
+        _fusion_row(hit, match=best_cosine.get(str(hit.item.id))) for hit in surfaced
+    ]
     return pairs, rows, len(pool)
 
 
-def _fusion_row(hit: CombinedHit) -> PersistRow:
+def _fusion_row(hit: CombinedHit, *, match: float | None = None) -> PersistRow:
     signals = {
         "combined_score": round(hit.combined_score, 6),
         "per_interest": {label: round(v, 4) for label, v in hit.per_interest.items()},
@@ -738,6 +808,10 @@ def _fusion_row(hit: CombinedHit) -> PersistRow:
         # daily summary's theme roll-up keeps working unchanged.
         "focus_areas": list(hit.per_interest.keys()),
     }
+    # The paper feed records the transformer cosine match so the UI can show it on
+    # the cross-embedding tail (which carries no language-model percent).
+    if match is not None:
+        signals["embedding_match"] = round(match, 4)
     return (hit.item, hit.combined_score, signals)
 
 
@@ -750,13 +824,17 @@ def _single_vector(
     focus_weight: float,
     emit: Callable[[str], None],
     created_on: date | None = None,
+    match_threshold: float | None = None,
 ) -> tuple[list[Hit], list[PersistRow], int]:
     """The single-vector path for profiles with no ``areas``.
 
     Retrieves the papers nearest the whole-profile vector and applies the lexical
     focus re-rank (a no-op with no areas). Kept so users who never declared
     research areas see the same behaviour, now scoped (like every paper path) to the
-    freshest gather day via ``created_on``.
+    freshest gather day via ``created_on``. With ``match_threshold`` set, surfaces
+    every paper whose cosine ``similarity`` clears it (variable count, backstopped by
+    ``surface_limit``) and records that cosine as ``embedding_match``; otherwise it
+    truncates to a fixed ``surface_limit``.
     """
     hits = retrieve_for_vector(profile_vector, limit=top_k, created_on=created_on)
     if not hits:
@@ -764,8 +842,17 @@ def _single_vector(
 
     areas = interests.get("areas") or []
     ranked = rerank_by_focus(hits, areas, weight=focus_weight)
-    surfaced = ranked[:surface_limit]
-    emit(f"retrieved {len(ranked)} papers (single-vector, top_k={top_k})")
+    if match_threshold is None:
+        surfaced = ranked[:surface_limit]
+        emit(f"retrieved {len(ranked)} papers (single-vector, top_k={top_k})")
+    else:
+        passing = [hit for hit in ranked if hit.similarity >= match_threshold]
+        surfaced = passing[:surface_limit]
+        emit(
+            f"retrieved {len(ranked)} papers (single-vector, top_k={top_k}); "
+            f"{len(passing)} cleared the {round(match_threshold * 100)}% match "
+            f"threshold"
+        )
 
     pairs = [(hit.item, hit.similarity) for hit in surfaced]
     rows: list[PersistRow] = [
@@ -776,6 +863,11 @@ def _single_vector(
                 "similarity": round(hit.similarity, 4),
                 "focus_overlap": round(hit.focus_overlap, 4),
                 "focus_areas": hit.matched_areas,
+                **(
+                    {"embedding_match": round(hit.similarity, 4)}
+                    if match_threshold is not None
+                    else {}
+                ),
             },
         )
         for hit in surfaced

@@ -25,6 +25,7 @@ class SuggestionSerializer(serializers.Serializer):
     authors = serializers.SerializerMethodField()
     score = serializers.FloatField()
     match_percent = serializers.SerializerMethodField()
+    embedding_match = serializers.SerializerMethodField()
     per_interest = serializers.SerializerMethodField()
     matched_interests = serializers.SerializerMethodField()
     rank = serializers.SerializerMethodField()
@@ -63,6 +64,13 @@ class SuggestionSerializer(serializers.Serializer):
         # The language model's 0–100 fit judgement for this researcher (a
         # similarity-derived proxy when the model was unavailable).
         return score.signals.get("match_percent")
+
+    def get_embedding_match(self, score: RelevanceScore):
+        # The transformer (embedding) cosine match, 0–100, that this paper cleared to
+        # be surfaced — what the cross-embedding tail shows in place of the language
+        # model's percent. ``None`` on legacy rows written before the threshold.
+        match = score.signals.get("embedding_match")
+        return round(match * 100) if isinstance(match, (int, float)) else None
 
     def get_per_interest(self, score: RelevanceScore) -> dict:
         # {interest label -> [0,1] fusion score} for the multi-interest path; the
