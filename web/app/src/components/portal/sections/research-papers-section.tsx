@@ -233,7 +233,7 @@ export function ResearchPapersSection() {
           icon={<DocumentIcon size={28} />}
           badge="Coming soon"
           title="Your first paper suggestions are on their way"
-          description="Once Milo's literature scan runs against your research profile, your top matching papers — each with a percent-match score and why-it-matters context — will appear here."
+          description="Once Mylo's literature scan runs against your research profile, your top matching papers — each with a percent-match score and why-it-matters context — will appear here."
         />
       ) : filtering ? (
         filtered.length === 0 ? (

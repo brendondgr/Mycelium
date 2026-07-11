@@ -287,16 +287,16 @@ class DeptProfile(_InterestSurface):
 
 
 class WatchCadence(models.TextChoices):
-    """How often Milo surfaces what it is watching for a user."""
+    """How often Mylo surfaces what it is watching for a user."""
 
     DAILY = "daily", "Daily"
     WEEKLY = "weekly", "Weekly"
 
 
 class WatchPreference(models.Model):
-    """What Milo should keep an eye on for one user.
+    """What Mylo should keep an eye on for one user.
 
-    Captured in the final onboarding step ("what should Milo keep an eye on")
+    Captured in the final onboarding step ("what should Mylo keep an eye on")
     and editable later: the topics to monitor (research areas and keywords,
     seeded from the user's interests), which kinds of signals to surface, and how
     often. One row per user, created on first save — no signal backfill, so
@@ -312,7 +312,7 @@ class WatchPreference(models.Model):
     topics = models.JSONField(
         default=list,
         blank=True,
-        help_text="Research areas/keywords Milo monitors (seeded from interests).",
+        help_text="Research areas/keywords Mylo monitors (seeded from interests).",
     )
     categories = models.JSONField(
         default=list,
@@ -332,7 +332,7 @@ class WatchPreference(models.Model):
 
 
 class LabWatchPreference(models.Model):
-    """What Milo should keep an eye on for one lab.
+    """What Mylo should keep an eye on for one lab.
 
     The lab-level counterpart of :class:`WatchPreference`: the shared topics a
     lab monitors (seeded from its collective purpose), which signals to surface,
@@ -349,7 +349,7 @@ class LabWatchPreference(models.Model):
     topics = models.JSONField(
         default=list,
         blank=True,
-        help_text="Research areas/keywords Milo monitors for the lab.",
+        help_text="Research areas/keywords Mylo monitors for the lab.",
     )
     categories = models.JSONField(
         default=list,

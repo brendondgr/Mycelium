@@ -1,4 +1,4 @@
-"""The watch endpoint: what Milo keeps an eye on, own-only read/update."""
+"""The watch endpoint: what Mylo keeps an eye on, own-only read/update."""
 
 import pytest
 from django.contrib.auth.models import User

@@ -273,7 +273,7 @@ export async function confirmInterests(
   }
 }
 
-/** Read what Milo keeps an eye on for the caller (own only). */
+/** Read what Mylo keeps an eye on for the caller (own only). */
 export async function getWatch(): Promise<WatchPreference> {
   const response = await fetch(
     buildApiUrl(getPublicApiBase(), "auth", "watch", "me"),
@@ -286,7 +286,7 @@ export async function getWatch(): Promise<WatchPreference> {
   return body;
 }
 
-/** Save what Milo keeps an eye on for the caller (own only). */
+/** Save what Mylo keeps an eye on for the caller (own only). */
 export async function saveWatch(
   payload: WatchPreference,
 ): Promise<WatchPreference> {

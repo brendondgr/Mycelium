@@ -71,7 +71,7 @@ function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
         </p>
       ) : null}
 
-      {/* Milo's read on why this venue fits — the AI note when the model wrote it. */}
+      {/* Mylo's read on why this venue fits — the AI note when the model wrote it. */}
       {conf.reason ? (
         conf.origin === "llm" ? (
           <MyloReason reason={conf.reason} />
@@ -185,7 +185,7 @@ export function ConferencesSection() {
           icon={<ConferenceIcon size={28} />}
           badge="Coming soon"
           title="Your conference matches are on their way"
-          description="Once Milo's nightly scan of calls for papers runs against your research profile, the venues that best fit your work — each with a percent match and its submission deadline — will appear here as cards."
+          description="Once Mylo's nightly scan of calls for papers runs against your research profile, the venues that best fit your work — each with a percent match and its submission deadline — will appear here as cards."
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

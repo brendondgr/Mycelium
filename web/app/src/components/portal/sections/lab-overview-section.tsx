@@ -200,7 +200,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
             </>
           ) : (
             <p className="text-[13.5px] text-[var(--text-muted)]">
-              Milo isn&apos;t watching anything specific for this lab yet.
+              Mylo isn&apos;t watching anything specific for this lab yet.
             </p>
           )}
         </Card>

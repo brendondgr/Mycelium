@@ -339,7 +339,7 @@ export function updateLabProfile(
   );
 }
 
-/** Update what Milo watches for a lab. */
+/** Update what Mylo watches for a lab. */
 export function updateLabWatch(
   slug: string,
   payload: Partial<WatchData>,

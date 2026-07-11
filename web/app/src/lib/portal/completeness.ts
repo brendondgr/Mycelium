@@ -15,7 +15,7 @@ export type Completeness = {
 /**
  * A transparent profile-completeness score derived from the fields we actually
  * have — so the "grow my profile" nudge reflects the signed-in user, not a fixed
- * mock percentage. Each item maps to something Milo uses for matching.
+ * mock percentage. Each item maps to something Mylo uses for matching.
  */
 export function computeCompleteness(
   profile: ProfileData | undefined,

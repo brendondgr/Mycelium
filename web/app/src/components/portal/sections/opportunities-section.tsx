@@ -106,7 +106,7 @@ function GrantRow({ grant }: { grant: GrantOpportunity }) {
         </p>
       ) : null}
 
-      {/* Milo's read on why this fits — a soft green field flags the AI note. */}
+      {/* Mylo's read on why this fits — a soft green field flags the AI note. */}
       {grant.reason ? (
         isMylo ? (
           <MyloReason reason={grant.reason} />
@@ -246,7 +246,7 @@ export function OpportunitiesSection() {
               icon={<BankIcon size={26} className="text-accent" />}
               badge="Coming soon"
               title="Your grant matches are on their way"
-              description="Once Milo's nightly funding scan runs against your research profile, your best-fit grants — each with a percent-match score, its deadline, and why it fits — will appear here, newest strong matches pinned to the top."
+              description="Once Mylo's nightly funding scan runs against your research profile, your best-fit grants — each with a percent-match score, its deadline, and why it fits — will appear here, newest strong matches pinned to the top."
             />
           ) : visible.length === 0 ? (
             <EmptyState

@@ -188,7 +188,7 @@ function ProfileCompletenessCard() {
 }
 
 // ---------------------------------------------------------------------------
-// What Milo watches card (RIGHT bottom)
+// What Mylo watches card (RIGHT bottom)
 // ---------------------------------------------------------------------------
 
 function WatchCard() {
@@ -198,7 +198,7 @@ function WatchCard() {
     return (
       <Card className="p-[22px]">
         <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
-          What Milo watches
+          What Mylo watches
         </h2>
         <p className="text-sm text-[var(--text-muted)]">Loading…</p>
       </Card>
@@ -209,7 +209,7 @@ function WatchCard() {
     return (
       <Card className="p-[22px]">
         <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
-          What Milo watches
+          What Mylo watches
         </h2>
         <p className="text-sm text-[var(--text-muted)]">Couldn&apos;t load your watch settings.</p>
       </Card>
@@ -225,7 +225,7 @@ function WatchCard() {
   return (
     <Card className="p-[22px]">
       <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
-        What Milo watches
+        What Mylo watches
       </h2>
 
       {topics.length === 0 ? (

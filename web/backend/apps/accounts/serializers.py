@@ -162,7 +162,7 @@ class DeptProfileSerializer(_ContractInterestsMixin):
 
 
 class WatchPreferenceSerializer(serializers.ModelSerializer):
-    """Read/update what Milo keeps an eye on for the caller (own only)."""
+    """Read/update what Mylo keeps an eye on for the caller (own only)."""
 
     _MAX_ITEMS = 50
 
@@ -196,7 +196,7 @@ class WatchPreferenceSerializer(serializers.ModelSerializer):
 
 
 class LabWatchPreferenceSerializer(WatchPreferenceSerializer):
-    """Read/update what Milo keeps an eye on for a lab (same shape as a user's)."""
+    """Read/update what Mylo keeps an eye on for a lab (same shape as a user's)."""
 
     class Meta(WatchPreferenceSerializer.Meta):
         model = LabWatchPreference

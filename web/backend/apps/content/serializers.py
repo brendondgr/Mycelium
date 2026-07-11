@@ -196,7 +196,7 @@ class GrantSerializer(_OpportunitySerializer):
         return self._meta(score).get("matched_topics") or ""
 
     def get_posted(self, score: RelevanceScore) -> str:
-        # When Milo first surfaced this grant (ISO); drives the "Posted" line.
+        # When Mylo first surfaced this grant (ISO); drives the "Posted" line.
         return score.signals.get("first_seen") or ""
 
     def get_description(self, score: RelevanceScore) -> str:

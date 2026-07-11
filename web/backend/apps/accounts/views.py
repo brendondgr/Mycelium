@@ -227,7 +227,7 @@ class LabProfileView(RetrieveUpdateAPIView):
 
 
 class LabWatchView(RetrieveUpdateAPIView):
-    """Lab members read what Milo watches for the lab; the lead / owner / admin edit it.
+    """Lab members read what Mylo watches for the lab; the lead / owner / admin edit it.
 
     The row is auto-created with the lab, but ``get_or_create`` guards labs that
     predate the watch model so an old lab still gets sensible defaults.
@@ -264,7 +264,7 @@ class DeptProfileView(RetrieveUpdateAPIView):
 
 
 class MyWatchView(RetrieveUpdateAPIView):
-    """Read or update what Milo keeps an eye on for the caller (own only).
+    """Read or update what Mylo keeps an eye on for the caller (own only).
 
     The row is created on first access, so a user who never finished the watch
     step still gets sensible defaults (weekly cadence, no topics).

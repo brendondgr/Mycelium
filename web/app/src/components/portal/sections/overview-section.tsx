@@ -167,7 +167,7 @@ function DeadlinesPanel() {
 
 /**
  * The Overview section — the landing view of the portal dashboard. Two columns:
- * left holds Milo's weekly report, a 1×4 quick-nav grid, and next actions; right
+ * left holds Mylo's weekly report, a 1×4 quick-nav grid, and next actions; right
  * holds the top research papers (with percent match) and the nearest deadlines.
  */
 export function OverviewSection() {

@@ -107,7 +107,7 @@ const STEP_LABEL: Record<StepKey, string> = {
   about: "About you",
   import: "Import your research",
   review: "Review profile",
-  watch: "What Milo watches",
+  watch: "What Mylo watches",
   eligibility: "Fellowship eligibility",
 };
 

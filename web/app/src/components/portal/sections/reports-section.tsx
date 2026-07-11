@@ -17,7 +17,7 @@ export function ReportsSection() {
         icon={<DocumentIcon size={28} />}
         badge="Coming soon"
         title="Monthly research reports"
-        description="Soon Milo will compile monthly summaries of new papers, opportunity matches, and project progress — formatted to share with collaborators and department heads."
+        description="Soon Mylo will compile monthly summaries of new papers, opportunity matches, and project progress — formatted to share with collaborators and department heads."
         action={
           <span
             className="rounded-full bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-muted)] cursor-not-allowed"

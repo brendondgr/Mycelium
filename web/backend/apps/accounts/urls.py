@@ -44,7 +44,7 @@ urlpatterns = [
         views.LabProfileView.as_view(),
         name="lab-profile-no-slash",
     ),
-    # What Milo keeps an eye on for a lab (members read; lead/admin edit).
+    # What Mylo keeps an eye on for a lab (members read; lead/admin edit).
     path(
         "labs/<slug:slug>/watch/",
         views.LabWatchView.as_view(),
@@ -98,7 +98,7 @@ urlpatterns = [
         views.DeptProfileView.as_view(),
         name="dept-profile",
     ),
-    # What Milo keeps an eye on (own only).
+    # What Mylo keeps an eye on (own only).
     path("watch/me/", views.MyWatchView.as_view(), name="watch-me"),
     path("watch/me", views.MyWatchView.as_view(), name="watch-me-no-slash"),
     # Author import + intake session. Both slash forms so a dev proxy that strips

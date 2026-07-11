@@ -16,7 +16,7 @@ import type { WatchCadence } from "@/lib/auth-types";
 import type { MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
-// Signal kinds a lab can ask Milo to surface. Conferences sit alongside grants
+// Signal kinds a lab can ask Mylo to surface. Conferences sit alongside grants
 // as a lab-level, purpose-driven signal (see the lab overview metrics).
 const WATCH_CATEGORIES = [
   { key: "papers", label: "New papers & preprints", desc: "Relevant to the lab's areas." },
@@ -115,8 +115,8 @@ export function LabEditor({
 
 /**
  * Single-page lab setup: describe the lab + drop source files / paste profile
- * links, let Milo draft the purpose/areas/keywords, review and adjust, set what
- * Milo watches, and save — all on one page.
+ * links, let Mylo draft the purpose/areas/keywords, review and adjust, set what
+ * Mylo watches, and save — all on one page.
  */
 function LabEditorForm({
   lab,
@@ -136,7 +136,7 @@ function LabEditorForm({
   const saveWatch = useUpdateLabWatch(lab.slug);
   const editing = mode === "edit";
 
-  // Source material for Milo's draft.
+  // Source material for Mylo's draft.
   const [description, setDescription] = React.useState("");
   const [files, setFiles] = React.useState<File[]>([]);
   const [links, setLinks] = React.useState("");
@@ -150,7 +150,7 @@ function LabEditorForm({
     initial?.keywords ?? [],
   );
 
-  // What Milo watches.
+  // What Mylo watches.
   const [watchTopics, setWatchTopics] = React.useState<string[]>(
     initial?.watchTopics ?? [],
   );
@@ -184,7 +184,7 @@ function LabEditorForm({
               ),
             );
           }
-          setSynthNote("Milo drafted the profile below — edit anything before saving.");
+          setSynthNote("Mylo drafted the profile below — edit anything before saving.");
         },
         onError: (e) => setSynthError((e as Error).message),
       },
@@ -244,7 +244,7 @@ function LabEditorForm({
           Describe the lab.
         </h1>
         <p className="mt-1.5 max-w-xl text-[14px] text-[var(--text-secondary)]">
-          Describe your lab and Milo will create the rest of it for you.
+          Describe your lab and Mylo will create the rest of it for you.
         </p>
       </div>
 
@@ -282,7 +282,7 @@ function LabEditorForm({
         </Field>
       </div>
 
-      {/* Draft with Milo */}
+      {/* Draft with Mylo */}
       <div className="mt-2.5 flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -302,7 +302,7 @@ function LabEditorForm({
             height={20}
             className="h-5 w-5 rounded-full object-cover"
           />
-          {synthesize.isPending ? "Milo is drafting…" : "Draft with Milo"}
+          {synthesize.isPending ? "Mylo is drafting…" : "Draft with Mylo"}
         </button>
         {synthNote ? (
           <span className="text-[12.5px] text-primary">{synthNote}</span>
@@ -320,7 +320,7 @@ function LabEditorForm({
 
       <Divider />
 
-      {/* Milo's draft — editable. Statement (left) · areas + keywords (right). */}
+      {/* Mylo's draft — editable. Statement (left) · areas + keywords (right). */}
       <SectionTitle>The lab profile</SectionTitle>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Statement of purpose">
@@ -350,12 +350,12 @@ function LabEditorForm({
 
       <Divider />
 
-      {/* What Milo watches. Topics + cadence (left) · signals (two columns right). */}
-      <SectionTitle>What Milo watches</SectionTitle>
+      {/* What Mylo watches. Topics + cadence (left) · signals (two columns right). */}
+      <SectionTitle>What Mylo watches</SectionTitle>
       <div className="grid gap-4 md:grid-cols-3">
         <div className="space-y-4">
           <TokenField
-            label="Topics Milo monitors for the lab"
+            label="Topics Mylo monitors for the lab"
             items={watchTopics}
             onChange={setWatchTopics}
             placeholder="Add a topic, press Enter"
