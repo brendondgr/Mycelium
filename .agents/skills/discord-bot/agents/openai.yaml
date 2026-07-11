@@ -1,0 +1,4 @@
+interface:
+  display_name: "Discord Bot"
+  short_description: "Build interactive Discord bots with discord.py"
+  default_prompt: "Use this skill when a Discord bot needs work: application and token setup, the OAuth invite, slash commands and groups, typed options and autocomplete, interaction responses, buttons, modals, persistent views, command syncing, error handling, background tasks, or deployment. Targets discord.py 2.7 — not Pycord or disnake."

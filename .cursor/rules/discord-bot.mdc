@@ -1,0 +1,8 @@
+---
+description: Apply when building or debugging a Discord bot with discord.py — application/token setup, slash commands, interaction responses, components and modals, command syncing, error handling, or gateway deployment.
+alwaysApply: false
+---
+
+Canonical instructions live in `docs/skills/discord-bot.md`, with verified reference implementations in `docs/skills/discord-bot/`. Use this rule whenever Discord bot behavior, commands, or interactions need attention.
+
+Non-negotiables: target `discord.py` 2.7 (never Pycord/disnake — their APIs look similar and will mislead you); acknowledge every interaction within 3 seconds (`defer()` first if the work is slower); respond exactly once, then use `followup`; never block the event loop; never sync the command tree on every startup.

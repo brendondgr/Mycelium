@@ -17,6 +17,11 @@ behavioral guidance here so all agents share the same project assumptions.
 | UI frontend | [ui-frontend.md](./ui-frontend.md) | `ui-frontend/` |
 | Mobile friendly | [mobile-friendly.md](./mobile-friendly.md) | `mobile-friendly/` |
 | ADA compliance | [ada-compliance.md](./ada-compliance.md) | `ada-compliance/` |
+| Discord bot (discord.py) | [discord-bot.md](./discord-bot.md) | `discord-bot/` |
+
+Most canonical skills are a single document. `discord-bot` additionally ships
+verified reference implementations in [`discord-bot/`](./discord-bot/) — copy
+from those rather than writing interaction plumbing from memory.
 
 ## Project Defaults
 
