@@ -1,0 +1,40 @@
+[Unit]
+Description=Mycelium — Mylo Discord bot (persistent gateway)
+Documentation=https://github.com/brendondgr/mycelium
+After=network-online.target
+Wants=network-online.target
+# discord.py reconnects through transient network drops on its own, so a crash
+# is a real bug — don't let it fast-loop forever.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+
+WorkingDirectory=/home/bdgr/Agents/Mycelium
+
+# The bot only needs Python + discord.py + .env-mylo (read by absolute path). No
+# uv/docker. Runs through the root uv virtualenv interpreter (has discord.py).
+Environment=PATH=/home/bdgr/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/bdgr/Agents/Mycelium/.venv/bin/python -m mylo.bot
+
+# A gateway client is long-lived; keep it up across transient failures.
+Restart=always
+RestartSec=5
+
+User=bdgr
+Group=bdgr
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
+# Enable on this (or any) host — copy the unit and the (gitignored) .env-mylo:
+#     sudo cp mylo-bot.service /etc/systemd/system/
+#     sudo systemctl daemon-reload
+#     sudo systemctl enable --now mylo-bot.service
+#     journalctl -u mylo-bot -f
+# First deploy only: register the slash commands once from inside a server where
+# Mylo is present:  @Mylo sync global   (owner-only; propagation can take an hour)

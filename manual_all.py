@@ -58,26 +58,26 @@ as long as it is run from an interactive terminal with a display for SSO/MFA.
 
 from __future__ import annotations
 
-import json
 import socket
 import sys
-from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "utils" / "manual"))
 from _runner import ensure_ready, have_uv, run_host, run_manage  # noqa: E402
 
-# The Discord error reporter is optional plumbing: if it can't be imported for
-# any reason, the daily run must still complete. Every call goes through
-# ``_notify`` which no-ops when the reporter is unavailable.
+# The Discord error reporter and the shared run-state writer are optional
+# plumbing: if they can't be imported for any reason, the daily run must still
+# complete. Every reporter call goes through ``_notify`` which no-ops when the
+# reporter is unavailable; ``write_run_state`` is guarded the same way.
 try:  # pragma: no cover - trivial import guard
     from mylo import reporting
+    from mylo.runstate import write_run_state
 except Exception:  # noqa: BLE001
     reporting = None  # type: ignore[assignment]
+    write_run_state = None  # type: ignore[assignment]
 
 HOST = socket.gethostname()
 ROOT = Path(__file__).resolve().parent
-RUN_STATE_PATH = ROOT / "data" / "logs" / "mylo-last-run.json"
 
 # The backend recommend/refit/briefing stages, in order, run inside the
 # container. The scrape stage (stage 1) is handled separately on the host.
@@ -106,29 +106,11 @@ def _notify(kind: str, title: str, body: str = "", **kwargs) -> None:
         pass
 
 
-def _write_run_state(
-    *,
-    ok: bool,
-    scrape_ran: bool,
-    stages_run: list[str],
-    failed_stage: str | None = None,
-    exit_code: int = 0,
-) -> None:
-    """Persist the run outcome for the bot's ``/mylo lastrun`` command."""
-    state = {
-        "finished_at": datetime.now().astimezone().isoformat(),
-        "host": HOST,
-        "ok": ok,
-        "scrape_ran": scrape_ran,
-        "stages_run": stages_run,
-        "failed_stage": failed_stage,
-        "exit_code": exit_code,
-    }
-    try:
-        RUN_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        RUN_STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
-    except OSError:
-        pass
+def _write_run_state(**kwargs) -> None:
+    """Persist the run outcome for the bot's ``/mylo lastrun`` (guarded no-op)."""
+    if write_run_state is None:
+        return
+    write_run_state(**kwargs)
 
 
 def pivot_session_exists() -> bool:

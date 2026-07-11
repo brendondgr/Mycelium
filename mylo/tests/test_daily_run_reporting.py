@@ -51,24 +51,5 @@ class ScrapeReportingTests(unittest.TestCase):
         self.assertEqual(error[2].get("stage"), "scrape")
 
 
-class RunStateTests(unittest.TestCase):
-    def test_write_run_state_is_json_and_tolerates_bad_path(self) -> None:
-        import json
-        import tempfile
-        from pathlib import Path
-
-        with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(
-                manual_all, "RUN_STATE_PATH", Path(tmp) / "sub" / "state.json"
-            ):
-                manual_all._write_run_state(
-                    ok=True, scrape_ran=False, stages_run=["run_daily_suggestions"]
-                )
-                data = json.loads((Path(tmp) / "sub" / "state.json").read_text())
-        self.assertTrue(data["ok"])
-        self.assertFalse(data["scrape_ran"])
-        self.assertEqual(data["stages_run"], ["run_daily_suggestions"])
-
-
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
