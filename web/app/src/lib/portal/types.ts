@@ -205,6 +205,10 @@ type OpportunityBase = {
   score: number;
   /** The model's 0–100 fit judgement (null on the fallback tail). */
   match_percent: number | null;
+  /** The transformer (embedding) cosine match, 0–100, a threshold-gated grant or
+   * conference cleared to be surfaced — shown on the tail in place of the model's
+   * percent. null for fixed-slice areas and legacy rows. */
+  embedding_match: number | null;
   rank: number | null;
   headline: string;
   reason: string;

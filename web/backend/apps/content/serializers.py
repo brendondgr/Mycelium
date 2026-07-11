@@ -110,6 +110,7 @@ class _OpportunitySerializer(serializers.Serializer):
     url = serializers.SerializerMethodField()
     score = serializers.FloatField()
     match_percent = serializers.SerializerMethodField()
+    embedding_match = serializers.SerializerMethodField()
     rank = serializers.SerializerMethodField()
     headline = serializers.SerializerMethodField()
     reason = serializers.SerializerMethodField()
@@ -137,6 +138,13 @@ class _OpportunitySerializer(serializers.Serializer):
 
     def get_match_percent(self, score: RelevanceScore):
         return score.signals.get("match_percent")
+
+    def get_embedding_match(self, score: RelevanceScore):
+        # The transformer (embedding) cosine match, 0–100, a threshold-gated
+        # opportunity cleared to be surfaced — shown on the tail (no model percent).
+        # ``None`` for fixed-slice areas and legacy rows written before the threshold.
+        match = score.signals.get("embedding_match")
+        return round(match * 100) if isinstance(match, (int, float)) else None
 
     def get_rank(self, score: RelevanceScore):
         return score.signals.get("rank")

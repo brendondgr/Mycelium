@@ -282,6 +282,9 @@ def match_fellowships(
     items,
     elig: Elig,
     today: str,
+    *,
+    match_threshold: float = 0.0,
+    max_surface: int = FELLOWSHIP_SURFACE_LIMIT,
 ) -> list[dict]:
     """Evaluate + filter + rank fellowship ContentItems for a user.
 
@@ -289,11 +292,17 @@ def match_fellowships(
         items: iterable of ContentItem queryset rows with ``.id``, ``.metadata``.
         elig:  the user's :class:`Elig` profile from :func:`eligibility_from_profile`.
         today: ISO date string (``YYYY-MM-DD``).
+        match_threshold: minimum ``fit`` (0–1) a fellowship must reach to surface,
+            applied *after* the hard eligibility gate — so ``0.0`` (the default)
+            surfaces every fellowship the user is actually eligible for, and raising
+            it trims weak-fit conditionals. This is what makes the feed
+            variable-length instead of a fixed top-N.
+        max_surface: backstop cap on how many fellowships to return.
 
     Returns:
-        List of suggestion dicts, sorted by (tier_rank, -fit, actionable_date),
-        capped at :data:`FELLOWSHIP_SURFACE_LIMIT`.  ``not_eligible`` and
-        closed/suspended items are excluded.
+        List of suggestion dicts, sorted by (tier_rank, -fit, actionable_date):
+        every eligible fellowship whose ``fit`` clears ``match_threshold``, capped at
+        ``max_surface``.  ``not_eligible`` and closed/suspended items are excluded.
     """
     ranked: list[tuple[float, str, dict]] = []
 
@@ -314,6 +323,12 @@ def match_fellowships(
             continue
 
         fit_score = fit(ev, st, today)
+
+        # Fit threshold: eligibility already gated "qualified for"; this trims the
+        # weakly-related tail so the feed stays "most related" (0.0 keeps everything).
+        if fit_score < match_threshold:
+            continue
+
         tier_rank = TIER_RANK[ev["tier"]]
         actionable = st.get("actionable_date") or "9999-99"
 
@@ -344,9 +359,7 @@ def match_fellowships(
     ranked.sort(key=lambda x: (x[0], x[1], x[2]))
 
     out = []
-    for rank, (_, _, _, suggestion) in enumerate(
-        ranked[:FELLOWSHIP_SURFACE_LIMIT], start=1
-    ):
+    for rank, (_, _, _, suggestion) in enumerate(ranked[:max_surface], start=1):
         suggestion["rank"] = rank
         out.append(suggestion)
 

@@ -56,7 +56,10 @@ function GrantRow({ grant }: { grant: GrantOpportunity }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {grant.is_new ? <NewTag /> : null}
-            <MatchBadge percent={grant.match_percent} origin={grant.origin} />
+            <MatchBadge
+              percent={grant.match_percent ?? grant.embedding_match}
+              origin={grant.origin}
+            />
           </div>
           <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
             {grant.title}
@@ -211,12 +214,17 @@ export function OpportunitiesSection() {
 
   const showRail = !isLoading && !isError && grants.length > 0;
 
+  const subtitle = isLoading
+    ? "Matching funding to your research…"
+    : grants.length > 0
+      ? `${grants.length} grant${
+          grants.length === 1 ? "" : "s"
+        } matched your research profile and timeline.`
+      : "Funding matched to your research profile and timeline.";
+
   return (
     <div>
-      <SectionHeader
-        title="Grants"
-        subtitle="Funding matched to your research profile and timeline."
-      />
+      <SectionHeader title="Grants" subtitle={subtitle} />
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (
           <GrantFilters

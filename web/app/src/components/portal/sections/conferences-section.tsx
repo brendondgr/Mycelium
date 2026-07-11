@@ -68,7 +68,10 @@ function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {conf.is_new ? <NewTag /> : null}
-          <MatchBadge percent={conf.match_percent} origin={conf.origin} />
+          <MatchBadge
+            percent={conf.match_percent ?? conf.embedding_match}
+            origin={conf.origin}
+          />
         </div>
         <SaveButton contentId={conf.content_id} saved={conf.saved} />
       </div>

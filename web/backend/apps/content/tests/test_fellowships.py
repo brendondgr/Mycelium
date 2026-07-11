@@ -360,6 +360,60 @@ def test_match_fellowships_surface_limit():
 
 
 @pytest.mark.django_db
+def test_match_fellowships_uncaps_beyond_default_limit():
+    """A larger ``max_surface`` surfaces *every* eligible fellowship, not just 40."""
+    from apps.content.models import ContentItem
+
+    n = FELLOWSHIP_SURFACE_LIMIT + 12
+    for i in range(n):
+        ContentItem.objects.create(
+            type=ContentItem.Type.FELLOWSHIP,
+            source="illinois-fellowship-finder",
+            external_id=f"more_{i}",
+            metadata=_meta(),  # eligible (US+INTL, matching stage/field), continuous
+        )
+    items = ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP)
+
+    # Default keeps the old backstop; a higher cap shows them all.
+    assert len(match_fellowships(items, ELIG, TODAY)) == FELLOWSHIP_SURFACE_LIMIT
+    assert len(match_fellowships(items, ELIG, TODAY, max_surface=250)) == n
+
+
+@pytest.mark.django_db
+def test_match_fellowships_fit_threshold_trims_weak():
+    """The fit threshold (after eligibility) drops weakly-related fellowships."""
+    from apps.content.models import ContentItem
+
+    ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="strong",
+        metadata=_meta(),  # qualified: field + stage match -> fit ~0.72
+    )
+    ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="weak",
+        # Eligible (passes hard gates) but neither field nor stage match -> conditional
+        # with a low fit (~0.25).
+        metadata=_meta(
+            field=("Humanities/Arts/Social Sciences",),
+            stage=("Postdoctoral/Post-graduate",),
+        ),
+    )
+    items = ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP)
+
+    # No threshold: both eligible fellowships surface.
+    ids = {s["content_id"] for s in match_fellowships(items, ELIG, TODAY)}
+    assert len(ids) == 2
+
+    # A 0.5 fit threshold keeps only the strongly-fitting one.
+    kept = match_fellowships(items, ELIG, TODAY, match_threshold=0.5)
+    assert [s["tier"] for s in kept] == ["qualified"]
+    assert all(s["fit"] >= 0.5 for s in kept)
+
+
+@pytest.mark.django_db
 def test_match_fellowships_rank_is_1_based():
     from apps.content.models import ContentItem
 

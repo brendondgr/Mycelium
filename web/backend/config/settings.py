@@ -245,6 +245,21 @@ AREA_FOCUS_WEIGHT = env.float("AREA_FOCUS_WEIGHT", default=0.25)
 PAPER_MATCH_THRESHOLD = env.float("PAPER_MATCH_THRESHOLD", default=0.5)
 PAPER_MATCH_MAX_SURFACE = env.int("PAPER_MATCH_MAX_SURFACE", default=250)
 
+# Opportunity feed sizing (apps.content.opportunities / .fellowships). Like the
+# paper feed, grants/conferences/fellowships are no longer fixed top-N lists: an
+# item is surfaced only when its match to the researcher clears the area's
+# threshold, so the feed shows *all* sufficiently-related opportunities (however
+# many that is), capped by OPPORTUNITY_MATCH_MAX_SURFACE as a backstop. Only the
+# top items of each still go to the language model. GRANT/CONFERENCE thresholds are
+# the transformer (embedding) cosine fraction in [0, 1] (start lower than papers —
+# the goal is to widen a previously-capped feed). FELLOWSHIP_FIT_THRESHOLD is the
+# rule engine's fit score in [0, 1] applied *after* the hard eligibility gate, so
+# the default 0.0 surfaces every fellowship the user is actually eligible for.
+GRANT_MATCH_THRESHOLD = env.float("GRANT_MATCH_THRESHOLD", default=0.4)
+CONFERENCE_MATCH_THRESHOLD = env.float("CONFERENCE_MATCH_THRESHOLD", default=0.4)
+FELLOWSHIP_FIT_THRESHOLD = env.float("FELLOWSHIP_FIT_THRESHOLD", default=0.0)
+OPPORTUNITY_MATCH_MAX_SURFACE = env.int("OPPORTUNITY_MATCH_MAX_SURFACE", default=250)
+
 # Project collaboration (apps.content.collaboration). Per-action weight written on
 # each RelevanceEvent — the weak relevance labels a future team-signal recompute
 # reads. Positive for engagement, negative for rejection. Tunable so the eventual

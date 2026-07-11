@@ -54,6 +54,32 @@ AREAS: dict[str, str] = {
     "fellowships": ContentItem.Type.FELLOWSHIP,
 }
 
+# Which content types are surfaced by an embedding-match threshold (variable-length
+# feed) instead of the legacy fixed top-``DEFAULT_SURFACE`` slice, and the setting
+# that supplies each threshold. A type absent here keeps the fixed-slice behaviour.
+_AREA_THRESHOLD_SETTING: dict[str, str] = {
+    ContentItem.Type.GRANT: "GRANT_MATCH_THRESHOLD",
+    ContentItem.Type.CONFERENCE: "CONFERENCE_MATCH_THRESHOLD",
+    # Fellowships gate on the rule engine (fellowships.py), not this embedding path.
+}
+
+
+def _area_match_threshold(content_type: str) -> float | None:
+    """The embedding-match floor for a content type, or ``None`` if it isn't gated.
+
+    ``None`` keeps the old fixed top-``DEFAULT_SURFACE`` behaviour; a float switches
+    the type to the variable-length threshold feed.
+    """
+    name = _AREA_THRESHOLD_SETTING.get(content_type)
+    if name is None:
+        return None
+    return getattr(settings, name, 0.4)
+
+
+def _opportunity_max_surface() -> int:
+    """Backstop cap on how many opportunities a threshold feed may surface."""
+    return getattr(settings, "OPPORTUNITY_MATCH_MAX_SURFACE", 250)
+
 
 @dataclass
 class OppRunResult:
@@ -119,7 +145,7 @@ class _MatchJob:
     pool: int
     percentile: float
     llm_limit: int
-    surface_limit: int
+    surface_limit: int | None  # None => surface all (threshold-gated areas)
 
 
 @dataclass
@@ -142,6 +168,8 @@ class _FellowshipMatchJob:
     profile_meta: dict = None    # career stage / institution (for the LLM report)
     percentile: float = DEFAULT_PERCENTILE
     llm_limit: int = DEFAULT_LLM_LIMIT
+    match_threshold: float = 0.0     # min fit to surface (0 => all eligible)
+    max_surface: int = DEFAULT_SURFACE  # backstop cap on surfaced fellowships
     today: str = ""
 
     def __post_init__(self):
@@ -203,6 +231,8 @@ def _prepare_fellowship_match(
             "institution": getattr(profile, "institution", ""),
         },
         percentile=percentile,
+        match_threshold=getattr(settings, "FELLOWSHIP_FIT_THRESHOLD", 0.0),
+        max_surface=_opportunity_max_surface(),
         today=today or tz.now().date().isoformat(),
     )
     return job, None
@@ -219,7 +249,13 @@ def _score_fellowship_job(
     """
     from .fellowships import match_fellowships
 
-    ranked = match_fellowships(job.items, job.elig, job.today)
+    ranked = match_fellowships(
+        job.items,
+        job.elig,
+        job.today,
+        match_threshold=job.match_threshold,
+        max_surface=job.max_surface,
+    )
     items_by_id = {str(item.id): item for item in job.items}
     return generate_fellowship_suggestions(
         job.interests,
@@ -346,13 +382,21 @@ def _prepare_match(
             key, area, "no_interests", note="no interests/topics to match on"
         )
 
+    # Threshold-gated areas (grants/conferences) surface *every* opportunity whose
+    # embedding match clears the floor, capped by the backstop; ungated areas keep
+    # the fixed top-``surface_limit`` slice. ``job.surface_limit`` becomes ``None``
+    # in threshold mode so the scorer surfaces the whole pre-filtered list.
+    threshold = _area_match_threshold(content_type)
+    cap = _opportunity_max_surface() if threshold is not None else surface_limit
+
     pairs, rows, pool = fuse_interests_pool(
         search_ints,
         content_type=content_type,
-        surface_limit=surface_limit,
+        surface_limit=cap,
         pool_per_interest=pool_per_interest,
         beta=beta,
         emit=emit,
+        match_threshold=threshold,
     )
     if not pairs:
         emit("no embedded opportunities to retrieve yet")
@@ -370,7 +414,7 @@ def _prepare_match(
         pool=pool,
         percentile=percentile,
         llm_limit=llm_limit,
-        surface_limit=surface_limit,
+        surface_limit=None if threshold is not None else surface_limit,
     )
     return job, None
 

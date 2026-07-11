@@ -382,12 +382,17 @@ export function FellowshipsSection() {
 
   const showRail = !isLoading && !isError && items.length > 0;
 
+  const subtitle = isLoading
+    ? "Checking your eligibility…"
+    : items.length > 0
+      ? `${items.length} fellowship${
+          items.length === 1 ? "" : "s"
+        } you're eligible for, matched to your stage and timeline.`
+      : "Fellowships matched to your stage, eligibility, and timeline.";
+
   return (
     <div>
-      <SectionHeader
-        title="Fellowships"
-        subtitle="Fellowships matched to your stage, eligibility, and timeline."
-      />
+      <SectionHeader title="Fellowships" subtitle={subtitle} />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (

@@ -35,7 +35,6 @@ logger = logging.getLogger(__name__)
 CompleteFn = Callable[[str], str | None]
 Suggestion = dict[str, Any]
 
-_DEFAULT_SURFACE_LIMIT = 25
 _DEFAULT_LLM_LIMIT = 10
 _TEXT_CHARS = 900
 
@@ -90,15 +89,22 @@ def generate_opportunity_suggestions(
     hits: Sequence[tuple[ContentItem, float]],
     *,
     llm_limit: int = _DEFAULT_LLM_LIMIT,
-    surface_limit: int = _DEFAULT_SURFACE_LIMIT,
+    surface_limit: int | None = None,
     complete: CompleteFn | None = None,
 ) -> list[Suggestion]:
-    """Two-tier opportunity digest: model-scored top slice + deterministic tail."""
+    """Two-tier opportunity digest: model-scored top slice + deterministic tail.
+
+    ``hits`` is the fused, ranked candidate list — the caller (the matcher) may have
+    already filtered it by the area's match threshold, so by default
+    (``surface_limit=None``) every candidate is surfaced and only the top
+    ``llm_limit`` go to the model. An explicit ``surface_limit`` caps the total to a
+    fixed slice (the legacy top-N behaviour).
+    """
     candidates = list(hits)
     if not candidates:
         return []
 
-    surfaced = candidates[:surface_limit]
+    surfaced = candidates if surface_limit is None else candidates[:surface_limit]
     llm_subset = surfaced[:llm_limit]
 
     llm = _llm_suggestions(
@@ -106,10 +112,10 @@ def generate_opportunity_suggestions(
     )
     picked = {s["content_id"] for s in llm}
 
+    # ``surfaced`` is the final set (all candidates, or the ``surface_limit`` slice)
+    # and the model's picks are a subset of it, so the result is exactly ``surfaced``.
     out: list[Suggestion] = list(llm)
     for item, score in surfaced:
-        if len(out) >= surface_limit:
-            break
         if str(item.id) in picked:
             continue
         out.append(

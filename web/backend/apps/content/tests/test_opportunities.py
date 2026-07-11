@@ -43,6 +43,14 @@ def _reset_embedder():
     embeddings.reset_embedder()
 
 
+@pytest.fixture(autouse=True)
+def _open_opportunity_thresholds(settings):
+    """Surface every fused opportunity by default, isolating these tests from the
+    production match thresholds. The dedicated threshold test overrides its own."""
+    settings.GRANT_MATCH_THRESHOLD = 0.0
+    settings.CONFERENCE_MATCH_THRESHOLD = 0.0
+
+
 # -- pure: search interests ---------------------------------------------------
 
 
@@ -220,6 +228,84 @@ def test_match_grants_end_to_end(pgvector):
         user, "grants", complete=lambda _p: None, today="2026-07-05"
     )
     assert scores.count() == before
+
+
+@pytest.mark.django_db
+def test_grant_match_threshold_surfaces_only_related(pgvector, settings):
+    """Grants are gated by the embedding-match threshold, not a fixed top-25 slice.
+
+    A strongly-matching grant clears a 60% threshold; a weakly-related one does not,
+    so it is not surfaced/persisted — and the survivor records its embedding match.
+    """
+    settings.GRANT_MATCH_THRESHOLD = 0.6
+    embeddings.set_embedder(_fake_embed)
+    user = _profile_user("gthresh")
+    ingest_pivot(
+        [
+            ("grants", _grant("g_strong", "Knowledge Graphs for biomedical health")),
+            ("grants", _grant("g_weak", "Marine biology other funding")),
+        ],
+        embedder=_fake_embed,
+        prune=False,
+        today="2026-07-05",
+    )
+
+    result = match_opportunities_for_user(
+        user, "grants", complete=lambda _p: None, today="2026-07-05"
+    )
+    assert result.status == "ok"
+
+    scores = {
+        s.content.external_id: s
+        for s in RelevanceScore.objects.filter(target_user=user, content__type="grant")
+    }
+    assert "g_strong" in scores
+    assert "g_weak" not in scores  # below the 60% embedding-match threshold
+    assert scores["g_strong"].signals["embedding_match"] >= 0.6
+    assert result.suggestions == 1
+
+
+def _embedded_conf(cid, name, scope):
+    return ContentItem.objects.create(
+        type=ContentItem.Type.CONFERENCE,
+        source="pivot",
+        external_id=cid,
+        embedding=_fake_embed([f"{name} {scope}"])[0],
+        metadata={
+            "name": name,
+            "scope": scope,
+            "keywords": name,
+            "search_text": f"{name} {scope}",
+        },
+    )
+
+
+@pytest.mark.django_db
+def test_conference_match_threshold_surfaces_only_related(pgvector, settings):
+    """Conferences are gated by the embedding-match threshold, like grants."""
+    settings.CONFERENCE_MATCH_THRESHOLD = 0.6
+    embeddings.set_embedder(_fake_embed)
+    user = _profile_user("cthresh")
+    strong = _embedded_conf(
+        "c_strong", "Knowledge Graphs in biomedical health", "graph methods"
+    )
+    weak = _embedded_conf("c_weak", "Marine biology symposium", "other topics")
+
+    result = match_opportunities_for_user(
+        user, "conferences", complete=lambda _p: None, today="2026-07-05"
+    )
+    assert result.status == "ok"
+
+    scores = {
+        s.content_id: s
+        for s in RelevanceScore.objects.filter(
+            target_user=user, content__type="conference"
+        )
+    }
+    assert strong.id in scores
+    assert weak.id not in scores  # below the 60% embedding-match threshold
+    assert scores[strong.id].signals["embedding_match"] >= 0.6
+    assert result.suggestions == 1
 
 
 @pytest.mark.django_db
