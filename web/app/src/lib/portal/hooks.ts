@@ -9,6 +9,7 @@ import {
 
 import {
   fetchConferences,
+  fetchDailyBriefing,
   fetchDailyReport,
   fetchDeadlines,
   fetchFellowships,
@@ -137,7 +138,7 @@ export function useProfile() {
   });
 }
 
-/** What Milo watches for the caller. */
+/** What Mylo watches for the caller. */
 export function useWatch() {
   return useQuery({
     queryKey: ["portal", "watch"],
@@ -151,6 +152,15 @@ export function useDailyReport() {
   return useQuery({
     queryKey: ["portal", "daily-report"],
     queryFn: fetchDailyReport,
+    staleTime: 60_000,
+  });
+}
+
+/** The caller's current "Mylo Report" briefing (Daily page, three zones). */
+export function useDailyBriefing() {
+  return useQuery({
+    queryKey: ["portal", "daily-briefing"],
+    queryFn: fetchDailyBriefing,
     staleTime: 60_000,
   });
 }
@@ -518,7 +528,7 @@ export function useDismissSuggestion() {
   });
 }
 
-/** What Milo watches for a lab. Disabled for the personal-workspace scope. */
+/** What Mylo watches for a lab. Disabled for the personal-workspace scope. */
 export function useLabWatch(slug?: string) {
   const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
   return useQuery({

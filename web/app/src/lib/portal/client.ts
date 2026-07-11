@@ -4,6 +4,7 @@ import type {
   CollectionBrief,
   CollectionDetail,
   ConferenceOpportunity,
+  DailyBriefing,
   DailyReport,
   FellowshipOpportunity,
   GrantOpportunity,
@@ -95,6 +96,14 @@ export async function fetchDailyReport(): Promise<DailyReport> {
   );
 }
 
+/** The cross-category "Mylo Report" briefing (the Daily page's three zones). */
+export async function fetchDailyBriefing(): Promise<DailyBriefing> {
+  return getJson<DailyBriefing>(
+    buildApiUrl(getPublicApiBase(), "daily-briefing"),
+    "Could not load your daily briefing.",
+  );
+}
+
 /** The user's ranked funding opportunities (Opportunities page, grants column). */
 export async function fetchGrants(): Promise<OpportunityFeed<GrantOpportunity>> {
   return getJson<OpportunityFeed<GrantOpportunity>>(
@@ -155,7 +164,7 @@ export async function fetchLabProfile(slug: string): Promise<LabProfileData> {
   );
 }
 
-/** What Milo watches for a lab (same shape as a user's watch settings). */
+/** What Mylo watches for a lab (same shape as a user's watch settings). */
 export async function fetchLabWatch(slug: string): Promise<WatchData> {
   return getJson<WatchData>(
     buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "watch"),

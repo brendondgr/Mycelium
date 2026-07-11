@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
@@ -10,14 +9,46 @@ import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { StatCard } from "@/components/portal/sections/stat-card";
 import {
   ArrowRightIcon,
+  BankIcon,
+  ConferenceIcon,
   DocumentIcon,
+  MembersIcon,
+  MyloGlyph,
   ReportIcon,
-  SparkleIcon,
-  TargetIcon,
 } from "@/components/portal/icons";
-import { useDailyReport } from "@/lib/portal/hooks";
-import { SECTION_ROUTES } from "@/lib/portal/routes";
-import type { DailyReportSummary } from "@/lib/portal/types";
+import { usePortal, type SectionKey } from "@/components/portal/portal-context";
+import { useDailyBriefing } from "@/lib/portal/hooks";
+import type {
+  BriefingCategory,
+  BriefingShowcaseItem,
+  DailyBriefing,
+} from "@/lib/portal/types";
+
+/** Stable display order + per-category label, icon, and destination section. */
+const CATEGORY_ORDER: BriefingCategory[] = [
+  "papers",
+  "grants",
+  "conferences",
+  "fellowships",
+];
+
+const CATEGORY_META: Record<
+  BriefingCategory,
+  { label: string; icon: React.ReactNode; section: SectionKey }
+> = {
+  papers: { label: "Papers", icon: <DocumentIcon size={16} />, section: "papers" },
+  grants: { label: "Grants", icon: <BankIcon size={16} />, section: "opportunities" },
+  conferences: {
+    label: "Conferences",
+    icon: <ConferenceIcon size={16} />,
+    section: "conferences",
+  },
+  fellowships: {
+    label: "Fellowships",
+    icon: <MembersIcon size={16} />,
+    section: "fellowships",
+  },
+};
 
 function formatWhen(iso: string | null): string {
   if (!iso) return "";
@@ -26,131 +57,221 @@ function formatWhen(iso: string | null): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function pct(value: number | null): string | null {
-  return typeof value === "number" ? `${value}%` : null;
+/** The watched categories in stable order (defensive against odd API order). */
+function orderedCategories(data: DailyBriefing): BriefingCategory[] {
+  return CATEGORY_ORDER.filter((c) => data.categories.includes(c));
 }
 
-/** The link through to the full paper list — the day's papers live there now. */
-function PapersLink({ count }: { count: number }) {
-  return (
-    <Link
-      href={SECTION_ROUTES.papers}
-      className="group mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-    >
-      {count > 0
-        ? `View all ${count} paper${count === 1 ? "" : "s"}`
-        : "View research papers"}
-      <ArrowRightIcon
-        size={14}
-        aria-hidden="true"
-        className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-      />
-    </Link>
-  );
-}
+/* -- Left zone: the written briefing ---------------------------------------- */
 
-function SummaryView({ summary }: { summary: DailyReportSummary }) {
-  return (
-    <div className="space-y-5">
-      <Card accent="primary-rule" className="p-5">
-        <h2 className="font-serif text-xl font-semibold leading-snug text-[var(--text-primary)]">
-          {summary.headline}
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
-          Today&rsquo;s research digest, summarized. The full ranked list — each
-          paper with its percent-match score and why it matters — lives on your
-          Research Papers page.
-        </p>
-        <PapersLink count={summary.paper_count} />
-      </Card>
+function MyloReport({
+  data,
+  className,
+}: {
+  data: DailyBriefing;
+  className?: string;
+}) {
+  const body = data.briefing?.body ?? "";
+  const paragraphs = body
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const isFallback = data.briefing?.origin === "fallback";
+  const when = formatWhen(data.generated_at);
 
-      <div className="grid grid-cols-2 gap-[14px] lg:grid-cols-4">
-        <StatCard
-          icon={<DocumentIcon size={16} />}
-          label="Papers today"
-          value={summary.paper_count}
-          sub={`≥${summary.match_threshold}% match`}
-        />
-        <StatCard
-          icon={<SparkleIcon size={16} />}
-          label="Strong matches"
-          value={summary.strong_matches}
-          sub="75%+ fit"
-        />
-        <StatCard
-          icon={<TargetIcon size={16} />}
-          label="Top match"
-          value={pct(summary.top_match) ?? "—"}
-        />
-        <StatCard
-          icon={<TargetIcon size={16} />}
-          label="Average match"
-          value={pct(summary.average_match) ?? "—"}
-        />
+  return (
+    <Card accent="primary-rule" className={`flex flex-col p-6 ${className ?? ""}`}>
+      <div className="mb-3 flex items-center gap-2">
+        <MyloGlyph size={20} className="text-primary" aria-hidden="true" />
+        <span className="text-[10.5px] font-semibold uppercase tracking-[.09em] text-primary">
+          Mylo Report{when ? ` · ${when}` : ""}
+        </span>
       </div>
 
-      {summary.themes.length > 0 ? (
-        <Card className="p-5">
-          <p className="mb-2.5 text-[12.5px] font-semibold text-[var(--text-secondary)]">
-            Recurring themes
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {summary.themes.map((theme) => (
-              <Pill key={theme} tone="primary">
-                {theme}
-              </Pill>
-            ))}
-          </div>
-          {summary.sources.length > 0 ? (
-            <p className="mt-3.5 text-xs text-[var(--text-muted)]">
-              Sources: {summary.sources.join(", ")}
-            </p>
-          ) : null}
-        </Card>
+      <div className="space-y-3 text-[15px] leading-relaxed text-[var(--text-secondary)] [text-wrap:pretty]">
+        {paragraphs.length > 0 ? (
+          paragraphs.map((p, i) => <p key={i}>{p}</p>)
+        ) : (
+          <p>Mylo has nothing to report yet today.</p>
+        )}
+      </div>
+
+      {isFallback ? (
+        <p className="mt-4 text-xs text-[var(--text-muted)]">
+          Written from today&rsquo;s counts — Mylo&rsquo;s writer was offline when
+          this ran.
+        </p>
       ) : null}
-    </div>
+    </Card>
   );
 }
 
-function SkeletonSummary() {
+/* -- Top-right zone: the numeric summaries ---------------------------------- */
+
+function TodaySummaries({ data }: { data: DailyBriefing }) {
+  const { goToSection } = usePortal();
+  const categories = orderedCategories(data);
+
   return (
-    <div className="space-y-5">
-      <Card className="animate-pulse p-5">
-        <span className="block h-5 w-2/3 rounded bg-surface-alt" />
-        <span className="mt-3 block h-3 w-full rounded bg-surface-alt" />
-        <span className="mt-1.5 block h-3 w-1/2 rounded bg-surface-alt" />
+    <Card className="p-5">
+      <p className="mb-3 text-[12.5px] font-semibold text-[var(--text-secondary)]">
+        Today&rsquo;s summaries
+      </p>
+      {categories.length > 0 ? (
+        <div className="grid grid-cols-2 gap-[14px]">
+          {categories.map((category) => {
+            const meta = CATEGORY_META[category];
+            return (
+              <StatCard
+                key={category}
+                icon={meta.icon}
+                label={meta.label}
+                value={data.counts[category] ?? 0}
+                onClick={() => goToSection(meta.section)}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-[var(--text-muted)]">
+          You aren&rsquo;t watching any categories yet.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+/* -- Bottom-right zone: the top items per category -------------------------- */
+
+function ShowcaseRow({ item }: { item: BriefingShowcaseItem }) {
+  const hasMatch = typeof item.match_percent === "number";
+  const body = (
+    <span className="flex min-w-0 flex-1 items-start gap-2.5">
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 text-[13px] font-medium leading-snug text-[var(--text-primary)]">
+          {item.title}
+        </span>
+        {item.deadline_date ? (
+          <span className="mt-0.5 block text-[11.5px] text-[var(--text-muted)]">
+            Deadline {item.deadline_date}
+          </span>
+        ) : null}
+      </span>
+      <span className="flex shrink-0 items-center gap-1.5">
+        {item.is_new ? <Pill tone="accent">New</Pill> : null}
+        {hasMatch ? <Pill tone="primary">{item.match_percent}%</Pill> : null}
+      </span>
+    </span>
+  );
+
+  const shared =
+    "group flex w-full items-start rounded-xl border border-[var(--divider)] bg-surface-alt/40 px-3 py-2.5 text-left transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none";
+
+  return item.url ? (
+    <a href={item.url} target="_blank" rel="noopener noreferrer" className={shared}>
+      {body}
+    </a>
+  ) : (
+    <div className={shared}>{body}</div>
+  );
+}
+
+function BriefingShowcase({ data }: { data: DailyBriefing }) {
+  const { goToSection } = usePortal();
+  const groups = orderedCategories(data)
+    .map((category) => ({ category, items: data.showcase[category] ?? [] }))
+    .filter((g) => g.items.length > 0);
+
+  return (
+    <Card className="p-5">
+      <p className="mb-3 text-[12.5px] font-semibold text-[var(--text-secondary)]">
+        Briefing showcase
+      </p>
+      {groups.length > 0 ? (
+        <div className="space-y-4">
+          {groups.map(({ category, items }) => {
+            const meta = CATEGORY_META[category];
+            return (
+              <div key={category}>
+                <button
+                  type="button"
+                  onClick={() => goToSection(meta.section)}
+                  className="group mb-2 inline-flex items-center gap-1.5 rounded text-[11px] font-semibold uppercase tracking-[.07em] text-[var(--text-muted)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {meta.label}
+                  <ArrowRightIcon
+                    size={12}
+                    aria-hidden="true"
+                    className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                  />
+                </button>
+                <div className="space-y-2">
+                  {items.map((item) => (
+                    <ShowcaseRow key={item.content_id} item={item} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-[var(--text-muted)]">
+          No standout items today — check back after the next scan.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+/* -- Skeleton --------------------------------------------------------------- */
+
+function SkeletonReport() {
+  return (
+    <div className="grid gap-5 lg:grid-cols-5">
+      <Card className="animate-pulse p-6 lg:col-span-3">
+        <span className="block h-3 w-28 rounded bg-surface-alt" />
+        <span className="mt-4 block h-3 w-full rounded bg-surface-alt" />
+        <span className="mt-2 block h-3 w-full rounded bg-surface-alt" />
+        <span className="mt-2 block h-3 w-2/3 rounded bg-surface-alt" />
       </Card>
-      <div className="grid grid-cols-2 gap-[14px] lg:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <Card key={i} className="animate-pulse p-[18px]">
-            <span className="block h-3 w-20 rounded bg-surface-alt" />
-            <span className="mt-3 block h-6 w-12 rounded bg-surface-alt" />
-          </Card>
-        ))}
+      <div className="flex flex-col gap-5 lg:col-span-2">
+        <Card className="animate-pulse p-5">
+          <span className="block h-3 w-24 rounded bg-surface-alt" />
+          <div className="mt-3 grid grid-cols-2 gap-[14px]">
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className="block h-16 rounded bg-surface-alt" />
+            ))}
+          </div>
+        </Card>
+        <Card className="animate-pulse p-5">
+          <span className="block h-3 w-24 rounded bg-surface-alt" />
+          <span className="mt-3 block h-10 w-full rounded bg-surface-alt" />
+        </Card>
       </div>
     </div>
   );
 }
 
 /**
- * The Daily Report: a summary of the day's research. It rolls up today's paper
- * suggestions (count, match strength, recurring themes) and links through to the
- * Research Papers page for the full ranked list. A later phase will grow this
- * into a structured synthesis across projects, deadlines, and lab context.
+ * The Daily "Mylo Report": a three-zone briefing surface. The left zone is the
+ * written cross-category briefing; the top-right zone is the day's numeric
+ * summaries (only the categories the user watches); the bottom-right zone is the
+ * showcase of top items the briefing is grounded in. On mobile the zones stack
+ * briefing -> summaries -> showcase. Data comes from `GET /api/daily-briefing/`.
  */
 export function DailyReportsSection() {
-  const { data, isLoading, isError } = useDailyReport();
-  const summary = data?.summary ?? null;
+  const { data, isLoading, isError } = useDailyBriefing();
+  const hasRun = Boolean(data && data.generated_at);
 
   const subtitle: React.ReactNode = (() => {
-    if (isLoading) return "Summarizing your day…";
-    if (summary && summary.paper_count > 0) {
+    if (isLoading) return "Gathering your briefing…";
+    if (hasRun) {
       const when = formatWhen(data?.generated_at ?? null);
       return when
-        ? `Your research summary for ${when}.`
-        : "Your research summary for today.";
+        ? `Mylo's research briefing for ${when}.`
+        : "Mylo's research briefing for today.";
     }
-    return "A summary of your day's research, gathered every morning.";
+    return "Mylo's daily research briefing, written for you every morning.";
   })();
 
   return (
@@ -158,22 +279,27 @@ export function DailyReportsSection() {
       <SectionHeader title="Daily Reports" subtitle={subtitle} />
 
       {isLoading ? (
-        <SkeletonSummary />
+        <SkeletonReport />
       ) : isError ? (
         <EmptyState
           icon={<ReportIcon size={28} />}
-          title="Couldn't load your daily report"
-          description="Something went wrong summarizing your digest. Please try again in a moment."
+          title="Couldn't load your Mylo Report"
+          description="Something went wrong loading today's briefing. Please try again in a moment."
         />
-      ) : !summary || summary.paper_count === 0 ? (
+      ) : !hasRun || !data ? (
         <EmptyState
-          icon={<ReportIcon size={28} />}
-          badge="Coming soon"
-          title="Your first daily report is on its way"
-          description="Once Milo's literature scan runs against your research profile, your morning summary — how many papers matched, how strongly, and the recurring themes — will appear here."
+          icon={<MyloGlyph size={30} />}
+          title="Your first Mylo Report is on its way"
+          description="Once the daily run finishes scanning your watched topics, your morning briefing — a written summary, the day's counts, and the top items in each category — will appear here."
         />
       ) : (
-        <SummaryView summary={summary} />
+        <div className="grid gap-5 lg:grid-cols-5">
+          <MyloReport data={data} className="lg:col-span-3" />
+          <div className="flex flex-col gap-5 lg:col-span-2">
+            <TodaySummaries data={data} />
+            <BriefingShowcase data={data} />
+          </div>
+        </div>
       )}
     </div>
   );

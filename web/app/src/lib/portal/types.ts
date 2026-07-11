@@ -94,7 +94,7 @@ export type ProfileData = {
   updated_at: string;
 };
 
-/** What Milo watches for the caller (from `/api/auth/watch/me/`). */
+/** What Mylo watches for the caller (from `/api/auth/watch/me/`). */
 export type WatchData = {
   topics: string[];
   categories: string[];
@@ -162,6 +162,39 @@ export type DailyReport = {
   suggestions: Suggestion[];
 };
 
+/** A watched category key, as stored in `WatchPreference.categories`. */
+export type BriefingCategory =
+  | "papers"
+  | "grants"
+  | "conferences"
+  | "fellowships";
+
+/** One top item the briefing references (the showcase grounding). */
+export type BriefingShowcaseItem = {
+  content_id: string;
+  type: string;
+  title: string;
+  url: string;
+  match_percent: number | null;
+  headline: string;
+  deadline_date: string;
+  is_new: boolean;
+};
+
+/** The "Mylo Report" (from `/api/daily-briefing/`) — the Daily page's three zones. */
+export type DailyBriefing = {
+  /** ISO timestamp of the last briefing generation, or null before the first run. */
+  generated_at: string | null;
+  /** The categories this briefing covered (what the user watches). */
+  categories: BriefingCategory[];
+  /** Per-category item counts ("Today's Summaries"). */
+  counts: Partial<Record<BriefingCategory, number>>;
+  /** Top items per category the prose is grounded in (the showcase). */
+  showcase: Partial<Record<BriefingCategory, BriefingShowcaseItem[]>>;
+  /** The written briefing, or null when no run has produced one yet. */
+  briefing: { body: string; origin: "llm" | "fallback" } | null;
+};
+
 /* -- Opportunities: grants, conferences, deadlines -------------------------- */
 
 /** Fields shared by a matched grant and a matched conference. */
@@ -192,7 +225,7 @@ export type GrantOpportunity = OpportunityBase & {
   sponsor: string;
   amount: string;
   matched_topics: string;
-  /** When Milo first surfaced this grant (ISO or ""). */
+  /** When Mylo first surfaced this grant (ISO or ""). */
   posted: string;
   /** A human-readable blurb (AI summary or abstract), or "". */
   description: string;
