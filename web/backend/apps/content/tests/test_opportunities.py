@@ -49,6 +49,7 @@ def _open_opportunity_thresholds(settings):
     production match thresholds. The dedicated threshold test overrides its own."""
     settings.GRANT_MATCH_THRESHOLD = 0.0
     settings.CONFERENCE_MATCH_THRESHOLD = 0.0
+    settings.OPPORTUNITY_MIN_MATCH_PERCENT = 0
 
 
 # -- pure: search interests ---------------------------------------------------
@@ -113,6 +114,90 @@ def test_generate_suggestions_uses_model_scores():
     assert out[0]["source"] == "llm"
     assert out[0]["match_percent"] == 92
     assert out[0]["headline"] == "Strong Fit"
+
+
+# -- carry-forward: prior verdicts skip the model, new items get freed slots --
+
+
+@pytest.mark.django_db
+def test_carry_forward_skips_already_scored_item_and_reuses_its_verdict():
+    """An item ``prior`` already scored is never re-sent to the model; its verdict
+    survives, and the freed ``llm_limit`` slot goes to the unscored item."""
+    scored = _persisted_grant("g_scored", "Knowledge Graphs Award")
+    unscored = _persisted_grant("g_unscored", "Robotics Grant")
+    items = [(scored, 0.9), (unscored, 0.5)]
+    prior = {
+        str(scored.id): {
+            "match_percent": 82,
+            "headline": "Carried Headline",
+            "reason": "Carried reason from a prior run.",
+            "llm_scored_at": "2026-07-01T00:00:00+00:00",
+        }
+    }
+    seen_prompts: list[str] = []
+
+    def _complete(prompt):
+        seen_prompts.append(prompt)
+        return json.dumps(
+            {
+                "suggestions": [
+                    {"item": 1, "match": 95, "headline": "Fresh", "reason": "New."}
+                ]
+            }
+        )
+
+    out = generate_opportunity_suggestions(
+        ContentItem.Type.GRANT,
+        {},
+        {},
+        items,
+        llm_limit=1,
+        prior=prior,
+        complete=_complete,
+    )
+
+    # Only the unscored grant reached the prompt.
+    assert seen_prompts
+    assert "Robotics Grant" in seen_prompts[0]
+    assert "Knowledge Graphs Award" not in seen_prompts[0]
+
+    carried = next(s for s in out if s["content_id"] == str(scored.id))
+    assert carried["source"] == "llm"
+    assert carried["match_percent"] == 82
+    assert carried["headline"] == "Carried Headline"
+    assert carried["llm_scored_at"] == "2026-07-01T00:00:00+00:00"
+    fresh = next(s for s in out if s["content_id"] == str(unscored.id))
+    assert fresh["source"] == "llm"
+    assert fresh["match_percent"] == 95
+
+
+@pytest.mark.django_db
+def test_new_first_gets_llm_slot_priority_over_older_unscored():
+    """A freshly-seen unscored item wins the one free LLM slot over an older,
+    higher-fused-rank unscored item."""
+    old_high_rank = _persisted_grant("g_old", "Old High Rank Grant")
+    new_low_rank = _persisted_grant("g_new", "Freshly Seen Grant")
+    items = [(old_high_rank, 0.9), (new_low_rank, 0.4)]  # fused order: old first
+
+    seen_prompts: list[str] = []
+
+    def _complete(prompt):
+        seen_prompts.append(prompt)
+        return json.dumps({"suggestions": []})
+
+    generate_opportunity_suggestions(
+        ContentItem.Type.GRANT,
+        {},
+        {},
+        items,
+        llm_limit=1,
+        new_ids={str(new_low_rank.id)},
+        complete=_complete,
+    )
+
+    assert seen_prompts
+    assert "Freshly Seen Grant" in seen_prompts[0]
+    assert "Old High Rank Grant" not in seen_prompts[0]
 
 
 def _persisted_grant(gid, title):
@@ -268,6 +353,107 @@ def test_match_grants_end_to_end(pgvector):
         user, "grants", complete=lambda _p: None, today="2026-07-05"
     )
     assert scores.count() == before
+
+
+@pytest.mark.django_db
+def test_match_grants_floor_hides_low_score_but_persists_verdict(settings):
+    """A grant the model scores below OPPORTUNITY_MIN_MATCH_PERCENT is persisted
+    (carry-forward remembers it) but hidden from the feed; a 60+ grant stays.
+
+    Drives ``_score_job``/``_finalize_match`` directly over a hand-built job —
+    the floor logic under test lives entirely there, so this skips the
+    retrieval/fusion machinery (gated on pgvector, and liable to drop one of two
+    near-identical fixtures via the *unrelated* per-interest RRF floor).
+    """
+    from apps.content.opportunities import _finalize_match, _MatchJob, _score_job
+    from apps.content.targets import target_for_user
+
+    settings.OPPORTUNITY_MIN_MATCH_PERCENT = 60
+    user = _profile_user("floortest")
+    strong = _persisted_grant("g_strong", "Strong Match Grant")
+    weak = _persisted_grant("g_weak", "Weak Match Grant")
+    job = _MatchJob(
+        target=target_for_user(user),
+        username="floortest",
+        area="grants",
+        content_type=ContentItem.Type.GRANT,
+        pairs=[(strong, 0.9), (weak, 0.5)],
+        rows=[(strong, 0.9, {}), (weak, 0.5, {})],
+        pool=2,
+        llm_limit=10,
+        surface_limit=None,
+    )
+
+    def _complete(prompt):
+        rows = []
+        for line in prompt.splitlines():
+            if not line.startswith("["):
+                continue
+            idx = int(line[1 : line.index("]")])
+            if "Weak Match Grant" in line:
+                rows.append(
+                    {"item": idx, "match": 10, "headline": "Weak", "reason": "Barely."}
+                )
+            elif "Strong Match Grant" in line:
+                rows.append(
+                    {"item": idx, "match": 90, "headline": "Strong", "reason": "Great."}
+                )
+        return json.dumps({"suggestions": rows})
+
+    suggestions = _score_job(job, complete=_complete)
+    result = _finalize_match(
+        job, suggestions, persist=True, today="2026-07-05", log=None
+    )
+    assert result.suggestions == 1
+    assert result.hidden == 1
+
+    scores = {
+        s.content.external_id: s
+        for s in RelevanceScore.objects.filter(target_user=user, content__type="grant")
+    }
+    # Both persisted (carry-forward remembers both verdicts)...
+    assert "g_strong" in scores and "g_weak" in scores
+    # ...but only the strong one is flagged suggested.
+    assert scores["g_strong"].signals["suggested"] is True
+    assert scores["g_strong"].signals["match_percent"] == 90
+    assert scores["g_weak"].signals["suggested"] is False
+    assert scores["g_weak"].signals["match_percent"] == 10
+
+
+@pytest.mark.django_db
+def test_refit_bypasses_carry_forward_for_grants(pgvector):
+    """``refit_user`` re-sends every surfaced grant to the model, even ones a prior
+    run already scored (``reuse_prior=False`` skips the carry-forward store)."""
+    from apps.content.refitting import refit_user
+
+    embeddings.set_embedder(_fake_embed)
+    user = _profile_user("refitbypass")
+    ingest_pivot(
+        [("grants", _grant("g1", "Knowledge Graphs for biomedical health"))],
+        embedder=_fake_embed,
+        prune=False,
+        today="2026-07-05",
+    )
+
+    calls = {"n": 0}
+
+    def _complete(_prompt):
+        calls["n"] += 1
+        return json.dumps(
+            {"suggestions": [{"item": 1, "match": 80, "headline": "H", "reason": "R"}]}
+        )
+
+    match_opportunities_for_user(
+        user, "grants", complete=_complete, today="2026-07-05"
+    )
+    assert calls["n"] == 1  # first run scores it
+
+    refit_user(
+        user, areas=("grants",), complete=_complete, persist=True, log=None
+    )
+    # The refit re-sent the already-scored grant to the model instead of carrying
+    # its prior verdict forward.
+    assert calls["n"] == 2
 
 
 @pytest.mark.django_db

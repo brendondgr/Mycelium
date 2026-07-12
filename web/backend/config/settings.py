@@ -245,6 +245,14 @@ AREA_FOCUS_WEIGHT = env.float("AREA_FOCUS_WEIGHT", default=0.25)
 PAPER_MATCH_THRESHOLD = env.float("PAPER_MATCH_THRESHOLD", default=0.5)
 PAPER_MATCH_MAX_SURFACE = env.int("PAPER_MATCH_MAX_SURFACE", default=250)
 
+# Nightly runs carry forward a paper's prior LLM verdict instead of re-scoring it
+# (apps.content.pipeline / .suggest), so a researcher's match% doesn't flap night
+# to night and the freed LLM slots go to papers never scored, new ones first. A
+# paper the model scores below PAPER_MIN_MATCH_PERCENT is persisted (so the
+# carry-forward store remembers it and never re-sends it) but hidden from the feed
+# (``suggested=False``) rather than surfaced with a low score.
+PAPER_MIN_MATCH_PERCENT = env.int("PAPER_MIN_MATCH_PERCENT", default=60)
+
 # Opportunity feed sizing (apps.content.opportunities / .fellowships). Like the
 # paper feed, grants/conferences/fellowships are no longer fixed top-N lists: an
 # item is surfaced only when its match to the researcher clears the area's
@@ -255,10 +263,21 @@ PAPER_MATCH_MAX_SURFACE = env.int("PAPER_MATCH_MAX_SURFACE", default=250)
 # the goal is to widen a previously-capped feed). FELLOWSHIP_FIT_THRESHOLD is the
 # rule engine's fit score in [0, 1] applied *after* the hard eligibility gate, so
 # the default 0.0 surfaces every fellowship the user is actually eligible for.
+# FELLOWSHIP_MATCH_THRESHOLD is the embedding-cosine relevance floor an eligible
+# fellowship must clear to surface at all (mirrors GRANT/CONFERENCE_MATCH_THRESHOLD;
+# 0 disables the relevance gate, keeping the old eligibility-only behaviour) — it
+# only applies for researchers with a declared interest signal; users with none
+# keep the pure rule-engine ranking.
 GRANT_MATCH_THRESHOLD = env.float("GRANT_MATCH_THRESHOLD", default=0.4)
 CONFERENCE_MATCH_THRESHOLD = env.float("CONFERENCE_MATCH_THRESHOLD", default=0.4)
 FELLOWSHIP_FIT_THRESHOLD = env.float("FELLOWSHIP_FIT_THRESHOLD", default=0.0)
+FELLOWSHIP_MATCH_THRESHOLD = env.float("FELLOWSHIP_MATCH_THRESHOLD", default=0.4)
 OPPORTUNITY_MATCH_MAX_SURFACE = env.int("OPPORTUNITY_MATCH_MAX_SURFACE", default=250)
+
+# Same carry-forward + floor behaviour as papers (above), for grants / conferences /
+# fellowships: an item the model scored below this stays in the carry-forward store
+# (never re-sent to the model) but off the feed until it improves or ages out.
+OPPORTUNITY_MIN_MATCH_PERCENT = env.int("OPPORTUNITY_MIN_MATCH_PERCENT", default=60)
 
 # Project collaboration (apps.content.collaboration). Per-action weight written on
 # each RelevanceEvent — the weak relevance labels a future team-signal recompute

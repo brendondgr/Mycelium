@@ -28,7 +28,10 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from .models import ContentItem
+from django.utils import timezone
+
+from .digest_selection import new_first
+from .models import ContentItem, RelevanceScore
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +85,39 @@ _SYSTEM_PROMPT = {
 }
 
 
+def load_prior_llm_verdicts(persist_kwargs: dict, content_type: str) -> dict[str, dict]:
+    """Prior-run LLM verdicts for ``persist_kwargs``'s target, keyed by content id.
+
+    The carry-forward store: :class:`~apps.content.models.RelevanceScore` rows
+    persist across nightly runs (only the *read* layer filters to the latest
+    ``run_at``), so a row from any earlier run whose signals show it was actually
+    scored by the model (``source == "llm"``, a real ``match_percent``) is a
+    verdict already paid for. The caller skips sending that item back to the model
+    and reuses this dict's headline/reason/match_percent instead. Missing or
+    malformed signals are silently skipped — degrade, don't crash.
+    """
+    rows = RelevanceScore.objects.filter(
+        **persist_kwargs, content__type=content_type
+    ).only("content_id", "signals")
+    out: dict[str, dict] = {}
+    for row in rows:
+        signals = row.signals or {}
+        if signals.get("source") != "llm":
+            continue
+        match_percent = signals.get("match_percent")
+        if match_percent is None:
+            continue
+        out[str(row.content_id)] = {
+            "match_percent": match_percent,
+            "headline": signals.get("headline", ""),
+            "reason": signals.get("reason", ""),
+            "llm_scored_at": signals.get("llm_scored_at")
+            or signals.get("run_at")
+            or "",
+        }
+    return out
+
+
 def generate_opportunity_suggestions(
     area: str,
     interests: dict,
@@ -91,6 +127,8 @@ def generate_opportunity_suggestions(
     llm_limit: int = _DEFAULT_LLM_LIMIT,
     surface_limit: int | None = None,
     complete: CompleteFn | None = None,
+    prior: dict[str, dict] | None = None,
+    new_ids: set[str] | None = None,
 ) -> list[Suggestion]:
     """Two-tier opportunity digest: model-scored top slice + deterministic tail.
 
@@ -99,30 +137,67 @@ def generate_opportunity_suggestions(
     (``surface_limit=None``) every candidate is surfaced and only the top
     ``llm_limit`` go to the model. An explicit ``surface_limit`` caps the total to a
     fixed slice (the legacy top-N behaviour).
+
+    ``prior`` (from :func:`load_prior_llm_verdicts`) carries forward verdicts a
+    previous run already got from the model — those items are never re-sent; this
+    run's ``llm_limit`` slots go entirely to items still unscored, preferring ones
+    in ``new_ids`` (freshly-seen this week) over older backlog items. LLM-scored
+    suggestions (fresh + carried) are ordered by match percent (ties: fused order);
+    the fallback tail keeps fused order.
     """
     candidates = list(hits)
     if not candidates:
         return []
+    prior = prior or {}
+    new_ids = new_ids or set()
 
     surfaced = candidates if surface_limit is None else candidates[:surface_limit]
-    llm_subset = surfaced[:llm_limit]
 
-    llm = _llm_suggestions(
+    unscored = [pair for pair in surfaced if str(pair[0].id) not in prior]
+    llm_subset = new_first(unscored, lambda pair: str(pair[0].id), new_ids)[:llm_limit]
+
+    fresh = _llm_suggestions(
         area, interests, profile_meta, llm_subset, limit=llm_limit, complete=complete
     )
-    picked = {s["content_id"] for s in llm}
+    now = timezone.now().isoformat()
+    for suggestion in fresh:
+        suggestion["llm_scored_at"] = now
+    fresh_ids = {s["content_id"] for s in fresh}
 
-    # ``surfaced`` is the final set (all candidates, or the ``surface_limit`` slice)
-    # and the model's picks are a subset of it, so the result is exactly ``surfaced``.
-    out: list[Suggestion] = list(llm)
+    carried: list[Suggestion] = []
     for item, score in surfaced:
-        if str(item.id) in picked:
+        cid = str(item.id)
+        if cid in fresh_ids:
             continue
-        out.append(
+        verdict = prior.get(cid)
+        if verdict is None:
+            continue
+        suggestion = _suggestion(
+            item,
+            score,
+            rank=0,
+            headline=verdict.get("headline") or _title(item),
+            reason=verdict.get("reason") or _fallback_reason(interests, item),
+            match_percent=verdict.get("match_percent"),
+            source="llm",
+        )
+        suggestion["llm_scored_at"] = verdict.get("llm_scored_at", "")
+        carried.append(suggestion)
+
+    scored = fresh + carried
+    scored_ids = fresh_ids | {s["content_id"] for s in carried}
+
+    # ``surfaced`` is the final set (all candidates, or the ``surface_limit`` slice);
+    # every item is either scored (fresh/carried, above) or falls through here.
+    fallback: list[Suggestion] = []
+    for item, score in surfaced:
+        if str(item.id) in scored_ids:
+            continue
+        fallback.append(
             _suggestion(
                 item,
                 score,
-                rank=len(out) + 1,
+                rank=0,
                 headline=_title(item),
                 reason=_fallback_reason(interests, item),
                 match_percent=None,
@@ -130,6 +205,12 @@ def generate_opportunity_suggestions(
             )
         )
 
+    fused_order = {str(item.id): i for i, (item, _score) in enumerate(surfaced)}
+    scored.sort(
+        key=lambda s: (-(s["match_percent"] or 0), fused_order.get(s["content_id"], 0))
+    )
+
+    out = scored + fallback
     for rank, suggestion in enumerate(out, start=1):
         suggestion["rank"] = rank
     return out
@@ -143,22 +224,31 @@ def generate_fellowship_suggestions(
     *,
     llm_limit: int = _DEFAULT_LLM_LIMIT,
     complete: CompleteFn | None = None,
+    prior: dict[str, dict] | None = None,
+    new_ids: set[str] | None = None,
 ) -> list[Suggestion]:
     """Overlay a model-written report onto the top slice of the eligible list.
 
     ``ranked`` is the deterministic rule engine's eligibility-gated, fit-ranked
     output (each dict from :func:`apps.content.fellowships.match_fellowships`, with
     ``source="rules"``). Eligibility is already decided; this only enriches *why
-    it fits the person's research*: the top ``llm_limit`` go to the fellowship
-    model for a bespoke 2-4 sentence reason + percent match, which overlays the
-    rule dict (``source`` becomes ``"llm"``) while the eligibility fields
-    (``tier``/``gates_failed``/``reasons``/``fit``/status) are preserved. When the
-    model is unavailable the rule reason survives unchanged, so nothing regresses.
+    it fits the person's research*: the top ``llm_limit`` of the items ``prior``
+    hasn't already scored (new ones first, per ``new_ids``) go to the fellowship
+    model for a bespoke 2-4 sentence reason + percent match. Items ``prior`` already
+    scored keep that verdict without a fresh model call. Either way the overlay
+    (``source`` becomes ``"llm"``) preserves the eligibility fields
+    (``tier``/``gates_failed``/``reasons``/``fit``/status). When the model is
+    unavailable and there is no prior verdict, the rule reason survives unchanged,
+    so nothing regresses. Output order always follows ``ranked`` (the rule engine's
+    tier/fit order) — only which items got a *fresh* model call changes.
     """
     if not ranked:
         return []
+    prior = prior or {}
+    new_ids = new_ids or set()
 
-    top = list(ranked[:llm_limit])
+    unscored = [s for s in ranked if s["content_id"] not in prior]
+    top = new_first(unscored, lambda s: s["content_id"], new_ids)[:llm_limit]
     pairs = [
         (items_by_id[s["content_id"]], float(s.get("fit", 0.0)))
         for s in top
@@ -172,24 +262,42 @@ def generate_fellowship_suggestions(
         limit=llm_limit,
         complete=complete,
     )
+    now = timezone.now().isoformat()
+    for suggestion in llm:
+        suggestion["llm_scored_at"] = now
     by_id = {s["content_id"]: s for s in llm}
 
     out: list[Suggestion] = []
     for suggestion in ranked:
-        enriched = by_id.get(suggestion["content_id"])
-        if enriched is None:
-            out.append(suggestion)
+        cid = suggestion["content_id"]
+        enriched = by_id.get(cid)
+        if enriched is not None:
+            # Keep the eligibility verdict; take the model's fresh headline/reason.
+            merged = {
+                **suggestion,
+                "headline": enriched["headline"],
+                "reason": enriched["reason"],
+                "source": "llm",
+                "llm_scored_at": enriched.get("llm_scored_at", now),
+            }
+            if enriched.get("match_percent") is not None:
+                merged["match_percent"] = enriched["match_percent"]
+            out.append(merged)
             continue
-        # Keep the eligibility verdict; take the model's headline/reason/percent.
-        merged = {
-            **suggestion,
-            "headline": enriched["headline"],
-            "reason": enriched["reason"],
-            "source": "llm",
-        }
-        if enriched.get("match_percent") is not None:
-            merged["match_percent"] = enriched["match_percent"]
-        out.append(merged)
+        verdict = prior.get(cid)
+        if verdict is not None:
+            merged = {
+                **suggestion,
+                "headline": verdict.get("headline") or suggestion["headline"],
+                "reason": verdict.get("reason") or suggestion["reason"],
+                "source": "llm",
+                "llm_scored_at": verdict.get("llm_scored_at", ""),
+            }
+            if verdict.get("match_percent") is not None:
+                merged["match_percent"] = verdict["match_percent"]
+            out.append(merged)
+            continue
+        out.append(suggestion)
     return out
 
 

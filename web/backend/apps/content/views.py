@@ -233,6 +233,7 @@ class DailyBriefingView(APIView):
                     "generated_at": None,
                     "categories": [],
                     "counts": {},
+                    "new_counts": {},
                     "showcase": {},
                     "briefing": None,
                 }
@@ -242,6 +243,7 @@ class DailyBriefingView(APIView):
                 "generated_at": briefing.generated_at.isoformat(),
                 "categories": briefing.categories,
                 "counts": briefing.counts,
+                "new_counts": briefing.new_counts,
                 "showcase": briefing.showcase,
                 "briefing": {"body": briefing.body, "origin": briefing.origin},
             }
@@ -271,13 +273,18 @@ def _latest_scores(target_filter: dict, content_type: str) -> list[RelevanceScor
 
     ``target_filter`` is the single ``target_*`` FK to read under —
     ``{"target_user": user}`` for a person, ``{"target_lab": lab}`` /
-    ``{"target_project": project}`` for the institutional feeds.
+    ``{"target_project": project}`` for the institutional feeds. Rows the matcher
+    persisted but marked ``suggested=False`` (below the match-percent floor) are
+    excluded — mirroring ``DailyReportView``'s own filter — so a hidden verdict
+    never surfaces just because it is the latest run.
     """
-    scores = list(
-        RelevanceScore.objects.filter(
+    scores = [
+        s
+        for s in RelevanceScore.objects.filter(
             **target_filter, content__type=content_type
         ).select_related("content")
-    )
+        if s.signals.get("suggested")
+    ]
     if not scores:
         return []
     latest = max(s.signals.get("run_at", "") for s in scores)

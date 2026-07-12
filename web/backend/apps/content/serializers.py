@@ -414,7 +414,11 @@ class FellowshipSerializer(_OpportunitySerializer):
     def get_description(self, score: RelevanceScore) -> str:
         # The fellowship's own blurb from the source listing (Illinois Fellowship
         # Finder "description" section) — distinct from the eligibility bullets.
-        return self._meta(score).get("description") or ""
+        # Prefer the fuller ``description``, fall back to the shorter ``blurb``;
+        # whitespace-collapsed (source descriptions carry newlines/odd spacing).
+        meta = self._meta(score)
+        text = meta.get("description") or meta.get("blurb") or ""
+        return " ".join(str(text).split())
 
 
 #: Metadata keys tried (in order) for the outbound link, per content type.

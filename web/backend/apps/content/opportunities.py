@@ -19,18 +19,20 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+from .digest_selection import new_content_ids, split_by_floor
 from .fusion import DEFAULT_BETA
 from .interests_query import SearchInterest, search_interests
 from .models import ContentItem, RelevanceScore
 from .opportunity_llm import (
     generate_fellowship_suggestions,
     generate_opportunity_suggestions,
+    load_prior_llm_verdicts,
 )
 from .pinning import compute_pins
 from .pipeline import PersistRow, fuse_interests_pool
@@ -81,6 +83,11 @@ def _opportunity_max_surface() -> int:
     return getattr(settings, "OPPORTUNITY_MATCH_MAX_SURFACE", 250)
 
 
+def _opportunity_min_match_percent() -> int:
+    """The match-percent floor below which an LLM verdict stays hidden."""
+    return getattr(settings, "OPPORTUNITY_MIN_MATCH_PERCENT", 60)
+
+
 @dataclass
 class OppRunResult:
     """A JSON-able report of one user's opportunity run for one area."""
@@ -93,6 +100,7 @@ class OppRunResult:
     llm: int = 0
     fallback: int = 0
     new: int = 0
+    hidden: int = 0  # scored below the match-percent floor; persisted, not surfaced
     note: str = ""
 
     def as_dict(self) -> dict:
@@ -145,14 +153,17 @@ class _MatchJob:
     pool: int
     llm_limit: int
     surface_limit: int | None  # None => surface all (threshold-gated areas)
+    prior: dict = field(default_factory=dict)  # carry-forward LLM verdicts
+    new_ids: set = field(default_factory=set)  # freshly-seen cids (LLM-slot priority)
 
 
 @dataclass
 class _FellowshipMatchJob:
-    """A prepared fellowship unit — no embeddings.
+    """A prepared fellowship unit — eligibility (always) + embedding match (maybe).
 
     All fellowship items are loaded from the DB; the deterministic rule engine
-    (:mod:`.fellowships`) gates them by eligibility, then the fellowship model
+    (:mod:`.fellowships`) gates them by eligibility and (when ``embed_by_id`` is
+    populated) research-fit relevance, then the fellowship model
     (:mod:`.opportunity_llm`) writes a tailored report for the top slice. Safe to
     run in the same thread pool as the grant/conference LLM jobs.
     """
@@ -166,9 +177,14 @@ class _FellowshipMatchJob:
     interests: dict = None       # Profile.interests (for the LLM report)
     profile_meta: dict = None    # career stage / institution (for the LLM report)
     llm_limit: int = DEFAULT_LLM_LIMIT
-    match_threshold: float = 0.0     # min fit to surface (0 => all eligible)
+    match_threshold: float = 0.0     # min blended fit to surface (0 => all eligible)
     max_surface: int = DEFAULT_SURFACE  # backstop cap on surfaced fellowships
     today: str = ""
+    prior: dict = None           # carry-forward LLM verdicts
+    new_ids: set = None          # freshly-seen cids (LLM-slot priority)
+    embed_by_id: dict | None = None   # {content_id: cosine}; None => rule-only
+    has_interest_signal: bool = False  # user declared interests/watch topics
+    embed_threshold: float = 0.0      # min cosine an eligible item must clear
 
     def __post_init__(self):
         if self.items is None:
@@ -177,12 +193,17 @@ class _FellowshipMatchJob:
             self.interests = {}
         if self.profile_meta is None:
             self.profile_meta = {}
+        if self.prior is None:
+            self.prior = {}
+        if self.new_ids is None:
+            self.new_ids = set()
 
 
 def _prepare_fellowship_match(
     user: User,
     *,
     today: str | None,
+    reuse_prior: bool = True,
     log: Callable[[str], None] | None,
 ) -> tuple[_FellowshipMatchJob | None, OppRunResult | None]:
     """DB phase for fellowships — load all items + build Elig (no embedding)."""
@@ -217,6 +238,13 @@ def _prepare_fellowship_match(
     emit(f"loaded {len(items)} fellowship items")
     from django.utils import timezone as tz
 
+    today_final = today or tz.now().date().isoformat()
+    prior = (
+        load_prior_llm_verdicts({"target_user": user}, ContentItem.Type.FELLOWSHIP)
+        if reuse_prior
+        else {}
+    )
+    embed_by_id, has_interest_signal = _fellowship_embed_by_id(user, profile, emit=emit)
     job = _FellowshipMatchJob(
         user=user,
         username=username,
@@ -229,19 +257,91 @@ def _prepare_fellowship_match(
         },
         match_threshold=getattr(settings, "FELLOWSHIP_FIT_THRESHOLD", 0.0),
         max_surface=_opportunity_max_surface(),
-        today=today or tz.now().date().isoformat(),
+        today=today_final,
+        prior=prior,
+        new_ids=new_content_ids(items, today=today_final),
+        embed_by_id=embed_by_id,
+        has_interest_signal=has_interest_signal,
+        embed_threshold=getattr(settings, "FELLOWSHIP_MATCH_THRESHOLD", 0.4),
     )
     return job, None
+
+
+def _fellowship_embed_by_id(
+    user: User, profile, *, emit: Callable[[str], None]
+) -> tuple[dict[str, float] | None, bool]:
+    """The researcher's embedding match to each fellowship, or ``(None, ...)``.
+
+    Reuses the same multi-interest search-interest builder grants/conferences use
+    (:func:`opportunity_search_interests`) and the shared retrieve+fuse step
+    (:func:`~apps.content.pipeline.fuse_interests_pool`), scoped to the fellowship
+    corpus. Called with ``match_threshold=0.0`` (not the real gate) so the fuse
+    step's *threshold* branch runs — the only branch that records each surfaced
+    item's raw cosine as ``embedding_match`` in its ``PersistRow`` extra (the same
+    signal grants/conferences persist) — and every retrieved candidate survives to
+    be looked up later; :func:`apps.content.fellowships.match_fellowships` applies
+    the real ``embed_threshold`` gate itself.
+
+    Returns ``(embed_by_id, has_interest_signal)``:
+
+    - ``has_interest_signal`` is ``True`` whenever the user has declared
+      interests/watch topics to search on, independent of whether retrieval
+      actually produced anything — it only describes the user, not the corpus.
+    - ``embed_by_id`` is ``None`` when there is nothing to gate on: no interest
+      signal, no embedder configured, no embedded fellowships yet, or the
+      retrieval step raised (pgvector unavailable, etc. — degrade, don't crash).
+      A non-``None`` (possibly empty) dict means retrieval genuinely ran; a
+      fellowship missing from it was retrieved-and-not-relevant, not "unknown".
+    """
+    search_ints = opportunity_search_interests(
+        profile.interests or {}, _watch_topics(user)
+    )
+    has_interest_signal = bool(search_ints)
+    if not has_interest_signal:
+        return None, False
+
+    try:
+        _pairs, rows, pool = fuse_interests_pool(
+            search_ints,
+            content_type=ContentItem.Type.FELLOWSHIP,
+            surface_limit=_opportunity_max_surface(),
+            pool_per_interest=DEFAULT_POOL_PER_INTEREST,
+            beta=DEFAULT_BETA,
+            emit=emit,
+            match_threshold=0.0,
+        )
+    except Exception:
+        logger.exception(
+            "fellowship embedding retrieval failed for %s; falling back to "
+            "rule-only ranking",
+            user.get_username(),
+        )
+        return None, True
+
+    if pool == 0:
+        # No embedder configured, or no embedded fellowships yet — not a real
+        # "zero relevance" signal, so don't gate on it.
+        emit("no embedded fellowships to retrieve yet; ranking on eligibility only")
+        return None, True
+
+    embed_by_id: dict[str, float] = {}
+    for item, _score, extra in rows:
+        match = extra.get("embedding_match")
+        if match is not None:
+            embed_by_id[str(item.id)] = float(match)
+    return embed_by_id, True
 
 
 def _score_fellowship_job(
     job: _FellowshipMatchJob, *, complete: Callable[[str], str | None] | None
 ) -> list[dict]:
-    """Eligibility gate (rule engine) + LLM report — pure, safe in the thread pool.
+    """Eligibility+relevance gate (rule engine) + LLM report — pure, safe in a pool.
 
-    The rule engine decides eligibility and fit-ranks the survivors; the model
-    then writes a tailored 2-4 sentence report for the top slice. A missing/flaky
-    model degrades to the rule engine's own reason (``source="rules"``).
+    The rule engine decides eligibility, gates on research-fit relevance when an
+    embedding signal is available (``job.embed_by_id``), and fit-ranks the
+    survivors; the model then writes a tailored 2-4 sentence report for the top
+    slice. A missing/flaky model degrades to the rule engine's own reason
+    (``source="rules"``).
     """
     from .fellowships import match_fellowships
 
@@ -251,6 +351,8 @@ def _score_fellowship_job(
         job.today,
         match_threshold=job.match_threshold,
         max_surface=job.max_surface,
+        embed_by_id=job.embed_by_id,
+        embed_threshold=job.embed_threshold,
     )
     items_by_id = {str(item.id): item for item in job.items}
     return generate_fellowship_suggestions(
@@ -260,6 +362,8 @@ def _score_fellowship_job(
         items_by_id,
         llm_limit=job.llm_limit,
         complete=complete,
+        prior=job.prior,
+        new_ids=job.new_ids,
     )
 
 
@@ -277,38 +381,51 @@ def _finalize_fellowship_match(
             log(f"[{job.username}:fellowships] {message}")
 
     items_by_id = {str(item.id): item for item in job.items}
-    pins = compute_pins(suggestions, items_by_id, today=job.today)
+    floor = _opportunity_min_match_percent()
+    visible, hidden = split_by_floor(suggestions, floor)
+    pins = compute_pins(visible, items_by_id, today=job.today)
     new_count = sum(1 for p in pins.values() if p["is_new"])
-    llm = sum(1 for s in suggestions if s.get("source") == "llm")
+    llm = sum(1 for s in visible if s.get("source") == "llm")
     emit(
         f"scored {len(suggestions)} eligible fellowships "
-        f"({llm} llm / {len(suggestions) - llm} rules), {new_count} new"
+        f"({llm} llm / {len(visible) - llm} rules), {new_count} new"
+        + (f", {len(hidden)} hidden below floor" if hidden else "")
     )
 
     if persist:
-        _persist_fellowships(job.user, suggestions, items_by_id, pins, today=job.today)
+        visible_ids = {s["content_id"] for s in visible}
+        _persist_fellowships(
+            job.user, suggestions, visible_ids, items_by_id, pins, today=job.today
+        )
 
     return OppRunResult(
         job.username,
         "fellowships",
         "ok",
         retrieved=len(job.items),
-        suggestions=len(suggestions),
+        suggestions=len(visible),
         llm=llm,
-        fallback=len(suggestions) - llm,
+        fallback=len(visible) - llm,
         new=new_count,
+        hidden=len(hidden),
     )
 
 
 def _persist_fellowships(
     user: User,
     suggestions: list[dict],
+    visible_ids: set[str],
     items_by_id: dict,
     pins: dict,
     *,
     today: str | None,
 ) -> None:
-    """Upsert one RelevanceScore per surfaced fellowship, with eligibility signals."""
+    """Upsert one RelevanceScore per eligible fellowship, with eligibility signals.
+
+    Every eligible fellowship is persisted (so the carry-forward store remembers
+    its verdict), but only those in ``visible_ids`` (cleared the match-percent
+    floor) are flagged ``suggested`` — the rest are hidden from the feed.
+    """
     run_at = timezone.now().isoformat()
     for s in suggestions:
         cid = s["content_id"]
@@ -318,7 +435,7 @@ def _persist_fellowships(
         signals = {
             "area": ContentItem.Type.FELLOWSHIP,
             "run_at": run_at,
-            "suggested": True,
+            "suggested": cid in visible_ids,
             "is_new": pin.get("is_new", False),
             "pinned_until": pin.get("pinned_until"),
             "first_seen": pin.get("first_seen", meta.get("first_seen", "")),
@@ -335,6 +452,9 @@ def _persist_fellowships(
             "gates_failed": s.get("gates_failed", []),
             "reasons": s.get("reasons", []),
             "fit": s.get("fit", 0.0),
+            "rule_fit": s.get("rule_fit", s.get("fit", 0.0)),
+            "embedding_match": s.get("embedding_match"),
+            "llm_scored_at": s.get("llm_scored_at", ""),
         }
         if item:
             RelevanceScore.objects.update_or_create(
@@ -352,6 +472,8 @@ def _prepare_match(
     llm_limit: int,
     pool_per_interest: int,
     beta: float,
+    reuse_prior: bool = True,
+    today: str | None = None,
     log: Callable[[str], None] | None,
 ) -> tuple[_MatchJob | None, OppRunResult | None]:
     """DB phase — retrieve + fuse. Returns a job to score, or a short-circuit result.
@@ -397,6 +519,14 @@ def _prepare_match(
             key, area, "no_results", note="no embedded opportunities yet"
         )
 
+    prior = (
+        load_prior_llm_verdicts(target.persist_kwargs, content_type)
+        if reuse_prior
+        else {}
+    )
+    today_iso = today or timezone.now().date().isoformat()
+    new_ids = new_content_ids((item for item, _score in pairs), today=today_iso)
+
     job = _MatchJob(
         target=target,
         username=key,
@@ -407,6 +537,8 @@ def _prepare_match(
         pool=pool,
         llm_limit=llm_limit,
         surface_limit=None if threshold is not None else surface_limit,
+        prior=prior,
+        new_ids=new_ids,
     )
     return job, None
 
@@ -423,6 +555,8 @@ def _score_job(
         llm_limit=job.llm_limit,
         surface_limit=job.surface_limit,
         complete=complete,
+        prior=job.prior,
+        new_ids=job.new_ids,
     )
 
 
@@ -441,21 +575,26 @@ def _finalize_match(
             log(f"[{job.username}:{job.area}] {message}")
 
     items_by_id = {str(item.id): item for item, _score in job.pairs}
-    pins = compute_pins(suggestions, items_by_id, today=today)
+    floor = _opportunity_min_match_percent()
+    visible, hidden = split_by_floor(suggestions, floor)
+    pins = compute_pins(visible, items_by_id, today=today)
     new_count = sum(1 for p in pins.values() if p["is_new"])
-    llm = sum(1 for s in suggestions if s["source"] == "llm")
+    llm = sum(1 for s in visible if s["source"] == "llm")
     emit(
-        f"scored {len(suggestions)} ({llm} llm / {len(suggestions) - llm} fallback), "
+        f"scored {len(suggestions)} ({llm} llm / {len(visible) - llm} fallback), "
         f"{new_count} new over {job.pool} candidates"
+        + (f", {len(hidden)} hidden below floor" if hidden else "")
     )
     if persist:
         # Store the singular content type as the signal's ``area`` so it lines up
         # with ``content.type`` and the API filter (grant/conference, not plural).
+        visible_ids = {s["content_id"] for s in visible}
         _persist(
             job.target.persist_kwargs,
             job.content_type,
             job.rows,
             suggestions,
+            visible_ids,
             pins,
             today=today,
         )
@@ -464,10 +603,11 @@ def _finalize_match(
         job.area,
         "ok",
         retrieved=job.pool,
-        suggestions=len(suggestions),
+        suggestions=len(visible),
         llm=llm,
-        fallback=len(suggestions) - llm,
+        fallback=len(visible) - llm,
         new=new_count,
+        hidden=len(hidden),
     )
 
 
@@ -481,6 +621,7 @@ def match_opportunities_for_target(
     beta: float = DEFAULT_BETA,
     complete: Callable[[str], str | None] | None = None,
     persist: bool = True,
+    reuse_prior: bool = True,
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppRunResult:
@@ -488,6 +629,8 @@ def match_opportunities_for_target(
 
     The engine for a person, a lab, or a project; the score row lands under the
     target's ``persist_kwargs`` (``target_user`` / ``target_lab`` / ``target_project``).
+    ``reuse_prior=False`` bypasses carry-forward, re-sending every surfaced item to
+    the model (used by :mod:`.refitting` after a profile edit).
     """
     job, short = _prepare_match(
         target,
@@ -496,6 +639,8 @@ def match_opportunities_for_target(
         llm_limit=llm_limit,
         pool_per_interest=pool_per_interest,
         beta=beta,
+        reuse_prior=reuse_prior,
+        today=today,
         log=log,
     )
     if short is not None:
@@ -516,11 +661,14 @@ def match_fellowships_for_user(
     *,
     complete: Callable[[str], str | None] | None = None,
     persist: bool = True,
+    reuse_prior: bool = True,
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppRunResult:
     """Eligibility-gate + LLM-report fellowship matching for one user (serial)."""
-    job, short = _prepare_fellowship_match(user, today=today, log=log)
+    job, short = _prepare_fellowship_match(
+        user, today=today, reuse_prior=reuse_prior, log=log
+    )
     if short is not None:
         return short
     suggestions = _score_fellowship_job(job, complete=complete)
@@ -544,6 +692,7 @@ def run_opportunities_for_user(
                     user,
                     complete=kwargs.get("complete"),
                     persist=kwargs.get("persist", True),
+                    reuse_prior=kwargs.get("reuse_prior", True),
                     today=kwargs.get("today"),
                     log=kwargs.get("log"),
                 )
@@ -710,6 +859,7 @@ def run_daily_opportunities_batch(
                         llm_limit=DEFAULT_LLM_LIMIT,
                         pool_per_interest=DEFAULT_POOL_PER_INTEREST,
                         beta=DEFAULT_BETA,
+                        today=today,
                         log=log,
                     )
                 except Exception:
@@ -743,6 +893,7 @@ def run_daily_opportunities_batch(
                     llm_limit=DEFAULT_LLM_LIMIT,
                     pool_per_interest=DEFAULT_POOL_PER_INTEREST,
                     beta=DEFAULT_BETA,
+                    today=today,
                     log=log,
                 )
             except Exception:
@@ -824,6 +975,7 @@ def _persist(
     area: str,
     rows: list[PersistRow],
     suggestions: list[dict],
+    visible_ids: set[str],
     pins: dict[str, dict],
     *,
     today: str | None,
@@ -834,7 +986,9 @@ def _persist(
     (a user, a lab, or a project). Mirrors the paper pipeline's persist but adds
     the area discriminator, the New/pin fields, and a deadline snapshot the API /
     deadlines / notifications read back. A shared ``run_at`` lets the read layer
-    show only the latest run.
+    show only the latest run. Every surfaced item is persisted (so carry-forward
+    remembers its verdict), but only those in ``visible_ids`` (cleared the
+    match-percent floor) are flagged ``suggested``.
     """
     run_at = timezone.now().isoformat()
     promoted_by_id = {s["content_id"]: s for s in suggestions}
@@ -847,7 +1001,7 @@ def _persist(
             **extra,
             "area": area,
             "run_at": run_at,
-            "suggested": promoted is not None,
+            "suggested": promoted is not None and cid in visible_ids,
             "is_new": pin.get("is_new", False),
             "pinned_until": pin.get("pinned_until"),
             "first_seen": pin.get("first_seen", meta.get("first_seen", "")),
@@ -863,6 +1017,7 @@ def _persist(
                 reason=promoted["reason"],
                 match_percent=promoted["match_percent"],
                 source=promoted["source"],
+                llm_scored_at=promoted.get("llm_scored_at", ""),
             )
         RelevanceScore.objects.update_or_create(
             content=item,

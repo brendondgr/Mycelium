@@ -12,15 +12,40 @@ Sections:
 
 from __future__ import annotations
 
+import json
+import math
 from datetime import timedelta
 
 import pytest
 from django.contrib.auth.models import User
+from django.db import connection
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.content import embeddings
 from apps.content.models import ContentItem, RelevanceScore, SavedOpportunity
 from apps.content.opportunities import match_fellowships_for_user
+
+# ---- fixtures ------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _open_match_floor(settings):
+    """Surface every eligible fellowship by default, isolating these tests from the
+    production ``OPPORTUNITY_MIN_MATCH_PERCENT`` floor. The dedicated floor test
+    overrides its own value."""
+    settings.OPPORTUNITY_MIN_MATCH_PERCENT = 0
+
+
+@pytest.fixture(autouse=True)
+def _reset_embedder():
+    """No embedder by default (the rule-only / no-embedding-signal path); the
+    dedicated embedding-match tests install a fake one via ``embeddings.set_embedder``.
+    """
+    embeddings.reset_embedder()
+    yield
+    embeddings.reset_embedder()
+
 
 # ---- constants ---------------------------------------------------------------
 
@@ -96,33 +121,47 @@ def _fellowship(
 
 
 def _score_fellowship(
-    user, item, *, rank, run_at, match, pinned_until=None, is_new=False
+    user,
+    item,
+    *,
+    rank,
+    run_at,
+    match,
+    pinned_until=None,
+    is_new=False,
+    suggested=True,
+    embedding_match=None,
+    rule_fit=None,
 ):
+    signals = {
+        "area": ContentItem.Type.FELLOWSHIP,
+        "run_at": run_at,
+        "rank": rank,
+        "suggested": suggested,
+        "headline": "Strong eligibility match" if match >= 70 else "Possible fit",
+        "reason": "US citizen / permanent resident eligible; Stage matches",
+        "match_percent": match,
+        "source": "rules",
+        "tier": "qualified" if match >= 70 else "conditional",
+        "gates_failed": [],
+        "reasons": ["US citizen / permanent resident eligible"],
+        "fit": match / 100,
+        "rule_fit": rule_fit if rule_fit is not None else match / 100,
+        "is_new": is_new,
+        "pinned_until": pinned_until,
+        "deadline_date": (item.metadata or {}).get("deadline_date", ""),
+        "next_kind": (item.metadata or {}).get("next_kind", ""),
+        "status": "open",
+        "status_summary": (item.metadata or {}).get("status_summary", ""),
+        "first_seen": "2026-07-01T00:00:00+00:00",
+    }
+    if embedding_match is not None:
+        signals["embedding_match"] = embedding_match
     return RelevanceScore.objects.create(
         content=item,
         target_user=user,
         score=round(match / 100, 4),
-        signals={
-            "area": ContentItem.Type.FELLOWSHIP,
-            "run_at": run_at,
-            "rank": rank,
-            "suggested": True,
-            "headline": "Strong eligibility match" if match >= 70 else "Possible fit",
-            "reason": "US citizen / permanent resident eligible; Stage matches",
-            "match_percent": match,
-            "source": "rules",
-            "tier": "qualified" if match >= 70 else "conditional",
-            "gates_failed": [],
-            "reasons": ["US citizen / permanent resident eligible"],
-            "fit": match / 100,
-            "is_new": is_new,
-            "pinned_until": pinned_until,
-            "deadline_date": (item.metadata or {}).get("deadline_date", ""),
-            "next_kind": (item.metadata or {}).get("next_kind", ""),
-            "status": "open",
-            "status_summary": (item.metadata or {}).get("status_summary", ""),
-            "first_seen": "2026-07-01T00:00:00+00:00",
-        },
+        signals=signals,
     )
 
 
@@ -211,6 +250,25 @@ def test_fellowships_feed_latest_run_only(client: APIClient):
 
 
 @pytest.mark.django_db
+def test_fellowships_feed_excludes_suggested_false(client: APIClient):
+    """A latest-run row persisted below the match floor (``suggested=False``) is
+    never returned by the feed, even though it is the latest run."""
+    user = User.objects.create_user("u_hidden", password="x")
+    client.force_authenticate(user)
+    run_at = "2026-07-06T01:00:00+00:00"
+
+    visible = _fellowship("f_visible", "Visible Fellowship")
+    hidden = _fellowship("f_hidden", "Hidden Fellowship")
+    _score_fellowship(user, visible, rank=1, run_at=run_at, match=80)
+    _score_fellowship(
+        user, hidden, rank=2, run_at=run_at, match=10, suggested=False
+    )
+
+    items = client.get("/api/opportunities/fellowships/").data["items"]
+    assert [i["title"] for i in items] == ["Visible Fellowship"]
+
+
+@pytest.mark.django_db
 def test_fellowships_feed_pinned_floats_first(client: APIClient):
     user = User.objects.create_user("u_pin", password="x")
     client.force_authenticate(user)
@@ -228,6 +286,56 @@ def test_fellowships_feed_pinned_floats_first(client: APIClient):
     assert items[0]["content_id"] == str(pinned.id)
     assert items[0]["is_new"] is True
     assert items[1]["content_id"] == str(top.id)
+
+
+@pytest.mark.django_db
+def test_fellowships_feed_includes_description_and_embedding_match(client: APIClient):
+    """The payload exposes ``description`` (Phase B, like GrantSerializer) and
+    ``embedding_match`` (0-100, via the shared ``_OpportunitySerializer``)."""
+    user = User.objects.create_user("u_desc", password="x")
+    client.force_authenticate(user)
+    run_at = "2026-07-06T01:00:00+00:00"
+
+    item = _fellowship("f_desc", "Description Fellowship")
+    _score_fellowship(
+        user, item, rank=1, run_at=run_at, match=82, embedding_match=0.82
+    )
+
+    f = client.get("/api/opportunities/fellowships/").data["items"][0]
+    assert f["description"] == "Description for Description Fellowship"
+    assert f["embedding_match"] == 82
+
+
+@pytest.mark.django_db
+def test_fellowships_feed_description_falls_back_to_blurb(client: APIClient):
+    """No ``description`` in metadata -> the shorter ``blurb`` is used instead."""
+    user = User.objects.create_user("u_blurb", password="x")
+    client.force_authenticate(user)
+    run_at = "2026-07-06T01:00:00+00:00"
+
+    item = _fellowship("f_blurb", "Blurb Only Fellowship")
+    item.metadata["description"] = ""
+    item.metadata["blurb"] = "  Extra   whitespace   blurb  "
+    item.save(update_fields=["metadata"])
+    _score_fellowship(user, item, rank=1, run_at=run_at, match=80)
+
+    f = client.get("/api/opportunities/fellowships/").data["items"][0]
+    assert f["description"] == "Extra whitespace blurb"
+
+
+@pytest.mark.django_db
+def test_fellowships_feed_embedding_match_absent_without_signal(client: APIClient):
+    """A rule-only row (no embedding signal at match time) reports ``embedding_match``
+    as ``None`` — the same "not applicable" contract grants/conferences use."""
+    user = User.objects.create_user("u_noembed", password="x")
+    client.force_authenticate(user)
+    run_at = "2026-07-06T01:00:00+00:00"
+
+    item = _fellowship("f_noembed", "No Signal Fellowship")
+    _score_fellowship(user, item, rank=1, run_at=run_at, match=80)
+
+    f = client.get("/api/opportunities/fellowships/").data["items"][0]
+    assert f["embedding_match"] is None
 
 
 # ============================================================================ #
@@ -567,3 +675,235 @@ def test_fellowships_e2e_llm_report():
         )
     }
     assert illinois_ids.isdisjoint({str(s.content_id) for s in scores})
+
+
+# ============================================================================ #
+# 4. Carry-forward floor + refit bypass (match_fellowships_for_user)            #
+# ============================================================================ #
+
+
+@pytest.mark.django_db
+def test_match_fellowships_floor_hides_low_score_but_persists_verdict(settings):
+    """A fellowship the model scores below OPPORTUNITY_MIN_MATCH_PERCENT is
+    persisted (carry-forward remembers it) but hidden from the feed; a 60+
+    fellowship stays suggested."""
+    settings.OPPORTUNITY_MIN_MATCH_PERCENT = 60
+    user = _profile_user_with_eligibility("floortest")
+    _fellowship("f_strong", "Strong Match Fellowship")
+    _fellowship("f_weak", "Weak Match Fellowship")
+
+    def fake_complete(prompt: str) -> str:
+        rows = []
+        for line in prompt.splitlines():
+            if not line.startswith("["):
+                continue
+            idx = int(line[1 : line.index("]")])
+            if "Weak Match Fellowship" in line:
+                rows.append(
+                    {"item": idx, "match": 10, "headline": "Weak", "reason": "Barely."}
+                )
+            elif "Strong Match Fellowship" in line:
+                rows.append(
+                    {"item": idx, "match": 90, "headline": "Strong", "reason": "Great."}
+                )
+        return json.dumps({"suggestions": rows})
+
+    result = match_fellowships_for_user(
+        user, today="2026-07-06", persist=True, complete=fake_complete
+    )
+    assert result.status == "ok"
+    assert result.suggestions == 1
+    assert result.hidden == 1
+
+    scores = {
+        s.content.external_id: s
+        for s in RelevanceScore.objects.filter(
+            target_user=user, content__type=ContentItem.Type.FELLOWSHIP
+        )
+    }
+    # Both persisted (carry-forward remembers both verdicts)...
+    assert "f_strong" in scores and "f_weak" in scores
+    # ...but only the strong one is flagged suggested.
+    assert scores["f_strong"].signals["suggested"] is True
+    assert scores["f_strong"].signals["match_percent"] == 90
+    assert scores["f_weak"].signals["suggested"] is False
+    assert scores["f_weak"].signals["match_percent"] == 10
+
+
+@pytest.mark.django_db
+def test_refit_bypasses_carry_forward_for_fellowships():
+    """``refit_user`` re-sends every eligible fellowship to the model, even ones a
+    prior run already scored (``reuse_prior=False`` skips the carry-forward store)."""
+    from apps.content.refitting import refit_user
+
+    user = _profile_user_with_eligibility("refitbypass")
+    _fellowship("f1", "Dissertation Award")
+
+    calls = {"n": 0}
+
+    def fake_complete(_prompt: str) -> str:
+        calls["n"] += 1
+        return json.dumps(
+            {"suggestions": [{"item": 1, "match": 80, "headline": "H", "reason": "R"}]}
+        )
+
+    match_fellowships_for_user(
+        user, today="2026-07-06", persist=True, complete=fake_complete
+    )
+    assert calls["n"] == 1  # first run scores it
+
+    refit_user(
+        user, areas=("fellowships",), complete=fake_complete, persist=True, log=None
+    )
+    # The refit re-sent the already-scored fellowship to the model instead of
+    # carrying its prior verdict forward.
+    assert calls["n"] == 2
+
+
+# ============================================================================ #
+# 5. Embedding relevance gate end-to-end (pgvector, mirrors test_opportunities) #
+# ============================================================================ #
+
+_TOKENS = ["graph", "health", "biomedical", "other"]
+
+
+def _fake_embed(texts):
+    out = []
+    for text in texts:
+        low = text.casefold()
+        vec = [1.0 if tok in low else 0.0 for tok in _TOKENS]
+        norm = math.sqrt(sum(x * x for x in vec)) or 1.0
+        out.append([x / norm for x in vec])
+    return out
+
+
+@pytest.fixture
+def pgvector(db: None):
+    if connection.vendor != "postgresql":
+        pytest.skip("the fellowship embedding-match path needs PostgreSQL + pgvector")
+
+
+def _embedded_fellowship(eid, title, text, *, field=(SCI,), stage=(EARLY,)):
+    """A fellowship ContentItem with a real embedding (pgvector retrieval)."""
+    return ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id=eid,
+        embedding=_fake_embed([text])[0],
+        metadata={
+            "title": title,
+            "award_class": "fellowship",
+            "description": text,
+            "facets": {
+                "citizenship": [US, INTL],
+                "stage": list(stage),
+                "field": list(field),
+                "limits": [],
+                "award_type": ["Fellowship/Grant"],
+                "other": [],
+            },
+            "flags": {
+                "requires_us_citizenship": False, "open_to_international": True
+            },
+            "deadline": {"type": "continuous", "date": "", "raw": "Continuous"},
+            "first_seen": "2026-07-01T00:00:00+00:00",
+            "search_text": text,
+        },
+    )
+
+
+def _profile_user_with_sharp_interests(username):
+    """Like ``_profile_user_with_eligibility``, but with ``areas``/``keywords``
+    chosen to overlap ``_TOKENS`` deterministically for the fake embedder."""
+    user = _profile_user_with_eligibility(username)
+    user.profile.interests = {
+        **user.profile.interests,
+        "areas": ["Knowledge Graphs"],
+        "keywords": ["biomedical"],
+    }
+    user.profile.save()
+    return user
+
+
+@pytest.mark.django_db
+def test_fellowship_embed_threshold_drops_irrelevant_eligible(pgvector, settings):
+    """A topically irrelevant-but-eligible fellowship (e.g. the cattlemen's-award
+    scenario from the plan) is not surfaced; a relevant one is — and its persisted
+    ``embedding_match``/``match_percent`` are the topical (not eligibility) signal.
+    """
+    settings.FELLOWSHIP_MATCH_THRESHOLD = 0.6
+    embeddings.set_embedder(_fake_embed)
+    user = _profile_user_with_sharp_interests("fthresh")
+
+    _embedded_fellowship(
+        "f_relevant",
+        "Knowledge Graphs Fellowship",
+        "Knowledge Graphs for biomedical health",
+    )
+    _embedded_fellowship(
+        "f_irrelevant", "Marine Biology Fellowship", "Marine biology other funding"
+    )
+
+    result = match_fellowships_for_user(
+        user, today="2026-07-06", persist=True, complete=lambda _p: None
+    )
+    assert result.status == "ok"
+
+    scores = {
+        s.content.external_id: s
+        for s in RelevanceScore.objects.filter(
+            target_user=user, content__type=ContentItem.Type.FELLOWSHIP
+        )
+    }
+    assert "f_relevant" in scores
+    assert "f_irrelevant" not in scores  # below the 60% embedding-match threshold
+
+    relevant_signals = scores["f_relevant"].signals
+    assert relevant_signals["embedding_match"] >= 0.6
+    assert relevant_signals["match_percent"] == round(
+        relevant_signals["embedding_match"] * 100
+    )
+    assert relevant_signals["source"] == "rules"
+    assert "rule_fit" in relevant_signals
+
+
+@pytest.mark.django_db
+def test_fellowship_no_interest_signal_keeps_rule_only_ranking(pgvector, settings):
+    """A user with no declared areas/watch topics gets the pre-Phase-B behaviour:
+    every eligible fellowship surfaces, embedding_match stays unset."""
+    settings.FELLOWSHIP_MATCH_THRESHOLD = 0.6
+    embeddings.set_embedder(_fake_embed)
+    user = User.objects.create_user("fnointerest", password="x")
+    user.profile.interests = {
+        "eligibility": {
+            "citizenship": "us",
+            "stage": "doctoral_early",
+            "fields": ["Sciences/Engineering/Math"],
+            "eligible_restrictions": [],
+        }
+    }
+    user.profile.institution = "Florida State University"
+    user.profile.save()
+
+    _embedded_fellowship(
+        "f_a", "Knowledge Graphs Fellowship", "Knowledge Graphs for biomedical health"
+    )
+    _embedded_fellowship(
+        "f_b", "Marine Biology Fellowship", "Marine biology other funding"
+    )
+
+    result = match_fellowships_for_user(
+        user, today="2026-07-06", persist=True, complete=lambda _p: None
+    )
+    assert result.status == "ok"
+
+    scores = {
+        s.content.external_id: s
+        for s in RelevanceScore.objects.filter(
+            target_user=user, content__type=ContentItem.Type.FELLOWSHIP
+        )
+    }
+    # Both eligible fellowships surface — no relevance gate without interests.
+    assert "f_a" in scores and "f_b" in scores
+    assert scores["f_a"].signals.get("embedding_match") is None
+    assert scores["f_b"].signals.get("embedding_match") is None

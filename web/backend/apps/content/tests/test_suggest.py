@@ -174,3 +174,63 @@ def test_out_of_range_paper_index_is_skipped() -> None:
     out = generate_suggestions(INTERESTS, hits, complete=complete)
 
     assert out and all(s["source"] == "fallback" for s in out)
+
+
+# -- carry-forward: prior verdicts skip the model, new items get freed slots --
+
+
+def test_carry_forward_skips_already_scored_paper_and_reuses_its_verdict() -> None:
+    """A paper `prior` already scored is never sent to the model again."""
+    hits = _hits()
+    scored_cid = str(hits[0][0].id)  # "Graph Methods" — already scored last run
+    prior = {
+        scored_cid: {
+            "match_percent": 81,
+            "headline": "Carried Headline",
+            "reason": "Carried reason from a prior run.",
+            "llm_scored_at": "2026-07-01T00:00:00+00:00",
+        }
+    }
+    seen_prompts: list[str] = []
+
+    def complete(prompt: str) -> str:
+        seen_prompts.append(prompt)
+        return json.dumps(
+            {"suggestions": [{"paper": 1, "match": 95, "headline": "x", "reason": "y"}]}
+        )
+
+    out = generate_suggestions(
+        INTERESTS, hits, llm_limit=1, prior=prior, complete=complete
+    )
+
+    # The already-scored paper never reached the prompt (llm_limit=1 went entirely
+    # to the other unscored papers instead).
+    assert seen_prompts
+    assert "Graph Methods" not in seen_prompts[0]
+    carried = next(s for s in out if s["content_id"] == scored_cid)
+    assert carried["source"] == "llm"
+    assert carried["match_percent"] == 81
+    assert carried["headline"] == "Carried Headline"
+    assert carried["llm_scored_at"] == "2026-07-01T00:00:00+00:00"
+
+
+def test_new_first_paper_gets_llm_slot_priority_over_older_unscored() -> None:
+    """With one free LLM slot, a freshly-seen unscored paper wins it over an older,
+    higher-fused-rank unscored paper."""
+    hits = _hits()  # best-first: hits[0] (0.81), hits[1] (0.78), hits[2] (0.40)
+    new_cid = str(hits[2][0].id)  # lowest fused rank, but freshly seen
+
+    seen_prompts: list[str] = []
+
+    def complete(prompt: str) -> str:
+        seen_prompts.append(prompt)
+        return json.dumps({"suggestions": []})
+
+    generate_suggestions(
+        INTERESTS, hits, llm_limit=1, new_ids={new_cid}, complete=complete
+    )
+
+    assert seen_prompts
+    # Only the new item's title ("Unrelated Paper") should be in the one-item prompt.
+    assert "Unrelated Paper" in seen_prompts[0]
+    assert "Graph Methods" not in seen_prompts[0]

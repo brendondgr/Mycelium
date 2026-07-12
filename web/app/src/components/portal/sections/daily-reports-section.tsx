@@ -121,12 +121,16 @@ function TodaySummaries({ data }: { data: DailyBriefing }) {
         <div className="grid grid-cols-2 gap-[14px]">
           {categories.map((category) => {
             const meta = CATEGORY_META[category];
+            const total = data.counts[category] ?? 0;
+            const newCount = data.new_counts?.[category];
+            const hasNewCount = typeof newCount === "number";
             return (
               <StatCard
                 key={category}
                 icon={meta.icon}
                 label={meta.label}
-                value={data.counts[category] ?? 0}
+                value={hasNewCount ? newCount : total}
+                sub={hasNewCount ? `New · of ${total} matched` : undefined}
                 onClick={() => goToSection(meta.section)}
               />
             );

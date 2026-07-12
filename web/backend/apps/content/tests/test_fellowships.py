@@ -526,3 +526,234 @@ def test_generate_fellowship_suggestions_falls_back_to_rules():
     assert out[0]["source"] == "rules"
     assert out[0]["reason"] == ranked[0]["reason"]
     assert out[0]["match_percent"] == ranked[0]["match_percent"]
+
+
+# ---- carry-forward: prior verdicts skip the model, new items get freed slots --
+
+
+def test_fellowship_carry_forward_skips_already_scored_item():
+    """A fellowship ``prior`` already scored is never re-sent to the model; its
+    verdict survives, and the freed ``llm_limit`` slot goes to the unscored one."""
+    from apps.content.opportunity_llm import generate_fellowship_suggestions
+
+    ranked = [_ranked_stub("scored"), _ranked_stub("unscored", fit=0.6)]
+    items = {
+        "scored": _FakeItem("scored", {"title": "Scored Fellowship"}),
+        "unscored": _FakeItem("unscored", {"title": "Unscored Fellowship"}),
+    }
+    prior = {
+        "scored": {
+            "match_percent": 77,
+            "headline": "Carried Headline",
+            "reason": "Carried reason.",
+            "llm_scored_at": "2026-07-01T00:00:00+00:00",
+        }
+    }
+    seen_prompts: list[str] = []
+
+    def fake_complete(prompt: str) -> str:
+        seen_prompts.append(prompt)
+        return (
+            '{"suggestions": [{"item": 1, "match": 91, '
+            '"headline": "Fresh", "reason": "New report."}]}'
+        )
+
+    out = generate_fellowship_suggestions(
+        {}, {}, ranked, items, llm_limit=1, prior=prior, complete=fake_complete
+    )
+
+    assert seen_prompts
+    assert "Unscored Fellowship" in seen_prompts[0]
+    assert "Scored Fellowship" not in seen_prompts[0]
+
+    carried = next(s for s in out if s["content_id"] == "scored")
+    assert carried["source"] == "llm"
+    assert carried["match_percent"] == 77
+    assert carried["headline"] == "Carried Headline"
+    assert carried["llm_scored_at"] == "2026-07-01T00:00:00+00:00"
+    # Eligibility fields still come from the rule engine, not the model.
+    assert carried["tier"] == "qualified"
+
+    fresh = next(s for s in out if s["content_id"] == "unscored")
+    assert fresh["source"] == "llm"
+    assert fresh["match_percent"] == 91
+
+
+def test_fellowship_new_first_gets_llm_slot_priority():
+    """A freshly-seen unscored fellowship wins the one free LLM slot over an
+    older, higher-ranked unscored fellowship."""
+    from apps.content.opportunity_llm import generate_fellowship_suggestions
+
+    ranked = [_ranked_stub("old_high_rank"), _ranked_stub("new_low_rank", fit=0.4)]
+    items = {
+        "old_high_rank": _FakeItem("old_high_rank", {"title": "Old High Rank"}),
+        "new_low_rank": _FakeItem("new_low_rank", {"title": "Freshly Seen"}),
+    }
+    seen_prompts: list[str] = []
+
+    def fake_complete(prompt: str) -> str:
+        seen_prompts.append(prompt)
+        return '{"suggestions": []}'
+
+    generate_fellowship_suggestions(
+        {},
+        {},
+        ranked,
+        items,
+        llm_limit=1,
+        new_ids={"new_low_rank"},
+        complete=fake_complete,
+    )
+
+    assert seen_prompts
+    assert "Freshly Seen" in seen_prompts[0]
+    assert "Old High Rank" not in seen_prompts[0]
+
+
+# ---- match_fellowships: embedding relevance gate + blended rank (Phase B) ----
+
+
+@pytest.mark.django_db
+def test_match_fellowships_embed_by_id_none_matches_legacy_behavior():
+    """``embed_by_id=None`` (no interest signal) surfaces/ranks exactly as the
+    pure rule engine always has — a regression guard for existing callers."""
+    from apps.content.models import ContentItem
+
+    qualified = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="legacy_q",
+        metadata=_meta(),
+    )
+    conditional = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="legacy_c",
+        metadata=_meta(field=("Humanities",)),
+    )
+    items = ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP)
+
+    out = match_fellowships(items, ELIG, TODAY)  # embed_by_id defaults to None
+    assert len(out) == 2
+    assert all("embedding_match" not in s for s in out)
+    assert all(s["fit"] == s["rule_fit"] for s in out)
+    assert all(s["match_percent"] == round(s["fit"] * 100) for s in out)
+
+    q_rank = next(s["rank"] for s in out if s["content_id"] == str(qualified.id))
+    c_rank = next(s["rank"] for s in out if s["content_id"] == str(conditional.id))
+    assert q_rank < c_rank
+
+
+@pytest.mark.django_db
+def test_match_fellowships_embed_gate_drops_irrelevant_eligible():
+    """An eligible fellowship below ``embed_threshold`` is dropped entirely; one
+    at/above it survives — the "eligible but irrelevant" case from the plan."""
+    from apps.content.models import ContentItem
+
+    irrelevant = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="irrelevant",
+        metadata=_meta(),  # otherwise qualified
+    )
+    relevant = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="relevant",
+        metadata=_meta(),
+    )
+    unretrieved = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="unretrieved",
+        metadata=_meta(),  # never appears in embed_by_id -> counts as 0.0
+    )
+    items = ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP)
+    embed_by_id = {str(irrelevant.id): 0.1, str(relevant.id): 0.8}
+
+    out = match_fellowships(
+        items, ELIG, TODAY, embed_by_id=embed_by_id, embed_threshold=0.4
+    )
+    ids = {s["content_id"] for s in out}
+    assert ids == {str(relevant.id)}
+    assert str(irrelevant.id) not in ids
+    assert str(unretrieved.id) not in ids
+
+
+@pytest.mark.django_db
+def test_match_fellowships_embed_blend_orders_relevance_over_tier():
+    """A high-cosine eligible fellowship outranks a low-cosine one even when the
+    low-cosine item has a better rule tier/recency."""
+    from apps.content.models import ContentItem
+
+    # Qualified + an imminent deadline -> strong rule_fit, but a weak topical match.
+    high_tier_low_cosine = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="high_tier_low_cosine",
+        metadata=_meta(deadline={"type": "true", "date": "2026-07-20", "raw": ""}),
+    )
+    # Conditional (field mismatch) -> weaker rule_fit, but a strong topical match.
+    low_tier_high_cosine = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="low_tier_high_cosine",
+        metadata=_meta(field=("Humanities",)),
+    )
+    items = ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP)
+    embed_by_id = {
+        str(high_tier_low_cosine.id): 0.1,
+        str(low_tier_high_cosine.id): 0.95,
+    }
+
+    out = match_fellowships(
+        items, ELIG, TODAY, embed_by_id=embed_by_id, embed_threshold=0.0
+    )
+    ranks = {s["content_id"]: s["rank"] for s in out}
+    assert ranks[str(low_tier_high_cosine.id)] < ranks[str(high_tier_low_cosine.id)]
+
+
+@pytest.mark.django_db
+def test_match_fellowships_match_percent_is_embedding_percent():
+    """A rules-sourced row's ``match_percent`` is the topical (embedding) percent,
+    not the rule-fit percent — the old value masqueraded eligibility as relevance."""
+    from apps.content.models import ContentItem
+
+    item = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="pct",
+        metadata=_meta(),
+    )
+    items = ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP)
+
+    out = match_fellowships(
+        items, ELIG, TODAY, embed_by_id={str(item.id): 0.73}, embed_threshold=0.0
+    )
+    assert len(out) == 1
+    s = out[0]
+    assert s["source"] == "rules"
+    assert s["embedding_match"] == 0.73
+    assert s["match_percent"] == 73
+    # fit is the blend, not the raw rule score, once an embedding signal exists.
+    assert s["fit"] == round(0.65 * 0.73 + 0.35 * s["rule_fit"], 4)
+
+
+@pytest.mark.django_db
+def test_match_fellowships_headline_reflects_strong_research_fit():
+    from apps.content.models import ContentItem
+
+    item = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="strongfit",
+        metadata=_meta(),
+    )
+    out = match_fellowships(
+        ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP),
+        ELIG,
+        TODAY,
+        embed_by_id={str(item.id): 0.9},
+        embed_threshold=0.0,
+    )
+    assert out[0]["headline"] == "Strong research-fit match"

@@ -42,6 +42,7 @@ from apps.scraper.ingest import SearchFn, scan
 from apps.scraper.window import ScanWindow
 
 from . import embeddings
+from .digest_selection import new_content_ids, split_by_floor
 from .fusion import (
     DEFAULT_BETA,
     CombinedHit,
@@ -52,6 +53,7 @@ from .fusion import (
 from .interests_query import SearchInterest, search_interests
 from .lexical import build_bm25_index, rank_bm25_over
 from .models import ContentItem, RelevanceScore
+from .opportunity_llm import load_prior_llm_verdicts
 from .pinning import compute_pins
 from .ranking import DEFAULT_FOCUS_WEIGHT, rerank_by_focus
 from .retrieval import Hit, retrieve_for_vector
@@ -87,6 +89,11 @@ def _paper_max_surface() -> int:
     return getattr(settings, "PAPER_MATCH_MAX_SURFACE", _FALLBACK_MAX_SURFACE)
 
 
+def _paper_min_match_percent() -> int:
+    """The match-percent floor below which an LLM verdict stays hidden."""
+    return getattr(settings, "PAPER_MIN_MATCH_PERCENT", 60)
+
+
 @dataclass
 class RunResult:
     """A JSON-able report of one user's run."""
@@ -102,6 +109,7 @@ class RunResult:
     suggestions: int = 0
     llm: int = 0
     fallback: int = 0
+    hidden: int = 0  # scored below the match-percent floor; persisted, not surfaced
     note: str = ""
 
     def as_dict(self) -> dict:
@@ -255,6 +263,7 @@ def recommend_for_user(
     focus_weight: float | None = None,
     complete: CompleteFn | None = None,
     persist: bool = True,
+    reuse_prior: bool = True,
     log: Callable[[str], None] | None = None,
     scan_summary=None,
 ) -> RunResult:
@@ -267,6 +276,8 @@ def recommend_for_user(
     falls back to single-vector retrieval. ``scan_summary`` (when a caller just
     scanned for this user) only feeds the reported ``scanned_new``/``embedded``
     counts; the batch path leaves it ``None`` since ingestion was global.
+    ``reuse_prior=False`` bypasses carry-forward, re-sending every surfaced paper to
+    the model (used by :mod:`.refitting` after a profile edit).
     """
     username = user.get_username()
     if focus_weight is None:
@@ -365,20 +376,33 @@ def recommend_for_user(
 
     # The pipeline has already filtered ``pairs`` by the embedding-match threshold,
     # so surface all of them; only the top ``suggestion_limit`` go to the model.
+    prior = (
+        load_prior_llm_verdicts({"target_user": user}, ContentItem.Type.PAPER)
+        if reuse_prior
+        else {}
+    )
+    today_iso = timezone.now().date().isoformat()
+    new_ids = new_content_ids((item for item, _score in pairs), today=today_iso)
     suggestions = generate_suggestions(
         interests,
         pairs,
         llm_limit=suggestion_limit,
         complete=complete,
+        prior=prior,
+        new_ids=new_ids,
     )
-    llm = sum(1 for s in suggestions if s["source"] == "llm")
+    floor = _paper_min_match_percent()
+    visible, hidden = split_by_floor(suggestions, floor)
+    llm = sum(1 for s in visible if s["source"] == "llm")
     emit(
-        f"suggestions: {len(suggestions)} ({llm} llm / "
-        f"{len(suggestions) - llm} fallback)"
+        f"suggestions: {len(visible)} ({llm} llm / "
+        f"{len(visible) - llm} fallback)"
+        + (f", {len(hidden)} hidden below floor" if hidden else "")
     )
 
     if persist:
-        _persist({"target_user": user}, rows, suggestions)
+        visible_ids = {s["content_id"] for s in visible}
+        _persist({"target_user": user}, rows, suggestions, visible_ids)
 
     return RunResult(
         username,
@@ -388,9 +412,10 @@ def recommend_for_user(
         embedded=embedded,
         retrieved=retrieved_count,
         interests=len(search_ints),
-        suggestions=len(suggestions),
+        suggestions=len(visible),
         llm=llm,
-        fallback=len(suggestions) - llm,
+        fallback=len(visible) - llm,
+        hidden=len(hidden),
     )
 
 
@@ -406,6 +431,7 @@ def recommend_for_target(
     focus_weight: float | None = None,
     complete: CompleteFn | None = None,
     persist: bool = True,
+    reuse_prior: bool = True,
     log: Callable[[str], None] | None = None,
 ) -> RunResult:
     """Retrieve → fuse → suggest research papers for *any* target (lab / project).
@@ -417,7 +443,8 @@ def recommend_for_target(
     gate and persisting the profile's own vector) and writes each score under the
     target's ``persist_kwargs`` (``target_lab`` / ``target_project``). A target
     with no interests at all short-circuits to ``no_interests`` rather than
-    scanning the whole corpus.
+    scanning the whole corpus. ``reuse_prior=False`` bypasses carry-forward (used by
+    :mod:`.refitting` after a profile edit).
     """
     key = target.key
     if focus_weight is None:
@@ -476,27 +503,41 @@ def recommend_for_target(
             note="no embedded papers to retrieve yet",
         )
 
+    prior = (
+        load_prior_llm_verdicts(target.persist_kwargs, ContentItem.Type.PAPER)
+        if reuse_prior
+        else {}
+    )
+    today_iso = timezone.now().date().isoformat()
+    new_ids = new_content_ids((item for item, _score in pairs), today=today_iso)
     suggestions = generate_suggestions(
         interests,
         pairs,
         llm_limit=suggestion_limit,
         complete=complete,
+        prior=prior,
+        new_ids=new_ids,
     )
-    llm = sum(1 for s in suggestions if s["source"] == "llm")
+    floor = _paper_min_match_percent()
+    visible, hidden = split_by_floor(suggestions, floor)
+    llm = sum(1 for s in visible if s["source"] == "llm")
     emit(
-        f"suggestions: {len(suggestions)} ({llm} llm / "
-        f"{len(suggestions) - llm} fallback)"
+        f"suggestions: {len(visible)} ({llm} llm / "
+        f"{len(visible) - llm} fallback)"
+        + (f", {len(hidden)} hidden below floor" if hidden else "")
     )
     if persist:
-        _persist(target.persist_kwargs, rows, suggestions)
+        visible_ids = {s["content_id"] for s in visible}
+        _persist(target.persist_kwargs, rows, suggestions, visible_ids)
     return RunResult(
         key,
         "ok",
         retrieved=retrieved_count,
         interests=len(search_ints),
-        suggestions=len(suggestions),
+        suggestions=len(visible),
         llm=llm,
-        fallback=len(suggestions) - llm,
+        fallback=len(visible) - llm,
+        hidden=len(hidden),
     )
 
 
@@ -872,7 +913,10 @@ def _single_vector(
 
 
 def _persist(
-    persist_kwargs: dict, rows: list[PersistRow], suggestions
+    persist_kwargs: dict,
+    rows: list[PersistRow],
+    suggestions,
+    visible_ids: set[str],
 ) -> None:
     """Upsert one RelevanceScore per surfaced item; flag the suggested subset.
 
@@ -883,18 +927,25 @@ def _persist(
     similarity/focus boost); this adds the shared ``run_at`` stamp, the ``suggested``
     flag, the New/pin state, and the promoted suggestion's rank/headline/reason/match
     so the ranking stays auditable. The single ``run_at`` stamp lets the daily report
-    show only the latest run's suggestions and ignore earlier ones.
+    show only the latest run's suggestions and ignore earlier ones. Every surfaced
+    paper is persisted (so carry-forward remembers its verdict), but only those in
+    ``visible_ids`` (cleared the match-percent floor) are flagged ``suggested``.
 
     Papers now retain older matches run after run, so each surfaced paper is tagged
     New (and pinned to the top for a week) while it is within a week of when it was
     first gathered — mirroring the grants/conferences feeds. Papers carry no
     ``metadata.first_seen``, so :func:`.pinning.compute_pins` falls back to the
-    item's ingest date (``created_at``) as the first-seen date.
+    item's ingest date (``created_at``) as the first-seen date. Pins are computed
+    only for the visible (above-floor) items — a hidden paper never shows a New
+    badge.
     """
     run_at = timezone.now().isoformat()
     suggested = {s["content_id"]: s for s in suggestions}
     items_by_id = {str(item.id): item for item, _score, _extra in rows}
-    pins = compute_pins([{"content_id": cid} for cid in items_by_id], items_by_id)
+    pins = compute_pins(
+        [{"content_id": cid} for cid in items_by_id if cid in visible_ids],
+        items_by_id,
+    )
     for item, score, extra in rows:
         cid = str(item.id)
         promoted = suggested.get(cid)
@@ -902,7 +953,7 @@ def _persist(
         signals = {
             **extra,
             "run_at": run_at,
-            "suggested": promoted is not None,
+            "suggested": promoted is not None and cid in visible_ids,
             "is_new": pin.get("is_new", False),
             "pinned_until": pin.get("pinned_until"),
             "first_seen": pin.get("first_seen", ""),
@@ -914,6 +965,7 @@ def _persist(
                 reason=promoted["reason"],
                 match_percent=promoted["match_percent"],
                 source=promoted["source"],
+                llm_scored_at=promoted.get("llm_scored_at", ""),
             )
         RelevanceScore.objects.update_or_create(
             content=item,

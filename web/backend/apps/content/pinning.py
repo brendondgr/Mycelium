@@ -65,6 +65,17 @@ def _first_seen(item: ContentItem | None) -> tuple[date | None, str]:
     return None, ""
 
 
+def first_seen_date(item: ContentItem | None) -> date | None:
+    """Public wrapper: the date part of :func:`_first_seen`, or ``None``.
+
+    Lets other modules (the carry-forward LLM-slot selection in
+    :mod:`.digest_selection`) reuse the exact same "when was this first seen"
+    reckoning pinning uses, without reaching into the private helper.
+    """
+    day, _iso = _first_seen(item)
+    return day
+
+
 def compute_pins(
     suggestions: Sequence[dict],
     items_by_id: Mapping[str, ContentItem],

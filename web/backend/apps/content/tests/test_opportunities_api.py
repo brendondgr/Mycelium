@@ -40,7 +40,9 @@ def _grant(gid, title, *, deadline="2026-12-01", first_seen=None):
     )
 
 
-def _score(user, item, *, rank, run_at, match, pinned_until=None, is_new=False):
+def _score(
+    user, item, *, rank, run_at, match, pinned_until=None, is_new=False, suggested=True
+):
     return RelevanceScore.objects.create(
         content=item,
         target_user=user,
@@ -49,7 +51,7 @@ def _score(user, item, *, rank, run_at, match, pinned_until=None, is_new=False):
             "area": item.type,
             "run_at": run_at,
             "rank": rank,
-            "suggested": True,
+            "suggested": suggested,
             "headline": f"Headline {rank}",
             "reason": f"Reason {rank}",
             "match_percent": match,
@@ -103,6 +105,29 @@ def test_grants_feed_shows_only_latest_run(client: APIClient):
 
     items = client.get("/api/opportunities/grants/").data["items"]
     assert [i["title"] for i in items] == ["New"]
+
+
+@pytest.mark.django_db
+def test_grants_feed_excludes_suggested_false(client: APIClient):
+    """A latest-run row persisted below the match floor (``suggested=False``) is
+    never returned by the feed, even though it is the latest run."""
+    user = User.objects.create_user("u_hidden", password="x")
+    client.force_authenticate(user)
+    run_at = "2026-07-05T00:00:00+00:00"
+    _score(
+        user, _grant("visible", "Visible Grant"), rank=1, run_at=run_at, match=80
+    )
+    _score(
+        user,
+        _grant("hidden", "Hidden Grant"),
+        rank=2,
+        run_at=run_at,
+        match=10,
+        suggested=False,
+    )
+
+    items = client.get("/api/opportunities/grants/").data["items"]
+    assert [i["title"] for i in items] == ["Visible Grant"]
 
 
 @pytest.mark.django_db
