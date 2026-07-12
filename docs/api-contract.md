@@ -414,10 +414,11 @@ The `deadline_kind` on the shared base is the next actionable kind
 
 ### `POST /api/opportunities/save/`
 
-Save a grant/conference to the user's deadlines. Body `{ "content_id": "uuid",
-"note": "optional" }`. Snapshots the display + deadline fields so the saved
-deadline survives the daily prune of expired items. Success `201` with the saved
-deadline. `400` without `content_id`; `404` if it is not a grant/conference.
+Bookmark an item — a paper, grant, conference, or fellowship — to the user's
+Saves page. Body `{ "content_id": "uuid", "note": "optional" }`. Snapshots the
+display + deadline fields so the save survives the daily prune of expired items
+(papers carry no deadline; their deadline fields stay null). Success `201` with
+the saved snapshot. `400` without `content_id`; `404` for an unknown item.
 
 ### `DELETE /api/opportunities/save/<content_id>/`
 
@@ -442,6 +443,32 @@ All the user's saved deadlines, soonest first. Success `200`:
 
 `content_id` is `null` once the source item has been pruned (the snapshot
 remains). `days_remaining`/`within_week` are relative to today.
+
+### `GET /api/saves/`
+
+Every bookmark for the Saves page, newest save first, with **feed-card parity**:
+each save is joined back to the user's relevance score for the item and `card`
+carries the exact payload the item's own feed page renders — the grants shape
+for a grant, the fellowships shape for a fellowship, the conferences shape for
+a conference, and the daily-report suggestion shape for a paper. Success `200`:
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid", "content_id": "uuid", "area": "paper",
+      "title": "Graph Learning Advances", "url": "https://...", "subtitle": "NeurIPS",
+      "deadline_date": null, "deadline_kind": "other", "note": "",
+      "days_remaining": null, "within_week": false,
+      "saved_at": "2026-07-12T14:00:00Z",
+      "card": { "content_id": "uuid", "title": "…", "match_percent": 88, "saved": true }
+    }
+  ]
+}
+```
+
+`card` is `null` once the source listing was pruned (or was never scored for
+this user) — the snapshot fields on the envelope are the fallback display.
 
 ### `GET /api/notifications/`
 

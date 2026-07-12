@@ -52,7 +52,8 @@ function OpenChip({ label }: { label: string }) {
   );
 }
 
-function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
+/** One matched conference, exactly as the Conferences page renders it (reused by Saves). */
+export function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
   const where = conf.location || conf.country;
   // Use the semicolon-delimited subject categories, not the space-joined
   // `keywords` blob, so the tags render as real, separate chips.

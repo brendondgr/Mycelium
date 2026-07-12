@@ -5,7 +5,11 @@ import * as React from "react";
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ArrowRightIcon, SparkleIcon } from "@/components/portal/icons";
-import { MatchBadge, NewTag } from "@/components/portal/sections/opportunity-bits";
+import {
+  MatchBadge,
+  NewTag,
+  SaveButton,
+} from "@/components/portal/sections/opportunity-bits";
 import type { Suggestion } from "@/lib/portal/types";
 
 function metaLine(suggestion: Suggestion): string {
@@ -81,6 +85,11 @@ export function SuggestionCard({
               "Cross-topics match"
             )}
           </Pill>
+          <SaveButton
+            contentId={suggestion.content_id}
+            saved={suggestion.saved}
+            variant="icon"
+          />
         </div>
       </div>
 

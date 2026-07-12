@@ -152,7 +152,8 @@ function AwardClassChip({ awardClass }: { awardClass: string }) {
 // Individual fellowship row card
 // --------------------------------------------------------------------------- //
 
-function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
+/** One matched fellowship, exactly as the Fellowships page renders it (reused by Saves). */
+export function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
   const deadlineLabel = fellowshipDeadlineLabel(item);
   const softDl = isSoftDeadline(item);
   const isMylo = item.origin === "llm";
@@ -219,6 +220,14 @@ function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
       {/* Amount note as subtext when it's a short phrase */}
       {item.amount_note && item.amount_note.length <= 40 ? (
         <p className="mt-1 text-xs text-[var(--text-muted)]">{item.amount_note}</p>
+      ) : null}
+
+      {/* The fellowship's own blurb from the source listing (matches the
+          description line on grant cards). */}
+      {item.description ? (
+        <p className="mt-2 line-clamp-5 text-sm leading-relaxed text-[var(--text-secondary)]">
+          {item.description}
+        </p>
       ) : null}
 
       {/* Mylo's read on why this fellowship fits the researcher — the tailored

@@ -182,19 +182,21 @@ class RelevanceScore(models.Model):
 
 
 class SavedOpportunity(models.Model):
-    """A grant / conference / fellowship a user has saved to their deadlines.
+    """An item a user has bookmarked: grant, conference, fellowship, or paper.
 
-    Backs the save system and the Deadlines page. The link to the global
+    Backs the save system and the Saves (bookmarks) page. The link to the global
     :class:`ContentItem` is ``SET_NULL`` and a display + deadline **snapshot** is
     stored at save time, so the daily prune of expired opportunities never
-    destroys a user's saved deadline — the Deadlines view reads the snapshot even
-    after the source item is gone. One save per ``(user, content)``.
+    destroys a user's save — the Saves view falls back to the snapshot even
+    after the source item is gone. One save per ``(user, content)``. Papers
+    carry no deadline; the deadline fields stay null for them.
     """
 
     class Area(models.TextChoices):
         GRANT = "grant", "Grant"
         CONFERENCE = "conference", "Conference"
         FELLOWSHIP = "fellowship", "Fellowship"
+        PAPER = "paper", "Paper"
 
     class DeadlineKind(models.TextChoices):
         APPLICATION = "application", "Application"

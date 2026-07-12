@@ -111,11 +111,14 @@ function TopPapersPanel() {
 function DeadlinesPanel() {
   const { goToSection } = usePortal();
   const { data, isLoading } = useDeadlines();
-  const items = (data?.items ?? []).slice(0, 4);
+  // Saves now include papers, which carry no deadline — only dated saves here.
+  const items = (data?.items ?? [])
+    .filter((item) => item.deadline_date !== null)
+    .slice(0, 4);
 
   return (
     <Card className="p-5">
-      <PanelHeader title="Deadlines" onView={() => goToSection("deadlines")} />
+      <PanelHeader title="Deadlines" onView={() => goToSection("saves")} />
       {isLoading ? (
         <p className="text-sm text-[var(--text-muted)]">Loading your deadlines…</p>
       ) : items.length === 0 ? (

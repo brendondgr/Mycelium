@@ -81,6 +81,9 @@ urlpatterns = [
     ),
     path("deadlines/", views.DeadlinesView.as_view(), name="deadlines"),
     path("deadlines", views.DeadlinesView.as_view()),
+    # The Saves (bookmarks) page: every save with feed-parity card payloads.
+    path("saves/", views.SavedItemsView.as_view(), name="saves"),
+    path("saves", views.SavedItemsView.as_view()),
     path("notifications/", views.NotificationsView.as_view(), name="notifications"),
     path("notifications", views.NotificationsView.as_view()),
     # Cross-member suggestions (Feature F): the in-app fan-out feed + dismiss.

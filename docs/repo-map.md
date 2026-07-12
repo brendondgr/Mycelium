@@ -43,7 +43,8 @@ for the layout standard.
 | Daily grants/conferences/fellowships matching (host `mylo-daily` run) | `web/backend/apps/content/` (`opportunities.py`, `fellowships.py` (eligibility rule engine — the hard gate), `opportunity_llm.py` (LLM report for grants/conferences **and** fellowships, incl. `generate_fellowship_suggestions` which overlays a tailored report on the eligibility-gated list), `pinning.py`) + task/command `run_daily_opportunities`; runner `utils/manual/manual_opportunities.py` |
 | On-demand refitting (re-personalize all 4 areas, no scan/ingest) | `web/backend/apps/content/refitting.py` (reuses `recommend_for_user` + `run_opportunities_for_user`) + command `run_refitting` (`--max N\|all`); runner `utils/manual/manual_refitting.py` |
 | Pivot-RP (ProQuest) grants/conferences/fellowships ingest | `web/backend/apps/scraper/pivot/` (`importer.py`, `ingest.py`, `records.py`, `grants.py`, `conferences.py`, `fellowships/` (Illinois Fellowship Finder — no Pivot login), `scrape.py` (three areas in parallel), `login.py`); commands `pivot_login` / `scrape_pivot` / `ingest_pivot`; root runner `pivot.py` (login → scrape → import → distribute) |
-| Opportunities / conferences / deadlines / saves API | `web/backend/apps/content/{views,serializers,urls}.py` |
+| Opportunities / conferences / deadlines / saves API | `web/backend/apps/content/{views,serializers,urls}.py` — `POST/DELETE /api/opportunities/save/` accepts **papers too** (`SavedOpportunity.Area.PAPER`); `GET /api/saves/` (`SavedItemsView` + `SavedItemSerializer`) returns every bookmark with a feed-parity `card` payload (the same serializer the item's own page uses); `GET /api/deadlines/` + `/api/notifications/` stay for the Overview panel + header bell |
+| Saves (bookmarks) page (UI) | `web/app/src/components/portal/sections/{saves-section,saves-filters}.tsx` + route `app/(workspace)/saves/` (`/app/deadlines` redirects there). Renders each save with the item's own feed card — `GrantRow` / `FellowshipRow` / `ConferenceCard` / `SuggestionCard` are exported from their section files for reuse — over a filter rail (`saves-filters.tsx`, pure `filterAndSortSaves`: free-text search, kind facet, deadline window, due-soon, sort by saved/deadline/match/title). Sidebar: **Saves** sits in the Workspace group where Search used to be (search stays reachable from the header) |
 | Papers/grants/fellowships/conferences items, scores, saves | `web/backend/apps/content/models.py` (`ContentItem`, `RelevanceScore`, `SavedOpportunity`; project collaboration: `ProjectShare`, `ProjectItemSeen`, `RelevanceEvent`, `Collection`, `CollectionItem`, `ProjectProfile`, `MemberSuggestion`) |
 | Literature scraping / source adapters | `web/backend/apps/scraper/` (`sources/`, `ingest.py`, `window.py`) |
 | The LLM client | `web/backend/apps/core/llm.py` |
@@ -73,7 +74,7 @@ web/app/src/
 │       ├── [labSlug]/dashboard/ # per-lab dashboard
 │       └── (workspace)/         # portal shell + pages:
 │           #   overview, daily, research-papers, opportunities (= Grants),
-│           #   fellowships, conferences, deadlines, members,
+│           #   fellowships, conferences, saves (deadlines redirects there), members,
 │           #   projects/[projectId], profile, reports
 │           #   (layout.tsx = workspace chrome)
 ├── components/

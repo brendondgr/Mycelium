@@ -1,7 +1,6 @@
-import { DeadlinesSection } from "@/components/portal/sections/deadlines-section";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Deadlines · Mycelium" };
-
+/** The Deadlines page became the Saves page; old links land there. */
 export default function DeadlinesPage() {
-  return <DeadlinesSection />;
+  redirect("/app/saves");
 }

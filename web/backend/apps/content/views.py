@@ -31,6 +31,7 @@ from .serializers import (
     FellowshipSerializer,
     GrantSerializer,
     SavedDeadlineSerializer,
+    SavedItemSerializer,
     SearchResultSerializer,
     SuggestionSerializer,
 )
@@ -127,7 +128,12 @@ class DailyReportView(APIView):
                 "generated_at": latest or None,
                 "summary": _build_summary(current, today=today),
                 "suggestions": SuggestionSerializer(
-                    current, many=True, context={"today": today}
+                    current,
+                    many=True,
+                    context={
+                        "today": today,
+                        "saved_ids": _saved_content_ids(request.user),
+                    },
                 ).data,
             }
         )
@@ -468,7 +474,7 @@ class ProjectRecommendationsView(APIView):
 
 
 class SaveOpportunityView(APIView):
-    """Save (POST) or unsave (DELETE) an opportunity to the user's deadlines."""
+    """Save (POST) or unsave (DELETE) a bookmarkable item for the Saves page."""
 
     permission_classes = [IsAuthenticated]
 
@@ -476,6 +482,7 @@ class SaveOpportunityView(APIView):
         ContentItem.Type.GRANT,
         ContentItem.Type.CONFERENCE,
         ContentItem.Type.FELLOWSHIP,
+        ContentItem.Type.PAPER,
     ]
 
     def post(self, request):
@@ -491,7 +498,7 @@ class SaveOpportunityView(APIView):
         ).first()
         if item is None:
             return Response(
-                {"detail": "No such grant, conference, or fellowship."},
+                {"detail": "No such paper, grant, conference, or fellowship."},
                 status=status.HTTP_404_NOT_FOUND,
             )
         saved = _save_from_item(request.user, item, note=request.data.get("note", ""))
@@ -525,6 +532,11 @@ def _save_from_item(user, item: ContentItem, *, note: str) -> SavedOpportunity:
         # award_class is "fellowship" / "scholarship" / etc. — title-case for display.
         subtitle = (meta.get("award_class") or "fellowship").replace("_", " ").title()
         url = meta.get("external_url") or meta.get("website") or item.source_url or ""
+    elif item.type == ContentItem.Type.PAPER:
+        area = SavedOpportunity.Area.PAPER
+        title = meta.get("title") or "Untitled paper"
+        subtitle = meta.get("venue") or item.source or ""
+        url = meta.get("pdf_url") or item.source_url or ""
     else:
         area = SavedOpportunity.Area.CONFERENCE
         title = meta.get("name") or "Untitled conference"
@@ -565,6 +577,46 @@ class DeadlinesView(APIView):
         context = {"today_date": timezone.now().date()}
         return Response(
             {"items": SavedDeadlineSerializer(saved, many=True, context=context).data}
+        )
+
+
+class SavedItemsView(APIView):
+    """All the signed-in user's bookmarks, with feed-card parity (Saves page).
+
+    Each save is joined back to the user's :class:`RelevanceScore` for the item
+    (unique per ``(content, user)``), so the response carries the exact card
+    payload the item's own feed page renders — grants look like the Grants page,
+    fellowships like the Fellowships page, and so on. When the source item was
+    pruned (or never scored for this user) the ``card`` is ``null`` and the save
+    snapshot fields are all the client has to render.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        saves = list(
+            SavedOpportunity.objects.filter(user=request.user)
+            .select_related("content")
+            .order_by("-created_at")
+        )
+        content_ids = [s.content_id for s in saves if s.content_id]
+        scores_by_content = {
+            score.content_id: score
+            for score in RelevanceScore.objects.filter(
+                target_user=request.user,
+                content_id__in=content_ids,
+                content__isnull=False,
+            ).select_related("content")
+        }
+        today = timezone.now().date()
+        context = {
+            "today": today.isoformat(),
+            "today_date": today,
+            "saved_ids": {str(cid) for cid in content_ids},
+            "scores_by_content": scores_by_content,
+        }
+        return Response(
+            {"items": SavedItemSerializer(saves, many=True, context=context).data}
         )
 
 

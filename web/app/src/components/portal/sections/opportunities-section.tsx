@@ -39,7 +39,8 @@ function formatDate(iso: string): string {
   });
 }
 
-function GrantRow({ grant }: { grant: GrantOpportunity }) {
+/** One matched grant, exactly as the Grants page renders it (reused by Saves). */
+export function GrantRow({ grant }: { grant: GrantOpportunity }) {
   const due = formatDate(grant.deadline_date);
   const posted = formatDate(grant.posted);
   const topics = grant.matched_topics

@@ -34,6 +34,7 @@ class SuggestionSerializer(serializers.Serializer):
     origin = serializers.SerializerMethodField()
     is_new = serializers.SerializerMethodField()
     pinned = serializers.SerializerMethodField()
+    saved = serializers.SerializerMethodField()
 
     def get_content_id(self, score: RelevanceScore) -> str:
         return str(score.content_id)
@@ -107,6 +108,11 @@ class SuggestionSerializer(serializers.Serializer):
 
     def get_is_new(self, score: RelevanceScore) -> bool:
         return bool(score.signals.get("is_new")) and self.get_pinned(score)
+
+    def get_saved(self, score: RelevanceScore) -> bool:
+        # Whether the reader bookmarked this paper (``saved_ids`` in context;
+        # feeds that don't pass it simply render the flag as false).
+        return str(score.content_id) in self.context.get("saved_ids", set())
 
 
 class _OpportunitySerializer(serializers.Serializer):
@@ -318,6 +324,7 @@ class FellowshipSerializer(_OpportunitySerializer):
     gates_failed = serializers.SerializerMethodField()
     reasons = serializers.SerializerMethodField()
     fit = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
 
     def get_url(self, score: RelevanceScore) -> str:
         meta = self._meta(score)
@@ -403,6 +410,11 @@ class FellowshipSerializer(_OpportunitySerializer):
 
     def get_fit(self, score: RelevanceScore) -> float | None:
         return score.signals.get("fit")
+
+    def get_description(self, score: RelevanceScore) -> str:
+        # The fellowship's own blurb from the source listing (Illinois Fellowship
+        # Finder "description" section) — distinct from the eligibility bullets.
+        return self._meta(score).get("description") or ""
 
 
 #: Metadata keys tried (in order) for the outbound link, per content type.
@@ -556,6 +568,38 @@ class SavedDeadlineSerializer(serializers.Serializer):
     def get_within_week(self, saved: SavedOpportunity) -> bool:
         days = self.get_days_remaining(saved)
         return days is not None and 0 <= days <= 7
+
+
+#: Which feed serializer renders each saved area's ``card`` payload — the same
+#: classes the area's own page uses, so saved cards match their feeds exactly.
+_SAVED_CARD_SERIALIZERS = {
+    SavedOpportunity.Area.GRANT: GrantSerializer,
+    SavedOpportunity.Area.CONFERENCE: ConferenceSerializer,
+    SavedOpportunity.Area.FELLOWSHIP: FellowshipSerializer,
+    SavedOpportunity.Area.PAPER: SuggestionSerializer,
+}
+
+
+class SavedItemSerializer(SavedDeadlineSerializer):
+    """One bookmark for the Saves page: the snapshot plus a feed-parity card.
+
+    ``card`` is the exact payload the item's own feed page serializer emits,
+    built from the user's :class:`RelevanceScore` row passed in the context as
+    ``scores_by_content``; it is ``null`` once the source item was pruned (the
+    snapshot fields on the envelope are the fallback display).
+    """
+
+    saved_at = serializers.DateTimeField(source="created_at", read_only=True)
+    card = serializers.SerializerMethodField()
+
+    def get_card(self, saved: SavedOpportunity):
+        if not saved.content_id:
+            return None
+        score = (self.context.get("scores_by_content") or {}).get(saved.content_id)
+        serializer_class = _SAVED_CARD_SERIALIZERS.get(saved.area)
+        if score is None or serializer_class is None:
+            return None
+        return serializer_class(score, context=self.context).data
 
 
 def _days_until(deadline, today_date) -> int | None:

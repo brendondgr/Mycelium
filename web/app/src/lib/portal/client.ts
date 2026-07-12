@@ -19,6 +19,7 @@ import type {
   ProfileData,
   ProjectFeed,
   SavedDeadline,
+  SavedItem,
   SearchParams,
   SearchResponse,
   TargetRecommendations,
@@ -137,6 +138,14 @@ export async function fetchDeadlines(): Promise<{ items: SavedDeadline[] }> {
   return getJson<{ items: SavedDeadline[] }>(
     buildApiUrl(getPublicApiBase(), "deadlines"),
     "Could not load your deadlines.",
+  );
+}
+
+/** Every bookmark with feed-parity card payloads (Saves page). */
+export async function fetchSaves(): Promise<{ items: SavedItem[] }> {
+  return getJson<{ items: SavedItem[] }>(
+    buildApiUrl(getPublicApiBase(), "saves"),
+    "Could not load your saves.",
   );
 }
 

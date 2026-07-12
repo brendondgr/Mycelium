@@ -99,7 +99,7 @@ export function NotificationBell() {
                   alert={alert}
                   onView={() => {
                     setOpen(false);
-                    goToSection("deadlines");
+                    goToSection("saves");
                   }}
                 />
               ))}
@@ -146,7 +146,7 @@ function DeadlineAlertRow({
             onClick={onView}
             className="group mt-1 inline-flex items-center gap-1 text-[12.5px] font-semibold text-primary hover:underline"
           >
-            View in Deadlines
+            View in Saves
             <ArrowRightIcon
               size={12}
               aria-hidden="true"

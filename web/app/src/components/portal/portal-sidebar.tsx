@@ -2,13 +2,12 @@
 
 import {
   BankIcon,
-  CalendarIcon,
+  BookmarkIcon,
   ConferenceIcon,
   DocumentIcon,
   GridIcon,
   PlusIcon,
   ReportIcon,
-  SearchIcon,
   SparkleIcon,
   SporeNode,
   TargetIcon,
@@ -48,10 +47,10 @@ export function PortalSidebar() {
           onClick={() => goToSection("profile")}
         />
         <SidebarNavItem
-          icon={<SearchIcon size={18} />}
-          label="Search"
-          active={section === "search"}
-          onClick={() => goToSection("search")}
+          icon={<BookmarkIcon size={18} />}
+          label="Saves"
+          active={section === "saves"}
+          onClick={() => goToSection("saves")}
         />
       </nav>
 
@@ -92,12 +91,6 @@ export function PortalSidebar() {
           label="Conferences"
           active={section === "conferences"}
           onClick={() => goToSection("conferences")}
-        />
-        <SidebarNavItem
-          icon={<CalendarIcon size={18} />}
-          label="Deadlines"
-          active={section === "deadlines"}
-          onClick={() => goToSection("deadlines")}
         />
         <ProjectsNav />
       </nav>

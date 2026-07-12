@@ -160,13 +160,14 @@ export function deadlineKindLabel(kind: string, area: string): string {
 }
 
 /**
- * A bookmark toggle that saves/unsaves a grant or conference to the user's
- * deadlines. Optimistic feel via the mutation's pending state; disabled while a
- * write is in flight. The label always states the action for screen readers.
+ * A bookmark toggle that saves/unsaves an item (paper, grant, conference, or
+ * fellowship) to the user's Saves page. Optimistic feel via the mutation's
+ * pending state; disabled while a write is in flight. The label always states
+ * the action for screen readers.
  *
  * `variant="icon"` renders a compact, round bookmark-only button (used on the
- * opportunity cards where space is tight); the default renders the labelled
- * pill used on the Deadlines page.
+ * cards where space is tight); the default renders the labelled pill used on
+ * the Saves page.
  */
 export function SaveButton({
   contentId,
@@ -186,7 +187,7 @@ export function SaveButton({
       save.mutate({ contentId });
     }
   };
-  const label = saved ? "Remove from your deadlines" : "Save to your deadlines";
+  const label = saved ? "Remove from your saves" : "Save for later";
   const tone = saved
     ? {
         borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
@@ -231,7 +232,7 @@ export function SaveButton({
       style={tone}
     >
       <BookmarkIcon size={13} aria-hidden="true" />
-      {saved ? "Saved" : "Save deadline"}
+      {saved ? "Saved" : "Save"}
     </button>
   );
 }

@@ -139,6 +139,8 @@ export type Suggestion = {
   is_new: boolean;
   /** Still inside its one-week pin window (leads the list; sinks to match order after). */
   pinned: boolean;
+  /** Whether the user has bookmarked this paper (the Saves page). */
+  saved: boolean;
 };
 
 /**
@@ -380,11 +382,14 @@ export type IngestLinkResult = {
   title: string;
 };
 
+/** A bookmarkable area — every saveable content kind. */
+export type SavedArea = "grant" | "conference" | "fellowship" | "paper";
+
 /** One saved deadline (from `/api/deadlines/`). */
 export type SavedDeadline = {
   id: string;
   content_id: string | null;
-  area: "grant" | "conference" | "fellowship";
+  area: SavedArea;
   title: string;
   url: string;
   subtitle: string;
@@ -394,6 +399,23 @@ export type SavedDeadline = {
   days_remaining: number | null;
   within_week: boolean;
 };
+
+/**
+ * One bookmark on the Saves page (from `/api/saves/`): the save snapshot plus
+ * `card`, the exact payload the item's own feed page renders — so a saved grant
+ * shows like the Grants page, a saved paper like Research Papers, and so on.
+ * `card` is null once the source listing was pruned; the snapshot fields on the
+ * envelope are the fallback display.
+ */
+export type SavedItem = SavedDeadline & {
+  /** ISO timestamp the user saved this item. */
+  saved_at: string;
+} & (
+    | { area: "grant"; card: GrantOpportunity | null }
+    | { area: "conference"; card: ConferenceOpportunity | null }
+    | { area: "fellowship"; card: FellowshipOpportunity | null }
+    | { area: "paper"; card: Suggestion | null }
+  );
 
 /** One deadline alert for the header bell (from `/api/notifications/`). */
 export type DeadlineAlert = {
@@ -471,6 +493,8 @@ export type FellowshipOpportunity = OpportunityBase & {
   contact_email: string;
   /** ISO date the fellowship was first posted/seen, or "". */
   posted: string;
+  /** The fellowship's own blurb from the source listing, or "". */
+  description: string;
 };
 
 /* ----------------------------------------------------------------------- */

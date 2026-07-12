@@ -23,6 +23,7 @@ import {
   fetchMyInvitations,
   fetchMyLabs,
   fetchNotifications,
+  fetchSaves,
   fetchProfile,
   fetchProjectCollection,
   fetchProjectCollections,
@@ -201,6 +202,15 @@ export function useDeadlines() {
   });
 }
 
+/** Every bookmark with feed-parity card payloads (Saves page). */
+export function useSaves() {
+  return useQuery({
+    queryKey: ["portal", "saves"],
+    queryFn: fetchSaves,
+    staleTime: 30_000,
+  });
+}
+
 /** Deadline alerts due within a week (the header notification bell). */
 export function useNotifications() {
   return useQuery({
@@ -210,7 +220,7 @@ export function useNotifications() {
   });
 }
 
-/** Save or unsave a grant/conference/fellowship; refreshes the feeds, deadlines, and bell. */
+/** Save or unsave a bookmarkable item; refreshes the feeds, saves, and bell. */
 export function useSaveOpportunity() {
   const queryClient = useQueryClient();
   const invalidate = () => {
@@ -218,7 +228,9 @@ export function useSaveOpportunity() {
       "grants",
       "conferences",
       "fellowships",
+      "daily-report",
       "deadlines",
+      "saves",
       "notifications",
     ]) {
       queryClient.invalidateQueries({ queryKey: ["portal", key] });
