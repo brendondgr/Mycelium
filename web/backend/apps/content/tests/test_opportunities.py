@@ -128,7 +128,13 @@ def _persisted_grant(gid, title):
 
 
 @pytest.mark.django_db
-def test_compute_pins_flags_new_high_fit_only():
+def test_compute_pins_flags_every_recently_seen_item():
+    """Every item first seen within the window is New — no fit gate.
+
+    The feed is already interest-thresholded, so being *in* it means "worth
+    recommending"; pinning only distinguishes fresh from old, regardless of the
+    match strength. Items first seen more than a week ago are not new.
+    """
     today = "2026-07-05"
 
     def _item(gid, first_seen):
@@ -151,13 +157,47 @@ def test_compute_pins_flags_new_high_fit_only():
         {"content_id": str(d.id), "match_percent": 30},
     ]
 
-    pins = compute_pins(suggestions, items_by_id, today=today, percentile=80)
+    pins = compute_pins(suggestions, items_by_id, today=today)
 
+    # All three recently-seen items are new — even the low-match ones.
     assert pins[str(a.id)]["is_new"] is True
     assert pins[str(a.id)]["pinned_until"] == "2026-07-12"  # first_seen + 7 days
-    assert pins[str(b.id)]["is_new"] is False  # new but below the 80th percentile
-    assert pins[str(c.id)]["is_new"] is False  # high match but first seen > 7 days ago
-    assert pins[str(d.id)]["is_new"] is False
+    assert pins[str(b.id)]["is_new"] is True
+    assert pins[str(d.id)]["is_new"] is True
+    # First seen > 7 days ago: no longer new, no pin.
+    assert pins[str(c.id)]["is_new"] is False
+    assert pins[str(c.id)]["pinned_until"] is None
+
+
+@pytest.mark.django_db
+def test_compute_pins_papers_fall_back_to_created_at():
+    """Papers carry no metadata.first_seen, so pinning uses the ingest date."""
+    from datetime import timedelta
+
+    from django.utils import timezone as tz
+
+    fresh = ContentItem.objects.create(
+        type=ContentItem.Type.PAPER, source="openalex", external_id="p_fresh",
+        metadata={"title": "fresh"},
+    )
+    old = ContentItem.objects.create(
+        type=ContentItem.Type.PAPER, source="openalex", external_id="p_old",
+        metadata={"title": "old"},
+    )
+    # created_at is auto_now_add; backdate the "old" paper past the window.
+    ContentItem.objects.filter(pk=old.pk).update(
+        created_at=tz.now() - timedelta(days=30)
+    )
+    old.refresh_from_db()
+    items_by_id = {str(fresh.id): fresh, str(old.id): old}
+    suggestions = [{"content_id": str(fresh.id)}, {"content_id": str(old.id)}]
+
+    pins = compute_pins(suggestions, items_by_id)
+
+    assert pins[str(fresh.id)]["is_new"] is True
+    expected_first_seen = tz.localdate(fresh.created_at).isoformat()
+    assert pins[str(fresh.id)]["first_seen"] == expected_first_seen
+    assert pins[str(old.id)]["is_new"] is False
 
 
 # -- full retrieval E2E (pgvector) --------------------------------------------

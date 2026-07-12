@@ -111,27 +111,49 @@ class DailyReportView(APIView):
 
         latest = max(score.signals.get("run_at", "") for score in scores)
         current = [s for s in scores if s.signals.get("run_at", "") == latest]
-        current.sort(key=lambda s: s.signals.get("rank") or 999)
+        today = timezone.now().date().isoformat()
+
+        # Newly-gathered papers (pinned this week) lead the list; everything else
+        # falls into plain percent-match / recommendation order below them, so a
+        # paper drops out of the top zone once it is more than a week old.
+        def sort_key(s: RelevanceScore):
+            pinned_until = s.signals.get("pinned_until")
+            pinned = bool(pinned_until and pinned_until >= today)
+            return (0 if pinned else 1, s.signals.get("rank") or 999)
+
+        current.sort(key=sort_key)
         return Response(
             {
                 "generated_at": latest or None,
-                "summary": _build_summary(current),
-                "suggestions": SuggestionSerializer(current, many=True).data,
+                "summary": _build_summary(current, today=today),
+                "suggestions": SuggestionSerializer(
+                    current, many=True, context={"today": today}
+                ).data,
             }
         )
 
 
-def _build_summary(rows: list[RelevanceScore]) -> dict:
-    """Roll the day's suggested papers up into the Daily Report summary.
+def _build_summary(rows: list[RelevanceScore], *, today: str = "") -> dict:
+    """Roll the matched papers up into the Daily Report summary.
 
-    Deterministic on purpose: it reports what today's research scan surfaced
-    (count, match strength, recurring focus themes, sources) without a second
-    language-model call, so the summary is stable and always available.
+    Deterministic on purpose: it reports the papers currently matching this
+    researcher (count, how many are new this week, match strength, recurring focus
+    themes, sources) without a second language-model call, so the summary is stable
+    and always available. The feed retains older matches, so ``new_count`` is what
+    highlights what changed today.
     """
     matches = [
         m for m in (r.signals.get("match_percent") for r in rows) if isinstance(m, int)
     ]
     strong = sum(1 for m in matches if m >= STRONG_MATCH_THRESHOLD)
+
+    def _is_new(row: RelevanceScore) -> bool:
+        pinned_until = row.signals.get("pinned_until")
+        return bool(row.signals.get("is_new")) and bool(
+            pinned_until and pinned_until >= today
+        )
+
+    new_count = sum(1 for row in rows if _is_new(row))
 
     theme_counts: Counter[str] = Counter()
     for row in rows:
@@ -150,6 +172,7 @@ def _build_summary(rows: list[RelevanceScore]) -> dict:
     threshold = _match_threshold_percent()
     return {
         "paper_count": count,
+        "new_count": new_count,
         "strong_matches": strong,
         "top_match": max(matches) if matches else None,
         "average_match": round(sum(matches) / len(matches)) if matches else None,
@@ -158,7 +181,7 @@ def _build_summary(rows: list[RelevanceScore]) -> dict:
         "match_threshold": threshold,
         "themes": themes,
         "sources": sources,
-        "headline": _summary_headline(count, strong, threshold),
+        "headline": _summary_headline(count, strong, threshold, new_count),
     }
 
 
@@ -169,13 +192,18 @@ def _match_threshold_percent() -> int:
     return round(getattr(settings, "PAPER_MATCH_THRESHOLD", 0.5) * 100)
 
 
-def _summary_headline(count: int, strong: int, threshold: int) -> str:
+def _summary_headline(count: int, strong: int, threshold: int, new_count: int) -> str:
     if count == 0:
-        return "No new papers cleared your match threshold today."
+        return "No papers currently clear your match threshold."
     papers = "paper" if count == 1 else "papers"
-    lead = f"{count} {papers} met your {threshold}% match threshold today"
+    lead = f"{count} {papers} match your interests (≥{threshold}%)"
+    extras = []
+    if new_count:
+        extras.append(f"{new_count} new this week")
     if strong:
-        return f"{lead} — {strong} a strong match."
+        extras.append(f"{strong} a strong match")
+    if extras:
+        return f"{lead} — {', '.join(extras)}."
     return f"{lead}."
 
 
@@ -375,7 +403,9 @@ def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dic
             "grants": len(grants),
             "conferences": len(conferences),
         },
-        "papers": SuggestionSerializer(papers, many=True).data,
+        "papers": SuggestionSerializer(
+            papers, many=True, context={"today": today}
+        ).data,
         "grants": GrantSerializer(grants, many=True, context=opp_context).data,
         "conferences": ConferenceSerializer(
             conferences, many=True, context=opp_context

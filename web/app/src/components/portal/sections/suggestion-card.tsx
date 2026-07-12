@@ -5,7 +5,7 @@ import * as React from "react";
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ArrowRightIcon, SparkleIcon } from "@/components/portal/icons";
-import { MatchBadge } from "@/components/portal/sections/opportunity-bits";
+import { MatchBadge, NewTag } from "@/components/portal/sections/opportunity-bits";
 import type { Suggestion } from "@/lib/portal/types";
 
 function metaLine(suggestion: Suggestion): string {
@@ -62,6 +62,7 @@ export function SuggestionCard({
           </h3>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {suggestion.is_new ? <NewTag /> : null}
           {focusMode ? (
             <MatchBadge percent={displayPercent ?? null} />
           ) : (

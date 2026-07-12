@@ -1,18 +1,24 @@
-""""New" tagging + one-week pinning for high-fit opportunities.
+""""New" tagging + one-week pinning for freshly-seen recommendations.
 
-A newly-posted grant/conference that is a strong fit for a user should jump to the
-top of their list and carry a "New — worth a look" tag for its first week, so it
-isn't buried under older content. This computes that per user, per run:
+A newly-seen item (a grant, conference, fellowship, or paper) that surfaced for a
+user should jump to the top of their list and carry a "New" tag for its first
+week, so it isn't buried under older content. Everything in a feed has already
+cleared the interest/match threshold, so being *in* the feed already means "worth
+recommending"; this only decides which of those are **new** and pin them.
 
-* **Recently first-seen** — the item's immutable ``metadata.first_seen`` (written
-  once at ingest, never reset on refresh) is within ``new_window_days`` of today.
-* **High fit** — the item's percent match is at or above the ``percentile`` (default
-  80th) of this user's model-scored matches for the area.
+An item is new when it was first seen within ``new_window_days`` of today:
 
-An item that is both gets ``is_new=True`` and a ``pinned_until`` one week after it
-was first seen. The read layer pins (and shows the tag) while ``pinned_until`` is
-still in the future — because ``first_seen`` never moves, the pin window is stable
-across nightly re-runs and the tag naturally expires after a week.
+* **Opportunities** (grants/conferences/fellowships) use the immutable
+  ``metadata.first_seen`` written once at ingest and never reset on refresh.
+* **Papers** have no ``first_seen`` field, so we fall back to the ingest date
+  (``ContentItem.created_at``, set once on first insert and never rewritten by
+  re-scrapes) — the day the paper entered the store.
+
+A new item gets ``is_new=True`` and a ``pinned_until`` one week after it was first
+seen. The read layer pins (and shows the tag) while ``pinned_until`` is still in
+the future — because the first-seen date never moves, the pin window is stable
+across nightly re-runs and the item naturally drops back into plain
+percent-match order once it is more than a week old.
 """
 
 from __future__ import annotations
@@ -26,7 +32,6 @@ from .models import ContentItem
 
 DEFAULT_NEW_WINDOW_DAYS = 7
 DEFAULT_PIN_DAYS = 7
-DEFAULT_PERCENTILE = 80.0
 
 
 def _parse_iso_date(value: str | None) -> date | None:
@@ -39,17 +44,25 @@ def _parse_iso_date(value: str | None) -> date | None:
         return None
 
 
-def _percentile(values: Sequence[float], pct: float) -> float | None:
-    """Linear-interpolated percentile of ``values`` (``None`` when empty)."""
-    xs = sorted(values)
-    if not xs:
-        return None
-    if len(xs) == 1:
-        return xs[0]
-    rank = (len(xs) - 1) * (pct / 100.0)
-    lo = int(rank)
-    hi = min(lo + 1, len(xs) - 1)
-    return xs[lo] + (xs[hi] - xs[lo]) * (rank - lo)
+def _first_seen(item: ContentItem | None) -> tuple[date | None, str]:
+    """When an item was first seen: ``(date, iso-string)``.
+
+    Prefers the immutable ``metadata.first_seen`` (opportunities); falls back to
+    the ingest date ``created_at`` (papers, which carry no ``first_seen``). Returns
+    ``(None, "")`` when neither is available.
+    """
+    if item is None:
+        return None, ""
+    meta = item.metadata or {}
+    raw = meta.get("first_seen")
+    parsed = _parse_iso_date(raw)
+    if parsed is not None:
+        return parsed, str(raw)
+    created = getattr(item, "created_at", None)
+    if created is not None:
+        day = timezone.localdate(created)
+        return day, day.isoformat()
+    return None, ""
 
 
 def compute_pins(
@@ -59,40 +72,24 @@ def compute_pins(
     today: str | None = None,
     new_window_days: int = DEFAULT_NEW_WINDOW_DAYS,
     pin_days: int = DEFAULT_PIN_DAYS,
-    percentile: float = DEFAULT_PERCENTILE,
 ) -> dict[str, dict]:
     """Map ``content_id -> {"is_new", "pinned_until", "first_seen"}`` for a run.
 
-    ``suggestions`` are this user's ranked opportunity suggestions (each with a
-    ``content_id`` and possibly a ``match_percent``); ``items_by_id`` resolves the
-    ``ContentItem`` for its ``first_seen``.
+    ``suggestions`` are this target's surfaced items for the area (each with a
+    ``content_id``); ``items_by_id`` resolves the ``ContentItem`` for its
+    first-seen date. Every item first seen within ``new_window_days`` is flagged
+    new and pinned for a week — no fit gate, since the feed is already
+    interest-thresholded, so "new in the feed" is exactly what we highlight.
     """
     today_d = date.fromisoformat(today) if today else timezone.now().date()
     window_start = today_d - timedelta(days=new_window_days)
 
-    matches = [
-        s["match_percent"]
-        for s in suggestions
-        if s.get("match_percent") is not None
-    ]
-    threshold = _percentile(matches, percentile)
-
     out: dict[str, dict] = {}
     for suggestion in suggestions:
         cid = suggestion["content_id"]
-        item = items_by_id.get(cid)
-        meta = (item.metadata or {}) if item is not None else {}
-        first_seen = meta.get("first_seen", "")
-        first_seen_date = _parse_iso_date(first_seen)
+        first_seen_date, first_seen = _first_seen(items_by_id.get(cid))
 
-        recently_new = first_seen_date is not None and first_seen_date >= window_start
-        match_percent = suggestion.get("match_percent")
-        high_fit = (
-            threshold is not None
-            and match_percent is not None
-            and match_percent >= threshold
-        )
-        is_new = recently_new and high_fit
+        is_new = first_seen_date is not None and first_seen_date >= window_start
         pinned_until = None
         if is_new and first_seen_date is not None:
             pinned_until = (first_seen_date + timedelta(days=pin_days)).isoformat()

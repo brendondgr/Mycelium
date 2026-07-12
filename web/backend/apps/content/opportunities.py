@@ -3,7 +3,7 @@
 For one user and one area (grants or conferences) this reuses the paper pipeline's
 retrieval + multi-interest fusion (:func:`apps.content.pipeline.fuse_interests_pool`,
 scoped by ``content_type``) over the Pivot corpus, scores the top slice with the
-opportunity-aware model (:mod:`.opportunity_llm`), tags brand-new high-fit items
+opportunity-aware model (:mod:`.opportunity_llm`), tags brand-new items
 (:mod:`.pinning`), and persists one :class:`RelevanceScore` per item — the same
 store the paper digest uses, discriminated by ``content.type`` and a ``signals.area``.
 
@@ -32,7 +32,7 @@ from .opportunity_llm import (
     generate_fellowship_suggestions,
     generate_opportunity_suggestions,
 )
-from .pinning import DEFAULT_PERCENTILE, compute_pins
+from .pinning import compute_pins
 from .pipeline import PersistRow, fuse_interests_pool
 from .targets import MatchTarget, target_for_user
 
@@ -143,7 +143,6 @@ class _MatchJob:
     pairs: list
     rows: list
     pool: int
-    percentile: float
     llm_limit: int
     surface_limit: int | None  # None => surface all (threshold-gated areas)
 
@@ -166,7 +165,6 @@ class _FellowshipMatchJob:
     elig: object = None          # Elig dataclass
     interests: dict = None       # Profile.interests (for the LLM report)
     profile_meta: dict = None    # career stage / institution (for the LLM report)
-    percentile: float = DEFAULT_PERCENTILE
     llm_limit: int = DEFAULT_LLM_LIMIT
     match_threshold: float = 0.0     # min fit to surface (0 => all eligible)
     max_surface: int = DEFAULT_SURFACE  # backstop cap on surfaced fellowships
@@ -184,7 +182,6 @@ class _FellowshipMatchJob:
 def _prepare_fellowship_match(
     user: User,
     *,
-    percentile: float,
     today: str | None,
     log: Callable[[str], None] | None,
 ) -> tuple[_FellowshipMatchJob | None, OppRunResult | None]:
@@ -230,7 +227,6 @@ def _prepare_fellowship_match(
             "academic_title": getattr(profile, "academic_title", ""),
             "institution": getattr(profile, "institution", ""),
         },
-        percentile=percentile,
         match_threshold=getattr(settings, "FELLOWSHIP_FIT_THRESHOLD", 0.0),
         max_surface=_opportunity_max_surface(),
         today=today or tz.now().date().isoformat(),
@@ -281,9 +277,7 @@ def _finalize_fellowship_match(
             log(f"[{job.username}:fellowships] {message}")
 
     items_by_id = {str(item.id): item for item in job.items}
-    pins = compute_pins(
-        suggestions, items_by_id, today=job.today, percentile=job.percentile
-    )
+    pins = compute_pins(suggestions, items_by_id, today=job.today)
     new_count = sum(1 for p in pins.values() if p["is_new"])
     llm = sum(1 for s in suggestions if s.get("source") == "llm")
     emit(
@@ -358,7 +352,6 @@ def _prepare_match(
     llm_limit: int,
     pool_per_interest: int,
     beta: float,
-    percentile: float,
     log: Callable[[str], None] | None,
 ) -> tuple[_MatchJob | None, OppRunResult | None]:
     """DB phase — retrieve + fuse. Returns a job to score, or a short-circuit result.
@@ -412,7 +405,6 @@ def _prepare_match(
         pairs=pairs,
         rows=rows,
         pool=pool,
-        percentile=percentile,
         llm_limit=llm_limit,
         surface_limit=None if threshold is not None else surface_limit,
     )
@@ -449,9 +441,7 @@ def _finalize_match(
             log(f"[{job.username}:{job.area}] {message}")
 
     items_by_id = {str(item.id): item for item, _score in job.pairs}
-    pins = compute_pins(
-        suggestions, items_by_id, today=today, percentile=job.percentile
-    )
+    pins = compute_pins(suggestions, items_by_id, today=today)
     new_count = sum(1 for p in pins.values() if p["is_new"])
     llm = sum(1 for s in suggestions if s["source"] == "llm")
     emit(
@@ -489,7 +479,6 @@ def match_opportunities_for_target(
     llm_limit: int = DEFAULT_LLM_LIMIT,
     pool_per_interest: int = DEFAULT_POOL_PER_INTEREST,
     beta: float = DEFAULT_BETA,
-    percentile: float = DEFAULT_PERCENTILE,
     complete: Callable[[str], str | None] | None = None,
     persist: bool = True,
     today: str | None = None,
@@ -507,7 +496,6 @@ def match_opportunities_for_target(
         llm_limit=llm_limit,
         pool_per_interest=pool_per_interest,
         beta=beta,
-        percentile=percentile,
         log=log,
     )
     if short is not None:
@@ -526,16 +514,13 @@ def match_opportunities_for_user(
 def match_fellowships_for_user(
     user: User,
     *,
-    percentile: float = DEFAULT_PERCENTILE,
     complete: Callable[[str], str | None] | None = None,
     persist: bool = True,
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppRunResult:
     """Eligibility-gate + LLM-report fellowship matching for one user (serial)."""
-    job, short = _prepare_fellowship_match(
-        user, percentile=percentile, today=today, log=log
-    )
+    job, short = _prepare_fellowship_match(user, today=today, log=log)
     if short is not None:
         return short
     suggestions = _score_fellowship_job(job, complete=complete)
@@ -557,7 +542,6 @@ def run_opportunities_for_user(
             results.append(
                 match_fellowships_for_user(
                     user,
-                    percentile=kwargs.get("percentile", DEFAULT_PERCENTILE),
                     complete=kwargs.get("complete"),
                     persist=kwargs.get("persist", True),
                     today=kwargs.get("today"),
@@ -637,7 +621,6 @@ def run_daily_opportunities_batch(
     prune: bool = True,
     embed: bool = True,
     persist: bool = True,
-    percentile: float = DEFAULT_PERCENTILE,
     concurrency: int | None = None,
     complete: Callable[[str], str | None] | None = None,
     today: str | None = None,
@@ -701,7 +684,7 @@ def run_daily_opportunities_batch(
             if area == "fellowships":
                 try:
                     job, short = _prepare_fellowship_match(
-                        user, percentile=percentile, today=today, log=log
+                        user, today=today, log=log
                     )
                 except Exception:
                     logger.exception(
@@ -727,7 +710,6 @@ def run_daily_opportunities_batch(
                         llm_limit=DEFAULT_LLM_LIMIT,
                         pool_per_interest=DEFAULT_POOL_PER_INTEREST,
                         beta=DEFAULT_BETA,
-                        percentile=percentile,
                         log=log,
                     )
                 except Exception:
@@ -761,7 +743,6 @@ def run_daily_opportunities_batch(
                     llm_limit=DEFAULT_LLM_LIMIT,
                     pool_per_interest=DEFAULT_POOL_PER_INTEREST,
                     beta=DEFAULT_BETA,
-                    percentile=percentile,
                     log=log,
                 )
             except Exception:

@@ -139,8 +139,9 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
     assert summary["themes"] == ["Knowledge Graphs"]
     # The summary frames the count against the configurable match threshold.
     assert isinstance(summary["match_threshold"], int)
-    assert "2 papers met your" in summary["headline"]
-    assert "match threshold" in summary["headline"]
+    # These fixtures set no pin window, so nothing is "new this week".
+    assert summary["new_count"] == 0
+    assert "2 papers match your interests" in summary["headline"]
 
 
 @pytest.mark.django_db

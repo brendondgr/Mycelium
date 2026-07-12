@@ -101,7 +101,7 @@ export function MyloReason({ reason }: { reason: string }) {
 }
 
 /**
- * The "New" tag for a fresh, high-fit item pinned to the top for its first week.
+ * The "New" tag for a freshly-seen item pinned to the top for its first week.
  * A solid green pill (with an icon + text, never color alone) so it's unmistakable.
  */
 export function NewTag() {

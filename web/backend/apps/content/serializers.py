@@ -32,12 +32,17 @@ class SuggestionSerializer(serializers.Serializer):
     headline = serializers.SerializerMethodField()
     reason = serializers.SerializerMethodField()
     origin = serializers.SerializerMethodField()
+    is_new = serializers.SerializerMethodField()
+    pinned = serializers.SerializerMethodField()
 
     def get_content_id(self, score: RelevanceScore) -> str:
         return str(score.content_id)
 
     def _meta(self, score: RelevanceScore) -> dict:
         return score.content.metadata or {}
+
+    def _today(self) -> str:
+        return self.context.get("today", "")
 
     def get_title(self, score: RelevanceScore) -> str:
         return self._meta(score).get("title") or "Untitled paper"
@@ -94,6 +99,14 @@ class SuggestionSerializer(serializers.Serializer):
     def get_origin(self, score: RelevanceScore) -> str:
         # "llm" when the language model wrote the reason, else "fallback".
         return score.signals.get("source") or "fallback"
+
+    def get_pinned(self, score: RelevanceScore) -> bool:
+        # Pinned (and the "New" tag shows) while the one-week window is still open.
+        pinned_until = score.signals.get("pinned_until")
+        return bool(pinned_until and pinned_until >= self._today())
+
+    def get_is_new(self, score: RelevanceScore) -> bool:
+        return bool(score.signals.get("is_new")) and self.get_pinned(score)
 
 
 class _OpportunitySerializer(serializers.Serializer):

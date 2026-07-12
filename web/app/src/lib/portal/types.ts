@@ -135,6 +135,10 @@ export type Suggestion = {
   reason: string;
   /** "llm" when Mylo wrote the reason, "fallback" when it was templated. */
   origin: "llm" | "fallback";
+  /** Freshly gathered within the last week — flagged New and pinned to the top. */
+  is_new: boolean;
+  /** Still inside its one-week pin window (leads the list; sinks to match order after). */
+  pinned: boolean;
 };
 
 /**
@@ -143,6 +147,8 @@ export type Suggestion = {
  */
 export type DailyReportSummary = {
   paper_count: number;
+  /** How many of the matched papers are new this week (pinned to the top). */
+  new_count: number;
   strong_matches: number;
   top_match: number | null;
   average_match: number | null;

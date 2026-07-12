@@ -315,32 +315,42 @@ def test_no_areas_falls_back_to_single_vector(pgvector) -> None:
 
 
 @pytest.mark.django_db
-def test_recommend_surfaces_only_latest_gather_day(pgvector) -> None:
-    """The freshness gate: only the most recently gathered batch is recommended.
+def test_recommend_retains_older_papers_and_pins_fresh(pgvector) -> None:
+    """Older still-matching papers are retained; freshly-gathered ones are pinned New.
 
-    A paper gathered two days ago is the *stronger* match for the profile, yet it
-    must not resurface — the day-to-day rule keeps the feed to today's batch, so the
-    older paper's exclusion can only be the gather-day gate, not its score.
+    The stronger match was gathered weeks ago: it must still surface (the feed no
+    longer drops older matches), but only the paper gathered today carries the
+    New/pin flag — after a week the pin lapses and it sinks into plain
+    percent-match order.
     """
     embeddings.set_embedder(_fake_embed)
-    # Interest "graph" embeds to [1,0,0,0]: the old paper is a perfect match.
+    # Profile statement "graph" embeds to [1,0,0,0]; both papers match it (the
+    # single-vector path just thresholds on cosine, so both are retained).
     old = _vpaper("old-strong", "graph", [1.0, 0.0, 0.0, 0.0])
     ContentItem.objects.filter(pk=old.pk).update(
-        created_at=timezone.now() - timedelta(days=2)
+        created_at=timezone.now() - timedelta(days=30)
     )
     fresh = _vpaper("fresh-weak", "graph health", [0.8, 0.6, 0.0, 0.0])  # today
-    user = _profile_user("fresh-only", areas=["graph"], keywords=[])
+    user = User.objects.create_user("retain", password="x")
+    user.profile.interests = {"statement": "graph"}  # no areas → single-vector path
+    user.profile.save()
+    _set_watch(user, ["knowledge graphs"])
 
     result = run_for_user(user, search_fn=_no_search, complete=lambda _p: None)
 
     assert result.status == "ok"
-    scored = set(
-        RelevanceScore.objects.filter(target_user=user).values_list(
-            "content_id", flat=True
-        )
-    )
-    assert fresh.id in scored
-    assert old.id not in scored
+    assert result.interests == 0  # single-vector fallback path
+    rows = {
+        r.content_id: r for r in RelevanceScore.objects.filter(target_user=user)
+    }
+    # Both are retained in the feed — the old strong match is not dropped.
+    assert old.id in rows
+    assert fresh.id in rows
+    # Only the freshly-gathered paper is flagged New and pinned to the top.
+    assert rows[fresh.id].signals["is_new"] is True
+    assert rows[fresh.id].signals["pinned_until"]
+    assert rows[old.id].signals["is_new"] is False
+    assert rows[old.id].signals["pinned_until"] is None
 
 
 @pytest.mark.django_db
