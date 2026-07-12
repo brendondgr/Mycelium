@@ -32,6 +32,9 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from django.utils import timezone
+
+from .digest_selection import new_first
 from .models import ContentItem
 
 logger = logging.getLogger(__name__)
@@ -73,6 +76,8 @@ def generate_suggestions(
     llm_limit: int = _DEFAULT_LLM_LIMIT,
     surface_limit: int | None = None,
     complete: CompleteFn | None = None,
+    prior: dict[str, dict] | None = None,
+    new_ids: set[str] | None = None,
 ) -> list[Suggestion]:
     """Return the two-tier digest: every candidate surfaced, top ``llm_limit`` ranked.
 
@@ -85,30 +90,67 @@ def generate_suggestions(
     explicit ``surface_limit`` caps the total to a fixed slice. When the model is
     unavailable, errors, or returns nothing usable, the whole list is the
     deterministic fallback.
+
+    ``prior`` (a prior run's LLM verdicts, keyed by content id — see
+    ``apps.content.opportunity_llm.load_prior_llm_verdicts``, the opportunity twin's
+    loader, reused here) carries forward papers already scored by the model instead
+    of re-sending them; the freed ``llm_limit`` slots go to unscored papers, new ones
+    (``new_ids``) first. This mirrors the selection rule in
+    :func:`apps.content.opportunity_llm.generate_opportunity_suggestions` — see
+    :mod:`apps.content.digest_selection` for the shared ordering helper.
     """
     candidates = list(hits)
     if not candidates:
         return []
+    prior = prior or {}
+    new_ids = new_ids or set()
 
     surfaced = candidates if surface_limit is None else candidates[:surface_limit]
-    llm_subset = surfaced[:llm_limit]
+
+    unscored = [pair for pair in surfaced if str(pair[0].id) not in prior]
+    llm_subset = new_first(unscored, lambda pair: str(pair[0].id), new_ids)[:llm_limit]
 
     llm = _llm_suggestions(interests, llm_subset, limit=llm_limit, complete=complete)
-    picked = {s["content_id"] for s in llm}
+    now = timezone.now().isoformat()
+    for suggestion in llm:
+        suggestion["llm_scored_at"] = now
+    fresh_ids = {s["content_id"] for s in llm}
 
-    # Fill the remaining surfaced slots deterministically, in score order. This
-    # also covers any of the top ``llm_limit`` the model chose to skip. ``surfaced``
-    # is already the final set (all candidates, or the ``surface_limit`` slice), and
-    # the model's picks are a subset of it, so the result is exactly ``surfaced``.
-    out: list[Suggestion] = list(llm)
+    carried: list[Suggestion] = []
     for item, score in surfaced:
-        if str(item.id) in picked:
+        cid = str(item.id)
+        if cid in fresh_ids:
             continue
-        out.append(
+        verdict = prior.get(cid)
+        if verdict is None:
+            continue
+        suggestion = _suggestion(
+            item,
+            score,
+            rank=0,
+            headline=verdict.get("headline") or _title(item),
+            reason=verdict.get("reason") or _fallback_reason(interests, item),
+            match_percent=verdict.get("match_percent"),
+            source="llm",
+        )
+        suggestion["llm_scored_at"] = verdict.get("llm_scored_at", "")
+        carried.append(suggestion)
+
+    scored = llm + carried
+    scored_ids = fresh_ids | {s["content_id"] for s in carried}
+
+    # Fill the remaining surfaced slots deterministically, in score order. ``surfaced``
+    # is already the final set (all candidates, or the ``surface_limit`` slice), and
+    # the scored items are a subset of it, so the result is exactly ``surfaced``.
+    fallback: list[Suggestion] = []
+    for item, score in surfaced:
+        if str(item.id) in scored_ids:
+            continue
+        fallback.append(
             _suggestion(
                 item,
                 score,
-                rank=len(out) + 1,
+                rank=0,
                 headline=_title(item),
                 reason=_fallback_reason(interests, item),
                 # Cross-embedding matches carry no percent — the percent is the
@@ -120,7 +162,15 @@ def generate_suggestions(
             )
         )
 
+    # LLM-scored suggestions (fresh + carried) sort by match percent (ties: fused
+    # order); the fallback tail keeps fused order, always after the scored group.
+    fused_order = {str(item.id): i for i, (item, _score) in enumerate(surfaced)}
+    scored.sort(
+        key=lambda s: (-(s["match_percent"] or 0), fused_order.get(s["content_id"], 0))
+    )
+
     # Renumber ranks 1..N so the LLM picks and the fallback tail form one sequence.
+    out = scored + fallback
     for rank, suggestion in enumerate(out, start=1):
         suggestion["rank"] = rank
     return out

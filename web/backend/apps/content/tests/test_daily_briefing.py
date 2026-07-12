@@ -151,6 +151,51 @@ def test_only_latest_run_and_suggested_items_count() -> None:
 
 
 @pytest.mark.django_db
+def test_new_counts_track_is_new_and_lead_the_prompt() -> None:
+    user = User.objects.create_user("fresh-first", password="x")
+    _watch(user, ["conferences"])
+    _score(
+        user,
+        _content(ContentItem.Type.CONFERENCE, "Fresh Conf"),
+        rank=1,
+        is_new=True,
+    )
+    _score(user, _content(ContentItem.Type.CONFERENCE, "Old Conf A"), rank=2)
+    _score(user, _content(ContentItem.Type.CONFERENCE, "Old Conf B"), rank=3)
+
+    captured = {}
+
+    def fake_complete(prompt: str) -> str:
+        captured["prompt"] = prompt
+        return json.dumps({"briefing": "ok"})
+
+    briefing = generate_briefing_for_user(user, complete=fake_complete)
+
+    assert briefing.counts == {"conferences": 3}
+    assert briefing.new_counts == {"conferences": 1}
+    # The model is told the new/total split, not just a raw total.
+    assert "1 new this week, 3 matched in total" in captured["prompt"]
+
+
+@pytest.mark.django_db
+def test_fallback_leads_with_new_counts() -> None:
+    user = User.objects.create_user("fb-new", password="x")
+    _watch(user, ["conferences"])
+    _score(
+        user,
+        _content(ContentItem.Type.CONFERENCE, "Fresh Conf"),
+        rank=1,
+        is_new=True,
+    )
+    _score(user, _content(ContentItem.Type.CONFERENCE, "Old Conf"), rank=2)
+
+    briefing = generate_briefing_for_user(user, complete=lambda p: None)
+
+    assert briefing.origin == DailyBriefing.Origin.FALLBACK
+    assert "1 new conference (2 matched in total)" in briefing.body
+
+
+@pytest.mark.django_db
 def test_fallback_when_llm_returns_nothing() -> None:
     user = User.objects.create_user("fb", password="x")
     _watch(user, ["papers"])
@@ -224,6 +269,7 @@ def test_api_empty_envelope_when_no_briefing(client: APIClient) -> None:
         "generated_at": None,
         "categories": [],
         "counts": {},
+        "new_counts": {},
         "showcase": {},
         "briefing": None,
     }
@@ -243,6 +289,7 @@ def test_api_returns_own_briefing_shape(client: APIClient) -> None:
     assert resp.data["generated_at"] is not None
     assert resp.data["categories"] == ["papers"]
     assert resp.data["counts"] == {"papers": 1}
+    assert resp.data["new_counts"] == {"papers": 0}
     assert resp.data["briefing"] == {"body": "hello", "origin": "llm"}
     assert resp.data["showcase"]["papers"][0]["title"] == "Mine"
 

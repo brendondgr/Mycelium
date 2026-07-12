@@ -48,7 +48,9 @@ _SYSTEM_PROMPT = (
     "a short daily briefing for one researcher about what today's automated scan "
     "surfaced for them: new papers, grants, conferences, and fellowships. Be warm, "
     "calm, and specific — a research operations partner, not a hype machine. "
-    "Ground every statement ONLY in the items you are given; never invent a paper, "
+    "LEAD with what is new since the last few days (the 'new' counts and items "
+    "marked new); the older total is background, not the headline. Ground every "
+    "statement ONLY in the items you are given; never invent a paper, "
     "number, or deadline. Call out the strongest matches by name, group by theme "
     "when natural, and flag any near-term deadlines. Return STRICT JSON of the form "
     '{"briefing": "<2-3 short paragraphs of plain prose>"}. No markdown, no lists.'
@@ -125,18 +127,29 @@ def _showcase_item(score: RelevanceScore) -> dict:
     }
 
 
-def _gather(user) -> tuple[list[str], dict[str, int], dict[str, list[dict]]]:
-    """Return (watched categories, per-category counts, per-category showcase)."""
+def _gather(
+    user,
+) -> tuple[list[str], dict[str, int], dict[str, int], dict[str, list[dict]]]:
+    """Return (watched categories, counts, new counts, showcase) per category.
+
+    ``counts`` is everything the latest run surfaced; ``new_counts`` is the subset
+    first seen within the New window (``signals.is_new``) — the number the briefing
+    leads with, so a day with 3 fresh conferences reads "3 new", not "140".
+    """
     categories = _watched_categories(user)
     counts: dict[str, int] = {}
+    new_counts: dict[str, int] = {}
     showcase: dict[str, list[dict]] = {}
     for category in categories:
         scores = _latest_suggested(user, CATEGORY_TYPES[category])
         counts[category] = len(scores)
+        new_counts[category] = sum(
+            1 for s in scores if s.signals.get("is_new")
+        )
         showcase[category] = [
             _showcase_item(s) for s in scores[:SHOWCASE_PER_CATEGORY]
         ]
-    return categories, counts, showcase
+    return categories, counts, new_counts, showcase
 
 
 # --------------------------------------------------------------------------- #
@@ -144,11 +157,18 @@ def _gather(user) -> tuple[list[str], dict[str, int], dict[str, list[dict]]]:
 # --------------------------------------------------------------------------- #
 
 
-def _build_prompt(counts: dict[str, int], showcase: dict[str, list[dict]]) -> str:
+def _build_prompt(
+    counts: dict[str, int],
+    new_counts: dict[str, int],
+    showcase: dict[str, list[dict]],
+) -> str:
     """A compact, grounded description of the day for the model."""
     lines: list[str] = ["Today's findings for this researcher:", ""]
     for category, count in counts.items():
-        lines.append(f"{category.upper()}: {count} matched.")
+        new = new_counts.get(category, 0)
+        lines.append(
+            f"{category.upper()}: {new} new this week, {count} matched in total."
+        )
         for item in showcase.get(category, [])[:PROMPT_ITEMS_PER_CATEGORY]:
             bits = [f'  - "{item["title"]}"']
             if isinstance(item.get("match_percent"), int):
@@ -160,8 +180,9 @@ def _build_prompt(counts: dict[str, int], showcase: dict[str, list[dict]]) -> st
             lines.append(" — ".join(bits))
         lines.append("")
     lines.append(
-        "Write the briefing now. Mention the counts, name the standout items, and "
-        "flag near-term deadlines. Reference only the items above."
+        "Write the briefing now. Lead with what is NEW, mention the counts, name "
+        "the standout items, and flag near-term deadlines. Reference only the "
+        "items above."
     )
     return "\n".join(lines)
 
@@ -202,7 +223,11 @@ def _settings_complete(prompt: str) -> str | None:
     return response.content
 
 
-def _fallback_body(counts: dict[str, int], showcase: dict[str, list[dict]]) -> str:
+def _fallback_body(
+    counts: dict[str, int],
+    new_counts: dict[str, int],
+    showcase: dict[str, list[dict]],
+) -> str:
     """A deterministic briefing when the model is unavailable or empty."""
     total = sum(counts.values())
     if total == 0:
@@ -211,8 +236,16 @@ def _fallback_body(counts: dict[str, int], showcase: dict[str, list[dict]]) -> s
             "your watched topics and surface fresh papers and opportunities here "
             "as they appear."
         )
+    # Lead with what's fresh; the running total is the parenthetical, not the news.
+    def _noun(category: str, n: int) -> str:
+        return _singular(category) if n == 1 else category
+
     parts = [
-        f"{count} {category}" for category, count in counts.items() if count
+        f"{new} new {_noun(category, new)} ({count} matched in total)"
+        if (new := new_counts.get(category, 0))
+        else f"{count} {_noun(category, count)}"
+        for category, count in counts.items()
+        if count
     ]
     lead = "Today Mylo surfaced " + _join_english(parts) + " for you."
 
@@ -274,14 +307,14 @@ def generate_briefing_for_user(
     fails, or returns nothing usable, the deterministic fallback writes the body
     and ``origin`` is recorded as ``fallback``.
     """
-    categories, counts, showcase = _gather(user)
+    categories, counts, new_counts, showcase = _gather(user)
     ask = complete if complete is not None else _settings_complete
 
     body = ""
     origin = DailyBriefing.Origin.FALLBACK
     if sum(counts.values()) > 0:
         try:
-            raw = ask(_build_prompt(counts, showcase))
+            raw = ask(_build_prompt(counts, new_counts, showcase))
         except Exception as exc:  # noqa: BLE001 — any LLM failure => fallback
             logger.warning(
                 "LLM briefing generation unavailable (%s); using deterministic "
@@ -296,7 +329,7 @@ def generate_briefing_for_user(
             origin = DailyBriefing.Origin.LLM
 
     if not body:
-        body = _fallback_body(counts, showcase)
+        body = _fallback_body(counts, new_counts, showcase)
         origin = DailyBriefing.Origin.FALLBACK
 
     briefing, _ = DailyBriefing.objects.update_or_create(
@@ -306,6 +339,7 @@ def generate_briefing_for_user(
             "origin": origin,
             "categories": categories,
             "counts": counts,
+            "new_counts": new_counts,
             "showcase": showcase,
         },
     )

@@ -114,7 +114,12 @@ def refit_user(
     if PAPER_AREA in areas:
         emit("refit papers (recommend over existing store)")
         paper = recommend_for_user(
-            user, complete=complete, persist=persist, log=log, **paper_kwargs
+            user,
+            complete=complete,
+            persist=persist,
+            reuse_prior=False,
+            log=log,
+            **paper_kwargs,
         )
         summaries[PAPER_AREA] = _paper_summary(paper)
 
@@ -126,6 +131,7 @@ def refit_user(
             areas=opp_areas,
             complete=complete,
             persist=persist,
+            reuse_prior=False,
             log=log,
             **opp_kwargs,
         ):
@@ -159,12 +165,23 @@ def refit_target(
     summaries: dict[str, dict] = {}
     if PAPER_AREA in areas:
         summaries[PAPER_AREA] = _paper_summary(
-            recommend_for_target(target, complete=complete, persist=persist, log=log)
+            recommend_for_target(
+                target,
+                complete=complete,
+                persist=persist,
+                reuse_prior=False,
+                log=log,
+            )
         )
     opp_areas = tuple(a for a in areas if a in ("grants", "conferences"))
     if opp_areas:
         for result in run_opportunities_for_target(
-            target, areas=opp_areas, complete=complete, persist=persist, log=log
+            target,
+            areas=opp_areas,
+            complete=complete,
+            persist=persist,
+            reuse_prior=False,
+            log=log,
         ):
             summaries[result.area] = _opportunity_summary(result)
     return RefitResult(target.key, "ok", areas=summaries)

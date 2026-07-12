@@ -318,6 +318,7 @@ class FellowshipSerializer(_OpportunitySerializer):
     gates_failed = serializers.SerializerMethodField()
     reasons = serializers.SerializerMethodField()
     fit = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
 
     def get_url(self, score: RelevanceScore) -> str:
         meta = self._meta(score)
@@ -403,6 +404,14 @@ class FellowshipSerializer(_OpportunitySerializer):
 
     def get_fit(self, score: RelevanceScore) -> float | None:
         return score.signals.get("fit")
+
+    def get_description(self, score: RelevanceScore) -> str:
+        # A human-readable blurb, like GrantSerializer's: prefer the fuller
+        # ``description`` field, fall back to the shorter ``blurb``. Plain text,
+        # whitespace-collapsed (Pivot descriptions carry newlines/odd spacing).
+        meta = self._meta(score)
+        text = meta.get("description") or meta.get("blurb") or ""
+        return " ".join(str(text).split())
 
 
 #: Metadata keys tried (in order) for the outbound link, per content type.

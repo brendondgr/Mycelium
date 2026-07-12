@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import WatchPreference
 from apps.content import embeddings
+from apps.content.digest_selection import split_by_floor
 from apps.content.models import ContentItem, RelevanceScore
 from apps.content.pipeline import (
     build_queries,
@@ -46,6 +47,7 @@ def _open_match_threshold(settings):
     production ``PAPER_MATCH_THRESHOLD``. Tests that exercise the threshold set their
     own value explicitly via ``match_threshold=``."""
     settings.PAPER_MATCH_THRESHOLD = 0.0
+    settings.PAPER_MIN_MATCH_PERCENT = 0
 
 
 def _no_search(*_args, **_kwargs):
@@ -379,6 +381,99 @@ def test_llm_suggestions_counted(pgvector) -> None:
     assert top.signals["headline"] == "Top"
     # The language model's percent match is persisted for LLM-ranked papers.
     assert top.signals["match_percent"] == 88
+
+
+@pytest.mark.django_db
+def test_paper_floor_hides_low_score_but_persists_verdict(settings) -> None:
+    """A paper the model scores below PAPER_MIN_MATCH_PERCENT is persisted
+    (carry-forward remembers it) but hidden from the feed; a 60+ paper stays.
+
+    Drives ``generate_suggestions`` + ``_persist`` directly over hand-built rows
+    — the floor logic under test lives in ``recommend_for_user``'s finalize/
+    persist step, so this skips retrieval/fusion (gated on pgvector, and liable
+    to drop one of two near-identical fixtures via the *unrelated* per-interest
+    RRF floor — see the opportunity twin of this test for the same pitfall).
+    """
+    import json
+
+    from apps.content.pipeline import _persist
+    from apps.content.suggest import generate_suggestions
+
+    settings.PAPER_MIN_MATCH_PERCENT = 60
+    user = User.objects.create_user("floortest", password="x")
+    strong = _paper("strong", "Strong Match Paper")
+    weak = _paper("weak", "Weak Match Paper")
+
+    def complete(prompt: str) -> str:
+        rows = []
+        for line in prompt.splitlines():
+            if not line.startswith("["):
+                continue
+            idx = int(line[1 : line.index("]")])
+            if "Weak Match Paper" in line:
+                rows.append(
+                    {"paper": idx, "match": 10, "headline": "Weak", "reason": "Barely."}
+                )
+            elif "Strong Match Paper" in line:
+                rows.append(
+                    {
+                        "paper": idx,
+                        "match": 90,
+                        "headline": "Strong",
+                        "reason": "Great.",
+                    }
+                )
+        return json.dumps({"suggestions": rows})
+
+    suggestions = generate_suggestions(
+        {}, [(strong, 0.9), (weak, 0.5)], complete=complete
+    )
+    visible, hidden = split_by_floor(suggestions, 60)
+    assert len(visible) == 1 and len(hidden) == 1
+
+    visible_ids = {s["content_id"] for s in visible}
+    _persist(
+        {"target_user": user},
+        [(strong, 0.9, {}), (weak, 0.5, {})],
+        suggestions,
+        visible_ids,
+    )
+
+    scores = {s.content_id: s for s in RelevanceScore.objects.filter(target_user=user)}
+    assert strong.id in scores and weak.id in scores
+    assert scores[strong.id].signals["suggested"] is True
+    assert scores[strong.id].signals["match_percent"] == 90
+    assert scores[weak.id].signals["suggested"] is False
+    assert scores[weak.id].signals["match_percent"] == 10
+
+
+@pytest.mark.django_db
+def test_refit_bypasses_carry_forward_for_papers(pgvector) -> None:
+    """``refit_user`` re-sends every surfaced paper to the model, even ones a prior
+    run already scored (``reuse_prior=False`` skips the carry-forward store)."""
+    import json
+
+    from apps.content.refitting import refit_user
+
+    embeddings.set_embedder(_fake_embed)
+    _paper("near", "knowledge graph for biomedical discovery")
+    user = _profile_user("refitbypass")
+
+    calls = {"n": 0}
+
+    def complete(_prompt: str) -> str:
+        calls["n"] += 1
+        return json.dumps(
+            {"suggestions": [{"paper": 1, "match": 80, "headline": "H", "reason": "R"}]}
+        )
+
+    run_for_user(user, search_fn=_no_search, complete=complete)
+    assert calls["n"] == 1  # first run scores it
+
+    refit_user(user, areas=("papers",), complete=complete, persist=True, log=None)
+    # The refit re-sent the already-scored paper to the model instead of carrying
+    # its prior verdict forward.
+    assert calls["n"] == 2
 
 
 @pytest.mark.django_db

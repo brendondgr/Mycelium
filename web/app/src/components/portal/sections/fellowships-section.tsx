@@ -221,6 +221,13 @@ function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
         <p className="mt-1 text-xs text-[var(--text-muted)]">{item.amount_note}</p>
       ) : null}
 
+      {/* What the fellowship funds/is about, clamped to keep the card scannable */}
+      {item.description ? (
+        <p className="mt-2.5 line-clamp-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+          {item.description}
+        </p>
+      ) : null}
+
       {/* Mylo's read on why this fellowship fits the researcher — the tailored
           AI report (origin "llm"); a plain rule-engine summary is the fallback. */}
       {item.reason ? (

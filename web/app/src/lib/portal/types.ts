@@ -195,6 +195,9 @@ export type DailyBriefing = {
   categories: BriefingCategory[];
   /** Per-category item counts ("Today's Summaries"). */
   counts: Partial<Record<BriefingCategory, number>>;
+  /** Items first seen this week, per category. Optional — absent on older,
+   * already-persisted briefings that predate this field. */
+  new_counts?: Partial<Record<BriefingCategory, number>>;
   /** Top items per category the prose is grounded in (the showcase). */
   showcase: Partial<Record<BriefingCategory, BriefingShowcaseItem[]>>;
   /** The written briefing, or null when no run has produced one yet. */
@@ -471,6 +474,8 @@ export type FellowshipOpportunity = OpportunityBase & {
   contact_email: string;
   /** ISO date the fellowship was first posted/seen, or "". */
   posted: string;
+  /** Description of what the fellowship funds/is about, or "". */
+  description: string;
 };
 
 /* ----------------------------------------------------------------------- */

@@ -633,6 +633,14 @@ class DailyBriefing(models.Model):
         blank=True,
         help_text="Per-category item counts, e.g. {'papers': 12, 'grants': 3}.",
     )
+    new_counts = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Per-category counts of items first seen this week (signals.is_new) — "
+            "what the briefing leads with; counts keeps the total matched."
+        ),
+    )
     showcase = models.JSONField(
         default=dict,
         blank=True,

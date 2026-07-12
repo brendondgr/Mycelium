@@ -1,21 +1,37 @@
-"""Deterministic fellowship eligibility rule engine (no LLM, no embeddings).
+"""Hybrid fellowship ranking: deterministic eligibility, then research-fit.
 
-Vendored and adapted from /home/bdgr/Tools/ProQuest/utils/Fellowships/recommend.py.
-Fellowships are matched by eligibility facets rather than semantic similarity, so the
-full pipeline (embed → retrieve → LLM score) is replaced by a simple rule check:
+Vendored and adapted from /home/bdgr/Tools/ProQuest/utils/Fellowships/recommend.py,
+then extended with the embedding-match signal the grants/conferences matchers
+already use. Fellowships still gate on eligibility facets, not semantic similarity
+— citizenship, career stage, institutional/demographic restrictions have no
+embedding — but eligibility alone says nothing about whether an eligible
+fellowship is actually *relevant* to a researcher's work (an agriculture
+scholarship a computer scientist happens to qualify for is not a good match). So
+ranking is now a three-stage hybrid:
 
-  1. Hard gates → not_eligible (citizenship, Illinois-only, Women/Equity restrictions).
-  2. Soft signals → conditional when stage/field don't match, qualified otherwise.
-  3. Fit score (0–1) weighs qualification tier, field/stage match, recency, stipend.
+  1. Hard eligibility gates → not_eligible (citizenship, Illinois-only, Women/
+     Equity restrictions) and closed/suspended items are dropped outright.
+  2. Embedding relevance gate → when the caller supplies ``embed_by_id`` (the
+     researcher declared interests and the fellowship corpus is embedded), an
+     eligible item whose cosine match to those interests falls below
+     ``embed_threshold`` is dropped too — the "eligible but irrelevant" case.
+  3. Blended fit score → eligibility's tier/field/stage/recency/stipend rule score
+     is blended with the embedding cosine (65% embedding / 35% rules) into one
+     ``fit`` that ranks the survivors. With no ``embed_by_id`` (no declared
+     interests, or retrieval unavailable) this degrades to the original rule-only
+     fit and ordering — nothing regresses for users with no interest signal.
 
 The public entry points are:
 
   eligibility_from_profile(profile) -> Elig
-  match_fellowships(items, elig, today) -> list[dict]    # one dict per surfaced item
+  match_fellowships(items, elig, today, embed_by_id=..., ...) -> list[dict]
 
-All functions are pure (no ORM, no I/O) except ``eligibility_from_profile``, which
-reads ``profile.interests`` and ``profile.institution`` — both are accessed as
-attributes from an already-fetched Django Profile object.
+All functions are pure (no ORM, no I/O, no embedder calls) except
+``eligibility_from_profile``, which reads ``profile.interests`` and
+``profile.institution`` — both accessed as attributes from an already-fetched
+Django Profile object. The embedding lookups themselves happen in the caller
+(:mod:`apps.content.opportunities`); this module only ever sees the resulting
+``{content_id: cosine}`` dict.
 """
 
 from __future__ import annotations
@@ -278,6 +294,16 @@ def fit(evaluation: dict, status: dict, today: str) -> float:
 # ---- Top-level match -----------------------------------------------------------
 
 
+#: Blend weights for the hybrid fit score: mostly the embedding (topical
+#: relevance), a smaller share for the rule engine (eligibility strength).
+_EMBED_WEIGHT = 0.65
+_RULE_WEIGHT = 0.35
+
+#: Embedding cosine at/above which a rules-sourced headline calls out the
+#: research fit explicitly rather than falling back to the tier-based phrasing.
+_STRONG_RESEARCH_FIT = 0.6
+
+
 def match_fellowships(
     items,
     elig: Elig,
@@ -285,6 +311,8 @@ def match_fellowships(
     *,
     match_threshold: float = 0.0,
     max_surface: int = FELLOWSHIP_SURFACE_LIMIT,
+    embed_by_id: dict[str, float] | None = None,
+    embed_threshold: float = 0.0,
 ) -> list[dict]:
     """Evaluate + filter + rank fellowship ContentItems for a user.
 
@@ -293,18 +321,38 @@ def match_fellowships(
         elig:  the user's :class:`Elig` profile from :func:`eligibility_from_profile`.
         today: ISO date string (``YYYY-MM-DD``).
         match_threshold: minimum ``fit`` (0–1) a fellowship must reach to surface,
-            applied *after* the hard eligibility gate — so ``0.0`` (the default)
-            surfaces every fellowship the user is actually eligible for, and raising
-            it trims weak-fit conditionals. This is what makes the feed
-            variable-length instead of a fixed top-N.
+            applied *after* the eligibility gate (and, when ``embed_by_id`` is
+            given, the embedding relevance gate below). ``0.0`` (the default)
+            surfaces every eligible/relevant fellowship; raising it trims the
+            weak tail. This is what makes the feed variable-length instead of a
+            fixed top-N.
         max_surface: backstop cap on how many fellowships to return.
+        embed_by_id: ``{content_id: cosine}`` — the researcher's embedding match
+            to each fellowship, in ``[0, 1]``, from the caller's own
+            retrieve+fuse step. ``None`` (the default) means no interest signal
+            was available (no declared interests/watch topics, or retrieval
+            failed) — in that case this function behaves exactly as it always
+            has: a pure eligibility/recency rule ranking, no embedding gate or
+            blend. A fellowship absent from the dict counts as ``0.0`` — it
+            simply was not retrieved as relevant to any declared interest.
+        embed_threshold: minimum embedding cosine an eligible fellowship must
+            clear to surface at all, when ``embed_by_id`` is given. This is the
+            "eligible but irrelevant" gate — an agriculture scholarship a CS
+            researcher happens to qualify for is dropped here, before the blend.
 
     Returns:
-        List of suggestion dicts, sorted by (tier_rank, -fit, actionable_date):
-        every eligible fellowship whose ``fit`` clears ``match_threshold``, capped at
-        ``max_surface``.  ``not_eligible`` and closed/suspended items are excluded.
+        List of suggestion dicts, best first (``-fit``, then earliest actionable
+        deadline, then title): every eligible fellowship that clears the
+        embedding relevance gate (if any) and ``match_threshold``, capped at
+        ``max_surface``. ``not_eligible`` and closed/suspended items are always
+        excluded. Each dict carries ``fit`` (the blended score used to rank —
+        equal to the rule fit when there is no embedding signal), ``rule_fit``
+        (the pure eligibility/recency score), and, when ``embed_by_id`` was
+        given, ``embedding_match`` (the raw cosine) — the same signal name the
+        grants/conferences matchers persist, so the serializer reads it
+        unchanged.
     """
-    ranked: list[tuple[float, str, dict]] = []
+    ranked: list[tuple[float, str, str, dict]] = []
 
     for item in items:
         meta = item.metadata or {}
@@ -322,29 +370,53 @@ def match_fellowships(
         if st["status"] in ("closed", "suspended"):
             continue
 
-        fit_score = fit(ev, st, today)
+        content_id = str(item.id)
+        rule_fit = fit(ev, st, today)
 
-        # Fit threshold: eligibility already gated "qualified for"; this trims the
-        # weakly-related tail so the feed stays "most related" (0.0 keeps everything).
-        if fit_score < match_threshold:
+        embed_match: float | None = None
+        if embed_by_id is not None:
+            embed_match = embed_by_id.get(content_id, 0.0)
+            # Relevance gate: eligible-but-irrelevant fellowships stop here,
+            # before they ever reach the blend or the rank.
+            if embed_match < embed_threshold:
+                continue
+            blended = round(_EMBED_WEIGHT * embed_match + _RULE_WEIGHT * rule_fit, 4)
+        else:
+            blended = rule_fit
+
+        # Fit threshold: trims the weakly-related tail so the feed stays "most
+        # related" (0.0 keeps everything that passed the gates above).
+        if blended < match_threshold:
             continue
 
-        tier_rank = TIER_RANK[ev["tier"]]
         actionable = st.get("actionable_date") or "9999-99"
+        title = meta.get("title") or ""
 
-        headline = (
-            "Strong eligibility match"
-            if ev["tier"] == "qualified"
-            else "Possible fit"
-        )
+        if embed_match is not None and embed_match >= _STRONG_RESEARCH_FIT:
+            headline = "Strong research-fit match"
+        elif ev["tier"] == "qualified":
+            headline = "Strong eligibility match"
+        else:
+            headline = "Possible fit"
         reason = "; ".join(ev["reasons"]) if ev["reasons"] else ""
 
+        # match_percent is the topical percent (the embedding cosine) once a
+        # research-fit signal exists — the old rule-fit percent conflated
+        # eligibility strength with relevance, which is exactly what caused an
+        # eligible-but-irrelevant fellowship to read as an 84% match.
+        match_percent = (
+            round(embed_match * 100)
+            if embed_match is not None
+            else round(rule_fit * 100)
+        )
+
         suggestion = {
-            "content_id": str(item.id),
+            "content_id": content_id,
             "tier": ev["tier"],
-            "fit": fit_score,
-            "similarity": fit_score,
-            "match_percent": round(fit_score * 100),
+            "fit": blended,
+            "rule_fit": rule_fit,
+            "similarity": blended,
+            "match_percent": match_percent,
             "gates_failed": ev["gates_failed"],
             "reasons": ev["reasons"],
             "headline": headline,
@@ -354,7 +426,10 @@ def match_fellowships(
             "actionable_date": st["actionable_date"],
             "status_summary": st["summary"],
         }
-        ranked.append((tier_rank, -fit_score, actionable, suggestion))
+        if embed_match is not None:
+            suggestion["embedding_match"] = round(embed_match, 4)
+
+        ranked.append((-blended, actionable, title, suggestion))
 
     ranked.sort(key=lambda x: (x[0], x[1], x[2]))
 
