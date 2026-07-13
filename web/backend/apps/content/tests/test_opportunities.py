@@ -549,6 +549,13 @@ def test_batch_scores_units_concurrently(pgvector):
         prune=False,
         today="2026-07-05",
     )
+    # The daily run scores only items ingested on the run day; stamp created_at to
+    # the simulated run date so this new grant is in that day's new-items pool.
+    from datetime import UTC, datetime
+
+    ContentItem.objects.filter(type=ContentItem.Type.GRANT).update(
+        created_at=datetime(2026, 7, 5, 12, tzinfo=UTC)
+    )
 
     # A slow model call that records how many run at the same time.
     lock = threading.Lock()
@@ -576,3 +583,115 @@ def test_batch_scores_units_concurrently(pgvector):
     ok = [r for r in batch.results if r.status == "ok"]
     assert len(ok) == 3  # every user scored + persisted
     assert state["peak"] >= 2  # units ran concurrently, not serially
+
+
+# -- two-process: daily new-only vs whole-corpus ------------------------------
+
+
+@pytest.mark.django_db
+def test_daily_batch_scores_only_new_items_and_accumulates(pgvector):
+    """The daily run scores only that day's new grants and appends them; a grant
+    already in the feed from an earlier day is left untouched (not re-scored)."""
+    from datetime import UTC, datetime
+
+    embeddings.set_embedder(_fake_embed)
+    user = _profile_user("accum")
+    ingest_pivot(
+        [
+            ("grants", _grant("g_old", "Knowledge Graphs for biomedical health")),
+            ("grants", _grant("g_new", "Knowledge Graphs biomedical methods")),
+        ],
+        embedder=_fake_embed,
+        prune=False,
+        today="2026-07-05",
+    )
+    old = ContentItem.objects.get(external_id="g_old")
+    new = ContentItem.objects.get(external_id="g_new")
+    # g_old was ingested on an earlier day; g_new is today's fresh arrival.
+    ContentItem.objects.filter(pk=old.pk).update(
+        created_at=datetime(2026, 7, 1, tzinfo=UTC)
+    )
+    ContentItem.objects.filter(pk=new.pk).update(
+        created_at=datetime(2026, 7, 5, tzinfo=UTC)
+    )
+    # g_old is already in the user's feed from its own earlier run.
+    RelevanceScore.objects.create(
+        content=old,
+        target_user=user,
+        score=0.9,
+        signals={
+            "area": "grant",
+            "run_at": "2026-07-01T00:00:00",
+            "suggested": True,
+            "rank": 1,
+            "match_percent": 80,
+            "source": "llm",
+        },
+    )
+
+    run_daily_opportunities_batch(
+        [user],
+        areas=("grants",),
+        ingest=False,
+        prune=False,
+        complete=lambda _p: None,
+        today="2026-07-05",
+    )
+
+    scores = {
+        s.content_id: s
+        for s in RelevanceScore.objects.filter(
+            target_user=user, content__type="grant"
+        )
+    }
+    # Both grants are in the feed (accumulate); only g_new was scored this run.
+    assert old.id in scores and new.id in scores
+    assert scores[old.id].signals["run_at"] == "2026-07-01T00:00:00"  # untouched
+    assert scores[new.id].signals["run_at"] != "2026-07-01T00:00:00"  # freshly scored
+
+
+@pytest.mark.django_db
+def test_whole_corpus_match_replaces_stale_feed_rows(pgvector, settings):
+    """A whole-corpus run (sign-up/refit, ``created_on`` None) replaces the feed: a
+    previously-suggested grant that no longer matches is dropped, not left behind."""
+    settings.GRANT_MATCH_THRESHOLD = 0.6
+    embeddings.set_embedder(_fake_embed)
+    user = _profile_user("replace")
+    ingest_pivot(
+        [
+            ("grants", _grant("g_strong", "Knowledge Graphs for biomedical health")),
+            ("grants", _grant("g_stale", "Marine biology other funding")),
+        ],
+        embedder=_fake_embed,
+        prune=False,
+        today="2026-07-05",
+    )
+    strong = ContentItem.objects.get(external_id="g_strong")
+    stale = ContentItem.objects.get(external_id="g_stale")
+    # g_stale used to be in the user's feed (before an interest change).
+    RelevanceScore.objects.create(
+        content=stale,
+        target_user=user,
+        score=0.5,
+        signals={
+            "area": "grant",
+            "run_at": "2026-07-01T00:00:00",
+            "suggested": True,
+            "rank": 1,
+            "match_percent": 70,
+            "source": "llm",
+        },
+    )
+
+    # Serial path: created_on defaults to None -> whole corpus -> replace.
+    match_opportunities_for_user(
+        user, "grants", complete=lambda _p: None, today="2026-07-05"
+    )
+
+    ids = set(
+        RelevanceScore.objects.filter(
+            target_user=user, content__type="grant"
+        ).values_list("content_id", flat=True)
+    )
+    assert strong.id in ids  # the current whole-corpus match is kept
+    assert stale.id not in ids  # the stale row is replaced (deleted)

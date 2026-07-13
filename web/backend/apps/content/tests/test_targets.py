@@ -297,6 +297,13 @@ def test_daily_opportunities_batch_matches_lab(pgvector):
         prune=False,
         today="2026-07-05",
     )
+    # The daily run scores only items ingested on the run day; stamp created_at to
+    # the simulated run date so this new grant is in that day's new-items pool.
+    from datetime import UTC, datetime
+
+    ContentItem.objects.filter(type=ContentItem.Type.GRANT).update(
+        created_at=datetime(2026, 7, 5, 12, tzinfo=UTC)
+    )
 
     batch = run_daily_opportunities_batch(
         [], labs=[lab], areas=("grants",), ingest=False, prune=False,

@@ -20,6 +20,7 @@ import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
+from datetime import date
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -155,6 +156,9 @@ class _MatchJob:
     surface_limit: int | None  # None => surface all (threshold-gated areas)
     prior: dict = field(default_factory=dict)  # carry-forward LLM verdicts
     new_ids: set = field(default_factory=set)  # freshly-seen cids (LLM-slot priority)
+    # None => whole corpus (sign-up/refit, which *replaces* the feed); a date =>
+    # only items ingested that day (the daily run, which *accumulates*).
+    created_on: date | None = None
 
 
 @dataclass
@@ -185,6 +189,9 @@ class _FellowshipMatchJob:
     embed_by_id: dict | None = None   # {content_id: cosine}; None => rule-only
     has_interest_signal: bool = False  # user declared interests/watch topics
     embed_threshold: float = 0.0      # min cosine an eligible item must clear
+    # None => whole corpus (sign-up/refit, *replaces* the feed); a date => only
+    # fellowships ingested that day (the daily run, *accumulates*).
+    created_on: date | None = None
 
     def __post_init__(self):
         if self.items is None:
@@ -204,9 +211,15 @@ def _prepare_fellowship_match(
     *,
     today: str | None,
     reuse_prior: bool = True,
+    created_on: date | None = None,
     log: Callable[[str], None] | None,
 ) -> tuple[_FellowshipMatchJob | None, OppRunResult | None]:
-    """DB phase for fellowships — load all items + build Elig (no embedding)."""
+    """DB phase for fellowships — load items + build Elig (no embedding).
+
+    ``created_on`` set (the daily run) restricts the candidate items to fellowships
+    ingested that day, so the run only evaluates the day's new arrivals and appends
+    them; ``None`` (sign-up/refit) evaluates the whole fellowship corpus.
+    """
     username = user.get_username()
 
     def emit(message: str) -> None:
@@ -224,13 +237,13 @@ def _prepare_fellowship_match(
 
     elig = eligibility_from_profile(profile)
 
-    items = list(
-        ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP).only(
-            "id", "metadata"
-        )
-    )
+    queryset = ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP)
+    if created_on is not None:
+        queryset = queryset.filter(created_at__date=created_on)
+    items = list(queryset.only("id", "metadata"))
     if not items:
-        emit("no fellowship ContentItems in corpus yet")
+        scope = "new today" if created_on is not None else "in corpus"
+        emit(f"no fellowship ContentItems {scope} yet")
         return None, OppRunResult(
             username, "fellowships", "no_results", note="no fellowship items in DB"
         )
@@ -244,7 +257,9 @@ def _prepare_fellowship_match(
         if reuse_prior
         else {}
     )
-    embed_by_id, has_interest_signal = _fellowship_embed_by_id(user, profile, emit=emit)
+    embed_by_id, has_interest_signal = _fellowship_embed_by_id(
+        user, profile, emit=emit, created_on=created_on
+    )
     job = _FellowshipMatchJob(
         user=user,
         username=username,
@@ -263,12 +278,13 @@ def _prepare_fellowship_match(
         embed_by_id=embed_by_id,
         has_interest_signal=has_interest_signal,
         embed_threshold=getattr(settings, "FELLOWSHIP_MATCH_THRESHOLD", 0.4),
+        created_on=created_on,
     )
     return job, None
 
 
 def _fellowship_embed_by_id(
-    user: User, profile, *, emit: Callable[[str], None]
+    user: User, profile, *, emit: Callable[[str], None], created_on: date | None = None
 ) -> tuple[dict[str, float] | None, bool]:
     """The researcher's embedding match to each fellowship, or ``(None, ...)``.
 
@@ -308,6 +324,7 @@ def _fellowship_embed_by_id(
             pool_per_interest=DEFAULT_POOL_PER_INTEREST,
             beta=DEFAULT_BETA,
             emit=emit,
+            created_on=created_on,
             match_threshold=0.0,
         )
     except Exception:
@@ -394,8 +411,16 @@ def _finalize_fellowship_match(
 
     if persist:
         visible_ids = {s["content_id"] for s in visible}
+        # Whole-corpus runs (sign-up/refit, created_on is None) replace the feed;
+        # daily new-only runs accumulate.
         _persist_fellowships(
-            job.user, suggestions, visible_ids, items_by_id, pins, today=job.today
+            job.user,
+            suggestions,
+            visible_ids,
+            items_by_id,
+            pins,
+            today=job.today,
+            replace=job.created_on is None,
         )
 
     return OppRunResult(
@@ -419,14 +444,25 @@ def _persist_fellowships(
     pins: dict,
     *,
     today: str | None,
+    replace: bool = False,
 ) -> None:
     """Upsert one RelevanceScore per eligible fellowship, with eligibility signals.
 
     Every eligible fellowship is persisted (so the carry-forward store remembers
     its verdict), but only those in ``visible_ids`` (cleared the match-percent
     floor) are flagged ``suggested`` — the rest are hidden from the feed.
+
+    ``replace`` (a whole-corpus sign-up/refit run) drops this user's prior fellowship
+    scores that this run did not re-evaluate — so a profile edit that changes
+    eligibility clears fellowships the user no longer qualifies for. A daily new-only
+    run leaves ``replace`` false and accumulates.
     """
     run_at = timezone.now().isoformat()
+    if replace:
+        surfaced_ids = [s["content_id"] for s in suggestions]
+        RelevanceScore.objects.filter(
+            target_user=user, content__type=ContentItem.Type.FELLOWSHIP
+        ).exclude(content_id__in=surfaced_ids).delete()
     for s in suggestions:
         cid = s["content_id"]
         item = items_by_id.get(cid)
@@ -473,6 +509,7 @@ def _prepare_match(
     pool_per_interest: int,
     beta: float,
     reuse_prior: bool = True,
+    created_on: date | None = None,
     today: str | None = None,
     log: Callable[[str], None] | None,
 ) -> tuple[_MatchJob | None, OppRunResult | None]:
@@ -480,6 +517,10 @@ def _prepare_match(
 
     Target-agnostic: the interests / watch topics come off the :class:`MatchTarget`,
     so this prepares a unit for a person, a lab, or a project identically.
+
+    ``created_on`` set (the daily run) scopes retrieval to opportunities ingested that
+    day, so only the day's new arrivals are scored and appended; ``None``
+    (sign-up/refit) scores the whole corpus and replaces the target's feed.
     """
     if area not in AREAS:
         raise ValueError(f"unknown opportunity area {area!r}")
@@ -511,10 +552,12 @@ def _prepare_match(
         pool_per_interest=pool_per_interest,
         beta=beta,
         emit=emit,
+        created_on=created_on,
         match_threshold=threshold,
     )
     if not pairs:
-        emit("no embedded opportunities to retrieve yet")
+        scope = "new today" if created_on is not None else "in corpus"
+        emit(f"no embedded opportunities {scope} to retrieve")
         return None, OppRunResult(
             key, area, "no_results", note="no embedded opportunities yet"
         )
@@ -539,6 +582,7 @@ def _prepare_match(
         surface_limit=None if threshold is not None else surface_limit,
         prior=prior,
         new_ids=new_ids,
+        created_on=created_on,
     )
     return job, None
 
@@ -588,6 +632,8 @@ def _finalize_match(
     if persist:
         # Store the singular content type as the signal's ``area`` so it lines up
         # with ``content.type`` and the API filter (grant/conference, not plural).
+        # Whole-corpus runs (created_on is None) replace the feed; daily new-only
+        # runs accumulate.
         visible_ids = {s["content_id"] for s in visible}
         _persist(
             job.target.persist_kwargs,
@@ -597,6 +643,7 @@ def _finalize_match(
             visible_ids,
             pins,
             today=today,
+            replace=job.created_on is None,
         )
     return OppRunResult(
         job.username,
@@ -622,6 +669,7 @@ def match_opportunities_for_target(
     complete: Callable[[str], str | None] | None = None,
     persist: bool = True,
     reuse_prior: bool = True,
+    created_on: date | None = None,
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppRunResult:
@@ -630,7 +678,10 @@ def match_opportunities_for_target(
     The engine for a person, a lab, or a project; the score row lands under the
     target's ``persist_kwargs`` (``target_user`` / ``target_lab`` / ``target_project``).
     ``reuse_prior=False`` bypasses carry-forward, re-sending every surfaced item to
-    the model (used by :mod:`.refitting` after a profile edit).
+    the model (used by :mod:`.refitting` after a profile edit). ``created_on`` defaults
+    to ``None`` (whole corpus, so this serial path — sign-up / refit — replaces the
+    target's feed for the area); the daily batch passes the run date to score only
+    that day's new items and accumulate.
     """
     job, short = _prepare_match(
         target,
@@ -640,6 +691,7 @@ def match_opportunities_for_target(
         pool_per_interest=pool_per_interest,
         beta=beta,
         reuse_prior=reuse_prior,
+        created_on=created_on,
         today=today,
         log=log,
     )
@@ -662,12 +714,18 @@ def match_fellowships_for_user(
     complete: Callable[[str], str | None] | None = None,
     persist: bool = True,
     reuse_prior: bool = True,
+    created_on: date | None = None,
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppRunResult:
-    """Eligibility-gate + LLM-report fellowship matching for one user (serial)."""
+    """Eligibility-gate + LLM-report fellowship matching for one user (serial).
+
+    ``created_on`` defaults to ``None`` (whole corpus — this serial sign-up / refit
+    path replaces the user's fellowship feed); the daily batch passes the run date to
+    evaluate only that day's new fellowships and accumulate.
+    """
     job, short = _prepare_fellowship_match(
-        user, today=today, reuse_prior=reuse_prior, log=log
+        user, today=today, reuse_prior=reuse_prior, created_on=created_on, log=log
     )
     if short is not None:
         return short
@@ -780,11 +838,15 @@ def run_daily_opportunities_batch(
     Phase 1 (ingest, best-effort): try a Playwright refresh of the Pivot corpus —
     a no-op that logs and continues when no saved session exists — then prune
     expired items so the pool stays current even on nights with no fresh scrape.
-    Phase 2 (match): each ``(target, area)`` unit is *prepared* (retrieve + fuse,
-    serial DB work), then all prepared units are **scored by the model
-    concurrently** (up to ``concurrency`` at once — the LLM call is the slow step
-    and shouldn't be issued one at a time), then *finalized* (New/pin + persist,
-    serial DB writes). A failure for one unit is caught so it never sinks the run.
+    Phase 2 (match): the daily run is the **new-items-only** process — each
+    ``(target, area)`` unit is *prepared* (retrieve + fuse, **scoped to that day's
+    freshly-ingested items** via ``created_on``), then all prepared units are
+    **scored by the model concurrently** (up to ``concurrency`` at once — the LLM
+    call is the slow step and shouldn't be issued one at a time), then *finalized*
+    (New/pin + **append**, serial DB writes). The passers are added to each target's
+    accumulating feed; older matches stay until pruned. A failure for one unit is
+    caught so it never sinks the run. (Sign-up / refit take the serial paths above,
+    which score the whole corpus and replace the feed instead.)
 
     Users match every requested area; labs and projects match grants + conferences
     only (fellowships gate on individual eligibility, so they never apply to a lab
@@ -798,6 +860,12 @@ def run_daily_opportunities_batch(
     def emit(message: str) -> None:
         if log is not None:
             log(message)
+
+    # The daily run is the *new-items-only* process: it scores just the opportunities
+    # ingested today (a fresh ContentItem has ``created_at`` == today) and appends the
+    # passers to each target's accumulating feed. Sign-up / refit (the serial paths)
+    # leave ``created_on`` None and score the whole corpus instead.
+    run_date = date.fromisoformat(today) if today else timezone.now().date()
 
     ingest_summary: dict = {}
     if ingest:
@@ -833,7 +901,7 @@ def run_daily_opportunities_batch(
             if area == "fellowships":
                 try:
                     job, short = _prepare_fellowship_match(
-                        user, today=today, log=log
+                        user, today=today, created_on=run_date, log=log
                     )
                 except Exception:
                     logger.exception(
@@ -859,6 +927,7 @@ def run_daily_opportunities_batch(
                         llm_limit=DEFAULT_LLM_LIMIT,
                         pool_per_interest=DEFAULT_POOL_PER_INTEREST,
                         beta=DEFAULT_BETA,
+                        created_on=run_date,
                         today=today,
                         log=log,
                     )
@@ -893,6 +962,7 @@ def run_daily_opportunities_batch(
                     llm_limit=DEFAULT_LLM_LIMIT,
                     pool_per_interest=DEFAULT_POOL_PER_INTEREST,
                     beta=DEFAULT_BETA,
+                    created_on=run_date,
                     today=today,
                     log=log,
                 )
@@ -979,18 +1049,29 @@ def _persist(
     pins: dict[str, dict],
     *,
     today: str | None,
+    replace: bool = False,
 ) -> None:
     """Upsert one RelevanceScore per surfaced item, with opportunity signals.
 
     ``persist_kwargs`` is the single ``target_*`` FK the rows are written under
     (a user, a lab, or a project). Mirrors the paper pipeline's persist but adds
     the area discriminator, the New/pin fields, and a deadline snapshot the API /
-    deadlines / notifications read back. A shared ``run_at`` lets the read layer
-    show only the latest run. Every surfaced item is persisted (so carry-forward
-    remembers its verdict), but only those in ``visible_ids`` (cleared the
-    match-percent floor) are flagged ``suggested``.
+    deadlines / notifications read back. Each surfaced item carries a ``run_at``
+    stamp; the accumulate read layer keeps every run's suggested rows. Every surfaced
+    item is persisted (so carry-forward remembers its verdict), but only those in
+    ``visible_ids`` (cleared the match-percent floor) are flagged ``suggested``.
+
+    ``replace`` (a whole-corpus sign-up/refit run) drops this target's prior scores
+    for the area that this run did not re-surface — so an interest edit re-establishes
+    the feed from the full corpus rather than leaving stale matches behind. A daily
+    new-only run leaves ``replace`` false and appends.
     """
     run_at = timezone.now().isoformat()
+    if replace:
+        surfaced_ids = [item.id for item, _score, _extra in rows]
+        RelevanceScore.objects.filter(
+            **persist_kwargs, content__type=area
+        ).exclude(content_id__in=surfaced_ids).delete()
     promoted_by_id = {s["content_id"]: s for s in suggestions}
     for item, score, extra in rows:
         cid = str(item.id)
