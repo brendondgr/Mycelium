@@ -253,6 +253,21 @@ PAPER_MATCH_MAX_SURFACE = env.int("PAPER_MATCH_MAX_SURFACE", default=250)
 # (``suggested=False``) rather than surfaced with a low score.
 PAPER_MIN_MATCH_PERCENT = env.int("PAPER_MIN_MATCH_PERCENT", default=60)
 
+# Papers sign-up hybrid (apps.content.onboarding_match). A brand-new user is first
+# matched against the latest gather batch already in the store (no live scan). If
+# that yields at least PAPER_ONBOARDING_MIN_HIGH_QUALITY suggestions at or above
+# PAPER_ONBOARDING_HIGH_QUALITY_PERCENT match, those are shown; otherwise a
+# background scan of the user's watch topics is kicked off and the Research Papers
+# page shows a "scanning" state (a Redis flag, best-effort) until it lands.
+# PAPER_SCAN_INFLIGHT_TTL bounds that flag so a dead scan can never wedge it on.
+PAPER_ONBOARDING_MIN_HIGH_QUALITY = env.int(
+    "PAPER_ONBOARDING_MIN_HIGH_QUALITY", default=30
+)
+PAPER_ONBOARDING_HIGH_QUALITY_PERCENT = env.int(
+    "PAPER_ONBOARDING_HIGH_QUALITY_PERCENT", default=80
+)
+PAPER_SCAN_INFLIGHT_TTL = env.int("PAPER_SCAN_INFLIGHT_TTL", default=1800)
+
 # Opportunity feed sizing (apps.content.opportunities / .fellowships). Like the
 # paper feed, grants/conferences/fellowships are no longer fixed top-N lists: an
 # item is surfaced only when its match to the researcher clears the area's
@@ -350,6 +365,13 @@ SEARCH_CACHE_URL = env(
 )
 SEARCH_CACHE_TTL = env.int("SEARCH_CACHE_TTL", default=3600)
 
+# A small Redis-backed cache for the "paper scan in flight" flag, which the web
+# process sets (at sign-up) and the Celery worker clears (when the scan lands), so
+# it must be shared across processes — the default LocMemCache is per-process. All
+# reads/writes are best-effort (apps.content.scan_status), so a Redis outage
+# degrades to "no scanning state", never an error.
+SCAN_CACHE_URL = env("SCAN_CACHE_URL", default=re.sub(r"/\d+$", "/3", _REDIS_URL))
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -359,6 +381,12 @@ CACHES = {
         "LOCATION": SEARCH_CACHE_URL,
         "KEY_PREFIX": "mycelium_search",
         "TIMEOUT": SEARCH_CACHE_TTL,
+    },
+    "scan": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": SCAN_CACHE_URL,
+        "KEY_PREFIX": "mycelium_scan",
+        "TIMEOUT": PAPER_SCAN_INFLIGHT_TTL,
     },
 }
 

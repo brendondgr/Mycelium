@@ -71,8 +71,12 @@ def test_papers_area_matches_and_persists(pgvector) -> None:
     _paper("far", "an unrelated other topic", [0.0, 0.0, 0.0, 1.0])
     user = _profile_user("matcher", areas=["graph", "health"])
 
-    # Deterministic fallback (no LLM) so the test runs offline.
-    result = onboarding_match_area(user, "papers", complete=lambda _p: None)
+    # Deterministic fallback (no LLM) so the test runs offline; inject the scan seam
+    # so the sparse-batch hybrid never touches Celery.
+    scans: list[str] = []
+    result = onboarding_match_area(
+        user, "papers", complete=lambda _p: None, enqueue_scan=scans.append
+    )
 
     assert result["area"] == "papers"
     assert result["status"] == "ok"
@@ -83,3 +87,47 @@ def test_papers_area_matches_and_persists(pgvector) -> None:
     ).exists()
     titles = [row["title"] for row in result["sample"]]
     assert any("graph health" in title.casefold() for title in titles)
+    # Fallback matches carry no LLM percent, so the batch has 0 high-quality (>=80%)
+    # matches — far below the default minimum — so the background scan is triggered.
+    assert result["scanning"] is True
+    assert scans == ["matcher"]
+
+
+@pytest.mark.django_db
+def test_papers_onboarding_skips_scan_when_batch_is_rich(pgvector, settings) -> None:
+    """A latest batch with enough high-quality matches shows immediately — no scan."""
+    import json
+
+    settings.PAPER_ONBOARDING_MIN_HIGH_QUALITY = 1
+    settings.PAPER_ONBOARDING_HIGH_QUALITY_PERCENT = 80
+    embeddings.set_embedder(_fake_embed)
+    _paper("m", "graph health", [1.0, 1.0, 0.0, 0.0])
+    user = _profile_user("rich", areas=["graph", "health"])
+
+    def complete(_prompt: str) -> str:
+        return json.dumps(
+            {"suggestions": [{"paper": 1, "match": 95, "headline": "H", "reason": "R"}]}
+        )
+
+    scans: list[str] = []
+    result = onboarding_match_area(
+        user, "papers", complete=complete, enqueue_scan=scans.append
+    )
+
+    assert result["scanning"] is False
+    assert scans == []  # the batch was rich enough; no background scan
+
+
+@pytest.mark.django_db
+def test_non_paper_area_never_scans(pgvector) -> None:
+    """Grants/conferences/fellowships are corpus-only — they never trigger a scan."""
+    embeddings.set_embedder(_fake_embed)
+    user = _profile_user("gonly", areas=["graph"])
+
+    scans: list[str] = []
+    result = onboarding_match_area(
+        user, "grants", complete=lambda _p: None, enqueue_scan=scans.append
+    )
+
+    assert result["scanning"] is False
+    assert scans == []

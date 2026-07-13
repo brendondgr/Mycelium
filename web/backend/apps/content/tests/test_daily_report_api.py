@@ -72,7 +72,12 @@ def test_empty_when_no_run(client: APIClient) -> None:
     resp = client.get("/api/daily-report/")
 
     assert resp.status_code == 200
-    assert resp.data == {"generated_at": None, "summary": None, "suggestions": []}
+    assert resp.data == {
+        "generated_at": None,
+        "summary": None,
+        "suggestions": [],
+        "scanning": False,
+    }
 
 
 @pytest.mark.django_db

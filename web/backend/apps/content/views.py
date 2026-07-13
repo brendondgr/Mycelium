@@ -26,6 +26,7 @@ from .models import (
 )
 from .onboarding_match import UnknownArea, onboarding_match_area
 from .query_embedding import embed_query
+from .scan_status import is_paper_scan_inflight
 from .search import SearchFilters, normalize_query, run_search
 from .serializers import (
     ConferenceSerializer,
@@ -89,12 +90,18 @@ class DailyReportView(APIView):
 
     Earlier runs' suggestions are ignored, so re-running the pipeline replaces
     the digest rather than piling onto it. An empty list (with
-    ``generated_at: null``) is the honest "no run yet" state.
+    ``generated_at: null``) is the honest "no run yet" state. ``scanning`` is true
+    while a sign-up background scan is filling this user's feed (see
+    :mod:`.scan_status`), so the page can say "scanning new articles for you".
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # A background scan (sign-up hybrid) may be filling this user's paper feed;
+        # the page shows a "scanning" state while it runs. Best-effort: a Redis
+        # outage reads as "not scanning".
+        scanning = is_paper_scan_inflight(request.user)
         # Papers only: grants/conferences also persist suggested RelevanceScore
         # rows for this user, and they have their own pages (Opportunities /
         # Conferences). Filtering by content type keeps this feed to papers.
@@ -108,7 +115,12 @@ class DailyReportView(APIView):
         ]
         if not scores:
             return Response(
-                {"generated_at": None, "summary": None, "suggestions": []}
+                {
+                    "generated_at": None,
+                    "summary": None,
+                    "suggestions": [],
+                    "scanning": scanning,
+                }
             )
 
         latest = max(score.signals.get("run_at", "") for score in scores)
@@ -128,6 +140,7 @@ class DailyReportView(APIView):
             {
                 "generated_at": latest or None,
                 "summary": _build_summary(current, today=today),
+                "scanning": scanning,
                 "suggestions": SuggestionSerializer(
                     current,
                     many=True,

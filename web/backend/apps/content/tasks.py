@@ -141,6 +141,31 @@ def run_daily_opportunities(
     return batch.as_dict()
 
 
+@shared_task(name="apps.content.scan_and_recommend_for_user")
+def scan_and_recommend_for_user(username: str) -> dict:
+    """Scan one user's watch topics and recommend — the sign-up background scan.
+
+    Fired by :func:`apps.content.scan_status.trigger_paper_scan` when a new user's
+    latest-batch match was too thin. Runs :func:`~apps.content.pipeline.run_for_user`
+    (scan their topics → embed → recommend the fresh batch), then clears the
+    "scanning" flag so the Research Papers page shows the results. The flag is
+    cleared even on failure (it also TTLs out) so the page can never wedge on
+    "scanning".
+    """
+    from .pipeline import run_for_user
+    from .scan_status import clear_paper_scan_inflight
+
+    user = (
+        User.objects.filter(username=username).select_related("profile").first()
+    )
+    if user is None:
+        return {"error": "user_not_found", "username": username}
+    try:
+        return run_for_user(user).as_dict()
+    finally:
+        clear_paper_scan_inflight(user)
+
+
 @shared_task(name="apps.content.fanout_relevance")
 def fanout_relevance(share_id: str) -> dict:
     """Score a shared item against each other project member (Feature F).
