@@ -92,7 +92,10 @@ class SuggestionSerializer(serializers.Serializer):
         return score.signals.get("rank")
 
     def get_headline(self, score: RelevanceScore) -> str:
-        return score.signals.get("headline") or self.get_title(score)
+        # Always the paper's real title. Earlier pipeline versions let the model
+        # invent a "headline" rename; ignore any still persisted in old signals —
+        # researchers cite and recognize papers by their actual titles.
+        return self.get_title(score)
 
     def get_reason(self, score: RelevanceScore) -> str:
         return score.signals.get("reason") or ""

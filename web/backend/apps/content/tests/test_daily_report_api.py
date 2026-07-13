@@ -120,6 +120,9 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
         "matched_interests",
     } <= set(top)
     assert top["origin"] == "llm"
+    # Old rows may carry a model-invented "headline" rename in signals; the API
+    # always serves the paper's real title instead.
+    assert top["headline"] == "First"
     assert top["match_percent"] == 90
     # The transformer cosine match is exposed as a whole percent for the tail badge.
     assert top["embedding_match"] == 72

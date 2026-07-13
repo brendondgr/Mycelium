@@ -378,7 +378,8 @@ def test_llm_suggestions_counted(pgvector) -> None:
     assert result.llm == 1 and result.fallback == 0
     top = RelevanceScore.objects.get(target_user=user, content=near)
     assert top.signals["source"] == "llm"
-    assert top.signals["headline"] == "Top"
+    # Persisted headline is the paper's real title, not the model's rename.
+    assert top.signals["headline"] == "knowledge graph for biomedical discovery"
     # The language model's percent match is persisted for LLM-ranked papers.
     assert top.signals["match_percent"] == 88
 

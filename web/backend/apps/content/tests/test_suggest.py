@@ -56,7 +56,8 @@ def test_llm_ranks_top_slice_then_fallback_fills_the_rest() -> None:
     assert [s["rank"] for s in out] == [1, 2, 3]
     # The model put paper 2 first; its two picks lead as source="llm".
     assert out[0]["content_id"] == str(hits[1][0].id)
-    assert out[0]["headline"] == "Graphs for Care"
+    # The headline is always the paper's real title — model renames are ignored.
+    assert out[0]["headline"] == "Biomedical Knowledge Discovery"
     assert out[0]["source"] == "llm"
     assert out[0]["similarity"] == 0.78
     assert out[0]["match_percent"] == 92  # carried through, clamped to 0-100
@@ -210,7 +211,8 @@ def test_carry_forward_skips_already_scored_paper_and_reuses_its_verdict() -> No
     carried = next(s for s in out if s["content_id"] == scored_cid)
     assert carried["source"] == "llm"
     assert carried["match_percent"] == 81
-    assert carried["headline"] == "Carried Headline"
+    # Even a carried verdict's legacy rename is dropped for the real title.
+    assert carried["headline"] == "Graph Methods"
     assert carried["llm_scored_at"] == "2026-07-01T00:00:00+00:00"
 
 

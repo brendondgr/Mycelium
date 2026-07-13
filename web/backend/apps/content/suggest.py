@@ -10,7 +10,7 @@ deliberate two-tier shape (a product requirement):
   count is variable — however many papers cleared it. An explicit ``surface_limit``
   still caps the total when a caller wants a fixed slice.
 - **Only the top ``llm_limit`` papers** (default 10) are sent to the language model
-  for a bespoke headline, reason, and percent-match judgement. The percent match is
+  for a bespoke reason and percent-match judgement. The percent match is
   *only* ever the model's — papers ranked below (the cross-embedding tail) carry a
   templated reason and **no percent** (``match_percent=None``), honest that the
   model only vetted the top slice and that the fusion score is a ranking, not a %.
@@ -60,7 +60,7 @@ _SYSTEM_PROMPT = (
     "an integer percent match from 0 to 100 (100 = a near-perfect fit; be "
     "honest and use the full range). Return ONLY one JSON object:\n"
     '  {"suggestions": [{"paper": <number>, "match": <integer 0-100>, '
-    '"headline": <short title-case phrase>, "reason": <2-4 sentences, second '
+    '"reason": <2-4 sentences, second '
     "person, that explain concretely WHY this researcher should read it, HOW it "
     'connects to their work, and WHAT they could take from it>}]}\n'
     "Rank best first. Only use papers from the list (reference them by their "
@@ -84,7 +84,7 @@ def generate_suggestions(
     ``hits`` is the fused, ranked candidate list (``(ContentItem, score)``), best
     first — already filtered by the caller (e.g. by an embedding-match threshold), so
     by default (``surface_limit=None``) *all* of them are surfaced. The top
-    ``llm_limit`` go to the model for bespoke headlines/reasons/match scores; the
+    ``llm_limit`` go to the model for bespoke reasons/match scores; the
     model's picks lead (``source="llm"``). Every remaining surfaced paper is filled
     in deterministically (``source="fallback"``), preserving score order. Passing an
     explicit ``surface_limit`` caps the total to a fixed slice. When the model is
@@ -128,7 +128,9 @@ def generate_suggestions(
             item,
             score,
             rank=0,
-            headline=verdict.get("headline") or _title(item),
+            # A paper's headline is always its real title — never a model rename
+            # (legacy carried verdicts may still hold one; drop it here).
+            headline=_title(item),
             reason=verdict.get("reason") or _fallback_reason(interests, item),
             match_percent=verdict.get("match_percent"),
             source="llm",
@@ -298,7 +300,7 @@ def _parse(
                 item,
                 similarity,
                 rank=len(out) + 1,
-                headline=_clean(row.get("headline")) or _title(item),
+                headline=_title(item),
                 reason=_clean(row.get("reason")) or _fallback_reason({}, item),
                 match_percent=_as_match(row.get("match")),
                 source="llm",
