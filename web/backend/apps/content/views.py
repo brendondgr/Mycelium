@@ -1,6 +1,7 @@
 from collections import Counter, defaultdict
 from datetime import date
 
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -271,12 +272,14 @@ def _saved_content_ids(user) -> set[str]:
 def _latest_scores(target_filter: dict, content_type: str) -> list[RelevanceScore]:
     """A target's matched items for the area, from the latest run, pinned-first.
 
-    ``target_filter`` is the single ``target_*`` FK to read under —
-    ``{"target_user": user}`` for a person, ``{"target_lab": lab}`` /
-    ``{"target_project": project}`` for the institutional feeds. Rows the matcher
-    persisted but marked ``suggested=False`` (below the match-percent floor) are
-    excluded — mirroring ``DailyReportView``'s own filter — so a hidden verdict
-    never surfaces just because it is the latest run.
+    The **fresh-only** read, used for **papers**: the paper feed shows only the
+    latest gather batch (see :func:`apps.content.pipeline.recommend_for_user`), so a
+    re-run replaces the digest rather than piling onto it. ``target_filter`` is the
+    single ``target_*`` FK to read under — ``{"target_user": user}`` for a person,
+    ``{"target_lab": lab}`` / ``{"target_project": project}`` for the institutional
+    feeds. Rows the matcher persisted but marked ``suggested=False`` (below the
+    match-percent floor) are excluded — mirroring ``DailyReportView``'s own filter —
+    so a hidden verdict never surfaces just because it is the latest run.
     """
     scores = [
         s
@@ -300,9 +303,52 @@ def _latest_scores(target_filter: dict, content_type: str) -> list[RelevanceScor
     return current
 
 
-def _latest_run_scores(user, content_type: str) -> list[RelevanceScore]:
-    """The signed-in user's matched items for the area (the personal feeds)."""
-    return _latest_scores({"target_user": user}, content_type)
+def _accumulated_scores(
+    target_filter: dict, content_type: str, *, cap: int | None = None
+) -> list[RelevanceScore]:
+    """A target's matched **opportunities**, accumulated across every run.
+
+    The **accumulate** read, used for grants / conferences / fellowships: the daily
+    run scores only that day's *new* items and appends them (see
+    :func:`apps.content.opportunities.run_daily_opportunities_batch`), so a feed is
+    the union of every run's suggested rows — one per ``(content, target)`` — not
+    just the latest run. Items leave the feed only when the underlying
+    :class:`ContentItem` is pruned at its deadline (``CASCADE`` drops the score).
+
+    Newly-pinned items lead; below them, strongest match first (then the raw score),
+    so an older still-relevant grant keeps a stable place. Rows marked
+    ``suggested=False`` (below the match-percent floor) are excluded. Capped by
+    ``OPPORTUNITY_FEED_MAX`` as a payload backstop, since an accumulating feed can
+    otherwise grow unbounded between prunes.
+    """
+    scores = [
+        s
+        for s in RelevanceScore.objects.filter(
+            **target_filter, content__type=content_type
+        ).select_related("content")
+        if s.signals.get("suggested")
+    ]
+    if not scores:
+        return []
+    today = timezone.now().date().isoformat()
+
+    def sort_key(s: RelevanceScore):
+        pinned_until = s.signals.get("pinned_until")
+        pinned = bool(pinned_until and pinned_until >= today)
+        match = s.signals.get("match_percent")
+        match = match if isinstance(match, int) else -1
+        return (0 if pinned else 1, -match, -s.score)
+
+    scores.sort(key=sort_key)
+    if cap is None:
+        cap = getattr(settings, "OPPORTUNITY_FEED_MAX", 250)
+    return scores[:cap]
+
+
+def _generated_at(scores: list[RelevanceScore]) -> str | None:
+    """The most recent ``run_at`` across a (possibly multi-run) set of rows."""
+    run_ats = [s.signals.get("run_at") for s in scores if s.signals.get("run_at")]
+    return max(run_ats) if run_ats else None
 
 
 class _OpportunityFeedView(APIView):
@@ -313,15 +359,14 @@ class _OpportunityFeedView(APIView):
     serializer_class = None
 
     def get(self, request):
-        scores = _latest_run_scores(request.user, self.content_type)
-        generated_at = scores[0].signals.get("run_at") if scores else None
+        scores = _accumulated_scores({"target_user": request.user}, self.content_type)
         context = {
             "today": timezone.now().date().isoformat(),
             "saved_ids": _saved_content_ids(request.user),
         }
         return Response(
             {
-                "generated_at": generated_at,
+                "generated_at": _generated_at(scores),
                 "items": self.serializer_class(scores, many=True, context=context).data,
             }
         )
@@ -400,17 +445,13 @@ def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dic
     """
     today = timezone.now().date().isoformat()
     opp_context = {"today": today, "saved_ids": _saved_content_ids(user)}
+    # Papers are fresh-only (latest gather batch); opportunities accumulate.
     papers = _latest_scores(target_filter, ContentItem.Type.PAPER)
-    grants = _latest_scores(target_filter, ContentItem.Type.GRANT)
-    conferences = _latest_scores(target_filter, ContentItem.Type.CONFERENCE)
-    run_ats = [
-        rows[0].signals.get("run_at")
-        for rows in (papers, grants, conferences)
-        if rows
-    ]
+    grants = _accumulated_scores(target_filter, ContentItem.Type.GRANT)
+    conferences = _accumulated_scores(target_filter, ContentItem.Type.CONFERENCE)
     content_ids = [s.content_id for s in (*papers, *grants, *conferences)]
     return {
-        "generated_at": max(run_ats) if run_ats else None,
+        "generated_at": _generated_at([*papers, *grants, *conferences]),
         "counts": {
             "papers": len(papers),
             "grants": len(grants),

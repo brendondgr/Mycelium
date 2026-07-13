@@ -1,8 +1,8 @@
 """The cross-category "Mylo Report" daily briefing.
 
 After the daily run has produced the day's paper suggestions and opportunity
-matches, this module reads the latest-run :class:`RelevanceScore` rows for a user
-across every category they watch (papers, grants, conferences, fellowships),
+matches, this module reads each category's :class:`RelevanceScore` feed for a user
+(papers fresh-only, opportunities accumulated) across every category they watch,
 rolls them into per-category counts and a small showcase of top items, and asks
 the language model to write a short, grounded 2–3 paragraph briefing over exactly
 those items. The result is persisted as the user's :class:`DailyBriefing`.
@@ -70,36 +70,50 @@ def _watched_categories(user) -> list[str]:
     return configured or list(CATEGORY_TYPES)
 
 
-def _latest_suggested(user, content_type: str) -> list[RelevanceScore]:
-    """The user's suggested items of one type from that type's latest run.
+def _suggested_scores(user, content_type: str) -> list[RelevanceScore]:
+    """The user's suggested items of one type, read the way its feed reads them.
 
-    Mirrors ``views._latest_scores``: filter by type, keep only the newest
-    ``run_at``, drop rows that were computed but not promoted (``suggested``),
-    then order pinned-first by rank.
+    Mirrors the two read models in ``views.py``:
+
+    - **Papers** (``views._latest_scores``) are fresh-only — keep just the latest
+      ``run_at`` (the freshest gather batch), pinned-first by rank.
+    - **Opportunities** (``views._accumulated_scores``) accumulate — the union of
+      every run's suggested rows, pinned-first then strongest match.
+
+    Either way, rows computed but not promoted (``suggested`` false) are dropped.
     """
     scores = [
         s
         for s in RelevanceScore.objects.filter(
             target_user=user, content__type=content_type
         ).select_related("content")
+        if s.signals.get("suggested")
     ]
     if not scores:
         return []
-    latest = max(s.signals.get("run_at", "") for s in scores)
-    current = [
-        s
-        for s in scores
-        if s.signals.get("run_at", "") == latest and s.signals.get("suggested")
-    ]
     today = timezone.now().date().isoformat()
 
-    def sort_key(s: RelevanceScore):
+    if content_type == ContentItem.Type.PAPER:
+        latest = max(s.signals.get("run_at", "") for s in scores)
+        scores = [s for s in scores if s.signals.get("run_at", "") == latest]
+
+        def paper_key(s: RelevanceScore):
+            pinned_until = s.signals.get("pinned_until")
+            pinned = bool(pinned_until and pinned_until >= today)
+            return (0 if pinned else 1, s.signals.get("rank") or 999)
+
+        scores.sort(key=paper_key)
+        return scores
+
+    def opp_key(s: RelevanceScore):
         pinned_until = s.signals.get("pinned_until")
         pinned = bool(pinned_until and pinned_until >= today)
-        return (0 if pinned else 1, s.signals.get("rank") or 999)
+        match = s.signals.get("match_percent")
+        match = match if isinstance(match, int) else -1
+        return (0 if pinned else 1, -match, -s.score)
 
-    current.sort(key=sort_key)
-    return current
+    scores.sort(key=opp_key)
+    return scores
 
 
 def _showcase_item(score: RelevanceScore) -> dict:
@@ -132,16 +146,17 @@ def _gather(
 ) -> tuple[list[str], dict[str, int], dict[str, int], dict[str, list[dict]]]:
     """Return (watched categories, counts, new counts, showcase) per category.
 
-    ``counts`` is everything the latest run surfaced; ``new_counts`` is the subset
-    first seen within the New window (``signals.is_new``) — the number the briefing
-    leads with, so a day with 3 fresh conferences reads "3 new", not "140".
+    ``counts`` is everything each category's feed surfaces (papers fresh-only,
+    opportunities accumulated); ``new_counts`` is the subset first seen within the
+    New window (``signals.is_new``) — the number the briefing leads with, so a day
+    with 3 fresh conferences reads "3 new", not "140".
     """
     categories = _watched_categories(user)
     counts: dict[str, int] = {}
     new_counts: dict[str, int] = {}
     showcase: dict[str, list[dict]] = {}
     for category in categories:
-        scores = _latest_suggested(user, CATEGORY_TYPES[category])
+        scores = _suggested_scores(user, CATEGORY_TYPES[category])
         counts[category] = len(scores)
         new_counts[category] = sum(
             1 for s in scores if s.signals.get("is_new")

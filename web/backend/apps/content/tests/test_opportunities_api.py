@@ -97,14 +97,18 @@ def test_grants_feed_pins_new_high_fit_first(client: APIClient):
 
 
 @pytest.mark.django_db
-def test_grants_feed_shows_only_latest_run(client: APIClient):
+def test_grants_feed_accumulates_across_runs(client: APIClient):
+    """Opportunities accumulate: an earlier run's match stays in the feed alongside
+    a later run's, since the daily job scores only new items and appends them."""
     user = User.objects.create_user("u", password="x")
     client.force_authenticate(user)
     _score(user, _grant("old", "Old"), rank=1, run_at="2026-07-01T00:00:00", match=90)
     _score(user, _grant("new", "New"), rank=1, run_at="2026-07-05T00:00:00", match=70)
 
     items = client.get("/api/opportunities/grants/").data["items"]
-    assert [i["title"] for i in items] == ["New"]
+    # Both runs' matches are present; unpinned rows order by match strength, so the
+    # older-but-stronger grant leads. generated_at reflects the most recent run.
+    assert [i["title"] for i in items] == ["Old", "New"]
 
 
 @pytest.mark.django_db

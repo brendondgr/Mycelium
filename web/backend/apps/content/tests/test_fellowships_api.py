@@ -237,7 +237,9 @@ def test_fellowships_feed_shape(client: APIClient):
 
 
 @pytest.mark.django_db
-def test_fellowships_feed_latest_run_only(client: APIClient):
+def test_fellowships_feed_accumulates_across_runs(client: APIClient):
+    """Fellowships accumulate like the other opportunity feeds: an earlier run's
+    eligible match stays alongside a later run's, ordered by match strength."""
     user = User.objects.create_user("u_latest", password="x")
     client.force_authenticate(user)
     old_item = _fellowship("f_old", "Old Fellowship")
@@ -246,7 +248,8 @@ def test_fellowships_feed_latest_run_only(client: APIClient):
     _score_fellowship(user, new_item, rank=1, run_at="2026-07-06T00:00:00", match=75)
 
     items = client.get("/api/opportunities/fellowships/").data["items"]
-    assert [i["title"] for i in items] == ["New Fellowship"]
+    # Both runs' eligible matches show; unpinned rows order by match strength.
+    assert [i["title"] for i in items] == ["Old Fellowship", "New Fellowship"]
 
 
 @pytest.mark.django_db

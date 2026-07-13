@@ -274,6 +274,13 @@ FELLOWSHIP_FIT_THRESHOLD = env.float("FELLOWSHIP_FIT_THRESHOLD", default=0.0)
 FELLOWSHIP_MATCH_THRESHOLD = env.float("FELLOWSHIP_MATCH_THRESHOLD", default=0.4)
 OPPORTUNITY_MATCH_MAX_SURFACE = env.int("OPPORTUNITY_MATCH_MAX_SURFACE", default=250)
 
+# Opportunity feeds accumulate: the daily run scores only that day's *new* items and
+# appends them, so a grant/conference/fellowship feed is the union of every run's
+# matches (papers, by contrast, are fresh-only). OPPORTUNITY_FEED_MAX caps how many
+# accumulated matches a feed returns, a payload backstop since an accumulating feed
+# grows between prunes. Items still leave the feed when pruned at their deadline.
+OPPORTUNITY_FEED_MAX = env.int("OPPORTUNITY_FEED_MAX", default=250)
+
 # Same carry-forward + floor behaviour as papers (above), for grants / conferences /
 # fellowships: an item the model scored below this stays in the carry-forward store
 # (never re-sent to the model) but off the feed until it improves or ages out.
