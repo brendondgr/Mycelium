@@ -167,6 +167,11 @@ export type DailyReport = {
   generated_at: string | null;
   /** The day's summary, or null when no run has produced suggestions yet. */
   summary: DailyReportSummary | null;
+  /**
+   * True while a sign-up background scan is filling this user's paper feed, so the
+   * page can show a "scanning new articles for you" state until it lands.
+   */
+  scanning: boolean;
   suggestions: Suggestion[];
 };
 

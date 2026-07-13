@@ -85,6 +85,8 @@ function focusPercent(
 export function ResearchPapersSection() {
   const { data, isLoading, isError } = useDailyReport();
   const suggestions = React.useMemo(() => data?.suggestions ?? [], [data]);
+  // A sign-up background scan may be filling this feed; show a "scanning" state.
+  const scanning = data?.scanning ?? false;
   const [showMore, setShowMore] = React.useState(false);
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [query, setQuery] = React.useState("");
@@ -164,6 +166,17 @@ export function ResearchPapersSection() {
     <div>
       <SectionHeader title="Research Papers" subtitle={subtitle} />
 
+      {scanning ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-5 flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--primary)_30%,var(--border))] bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] px-4 py-3 text-sm text-[var(--text-secondary)]"
+        >
+          <span className="h-2.5 w-2.5 flex-none rounded-full bg-brand-secondary motion-safe:animate-pulse" />
+          Scanning new articles for you… fresh matches will appear here shortly.
+        </div>
+      ) : null}
+
       {suggestions.length > 0 ? (
         <div className="mb-5 space-y-3">
           <label className="relative block">
@@ -229,12 +242,20 @@ export function ResearchPapersSection() {
           description="Something went wrong fetching today's papers. Please try again in a moment."
         />
       ) : suggestions.length === 0 ? (
-        <EmptyState
-          icon={<DocumentIcon size={28} />}
-          badge="Coming soon"
-          title="Your first paper suggestions are on their way"
-          description="Once Mylo's literature scan runs against your research profile, your top matching papers — each with a percent-match score and why-it-matters context — will appear here."
-        />
+        scanning ? (
+          <EmptyState
+            icon={<DocumentIcon size={28} />}
+            title="Scanning new articles for you…"
+            description="Your watch topics didn't have enough fresh matches yet, so Mylo is searching new sources now. Your top papers will appear here in a moment."
+          />
+        ) : (
+          <EmptyState
+            icon={<DocumentIcon size={28} />}
+            badge="Coming soon"
+            title="Your first paper suggestions are on their way"
+            description="Once Mylo's literature scan runs against your research profile, your top matching papers — each with a percent-match score and why-it-matters context — will appear here."
+          />
+        )
       ) : filtering ? (
         filtered.length === 0 ? (
           <EmptyState

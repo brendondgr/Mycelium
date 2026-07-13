@@ -119,6 +119,11 @@ export type OnboardingMatchResult = {
   /** How many of those got a genuine language-model score (vs. deterministic). */
   llm: number;
   fallback: number;
+  /**
+   * Papers only: true when the latest batch was too thin, so a background scan of
+   * the user's watch topics is running and fresh results will arrive shortly.
+   */
+  scanning: boolean;
   sample: OnboardingMatchSample[];
 };
 

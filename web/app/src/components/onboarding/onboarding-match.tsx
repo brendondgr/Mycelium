@@ -38,6 +38,8 @@ type Row = {
   status: RowStatus;
   matched: number;
   top: OnboardingMatchSample | null;
+  /** Papers only: a background scan is fetching fresh articles for the user. */
+  scanning: boolean;
 };
 
 type OnboardingMatchProps = {
@@ -55,7 +57,13 @@ type OnboardingMatchProps = {
  */
 export function OnboardingMatch({ areas, onDone }: OnboardingMatchProps) {
   const [rows, setRows] = useState<Row[]>(() =>
-    areas.map((area) => ({ area, status: "pending", matched: 0, top: null })),
+    areas.map((area) => ({
+      area,
+      status: "pending",
+      matched: 0,
+      top: null,
+      scanning: false,
+    })),
   );
   const [activeArea, setActiveArea] = useState<OnboardingMatchArea | null>(null);
   const [finished, setFinished] = useState(areas.length === 0);
@@ -91,6 +99,7 @@ export function OnboardingMatch({ areas, onDone }: OnboardingMatchProps) {
                     status: "done",
                     matched: result.matched,
                     top: result.sample[0] ?? null,
+                    scanning: result.scanning,
                   }
                 : row,
             ),
@@ -176,7 +185,15 @@ export function OnboardingMatch({ areas, onDone }: OnboardingMatchProps) {
                   </td>
                   <td className="px-5 py-4 text-[var(--text-secondary)]">
                     {row.status === "done" ? (
-                      row.top ? (
+                      row.scanning ? (
+                        <span
+                          aria-live="polite"
+                          className="flex items-center gap-2 text-brand-secondary"
+                        >
+                          <span className="h-2 w-2 flex-none rounded-full bg-brand-secondary motion-safe:animate-pulse" />
+                          Scanning new articles for you…
+                        </span>
+                      ) : row.top ? (
                         <span className="line-clamp-2">
                           {row.top.title}
                           {row.top.match_percent != null ? (
