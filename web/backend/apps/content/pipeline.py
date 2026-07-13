@@ -56,7 +56,7 @@ from .models import ContentItem, RelevanceScore
 from .opportunity_llm import load_prior_llm_verdicts
 from .pinning import compute_pins
 from .ranking import DEFAULT_FOCUS_WEIGHT, rerank_by_focus
-from .retrieval import Hit, retrieve_for_vector
+from .retrieval import Hit, latest_gather_date, retrieve_for_vector
 from .suggest import CompleteFn, generate_suggestions
 from .targets import target_for_lab, target_for_project
 
@@ -334,11 +334,13 @@ def recommend_for_user(
     # interests. With areas present we run the multi-interest fusion; with none we
     # fall back to the original single-vector retrieval so those users are
     # unaffected.
-    # Papers are recommended from the *whole* embedded corpus, not just the freshest
-    # gather day: older still-relevant papers are retained in the feed (bounded by
-    # the match threshold + ``max_surface`` cap), while freshly-gathered ones are
-    # pinned to the top for a week by :mod:`.pinning` (see ``_persist``). This keeps
-    # the Research Papers page from dropping older matches run after run.
+    # Papers are the daily-search exception: the Research Papers page shows only the
+    # *freshest gather batch* — "what is new for the search that day" — never items
+    # from a previous day's search. So retrieval is scoped to ``latest_gather_date``
+    # (the freshest day any paper was gathered); a quiet scan day shows the last good
+    # batch rather than an empty page, but old and new are never mixed. Opportunities
+    # accumulate instead (see :mod:`.opportunities`); papers deliberately do not.
+    created_on = latest_gather_date(content_type=ContentItem.Type.PAPER)
     search_ints = search_interests(interests)
     retrieved_count = 0
     if search_ints:
@@ -349,6 +351,7 @@ def recommend_for_user(
             pool_per_interest=pool_per_interest,
             beta=beta,
             emit=emit,
+            created_on=created_on,
             match_threshold=match_threshold,
         )
     else:
@@ -359,6 +362,7 @@ def recommend_for_user(
             surface_limit=max_surface,
             focus_weight=focus_weight,
             emit=emit,
+            created_on=created_on,
             match_threshold=match_threshold,
         )
 
@@ -458,9 +462,10 @@ def recommend_for_target(
         if log is not None:
             log(f"[{key}] {message}")
 
-    # Same retention as the personal feed: a lab/project paper feed surfaces the
-    # whole embedded corpus (threshold + ``max_surface`` bounded), not just the
-    # freshest batch, so older still-relevant papers stay in the feed.
+    # Same fresh-only rule as the personal feed: a lab/project paper feed shows only
+    # the freshest gather batch (scoped by ``latest_gather_date``), never a previous
+    # day's search. Opportunities accumulate; papers do not.
+    created_on = latest_gather_date(content_type=ContentItem.Type.PAPER)
     interests = target.interests or {}
     search_ints = search_interests(interests)
     retrieved_count = 0
@@ -472,6 +477,7 @@ def recommend_for_target(
             pool_per_interest=pool_per_interest,
             beta=beta,
             emit=emit,
+            created_on=created_on,
             match_threshold=match_threshold,
         )
     elif target.stored_vector or target.embedding_text.strip():
@@ -488,6 +494,7 @@ def recommend_for_target(
             surface_limit=max_surface,
             focus_weight=focus_weight,
             emit=emit,
+            created_on=created_on,
             match_threshold=match_threshold,
         )
     else:
@@ -931,13 +938,13 @@ def _persist(
     paper is persisted (so carry-forward remembers its verdict), but only those in
     ``visible_ids`` (cleared the match-percent floor) are flagged ``suggested``.
 
-    Papers now retain older matches run after run, so each surfaced paper is tagged
-    New (and pinned to the top for a week) while it is within a week of when it was
-    first gathered — mirroring the grants/conferences feeds. Papers carry no
-    ``metadata.first_seen``, so :func:`.pinning.compute_pins` falls back to the
-    item's ingest date (``created_at``) as the first-seen date. Pins are computed
-    only for the visible (above-floor) items — a hidden paper never shows a New
-    badge.
+    The paper feed is scoped to the freshest gather batch (see the fresh-only note in
+    :func:`recommend_for_user`), so each surfaced paper is from the latest day's
+    search; those gathered within the last week are tagged New and pinned to the top.
+    Papers carry no ``metadata.first_seen``, so :func:`.pinning.compute_pins` falls
+    back to the item's ingest date (``created_at``) as the first-seen date. Pins are
+    computed only for the visible (above-floor) items — a hidden paper never shows a
+    New badge.
     """
     run_at = timezone.now().isoformat()
     suggested = {s["content_id"]: s for s in suggestions}

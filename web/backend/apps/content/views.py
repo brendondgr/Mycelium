@@ -145,8 +145,8 @@ def _build_summary(rows: list[RelevanceScore], *, today: str = "") -> dict:
     Deterministic on purpose: it reports the papers currently matching this
     researcher (count, how many are new this week, match strength, recurring focus
     themes, sources) without a second language-model call, so the summary is stable
-    and always available. The feed retains older matches, so ``new_count`` is what
-    highlights what changed today.
+    and always available. The paper feed is fresh-only (the latest gather batch), so
+    ``new_count`` is what highlights this batch's brand-new arrivals.
     """
     matches = [
         m for m in (r.signals.get("match_percent") for r in rows) if isinstance(m, int)

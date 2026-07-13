@@ -317,17 +317,16 @@ def test_no_areas_falls_back_to_single_vector(pgvector) -> None:
 
 
 @pytest.mark.django_db
-def test_recommend_retains_older_papers_and_pins_fresh(pgvector) -> None:
-    """Older still-matching papers are retained; freshly-gathered ones are pinned New.
+def test_recommend_papers_are_fresh_only_and_pinned(pgvector) -> None:
+    """The paper feed shows only the freshest gather batch, never a previous day.
 
-    The stronger match was gathered weeks ago: it must still surface (the feed no
-    longer drops older matches), but only the paper gathered today carries the
-    New/pin flag — after a week the pin lapses and it sinks into plain
-    percent-match order.
+    A stronger match gathered weeks ago must NOT surface — papers are the daily
+    exception that never mixes old with new. Only papers from the latest gather day
+    are scored, and (being fresh) they are flagged New and pinned to the top.
     """
     embeddings.set_embedder(_fake_embed)
-    # Profile statement "graph" embeds to [1,0,0,0]; both papers match it (the
-    # single-vector path just thresholds on cosine, so both are retained).
+    # Profile statement "graph" embeds to [1,0,0,0]; both papers match it, but the
+    # old one was gathered a month ago so it is not part of today's freshest batch.
     old = _vpaper("old-strong", "graph", [1.0, 0.0, 0.0, 0.0])
     ContentItem.objects.filter(pk=old.pk).update(
         created_at=timezone.now() - timedelta(days=30)
@@ -345,14 +344,12 @@ def test_recommend_retains_older_papers_and_pins_fresh(pgvector) -> None:
     rows = {
         r.content_id: r for r in RelevanceScore.objects.filter(target_user=user)
     }
-    # Both are retained in the feed — the old strong match is not dropped.
-    assert old.id in rows
+    # Only the freshest gather day is scored — the month-old paper is not in the feed.
+    assert old.id not in rows
     assert fresh.id in rows
-    # Only the freshly-gathered paper is flagged New and pinned to the top.
+    # The freshly-gathered paper is flagged New and pinned to the top.
     assert rows[fresh.id].signals["is_new"] is True
     assert rows[fresh.id].signals["pinned_until"]
-    assert rows[old.id].signals["is_new"] is False
-    assert rows[old.id].signals["pinned_until"] is None
 
 
 @pytest.mark.django_db
