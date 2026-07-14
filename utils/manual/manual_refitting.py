@@ -36,8 +36,11 @@ The stack must be up first (``python run.py up``). Requires Docker Compose. Refi
 matches the *existing* corpus, so seed papers/opportunities first (``scan_literature``
 / ``ingest_pivot`` and the daily jobs) if the store is empty.
 
-To run search, opportunity matching, and refitting back to back for everyone in
-one shot, use the root ``manual_all.py`` orchestrator instead.
+Refitting is **on-demand only**: the root ``manual_all.py`` daily orchestrator
+deliberately does not refit, because a refit is the whole-corpus *replace* pass —
+it re-scores (and can rewrite or drop) recommendations Mylo already wrote, which
+the daily run must never do. Run this script only when a full re-personalization
+is actually wanted, e.g. after a profile edit.
 """
 
 from __future__ import annotations

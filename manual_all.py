@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Run the full manual recommendation flow, in order, for all users.
 
-Scrape every source, then recommend, then refit, then write each user's daily
-briefing — one stage after another, synchronously, for *all* active users,
-against the running Docker stack. This is what the host ``mylo-daily.timer``
-runs once a day (it replaced the in-container Celery Beat daily schedules, which
-could not run the host-only Pivot scrape).
+Scrape every source, then recommend, then write each user's daily briefing —
+one stage after another, synchronously, for *all* active users, against the
+running Docker stack. This is what the host ``mylo-daily.timer`` runs once a
+day (it replaced the in-container Celery Beat daily schedules, which could not
+run the host-only Pivot scrape).
 
 Stages, in order:
     1. Scrape opportunity sources (host)   — ``uv run pivot.py`` login + scrape +
@@ -20,12 +20,18 @@ Stages, in order:
        recommend papers. The paper sources are scraped here, as part of the
        search — that is why stage 1 only has to add the opportunity sources.
     3. Match opportunities (backend)       — ``run_daily_opportunities``: score
-       the grants / conferences / fellowships now in the store for every user.
-    4. Refit personalization (backend)     — ``run_refitting``: re-score every
-       area's stored top results through the LLM for every user.
-    5. Write daily briefings (backend)     — ``generate_daily_briefing``: the
+       only the grants / conferences / fellowships that arrived today for every
+       user and append the passers to each accumulating feed.
+    4. Write daily briefings (backend)     — ``generate_daily_briefing``: the
        cross-category "Mylo Report" synthesis for every user (LLM with a
        deterministic fallback).
+
+Deliberately **no refit stage**: the daily run only scores that day's *new*
+items and appends them. Mylo's already-written recommendations are never
+re-scored, rewritten, or dropped by the daily run — an item stays in the feed
+until its deadline/event date passes and the ingest prune deletes it.
+Refitting (``run_refitting`` / ``utils/manual/manual_refitting.py``) is the
+explicit whole-corpus *replace* pass, reserved for sign-up and profile edits.
 
 Observability: every notable condition is posted to Mylo's Discord error channel
 via :mod:`mylo.reporting` (a stdlib-only REST poster that never raises) — a
@@ -48,7 +54,7 @@ stays one predictable command. For a targeted run, call the per-stage scripts in
 utils/manual/ or ``uv run pivot.py`` directly.
 
 Usage:
-    python manual_all.py        # scrape → search → match → refit → briefing
+    python manual_all.py        # scrape → search → match → briefing
     python manual_all.py --help # this message
 
 The stack must be up first (``python run.py up``). Requires Docker Compose, plus
@@ -79,12 +85,14 @@ except Exception:  # noqa: BLE001
 HOST = socket.gethostname()
 ROOT = Path(__file__).resolve().parent
 
-# The backend recommend/refit/briefing stages, in order, run inside the
-# container. The scrape stage (stage 1) is handled separately on the host.
+# The backend recommend/briefing stages, in order, run inside the container.
+# The scrape stage (stage 1) is handled separately on the host. There is no
+# refit stage here on purpose — the daily run must never rewrite or drop the
+# recommendations Mylo already wrote (refit is the on-demand replace pass for
+# sign-up / profile edits).
 CONTAINER_STAGES = [
     ("run_daily_suggestions", "Searching research papers for all users…"),
     ("run_daily_opportunities", "Matching grants/conferences/fellowships for all users…"),
-    ("run_refitting", "Refitting the personalized layer for all users…"),
     ("generate_daily_briefing", "Writing each user's daily briefing…"),
 ]
 
@@ -277,7 +285,7 @@ def main() -> int:
     )
     scrape_ran = scrape_opportunities()
 
-    # Stages 2..N — recommend, refit, and brief inside the backend container.
+    # Stages 2..N — recommend and brief inside the backend container.
     stages_run: list[str] = []
     for offset, (command, intro) in enumerate(CONTAINER_STAGES):
         step = 2 + offset
@@ -309,12 +317,12 @@ def main() -> int:
             return code
         stages_run.append(command)
 
-    print("\nAll stages completed: scrape → search → match → refit → briefing, for all users.", flush=True)
+    print("\nAll stages completed: scrape → search → match → briefing, for all users.", flush=True)
     _write_run_state(ok=True, scrape_ran=scrape_ran, stages_run=stages_run)
     _notify(
         "info",
         "Daily run complete",
-        "scrape → search → match → refit → briefing finished for all users."
+        "scrape → search → match → briefing finished for all users."
         + ("" if scrape_ran else " (opportunity scrape was skipped — see earlier alert)."),
         stage="done",
         fields={"Scrape ran": "yes" if scrape_ran else "no"},
