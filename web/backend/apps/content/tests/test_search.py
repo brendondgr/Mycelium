@@ -260,8 +260,9 @@ def test_semantic_surfaces_item_with_no_keyword_overlap(pg) -> None:
 
     result = run_search("zzzznonlexical", query_vector=[1.0, 0.0, 0.0])
 
-    # The semantic channel ranks by similarity with no floor (search never
-    # abstains), so the nearest item leads; the weaker one still appears below it.
+    # The semantic channel ranks by similarity, so the nearest item leads. The
+    # orthogonal item (cosine 0) sits below the floor and is dropped — but a real
+    # hit still surfaces, so search does not abstain.
     assert str(result.items[0].id) == str(near.id)
     assert result.items[0]._search_matched_on == ["semantic"]
     assert result.confidence == "ok"  # top cosine ~1.0
@@ -269,14 +270,31 @@ def test_semantic_surfaces_item_with_no_keyword_overlap(pg) -> None:
 
 @pytest.mark.django_db
 def test_low_confidence_cue_when_top_cosine_is_weak(pg, settings) -> None:
+    settings.SEARCH_SEMANTIC_FLOOR = 0.30
     settings.SEARCH_LOW_CONFIDENCE_COSINE = 0.35
     _paper("Alpha manuscript", embedding=[1.0, 0.0, 0.0])
 
-    # Query vector barely aligned with the only item (cosine ~0.2 < floor).
-    result = run_search("zzzznonlexical", query_vector=[0.2, 0.98, 0.0])
+    # Cosine ~0.32 sits in the [floor, cue) band: above the inclusion floor (so
+    # it is still returned) but below the display cue.
+    result = run_search("zzzznonlexical", query_vector=[0.32, 0.9474, 0.0])
 
     assert result.count == 1  # still returned — a cue, not a gate
     assert result.confidence == "low"
+
+
+@pytest.mark.django_db
+def test_semantic_floor_excludes_far_field_items(pg, settings) -> None:
+    # A vaguely-related neighbour (cosine ~0.15 < floor) is not admitted by the
+    # semantic channel, so an otherwise-unmatched query returns nothing instead of
+    # padding the pool with far-field items. Lexical/fuzzy would still surface a
+    # genuine term/typo hit — only the loose semantic tail is trimmed.
+    settings.SEARCH_SEMANTIC_FLOOR = 0.30
+    _paper("Alpha manuscript", embedding=[1.0, 0.0, 0.0])
+
+    result = run_search("zzzznonlexical", query_vector=[0.15, 0.9887, 0.0])
+
+    assert result.count == 0
+    assert result.items == []
 
 
 @pytest.mark.django_db

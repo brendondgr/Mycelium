@@ -16,7 +16,8 @@ Channels (added across phases, fused by RRF into one ranked candidate pool):
 
 - **lexical** — Postgres full-text search over ``ContentItem.search_vector``
   (weighted title/body/aux), ranked by ``ts_rank_cd`` (Phase 1).
-- **semantic** — pgvector cosine ANN over the shared 384-dim embedding (Phase 2).
+- **semantic** — pgvector cosine ANN over the shared 384-dim embedding (Phase 2),
+  gated by ``SEARCH_SEMANTIC_FLOOR`` so far-field neighbours never pad the pool.
 - **fuzzy** — ``pg_trgm`` word similarity on the title (Phase 3), for typos.
 
 Everything degrades gracefully: no embedder ⇒ lexical (+ fuzzy) carry the query;
@@ -226,15 +227,24 @@ def _semantic(
     Reuses the same cosine-distance retrieval as the digest (the shared BGE
     space). Returns the ordered hits and the top cosine *similarity* (for the
     low-confidence cue). ``None``/empty query vector (no embedder) ⇒ no channel.
+
+    A candidate must clear ``SEARCH_SEMANTIC_FLOOR`` (cosine similarity ≥ floor,
+    i.e. distance ≤ ``1 - floor``) to be admitted, so the far-field neighbours
+    ANN always returns do not pad the pool with vaguely-related items. This gates
+    only this channel — lexical/fuzzy still return every match, so search never
+    abstains on a genuine term/typo hit. A floor of 0 disables the gate.
     """
     if query_vector is None or len(query_vector) == 0:
         return [], None
     rows = (
         base.filter(embedding__isnull=False)
         .annotate(distance=CosineDistance("embedding", query_vector))
-        .order_by("distance")[:limit]
+        .order_by("distance")
     )
-    items = list(rows)
+    floor = getattr(settings, "SEARCH_SEMANTIC_FLOOR", 0.30)
+    if floor > 0:
+        rows = rows.filter(distance__lte=1.0 - floor)
+    items = list(rows[:limit])
     if not items:
         return [], None
     top_cosine = _similarity(items[0].distance)

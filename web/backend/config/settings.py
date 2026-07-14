@@ -348,6 +348,15 @@ SEARCH_CANDIDATE_POOL = env.int("SEARCH_CANDIDATE_POOL", default=500)
 SEARCH_PAGE_SIZE = env.int("SEARCH_PAGE_SIZE", default=20)
 SEARCH_MAX_PAGE_SIZE = env.int("SEARCH_MAX_PAGE_SIZE", default=50)
 SEARCH_LOW_CONFIDENCE_COSINE = env.float("SEARCH_LOW_CONFIDENCE_COSINE", default=0.35)
+# SEARCH_SEMANTIC_FLOOR is the *inclusion* gate for the semantic (embedding)
+# channel: a candidate whose cosine similarity to the query is below it is not
+# admitted, so the far-field nearest-neighbours pgvector always returns no longer
+# pad the pool with vaguely-related items. This is NOT abstention — the lexical
+# and fuzzy channels still return every match, so a real term/typo hit always
+# surfaces. Kept just below SEARCH_LOW_CONFIDENCE_COSINE so the [floor, cue) band
+# still surfaces borderline items with the "low confidence" badge; raise it (e.g.
+# 0.4) to trim more aggressively, set 0.0 to disable the gate.
+SEARCH_SEMANTIC_FLOOR = env.float("SEARCH_SEMANTIC_FLOOR", default=0.30)
 # Fuzzy (pg_trgm) channel: enabled, with its own bounded pool (typo recovery is a
 # tail signal, so it need not scan as deep as the lexical/semantic pools).
 SEARCH_FUZZY_ENABLED = env.bool("SEARCH_FUZZY_ENABLED", default=True)
