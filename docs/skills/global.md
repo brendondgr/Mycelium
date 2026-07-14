@@ -30,6 +30,7 @@ Use this guidance at the start of every Mycelium session before planning, editin
 - For backend work, keep Django responsible for auth, permissions, business logic, orchestration, admin, audit logs, and API contracts.
 - For background work, prefer worker jobs for research scans, opportunity matching, extraction, graph updates, report generation, alerts, and scheduled digests.
 - For data ownership, keep durable app records, semantic retrieval, graph relationships, object storage, and queue/cache concerns conceptually separate.
+- When changing recommendation-pipeline logic (papers, opportunities, fellowships, refitting, briefing), audit the daily orchestrator in the same change: `manual_all.py` (run nightly by `mylo-daily.timer`) chains those stages, so confirm its stage list and each stage's semantics still match the intended split — the daily run scores only that day's new items and appends, never rewriting or deleting recommendations Mylo already wrote; whole-corpus replace passes (refitting) are on-demand only (sign-up / profile edits) and must never be scheduled into the daily chain.
 
 ## Validation
 
