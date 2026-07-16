@@ -20,6 +20,7 @@ from .models import (
     ContentItem,
     DailyBriefing,
     MemberSuggestion,
+    Notification,
     RelevanceEvent,
     RelevanceScore,
     SavedOpportunity,
@@ -686,38 +687,58 @@ class SavedItemsView(APIView):
 
 
 class NotificationsView(APIView):
-    """Deadline alerts for the header bell: saves due within a week."""
+    """The header bell, now backed by the ``Notification`` model (reminders rework).
+
+    Three sources, one bell: a fired reminder, a moved deadline, and a high-signal
+    recommendation (§10). Replaces the old on-the-fly "saves due within a week" scan —
+    saving no longer produces an alert (D-3); a reminder created *from* a save does.
+    Returns undismissed notifications, newest first, with the unread count.
+    """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        today = timezone.now().date()
-        alerts = []
-        for saved in SavedOpportunity.objects.filter(
-            user=request.user, deadline_date__isnull=False
-        ):
-            days = (saved.deadline_date - today).days
-            if 0 <= days <= DEADLINE_ALERT_DAYS:
-                content_id = str(saved.content_id) if saved.content_id else None
-                alerts.append(
-                    {
-                        "id": str(saved.id),
-                        "content_id": content_id,
-                        "area": saved.area,
-                        "title": saved.title,
-                        "url": saved.url,
-                        "deadline_date": saved.deadline_date.isoformat(),
-                        "days_remaining": days,
-                        "message": _alert_message(saved.title, days),
-                    }
-                )
-        alerts.sort(key=lambda a: a["days_remaining"])
-        return Response({"count": len(alerts), "items": alerts})
+        qs = Notification.objects.filter(
+            user=request.user, dismissed_at__isnull=True
+        ).order_by("-created_at")[:50]
+        items = [_notification_dict(n) for n in qs]
+        count = Notification.objects.filter(
+            user=request.user, dismissed_at__isnull=True, read_at__isnull=True
+        ).count()
+        return Response({"count": count, "items": items})
 
 
-def _alert_message(title: str, days: int) -> str:
-    when = "due today" if days == 0 else f"{days} day{'s' if days != 1 else ''} left"
-    return f"“{title}” — less than a week left ({when})."
+class NotificationActionView(APIView):
+    """Mark one notification read or dismissed (POST ``{"action": ...}``)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        note = Notification.objects.filter(user=request.user, pk=pk).first()
+        if note is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        now = timezone.now()
+        if (request.data.get("action") or "read") == "dismiss":
+            note.dismissed_at = note.dismissed_at or now
+            note.read_at = note.read_at or now
+            note.save(update_fields=["dismissed_at", "read_at"])
+        else:
+            note.read_at = note.read_at or now
+            note.save(update_fields=["read_at"])
+        return Response(_notification_dict(note))
+
+
+def _notification_dict(note: Notification) -> dict:
+    return {
+        "id": str(note.id),
+        "kind": note.kind,
+        "content_id": str(note.content_id) if note.content_id else None,
+        "title": note.title,
+        "body": note.body,
+        "url": note.url,
+        "created_at": note.created_at.isoformat(),
+        "read_at": note.read_at.isoformat() if note.read_at else None,
+    }
 
 
 # --------------------------------------------------------------------------- #

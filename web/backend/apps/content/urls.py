@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import reminders_views, views
 
 urlpatterns = [
     # Both forms so a dev proxy that strips the trailing slash still resolves
@@ -86,6 +86,28 @@ urlpatterns = [
     path("saves", views.SavedItemsView.as_view()),
     path("notifications/", views.NotificationsView.as_view(), name="notifications"),
     path("notifications", views.NotificationsView.as_view()),
+    path(
+        "notifications/<uuid:pk>/action/",
+        views.NotificationActionView.as_view(),
+        name="notification-action",
+    ),
+    path(
+        "notifications/<uuid:pk>/action",
+        views.NotificationActionView.as_view(),
+    ),
+    # Deadline reminders: create / list / cancel personal + lab reminders (R9).
+    path(
+        "reminders/",
+        reminders_views.ReminderListCreateView.as_view(),
+        name="reminders",
+    ),
+    path("reminders", reminders_views.ReminderListCreateView.as_view()),
+    path(
+        "reminders/<uuid:pk>/",
+        reminders_views.ReminderDetailView.as_view(),
+        name="reminder-detail",
+    ),
+    path("reminders/<uuid:pk>", reminders_views.ReminderDetailView.as_view()),
     # Cross-member suggestions (Feature F): the in-app fan-out feed + dismiss.
     path(
         "suggestions/",

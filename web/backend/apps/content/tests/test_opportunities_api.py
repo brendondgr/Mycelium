@@ -181,26 +181,43 @@ def test_saved_deadline_survives_content_prune(client: APIClient):
 
 
 @pytest.mark.django_db
-def test_notifications_lists_only_within_week(client: APIClient):
+def test_notifications_serve_the_notification_model(client: APIClient):
+    # Reminders rework (D-2/D-3): the bell reads Notification rows, and *saving*
+    # no longer produces an alert — a reminder created from a save does.
+    from apps.content.models import Notification
+
     user = User.objects.create_user("u", password="x")
     client.force_authenticate(user)
-    today = timezone.now().date()
 
-    def _save(gid, days):
-        item = _grant(gid, gid, deadline=(today + timedelta(days=days)).isoformat())
-        client.post(
-            "/api/opportunities/save/", {"content_id": str(item.id)}, format="json"
-        )
+    item = _grant("g", "g", deadline="2026-12-01")
+    client.post(
+        "/api/opportunities/save/", {"content_id": str(item.id)}, format="json"
+    )
 
-    _save("soon", 4)  # within a week -> alert
-    _save("far", 30)  # too far -> no alert
-
+    # A save alone: no notification.
     resp = client.get("/api/notifications/")
     assert resp.status_code == 200
+    assert resp.data["count"] == 0
+
+    note = Notification.objects.create(
+        user=user,
+        kind=Notification.Kind.REMINDER,
+        content=item,
+        title="Grant reminder",
+        body="Application due Dec 1 — 7 days left",
+        dedupe_key="reminder:test:1",
+    )
+    resp = client.get("/api/notifications/")
     assert resp.data["count"] == 1
-    assert resp.data["items"][0]["title"] == "soon"
-    assert resp.data["items"][0]["days_remaining"] == 4
-    assert "less than a week" in resp.data["items"][0]["message"]
+    assert resp.data["items"][0]["kind"] == "reminder"
+    assert resp.data["items"][0]["title"] == "Grant reminder"
+
+    # Dismiss clears it from the count.
+    dismiss = client.post(
+        f"/api/notifications/{note.id}/action/", {"action": "dismiss"}, format="json"
+    )
+    assert dismiss.status_code == 200
+    assert client.get("/api/notifications/").data["count"] == 0
 
 
 @pytest.mark.django_db
