@@ -89,24 +89,40 @@ class StatusCog(commands.Cog, name="Status"):
 
     @mylo.command(
         name="setup",
-        description="Confirm this server's link to your Mycelium lab (managers).",
+        description="Connect this server to a Mycelium lab you manage.",
+    )
+    @app_commands.describe(
+        lab="A lab you manage (leave blank to see your options).",
+        channel="Where lab reminders post. I verify I can post there before binding.",
     )
     @app_commands.guild_only()
-    @app_commands.describe(
-        channel="Where lab reminders post. I verify I can post there before binding."
-    )
     async def setup(
         self,
         interaction: discord.Interaction,
+        lab: str | None = None,
         channel: discord.TextChannel | None = None,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         guild_id = str(interaction.guild_id) if interaction.guild_id else ""
+        guild_name = interaction.guild.name if interaction.guild else ""
         channel_id = str(channel.id) if channel else ""
         _, message = await linking.setup_guild(
-            str(interaction.user.id), guild_id, channel_id=channel_id
+            str(interaction.user.id),
+            guild_id,
+            guild_name=guild_name,
+            lab_slug=lab,
+            channel_id=channel_id,
         )
         await interaction.followup.send(message, ephemeral=True)
+
+    @setup.autocomplete("lab")
+    async def _setup_lab_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        choices = await linking.managed_lab_choices(
+            str(interaction.user.id), current or ""
+        )
+        return [app_commands.Choice(name=name, value=slug) for name, slug in choices]
 
 
 async def setup(bot: commands.Bot) -> None:

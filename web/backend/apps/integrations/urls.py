@@ -20,8 +20,12 @@ def _both(route, view, name):
 urlpatterns = [
     *_both("discord/start", views.DiscordStartView, "discord-start"),
     *_both("discord/status", views.DiscordStatusView, "discord-status"),
+    *_both("discord/probe", views.DiscordProbeView, "discord-probe"),
     *_both("discord/disconnect", views.DiscordDisconnectView, "discord-disconnect"),
     *_both("discord/code", views.DiscordActivationCodeView, "discord-code"),
+    *_both(
+        "discord/guild/status", views.DiscordGuildStatusView, "discord-guild-status"
+    ),
     *_both("discord/guild/start", views.DiscordGuildStartView, "discord-guild-start"),
     # OAuth callbacks — Discord redirects the browser here (GET). No-slash form is
     # the canonical registered redirect URI.

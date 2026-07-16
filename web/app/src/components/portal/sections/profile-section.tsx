@@ -16,6 +16,7 @@ import {
   useDiscordStatus,
   useIssueActivationCode,
   useProfile,
+  useTestDiscordDm,
   useWatch,
 } from "@/lib/portal/hooks";
 import { computeCompleteness } from "@/lib/portal/completeness";
@@ -424,6 +425,7 @@ function DiscordCard() {
   const connect = useConnectDiscord();
   const disconnect = useDisconnectDiscord();
   const issueCode = useIssueActivationCode();
+  const testDm = useTestDiscordDm();
   const searchParams = useSearchParams();
   const notice = DISCORD_RETURN_NOTICE[searchParams.get("discord") ?? ""];
 
@@ -457,13 +459,30 @@ function DiscordCard() {
             </span>
             {status?.link_method === "activation_code" ? " (via code)" : ""}.
           </p>
-          <p className="text-sm text-[var(--text-muted)]">
-            {status?.dm_ok === false
-              ? "Mylo can't DM you yet — enable “Allow direct messages from server members.”"
-              : status?.dm_ok
-                ? "Mylo can reach you by direct message."
-                : "Reachability not checked yet."}
-          </p>
+          <div className="flex items-start justify-between gap-3 rounded-lg bg-[var(--surface-alt)] px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-[var(--text-primary)]">
+                Can Mylo reach you?
+              </p>
+              <p className="mt-0.5 text-sm text-[var(--text-muted)]">
+                {testDm.isError
+                  ? "Couldn’t run the test. Try again."
+                  : status?.dm_ok === false
+                    ? "Mylo can’t DM you — enable “Allow direct messages from server members,” then re-test."
+                    : status?.dm_ok
+                      ? "Mylo can reach you by direct message."
+                      : "Not checked yet — run a test to confirm."}
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              className="shrink-0 rounded-full"
+              onClick={() => testDm.mutate()}
+              disabled={testDm.isPending}
+            >
+              {testDm.isPending ? "Testing…" : "Test"}
+            </Button>
+          </div>
           <Button
             variant="secondary"
             className="rounded-full"

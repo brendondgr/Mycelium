@@ -6,6 +6,7 @@ import type {
   CollectionBrief,
   CollectionDetail,
   DiscordCodeResponse,
+  DiscordStatus,
   IngestLinkResult,
   InvitationAction,
   LabProfileData,
@@ -490,6 +491,16 @@ export function disconnectDiscord(): Promise<{ detail: string }> {
     buildApiUrl(getPublicApiBase(), "integrations", "discord", "disconnect"),
     undefined,
     "Could not disconnect Discord. Try again.",
+  );
+}
+
+/** Re-run the DM reachability probe ("Test" button) → the refreshed link status. */
+export function testDiscordDm(): Promise<DiscordStatus> {
+  return sendJson<DiscordStatus>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "integrations", "discord", "probe"),
+    undefined,
+    "Could not test the connection. Try again.",
   );
 }
 

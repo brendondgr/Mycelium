@@ -28,12 +28,31 @@ async def activate(
 
 
 async def setup_guild(
-    discord_user_id: str, guild_id: str, *, channel_id: str = ""
+    discord_user_id: str,
+    guild_id: str,
+    *,
+    guild_name: str = "",
+    lab_slug: str | None = None,
+    channel_id: str = "",
 ) -> tuple[str, str]:
     if not guild_id:
         return ("no_guild", "Run `/mylo setup` inside a server, not in a DM.")
     return await mycelium.db(
-        _setup_sync, str(discord_user_id), str(guild_id), str(channel_id)
+        _setup_sync,
+        str(discord_user_id),
+        str(guild_id),
+        guild_name,
+        lab_slug,
+        str(channel_id),
+    )
+
+
+async def managed_lab_choices(
+    discord_user_id: str, current: str
+) -> list[tuple[str, str]]:
+    """(name, slug) pairs for the `/mylo setup` lab autocomplete."""
+    return await mycelium.db(
+        _managed_lab_choices_sync, str(discord_user_id), current or ""
     )
 
 
@@ -85,45 +104,112 @@ def _activate_sync(discord_user_id: str, code: str) -> tuple[str, str]:
     return (outcome.value, messages[outcome])
 
 
+def _managed_lab_choices_sync(
+    discord_user_id: str, current: str
+) -> list[tuple[str, str]]:
+    from apps.integrations.services import resolve
+
+    cur = current.lower().strip()
+    out: list[tuple[str, str]] = []
+    for lab in resolve.labs_managed_by_discord_user(discord_user_id):
+        if cur and cur not in lab.name.lower():
+            continue
+        out.append((lab.name[:100], lab.slug))
+    return out[:25]
+
+
 def _setup_sync(
-    discord_user_id: str, guild_id: str, channel_id: str = ""
+    discord_user_id: str,
+    guild_id: str,
+    guild_name: str,
+    lab_slug: str | None,
+    channel_id: str = "",
 ) -> tuple[str, str]:
     from apps.integrations.services import resolve
 
-    lab = resolve.resolve_lab_for_guild(guild_id)
-    if lab is None:
-        return (
-            "no_link",
-            "This server isn't linked to a Mycelium lab yet. A lab manager can add "
-            f"Mylo from {mycelium.portal_url()}.",
-        )
+    # Auth: the caller must have linked their own Discord (identity = who you are).
     if resolve.resolve_identity(discord_user_id) is None:
         return (
             "link_required",
             "Link your own Discord to Mycelium first, then run `/mylo setup` again: "
             f"{mycelium.portal_url()}",
         )
-    if not resolve.can_manage_lab_via_discord(discord_user_id, lab):
+
+    link = resolve.get_guild_link(guild_id)
+
+    # Already fully connected — bind a channel if one was passed, else confirm.
+    if link is not None and link.state == resolve.GUILD_ACTIVE:
+        base = f"✅ This server is already connected to **{link.lab.name}**."
+        return _finish(resolve, guild_id, base, channel_id, already=True)
+
+    # Installed via the website (PENDING) — confirm it, if the caller manages it.
+    if link is not None and link.state != resolve.GUILD_KICKED:
+        lab = link.lab
+        if not resolve.can_manage_lab_via_discord(discord_user_id, lab):
+            return (
+                "denied",
+                f"This server is being connected to **{lab.name}**, but you're not "
+                "a manager of that lab. Guild ownership alone grants no authority.",
+            )
+        confirmer = resolve.resolve_user(discord_user_id)
+        confirmed = resolve.confirm_guild(guild_id, confirmed_by=confirmer)
+        if confirmed is None:
+            return (
+                "unusable",
+                "This pending link can't be confirmed. Run "
+                "`/mylo setup lab:<name>` to connect a lab you manage instead.",
+            )
+        base = f"✅ This server is now connected to **{lab.name}**."
+        return _finish(resolve, guild_id, base, channel_id)
+
+    # Not bound yet (or previously kicked) — connect it to a lab the caller manages.
+    managed = resolve.labs_managed_by_discord_user(discord_user_id)
+    if not managed:
         return (
-            "denied",
-            f"You're not a manager of **{lab.name}**, so you can't confirm this "
-            "server. Guild ownership alone doesn't grant lab authority.",
-        )
-    confirmer = resolve.resolve_user(discord_user_id)
-    link = resolve.confirm_guild(guild_id, confirmed_by=confirmer)
-    if link is None:
-        return (
-            "unusable",
-            "This link can't be confirmed (it wasn't verified via the code grant). "
-            "Re-add Mylo from the portal.",
+            "no_labs",
+            "You don't manage any labs in Mycelium yet. Ask a lab's PI or admin to "
+            "connect this server, or set up your lab in Mycelium first.",
         )
 
-    base = f"✅ This server is now connected to **{lab.name}**."
+    if lab_slug:
+        chosen = next((lab for lab in managed if lab.slug == lab_slug), None)
+        if chosen is None:
+            return (
+                "bad_lab",
+                "Pick one of the labs you manage — start typing after `lab:` to "
+                "see the list.",
+            )
+        try:
+            resolve.bind_guild_via_command(
+                discord_user_id, guild_id, guild_name, chosen
+            )
+        except resolve.GuildConflict:
+            return (
+                "conflict",
+                "This server is already connected to a different lab.",
+            )
+        base = f"✅ This server is now connected to **{chosen.name}**."
+        return _finish(resolve, guild_id, base, channel_id)
+
+    # No lab chosen — show how to pick one (Discord) or point at the website.
+    names = ", ".join(f"**{lab.name}**" for lab in managed[:10])
+    return (
+        "choose",
+        f"Connect this server to a lab you manage: run `/mylo setup lab:<name>` "
+        f"({names}). You can also add Mylo from that lab's **Edit Setup** menu in "
+        "Mycelium.",
+    )
+
+
+def _finish(resolve, guild_id: str, base: str, channel_id: str, *, already=False):
+    """After a successful connect/confirm, bind the reminder channel if one was
+    passed (preflighting it first); otherwise nudge the manager to pick one."""
     if not channel_id:
+        status = "already" if already else "ok"
         return (
-            "ok",
-            f"{base}\nNow choose where reminders post: run `/mylo setup` again and "
-            "pick a channel in the **channel** option.",
+            status,
+            f"{base}\nTip: pass a **channel** to `/mylo setup` to choose where lab "
+            "deadline reminders post.",
         )
     return _bind_channel_sync(resolve, guild_id, channel_id, base)
 

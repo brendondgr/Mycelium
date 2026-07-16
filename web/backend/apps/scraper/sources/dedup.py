@@ -13,31 +13,79 @@ Ported from ``~/Tools/ResearchScraper/utils/dedup.py``.
 
 from __future__ import annotations
 
-from .record import Record, normalize_title
+from .record import (
+    Record,
+    normalize_doi,
+    normalize_pmcid,
+    normalize_pmid,
+    normalize_title,
+)
 
 
-def _identifier_keys(rec: Record) -> list[str]:
+def identifier_keys(
+    doi: str | None,
+    pmid: str | None,
+    pmcid: str | None,
+    arxiv: str | None,
+) -> list[str]:
+    """The normalized strong-identifier keys for a paper.
+
+    Shared by in-memory de-duplication, the against-store check in
+    ``ingest.scan``, and the one-shot cleanup command so that all three agree on
+    what counts as "the same paper".
+    """
     keys: list[str] = []
-    if rec.doi:
-        keys.append(f"doi:{rec.doi}")
-    if rec.pmid:
-        keys.append(f"pmid:{rec.pmid}")
-    if rec.pmcid:
-        keys.append(f"pmcid:{rec.pmcid}")
-    if rec.arxiv:
-        keys.append(f"arxiv:{rec.arxiv.lower()}")
+    if doi:
+        keys.append(f"doi:{doi}")
+    if pmid:
+        keys.append(f"pmid:{pmid}")
+    if pmcid:
+        keys.append(f"pmcid:{pmcid}")
+    if arxiv:
+        keys.append(f"arxiv:{arxiv.strip().lower()}")
     return keys
 
 
-def _fuzzy_key(rec: Record) -> str | None:
-    title = normalize_title(rec.title)
-    if not title:
+def fuzzy_key(title: str | None, first_author: str | None, year) -> str | None:
+    """Normalized title + first-author-surname + year fallback key."""
+    norm = normalize_title(title)
+    if not norm:
         return None
     author = ""
-    if rec.first_author:
-        author = normalize_title(rec.first_author).split(" ")[-1]
-    year = rec.year or ""
-    return f"fuzzy:{title}|{author}|{year}"
+    if first_author:
+        author = normalize_title(first_author).split(" ")[-1]
+    return f"fuzzy:{norm}|{author}|{year or ''}"
+
+
+def _identifier_keys(rec: Record) -> list[str]:
+    return identifier_keys(rec.doi, rec.pmid, rec.pmcid, rec.arxiv)
+
+
+def _fuzzy_key(rec: Record) -> str | None:
+    return fuzzy_key(rec.title, rec.first_author, rec.year)
+
+
+def metadata_identifier_keys(metadata: dict) -> list[str]:
+    """Strong-identifier keys for a stored ``ContentItem.metadata`` blob.
+
+    Re-normalizes the way :class:`Record` does so a stored row and a freshly
+    scraped record produce matching keys regardless of source formatting.
+    """
+    return identifier_keys(
+        normalize_doi(metadata.get("doi")),
+        normalize_pmid(metadata.get("pmid")),
+        normalize_pmcid(metadata.get("pmcid")),
+        metadata.get("arxiv"),
+    )
+
+
+def metadata_fuzzy_key(metadata: dict) -> str | None:
+    """Fuzzy fallback key for a stored ``ContentItem.metadata`` blob."""
+    return fuzzy_key(
+        metadata.get("title"),
+        metadata.get("first_author"),
+        metadata.get("year"),
+    )
 
 
 class Deduplicator:

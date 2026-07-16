@@ -115,6 +115,58 @@ def test_already_stored_papers_are_skipped_not_reembedded():
 
 
 @pytest.mark.django_db
+def test_stored_paper_matched_by_shared_arxiv_across_runs():
+    # A previous run stored the OpenAlex copy under its DOI canonical id, with the
+    # arXiv id recorded in metadata. A later run sees only the SemanticScholar copy
+    # (no DOI, different canonical id) — it must resolve to the stored row via the
+    # shared arXiv id instead of inserting a second row.
+    ContentItem.objects.create(
+        type=ContentItem.Type.PAPER,
+        source="OpenAlex",
+        external_id="doi:10.48550/arxiv.2607.12764",
+        metadata={
+            "title": "EvoGraph-R1",
+            "doi": "10.48550/arxiv.2607.12764",
+            "arxiv": "2607.12764",
+            "sources": ["OpenAlex"],
+        },
+    )
+    records = [
+        _record(
+            "SemanticScholar", "S1", title="EvoGraph-R1", arxiv="2607.12764",
+            abstract="self-evolving hypergraphs",
+        ),
+    ]
+    summary = scan(["q"], search_fn=_search(records), embedder=_fake_embedder)
+
+    assert summary.unique == 1
+    assert summary.already_present == 1
+    assert summary.new == 0
+    assert ContentItem.objects.count() == 1
+    # The stored row absorbed the second source and back-filled the abstract.
+    item = ContentItem.objects.get()
+    assert set(item.metadata["sources"]) == {"OpenAlex", "SemanticScholar"}
+    assert item.metadata["abstract"] == "self-evolving hypergraphs"
+
+
+@pytest.mark.django_db
+def test_stored_paper_matched_by_shared_pmid_across_runs():
+    ContentItem.objects.create(
+        type=ContentItem.Type.PAPER,
+        source="PubMed",
+        external_id="pmid:999",
+        metadata={"title": "Shared", "pmid": "999", "sources": ["PubMed"]},
+    )
+    # OpenAlex copy carries the same PMID but a DOI-based canonical id.
+    records = [_record("OpenAlex", "W9", title="Shared", doi="10.1/x", pmid="999")]
+    summary = scan(["q"], search_fn=_search(records), embedder=_fake_embedder)
+
+    assert summary.new == 0
+    assert summary.already_present == 1
+    assert ContentItem.objects.count() == 1
+
+
+@pytest.mark.django_db
 def test_scan_is_idempotent():
     records = [_record("OpenAlex", "W1", title="Once", doi="10.1/once")]
     first = scan(["q"], search_fn=_search(records), embedder=_fake_embedder)

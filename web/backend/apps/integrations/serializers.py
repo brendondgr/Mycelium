@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import DiscordIdentity
+from .models import DiscordGuildLink, DiscordIdentity
 
 
 class DiscordStatusSerializer(serializers.Serializer):
@@ -32,4 +32,35 @@ class DiscordStatusSerializer(serializers.Serializer):
             "dm_ok": None,
             "dm_checked_at": None,
             "linked_at": None,
+        }
+
+
+class DiscordGuildStatusSerializer(serializers.Serializer):
+    """Whether a Lab's Discord server is synced, for the Manage & Invite page.
+
+    ``synced`` is the single boolean the card keys on (bot installed AND a lab
+    manager confirmed it with ``/mylo setup``); ``state`` carries the nuance so
+    the UI can distinguish "installed, run /mylo setup" (pending_setup) and
+    "Mylo was removed" (kicked) from "not connected" (no link at all).
+    """
+
+    synced = serializers.SerializerMethodField()
+    state = serializers.CharField(allow_null=True)
+    guild_id = serializers.CharField(allow_null=True)
+    guild_name = serializers.CharField(source="guild_name_cache", allow_null=True)
+    verified = serializers.BooleanField(source="verified_via_code_grant")
+    confirmed_at = serializers.DateTimeField(allow_null=True)
+
+    def get_synced(self, obj) -> bool:
+        return bool(obj and obj.state == DiscordGuildLink.State.ACTIVE)
+
+    @staticmethod
+    def empty() -> dict:
+        return {
+            "synced": False,
+            "state": None,
+            "guild_id": None,
+            "guild_name": None,
+            "verified": False,
+            "confirmed_at": None,
         }

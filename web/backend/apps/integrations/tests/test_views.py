@@ -12,6 +12,7 @@ from django.urls import reverse
 from apps.accounts.models import Lab, LabMembership
 from apps.integrations.models import DiscordGuildLink, DiscordIdentity
 from apps.integrations.services import discord_api, resolve
+from apps.integrations.services.discord_api import RawResponse
 
 from .base import clear_discord_cache, discord_test_settings
 
@@ -122,6 +123,21 @@ class PathAViewTests(TestCase):
         self.assertFalse(DiscordIdentity.objects.filter(user=self.user).exists())
         self.assertTrue(rev.called)
 
+    def test_probe_not_linked_404(self):
+        resp = self.client.post(reverse("discord-probe"))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_probe_runs_and_returns_fresh_status(self):
+        resolve.bind_identity(self.user, "mine", method=resolve.LINK_OAUTH)
+        with mock.patch.object(
+            discord_api, "open_dm_raw", return_value=RawResponse(200, {"id": "c-1"})
+        ), mock.patch.object(
+            discord_api, "create_message", return_value=RawResponse(200, {})
+        ):
+            resp = self.client.post(reverse("discord-probe"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["dm_ok"])
+
     def test_issue_activation_code(self):
         resp = self.client.post(reverse("discord-code"))
         self.assertEqual(resp.status_code, 200)
@@ -203,3 +219,55 @@ class PathCViewTests(TestCase):
                 reverse("discord-guild-callback"), {"code": "c", "state": state}
             )
         self.assertEqual(resp.status_code, 409)
+
+    def test_guild_status_requires_manager(self):
+        self.client.force_login(self.member)
+        resp = self.client.get(reverse("discord-guild-status"), {"lab": "lab"})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_guild_status_not_connected(self):
+        self.client.force_login(self.manager)
+        resp = self.client.get(reverse("discord-guild-status"), {"lab": "lab"})
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertFalse(body["synced"])
+        self.assertIsNone(body["state"])
+
+    def test_labs_managed_by_discord_user(self):
+        # The manager's linked identity sees the lab; a plain member sees none.
+        resolve.bind_identity(self.manager, "d-mgr", method=resolve.LINK_OAUTH)
+        resolve.bind_identity(self.member, "d-mem", method=resolve.LINK_OAUTH)
+        managed = resolve.labs_managed_by_discord_user("d-mgr")
+        self.assertEqual([lab.slug for lab in managed], ["lab"])
+        self.assertEqual(resolve.labs_managed_by_discord_user("d-mem"), [])
+
+    def test_bind_guild_via_command_activates(self):
+        resolve.bind_identity(self.manager, "d-mgr", method=resolve.LINK_OAUTH)
+        link = resolve.bind_guild_via_command("d-mgr", "g-99", "My Server", self.lab)
+        self.assertEqual(link.state, DiscordGuildLink.State.ACTIVE)
+        self.assertFalse(link.verified_via_code_grant)
+        self.assertEqual(link.guild_name_cache, "My Server")
+
+    def test_bind_guild_via_command_conflict(self):
+        other = Lab.objects.create(name="Other", slug="other")
+        resolve.bind_guild(other, {"id": "g-99"})  # g-99 already taken
+        resolve.bind_identity(self.manager, "d-mgr", method=resolve.LINK_OAUTH)
+        with self.assertRaises(resolve.GuildConflict):
+            resolve.bind_guild_via_command("d-mgr", "g-99", "S", self.lab)
+
+    def test_guild_status_pending_then_active(self):
+        # Installed but unconfirmed → pending_setup, not yet synced.
+        resolve.bind_guild(self.lab, {"id": "g-77", "name": "S"})
+        self.client.force_login(self.manager)
+        resp = self.client.get(reverse("discord-guild-status"), {"lab": "lab"})
+        body = resp.json()
+        self.assertFalse(body["synced"])
+        self.assertEqual(body["state"], "pending_setup")
+        self.assertEqual(body["guild_name"], "S")
+        # A manager confirms it → active → synced.
+        resolve.bind_identity(self.manager, "d-mgr", method=resolve.LINK_OAUTH)
+        resolve.confirm_guild("g-77", confirmed_by=self.manager)
+        resp = self.client.get(reverse("discord-guild-status"), {"lab": "lab"})
+        body = resp.json()
+        self.assertTrue(body["synced"])
+        self.assertEqual(body["state"], "active")

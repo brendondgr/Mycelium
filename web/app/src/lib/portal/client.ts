@@ -6,6 +6,7 @@ import type {
   ConferenceOpportunity,
   DailyBriefing,
   DailyReport,
+  DiscordGuildStatus,
   DiscordStartResponse,
   DiscordStatus,
   FellowshipOpportunity,
@@ -305,5 +306,27 @@ export async function fetchDiscordStart(): Promise<DiscordStartResponse> {
   return getJson<DiscordStartResponse>(
     buildApiUrl(getPublicApiBase(), "integrations", "discord", "start"),
     "Could not start the Discord connection.",
+  );
+}
+
+/** Whether a lab's Discord server is synced (Manage & Invite page; managers). */
+export async function fetchLabDiscordStatus(
+  slug: string,
+): Promise<DiscordGuildStatus> {
+  const url = buildApiUrl(getPublicApiBase(), "integrations", "discord", "guild", "status");
+  return getJson<DiscordGuildStatus>(
+    `${url}?lab=${encodeURIComponent(slug)}`,
+    "Could not load this lab's Discord connection.",
+  );
+}
+
+/** Begin the guild install for a lab — returns the Discord authorize URL. */
+export async function fetchLabDiscordStart(
+  slug: string,
+): Promise<DiscordStartResponse> {
+  const url = buildApiUrl(getPublicApiBase(), "integrations", "discord", "guild", "start");
+  return getJson<DiscordStartResponse>(
+    `${url}?lab=${encodeURIComponent(slug)}`,
+    "Could not start adding Mylo to your server.",
   );
 }

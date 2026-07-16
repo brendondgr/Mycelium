@@ -13,6 +13,8 @@ import {
   fetchDailyReport,
   fetchDiscordStart,
   fetchDiscordStatus,
+  fetchLabDiscordStart,
+  fetchLabDiscordStatus,
   fetchDeadlines,
   fetchFellowships,
   fetchGrants,
@@ -49,6 +51,7 @@ import {
   dismissSuggestion,
   ingestProjectLink,
   issueActivationCode,
+  testDiscordDm,
   inviteToLab,
   joinProject,
   leaveProject,
@@ -623,12 +626,44 @@ export function useDiscordStatus() {
   });
 }
 
+/** A lab's Discord sync status (Manage & Invite page; managers only). */
+export function useLabDiscordStatus(slug?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
+  return useQuery({
+    queryKey: ["portal", "lab-discord", slug ?? "none"],
+    queryFn: () => fetchLabDiscordStatus(slug as string),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
 /** Start the Discord OAuth link: fetch the authorize URL, then redirect. */
 export function useConnectDiscord() {
   return useMutation({
     mutationFn: async () => {
       const { authorize_url } = await fetchDiscordStart();
       window.location.href = authorize_url;
+    },
+  });
+}
+
+/** Start the guild install for a lab: fetch the authorize URL, then redirect. */
+export function useConnectLabDiscord() {
+  return useMutation({
+    mutationFn: async (slug: string) => {
+      const { authorize_url } = await fetchLabDiscordStart(slug);
+      window.location.href = authorize_url;
+    },
+  });
+}
+
+/** Re-run the DM reachability probe; write the fresh status into the card. */
+export function useTestDiscordDm() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => testDiscordDm(),
+    onSuccess: (status) => {
+      queryClient.setQueryData(["portal", "discord"], status);
     },
   });
 }

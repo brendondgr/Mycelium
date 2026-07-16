@@ -14,15 +14,18 @@ import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { MemberRow } from "@/components/portal/sections/member-row";
 import {
+  useConnectLabDiscord,
   useCreateLab,
   useCreateProject,
   useInviteToLab,
+  useLabDiscordStatus,
   useLabMembers,
   useLabProfile,
   useLabProjects,
   useProjectMembership,
   useUpdateLabProfile,
 } from "@/lib/portal/hooks";
+import { ApiError } from "@/lib/api-error";
 import type { LabProfileData, MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
@@ -201,6 +204,7 @@ function LabDetail({ lab }: { lab: MyLab }) {
     <div className="space-y-4">
       <LabPurposeCard lab={lab} canManage={canManage} />
       {canManage ? <InviteCard lab={lab} /> : null}
+      {canManage ? <DiscordSyncCard lab={lab} /> : null}
       <MembersCard lab={lab} />
       <ProjectsCard lab={lab} canManage={canManage} />
     </div>
@@ -508,6 +512,82 @@ function InviteCard({ lab }: { lab: MyLab }) {
         <p className="mt-2 text-[12.5px] text-clay" role="alert">
           {error}
         </p>
+      ) : null}
+    </DetailCard>
+  );
+}
+
+// -- Discord ------------------------------------------------------------------
+
+function DiscordSyncCard({ lab }: { lab: MyLab }) {
+  const { data: status, isLoading, isError } = useLabDiscordStatus(lab.slug);
+  const connect = useConnectLabDiscord();
+
+  const synced = Boolean(status?.synced);
+
+  const badge = (() => {
+    if (isLoading) return { tone: "neutral" as const, label: "Checking…" };
+    if (isError) return { tone: "clay" as const, label: "Unknown" };
+    if (synced) return { tone: "primary" as const, label: "Synced" };
+    if (status?.state === "pending_setup")
+      return { tone: "review" as const, label: "Setup pending" };
+    if (status?.state === "kicked")
+      return { tone: "clay" as const, label: "Removed" };
+    return { tone: "neutral" as const, label: "Not connected" };
+  })();
+
+  const detail = (() => {
+    if (isLoading) return "Checking this lab's Discord connection…";
+    if (isError) return "Couldn't check the Discord connection. Try again.";
+    if (synced) {
+      const where = status?.guild_name
+        ? `the ${status.guild_name} server`
+        : "your Discord server";
+      return `Mylo is synced to ${where}. Members can use Mylo there.`;
+    }
+    if (status?.state === "pending_setup")
+      return "Mylo was added to a server but not confirmed yet. A lab manager runs /mylo setup in that server to finish syncing.";
+    if (status?.state === "kicked")
+      return "Mylo was removed from the connected server. Add it again below, or run /mylo setup in your server.";
+    return "This lab isn't connected to a Discord server yet. Add Mylo to your server below, or run /mylo setup there and pick this lab.";
+  })();
+
+  const connectError =
+    connect.error instanceof ApiError && connect.error.status === 409
+      ? "Link your own Discord first — the Connected services card on your profile — then try again."
+      : connect.isError
+        ? "Couldn't start adding Mylo. Try again."
+        : null;
+
+  return (
+    <DetailCard title="Discord">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-[var(--text-primary)]">
+          Mylo on Discord
+        </span>
+        <Pill tone={badge.tone}>{badge.label}</Pill>
+      </div>
+      <p className="mt-2 text-[12.5px] text-[var(--text-muted)]">{detail}</p>
+      {!synced && !isLoading ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            className={PRIMARY_BUTTON}
+            onClick={() => connect.mutate(lab.slug)}
+            disabled={connect.isPending}
+          >
+            {connect.isPending
+              ? "Opening Discord…"
+              : status?.state === "pending_setup"
+                ? "Re-add Mylo to a server"
+                : "Add Mylo to this server"}
+          </button>
+          {connectError ? (
+            <p className="mt-2 text-[12.5px] text-clay" role="alert">
+              {connectError}
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </DetailCard>
   );

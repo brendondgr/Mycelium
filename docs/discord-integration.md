@@ -43,11 +43,23 @@ no Mylo database, schema, or migration history.
   `/activate CODE` in the hub `#activation` channel → `DiscordIdentity`. Binds the
   identity but does **not** grant DM rights the way A does — expect a higher
   `dm_ok=False` rate; the split is instrumented by `link_method`.
-* **Path C (lab link):** portal → bot install OAuth (`bot applications.commands`,
-  `integration_type=0`, `response_type=code`, **`integration_require_code_grant`
-  ON**). The binding comes only from the authoritative `guild` object in the token
-  exchange — the redirect's `guild_id`/`permissions` are forgeable and ignored.
-  Install → `PENDING_SETUP`; a lab manager runs `/mylo setup` → `ACTIVE`.
+* **Path C (lab link):** a guild is bound to a lab by a lab manager, two ways:
+  * **Website install (verified):** portal → the lab's **Edit Setup** menu →
+    "Add Mylo to this server" → bot install OAuth (`bot applications.commands`,
+    `integration_type=0`, `response_type=code`, **`integration_require_code_grant`
+    ON**). The binding comes only from the authoritative `guild` object in the
+    token exchange — the redirect's `guild_id`/`permissions` are forgeable and
+    ignored. Install → `PENDING_SETUP`; the manager runs `/mylo setup` → `ACTIVE`
+    (`verified_via_code_grant=True`).
+  * **Discord-native (`bind_guild_via_command`):** in a server Mylo is already in,
+    a manager runs `/mylo setup lab:<name>` (the `lab` arg autocompletes to the
+    labs they PI/manage) → bound `ACTIVE` directly, `verified_via_code_grant=False`.
+    Trust rests on two authoritative facts, not the forgeable redirect: Discord
+    guarantees the interaction's `guild_id`, and authority is the *existing*
+    `user_can_manage_lab` check. One-guild-one-lab is still enforced.
+  Either way the **Manage & Invite** page shows the live sync state
+  (`discord/guild/status`), and the profile card's **Test** button re-runs the DM
+  reachability probe on demand (`discord/probe`).
 
 **Authorization invariant:** a Discord identity is authentication, never
 authorization. Every action terminates in the existing
