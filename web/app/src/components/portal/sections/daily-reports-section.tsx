@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
+import { MarkdownProse } from "@/components/portal/primitives/markdown-prose";
 import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { StatCard } from "@/components/portal/sections/stat-card";
@@ -71,11 +72,7 @@ function MyloReport({
   data: DailyBriefing;
   className?: string;
 }) {
-  const body = data.briefing?.body ?? "";
-  const paragraphs = body
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter(Boolean);
+  const body = (data.briefing?.body ?? "").trim();
   const isFallback = data.briefing?.origin === "fallback";
   const when = formatWhen(data.generated_at);
 
@@ -88,13 +85,13 @@ function MyloReport({
         </span>
       </div>
 
-      <div className="space-y-3 text-[15px] leading-relaxed text-[var(--text-secondary)] [text-wrap:pretty]">
-        {paragraphs.length > 0 ? (
-          paragraphs.map((p, i) => <p key={i}>{p}</p>)
-        ) : (
-          <p>Mylo has nothing to report yet today.</p>
-        )}
-      </div>
+      {body ? (
+        <MarkdownProse text={body} />
+      ) : (
+        <p className="text-[15px] leading-relaxed text-[var(--text-secondary)]">
+          Mylo has nothing to report yet today.
+        </p>
+      )}
 
       {isFallback ? (
         <p className="mt-4 text-xs text-[var(--text-muted)]">
@@ -113,7 +110,7 @@ function TodaySummaries({ data }: { data: DailyBriefing }) {
   const categories = orderedCategories(data);
 
   return (
-    <Card className="p-5">
+    <Card className="p-5 text-center">
       <p className="mb-3 text-[12.5px] font-semibold text-[var(--text-secondary)]">
         Today&rsquo;s summaries
       </p>
@@ -127,6 +124,7 @@ function TodaySummaries({ data }: { data: DailyBriefing }) {
             return (
               <StatCard
                 key={category}
+                align="center"
                 icon={meta.icon}
                 label={meta.label}
                 value={hasNewCount ? newCount : total}
