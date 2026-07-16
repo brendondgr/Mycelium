@@ -176,3 +176,77 @@ class Seat(models.Model):
 
     def __str__(self) -> str:
         return f"{self.member} seat ({self.payer_type}-paid, {self.status})"
+
+
+class AddOn(models.Model):
+    """A purchasable capability that is orthogonal to tier (architecture A4).
+
+    An add-on grants exactly one :class:`~apps.billing.entitlements.Feature` on
+    top of whatever the subscription's tier already unlocks — e.g. the Mylo-server
+    add-on grants ``Feature.BOT_SERVER``, which no tier grants on its own. Prices
+    are recorded for display only; charging is a Stripe (P7) concern.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    slug = models.SlugField(max_length=50, unique=True)
+    name = models.CharField(max_length=100)
+    feature = models.CharField(
+        max_length=50,
+        help_text="The Feature string this add-on grants (e.g. 'bot_server').",
+    )
+    description = models.TextField(blank=True)
+    price_cents = models.PositiveIntegerField(
+        default=0, help_text="Informational monthly price; billing is deferred."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["slug"]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.slug})"
+
+
+class SubscriptionAddOn(models.Model):
+    """An add-on attached to one subscription — the grant that makes it real.
+
+    Folding an add-on's feature into a tier would corrupt the model (A4); instead
+    the union of a covering subscription's active add-ons layers on top of its tier
+    features in :func:`~apps.billing.entitlements.effective_features`.
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        CANCELED = "canceled", "Canceled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    subscription = models.ForeignKey(
+        Subscription,
+        on_delete=models.CASCADE,
+        related_name="addons",
+    )
+    add_on = models.ForeignKey(
+        AddOn,
+        on_delete=models.CASCADE,
+        related_name="subscriptions",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subscription", "add_on"],
+                name="billing_unique_subscription_addon",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.add_on.slug} on {self.subscription_id} — {self.status}"
