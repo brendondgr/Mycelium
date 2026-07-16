@@ -20,6 +20,7 @@ def _both(route, view, name):
 urlpatterns = [
     *_both("discord/start", views.DiscordStartView, "discord-start"),
     *_both("discord/status", views.DiscordStatusView, "discord-status"),
+    *_both("discord/probe", views.DiscordProbeView, "discord-probe"),
     *_both("discord/disconnect", views.DiscordDisconnectView, "discord-disconnect"),
     *_both("discord/code", views.DiscordActivationCodeView, "discord-code"),
     *_both(

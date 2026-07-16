@@ -13,6 +13,7 @@ import {
   fetchDailyReport,
   fetchDiscordStart,
   fetchDiscordStatus,
+  fetchLabDiscordStart,
   fetchLabDiscordStatus,
   fetchDeadlines,
   fetchFellowships,
@@ -46,6 +47,7 @@ import {
   dismissSuggestion,
   ingestProjectLink,
   issueActivationCode,
+  testDiscordDm,
   inviteToLab,
   joinProject,
   leaveProject,
@@ -602,6 +604,27 @@ export function useConnectDiscord() {
     mutationFn: async () => {
       const { authorize_url } = await fetchDiscordStart();
       window.location.href = authorize_url;
+    },
+  });
+}
+
+/** Start the guild install for a lab: fetch the authorize URL, then redirect. */
+export function useConnectLabDiscord() {
+  return useMutation({
+    mutationFn: async (slug: string) => {
+      const { authorize_url } = await fetchLabDiscordStart(slug);
+      window.location.href = authorize_url;
+    },
+  });
+}
+
+/** Re-run the DM reachability probe; write the fresh status into the card. */
+export function useTestDiscordDm() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => testDiscordDm(),
+    onSuccess: (status) => {
+      queryClient.setQueryData(["portal", "discord"], status);
     },
   });
 }

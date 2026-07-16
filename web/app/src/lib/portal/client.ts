@@ -310,3 +310,14 @@ export async function fetchLabDiscordStatus(
     "Could not load this lab's Discord connection.",
   );
 }
+
+/** Begin the guild install for a lab — returns the Discord authorize URL. */
+export async function fetchLabDiscordStart(
+  slug: string,
+): Promise<DiscordStartResponse> {
+  const url = buildApiUrl(getPublicApiBase(), "integrations", "discord", "guild", "start");
+  return getJson<DiscordStartResponse>(
+    `${url}?lab=${encodeURIComponent(slug)}`,
+    "Could not start adding Mylo to your server.",
+  );
+}

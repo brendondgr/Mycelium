@@ -128,6 +128,30 @@ class DiscordStatusView(APIView):
         return Response(DiscordStatusSerializer(identity).data)
 
 
+class DiscordProbeView(APIView):
+    """Re-run the DM reachability probe on demand ("Test" button on the card).
+
+    Synchronous (not the Celery path) so the portal gets the fresh result to
+    render. Returns the same status shape as ``DiscordStatusView`` with the
+    updated ``dm_ok``/``dm_checked_at``. A transient Discord failure leaves the
+    prior value; ``404`` if the caller has no linked identity.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        identity = resolve.get_identity_for_user(request.user)
+        if identity is None:
+            return Response(
+                {"detail": "not linked"}, status=status.HTTP_404_NOT_FOUND
+            )
+        from .services import probe
+
+        probe.run_probe(identity)
+        identity = resolve.get_identity_for_user(request.user)
+        return Response(DiscordStatusSerializer(identity).data)
+
+
 class DiscordDisconnectView(APIView):
     permission_classes = [IsAuthenticated]
 

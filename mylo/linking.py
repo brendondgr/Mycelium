@@ -27,10 +27,27 @@ async def activate(
     return await mycelium.db(_activate_sync, str(discord_user_id), code)
 
 
-async def setup_guild(discord_user_id: str, guild_id: str) -> tuple[str, str]:
+async def setup_guild(
+    discord_user_id: str,
+    guild_id: str,
+    *,
+    guild_name: str = "",
+    lab_slug: str | None = None,
+) -> tuple[str, str]:
     if not guild_id:
         return ("no_guild", "Run `/mylo setup` inside a server, not in a DM.")
-    return await mycelium.db(_setup_sync, str(discord_user_id), str(guild_id))
+    return await mycelium.db(
+        _setup_sync, str(discord_user_id), str(guild_id), guild_name, lab_slug
+    )
+
+
+async def managed_lab_choices(
+    discord_user_id: str, current: str
+) -> list[tuple[str, str]]:
+    """(name, slug) pairs for the `/mylo setup` lab autocomplete."""
+    return await mycelium.db(
+        _managed_lab_choices_sync, str(discord_user_id), current or ""
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -81,34 +98,94 @@ def _activate_sync(discord_user_id: str, code: str) -> tuple[str, str]:
     return (outcome.value, messages[outcome])
 
 
-def _setup_sync(discord_user_id: str, guild_id: str) -> tuple[str, str]:
+def _managed_lab_choices_sync(
+    discord_user_id: str, current: str
+) -> list[tuple[str, str]]:
     from apps.integrations.services import resolve
 
-    lab = resolve.resolve_lab_for_guild(guild_id)
-    if lab is None:
-        return (
-            "no_link",
-            "This server isn't linked to a Mycelium lab yet. A lab manager can add "
-            f"Mylo from {mycelium.portal_url()}.",
-        )
+    cur = current.lower().strip()
+    out: list[tuple[str, str]] = []
+    for lab in resolve.labs_managed_by_discord_user(discord_user_id):
+        if cur and cur not in lab.name.lower():
+            continue
+        out.append((lab.name[:100], lab.slug))
+    return out[:25]
+
+
+def _setup_sync(
+    discord_user_id: str, guild_id: str, guild_name: str, lab_slug: str | None
+) -> tuple[str, str]:
+    from apps.integrations.services import resolve
+
+    # Auth: the caller must have linked their own Discord (identity = who you are).
     if resolve.resolve_identity(discord_user_id) is None:
         return (
             "link_required",
             "Link your own Discord to Mycelium first, then run `/mylo setup` again: "
             f"{mycelium.portal_url()}",
         )
-    if not resolve.can_manage_lab_via_discord(discord_user_id, lab):
+
+    link = resolve.get_guild_link(guild_id)
+
+    # Already fully connected — nothing to do.
+    if link is not None and link.state == resolve.GUILD_ACTIVE:
         return (
-            "denied",
-            f"You're not a manager of **{lab.name}**, so you can't confirm this "
-            "server. Guild ownership alone doesn't grant lab authority.",
+            "already",
+            f"✅ This server is already connected to **{link.lab.name}**.",
         )
-    confirmer = resolve.resolve_user(discord_user_id)
-    link = resolve.confirm_guild(guild_id, confirmed_by=confirmer)
-    if link is None:
+
+    # Installed via the website (PENDING) — confirm it, if the caller manages it.
+    if link is not None and link.state != resolve.GUILD_KICKED:
+        lab = link.lab
+        if not resolve.can_manage_lab_via_discord(discord_user_id, lab):
+            return (
+                "denied",
+                f"This server is being connected to **{lab.name}**, but you're not "
+                "a manager of that lab. Guild ownership alone grants no authority.",
+            )
+        confirmer = resolve.resolve_user(discord_user_id)
+        confirmed = resolve.confirm_guild(guild_id, confirmed_by=confirmer)
+        if confirmed is None:
+            return (
+                "unusable",
+                "This pending link can't be confirmed. Run "
+                "`/mylo setup lab:<name>` to connect a lab you manage instead.",
+            )
+        return ("ok", f"✅ This server is now connected to **{lab.name}**.")
+
+    # Not bound yet (or previously kicked) — connect it to a lab the caller manages.
+    managed = resolve.labs_managed_by_discord_user(discord_user_id)
+    if not managed:
         return (
-            "unusable",
-            "This link can't be confirmed (it wasn't verified via the code grant). "
-            "Re-add Mylo from the portal.",
+            "no_labs",
+            "You don't manage any labs in Mycelium yet. Ask a lab's PI or admin to "
+            "connect this server, or set up your lab in Mycelium first.",
         )
-    return ("ok", f"✅ This server is now connected to **{lab.name}**.")
+
+    if lab_slug:
+        chosen = next((lab for lab in managed if lab.slug == lab_slug), None)
+        if chosen is None:
+            return (
+                "bad_lab",
+                "Pick one of the labs you manage — start typing after `lab:` to "
+                "see the list.",
+            )
+        try:
+            resolve.bind_guild_via_command(
+                discord_user_id, guild_id, guild_name, chosen
+            )
+        except resolve.GuildConflict:
+            return (
+                "conflict",
+                "This server is already connected to a different lab.",
+            )
+        return ("ok", f"✅ This server is now connected to **{chosen.name}**.")
+
+    # No lab chosen — show how to pick one (Discord) or point at the website.
+    names = ", ".join(f"**{lab.name}**" for lab in managed[:10])
+    return (
+        "choose",
+        f"Connect this server to a lab you manage: run `/mylo setup lab:<name>` "
+        f"({names}). You can also add Mylo from that lab's **Edit Setup** menu in "
+        "Mycelium.",
+    )
