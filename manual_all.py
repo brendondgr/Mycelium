@@ -33,10 +33,16 @@ until its deadline/event date passes and the ingest prune deletes it.
 Refitting (``run_refitting`` / ``utils/manual/manual_refitting.py``) is the
 explicit whole-corpus *replace* pass, reserved for sign-up and profile edits.
 
+A pre-flight ``llm_check --strict`` gates the whole run: the pipeline depends on
+the LLM for paper rankings, opportunity scoring, and briefings, so if the
+endpoint is unreachable the run is skipped entirely (nothing scraped, matched, or
+briefed) rather than filling the feeds with deterministic fallbacks. It retries
+on the next scheduled run.
+
 Observability: every notable condition is posted to Mylo's Discord error channel
 via :mod:`mylo.reporting` (a stdlib-only REST poster that never raises) — a
-needed Pivot re-login, an unreachable LLM (recommendations fall back), a stage
-that exited non-zero, and a short "run complete" summary. The run also writes its
+needed Pivot re-login, an unreachable LLM (the run is skipped), a stage that
+exited non-zero, and a short "run complete" summary. The run also writes its
 outcome to ``data/logs/mylo-last-run.json`` for the bot's ``/mylo lastrun``.
 
 The scrape stage runs on the host because Playwright/Chromium and the saved Pivot
@@ -225,24 +231,35 @@ def scrape_opportunities() -> bool:
     return True
 
 
-def preflight_llm(base: list[str]) -> None:
-    """Warn (non-fatal) to Discord if the LLM endpoint is unreachable.
+def preflight_llm(base: list[str]) -> bool:
+    """Return True if the LLM endpoint is reachable; False (after reporting) if not.
 
     Runs ``llm_check --strict`` in the backend container before the recommend
-    stages. A non-zero exit means the model is down, so the paper/opportunity/
-    briefing stages will silently use their deterministic fallbacks — worth
-    flagging up front rather than discovering it in the output.
+    stages. The daily pipeline's paper rankings, opportunity scoring, and
+    briefings are only worth writing when the model is up: the deterministic
+    fallbacks would append lower-quality results to feeds that Mylo never
+    rewrites, so a stale-but-real feed is better than one padded with template
+    output. A non-zero exit therefore aborts the run instead of proceeding on
+    fallbacks — nothing is scraped, matched, or briefed until the endpoint is
+    back and the next run (or a manual re-run) can do it with the model up.
     """
     print("\n=== Pre-flight · Checking the LLM endpoint… ===", flush=True)
     if run_manage("llm_check", ["--strict"], intro=None, base=base) != 0:
         _notify(
-            "warn",
-            "LLM endpoint unreachable — using deterministic fallback",
-            "Today's paper rankings, opportunity scoring, and briefings will fall "
-            "back to their non-LLM templates until the endpoint is back.",
+            "error",
+            "LLM endpoint unreachable — daily run skipped",
+            "The daily run needs the language model for paper rankings, "
+            "opportunity scoring, and briefings, so it did not run today. Nothing "
+            "was scraped, matched, or briefed; the existing feeds are untouched. "
+            "It will try again on the next scheduled run.",
             stage="preflight",
-            action="Check the LLM server / `LLM_BASE_URL`; run `llm_check` in the backend.",
+            action=(
+                "Check the LLM server / `LLM_BASE_URL`; run `llm_check` in the "
+                f"backend on {HOST}, then re-run `manual_all.py` once it is back."
+            ),
         )
+        return False
+    return True
 
 
 def main() -> int:
@@ -275,8 +292,21 @@ def main() -> int:
 
     total = 1 + len(CONTAINER_STAGES)
 
-    # Pre-flight — surface an LLM outage before the long stages run on fallback.
-    preflight_llm(base)
+    # Pre-flight — the entire pipeline (paper rankings, opportunity scoring,
+    # briefings) depends on the LLM. If it is unreachable, do NOT run the search
+    # or any later stage on deterministic fallbacks: abort before scraping so the
+    # scrape does not ingest a batch of items that today's LLM-less run would
+    # leave unmatched. The run will do everything on the next attempt with the
+    # model up.
+    if not preflight_llm(base):
+        _write_run_state(
+            ok=False,
+            scrape_ran=False,
+            stages_run=[],
+            failed_stage="preflight",
+            exit_code=1,
+        )
+        return 1
 
     # Stage 1 — scrape the opportunity sources on the host (non-fatal).
     print(
