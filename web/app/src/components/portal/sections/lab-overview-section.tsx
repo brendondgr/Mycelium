@@ -122,6 +122,12 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
           sub={recSub}
         />
         <StatCard
+          icon={<SparkleIcon size={16} />}
+          label="Fellowships eligible"
+          value={rec?.counts.fellowships ?? null}
+          sub="Members who opted in"
+        />
+        <StatCard
           icon={<MembersIcon size={16} />}
           label="Members"
           value={memberCount}
@@ -134,6 +140,57 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
           onClick={() => goToSection("labs" as SectionKey)}
         />
       </div>
+
+      {/* Fellowships members are eligible for — named only for members who opted
+          into lab-visible eligibility; never anyone who is ineligible (D-11). */}
+      {rec && rec.fellowships.length > 0 ? (
+        <Card className="mb-[26px] p-5">
+          <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+            Fellowships your members are eligible for
+          </h2>
+          <ul className="space-y-3">
+            {rec.fellowships.map((fellowship) => (
+              <li
+                key={fellowship.content_id}
+                className="border-b border-[var(--divider)] pb-3 last:border-0 last:pb-0"
+              >
+                {fellowship.url ? (
+                  <a
+                    href={fellowship.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-semibold text-[var(--text-primary)] hover:text-primary"
+                  >
+                    {fellowship.title}
+                  </a>
+                ) : (
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">
+                    {fellowship.title}
+                  </p>
+                )}
+                {fellowship.deadline_date ? (
+                  <p className="text-xs text-[var(--text-muted)]">
+                    Deadline {fellowship.deadline_date}
+                  </p>
+                ) : null}
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {fellowship.eligible.map((member) => (
+                    <span
+                      key={member.username}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-alt px-2 py-0.5 text-xs text-[var(--text-secondary)]"
+                    >
+                      {member.name}{" "}
+                      <span className="text-[var(--text-muted)]">
+                        ({member.tier})
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       {/* Lab purpose summary (left) + watch summary (right) */}
       <div className="grid gap-[22px] grid-cols-1 lg:grid-cols-[1.5fr_1fr] lg:items-start">

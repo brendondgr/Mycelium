@@ -195,13 +195,18 @@ wired only after the floor is calibrated on real data.
 **Validation:** `_high_signal_abstains_when_nothing_clears_floor`, `_high_signal_respects_weekly_cap`,
 same-item-never-twice. Real-corpus floor calibration → flagged (needs production data, D-14).
 
-### R8 — Fellowships for labs (BLOCKED on D-11)
+### R8 — Fellowships for labs (D-11 resolved: eligible-only + opt-in consent)
 
-Lift the fellowship exclusion in `_recommendations_payload`; surface lab fellowships as a
-**union of eligible members**, naming only who **qualifies** (reuse `_interested_members`
-shape). **Never render the ineligible case** (leaks immigration status by inference).
-Requires a member consent model for lab-visible eligibility. **Do not build R8 until D-11
-is decided** (see Open Decisions).
+**Decision (2026-07-16):** build R8 with eligible-only rendering behind explicit opt-in
+consent. Implemented: a `lab_visible` boolean on the eligibility contract
+(`accounts.interests.EligibilityContract`, default **off**); `_lab_eligible_fellowships`
+in `content/views.py` surfaces a fellowship only when ≥1 lab member is personally
+eligible (tier qualified/conditional) **and** has set `lab_visible`, naming just those
+members with their tier. An ineligible member — or an eligible one who hasn't consented —
+is **never named** (D-11), and the lab card reads only public fellowship fields, never a
+member's personal match reasoning. `_recommendations_payload` gains `fellowships[]` +
+`counts.fellowships`. Frontend: a consent toggle in the onboarding fellowship-eligibility
+step, and a "Fellowships your members are eligible for" surface on the lab overview.
 
 ### R9 — Saves-page reminder affordance + composer + management UI
 
@@ -226,7 +231,7 @@ worktree, per project memory).
 ## Open decisions (carry into build)
 
 - **D-10** High-signal to Discord vs in-app: **in-app only** for R7 (safe default).
-- **D-11** Fellowship eligibility privacy — **blocks R8**. Eligible-only rendering + member consent flag required; the ineligible case is never shown. **Needs the owner's consent-model decision before R8 is built.**
+- **D-11** Fellowship eligibility privacy — **RESOLVED (2026-07-16): build R8 with eligible-only rendering behind explicit opt-in consent** (`eligibility.lab_visible`, default off). The ineligible case is never shown; nothing surfaces until a member opts in. Implemented in R8.
 - **D-12** Per-member mute of a lab reminder: out of R1–R9 scope; note as a follow-up (cheap to add later via a per-member suppression row).
 - **D-13** Offset sanity bounds: cap offsets per subscription (5) and reject offsets landing before `first_seen`; implement in R1 validation.
 - **D-14** `HIGH_SIGNAL_FLOOR`: placeholder 90; **must be calibrated on the production corpus in R7 shadow mode before delivery**.

@@ -87,6 +87,10 @@ class EligibilityContract(serializers.Serializer):
       stage        academic stage token — default "".
       fields       subset of five broad field buckets — validated, allow empty.
       eligible_restrictions  subset of ["Women","Equity"] — default [].
+      lab_visible  opt-in: may this member's fellowship eligibility be shown to
+                   their labs? Default False — a lab fellowship recommendation names
+                   only members who explicitly consent (D-11 privacy), never who
+                   was ineligible, so nothing leaks by inference until opt-in.
       career_stage  kept for backward-compat (intake/agent.py writes it).
     """
 
@@ -106,6 +110,8 @@ class EligibilityContract(serializers.Serializer):
         required=False,
         default=list,
     )
+    # Opt-in consent for lab-visible fellowship eligibility (D-11). Default off.
+    lab_visible = serializers.BooleanField(required=False, default=False)
     # Backward-compat: intake/agent.py writes career_stage; keep it as a plain
     # string so old data round-trips without error.
     career_stage = serializers.CharField(required=False, allow_blank=True)

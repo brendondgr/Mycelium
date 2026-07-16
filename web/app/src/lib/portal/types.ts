@@ -297,20 +297,48 @@ export type InterestedMember = {
   match_percent: number;
 };
 
+/** A lab member eligible for a fellowship who opted into lab-visible eligibility. */
+export type EligibleMember = {
+  username: string;
+  name: string;
+  initials: string;
+  tier: "qualified" | "conditional";
+};
+
+/** A fellowship a lab can act on, named by its eligible + consenting members. */
+export type LabFellowship = {
+  content_id: string;
+  title: string;
+  url: string;
+  award_class: string;
+  amount: string;
+  deadline_date: string;
+  deadline_type: string;
+  fields: string[];
+  /** Only members who qualify AND opted in — never who was ineligible (D-11). */
+  eligible: EligibleMember[];
+};
+
 /**
  * A lab's or a project's combined recommendations (from
  * `/api/labs/<slug>/recommendations/` and `/api/projects/<id>/recommendations/`).
  * Papers + grants + conferences the target matched, plus per-area counts for the
- * overview stat cards. Fellowships are excluded — they are individual-only.
- * `interested` maps a content id to the members who personally matched it strongly,
- * so the UI can suggest who to connect over a shared item.
+ * overview stat cards. `fellowships` surface as a union of member matches, naming
+ * only members who are eligible and consented to lab-visible eligibility.
+ * `interested` maps a content id to the members who personally matched it strongly.
  */
 export type TargetRecommendations = {
   generated_at: string | null;
-  counts: { papers: number; grants: number; conferences: number };
+  counts: {
+    papers: number;
+    grants: number;
+    conferences: number;
+    fellowships: number;
+  };
   papers: Suggestion[];
   grants: GrantOpportunity[];
   conferences: ConferenceOpportunity[];
+  fellowships: LabFellowship[];
   interested: Record<string, InterestedMember[]>;
 };
 

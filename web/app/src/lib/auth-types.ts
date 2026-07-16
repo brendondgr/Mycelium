@@ -49,6 +49,12 @@ export type ProfileEligibility = {
    * Subset of ["Women", "Equity"].
    */
   eligible_restrictions: string[];
+  /**
+   * Opt-in: may this member's fellowship eligibility be shown to their labs?
+   * Default false — a lab fellowship names only members who consent, never who was
+   * ineligible, so citizenship/stage can't be inferred (D-11).
+   */
+  lab_visible?: boolean;
   /** Pre-existing key — never dropped; set only by other code paths. */
   career_stage?: string;
 };

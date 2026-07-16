@@ -448,15 +448,88 @@ def _interested_members(member_ids, content_ids) -> dict[str, list[dict]]:
     return interested
 
 
-def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dict:
-    """The combined papers + grants + conferences a lab / project matched.
+#: The eligibility tiers that count as "eligible" for a lab fellowship surface.
+_ELIGIBLE_TIERS = ("qualified", "conditional")
 
-    Fellowships are omitted: they are an individual-eligibility area, so they never
-    score against a lab or project. ``counts`` powers the lab overview stat cards;
-    the three lists power the project feed and any lab feed. ``interested`` maps each
-    item to the lab members who personally matched it strongly (from ``member_ids``),
-    so the UI can suggest who to connect over a shared item. Saves remain personal
-    (a user saves a deadline to *their* deadlines), so ``saved`` reflects the
+
+def _lab_fellowship_card(content, eligible: list[dict]) -> dict:
+    """A lab-visible fellowship card: public display fields + the eligible members.
+
+    Deliberately reads only the fellowship's own metadata — never a member's personal
+    match reasoning (``reason``/``gates_failed``/``fit``) — so nothing beyond the
+    named members' consented eligibility is exposed to the lab.
+    """
+    meta = content.metadata or {}
+    deadline = meta.get("deadline") or {}
+    return {
+        "content_id": str(content.id),
+        "title": meta.get("title") or "Untitled fellowship",
+        "url": meta.get("external_url") or meta.get("website") or content.source_url,
+        "award_class": meta.get("award_class") or "fellowship",
+        "amount": meta.get("amount_raw") or "",
+        "deadline_date": meta.get("deadline_date") or "",
+        "deadline_type": deadline.get("type") or meta.get("deadline_type") or "",
+        "fields": (meta.get("facets") or {}).get("field") or [],
+        "eligible": eligible,
+    }
+
+
+def _lab_eligible_fellowships(member_ids) -> list[dict]:
+    """Fellowships a lab can act on, named by their eligible **consenting** members.
+
+    A fellowship "matches a lab" only as a union of member matches (D-1): it is
+    surfaced when at least one member is personally eligible (tier qualified /
+    conditional) **and** has opted into lab-visible eligibility
+    (``interests.eligibility.lab_visible``, default off). Members who are ineligible,
+    or eligible but not consenting, are never named — so no one's citizenship or
+    career stage leaks by inference (D-11). This is the only place lab fellowships
+    surface; the whole-corpus feed stays user-only.
+    """
+    if not member_ids:
+        return []
+    scores = RelevanceScore.objects.filter(
+        target_user_id__in=member_ids, content__type=ContentItem.Type.FELLOWSHIP
+    ).select_related("content", "target_user", "target_user__profile")
+
+    content_by_id: dict[str, ContentItem] = {}
+    members_by_content: dict[str, list[dict]] = defaultdict(list)
+    for score in scores:
+        if score.signals.get("tier") not in _ELIGIBLE_TIERS:
+            continue  # eligible only — an ineligible member is never surfaced
+        member = score.target_user
+        profile = getattr(member, "profile", None)
+        interests = (profile.interests or {}) if profile else {}
+        eligibility = interests.get("eligibility", {})
+        if not eligibility.get("lab_visible"):
+            continue  # opt-in consent only
+        cid = str(score.content_id)
+        content_by_id[cid] = score.content
+        members_by_content[cid].append(
+            {
+                "username": member.get_username(),
+                "name": display_name(member),
+                "initials": initials(member),
+                "tier": score.signals.get("tier"),
+            }
+        )
+
+    cards = [
+        _lab_fellowship_card(content_by_id[cid], members_by_content[cid])
+        for cid in content_by_id
+    ]
+    cards.sort(key=lambda c: (-len(c["eligible"]), c["title"]))
+    return cards
+
+
+def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dict:
+    """The combined papers + grants + conferences + fellowships a lab / project matched.
+
+    ``counts`` powers the lab overview stat cards; the lists power the feeds.
+    ``interested`` maps each paper/grant/conference to the lab members who personally
+    matched it strongly (from ``member_ids``). **Fellowships** are individual by nature
+    (D-1), so they surface only as a union of member matches, named by the eligible
+    members who consented to lab-visible eligibility (see ``_lab_eligible_fellowships``)
+    — never who was ineligible (D-11). Saves remain personal, so ``saved`` reflects the
     signed-in user regardless of whose recommendations these are.
     """
     today = timezone.now().date().isoformat()
@@ -465,6 +538,7 @@ def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dic
     papers = _latest_scores(target_filter, ContentItem.Type.PAPER)
     grants = _accumulated_scores(target_filter, ContentItem.Type.GRANT)
     conferences = _accumulated_scores(target_filter, ContentItem.Type.CONFERENCE)
+    fellowships = _lab_eligible_fellowships(list(member_ids))
     content_ids = [s.content_id for s in (*papers, *grants, *conferences)]
     return {
         "generated_at": _generated_at([*papers, *grants, *conferences]),
@@ -472,6 +546,7 @@ def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dic
             "papers": len(papers),
             "grants": len(grants),
             "conferences": len(conferences),
+            "fellowships": len(fellowships),
         },
         "papers": SuggestionSerializer(
             papers, many=True, context={"today": today}
@@ -480,6 +555,7 @@ def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dic
         "conferences": ConferenceSerializer(
             conferences, many=True, context=opp_context
         ).data,
+        "fellowships": fellowships,
         "interested": _interested_members(list(member_ids), content_ids),
     }
 

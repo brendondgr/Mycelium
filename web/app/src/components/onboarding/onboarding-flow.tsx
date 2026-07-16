@@ -211,6 +211,8 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   const [eligStage, setEligStage] = useState<ProfileEligibility["stage"]>("");
   const [eligFields, setEligFields] = useState<string[]>([]);
   const [eligRestrictions, setEligRestrictions] = useState<string[]>([]);
+  // Opt-in: share fellowship eligibility with the user's labs (default off).
+  const [eligLabVisible, setEligLabVisible] = useState(false);
   // Preserve any pre-existing career_stage (set by other code paths, not this step).
   const [eligCareerStage, setEligCareerStage] = useState<string | undefined>(undefined);
 
@@ -316,6 +318,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
             setEligStage(elig.stage ?? "");
             setEligFields(elig.fields ?? []);
             setEligRestrictions(elig.eligible_restrictions ?? []);
+            setEligLabVisible(elig.lab_visible ?? false);
             setEligCareerStage(elig.career_stage);
           }
         }
@@ -526,6 +529,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
       stage: eligStage,
       fields: eligFields,
       eligible_restrictions: eligRestrictions,
+      lab_visible: eligLabVisible,
     };
     if (eligCareerStage !== undefined) {
       eligibility.career_stage = eligCareerStage;
@@ -1140,6 +1144,31 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
             Some fellowships are restricted to specific groups. Select any that
             apply to you — this is optional and only used to surface more
             relevant opportunities.
+          </p>
+        </div>
+
+        {/* Lab-visible eligibility consent (opt-in, default off) */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-[var(--text-primary)]">
+            Share eligibility with my labs{" "}
+            <span className="text-[var(--text-muted)]">(optional)</span>
+          </p>
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={eligLabVisible}
+              onChange={() => setEligLabVisible((v) => !v)}
+              className="mt-0.5 h-4 w-4 rounded border border-border bg-card accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <span className="text-sm font-medium text-[var(--text-primary)]">
+              Let my labs see which fellowships I&rsquo;m eligible for
+            </span>
+          </label>
+          <p className="text-xs text-[var(--text-muted)]">
+            Off by default. When on, a lab you belong to can see fellowships you
+            personally qualify for (so a PI can suggest applying). Your labs are
+            never shown fellowships you&rsquo;re <em>not</em> eligible for, so this
+            can&rsquo;t reveal your citizenship or career stage.
           </p>
         </div>
       </div>

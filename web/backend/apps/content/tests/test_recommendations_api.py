@@ -65,7 +65,12 @@ def test_lab_member_reads_lab_recommendations(client: APIClient) -> None:
     client.force_authenticate(member)
     resp = client.get("/api/labs/graph-lab/recommendations/")
     assert resp.status_code == 200
-    assert resp.data["counts"] == {"papers": 1, "grants": 1, "conferences": 0}
+    assert resp.data["counts"] == {
+        "papers": 1,
+        "grants": 1,
+        "conferences": 0,
+        "fellowships": 0,
+    }
     assert resp.data["papers"][0]["title"] == "Graph paper"
     assert resp.data["grants"][0]["title"] == "Graph grant"
     assert resp.data["generated_at"] == "2026-07-05T00:00:00"
