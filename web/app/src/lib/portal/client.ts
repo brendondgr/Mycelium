@@ -9,6 +9,7 @@ import type {
   DiscordGuildStatus,
   DiscordStartResponse,
   DiscordStatus,
+  Entitlements,
   FellowshipOpportunity,
   GrantOpportunity,
   LabMember,
@@ -289,6 +290,13 @@ export async function fetchDiscordStatus(): Promise<DiscordStatus> {
   return getJson<DiscordStatus>(
     buildApiUrl(getPublicApiBase(), "integrations", "discord", "status"),
     "Could not load your Discord connection.",
+  );
+}
+
+export async function fetchEntitlements(): Promise<Entitlements> {
+  return getJson<Entitlements>(
+    buildApiUrl(getPublicApiBase(), "billing", "me"),
+    "Could not load your plan details.",
   );
 }
 

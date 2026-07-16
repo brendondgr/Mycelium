@@ -620,3 +620,27 @@ export type DiscordCodeResponse = {
   expires_in: number;
   activation_channel: string | null;
 };
+
+/** Feature slugs the UI gates on — mirror of apps.billing.entitlements.Feature. */
+export const FEATURE = {
+  SCHEDULED_REPORTS: "scheduled_reports",
+  LLM_FIT_SCORING: "llm_fit_scoring",
+  GRANT_ALERTS: "grant_alerts",
+  FELLOWSHIP_MATCHING: "fellowship_matching",
+  CONFERENCE_ALERTS: "conference_alerts",
+  CUSTOM_TOPIC_FEEDS: "custom_topic_feeds",
+  API_ACCESS: "api_access",
+  BOT_DM: "bot_dm",
+  BOT_SERVER: "bot_server",
+} as const;
+
+/** GET /billing/me → the signed-in user's resolved entitlements (read-time gate). */
+export type Entitlements = {
+  tier: "free" | "spore" | "lab" | "canopy";
+  features: string[];
+  topic_cap: number;
+  topics_used: number;
+  seat_count: number;
+  pi_cap: number | null;
+  addons: string[];
+};
