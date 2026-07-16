@@ -12,6 +12,7 @@ from django.contrib.auth.models import User
 from django.db import connection
 
 from apps.accounts.models import WatchPreference
+from apps.billing.models import Subscription, Tier
 from apps.content import embeddings
 from apps.content.models import ContentItem, RelevanceScore
 from apps.content.opportunities import (
@@ -316,6 +317,9 @@ def _profile_user(username):
     WatchPreference.objects.update_or_create(
         user=user, defaults={"topics": ["knowledge graphs"]}
     )
+    # Entitle the researcher (Spore+) so the daily pipeline runs the full path —
+    # these tests exercise pipeline mechanics, not the tier gate.
+    Subscription.objects.create(tier=Tier.SPORE, scope_user=user)
     return user
 
 
