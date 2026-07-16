@@ -101,6 +101,51 @@ def send_personal_dm(subscription, title: str, body: str) -> SendOutcome:
     return SendOutcome(ok=False, error_code=_code(resp))
 
 
+# Postable guild channel types: GUILD_TEXT (0) and GUILD_ANNOUNCEMENT (5).
+_POSTABLE_CHANNEL_TYPES = (0, 5)
+
+
+def list_postable_channels(guild_id: str) -> list[dict]:
+    """Text/announcement channels in a guild, for the reminder channel picker.
+
+    Filters by type only; the authoritative "can the bot actually post here" check is
+    the post-a-confirmation preflight (``preflight_channel``), because the gateway
+    architecture has no ``app_permissions`` payload to read channel overwrites from —
+    so we prove postability by posting, per the plan's "fail in front of the admin".
+    """
+    channels = discord_api.get_guild_channels(guild_id)
+    return [
+        {"id": str(c.get("id")), "name": c.get("name") or "", "type": c.get("type")}
+        for c in channels
+        if c.get("type") in _POSTABLE_CHANNEL_TYPES
+    ]
+
+
+def preflight_channel(channel_id: str) -> SendOutcome:
+    """Verify a channel by posting a visible confirmation (the real proof).
+
+    2xx → the bot has VIEW + SEND + EMBED here (Discord computed the overwrites for
+    us); 403 → an overwrite denies posting, so the bind must be refused with a
+    specific error rather than failing silently at 09:00 on the day it mattered.
+    """
+    if not _bot_configured():
+        return SendOutcome(ok=False, unreachable=True)
+    embed = {
+        "title": "Mylo is set up here ✅",
+        "description": "This channel will receive this lab's deadline reminders.",
+        "color": BRAND_COLOR,
+    }
+    try:
+        resp = discord_api.create_message(channel_id, embed=embed)
+    except DiscordHTTPError as exc:
+        return SendOutcome(ok=False, error_code=exc.code)
+    if resp.status in (200, 201):
+        return SendOutcome(ok=True, message_id=str(resp.json.get("id") or ""))
+    if resp.status == 403:
+        return SendOutcome(ok=False, error_code=_code(resp), unreachable=True)
+    return SendOutcome(ok=False, error_code=_code(resp))
+
+
 def _open_dm(identity) -> str:
     """Open (and cache) the DM channel for an identity; '' if it can't be opened."""
     opened = discord_api.open_dm_raw(identity.discord_user_id)

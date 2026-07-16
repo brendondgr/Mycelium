@@ -17,6 +17,7 @@ flow.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.utils import timezone
 
@@ -28,6 +29,9 @@ from apps.content.reminders import (
     reminder_copy,
     resync_snapshot,
 )
+
+# Personal reminders have no per-user zone yet; default to Eastern like labs do.
+DEFAULT_TIMEZONE = "America/New_York"
 
 
 @dataclass
@@ -51,40 +55,58 @@ class TickResult:
 
 
 def run_tick(today=None, *, now=None) -> TickResult:
-    """Fire due reminders once each. ``today`` defaults to the current date."""
-    today = today or timezone.now().date()
+    """Fire due reminders once each.
+
+    ``today`` forces a single reference date for every subscription (tests); when it
+    is ``None`` each subscription's local "today" is computed from ``now`` in the
+    recipient's zone (the lab's zone for lab reminders, Eastern for personal), so
+    days-remaining and fire eligibility are correct across a DST boundary.
+    """
     now = now or timezone.now()
     result = TickResult()
 
-    subs = ReminderSubscription.objects.filter(
-        state=ReminderSubscription.State.ACTIVE
-    ).prefetch_related("offsets")
+    subs = (
+        ReminderSubscription.objects.filter(state=ReminderSubscription.State.ACTIVE)
+        .select_related("target_lab")
+        .prefetch_related("offsets")
+    )
 
     for sub in subs:
         result.scanned += 1
         resync_snapshot(sub)
+        local_today = today or _local_today(sub, now)
         due = sub.due_date
 
         if due is None:
             _set_state(sub, ReminderSubscription.State.STALE)
             result.staled += 1
             continue
-        if today > due:
+        if local_today > due:
             _set_state(sub, ReminderSubscription.State.FIRED_OUT)
             result.fired_out += 1
             continue
 
-        keys = _triggered_keys(sub, due, today)
+        keys = _triggered_keys(sub, due, local_today)
         if not keys:
             continue
 
-        days_remaining = (due - today).days
+        days_remaining = (due - local_today).days
         delivery = _deliver(sub, due, days_remaining)
-        _seal(sub, today, days_remaining, keys, now, delivery)
+        _seal(sub, local_today, days_remaining, keys, now, delivery)
         result.fired += 1
         result.notifications += delivery.notified
 
     return result
+
+
+def _local_today(sub, now):
+    """The subscription's local date: the lab's zone, or Eastern for personal."""
+    tzname = sub.target_lab.timezone if sub.target_lab_id else DEFAULT_TIMEZONE
+    try:
+        tz = ZoneInfo(tzname or DEFAULT_TIMEZONE)
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = ZoneInfo(DEFAULT_TIMEZONE)
+    return now.astimezone(tz).date()
 
 
 @dataclass

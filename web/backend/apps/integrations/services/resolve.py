@@ -275,6 +275,36 @@ def resolve_lab_for_guild(guild_id: str) -> Lab | None:
     return link.lab if link else None
 
 
+def set_announcement_channel(
+    guild_id: str, channel_id: str, *, verified_at
+) -> DiscordGuildLink | None:
+    """Bind (channel-verified) the default announcement channel for a guild's lab."""
+    link = get_guild_link(guild_id)
+    if link is None:
+        return None
+    link.announcement_channel_id = str(channel_id)
+    link.channel_verified_at = verified_at
+    link.save(
+        update_fields=[
+            "announcement_channel_id",
+            "channel_verified_at",
+            "updated_at",
+        ]
+    )
+    audit.discord_audit(
+        action="discord.guild.channel_bound",
+        guild_id=guild_id,
+        metadata={"channel_id": str(channel_id)},
+    )
+    return link
+
+
+def get_announcement_channel_for_lab(lab) -> str:
+    """The lab's verified default announcement channel id, or '' if none bound."""
+    link = get_guild_link_for_lab(lab)
+    return link.announcement_channel_id if link else ""
+
+
 def bind_guild(lab, guild: dict, *, installed_by=None) -> DiscordGuildLink:
     """Create/refresh a PENDING_SETUP guild link from the authoritative exchange.
 

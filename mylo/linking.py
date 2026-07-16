@@ -27,10 +27,14 @@ async def activate(
     return await mycelium.db(_activate_sync, str(discord_user_id), code)
 
 
-async def setup_guild(discord_user_id: str, guild_id: str) -> tuple[str, str]:
+async def setup_guild(
+    discord_user_id: str, guild_id: str, *, channel_id: str = ""
+) -> tuple[str, str]:
     if not guild_id:
         return ("no_guild", "Run `/mylo setup` inside a server, not in a DM.")
-    return await mycelium.db(_setup_sync, str(discord_user_id), str(guild_id))
+    return await mycelium.db(
+        _setup_sync, str(discord_user_id), str(guild_id), str(channel_id)
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -81,7 +85,9 @@ def _activate_sync(discord_user_id: str, code: str) -> tuple[str, str]:
     return (outcome.value, messages[outcome])
 
 
-def _setup_sync(discord_user_id: str, guild_id: str) -> tuple[str, str]:
+def _setup_sync(
+    discord_user_id: str, guild_id: str, channel_id: str = ""
+) -> tuple[str, str]:
     from apps.integrations.services import resolve
 
     lab = resolve.resolve_lab_for_guild(guild_id)
@@ -111,4 +117,42 @@ def _setup_sync(discord_user_id: str, guild_id: str) -> tuple[str, str]:
             "This link can't be confirmed (it wasn't verified via the code grant). "
             "Re-add Mylo from the portal.",
         )
-    return ("ok", f"✅ This server is now connected to **{lab.name}**.")
+
+    base = f"✅ This server is now connected to **{lab.name}**."
+    if not channel_id:
+        return (
+            "ok",
+            f"{base}\nNow choose where reminders post: run `/mylo setup` again and "
+            "pick a channel in the **channel** option.",
+        )
+    return _bind_channel_sync(resolve, guild_id, channel_id, base)
+
+
+def _bind_channel_sync(resolve, guild_id: str, channel_id: str, base: str):
+    """Preflight (post a visible confirmation) then bind the announcement channel."""
+    from django.utils import timezone
+
+    from apps.content.reminders_discord import preflight_channel
+
+    outcome = preflight_channel(channel_id)
+    if not outcome.ok:
+        if outcome.unreachable:
+            return (
+                "channel_denied",
+                f"{base}\n⚠️ I can't post in <#{channel_id}> (an override denies me "
+                "View/Send/Embed there). Pick a different channel, or fix my "
+                "permissions and run `/mylo setup` again.",
+            )
+        return (
+            "channel_error",
+            f"{base}\n⚠️ I couldn't verify <#{channel_id}> just now. Try again in a "
+            "moment.",
+        )
+    resolve.set_announcement_channel(
+        guild_id, channel_id, verified_at=timezone.now()
+    )
+    return (
+        "ok",
+        f"{base}\n📢 Lab deadline reminders will post to <#{channel_id}> "
+        "(I sent a confirmation there).",
+    )

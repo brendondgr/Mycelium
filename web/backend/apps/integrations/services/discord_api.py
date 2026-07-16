@@ -105,6 +105,16 @@ def get_bot_guilds() -> list[dict]:
     return resp.json.get("_list", [])
 
 
+def get_guild_channels(guild_id: str) -> list[dict]:
+    """The bot's view of a guild's channels (for the reminder channel picker)."""
+    resp = _request(
+        "GET", f"/guilds/{guild_id}/channels", auth=("Bot", _bot_token())
+    )
+    if resp.status != 200:
+        raise DiscordHTTPError(resp.status, _err_code(resp.json))
+    return resp.json.get("_list", [])
+
+
 def open_dm_raw(recipient_id: str) -> RawResponse:
     return _request(
         "POST",

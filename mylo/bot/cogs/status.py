@@ -92,10 +92,20 @@ class StatusCog(commands.Cog, name="Status"):
         description="Confirm this server's link to your Mycelium lab (managers).",
     )
     @app_commands.guild_only()
-    async def setup(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(
+        channel="Where lab reminders post. I verify I can post there before binding."
+    )
+    async def setup(
+        self,
+        interaction: discord.Interaction,
+        channel: discord.TextChannel | None = None,
+    ) -> None:
         await interaction.response.defer(ephemeral=True)
         guild_id = str(interaction.guild_id) if interaction.guild_id else ""
-        _, message = await linking.setup_guild(str(interaction.user.id), guild_id)
+        channel_id = str(channel.id) if channel else ""
+        _, message = await linking.setup_guild(
+            str(interaction.user.id), guild_id, channel_id=channel_id
+        )
         await interaction.followup.send(message, ephemeral=True)
 
 

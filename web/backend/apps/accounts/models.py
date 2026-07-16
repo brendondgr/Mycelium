@@ -56,6 +56,17 @@ class Lab(models.Model):
         related_name="labs",
         help_text="Set or cleared by the department owner.",
     )
+    # Reminder scheduling (Discord reminders R4). Use the IANA zone name, not "EST":
+    # the zone handles the DST transition, so a "9am" reminder is 9am local year-round.
+    timezone = models.CharField(
+        max_length=64,
+        default="America/New_York",
+        help_text="IANA time zone for lab reminders (e.g. America/New_York).",
+    )
+    send_hour_local = models.PositiveSmallIntegerField(
+        default=9,
+        help_text="Local hour (0–23) reminders target; day-granular for now.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

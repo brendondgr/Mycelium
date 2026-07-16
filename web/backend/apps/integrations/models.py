@@ -130,6 +130,11 @@ class DiscordGuildLink(models.Model):
     state = models.CharField(
         max_length=16, choices=State.choices, default=State.PENDING_SETUP
     )
+    # Default announcement channel for lab reminders (Discord reminders R4). Bound
+    # and channel-scope-verified at `/mylo setup` by posting a real confirmation
+    # (Discord computes channel overwrites for us); blank until a channel is bound.
+    announcement_channel_id = models.CharField(max_length=32, blank=True, default="")
+    channel_verified_at = models.DateTimeField(null=True, blank=True)
     installed_at = models.DateTimeField(auto_now_add=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
