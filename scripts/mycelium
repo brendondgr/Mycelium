@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""mycelium — manage the Mycelium Docker Compose stack.
+"""mycelium — manage the Mycelium Docker Compose stack (and the Mylo Discord bot).
 
 Usage:
-    mycelium start           start all services (detached)
-    mycelium stop            stop all services
+    mycelium start           start all services (detached) + the Mylo bot
+    mycelium stop            stop all services + the Mylo bot
     mycelium restart         stop then start (default)
-    mycelium status          show container state and live endpoint health
-    mycelium logs            follow combined logs (Ctrl-C to exit)
+    mycelium status          show container state, Mylo state, and live endpoint health
+    mycelium logs            follow combined compose logs (Ctrl-C to exit)
     mycelium build           rebuild images then start
     mycelium install-service copy .service files to /etc/systemd/system/ and enable boot startup
+
+start/stop/restart also drive mylo-bot.service via `sudo systemctl` (you'll be
+prompted for your password) if it's installed; otherwise they print a hint to
+run `sudo mycelium install-service` first.
 """
 
 from __future__ import annotations
@@ -70,6 +74,38 @@ def _run_capture(cmd: list[str]) -> str:
     return result.stdout
 
 
+# ── Mylo (Discord bot) helpers ────────────────────────────────────────────────
+
+MYLO_UNIT = "mylo-bot.service"
+MYLO_UNIT_PATH = Path("/etc/systemd/system") / MYLO_UNIT
+
+
+def _mylo_installed() -> bool:
+    return MYLO_UNIT_PATH.exists()
+
+
+def _mylo_is_active() -> bool:
+    r = subprocess.run(
+        ["systemctl", "is-active", "--quiet", MYLO_UNIT],
+    )
+    return r.returncode == 0
+
+
+def _mylo_systemctl(action: str) -> int:
+    """start/stop/restart mylo-bot.service — mutating actions need sudo."""
+    if not _mylo_installed():
+        print(yellow(f"  Mylo ({MYLO_UNIT}) isn't installed — run: sudo mycelium install-service"))
+        return 0
+    past = {"start": "started", "stop": "stopped", "restart": "restarted"}[action]
+    print(bold(f"Mylo: {action} {MYLO_UNIT}..."))
+    r = subprocess.run(["sudo", "systemctl", action, MYLO_UNIT])
+    if r.returncode == 0:
+        print(green(f"  ✓ {MYLO_UNIT} {past}"))
+    else:
+        print(red(f"  ✗ failed to {action} {MYLO_UNIT}"))
+    return r.returncode
+
+
 # ── URL health check ──────────────────────────────────────────────────────────
 
 def _check(url: str, timeout: int = 4) -> bool:
@@ -92,7 +128,7 @@ def _check_all() -> dict[str, bool]:
 
 # ── Commands ──────────────────────────────────────────────────────────────────
 
-def cmd_start(base: list[str], build: bool = False) -> int:
+def _compose_start(base: list[str], build: bool = False) -> int:
     cmd = [*base, "up", "-d"]
     if build:
         cmd.append("--build")
@@ -106,13 +142,30 @@ def cmd_start(base: list[str], build: bool = False) -> int:
     return code
 
 
-def cmd_stop(base: list[str]) -> int:
+def _compose_stop(base: list[str]) -> int:
     return _run([*base, "down", "--remove-orphans"])
 
 
+def cmd_start(base: list[str], build: bool = False) -> int:
+    code = _compose_start(base, build)
+    print()
+    _mylo_systemctl("start")
+    return code
+
+
+def cmd_stop(base: list[str]) -> int:
+    code = _compose_stop(base)
+    print()
+    _mylo_systemctl("stop")
+    return code
+
+
 def cmd_restart(base: list[str], build: bool = False) -> int:
-    cmd_stop(base)
-    return cmd_start(base, build)
+    _compose_stop(base)
+    code = _compose_start(base, build)
+    print()
+    _mylo_systemctl("restart")
+    return code
 
 
 def cmd_logs(base: list[str]) -> int:
@@ -153,6 +206,17 @@ def cmd_status(base: list[str]) -> int:
                 dot = yellow("●")
             print(f"  {dot} {service:<22} {dim(status)}")
 
+    # ── Mylo (Discord bot) ───────────────────────────────────────────────────
+    print()
+    print(bold("  Mylo (Discord bot)"))
+    print(dim("  " + "─" * 54))
+    if not _mylo_installed():
+        print(yellow(f"  Not installed — run: sudo mycelium install-service"))
+    elif _mylo_is_active():
+        print(f"  {green('●')} {MYLO_UNIT:<22} {dim('active')}")
+    else:
+        print(f"  {red('●')} {MYLO_UNIT:<22} {dim('inactive')}")
+
     # ── endpoint table ───────────────────────────────────────────────────────
     print()
     print(bold("  Endpoints"))
@@ -178,7 +242,7 @@ def cmd_status(base: list[str]) -> int:
 # ── Service installation ──────────────────────────────────────────────────────
 
 SYSTEMD_DIR = Path("/etc/systemd/system")
-SERVICE_FILES = ["mycelium.service", "mycelium-update.service"]
+SERVICE_FILES = ["mycelium.service", "mycelium-update.service", MYLO_UNIT]
 
 
 def cmd_install_service() -> int:
@@ -210,6 +274,18 @@ def cmd_install_service() -> int:
         dst.chmod(0o644)
         print(green(f"  ✓ copied  {name}  →  {dst}"))
 
+    # On SELinux systems, a plain copy keeps the source's context (e.g.
+    # user_home_t from a home-directory repo checkout). systemd silently
+    # refuses to load a unit file with the wrong context — `systemctl start`
+    # reports "Unit ... not found" as if the file didn't exist at all.
+    if shutil.which("restorecon"):
+        dsts = [str(SYSTEMD_DIR / name) for name in SERVICE_FILES]
+        r = subprocess.run(["restorecon", "-v", *dsts])
+        if r.returncode != 0:
+            print(red("  ✗ restorecon failed"), file=sys.stderr)
+            return r.returncode
+        print(dim("  ✓ restorecon (SELinux context fixed)"))
+
     # daemon-reload
     r = subprocess.run(["systemctl", "daemon-reload"])
     if r.returncode != 0:
@@ -217,12 +293,13 @@ def cmd_install_service() -> int:
         return r.returncode
     print(dim("  ✓ daemon-reload"))
 
-    # enable the main service
-    r = subprocess.run(["systemctl", "enable", "mycelium.service"])
-    if r.returncode != 0:
-        print(red("  ✗ systemctl enable failed"), file=sys.stderr)
-        return r.returncode
-    print(green("  ✓ mycelium.service enabled — will start automatically on next boot"))
+    # enable the main services (mycelium-update.service is invoked, not enabled)
+    for unit in ("mycelium.service", MYLO_UNIT):
+        r = subprocess.run(["systemctl", "enable", unit])
+        if r.returncode != 0:
+            print(red(f"  ✗ systemctl enable {unit} failed"), file=sys.stderr)
+            return r.returncode
+        print(green(f"  ✓ {unit} enabled — will start automatically on next boot"))
 
     print()
     print(bold("  Done. To start the stack now:"))
