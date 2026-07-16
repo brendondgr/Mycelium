@@ -62,6 +62,15 @@ ownership, and Discord roles grant nothing.
   `DISCORD_GUILD_REDIRECT_URI`).
 * **No privileged intents.** Slash-commands only; do not enable `MESSAGE_CONTENT`.
 * Interactions Endpoint URL: **leave blank** — interactions come over the gateway.
+* **Sync the gateway venv.** The Mylo bot runs from the repo-root `.venv` and
+  configures Django in-process (`mylo/mycelium.py`), so it imports the backend's
+  models — including `apps/integrations/fields.py`'s `cryptography` import. After
+  any backend dependency the gateway imports is added (as `cryptography` was),
+  run `uv sync` at the repo root and restart the bot
+  (`sudo systemctl restart mylo-bot.service`). Skip this and every ORM-touching
+  slash command (`/activate`, `/mylo status`, `/mylo setup`) dies at
+  `django.setup()` with `ModuleNotFoundError`, surfacing to the user as the
+  generic "something went wrong on my end."
 * After deploy, run a one-time `@Mylo sync global` (owner-only) so the new
   `/activate` and `/mylo status`/`setup` commands appear.
 
