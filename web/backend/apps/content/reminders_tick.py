@@ -79,12 +79,22 @@ def run_tick(today=None, *, now=None) -> TickResult:
             continue
 
         days_remaining = (due - today).days
-        notified = _deliver(sub, due, days_remaining, now)
-        _seal(sub, today, days_remaining, keys, now, delivered=notified > 0)
+        delivery = _deliver(sub, due, days_remaining)
+        _seal(sub, today, days_remaining, keys, now, delivery)
         result.fired += 1
-        result.notifications += notified
+        result.notifications += delivery.notified
 
     return result
+
+
+@dataclass
+class _Delivery:
+    """What one fire produced across in-app + Discord."""
+
+    notified: int
+    channel: str
+    message_id: str = ""
+    error_code: int | None = None
 
 
 def _triggered_keys(sub, due, today) -> list[str]:
@@ -98,12 +108,31 @@ def _triggered_keys(sub, due, today) -> list[str]:
     return out
 
 
-def _deliver(sub, due, days_remaining, now) -> int:
-    """R1 in-app delivery: one :class:`Notification` per recipient (idempotent)."""
+def _deliver(sub, due, days_remaining) -> _Delivery:
+    """Deliver one fire: always in-app; personal reminders also DM (R3)."""
     title, body = reminder_copy(sub, due, days_remaining)
+    notified = _deliver_in_app(sub, title, body)
+
+    channel = ReminderFire.Channel.IN_APP
+    message_id = ""
+    error_code = None
+    if sub.target_user_id:  # personal → attempt a Discord DM on top of in-app
+        from apps.content.reminders_discord import send_personal_dm
+
+        outcome = send_personal_dm(sub, title, body)
+        if outcome.ok:
+            channel = ReminderFire.Channel.DISCORD_DM
+            message_id = outcome.message_id
+        elif outcome.error_code is not None:
+            error_code = outcome.error_code
+    return _Delivery(notified, channel, message_id, error_code)
+
+
+def _deliver_in_app(sub, title, body) -> int:
+    """One :class:`Notification` per recipient (idempotent by dedupe key)."""
     notified = 0
     for user in recipients(sub):
-        dedupe = f"reminder:{sub.id}:{due:%Y-%m-%d}:{user.id}"
+        dedupe = f"reminder:{sub.id}:{sub.due_date:%Y-%m-%d}:{user.id}"
         _, created = Notification.objects.get_or_create(
             dedupe_key=dedupe,
             defaults={
@@ -119,9 +148,10 @@ def _deliver(sub, due, days_remaining, now) -> int:
     return notified
 
 
-def _seal(sub, today, days_remaining, keys, now, *, delivered: bool) -> None:
+def _seal(sub, today, days_remaining, keys, now, delivery) -> None:
     """Seal every triggering offset with a ``ReminderFire`` row (all in one fire)."""
-    state = ReminderFire.Result.SENT if delivered else ReminderFire.Result.FAILED
+    sent = delivery.notified > 0 or bool(delivery.message_id)
+    state = ReminderFire.Result.SENT if sent else ReminderFire.Result.FAILED
     for key in keys:
         ReminderFire.objects.get_or_create(
             idempotency_key=key,
@@ -129,9 +159,11 @@ def _seal(sub, today, days_remaining, keys, now, *, delivered: bool) -> None:
                 "subscription": sub,
                 "fired_on": today,
                 "days_remaining": days_remaining,
-                "channel": ReminderFire.Channel.IN_APP,
+                "channel": delivery.channel,
                 "state": state,
-                "sent_at": now if delivered else None,
+                "discord_message_id": delivery.message_id,
+                "error_code": delivery.error_code,
+                "sent_at": now if sent else None,
             },
         )
 

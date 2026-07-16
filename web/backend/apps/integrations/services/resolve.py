@@ -75,6 +75,17 @@ def resolve_user(discord_user_id: str):
     return identity.user if identity else None
 
 
+def active_identity_for_user(user) -> DiscordIdentity | None:
+    """The user's ACTIVE Discord identity, or None — the outbound-DM lookup.
+
+    Only ACTIVE identities are reachable; PENDING/REVOKED users are never messaged.
+    Callers read ``discord_user_id`` / ``dm_ok`` / ``dm_channel_id`` off the result.
+    """
+    return DiscordIdentity.objects.filter(
+        user=user, state=DiscordIdentity.State.ACTIVE
+    ).first()
+
+
 # --------------------------------------------------------------------------- #
 # Identity — writes
 # --------------------------------------------------------------------------- #

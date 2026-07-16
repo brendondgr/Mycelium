@@ -114,8 +114,28 @@ def open_dm_raw(recipient_id: str) -> RawResponse:
     )
 
 
-def create_message(channel_id: str, *, content: str = "", embed: dict | None = None):
-    body: dict = {"allowed_mentions": {"parse": []}}
+def create_message(
+    channel_id: str,
+    *,
+    content: str = "",
+    embed: dict | None = None,
+    allowed_mentions: dict | None = None,
+):
+    """Post a message. ``allowed_mentions.parse`` is **always forced to ``[]``**.
+
+    ``parse: []`` is non-negotiable and structural: reminder bodies interpolate
+    *scraped third-party text*, and a title containing ``@everyone`` must never ping
+    the server from a trusted bot. Callers may pass explicit ``users`` / ``roles`` id
+    lists to ping specific members (``<@id>`` in the body then resolves), but the
+    parse categories stay empty regardless of what is passed.
+    """
+    mentions: dict = {"parse": []}
+    if allowed_mentions:
+        if allowed_mentions.get("users"):
+            mentions["users"] = [str(u) for u in allowed_mentions["users"]]
+        if allowed_mentions.get("roles"):
+            mentions["roles"] = [str(r) for r in allowed_mentions["roles"]]
+    body: dict = {"allowed_mentions": mentions}
     if content:
         body["content"] = content
     if embed:
