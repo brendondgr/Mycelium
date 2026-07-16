@@ -176,12 +176,26 @@ def invite_to_lab(
 
 @transaction.atomic
 def accept_invitation(invitation: LabInvitation, user: User) -> LabMembership:
-    """Accept: add the lab membership (idempotent) and mark the invite accepted."""
+    """Accept: add the lab membership, grant a seat, and mark the invite accepted.
+
+    Granting the seat in the same atomic block is what makes a paying lab's invited
+    members resolve to LAB instead of FREE (the seat is entitlement, A6). A lab with
+    no active subscription (a Free lab) has nothing to seat, so ``grant_seat_...``
+    returns ``None`` and the membership stands on its own. Exceeding the tier's
+    member ceiling refuses the whole acceptance rather than silently over-seating.
+    """
+    # Imported here (not at module top) to avoid an accounts↔billing import cycle.
+    from apps.billing.seats import SeatCeilingExceeded, grant_seat_for_lab_member
+
     membership, _ = LabMembership.objects.get_or_create(
         lab=invitation.lab,
         user=user,
         defaults={"role": invitation.role},
     )
+    try:
+        grant_seat_for_lab_member(user, invitation.lab)
+    except SeatCeilingExceeded as exc:
+        raise ValidationError({"detail": [str(exc)]}) from exc
     _close_invitation(
         invitation, user, LabInvitation.Status.ACCEPTED, "lab.invitation.accept"
     )
