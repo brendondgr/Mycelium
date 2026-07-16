@@ -13,6 +13,7 @@ import {
   fetchDailyReport,
   fetchDiscordStart,
   fetchDiscordStatus,
+  fetchLabDiscordStatus,
   fetchDeadlines,
   fetchFellowships,
   fetchGrants,
@@ -580,6 +581,17 @@ export function useDiscordStatus() {
   return useQuery({
     queryKey: ["portal", "discord"],
     queryFn: fetchDiscordStatus,
+    staleTime: 30_000,
+  });
+}
+
+/** A lab's Discord sync status (Manage & Invite page; managers only). */
+export function useLabDiscordStatus(slug?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
+  return useQuery({
+    queryKey: ["portal", "lab-discord", slug ?? "none"],
+    queryFn: () => fetchLabDiscordStatus(slug as string),
+    enabled,
     staleTime: 30_000,
   });
 }

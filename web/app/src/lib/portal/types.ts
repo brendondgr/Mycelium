@@ -601,6 +601,16 @@ export type DiscordStatus = {
   linked_at: string | null;
 };
 
+/** Whether a Lab's Discord server is synced (Manage & Invite page badge). */
+export type DiscordGuildStatus = {
+  synced: boolean;
+  state: "pending_setup" | "active" | "kicked" | null;
+  guild_id: string | null;
+  guild_name: string | null;
+  verified: boolean;
+  confirmed_at: string | null;
+};
+
 /** GET /integrations/discord/start (and guild/start) → the URL to redirect to. */
 export type DiscordStartResponse = { authorize_url: string };
 

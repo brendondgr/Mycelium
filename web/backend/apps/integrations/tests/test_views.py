@@ -203,3 +203,33 @@ class PathCViewTests(TestCase):
                 reverse("discord-guild-callback"), {"code": "c", "state": state}
             )
         self.assertEqual(resp.status_code, 409)
+
+    def test_guild_status_requires_manager(self):
+        self.client.force_login(self.member)
+        resp = self.client.get(reverse("discord-guild-status"), {"lab": "lab"})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_guild_status_not_connected(self):
+        self.client.force_login(self.manager)
+        resp = self.client.get(reverse("discord-guild-status"), {"lab": "lab"})
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertFalse(body["synced"])
+        self.assertIsNone(body["state"])
+
+    def test_guild_status_pending_then_active(self):
+        # Installed but unconfirmed → pending_setup, not yet synced.
+        resolve.bind_guild(self.lab, {"id": "g-77", "name": "S"})
+        self.client.force_login(self.manager)
+        resp = self.client.get(reverse("discord-guild-status"), {"lab": "lab"})
+        body = resp.json()
+        self.assertFalse(body["synced"])
+        self.assertEqual(body["state"], "pending_setup")
+        self.assertEqual(body["guild_name"], "S")
+        # A manager confirms it → active → synced.
+        resolve.bind_identity(self.manager, "d-mgr", method=resolve.LINK_OAUTH)
+        resolve.confirm_guild("g-77", confirmed_by=self.manager)
+        resp = self.client.get(reverse("discord-guild-status"), {"lab": "lab"})
+        body = resp.json()
+        self.assertTrue(body["synced"])
+        self.assertEqual(body["state"], "active")

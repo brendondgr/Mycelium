@@ -22,6 +22,9 @@ urlpatterns = [
     *_both("discord/status", views.DiscordStatusView, "discord-status"),
     *_both("discord/disconnect", views.DiscordDisconnectView, "discord-disconnect"),
     *_both("discord/code", views.DiscordActivationCodeView, "discord-code"),
+    *_both(
+        "discord/guild/status", views.DiscordGuildStatusView, "discord-guild-status"
+    ),
     *_both("discord/guild/start", views.DiscordGuildStartView, "discord-guild-start"),
     # OAuth callbacks — Discord redirects the browser here (GET). No-slash form is
     # the canonical registered redirect URI.

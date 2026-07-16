@@ -24,7 +24,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import DiscordStatusSerializer
+from .serializers import DiscordGuildStatusSerializer, DiscordStatusSerializer
 from .services import audit, discord_api, oauth, resolve, state
 from .services.state import StateBackendError
 
@@ -165,21 +165,49 @@ class DiscordActivationCodeView(APIView):
 # --------------------------------------------------------------------------- #
 # Path C — guild install
 # --------------------------------------------------------------------------- #
+def _manager_lab_or_error(request):
+    """Resolve ?lab=<slug> and enforce lab-manager authority.
+
+    Returns ``(lab, None)`` on success or ``(None, Response)`` with the right
+    status (404 unknown lab, 403 not a manager) — the same gate the guild
+    install uses, so read and write share one authority check.
+    """
+    slug = request.GET.get("lab", "")
+    lab = resolve.get_lab_by_slug(slug) if slug else None
+    if lab is None:
+        return None, Response(
+            {"detail": "unknown lab"}, status=status.HTTP_404_NOT_FOUND
+        )
+    if not resolve.web_user_can_manage_lab(request.user, lab):
+        return None, Response(
+            {"detail": "not a manager of this lab"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return lab, None
+
+
+class DiscordGuildStatusView(APIView):
+    """Is this Lab's Discord server synced? Drives the Manage & Invite badge."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        lab, error = _manager_lab_or_error(request)
+        if error is not None:
+            return error
+        link = resolve.get_guild_link_for_lab(lab)
+        if link is None:
+            return Response(DiscordGuildStatusSerializer.empty())
+        return Response(DiscordGuildStatusSerializer(link).data)
+
+
 class DiscordGuildStartView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        slug = request.GET.get("lab", "")
-        lab = resolve.get_lab_by_slug(slug) if slug else None
-        if lab is None:
-            return Response(
-                {"detail": "unknown lab"}, status=status.HTTP_404_NOT_FOUND
-            )
-        if not resolve.web_user_can_manage_lab(request.user, lab):
-            return Response(
-                {"detail": "not a manager of this lab"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        lab, error = _manager_lab_or_error(request)
+        if error is not None:
+            return error
         # D-6 guard: an installer should already be linked, so someone can claim
         # the guild afterward — otherwise it can sit in PENDING_SETUP forever.
         if resolve.get_identity_for_user(request.user) is None:
