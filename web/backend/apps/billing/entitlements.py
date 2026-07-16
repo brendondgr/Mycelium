@@ -285,3 +285,41 @@ def within_member_cap(seat_count: int, tier: str) -> bool:
 def bot_server_addon() -> AddOn | None:
     """The canonical Mylo-server add-on row (seeded by migration), if present."""
     return AddOn.objects.filter(feature=Feature.BOT_SERVER).first()
+
+
+def _lab_subscriptions(lab) -> QuerySet[Subscription]:
+    """Active subscriptions covering a lab: its own plan or its department's."""
+    query = Q(scope_lab=lab)
+    dept_id = getattr(lab, "department_id", None)
+    if dept_id:
+        query |= Q(scope_department_id=dept_id)
+    return Subscription.objects.filter(
+        status=Subscription.Status.ACTIVE
+    ).filter(query)
+
+
+def lab_features(lab) -> frozenset[str]:
+    """The features a lab is entitled to (its subscription's tier ∪ add-ons).
+
+    Used to gate lab-scoped capabilities like the Mylo-server add-on, which attach
+    to the lab's (or its department's) subscription rather than to a single user.
+    """
+    subs = list(_lab_subscriptions(lab))
+    features = set(_FREE)
+    for sub in subs:
+        features |= TIER_FEATURES.get(sub.tier, _FREE)
+    features |= addon_features_for_subscriptions(subs)
+    return frozenset(features)
+
+
+def lab_has_feature(lab, feature: str) -> bool:
+    return feature in lab_features(lab)
+
+
+def can_dm(user: User) -> bool:
+    """Whether Mylo may DM this user — the gate any DM-delivery path must check.
+
+    Today the only DM action is the link-time reachability probe; a future daily-
+    digest DM must call this before sending so Free accounts are never messaged.
+    """
+    return has_feature(user, Feature.BOT_DM)

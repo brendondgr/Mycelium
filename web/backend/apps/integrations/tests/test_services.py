@@ -22,7 +22,7 @@ from apps.integrations.services import (
 )
 from apps.integrations.services.discord_api import DiscordHTTPError, RawResponse
 
-from .base import clear_discord_cache, discord_test_settings
+from .base import clear_discord_cache, discord_test_settings, grant_bot_server
 
 User = get_user_model()
 
@@ -75,6 +75,8 @@ class OAuthGuildLinkTests(TestCase):
     def setUp(self):
         clear_discord_cache()
         self.lab = Lab.objects.create(name="Lab", slug="lab")
+        # Guild install requires the Mylo-server add-on on the lab (A4).
+        grant_bot_server(self.lab)
         self.installer = User.objects.create_user("installer", password="x")
 
     def test_complete_guild_link_binds_from_exchange_guild(self):
@@ -89,6 +91,15 @@ class OAuthGuildLinkTests(TestCase):
         self.assertEqual(link.state, DiscordGuildLink.State.PENDING_SETUP)
         # No system_channel_id in the guild object → no nudge attempted.
         msg.assert_not_called()
+
+    def test_complete_guild_link_refused_without_addon(self):
+        """A lab without the Mylo-server add-on cannot have the bot join (P5)."""
+        bare = Lab.objects.create(name="Bare", slug="bare")
+        with mock.patch.object(discord_api, "exchange_code") as exchange:
+            with self.assertRaises(oauth.BotServerRequired):
+                oauth.complete_guild_link(bare, "code", installed_by=self.installer)
+        # Refused before any Discord call — nothing was exchanged or bound.
+        exchange.assert_not_called()
 
     def test_missing_guild_object_raises(self):
         with mock.patch.object(

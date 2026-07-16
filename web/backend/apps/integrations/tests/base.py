@@ -39,3 +39,20 @@ discord_test_settings = override_settings(
 def clear_discord_cache() -> None:
     for name in _LOCMEM:
         caches[name].clear()
+
+
+def grant_bot_server(lab):
+    """Give a lab an active LAB subscription with the Mylo-server add-on.
+
+    Guild install now requires ``Feature.BOT_SERVER`` (an add-on, never a tier), so
+    the guild-linking tests grant it to reach the happy path.
+    """
+    from apps.billing.models import AddOn, Subscription, SubscriptionAddOn, Tier
+
+    subscription = Subscription.objects.create(tier=Tier.LAB, scope_lab=lab)
+    addon, _ = AddOn.objects.get_or_create(
+        slug="bot_server",
+        defaults={"name": "Mylo for your server", "feature": "bot_server"},
+    )
+    SubscriptionAddOn.objects.create(subscription=subscription, add_on=addon)
+    return subscription

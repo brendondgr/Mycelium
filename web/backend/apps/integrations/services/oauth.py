@@ -30,6 +30,20 @@ _USER_SCOPES = ["identify", "applications.commands"]
 _GUILD_SCOPES = ["bot", "applications.commands"]
 
 
+class BotServerRequired(Exception):
+    """Raised when installing Mylo into a guild for a lab without the add-on.
+
+    ``BOT_SERVER`` is granted by a :class:`~apps.billing.models.SubscriptionAddOn`
+    on the lab (or its department), never by a tier — so the invite is refused
+    with an upgrade prompt rather than silently joining the server.
+    """
+
+    def __init__(self, lab):
+        self.lab = lab
+        slug = getattr(lab, "slug", lab)
+        super().__init__(f"lab {slug} lacks the Mylo-server add-on")
+
+
 def user_authorize_url(state: str) -> str:
     params = {
         "client_id": settings.DISCORD_CLIENT_ID,
@@ -88,6 +102,13 @@ def complete_guild_link(lab, code: str, *, installed_by=None):
     ``discord_api.DiscordHTTPError`` on a Discord failure, or ``ValueError`` if the
     exchange returned no guild (code grant not actually completed).
     """
+    # The Mylo-server capability is an add-on on the lab's subscription (A4); a lab
+    # without it may not have the bot join its guild.
+    from apps.billing.entitlements import Feature, lab_has_feature
+
+    if not lab_has_feature(lab, Feature.BOT_SERVER):
+        raise BotServerRequired(lab)
+
     token = discord_api.exchange_code(code, settings.DISCORD_GUILD_REDIRECT_URI)
     guild = token.get("guild")
     if not guild or not guild.get("id"):
