@@ -193,7 +193,7 @@ def test_serializer_exposes_deadlines_array() -> None:
         content=item, target_user=user, score=0.9, signals={}
     )
     data = GrantSerializer(score, context={"today": TODAY}).data
-    assert data["deadlines"] == [
+    assert data["addressable_deadlines"] == [
         {
             "kind": "application",
             "due_date": "2026-10-01",

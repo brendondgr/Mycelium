@@ -9,11 +9,13 @@ import {
   AlertTriangleIcon,
   ArrowRightIcon,
   BankIcon,
+  BellIcon,
   BookmarkIcon,
   ConferenceIcon,
   DocumentIcon,
   SparkleIcon,
 } from "@/components/portal/icons";
+import { ReminderComposer } from "@/components/portal/reminder-composer";
 import { deadlineLabel } from "@/components/portal/sections/opportunity-bits";
 import { GrantRow } from "@/components/portal/sections/opportunities-section";
 import { FellowshipRow } from "@/components/portal/sections/fellowships-section";
@@ -28,7 +30,25 @@ import {
   type SavesFilterState,
 } from "@/components/portal/sections/saves-filters";
 import { useSaves } from "@/lib/portal/hooks";
-import type { SavedArea, SavedItem } from "@/lib/portal/types";
+import type { DeadlineOption, SavedArea, SavedItem } from "@/lib/portal/types";
+
+/** The addressable, *dated* deadlines a save can be reminded on ([] for papers). */
+function reminderDeadlines(item: SavedItem): DeadlineOption[] {
+  if (item.area === "paper") return [];
+  if (item.card) return item.card.addressable_deadlines ?? [];
+  // Pruned listing: fall back to the save's own snapshot deadline.
+  if (item.deadline_date) {
+    return [
+      {
+        kind: item.deadline_kind || "other",
+        due_date: item.deadline_date,
+        confidence: "confirmed",
+        label: "",
+      },
+    ];
+  }
+  return [];
+}
 
 const AREA_ICONS: Record<SavedArea, React.ComponentType<{ size?: number }>> = {
   paper: DocumentIcon,
@@ -60,7 +80,13 @@ function countdownLabel(days: number | null): string {
  * The small meta strip above each saved card: what kind of item this is, when
  * it was saved, the countdown when a deadline is near, and the user's note.
  */
-function SaveMeta({ item }: { item: SavedItem }) {
+function SaveMeta({
+  item,
+  onRemind,
+}: {
+  item: SavedItem;
+  onRemind?: () => void;
+}) {
   const AreaIcon = AREA_ICONS[item.area];
   const savedOn = formatDate(item.saved_at);
   const countdown = countdownLabel(item.days_remaining);
@@ -84,6 +110,16 @@ function SaveMeta({ item }: { item: SavedItem }) {
         <span className="min-w-0 truncate text-xs italic text-[var(--text-muted)]">
           Note: {item.note}
         </span>
+      ) : null}
+      {onRemind ? (
+        <button
+          type="button"
+          onClick={onRemind}
+          className="ml-auto inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <BellIcon size={11} aria-hidden="true" />
+          Remind me
+        </button>
       ) : null}
     </div>
   );
@@ -136,9 +172,16 @@ function PrunedSaveRow({ item }: { item: SavedItem }) {
 
 /** One save: the meta strip + the item's own feed-page card (or the fallback). */
 function SavedRow({ item }: { item: SavedItem }) {
+  const [composing, setComposing] = React.useState(false);
+  const deadlines = reminderDeadlines(item);
+  const canRemind = deadlines.length > 0 && item.content_id !== null;
+
   return (
     <div>
-      <SaveMeta item={item} />
+      <SaveMeta
+        item={item}
+        onRemind={canRemind ? () => setComposing(true) : undefined}
+      />
       {item.card === null ? (
         <PrunedSaveRow item={item} />
       ) : item.area === "grant" ? (
@@ -150,6 +193,14 @@ function SavedRow({ item }: { item: SavedItem }) {
       ) : (
         <SuggestionCard suggestion={item.card} />
       )}
+      {composing && item.content_id ? (
+        <ReminderComposer
+          contentId={item.content_id}
+          title={item.title}
+          deadlines={deadlines}
+          onClose={() => setComposing(false)}
+        />
+      ) : null}
     </div>
   );
 }

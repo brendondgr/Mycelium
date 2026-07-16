@@ -141,7 +141,10 @@ class _OpportunitySerializer(serializers.Serializer):
     pinned = serializers.SerializerMethodField()
     deadline_date = serializers.SerializerMethodField()
     deadline_kind = serializers.SerializerMethodField()
-    deadlines = serializers.SerializerMethodField()
+    # The addressable per-kind deadlines (ContentDeadline projection, R0). Named
+    # distinctly from the conference ``deadlines`` raw string so a subclass can't
+    # shadow it — every opportunity type exposes this array consistently.
+    addressable_deadlines = serializers.SerializerMethodField()
     status_summary = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
 
@@ -195,7 +198,7 @@ class _OpportunitySerializer(serializers.Serializer):
     def get_deadline_kind(self, score: RelevanceScore) -> str:
         return score.signals.get("next_kind") or ""
 
-    def get_deadlines(self, score: RelevanceScore) -> list[dict]:
+    def get_addressable_deadlines(self, score: RelevanceScore) -> list[dict]:
         """The addressable per-kind deadlines (ContentDeadline projection, R0).
 
         Additive to the scalar ``deadline_date``/``deadline_kind`` (which existing

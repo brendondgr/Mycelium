@@ -20,6 +20,7 @@ import type {
   Project,
   ProfileData,
   ProjectFeed,
+  Reminder,
   SavedDeadline,
   SavedItem,
   SearchParams,
@@ -151,11 +152,19 @@ export async function fetchSaves(): Promise<{ items: SavedItem[] }> {
   );
 }
 
-/** Deadline alerts due within a week (the header bell). */
+/** The header bell: reminder / moved-deadline / high-signal notifications. */
 export async function fetchNotifications(): Promise<NotificationFeed> {
   return getJson<NotificationFeed>(
     buildApiUrl(getPublicApiBase(), "notifications"),
     "Could not load your notifications.",
+  );
+}
+
+/** The caller's deadline reminders (personal + accessible lab reminders). */
+export async function fetchReminders(): Promise<{ items: Reminder[] }> {
+  return getJson<{ items: Reminder[] }>(
+    buildApiUrl(getPublicApiBase(), "reminders"),
+    "Could not load your reminders.",
   );
 }
 

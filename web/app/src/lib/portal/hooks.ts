@@ -25,6 +25,7 @@ import {
   fetchMyInvitations,
   fetchMyLabs,
   fetchNotifications,
+  fetchReminders,
   fetchSaves,
   fetchProfile,
   fetchProjectCollection,
@@ -36,11 +37,14 @@ import {
   fetchWatch,
 } from "@/lib/portal/client";
 import {
+  actOnNotification,
   addProjectMember,
   addToCollection,
   createCollection,
   createLab,
   createProject,
+  createReminder,
+  deleteReminder,
   disconnectDiscord,
   dismissSuggestion,
   ingestProjectLink,
@@ -215,13 +219,48 @@ export function useSaves() {
   });
 }
 
-/** Deadline alerts due within a week (the header notification bell). */
+/** The header bell: reminder / moved-deadline / high-signal notifications. */
 export function useNotifications() {
   return useQuery({
     queryKey: ["portal", "notifications"],
     queryFn: fetchNotifications,
     staleTime: 60_000,
   });
+}
+
+/** Mark a bell notification read or dismissed; refreshes the bell. */
+export function useNotificationAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action }: { id: string; action: "read" | "dismiss" }) =>
+      actOnNotification(id, action),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["portal", "notifications"] }),
+  });
+}
+
+/** The caller's deadline reminders (personal + accessible lab reminders). */
+export function useReminders() {
+  return useQuery({
+    queryKey: ["portal", "reminders"],
+    queryFn: fetchReminders,
+    staleTime: 30_000,
+  });
+}
+
+/** Create + delete reminders; both refresh the reminders list and the bell. */
+export function useReminderMutations() {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["portal", "reminders"] });
+    queryClient.invalidateQueries({ queryKey: ["portal", "notifications"] });
+  };
+  const create = useMutation({ mutationFn: createReminder, onSuccess: invalidate });
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteReminder(id),
+    onSuccess: invalidate,
+  });
+  return { create, remove };
 }
 
 /** Save or unsave a bookmarkable item; refreshes the feeds, saves, and bell. */

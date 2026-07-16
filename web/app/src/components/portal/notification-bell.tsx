@@ -4,7 +4,6 @@ import * as React from "react";
 
 import {
   AlertTriangleIcon,
-  ArrowRightIcon,
   BellIcon,
   CloseIcon,
   SporeNode,
@@ -15,15 +14,16 @@ import {
   useDismissSuggestion,
   useMemberSuggestions,
   useMyInvitations,
+  useNotificationAction,
   useNotifications,
   useRespondInvitation,
 } from "@/lib/portal/hooks";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 import type {
-  DeadlineAlert,
   InvitationAction,
   MemberSuggestion,
   MyInvitation,
+  NotificationItem,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
@@ -93,15 +93,8 @@ export function NotificationBell() {
             </p>
           ) : (
             <ul className="max-h-[60vh] divide-y divide-[var(--divider)] overflow-y-auto">
-              {alerts.map((alert) => (
-                <DeadlineAlertRow
-                  key={alert.id}
-                  alert={alert}
-                  onView={() => {
-                    setOpen(false);
-                    goToSection("saves");
-                  }}
-                />
+              {alerts.map((note) => (
+                <NotificationRow key={note.id} note={note} />
               ))}
               {invitations.map((invitation) => (
                 <InvitationRow key={invitation.id} invitation={invitation} />
@@ -124,13 +117,12 @@ export function NotificationBell() {
   );
 }
 
-function DeadlineAlertRow({
-  alert,
-  onView,
-}: {
-  alert: DeadlineAlert;
-  onView: () => void;
-}) {
+/**
+ * One bell notification (a fired reminder, a moved deadline, or a high-signal
+ * pick). The ✕ dismisses it via the notifications endpoint, refreshing the badge.
+ */
+function NotificationRow({ note }: { note: NotificationItem }) {
+  const act = useNotificationAction();
   return (
     <li className="px-4 py-3">
       <div className="flex items-start gap-2">
@@ -139,21 +131,37 @@ function DeadlineAlertRow({
           aria-hidden="true"
           className="mt-0.5 shrink-0 text-accent"
         />
-        <div className="min-w-0">
-          <p className="text-sm text-[var(--text-primary)]">{alert.message}</p>
-          <button
-            type="button"
-            onClick={onView}
-            className="group mt-1 inline-flex items-center gap-1 text-[12.5px] font-semibold text-primary hover:underline"
-          >
-            View in Saves
-            <ArrowRightIcon
-              size={12}
-              aria-hidden="true"
-              className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-            />
-          </button>
+        <div className="min-w-0 flex-1">
+          {note.url ? (
+            <a
+              href={note.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-medium text-[var(--text-primary)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {note.title}
+            </a>
+          ) : (
+            <p className="text-sm font-medium text-[var(--text-primary)]">
+              {note.title}
+            </p>
+          )}
+          {note.body ? (
+            <p className="mt-0.5 text-[12.5px] text-[var(--text-muted)]">
+              {note.body}
+            </p>
+          ) : null}
         </div>
+        <button
+          type="button"
+          onClick={() => act.mutate({ id: note.id, action: "dismiss" })}
+          disabled={act.isPending}
+          aria-label={`Dismiss notification: ${note.title}`}
+          title="Dismiss"
+          className="shrink-0 rounded-full p-1 text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        >
+          <CloseIcon size={13} />
+        </button>
       </div>
     </li>
   );

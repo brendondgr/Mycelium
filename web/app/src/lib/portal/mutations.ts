@@ -10,6 +10,8 @@ import type {
   InvitationAction,
   LabProfileData,
   MyLab,
+  Reminder,
+  ReminderInput,
   SavedDeadline,
   WatchData,
 } from "@/lib/portal/types";
@@ -439,6 +441,46 @@ export async function unsaveOpportunity(contentId: string): Promise<void> {
   if (!response.ok && response.status !== 404) {
     throw new Error("Could not remove this from your deadlines.");
   }
+}
+
+/** Create a deadline reminder (personal or lab) from a saved/opportunity item. */
+export function createReminder(input: ReminderInput): Promise<Reminder> {
+  return sendJson<Reminder>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "reminders"),
+    input,
+    "Could not create the reminder.",
+  );
+}
+
+/** Cancel a reminder the caller owns (personal) or manages (lab). */
+export async function deleteReminder(id: string): Promise<void> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "reminders", id),
+    {
+      method: "DELETE",
+      credentials: "include",
+      headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
+    },
+  );
+  if (!response.ok && response.status !== 404) {
+    throw new Error("Could not remove this reminder.");
+  }
+}
+
+/** Mark a bell notification read or dismissed. */
+export function actOnNotification(
+  id: string,
+  action: "read" | "dismiss",
+): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "notifications", id, "action"),
+    { action },
+    "Could not update the notification.",
+  );
 }
 
 /** Disconnect the caller's Discord identity (revokes tokens, deletes the link). */

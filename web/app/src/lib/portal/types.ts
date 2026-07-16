@@ -235,9 +235,20 @@ type OpportunityBase = {
   /** The actionable date (application/abstract/manuscript/event), ISO or "". */
   deadline_date: string;
   deadline_kind: string;
+  /** Every addressable per-kind deadline (the reminder composer picks from these). */
+  addressable_deadlines: DeadlineOption[];
   status_summary: string;
   /** Whether the user has saved this to their deadlines. */
   saved: boolean;
+};
+
+/** One addressable deadline on an item (the ContentDeadline projection, R0). */
+export type DeadlineOption = {
+  kind: string;
+  /** ISO date, or null for a rolling/unknown deadline (not remindable). */
+  due_date: string | null;
+  confidence: "confirmed" | "anticipated" | "rolling" | "unknown";
+  label: string;
 };
 
 /** A matched funding opportunity (from `/api/opportunities/grants/`). */
@@ -425,21 +436,60 @@ export type SavedItem = SavedDeadline & {
     | { area: "paper"; card: Suggestion | null }
   );
 
-/** One deadline alert for the header bell (from `/api/notifications/`). */
-export type DeadlineAlert = {
+/**
+ * One header-bell notification (from `/api/notifications/`). Backed by the
+ * Notification model (reminders rework): a fired reminder, a moved deadline, or a
+ * high-signal recommendation — not the old saves-due-within-a-week scan.
+ */
+export type NotificationItem = {
   id: string;
+  kind: "reminder" | "deadline_moved" | "high_signal";
   content_id: string | null;
-  area: "grant" | "conference" | "fellowship";
   title: string;
+  body: string;
   url: string;
-  deadline_date: string;
-  days_remaining: number;
-  message: string;
+  created_at: string;
+  read_at: string | null;
 };
 
 export type NotificationFeed = {
   count: number;
-  items: DeadlineAlert[];
+  items: NotificationItem[];
+};
+
+/** A reminder offset: "N units before the deadline". */
+export type ReminderUnit = "day" | "week" | "month" | "year";
+export type ReminderOffset = { amount: number; unit: ReminderUnit };
+
+/** One deadline reminder (from `/api/reminders/`). */
+export type Reminder = {
+  id: string;
+  scope: "user" | "lab";
+  lab_slug: string | null;
+  content_id: string | null;
+  deadline_kind: string;
+  area: string;
+  title: string;
+  url: string;
+  due_date: string | null;
+  confidence: string;
+  state: "active" | "fired_out" | "cancelled" | "stale";
+  channel_id_override: string;
+  has_unlinked_targets: boolean;
+  offsets: ReminderOffset[];
+  mentions: { username: string; name: string }[];
+  created_at: string;
+};
+
+/** The body for creating a reminder (POST `/api/reminders/`). */
+export type ReminderInput = {
+  content_id: string;
+  deadline_kind: string;
+  scope?: "personal" | "lab";
+  lab_slug?: string;
+  offsets?: ReminderOffset[];
+  mentions?: string[];
+  channel_id_override?: string;
 };
 
 /**
