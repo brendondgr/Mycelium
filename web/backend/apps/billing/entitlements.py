@@ -209,6 +209,27 @@ def within_topic_cap(user: User, count: int) -> bool:
     return count <= topic_cap(user)
 
 
+def effective_watch_topics(user: User) -> list[str]:
+    """The watch topics a user is entitled to act on — the first ``topic_cap`` of
+    their stored topics.
+
+    A downgrade (e.g. Spore → Free) can leave more stored topics than the new cap
+    allows. We never delete the excess (that would be unrecoverable data loss on a
+    billing event); instead every consumer reads through here, honouring only the
+    first N. :func:`topics_over_cap` reports the overflow so the UI can surface it.
+    """
+    watch = getattr(user, "watch", None)
+    topics = list(getattr(watch, "topics", None) or [])
+    return topics[: topic_cap(user)]
+
+
+def topics_over_cap(user: User) -> bool:
+    """Whether a user has more stored watch topics than their current tier allows."""
+    watch = getattr(user, "watch", None)
+    topics = getattr(watch, "topics", None) or []
+    return len(topics) > topic_cap(user)
+
+
 def member_cap(tier: str) -> int | None:
     """The seat ceiling for a tier (``None`` = unlimited)."""
     return TIER_MEMBER_CAPS.get(tier, 1)
