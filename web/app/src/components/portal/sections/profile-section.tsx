@@ -536,15 +536,17 @@ export function ProfileSection() {
       />
 
       <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">
-        {/* LEFT — research focus */}
-        <ResearchFocusCard />
+        {/* LEFT — research focus + connected services */}
+        <div className="flex flex-col gap-[22px]">
+          <ResearchFocusCard />
+          <DiscordCard />
+        </div>
 
         {/* RIGHT — stacked completeness + eligibility + watch */}
         <div className="flex flex-col gap-[22px]">
           <ProfileCompletenessCard />
           <EligibilityCard />
           <WatchCard />
-          <DiscordCard />
         </div>
       </div>
     </div>
