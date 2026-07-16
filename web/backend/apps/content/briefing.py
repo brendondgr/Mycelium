@@ -3,30 +3,29 @@
 After the daily run has produced the day's paper suggestions and opportunity
 matches, this module reads each category's :class:`RelevanceScore` feed for a user
 (papers fresh-only, opportunities accumulated) across every category they watch,
-rolls them into per-category counts and a small showcase of top items, and asks
-the language model to write a short, grounded 2–3 paragraph briefing over exactly
-those items. The result is persisted as the user's :class:`DailyBriefing`.
+rolls them into per-category counts and a small showcase of top items, and hands
+the found items to the multi-agent report writer in :mod:`.briefing_agents`, which
+produces a structured, sectioned **markdown** report. The result is persisted as
+the user's :class:`DailyBriefing`.
 
-Design mirrors ``suggest.py`` / ``opportunity_llm.py``:
-
-- The synthesis is **grounded** — the prompt lists only the real showcase items,
-  and the model is told to reference nothing else. The showcase we persist is the
-  same set the prose talks about, so the UI can render the evidence beside it.
-- There is a **deterministic fallback** — when the LLM is unreachable or returns
-  nothing usable, a templated summary is written from the same counts/items and
-  ``origin`` is recorded as ``fallback``, so the surface is always populated and
-  honest about how it was produced.
+The report is a small agent pipeline (see :mod:`.briefing_agents`): a Paper, Grant,
+Fellowship, and Conference specialist each write a tailored ``## Section`` grounded
+in that area's found items — reusing the per-item rationale already persisted on
+each :class:`RelevanceScore` — and a summary agent writes the opening paragraph
+over those sections. Both the sections and the summary have deterministic markdown
+fallbacks, so a missing or flaky model degrades to a still-useful, honest report
+(``origin`` recorded as ``fallback``) rather than nothing.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-from collections.abc import Callable
 
 from django.utils import timezone
 
+from apps.content import briefing_agents
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
+from apps.content.targets import target_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -40,21 +39,6 @@ CATEGORY_TYPES: dict[str, str] = {
 
 #: How many items per category to show in the briefing showcase (bottom-right UI).
 SHOWCASE_PER_CATEGORY = 3
-#: How many items per category to describe to the model (a little more context).
-PROMPT_ITEMS_PER_CATEGORY = 5
-
-_SYSTEM_PROMPT = (
-    "You are Mylo, the research scout for a lab-intelligence platform. You write "
-    "a short daily briefing for one researcher about what today's automated scan "
-    "surfaced for them: new papers, grants, conferences, and fellowships. Be warm, "
-    "calm, and specific — a research operations partner, not a hype machine. "
-    "LEAD with what is new since the last few days (the 'new' counts and items "
-    "marked new); the older total is background, not the headline. Ground every "
-    "statement ONLY in the items you are given; never invent a paper, "
-    "number, or deadline. Call out the strongest matches by name, group by theme "
-    "when natural, and flag any near-term deadlines. Return STRICT JSON of the form "
-    '{"briefing": "<2-3 short paragraphs of plain prose>"}. No markdown, no lists.'
-)
 
 
 def _watched_categories(user) -> list[str]:
@@ -116,7 +100,25 @@ def _suggested_scores(user, content_type: str) -> list[RelevanceScore]:
     return scores
 
 
-def _showcase_item(score: RelevanceScore) -> dict:
+def _is_fresh(signals: dict, today: str) -> bool:
+    """True only when a row is *genuinely* new: flagged ``is_new`` AND still inside
+    its pin window (``pinned_until >= today``).
+
+    ``is_new`` is a static snapshot frozen at scoring time; ``pinned_until`` (=
+    first_seen + 7 days) is also frozen but is compared against *today* on read, so
+    it is what actually ages an item back out of "new". The opportunity feeds
+    accumulate and fellowships are effectively never pruned, so their frozen
+    ``is_new=True`` rows pile up — without this gate the count reads e.g. "87 new of
+    87 matched". Mirrors :func:`apps.content.views._build_summary._is_new` and
+    :meth:`apps.content.serializers.…get_is_new`, the app-wide freshness rule.
+    """
+    if not signals.get("is_new"):
+        return False
+    pinned_until = signals.get("pinned_until")
+    return bool(pinned_until and pinned_until >= today)
+
+
+def _showcase_item(score: RelevanceScore, today: str) -> dict:
     """Flatten one score into the small display item the UI/prompt use."""
     content = score.content
     meta = content.metadata or {}
@@ -136,215 +138,145 @@ def _showcase_item(score: RelevanceScore) -> dict:
         "url": url,
         "match_percent": signals.get("match_percent"),
         "headline": signals.get("headline", ""),
+        "reason": signals.get("reason", ""),
         "deadline_date": signals.get("deadline_date") or "",
-        "is_new": bool(signals.get("is_new")),
+        "is_new": _is_fresh(signals, today),
     }
 
 
 def _gather(
     user,
-) -> tuple[list[str], dict[str, int], dict[str, int], dict[str, list[dict]]]:
-    """Return (watched categories, counts, new counts, showcase) per category.
+) -> tuple[
+    list[str],
+    dict[str, int],
+    dict[str, int],
+    dict[str, list[dict]],
+    dict[str, list[dict]],
+]:
+    """Return (categories, counts, new_counts, showcase, report_items) per category.
 
     ``counts`` is everything each category's feed surfaces (papers fresh-only,
-    opportunities accumulated); ``new_counts`` is the subset first seen within the
-    New window (``signals.is_new``) — the number the briefing leads with, so a day
-    with 3 fresh conferences reads "3 new", not "140".
+    opportunities accumulated); ``new_counts`` is the subset that is genuinely new
+    right now (:func:`_is_fresh` — ``is_new`` AND still inside its pin window), the
+    number the briefing leads with, so a day with 3 fresh conferences reads "3 new",
+    not "140" — and an accumulated fellowship feed no longer reads "87 new of 87".
+
+    ``showcase`` is the small top-``SHOWCASE_PER_CATEGORY`` set the UI card renders;
+    ``report_items`` is a slightly larger top slice (``REPORT_ITEMS_PER_SECTION``,
+    from :mod:`.briefing_agents`) the area agents write their sections from — each
+    flattened item carries the per-item ``reason``/``headline`` the matcher already
+    wrote, so the agents enrich real, grounded rationale rather than inventing.
     """
     categories = _watched_categories(user)
+    today = timezone.now().date().isoformat()
+    report_n = briefing_agents.REPORT_ITEMS_PER_SECTION
     counts: dict[str, int] = {}
     new_counts: dict[str, int] = {}
     showcase: dict[str, list[dict]] = {}
+    report_items: dict[str, list[dict]] = {}
     for category in categories:
         scores = _suggested_scores(user, CATEGORY_TYPES[category])
         counts[category] = len(scores)
         new_counts[category] = sum(
-            1 for s in scores if s.signals.get("is_new")
+            1 for s in scores if _is_fresh(s.signals, today)
         )
-        showcase[category] = [
-            _showcase_item(s) for s in scores[:SHOWCASE_PER_CATEGORY]
-        ]
-    return categories, counts, new_counts, showcase
+        flattened = [_showcase_item(s, today) for s in scores[:report_n]]
+        showcase[category] = flattened[:SHOWCASE_PER_CATEGORY]
+        report_items[category] = flattened
+    return categories, counts, new_counts, showcase, report_items
 
 
-# --------------------------------------------------------------------------- #
-# LLM synthesis + deterministic fallback
-# --------------------------------------------------------------------------- #
+def _profile_text(user) -> str:
+    """A compact natural-language description of the researcher for the agents.
 
-
-def _build_prompt(
-    counts: dict[str, int],
-    new_counts: dict[str, int],
-    showcase: dict[str, list[dict]],
-) -> str:
-    """A compact, grounded description of the day for the model."""
-    lines: list[str] = ["Today's findings for this researcher:", ""]
-    for category, count in counts.items():
-        new = new_counts.get(category, 0)
-        lines.append(
-            f"{category.upper()}: {new} new this week, {count} matched in total."
-        )
-        for item in showcase.get(category, [])[:PROMPT_ITEMS_PER_CATEGORY]:
-            bits = [f'  - "{item["title"]}"']
-            if isinstance(item.get("match_percent"), int):
-                bits.append(f"{item['match_percent']}% match")
-            if item.get("deadline_date"):
-                bits.append(f"deadline {item['deadline_date']}")
-            if item.get("is_new"):
-                bits.append("new")
-            lines.append(" — ".join(bits))
-        lines.append("")
-    lines.append(
-        "Write the briefing now. Lead with what is NEW, mention the counts, name "
-        "the standout items, and flag near-term deadlines. Reference only the "
-        "items above."
-    )
-    return "\n".join(lines)
-
-
-def _parse_briefing(raw: str | None) -> str:
-    """Pull the ``briefing`` string out of the model's JSON, tolerantly.
-
-    Falls back to the raw text (stripped) when the model answered with prose
-    instead of clean JSON — still the model's words, still grounded.
+    Built from the same interest surface the matcher scores on
+    (:func:`apps.content.targets.target_for_user`): the free-text research
+    statement, focus areas, keywords, skills, and career stage / institution.
     """
-    if not raw or not raw.strip():
-        return ""
-    start, end = raw.find("{"), raw.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        try:
-            data = json.loads(raw[start : end + 1])
-            text = data.get("briefing")
-            if isinstance(text, str) and text.strip():
-                return text.strip()
-        except (json.JSONDecodeError, AttributeError):
-            pass
-    return raw.strip()
-
-
-def _settings_complete(prompt: str) -> str | None:
-    """Default completion: send the prompt through the configured LLM client."""
-    from apps.core.llm import LLMMessage, build_llm_client
-
-    client = build_llm_client()
-    response = client.complete(
-        [LLMMessage("system", _SYSTEM_PROMPT), LLMMessage("user", prompt)]
-    )
-    if response.finish_reason == "length" and not (response.content or "").strip():
-        logger.warning(
-            "LLM briefing response truncated (finish_reason=length) before any "
-            "answer; raise LLM_MAX_TOKENS so the model can finish."
+    target = target_for_user(user)
+    interests = target.interests or {}
+    meta = target.profile_meta or {}
+    bits: list[str] = []
+    stage = _clean(meta.get("academic_title"))
+    institution = _clean(meta.get("institution"))
+    if stage or institution:
+        bits.append(
+            "Career stage / institution: "
+            + " · ".join(p for p in (stage, institution) if p)
         )
-    return response.content
+    statement = _clean(interests.get("statement"))
+    if statement:
+        bits.append(statement)
+    for label, key in (
+        ("Research focus", "areas"),
+        ("Keywords", "keywords"),
+        ("Skills", "skills"),
+        ("Funding needs", "funding_needs"),
+    ):
+        values = _clean_list(interests.get(key))
+        if values:
+            bits.append(f"{label}: {', '.join(values)}")
+    return "\n".join(bits)
 
 
-def _fallback_body(
-    counts: dict[str, int],
-    new_counts: dict[str, int],
-    showcase: dict[str, list[dict]],
-) -> str:
-    """A deterministic briefing when the model is unavailable or empty."""
-    total = sum(counts.values())
-    if total == 0:
-        return (
-            "No new research matched your profile today. Mylo will keep scanning "
-            "your watched topics and surface fresh papers and opportunities here "
-            "as they appear."
-        )
-    # Lead with what's fresh; the running total is the parenthetical, not the news.
-    def _noun(category: str, n: int) -> str:
-        return _singular(category) if n == 1 else category
-
-    parts = [
-        f"{new} new {_noun(category, new)} ({count} matched in total)"
-        if (new := new_counts.get(category, 0))
-        else f"{count} {_noun(category, count)}"
-        for category, count in counts.items()
-        if count
-    ]
-    lead = "Today Mylo surfaced " + _join_english(parts) + " for you."
-
-    highlights: list[str] = []
-    for category, items in showcase.items():
-        if not items:
-            continue
-        top = items[0]
-        match = top.get("match_percent")
-        match_str = f" ({match}% match)" if isinstance(match, int) else ""
-        highlights.append(f'the {_singular(category)} "{top["title"]}"{match_str}')
-    highlight_line = (
-        " Standouts include " + _join_english(highlights) + "." if highlights else ""
-    )
-
-    deadlines = [
-        f'"{item["title"]}" ({item["deadline_date"]})'
-        for items in showcase.values()
-        for item in items
-        if item.get("deadline_date")
-    ]
-    deadline_line = (
-        " Watch these deadlines: " + _join_english(deadlines[:3]) + "."
-        if deadlines
-        else ""
-    )
-    return lead + highlight_line + deadline_line
+def _clean(value) -> str:
+    return " ".join(str(value).split()) if value else ""
 
 
-def _join_english(parts: list[str]) -> str:
-    """Join a list as 'a', 'a and b', or 'a, b, and c'."""
-    parts = [p for p in parts if p]
-    if not parts:
-        return "nothing"
-    if len(parts) == 1:
-        return parts[0]
-    if len(parts) == 2:
-        return f"{parts[0]} and {parts[1]}"
-    return ", ".join(parts[:-1]) + f", and {parts[-1]}"
+def _clean_list(value) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        text = _clean(item)
+        key = text.casefold()
+        if text and key not in seen:
+            seen.add(key)
+            out.append(text)
+    return out
 
 
-def _singular(category: str) -> str:
-    return {
-        "papers": "paper",
-        "grants": "grant",
-        "conferences": "conference",
-        "fellowships": "fellowship",
-    }.get(category, category)
+# --------------------------------------------------------------------------- #
+# Report generation (multi-agent, in briefing_agents)
+# --------------------------------------------------------------------------- #
 
 
 def generate_briefing_for_user(
     user,
     *,
-    complete: Callable[[str], str | None] | None = None,
+    complete: briefing_agents.CompleteFn | None = None,
 ) -> DailyBriefing:
-    """Build and persist one user's daily briefing. Returns the saved row.
+    """Build and persist one user's daily report. Returns the saved row.
 
-    ``complete`` is the prompt->text seam (injected in tests). When it is absent,
-    fails, or returns nothing usable, the deterministic fallback writes the body
-    and ``origin`` is recorded as ``fallback``.
+    Gathers the day's per-category counts and found items, then hands them to the
+    multi-agent writer (:func:`apps.content.briefing_agents.generate_report_body`),
+    which produces the sectioned markdown body. ``complete`` is the injectable
+    ``(system, user) -> text`` LLM seam (used in tests); when it is absent, fails,
+    or returns nothing usable, each agent's deterministic markdown fallback fills
+    in and ``origin`` is recorded as ``fallback``.
     """
-    categories, counts, new_counts, showcase = _gather(user)
-    ask = complete if complete is not None else _settings_complete
+    categories, counts, new_counts, showcase, report_items = _gather(user)
 
-    body = ""
-    origin = DailyBriefing.Origin.FALLBACK
     if sum(counts.values()) > 0:
-        try:
-            raw = ask(_build_prompt(counts, new_counts, showcase))
-        except Exception as exc:  # noqa: BLE001 — any LLM failure => fallback
-            logger.warning(
-                "LLM briefing generation unavailable (%s); using deterministic "
-                "fallback for %s.",
-                exc,
-                user,
-            )
-            raw = None
-        parsed = _parse_briefing(raw)
-        if parsed:
-            body = parsed
-            origin = DailyBriefing.Origin.LLM
+        body, used_llm = briefing_agents.generate_report_body(
+            _profile_text(user),
+            categories,
+            counts,
+            new_counts,
+            report_items,
+            complete=complete,
+        )
+        origin = (
+            DailyBriefing.Origin.LLM if used_llm else DailyBriefing.Origin.FALLBACK
+        )
+    else:
+        # Empty day: an honest, populated note — no model call needed.
+        body = briefing_agents.empty_report_body()
+        origin = DailyBriefing.Origin.FALLBACK
 
     if not body:
-        body = _fallback_body(counts, new_counts, showcase)
+        body = briefing_agents.empty_report_body()
         origin = DailyBriefing.Origin.FALLBACK
 
     briefing, _ = DailyBriefing.objects.update_or_create(
