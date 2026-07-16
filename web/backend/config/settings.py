@@ -312,6 +312,20 @@ OPPORTUNITY_FEED_MAX = env.int("OPPORTUNITY_FEED_MAX", default=250)
 # (never re-sent to the model) but off the feed until it improves or ages out.
 OPPORTUNITY_MIN_MATCH_PERCENT = env.int("OPPORTUNITY_MIN_MATCH_PERCENT", default=60)
 
+# High-signal notification gate (apps.content.high_signal, reminders R7). A brutal
+# floor: abstention is a feature — if nothing clears the bar, send nothing. An alert
+# that fires most days is a digest, and digests are out of scope. HIGH_SIGNAL_FLOOR is
+# a PLACEHOLDER pending shadow-mode calibration on the real RelevanceScore corpus
+# (`manage.py high_signal_shadow`); do NOT trust the default 90 until it is measured
+# (D-14). Delivery ships OFF (D-10: high-signal stays in-app-only for now; and it must
+# not deliver on a guessed threshold) — flip HIGH_SIGNAL_DELIVERY_ENABLED only after
+# calibration.
+HIGH_SIGNAL_FLOOR = env.int("HIGH_SIGNAL_FLOOR", default=90)
+HIGH_SIGNAL_WEEKLY_CAP = env.int("HIGH_SIGNAL_WEEKLY_CAP", default=2)
+HIGH_SIGNAL_DEADLINE_MIN_DAYS = env.int("HIGH_SIGNAL_DEADLINE_MIN_DAYS", default=7)
+HIGH_SIGNAL_DEADLINE_MAX_DAYS = env.int("HIGH_SIGNAL_DEADLINE_MAX_DAYS", default=120)
+HIGH_SIGNAL_DELIVERY_ENABLED = env.bool("HIGH_SIGNAL_DELIVERY_ENABLED", default=False)
+
 # Project collaboration (apps.content.collaboration). Per-action weight written on
 # each RelevanceEvent — the weak relevance labels a future team-signal recompute
 # reads. Positive for engagement, negative for rejection. Tunable so the eventual
