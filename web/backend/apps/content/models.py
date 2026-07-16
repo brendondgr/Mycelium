@@ -314,6 +314,12 @@ class ContentDeadline(models.Model):
         blank=True,
         help_text="The prior date, set when due_date last moved (corroboration).",
     )
+    previous_confidence = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="The prior confidence, set on a change — e.g. anticipated→confirmed.",
+    )
     changed_at = models.DateTimeField(
         null=True,
         blank=True,

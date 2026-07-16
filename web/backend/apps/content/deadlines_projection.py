@@ -64,13 +64,17 @@ class DeadlineSpec:
 
 @dataclass(frozen=True)
 class DeadlineChange:
-    """A ``due_date`` that moved on an existing row (the R6 announcement signal)."""
+    """A deadline that changed on an existing row (the R6 announcement signal).
+
+    Fires when the ``due_date`` moved, or when an anticipated deadline was confirmed.
+    """
 
     content_id: str
     kind: str
     old: date | None
     new: date | None
     confidence: str
+    previous_confidence: str = ""
 
 
 def _to_date(value: str | None) -> date | None:
@@ -198,26 +202,39 @@ def rebuild_deadlines_for(
         if row.label != spec.label:
             row.label = spec.label
             fields.append("label")
+
+        old_confidence = row.confidence
+        old_due = row.due_date
+        date_moved = old_due != spec.due_date
+        # An anticipated deadline becoming confirmed is worth announcing even when
+        # the date is unchanged (the highest-value change variant).
+        confirmed = (
+            spec.confidence == _Confidence.CONFIRMED
+            and old_confidence == _Confidence.ANTICIPATED
+        )
+
         if row.confidence != spec.confidence:
             row.confidence = spec.confidence
             fields.append("confidence")
-        if row.due_date != spec.due_date:
-            old = row.due_date
-            row.previous_due_date = old
+        if date_moved:
+            row.previous_due_date = old_due
             row.due_date = spec.due_date
             fields += ["previous_due_date", "due_date"]
-            if detect_changes:
-                row.changed_at = now
-                fields.append("changed_at")
-                changes.append(
-                    DeadlineChange(
-                        content_id=str(item.id),
-                        kind=kind,
-                        old=old,
-                        new=spec.due_date,
-                        confidence=spec.confidence,
-                    )
+
+        if detect_changes and (date_moved or confirmed):
+            row.previous_confidence = old_confidence
+            row.changed_at = now
+            fields += ["previous_confidence", "changed_at"]
+            changes.append(
+                DeadlineChange(
+                    content_id=str(item.id),
+                    kind=kind,
+                    old=old_due,
+                    new=spec.due_date,
+                    confidence=spec.confidence,
+                    previous_confidence=old_confidence,
                 )
+            )
         if fields:
             row.save(update_fields=[*fields, "updated_at"])
 
@@ -251,6 +268,7 @@ def _audit_changes(item: ContentItem, changes: list[DeadlineChange]) -> None:
                 "old_due_date": change.old.isoformat() if change.old else None,
                 "new_due_date": change.new.isoformat() if change.new else None,
                 "confidence": change.confidence,
+                "previous_confidence": change.previous_confidence,
                 "content_type": item.type,
             },
         )

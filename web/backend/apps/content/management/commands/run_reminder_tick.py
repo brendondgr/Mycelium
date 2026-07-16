@@ -12,11 +12,12 @@ from __future__ import annotations
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
+from apps.content.reminders_announce import announce_deadline_changes
 from apps.content.reminders_tick import run_tick
 
 
 class Command(BaseCommand):
-    help = "Fire due deadline reminders (once per subscription per day)."
+    help = "Fire due deadline reminders + announce moved deadlines (once per day)."
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(
@@ -32,11 +33,13 @@ class Command(BaseCommand):
         if raw:
             today = timezone.datetime.fromisoformat(raw).date()
         result = run_tick(today)
+        moved = announce_deadline_changes(today)
         self.stdout.write(
             self.style.SUCCESS(
                 "Reminder tick: "
                 f"{result.fired} fired, {result.notifications} notifications, "
                 f"{result.staled} stale, {result.fired_out} fired-out "
-                f"(of {result.scanned} active)."
+                f"(of {result.scanned} active); "
+                f"{moved.announced} deadline-moved notices."
             )
         )
