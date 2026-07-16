@@ -134,8 +134,8 @@ rows; Discord channels wired in R3/R5.
 
 ### R2 — Job ordering + prune→stale hook
 
-- Decouple prune from the daily path: `run_daily_opportunities` gets a `--no-prune` flag; `manual_all.py CONTAINER_STAGES` becomes `run_daily_suggestions → run_daily_opportunities (--no-prune) → run_reminder_tick → prune_opportunities → generate_daily_briefing`. New `prune_opportunities` command calls `prune_expired`.
-- Prune→stale hook: when a `ContentItem` (grant/conf/fellowship) is deleted, set `state=stale` on subscriptions pointing at it (pre-delete signal or explicit call in `prune_expired`). Belt-and-braces regardless of ordering.
+- Decouple prune from the daily path: `run_daily_opportunities` already has `--no-prune`; `manual_all.py CONTAINER_STAGES` becomes `run_daily_suggestions → run_daily_opportunities (--no-prune) → run_reminder_tick → prune_opportunities → generate_daily_briefing`. New `prune_opportunities` command calls `prune_expired`.
+- Prune→stale hook: a `pre_delete` signal on `ContentItem` (`content/signals.py`, wired in `apps.ready()`). **Refinement over the source's "mark any subscription stale":** it resyncs each active reminder's snapshot from the still-live projection one last time and marks it `stale` **only when the deadline is no longer in the future** (past or gone). A reminder whose deadline is genuinely upcoming survives on its snapshot and keeps firing — otherwise the source's literal rule would contradict R1's "survive prune via snapshot" invariant. `pre_delete` (not `post_delete`) because `SET_NULL` nulls the FK during the cascade; at `pre_delete` the FK and the `ContentDeadline` rows are still readable.
 - Keep `ingest_pivot(prune=True)` default for standalone host runs (`pivot.py import`); the stale hook covers the early-prune case.
 
 **Validation:** `_deadline_moved_earlier_prunes_item_and_marks_subscription_stale`,

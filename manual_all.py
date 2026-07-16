@@ -96,10 +96,23 @@ ROOT = Path(__file__).resolve().parent
 # refit stage here on purpose — the daily run must never rewrite or drop the
 # recommendations Mylo already wrote (refit is the on-demand replace pass for
 # sign-up / profile edits).
+#
+# Ordering matters for reminders (R2): opportunities ingest with ``--no-prune`` so
+# the ContentDeadline projection is rebuilt but nothing is deleted yet, then the
+# reminder tick fires against live deadlines, then a separate prune stage deletes
+# expired items. A deadline that moved earlier into the past is therefore always
+# seen by the tick before its item can be pruned out from under a live reminder.
+# Each entry is (command, passthrough_args, intro).
 CONTAINER_STAGES = [
-    ("run_daily_suggestions", "Searching research papers for all users…"),
-    ("run_daily_opportunities", "Matching grants/conferences/fellowships for all users…"),
-    ("generate_daily_briefing", "Writing each user's daily briefing…"),
+    ("run_daily_suggestions", [], "Searching research papers for all users…"),
+    (
+        "run_daily_opportunities",
+        ["--no-prune"],
+        "Matching grants/conferences/fellowships for all users…",
+    ),
+    ("run_reminder_tick", [], "Firing due deadline reminders…"),
+    ("prune_opportunities", [], "Pruning expired opportunities…"),
+    ("generate_daily_briefing", [], "Writing each user's daily briefing…"),
 ]
 
 
@@ -315,12 +328,12 @@ def main() -> int:
     )
     scrape_ran = scrape_opportunities()
 
-    # Stages 2..N — recommend and brief inside the backend container.
+    # Stages 2..N — recommend, remind, prune, and brief inside the backend container.
     stages_run: list[str] = []
-    for offset, (command, intro) in enumerate(CONTAINER_STAGES):
+    for offset, (command, passthrough, intro) in enumerate(CONTAINER_STAGES):
         step = 2 + offset
         print(f"\n=== {step}/{total} · {intro} ===", flush=True)
-        code = run_manage(command, intro=None, base=base)
+        code = run_manage(command, passthrough, intro=None, base=base)
         if code != 0:
             print(
                 f"\nStage '{command}' exited with code {code}; stopping before the "
@@ -347,12 +360,16 @@ def main() -> int:
             return code
         stages_run.append(command)
 
-    print("\nAll stages completed: scrape → search → match → briefing, for all users.", flush=True)
+    print(
+        "\nAll stages completed: scrape → search → match → remind → prune → briefing,"
+        " for all users.",
+        flush=True,
+    )
     _write_run_state(ok=True, scrape_ran=scrape_ran, stages_run=stages_run)
     _notify(
         "info",
         "Daily run complete",
-        "scrape → search → match → briefing finished for all users."
+        "scrape → search → match → remind → prune → briefing finished for all users."
         + ("" if scrape_ran else " (opportunity scrape was skipped — see earlier alert)."),
         stage="done",
         fields={"Scrape ran": "yes" if scrape_ran else "no"},
