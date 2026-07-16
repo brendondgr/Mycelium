@@ -22,11 +22,18 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 
 import aiohttp
+from django.db.models import Q
 
 from apps.content.models import ContentItem
 
 from .embedding import Embedder, build_article_text, get_default_embedder
-from .sources.dedup import Deduplicator
+from .sources.dedup import (
+    Deduplicator,
+    metadata_identifier_keys,
+)
+from .sources.dedup import (
+    identifier_keys as _record_identifier_keys,
+)
 from .sources.record import Record
 from .sources.registry import ScraperConfig, build_scrapers, resolve_sources
 from .window import ScanWindow
@@ -115,6 +122,88 @@ def _external_id(record: Record) -> str:
     return record.canonical_id[:255]
 
 
+def _record_lookup_keys(record: Record, ext: str) -> list[str]:
+    """Every key under which ``record`` might already be stored.
+
+    The exact ``(source, external_id)`` canonical key **plus** the full strong-
+    identifier set (doi/pmid/pmcid/arxiv). Cross-source dedup within one scan run
+    picks the canonical id from the first-seen source, so the *same* paper can
+    reach the store on a later run under a different canonical id (e.g. OpenAlex
+    stores ``doi:…`` while SemanticScholar stores ``semanticscholar:…``). Matching
+    on the identifier set — not just the canonical id — is what collapses those.
+    """
+    return [ext, *_record_identifier_keys(
+        record.doi, record.pmid, record.pmcid, record.arxiv
+    )]
+
+
+def _index_existing(candidates: list[tuple[Record, str]]) -> dict[str, ContentItem]:
+    """Map every identifier key of already-stored papers to their row.
+
+    Prefilters the store to rows that could match one of ``candidates`` (by
+    canonical id or by any shared strong identifier), then indexes each fetched
+    row under its ``external_id`` and its metadata-derived identifier keys.
+    """
+    ext_ids = [ext for _, ext in candidates]
+    dois = {r.doi for r, _ in candidates if r.doi}
+    pmids = {r.pmid for r, _ in candidates if r.pmid}
+    pmcids = {r.pmcid for r, _ in candidates if r.pmcid}
+    arxivs: set[str] = set()
+    for r, _ in candidates:
+        if r.arxiv:
+            arxivs.add(r.arxiv.strip())
+            arxivs.add(r.arxiv.strip().lower())
+
+    query = Q(external_id__in=ext_ids)
+    if dois:
+        query |= Q(metadata__doi__in=list(dois))
+    if pmids:
+        query |= Q(metadata__pmid__in=list(pmids))
+    if pmcids:
+        query |= Q(metadata__pmcid__in=list(pmcids))
+    if arxivs:
+        query |= Q(metadata__arxiv__in=list(arxivs))
+
+    index: dict[str, ContentItem] = {}
+    for item in ContentItem.objects.filter(type=ContentItem.Type.PAPER).filter(query):
+        if item.external_id:
+            index.setdefault(item.external_id, item)
+        for key in metadata_identifier_keys(item.metadata or {}):
+            index.setdefault(key, item)
+    return index
+
+
+def _absorb_into_existing(item: ContentItem, record: Record) -> bool:
+    """Fold a duplicate record's sources/identifiers into the stored row.
+
+    Mirrors ``Deduplicator._merge`` at the persistence layer: unions the source
+    list and back-fills any identifier/field the stored metadata is missing, so a
+    row first seen from one source visibly records every source it later matched.
+    Returns whether ``item.metadata`` changed (caller saves).
+    """
+    md = dict(item.metadata or {})
+    changed = False
+
+    have = set(md.get("sources") or [])
+    want = set(record.sources) | {record.source}
+    if not want <= have:
+        md["sources"] = sorted(have | want)
+        changed = True
+
+    for attr in (
+        "doi", "pmid", "pmcid", "arxiv", "abstract", "venue",
+        "pdf_url", "year", "publication_date",
+    ):
+        value = getattr(record, attr, None)
+        if value and not md.get(attr):
+            md[attr] = value
+            changed = True
+
+    if changed:
+        item.metadata = md
+    return changed
+
+
 def scan(
     queries: list[str],
     *,
@@ -188,22 +277,34 @@ def scan(
     )
 
     # --- 3. De-duplicate against rows we already store (skip re-embedding). - #
+    # Match on the full identifier set, not just the canonical id, so a paper
+    # that reached the store earlier from a different source (under a different
+    # canonical id) is recognized instead of inserted a second time.
     started = time.monotonic()
     candidates = [(record, _external_id(record)) for record in unique]
-    ext_ids = [ext for _, ext in candidates]
-    existing = set(
-        ContentItem.objects.filter(external_id__in=ext_ids).values_list(
-            "external_id", flat=True
-        )
-    )
-    fresh = [(record, ext) for record, ext in candidates if ext not in existing]
+    existing_index = _index_existing(candidates)
+
+    fresh: list[tuple[Record, str]] = []
+    absorbed: dict = {}
+    for record, ext in candidates:
+        match = None
+        for key in _record_lookup_keys(record, ext):
+            match = existing_index.get(key)
+            if match is not None:
+                break
+        if match is None:
+            fresh.append((record, ext))
+        elif _absorb_into_existing(match, record):
+            absorbed[match.pk] = match
+    if absorbed:
+        ContentItem.objects.bulk_update(list(absorbed.values()), ["metadata"])
     summary.already_present = summary.unique - len(fresh)
     summary.new = len(fresh)
     summary.timings["against_store"] = round(time.monotonic() - started, 2)
     _emit(
         log,
         f"against store: {summary.new} new, {summary.already_present} already "
-        f"present in {summary.timings['against_store']}s",
+        f"present ({len(absorbed)} enriched) in {summary.timings['against_store']}s",
     )
     if not fresh:
         _emit(log, _tally(summary))
