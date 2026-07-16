@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "apps.content",
     "apps.billing",
     "apps.scraper",
+    "apps.integrations",
 ]
 
 MIDDLEWARE = [
@@ -185,6 +186,16 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.content.recompute_project_profiles",
         "schedule": crontab(
             hour=env.int("CELERY_TEAM_PROFILE_HOUR", default=3), minute=0
+        ),
+    },
+    # Discord reconciliation (apps.integrations): the HTTP-only tradeoff for the
+    # absent gateway GUILD_DELETE/deauthorize events — mark kicked guilds, refresh
+    # or revoke lapsing OAuth tokens. No host dependency (pure Discord REST), so it
+    # stays on Beat. Also runnable on the host via `manage.py reconcile_discord`.
+    "reconcile-discord": {
+        "task": "apps.integrations.reconcile_discord",
+        "schedule": crontab(
+            hour=env.int("DISCORD_RECONCILE_HOUR", default=4), minute=0
         ),
     },
 }
@@ -381,6 +392,13 @@ SEARCH_CACHE_TTL = env.int("SEARCH_CACHE_TTL", default=3600)
 # degrades to "no scanning state", never an error.
 SCAN_CACHE_URL = env("SCAN_CACHE_URL", default=re.sub(r"/\d+$", "/3", _REDIS_URL))
 
+# Ephemeral Discord-link state (apps.integrations): OAuth `state` nonces and the
+# `/activate` failure counters / lockouts. It MUST be shared across processes and
+# survive a bot restart — a lockout kept in process memory would reset on redeploy
+# — so it lives in Redis, in its own db (never the Celery broker/result dbs), keyed
+# to short TTLs. A Redis outage fails these lookups closed (see services.state).
+DISCORD_CACHE_URL = env("DISCORD_CACHE_URL", default=re.sub(r"/\d+$", "/4", _REDIS_URL))
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -396,6 +414,13 @@ CACHES = {
         "LOCATION": SCAN_CACHE_URL,
         "KEY_PREFIX": "mycelium_scan",
         "TIMEOUT": PAPER_SCAN_INFLIGHT_TTL,
+    },
+    "discord": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": DISCORD_CACHE_URL,
+        "KEY_PREFIX": "mycelium_discord",
+        # No blanket TTL: every write sets its own (nonce 10 min, lockout 1 hr).
+        "TIMEOUT": None,
     },
 }
 
@@ -415,6 +440,77 @@ PUBMED_API_KEY = env("PUBMED_API_KEY", default="")
 SCRAPER_CONTACT_EMAIL = env("SCRAPER_CONTACT_EMAIL", default=OPENALEX_MAILTO)
 SCRAPER_EMBEDDING_MODEL = env(
     "SCRAPER_EMBEDDING_MODEL", default="BAAI/bge-small-en-v1.5"
+)
+
+# ---------------------------------------------------------------------------
+# Discord integration (apps.integrations) — identity + lab linking.
+#
+# Mylo owns no data: every Discord-originated DB touch goes through Mycelium's
+# ORM (apps.integrations.services.resolve is the single boundary). These are the
+# *application* credentials for the one Discord app. The bot TOKEN is reused from
+# the existing Mylo gateway env (`.env-mylo` → DISCORD_API_KEY) so there is one
+# bot identity, not two; the OAuth client id/secret are new. Secrets stay in the
+# environment — never persisted to the DB, never logged.
+# ---------------------------------------------------------------------------
+DISCORD_APP_ID = env("DISCORD_APP_ID", default="")
+DISCORD_CLIENT_ID = env("DISCORD_CLIENT_ID", default="")
+DISCORD_CLIENT_SECRET = env("DISCORD_CLIENT_SECRET", default="")
+# The bot token. Read from the same var the Mylo gateway uses (mylo/config.py)
+# so the OAuth REST calls (DM probe, guild reconcile) act as the same bot; falls
+# back to DISCORD_BOT_TOKEN for parity with the plan's naming.
+DISCORD_BOT_TOKEN = env(
+    "DISCORD_API_KEY", default=env("DISCORD_BOT_TOKEN", default="")
+)
+# Fernet key for OAuth tokens at rest — distinct from the bot token. When unset
+# (dev/tests) apps.integrations.fields derives a stable key from SECRET_KEY, so
+# the encrypted field always works; production sets a real, rotated key here.
+DISCORD_TOKEN_ENC_KEY = env("DISCORD_TOKEN_ENC_KEY", default="")
+
+# Where Discord redirects after the user + guild OAuth flows. These resolve to
+# apps.integrations views under /api/integrations/discord/. Default to the local
+# backend origin; production points them at the public API host.
+DISCORD_APP_BASE_URL = env("DISCORD_APP_BASE_URL", default="http://localhost:11250")
+DISCORD_OAUTH_REDIRECT_URI = env(
+    "DISCORD_OAUTH_REDIRECT_URI",
+    default=f"{DISCORD_APP_BASE_URL}/api/integrations/discord/callback",
+)
+DISCORD_GUILD_REDIRECT_URI = env(
+    "DISCORD_GUILD_REDIRECT_URI",
+    default=f"{DISCORD_APP_BASE_URL}/api/integrations/discord/guild-callback",
+)
+# Where the user lands back in the portal after a link attempt (success or error
+# is carried as a query param). The frontend profile page reads it.
+DISCORD_PORTAL_RETURN_URL = env(
+    "DISCORD_PORTAL_RETURN_URL", default="http://localhost:11050/app/profile"
+)
+# Guild permissions integer requested on the bot install (Path C). The floor for
+# *this* scope: View Channels (1<<10) + Send Messages (1<<11) + Embed Links
+# (1<<14) = 19456. No Administrator / Manage Roles / Manage Channels.
+DISCORD_INSTALL_PERMISSIONS = env("DISCORD_INSTALL_PERMISSIONS", default="19456")
+# The ops sink channel (apps.integrations.services.errors). Reuses the same
+# ERROR_CHANNEL the Mylo daily run posts to (mylo/config.py). Treat as public.
+DISCORD_ERROR_CHANNEL_ID = env("ERROR_CHANNEL", default="")
+
+# The hub guild id + the #activation channel id, for the Path B fallback. The
+# activation channel gates where /activate will do a code lookup at all.
+DISCORD_HUB_GUILD_ID = env("DISCORD_HUB_GUILD_ID", default="")
+DISCORD_ACTIVATION_CHANNEL_ID = env(
+    "ACTIVATION_CHANNEL", default=env("DISCORD_ACTIVATION_CHANNEL_ID", default="")
+)
+
+# Path B code policy. 8 chars over a 30-symbol ambiguity-free alphabet ≈ 39 bits,
+# a 15-minute TTL, and one live code per user. The lockout: 5 failures in 15 min
+# → a 1-hour block, keyed on the redeeming discord_user_id (not IP), in Redis so
+# it survives a bot restart.
+DISCORD_ACTIVATION_TTL_SECONDS = env.int(
+    "DISCORD_ACTIVATION_TTL_SECONDS", default=900
+)
+DISCORD_ACTIVATION_MAX_FAILURES = env.int("DISCORD_ACTIVATION_MAX_FAILURES", default=5)
+DISCORD_ACTIVATION_FAILURE_WINDOW_SECONDS = env.int(
+    "DISCORD_ACTIVATION_FAILURE_WINDOW_SECONDS", default=900
+)
+DISCORD_ACTIVATION_LOCKOUT_SECONDS = env.int(
+    "DISCORD_ACTIVATION_LOCKOUT_SECONDS", default=3600
 )
 
 LOGGING = {

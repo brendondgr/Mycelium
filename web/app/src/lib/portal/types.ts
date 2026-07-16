@@ -588,3 +588,25 @@ export type SearchParams = {
   cursor?: string;
   limit?: number;
 };
+
+/** Discord link status for the profile "Connected services" card. */
+export type DiscordStatus = {
+  connected: boolean;
+  state: "pending" | "active" | "revoked" | null;
+  link_method: "oauth" | "activation_code" | null;
+  username: string | null;
+  global_name: string | null;
+  dm_ok: boolean | null;
+  dm_checked_at: string | null;
+  linked_at: string | null;
+};
+
+/** GET /integrations/discord/start (and guild/start) → the URL to redirect to. */
+export type DiscordStartResponse = { authorize_url: string };
+
+/** POST /integrations/discord/code → a one-time activation code (Path B). */
+export type DiscordCodeResponse = {
+  code: string;
+  expires_in: number;
+  activation_channel: string | null;
+};

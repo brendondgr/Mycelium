@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/portal/primitives/card";
@@ -9,7 +10,14 @@ import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { CheckIcon, TargetIcon } from "@/components/portal/icons";
-import { useProfile, useWatch } from "@/lib/portal/hooks";
+import {
+  useConnectDiscord,
+  useDisconnectDiscord,
+  useDiscordStatus,
+  useIssueActivationCode,
+  useProfile,
+  useWatch,
+} from "@/lib/portal/hooks";
 import { computeCompleteness } from "@/lib/portal/completeness";
 import type { ProfileEligibility } from "@/lib/auth-types";
 
@@ -399,6 +407,118 @@ function EligibilityCard() {
 }
 
 // ---------------------------------------------------------------------------
+// Connected services — Discord (RIGHT)
+// ---------------------------------------------------------------------------
+
+const DISCORD_RETURN_NOTICE: Record<string, string> = {
+  linked: "Discord connected. Mylo can reach you now.",
+  installed: "Mylo was added to your server. A lab manager can run /mylo setup.",
+  conflict: "That Discord account is already linked to another Mycelium user.",
+  error: "Something went wrong connecting Discord. Please try again.",
+  install_error: "Could not add Mylo to that server. Please try again.",
+  login_required: "Please sign in and try connecting Discord again.",
+};
+
+function DiscordCard() {
+  const { data: status, isLoading } = useDiscordStatus();
+  const connect = useConnectDiscord();
+  const disconnect = useDisconnectDiscord();
+  const issueCode = useIssueActivationCode();
+  const searchParams = useSearchParams();
+  const notice = DISCORD_RETURN_NOTICE[searchParams.get("discord") ?? ""];
+
+  const connected = Boolean(status?.connected);
+
+  return (
+    <Card className="p-[22px]">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">
+          Connected services
+        </h2>
+        <Pill tone={connected ? "primary" : "neutral"}>
+          {connected ? "Discord linked" : "Discord not linked"}
+        </Pill>
+      </div>
+
+      {notice ? (
+        <p className="mb-3 rounded-lg bg-[var(--surface-alt)] px-3 py-2 text-sm text-[var(--text-secondary)]">
+          {notice}
+        </p>
+      ) : null}
+
+      {isLoading ? (
+        <p className="text-sm text-[var(--text-muted)]">Loading…</p>
+      ) : connected ? (
+        <div className="space-y-3">
+          <p className="text-sm text-[var(--text-secondary)]">
+            Linked as{" "}
+            <span className="font-medium text-[var(--text-primary)]">
+              {status?.global_name || status?.username || "your Discord account"}
+            </span>
+            {status?.link_method === "activation_code" ? " (via code)" : ""}.
+          </p>
+          <p className="text-sm text-[var(--text-muted)]">
+            {status?.dm_ok === false
+              ? "Mylo can't DM you yet — enable “Allow direct messages from server members.”"
+              : status?.dm_ok
+                ? "Mylo can reach you by direct message."
+                : "Reachability not checked yet."}
+          </p>
+          <Button
+            variant="secondary"
+            className="rounded-full"
+            onClick={() => disconnect.mutate()}
+            disabled={disconnect.isPending}
+          >
+            {disconnect.isPending ? "Disconnecting…" : "Disconnect"}
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-[var(--text-secondary)]">
+            Connect Discord so Mylo can reach you and link your lab’s server.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              className="rounded-full"
+              onClick={() => connect.mutate()}
+              disabled={connect.isPending}
+            >
+              {connect.isPending ? "Opening Discord…" : "Connect Discord"}
+            </Button>
+            <Button
+              variant="secondary"
+              className="rounded-full"
+              onClick={() => issueCode.mutate()}
+              disabled={issueCode.isPending}
+            >
+              {issueCode.isPending ? "Generating…" : "Use a code instead"}
+            </Button>
+          </div>
+          {issueCode.data ? (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] px-3 py-2">
+              <p className="text-sm text-[var(--text-secondary)]">
+                Run{" "}
+                <code className="font-mono text-[var(--text-primary)]">
+                  /activate {issueCode.data.code}
+                </code>{" "}
+                in the activation channel within{" "}
+                {Math.round(issueCode.data.expires_in / 60)} minutes. Shown once.
+              </p>
+            </div>
+          ) : null}
+          {issueCode.isError ? (
+            <p className="text-sm text-[var(--text-muted)]">
+              Couldn’t generate a code. Try again.
+            </p>
+          ) : null}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // ProfileSection
 // ---------------------------------------------------------------------------
 
@@ -424,6 +544,7 @@ export function ProfileSection() {
           <ProfileCompletenessCard />
           <EligibilityCard />
           <WatchCard />
+          <DiscordCard />
         </div>
       </div>
     </div>

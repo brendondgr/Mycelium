@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 INITIAL_EXTENSIONS: tuple[str, ...] = (
     "mylo.bot.cogs.admin",
     "mylo.bot.cogs.status",
+    "mylo.bot.cogs.link",
 )
 
 

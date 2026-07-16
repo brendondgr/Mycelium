@@ -6,6 +6,8 @@ import type {
   ConferenceOpportunity,
   DailyBriefing,
   DailyReport,
+  DiscordStartResponse,
+  DiscordStatus,
   FellowshipOpportunity,
   GrantOpportunity,
   LabMember,
@@ -279,4 +281,20 @@ export async function fetchSearch(
   }
   const url = `${buildApiUrl(getPublicApiBase(), "search")}?${search.toString()}`;
   return getJson<SearchResponse>(url, "Search failed. Please try again.");
+}
+
+/** The caller's Discord link status (profile card). */
+export async function fetchDiscordStatus(): Promise<DiscordStatus> {
+  return getJson<DiscordStatus>(
+    buildApiUrl(getPublicApiBase(), "integrations", "discord", "status"),
+    "Could not load your Discord connection.",
+  );
+}
+
+/** Begin the user OAuth link — returns the Discord authorize URL to redirect to. */
+export async function fetchDiscordStart(): Promise<DiscordStartResponse> {
+  return getJson<DiscordStartResponse>(
+    buildApiUrl(getPublicApiBase(), "integrations", "discord", "start"),
+    "Could not start the Discord connection.",
+  );
 }

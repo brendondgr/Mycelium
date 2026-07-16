@@ -11,6 +11,8 @@ import {
   fetchConferences,
   fetchDailyBriefing,
   fetchDailyReport,
+  fetchDiscordStart,
+  fetchDiscordStatus,
   fetchDeadlines,
   fetchFellowships,
   fetchGrants,
@@ -39,8 +41,10 @@ import {
   createCollection,
   createLab,
   createProject,
+  disconnectDiscord,
   dismissSuggestion,
   ingestProjectLink,
+  issueActivationCode,
   inviteToLab,
   joinProject,
   leaveProject,
@@ -569,4 +573,39 @@ export function useSynthesizeLabProfile(slug: string) {
     mutationFn: (input: Parameters<typeof synthesizeLabProfile>[1]) =>
       synthesizeLabProfile(slug, input),
   });
+}
+
+/** The caller's Discord link status (profile "Connected services" card). */
+export function useDiscordStatus() {
+  return useQuery({
+    queryKey: ["portal", "discord"],
+    queryFn: fetchDiscordStatus,
+    staleTime: 30_000,
+  });
+}
+
+/** Start the Discord OAuth link: fetch the authorize URL, then redirect. */
+export function useConnectDiscord() {
+  return useMutation({
+    mutationFn: async () => {
+      const { authorize_url } = await fetchDiscordStart();
+      window.location.href = authorize_url;
+    },
+  });
+}
+
+/** Disconnect Discord, then refresh the status card. */
+export function useDisconnectDiscord() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => disconnectDiscord(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "discord"] });
+    },
+  });
+}
+
+/** Issue a one-time Path B activation code. */
+export function useIssueActivationCode() {
+  return useMutation({ mutationFn: () => issueActivationCode() });
 }

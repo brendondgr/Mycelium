@@ -24,9 +24,10 @@ class BotConstructionTests(unittest.TestCase):
         self.assertIsInstance(bot.tree, MyloCommandTree)
         self.assertEqual(bot.config.error_channel_id, 1)
 
-    def test_status_group_exposes_health_and_lastrun(self) -> None:
+    def test_status_group_exposes_expected_subcommands(self) -> None:
         names = {command.name for command in StatusCog.mylo.commands}
-        self.assertEqual(names, {"health", "lastrun"})
+        # health/lastrun (observability) + status/setup (Discord linking).
+        self.assertEqual(names, {"health", "lastrun", "status", "setup"})
 
 
 class BotExtensionLoadTests(unittest.IsolatedAsyncioTestCase):
@@ -37,6 +38,7 @@ class BotExtensionLoadTests(unittest.IsolatedAsyncioTestCase):
                 await bot.load_extension(extension)
             top_level = {command.name for command in bot.tree.get_commands()}
             self.assertIn("mylo", top_level)
+            self.assertIn("activate", top_level)  # Path B redemption
         finally:
             await bot.close()
 

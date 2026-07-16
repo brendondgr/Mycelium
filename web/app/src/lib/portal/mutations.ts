@@ -5,6 +5,7 @@ import { ensureCsrfCookie, readCsrfToken } from "@/lib/auth-client";
 import type {
   CollectionBrief,
   CollectionDetail,
+  DiscordCodeResponse,
   IngestLinkResult,
   InvitationAction,
   LabProfileData,
@@ -438,4 +439,24 @@ export async function unsaveOpportunity(contentId: string): Promise<void> {
   if (!response.ok && response.status !== 404) {
     throw new Error("Could not remove this from your deadlines.");
   }
+}
+
+/** Disconnect the caller's Discord identity (revokes tokens, deletes the link). */
+export function disconnectDiscord(): Promise<{ detail: string }> {
+  return sendJson<{ detail: string }>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "integrations", "discord", "disconnect"),
+    undefined,
+    "Could not disconnect Discord. Try again.",
+  );
+}
+
+/** Issue a one-time Path B activation code to redeem from Discord with /activate. */
+export function issueActivationCode(): Promise<DiscordCodeResponse> {
+  return sendJson<DiscordCodeResponse>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "integrations", "discord", "code"),
+    undefined,
+    "Could not generate an activation code. Try again.",
+  );
 }

@@ -1,7 +1,12 @@
-"""The ``/mylo`` command group: is Mylo up, and how did the last daily run go?
+"""The ``/mylo`` command group.
 
-Both commands read the shared run-state file (:mod:`mylo.runstate`) — a plain
-file read, so they answer well within the 3-second window without deferring.
+* ``health`` / ``lastrun`` — is Mylo up, and how did the last daily run go? These
+  read the shared run-state file (:mod:`mylo.runstate`) — a plain file read, so they
+  answer within the 3-second window without deferring.
+* ``status`` / ``setup`` — the Discord-link commands. These touch Mycelium's ORM
+  (via :mod:`mylo.linking` → ``apps.integrations.services.resolve``), so they defer
+  first and follow up.
+
 Everything is ephemeral: status is for the person asking, not channel noise.
 """
 
@@ -13,6 +18,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from ... import linking
 from ...runstate import read_run_state
 
 
@@ -72,6 +78,25 @@ class StatusCog(commands.Cog, name="Status"):
                 inline=False,
             )
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @mylo.command(
+        name="status", description="Am I linked to Mycelium, and is my link healthy?"
+    )
+    async def status(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+        _, message = await linking.status(str(interaction.user.id))
+        await interaction.followup.send(message, ephemeral=True)
+
+    @mylo.command(
+        name="setup",
+        description="Confirm this server's link to your Mycelium lab (managers).",
+    )
+    @app_commands.guild_only()
+    async def setup(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+        guild_id = str(interaction.guild_id) if interaction.guild_id else ""
+        _, message = await linking.setup_guild(str(interaction.user.id), guild_id)
+        await interaction.followup.send(message, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:
