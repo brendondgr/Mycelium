@@ -69,7 +69,17 @@ ownership, and Discord roles grant nothing.
 
 See `.env.example` (backend: `DISCORD_*`) and `.env-mylo.example` (gateway:
 `DISCORD_API_KEY`, `ERROR_CHANNEL`, `ACTIVATION_CHANNEL`). The bot token is reused
-from the gateway so there is one bot identity. Generate the token-encryption key:
+from the gateway so there is one bot identity.
+
+> **Do not hardcode `DISCORD_CACHE_URL` to a `localhost` URL.** `.env.example` is a
+> compose `env_file`, so any active value there is injected into the backend
+> container, where `localhost` is the container — not the host — and the discord
+> Redis db is unreachable, making the OAuth-start endpoint 503 and the "Connect
+> Discord" button silently fail. Leave it unset so it derives db 4 from `REDIS_URL`
+> (which compose sets per-context), exactly like `SEARCH_CACHE_URL`. Only set it to
+> pin a non-default Redis.
+
+Generate the token-encryption key:
 
 ```
 python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"
