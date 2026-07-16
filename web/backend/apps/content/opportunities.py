@@ -108,10 +108,38 @@ class OppRunResult:
         return asdict(self)
 
 
+def _force_fallback(_prompt: str) -> None:
+    """A ``complete`` seam that always declines — forces the deterministic path (A3)."""
+    return None
+
+
 def _watch_topics(user: User) -> list[str]:
-    watch = getattr(user, "watch", None)
-    topics = getattr(watch, "topics", None) or []
-    return [str(topic) for topic in topics]
+    """The user's watch topics, capped to their tier's cap (never deleted)."""
+    from apps.billing.entitlements import effective_watch_topics
+
+    return [str(topic) for topic in effective_watch_topics(user)]
+
+
+def areas_for(user: User, requested: tuple[str, ...]) -> tuple[str, ...]:
+    """The requested opportunity areas this user is entitled to, in order.
+
+    Grants gate on ``GRANT_ALERTS``, conferences on ``CONFERENCE_ALERTS``, and
+    fellowships on ``FELLOWSHIP_MATCHING`` — all Spore and up. A Free user resolves
+    to the empty tuple (they never reach the daily batch anyway; this is the
+    per-target gate the plan calls for).
+    """
+    from apps.billing.entitlements import Feature, has_feature
+
+    gate = {
+        "grants": Feature.GRANT_ALERTS,
+        "conferences": Feature.CONFERENCE_ALERTS,
+        "fellowships": Feature.FELLOWSHIP_MATCHING,
+    }
+    return tuple(
+        area
+        for area in requested
+        if area in gate and has_feature(user, gate[area])
+    )
 
 
 def opportunity_search_interests(
@@ -891,13 +919,44 @@ def run_daily_opportunities_batch(
 
     results: list[OppRunResult] = []
 
+    # Per-user entitlement gates, resolved in bulk (no N+1). Each user matches only
+    # the areas their tier unlocks (A2 pipeline layer), and a user without LLM fit
+    # scoring gets the deterministic report (A3). Institutional targets are already
+    # filtered to active-subscription labs upstream, so they use the batch complete.
+    from apps.billing.entitlements import Feature, users_with_feature
+
+    uids = [user.id for user in users]
+    grant_users = users_with_feature(Feature.GRANT_ALERTS, uids)
+    conf_users = users_with_feature(Feature.CONFERENCE_ALERTS, uids)
+    fellow_users = users_with_feature(Feature.FELLOWSHIP_MATCHING, uids)
+    llm_users = users_with_feature(Feature.LLM_FIT_SCORING, uids)
+    area_gate = {
+        "grants": grant_users,
+        "conferences": conf_users,
+        "fellowships": fellow_users,
+    }
+
+    def _user_areas(user):
+        return tuple(
+            area
+            for area in areas
+            if area in area_gate and user.id in area_gate[area]
+        )
+
+    user_complete = {
+        user.get_username(): (
+            complete if user.id in llm_users else _force_fallback
+        )
+        for user in users
+    }
+
     # Phase 2a — prepare every unit (serial DB reads: retrieve + fuse + embed).
     # Fellowship units go into a separate list; they score via rule engine, not LLM.
     llm_jobs: list[_MatchJob] = []
     fellowship_jobs: list[_FellowshipMatchJob] = []
 
     for user in users:
-        for area in areas:
+        for area in _user_areas(user):
             if area == "fellowships":
                 try:
                     job, short = _prepare_fellowship_match(
@@ -992,12 +1051,19 @@ def run_daily_opportunities_batch(
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {}
             for idx, job in enumerate(all_jobs):
+                # A user job carries its user's LLM gate (keyed by the target key =
+                # username); institutional jobs fall back to the batch complete.
+                job_complete = user_complete.get(job.username, complete)
                 if isinstance(job, _FellowshipMatchJob):
                     futures[
-                        executor.submit(_score_fellowship_job, job, complete=complete)
+                        executor.submit(
+                            _score_fellowship_job, job, complete=job_complete
+                        )
                     ] = idx
                 else:
-                    futures[executor.submit(_score_job, job, complete=complete)] = idx
+                    futures[
+                        executor.submit(_score_job, job, complete=job_complete)
+                    ] = idx
             for future in as_completed(futures):
                 idx = futures[future]
                 j = all_jobs[idx]

@@ -168,6 +168,47 @@ def effective_features(user: User) -> frozenset[str]:
     return frozenset(features)
 
 
+def users_with_feature(feature: str, user_ids=None) -> set[int]:
+    """Bulk-resolve which users are entitled to ``feature`` in a few queries.
+
+    The per-user :func:`has_feature` path issues 1-2 queries each, so the daily
+    pipelines (which run over every user) would N+1. This resolves the whole
+    entitled set at once: every active subscription that grants ``feature`` (by tier
+    **or** by an active add-on), then the users that subscription covers (its
+    ``scope_user`` plus every active seat-holder). ``user_ids`` narrows the scan.
+
+    ``feature`` in the Free baseline covers everyone, so this short-circuits to the
+    full id set (or all active users) for baseline features.
+    """
+    if feature in _FREE:
+        base = User.objects.filter(is_active=True)
+        if user_ids is not None:
+            base = base.filter(id__in=user_ids)
+        return set(base.values_list("id", flat=True))
+
+    granting_tiers = [t for t, feats in TIER_FEATURES.items() if feature in feats]
+    addon_sub_ids = SubscriptionAddOn.objects.filter(
+        status=SubscriptionAddOn.Status.ACTIVE, add_on__feature=feature
+    ).values_list("subscription_id", flat=True)
+    granting_subs = Subscription.objects.filter(
+        status=Subscription.Status.ACTIVE
+    ).filter(Q(tier__in=granting_tiers) | Q(id__in=addon_sub_ids))
+
+    covered: set[int] = set(
+        granting_subs.filter(scope_user__isnull=False).values_list(
+            "scope_user_id", flat=True
+        )
+    )
+    covered |= set(
+        Seat.objects.filter(
+            status=Seat.Status.ACTIVE, subscription__in=granting_subs
+        ).values_list("member_id", flat=True)
+    )
+    if user_ids is not None:
+        covered &= set(user_ids)
+    return covered
+
+
 def effective_tier(user: User) -> str:
     """The highest-ranked tier covering the user, or Free if none."""
     tiers = list(covering_subscriptions(user).values_list("tier", flat=True))

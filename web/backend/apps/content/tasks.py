@@ -24,27 +24,59 @@ logger = logging.getLogger(__name__)
 
 
 def select_users(usernames: list[str] | None) -> list[User]:
-    """Active users to run for: all of them, or just the named ones."""
+    """Active users entitled to scheduled delivery — the chokepoint for both dailies.
+
+    A Free account is an on-demand product: it searches and scores when asked but is
+    never pushed a scheduled run. So the daily pipelines only run for users who hold
+    ``SCHEDULED_REPORTS`` (Spore and up). This one filter covers both the paper and
+    the opportunity pipelines. Entitlement is resolved in bulk to avoid an N+1.
+    """
+    from apps.billing.entitlements import Feature, users_with_feature
+
     queryset = User.objects.filter(is_active=True).select_related("profile")
     if usernames:
         queryset = queryset.filter(username__in=usernames)
-    return list(queryset.order_by("id"))
+    users = list(queryset.order_by("id"))
+    entitled = users_with_feature(
+        Feature.SCHEDULED_REPORTS, user_ids=[u.id for u in users]
+    )
+    return [u for u in users if u.id in entitled]
 
 
 def select_targets(usernames: list[str] | None) -> tuple[list, list]:
     """The labs and lab-scoped projects to also match on a full run.
 
-    Every lab and every lab project is a scoring target; the matcher short-circuits
-    cheaply for any that have not declared a focus, so passing them all is safe. A
-    *targeted* run (``usernames`` given) stays user-scoped and returns nothing here.
+    Only labs on an **active** subscription (a lab-scoped plan, or a department plan
+    covering the lab) are scoring targets — a canceled or Free lab's projects drop
+    out. The matcher short-circuits cheaply for any target that has not declared a
+    focus, so passing all of an active lab's projects is safe. A *targeted* run
+    (``usernames`` given) stays user-scoped and returns nothing here.
     """
     if usernames:
         return [], []
     from apps.accounts.models import Lab
+    from apps.billing.models import Subscription
     from apps.research.models import Project
 
-    labs = list(Lab.objects.select_related("profile", "watch").order_by("id"))
-    projects = list(Project.objects.filter(scope_lab__isnull=False).order_by("id"))
+    active_lab_ids = set(
+        Subscription.objects.filter(
+            status=Subscription.Status.ACTIVE, scope_lab__isnull=False
+        ).values_list("scope_lab_id", flat=True)
+    )
+    active_dept_ids = set(
+        Subscription.objects.filter(
+            status=Subscription.Status.ACTIVE, scope_department__isnull=False
+        ).values_list("scope_department_id", flat=True)
+    )
+    labs = [
+        lab
+        for lab in Lab.objects.select_related("profile", "watch").order_by("id")
+        if lab.id in active_lab_ids or lab.department_id in active_dept_ids
+    ]
+    target_lab_ids = [lab.id for lab in labs]
+    projects = list(
+        Project.objects.filter(scope_lab_id__in=target_lab_ids).order_by("id")
+    )
     return labs, projects
 
 
@@ -152,6 +184,8 @@ def scan_and_recommend_for_user(username: str) -> dict:
     cleared even on failure (it also TTLs out) so the page can never wedge on
     "scanning".
     """
+    from apps.billing.entitlements import Feature, has_feature
+
     from .pipeline import run_for_user
     from .scan_status import clear_paper_scan_inflight
 
@@ -160,8 +194,11 @@ def scan_and_recommend_for_user(username: str) -> dict:
     )
     if user is None:
         return {"error": "user_not_found", "username": username}
+    # Free keeps this on-demand signup scan (D6), but gets the deterministic,
+    # semantic-only path: no LLM fit scoring. Topics are already capped on read.
+    complete = None if has_feature(user, Feature.LLM_FIT_SCORING) else (lambda _p: None)
     try:
-        return run_for_user(user).as_dict()
+        return run_for_user(user, complete=complete).as_dict()
     finally:
         clear_paper_scan_inflight(user)
 
