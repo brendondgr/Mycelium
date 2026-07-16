@@ -264,6 +264,77 @@ class SavedOpportunity(models.Model):
         return f"{self.user} saved {self.area}: {self.title[:40]}"
 
 
+class ContentDeadline(models.Model):
+    """One addressable deadline on a :class:`ContentItem` (Discord reminders R0).
+
+    A **projection**, not a new source of truth: rebuilt on every opportunity
+    upsert from the same status functions the feed already uses
+    (:mod:`apps.content.deadlines_projection`). A conference yields up to three
+    rows (abstract / manuscript / event); a grant or fellowship yields one
+    APPLICATION row. Rolling / continuous fellowships get a row with a null
+    ``due_date`` so the UI can explain "no date — can't remind" instead of
+    silently omitting them.
+
+    The row is updated **in place** when a date moves — hence the unique key is
+    ``(content, kind)``, not ``(content, kind, due_date)`` — so ``changed_at`` is
+    meaningful and a reminder keeps pointing at a stable row. ``previous_due_date``
+    + ``changed_at`` are the signal the DEADLINE_MOVED announcement (R6) reads;
+    nothing here re-fires reminders, which compute their own dates on read.
+    """
+
+    class Confidence(models.TextChoices):
+        CONFIRMED = "confirmed", "Confirmed"  # conference date / fellowship "true"
+        ANTICIPATED = "anticipated", "Anticipated"  # fellowship "anticipated" — moves
+        ROLLING = "rolling", "Rolling"  # continuous / rolling — no date, unremindable
+        UNKNOWN = "unknown", "Unknown"  # varies / suspended / unparseable
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    content = models.ForeignKey(
+        ContentItem,
+        on_delete=models.CASCADE,
+        related_name="deadline_rows",
+    )
+    kind = models.CharField(
+        max_length=20,
+        choices=SavedOpportunity.DeadlineKind.choices,
+    )
+    due_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Null iff confidence is rolling or unknown (no remindable date).",
+    )
+    label = models.CharField(max_length=200, blank=True, default="")
+    confidence = models.CharField(max_length=20, choices=Confidence.choices)
+    previous_due_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="The prior date, set when due_date last moved (corroboration).",
+    )
+    changed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last time due_date actually moved — drives DEADLINE_MOVED (R6).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["due_date", "kind"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["content", "kind"],
+                name="content_deadline_unique_content_kind",
+            ),
+        ]
+        indexes = [models.Index(fields=["due_date", "kind"])]
+
+    def __str__(self) -> str:
+        return (
+            f"{self.get_kind_display()} deadline "
+            f"{self.due_date or '—'} ({self.confidence})"
+        )
+
+
 # --------------------------------------------------------------------------- #
 # Project collaboration (briefing Features A / B / D — the Projects page)
 # --------------------------------------------------------------------------- #

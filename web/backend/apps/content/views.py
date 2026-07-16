@@ -338,7 +338,9 @@ def _accumulated_scores(
         s
         for s in RelevanceScore.objects.filter(
             **target_filter, content__type=content_type
-        ).select_related("content")
+        )
+        .select_related("content")
+        .prefetch_related("content__deadline_rows")
         if s.signals.get("suggested")
     ]
     if not scores:
@@ -667,7 +669,9 @@ class SavedItemsView(APIView):
                 target_user=request.user,
                 content_id__in=content_ids,
                 content__isnull=False,
-            ).select_related("content")
+            )
+            .select_related("content")
+            .prefetch_related("content__deadline_rows")
         }
         today = timezone.now().date()
         context = {

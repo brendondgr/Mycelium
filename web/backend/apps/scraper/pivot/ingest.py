@@ -83,13 +83,20 @@ def upsert_pivot_items(
     *,
     embed: bool = True,
     embedder: Embedder | None = None,
+    today: str | None = None,
     log: Log | None = None,
 ) -> PivotIngestSummary:
-    """Upsert :class:`PivotItem`s, preserving ``first_seen``; embed new/changed."""
+    """Upsert :class:`PivotItem`s, preserving ``first_seen``; embed new/changed.
+
+    After the upsert (and before any caller prunes), the ``ContentDeadline``
+    projection is rebuilt for every upserted opportunity so the daily reminder tick
+    always reads live deadlines, and a moved date leaves a ``changed_at`` signal.
+    """
     log = log or _noop
     summary = PivotIngestSummary()
     now_iso = timezone.now().isoformat()
     to_embed: list[tuple[ContentItem, str]] = []
+    touched: list[ContentItem] = []
 
     for item in items:
         summary.seen += 1
@@ -110,6 +117,7 @@ def upsert_pivot_items(
             existing.metadata = meta
             existing.save(update_fields=["type", "source_url", "metadata"])
             summary.updated += 1
+            touched.append(existing)
             if embed and (text_changed or existing.embedding is None):
                 to_embed.append((existing, item.text))
         else:
@@ -123,6 +131,7 @@ def upsert_pivot_items(
                 metadata=meta,
             )
             summary.created += 1
+            touched.append(obj)
             if embed:
                 to_embed.append((obj, item.text))
 
@@ -137,11 +146,37 @@ def upsert_pivot_items(
         else:
             log("embeddings unavailable — items stored without vectors")
 
+    _rebuild_deadline_projection(touched, today, log)
+
     log(
         f"upsert: {summary.created} new, {summary.updated} updated, "
         f"{summary.embedded} embedded"
     )
     return summary
+
+
+def _rebuild_deadline_projection(
+    items: list[ContentItem], today: str | None, log: Log
+) -> None:
+    """Rebuild the ``ContentDeadline`` rows for the upserted opportunities (R0).
+
+    Papers carry no deadlines and are skipped. Import is lazy so a bare
+    ``scraper`` import never pulls the content projection at module load.
+    """
+    from apps.content.deadlines_projection import rebuild_deadlines_for
+
+    today = _today_iso(today)
+    opportunity_types = {
+        ContentItem.Type.GRANT,
+        ContentItem.Type.CONFERENCE,
+        ContentItem.Type.FELLOWSHIP,
+    }
+    moved = 0
+    for obj in items:
+        if obj.type in opportunity_types:
+            moved += len(rebuild_deadlines_for(obj, today))
+    if moved:
+        log(f"deadlines: {moved} due date(s) moved")
 
 
 def prune_expired(*, today: str | None = None, log: Log | None = None) -> int:
@@ -200,7 +235,9 @@ def ingest_pivot(
             continue
         items.append(item)
 
-    summary = upsert_pivot_items(items, embed=embed, embedder=embedder, log=log)
+    summary = upsert_pivot_items(
+        items, embed=embed, embedder=embedder, today=today, log=log
+    )
     summary.skipped += skipped
     if prune:
         summary.pruned = prune_expired(today=today, log=log)

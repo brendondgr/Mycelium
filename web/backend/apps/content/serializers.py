@@ -141,6 +141,7 @@ class _OpportunitySerializer(serializers.Serializer):
     pinned = serializers.SerializerMethodField()
     deadline_date = serializers.SerializerMethodField()
     deadline_kind = serializers.SerializerMethodField()
+    deadlines = serializers.SerializerMethodField()
     status_summary = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
 
@@ -193,6 +194,30 @@ class _OpportunitySerializer(serializers.Serializer):
 
     def get_deadline_kind(self, score: RelevanceScore) -> str:
         return score.signals.get("next_kind") or ""
+
+    def get_deadlines(self, score: RelevanceScore) -> list[dict]:
+        """The addressable per-kind deadlines (ContentDeadline projection, R0).
+
+        Additive to the scalar ``deadline_date``/``deadline_kind`` (which existing
+        cards still read). Reads a prefetched ``deadlines_by_content`` context map
+        when the view provides one, else falls back to the item's related rows.
+        """
+        if not score.content_id:
+            return []
+        by_content = self.context.get("deadlines_by_content")
+        if by_content is not None:
+            rows = by_content.get(score.content_id, [])
+        else:
+            rows = list(score.content.deadline_rows.all())
+        return [
+            {
+                "kind": row.kind,
+                "due_date": row.due_date.isoformat() if row.due_date else None,
+                "confidence": row.confidence,
+                "label": row.label,
+            }
+            for row in rows
+        ]
 
     def get_status_summary(self, score: RelevanceScore) -> str:
         return score.signals.get("status_summary") or ""
