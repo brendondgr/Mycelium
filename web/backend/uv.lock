@@ -964,6 +964,7 @@ dependencies = [
     { name = "pgvector" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pypdf" },
+    { name = "python-dateutil" },
     { name = "rank-bm25" },
     { name = "redis" },
 ]
@@ -1008,6 +1009,7 @@ requires-dist = [
     { name = "playwright", marker = "extra == 'pivot'", specifier = ">=1.55.0,<2.0.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.0,<4.0.0" },
     { name = "pypdf", specifier = ">=5.0.0,<7.0.0" },
+    { name = "python-dateutil", specifier = ">=2.9.0,<3.0.0" },
     { name = "rank-bm25", specifier = ">=0.2.2,<1.0.0" },
     { name = "redis", specifier = ">=5.2.0,<6.0.0" },
     { name = "scholarly", marker = "extra == 'scrapers'", specifier = ">=1.7.0,<2.0.0" },

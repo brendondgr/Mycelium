@@ -18,6 +18,9 @@ dependencies = [
     "pgvector>=0.3.0,<1.0.0",
     "psycopg[binary]>=3.2.0,<4.0.0",
     "pypdf>=5.0.0,<7.0.0",
+    # Calendar-correct offset math for reminders (relativedelta clamps 31 Mar −
+    # 1 month → 28/29 Feb). Already present transitively; pinned as a direct dep.
+    "python-dateutil>=2.9.0,<3.0.0",
     "rank-bm25>=0.2.2,<1.0.0",
     "redis>=5.2.0,<6.0.0",
 ]

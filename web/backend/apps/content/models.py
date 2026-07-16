@@ -2,6 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.contrib.postgres.search import SearchVectorField
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
 from pgvector.django import VectorField
@@ -9,6 +10,9 @@ from pgvector.django import VectorField
 from apps.core.db import exactly_one, validate_exactly_one
 
 TARGET_FIELDS = ("target_user", "target_project", "target_lab", "target_department")
+
+#: Reminder subscriptions carry a personal OR lab target (extends to project later).
+REMINDER_TARGET_FIELDS = ("target_user", "target_lab")
 
 
 class ContentItem(models.Model):
@@ -729,3 +733,313 @@ class DailyBriefing(models.Model):
 
     def __str__(self) -> str:
         return f"DailyBriefing<{self.user}> ({self.origin})"
+
+
+# --------------------------------------------------------------------------- #
+# Deadline reminders & notifications (Discord reminders R1)
+# --------------------------------------------------------------------------- #
+
+
+def default_reminder_offsets() -> list[dict]:
+    """The lab default offsets: one month, one week, and one day before."""
+    return [
+        {"amount": 1, "unit": "month"},
+        {"amount": 1, "unit": "week"},
+        {"amount": 1, "unit": "day"},
+    ]
+
+
+class ReminderSubscription(models.Model):
+    """A standing reminder for one deadline on one target (personal or lab).
+
+    Mirrors :class:`RelevanceScore`'s polymorphic target: exactly one of
+    ``target_user`` / ``target_lab`` is set (the ``exactly_one`` helper, same as
+    ``RelevanceScore``). The link to the live item is ``SET_NULL`` and a
+    **snapshot** (title / url / due_date / confidence) is kept, so the reminder
+    survives the daily prune exactly as :class:`SavedOpportunity` does; while the
+    item is alive the snapshot's ``due_date`` is resynced from the
+    :class:`ContentDeadline` projection on every tick. Nothing here stores a fire
+    schedule — the tick computes fire dates on read from whatever ``due_date`` the
+    row currently holds (see :mod:`apps.content.reminders_tick`).
+    """
+
+    class State(models.TextChoices):
+        ACTIVE = "active", "Active"
+        FIRED_OUT = "fired_out", "Fired out"
+        CANCELLED = "cancelled", "Cancelled"
+        STALE = "stale", "Stale"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="reminders",
+    )
+    target_lab = models.ForeignKey(
+        "accounts.Lab",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="reminders",
+    )
+    content = models.ForeignKey(
+        ContentItem,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reminders",
+        help_text="Live item; nulled when pruned — the snapshot then drives the tick.",
+    )
+    deadline_kind = models.CharField(
+        max_length=20,
+        choices=SavedOpportunity.DeadlineKind.choices,
+    )
+    # --- Snapshot: survives prune; due_date/confidence resynced each tick. ---
+    area = models.CharField(max_length=20, choices=SavedOpportunity.Area.choices)
+    title = models.CharField(max_length=500)
+    url = models.URLField(max_length=500, blank=True, default="")
+    due_date = models.DateField(null=True, blank=True)
+    confidence = models.CharField(
+        max_length=20,
+        choices=ContentDeadline.Confidence.choices,
+        default=ContentDeadline.Confidence.CONFIRMED,
+    )
+    channel_id_override = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Lab only: a specific channel instead of the lab default.",
+    )
+    has_unlinked_targets = models.BooleanField(
+        default=False,
+        help_text="A mention target has no active Discord identity (portal prompts).",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_reminders",
+    )
+    state = models.CharField(
+        max_length=20,
+        choices=State.choices,
+        default=State.ACTIVE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["due_date", "created_at"]
+        constraints = [
+            models.CheckConstraint(
+                name="content_reminder_one_target",
+                condition=exactly_one(*REMINDER_TARGET_FIELDS),
+            ),
+            models.UniqueConstraint(
+                fields=["target_user", "content", "deadline_kind"],
+                condition=Q(content__isnull=False, target_user__isnull=False),
+                name="content_reminder_unique_user_content_kind",
+            ),
+            models.UniqueConstraint(
+                fields=["target_lab", "content", "deadline_kind"],
+                condition=Q(content__isnull=False, target_lab__isnull=False),
+                name="content_reminder_unique_lab_content_kind",
+            ),
+        ]
+        indexes = [models.Index(fields=["state", "due_date"])]
+
+    def clean(self) -> None:
+        validate_exactly_one(self, *REMINDER_TARGET_FIELDS)
+
+    @property
+    def target_type(self) -> str:
+        return "user" if self.target_user_id is not None else "lab"
+
+    @property
+    def is_lab(self) -> bool:
+        return self.target_lab_id is not None
+
+    def __str__(self) -> str:
+        return f"reminder<{self.target_type}> {self.title[:40]} ({self.deadline_kind})"
+
+
+class ReminderOffset(models.Model):
+    """One "N units before the deadline" trigger on a subscription.
+
+    Free-form: any positive amount + any unit. Stored, never pre-materialized into a
+    schedule — the tick subtracts it from the live ``due_date`` with calendar math
+    (:func:`dateutil.relativedelta.relativedelta`). ``(1, week)`` and ``(7, day)`` are
+    distinct rows that may resolve to the same fire date; the tick dedupes by the
+    computed date and fires once.
+    """
+
+    class Unit(models.TextChoices):
+        DAY = "day", "Day"
+        WEEK = "week", "Week"
+        MONTH = "month", "Month"
+        YEAR = "year", "Year"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    subscription = models.ForeignKey(
+        ReminderSubscription,
+        on_delete=models.CASCADE,
+        related_name="offsets",
+    )
+    amount = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
+    unit = models.CharField(max_length=10, choices=Unit.choices)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subscription", "amount", "unit"],
+                name="content_reminder_offset_unique",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.amount} {self.unit}(s) before"
+
+
+class ReminderMention(models.Model):
+    """A lab member to @-mention when a lab reminder fires (user mentions only)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    subscription = models.ForeignKey(
+        ReminderSubscription,
+        on_delete=models.CASCADE,
+        related_name="mentions",
+    )
+    member = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="reminder_mentions",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subscription", "member"],
+                name="content_reminder_mention_unique",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"mention {self.member} on {self.subscription_id}"
+
+
+class ReminderFire(models.Model):
+    """The fired-ledger: one row per offset sealed by a fire or a skip.
+
+    NOT a pre-materialized schedule — written only when the tick fires or seals an
+    offset. ``idempotency_key`` embeds the ``due_date`` it was computed against, so a
+    moved deadline changes the key and re-opens the offset; a stable deadline keeps
+    the seal and prevents a re-fire. One fire per subscription per day, regardless of
+    how many offsets triggered — all triggering offsets are sealed by that one fire.
+    """
+
+    class Channel(models.TextChoices):
+        IN_APP = "in_app", "In-app"
+        DISCORD_DM = "discord_dm", "Discord DM"
+        DISCORD_CHANNEL = "discord_channel", "Discord channel"
+
+    class Result(models.TextChoices):
+        SENT = "sent", "Sent"
+        SKIPPED = "skipped", "Skipped"
+        FAILED = "failed", "Failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    subscription = models.ForeignKey(
+        ReminderSubscription,
+        on_delete=models.CASCADE,
+        related_name="fires",
+    )
+    idempotency_key = models.CharField(max_length=200, unique=True)
+    fired_on = models.DateField(db_index=True)
+    days_remaining = models.IntegerField(null=True, blank=True)
+    channel = models.CharField(max_length=20, choices=Channel.choices)
+    state = models.CharField(max_length=20, choices=Result.choices)
+    skip_reason = models.CharField(max_length=40, blank=True, default="")
+    discord_message_id = models.CharField(max_length=32, blank=True, default="")
+    attempts = models.PositiveSmallIntegerField(default=0)
+    error_code = models.IntegerField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["subscription", "fired_on"])]
+
+    def __str__(self) -> str:
+        return f"fire[{self.state}] {self.idempotency_key}"
+
+
+class LabReminderPolicy(models.Model):
+    """A lab's default offsets + default mention targets for new lab reminders.
+
+    Without defaults, "set a lab reminder" is a six-field form nobody uses.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lab = models.OneToOneField(
+        "accounts.Lab",
+        on_delete=models.CASCADE,
+        related_name="reminder_policy",
+    )
+    default_offsets = models.JSONField(default=default_reminder_offsets, blank=True)
+    default_mentions = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="reminder_policy_defaults",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"reminder policy for lab {self.lab_id}"
+
+
+class Notification(models.Model):
+    """One in-app notification for the header bell (reminders rework, D-2 / D-3).
+
+    Replaces the old compute-on-the-fly deadline scan. Three sources, one bell: a
+    fired reminder, a moved deadline, and a high-signal recommendation. A snapshot
+    (title / body / url) is stored so it survives the source item's prune;
+    ``dedupe_key`` makes delivery idempotent.
+    """
+
+    class Kind(models.TextChoices):
+        REMINDER = "reminder", "Reminder"
+        DEADLINE_MOVED = "deadline_moved", "Deadline moved"
+        HIGH_SIGNAL = "high_signal", "High signal"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    content = models.ForeignKey(
+        ContentItem,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="notifications",
+    )
+    title = models.CharField(max_length=500)
+    body = models.TextField(blank=True, default="")
+    url = models.URLField(max_length=500, blank=True, default="")
+    dedupe_key = models.CharField(max_length=200, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    dismissed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["user", "dismissed_at", "created_at"])]
+
+    def __str__(self) -> str:
+        return f"notif[{self.kind}] {self.user} {self.title[:30]}"

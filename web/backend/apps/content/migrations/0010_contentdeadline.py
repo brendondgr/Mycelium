@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
                 ('due_date', models.DateField(blank=True, help_text='Null iff confidence is rolling or unknown (no remindable date).', null=True)),
                 ('label', models.CharField(blank=True, default='', max_length=200)),
                 ('confidence', models.CharField(choices=[('confirmed', 'Confirmed'), ('anticipated', 'Anticipated'), ('rolling', 'Rolling'), ('unknown', 'Unknown')], max_length=20)),
-                ('previous_due_date', models.DateField(blank=True, help_text='The prior date, set when due_date last moved (change corroboration).', null=True)),
+                ('previous_due_date', models.DateField(blank=True, help_text='The prior date, set when due_date last moved (corroboration).', null=True)),
                 ('changed_at', models.DateTimeField(blank=True, help_text='Last time due_date actually moved — drives DEADLINE_MOVED (R6).', null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
