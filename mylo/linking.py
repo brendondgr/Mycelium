@@ -125,7 +125,19 @@ def _setup_sync(
     lab_slug: str | None,
     channel_id: str = "",
 ) -> tuple[str, str]:
+    from apps.billing.entitlements import Feature, lab_has_feature
     from apps.integrations.services import resolve
+
+    def _needs_bot_server(lab) -> tuple[str, str] | None:
+        # BOT_SERVER is an add-on on the lab's subscription (A4), not a tier grant.
+        if lab_has_feature(lab, Feature.BOT_SERVER):
+            return None
+        return (
+            "bot_server_required",
+            f"**{lab.name}** doesn't include Mylo for your server yet. Add the "
+            f"Mylo-server add-on to this lab in Mycelium, then run `/mylo setup` "
+            f"again: {mycelium.portal_url()}",
+        )
 
     # Auth: the caller must have linked their own Discord (identity = who you are).
     if resolve.resolve_identity(discord_user_id) is None:
@@ -151,6 +163,9 @@ def _setup_sync(
                 f"This server is being connected to **{lab.name}**, but you're not "
                 "a manager of that lab. Guild ownership alone grants no authority.",
             )
+        blocked = _needs_bot_server(lab)
+        if blocked is not None:
+            return blocked
         confirmer = resolve.resolve_user(discord_user_id)
         confirmed = resolve.confirm_guild(guild_id, confirmed_by=confirmer)
         if confirmed is None:
@@ -179,6 +194,9 @@ def _setup_sync(
                 "Pick one of the labs you manage — start typing after `lab:` to "
                 "see the list.",
             )
+        blocked = _needs_bot_server(chosen)
+        if blocked is not None:
+            return blocked
         try:
             resolve.bind_guild_via_command(
                 discord_user_id, guild_id, guild_name, chosen

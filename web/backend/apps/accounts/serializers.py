@@ -162,14 +162,30 @@ class DeptProfileSerializer(_ContractInterestsMixin):
 
 
 class WatchPreferenceSerializer(serializers.ModelSerializer):
-    """Read/update what Mylo keeps an eye on for the caller (own only)."""
+    """Read/update what Mylo keeps an eye on for the caller (own only).
+
+    The watch-topic count is capped **per tier** (Free 3, Spore 10, Lab/Canopy 15);
+    ``categories`` keeps the generous structural cap. The read payload also reports
+    the caller's ``topic_cap`` and whether they are ``topics_over_cap`` (which only
+    happens after a downgrade — the excess is honoured on read, never deleted).
+    """
 
     _MAX_ITEMS = 50
 
+    topic_cap = serializers.SerializerMethodField()
+    topics_over_cap = serializers.SerializerMethodField()
+
     class Meta:
         model = WatchPreference
-        fields = ["topics", "categories", "cadence", "updated_at"]
-        read_only_fields = ["updated_at"]
+        fields = [
+            "topics",
+            "categories",
+            "cadence",
+            "topic_cap",
+            "topics_over_cap",
+            "updated_at",
+        ]
+        read_only_fields = ["topic_cap", "topics_over_cap", "updated_at"]
 
     def _clean_string_list(self, value: object, field: str) -> list[str]:
         if not isinstance(value, list):
@@ -188,18 +204,70 @@ class WatchPreferenceSerializer(serializers.ModelSerializer):
             )
         return cleaned
 
+    def _request_user(self):
+        request = self.context.get("request")
+        return getattr(request, "user", None)
+
+    def _topic_cap(self) -> int | None:
+        """The per-tier watch-topic cap for this serializer, or ``None`` for none."""
+        user = self._request_user()
+        if user is None or not user.is_authenticated:
+            return None
+        from apps.billing.entitlements import topic_cap
+
+        return topic_cap(user)
+
+    def get_topic_cap(self, obj) -> int:
+        from apps.billing.entitlements import topic_cap
+
+        user = self._request_user()
+        if user is None or not user.is_authenticated:
+            from apps.billing.entitlements import TOPIC_CAPS, Tier
+
+            return TOPIC_CAPS[Tier.FREE]
+        return topic_cap(user)
+
+    def get_topics_over_cap(self, obj) -> bool:
+        cap = self.get_topic_cap(obj)
+        return len(getattr(obj, "topics", None) or []) > cap
+
     def validate_topics(self, value: object) -> list[str]:
-        return self._clean_string_list(value, "topics")
+        cleaned = self._clean_string_list(value, "topics")
+        cap = self._topic_cap()
+        if cap is not None and len(cleaned) > cap:
+            raise serializers.ValidationError(
+                {
+                    "topics": [
+                        f"Your plan allows at most {cap} watch topics. "
+                        "Upgrade to monitor more."
+                    ]
+                }
+            )
+        return cleaned
 
     def validate_categories(self, value: object) -> list[str]:
         return self._clean_string_list(value, "categories")
 
 
 class LabWatchPreferenceSerializer(WatchPreferenceSerializer):
-    """Read/update what Mylo keeps an eye on for a lab (same shape as a user's)."""
+    """Read/update what Mylo keeps an eye on for a lab (same shape as a user's).
+
+    A lab's shared watch list is a team resource, so it keeps only the structural
+    ``_MAX_ITEMS`` cap — the per-member tier cap governs each member's *own*
+    :class:`WatchPreference`, not the lab's shared one.
+    """
 
     class Meta(WatchPreferenceSerializer.Meta):
         model = LabWatchPreference
+
+    def _topic_cap(self) -> int | None:
+        return None  # lab shared watch keeps the structural cap only
+
+    def get_topic_cap(self, obj) -> int:
+        return self._MAX_ITEMS
+
+    def get_topics_over_cap(self, obj) -> bool:
+        return False
 
 
 class MyLabSerializer(serializers.Serializer):

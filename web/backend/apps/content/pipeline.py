@@ -134,11 +134,25 @@ def build_queries(topics: list[str], *, limit: int = DEFAULT_QUERY_LIMIT) -> lis
     return terms[:limit]
 
 
+def _force_fallback(_prompt: str) -> None:
+    """A ``complete`` seam that always declines — forces the deterministic path.
+
+    The Free tier's "semantic only" is exactly this: surface the same rows, but skip
+    the reasoned LLM verdict (A3). Reused wherever a target lacks LLM_FIT_SCORING.
+    """
+    return None
+
+
 def _watch_topics(user: User) -> list[str]:
-    """The user's watch topics, or an empty list if they never set any."""
-    watch = getattr(user, "watch", None)
-    topics = getattr(watch, "topics", None) or []
-    return [str(topic) for topic in topics]
+    """The user's watch topics, capped to their tier's cap (never deleted).
+
+    Reading through the entitlement helper means a downgraded user's overflow
+    topics are ignored here, not acted on — the excess is preserved in storage and
+    only the first N drive the scan / recommend.
+    """
+    from apps.billing.entitlements import effective_watch_topics
+
+    return [str(topic) for topic in effective_watch_topics(user)]
 
 
 def gather_scan_queries(
@@ -650,9 +664,18 @@ def run_daily_batch(
     else:
         emit("ingest: no watch topics across any user; nothing to scan")
 
+    # LLM gate (A3): a user without LLM fit scoring gets the deterministic path,
+    # not the model verdict. Resolved in bulk to avoid an N+1 over users.
+    from apps.billing.entitlements import Feature, users_with_feature
+
+    llm_users = users_with_feature(
+        Feature.LLM_FIT_SCORING, [user.id for user in users]
+    )
+
     results: list[RunResult] = []
     for user in users:
         username = user.get_username()
+        user_complete = complete if user.id in llm_users else _force_fallback
         try:
             results.append(
                 recommend_for_user(
@@ -665,7 +688,7 @@ def run_daily_batch(
                     pool_per_interest=pool_per_interest,
                     beta=beta,
                     focus_weight=focus_weight,
-                    complete=complete,
+                    complete=user_complete,
                     persist=persist,
                     log=log,
                 )

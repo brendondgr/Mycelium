@@ -133,6 +133,13 @@ def onboarding_match_area(
     if area not in AREA_CONTENT_TYPE:
         raise UnknownArea(area)
 
+    # LLM gate (A3): a Free user still gets this on-demand match (D6), but semantic
+    # only — force the deterministic path so they see fallback verdicts, no percent.
+    from apps.billing.entitlements import Feature, has_feature
+
+    if not has_feature(user, Feature.LLM_FIT_SCORING):
+        complete = lambda _p: None  # noqa: E731 — deliberate force-fallback seam
+
     result = refit_user(user, areas=(area,), persist=True, complete=complete)
     summary = result.areas.get(area, {})
     rows = _latest_suggested_rows(user, AREA_CONTENT_TYPE[area])

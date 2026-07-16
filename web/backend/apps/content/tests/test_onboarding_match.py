@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.db import connection
 
 from apps.accounts.models import WatchPreference
+from apps.billing.models import Subscription, Tier
 from apps.content import embeddings
 from apps.content.models import ContentItem, RelevanceScore
 from apps.content.onboarding_match import UnknownArea, onboarding_match_area
@@ -44,6 +45,9 @@ def _profile_user(username: str, *, areas) -> User:
     WatchPreference.objects.update_or_create(
         user=user, defaults={"topics": areas}
     )
+    # Entitle the researcher (Spore+) so the match uses the LLM path; the tests that
+    # want the deterministic path pass an explicit fallback ``complete``.
+    Subscription.objects.create(tier=Tier.SPORE, scope_user=user)
     return user
 
 

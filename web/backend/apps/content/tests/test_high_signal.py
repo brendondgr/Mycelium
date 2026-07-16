@@ -145,6 +145,11 @@ def test_command_refuses_delivery_when_disabled(user, settings) -> None:
 def test_command_delivers_when_enabled(user, settings) -> None:
     from django.core.management import call_command
 
+    from apps.billing.models import Subscription, Tier
+
+    # High-signal delivery is a scheduled push, so it runs only for entitled users
+    # (select_users gates on SCHEDULED_REPORTS) — entitle this one with Spore.
+    Subscription.objects.create(tier=Tier.SPORE, scope_user=user)
     _score(user, ext="g1")
     settings.HIGH_SIGNAL_DELIVERY_ENABLED = True
     call_command(

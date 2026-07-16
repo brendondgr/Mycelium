@@ -14,7 +14,7 @@ from apps.integrations.models import DiscordGuildLink, DiscordIdentity
 from apps.integrations.services import discord_api, resolve
 from apps.integrations.services.discord_api import RawResponse
 
-from .base import clear_discord_cache, discord_test_settings
+from .base import clear_discord_cache, discord_test_settings, grant_bot_server
 
 User = get_user_model()
 
@@ -155,6 +155,8 @@ class PathCViewTests(TestCase):
     def setUp(self):
         clear_discord_cache()
         self.lab = Lab.objects.create(name="Lab", slug="lab")
+        # Guild install requires the Mylo-server add-on on the lab (A4).
+        grant_bot_server(self.lab)
         self.manager = User.objects.create_user("manager", password="x")
         self.member = User.objects.create_user("member", password="x")
         LabMembership.objects.create(
@@ -219,6 +221,25 @@ class PathCViewTests(TestCase):
                 reverse("discord-guild-callback"), {"code": "c", "state": state}
             )
         self.assertEqual(resp.status_code, 409)
+
+    def test_guild_callback_refused_without_addon(self):
+        # A lab without the Mylo-server add-on is bounced with an upgrade cue,
+        # before any Discord token exchange (P5).
+        bare = Lab.objects.create(name="Bare", slug="bare")
+        LabMembership.objects.create(
+            user=self.manager, lab=bare, role=LabMembership.Role.OWNER
+        )
+        resolve.bind_identity(self.manager, "d-mgr", method=resolve.LINK_OAUTH)
+        self.client.force_login(self.manager)
+        start = self.client.get(reverse("discord-guild-start"), {"lab": "bare"})
+        state = _state_from(start.json()["authorize_url"])
+        with mock.patch.object(discord_api, "exchange_code") as exchange:
+            resp = self.client.get(
+                reverse("discord-guild-callback"), {"code": "c", "state": state}
+            )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("discord=bot_server_required", resp["Location"])
+        exchange.assert_not_called()
 
     def test_guild_status_requires_manager(self):
         self.client.force_login(self.member)

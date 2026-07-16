@@ -277,6 +277,9 @@ class DiscordGuildCallbackView(APIView):
         installer = resolve.get_user_by_id(payload.get("user_id"))
         try:
             oauth.complete_guild_link(lab, code, installed_by=installer)
+        except oauth.BotServerRequired:
+            # The lab has no Mylo-server add-on — bounce back with an upgrade cue.
+            return _return("bot_server_required")
         except resolve.GuildConflict:
             return Response(
                 {"detail": "This server is already linked to another lab."},

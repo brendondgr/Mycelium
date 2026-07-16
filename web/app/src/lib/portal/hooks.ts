@@ -13,6 +13,7 @@ import {
   fetchDailyReport,
   fetchDiscordStart,
   fetchDiscordStatus,
+  fetchEntitlements,
   fetchLabDiscordStart,
   fetchLabDiscordStatus,
   fetchDeadlines,
@@ -623,6 +624,15 @@ export function useDiscordStatus() {
     queryKey: ["portal", "discord"],
     queryFn: fetchDiscordStatus,
     staleTime: 30_000,
+  });
+}
+
+/** The signed-in user's resolved entitlements — drives read-time lock states. */
+export function useEntitlements() {
+  return useQuery({
+    queryKey: ["portal", "entitlements"],
+    queryFn: fetchEntitlements,
+    staleTime: 60_000,
   });
 }
 
