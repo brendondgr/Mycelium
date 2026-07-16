@@ -147,7 +147,23 @@ def _deliver(sub, due, days_remaining) -> _Delivery:
             message_id = outcome.message_id
         elif outcome.error_code is not None:
             error_code = outcome.error_code
+    else:  # lab → post to the announcement channel with resolved member pings (R5)
+        from apps.content.reminders_discord import send_lab_channel
+
+        outcome = send_lab_channel(sub, title, body)
+        _sync_unlinked_flag(sub, outcome.has_unlinked)
+        if outcome.ok:
+            channel = ReminderFire.Channel.DISCORD_CHANNEL
+            message_id = outcome.message_id
+        elif outcome.error_code is not None:
+            error_code = outcome.error_code
     return _Delivery(notified, channel, message_id, error_code)
+
+
+def _sync_unlinked_flag(sub, has_unlinked) -> None:
+    if has_unlinked is not None and sub.has_unlinked_targets != has_unlinked:
+        sub.has_unlinked_targets = has_unlinked
+        sub.save(update_fields=["has_unlinked_targets", "updated_at"])
 
 
 def _deliver_in_app(sub, title, body) -> int:

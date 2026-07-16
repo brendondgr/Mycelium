@@ -40,6 +40,7 @@ class SendOutcome:
     message_id: str = ""
     error_code: int | None = None
     unreachable: bool = False
+    has_unlinked: bool | None = None  # lab sends: any mention target with no ping
 
 
 def escape_mentions(text: str) -> str:
@@ -99,6 +100,79 @@ def send_personal_dm(subscription, title: str, body: str) -> SendOutcome:
         resolve.set_identity_dm(identity, dm_ok=False, error_code=_code(resp))
         return SendOutcome(ok=False, error_code=_code(resp), unreachable=True)
     return SendOutcome(ok=False, error_code=_code(resp))
+
+
+def send_lab_channel(subscription, title: str, body: str) -> SendOutcome:
+    """Post a lab reminder to its channel with resolved member pings (R5).
+
+    Channel = the per-reminder ``channel_id_override`` if set, else the lab's default
+    ``announcement_channel_id``. Mention targets with an ACTIVE Discord identity are
+    pinged via ``<@id>`` (with ``allowed_mentions.users`` so the ping resolves); those
+    without are rendered as plain escaped names — **never dropped**, and the outcome
+    flags that the subscription has unlinked targets so the portal can prompt them.
+    ``parse: []`` still holds, so the scraped title can never ``@everyone``.
+    """
+    user_ids, plain_names = _resolve_mentions(subscription)
+    has_unlinked = bool(plain_names)
+
+    if not _bot_configured():
+        return SendOutcome(ok=False, unreachable=True, has_unlinked=has_unlinked)
+    channel_id = subscription.channel_id_override or _lab_default_channel(subscription)
+    if not channel_id:
+        return SendOutcome(ok=False, unreachable=True, has_unlinked=has_unlinked)
+
+    content = _mention_line(user_ids, plain_names)
+    try:
+        resp = discord_api.create_message(
+            channel_id,
+            content=content,
+            embed=reminder_embed(title, body, subscription.url),
+            allowed_mentions={"users": user_ids},
+        )
+    except DiscordHTTPError as exc:
+        return SendOutcome(
+            ok=False, error_code=exc.code, has_unlinked=has_unlinked
+        )
+
+    if resp.status in (200, 201):
+        return SendOutcome(
+            ok=True,
+            message_id=str(resp.json.get("id") or ""),
+            has_unlinked=has_unlinked,
+        )
+    if resp.status == 403:
+        return SendOutcome(
+            ok=False,
+            error_code=_code(resp),
+            unreachable=True,
+            has_unlinked=has_unlinked,
+        )
+    return SendOutcome(ok=False, error_code=_code(resp), has_unlinked=has_unlinked)
+
+
+def _lab_default_channel(subscription) -> str:
+    return resolve.get_announcement_channel_for_lab(subscription.target_lab)
+
+
+def _resolve_mentions(subscription) -> tuple[list[str], list[str]]:
+    """(active discord ids, plain display names) for the subscription's mentions."""
+    members = [m.member for m in subscription.mentions.select_related("member").all()]
+    active = resolve.active_discord_ids_for_users(members)
+    user_ids: list[str] = []
+    plain: list[str] = []
+    for member in members:
+        discord_id = active.get(member.id)
+        if discord_id:
+            user_ids.append(discord_id)
+        else:
+            plain.append(member.get_full_name() or member.get_username())
+    return user_ids, plain
+
+
+def _mention_line(user_ids: list[str], plain_names: list[str]) -> str:
+    parts = [f"<@{uid}>" for uid in user_ids]
+    parts += [escape_mentions(name) for name in plain_names]
+    return " ".join(parts)
 
 
 # Postable guild channel types: GUILD_TEXT (0) and GUILD_ANNOUNCEMENT (5).

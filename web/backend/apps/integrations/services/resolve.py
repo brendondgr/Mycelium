@@ -86,6 +86,21 @@ def active_identity_for_user(user) -> DiscordIdentity | None:
     ).first()
 
 
+def active_discord_ids_for_users(users) -> dict:
+    """Map ``{user_id: discord_user_id}`` for the ACTIVE identities among ``users``.
+
+    Batch lookup for lab mention resolution — a user absent from the result has no
+    active identity and must be rendered as plain text (no ping), never dropped.
+    """
+    ids = [u.id for u in users]
+    if not ids:
+        return {}
+    rows = DiscordIdentity.objects.filter(
+        user_id__in=ids, state=DiscordIdentity.State.ACTIVE
+    ).values_list("user_id", "discord_user_id")
+    return {user_id: discord_user_id for user_id, discord_user_id in rows}
+
+
 # --------------------------------------------------------------------------- #
 # Identity — writes
 # --------------------------------------------------------------------------- #
