@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -69,6 +70,9 @@ export type PortalContextValue = {
 
 const PortalContext = createContext<PortalContextValue | null>(null);
 
+/** Where the active workspace scope is remembered across reloads / deep links. */
+const LAB_SCOPE_KEY = "mycelium_lab_scope";
+
 export function usePortal(): PortalContextValue {
   const value = useContext(PortalContext);
   if (!value) {
@@ -96,6 +100,20 @@ export function PortalProvider({
   );
   const [labScope, setLabScopeState] = useState<string>(PERSONAL_SLUG);
   const [labOnboardingEdit, setLabOnboardingEdit] = useState(false);
+
+  // Restore the last active workspace scope after mount so a refresh or a
+  // deep-link stays in the lab (localStorage isn't available during SSR, so we
+  // start on Personal and hydrate here — a stale/removed lab self-heals because
+  // `currentLab` resolves to null and the UI falls back to Personal).
+  useEffect(() => {
+    const stored = window.localStorage.getItem(LAB_SCOPE_KEY);
+    if (stored && stored !== PERSONAL_SLUG) {
+      // Reading a browser-only store on mount: SSR can't see it, so hydrating the
+      // restored scope here (once) is the intended pattern, not a cascading render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLabScopeState(stored);
+    }
+  }, []);
 
   const { theme, toggleTheme } = useTheme();
   const labsQuery = useMyLabs();
@@ -144,10 +162,14 @@ export function PortalProvider({
     [],
   );
 
-  // Switching labs leaves any in-progress edit flow behind.
+  // Switching labs leaves any in-progress edit flow behind, and is remembered
+  // across reloads (so a refresh keeps you in the same workspace).
   const setLabScope = useCallback((slug: string) => {
     setLabScopeState(slug);
     setLabOnboardingEdit(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LAB_SCOPE_KEY, slug);
+    }
   }, []);
 
   const openLabEditor = useCallback(
