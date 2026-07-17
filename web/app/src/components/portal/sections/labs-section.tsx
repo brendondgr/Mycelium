@@ -8,6 +8,7 @@ import {
   PlusIcon,
 } from "@/components/portal/icons";
 import { roleLabel, usePortal } from "@/components/portal/portal-context";
+import { Avatar } from "@/components/portal/primitives/avatar";
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill } from "@/components/portal/primitives/pill";
@@ -26,7 +27,7 @@ import {
   useUpdateLabProfile,
 } from "@/lib/portal/hooks";
 import { ApiError } from "@/lib/api-error";
-import type { LabProfileData, MyLab } from "@/lib/portal/types";
+import type { LabMember, LabProfileData, MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
 /** Split a comma-separated field into a trimmed, non-empty list. */
@@ -211,7 +212,7 @@ export function LabDetail({ lab }: { lab: MyLab }) {
   );
 }
 
-function DetailCard({
+export function DetailCard({
   title,
   children,
 }: {
@@ -230,7 +231,7 @@ function DetailCard({
 
 // -- Purpose & goals ----------------------------------------------------------
 
-function LabPurposeCard({
+export function LabPurposeCard({
   lab,
   canManage,
 }: {
@@ -446,7 +447,7 @@ function Field({
 
 // -- Invite -------------------------------------------------------------------
 
-function InviteCard({ lab }: { lab: MyLab }) {
+export function InviteCard({ lab }: { lab: MyLab }) {
   const invite = useInviteToLab(lab.slug);
   const [identifier, setIdentifier] = React.useState("");
   const [role, setRole] = React.useState("member");
@@ -519,7 +520,7 @@ function InviteCard({ lab }: { lab: MyLab }) {
 
 // -- Discord ------------------------------------------------------------------
 
-function DiscordSyncCard({ lab }: { lab: MyLab }) {
+export function DiscordSyncCard({ lab }: { lab: MyLab }) {
   const { data: status, isLoading, isError } = useLabDiscordStatus(lab.slug);
   const connect = useConnectLabDiscord();
 
@@ -595,7 +596,14 @@ function DiscordSyncCard({ lab }: { lab: MyLab }) {
 
 // -- Members ------------------------------------------------------------------
 
-function MembersCard({ lab }: { lab: MyLab }) {
+export function MembersCard({
+  lab,
+  grid = false,
+}: {
+  lab: MyLab;
+  /** Render members as a responsive tile grid instead of full-width rows. */
+  grid?: boolean;
+}) {
   const { data: members, isLoading, isError } = useLabMembers(lab.slug);
 
   return (
@@ -608,6 +616,12 @@ function MembersCard({ lab }: { lab: MyLab }) {
         </p>
       ) : !members || members.length === 0 ? (
         <p className="text-sm text-[var(--text-muted)]">No members yet.</p>
+      ) : grid ? (
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {members.map((member) => (
+            <MemberTile key={member.username} member={member} />
+          ))}
+        </div>
       ) : (
         <div className="-mx-5 -mb-5 overflow-hidden rounded-b-2xl">
           {members.map((member) => (
@@ -619,9 +633,35 @@ function MembersCard({ lab }: { lab: MyLab }) {
   );
 }
 
+/** A compact member card for the Lab-settings members grid. */
+function MemberTile({ member }: { member: LabMember }) {
+  const roleDisplay = member.is_lead
+    ? "PI"
+    : member.role.charAt(0).toUpperCase() + member.role.slice(1);
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-alt px-3.5 py-3">
+      <Avatar initials={member.initials} seed={member.username} size={36} />
+      <div className="min-w-0 flex-1">
+        <p className="m-0 truncate text-sm font-medium text-[var(--text-primary)]">
+          {member.name}
+        </p>
+        <p className="m-0 truncate text-xs text-[var(--text-muted)]">
+          {member.email}
+        </p>
+      </div>
+      {member.is_lead ? (
+        <Pill tone="primary">PI</Pill>
+      ) : (
+        <Pill tone="neutral">{roleDisplay}</Pill>
+      )}
+    </div>
+  );
+}
+
 // -- Projects -----------------------------------------------------------------
 
-function ProjectsCard({
+export function ProjectsCard({
   lab,
   canManage,
 }: {

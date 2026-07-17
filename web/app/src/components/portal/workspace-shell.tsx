@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 
-import { PortalFooter } from "@/components/portal/portal-footer";
 import { PortalHeader } from "@/components/portal/portal-header";
 import { PortalMobileNav } from "@/components/portal/portal-mobile-nav";
 import { PortalSidebar } from "@/components/portal/portal-sidebar";
@@ -13,9 +12,9 @@ import {
 import { SectionStage } from "@/components/portal/section-stage";
 
 /**
- * The authenticated workspace chrome: header, sidebar, mobile tabs, and footer
- * wrapped around the active route. Each `/app/*` page renders into the
- * `SectionStage`, which cross-fades on navigation (keyed by pathname).
+ * The authenticated workspace chrome: header, sidebar, and mobile tabs wrapped
+ * around the active route. Each `/app/*` page renders into the `SectionStage`,
+ * which cross-fades on navigation (keyed by pathname).
  */
 export function WorkspaceShell({
   user,
@@ -40,7 +39,6 @@ export function WorkspaceShell({
             <SectionStage stageKey={pathname}>{children}</SectionStage>
           </main>
         </div>
-        <PortalFooter />
       </div>
     </PortalProvider>
   );

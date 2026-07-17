@@ -6,7 +6,13 @@ import { CloseIcon, TargetIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
-import { LabDetail } from "@/components/portal/sections/labs-section";
+import {
+  DiscordSyncCard,
+  InviteCard,
+  LabPurposeCard,
+  MembersCard,
+  ProjectsCard,
+} from "@/components/portal/sections/labs-section";
 import { labLogoUrl } from "@/lib/portal/client";
 import { useDeleteLabLogo, useUploadLabLogo } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
@@ -28,8 +34,12 @@ const MAX_BYTES = 2 * 1024 * 1024;
 /**
  * The lab configuration surface — the lab workspace's "Lab settings" (the Profile
  * slot in a lab). Manager-only (PI / owner / admin): a non-manager who deep-links
- * here gets an honest permission note. Composes the logo uploader with the
- * existing lab management (purpose & goals, invites, Discord, members, projects).
+ * here gets an honest permission note.
+ *
+ * Two-column layout: a narrow left rail of setup cards (logo, invites, Discord,
+ * projects) beside a wide right column that leads with the lab's purpose & goals
+ * and closes with the member roster as a tile grid. Collapses to one column on
+ * small screens.
  */
 export function LabSettingsSection({ lab }: { lab: MyLab }) {
   if (!canManageLab(lab)) {
@@ -51,9 +61,20 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
         title={`${lab.name} settings`}
         subtitle="Set the lab's logo and purpose, invite members, and connect Mylo."
       />
-      <div className="space-y-4">
-        <LabLogoCard lab={lab} />
-        <LabDetail lab={lab} />
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+        {/* Left rail — setup cards */}
+        <div className="space-y-4">
+          <LabLogoCard lab={lab} />
+          <InviteCard lab={lab} />
+          <DiscordSyncCard lab={lab} />
+          <ProjectsCard lab={lab} canManage />
+        </div>
+
+        {/* Right column — purpose & goals, then the member roster */}
+        <div className="space-y-4">
+          <LabPurposeCard lab={lab} canManage />
+          <MembersCard lab={lab} grid />
+        </div>
       </div>
     </div>
   );
