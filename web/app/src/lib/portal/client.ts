@@ -110,6 +110,28 @@ export async function fetchDailyBriefing(): Promise<DailyBriefing> {
   );
 }
 
+/** A lab's "Mylo Report" briefing (the lab overview's written zone). */
+export async function fetchLabDailyBriefing(
+  slug: string,
+): Promise<DailyBriefing> {
+  return getJson<DailyBriefing>(
+    buildApiUrl(getPublicApiBase(), "labs", slug, "daily-briefing"),
+    "Could not load the lab's daily briefing.",
+  );
+}
+
+/**
+ * The `<img src>` for a lab's logo, served through the API gateway. `version` is
+ * the cache-busting token from `MyLab.logo_version`; pass it so a re-upload shows
+ * immediately. Returns null when the lab has no logo.
+ */
+export function labLogoUrl(slug: string, version: number | null): string | null {
+  if (version === null || version === undefined) {
+    return null;
+  }
+  return `${buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "logo")}?v=${version}`;
+}
+
 /** The user's ranked funding opportunities (Opportunities page, grants column). */
 export async function fetchGrants(): Promise<OpportunityFeed<GrantOpportunity>> {
   return getJson<OpportunityFeed<GrantOpportunity>>(

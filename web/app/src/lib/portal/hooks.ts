@@ -14,6 +14,7 @@ import {
   fetchDiscordStart,
   fetchDiscordStatus,
   fetchEntitlements,
+  fetchLabDailyBriefing,
   fetchLabDiscordStart,
   fetchLabDiscordStatus,
   fetchDeadlines,
@@ -47,6 +48,7 @@ import {
   createLab,
   createProject,
   createReminder,
+  deleteLabLogo,
   deleteReminder,
   disconnectDiscord,
   dismissSuggestion,
@@ -65,6 +67,7 @@ import {
   updateCollection,
   updateLabProfile,
   updateLabWatch,
+  uploadLabLogo,
 } from "@/lib/portal/mutations";
 import {
   PERSONAL_SLUG,
@@ -175,6 +178,41 @@ export function useDailyBriefing() {
     queryKey: ["portal", "daily-briefing"],
     queryFn: fetchDailyBriefing,
     staleTime: 60_000,
+  });
+}
+
+/** A lab's "Mylo Report" briefing (the lab overview). Disabled for personal scope. */
+export function useLabDailyBriefing(slug?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
+  return useQuery({
+    queryKey: ["portal", "lab-daily-briefing", slug ?? "none"],
+    queryFn: () => fetchLabDailyBriefing(slug as string),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** Upload / replace a lab's logo; refreshes the switcher list and the lab profile. */
+export function useUploadLabLogo(slug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => uploadLabLogo(slug, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "lab-profile", slug] });
+    },
+  });
+}
+
+/** Clear a lab's logo; refreshes the switcher list and the lab profile. */
+export function useDeleteLabLogo(slug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => deleteLabLogo(slug),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "lab-profile", slug] });
+    },
   });
 }
 

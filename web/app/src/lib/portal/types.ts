@@ -11,6 +11,10 @@ export type MyLab = {
   role: LabRole;
   is_lead: boolean;
   department: string | null;
+  /** Whether the lab has an uploaded logo (shown as the workspace brand mark). */
+  has_logo: boolean;
+  /** Cache-busting token for the logo URL, or null when there's no logo. */
+  logo_version: number | null;
 };
 
 /** A lab member row (also used for project members). */
@@ -327,6 +331,14 @@ export type LabFellowship = {
  * only members who are eligible and consented to lab-visible eligibility.
  * `interested` maps a content id to the members who personally matched it strongly.
  */
+/** Cumulative "found in the last …" totals for one area (today ≤ week ≤ month ≤ year). */
+export type WindowCounts = {
+  today: number;
+  week: number;
+  month: number;
+  year: number;
+};
+
 export type TargetRecommendations = {
   generated_at: string | null;
   counts: {
@@ -335,6 +347,8 @@ export type TargetRecommendations = {
     conferences: number;
     fellowships: number;
   };
+  /** Per-area today/week/month/year totals (the lab overview stats block). */
+  window_counts: Record<"papers" | "grants" | "conferences" | "fellowships", WindowCounts>;
   papers: Suggestion[];
   grants: GrantOpportunity[];
   conferences: ConferenceOpportunity[];

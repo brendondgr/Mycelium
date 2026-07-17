@@ -343,6 +343,59 @@ export function updateLabProfile(
   );
 }
 
+/** The logo endpoint's write response (also the flags on `MyLab`). */
+export type LabLogoResult = { has_logo: boolean; logo_version: number | null };
+
+/** Upload (or replace) a lab's logo — multipart so the file rides along. */
+export async function uploadLabLogo(
+  slug: string,
+  file: File,
+): Promise<LabLogoResult> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "logo"),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
+      body: form,
+    },
+  );
+  let parsed: (LabLogoResult & Record<string, unknown>) | null = null;
+  try {
+    parsed = (await response.json()) as LabLogoResult & Record<string, unknown>;
+  } catch {
+    parsed = null;
+  }
+  if (!response.ok) {
+    throw new Error(
+      firstError(parsed) ?? "Could not upload the logo. Use a PNG, JPG, or SVG under 2 MB.",
+    );
+  }
+  return parsed as LabLogoResult;
+}
+
+/** Clear a lab's logo. */
+export async function deleteLabLogo(slug: string): Promise<LabLogoResult> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "logo"),
+    {
+      method: "DELETE",
+      credentials: "include",
+      headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
+    },
+  );
+  if (!response.ok) {
+    throw new Error("Could not remove the logo.");
+  }
+  return (await response.json()) as LabLogoResult;
+}
+
 /** Update what Mylo watches for a lab. */
 export function updateLabWatch(
   slug: string,
