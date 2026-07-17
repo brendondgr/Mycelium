@@ -690,8 +690,19 @@ class DailyBriefing(models.Model):
         FALLBACK = "fallback", "Fallback"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # A briefing belongs to exactly one target: a person or a lab (the exactly_one
+    # constraint below). A lab briefing synthesizes the lab's aggregate matches.
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="daily_briefing",
+    )
+    lab = models.OneToOneField(
+        "accounts.Lab",
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name="daily_briefing",
     )
@@ -736,9 +747,18 @@ class DailyBriefing(models.Model):
 
     class Meta:
         ordering = ["-generated_at"]
+        constraints = [
+            models.CheckConstraint(
+                name="content_dailybriefing_exactly_one_target",
+                condition=exactly_one("user", "lab"),
+            ),
+        ]
+
+    def clean(self) -> None:
+        validate_exactly_one(self, "user", "lab")
 
     def __str__(self) -> str:
-        return f"DailyBriefing<{self.user}> ({self.origin})"
+        return f"DailyBriefing<{self.user or self.lab}> ({self.origin})"
 
 
 # --------------------------------------------------------------------------- #

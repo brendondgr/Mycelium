@@ -242,27 +242,46 @@ class DailyBriefingView(APIView):
 
     def get(self, request):
         briefing = DailyBriefing.objects.filter(user=request.user).first()
-        if briefing is None:
-            return Response(
-                {
-                    "generated_at": None,
-                    "categories": [],
-                    "counts": {},
-                    "new_counts": {},
-                    "showcase": {},
-                    "briefing": None,
-                }
-            )
-        return Response(
-            {
-                "generated_at": briefing.generated_at.isoformat(),
-                "categories": briefing.categories,
-                "counts": briefing.counts,
-                "new_counts": briefing.new_counts,
-                "showcase": briefing.showcase,
-                "briefing": {"body": briefing.body, "origin": briefing.origin},
-            }
-        )
+        return Response(_daily_briefing_envelope(briefing))
+
+
+def _daily_briefing_envelope(briefing) -> dict:
+    """The three-zone envelope for a ``DailyBriefing`` (or the empty "no run" one)."""
+    if briefing is None:
+        return {
+            "generated_at": None,
+            "categories": [],
+            "counts": {},
+            "new_counts": {},
+            "showcase": {},
+            "briefing": None,
+        }
+    return {
+        "generated_at": briefing.generated_at.isoformat(),
+        "categories": briefing.categories,
+        "counts": briefing.counts,
+        "new_counts": briefing.new_counts,
+        "showcase": briefing.showcase,
+        "briefing": {"body": briefing.body, "origin": briefing.origin},
+    }
+
+
+class LabDailyBriefingView(APIView):
+    """A lab's "Mylo Report" — the lab overview's written briefing zone.
+
+    Serves the durable :class:`DailyBriefing` keyed to the lab (the daily run's
+    briefing stage also fans out to entitled labs). Any lab member may read it; an
+    honest empty envelope is the "no run yet" state, same as the personal view.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, slug):
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_has_lab_access(request.user, lab):
+            raise PermissionDenied("You do not have access to this lab.")
+        briefing = DailyBriefing.objects.filter(lab=lab).first()
+        return Response(_daily_briefing_envelope(briefing))
 
 
 # --------------------------------------------------------------------------- #

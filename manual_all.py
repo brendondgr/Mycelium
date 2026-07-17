@@ -23,8 +23,10 @@ Stages, in order:
        only the grants / conferences / fellowships that arrived today for every
        user and append the passers to each accumulating feed.
     4. Write daily briefings (backend)     — ``generate_daily_briefing``: the
-       cross-category "Mylo Report" synthesis for every user (LLM with a
-       deterministic fallback).
+       cross-category "Mylo Report" synthesis for every user **and every entitled
+       lab** (LLM with a deterministic fallback). Like the summary itself, this is
+       a per-run *replace* — it re-describes the day's matches, never rewrites the
+       stored recommendations — so it stays consistent with the append-only rule.
 
 Deliberately **no refit stage**: the daily run only scores that day's *new*
 items and appends them. Mylo's already-written recommendations are never
@@ -112,7 +114,7 @@ CONTAINER_STAGES = [
     ),
     ("run_reminder_tick", [], "Firing due deadline reminders…"),
     ("prune_opportunities", [], "Pruning expired opportunities…"),
-    ("generate_daily_briefing", [], "Writing each user's daily briefing…"),
+    ("generate_daily_briefing", [], "Writing each user's and lab's daily briefing…"),
 ]
 
 

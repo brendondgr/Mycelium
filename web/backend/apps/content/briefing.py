@@ -25,7 +25,7 @@ from django.utils import timezone
 
 from apps.content import briefing_agents
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
-from apps.content.targets import target_for_user
+from apps.content.targets import target_for_lab, target_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -37,26 +37,35 @@ CATEGORY_TYPES: dict[str, str] = {
     "fellowships": ContentItem.Type.FELLOWSHIP,
 }
 
+#: The categories a lab briefing can cover. Labs are scored for papers/grants/
+#: conferences; fellowships stay user-only (they surface for a lab only as a
+#: consented union of member matches, handled on the overview — never in prose).
+LAB_BRIEFING_CATEGORIES: tuple[str, ...] = ("papers", "grants", "conferences")
+
 #: How many items per category to show in the briefing showcase (bottom-right UI).
 SHOWCASE_PER_CATEGORY = 3
 
 
-def _watched_categories(user) -> list[str]:
-    """The categories this user watches, or all four when none are configured.
+def _watched_categories(watch, allow: tuple[str, ...] | None = None) -> list[str]:
+    """The categories a target watches, or all available when none are configured.
 
-    ``user.watch`` is a OneToOne that is ``None`` when the user never set a watch;
-    an empty ``categories`` means "not narrowed", so we show everything available.
+    ``watch`` is the target's ``WatchPreference``/``LabWatchPreference`` (or ``None``
+    when never set); an empty ``categories`` means "not narrowed", so we show
+    everything available. ``allow`` optionally restricts the universe — a lab, for
+    instance, only ever brief on the categories it is scored for.
     """
-    watch = getattr(user, "watch", None)
+    universe = list(allow) if allow is not None else list(CATEGORY_TYPES)
     configured = [
-        c for c in (getattr(watch, "categories", None) or []) if c in CATEGORY_TYPES
+        c for c in (getattr(watch, "categories", None) or []) if c in universe
     ]
-    return configured or list(CATEGORY_TYPES)
+    return configured or universe
 
 
-def _suggested_scores(user, content_type: str) -> list[RelevanceScore]:
-    """The user's suggested items of one type, read the way its feed reads them.
+def _suggested_scores(target_filter: dict, content_type: str) -> list[RelevanceScore]:
+    """A target's suggested items of one type, read the way its feed reads them.
 
+    ``target_filter`` is the single ``target_*`` FK to read under —
+    ``{"target_user": user}`` for a person, ``{"target_lab": lab}`` for a lab.
     Mirrors the two read models in ``views.py``:
 
     - **Papers** (``views._latest_scores``) are fresh-only — keep just the latest
@@ -69,7 +78,7 @@ def _suggested_scores(user, content_type: str) -> list[RelevanceScore]:
     scores = [
         s
         for s in RelevanceScore.objects.filter(
-            target_user=user, content__type=content_type
+            **target_filter, content__type=content_type
         ).select_related("content")
         if s.signals.get("suggested")
     ]
@@ -145,7 +154,9 @@ def _showcase_item(score: RelevanceScore, today: str) -> dict:
 
 
 def _gather(
-    user,
+    target_filter: dict,
+    watch,
+    allow: tuple[str, ...] | None = None,
 ) -> tuple[
     list[str],
     dict[str, int],
@@ -167,7 +178,7 @@ def _gather(
     flattened item carries the per-item ``reason``/``headline`` the matcher already
     wrote, so the agents enrich real, grounded rationale rather than inventing.
     """
-    categories = _watched_categories(user)
+    categories = _watched_categories(watch, allow)
     today = timezone.now().date().isoformat()
     report_n = briefing_agents.REPORT_ITEMS_PER_SECTION
     counts: dict[str, int] = {}
@@ -175,7 +186,7 @@ def _gather(
     showcase: dict[str, list[dict]] = {}
     report_items: dict[str, list[dict]] = {}
     for category in categories:
-        scores = _suggested_scores(user, CATEGORY_TYPES[category])
+        scores = _suggested_scores(target_filter, CATEGORY_TYPES[category])
         counts[category] = len(scores)
         new_counts[category] = sum(
             1 for s in scores if _is_fresh(s.signals, today)
@@ -186,14 +197,14 @@ def _gather(
     return categories, counts, new_counts, showcase, report_items
 
 
-def _profile_text(user) -> str:
-    """A compact natural-language description of the researcher for the agents.
+def _profile_text(target) -> str:
+    """A compact natural-language description of the target for the agents.
 
-    Built from the same interest surface the matcher scores on
-    (:func:`apps.content.targets.target_for_user`): the free-text research
-    statement, focus areas, keywords, skills, and career stage / institution.
+    Built from the same interest surface the matcher scores on (a
+    :class:`apps.content.targets.MatchTarget`): the free-text research statement,
+    focus areas, keywords, skills, and (for a person) career stage / institution.
+    A lab target simply carries no ``profile_meta``, so those lines are omitted.
     """
-    target = target_for_user(user)
     interests = target.interests or {}
     meta = target.profile_meta or {}
     bits: list[str] = []
@@ -242,25 +253,29 @@ def _clean_list(value) -> list[str]:
 # --------------------------------------------------------------------------- #
 
 
-def generate_briefing_for_user(
-    user,
+def _write_briefing(
     *,
+    owner: dict,
+    target,
+    target_filter: dict,
+    watch,
+    allow: tuple[str, ...] | None = None,
     complete: briefing_agents.CompleteFn | None = None,
 ) -> DailyBriefing:
-    """Build and persist one user's daily report. Returns the saved row.
+    """Gather a target's day, write the report, and persist it as a ``DailyBriefing``.
 
-    Gathers the day's per-category counts and found items, then hands them to the
-    multi-agent writer (:func:`apps.content.briefing_agents.generate_report_body`),
-    which produces the sectioned markdown body. ``complete`` is the injectable
-    ``(system, user) -> text`` LLM seam (used in tests); when it is absent, fails,
-    or returns nothing usable, each agent's deterministic markdown fallback fills
-    in and ``origin`` is recorded as ``fallback``.
+    ``owner`` is the update-or-create key (``{"user": user}`` or ``{"lab": lab}``);
+    ``target`` is the :class:`MatchTarget` the prose is grounded in; ``target_filter``
+    is the ``target_*`` FK the scores are read under. Shared by the user and lab
+    entry points so both apply the same gather + fallback rules.
     """
-    categories, counts, new_counts, showcase, report_items = _gather(user)
+    categories, counts, new_counts, showcase, report_items = _gather(
+        target_filter, watch, allow
+    )
 
     if sum(counts.values()) > 0:
         body, used_llm = briefing_agents.generate_report_body(
-            _profile_text(user),
+            _profile_text(target),
             categories,
             counts,
             new_counts,
@@ -280,7 +295,7 @@ def generate_briefing_for_user(
         origin = DailyBriefing.Origin.FALLBACK
 
     briefing, _ = DailyBriefing.objects.update_or_create(
-        user=user,
+        **owner,
         defaults={
             "body": body,
             "origin": origin,
@@ -291,3 +306,49 @@ def generate_briefing_for_user(
         },
     )
     return briefing
+
+
+def generate_briefing_for_user(
+    user,
+    *,
+    complete: briefing_agents.CompleteFn | None = None,
+) -> DailyBriefing:
+    """Build and persist one user's daily report. Returns the saved row.
+
+    Gathers the day's per-category counts and found items, then hands them to the
+    multi-agent writer (:func:`apps.content.briefing_agents.generate_report_body`),
+    which produces the sectioned markdown body. ``complete`` is the injectable
+    ``(system, user) -> text`` LLM seam (used in tests); when it is absent, fails,
+    or returns nothing usable, each agent's deterministic markdown fallback fills
+    in and ``origin`` is recorded as ``fallback``.
+    """
+    return _write_briefing(
+        owner={"user": user},
+        target=target_for_user(user),
+        target_filter={"target_user": user},
+        watch=getattr(user, "watch", None),
+        complete=complete,
+    )
+
+
+def generate_briefing_for_lab(
+    lab,
+    *,
+    complete: briefing_agents.CompleteFn | None = None,
+) -> DailyBriefing:
+    """Build and persist a lab's daily report over its aggregate matches.
+
+    Same shape as the personal briefing, but grounded in the lab's shared interest
+    profile (:func:`apps.content.targets.target_for_lab`) and its ``target_lab``
+    scores, and limited to the categories a lab is scored for
+    (:data:`LAB_BRIEFING_CATEGORIES` — fellowships stay user-only). The row is keyed
+    on the lab, so a lab's briefing is distinct from any member's own.
+    """
+    return _write_briefing(
+        owner={"lab": lab},
+        target=target_for_lab(lab),
+        target_filter={"target_lab": lab},
+        watch=getattr(lab, "watch", None),
+        allow=LAB_BRIEFING_CATEGORIES,
+        complete=complete,
+    )

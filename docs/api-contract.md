@@ -324,6 +324,15 @@ in — scoped to the categories the caller watches
 model is down). Before the first run, an honest empty envelope is returned:
 `{"generated_at": null, "categories": [], "counts": {}, "showcase": {}, "briefing": null}`.
 
+### `GET /api/labs/<slug>/daily-briefing/`
+
+The lab's "Mylo Report" — the same envelope shape as the personal one, but written
+over the lab's aggregate matches (its shared interest profile + `target_lab`
+scores) and limited to the categories a lab is scored for (papers/grants/
+conferences; fellowships stay user-only). Any lab member may read it; the daily
+run writes it for entitled labs. `403` for a non-member; empty envelope before the
+first run.
+
 ### `GET /api/search/`
 
 Query-first search across the whole content corpus (papers, grants, fellowships,

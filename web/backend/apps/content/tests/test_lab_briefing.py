@@ -1,0 +1,130 @@
+"""The lab "Mylo Report": a lab-scoped daily briefing over its aggregate matches."""
+
+import pytest
+from django.contrib.auth.models import User
+from rest_framework.test import APIClient
+
+from apps.accounts.models import Lab, LabMembership
+from apps.content.briefing import generate_briefing_for_lab
+from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
+
+RUN = "2026-07-11T06:00:00"
+
+
+@pytest.fixture
+def client() -> APIClient:
+    return APIClient()
+
+
+@pytest.fixture
+def lab(db) -> Lab:
+    return Lab.objects.create(name="Reyes Lab", slug="reyes-lab")
+
+
+@pytest.fixture
+def member(db, lab: Lab) -> User:
+    user = User.objects.create_user(username="jordan", password="p")
+    LabMembership.objects.create(user=user, lab=lab, role=LabMembership.Role.MEMBER)
+    return user
+
+
+def _content(ctype: str, title: str, **metadata) -> ContentItem:
+    metadata.setdefault("title", title)
+    return ContentItem.objects.create(
+        type=ctype, source="test", external_id=title, metadata=metadata
+    )
+
+
+def _lab_score(lab: Lab, content: ContentItem, *, rank=1, match=85) -> RelevanceScore:
+    return RelevanceScore.objects.create(
+        content=content,
+        target_lab=lab,
+        score=0.8,
+        signals={
+            "suggested": True,
+            "run_at": RUN,
+            "rank": rank,
+            "headline": f"Headline {content.metadata['title']}",
+            "reason": f"Why {content.metadata['title']} fits the lab.",
+            "match_percent": match,
+        },
+    )
+
+
+def _llm(text: str):
+    return lambda system, user: text
+
+
+@pytest.mark.django_db
+def test_lab_briefing_is_keyed_to_the_lab_and_covers_its_matches(lab: Lab) -> None:
+    _lab_score(lab, _content(ContentItem.Type.PAPER, "Lab Paper"), rank=1)
+    _lab_score(lab, _content(ContentItem.Type.GRANT, "Lab Grant"), rank=1)
+
+    briefing = generate_briefing_for_lab(lab, complete=_llm("lab body"))
+
+    assert briefing.lab_id == lab.id
+    assert briefing.user_id is None
+    assert briefing.counts == {"papers": 1, "grants": 1, "conferences": 0}
+    assert "## Papers" in briefing.body
+    assert "lab body" in briefing.body
+    assert DailyBriefing.objects.filter(lab=lab).count() == 1
+
+
+@pytest.mark.django_db
+def test_lab_briefing_never_covers_fellowships(lab: Lab) -> None:
+    # Labs aren't scored for fellowships (user-only); even a stray target_lab
+    # fellowship score must not become a lab briefing section.
+    lab.watch.categories = ["papers", "fellowships"]
+    lab.watch.save()
+    _lab_score(lab, _content(ContentItem.Type.PAPER, "Lab Paper"), rank=1)
+    _lab_score(lab, _content(ContentItem.Type.FELLOWSHIP, "Stray Fellowship"), rank=1)
+
+    briefing = generate_briefing_for_lab(lab, complete=_llm("body"))
+
+    assert set(briefing.categories) == {"papers"}
+    assert "fellowships" not in briefing.counts
+    assert "## Fellowships" not in briefing.body
+
+
+@pytest.mark.django_db
+def test_lab_briefing_replaces_in_place(lab: Lab) -> None:
+    _lab_score(lab, _content(ContentItem.Type.PAPER, "P"), rank=1)
+    generate_briefing_for_lab(lab, complete=_llm("first"))
+    generate_briefing_for_lab(lab, complete=_llm("second"))
+
+    assert DailyBriefing.objects.filter(lab=lab).count() == 1
+    assert "second" in DailyBriefing.objects.get(lab=lab).body
+
+
+@pytest.mark.django_db
+def test_lab_briefing_api_member_reads(
+    client: APIClient, lab: Lab, member: User
+) -> None:
+    _lab_score(lab, _content(ContentItem.Type.PAPER, "Mine"), rank=1)
+    generate_briefing_for_lab(lab, complete=_llm("hello lab"))
+
+    client.force_authenticate(member)
+    resp = client.get(f"/api/labs/{lab.slug}/daily-briefing/")
+
+    assert resp.status_code == 200
+    assert resp.data["generated_at"] is not None
+    assert resp.data["counts"] == {"papers": 1, "grants": 0, "conferences": 0}
+    assert "hello lab" in resp.data["briefing"]["body"]
+
+
+@pytest.mark.django_db
+def test_lab_briefing_api_empty_envelope(
+    client: APIClient, lab: Lab, member: User
+) -> None:
+    client.force_authenticate(member)
+    resp = client.get(f"/api/labs/{lab.slug}/daily-briefing/")
+    assert resp.status_code == 200
+    assert resp.data["briefing"] is None
+    assert resp.data["generated_at"] is None
+
+
+@pytest.mark.django_db
+def test_lab_briefing_api_non_member_forbidden(client: APIClient, lab: Lab) -> None:
+    outsider = User.objects.create_user(username="out", password="p")
+    client.force_authenticate(outsider)
+    assert client.get(f"/api/labs/{lab.slug}/daily-briefing/").status_code == 403

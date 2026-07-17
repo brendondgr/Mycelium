@@ -70,6 +70,16 @@ urlpatterns = [
         "labs/<slug:slug>/recommendations",
         views.LabRecommendationsView.as_view(),
     ),
+    # A lab's written daily briefing (the lab overview's Mylo Report zone).
+    path(
+        "labs/<slug:slug>/daily-briefing/",
+        views.LabDailyBriefingView.as_view(),
+        name="lab-daily-briefing",
+    ),
+    path(
+        "labs/<slug:slug>/daily-briefing",
+        views.LabDailyBriefingView.as_view(),
+    ),
     path(
         "projects/<uuid:pk>/recommendations/",
         views.ProjectRecommendationsView.as_view(),
