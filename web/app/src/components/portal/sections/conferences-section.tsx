@@ -74,7 +74,11 @@ export function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
             origin={conf.origin}
           />
         </div>
-        <SaveButton contentId={conf.content_id} saved={conf.saved} />
+        <SaveButton
+          contentId={conf.content_id}
+          saved={conf.saved}
+          savedLabs={conf.saved_labs}
+        />
       </div>
 
       <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">

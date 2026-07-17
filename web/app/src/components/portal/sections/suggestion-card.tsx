@@ -88,6 +88,7 @@ export function SuggestionCard({
           <SaveButton
             contentId={suggestion.content_id}
             saved={suggestion.saved}
+            savedLabs={suggestion.saved_labs}
             variant="icon"
           />
         </div>

@@ -414,33 +414,48 @@ export async function synthesizeLabProfile(
   return parsed as LabSynthesisResult;
 }
 
-/** Save a grant/conference to the user's deadlines. */
+/**
+ * Save a bookmarkable item to the caller's personal workspace, or — when
+ * `labSlug` is given — to that lab's shared saves (managers only, enforced
+ * server-side).
+ */
 export function saveOpportunity(
   contentId: string,
   note?: string,
+  labSlug?: string,
 ): Promise<SavedDeadline> {
+  const body: Record<string, string> = { content_id: contentId };
+  if (note) body.note = note;
+  if (labSlug) body.lab_slug = labSlug;
   return sendJson<SavedDeadline>(
     "POST",
     buildApiUrl(getPublicApiBase(), "opportunities", "save"),
-    note ? { content_id: contentId, note } : { content_id: contentId },
-    "Could not save this to your deadlines.",
+    body,
+    "Could not save this item.",
   );
 }
 
-/** Remove the user's save for a grant/conference. */
-export async function unsaveOpportunity(contentId: string): Promise<void> {
+/** Remove a personal save, or a lab save when `labSlug` is given (managers only). */
+export async function unsaveOpportunity(
+  contentId: string,
+  labSlug?: string,
+): Promise<void> {
   await ensureCsrfCookie();
   const csrfToken = readCsrfToken();
-  const response = await fetch(
-    buildApiUrl(getPublicApiBase(), "opportunities", "save", contentId),
-    {
-      method: "DELETE",
-      credentials: "include",
-      headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
-    },
+  const base = buildApiUrl(
+    getPublicApiBase(),
+    "opportunities",
+    "save",
+    contentId,
   );
+  const url = labSlug ? `${base}?lab=${encodeURIComponent(labSlug)}` : base;
+  const response = await fetch(url, {
+    method: "DELETE",
+    credentials: "include",
+    headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
+  });
   if (!response.ok && response.status !== 404) {
-    throw new Error("Could not remove this from your deadlines.");
+    throw new Error("Could not remove this save.");
   }
 }
 

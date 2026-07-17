@@ -29,7 +29,8 @@ import {
   filterAndSortSaves,
   type SavesFilterState,
 } from "@/components/portal/sections/saves-filters";
-import { useSaves } from "@/lib/portal/hooks";
+import { usePortal } from "@/components/portal/portal-context";
+import { useLabSaves, useSaves } from "@/lib/portal/hooks";
 import type { DeadlineOption, SavedArea, SavedItem } from "@/lib/portal/types";
 
 /** The addressable, *dated* deadlines a save can be reminded on ([] for papers). */
@@ -170,11 +171,25 @@ function PrunedSaveRow({ item }: { item: SavedItem }) {
   );
 }
 
-/** One save: the meta strip + the item's own feed-page card (or the fallback). */
-function SavedRow({ item }: { item: SavedItem }) {
+/**
+ * One save: the meta strip + the item's own feed-page card (or the fallback).
+ * In a lab's saved area, `labSlug` is set and the reminder is locked to that lab;
+ * the "Remind me" affordance then shows only to a manager (`canManage`), since a
+ * lab reminder posts to the lab channel and only managers may create one.
+ */
+function SavedRow({
+  item,
+  labSlug,
+  canManage = true,
+}: {
+  item: SavedItem;
+  labSlug?: string;
+  canManage?: boolean;
+}) {
   const [composing, setComposing] = React.useState(false);
   const deadlines = reminderDeadlines(item);
-  const canRemind = deadlines.length > 0 && item.content_id !== null;
+  const canRemind =
+    deadlines.length > 0 && item.content_id !== null && canManage;
 
   return (
     <div>
@@ -199,6 +214,8 @@ function SavedRow({ item }: { item: SavedItem }) {
           title={item.title}
           deadlines={deadlines}
           onClose={() => setComposing(false)}
+          lockedScope={labSlug ? "lab" : undefined}
+          lockedLabSlug={labSlug}
         />
       ) : null}
     </div>
@@ -220,14 +237,91 @@ function SaveSkeleton() {
 }
 
 /**
- * The Saves page: every bookmark — research papers, grants, fellowships, and
- * conferences — each rendered exactly as it appears on its own feed page, with
- * a filter rail (search, kind, deadline window, sort). Saved snapshots persist
- * even after the source listing is pruned.
+ * The Saves page. Scope-aware: in the personal workspace it shows the caller's
+ * own bookmarks; in a lab workspace it shows that **lab's shared saves** (any
+ * member reads; managers get the reminder/remove affordances). Either way each
+ * item renders exactly as on its own feed page, with a filter rail, and snapshots
+ * persist even after the source listing is pruned.
  */
 export function SavesSection() {
+  const { currentLab } = usePortal();
+  if (currentLab) {
+    return (
+      <LabSavesView labSlug={currentLab.slug} labName={currentLab.name} />
+    );
+  }
+  return <PersonalSavesView />;
+}
+
+/** The caller's personal bookmarks. */
+function PersonalSavesView() {
   const { data, isLoading, isError } = useSaves();
   const items = React.useMemo(() => data?.items ?? [], [data]);
+  return (
+    <SavesBody
+      title="Saves"
+      items={items}
+      isLoading={isLoading}
+      isError={isError}
+      loadingLabel="Gathering your saves…"
+      emptyTitle="Nothing saved yet"
+      emptyDescription="Tap the bookmark on any research paper, grant, fellowship, or conference and it will be kept here for you to come back to — deadlines raise a warning in the notification bell once they're under a week away."
+    />
+  );
+}
+
+/** A lab's shared bookmarks (members read; managers may remind/remove). */
+function LabSavesView({
+  labSlug,
+  labName,
+}: {
+  labSlug: string;
+  labName: string;
+}) {
+  const { data, isLoading, isError } = useLabSaves(labSlug);
+  const items = React.useMemo(() => data?.items ?? [], [data]);
+  const canManage = data?.can_manage ?? false;
+  return (
+    <SavesBody
+      title={`${labName} · Saves`}
+      items={items}
+      isLoading={isLoading}
+      isError={isError}
+      labSlug={labSlug}
+      canManage={canManage}
+      loadingLabel="Gathering this lab's saves…"
+      emptyTitle="No lab saves yet"
+      emptyDescription={
+        canManage
+          ? "Save a grant, fellowship, or conference to this lab from any feed (use the bookmark dropdown), then set a channel reminder here."
+          : "Your lab's managers haven't saved anything shared here yet."
+      }
+    />
+  );
+}
+
+/** Shared body: the filter rail + the states + the list of saved rows. */
+function SavesBody({
+  title,
+  items,
+  isLoading,
+  isError,
+  loadingLabel,
+  emptyTitle,
+  emptyDescription,
+  labSlug,
+  canManage = true,
+}: {
+  title: string;
+  items: SavedItem[];
+  isLoading: boolean;
+  isError: boolean;
+  loadingLabel: string;
+  emptyTitle: string;
+  emptyDescription: string;
+  labSlug?: string;
+  canManage?: boolean;
+}) {
   const [filters, setFilters] = React.useState<SavesFilterState>(
     DEFAULT_SAVES_FILTERS,
   );
@@ -241,16 +335,16 @@ export function SavesSection() {
 
   const showRail = !isLoading && !isError && items.length > 0;
   const subtitle = isLoading
-    ? "Gathering your saves…"
+    ? loadingLabel
     : items.length > 0
       ? within > 0
         ? `${items.length} saved · ${within} due within a week.`
         : `${items.length} saved item${items.length === 1 ? "" : "s"}.`
-      : "Papers, grants, fellowships, and conferences you bookmark collect here.";
+      : "Papers, grants, fellowships, and conferences bookmarked here collect for you.";
 
   return (
     <div>
-      <SectionHeader title="Saves" subtitle={subtitle} />
+      <SectionHeader title={title} subtitle={subtitle} />
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (
           <SavesFilters
@@ -271,14 +365,14 @@ export function SavesSection() {
           ) : isError ? (
             <EmptyState
               icon={<BookmarkIcon size={26} className="text-accent" />}
-              title="Couldn't load your saves"
-              description="Something went wrong fetching your saved items. Please try again in a moment."
+              title="Couldn't load these saves"
+              description="Something went wrong fetching the saved items. Please try again in a moment."
             />
           ) : items.length === 0 ? (
             <EmptyState
               icon={<BookmarkIcon size={26} className="text-accent" />}
-              title="Nothing saved yet"
-              description="Tap the bookmark on any research paper, grant, fellowship, or conference and it will be kept here for you to come back to — deadlines raise a warning in the notification bell once they're under a week away."
+              title={emptyTitle}
+              description={emptyDescription}
             />
           ) : visible.length === 0 ? (
             <EmptyState
@@ -303,7 +397,11 @@ export function SavesSection() {
                   className="portal-fade-up"
                   style={{ animationDelay: `${index * 45}ms` }}
                 >
-                  <SavedRow item={item} />
+                  <SavedRow
+                    item={item}
+                    labSlug={labSlug}
+                    canManage={canManage}
+                  />
                 </div>
               ))}
             </div>

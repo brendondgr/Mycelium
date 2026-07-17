@@ -16,6 +16,7 @@ import {
   fetchEntitlements,
   fetchLabDiscordStart,
   fetchLabDiscordStatus,
+  fetchLabSaves,
   fetchDeadlines,
   fetchFellowships,
   fetchGrants,
@@ -278,21 +279,48 @@ export function useSaveOpportunity() {
       "daily-report",
       "deadlines",
       "saves",
+      "lab-saves",
+      "search",
+      "lab-recommendations",
       "notifications",
     ]) {
       queryClient.invalidateQueries({ queryKey: ["portal", key] });
     }
   };
   const save = useMutation({
-    mutationFn: ({ contentId, note }: { contentId: string; note?: string }) =>
-      saveOpportunity(contentId, note),
+    mutationFn: ({
+      contentId,
+      note,
+      labSlug,
+    }: {
+      contentId: string;
+      note?: string;
+      labSlug?: string;
+    }) => saveOpportunity(contentId, note, labSlug),
     onSuccess: invalidate,
   });
   const unsave = useMutation({
-    mutationFn: (contentId: string) => unsaveOpportunity(contentId),
+    mutationFn: ({
+      contentId,
+      labSlug,
+    }: {
+      contentId: string;
+      labSlug?: string;
+    }) => unsaveOpportunity(contentId, labSlug),
     onSuccess: invalidate,
   });
   return { save, unsave };
+}
+
+/** A lab's shared saves (lab Saves area). Disabled for the personal scope. */
+export function useLabSaves(slug?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
+  return useQuery({
+    queryKey: ["portal", "lab-saves", slug ?? "none"],
+    queryFn: () => fetchLabSaves(slug as string),
+    enabled,
+    staleTime: 30_000,
+  });
 }
 
 /** The caller's pending lab invitations (notifications panel). */

@@ -187,7 +187,12 @@ export function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
 
         {/* Right: save bookmark + deadline + amount */}
         <div className="flex shrink-0 flex-col items-end gap-2 text-right">
-          <SaveButton contentId={item.content_id} saved={item.saved} variant="icon" />
+          <SaveButton
+            contentId={item.content_id}
+            saved={item.saved}
+            savedLabs={item.saved_labs}
+            variant="icon"
+          />
           {deadlineLabel ? (
             <span
               className={`inline-flex items-center gap-1.5 text-xs font-semibold ${

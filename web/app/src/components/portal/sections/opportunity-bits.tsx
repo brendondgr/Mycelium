@@ -2,8 +2,21 @@
 
 import * as React from "react";
 
-import { BookmarkIcon, SparkleIcon } from "@/components/portal/icons";
-import { useSaveOpportunity } from "@/lib/portal/hooks";
+import {
+  BookmarkIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  SparkleIcon,
+} from "@/components/portal/icons";
+import { useMyLabs, useSaveOpportunity } from "@/lib/portal/hooks";
+import { useDismissable } from "@/lib/portal/use-dismissable";
+import type { MyLab } from "@/lib/portal/types";
+import { cn } from "@/lib/utils";
+
+/** A member with owner/admin/PI rights may save to that lab's shared saves. */
+function canManageLab(lab: MyLab): boolean {
+  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
+}
 
 /** Percent-match tiers: strong (green), fair (amber), low (terracotta). */
 const STRONG_MATCH = 85;
@@ -160,35 +173,153 @@ export function deadlineKindLabel(kind: string, area: string): string {
 }
 
 /**
- * A bookmark toggle that saves/unsaves an item (paper, grant, conference, or
- * fellowship) to the user's Saves page. Optimistic feel via the mutation's
- * pending state; disabled while a write is in flight. The label always states
- * the action for screen readers.
+ * A bookmark control that saves an item (paper, grant, conference, or
+ * fellowship) to the caller's **personal** workspace, or — for a lab manager —
+ * to one of their **labs'** shared saves.
  *
- * `variant="icon"` renders a compact, round bookmark-only button (used on the
- * cards where space is tight); the default renders the labelled pill used on
- * the Saves page.
+ * With no managed labs it is a plain personal toggle (unchanged). With one or
+ * more managed labs it becomes a small dropdown: Personal plus each managed lab,
+ * each showing a check when the item is already saved there. Selecting a row
+ * toggles that scope. `savedLabs` is the list of managed-lab slugs already
+ * holding the item (from the feed's `saved_labs`).
+ *
+ * `variant="icon"` renders a compact round trigger (used where space is tight);
+ * the default renders the labelled pill used on the Saves page.
  */
 export function SaveButton({
   contentId,
   saved,
+  savedLabs = [],
   variant = "full",
 }: {
   contentId: string;
   saved: boolean;
+  savedLabs?: string[];
   variant?: "full" | "icon";
 }) {
   const { save, unsave } = useSaveOpportunity();
+  const labsQuery = useMyLabs();
+  const managedLabs = React.useMemo(
+    () => (labsQuery.data ?? []).filter(canManageLab),
+    [labsQuery.data],
+  );
+  const { open, setOpen, ref } = useDismissable<HTMLDivElement>();
+
   const pending = save.isPending || unsave.isPending;
-  const toggle = () => {
-    if (saved) {
-      unsave.mutate(contentId);
+  const savedLabSet = React.useMemo(() => new Set(savedLabs), [savedLabs]);
+  const anySaved = saved || savedLabs.length > 0;
+
+  const toggleScope = (labSlug?: string) => {
+    const already = labSlug ? savedLabSet.has(labSlug) : saved;
+    if (already) {
+      unsave.mutate({ contentId, labSlug });
     } else {
-      save.mutate({ contentId });
+      save.mutate({ contentId, labSlug });
     }
   };
-  const label = saved ? "Remove from your saves" : "Save for later";
-  const tone = saved
+
+  // No labs to save into → the original one-click personal toggle.
+  if (managedLabs.length === 0) {
+    return (
+      <SaveTrigger
+        variant={variant}
+        active={saved}
+        pending={pending}
+        label={saved ? "Remove from your saves" : "Save for later"}
+        onClick={() => toggleScope()}
+      />
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative inline-flex shrink-0">
+      <SaveTrigger
+        variant={variant}
+        active={anySaved}
+        pending={pending}
+        hasCaret
+        label="Choose where to save"
+        onClick={() => setOpen((v) => !v)}
+        expanded={open}
+      />
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+6px)] z-40 min-w-[220px] rounded-2xl border border-border bg-surface p-1.5 shadow-[var(--shadow)]"
+        >
+          <p className="px-2.5 pb-1 pt-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+            Save to
+          </p>
+          <SaveScopeItem
+            label="Personal"
+            checked={saved}
+            disabled={pending}
+            onSelect={() => toggleScope()}
+          />
+          {managedLabs.map((lab) => (
+            <SaveScopeItem
+              key={lab.slug}
+              label={lab.name}
+              checked={savedLabSet.has(lab.slug)}
+              disabled={pending}
+              onSelect={() => toggleScope(lab.slug)}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** The button that opens the save menu (or toggles a personal save directly). */
+function SaveTrigger({
+  variant,
+  active,
+  pending,
+  label,
+  onClick,
+  hasCaret = false,
+  expanded,
+}: {
+  variant: "full" | "icon";
+  active: boolean;
+  pending: boolean;
+  label: string;
+  onClick: () => void;
+  hasCaret?: boolean;
+  expanded?: boolean;
+}) {
+  const shared = {
+    onClick,
+    disabled: pending,
+    "aria-label": label,
+    title: label,
+    ...(hasCaret
+      ? { "aria-haspopup": "menu" as const, "aria-expanded": expanded }
+      : { "aria-pressed": active }),
+  };
+
+  if (variant === "icon") {
+    const iconTone = active
+      ? "border-[color-mix(in_srgb,var(--accent)_45%,transparent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-accent hover:bg-[color-mix(in_srgb,var(--accent)_24%,transparent)]"
+      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] hover:text-accent";
+    return (
+      <button
+        type="button"
+        {...shared}
+        className={cn(
+          "inline-flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-full border transition-colors disabled:opacity-60",
+          hasCaret ? "px-2" : "w-8",
+          iconTone,
+        )}
+      >
+        <BookmarkIcon size={14} aria-hidden="true" />
+        {hasCaret ? <ChevronDownIcon size={12} aria-hidden="true" /> : null}
+      </button>
+    );
+  }
+
+  const tone = active
     ? {
         borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
         backgroundColor: "color-mix(in srgb, var(--accent) 12%, transparent)",
@@ -199,40 +330,55 @@ export function SaveButton({
         backgroundColor: "var(--surface)",
         color: "var(--text-secondary)",
       };
-
-  if (variant === "icon") {
-    // Colors live in className (not inline style) so the hover state can take
-    // effect; each state keeps a clear icon-to-background contrast.
-    const iconTone = saved
-      ? "border-[color-mix(in_srgb,var(--accent)_45%,transparent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-accent hover:bg-[color-mix(in_srgb,var(--accent)_24%,transparent)]"
-      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] hover:text-accent";
-    return (
-      <button
-        type="button"
-        disabled={pending}
-        onClick={toggle}
-        aria-pressed={saved}
-        aria-label={label}
-        title={label}
-        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${iconTone}`}
-      >
-        <BookmarkIcon size={14} aria-hidden="true" />
-      </button>
-    );
-  }
-
   return (
     <button
       type="button"
-      disabled={pending}
-      onClick={toggle}
-      aria-pressed={saved}
-      aria-label={label}
+      {...shared}
       className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60"
       style={tone}
     >
       <BookmarkIcon size={13} aria-hidden="true" />
-      {saved ? "Saved" : "Save"}
+      {active ? "Saved" : "Save"}
+      {hasCaret ? <ChevronDownIcon size={12} aria-hidden="true" /> : null}
+    </button>
+  );
+}
+
+/** One scope row in the save menu (personal or a lab), with a saved check. */
+function SaveScopeItem({
+  label,
+  checked,
+  disabled,
+  onSelect,
+}: {
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitemcheckbox"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={onSelect}
+      className={cn(
+        "flex w-full items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-[13.5px] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+        checked && "bg-surface-alt",
+      )}
+    >
+      <span
+        className={cn(
+          "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
+          checked
+            ? "border-accent bg-accent text-[#fffdf8]"
+            : "border-border text-transparent",
+        )}
+      >
+        <CheckIcon size={12} aria-hidden="true" />
+      </span>
+      <span className="flex-1 truncate text-[var(--text-primary)]">{label}</span>
     </button>
   );
 }
