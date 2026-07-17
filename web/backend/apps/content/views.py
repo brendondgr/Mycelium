@@ -1,5 +1,5 @@
 from collections import Counter, defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from django.conf import settings
 from django.shortcuts import get_object_or_404
@@ -474,34 +474,41 @@ def _lab_fellowship_card(content, eligible: list[dict]) -> dict:
     }
 
 
-def _lab_eligible_fellowships(member_ids) -> list[dict]:
-    """Fellowships a lab can act on, named by their eligible **consenting** members.
+def _lab_fellowship_member_scores(member_ids):
+    """Yield each member fellowship match that is **eligible** and **consenting**.
 
-    A fellowship "matches a lab" only as a union of member matches (D-1): it is
-    surfaced when at least one member is personally eligible (tier qualified /
-    conditional) **and** has opted into lab-visible eligibility
+    The single gate the lab fellowship surface is built from (D-1/D-11): tier is
+    qualified/conditional **and** the member opted into lab-visible eligibility
     (``interests.eligibility.lab_visible``, default off). Members who are ineligible,
-    or eligible but not consenting, are never named — so no one's citizenship or
-    career stage leaks by inference (D-11). This is the only place lab fellowships
-    surface; the whole-corpus feed stays user-only.
+    or eligible but not consenting, never appear. Shared by the card list and the
+    time-window counts so both apply exactly the same disclosure rule.
     """
     if not member_ids:
-        return []
+        return
     scores = RelevanceScore.objects.filter(
         target_user_id__in=member_ids, content__type=ContentItem.Type.FELLOWSHIP
     ).select_related("content", "target_user", "target_user__profile")
-
-    content_by_id: dict[str, ContentItem] = {}
-    members_by_content: dict[str, list[dict]] = defaultdict(list)
     for score in scores:
         if score.signals.get("tier") not in _ELIGIBLE_TIERS:
             continue  # eligible only — an ineligible member is never surfaced
         member = score.target_user
         profile = getattr(member, "profile", None)
         interests = (profile.interests or {}) if profile else {}
-        eligibility = interests.get("eligibility", {})
-        if not eligibility.get("lab_visible"):
+        if not interests.get("eligibility", {}).get("lab_visible"):
             continue  # opt-in consent only
+        yield score, member
+
+
+def _lab_eligible_fellowships(member_ids) -> list[dict]:
+    """Fellowships a lab can act on, named by their eligible **consenting** members.
+
+    A fellowship "matches a lab" only as a union of member matches (see
+    :func:`_lab_fellowship_member_scores`). This is the only place lab fellowships
+    surface; the whole-corpus feed stays user-only.
+    """
+    content_by_id: dict[str, ContentItem] = {}
+    members_by_content: dict[str, list[dict]] = defaultdict(list)
+    for score, member in _lab_fellowship_member_scores(member_ids):
         cid = str(score.content_id)
         content_by_id[cid] = score.content
         members_by_content[cid].append(
@@ -519,6 +526,63 @@ def _lab_eligible_fellowships(member_ids) -> list[dict]:
     ]
     cards.sort(key=lambda c: (-len(c["eligible"]), c["title"]))
     return cards
+
+
+def _count_windows(stamps, now) -> dict[str, int]:
+    """Bucket a list of ``created_at`` datetimes into cumulative recency windows.
+
+    Returns ``{today, week, month, year}`` where each larger window includes the
+    smaller ones (today ≤ week ≤ month ≤ year), so the lab overview can show "found
+    today / this week / this month / this year" as honest monotonic totals.
+    """
+    start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week = now - timedelta(days=7)
+    month = now - timedelta(days=30)
+    year = now - timedelta(days=365)
+    counts = {"today": 0, "week": 0, "month": 0, "year": 0}
+    for ts in stamps:
+        if ts is None or ts < year:
+            continue
+        counts["year"] += 1
+        if ts >= month:
+            counts["month"] += 1
+        if ts >= week:
+            counts["week"] += 1
+        if ts >= start_today:
+            counts["today"] += 1
+    return counts
+
+
+def _window_counts(target_filter: dict, member_ids) -> dict[str, dict[str, int]]:
+    """Per-area today/week/month/year counts for a target's matched items.
+
+    Papers/grants/conferences count the target's own suggested ``RelevanceScore``
+    rows by their insert time (``created_at`` — when Mylo scored/appended it for the
+    target). Fellowships count the distinct fellowships surfaced to the lab (union of
+    eligible, consenting member matches), dated by when each first entered that
+    surface. Empty windows are still reported as zeroes.
+    """
+    now = timezone.now()
+    counts: dict[str, dict[str, int]] = {}
+    for key, ctype in (
+        ("papers", ContentItem.Type.PAPER),
+        ("grants", ContentItem.Type.GRANT),
+        ("conferences", ContentItem.Type.CONFERENCE),
+    ):
+        rows = RelevanceScore.objects.filter(
+            **target_filter, content__type=ctype
+        ).values_list("created_at", "signals")
+        stamps = [ca for ca, sig in rows if (sig or {}).get("suggested")]
+        counts[key] = _count_windows(stamps, now)
+
+    # A lab fellowship is dated by when it first entered the consented union.
+    earliest: dict[str, object] = {}
+    for score, _member in _lab_fellowship_member_scores(member_ids):
+        cid = str(score.content_id)
+        if cid not in earliest or score.created_at < earliest[cid]:
+            earliest[cid] = score.created_at
+    counts["fellowships"] = _count_windows(list(earliest.values()), now)
+    return counts
 
 
 def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dict:
@@ -548,6 +612,8 @@ def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dic
             "conferences": len(conferences),
             "fellowships": len(fellowships),
         },
+        # Per-area today/week/month/year totals for the lab overview stats block.
+        "window_counts": _window_counts(target_filter, list(member_ids)),
         "papers": SuggestionSerializer(
             papers, many=True, context={"today": today}
         ).data,

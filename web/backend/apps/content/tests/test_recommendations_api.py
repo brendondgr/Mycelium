@@ -4,8 +4,11 @@ These read already-stored ``RelevanceScore`` rows, so they need no retrieval /
 pgvector — the rows are created directly, mirroring what the matcher would persist.
 """
 
+from datetime import timedelta
+
 import pytest
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Lab, LabMembership
@@ -116,6 +119,44 @@ def test_outsider_cannot_read_project_recommendations(client: APIClient) -> None
 def test_recommendations_require_auth(client: APIClient) -> None:
     Lab.objects.create(name="Graph Lab", slug="graph-lab")
     assert client.get("/api/labs/graph-lab/recommendations/").status_code in (401, 403)
+
+
+def _backdate(score: RelevanceScore, days: int) -> None:
+    """Move a row's insert time back N days (``created_at`` is auto_now_add)."""
+    RelevanceScore.objects.filter(pk=score.pk).update(
+        created_at=timezone.now() - timedelta(days=days)
+    )
+
+
+@pytest.mark.django_db
+def test_window_counts_bucket_matches_by_recency(client: APIClient) -> None:
+    member = User.objects.create_user(username="m", password="p")
+    lab = Lab.objects.create(name="Graph Lab", slug="graph-lab")
+    LabMembership.objects.create(user=member, lab=lab, role=LabMembership.Role.MEMBER)
+
+    # Papers found at spread-out times: today / 3d / 20d / 100d / 400d ago.
+    _backdate(_score(_paper("p-today"), target_lab=lab), 0)
+    _backdate(_score(_paper("p-week"), target_lab=lab), 3)
+    _backdate(_score(_paper("p-month"), target_lab=lab), 20)
+    _backdate(_score(_paper("p-year"), target_lab=lab), 100)
+    _backdate(_score(_paper("p-old"), target_lab=lab), 400)
+    # A below-floor (not suggested) paper must never be counted.
+    hidden = _score(_paper("p-hidden"), target_lab=lab)
+    hidden.signals["suggested"] = False
+    hidden.save()
+
+    client.force_authenticate(member)
+    resp = client.get("/api/labs/graph-lab/recommendations/")
+    assert resp.status_code == 200
+    papers = resp.data["window_counts"]["papers"]
+    assert papers == {"today": 1, "week": 2, "month": 3, "year": 4}
+    # No grants at all — the area is still reported as all-zero windows.
+    assert resp.data["window_counts"]["grants"] == {
+        "today": 0,
+        "week": 0,
+        "month": 0,
+        "year": 0,
+    }
 
 
 @pytest.mark.django_db
