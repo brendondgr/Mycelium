@@ -132,6 +132,14 @@ class ProfileSerializer(_ContractInterestsMixin):
 
 
 class LabProfileSerializer(_ContractInterestsMixin):
+    # The logo lives on the Lab (LabProfile is OneToOne to it); surface it here
+    # read-only so the lab-config editor can show the current mark. Uploads go
+    # through LabLogoView, not this serializer.
+    has_logo = serializers.BooleanField(source="lab.has_logo", read_only=True)
+    logo_version = serializers.IntegerField(
+        source="lab.logo_version", read_only=True, allow_null=True
+    )
+
     class Meta:
         model = LabProfile
         fields = [
@@ -140,10 +148,12 @@ class LabProfileSerializer(_ContractInterestsMixin):
             "funding_needs",
             "strategic_needs",
             "interests",
+            "has_logo",
+            "logo_version",
             "embedding_text",
             "updated_at",
         ]
-        read_only_fields = ["embedding_text", "updated_at"]
+        read_only_fields = ["has_logo", "logo_version", "embedding_text", "updated_at"]
 
 
 class DeptProfileSerializer(_ContractInterestsMixin):
@@ -283,6 +293,10 @@ class MyLabSerializer(serializers.Serializer):
     role = serializers.CharField()
     is_lead = serializers.BooleanField()
     department = serializers.SerializerMethodField()
+    has_logo = serializers.BooleanField(source="lab.has_logo", read_only=True)
+    logo_version = serializers.IntegerField(
+        source="lab.logo_version", read_only=True, allow_null=True
+    )
 
     def get_department(self, membership: LabMembership):
         dept = membership.lab.department

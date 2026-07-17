@@ -67,6 +67,12 @@ class Lab(models.Model):
         default=9,
         help_text="Local hour (0–23) reminders target; day-granular for now.",
     )
+    # Optional lab logo, shown as the workspace's brand mark in the sidebar. A
+    # plain FileField (not ImageField) so Pillow isn't required; the upload view
+    # sniffs the magic bytes and stores the validated content type for serving.
+    # Served through the API (LabLogoView), never via MEDIA_URL directly.
+    logo = models.FileField(upload_to="lab-logos/", null=True, blank=True)
+    logo_content_type = models.CharField(max_length=64, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -75,6 +81,17 @@ class Lab(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    @property
+    def has_logo(self) -> bool:
+        return bool(self.logo)
+
+    @property
+    def logo_version(self) -> int | None:
+        """A cache-busting token for the logo URL (its last-modified epoch)."""
+        if not self.logo:
+            return None
+        return int(self.updated_at.timestamp()) if self.updated_at else 0
 
 
 class LabMembership(models.Model):

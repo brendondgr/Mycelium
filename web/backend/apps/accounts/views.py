@@ -4,6 +4,7 @@ import json
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.http import FileResponse, Http404
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -15,6 +16,7 @@ from rest_framework.decorators import (
 )
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import SAFE_METHODS, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -224,6 +226,129 @@ class LabProfileView(RetrieveUpdateAPIView):
         elif not user_can_edit_lab_profile(user, lab):
             raise PermissionDenied("Only a lab lead or admin can edit this profile.")
         return lab.profile
+
+
+#: Max lab-logo upload size (2 MB) and the raster/vector types we accept.
+LAB_LOGO_MAX_BYTES = 2 * 1024 * 1024
+
+
+def _lab_logo_payload(lab: Lab) -> dict[str, object]:
+    """The write-response shape for the logo endpoint (also the serializer fields)."""
+    return {"has_logo": lab.has_logo, "logo_version": lab.logo_version}
+
+
+def sniff_image_content_type(data: bytes) -> str | None:
+    """Return the image content type from magic bytes, or ``None`` if unknown.
+
+    Dependency-free (no Pillow): recognises PNG/JPEG/GIF/WebP by signature and
+    SVG by a leading ``<svg``/``<?xml`` marker. SVG is safe here because the logo
+    is only ever rendered via ``<img src>`` (scripts inside it never execute) and
+    served with ``X-Content-Type-Options: nosniff``.
+    """
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    head = data[:512].lstrip().lstrip(b"\xef\xbb\xbf").lstrip()
+    if head[:5].lower() == b"<?xml" or head[:4].lower() == b"<svg":
+        lowered = data[:4096].lower()
+        if b"<svg" in lowered:
+            return "image/svg+xml"
+    return None
+
+
+class LabLogoView(APIView):
+    """Serve, replace, or clear a lab's logo — served through the API gateway.
+
+    ``GET`` streams the stored file to any lab member. ``POST``/``PUT`` accept a
+    multipart ``file`` upload (validated by size + magic bytes) from a lead PI /
+    owner / admin. ``DELETE`` clears it. Kept off ``MEDIA_URL`` so no static
+    media route or nginx location is needed — the existing ``/api`` gateway
+    already reaches the backend.
+    """
+
+    parser_classes = [MultiPartParser, FormParser]
+
+    def _lab(self) -> Lab:
+        return get_object_or_404(Lab, slug=self.kwargs["slug"])
+
+    def get(self, request: Request, slug: str) -> Response | FileResponse:
+        lab = self._lab()
+        if not user_has_lab_access(request.user, lab):
+            raise PermissionDenied("You do not have access to this lab.")
+        if not lab.logo:
+            raise Http404("This lab has no logo.")
+        response = FileResponse(
+            lab.logo.open("rb"),
+            content_type=lab.logo_content_type or "application/octet-stream",
+        )
+        response["X-Content-Type-Options"] = "nosniff"
+        response["Content-Disposition"] = "inline"
+        response["Cache-Control"] = "private, max-age=300"
+        return response
+
+    def _save(self, request: Request) -> Response:
+        lab = self._lab()
+        if not user_can_edit_lab_profile(request.user, lab):
+            raise PermissionDenied("Only a lab lead or admin can change the logo.")
+        upload = request.FILES.get("file") or request.FILES.get("logo")
+        if upload is None:
+            return Response(
+                {"file": ["No file was uploaded."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if upload.size > LAB_LOGO_MAX_BYTES:
+            return Response(
+                {"file": ["The logo must be 2 MB or smaller."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        content_type = sniff_image_content_type(upload.read(4096))
+        upload.seek(0)
+        if content_type is None:
+            return Response(
+                {"file": ["Use a PNG, JPG, GIF, WebP, or SVG image."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ext = {
+            "image/png": "png",
+            "image/jpeg": "jpg",
+            "image/gif": "gif",
+            "image/webp": "webp",
+            "image/svg+xml": "svg",
+        }[content_type]
+        if lab.logo:
+            lab.logo.delete(save=False)
+        lab.logo.save(f"{lab.slug}.{ext}", upload, save=False)
+        lab.logo_content_type = content_type
+        lab.save(update_fields=["logo", "logo_content_type", "updated_at"])
+        record_audit_event(
+            actor=request.user,
+            action="lab.logo.update",
+            target_type="lab",
+            target_id=str(lab.id),
+            metadata={"content_type": content_type},
+        )
+        return Response(_lab_logo_payload(lab))
+
+    def post(self, request: Request, slug: str) -> Response:
+        return self._save(request)
+
+    def put(self, request: Request, slug: str) -> Response:
+        return self._save(request)
+
+    def delete(self, request: Request, slug: str) -> Response:
+        lab = self._lab()
+        if not user_can_edit_lab_profile(request.user, lab):
+            raise PermissionDenied("Only a lab lead or admin can change the logo.")
+        if lab.logo:
+            lab.logo.delete(save=False)
+        lab.logo_content_type = ""
+        lab.save(update_fields=["logo", "logo_content_type", "updated_at"])
+        return Response(_lab_logo_payload(lab))
 
 
 class LabWatchView(RetrieveUpdateAPIView):

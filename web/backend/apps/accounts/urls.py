@@ -44,6 +44,17 @@ urlpatterns = [
         views.LabProfileView.as_view(),
         name="lab-profile-no-slash",
     ),
+    # Lab logo: any member reads (GET streams it); lead/owner/admin upload/clear.
+    path(
+        "labs/<slug:slug>/logo/",
+        views.LabLogoView.as_view(),
+        name="lab-logo",
+    ),
+    path(
+        "labs/<slug:slug>/logo",
+        views.LabLogoView.as_view(),
+        name="lab-logo-no-slash",
+    ),
     # What Mylo keeps an eye on for a lab (members read; lead/admin edit).
     path(
         "labs/<slug:slug>/watch/",

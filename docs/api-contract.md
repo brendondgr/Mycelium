@@ -177,13 +177,26 @@ The caller's lab memberships, for the workspace switcher. Success `200` — a li
 
 ```json
 [
-  { "slug": "reyes-lab", "name": "Reyes Lab", "role": "owner", "is_lead": true, "department": "Biology" }
+  { "slug": "reyes-lab", "name": "Reyes Lab", "role": "owner", "is_lead": true, "department": "Biology", "has_logo": true, "logo_version": 1752719700 }
 ]
 ```
 
 `role` is the raw membership role (`owner | admin | member | viewer`); `is_lead`
-marks a PI. `department` is the lab's department name or `null`. The frontend
-derives a human label (e.g. lead → "PI"). `401`/`403` when anonymous.
+marks a PI. `department` is the lab's department name or `null`. `has_logo` says
+whether the lab has an uploaded logo; `logo_version` is a cache-busting token
+(its last-modified epoch, `null` when unset) the client appends to the logo URL.
+The frontend derives a human label (e.g. lead → "PI"). `401`/`403` when anonymous.
+
+### `GET | POST | PUT | DELETE /api/auth/labs/<slug>/logo/`
+
+The lab's logo, served **through the API gateway** (no `MEDIA_URL`/static route).
+`GET` streams the stored image to any lab member (`image/png|jpeg|gif|webp|svg+xml`,
+`X-Content-Type-Options: nosniff`); `404` when the lab has no logo. `POST`/`PUT`
+take a multipart `file` (≤2 MB; PNG/JPG/GIF/WebP/SVG validated by magic bytes) and
+set the logo — restricted to the lead PI / owner / admin; success `200` returns
+`{ "has_logo": true, "logo_version": <int> }`. `DELETE` clears it (same gate,
+returns `{ "has_logo": false, "logo_version": null }`). `400` on a missing/oversize/
+non-image file; `403` for a plain member; `404` for an unknown slug.
 
 ### `POST /api/auth/labs/`
 
