@@ -84,6 +84,13 @@ urlpatterns = [
     # The Saves (bookmarks) page: every save with feed-parity card payloads.
     path("saves/", views.SavedItemsView.as_view(), name="saves"),
     path("saves", views.SavedItemsView.as_view()),
+    # A lab's shared saves (lab Saves area); members read, managers mutate.
+    path(
+        "labs/<slug:slug>/saves/",
+        views.LabSavedItemsView.as_view(),
+        name="lab-saves",
+    ),
+    path("labs/<slug:slug>/saves", views.LabSavedItemsView.as_view()),
     path("notifications/", views.NotificationsView.as_view(), name="notifications"),
     path("notifications", views.NotificationsView.as_view()),
     path(

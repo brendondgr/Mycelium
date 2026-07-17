@@ -24,6 +24,7 @@ import type {
   ProjectFeed,
   Reminder,
   SavedDeadline,
+  LabSavesResponse,
   SavedItem,
   SearchParams,
   SearchResponse,
@@ -151,6 +152,14 @@ export async function fetchSaves(): Promise<{ items: SavedItem[] }> {
   return getJson<{ items: SavedItem[] }>(
     buildApiUrl(getPublicApiBase(), "saves"),
     "Could not load your saves.",
+  );
+}
+
+/** A lab's shared saves with feed-parity cards (lab Saves area). */
+export async function fetchLabSaves(slug: string): Promise<LabSavesResponse> {
+  return getJson<LabSavesResponse>(
+    buildApiUrl(getPublicApiBase(), "labs", slug, "saves"),
+    "Could not load this lab's saves.",
   );
 }
 

@@ -44,16 +44,25 @@ export function ReminderComposer({
   title,
   deadlines,
   onClose,
+  lockedScope,
+  lockedLabSlug,
 }: {
   contentId: string;
   title: string;
   deadlines: DeadlineOption[];
   onClose: () => void;
+  /** When set, the composer is fixed to a lab reminder for `lockedLabSlug` and
+   * the scope/lab pickers are hidden — used from a lab's saved area. */
+  lockedScope?: "lab";
+  lockedLabSlug?: string;
 }) {
+  const locked = lockedScope === "lab" && Boolean(lockedLabSlug);
   const datedDeadlines = deadlines.filter((d) => d.due_date);
   const [kind, setKind] = React.useState(datedDeadlines[0]?.kind ?? "");
-  const [scope, setScope] = React.useState<"personal" | "lab">("personal");
-  const [labSlug, setLabSlug] = React.useState("");
+  const [scope, setScope] = React.useState<"personal" | "lab">(
+    locked ? "lab" : "personal",
+  );
+  const [labSlug, setLabSlug] = React.useState(locked ? lockedLabSlug! : "");
   const [selected, setSelected] = React.useState<Set<string>>(
     new Set(DEFAULT_SELECTED),
   );
@@ -165,39 +174,54 @@ export function ReminderComposer({
                 </Field>
               ) : null}
 
-              <Field label="Remind">
-                <div className="flex gap-1.5">
-                  <Chip
-                    active={scope === "personal"}
-                    onClick={() => setScope("personal")}
-                  >
-                    Just me (DM)
-                  </Chip>
-                  <Chip
-                    active={scope === "lab"}
-                    onClick={() => setScope("lab")}
-                    disabled={labOptions.length === 0}
-                  >
-                    My lab (channel)
-                  </Chip>
-                </div>
-              </Field>
-
-              {scope === "lab" && labOptions.length > 0 ? (
-                <Field label="Lab">
-                  <select
-                    value={effectiveLabSlug}
-                    onChange={(e) => setLabSlug(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {labOptions.map((lab) => (
-                      <option key={lab.slug} value={lab.slug}>
-                        {lab.name}
-                      </option>
-                    ))}
-                  </select>
+              {locked ? (
+                <Field label="Remind">
+                  <p className="text-[13px] text-[var(--text-secondary)]">
+                    Posts to{" "}
+                    <span className="font-semibold text-[var(--text-primary)]">
+                      {labOptions.find((l) => l.slug === effectiveLabSlug)?.name ??
+                        "this lab"}
+                    </span>
+                    &apos;s Discord channel.
+                  </p>
                 </Field>
-              ) : null}
+              ) : (
+                <>
+                  <Field label="Remind">
+                    <div className="flex gap-1.5">
+                      <Chip
+                        active={scope === "personal"}
+                        onClick={() => setScope("personal")}
+                      >
+                        Just me (DM)
+                      </Chip>
+                      <Chip
+                        active={scope === "lab"}
+                        onClick={() => setScope("lab")}
+                        disabled={labOptions.length === 0}
+                      >
+                        My lab (channel)
+                      </Chip>
+                    </div>
+                  </Field>
+
+                  {scope === "lab" && labOptions.length > 0 ? (
+                    <Field label="Lab">
+                      <select
+                        value={effectiveLabSlug}
+                        onChange={(e) => setLabSlug(e.target.value)}
+                        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {labOptions.map((lab) => (
+                          <option key={lab.slug} value={lab.slug}>
+                            {lab.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  ) : null}
+                </>
+              )}
 
               <Field label="Remind me before">
                 <div className="flex flex-wrap gap-1.5">

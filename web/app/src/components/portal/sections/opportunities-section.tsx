@@ -77,6 +77,7 @@ export function GrantRow({ grant }: { grant: GrantOpportunity }) {
           <SaveButton
             contentId={grant.content_id}
             saved={grant.saved}
+            savedLabs={grant.saved_labs}
             variant="icon"
           />
           {due ? (
