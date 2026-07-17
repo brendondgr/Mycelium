@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import Lab, LabMembership
-from apps.accounts.permissions import user_has_lab_access
+from apps.accounts.permissions import user_can_manage_lab, user_has_lab_access
 from apps.core.people import display_name, initials
 from apps.research.models import Project
 
@@ -148,6 +148,7 @@ class DailyReportView(APIView):
                     context={
                         "today": today,
                         "saved_ids": _saved_content_ids(request.user),
+                        "saved_labs": _saved_lab_slugs_by_content(request.user),
                     },
                 ).data,
             }
@@ -293,13 +294,44 @@ DEADLINE_ALERT_DAYS = 7
 
 
 def _saved_content_ids(user) -> set[str]:
-    """The content ids the user has saved (for the ``saved`` flag on each item)."""
+    """The content ids the user saved **personally** (the ``saved`` flag per item).
+
+    Lab saves are excluded (``target_lab__isnull=True``): the card's ``saved`` flag
+    means "in my personal saves", while ``saved_labs`` carries the lab-save state.
+    """
     return {
         str(cid)
         for cid in SavedOpportunity.objects.filter(
-            user=user, content__isnull=False
+            user=user, content__isnull=False, target_lab__isnull=True
         ).values_list("content_id", flat=True)
     }
+
+
+def _saved_lab_slugs_by_content(user) -> dict[str, list[str]]:
+    """Map content id -> lab slugs (among labs the user **manages**) that saved it.
+
+    Feeds the ``saved_labs`` flag so the save dropdown can show which of the
+    caller's managed labs already hold each item. One query; grouped in Python.
+    """
+    managed_lab_ids = list(
+        LabMembership.objects.filter(
+            user=user,
+            role__in=[LabMembership.Role.OWNER, LabMembership.Role.ADMIN],
+        ).values_list("lab_id", flat=True)
+    )
+    if not managed_lab_ids:
+        return {}
+    out: dict[str, list[str]] = {}
+    rows = (
+        SavedOpportunity.objects.filter(
+            target_lab_id__in=managed_lab_ids, content__isnull=False
+        )
+        .select_related("target_lab")
+        .values_list("content_id", "target_lab__slug")
+    )
+    for content_id, slug in rows:
+        out.setdefault(str(content_id), []).append(slug)
+    return out
 
 
 def _latest_scores(target_filter: dict, content_type: str) -> list[RelevanceScore]:
@@ -398,6 +430,7 @@ class _OpportunityFeedView(APIView):
         context = {
             "today": timezone.now().date().isoformat(),
             "saved_ids": _saved_content_ids(request.user),
+            "saved_labs": _saved_lab_slugs_by_content(request.user),
         }
         return Response(
             {
@@ -616,7 +649,11 @@ def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dic
     signed-in user regardless of whose recommendations these are.
     """
     today = timezone.now().date().isoformat()
-    opp_context = {"today": today, "saved_ids": _saved_content_ids(user)}
+    opp_context = {
+        "today": today,
+        "saved_ids": _saved_content_ids(user),
+        "saved_labs": _saved_lab_slugs_by_content(user),
+    }
     # Papers are fresh-only (latest gather batch); opportunities accumulate.
     papers = _latest_scores(target_filter, ContentItem.Type.PAPER)
     grants = _accumulated_scores(target_filter, ContentItem.Type.GRANT)
@@ -726,7 +763,12 @@ class SaveOpportunityView(APIView):
                 {"detail": "No such paper, grant, conference, or fellowship."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        saved = _save_from_item(request.user, item, note=request.data.get("note", ""))
+        lab, error = self._resolve_lab(request)
+        if error is not None:
+            return error
+        saved = _save_from_item(
+            request.user, item, note=request.data.get("note", ""), target_lab=lab
+        )
         context = {"today_date": timezone.now().date()}
         return Response(
             SavedDeadlineSerializer(saved, context=context).data,
@@ -734,16 +776,54 @@ class SaveOpportunityView(APIView):
         )
 
     def delete(self, request, content_id):
-        deleted, _ = SavedOpportunity.objects.filter(
-            user=request.user, content_id=content_id
-        ).delete()
+        lab, error = self._resolve_lab(request)
+        if error is not None:
+            return error
+        if lab is not None:
+            qs = SavedOpportunity.objects.filter(
+                target_lab=lab, content_id=content_id
+            )
+        else:
+            qs = SavedOpportunity.objects.filter(
+                user=request.user, target_lab__isnull=True, content_id=content_id
+            )
+        deleted, _ = qs.delete()
         if not deleted:
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def _resolve_lab(self, request):
+        """Resolve an optional lab target (``lab_slug`` body / ``lab`` query).
 
-def _save_from_item(user, item: ContentItem, *, note: str) -> SavedOpportunity:
-    """Create/update a save, snapshotting the display + deadline fields."""
+        Returns ``(lab, None)`` — ``lab`` null for a personal save — or
+        ``(None, Response)`` when the lab is unknown or the caller can't manage it.
+        Only a lab manager (owner/admin/PI) may save to or unsave from a lab.
+        """
+        slug = request.data.get("lab_slug") or request.query_params.get("lab")
+        if not slug:
+            return None, None
+        lab = Lab.objects.filter(slug=slug).first()
+        if lab is None:
+            return None, Response(
+                {"detail": "No such lab."}, status=status.HTTP_404_NOT_FOUND
+            )
+        if not user_can_manage_lab(request.user, lab):
+            return None, Response(
+                {"detail": "Only a lab manager can save to a lab."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return lab, None
+
+
+def _save_from_item(
+    user, item: ContentItem, *, note: str, target_lab=None
+) -> SavedOpportunity:
+    """Create/update a save, snapshotting the display + deadline fields.
+
+    ``target_lab`` null saves to ``user``'s personal workspace; otherwise it saves
+    to the lab (``user`` records who added it). The unique keys mean a repeat save
+    updates the existing row in place rather than duplicating.
+    """
     meta = item.metadata or {}
 
     if item.type == ContentItem.Type.GRANT:
@@ -770,22 +850,34 @@ def _save_from_item(user, item: ContentItem, *, note: str) -> SavedOpportunity:
         )
         url = meta.get("website") or item.source_url or ""
 
-    saved, _ = SavedOpportunity.objects.update_or_create(
-        user=user,
-        content=item,
-        defaults={
-            "area": area,
-            "title": title,
-            "url": url,
-            "subtitle": subtitle,
-            "deadline_date": meta.get("deadline_date") or None,
-            "deadline_kind": (
-                meta.get("next_kind") or SavedOpportunity.DeadlineKind.OTHER
-            ),
-            "snapshot": meta,
-            "note": note or "",
-        },
-    )
+    defaults = {
+        "area": area,
+        "title": title,
+        "url": url,
+        "subtitle": subtitle,
+        "deadline_date": meta.get("deadline_date") or None,
+        "deadline_kind": (
+            meta.get("next_kind") or SavedOpportunity.DeadlineKind.OTHER
+        ),
+        "snapshot": meta,
+        "note": note or "",
+    }
+    if target_lab is not None:
+        # Lab save: keyed on (target_lab, content) so any manager updates one row;
+        # ``user`` follows the latest saver.
+        saved, _ = SavedOpportunity.objects.update_or_create(
+            target_lab=target_lab,
+            content=item,
+            defaults={**defaults, "user": user},
+        )
+    else:
+        # Personal save: keyed on (user, content), personal only.
+        saved, _ = SavedOpportunity.objects.update_or_create(
+            user=user,
+            content=item,
+            target_lab__isnull=True,
+            defaults={**defaults, "target_lab": None},
+        )
     # Round-trip so date/enum fields are proper types (not the raw strings just
     # written) before the row is serialized back in the response.
     saved.refresh_from_db()
@@ -840,10 +932,66 @@ class SavedItemsView(APIView):
             "today": today.isoformat(),
             "today_date": today,
             "saved_ids": {str(cid) for cid in content_ids},
+            "saved_labs": _saved_lab_slugs_by_content(request.user),
             "scores_by_content": scores_by_content,
         }
         return Response(
             {"items": SavedItemSerializer(saves, many=True, context=context).data}
+        )
+
+
+class LabSavedItemsView(APIView):
+    """A lab's shared bookmarks, with feed-card parity (lab Saves area).
+
+    Any lab member may read them (``user_has_lab_access``); the card payloads are
+    built from the **lab's** :class:`RelevanceScore` rows, falling back to the save
+    snapshot when the item was never scored for the lab or has been pruned. The
+    envelope carries ``can_manage`` so the client can gate the save/remind/remove
+    affordances to managers (who alone may mutate a lab save).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, slug):
+        lab = Lab.objects.filter(slug=slug).first()
+        if lab is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        if not user_has_lab_access(request.user, lab):
+            return Response(
+                {"detail": "You don't have access to that lab."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        saves = list(
+            SavedOpportunity.objects.filter(target_lab=lab)
+            .select_related("content")
+            .order_by("-created_at")
+        )
+        content_ids = [s.content_id for s in saves if s.content_id]
+        scores_by_content = {
+            score.content_id: score
+            for score in RelevanceScore.objects.filter(
+                target_lab=lab,
+                content_id__in=content_ids,
+                content__isnull=False,
+            )
+            .select_related("content")
+            .prefetch_related("content__deadline_rows")
+        }
+        today = timezone.now().date()
+        context = {
+            "today": today.isoformat(),
+            "today_date": today,
+            # The card's ``saved`` flag stays personal-scoped for consistency; the
+            # lab-save state travels on ``saved_labs``.
+            "saved_ids": _saved_content_ids(request.user),
+            "saved_labs": _saved_lab_slugs_by_content(request.user),
+            "scores_by_content": scores_by_content,
+        }
+        return Response(
+            {
+                "can_manage": user_can_manage_lab(request.user, lab),
+                "items": SavedItemSerializer(saves, many=True, context=context).data,
+            }
         )
 
 
@@ -993,8 +1141,13 @@ class SearchView(APIView):
         )
 
         saved_ids = _saved_content_ids(request.user) if result.items else set()
+        saved_labs = (
+            _saved_lab_slugs_by_content(request.user) if result.items else {}
+        )
         serializer = SearchResultSerializer(
-            result.items, many=True, context={"saved_ids": saved_ids}
+            result.items,
+            many=True,
+            context={"saved_ids": saved_ids, "saved_labs": saved_labs},
         )
         return Response(
             {

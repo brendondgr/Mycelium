@@ -35,6 +35,7 @@ class SuggestionSerializer(serializers.Serializer):
     is_new = serializers.SerializerMethodField()
     pinned = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
+    saved_labs = serializers.SerializerMethodField()
 
     def get_content_id(self, score: RelevanceScore) -> str:
         return str(score.content_id)
@@ -117,6 +118,10 @@ class SuggestionSerializer(serializers.Serializer):
         # feeds that don't pass it simply render the flag as false).
         return str(score.content_id) in self.context.get("saved_ids", set())
 
+    def get_saved_labs(self, score: RelevanceScore) -> list[str]:
+        # Slugs of the reader's managed labs that already saved this item.
+        return self.context.get("saved_labs", {}).get(str(score.content_id), [])
+
 
 class _OpportunitySerializer(serializers.Serializer):
     """Shared read shape for a matched grant/conference (a :class:`RelevanceScore`).
@@ -147,6 +152,7 @@ class _OpportunitySerializer(serializers.Serializer):
     addressable_deadlines = serializers.SerializerMethodField()
     status_summary = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
+    saved_labs = serializers.SerializerMethodField()
 
     def _meta(self, score: RelevanceScore) -> dict:
         return (score.content.metadata or {}) if score.content_id else {}
@@ -227,6 +233,9 @@ class _OpportunitySerializer(serializers.Serializer):
 
     def get_saved(self, score: RelevanceScore) -> bool:
         return str(score.content_id) in self.context.get("saved_ids", set())
+
+    def get_saved_labs(self, score: RelevanceScore) -> list[str]:
+        return self.context.get("saved_labs", {}).get(str(score.content_id), [])
 
 
 class GrantSerializer(_OpportunitySerializer):
@@ -484,6 +493,7 @@ class SearchResultSerializer(serializers.Serializer):
     score = serializers.SerializerMethodField()
     matched_on = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
+    saved_labs = serializers.SerializerMethodField()
     # Compact type-specific extras (mostly null off-type; the card branches).
     authors = serializers.SerializerMethodField()
     venue = serializers.SerializerMethodField()
@@ -531,6 +541,9 @@ class SearchResultSerializer(serializers.Serializer):
 
     def get_saved(self, item: ContentItem) -> bool:
         return str(item.id) in self.context.get("saved_ids", set())
+
+    def get_saved_labs(self, item: ContentItem) -> list[str]:
+        return self.context.get("saved_labs", {}).get(str(item.id), [])
 
     def get_authors(self, item: ContentItem) -> list:
         authors = self._meta(item).get("authors")

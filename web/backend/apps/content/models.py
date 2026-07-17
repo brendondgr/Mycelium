@@ -186,14 +186,20 @@ class RelevanceScore(models.Model):
 
 
 class SavedOpportunity(models.Model):
-    """An item a user has bookmarked: grant, conference, fellowship, or paper.
+    """An item bookmarked to a personal workspace **or** to a lab.
 
     Backs the save system and the Saves (bookmarks) page. The link to the global
     :class:`ContentItem` is ``SET_NULL`` and a display + deadline **snapshot** is
     stored at save time, so the daily prune of expired opportunities never
-    destroys a user's save — the Saves view falls back to the snapshot even
-    after the source item is gone. One save per ``(user, content)``. Papers
-    carry no deadline; the deadline fields stay null for them.
+    destroys a save — the Saves view falls back to the snapshot even after the
+    source item is gone. Papers carry no deadline; the deadline fields stay null.
+
+    ``user`` is always the **actor** who saved the item. A **personal** save has
+    ``target_lab`` null and belongs to that user (unique ``(user, content)``). A
+    **lab** save has ``target_lab`` set and belongs to the lab (unique
+    ``(target_lab, content)`` — one per lab regardless of which manager added it);
+    ``user`` then records who added it. Only a lab manager may create or remove a
+    lab save (enforced in the view).
     """
 
     class Area(models.TextChoices):
@@ -214,6 +220,14 @@ class SavedOpportunity(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="saved_opportunities",
+    )
+    target_lab = models.ForeignKey(
+        "accounts.Lab",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="saved_opportunities",
+        help_text="Set for a lab save; null for a personal save.",
     )
     content = models.ForeignKey(
         ContentItem,
@@ -255,12 +269,20 @@ class SavedOpportunity(models.Model):
         ordering = ["deadline_date", "created_at"]
         indexes = [
             models.Index(fields=["user", "deadline_date"]),
+            models.Index(fields=["target_lab", "deadline_date"]),
         ]
         constraints = [
+            # One personal save per (user, content) — personal saves only.
             models.UniqueConstraint(
                 fields=["user", "content"],
-                condition=Q(content__isnull=False),
+                condition=Q(content__isnull=False, target_lab__isnull=True),
                 name="content_saved_opportunity_unique_user_content",
+            ),
+            # One lab save per (lab, content), regardless of which manager added it.
+            models.UniqueConstraint(
+                fields=["target_lab", "content"],
+                condition=Q(content__isnull=False, target_lab__isnull=False),
+                name="content_saved_opportunity_unique_lab_content",
             ),
         ]
 

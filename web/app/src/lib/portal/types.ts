@@ -145,6 +145,8 @@ export type Suggestion = {
   pinned: boolean;
   /** Whether the user has bookmarked this paper (the Saves page). */
   saved: boolean;
+  /** Slugs of the caller's *managed* labs that have already saved this paper. */
+  saved_labs: string[];
 };
 
 /**
@@ -242,8 +244,10 @@ type OpportunityBase = {
   /** Every addressable per-kind deadline (the reminder composer picks from these). */
   addressable_deadlines: DeadlineOption[];
   status_summary: string;
-  /** Whether the user has saved this to their deadlines. */
+  /** Whether the user has saved this to their (personal) deadlines. */
   saved: boolean;
+  /** Slugs of the caller's *managed* labs that have already saved this item. */
+  saved_labs: string[];
 };
 
 /** One addressable deadline on an item (the ContentDeadline projection, R0). */
@@ -479,6 +483,15 @@ export type SavedItem = SavedDeadline & {
   );
 
 /**
+ * A lab's shared saved items (from `/api/labs/<slug>/saves/`). `can_manage` gates
+ * the save/remind/remove affordances to lab managers; every member may read.
+ */
+export type LabSavesResponse = {
+  can_manage: boolean;
+  items: SavedItem[];
+};
+
+/**
  * One header-bell notification (from `/api/notifications/`). Backed by the
  * Notification model (reminders rework): a fired reminder, a moved deadline, or a
  * high-signal recommendation — not the old saves-due-within-a-week scan.
@@ -618,6 +631,8 @@ export type SearchResultItem = {
   /** Which channels matched this item: "lexical" | "semantic" | "fuzzy". */
   matched_on: string[];
   saved: boolean;
+  /** Slugs of the caller's *managed* labs that have already saved this item. */
+  saved_labs: string[];
   // (No `source` — the search path deliberately omits it.)
   // Paper
   authors: string[];
