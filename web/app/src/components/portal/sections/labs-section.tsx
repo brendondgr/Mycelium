@@ -197,7 +197,7 @@ function LabCard({
 // Lab detail — purpose & goals, invitations, members, projects
 // ---------------------------------------------------------------------------
 
-function LabDetail({ lab }: { lab: MyLab }) {
+export function LabDetail({ lab }: { lab: MyLab }) {
   const canManage = canManageLab(lab);
 
   return (

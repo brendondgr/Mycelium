@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { usePortal } from "@/components/portal/portal-context";
+import { LabSettingsSection } from "@/components/portal/sections/lab-settings-section";
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
@@ -542,6 +544,14 @@ function DiscordCard() {
 // ---------------------------------------------------------------------------
 
 export function ProfileSection() {
+  const { currentLab } = usePortal();
+
+  // In a lab workspace, the Profile slot is the lab's configuration (managers
+  // only — the section itself guards non-managers who deep-link here).
+  if (currentLab) {
+    return <LabSettingsSection lab={currentLab} />;
+  }
+
   return (
     <div>
       <SectionHeader
