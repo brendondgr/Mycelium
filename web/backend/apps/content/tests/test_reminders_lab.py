@@ -125,6 +125,18 @@ def test_lab_manager_can_create_lab_reminder() -> None:
 
 
 @pytest.mark.django_db
+def test_lab_pi_lead_can_create_lab_reminder() -> None:
+    # A PI (is_lead) is not owner/admin but may still create lab reminders.
+    lab = _lab()
+    pi = User.objects.create_user("pi")
+    LabMembership.objects.create(
+        user=pi, lab=lab, role=LabMembership.Role.MEMBER, is_lead=True
+    )
+    sub = _lab_sub(lab, created_by=pi)
+    assert sub.pk is not None
+
+
+@pytest.mark.django_db
 def test_mention_target_must_be_lab_member() -> None:
     lab = _lab()
     owner = _member(lab, "owner", role=LabMembership.Role.OWNER)

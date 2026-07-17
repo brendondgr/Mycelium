@@ -21,7 +21,10 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import LabMembership
-from apps.accounts.permissions import user_can_manage_lab, user_has_lab_access
+from apps.accounts.permissions import (
+    user_can_edit_lab_profile,
+    user_has_lab_access,
+)
 from apps.content.models import (
     ContentDeadline,
     ContentItem,
@@ -172,10 +175,13 @@ def create_subscription(
     if due_date is None:
         raise ReminderError("cannot set a reminder on a deadline with no date")
     if target_lab is not None:
-        # Only a lab manager may create a lab reminder; every mention target must be
-        # a lab member (else an admin could ping arbitrary Mycelium users via Mylo).
-        if created_by is not None and not user_can_manage_lab(created_by, target_lab):
-            raise ReminderError("only a lab manager can create a lab reminder")
+        # Only a lab PI (lead) or owner/admin may create a lab reminder; every
+        # mention target must be a lab member (else they could ping arbitrary
+        # Mycelium users via Mylo).
+        if created_by is not None and not user_can_edit_lab_profile(
+            created_by, target_lab
+        ):
+            raise ReminderError("only a lab PI or admin can create a lab reminder")
         for member in mentions:
             if not user_has_lab_access(member, target_lab):
                 raise ReminderError("mention target must be a lab member")

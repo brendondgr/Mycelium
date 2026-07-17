@@ -2,8 +2,9 @@
 
 Backs the Saves-page "Set reminder" composer and the management list. Authorization
 mirrors §9: a personal reminder needs only auth (opportunities are globally visible);
-a lab reminder needs ``user_can_manage_lab`` and its mentions ``user_has_lab_access``
-(both enforced inside ``create_subscription``). The addressable deadlines the composer
+a lab reminder needs ``user_can_edit_lab_profile`` (a PI/lead or owner/admin) and its
+mentions ``user_has_lab_access`` (both enforced inside ``create_subscription``). The
+addressable deadlines the composer
 picks from come from the item's ``deadlines[]`` (R0) — a rolling/unknown deadline has
 no date and is rejected here as it is in the service.
 """
@@ -17,7 +18,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import Lab, LabMembership
-from apps.accounts.permissions import user_can_manage_lab, user_has_lab_access
+from apps.accounts.permissions import (
+    user_can_edit_lab_profile,
+    user_has_lab_access,
+)
 from apps.core.people import display_name
 
 from .models import (
@@ -239,8 +243,8 @@ class ReminderDetailView(APIView):
         if sub.target_user_id:
             if sub.target_user_id != request.user.id:
                 return _bad("Not your reminder.", 403)
-        elif not user_can_manage_lab(request.user, sub.target_lab):
-            return _bad("Only a lab manager can remove a lab reminder.", 403)
+        elif not user_can_edit_lab_profile(request.user, sub.target_lab):
+            return _bad("Only a lab PI or admin can remove a lab reminder.", 403)
         sub.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
