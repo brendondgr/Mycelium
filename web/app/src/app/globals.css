@@ -69,11 +69,24 @@ body {
   }
 }
 
+/* A gentle sway for the active sidebar leaf-vine, like a breeze through leaves. */
+@keyframes leaf-vine-breeze {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(0.7deg);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .portal-pulse-dot {
     animation: portal-pulse-dot 2.4s ease-in-out infinite;
   }
   .portal-fade-up {
     animation: portal-fade-up 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+  .leaf-vine-breeze {
+    animation: leaf-vine-breeze 3.5s ease-in-out infinite alternate;
   }
 }
