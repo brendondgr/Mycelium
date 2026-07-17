@@ -3,7 +3,13 @@
 import * as React from "react";
 
 import { usePortal, type SectionKey } from "@/components/portal/portal-context";
-import { useDailyReport, useDeadlines, useProfile, useWatch } from "@/lib/portal/hooks";
+import {
+  useDailyBriefing,
+  useDailyReport,
+  useDeadlines,
+  useProfile,
+  useWatch,
+} from "@/lib/portal/hooks";
 import { computeCompleteness } from "@/lib/portal/completeness";
 import {
   ArrowRightIcon,
@@ -16,7 +22,7 @@ import {
 
 import { Card } from "@/components/portal/primitives/card";
 import { MatchBadge } from "@/components/portal/sections/opportunity-bits";
-import { MyloSummaryCard } from "@/components/portal/sections/mylo-summary-card";
+import { MyloReportCard } from "@/components/portal/sections/mylo-report-card";
 import { StatCard } from "@/components/portal/sections/stat-card";
 import { NextActions } from "@/components/portal/sections/next-actions";
 import { LabOverviewSection } from "@/components/portal/sections/lab-overview-section";
@@ -186,6 +192,7 @@ export function OverviewSection() {
   } = usePortal();
   const profileQuery = useProfile();
   const watchQuery = useWatch();
+  const briefingQuery = useDailyBriefing();
 
   // When a lab is the active workspace, its overview replaces the personal one.
   if (currentLab) {
@@ -233,14 +240,17 @@ export function OverviewSection() {
         </p>
       </div>
 
-      {/* Two 50/50 columns: report + quick nav + next actions | papers + deadlines. */}
-      <div className="grid grid-cols-1 items-start gap-[22px] lg:grid-cols-2">
-        {/* Left column */}
-        <div className="flex flex-col gap-[22px]">
-          <MyloSummaryCard />
+      {/* Report left; quick-nav + papers + deadlines right. Next actions below. */}
+      <div className="grid grid-cols-1 items-start gap-[22px] lg:grid-cols-[1.5fr_1fr]">
+        {/* Left: the folded-in Mylo Report (was a standalone Daily page). */}
+        <MyloReportCard
+          data={briefingQuery.data}
+          isLoading={briefingQuery.isLoading}
+        />
 
-          {/* 1×4 quick-nav grid of smaller buttons. */}
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {/* Right: quick-nav grid + top papers + nearest deadlines. */}
+        <div className="flex flex-col gap-[22px]">
+          <div className="grid grid-cols-2 gap-3">
             <StatCard
               icon={<FolderIcon size={16} />}
               label="Projects"
@@ -272,14 +282,13 @@ export function OverviewSection() {
             />
           </div>
 
-          <NextActions />
-        </div>
-
-        {/* Right column */}
-        <div className="flex flex-col gap-[22px]">
           <TopPapersPanel />
           <DeadlinesPanel />
         </div>
+      </div>
+
+      <div className="mt-[22px]">
+        <NextActions />
       </div>
     </div>
   );

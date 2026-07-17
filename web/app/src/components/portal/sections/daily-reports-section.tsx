@@ -4,9 +4,12 @@ import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
-import { MarkdownProse } from "@/components/portal/primitives/markdown-prose";
 import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
+import {
+  MyloReportCard,
+  formatBriefingWhen,
+} from "@/components/portal/sections/mylo-report-card";
 import { StatCard } from "@/components/portal/sections/stat-card";
 import {
   ArrowRightIcon,
@@ -51,56 +54,9 @@ const CATEGORY_META: Record<
   },
 };
 
-function formatWhen(iso: string | null): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
 /** The watched categories in stable order (defensive against odd API order). */
 function orderedCategories(data: DailyBriefing): BriefingCategory[] {
   return CATEGORY_ORDER.filter((c) => data.categories.includes(c));
-}
-
-/* -- Left zone: the written briefing ---------------------------------------- */
-
-function MyloReport({
-  data,
-  className,
-}: {
-  data: DailyBriefing;
-  className?: string;
-}) {
-  const body = (data.briefing?.body ?? "").trim();
-  const isFallback = data.briefing?.origin === "fallback";
-  const when = formatWhen(data.generated_at);
-
-  return (
-    <Card accent="primary-rule" className={`flex flex-col p-6 ${className ?? ""}`}>
-      <div className="mb-3 flex items-center gap-2">
-        <MyloGlyph size={20} className="text-primary" aria-hidden="true" />
-        <span className="text-[10.5px] font-semibold uppercase tracking-[.09em] text-primary">
-          Mylo Report{when ? ` · ${when}` : ""}
-        </span>
-      </div>
-
-      {body ? (
-        <MarkdownProse text={body} />
-      ) : (
-        <p className="text-[15px] leading-relaxed text-[var(--text-secondary)]">
-          Mylo has nothing to report yet today.
-        </p>
-      )}
-
-      {isFallback ? (
-        <p className="mt-4 text-xs text-[var(--text-muted)]">
-          Written from today&rsquo;s counts — Mylo&rsquo;s writer was offline when
-          this ran.
-        </p>
-      ) : null}
-    </Card>
-  );
 }
 
 /* -- Top-right zone: the numeric summaries ---------------------------------- */
@@ -268,7 +224,7 @@ export function DailyReportsSection() {
   const subtitle: React.ReactNode = (() => {
     if (isLoading) return "Gathering your briefing…";
     if (hasRun) {
-      const when = formatWhen(data?.generated_at ?? null);
+      const when = formatBriefingWhen(data?.generated_at ?? null);
       return when
         ? `Mylo's research briefing for ${when}.`
         : "Mylo's research briefing for today.";
@@ -296,7 +252,7 @@ export function DailyReportsSection() {
         />
       ) : (
         <div className="grid gap-5 lg:grid-cols-5">
-          <MyloReport data={data} className="lg:col-span-3" />
+          <MyloReportCard data={data} className="lg:col-span-3" />
           <div className="flex flex-col gap-5 lg:col-span-2">
             <TodaySummaries data={data} />
             <BriefingShowcase data={data} />
