@@ -18,15 +18,19 @@ const LINK_CLASS =
   "text-primary underline underline-offset-2 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm";
 
 // Matches, in one pass: **bold** or [text](url). Nested content is rendered
-// recursively so `**[Title](url)**` yields a bold link.
-const INLINE = /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\))/g;
+// recursively so `**[Title](url)**` yields a bold link. A fresh instance is
+// created per `renderInline` call: the regex is stateful (global flag), and
+// sharing one across the recursive calls would let an inner call reset the
+// outer loop's `lastIndex`, re-matching the same segment forever (a browser
+// freeze on any body containing bold or a link).
+const inlinePattern = () => /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\))/g;
 
 function renderInline(text: string, keyBase: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   let last = 0;
   let match: RegExpExecArray | null;
   let i = 0;
-  INLINE.lastIndex = 0;
+  const INLINE = inlinePattern();
   while ((match = INLINE.exec(text)) !== null) {
     if (match.index > last) nodes.push(text.slice(last, match.index));
     if (match[2] !== undefined) {

@@ -480,10 +480,13 @@ DISCORD_BOT_TOKEN = env(
 # the encrypted field always works; production sets a real, rotated key here.
 DISCORD_TOKEN_ENC_KEY = env("DISCORD_TOKEN_ENC_KEY", default="")
 
-# Where Discord redirects after the user + guild OAuth flows. These resolve to
-# apps.integrations views under /api/integrations/discord/. Default to the local
-# backend origin; production points them at the public API host.
-DISCORD_APP_BASE_URL = env("DISCORD_APP_BASE_URL", default="http://localhost:11250")
+# Where Discord redirects the browser after the user + guild OAuth flows. These
+# resolve to apps.integrations views under /api/integrations/discord/. Must be the
+# public single origin (the nginx gateway, 11050) that /api/ proxies to Django —
+# NOT the Next.js container port (11250). Production points this at the public API
+# host. Whatever this resolves to must be registered verbatim in the Discord app's
+# OAuth2 redirect list, or Discord returns "Invalid OAuth2 redirect_uri".
+DISCORD_APP_BASE_URL = env("DISCORD_APP_BASE_URL", default="http://localhost:11050")
 DISCORD_OAUTH_REDIRECT_URI = env(
     "DISCORD_OAUTH_REDIRECT_URI",
     default=f"{DISCORD_APP_BASE_URL}/api/integrations/discord/callback",

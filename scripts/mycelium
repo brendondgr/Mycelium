@@ -245,6 +245,45 @@ SYSTEMD_DIR = Path("/etc/systemd/system")
 SERVICE_FILES = ["mycelium.service", "mycelium-update.service", MYLO_UNIT]
 
 
+def _selinux_enforcing() -> bool:
+    if not shutil.which("getenforce"):
+        return False
+    out = subprocess.run(["getenforce"], capture_output=True, text=True).stdout.strip()
+    return out in ("Enforcing", "Permissive")
+
+
+def _fix_selinux_exec_context(paths: list[Path]) -> int:
+    """Label paths bin_t (via semanage, persists across restorecon/relabels)."""
+    if not shutil.which("semanage"):
+        print(
+            yellow(
+                "  SELinux is enabled but `semanage` isn't installed "
+                "(dnf install policycoreutils-python-utils) — skipping context fix."
+            )
+        )
+        return 0
+    for p in paths:
+        pattern = f"{p}(/.*)?"
+        add = subprocess.run(
+            ["semanage", "fcontext", "-a", "-t", "bin_t", pattern],
+            capture_output=True, text=True,
+        )
+        if add.returncode != 0 and "already defined" not in add.stderr:
+            mod = subprocess.run(
+                ["semanage", "fcontext", "-m", "-t", "bin_t", pattern],
+                capture_output=True, text=True,
+            )
+            if mod.returncode != 0:
+                print(red(f"  ✗ semanage fcontext failed for {p}: {mod.stderr.strip()}"), file=sys.stderr)
+                return 1
+        r = subprocess.run(["restorecon", "-Rv", str(p)])
+        if r.returncode != 0:
+            print(red(f"  ✗ restorecon failed for {p}"), file=sys.stderr)
+            return r.returncode
+    print(green("  ✓ SELinux: labeled the venv interpreter bin_t (systemd can exec it)"))
+    return 0
+
+
 def cmd_install_service() -> int:
     if not SYSTEMD_DIR.exists():
         print(red("  /etc/systemd/system not found — is this a systemd system?"), file=sys.stderr)
@@ -285,6 +324,21 @@ def cmd_install_service() -> int:
             print(red("  ✗ restorecon failed"), file=sys.stderr)
             return r.returncode
         print(dim("  ✓ restorecon (SELinux context fixed)"))
+
+    # The host units (mylo-bot, mylo-daily) ExecStart the repo's uv-managed
+    # .venv/bin/python, which lives under the home directory and is labeled
+    # user_home_t (the symlink) / data_home_t (the real uv-cached interpreter
+    # it resolves to). Confined systemd (init_t) can't read or exec either
+    # label, so the service fails with "status=203/EXEC" even though the file
+    # is right there. Fix: relabel both as bin_t, the type confined domains
+    # are allowed to execute — not a blanket audit2allow policy hole.
+    if _selinux_enforcing():
+        venv_python = ROOT / ".venv" / "bin" / "python"
+        if venv_python.exists():
+            real_bin_dir = venv_python.resolve().parent
+            code = _fix_selinux_exec_context([ROOT / ".venv" / "bin", real_bin_dir])
+            if code != 0:
+                return code
 
     # daemon-reload
     r = subprocess.run(["systemctl", "daemon-reload"])
