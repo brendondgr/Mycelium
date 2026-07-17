@@ -1,7 +1,7 @@
 # Lab Workspace Overhaul — Implementation Plan
 
 **Correlation ID:** `20260716-lab-workspace-overhaul`
-**Status:** in progress
+**Status:** done — all phases implemented, verified (601 backend tests on pgvector, frontend tsc + eslint, live browser end-to-end), and merged to `main`. Merged concurrent `main` work (lab-scoped saves/reminders) in with a merge migration.
 
 ## Objective
 
