@@ -6,9 +6,11 @@ import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { DocumentIcon, SearchIcon } from "@/components/portal/icons";
+import { usePortal } from "@/components/portal/portal-context";
+import { LabFeedShell } from "@/components/portal/sections/lab-feed-shell";
 import { SuggestionCard } from "@/components/portal/sections/suggestion-card";
-import { useDailyReport } from "@/lib/portal/hooks";
-import type { Suggestion } from "@/lib/portal/types";
+import { useDailyReport, useLabRecommendations } from "@/lib/portal/hooks";
+import type { MyLab, Suggestion } from "@/lib/portal/types";
 
 function formatWhen(iso: string | null): string {
   if (!iso) return "";
@@ -82,7 +84,40 @@ function focusPercent(
  * derived focus %) and hides the ones that match none. Fed by the same daily run
  * as the Daily Report summary.
  */
+/** The lab-scoped Research Papers feed (papers matched to the lab's profile). */
+function LabPapersFeed({ lab }: { lab: MyLab }) {
+  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+  const papers = data?.papers ?? [];
+  return (
+    <LabFeedShell
+      title="Research Papers"
+      subtitle={`Papers Mylo matched to ${lab.name}.`}
+      isLoading={isLoading}
+      isError={isError}
+      isEmpty={papers.length === 0}
+      emptyIcon={<DocumentIcon size={28} />}
+      emptyTitle="No lab paper matches yet"
+      emptyDescription="Once Mylo has run for this lab, papers matched to its shared research profile will appear here."
+    >
+      <div className="space-y-4">
+        {papers.map((paper) => (
+          <SuggestionCard key={paper.content_id} suggestion={paper} />
+        ))}
+      </div>
+    </LabFeedShell>
+  );
+}
+
 export function ResearchPapersSection() {
+  const { currentLab } = usePortal();
+  // In a lab workspace, this page is the lab's matched papers, not the caller's.
+  if (currentLab) {
+    return <LabPapersFeed lab={currentLab} />;
+  }
+  return <PersonalResearchPapers />;
+}
+
+function PersonalResearchPapers() {
   const { data, isLoading, isError } = useDailyReport();
   const suggestions = React.useMemo(() => data?.suggestions ?? [], [data]);
   // A sign-up background scan may be filling this feed; show a "scanning" state.

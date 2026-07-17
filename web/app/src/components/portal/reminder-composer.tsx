@@ -60,7 +60,11 @@ export function ReminderComposer({
   const [error, setError] = React.useState<string | null>(null);
 
   const labs = useMyLabs();
-  const labOptions = labs.data ?? [];
+  // Only labs the caller manages (PI / owner / admin) can receive a lab reminder,
+  // mirroring the backend rule — so a plain member is never offered the lab option.
+  const labOptions = (labs.data ?? []).filter(
+    (lab) => lab.is_lead || lab.role === "owner" || lab.role === "admin",
+  );
   const { create } = useReminderMutations();
 
   // Derive the effective lab (no state-syncing effect): the chosen slug, else the

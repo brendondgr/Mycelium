@@ -24,8 +24,15 @@ import {
   hasActiveFellowshipFilters,
   type FellowshipFilterState,
 } from "@/components/portal/sections/fellowship-filters";
-import { useFellowships } from "@/lib/portal/hooks";
-import type { FellowshipOpportunity } from "@/lib/portal/types";
+import { usePortal } from "@/components/portal/portal-context";
+import { Pill } from "@/components/portal/primitives/pill";
+import { LabFeedShell } from "@/components/portal/sections/lab-feed-shell";
+import { useFellowships, useLabRecommendations } from "@/lib/portal/hooks";
+import type {
+  FellowshipOpportunity,
+  LabFellowship,
+  MyLab,
+} from "@/lib/portal/types";
 
 /** How many of the top matched fellowships to show before "Show all". */
 const DEFAULT_FELLOWSHIP_LIMIT = 25;
@@ -362,7 +369,84 @@ function FellowshipList({ items }: { items: FellowshipOpportunity[] }) {
  * citizenship, award type, saved/new, sort) with instant in-memory filtering.
  * Top-25 cap before "Show all", matching the Grants page pattern.
  */
+/** One lab fellowship: a fellowship a member is eligible for (union of members). */
+function LabFellowshipRow({ item }: { item: LabFellowship }) {
+  return (
+    <Card className="p-5">
+      <div className="flex items-start justify-between gap-3">
+        {item.url ? (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)] hover:text-primary"
+          >
+            {item.title}
+          </a>
+        ) : (
+          <h3 className="min-w-0 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+            {item.title}
+          </h3>
+        )}
+        {item.deadline_date ? (
+          <span className="shrink-0 text-[12px] text-[var(--text-muted)]">
+            Deadline {item.deadline_date}
+          </span>
+        ) : null}
+      </div>
+      {item.amount ? (
+        <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
+          {item.amount}
+        </p>
+      ) : null}
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
+          Eligible:
+        </span>
+        {item.eligible.map((member) => (
+          <Pill key={member.username} tone="neutral">
+            {member.name}{" "}
+            <span className="text-[var(--text-muted)]">({member.tier})</span>
+          </Pill>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/** The lab-scoped Fellowships feed — the union of eligible, consenting members. */
+function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
+  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+  const fellowships = data?.fellowships ?? [];
+  return (
+    <LabFeedShell
+      title="Fellowships"
+      subtitle={`Fellowships ${lab.name} members are eligible for.`}
+      isLoading={isLoading}
+      isError={isError}
+      isEmpty={fellowships.length === 0}
+      emptyIcon={<SparkleIcon size={28} />}
+      emptyTitle="No lab fellowship matches yet"
+      emptyDescription="Fellowships appear here when a member is personally eligible and has opted into sharing their eligibility with the lab."
+    >
+      <div className="space-y-3">
+        {fellowships.map((item) => (
+          <LabFellowshipRow key={item.content_id} item={item} />
+        ))}
+      </div>
+    </LabFeedShell>
+  );
+}
+
 export function FellowshipsSection() {
+  const { currentLab } = usePortal();
+  if (currentLab) {
+    return <LabFellowshipsFeed lab={currentLab} />;
+  }
+  return <PersonalFellowships />;
+}
+
+function PersonalFellowships() {
   const { data, isLoading, isError } = useFellowships();
   const items = React.useMemo(() => data?.items ?? [], [data]);
 

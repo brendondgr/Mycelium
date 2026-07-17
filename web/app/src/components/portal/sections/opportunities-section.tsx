@@ -24,8 +24,10 @@ import {
   hasActiveGrantFilters,
   type GrantFilterState,
 } from "@/components/portal/sections/grant-filters";
-import { useGrants } from "@/lib/portal/hooks";
-import type { GrantOpportunity } from "@/lib/portal/types";
+import { usePortal } from "@/components/portal/portal-context";
+import { LabFeedShell } from "@/components/portal/sections/lab-feed-shell";
+import { useGrants, useLabRecommendations } from "@/lib/portal/hooks";
+import type { GrantOpportunity, MyLab } from "@/lib/portal/types";
 
 /** Format an ISO date as "Jul 6, 2026" (used for Posted and the deadline). */
 function formatDate(iso: string): string {
@@ -185,7 +187,39 @@ function GrantsList({ grants }: { grants: GrantOpportunity[] }) {
 /** How many of the top recommended grants to show before "Show all". */
 const DEFAULT_GRANT_LIMIT = 25;
 
+/** The lab-scoped Grants feed (grants matched to the lab's shared profile). */
+function LabGrantsFeed({ lab }: { lab: MyLab }) {
+  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+  const grants = data?.grants ?? [];
+  return (
+    <LabFeedShell
+      title="Grants"
+      subtitle={`Funding Mylo matched to ${lab.name}.`}
+      isLoading={isLoading}
+      isError={isError}
+      isEmpty={grants.length === 0}
+      emptyIcon={<BankIcon size={28} />}
+      emptyTitle="No lab grant matches yet"
+      emptyDescription="Once Mylo has run for this lab, funding opportunities matched to its purpose will appear here."
+    >
+      <div className="space-y-3">
+        {grants.map((grant) => (
+          <GrantRow key={grant.content_id} grant={grant} />
+        ))}
+      </div>
+    </LabFeedShell>
+  );
+}
+
 export function OpportunitiesSection() {
+  const { currentLab } = usePortal();
+  if (currentLab) {
+    return <LabGrantsFeed lab={currentLab} />;
+  }
+  return <PersonalOpportunities />;
+}
+
+function PersonalOpportunities() {
   const { data, isLoading, isError } = useGrants();
   const grants = React.useMemo(() => data?.items ?? [], [data]);
   const [filters, setFilters] = React.useState<GrantFilterState>(

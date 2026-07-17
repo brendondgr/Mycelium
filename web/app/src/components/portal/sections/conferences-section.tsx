@@ -26,8 +26,10 @@ import {
   hasActiveConferenceFilters,
   type ConferenceFilterState,
 } from "@/components/portal/sections/conference-filters";
-import { useConferences } from "@/lib/portal/hooks";
-import type { ConferenceOpportunity } from "@/lib/portal/types";
+import { usePortal } from "@/components/portal/portal-context";
+import { LabFeedShell } from "@/components/portal/sections/lab-feed-shell";
+import { useConferences, useLabRecommendations } from "@/lib/portal/hooks";
+import type { ConferenceOpportunity, MyLab } from "@/lib/portal/types";
 
 /** How many of the top matched conferences to show before "Show all". */
 const DEFAULT_CONFERENCE_LIMIT = 24;
@@ -192,7 +194,39 @@ function formatWhen(iso: string | null): string {
  * narrows the already-fetched feed in memory — instant, no refetch. Top-24 cap
  * before "Show all", matching the Grants / Fellowships pattern.
  */
+/** The lab-scoped Conferences feed (venues matched to the lab's shared profile). */
+function LabConferencesFeed({ lab }: { lab: MyLab }) {
+  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+  const conferences = data?.conferences ?? [];
+  return (
+    <LabFeedShell
+      title="Conferences"
+      subtitle={`Conferences Mylo matched to ${lab.name}.`}
+      isLoading={isLoading}
+      isError={isError}
+      isEmpty={conferences.length === 0}
+      emptyIcon={<ConferenceIcon size={28} />}
+      emptyTitle="No lab conference matches yet"
+      emptyDescription="Once Mylo has run for this lab, conferences and calls for papers matching its purpose will appear here."
+    >
+      <div className="grid gap-3 md:grid-cols-2">
+        {conferences.map((conf) => (
+          <ConferenceCard key={conf.content_id} conf={conf} />
+        ))}
+      </div>
+    </LabFeedShell>
+  );
+}
+
 export function ConferencesSection() {
+  const { currentLab } = usePortal();
+  if (currentLab) {
+    return <LabConferencesFeed lab={currentLab} />;
+  }
+  return <PersonalConferences />;
+}
+
+function PersonalConferences() {
   const { data, isLoading, isError } = useConferences();
   const conferences = React.useMemo(() => data?.items ?? [], [data]);
 
