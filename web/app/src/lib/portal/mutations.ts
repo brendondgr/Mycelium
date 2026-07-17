@@ -572,7 +572,7 @@ export function testDiscordDm(): Promise<DiscordStatus> {
   );
 }
 
-/** Issue a one-time Path B activation code to redeem from Discord with /activate. */
+/** Issue a one-time Path B activation code to redeem from Discord with /activate code:. */
 export function issueActivationCode(): Promise<DiscordCodeResponse> {
   return sendJson<DiscordCodeResponse>(
     "POST",

@@ -547,10 +547,10 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
       return `Mylo is synced to ${where}. Members can use Mylo there.`;
     }
     if (status?.state === "pending_setup")
-      return "Mylo was added to a server but not confirmed yet. A lab manager runs /mylo setup in that server to finish syncing.";
+      return "Mylo was added to a server but not connected yet. A lab admin or PI runs /activate lab:<lab> in that server to finish syncing.";
     if (status?.state === "kicked")
-      return "Mylo was removed from the connected server. Add it again below, or run /mylo setup in your server.";
-    return "This lab isn't connected to a Discord server yet. Add Mylo to your server below, or run /mylo setup there and pick this lab.";
+      return "Mylo was removed from the connected server. Add it again below, or run /activate lab:<lab> in your server.";
+    return "This lab isn't connected to a Discord server yet. Add Mylo to your server below, then run /activate lab:<lab> there and pick this lab.";
   })();
 
   const connectError =

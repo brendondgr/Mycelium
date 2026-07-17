@@ -3,9 +3,11 @@
 * ``health`` / ``lastrun`` — is Mylo up, and how did the last daily run go? These
   read the shared run-state file (:mod:`mylo.runstate`) — a plain file read, so they
   answer within the 3-second window without deferring.
-* ``status`` / ``setup`` — the Discord-link commands. These touch Mycelium's ORM
-  (via :mod:`mylo.linking` → ``apps.integrations.services.resolve``), so they defer
-  first and follow up.
+* ``status`` — is the caller's own Discord linked? ``setup`` — the *post-activation*
+  step that chooses where the server's lab reminders post (the server is bound to a
+  lab first via ``/activate lab:``). Both touch Mycelium's ORM (via
+  :mod:`mylo.linking` → ``apps.integrations.services.resolve``), so they defer first
+  and follow up.
 
 Everything is ephemeral: status is for the person asking, not channel noise.
 """
@@ -89,40 +91,26 @@ class StatusCog(commands.Cog, name="Status"):
 
     @mylo.command(
         name="setup",
-        description="Connect this server to a Mycelium lab you manage.",
+        description="Choose where this server's lab reminders post (after /activate).",
     )
     @app_commands.describe(
-        lab="A lab you manage (leave blank to see your options).",
         channel="Where lab reminders post. I verify I can post there before binding.",
     )
     @app_commands.guild_only()
     async def setup(
         self,
         interaction: discord.Interaction,
-        lab: str | None = None,
         channel: discord.TextChannel | None = None,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         guild_id = str(interaction.guild_id) if interaction.guild_id else ""
-        guild_name = interaction.guild.name if interaction.guild else ""
         channel_id = str(channel.id) if channel else ""
-        _, message = await linking.setup_guild(
+        _, message = await linking.setup_channel(
             str(interaction.user.id),
             guild_id,
-            guild_name=guild_name,
-            lab_slug=lab,
             channel_id=channel_id,
         )
         await interaction.followup.send(message, ephemeral=True)
-
-    @setup.autocomplete("lab")
-    async def _setup_lab_autocomplete(
-        self, interaction: discord.Interaction, current: str
-    ) -> list[app_commands.Choice[str]]:
-        choices = await linking.managed_lab_choices(
-            str(interaction.user.id), current or ""
-        )
-        return [app_commands.Choice(name=name, value=slug) for name, slug in choices]
 
 
 async def setup(bot: commands.Bot) -> None:

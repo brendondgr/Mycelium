@@ -415,7 +415,7 @@ function EligibilityCard() {
 
 const DISCORD_RETURN_NOTICE: Record<string, string> = {
   linked: "Discord connected. Mylo can reach you now.",
-  installed: "Mylo was added to your server. A lab manager can run /mylo setup.",
+  installed: "Mylo was added to your server. A lab admin or PI can run /activate lab:<your lab> there to connect it.",
   conflict: "That Discord account is already linked to another Mycelium user.",
   error: "Something went wrong connecting Discord. Please try again.",
   install_error: "Could not add Mylo to that server. Please try again.",
@@ -521,7 +521,7 @@ function DiscordCard() {
               <p className="text-sm text-[var(--text-secondary)]">
                 Run{" "}
                 <code className="font-mono text-[var(--text-primary)]">
-                  /activate {issueCode.data.code}
+                  /activate code:{issueCode.data.code}
                 </code>{" "}
                 in the activation channel within{" "}
                 {Math.round(issueCode.data.expires_in / 60)} minutes. Shown once.

@@ -40,23 +40,30 @@ no Mylo database, schema, or migration history.
   `integration_type=1`) → callback → `DiscordIdentity` → reachability probe.
   `applications.commands` under user-install is what grants DM rights.
 * **Path B (fallback user link):** portal issues a one-time code → user runs
-  `/activate CODE` in the hub `#activation` channel → `DiscordIdentity`. Binds the
-  identity but does **not** grant DM rights the way A does — expect a higher
+  `/activate code:CODE` in the hub `#activation` channel → `DiscordIdentity`. Binds
+  the identity but does **not** grant DM rights the way A does — expect a higher
   `dm_ok=False` rate; the split is instrumented by `link_method`.
-* **Path C (lab link):** a guild is bound to a lab by a lab manager, two ways:
+* **Path C (lab link):** a guild is bound to a lab by a lab admin/PI, two ways:
   * **Website install (verified):** portal → the lab's **Edit Setup** menu →
     "Add Mylo to this server" → bot install OAuth (`bot applications.commands`,
     `integration_type=0`, `response_type=code`, **`integration_require_code_grant`
     ON**). The binding comes only from the authoritative `guild` object in the
     token exchange — the redirect's `guild_id`/`permissions` are forgeable and
-    ignored. Install → `PENDING_SETUP`; the manager runs `/mylo setup` → `ACTIVE`
-    (`verified_via_code_grant=True`).
+    ignored. Install → `PENDING_SETUP`; the admin/PI runs `/activate lab:<name>`
+    → `ACTIVE` (`verified_via_code_grant=True`).
   * **Discord-native (`bind_guild_via_command`):** in a server Mylo is already in,
-    a manager runs `/mylo setup lab:<name>` (the `lab` arg autocompletes to the
+    an admin/PI runs `/activate lab:<name>` (the `lab` arg autocompletes to the
     labs they PI/manage) → bound `ACTIVE` directly, `verified_via_code_grant=False`.
     Trust rests on two authoritative facts, not the forgeable redirect: Discord
     guarantees the interaction's `guild_id`, and authority is the *existing*
     `user_can_manage_lab` check. One-guild-one-lab is still enforced.
+
+  **`/activate` is one context-aware command:** `code:` runs Path B (identity),
+  `lab:` runs Path C (server activation). No `default_member_permissions` gates it —
+  authority is the Mycelium lab-manager check, so regular members can still link
+  their own identity while only admins/PIs can connect a server. After the server is
+  `ACTIVE`, `/mylo setup [channel]` is the *post-link* step that chooses where that
+  lab's reminders post (it never binds a lab itself; it requires an active link).
   Either way the **Manage & Invite** page shows the live sync state
   (`discord/guild/status`), and the profile card's **Test** button re-runs the DM
   reachability probe on demand (`discord/probe`).
@@ -130,18 +137,22 @@ for users.
 `state` → 400, no row; snowflake already bound → 409; unlink → tokens revoked →
 rows deleted → clean re-link.
 
-**Path B** — valid code → ephemeral confirm, identity bound; reply ephemeral in
-**all** branches; expired code → rejected, **not** consumed; reused code →
-rejected; 6 bad attempts → lockout, survives a bot restart; outside
-`ACTIVATION_CHANNEL` → ephemeral pointer, no lookup; code for user A redeemed by a
-Discord account bound to user B → rejected, not consumed; plaintext code in zero
-logs / zero DB columns.
+**Path B** — valid `/activate code:` → ephemeral confirm, identity bound; reply
+ephemeral in **all** branches; `code:` + `lab:` together → ephemeral "one at a
+time"; expired code → rejected, **not** consumed; reused code → rejected; 6 bad
+attempts → lockout, survives a bot restart; outside `ACTIVATION_CHANNEL` →
+ephemeral pointer, no lookup; code for user A redeemed by a Discord account bound
+to user B → rejected, not consumed; plaintext code in zero logs / zero DB columns.
 
 **Path C** — install → `PENDING_SETUP`, `verified_via_code_grant=True`, nudge
 posted; forged `guild_id` on the redirect → ignored; unverified link → unusable;
-unlinked guild owner runs `/mylo setup` → link CTA; linked non-member → denied; lab
-member (non-manager) → denied; lab manager → `ACTIVE`; second lab binds a bound
-guild → 409; bot kicked → sweep sets `KICKED`.
+unlinked user runs `/activate lab:` → link CTA; `/activate` with no args (unlinked)
+→ link CTA; linked non-member → denied; lab member (non-manager) → denied; lab
+admin/PI runs `/activate lab:<name>` → `ACTIVE`; a pending website install confirms
+via `/activate` (no args or matching `lab:`); second lab binds a bound guild → 409;
+bot kicked → sweep sets `KICKED`. **Post-link** — `/mylo setup` before activation →
+"run `/activate lab:` first"; `/mylo setup channel:#x` by an admin/PI → preflight →
+channel bound; non-manager → denied.
 
 **Infra** — `/mylo status` answers in DM/guild/private channel; error cascade →
 one `ERROR_CHANNEL` rollup, not N; no Discord module imports a model outside

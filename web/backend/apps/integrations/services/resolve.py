@@ -404,7 +404,7 @@ def confirm_guild(guild_id: str, *, confirmed_by) -> DiscordGuildLink | None:
 
 
 def bind_guild_via_command(discord_user_id: str, guild_id: str, guild_name, lab):
-    """Bind + activate a guild to a lab straight from ``/mylo setup``.
+    """Bind + activate a guild to a lab straight from ``/activate lab:``.
 
     The install-OAuth path (:func:`bind_guild` + :func:`confirm_guild`) is verified
     by the code-grant token exchange; this is the Discord-native alternative the
@@ -480,7 +480,7 @@ def can_manage_lab_via_discord(discord_user_id: str, lab) -> bool:
 
 
 def labs_managed_by_discord_user(discord_user_id: str) -> list[Lab]:
-    """Labs the linked user is a PI/manager of — the `/mylo setup` pick list.
+    """Labs the linked user is a PI/manager of — the `/activate lab:` pick list.
 
     Same authority as ``user_can_manage_lab``: OWNER/ADMIN membership or the lab
     lead flag. Deduped and name-sorted for a stable menu; empty if not linked.

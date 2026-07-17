@@ -36,9 +36,12 @@ class BotExtensionLoadTests(unittest.IsolatedAsyncioTestCase):
         try:
             for extension in INITIAL_EXTENSIONS:
                 await bot.load_extension(extension)
-            top_level = {command.name for command in bot.tree.get_commands()}
-            self.assertIn("mylo", top_level)
-            self.assertIn("activate", top_level)  # Path B redemption
+            commands = {command.name: command for command in bot.tree.get_commands()}
+            self.assertIn("mylo", commands)
+            self.assertIn("activate", commands)
+            # /activate is context-aware: code: links identity, lab: connects the server.
+            activate_params = {p.name for p in commands["activate"].parameters}
+            self.assertEqual(activate_params, {"code", "lab"})
         finally:
             await bot.close()
 
