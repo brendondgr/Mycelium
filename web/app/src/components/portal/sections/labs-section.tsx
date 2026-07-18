@@ -614,6 +614,7 @@ function LabPurposeForm({
         clusters={clusters}
         statement={statement}
         onChange={setClusters}
+        onAreasChange={(next) => setAreas(next.join(", "))}
       />
       <Field label="Funding needs (comma-separated)">
         <input

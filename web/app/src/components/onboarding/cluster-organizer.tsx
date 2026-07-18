@@ -30,6 +30,10 @@ export type ClusterOrganizerProps = {
   onChange: (clusters: ClusterGroup[]) => void;
   /** Fires when a propose/sort call returns a watch-topic seed. */
   onWatchSeed?: (topics: string[]) => void;
+  /** Fires with the new full area list when the user adds / renames / removes an
+   * interest inside the organizer. When omitted, the area list is read-only and
+   * only the move affordances show (the organizer can't invent or drop areas). */
+  onAreasChange?: (areas: string[]) => void;
 };
 
 /**
@@ -104,7 +108,9 @@ export function ClusterOrganizer({
   statement,
   onChange,
   onWatchSeed,
+  onAreasChange,
 }: ClusterOrganizerProps) {
+  const canEditAreas = typeof onAreasChange === "function";
   const sanitized = useMemo(
     () => sanitizeClusters(clusters, areas),
     [clusters, areas],
@@ -154,6 +160,61 @@ export function ClusterOrganizer({
       );
     }
     emit(next);
+  }
+
+  const areaExists = (text: string, except?: string) =>
+    areas.some(
+      (a) => a !== except && a.toLowerCase() === text.toLowerCase(),
+    );
+
+  /** Add a brand-new interest to the declared areas and place it in `clusterId`
+   * (or leave it in Unsorted). A no-op without `onAreasChange`. If the text
+   * already exists it is just moved to the target. */
+  function handleAddArea(clusterId: string, raw: string) {
+    if (!onAreasChange) return;
+    const text = raw.replace(/\s+/g, " ").trim();
+    if (!text) return;
+    const nextAreas = areaExists(text) ? areas : [...areas, text];
+    let nextClusters = sanitized.map((cluster) => ({
+      ...cluster,
+      areas: cluster.areas.filter((a) => a.toLowerCase() !== text.toLowerCase()),
+    }));
+    if (clusterId !== UNSORTED_ID) {
+      nextClusters = nextClusters.map((cluster) =>
+        cluster.id === clusterId
+          ? { ...cluster, areas: [...cluster.areas, text] }
+          : cluster,
+      );
+    }
+    onAreasChange(nextAreas);
+    onChange(sanitizeClusters(nextClusters, nextAreas));
+  }
+
+  /** Remove an interest entirely — from the declared areas and any cluster. */
+  function handleDeleteArea(area: string) {
+    if (!onAreasChange) return;
+    const nextAreas = areas.filter((a) => a !== area);
+    const nextClusters = sanitized.map((cluster) => ({
+      ...cluster,
+      areas: cluster.areas.filter((a) => a !== area),
+    }));
+    onAreasChange(nextAreas);
+    onChange(nextClusters);
+  }
+
+  /** Rename an interest everywhere it appears (declared areas + its cluster).
+   * Ignored when the new text is blank or collides with a different area. */
+  function handleRenameArea(oldArea: string, raw: string) {
+    if (!onAreasChange) return;
+    const text = raw.replace(/\s+/g, " ").trim();
+    if (!text || text === oldArea || areaExists(text, oldArea)) return;
+    const nextAreas = areas.map((a) => (a === oldArea ? text : a));
+    const nextClusters = sanitized.map((cluster) => ({
+      ...cluster,
+      areas: cluster.areas.map((a) => (a === oldArea ? text : a)),
+    }));
+    onAreasChange(nextAreas);
+    onChange(sanitizeClusters(nextClusters, nextAreas));
   }
 
   /** Move every area from `sourceId` into `targetId` and drop the (now empty)
@@ -348,6 +409,10 @@ export function ClusterOrganizer({
             onDrop={handleDropOn(cluster.id)}
             onMoveArea={handleMoveArea}
             onSplitArea={handleSplitArea}
+            canEditAreas={canEditAreas}
+            onAddArea={(text) => handleAddArea(cluster.id, text)}
+            onRenameArea={handleRenameArea}
+            onDeleteArea={handleDeleteArea}
           />
         ))}
       </div>
@@ -412,10 +477,21 @@ export function ClusterOrganizer({
                   label: cluster.label || "Untitled cluster",
                 }))}
                 onMove={(targetId) => handleMoveArea(area, targetId)}
+                canEdit={canEditAreas}
+                onRename={(text) => handleRenameArea(area, text)}
+                onDelete={() => handleDeleteArea(area)}
               />
             ))}
           </div>
         )}
+        {canEditAreas ? (
+          <div className="mt-3">
+            <AddInterest
+              placeholder="Add an interest (unsorted)…"
+              onAdd={(text) => handleAddArea(UNSORTED_ID, text)}
+            />
+          </div>
+        ) : null}
       </Card>
     </div>
   );
@@ -434,6 +510,10 @@ type ClusterCardProps = {
   onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
   onMoveArea: (area: string, targetId: string) => void;
   onSplitArea: (area: string) => void;
+  canEditAreas: boolean;
+  onAddArea: (text: string) => void;
+  onRenameArea: (oldArea: string, text: string) => void;
+  onDeleteArea: (area: string) => void;
 };
 
 function ClusterCard({
@@ -449,6 +529,10 @@ function ClusterCard({
   onDrop,
   onMoveArea,
   onSplitArea,
+  canEditAreas,
+  onAddArea,
+  onRenameArea,
+  onDeleteArea,
 }: ClusterCardProps) {
   const token = clusterAccentVar(cluster.id);
 
@@ -506,7 +590,9 @@ function ClusterCard({
       <div className="flex flex-wrap gap-2">
         {cluster.areas.length === 0 ? (
           <p className="text-xs text-[var(--text-muted)]">
-            Drop an area here, or use its &ldquo;Move&rdquo; menu.
+            {canEditAreas
+              ? "No interests here yet — add one below, or drop / move one in."
+              : "Drop an area here, or use its “Move” menu."}
           </p>
         ) : (
           cluster.areas.map((area) => (
@@ -521,10 +607,20 @@ function ClusterCard({
                   onMoveArea(area, targetId);
                 }
               }}
+              canEdit={canEditAreas}
+              onRename={(text) => onRenameArea(area, text)}
+              onDelete={() => onDeleteArea(area)}
             />
           ))
         )}
       </div>
+
+      {canEditAreas ? (
+        <AddInterest
+          placeholder="Add an interest to this cluster…"
+          onAdd={onAddArea}
+        />
+      ) : null}
     </Card>
   );
 }
@@ -533,9 +629,47 @@ type AreaChipProps = {
   area: string;
   moveTargets: MenuItem[];
   onMove: (targetId: string) => void;
+  canEdit?: boolean;
+  onRename?: (text: string) => void;
+  onDelete?: () => void;
 };
 
-function AreaChip({ area, moveTargets, onMove }: AreaChipProps) {
+function AreaChip({ area, moveTargets, onMove, canEdit, onRename, onDelete }: AreaChipProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(area);
+
+  function commit() {
+    setEditing(false);
+    const text = draft.trim();
+    if (text && text !== area) {
+      onRename?.(text);
+    } else {
+      setDraft(area); // revert an empty/unchanged edit
+    }
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        aria-label={`Rename "${area}"`}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          } else if (event.key === "Escape") {
+            setDraft(area);
+            setEditing(false);
+          }
+        }}
+        className="min-w-[8rem] rounded-full border border-input bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+    );
+  }
+
   return (
     <span
       draggable
@@ -546,6 +680,31 @@ function AreaChip({ area, moveTargets, onMove }: AreaChipProps) {
       className="inline-flex cursor-grab items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] active:cursor-grabbing"
     >
       {area}
+      {canEdit ? (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(area);
+              setEditing(true);
+            }}
+            aria-label={`Rename "${area}"`}
+            title="Rename interest"
+            className="rounded-full px-1 leading-none text-[var(--text-muted)] hover:text-foreground"
+          >
+            <span aria-hidden="true" className="text-[11px]">✎</span>
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={`Remove "${area}"`}
+            title="Remove interest"
+            className="rounded-full px-1 leading-none text-[var(--text-muted)] hover:text-destructive"
+          >
+            <span aria-hidden="true" className="text-sm">×</span>
+          </button>
+        </>
+      ) : null}
       <InlineMenu
         trigger={
           <span aria-hidden="true" className="text-[10px] leading-none">
@@ -558,6 +717,52 @@ function AreaChip({ area, moveTargets, onMove }: AreaChipProps) {
         onSelect={onMove}
       />
     </span>
+  );
+}
+
+type AddInterestProps = {
+  onAdd: (text: string) => void;
+  placeholder?: string;
+};
+
+/** A small inline "add an interest" input — Enter or the Add button commits and
+ * clears. Not a `<form>` (the organizer may render inside another form), so it
+ * commits on Enter/click instead of submit. */
+function AddInterest({ onAdd, placeholder }: AddInterestProps) {
+  const [value, setValue] = useState("");
+
+  function commit() {
+    const text = value.trim();
+    if (!text) return;
+    onAdd(text);
+    setValue("");
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          }
+        }}
+        placeholder={placeholder ?? "Add an interest…"}
+        aria-label={placeholder ?? "Add an interest"}
+        className="min-w-0 flex-1 rounded-md border border-border bg-[var(--surface-alt)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none transition focus-visible:border-input focus-visible:bg-[var(--surface)] focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+      />
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={commit}
+        disabled={value.trim() === ""}
+      >
+        Add
+      </Button>
+    </div>
   );
 }
 

@@ -1123,6 +1123,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           keywords={keywords}
           statement={statement}
           onChange={setClusters}
+          onAreasChange={setAreas}
           onWatchSeed={(topics) => setWatchTopics(topics)}
         />
       </div>
