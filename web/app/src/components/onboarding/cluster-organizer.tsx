@@ -135,10 +135,8 @@ export function ClusterOrganizer({
   }
 
   function handleDelete(id: string) {
-    const target = sanitized.find((cluster) => cluster.id === id);
-    if (!target || target.areas.length > 0) {
-      return;
-    }
+    // Delete any cluster, empty or not — its areas simply fall back to the
+    // Unsorted tray (nothing is lost), so the user keeps full control.
     emit(sanitized.filter((cluster) => cluster.id !== id));
   }
 
@@ -267,7 +265,8 @@ export function ClusterOrganizer({
           </h3>
           <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
             Group your research areas into a few named clusters, or let Mylo
-            suggest a grouping.
+            suggest a grouping. You&rsquo;re in full control — rename, delete, or
+            add clusters and move areas between them.
           </p>
         </div>
         <Button
@@ -279,6 +278,29 @@ export function ClusterOrganizer({
         >
           {busy === "propose" ? "Organizing…" : "Organize with Mylo"}
         </Button>
+      </div>
+
+      {/* A high-level explanation of what clusters do, with a concrete example. */}
+      <div className="rounded-xl border border-dashed border-border bg-[var(--surface-alt)] p-4 text-xs leading-relaxed text-[var(--text-secondary)]">
+        <p>
+          <span className="font-semibold text-[var(--text-primary)]">
+            Why clusters?
+          </span>{" "}
+          Mylo searches for each cluster on its own, so grouping your areas by
+          theme gives you sharper, more diverse results — every recommendation is
+          labeled with the cluster it matched, and a strong match in one cluster
+          never crowds out the best of another.
+        </p>
+        <p className="mt-2">
+          <span className="font-semibold text-[var(--text-primary)]">
+            For example:
+          </span>{" "}
+          keeping <em>Medical AI Agents</em> and{" "}
+          <em>Oceanography &amp; Data Assimilation</em> as separate clusters means
+          Mylo hunts each topic distinctly and still surfaces the top ocean paper
+          alongside your medical ones — instead of blending both into one search
+          where the larger topic drowns out the other.
+        </p>
       </div>
 
       {error ? (
@@ -297,7 +319,8 @@ export function ClusterOrganizer({
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {/* One cluster per row — a clear, full-width card each. */}
+      <div className="space-y-3">
         {sanitized.map((cluster) => (
           <ClusterCard
             key={cluster.id}
@@ -314,7 +337,6 @@ export function ClusterOrganizer({
                 ? [{ key: "__split__", label: `Split "${area}" into a new cluster` }]
                 : []),
             ]}
-            canDelete={cluster.areas.length === 0}
             isDragOver={dragOverId === cluster.id}
             onRename={(label) => handleRename(cluster.id, label)}
             onDelete={() => handleDelete(cluster.id)}
@@ -328,19 +350,19 @@ export function ClusterOrganizer({
             onSplitArea={handleSplitArea}
           />
         ))}
-
-        <button
-          type="button"
-          onClick={handleCreate}
-          disabled={!canCreateMore}
-          className="flex min-h-[96px] flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-border p-4 text-sm font-medium text-[var(--text-secondary)] transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-[var(--text-secondary)] motion-reduce:transition-none"
-        >
-          <span aria-hidden="true" className="text-lg leading-none">
-            +
-          </span>
-          {canCreateMore ? "New cluster" : "Cluster limit reached (6)"}
-        </button>
       </div>
+
+      <button
+        type="button"
+        onClick={handleCreate}
+        disabled={!canCreateMore}
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-3 text-sm font-medium text-[var(--text-secondary)] transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-[var(--text-secondary)] motion-reduce:transition-none"
+      >
+        <span aria-hidden="true" className="text-lg leading-none">
+          +
+        </span>
+        {canCreateMore ? "Add a cluster" : "Cluster limit reached (max 6)"}
+      </button>
 
       <Card
         onDragOver={(event) => {
@@ -403,7 +425,6 @@ type ClusterCardProps = {
   cluster: ClusterGroup;
   mergeTargets: MenuItem[];
   moveTargetsFor: (area: string) => MenuItem[];
-  canDelete: boolean;
   isDragOver: boolean;
   onRename: (label: string) => void;
   onDelete: () => void;
@@ -419,7 +440,6 @@ function ClusterCard({
   cluster,
   mergeTargets,
   moveTargetsFor,
-  canDelete,
   isDragOver,
   onRename,
   onDelete,
@@ -457,9 +477,9 @@ function ClusterCard({
         <input
           value={cluster.label}
           onChange={(event) => onRename(event.target.value)}
-          placeholder="Untitled cluster"
+          placeholder="Name this cluster"
           aria-label="Cluster name"
-          className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-[var(--text-primary)] outline-none transition hover:border-border focus-visible:border-input focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+          className="min-w-0 flex-1 rounded-md border border-border bg-[var(--surface-alt)] px-2 py-1 text-sm font-semibold text-[var(--text-primary)] outline-none transition focus-visible:border-input focus-visible:bg-[var(--surface)] focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
         />
         <span className="shrink-0 text-xs text-[var(--text-muted)]">
           {cluster.areas.length}
@@ -467,7 +487,7 @@ function ClusterCard({
         <InlineMenu
           trigger="Merge into"
           triggerAriaLabel={`Merge "${cluster.label}" into another cluster`}
-          triggerClassName="shrink-0 text-xs font-medium text-[var(--text-secondary)] hover:text-foreground"
+          triggerClassName="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-surface-alt hover:text-foreground"
           items={mergeTargets}
           onSelect={onMergeInto}
           align="right"
@@ -475,12 +495,11 @@ function ClusterCard({
         <button
           type="button"
           onClick={onDelete}
-          disabled={!canDelete}
           aria-label={`Delete "${cluster.label}"`}
-          title={canDelete ? "Delete cluster" : "Move its areas out first"}
-          className="shrink-0 rounded-full px-1.5 py-0.5 text-sm text-[var(--text-muted)] transition hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--text-muted)] motion-reduce:transition-none"
+          title="Delete cluster (its areas return to Unsorted)"
+          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-[var(--text-muted)] transition hover:bg-destructive/10 hover:text-destructive motion-reduce:transition-none"
         >
-          ×
+          Delete
         </button>
       </div>
 
