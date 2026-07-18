@@ -58,7 +58,9 @@ _SYSTEM_PROMPT = (
     "attention and explain why. For each pick, judge how well the paper fits "
     "THIS researcher — their statement, research focus, and keywords — and give "
     "an integer percent match from 0 to 100 (100 = a near-perfect fit; be "
-    "honest and use the full range). Return ONLY one JSON object:\n"
+    "honest and use the full range). When a paper line names a focus cluster "
+    "(\"for your <cluster> focus\"), write the reason for THAT focus — say why it "
+    "matters to that specific strand of their work. Return ONLY one JSON object:\n"
     '  {"suggestions": [{"paper": <number>, "match": <integer 0-100>, '
     '"reason": <2-4 sentences, second '
     "person, that explain concretely WHY this researcher should read it, HOW it "
@@ -78,6 +80,7 @@ def generate_suggestions(
     complete: CompleteFn | None = None,
     prior: dict[str, dict] | None = None,
     new_ids: set[str] | None = None,
+    cluster_by_id: dict[str, str] | None = None,
 ) -> list[Suggestion]:
     """Return the two-tier digest: every candidate surfaced, top ``llm_limit`` ranked.
 
@@ -104,13 +107,17 @@ def generate_suggestions(
         return []
     prior = prior or {}
     new_ids = new_ids or set()
+    cluster_by_id = cluster_by_id or {}
 
     surfaced = candidates if surface_limit is None else candidates[:surface_limit]
 
     unscored = [pair for pair in surfaced if str(pair[0].id) not in prior]
     llm_subset = new_first(unscored, lambda pair: str(pair[0].id), new_ids)[:llm_limit]
 
-    llm = _llm_suggestions(interests, llm_subset, limit=llm_limit, complete=complete)
+    llm = _llm_suggestions(
+        interests, llm_subset, limit=llm_limit, complete=complete,
+        cluster_by_id=cluster_by_id,
+    )
     now = timezone.now().isoformat()
     for suggestion in llm:
         suggestion["llm_scored_at"] = now
@@ -131,7 +138,8 @@ def generate_suggestions(
             # A paper's headline is always its real title — never a model rename
             # (legacy carried verdicts may still hold one; drop it here).
             headline=_title(item),
-            reason=verdict.get("reason") or _fallback_reason(interests, item),
+            reason=verdict.get("reason")
+            or _fallback_reason(interests, item, cluster_by_id.get(cid)),
             match_percent=verdict.get("match_percent"),
             source="llm",
         )
@@ -154,7 +162,9 @@ def generate_suggestions(
                 score,
                 rank=0,
                 headline=_title(item),
-                reason=_fallback_reason(interests, item),
+                reason=_fallback_reason(
+                    interests, item, cluster_by_id.get(str(item.id))
+                ),
                 # Cross-embedding matches carry no percent — the percent is the
                 # language model's meaning judgement, and these papers never went
                 # through it. (The fusion ``score`` is a ranking score, not a
@@ -184,6 +194,7 @@ def _llm_suggestions(
     *,
     limit: int,
     complete: CompleteFn | None,
+    cluster_by_id: dict[str, str] | None = None,
 ) -> list[Suggestion]:
     """Ask the model to rank+explain ``shown``; ``[]`` if it can't be used.
 
@@ -193,9 +204,12 @@ def _llm_suggestions(
     """
     if not shown:
         return []
+    cluster_by_id = cluster_by_id or {}
     ask = complete if complete is not None else _settings_complete
     try:
-        raw = ask(_build_prompt(interests, shown, limit=limit))
+        raw = ask(
+            _build_prompt(interests, shown, limit=limit, cluster_by_id=cluster_by_id)
+        )
     except Exception as exc:
         # An unreachable model is an expected degradation — one concise line, not
         # a full traceback — then fall back to the deterministic digest.
@@ -206,7 +220,7 @@ def _llm_suggestions(
         return []
     if not raw:
         return []  # no model / empty response — fall back quietly
-    parsed = _parse(raw, shown, limit=limit)
+    parsed = _parse(raw, shown, limit=limit, cluster_by_id=cluster_by_id)
     if not parsed:
         logger.warning(
             "LLM returned unparseable suggestions; using similarity fallback. "
@@ -224,7 +238,9 @@ def _build_prompt(
     shown: Sequence[tuple[ContentItem, float]],
     *,
     limit: int = _DEFAULT_LLM_LIMIT,
+    cluster_by_id: dict[str, str] | None = None,
 ) -> str:
+    cluster_by_id = cluster_by_id or {}
     parts = [
         f"Researcher profile:\n{_profile_text(interests)}",
         "",
@@ -240,6 +256,9 @@ def _build_prompt(
         tail = ", ".join(p for p in (str(year).strip(), venue) if p)
         if tail:
             line += f" ({tail})"
+        cluster = cluster_by_id.get(str(item.id))
+        if cluster:
+            line += f" — for your {cluster} focus"
         if abstract:
             line += f"\n    {abstract}"
         parts.append(line)
@@ -271,7 +290,9 @@ def _parse(
     shown: Sequence[tuple[ContentItem, float]],
     *,
     limit: int,
+    cluster_by_id: dict[str, str] | None = None,
 ) -> list[Suggestion]:
+    cluster_by_id = cluster_by_id or {}
     if not raw:
         return []
     start, end = raw.find("{"), raw.rfind("}")
@@ -301,7 +322,8 @@ def _parse(
                 similarity,
                 rank=len(out) + 1,
                 headline=_title(item),
-                reason=_clean(row.get("reason")) or _fallback_reason({}, item),
+                reason=_clean(row.get("reason"))
+                or _fallback_reason({}, item, cluster_by_id.get(str(item.id))),
                 match_percent=_as_match(row.get("match")),
                 source="llm",
             )
@@ -336,8 +358,17 @@ def _as_match(value: Any) -> int | None:
 # -- fallback -----------------------------------------------------------------
 
 
-def _fallback_reason(interests: dict, item: ContentItem) -> str:
+def _fallback_reason(
+    interests: dict, item: ContentItem, cluster: str | None = None
+) -> str:
     term = _overlap_term(interests, item)
+    if cluster:
+        if term:
+            return (
+                f"Recommended for your {cluster} focus — matches your interest "
+                f"in {term}."
+            )
+        return f"A strong topical match for your {cluster} focus."
     if term:
         return f"Closely matches your stated interest in {term}."
     return "A strong topical match to your research profile."

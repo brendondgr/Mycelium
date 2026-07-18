@@ -218,6 +218,72 @@ def test_fusion_prefers_multi_interest_paper(pgvector) -> None:
     assert user.profile.embedding is not None
 
 
+def _clustered_user(username: str) -> User:
+    """A user whose two areas (graph, health) live in two named clusters."""
+    user = User.objects.create_user(username, password="x")
+    user.profile.interests = {
+        "version": 2,
+        "areas": ["graph", "health"],
+        "keywords": [],
+        "clusters": [
+            {"id": "c-graph", "label": "Graph", "areas": ["graph"]},
+            {"id": "c-health", "label": "Health", "areas": ["health"]},
+        ],
+    }
+    user.profile.save()
+    _set_watch(user, ["graph", "health"])
+    return user
+
+
+@pytest.mark.django_db
+def test_cluster_scoping_attributes_and_bridges(pgvector) -> None:
+    """>= 2 clusters: single-cluster papers attribute to their cluster with no
+    bridge; a paper strong in both clusters clears the floor in both and bridges."""
+    embeddings.set_embedder(_fake_embed)
+    # Symmetric pool: a graph-only, a health-only, and a both paper. The single
+    # papers dominate their own channel (the other floors out); the both paper is
+    # second in each, so it clears the floor in both clusters -> a bridge.
+    p_graph = _vpaper("g", "graph", [1.0, 0.0, 0.0, 0.0])
+    p_health = _vpaper("h", "health", [0.0, 1.0, 0.0, 0.0])
+    p_bridge = _vpaper("b", "graph health", [1.0, 1.0, 0.0, 0.0])
+    user = _clustered_user("cluster-user")
+
+    result = run_for_user(user, search_fn=_no_search, complete=lambda _p: None)
+    assert result.status == "ok"
+
+    scores = {s.content_id: s for s in RelevanceScore.objects.filter(target_user=user)}
+
+    graph_only = scores[p_graph.id]
+    assert graph_only.signals["cluster_id"] == "c-graph"
+    assert graph_only.signals["cluster_label"] == "Graph"
+    assert graph_only.signals["bridge_cluster_ids"] == []
+    assert set(graph_only.signals["per_cluster"]) == {"c-graph"}
+
+    health_only = scores[p_health.id]
+    assert health_only.signals["cluster_id"] == "c-health"
+    assert health_only.signals["bridge_cluster_ids"] == []
+
+    bridge = scores[p_bridge.id]
+    # Cleared the floor in both clusters -> both scores present and a bridge badge;
+    # the symmetric scores tie so attribution breaks to the earliest cluster.
+    assert set(bridge.signals["per_cluster"]) == {"c-graph", "c-health"}
+    assert bridge.signals["cluster_id"] == "c-graph"
+    assert bridge.signals["bridge_cluster_ids"] == ["c-health"]
+
+
+@pytest.mark.django_db
+def test_single_cluster_has_no_attribution(pgvector) -> None:
+    """One (implicit) cluster scores byte-identically to today — no cluster fields."""
+    embeddings.set_embedder(_fake_embed)
+    _vpaper("g", "graph health", [1.0, 1.0, 0.0, 0.0])
+    user = _profile_user("solo", areas=["graph", "health"], keywords=[])
+
+    run_for_user(user, search_fn=_no_search, complete=lambda _p: None)
+    score = RelevanceScore.objects.filter(target_user=user).first()
+    assert "cluster_id" not in score.signals  # flat path writes no attribution
+    assert score.signals["n_matched"] == 2  # still the flat multi-interest breadth
+
+
 @pytest.mark.django_db
 def test_match_threshold_filters_fusion_by_embedding_cosine(pgvector) -> None:
     """The paper feed surfaces only candidates whose transformer cosine clears the

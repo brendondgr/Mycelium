@@ -42,10 +42,14 @@ from apps.scraper.ingest import SearchFn, scan
 from apps.scraper.window import ScanWindow
 
 from . import embeddings
+from .clustering import Cluster, cluster_interests
 from .digest_selection import new_content_ids, split_by_floor
 from .fusion import (
     DEFAULT_BETA,
+    ClusteredHit,
     CombinedHit,
+    cap_clusters,
+    combine_clusters,
     combine_interests,
     fuse_interest,
     with_floor_guarantee,
@@ -356,8 +360,24 @@ def recommend_for_user(
     # accumulate instead (see :mod:`.opportunities`); papers deliberately do not.
     created_on = latest_gather_date(content_type=ContentItem.Type.PAPER)
     search_ints = search_interests(interests)
+    # Cluster-scoped scoring kicks in only with >= 2 clusters; with one (implicit or
+    # a lone named cluster) it is identical to the flat path, so those users and all
+    # v1 profiles score byte-identically to today (no cluster attribution).
+    clusters = cluster_interests(interests)
     retrieved_count = 0
-    if search_ints:
+    if search_ints and len(clusters) >= 2:
+        pairs, rows, retrieved_count = fuse_clusters_pool(
+            search_ints,
+            clusters,
+            content_type=ContentItem.Type.PAPER,
+            surface_limit=max_surface,
+            pool_per_interest=pool_per_interest,
+            beta=beta,
+            emit=emit,
+            created_on=created_on,
+            match_threshold=match_threshold,
+        )
+    elif search_ints:
         pairs, rows, retrieved_count = fuse_interests_pool(
             search_ints,
             content_type=ContentItem.Type.PAPER,
@@ -408,6 +428,7 @@ def recommend_for_user(
         complete=complete,
         prior=prior,
         new_ids=new_ids,
+        cluster_by_id=_cluster_by_id(rows),
     )
     floor = _paper_min_match_percent()
     visible, hidden = split_by_floor(suggestions, floor)
@@ -482,8 +503,21 @@ def recommend_for_target(
     created_on = latest_gather_date(content_type=ContentItem.Type.PAPER)
     interests = target.interests or {}
     search_ints = search_interests(interests)
+    clusters = cluster_interests(interests)
     retrieved_count = 0
-    if search_ints:
+    if search_ints and len(clusters) >= 2:
+        pairs, rows, retrieved_count = fuse_clusters_pool(
+            search_ints,
+            clusters,
+            content_type=ContentItem.Type.PAPER,
+            surface_limit=max_surface,
+            pool_per_interest=pool_per_interest,
+            beta=beta,
+            emit=emit,
+            created_on=created_on,
+            match_threshold=match_threshold,
+        )
+    elif search_ints:
         pairs, rows, retrieved_count = fuse_interests_pool(
             search_ints,
             content_type=ContentItem.Type.PAPER,
@@ -538,6 +572,7 @@ def recommend_for_target(
         complete=complete,
         prior=prior,
         new_ids=new_ids,
+        cluster_by_id=_cluster_by_id(rows),
     )
     floor = _paper_min_match_percent()
     visible, hidden = split_by_floor(suggestions, floor)
@@ -796,42 +831,14 @@ def fuse_interests_pool(
       — a variable-length list — capped only by ``surface_limit`` as a backstop. Each
       surfaced row records that cosine as ``embedding_match`` for the UI.
     """
-    pool: dict[str, ContentItem] = {}
-    vector_hits: dict[str, list[Hit]] = {}
-    # The best raw cosine each candidate earned in *any* interest's vector channel —
-    # the transformer-model match the paper feed thresholds on. Every pool item comes
-    # from a vector pull, so each has at least one cosine here.
-    best_cosine: dict[str, float] = {}
-    for interest in search_ints:
-        vector = embeddings.embed_text(interest.embed_text)
-        if vector is None:
-            continue
-        unified: list[Hit] = []
-        for item, similarity in retrieve_for_vector(
-            vector,
-            content_type=content_type,
-            limit=pool_per_interest,
-            created_on=created_on,
-        ):
-            key = str(item.id)
-            pool.setdefault(key, item)
-            unified.append((pool[key], similarity))
-            if similarity > best_cosine.get(key, 0.0):
-                best_cosine[key] = similarity
-        vector_hits[interest.label] = unified
-
+    pool, per_interest_scores, best_cosine = _build_pool(
+        search_ints,
+        content_type=content_type,
+        pool_per_interest=pool_per_interest,
+        created_on=created_on,
+    )
     if not pool:
         return [], [], 0
-
-    index = build_bm25_index(list(pool.values()))
-    per_interest_scores: dict[str, dict[str, float]] = {}
-    for interest in search_ints:
-        fused = fuse_interest(
-            rank_bm25_over(interest.query_text, index),
-            vector_hits.get(interest.label, []),
-        )
-        if fused:
-            per_interest_scores[interest.label] = fused
 
     combined = combine_interests(per_interest_scores, pool, beta=beta)
     if match_threshold is None:
@@ -864,6 +871,167 @@ def fuse_interests_pool(
         _fusion_row(hit, match=best_cosine.get(str(hit.item.id))) for hit in surfaced
     ]
     return pairs, rows, len(pool)
+
+
+def _build_pool(
+    search_ints: list[SearchInterest],
+    *,
+    content_type: str,
+    pool_per_interest: int,
+    created_on: date | None,
+) -> tuple[dict[str, ContentItem], dict[str, dict[str, float]], dict[str, float]]:
+    """Retrieve one shared candidate pool and fuse every interest over it.
+
+    Shared by the flat (:func:`fuse_interests_pool`) and cluster-scoped
+    (:func:`fuse_clusters_pool`) paths: build the union of each interest's vector
+    ANN pull, index it once for BM25, and fuse the two channels per interest.
+    Returns ``(pool, per_interest_scores, best_cosine)`` — ``per_interest_scores``
+    maps ``interest_label -> {item_id: [0,1] fused score}`` and ``best_cosine``
+    the best raw transformer cosine each candidate earned in any interest's vector
+    channel (the paper feed thresholds on it). An empty pool returns empties.
+    """
+    pool: dict[str, ContentItem] = {}
+    vector_hits: dict[str, list[Hit]] = {}
+    best_cosine: dict[str, float] = {}
+    for interest in search_ints:
+        vector = embeddings.embed_text(interest.embed_text)
+        if vector is None:
+            continue
+        unified: list[Hit] = []
+        for item, similarity in retrieve_for_vector(
+            vector,
+            content_type=content_type,
+            limit=pool_per_interest,
+            created_on=created_on,
+        ):
+            key = str(item.id)
+            pool.setdefault(key, item)
+            unified.append((pool[key], similarity))
+            if similarity > best_cosine.get(key, 0.0):
+                best_cosine[key] = similarity
+        vector_hits[interest.label] = unified
+
+    if not pool:
+        return {}, {}, {}
+
+    index = build_bm25_index(list(pool.values()))
+    per_interest_scores: dict[str, dict[str, float]] = {}
+    for interest in search_ints:
+        fused = fuse_interest(
+            rank_bm25_over(interest.query_text, index),
+            vector_hits.get(interest.label, []),
+        )
+        if fused:
+            per_interest_scores[interest.label] = fused
+    return pool, per_interest_scores, best_cosine
+
+
+def fuse_clusters_pool(
+    search_ints: list[SearchInterest],
+    clusters: list[Cluster],
+    *,
+    content_type: str = ContentItem.Type.PAPER,
+    surface_limit: int,
+    pool_per_interest: int,
+    beta: float,
+    emit: Callable[[str], None],
+    created_on: date | None = None,
+    match_threshold: float | None = None,
+) -> tuple[list[Hit], list[PersistRow], int]:
+    """Cluster-scoped twin of :func:`fuse_interests_pool` (papers, >= 2 clusters).
+
+    Builds the same shared pool and per-interest scores, then combines **within
+    each cluster** (:func:`.fusion.combine_clusters`) so the breadth bonus never
+    spans clusters. A paper's final score is the max over its cluster scores and
+    its attribution is the argmax cluster; a >= 2-cluster paper carries the others
+    as bridges. Surfacing mirrors the flat path but the truncation guarantee is
+    per-cluster (:func:`.fusion.cap_clusters` reserves each cluster's best), and
+    each row records the cluster attribution for the UI/report.
+    """
+    pool, per_interest_scores, best_cosine = _build_pool(
+        search_ints,
+        content_type=content_type,
+        pool_per_interest=pool_per_interest,
+        created_on=created_on,
+    )
+    if not pool:
+        return [], [], 0
+
+    cluster_areas = {cluster.id: cluster.areas for cluster in clusters}
+    labels_by_id = {cluster.id: cluster.label for cluster in clusters}
+    clustered = combine_clusters(per_interest_scores, cluster_areas, pool, beta=beta)
+
+    if match_threshold is None:
+        surfaced = cap_clusters(clustered, limit=surface_limit)
+        emit(
+            f"fused {len(clusters)} cluster(s) over {len(pool)} candidates; "
+            f"surfaced {len(surfaced)}"
+        )
+        pairs = [(hit.item, hit.final_score) for hit in surfaced]
+        rows = [_cluster_row(hit, labels_by_id) for hit in surfaced]
+        return pairs, rows, len(pool)
+
+    passing = [
+        hit
+        for hit in clustered
+        if best_cosine.get(str(hit.item.id), 0.0) >= match_threshold
+    ]
+    # cap_clusters is a no-op below surface_limit (the common case) and otherwise
+    # reserves each cluster's best paper before the backstop truncation.
+    surfaced = cap_clusters(passing, limit=surface_limit)
+    emit(
+        f"fused {len(clusters)} cluster(s) over {len(pool)} candidates; "
+        f"{len(passing)} cleared the {round(match_threshold * 100)}% match threshold"
+        f"{f' (capped to {surface_limit})' if len(passing) > surface_limit else ''}"
+    )
+    pairs = [(hit.item, hit.final_score) for hit in surfaced]
+    rows = [
+        _cluster_row(hit, labels_by_id, match=best_cosine.get(str(hit.item.id)))
+        for hit in surfaced
+    ]
+    return pairs, rows, len(pool)
+
+
+def _cluster_row(
+    hit: ClusteredHit,
+    labels_by_id: dict[str, str],
+    *,
+    match: float | None = None,
+) -> PersistRow:
+    """A persist row for a cluster-scoped hit — the flat signals plus attribution.
+
+    Keeps ``per_interest``/``focus_areas`` (so the chips and the report's theme
+    roll-up keep working unchanged) and adds ``cluster_id``/``cluster_label``,
+    the ``per_cluster`` score map, and ``bridge_cluster_ids`` — the attribution the
+    serializers surface as "% match · Cluster" and the secondary bridge badge.
+    """
+    signals = {
+        "combined_score": round(hit.final_score, 6),
+        "per_interest": {label: round(v, 4) for label, v in hit.per_interest.items()},
+        "n_matched": hit.n_matched,
+        "focus_areas": list(hit.per_interest.keys()),
+        "cluster_id": hit.cluster_id,
+        "cluster_label": labels_by_id.get(hit.cluster_id, ""),
+        "per_cluster": {cid: round(v, 4) for cid, v in hit.per_cluster.items()},
+        "bridge_cluster_ids": list(hit.bridge_cluster_ids),
+    }
+    if match is not None:
+        signals["embedding_match"] = round(match, 4)
+    return (hit.item, hit.final_score, signals)
+
+
+def _cluster_by_id(rows: list[PersistRow]) -> dict[str, str]:
+    """Map ``content_id -> attributed cluster label`` from the persist rows.
+
+    Only cluster-scoped rows carry ``cluster_label``; the flat / single-cluster
+    path yields an empty map, so :func:`.suggest.generate_suggestions` writes its
+    rationale exactly as before for those users.
+    """
+    return {
+        str(item.id): extra["cluster_label"]
+        for item, _score, extra in rows
+        if extra.get("cluster_label")
+    }
 
 
 def _fusion_row(hit: CombinedHit, *, match: float | None = None) -> PersistRow:

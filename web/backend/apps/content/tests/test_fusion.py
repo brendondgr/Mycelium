@@ -8,6 +8,8 @@ import uuid
 
 from apps.content.fusion import (
     CombinedHit,
+    cap_clusters,
+    combine_clusters,
     combine_interests,
     fuse_interest,
     with_floor_guarantee,
@@ -124,3 +126,135 @@ def test_floor_guarantee_limit_zero_is_empty() -> None:
     per_interest = {"x": {str(p1.id): 1.0}}
     combined = combine_interests(per_interest, {str(p1.id): p1}, beta=0.15)
     assert with_floor_guarantee(combined, per_interest, limit=0) == []
+
+
+# -- combine_clusters: cluster-scoped ranking + attribution -------------------
+#
+# Two clusters: "c-med" over {agents, imaging} and "c-ocean" over {assimilation}.
+_MED = ["agents", "imaging"]
+_OCEAN = ["assimilation"]
+_CLUSTERS = {"c-med": _MED, "c-ocean": _OCEAN}
+
+
+def test_final_score_is_max_cluster_and_argmax_is_attribution() -> None:
+    """85%-in-Medical outranks 75%-in-Ocean; each is attributed to its cluster."""
+    strong_med, strong_ocean = _item(), _item()
+    ids = {str(strong_med.id): strong_med, str(strong_ocean.id): strong_ocean}
+    per_interest = {
+        "agents": {str(strong_med.id): 0.85},
+        "assimilation": {str(strong_ocean.id): 0.75},
+    }
+    hits = combine_clusters(per_interest, _CLUSTERS, ids, beta=0.15)
+
+    assert hits[0].item is strong_med
+    assert hits[0].cluster_id == "c-med"
+    assert round(hits[0].final_score, 4) == 0.85
+    assert hits[1].item is strong_ocean
+    assert hits[1].cluster_id == "c-ocean"
+    assert round(hits[1].final_score, 4) == 0.75
+
+
+def test_breadth_bonus_is_cluster_scoped_not_cross_cluster() -> None:
+    """One interest in each of 3 clusters must NOT out-breadth a strong single cluster."""
+    clusters = {"c-a": ["a"], "c-b": ["b"], "c-c": ["c"], "c-med": _MED}
+    spanner, focused = _item(), _item()
+    ids = {str(spanner.id): spanner, str(focused.id): focused}
+    per_interest = {
+        # spanner matches one interest in each of three separate clusters, 0.8 each
+        "a": {str(spanner.id): 0.8},
+        "b": {str(spanner.id): 0.8},
+        "c": {str(spanner.id): 0.8},
+        # focused matches both interests *within one* cluster, 0.8 each
+        "agents": {str(focused.id): 0.8},
+        "imaging": {str(focused.id): 0.8},
+    }
+    hits = combine_clusters(per_interest, clusters, ids, beta=0.15)
+
+    # spanner's best cluster score is a lone-interest mean 0.8 (no breadth bonus,
+    # since each cluster saw only one match). focused earns the within-cluster
+    # breadth bonus: 0.8 * (1 + 0.15) = 0.92 -> it ranks first.
+    assert hits[0].item is focused
+    assert round(hits[0].final_score, 4) == 0.92
+    assert hits[1].item is spanner
+    assert round(hits[1].final_score, 4) == 0.8
+
+
+def test_within_cluster_breadth_still_wins() -> None:
+    """3 interests within one cluster still outrank a 1-interest match at equal strength."""
+    clusters = {"c-big": ["a", "b", "c"], "c-ocean": _OCEAN}
+    broad, narrow = _item(), _item()
+    ids = {str(broad.id): broad, str(narrow.id): narrow}
+    per_interest = {
+        "a": {str(broad.id): 0.8},
+        "b": {str(broad.id): 0.8},
+        "c": {str(broad.id): 0.8},
+        "assimilation": {str(narrow.id): 0.8},
+    }
+    hits = combine_clusters(per_interest, clusters, ids, beta=0.15)
+    assert hits[0].item is broad
+    assert hits[0].n_matched == 3
+    assert hits[1].item is narrow
+
+
+def test_bridge_clusters_recorded_for_two_cluster_paper() -> None:
+    bridge = _item()
+    ids = {str(bridge.id): bridge}
+    per_interest = {
+        "agents": {str(bridge.id): 0.9},  # c-med (argmax)
+        "assimilation": {str(bridge.id): 0.6},  # c-ocean (bridge)
+    }
+    hits = combine_clusters(per_interest, _CLUSTERS, ids, beta=0.15)
+    assert hits[0].cluster_id == "c-med"
+    assert hits[0].bridge_cluster_ids == ["c-ocean"]
+    assert set(hits[0].per_cluster) == {"c-med", "c-ocean"}
+    # per_interest keeps every matched interest (for the chips).
+    assert set(hits[0].per_interest) == {"agents", "assimilation"}
+
+
+def test_single_cluster_paper_has_no_bridge() -> None:
+    solo = _item()
+    ids = {str(solo.id): solo}
+    per_interest = {"agents": {str(solo.id): 0.9}}
+    hits = combine_clusters(per_interest, _CLUSTERS, ids, beta=0.15)
+    assert hits[0].bridge_cluster_ids == []
+
+
+def test_argmax_tie_breaks_to_earliest_cluster() -> None:
+    tie = _item()
+    ids = {str(tie.id): tie}
+    per_interest = {
+        "agents": {str(tie.id): 0.7},
+        "assimilation": {str(tie.id): 0.7},
+    }
+    hits = combine_clusters(per_interest, _CLUSTERS, ids, beta=0.15)
+    assert hits[0].cluster_id == "c-med"  # earliest in cluster order wins the tie
+
+
+def test_cap_clusters_guarantees_each_cluster_best() -> None:
+    # c-med has four strong papers; c-ocean has one weaker paper. A tight cap must
+    # still keep c-ocean's best.
+    med = [_item() for _ in range(4)]
+    ocean = _item()
+    ids = {str(p.id): p for p in (*med, ocean)}
+    per_interest = {
+        "agents": {str(med[0].id): 0.9, str(med[1].id): 0.85, str(med[2].id): 0.8},
+        "imaging": {str(med[3].id): 0.75},
+        "assimilation": {str(ocean.id): 0.4},
+    }
+    hits = combine_clusters(per_interest, _CLUSTERS, ids, beta=0.15)
+    kept = cap_clusters(hits, limit=3)
+    kept_items = {h.item for h in kept}
+    assert len(kept) == 3
+    assert ocean in kept_items  # c-ocean's best survives truncation
+    assert med[0] in kept_items  # the top medical paper survives too
+    assert [h.final_score for h in kept] == sorted(
+        (h.final_score for h in kept), reverse=True
+    )
+
+
+def test_cap_clusters_noop_when_under_limit() -> None:
+    p = _item()
+    per_interest = {"agents": {str(p.id): 0.9}}
+    hits = combine_clusters(per_interest, _CLUSTERS, {str(p.id): p}, beta=0.15)
+    assert cap_clusters(hits, limit=10) == hits
+    assert cap_clusters(hits, limit=0) == []

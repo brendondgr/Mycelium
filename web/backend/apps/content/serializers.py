@@ -28,6 +28,9 @@ class SuggestionSerializer(serializers.Serializer):
     embedding_match = serializers.SerializerMethodField()
     per_interest = serializers.SerializerMethodField()
     matched_interests = serializers.SerializerMethodField()
+    cluster = serializers.SerializerMethodField()
+    per_cluster = serializers.SerializerMethodField()
+    bridge_clusters = serializers.SerializerMethodField()
     rank = serializers.SerializerMethodField()
     headline = serializers.SerializerMethodField()
     reason = serializers.SerializerMethodField()
@@ -88,6 +91,33 @@ class SuggestionSerializer(serializers.Serializer):
     def get_matched_interests(self, score: RelevanceScore) -> list:
         # The interest labels this paper matched — the source of the page's chips.
         return score.signals.get("focus_areas") or []
+
+    def _cluster_label(self, cluster_id: str, persisted: str = "") -> str:
+        # Resolve a cluster id to its *current* label so a renamed cluster shows
+        # its new name everywhere without a re-score; fall back to the label frozen
+        # in the signals when the caller supplied no live map (e.g. saves feed).
+        labels = self.context.get("cluster_labels") or {}
+        return labels.get(cluster_id) or persisted or ""
+
+    def get_cluster(self, score: RelevanceScore):
+        # {id, label} of the attributed (argmax) cluster, or null on the flat /
+        # single-cluster path (no cluster attribution).
+        cluster_id = score.signals.get("cluster_id")
+        if not cluster_id:
+            return None
+        label = self._cluster_label(cluster_id, score.signals.get("cluster_label", ""))
+        return {"id": cluster_id, "label": label}
+
+    def get_per_cluster(self, score: RelevanceScore) -> dict:
+        # {cluster_id -> [0,1] combined score} across every cluster this paper
+        # cleared; empty on the flat path.
+        return score.signals.get("per_cluster") or {}
+
+    def get_bridge_clusters(self, score: RelevanceScore) -> list:
+        # Secondary "also relevant to …" clusters (the paper cleared the floor in
+        # >= 2 clusters); each resolved to its current {id, label}.
+        ids = score.signals.get("bridge_cluster_ids") or []
+        return [{"id": cid, "label": self._cluster_label(cid)} for cid in ids]
 
     def get_rank(self, score: RelevanceScore):
         return score.signals.get("rank")
@@ -492,6 +522,7 @@ class SearchResultSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
     score = serializers.SerializerMethodField()
     matched_on = serializers.SerializerMethodField()
+    cluster = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
     saved_labs = serializers.SerializerMethodField()
     # Compact type-specific extras (mostly null off-type; the card branches).
@@ -538,6 +569,13 @@ class SearchResultSerializer(serializers.Serializer):
 
     def get_matched_on(self, item: ContentItem) -> list:
         return list(getattr(item, "_search_matched_on", []) or [])
+
+    def get_cluster(self, item: ContentItem):
+        # {id, label} of the reader's cluster this result best fits (lexical
+        # overlap; see SearchView), or null when the reader has < 2 clusters or the
+        # result overlaps none of them. Lets search cards carry the same "· Cluster"
+        # attribution as the feed.
+        return getattr(item, "_cluster", None)
 
     def get_saved(self, item: ContentItem) -> bool:
         return str(item.id) in self.context.get("saved_ids", set())

@@ -141,6 +141,153 @@ def combine_interests(
     return combined
 
 
+@dataclass(frozen=True)
+class ClusteredHit:
+    """One candidate after **cluster-scoped** combination, with its attribution.
+
+    Global ranking is by :attr:`final_score` (the max over the candidate's
+    per-cluster combined scores); :attr:`cluster_id` is the argmax cluster (pure
+    attribution, never a quota). The breadth bonus lives *inside* each cluster —
+    :attr:`n_matched` counts only the argmax cluster's matched interests — so a
+    paper matching one interest in each of three clusters cannot out-breadth a
+    strong single-cluster match.
+    """
+
+    item: ContentItem
+    final_score: float  # max over per-cluster combined scores (the ranking key)
+    cluster_id: str  # the argmax cluster (attribution)
+    per_cluster: dict[str, float]  # cluster_id -> that cluster's combined score
+    per_interest: dict[str, float]  # interest label -> score (all clusters; chips)
+    bridge_cluster_ids: list[str]  # other clusters cleared, when >= 2 cleared
+    n_matched: int  # interests matched *within* the argmax cluster
+
+
+def combine_clusters(
+    per_interest_scores: Mapping[str, Mapping[str, float]],
+    cluster_interest_labels: Mapping[str, Sequence[str]],
+    items_by_id: Mapping[str, ContentItem],
+    *,
+    beta: float = DEFAULT_BETA,
+) -> list[ClusteredHit]:
+    """Combine per-interest scores **within each cluster**, then merge globally.
+
+    ``per_interest_scores`` maps ``interest_label -> {item_id: score}`` (the
+    output of :func:`fuse_interest`, computed once over the shared pool);
+    ``cluster_interest_labels`` maps ``cluster_id -> [interest labels]`` (the
+    cluster's areas). For each cluster we run the *existing* softened-CombMNZ
+    :func:`combine_interests` over **only** that cluster's interests — so the
+    breadth bonus never spans clusters — then take, per candidate, the **max**
+    cluster score as its ``final_score`` and the argmax cluster as its
+    attribution. A candidate clearing the floor in >= 2 clusters carries the
+    others (minus the argmax) as ``bridge_cluster_ids``. Sorted best first.
+
+    Cluster order (the keys of ``cluster_interest_labels``) breaks argmax ties
+    deterministically: the earliest-declared cluster wins an exact tie.
+    """
+    order = list(cluster_interest_labels.keys())
+    cluster_hits: dict[str, dict[str, CombinedHit]] = {}
+    for cluster_id in order:
+        sub = {
+            label: per_interest_scores[label]
+            for label in cluster_interest_labels[cluster_id]
+            if label in per_interest_scores
+        }
+        if not sub:
+            continue
+        hits = combine_interests(sub, items_by_id, beta=beta)
+        cluster_hits[cluster_id] = {str(hit.item.id): hit for hit in hits}
+
+    all_ids: set[str] = set()
+    for hits in cluster_hits.values():
+        all_ids.update(hits.keys())
+
+    out: list[ClusteredHit] = []
+    for item_id in all_ids:
+        item = items_by_id.get(item_id)
+        if item is None:
+            continue
+        per_cluster: dict[str, float] = {}
+        per_interest: dict[str, float] = {}
+        cleared: list[str] = []
+        best_cluster: str | None = None
+        best_score = float("-inf")
+        best_n = 0
+        for cluster_id in order:
+            hit = cluster_hits.get(cluster_id, {}).get(item_id)
+            if hit is None:
+                continue
+            per_cluster[cluster_id] = hit.combined_score
+            per_interest.update(hit.per_interest)
+            cleared.append(cluster_id)
+            if hit.combined_score > best_score:  # strict: earliest cluster wins ties
+                best_score = hit.combined_score
+                best_cluster = cluster_id
+                best_n = hit.n_matched
+        if best_cluster is None:
+            continue
+        bridges = (
+            [cid for cid in cleared if cid != best_cluster]
+            if len(cleared) >= 2
+            else []
+        )
+        out.append(
+            ClusteredHit(
+                item=item,
+                final_score=best_score,
+                cluster_id=best_cluster,
+                per_cluster=per_cluster,
+                per_interest=per_interest,
+                bridge_cluster_ids=bridges,
+                n_matched=best_n,
+            )
+        )
+    out.sort(key=lambda hit: hit.final_score, reverse=True)
+    return out
+
+
+def cap_clusters(
+    clustered: Sequence[ClusteredHit], *, limit: int
+) -> list[ClusteredHit]:
+    """Truncate to ``limit`` while guaranteeing each cluster's best paper survives.
+
+    The cluster-level twin of :func:`with_floor_guarantee`: before filling by
+    ``final_score``, reserve a slot for the single highest-scoring paper of every
+    cluster (by that cluster's own score — the paper may be attributed elsewhere),
+    so a cluster with weaker matches still surfaces its best item without
+    distorting the ordering above it. The result is re-sorted by ``final_score``.
+    """
+    if limit <= 0:
+        return []
+    hits = list(clustered)
+    if len(hits) <= limit:
+        return hits
+
+    best_for_cluster: dict[str, ClusteredHit] = {}
+    for hit in hits:
+        for cluster_id, score in hit.per_cluster.items():
+            current = best_for_cluster.get(cluster_id)
+            if current is None or score > current.per_cluster.get(cluster_id, 0.0):
+                best_for_cluster[cluster_id] = hit
+
+    must: list[ClusteredHit] = []
+    seen: set[str] = set()
+    for hit in sorted(
+        best_for_cluster.values(), key=lambda h: h.final_score, reverse=True
+    ):
+        key = str(hit.item.id)
+        if key not in seen:
+            seen.add(key)
+            must.append(hit)
+    must = must[:limit]
+    must_ids = {str(hit.item.id) for hit in must}
+
+    slots_left = limit - len(must)
+    fillers = [hit for hit in hits if str(hit.item.id) not in must_ids][:slots_left]
+    result = must + fillers
+    result.sort(key=lambda hit: hit.final_score, reverse=True)
+    return result
+
+
 def with_floor_guarantee(
     combined: Sequence[CombinedHit],
     per_interest_scores: Mapping[str, Mapping[str, float]],

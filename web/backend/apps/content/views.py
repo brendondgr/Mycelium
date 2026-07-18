@@ -149,6 +149,7 @@ class DailyReportView(APIView):
                         "today": today,
                         "saved_ids": _saved_content_ids(request.user),
                         "saved_labs": _saved_lab_slugs_by_content(request.user),
+                        "cluster_labels": _user_cluster_labels(request.user),
                     },
                 ).data,
             }
@@ -669,6 +670,65 @@ class PersonalWindowCountsView(APIView):
         return Response({"window_counts": _personal_window_counts(request.user)})
 
 
+def _user_cluster_labels(user) -> dict[str, str]:
+    """``cluster_id -> current label`` for a user's own clusters (badge labels).
+
+    Passed as serializer context so a renamed cluster shows its new label on every
+    card without a re-score; empty for a v1 / single-cluster profile.
+    """
+    from .clustering import cluster_labels
+
+    profile = getattr(user, "profile", None)
+    return cluster_labels(getattr(profile, "interests", None))
+
+
+def _target_cluster_labels(target_filter: dict) -> dict[str, str]:
+    """``cluster_id -> current label`` for a lab / project paper feed.
+
+    Labs carry clusters on their ``LabProfile.interests``; projects rarely do, so
+    the serializer's frozen-label fallback covers them.
+    """
+    from .clustering import cluster_labels
+
+    lab = target_filter.get("target_lab")
+    if lab is not None:
+        profile = getattr(lab, "profile", None)
+        return cluster_labels(getattr(profile, "interests", None))
+    return {}
+
+
+def _attach_search_clusters(items, user) -> None:
+    """Best-effort ``· Cluster`` attribution for search hits (mutates in place).
+
+    Search is query-first (no per-target score), so a result carries no persisted
+    cluster. For a reader with >= 2 clusters we attribute each hit to the cluster
+    whose areas best overlap its title/abstract — the same cheap lexical signal the
+    focus re-rank uses — so search cards show the same attribution as the feed.
+    Papers-first: off-type items rarely overlap and stay unattributed.
+    """
+    from .clustering import cluster_interests
+    from .ranking import focus_overlap
+
+    profile = getattr(user, "profile", None)
+    clusters = [
+        c
+        for c in cluster_interests(getattr(profile, "interests", None))
+        if not c.is_implicit
+    ]
+    if len(clusters) < 2:
+        return
+    for item in items:
+        best = None
+        best_frac = 0.0
+        for cluster in clusters:
+            frac, _matched = focus_overlap(cluster.areas, item)
+            if frac > best_frac:
+                best_frac = frac
+                best = cluster
+        if best is not None:
+            item._cluster = {"id": best.id, "label": best.label}
+
+
 def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dict:
     """The combined papers + grants + conferences + fellowships a lab / project matched.
 
@@ -703,7 +763,12 @@ def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dic
         # Per-area today/week/month/year totals for the lab overview stats block.
         "window_counts": _window_counts(target_filter, list(member_ids)),
         "papers": SuggestionSerializer(
-            papers, many=True, context={"today": today}
+            papers,
+            many=True,
+            context={
+                "today": today,
+                "cluster_labels": _target_cluster_labels(target_filter),
+            },
         ).data,
         "grants": GrantSerializer(grants, many=True, context=opp_context).data,
         "conferences": ConferenceSerializer(
@@ -966,6 +1031,7 @@ class SavedItemsView(APIView):
             "saved_ids": {str(cid) for cid in content_ids},
             "saved_labs": _saved_lab_slugs_by_content(request.user),
             "scores_by_content": scores_by_content,
+            "cluster_labels": _user_cluster_labels(request.user),
         }
         return Response(
             {"items": SavedItemSerializer(saves, many=True, context=context).data}
@@ -1018,6 +1084,7 @@ class LabSavedItemsView(APIView):
             "saved_ids": _saved_content_ids(request.user),
             "saved_labs": _saved_lab_slugs_by_content(request.user),
             "scores_by_content": scores_by_content,
+            "cluster_labels": _target_cluster_labels({"target_lab": lab}),
         }
         return Response(
             {
@@ -1176,6 +1243,8 @@ class SearchView(APIView):
         saved_labs = (
             _saved_lab_slugs_by_content(request.user) if result.items else {}
         )
+        if result.items:
+            _attach_search_clusters(result.items, request.user)
         serializer = SearchResultSerializer(
             result.items,
             many=True,
