@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import {
@@ -182,6 +183,7 @@ export function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
           <div className="flex flex-wrap items-center gap-2">
             {item.is_new ? <NewTag /> : null}
             <EligibilityBadge item={item} />
+            {item.cluster ? <ClusterBadge cluster={item.cluster} /> : null}
           </div>
           <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
             {item.title}

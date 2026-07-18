@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { DocumentIcon, SearchIcon } from "@/components/portal/icons";
@@ -56,6 +57,32 @@ function chipSet(suggestions: Suggestion[]): string[] {
     }
   }
   return out;
+}
+
+type ClusterOption = { id: string; label: string };
+
+/** The distinct clusters attributed across today's papers, in the order they
+ * first appear — the source of the cluster filter tier. A profile with a
+ * single (or no) cluster never populates more than one entry, so the tier
+ * stays hidden and the page renders exactly as before. */
+function clusterSet(suggestions: Suggestion[]): ClusterOption[] {
+  const seen = new Map<string, string>();
+  for (const s of suggestions) {
+    if (s.cluster && !seen.has(s.cluster.id)) {
+      seen.set(s.cluster.id, s.cluster.label);
+    }
+  }
+  return Array.from(seen, ([id, label]) => ({ id, label }));
+}
+
+/** Every interest label matched by papers belonging to one cluster — used both
+ * to scope the interest-chip tier once a cluster is selected, and as the
+ * "select all this cluster's interests" sugar when the cluster chip is clicked. */
+function interestsForCluster(
+  suggestions: Suggestion[],
+  clusterId: string,
+): string[] {
+  return chipSet(suggestions.filter((s) => s.cluster?.id === clusterId));
 }
 
 /** A 0–100 "focus %" for a paper against the selected interests: the mean of the
@@ -150,17 +177,32 @@ function PapersFeed({
 }) {
   const [showMore, setShowMore] = React.useState(false);
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [selectedCluster, setSelectedCluster] = React.useState<string | null>(
+    null,
+  );
   const [query, setQuery] = React.useState("");
 
-  const chips = React.useMemo(() => chipSet(suggestions), [suggestions]);
+  const clusters = React.useMemo(() => clusterSet(suggestions), [suggestions]);
+  const showClusterTier = clusters.length >= 2;
+
+  // The interest chips on offer: scoped to the selected cluster's papers once
+  // one is chosen, otherwise the full feed's chip set.
+  const chips = React.useMemo(
+    () =>
+      selectedCluster
+        ? interestsForCluster(suggestions, selectedCluster)
+        : chipSet(suggestions),
+    [suggestions, selectedCluster],
+  );
 
   const focusMode = selected.size > 0;
   const searchActive = query.trim() !== "";
-  const filtering = focusMode || searchActive;
+  const filtering = focusMode || searchActive || selectedCluster !== null;
 
   // The filtered/rescored list, computed only when filtering is active. Search
-  // (title OR abstract substring) and chips combine with AND; in focus mode the
-  // survivors are re-scored and re-sorted by their derived focus %.
+  // (title OR abstract substring), the cluster, and interest chips combine with
+  // AND; in focus mode the survivors are re-scored and re-sorted by their
+  // derived focus %.
   const filtered: Displayed[] = React.useMemo(() => {
     if (!filtering) return [];
     const needle = query.trim().toLowerCase();
@@ -172,6 +214,9 @@ function PapersFeed({
           s.abstract.toLowerCase().includes(needle),
       );
     }
+    if (selectedCluster) {
+      rows = rows.filter((s) => s.cluster?.id === selectedCluster);
+    }
     if (!focusMode) return rows.map((suggestion) => ({ suggestion }));
 
     const scored: Displayed[] = [];
@@ -182,7 +227,7 @@ function PapersFeed({
     }
     scored.sort((a, b) => (b.displayPercent ?? 0) - (a.displayPercent ?? 0));
     return scored;
-  }, [filtering, focusMode, query, selected, suggestions]);
+  }, [filtering, focusMode, query, selected, selectedCluster, suggestions]);
 
   // The default two-tier split (no filtering): LLM-ranked papers, then the
   // cross-embedding tail behind a toggle.
@@ -196,6 +241,26 @@ function PapersFeed({
       else next.add(label);
       return next;
     });
+  };
+
+  // Selecting a cluster chip is sugar for selecting every interest matched by
+  // that cluster's papers (so the existing focus-% scoring keeps working) plus
+  // an explicit cluster filter (so a paper outside the cluster that happens to
+  // share one of those interest labels doesn't sneak in). Re-selecting the
+  // active cluster clears both.
+  const toggleCluster = (clusterId: string) => {
+    if (selectedCluster === clusterId) {
+      setSelectedCluster(null);
+      setSelected(new Set());
+      return;
+    }
+    setSelectedCluster(clusterId);
+    setSelected(new Set(interestsForCluster(suggestions, clusterId)));
+  };
+
+  const clearFilters = () => {
+    setSelected(new Set());
+    setSelectedCluster(null);
   };
 
   const subtitle: React.ReactNode = (() => {
@@ -258,6 +323,50 @@ function PapersFeed({
             />
           </label>
 
+          {/* Cluster tier — only surfaces once the profile has 2+ distinct
+              clusters; a single/no-cluster feed skips straight to interest
+              chips, unchanged from before this feature. */}
+          {showClusterTier ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
+                Clusters
+              </span>
+              {clusters.map((cluster) => {
+                const on = selectedCluster === cluster.id;
+                const token = clusterAccentVar(cluster.id);
+                return (
+                  <button
+                    key={cluster.id}
+                    type="button"
+                    onClick={() => toggleCluster(cluster.id)}
+                    aria-pressed={on}
+                    className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors"
+                    style={
+                      on
+                        ? {
+                            borderColor: `color-mix(in srgb, var(${token}) 45%, transparent)`,
+                            backgroundColor: `color-mix(in srgb, var(${token}) 14%, transparent)`,
+                            color: `var(${token})`,
+                          }
+                        : {
+                            borderColor: "var(--border)",
+                            backgroundColor: "var(--surface-alt)",
+                            color: "var(--text-secondary)",
+                          }
+                    }
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: `var(${token})` }}
+                    />
+                    {cluster.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
           {chips.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
               {chips.map((label) => {
@@ -278,10 +387,10 @@ function PapersFeed({
                   </button>
                 );
               })}
-              {focusMode ? (
+              {focusMode || selectedCluster ? (
                 <button
                   type="button"
-                  onClick={() => setSelected(new Set())}
+                  onClick={clearFilters}
                   className="text-xs font-medium text-[var(--text-muted)] underline-offset-2 hover:text-[var(--text-primary)] hover:underline"
                 >
                   Clear

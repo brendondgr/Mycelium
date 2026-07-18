@@ -4,6 +4,10 @@ import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
+import {
+  BridgeBadge,
+  ClusterBadge,
+} from "@/components/portal/primitives/cluster-badge";
 import { ArrowRightIcon, SparkleIcon } from "@/components/portal/icons";
 import {
   MatchBadge,
@@ -54,19 +58,10 @@ export function SuggestionCard({
 
   return (
     <Card className="p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          {suggestion.rank ? (
-            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_13%,transparent)] text-xs font-semibold text-primary">
-              {suggestion.rank}
-            </span>
-          ) : null}
-          <h3 className="min-w-0 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
-            {suggestion.headline}
-          </h3>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          {suggestion.is_new ? <NewTag /> : null}
+      {/* Top row: fit signals lead on the left (match, then its cluster and any
+          bridge clusters); status + actions trail on the right. */}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {focusMode ? (
             <MatchBadge percent={displayPercent ?? null} />
           ) : (
@@ -75,6 +70,15 @@ export function SuggestionCard({
               origin={suggestion.origin}
             />
           )}
+          {suggestion.cluster ? (
+            <ClusterBadge cluster={suggestion.cluster} />
+          ) : null}
+          {suggestion.bridge_clusters?.length ? (
+            <BridgeBadge clusters={suggestion.bridge_clusters} />
+          ) : null}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {suggestion.is_new ? <NewTag /> : null}
           <Pill tone={isMylo ? "accent" : "neutral"} className="shrink-0">
             {isMylo ? (
               <>
@@ -92,6 +96,18 @@ export function SuggestionCard({
             variant="icon"
           />
         </div>
+      </div>
+
+      {/* Title on its own full-width line below the badge row. */}
+      <div className="mt-2.5 flex min-w-0 items-start gap-3">
+        {suggestion.rank ? (
+          <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_13%,transparent)] text-xs font-semibold text-primary">
+            {suggestion.rank}
+          </span>
+        ) : null}
+        <h3 className="min-w-0 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+          {suggestion.headline}
+        </h3>
       </div>
 
       <p className="mt-1.5 text-xs text-[var(--text-muted)]">

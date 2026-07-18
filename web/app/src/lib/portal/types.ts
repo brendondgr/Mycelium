@@ -134,6 +134,13 @@ export type Suggestion = {
   per_interest: Record<string, number>;
   /** Interest labels this paper matched — the source of the page's filter chips. */
   matched_interests: string[];
+  /** The attributed research-interest cluster this paper best fits, or null on a
+   * single/no-cluster profile. */
+  cluster: { id: string; label: string } | null;
+  /** cluster_id -> [0,1] fit score, across every cluster this paper cleared. */
+  per_cluster: Record<string, number>;
+  /** Secondary clusters this paper is also relevant to (empty when none). */
+  bridge_clusters: { id: string; label: string }[];
   rank: number | null;
   headline: string;
   reason: string;
@@ -248,6 +255,9 @@ type OpportunityBase = {
   saved: boolean;
   /** Slugs of the caller's *managed* labs that have already saved this item. */
   saved_labs: string[];
+  /** The attributed research-interest cluster (reserved — grants/conferences/
+   * fellowships don't send this yet; null/omitted renders no badge). */
+  cluster?: { id: string; label: string } | null;
 };
 
 /** One addressable deadline on an item (the ContentDeadline projection, R0). */
@@ -659,6 +669,9 @@ export type SearchResultItem = {
   award_class: string;
   // Any type (best-effort)
   deadline: string;
+  /** The attributed research-interest cluster this result best fits, or null/
+   * absent on a single/no-cluster profile. */
+  cluster?: { id: string; label: string } | null;
 };
 
 export type SearchFacetBucket = { value: string; count: number };

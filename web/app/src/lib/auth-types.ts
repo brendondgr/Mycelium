@@ -69,6 +69,9 @@ export type ResearchInterests = {
   sources?: Record<string, unknown>;
   /** Fellowship eligibility block — optional until the user completes step 4. */
   eligibility?: ProfileEligibility;
+  /** Research-interest clusters derived from the profile's areas (interest-
+   * clusters feature) — absent on a single/no-cluster profile. */
+  clusters?: { id: string; label: string; areas: string[] }[];
 };
 
 /** The aggregated author draft returned alongside synthesized interests. */

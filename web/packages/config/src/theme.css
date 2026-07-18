@@ -32,6 +32,14 @@
   --color-clay: var(--clay);
   --color-clay-soft: var(--clay-soft);
   --color-divider: var(--divider);
+  --color-cluster-1: var(--cluster-1);
+  --color-cluster-2: var(--cluster-2);
+  --color-cluster-3: var(--cluster-3);
+  --color-cluster-4: var(--cluster-4);
+  --color-cluster-5: var(--cluster-5);
+  --color-cluster-6: var(--cluster-6);
+  --color-cluster-7: var(--cluster-7);
+  --color-cluster-8: var(--cluster-8);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -81,6 +89,24 @@
   /* Warm, soft dashboard card shadow (style guide: warm shadows, not harsh). */
   --shadow: 0 1px 2px rgba(46, 54, 39, 0.05), 0 8px 20px rgba(46, 54, 39, 0.05);
   --radius: 0.5rem;
+  /*
+   * Categorical cluster accents (interest-clusters feature) — 8 muted, botanical
+   * hues used only to color-code an attributed research cluster on a paper card
+   * (a filled dot + tinted badge border via color-mix, same idiom as --success/
+   * --warning/--clay). Deliberately kept clear of those semantic tokens' hues
+   * (green/gold/terracotta) so a cluster color never reads as a fit or urgency
+   * signal — the palette instead spans fern/olive greens, slate/indigo blues, a
+   * muted teal, and dusty plum/rosewood/umber earth tones. A cluster id always
+   * hashes to the same token (see clusterAccentVar in cluster-badge.tsx).
+   */
+  --cluster-1: #3f7d63; /* fern */
+  --cluster-2: #74793c; /* olive */
+  --cluster-3: #4f708f; /* slate */
+  --cluster-4: #995971; /* rosewood */
+  --cluster-5: #357f86; /* teal */
+  --cluster-6: #7c5b8c; /* plum */
+  --cluster-7: #545c8a; /* indigo */
+  --cluster-8: #7c6446; /* umber */
 }
 
 .dark,
@@ -121,4 +147,13 @@
   --clay: #d98c6a;
   --clay-soft: #3a2a22;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 26px rgba(0, 0, 0, 0.32);
+  /* Cluster accents, lightened to glow softly against the dark-forest surface. */
+  --cluster-1: #6faf93;
+  --cluster-2: #a3a85e;
+  --cluster-3: #82a0c2;
+  --cluster-4: #c989a0;
+  --cluster-5: #5fadb4;
+  --cluster-6: #ac89bd;
+  --cluster-7: #838bc0;
+  --cluster-8: #ac9271;
 }

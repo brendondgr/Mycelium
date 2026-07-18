@@ -3,6 +3,7 @@
 import { usePortal } from "@/components/portal/portal-context";
 import { ArrowRightIcon, CalendarIcon, DocumentIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
+import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { MatchBadge } from "@/components/portal/sections/opportunity-bits";
 import type { SavedDeadline, Suggestion } from "@/lib/portal/types";
 
@@ -77,7 +78,22 @@ export function TopPapersPanel({
                   {paper.headline || paper.title}
                 </span>
               </div>
-              <MatchBadge percent={paper.match_percent} />
+              <div className="flex shrink-0 items-center gap-1.5">
+                {paper.cluster ? (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      title={paper.cluster.label}
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{
+                        backgroundColor: `var(${clusterAccentVar(paper.cluster.id)})`,
+                      }}
+                    />
+                    <span className="sr-only">{paper.cluster.label} cluster</span>
+                  </>
+                ) : null}
+                <MatchBadge percent={paper.match_percent} />
+              </div>
             </li>
           ))}
         </ul>

@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import {
@@ -74,6 +75,7 @@ export function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
             percent={conf.match_percent ?? conf.embedding_match}
             origin={conf.origin}
           />
+          {conf.cluster ? <ClusterBadge cluster={conf.cluster} /> : null}
         </div>
         <SaveButton
           contentId={conf.content_id}

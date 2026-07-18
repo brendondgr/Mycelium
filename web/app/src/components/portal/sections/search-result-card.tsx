@@ -9,6 +9,7 @@ import {
   SparkleIcon,
 } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
+import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { Pill, type PillTone } from "@/components/portal/primitives/pill";
 import type {
   SearchContentType,
@@ -69,6 +70,7 @@ export function SearchResultCard({ item }: { item: SearchResultItem }) {
           {meta.icon}
           {meta.label}
         </Pill>
+        {item.cluster ? <ClusterBadge cluster={item.cluster} /> : null}
         {item.deadline ? (
           <Pill tone="clay">
             <CalendarIcon size={12} />

@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import {
@@ -62,6 +63,7 @@ export function GrantRow({ grant }: { grant: GrantOpportunity }) {
               percent={grant.match_percent ?? grant.embedding_match}
               origin={grant.origin}
             />
+            {grant.cluster ? <ClusterBadge cluster={grant.cluster} /> : null}
           </div>
           <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
             {grant.title}
