@@ -109,22 +109,27 @@ def _suggested_scores(target_filter: dict, content_type: str) -> list[RelevanceS
     return scores
 
 
-def _is_fresh(signals: dict, today: str) -> bool:
-    """True only when a row is *genuinely* new: flagged ``is_new`` AND still inside
-    its pin window (``pinned_until >= today``).
+def _is_new_today(signals: dict, today: str) -> bool:
+    """True only when a row was *first seen on the run date* — new since yesterday.
 
-    ``is_new`` is a static snapshot frozen at scoring time; ``pinned_until`` (=
-    first_seen + 7 days) is also frozen but is compared against *today* on read, so
-    it is what actually ages an item back out of "new". The opportunity feeds
-    accumulate and fellowships are effectively never pruned, so their frozen
-    ``is_new=True`` rows pile up — without this gate the count reads e.g. "87 new of
-    87 matched". Mirrors :func:`apps.content.views._build_summary._is_new` and
-    :meth:`apps.content.serializers.…get_is_new`, the app-wide freshness rule.
+    The daily report answers "what surfaced today", so an item counts as new only
+    when its immutable ``first_seen`` date equals ``today`` (the run date). This is
+    deliberately stricter than the feed's "New" badge, which pins a fresh item for a
+    week (``is_new`` AND ``pinned_until >= today`` — see
+    :func:`apps.content.views._build_summary._is_new` and
+    :meth:`apps.content.serializers.…get_is_new`). Using the pin window here made the
+    report re-announce the same set every day for a week: the opportunity feeds
+    accumulate and fellowships are effectively never pruned, so a one-time bulk
+    import of 78 eligible fellowships read "78 new" every day until the pins expired.
+    Anchoring on the first-seen date instead means each item is announced once, the
+    day it actually arrives.
+
+    ``first_seen`` is stored on every suggested row (opportunities carry the
+    immutable ``metadata.first_seen``; papers fall back to the ingest date), as a
+    full ISO datetime or a bare ISO date — comparing the first 10 chars handles both.
     """
-    if not signals.get("is_new"):
-        return False
-    pinned_until = signals.get("pinned_until")
-    return bool(pinned_until and pinned_until >= today)
+    first_seen = signals.get("first_seen")
+    return bool(first_seen) and str(first_seen)[:10] == today
 
 
 def _showcase_item(score: RelevanceScore, today: str) -> dict:
@@ -149,7 +154,7 @@ def _showcase_item(score: RelevanceScore, today: str) -> dict:
         "headline": signals.get("headline", ""),
         "reason": signals.get("reason", ""),
         "deadline_date": signals.get("deadline_date") or "",
-        "is_new": _is_fresh(signals, today),
+        "is_new": _is_new_today(signals, today),
     }
 
 
@@ -167,10 +172,11 @@ def _gather(
     """Return (categories, counts, new_counts, showcase, report_items) per category.
 
     ``counts`` is everything each category's feed surfaces (papers fresh-only,
-    opportunities accumulated); ``new_counts`` is the subset that is genuinely new
-    right now (:func:`_is_fresh` — ``is_new`` AND still inside its pin window), the
-    number the briefing leads with, so a day with 3 fresh conferences reads "3 new",
-    not "140" — and an accumulated fellowship feed no longer reads "87 new of 87".
+    opportunities accumulated); ``new_counts`` is the subset that first surfaced on
+    the run date (:func:`_is_new_today`), the number the briefing leads with, so a
+    day with 3 fresh conferences reads "3 new", not "140" — and an accumulated,
+    never-pruned fellowship feed no longer re-announces the same set as "new" every
+    day of its week-long pin window.
 
     ``showcase`` is the small top-``SHOWCASE_PER_CATEGORY`` set the UI card renders;
     ``report_items`` is a slightly larger top slice (``REPORT_ITEMS_PER_SECTION``,
@@ -189,7 +195,7 @@ def _gather(
         scores = _suggested_scores(target_filter, CATEGORY_TYPES[category])
         counts[category] = len(scores)
         new_counts[category] = sum(
-            1 for s in scores if _is_fresh(s.signals, today)
+            1 for s in scores if _is_new_today(s.signals, today)
         )
         flattened = [_showcase_item(s, today) for s in scores[:report_n]]
         showcase[category] = flattened[:SHOWCASE_PER_CATEGORY]

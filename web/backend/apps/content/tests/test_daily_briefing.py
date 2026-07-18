@@ -3,6 +3,7 @@ and the API."""
 
 import pytest
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import WatchPreference
@@ -10,8 +11,12 @@ from apps.content.briefing import CATEGORY_TYPES, generate_briefing_for_user
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 
 RUN = "2026-07-11T06:00:00"
-FUTURE = "2999-01-01"  # a pinned_until still in the future => genuinely "new"
-PAST = "2000-01-01"  # a pinned_until in the past => aged out of "new"
+
+# The daily report counts an item as "new" only when it first surfaced on the run
+# date, so a genuinely-new row carries today's ``first_seen`` and an accumulated one
+# carries an older date. ``today`` is the actual run date (no time is frozen).
+TODAY = timezone.now().date().isoformat()
+OLD_SEEN = "2026-07-01T00:00:00"  # first seen well before any test run
 
 
 @pytest.fixture
@@ -176,7 +181,7 @@ def test_only_latest_run_and_suggested_items_count() -> None:
 
 
 @pytest.mark.django_db
-def test_new_counts_gate_on_pin_window_and_lead_the_prompt() -> None:
+def test_new_counts_gate_on_run_date_and_lead_the_prompt() -> None:
     user = User.objects.create_user("fresh-first", password="x")
     _watch(user, ["conferences"])
     _score(
@@ -184,10 +189,20 @@ def test_new_counts_gate_on_pin_window_and_lead_the_prompt() -> None:
         _content(ContentItem.Type.CONFERENCE, "Fresh Conf"),
         rank=1,
         is_new=True,
-        pinned_until=FUTURE,
+        first_seen=TODAY,
     )
-    _score(user, _content(ContentItem.Type.CONFERENCE, "Old Conf A"), rank=2)
-    _score(user, _content(ContentItem.Type.CONFERENCE, "Old Conf B"), rank=3)
+    _score(
+        user,
+        _content(ContentItem.Type.CONFERENCE, "Old Conf A"),
+        rank=2,
+        first_seen=OLD_SEEN,
+    )
+    _score(
+        user,
+        _content(ContentItem.Type.CONFERENCE, "Old Conf B"),
+        rank=3,
+        first_seen=OLD_SEEN,
+    )
 
     calls: list[tuple[str, str]] = []
 
@@ -206,35 +221,40 @@ def test_new_counts_gate_on_pin_window_and_lead_the_prompt() -> None:
 
 
 @pytest.mark.django_db
-def test_is_new_snapshot_without_live_pin_is_not_counted() -> None:
-    """Regression: accumulated fellowships whose frozen ``is_new`` never aged out.
+def test_accumulated_older_items_are_not_re_announced_as_new() -> None:
+    """Regression: the daily report re-announced the same set as "new" for a week.
 
     Every fellowship row is stamped ``is_new=True`` at scoring time and (being
-    effectively never pruned) piles up, so without the ``pinned_until >= today``
-    gate the count read "87 new of 87 matched". A stale row (pin window in the past,
-    or no pin at all) must not count as new.
+    effectively never pruned) piles up. The old gate counted the whole 7-day pin
+    window, so a one-time bulk import read "78 new" every day until the pins
+    expired. Now only a row first seen *on the run date* counts as new, so an
+    accumulated feed is announced once, the day it arrives — never re-announced.
     """
     user = User.objects.create_user("stale", password="x")
     _watch(user, ["fellowships"])
+    # Still inside its week-long feed pin window (pinned_until in the future) yet
+    # first seen days ago: the feed still badges it "New", but the daily report
+    # must not re-announce it — this is exactly the case the old gate got wrong.
     _score(
         user,
-        _content(ContentItem.Type.FELLOWSHIP, "Aged Out"),
+        _content(ContentItem.Type.FELLOWSHIP, "Seen Days Ago"),
         rank=1,
         is_new=True,
-        pinned_until=PAST,
+        first_seen=OLD_SEEN,
+        pinned_until="2999-01-01",
     )
     _score(
         user,
-        _content(ContentItem.Type.FELLOWSHIP, "No Pin"),
+        _content(ContentItem.Type.FELLOWSHIP, "No First Seen"),
         rank=2,
         is_new=True,
     )
     _score(
         user,
-        _content(ContentItem.Type.FELLOWSHIP, "Actually Fresh"),
+        _content(ContentItem.Type.FELLOWSHIP, "Surfaced Today"),
         rank=3,
         is_new=True,
-        pinned_until=FUTURE,
+        first_seen=TODAY,
     )
 
     briefing = generate_briefing_for_user(user, complete=_llm("body"))
@@ -243,7 +263,11 @@ def test_is_new_snapshot_without_live_pin_is_not_counted() -> None:
     assert briefing.new_counts == {"fellowships": 1}  # not 3
     # The showcase's per-item "new" flag is gated the same way.
     flags = {i["title"]: i["is_new"] for i in briefing.showcase["fellowships"]}
-    assert flags == {"Aged Out": False, "No Pin": False, "Actually Fresh": True}
+    assert flags == {
+        "Seen Days Ago": False,
+        "No First Seen": False,
+        "Surfaced Today": True,
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -260,9 +284,14 @@ def test_fallback_summary_leads_with_new_counts() -> None:
         _content(ContentItem.Type.CONFERENCE, "Fresh Conf"),
         rank=1,
         is_new=True,
-        pinned_until=FUTURE,
+        first_seen=TODAY,
     )
-    _score(user, _content(ContentItem.Type.CONFERENCE, "Old Conf"), rank=2)
+    _score(
+        user,
+        _content(ContentItem.Type.CONFERENCE, "Old Conf"),
+        rank=2,
+        first_seen=OLD_SEEN,
+    )
 
     briefing = generate_briefing_for_user(user, complete=lambda s, u: None)
 
