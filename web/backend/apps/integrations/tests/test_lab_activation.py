@@ -57,7 +57,7 @@ class LabActivationServiceTests(TestCase):
         code = lab_activation.issue_code(self.manager, self.lab)
         result = lab_activation.redeem(code, "d-anon", "g-2")
         self.assertEqual(result.outcome, lab_activation.RedeemOutcome.OK)
-        self.assertEqual(DiscordGuildLink.objects.get(guild_id="g-2").installed_by, None)
+        self.assertIsNone(DiscordGuildLink.objects.get(guild_id="g-2").installed_by)
 
     def test_dashes_and_spaces_are_cosmetic(self):
         code = lab_activation.issue_code(self.manager, self.lab)  # NNNNN-NNNNN
@@ -146,7 +146,8 @@ class LabActivationServiceTests(TestCase):
         now = timezone.now()
         resolve.set_announcement_channel("g-1", "chan-dead", verified_at=now)
         resolve.set_updates_channel("g-1", "chan-upd", verified_at=now)
-        self.assertEqual(resolve.get_announcement_channel_for_lab(self.lab), "chan-dead")
+        get_dead = resolve.get_announcement_channel_for_lab
+        self.assertEqual(get_dead(self.lab), "chan-dead")
         self.assertEqual(resolve.get_updates_channel_for_lab(self.lab), "chan-upd")
         # Opt out of deadlines without touching updates.
         resolve.clear_announcement_channel("g-1")

@@ -3,11 +3,10 @@
 * ``health`` / ``lastrun`` — is Mylo up, and how did the last daily run go? These
   read the shared run-state file (:mod:`mylo.runstate`) — a plain file read, so they
   answer within the 3-second window without deferring.
-* ``status`` — is the caller's own Discord linked? ``setup`` — the *post-activation*
-  step that chooses where the server's lab reminders post (the server is bound to a
-  lab first via ``/activate lab:``). Both touch Mycelium's ORM (via
-  :mod:`mylo.linking` → ``apps.integrations.services.resolve``), so they defer first
-  and follow up.
+* ``status`` — is the caller's own Discord linked? It touches Mycelium's ORM (via
+  :mod:`mylo.linking` → ``apps.integrations.services.resolve``), so it defers first
+  and follows up. (Choosing where a lab's reminders/updates post is the separate
+  top-level ``/setup`` command, after ``/activate-lab``.)
 
 Everything is ephemeral: status is for the person asking, not channel noise.
 """
@@ -87,29 +86,6 @@ class StatusCog(commands.Cog, name="Status"):
     async def status(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
         _, message = await linking.status(str(interaction.user.id))
-        await interaction.followup.send(message, ephemeral=True)
-
-    @mylo.command(
-        name="setup",
-        description="Choose where this server's lab reminders post (after /activate).",
-    )
-    @app_commands.describe(
-        channel="Where lab reminders post. I verify I can post there before binding.",
-    )
-    @app_commands.guild_only()
-    async def setup(
-        self,
-        interaction: discord.Interaction,
-        channel: discord.TextChannel | None = None,
-    ) -> None:
-        await interaction.response.defer(ephemeral=True)
-        guild_id = str(interaction.guild_id) if interaction.guild_id else ""
-        channel_id = str(channel.id) if channel else ""
-        _, message = await linking.setup_channel(
-            str(interaction.user.id),
-            guild_id,
-            channel_id=channel_id,
-        )
         await interaction.followup.send(message, ephemeral=True)
 
 

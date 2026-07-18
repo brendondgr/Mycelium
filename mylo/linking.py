@@ -1,18 +1,20 @@
 """Async linking operations the gateway cogs call.
 
-Each public coroutine returns a plain ``(status, message)`` — the cog just relays
-the (always ephemeral) message. All ORM access is via ``resolve`` inside a
+Each public coroutine returns a plain ``(status, message)`` or ``(status, payload)``
+— the cog relays it (always ephemerally). All ORM access is via ``resolve`` inside a
 ``mycelium.db`` call; this module imports no Django model at import time.
 
-``/activate`` is context-aware and does both linking jobs:
+Three jobs, three commands:
 
-* ``code:`` → **Path B identity linking** (redeem a one-time code to bind the
-  caller's own Discord account). Gated to the hub activation channel.
-* ``lab:``  → **server activation** (bind *this guild* to a lab the caller
-  administers), so Mylo can post that lab's reminders/announcements here.
-
-``/mylo setup`` is the *after-link* step: it only chooses where reminders post,
-and requires the server to already be activated (``/activate lab:`` first).
+* ``/activate code:``     → **Path B identity linking** (redeem a one-time code to
+  bind the caller's own Discord account). Gated to the hub activation channel.
+* ``/activate-lab code:`` → **Path C server activation** (redeem a lab's 10-digit
+  code, issued on the website, to bind *this guild* to that lab). No linked identity
+  required — the manager-issued code carries the authority.
+* ``/setup``              → the *after-activation* interactive step: choose (or turn
+  off) the deadline-announcements channel and the daily/weekly-updates channel —
+  both optional. Requires the server to be activated AND the caller to be a linked
+  lab manager (config actions still terminate in ``user_can_manage_lab``).
 """
 
 from __future__ import annotations
@@ -25,75 +27,73 @@ async def status(discord_user_id: str) -> tuple[str, str]:
 
 
 async def activate(
+    discord_user_id: str, *, code: str | None = None, channel_id: str = ""
+) -> tuple[str, str]:
+    """``/activate code:`` — Path B identity linking (the caller's own account)."""
+    code = (code or "").strip()
+    if not code:
+        return (
+            "no_code",
+            "Add your code: `/activate code:<XXXX-XXXX>` (get one from your Mycelium "
+            "profile). To connect a *server* to a lab, use `/activate-lab` instead.",
+        )
+    # Channel gate first — no code lookup at all outside the activation channel.
+    expected = await mycelium.db(_activation_channel)
+    if expected and str(channel_id) != expected:
+        return (
+            "wrong_channel",
+            f"Run `/activate code:` in <#{expected}>. Nothing was looked up.",
+        )
+    return await mycelium.db(_activate_code_sync, str(discord_user_id), code)
+
+
+async def activate_lab(
     discord_user_id: str,
     *,
     code: str | None = None,
-    lab_slug: str | None = None,
     guild_id: str = "",
     guild_name: str = "",
-    channel_id: str = "",
 ) -> tuple[str, str]:
-    """Context-aware ``/activate`` dispatch.
-
-    * ``code`` and ``lab`` together → rejected (one job at a time).
-    * ``code`` → Path B identity redemption (activation-channel gated).
-    * ``lab`` → bind this guild to that lab (manager-gated, add-on gated).
-    * neither → context help (link first / pick a lab / confirm a pending install).
-    """
+    """``/activate-lab code:`` — bind *this guild* to the lab that issued the code."""
     code = (code or "").strip()
-    lab_slug = (lab_slug or "").strip()
-
-    if code and lab_slug:
+    if not guild_id:
+        return ("no_guild", "Run `/activate-lab` inside your Discord server, not in a DM.")
+    if not code:
         return (
-            "ambiguous",
-            "Do one at a time: `/activate code:<code>` links your account, "
-            "`/activate lab:<name>` connects this server.",
+            "no_code",
+            "Add the lab's 10-digit code: `/activate-lab code:<XXXXX-XXXXX>`. Generate "
+            "it from the lab's settings in Mycelium (the **Activate Lab** button).",
         )
-
-    if code:
-        # Channel gate first — no code lookup at all outside the activation channel.
-        expected = await mycelium.db(_activation_channel)
-        if expected and str(channel_id) != expected:
-            return (
-                "wrong_channel",
-                f"Run `/activate code:` in <#{expected}>. Nothing was looked up.",
-            )
-        return await mycelium.db(_activate_code_sync, str(discord_user_id), code)
-
-    if not guild_id:
-        return ("no_guild", "Run `/activate` inside a server, not in a DM.")
-
-    if lab_slug:
-        return await mycelium.db(
-            _activate_lab_sync,
-            str(discord_user_id),
-            str(guild_id),
-            str(guild_name),
-            lab_slug,
-        )
-
     return await mycelium.db(
-        _activate_help_sync, str(discord_user_id), str(guild_id), str(guild_name)
+        _activate_lab_code_sync,
+        str(discord_user_id),
+        str(guild_id),
+        str(guild_name),
+        code,
     )
 
 
-async def setup_channel(
-    discord_user_id: str, guild_id: str, *, channel_id: str = ""
-) -> tuple[str, str]:
-    """``/mylo setup`` — choose where this activated server's reminders post."""
+async def setup_state(discord_user_id: str, guild_id: str) -> tuple[str, dict]:
+    """Auth + current channel bindings for rendering the `/setup` menu."""
     if not guild_id:
-        return ("no_guild", "Run `/mylo setup` inside a server, not in a DM.")
-    return await mycelium.db(
-        _setup_channel_sync, str(discord_user_id), str(guild_id), str(channel_id)
-    )
+        return ("no_guild", {"message": "Run `/setup` inside your Discord server, not in a DM."})
+    return await mycelium.db(_setup_state_sync, str(discord_user_id), str(guild_id))
 
 
-async def managed_lab_choices(
-    discord_user_id: str, current: str
-) -> list[tuple[str, str]]:
-    """(name, slug) pairs for the `/activate lab:` autocomplete."""
+async def bind_setup_channel(
+    discord_user_id: str, guild_id: str, *, kind: str, channel_id: str
+) -> tuple[str, dict]:
+    """Bind (or, with an empty ``channel_id``, clear) one of the two `/setup` channels.
+
+    ``kind`` is ``"deadlines"`` or ``"updates"``. Binding preflights by posting a
+    real confirmation (the only postability proof the gateway has).
+    """
     return await mycelium.db(
-        _managed_lab_choices_sync, str(discord_user_id), current or ""
+        _bind_setup_channel_sync,
+        str(discord_user_id),
+        str(guild_id),
+        str(kind),
+        str(channel_id),
     )
 
 
@@ -145,223 +145,138 @@ def _activate_code_sync(discord_user_id: str, code: str) -> tuple[str, str]:
     return (outcome.value, messages[outcome])
 
 
-def _managed_lab_choices_sync(
-    discord_user_id: str, current: str
-) -> list[tuple[str, str]]:
-    from apps.integrations.services import resolve
-
-    cur = current.lower().strip()
-    out: list[tuple[str, str]] = []
-    for lab in resolve.labs_managed_by_discord_user(discord_user_id):
-        if cur and cur not in lab.name.lower():
-            continue
-        out.append((lab.name[:100], lab.slug))
-    return out[:25]
-
-
 # --------------------------------------------------------------------------- #
-# Server activation (`/activate lab:` and the no-arg helper)
+# Server activation (`/activate-lab code:`)
 # --------------------------------------------------------------------------- #
-def _needs_bot_server(resolve, lab) -> tuple[str, str] | None:
-    """BOT_SERVER is an add-on on the lab's subscription (A4), not a tier grant."""
-    from apps.billing.entitlements import Feature, lab_has_feature
+def _activate_lab_code_sync(
+    discord_user_id: str, guild_id: str, guild_name: str, code: str
+) -> tuple[str, str]:
+    from apps.integrations.services import lab_activation
 
-    if lab_has_feature(lab, Feature.BOT_SERVER):
-        return None
-    return (
-        "bot_server_required",
-        f"**{lab.name}** doesn't include Mylo for your server yet. Add the "
-        f"Mylo-server add-on to this lab in Mycelium, then run `/activate lab:` "
-        f"again: {mycelium.portal_url()}",
-    )
-
-
-def _require_linked(resolve, discord_user_id: str) -> tuple[str, str] | None:
-    """Server activation needs the caller's own Discord to be linked first."""
-    if resolve.resolve_identity(discord_user_id) is None:
+    result = lab_activation.redeem(code, discord_user_id, guild_id, guild_name)
+    O = lab_activation.RedeemOutcome
+    if result.outcome is O.OK:
         return (
-            "link_required",
-            "Link your own Discord to Mycelium first — `/activate code:<code>` "
-            f"(get a code in your profile) or connect it there: {mycelium.portal_url()}",
+            "ok",
+            f"✅ This server is now connected to **{result.lab_name}**.\n"
+            "Next, run `/setup` to choose where deadline reminders and daily/weekly "
+            "updates post — both optional.",
+        )
+    portal = mycelium.portal_url()
+    lab = result.lab_name or "this lab"
+    messages = {
+        O.LOCKED_OUT: "Too many attempts. Try again in about an hour.",
+        O.NOT_FOUND: "That lab code isn't valid. Double-check it, or generate a fresh "
+        f"one from the lab's settings in Mycelium: {portal}",
+        O.EXPIRED: "That lab code has expired. Generate a fresh one from the lab's "
+        f"settings in Mycelium: {portal}",
+        O.ALREADY_USED: "That lab code has already been used. Generate a fresh one "
+        f"from the lab's settings in Mycelium: {portal}",
+        O.CONFLICT: (
+            f"Either this server is already connected to a different lab, or **{lab}** "
+            "is already connected to another server. Disconnect the existing link in "
+            "Mycelium first, then run `/activate-lab` again."
+        ),
+        O.BOT_SERVER_REQUIRED: (
+            f"**{lab}** doesn't include Mylo for your server yet. Add the Mylo-server "
+            f"add-on in Mycelium, then run `/activate-lab` again — your code still "
+            f"works: {portal}"
+        ),
+    }
+    return (result.outcome.value, messages[result.outcome])
+
+
+# --------------------------------------------------------------------------- #
+# Post-activation channel config (`/setup`)
+# --------------------------------------------------------------------------- #
+_CHANNEL_LABELS = {"deadlines": "Deadline announcements", "updates": "Daily/weekly updates"}
+_CHANNEL_PURPOSE = {"deadlines": "deadline reminders", "updates": "daily and weekly updates"}
+
+
+def _setup_gate(resolve, link, discord_user_id: str) -> tuple[str, dict] | None:
+    """Common `/setup` guard: server must be ACTIVE and the caller a linked manager."""
+    if link is None or link.state != resolve.GUILD_ACTIVE:
+        return (
+            "not_active",
+            {"message": "This server isn't connected to a lab yet. A lab admin or PI "
+             "runs `/activate-lab code:<code>` first — generate the code from the "
+             "lab's settings in Mycelium."},
+        )
+    if not resolve.can_manage_lab_via_discord(discord_user_id, link.lab):
+        return (
+            "denied",
+            {"message": f"Only a **linked** admin or PI of **{link.lab.name}** can "
+             "configure Mylo here. Link your Discord in your Mycelium profile (or "
+             "`/activate code:`), then run `/setup` again."},
         )
     return None
 
 
-def _activation_done_message(lab_name: str) -> str:
-    return (
-        f"✅ This server is now connected to **{lab_name}**.\n"
-        "Next: run `/mylo setup channel:#your-channel` to choose where lab "
-        "deadline reminders post."
-    )
+def _state_payload(link) -> dict:
+    return {
+        "lab_name": link.lab.name,
+        "deadlines_channel_id": link.announcement_channel_id or "",
+        "updates_channel_id": link.updates_channel_id or "",
+    }
 
 
-def _activate_lab_sync(
-    discord_user_id: str,
-    guild_id: str,
-    guild_name: str,
-    lab_slug: str,
-) -> tuple[str, str]:
-    from apps.integrations.services import resolve
-
-    blocked = _require_linked(resolve, discord_user_id)
-    if blocked is not None:
-        return blocked
-
-    link = resolve.get_guild_link(guild_id)
-
-    # Already fully connected — confirm (and note if it's a different lab).
-    if link is not None and link.state == resolve.GUILD_ACTIVE:
-        if link.lab.slug == lab_slug:
-            return (
-                "already",
-                f"✅ This server is already connected to **{link.lab.name}**. "
-                "Use `/mylo setup` to change the reminders channel.",
-            )
-        return (
-            "conflict",
-            f"This server is already connected to **{link.lab.name}**. Disconnect "
-            "it in Mycelium before connecting a different lab.",
-        )
-
-    managed = resolve.labs_managed_by_discord_user(discord_user_id)
-    chosen = next((lab for lab in managed if lab.slug == lab_slug), None)
-    if chosen is None:
-        return (
-            "denied",
-            "Pick one of the labs you administer — start typing after `lab:` to "
-            "see the list. Only a lab's admin or PI can connect a server; guild "
-            "ownership alone grants no authority.",
-        )
-
-    blocked = _needs_bot_server(resolve, chosen)
-    if blocked is not None:
-        return blocked
-
-    # Installed via the website (PENDING, verified by code grant) — confirm it.
-    if (
-        link is not None
-        and link.state != resolve.GUILD_KICKED
-        and link.lab_id == chosen.id
-        and link.verified_via_code_grant
-    ):
-        confirmer = resolve.resolve_user(discord_user_id)
-        confirmed = resolve.confirm_guild(guild_id, confirmed_by=confirmer)
-        if confirmed is not None:
-            return ("ok", _activation_done_message(chosen.name))
-
-    # Discord-native bind (or a pending link that can't be confirmed) — bind ACTIVE.
-    try:
-        resolve.bind_guild_via_command(discord_user_id, guild_id, guild_name, chosen)
-    except resolve.GuildConflict:
-        return ("conflict", "This server is already connected to a different lab.")
-    return ("ok", _activation_done_message(chosen.name))
-
-
-def _activate_help_sync(
-    discord_user_id: str, guild_id: str, guild_name: str
-) -> tuple[str, str]:
-    from apps.integrations.services import resolve
-
-    if resolve.resolve_identity(discord_user_id) is None:
-        return (
-            "link_required",
-            "Link your Discord to Mycelium first — `/activate code:<code>` (get a "
-            f"code in your profile) or connect it there: {mycelium.portal_url()}. "
-            "Then run `/activate lab:<name>` to connect this server.",
-        )
-
-    link = resolve.get_guild_link(guild_id)
-    if link is not None and link.state == resolve.GUILD_ACTIVE:
-        return (
-            "already",
-            f"✅ This server is already connected to **{link.lab.name}**. "
-            "Use `/mylo setup` to choose where reminders post.",
-        )
-
-    # A pending website install the caller manages — confirm it straight away.
-    if (
-        link is not None
-        and link.state != resolve.GUILD_KICKED
-        and resolve.can_manage_lab_via_discord(discord_user_id, link.lab)
-    ):
-        return _activate_lab_sync(
-            discord_user_id, guild_id, guild_name, link.lab.slug
-        )
-
-    managed = resolve.labs_managed_by_discord_user(discord_user_id)
-    if not managed:
-        return (
-            "no_labs",
-            "You don't administer any labs in Mycelium yet. Ask a lab's PI or "
-            "admin to connect this server, or set up your lab in Mycelium first.",
-        )
-    names = ", ".join(f"**{lab.name}**" for lab in managed[:10])
-    return (
-        "choose",
-        f"Connect this server to a lab you administer: run `/activate lab:<name>` "
-        f"({names}). You can also add Mylo from that lab's **Edit Setup** menu in "
-        "Mycelium.",
-    )
-
-
-# --------------------------------------------------------------------------- #
-# Post-link channel config (`/mylo setup`)
-# --------------------------------------------------------------------------- #
-def _setup_channel_sync(
-    discord_user_id: str, guild_id: str, channel_id: str
-) -> tuple[str, str]:
+def _setup_state_sync(discord_user_id: str, guild_id: str) -> tuple[str, dict]:
     from apps.integrations.services import resolve
 
     link = resolve.get_guild_link(guild_id)
-    if link is None or link.state != resolve.GUILD_ACTIVE:
-        return (
-            "not_active",
-            "This server isn't connected to a lab yet. Run `/activate lab:<name>` "
-            "first (a lab admin/PI), then `/mylo setup` to choose the channel.",
-        )
+    gate = _setup_gate(resolve, link, discord_user_id)
+    if gate is not None:
+        return gate
+    return ("ok", _state_payload(link))
 
-    if not resolve.can_manage_lab_via_discord(discord_user_id, link.lab):
-        return (
-            "denied",
-            f"Only an admin or PI of **{link.lab.name}** can change its reminders "
-            "channel.",
-        )
 
+def _bind_setup_channel_sync(
+    discord_user_id: str, guild_id: str, kind: str, channel_id: str
+) -> tuple[str, dict]:
+    from apps.integrations.services import resolve
+
+    link = resolve.get_guild_link(guild_id)
+    gate = _setup_gate(resolve, link, discord_user_id)
+    if gate is not None:
+        return gate
+    lab_name = link.lab.name
+    label = _CHANNEL_LABELS.get(kind, kind)
+
+    # Opt-out: an empty channel clears the binding.
     if not channel_id:
-        current = resolve.get_announcement_channel_for_lab(link.lab)
-        where = f"<#{current}>" if current else "not set yet"
-        return (
-            "status",
-            f"This server is connected to **{link.lab.name}**. Reminders channel: "
-            f"{where}.\nPass a **channel** to `/mylo setup` to change it "
-            "(I verify I can post there first).",
-        )
+        (resolve.clear_announcement_channel if kind == "deadlines"
+         else resolve.clear_updates_channel)(guild_id)
+        payload = _state_payload(resolve.get_guild_link(guild_id))
+        payload["message"] = f"🔕 {label} turned off for **{lab_name}**."
+        return ("cleared", payload)
 
-    return _bind_channel_sync(resolve, guild_id, link.lab, channel_id)
-
-
-def _bind_channel_sync(resolve, guild_id: str, lab, channel_id: str):
-    """Preflight (post a visible confirmation) then bind the announcement channel."""
+    # Bind: prove postability by posting a real confirmation first.
     from django.utils import timezone
 
     from apps.content.reminders_discord import preflight_channel
 
-    base = f"✅ **{lab.name}** reminders channel"
-    outcome = preflight_channel(channel_id)
+    outcome = preflight_channel(channel_id, purpose=_CHANNEL_PURPOSE.get(kind, "updates"))
     if not outcome.ok:
+        payload = _state_payload(link)
         if outcome.unreachable:
-            return (
-                "channel_denied",
-                f"⚠️ I can't post in <#{channel_id}> (an override denies me "
-                "View/Send/Embed there). Pick a different channel, or fix my "
-                "permissions and run `/mylo setup` again.",
+            payload["message"] = (
+                f"⚠️ I can't post in <#{channel_id}> (a permission overwrite denies me "
+                "View/Send/Embed there). Pick another channel, or fix my permissions "
+                "and try again."
             )
-        return (
-            "channel_error",
-            f"⚠️ I couldn't verify <#{channel_id}> just now. Try again in a moment.",
+            return ("channel_denied", payload)
+        payload["message"] = (
+            f"⚠️ I couldn't verify <#{channel_id}> just now. Try again in a moment."
         )
-    resolve.set_announcement_channel(guild_id, channel_id, verified_at=timezone.now())
-    return (
-        "ok",
-        f"{base}: <#{channel_id}> (I sent a confirmation there).",
+        return ("channel_error", payload)
+
+    now = timezone.now()
+    if kind == "deadlines":
+        resolve.set_announcement_channel(guild_id, channel_id, verified_at=now)
+    else:
+        resolve.set_updates_channel(guild_id, channel_id, verified_at=now)
+    payload = _state_payload(resolve.get_guild_link(guild_id))
+    payload["message"] = (
+        f"✅ {label} for **{lab_name}** → <#{channel_id}> (I sent a confirmation there)."
     )
+    return ("ok", payload)

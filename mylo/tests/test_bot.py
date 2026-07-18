@@ -26,22 +26,26 @@ class BotConstructionTests(unittest.TestCase):
 
     def test_status_group_exposes_expected_subcommands(self) -> None:
         names = {command.name for command in StatusCog.mylo.commands}
-        # health/lastrun (observability) + status/setup (Discord linking).
-        self.assertEqual(names, {"health", "lastrun", "status", "setup"})
+        # health/lastrun (observability) + status (link health). Channel setup moved
+        # to the top-level /setup command.
+        self.assertEqual(names, {"health", "lastrun", "status"})
 
 
 class BotExtensionLoadTests(unittest.IsolatedAsyncioTestCase):
-    async def test_extensions_load_and_register_the_mylo_group(self) -> None:
+    async def test_extensions_load_and_register_the_commands(self) -> None:
         bot = MyloBot(_config())
         try:
             for extension in INITIAL_EXTENSIONS:
                 await bot.load_extension(extension)
             commands = {command.name: command for command in bot.tree.get_commands()}
             self.assertIn("mylo", commands)
-            self.assertIn("activate", commands)
-            # /activate is context-aware: code: links identity, lab: connects the server.
-            activate_params = {p.name for p in commands["activate"].parameters}
-            self.assertEqual(activate_params, {"code", "lab"})
+            # /activate links your own account (code only); /activate-lab connects
+            # this server (code only); /setup configures the channels.
+            self.assertEqual({p.name for p in commands["activate"].parameters}, {"code"})
+            self.assertEqual(
+                {p.name for p in commands["activate-lab"].parameters}, {"code"}
+            )
+            self.assertIn("setup", commands)
         finally:
             await bot.close()
 

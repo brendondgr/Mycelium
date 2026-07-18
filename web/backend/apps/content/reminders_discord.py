@@ -195,18 +195,23 @@ def list_postable_channels(guild_id: str) -> list[dict]:
     ]
 
 
-def preflight_channel(channel_id: str) -> SendOutcome:
+def preflight_channel(
+    channel_id: str, *, purpose: str = "deadline reminders"
+) -> SendOutcome:
     """Verify a channel by posting a visible confirmation (the real proof).
 
     2xx → the bot has VIEW + SEND + EMBED here (Discord computed the overwrites for
     us); 403 → an overwrite denies posting, so the bind must be refused with a
     specific error rather than failing silently at 09:00 on the day it mattered.
+
+    ``purpose`` names what the channel is being bound for (e.g. "deadline reminders",
+    "daily and weekly updates") so the confirmation reads correctly for each kind.
     """
     if not _bot_configured():
         return SendOutcome(ok=False, unreachable=True)
     embed = {
         "title": "Mylo is set up here ✅",
-        "description": "This channel will receive this lab's deadline reminders.",
+        "description": f"This channel will receive this lab's {purpose}.",
         "color": BRAND_COLOR,
     }
     try:
