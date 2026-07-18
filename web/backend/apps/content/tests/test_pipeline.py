@@ -272,6 +272,39 @@ def test_cluster_scoping_attributes_and_bridges(pgvector) -> None:
 
 
 @pytest.mark.django_db
+def test_cluster_edit_reattributes_on_rerun(pgvector) -> None:
+    """Renaming clusters and re-running (the refit path, reuse_prior=False) updates
+    the persisted attribution — a paper picks up the new cluster label/ids."""
+    embeddings.set_embedder(_fake_embed)
+    _vpaper("g", "graph", [1.0, 0.0, 0.0, 0.0])  # competition so health floors out
+    p_health = _vpaper("h", "health", [0.0, 1.0, 0.0, 0.0])
+    user = _clustered_user("edit-user")
+    run_for_user(user, search_fn=_no_search, complete=lambda _p: None)
+    first = RelevanceScore.objects.get(target_user=user, content=p_health)
+    assert first.signals["cluster_id"] == "c-health"
+
+    # Edit the profile: rename the health cluster (new id + label), keep areas.
+    user.profile.interests = {
+        "version": 2,
+        "areas": ["graph", "health"],
+        "clusters": [
+            {"id": "c-graph", "label": "Graph", "areas": ["graph"]},
+            {"id": "c-wellness", "label": "Wellness", "areas": ["health"]},
+        ],
+    }
+    user.profile.save()
+
+    from apps.content.pipeline import recommend_for_user
+
+    recommend_for_user(
+        user, complete=lambda _p: None, reuse_prior=False
+    )
+    again = RelevanceScore.objects.get(target_user=user, content=p_health)
+    assert again.signals["cluster_id"] == "c-wellness"
+    assert again.signals["cluster_label"] == "Wellness"
+
+
+@pytest.mark.django_db
 def test_single_cluster_has_no_attribution(pgvector) -> None:
     """One (implicit) cluster scores byte-identically to today — no cluster fields."""
     embeddings.set_embedder(_fake_embed)
