@@ -6,6 +6,7 @@ import type {
   CollectionBrief,
   CollectionDetail,
   DiscordCodeResponse,
+  DiscordLabCodeResponse,
   DiscordStatus,
   IngestLinkResult,
   InvitationAction,
@@ -579,5 +580,18 @@ export function issueActivationCode(): Promise<DiscordCodeResponse> {
     buildApiUrl(getPublicApiBase(), "integrations", "discord", "code"),
     undefined,
     "Could not generate an activation code. Try again.",
+  );
+}
+
+/** Issue a 10-digit lab activation code (Path C) to redeem with /activate-lab code:. */
+export function issueLabActivationCode(
+  slug: string,
+): Promise<DiscordLabCodeResponse> {
+  const url = buildApiUrl(getPublicApiBase(), "integrations", "discord", "lab-code");
+  return sendJson<DiscordLabCodeResponse>(
+    "POST",
+    `${url}?lab=${encodeURIComponent(slug)}`,
+    undefined,
+    "Could not generate a lab activation code. Try again.",
   );
 }

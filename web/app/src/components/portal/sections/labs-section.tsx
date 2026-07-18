@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import {
+  DiscordIcon,
   FolderIcon,
   MembersIcon,
   PlusIcon,
@@ -19,6 +20,7 @@ import {
   useCreateLab,
   useCreateProject,
   useInviteToLab,
+  useIssueLabActivationCode,
   useLabDiscordStatus,
   useLabMembers,
   useLabProfile,
@@ -44,6 +46,14 @@ function canManageLab(lab: MyLab): boolean {
 
 const PRIMARY_BUTTON =
   "inline-flex items-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+
+const SECONDARY_BUTTON =
+  "inline-flex items-center gap-[7px] rounded-full border border-border bg-surface px-4 py-[9px] text-[13px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+
+// Discord's own brand blurple — the one sanctioned exception to the botanical
+// palette (like a "Sign in with Google" button), used only for this affordance.
+const DISCORD_BUTTON =
+  "inline-flex items-center gap-2 rounded-full bg-[#5865F2] px-4 py-[9px] text-[13px] font-semibold text-white transition-colors hover:bg-[#4752c4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5865F2] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] disabled:opacity-50";
 
 const INPUT =
   "w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -523,6 +533,7 @@ export function InviteCard({ lab }: { lab: MyLab }) {
 export function DiscordSyncCard({ lab }: { lab: MyLab }) {
   const { data: status, isLoading, isError } = useLabDiscordStatus(lab.slug);
   const connect = useConnectLabDiscord();
+  const issueCode = useIssueLabActivationCode();
 
   const synced = Boolean(status?.synced);
 
@@ -544,13 +555,13 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
       const where = status?.guild_name
         ? `the ${status.guild_name} server`
         : "your Discord server";
-      return `Mylo is synced to ${where}. Members can use Mylo there.`;
+      return `Mylo is synced to ${where}. Run /setup there to choose where reminders and updates post.`;
     }
     if (status?.state === "pending_setup")
-      return "Mylo was added to a server but not connected yet. A lab admin or PI runs /activate lab:<lab> in that server to finish syncing.";
+      return "Mylo is in a server but not linked to this lab yet. Click Activate Lab for a code, then run /activate-lab code:<code> in that server.";
     if (status?.state === "kicked")
-      return "Mylo was removed from the connected server. Add it again below, or run /activate lab:<lab> in your server.";
-    return "This lab isn't connected to a Discord server yet. Add Mylo to your server below, then run /activate lab:<lab> there and pick this lab.";
+      return "Mylo was removed from the connected server. Add it again, then click Activate Lab and run /activate-lab in your server.";
+    return "Connect this lab to a Discord server in two steps: add Mylo, then activate the lab with a one-time code.";
   })();
 
   const connectError =
@@ -563,29 +574,58 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
   return (
     <DetailCard title="Discord">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-[var(--text-primary)]">
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+          <DiscordIcon size={16} className="text-[#5865F2]" />
           Mylo on Discord
         </span>
         <Pill tone={badge.tone}>{badge.label}</Pill>
       </div>
       <p className="mt-2 text-[12.5px] text-[var(--text-muted)]">{detail}</p>
       {!synced && !isLoading ? (
-        <div className="mt-3">
-          <button
-            type="button"
-            className={PRIMARY_BUTTON}
-            onClick={() => connect.mutate(lab.slug)}
-            disabled={connect.isPending}
-          >
-            {connect.isPending
-              ? "Opening Discord…"
-              : status?.state === "pending_setup"
-                ? "Re-add Mylo to a server"
-                : "Add Mylo to this server"}
-          </button>
+        <div className="mt-3 space-y-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className={DISCORD_BUTTON}
+              onClick={() => connect.mutate(lab.slug)}
+              disabled={connect.isPending}
+            >
+              <DiscordIcon size={16} />
+              {connect.isPending
+                ? "Opening Discord…"
+                : status?.state === "pending_setup"
+                  ? "Re-add Mylo to Discord"
+                  : "Add Mylo to Discord"}
+            </button>
+            <button
+              type="button"
+              className={SECONDARY_BUTTON}
+              onClick={() => issueCode.mutate(lab.slug)}
+              disabled={issueCode.isPending}
+            >
+              {issueCode.isPending ? "Generating…" : "Activate Lab"}
+            </button>
+          </div>
           {connectError ? (
-            <p className="mt-2 text-[12.5px] text-clay" role="alert">
+            <p className="text-[12.5px] text-clay" role="alert">
               {connectError}
+            </p>
+          ) : null}
+          {issueCode.data ? (
+            <div className="rounded-lg border border-border bg-surface-alt px-3 py-2">
+              <p className="text-[12.5px] text-[var(--text-secondary)]">
+                In your Discord server, run{" "}
+                <code className="font-mono text-[var(--text-primary)]">
+                  /activate-lab code:{issueCode.data.code}
+                </code>{" "}
+                within {Math.round(issueCode.data.expires_in / 60)} minutes. Shown
+                once.
+              </p>
+            </div>
+          ) : null}
+          {issueCode.isError ? (
+            <p className="text-[12.5px] text-clay" role="alert">
+              Couldn&apos;t generate a lab code. Try again.
             </p>
           ) : null}
         </div>

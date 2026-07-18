@@ -56,6 +56,7 @@ import {
   dismissSuggestion,
   ingestProjectLink,
   issueActivationCode,
+  issueLabActivationCode,
   testDiscordDm,
   inviteToLab,
   joinProject,
@@ -768,4 +769,9 @@ export function useDisconnectDiscord() {
 /** Issue a one-time Path B activation code. */
 export function useIssueActivationCode() {
   return useMutation({ mutationFn: () => issueActivationCode() });
+}
+
+/** Issue a one-time 10-digit lab activation code (Path C) for `/activate-lab`. */
+export function useIssueLabActivationCode() {
+  return useMutation({ mutationFn: (slug: string) => issueLabActivationCode(slug) });
 }

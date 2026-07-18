@@ -739,6 +739,12 @@ export type DiscordCodeResponse = {
   activation_channel: string | null;
 };
 
+/** POST /integrations/discord/lab-code?lab=<slug> → a 10-digit lab code (Path C). */
+export type DiscordLabCodeResponse = {
+  code: string;
+  expires_in: number;
+};
+
 /** Feature slugs the UI gates on — mirror of apps.billing.entitlements.Feature. */
 export const FEATURE = {
   SCHEDULED_REPORTS: "scheduled_reports",
