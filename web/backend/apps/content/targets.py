@@ -174,15 +174,25 @@ def _lab_interests(profile) -> dict:
     if profile is None:
         return {"areas": [], "keywords": [], "statement": ""}
     contract = dict(getattr(profile, "interests", None) or {})
-    areas = _clean(getattr(profile, "areas", None)) or _clean(contract.get("areas"))
+    clusters = contract.get("clusters") or []
+    # When the lab organised its focus into clusters, the partition is defined over
+    # the contract's ``areas`` — use those so cluster scoping lines up; otherwise
+    # prefer the curated ``areas`` column as before.
+    if clusters:
+        areas = _clean(contract.get("areas")) or _clean(getattr(profile, "areas", None))
+    else:
+        areas = _clean(getattr(profile, "areas", None)) or _clean(contract.get("areas"))
     statement = (
         getattr(profile, "statement", "") or contract.get("statement", "") or ""
     ).strip()
-    return {
+    interests = {
         "areas": areas,
         "keywords": _clean(contract.get("keywords")),
         "statement": statement,
     }
+    if clusters:
+        interests["clusters"] = clusters
+    return interests
 
 
 def project_interests(project) -> dict:
