@@ -40,6 +40,7 @@ import {
   fetchProjects,
   fetchSearch,
   fetchWatch,
+  fetchWindowCounts,
 } from "@/lib/portal/client";
 import {
   actOnNotification,
@@ -250,6 +251,15 @@ export function useDeadlines() {
     queryKey: ["portal", "deadlines"],
     queryFn: fetchDeadlines,
     staleTime: 30_000,
+  });
+}
+
+/** The signed-in user's own "what Mylo found" recency matrix (personal Overview). */
+export function useWindowCounts() {
+  return useQuery({
+    queryKey: ["portal", "window-counts"],
+    queryFn: fetchWindowCounts,
+    staleTime: 60_000,
   });
 }
 

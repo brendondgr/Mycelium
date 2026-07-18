@@ -1,17 +1,11 @@
 "use client";
 
 import { roleLabel, usePortal, type SectionKey } from "@/components/portal/portal-context";
-import {
-  BankIcon,
-  ConferenceIcon,
-  DocumentIcon,
-  FolderIcon,
-  MembersIcon,
-  SparkleIcon,
-} from "@/components/portal/icons";
+import { FolderIcon, MembersIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
 import { MyloReportCard } from "@/components/portal/sections/mylo-report-card";
+import { MyloFoundCard } from "@/components/portal/sections/mylo-found-card";
 import { StatCard } from "@/components/portal/sections/stat-card";
 import { LabEditor } from "@/components/portal/sections/lab-onboarding";
 import {
@@ -22,15 +16,7 @@ import {
   useLabRecommendations,
   useLabWatch,
 } from "@/lib/portal/hooks";
-import type {
-  LabFellowship,
-  MyLab,
-  TargetRecommendations,
-  WindowCounts,
-} from "@/lib/portal/types";
-
-/** The per-area recency map on a target's recommendations feed. */
-type WindowCountsMap = TargetRecommendations["window_counts"];
+import type { LabFellowship, MyLab } from "@/lib/portal/types";
 
 /** Time-of-day greeting word from the hour (0–23). */
 function timeOfDay(hour: number): "morning" | "afternoon" | "evening" {
@@ -46,20 +32,6 @@ function firstName(name: string): string {
 function canManage(lab: MyLab): boolean {
   return lab.is_lead || lab.role === "owner" || lab.role === "admin";
 }
-
-const EMPTY_WINDOW: WindowCounts = { today: 0, week: 0, month: 0, year: 0 };
-
-/** The area rows in the "what Mylo found" recency matrix, in display order. */
-const STAT_AREAS: {
-  key: keyof WindowCountsMap;
-  label: string;
-  icon: React.ReactNode;
-}[] = [
-  { key: "papers", label: "Articles", icon: <DocumentIcon size={15} /> },
-  { key: "grants", label: "Grants", icon: <BankIcon size={15} /> },
-  { key: "conferences", label: "Conferences", icon: <ConferenceIcon size={15} /> },
-  { key: "fellowships", label: "Fellowships", icon: <SparkleIcon size={15} /> },
-];
 
 /**
  * The lab's front page — the landing view when a lab is the active workspace. Left
@@ -143,7 +115,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
             onEdit={() => goToSection("profile" as SectionKey)}
           />
 
-          <WindowStatsCard
+          <MyloFoundCard
             windowCounts={rec?.window_counts}
             isLoading={recQuery.isLoading}
           />
@@ -227,80 +199,6 @@ function PurposeWatchCard({
           {watchTopics.slice(0, 6).join(" · ")}
         </p>
       ) : null}
-    </Card>
-  );
-}
-
-/* -- Recency matrix: what Mylo found today/week/month/year ------------------- */
-
-function WindowStatsCard({
-  windowCounts,
-  isLoading,
-}: {
-  windowCounts: WindowCountsMap | undefined;
-  isLoading: boolean;
-}) {
-  return (
-    <Card className="p-5">
-      <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
-        What Mylo found
-      </h2>
-      <table className="w-full border-collapse text-[13px]">
-        <caption className="sr-only">
-          Items Mylo found for the lab by recency window
-        </caption>
-        <thead>
-          <tr className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-muted)]">
-            <th scope="col" className="pb-2 text-left font-semibold">
-              Area
-            </th>
-            <th scope="col" className="pb-2 text-right font-semibold">
-              Today
-            </th>
-            <th scope="col" className="pb-2 text-right font-semibold">
-              Week
-            </th>
-            <th scope="col" className="pb-2 text-right font-semibold">
-              Month
-            </th>
-            <th scope="col" className="pb-2 text-right font-semibold">
-              Year
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {STAT_AREAS.map((area) => {
-            const c = windowCounts?.[area.key] ?? EMPTY_WINDOW;
-            const cell = (value: number) =>
-              isLoading ? "—" : value.toLocaleString();
-            return (
-              <tr key={area.key} className="border-t border-[var(--divider)]">
-                <th
-                  scope="row"
-                  className="py-2 text-left font-medium text-[var(--text-primary)]"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="text-primary">{area.icon}</span>
-                    {area.label}
-                  </span>
-                </th>
-                <td className="py-2 text-right font-semibold tabular-nums text-[var(--text-primary)]">
-                  {cell(c.today)}
-                </td>
-                <td className="py-2 text-right tabular-nums text-[var(--text-secondary)]">
-                  {cell(c.week)}
-                </td>
-                <td className="py-2 text-right tabular-nums text-[var(--text-secondary)]">
-                  {cell(c.month)}
-                </td>
-                <td className="py-2 text-right tabular-nums text-[var(--text-secondary)]">
-                  {cell(c.year)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
     </Card>
   );
 }

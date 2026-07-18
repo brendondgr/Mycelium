@@ -91,6 +91,16 @@ urlpatterns = [
     ),
     path("deadlines/", views.DeadlinesView.as_view(), name="deadlines"),
     path("deadlines", views.DeadlinesView.as_view()),
+    # The signed-in user's own "what Mylo found" recency matrix (personal Overview).
+    path(
+        "recommendations/window-counts/",
+        views.PersonalWindowCountsView.as_view(),
+        name="personal-window-counts",
+    ),
+    path(
+        "recommendations/window-counts",
+        views.PersonalWindowCountsView.as_view(),
+    ),
     # The Saves (bookmarks) page: every save with feed-parity card payloads.
     path("saves/", views.SavedItemsView.as_view(), name="saves"),
     path("saves", views.SavedItemsView.as_view()),

@@ -160,6 +160,47 @@ def test_window_counts_bucket_matches_by_recency(client: APIClient) -> None:
 
 
 @pytest.mark.django_db
+def test_personal_window_counts_bucket_matches_by_recency(client: APIClient) -> None:
+    user = User.objects.create_user(username="m", password="p")
+
+    _backdate(_score(_paper("p-today"), target_user=user), 0)
+    _backdate(_score(_paper("p-week"), target_user=user), 3)
+    _backdate(_score(_grant("g-month"), target_user=user), 20)
+    # A below-floor (not suggested) item must never be counted.
+    hidden = _score(_paper("p-hidden"), target_user=user)
+    hidden.signals["suggested"] = False
+    hidden.save()
+
+    client.force_authenticate(user)
+    resp = client.get("/api/recommendations/window-counts/")
+    assert resp.status_code == 200
+    assert resp.data["window_counts"]["papers"] == {
+        "today": 1,
+        "week": 2,
+        "month": 2,
+        "year": 2,
+    }
+    assert resp.data["window_counts"]["grants"] == {
+        "today": 0,
+        "week": 0,
+        "month": 1,
+        "year": 1,
+    }
+    # No conferences/fellowships at all — still reported as all-zero windows.
+    assert resp.data["window_counts"]["conferences"] == {
+        "today": 0,
+        "week": 0,
+        "month": 0,
+        "year": 0,
+    }
+
+
+@pytest.mark.django_db
+def test_personal_window_counts_requires_auth(client: APIClient) -> None:
+    assert client.get("/api/recommendations/window-counts/").status_code in (401, 403)
+
+
+@pytest.mark.django_db
 def test_interested_members_surface_strong_personal_matches(client: APIClient):
     """A lab item lists members whose own match for it clears the threshold."""
     keen = User.objects.create_user(username="keen", password="p")

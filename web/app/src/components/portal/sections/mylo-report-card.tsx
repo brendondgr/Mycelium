@@ -24,11 +24,15 @@ export function MyloReportCard({
   isLoading,
   title = "Mylo Report",
   className,
+  scrollable = false,
 }: {
   data: DailyBriefing | undefined;
   isLoading?: boolean;
   title?: string;
   className?: string;
+  /** Cap the report body's height and let it scroll internally, keeping the
+   * header fixed — for a personal overview page that must fit the screen. */
+  scrollable?: boolean;
 }) {
   if (isLoading) {
     return (
@@ -55,20 +59,22 @@ export function MyloReportCard({
         </span>
       </div>
 
-      {body ? (
-        <MarkdownProse text={body} />
-      ) : (
-        <p className="text-[15px] leading-relaxed text-[var(--text-secondary)]">
-          Mylo has nothing to report yet today.
-        </p>
-      )}
+      <div className={scrollable ? "max-h-[60vh] overflow-y-auto pr-1" : undefined}>
+        {body ? (
+          <MarkdownProse text={body} />
+        ) : (
+          <p className="text-[15px] leading-relaxed text-[var(--text-secondary)]">
+            Mylo has nothing to report yet today.
+          </p>
+        )}
 
-      {isFallback ? (
-        <p className="mt-4 text-xs text-[var(--text-muted)]">
-          Written from today&rsquo;s counts — Mylo&rsquo;s writer was offline when
-          this ran.
-        </p>
-      ) : null}
+        {isFallback ? (
+          <p className="mt-4 text-xs text-[var(--text-muted)]">
+            Written from today&rsquo;s counts — Mylo&rsquo;s writer was offline when
+            this ran.
+          </p>
+        ) : null}
+      </div>
     </Card>
   );
 }

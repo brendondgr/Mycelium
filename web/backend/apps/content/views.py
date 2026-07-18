@@ -637,6 +637,38 @@ def _window_counts(target_filter: dict, member_ids) -> dict[str, dict[str, int]]
     return counts
 
 
+def _personal_window_counts(user) -> dict[str, dict[str, int]]:
+    """Per-area today/week/month/year counts for a user's own matched items.
+
+    Unlike a lab, fellowships are already scored directly to ``target_user``
+    (fellowships stay user-only), so all four areas read the same
+    ``target_user`` filter — no member-union step needed.
+    """
+    now = timezone.now()
+    counts: dict[str, dict[str, int]] = {}
+    for key, ctype in (
+        ("papers", ContentItem.Type.PAPER),
+        ("grants", ContentItem.Type.GRANT),
+        ("conferences", ContentItem.Type.CONFERENCE),
+        ("fellowships", ContentItem.Type.FELLOWSHIP),
+    ):
+        rows = RelevanceScore.objects.filter(
+            target_user=user, content__type=ctype
+        ).values_list("created_at", "signals")
+        stamps = [ca for ca, sig in rows if (sig or {}).get("suggested")]
+        counts[key] = _count_windows(stamps, now)
+    return counts
+
+
+class PersonalWindowCountsView(APIView):
+    """The signed-in user's own "what Mylo found" recency matrix (personal Overview)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({"window_counts": _personal_window_counts(request.user)})
+
+
 def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dict:
     """The combined papers + grants + conferences + fellowships a lab / project matched.
 

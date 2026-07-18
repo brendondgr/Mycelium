@@ -28,6 +28,7 @@ import type {
   SavedItem,
   SearchParams,
   SearchResponse,
+  PersonalWindowCounts,
   TargetRecommendations,
   WatchData,
 } from "@/lib/portal/types";
@@ -166,6 +167,14 @@ export async function fetchDeadlines(): Promise<{ items: SavedDeadline[] }> {
   return getJson<{ items: SavedDeadline[] }>(
     buildApiUrl(getPublicApiBase(), "deadlines"),
     "Could not load your deadlines.",
+  );
+}
+
+/** The signed-in user's own "what Mylo found" recency matrix (personal Overview). */
+export async function fetchWindowCounts(): Promise<PersonalWindowCounts> {
+  return getJson<PersonalWindowCounts>(
+    buildApiUrl(getPublicApiBase(), "recommendations", "window-counts"),
+    "Could not load what Mylo found.",
   );
 }
 

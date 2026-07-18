@@ -2,29 +2,19 @@
 
 import * as React from "react";
 
-import { usePortal, type SectionKey } from "@/components/portal/portal-context";
+import { usePortal } from "@/components/portal/portal-context";
 import {
   useDailyBriefing,
   useDailyReport,
   useDeadlines,
-  useProfile,
-  useWatch,
+  useWindowCounts,
 } from "@/lib/portal/hooks";
-import { computeCompleteness } from "@/lib/portal/completeness";
-import {
-  ArrowRightIcon,
-  CalendarIcon,
-  DocumentIcon,
-  FolderIcon,
-  MembersIcon,
-  TargetIcon,
-} from "@/components/portal/icons";
+import { ArrowRightIcon, CalendarIcon, DocumentIcon } from "@/components/portal/icons";
 
 import { Card } from "@/components/portal/primitives/card";
 import { MatchBadge } from "@/components/portal/sections/opportunity-bits";
 import { MyloReportCard } from "@/components/portal/sections/mylo-report-card";
-import { StatCard } from "@/components/portal/sections/stat-card";
-import { NextActions } from "@/components/portal/sections/next-actions";
+import { MyloFoundCard } from "@/components/portal/sections/mylo-found-card";
 import { LabOverviewSection } from "@/components/portal/sections/lab-overview-section";
 import { LabEditor } from "@/components/portal/sections/lab-onboarding";
 import type { MyLab } from "@/lib/portal/types";
@@ -176,23 +166,15 @@ function DeadlinesPanel() {
 
 /**
  * The Overview section — the landing view of the portal dashboard. Two columns:
- * left holds Mylo's weekly report, a 1×4 quick-nav grid, and next actions; right
- * holds the top research papers (with percent match) and the nearest deadlines.
+ * left holds Mylo's weekly report (scrollable, so a long write-up doesn't push
+ * the page taller than the screen); right holds what Mylo found this year, the
+ * top research papers (with percent match), and the nearest deadlines.
  */
 export function OverviewSection() {
-  const {
-    user,
-    scopeLabel,
-    goToSection,
-    projects,
-    labs,
-    currentLab,
-    labOnboardingEdit,
-    setLabOnboardingEdit,
-  } = usePortal();
-  const profileQuery = useProfile();
-  const watchQuery = useWatch();
+  const { user, scopeLabel, currentLab, labOnboardingEdit, setLabOnboardingEdit } =
+    usePortal();
   const briefingQuery = useDailyBriefing();
+  const windowCountsQuery = useWindowCounts();
 
   // When a lab is the active workspace, its overview replaces the personal one.
   if (currentLab) {
@@ -209,9 +191,6 @@ export function OverviewSection() {
     return <LabOverviewSection lab={currentLab} />;
   }
 
-  const completeness = computeCompleteness(profileQuery.data);
-  const watch = watchQuery.data;
-
   const now = new Date();
   const greeting = timeOfDay(now.getHours());
   const first = firstName(user.name || user.username);
@@ -220,13 +199,6 @@ export function OverviewSection() {
     month: "long",
     day: "numeric",
   });
-
-  const watchTopicsCount = watch?.topics?.length ?? null;
-  const cadenceLabel = watch
-    ? watch.cadence === "daily"
-      ? "Daily"
-      : "Weekly"
-    : null;
 
   return (
     <div>
@@ -240,55 +212,25 @@ export function OverviewSection() {
         </p>
       </div>
 
-      {/* Report left; quick-nav + papers + deadlines right. Next actions below. */}
+      {/* Report left (scrollable); what Mylo found + papers + deadlines right. */}
       <div className="grid grid-cols-1 items-start gap-[22px] lg:grid-cols-[1.5fr_1fr]">
         {/* Left: the folded-in Mylo Report (was a standalone Daily page). */}
         <MyloReportCard
           data={briefingQuery.data}
           isLoading={briefingQuery.isLoading}
+          scrollable
         />
 
-        {/* Right: quick-nav grid + top papers + nearest deadlines. */}
+        {/* Right: what Mylo found + top papers + nearest deadlines. */}
         <div className="flex flex-col gap-[22px]">
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard
-              icon={<FolderIcon size={16} />}
-              label="Projects"
-              value={projects.length}
-              onClick={() => goToSection("projects" as SectionKey)}
-            />
-            <StatCard
-              icon={<MembersIcon size={16} />}
-              label="Labs"
-              value={labs.length}
-              onClick={() => goToSection("members" as SectionKey)}
-            />
-            <StatCard
-              icon={<TargetIcon size={16} />}
-              label="Profile"
-              value={profileQuery.isLoading ? null : `${completeness.percent}%`}
-              onClick={() => goToSection("profile" as SectionKey)}
-            />
-            <StatCard
-              icon={<CalendarIcon size={16} />}
-              label="Watching"
-              value={watchQuery.isLoading ? null : watchTopicsCount}
-              sub={
-                watchQuery.isLoading || !cadenceLabel
-                  ? undefined
-                  : `${cadenceLabel} digest`
-              }
-              onClick={() => goToSection("profile" as SectionKey)}
-            />
-          </div>
+          <MyloFoundCard
+            windowCounts={windowCountsQuery.data?.window_counts}
+            isLoading={windowCountsQuery.isLoading}
+          />
 
           <TopPapersPanel />
           <DeadlinesPanel />
         </div>
-      </div>
-
-      <div className="mt-[22px]">
-        <NextActions />
       </div>
     </div>
   );

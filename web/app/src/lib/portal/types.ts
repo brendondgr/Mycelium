@@ -343,6 +343,17 @@ export type WindowCounts = {
   year: number;
 };
 
+/** Per-area recency map, keyed the same way for a user, lab, or project target. */
+export type WindowCountsMap = Record<
+  "papers" | "grants" | "conferences" | "fellowships",
+  WindowCounts
+>;
+
+/** The signed-in user's own "what Mylo found" recency matrix (`/api/recommendations/window-counts/`). */
+export type PersonalWindowCounts = {
+  window_counts: WindowCountsMap;
+};
+
 export type TargetRecommendations = {
   generated_at: string | null;
   counts: {
@@ -352,7 +363,7 @@ export type TargetRecommendations = {
     fellowships: number;
   };
   /** Per-area today/week/month/year totals (the lab overview stats block). */
-  window_counts: Record<"papers" | "grants" | "conferences" | "fellowships", WindowCounts>;
+  window_counts: WindowCountsMap;
   papers: Suggestion[];
   grants: GrantOpportunity[];
   conferences: ConferenceOpportunity[];
