@@ -635,87 +635,93 @@ type AreaChipProps = {
 };
 
 function AreaChip({ area, moveTargets, onMove, canEdit, onRename, onDelete }: AreaChipProps) {
-  const [editing, setEditing] = useState(false);
+  // Local draft so typing doesn't re-key the list on every keystroke; the parent
+  // keys each chip by its area string, so a committed rename remounts this chip
+  // fresh with the new value — no effect needed to resync.
   const [draft, setDraft] = useState(area);
 
   function commit() {
-    setEditing(false);
     const text = draft.trim();
     if (text && text !== area) {
       onRename?.(text);
-    } else {
-      setDraft(area); // revert an empty/unchanged edit
+    } else if (!text) {
+      setDraft(area); // an emptied field reverts rather than deletes
     }
   }
 
-  if (editing) {
+  // Read-only usage (no area editing wired): a plain draggable chip + move menu.
+  if (!canEdit) {
     return (
+      <span
+        draggable
+        onDragStart={(event) => {
+          event.dataTransfer.setData("text/plain", JSON.stringify({ area }));
+          event.dataTransfer.effectAllowed = "move";
+        }}
+        className="inline-flex cursor-grab items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] active:cursor-grabbing"
+      >
+        {area}
+        <InlineMenu
+          trigger={<span aria-hidden="true" className="text-[10px] leading-none">▾</span>}
+          triggerAriaLabel={`Move "${area}"`}
+          triggerClassName="rounded-full p-0.5 text-[var(--text-muted)] hover:bg-surface-alt hover:text-foreground"
+          items={moveTargets}
+          onSelect={onMove}
+        />
+      </span>
+    );
+  }
+
+  // Editable interest: the name is a text field you type straight into (commits
+  // on blur / Enter), with a drag handle to move it and a remove button. No
+  // separate "edit" toggle — the field is always live.
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card py-1 pl-1.5 pr-1.5 text-xs font-medium text-[var(--text-primary)]">
+      <span
+        draggable
+        onDragStart={(event) => {
+          event.dataTransfer.setData("text/plain", JSON.stringify({ area }));
+          event.dataTransfer.effectAllowed = "move";
+        }}
+        title="Drag to another cluster"
+        aria-label={`Drag "${area}" to another cluster`}
+        className="cursor-grab select-none px-0.5 text-[var(--text-muted)] hover:text-foreground active:cursor-grabbing"
+      >
+        ⠿
+      </span>
       <input
-        autoFocus
         value={draft}
-        aria-label={`Rename "${area}"`}
+        aria-label={`Interest name (${area})`}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();
-            commit();
+            event.currentTarget.blur();
           } else if (event.key === "Escape") {
             setDraft(area);
-            setEditing(false);
+            event.currentTarget.blur();
           }
         }}
-        className="min-w-[8rem] rounded-full border border-input bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        size={Math.max(draft.length, 6)}
+        className="min-w-0 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs font-medium text-[var(--text-primary)] outline-none transition hover:border-border focus-visible:border-input focus-visible:bg-[var(--surface-alt)] focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
       />
-    );
-  }
-
-  return (
-    <span
-      draggable
-      onDragStart={(event) => {
-        event.dataTransfer.setData("text/plain", JSON.stringify({ area }));
-        event.dataTransfer.effectAllowed = "move";
-      }}
-      className="inline-flex cursor-grab items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] active:cursor-grabbing"
-    >
-      {area}
-      {canEdit ? (
-        <>
-          <button
-            type="button"
-            onClick={() => {
-              setDraft(area);
-              setEditing(true);
-            }}
-            aria-label={`Rename "${area}"`}
-            title="Rename interest"
-            className="rounded-full px-1 leading-none text-[var(--text-muted)] hover:text-foreground"
-          >
-            <span aria-hidden="true" className="text-[11px]">✎</span>
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            aria-label={`Remove "${area}"`}
-            title="Remove interest"
-            className="rounded-full px-1 leading-none text-[var(--text-muted)] hover:text-destructive"
-          >
-            <span aria-hidden="true" className="text-sm">×</span>
-          </button>
-        </>
-      ) : null}
       <InlineMenu
-        trigger={
-          <span aria-hidden="true" className="text-[10px] leading-none">
-            ▾
-          </span>
-        }
+        trigger={<span aria-hidden="true" className="text-[10px] leading-none">▾</span>}
         triggerAriaLabel={`Move "${area}"`}
         triggerClassName="rounded-full p-0.5 text-[var(--text-muted)] hover:bg-surface-alt hover:text-foreground"
         items={moveTargets}
         onSelect={onMove}
       />
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label={`Remove "${area}"`}
+        title="Remove interest"
+        className="rounded-full px-1 leading-none text-[var(--text-muted)] hover:text-destructive"
+      >
+        <span aria-hidden="true" className="text-sm">×</span>
+      </button>
     </span>
   );
 }
