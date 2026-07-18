@@ -43,30 +43,36 @@ no Mylo database, schema, or migration history.
   `/activate code:CODE` in the hub `#activation` channel → `DiscordIdentity`. Binds
   the identity but does **not** grant DM rights the way A does — expect a higher
   `dm_ok=False` rate; the split is instrumented by `link_method`.
-* **Path C (lab link):** a guild is bound to a lab by a lab admin/PI, two ways:
-  * **Website install (verified):** portal → the lab's **Edit Setup** menu →
-    "Add Mylo to this server" → bot install OAuth (`bot applications.commands`,
-    `integration_type=0`, `response_type=code`, **`integration_require_code_grant`
-    ON**). The binding comes only from the authoritative `guild` object in the
-    token exchange — the redirect's `guild_id`/`permissions` are forgeable and
-    ignored. Install → `PENDING_SETUP`; the admin/PI runs `/activate lab:<name>`
-    → `ACTIVE` (`verified_via_code_grant=True`).
-  * **Discord-native (`bind_guild_via_command`):** in a server Mylo is already in,
-    an admin/PI runs `/activate lab:<name>` (the `lab` arg autocompletes to the
-    labs they PI/manage) → bound `ACTIVE` directly, `verified_via_code_grant=False`.
-    Trust rests on two authoritative facts, not the forgeable redirect: Discord
-    guarantees the interaction's `guild_id`, and authority is the *existing*
-    `user_can_manage_lab` check. One-guild-one-lab is still enforced.
+* **Path C (lab link):** a two-step, code-based flow a lab admin/PI drives:
+  1. **Add Mylo** — the lab's **Lab settings** → Discord card → "Add Mylo to
+     Discord" → bot install OAuth (`bot applications.commands`,
+     `integration_type=0`, `response_type=code`, **`integration_require_code_grant`
+     ON**). The binding comes only from the authoritative `guild` object in the
+     token exchange — the redirect's `guild_id`/`permissions` are forgeable and
+     ignored. Install → `PENDING_SETUP`.
+  2. **Activate the lab** — the same card's "Activate Lab" button issues a one-time
+     **10-digit code** (`POST discord/lab-code?lab=<slug>`, manager-gated, sha256
+     stored, shown once). The admin/PI runs `/activate-lab code:<code>` in that
+     server → the calling guild is bound `ACTIVE`. The **manager authority is proven
+     at issue time** (`user_can_manage_lab` on the website), so the redeemer needs no
+     linked identity; the code carries the authority into Discord. Redemption is
+     lockout-guarded (shared with Path B), add-on-gated (`Feature.BOT_SERVER`,
+     re-checked *before* the code is consumed so a valid code is never burned), and
+     one-guild-one-lab / one-lab-one-guild conflict-guarded. `verified_via_code_grant`
+     stays whatever the install set it to (True for a prior website install).
 
-  **`/activate` is one context-aware command:** `code:` runs Path B (identity),
-  `lab:` runs Path C (server activation). No `default_member_permissions` gates it —
-  authority is the Mycelium lab-manager check, so regular members can still link
-  their own identity while only admins/PIs can connect a server. After the server is
-  `ACTIVE`, `/mylo setup [channel]` is the *post-link* step that chooses where that
-  lab's reminders post (it never binds a lab itself; it requires an active link).
-  Either way the **Manage & Invite** page shows the live sync state
-  (`discord/guild/status`), and the profile card's **Test** button re-runs the DM
-  reachability probe on demand (`discord/probe`).
+  **`/activate` is personal-only** (`code:` → Path B identity). **`/activate-lab`**
+  is the lab flow above. No `default_member_permissions` gates either — the code is
+  the authority. After the server is `ACTIVE`, the top-level **`/setup`** command is
+  the *post-activation* step: an interactive menu (native channel pickers + turn-off
+  buttons) to choose, or opt out of, two independent optional channels —
+  **deadline announcements** (`announcement_channel_id`) and **daily/weekly updates**
+  (`updates_channel_id`). Each selection is preflighted (post-a-confirmation) before
+  binding. `/setup` requires the server to be `ACTIVE` **and** the caller to be a
+  *linked* lab manager (config actions still terminate in `user_can_manage_lab`).
+  The **Lab settings** card shows the live sync state (`discord/guild/status`), and
+  the profile card's **Test** button re-runs the DM reachability probe on demand
+  (`discord/probe`).
 
 **Authorization invariant:** a Discord identity is authentication, never
 authorization. Every action terminates in the existing
@@ -87,11 +93,11 @@ ownership, and Discord roles grant nothing.
   any backend dependency the gateway imports is added (as `cryptography` was),
   run `uv sync` at the repo root and restart the bot
   (`sudo systemctl restart mylo-bot.service`). Skip this and every ORM-touching
-  slash command (`/activate`, `/mylo status`, `/mylo setup`) dies at
+  slash command (`/activate`, `/activate-lab`, `/setup`, `/mylo status`) dies at
   `django.setup()` with `ModuleNotFoundError`, surfacing to the user as the
   generic "something went wrong on my end."
-* After deploy, run a one-time `@Mylo sync global` (owner-only) so the new
-  `/activate` and `/mylo status`/`setup` commands appear.
+* After deploy, run a one-time `@Mylo sync global` (owner-only) so the command set
+  changes (`/activate-lab` and `/setup` added, `/mylo setup` removed) propagate.
 
 ## Configuration
 
@@ -138,21 +144,25 @@ for users.
 rows deleted → clean re-link.
 
 **Path B** — valid `/activate code:` → ephemeral confirm, identity bound; reply
-ephemeral in **all** branches; `code:` + `lab:` together → ephemeral "one at a
-time"; expired code → rejected, **not** consumed; reused code → rejected; 6 bad
-attempts → lockout, survives a bot restart; outside `ACTIVATION_CHANNEL` →
-ephemeral pointer, no lookup; code for user A redeemed by a Discord account bound
-to user B → rejected, not consumed; plaintext code in zero logs / zero DB columns.
+ephemeral in **all** branches; no code → ephemeral usage hint; expired code →
+rejected, **not** consumed; reused code → rejected; 6 bad attempts → lockout,
+survives a bot restart; outside `ACTIVATION_CHANNEL` → ephemeral pointer, no lookup;
+code for user A redeemed by a Discord account bound to user B → rejected, not
+consumed; plaintext code in zero logs / zero DB columns.
 
 **Path C** — install → `PENDING_SETUP`, `verified_via_code_grant=True`, nudge
-posted; forged `guild_id` on the redirect → ignored; unverified link → unusable;
-unlinked user runs `/activate lab:` → link CTA; `/activate` with no args (unlinked)
-→ link CTA; linked non-member → denied; lab member (non-manager) → denied; lab
-admin/PI runs `/activate lab:<name>` → `ACTIVE`; a pending website install confirms
-via `/activate` (no args or matching `lab:`); second lab binds a bound guild → 409;
-bot kicked → sweep sets `KICKED`. **Post-link** — `/mylo setup` before activation →
-"run `/activate lab:` first"; `/mylo setup channel:#x` by an admin/PI → preflight →
-channel bound; non-manager → denied.
+posted; forged `guild_id` on the redirect → ignored. Manager clicks **Activate Lab**
+→ 10-digit code (non-manager → 403, unknown lab → 404). `/activate-lab code:<code>`
+in the server → guild bound `ACTIVE` (the pending install's row flips); no linked
+identity required. Reused/expired code → rejected; bad code → rejected + counts to
+lockout; 6 bad attempts → lockout; lab lacks the `bot_server` add-on → refused,
+code **not** consumed; guild already bound to another lab, or lab to another guild →
+`CONFLICT`, not consumed; plaintext code in zero logs / zero DB columns; bot kicked
+→ sweep sets `KICKED`. **Post-activation `/setup`** — before activation → "run
+`/activate-lab` first"; linked non-manager → denied; a linked admin/PI sees the menu,
+picks a deadline channel and an updates channel independently (each preflighted
+before binding), and can turn either off; a channel the bot can't post in → refused
+with a specific message, nothing bound.
 
 **Infra** — `/mylo status` answers in DM/guild/private channel; error cascade →
 one `ERROR_CHANNEL` rollup, not N; no Discord module imports a model outside
