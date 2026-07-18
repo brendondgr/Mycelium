@@ -155,6 +155,9 @@ def _showcase_item(score: RelevanceScore, today: str) -> dict:
         "reason": signals.get("reason", ""),
         "deadline_date": signals.get("deadline_date") or "",
         "is_new": _is_new_today(signals, today),
+        # The attributed cluster (papers only; empty elsewhere) so the paper agent
+        # can group its write-up by the researcher's focus clusters.
+        "cluster_label": signals.get("cluster_label", ""),
     }
 
 

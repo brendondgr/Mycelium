@@ -203,17 +203,52 @@ def write_section(
     return _section_fallback(category, items), False
 
 
+def _cluster_groups(items: list[dict]) -> list[tuple[str, list[dict]]]:
+    """Group items by their attributed cluster, order-preserving.
+
+    Returns ``[(cluster_label, items)]``. When fewer than two distinct clusters
+    carry a label (opportunities, or a single/no-cluster profile) it returns one
+    unlabelled group, so grouping is a no-op there.
+    """
+    groups: dict[str, list[dict]] = {}
+    order: list[str] = []
+    for item in items:
+        label = str(item.get("cluster_label") or "")
+        if label not in groups:
+            groups[label] = []
+            order.append(label)
+        groups[label].append(item)
+    labelled = [label for label in order if label]
+    if len(labelled) < 2:
+        return [("", items)]
+    return [(label, groups[label]) for label in order if groups[label]]
+
+
 def _section_prompt(category: str, profile_text: str, items: list[dict]) -> str:
     label = SECTION_LABELS.get(category, category.title())
+    groups = _cluster_groups(items)
+    grouped = len(groups) > 1
     lines = [
         f"Researcher profile:\n{profile_text or '(no profile details)'}",
         "",
         f"Today's new {label} matches — reference ONLY these, by title:",
     ]
-    for index, item in enumerate(items, start=1):
-        lines.append(_item_brief(index, item))
+    index = 1
+    for cluster_label, group in groups:
+        if grouped and cluster_label:
+            lines.append(f"\nFor the researcher's {cluster_label} focus:")
+        for item in group:
+            lines.append(_item_brief(index, item))
+            index += 1
     lines.append("")
-    lines.append(f"Write the {label} section body now.")
+    if grouped:
+        lines.append(
+            f"Write the {label} section body now, organised BY the focus clusters "
+            "above — a short lead-in per cluster (e.g. \"In your Medical AI Agents "
+            "focus: …\"), then its papers. Keep the cluster names verbatim."
+        )
+    else:
+        lines.append(f"Write the {label} section body now.")
     return "\n".join(lines)
 
 
@@ -240,25 +275,34 @@ def _item_brief(index: int, item: dict) -> str:
 
 
 def _section_fallback(category: str, items: list[dict]) -> str:
-    """A deterministic markdown section body when the model is unavailable."""
+    """A deterministic markdown section body when the model is unavailable.
+
+    Grouped by focus cluster when the items carry >= 2 distinct clusters (papers),
+    so the fallback mirrors the grouped write-up the agent would have produced.
+    """
+    groups = _cluster_groups(items)
+    grouped = len(groups) > 1
     blocks: list[str] = []
-    for item in items:
-        title = item.get("title") or "(untitled)"
-        url = item.get("url")
-        heading = f"[{title}]({url})" if url else title
-        meta: list[str] = []
-        match = item.get("match_percent")
-        if isinstance(match, int):
-            meta.append(f"{match}% match")
-        if item.get("deadline_date"):
-            meta.append(f"deadline {item['deadline_date']}")
-        line = f"**{heading}**"
-        if meta:
-            line += " — " + " · ".join(meta)
-        reason = item.get("reason") or item.get("headline")
-        if reason:
-            line += f"\n\n{reason}"
-        blocks.append(line)
+    for cluster_label, group in groups:
+        if grouped and cluster_label:
+            blocks.append(f"**In your {cluster_label} focus:**")
+        for item in group:
+            title = item.get("title") or "(untitled)"
+            url = item.get("url")
+            heading = f"[{title}]({url})" if url else title
+            meta: list[str] = []
+            match = item.get("match_percent")
+            if isinstance(match, int):
+                meta.append(f"{match}% match")
+            if item.get("deadline_date"):
+                meta.append(f"deadline {item['deadline_date']}")
+            line = f"**{heading}**"
+            if meta:
+                line += " — " + " · ".join(meta)
+            reason = item.get("reason") or item.get("headline")
+            if reason:
+                line += f"\n\n{reason}"
+            blocks.append(line)
     return "\n\n".join(blocks)
 
 

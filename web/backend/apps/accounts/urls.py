@@ -126,4 +126,10 @@ urlpatterns = [
     path("intake/session", views.IntakeSessionView.as_view()),
     path("intake/confirm/", views.ConfirmIntakeView.as_view(), name="intake-confirm"),
     path("intake/confirm", views.ConfirmIntakeView.as_view()),
+    path(
+        "intake/clusters/",
+        views.ProposeClustersView.as_view(),
+        name="intake-clusters",
+    ),
+    path("intake/clusters", views.ProposeClustersView.as_view()),
 ]

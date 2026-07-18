@@ -615,6 +615,44 @@ class ConfirmIntakeView(APIView):
         return Response(ProfileSerializer(profile).data)
 
 
+class ProposeClustersView(APIView):
+    """Propose (or re-sort) interest clusters for the "Organize your interests" step.
+
+    Two modes on one POST:
+      - **Propose** ``{areas, keywords?, statement?}`` → group the areas into named
+        clusters (LLM, geometric fallback) — the intake / "organize" affordance.
+      - **Sort** ``{clusters, unsorted}`` → route the ``unsorted`` new areas into the
+        existing clusters (ids preserved) — the profile-edit "sort these" affordance.
+
+    Always returns ``{clusters: [{id, label, areas}], watch_topics: [...], source}``
+    where ``watch_topics`` is the per-cluster seed the caller prefills for what Mylo
+    watches. Pure per-user; no lab scope.
+    """
+
+    def post(self, request: Request) -> Response:
+        from apps.content.clustering import seed_watch_topics
+
+        from .intake.clusters import propose_clusters, sort_into_clusters
+
+        data = request.data or {}
+        existing = data.get("clusters") or []
+        unsorted = data.get("unsorted") or []
+        if existing and unsorted:
+            clusters = sort_into_clusters(existing, unsorted)
+            source = "sorted"
+        else:
+            clusters, source = propose_clusters(
+                data.get("areas") or [],
+                keywords=data.get("keywords") or [],
+                statement=str(data.get("statement") or ""),
+            )
+        areas = [area for cluster in clusters for area in cluster["areas"]]
+        watch_topics = seed_watch_topics({"areas": areas, "clusters": clusters})
+        return Response(
+            {"clusters": clusters, "watch_topics": watch_topics, "source": source}
+        )
+
+
 # Sources the onboarding import box accepts. Exactly one site may be used per
 # synthesize call (a single ``source`` field); a résumé is additive (brief D4).
 SYNTHESIZE_SOURCES = {"openalex", "semantic", "scholar", "orcid"}
