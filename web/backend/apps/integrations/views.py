@@ -210,6 +210,28 @@ def _manager_lab_or_error(request):
     return lab, None
 
 
+class DiscordLabActivationCodeView(APIView):
+    """Issue a 10-digit lab activation code (the website half of `/activate-lab`).
+
+    Manager-only (the same ``?lab=<slug>`` authority gate the guild install uses).
+    The code is shown once; only its sha256 is stored. Redeemed in Discord via
+    ``/activate-lab code:`` to bind that server to this lab.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        lab, error = _manager_lab_or_error(request)
+        if error is not None:
+            return error
+        from .services import lab_activation
+
+        code = lab_activation.issue_code(request.user, lab)
+        return Response(
+            {"code": code, "expires_in": settings.DISCORD_ACTIVATION_TTL_SECONDS}
+        )
+
+
 class DiscordGuildStatusView(APIView):
     """Is this Lab's Discord server synced? Drives the Manage & Invite badge."""
 

@@ -39,8 +39,8 @@ class DiscordGuildStatusSerializer(serializers.Serializer):
     """Whether a Lab's Discord server is synced, for the Manage & Invite page.
 
     ``synced`` is the single boolean the card keys on (bot installed AND a lab
-    manager confirmed it with ``/mylo setup``); ``state`` carries the nuance so
-    the UI can distinguish "installed, run /mylo setup" (pending_setup) and
+    manager activated it with ``/activate-lab``); ``state`` carries the nuance so
+    the UI can distinguish "installed, run /activate-lab" (pending_setup) and
     "Mylo was removed" (kicked) from "not connected" (no link at all).
     """
 

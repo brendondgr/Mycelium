@@ -7,6 +7,10 @@ Three tables, one per link concern:
   ``services.resolve``).
 * ``DiscordActivationCode`` — the Path B fallback: a short-lived, single-use code a
   user redeems from Discord to bind their identity without OAuth.
+* ``DiscordLabActivationCode`` — the Path C code: a short-lived, single-use, 10-digit
+  code a lab manager issues on the website and redeems in a guild via
+  ``/activate-lab`` to bind *that guild* to *that lab*. The manager authority lives
+  at issuance; the code carries it into Discord (no linked identity required).
 * ``DiscordGuildLink``  — a Discord server bound to a Lab (Path C). One guild ↔ one
   lab, gated on real Mycelium lab authority.
 
@@ -101,6 +105,42 @@ class DiscordActivationCode(models.Model):
         return f"DiscordActivationCode(user={self.user_id}, {state})"
 
 
+class DiscordLabActivationCode(models.Model):
+    """Path C: a short-lived, single-use code that binds a guild to a lab.
+
+    A lab manager issues it on the website (authority checked there); it is redeemed
+    in Discord via ``/activate-lab code:``. Only the sha256 of the plaintext is
+    stored; the plaintext (10 digits) is shown once at issue and never persisted or
+    logged. Redemption binds *the guild the command ran in* to ``lab``.
+    """
+
+    lab = models.ForeignKey(
+        "accounts.Lab",
+        on_delete=models.CASCADE,
+        related_name="discord_lab_codes",
+    )
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="discord_lab_codes_issued",
+    )
+    code_hash = models.CharField(max_length=64, db_index=True)  # sha256 hex
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()  # created_at + TTL
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    consumed_by_discord_id = models.CharField(max_length=32, blank=True)
+    consumed_guild_id = models.CharField(max_length=32, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["code_hash", "expires_at"])]
+
+    def __str__(self) -> str:
+        state = "consumed" if self.consumed_at else "live"
+        return f"DiscordLabActivationCode(lab={self.lab_id}, {state})"
+
+
 class DiscordGuildLink(models.Model):
     """A Discord server bound to a Lab. One guild ↔ one lab."""
 
@@ -130,11 +170,16 @@ class DiscordGuildLink(models.Model):
     state = models.CharField(
         max_length=16, choices=State.choices, default=State.PENDING_SETUP
     )
-    # Default announcement channel for lab reminders (Discord reminders R4). Bound
-    # and channel-scope-verified at `/mylo setup` by posting a real confirmation
-    # (Discord computes channel overwrites for us); blank until a channel is bound.
+    # Deadline-announcements channel for lab reminders (Discord reminders R4). Bound
+    # and channel-scope-verified at `/setup` by posting a real confirmation (Discord
+    # computes channel overwrites for us); blank until a channel is bound. Optional:
+    # a blank value is an explicit opt-out of deadline announcements.
     announcement_channel_id = models.CharField(max_length=32, blank=True, default="")
     channel_verified_at = models.DateTimeField(null=True, blank=True)
+    # Daily/weekly-updates channel — an independent, optional `/setup` binding (blank
+    # = opt-out). Config only for now; recurring delivery to it is a follow-up.
+    updates_channel_id = models.CharField(max_length=32, blank=True, default="")
+    updates_channel_verified_at = models.DateTimeField(null=True, blank=True)
     installed_at = models.DateTimeField(auto_now_add=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)

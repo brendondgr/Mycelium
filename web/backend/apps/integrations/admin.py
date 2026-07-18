@@ -1,6 +1,11 @@
 from django.contrib import admin
 
-from .models import DiscordActivationCode, DiscordGuildLink, DiscordIdentity
+from .models import (
+    DiscordActivationCode,
+    DiscordGuildLink,
+    DiscordIdentity,
+    DiscordLabActivationCode,
+)
 
 
 @admin.register(DiscordIdentity)
@@ -29,3 +34,12 @@ class DiscordActivationCodeAdmin(admin.ModelAdmin):
     search_fields = ("user__username",)
     # Only the hash is stored; still, don't surface it as an editable field.
     readonly_fields = ("code_hash", "created_at")
+
+
+@admin.register(DiscordLabActivationCode)
+class DiscordLabActivationCodeAdmin(admin.ModelAdmin):
+    list_display = ("lab", "issued_by", "created_at", "expires_at", "consumed_at")
+    list_filter = ("consumed_at",)
+    search_fields = ("lab__name", "lab__slug", "issued_by__username")
+    # Only the hash is stored; still, don't surface it as an editable field.
+    readonly_fields = ("code_hash", "created_at", "consumed_guild_id")

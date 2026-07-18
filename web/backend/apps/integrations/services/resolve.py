@@ -26,7 +26,12 @@ from django.utils import timezone
 from apps.accounts.models import Lab, LabMembership
 from apps.accounts.permissions import user_can_manage_lab
 
-from ..models import DiscordActivationCode, DiscordGuildLink, DiscordIdentity
+from ..models import (
+    DiscordActivationCode,
+    DiscordGuildLink,
+    DiscordIdentity,
+    DiscordLabActivationCode,
+)
 from . import audit
 
 User = get_user_model()
@@ -326,6 +331,76 @@ def get_announcement_channel_for_lab(lab) -> str:
     return link.announcement_channel_id if link else ""
 
 
+def clear_announcement_channel(guild_id: str) -> DiscordGuildLink | None:
+    """Opt out of deadline announcements — unbind the channel for a guild's lab."""
+    link = get_guild_link(guild_id)
+    if link is None:
+        return None
+    link.announcement_channel_id = ""
+    link.channel_verified_at = None
+    link.save(
+        update_fields=["announcement_channel_id", "channel_verified_at", "updated_at"]
+    )
+    audit.discord_audit(
+        action="discord.guild.channel_cleared",
+        guild_id=guild_id,
+        metadata={"kind": "deadlines"},
+    )
+    return link
+
+
+def set_updates_channel(
+    guild_id: str, channel_id: str, *, verified_at
+) -> DiscordGuildLink | None:
+    """Bind (channel-verified) the daily/weekly-updates channel for a guild's lab."""
+    link = get_guild_link(guild_id)
+    if link is None:
+        return None
+    link.updates_channel_id = str(channel_id)
+    link.updates_channel_verified_at = verified_at
+    link.save(
+        update_fields=[
+            "updates_channel_id",
+            "updates_channel_verified_at",
+            "updated_at",
+        ]
+    )
+    audit.discord_audit(
+        action="discord.guild.updates_channel_bound",
+        guild_id=guild_id,
+        metadata={"channel_id": str(channel_id)},
+    )
+    return link
+
+
+def get_updates_channel_for_lab(lab) -> str:
+    """The lab's verified daily/weekly-updates channel id, or '' if none bound."""
+    link = get_guild_link_for_lab(lab)
+    return link.updates_channel_id if link else ""
+
+
+def clear_updates_channel(guild_id: str) -> DiscordGuildLink | None:
+    """Opt out of daily/weekly updates — unbind the updates channel."""
+    link = get_guild_link(guild_id)
+    if link is None:
+        return None
+    link.updates_channel_id = ""
+    link.updates_channel_verified_at = None
+    link.save(
+        update_fields=[
+            "updates_channel_id",
+            "updates_channel_verified_at",
+            "updated_at",
+        ]
+    )
+    audit.discord_audit(
+        action="discord.guild.channel_cleared",
+        guild_id=guild_id,
+        metadata={"kind": "updates"},
+    )
+    return link
+
+
 def bind_guild(lab, guild: dict, *, installed_by=None) -> DiscordGuildLink:
     """Create/refresh a PENDING_SETUP guild link from the authoritative exchange.
 
@@ -580,3 +655,152 @@ def consume_activation_code(code_hash: str, discord_user_id: str) -> ConsumeResu
             discord_user_id=discord_user_id,
         )
         return ConsumeResult(ConsumeOutcome.OK, identity=identity)
+
+
+# --------------------------------------------------------------------------- #
+# Lab activation codes (Path C) — ORM side
+# --------------------------------------------------------------------------- #
+class LabConsumeOutcome(enum.StrEnum):
+    OK = "ok"
+    NOT_FOUND = "not_found"
+    EXPIRED = "expired"
+    ALREADY_USED = "already_used"
+    CONFLICT = "conflict"  # code valid, but this guild/lab is bound elsewhere
+
+
+@dataclass
+class LabCodeResult:
+    outcome: LabConsumeOutcome
+    lab: Lab | None = None
+    guild_link: DiscordGuildLink | None = None
+
+
+def store_lab_activation_code(lab, user, code_hash: str, expires_at: datetime) -> None:
+    """Persist a new lab code hash, superseding any prior live code for the lab."""
+    now = timezone.now()
+    DiscordLabActivationCode.objects.filter(
+        lab=lab, consumed_at__isnull=True, expires_at__gt=now
+    ).update(consumed_at=now)  # supersede prior live codes
+    DiscordLabActivationCode.objects.create(
+        lab=lab, issued_by=user, code_hash=code_hash, expires_at=expires_at
+    )
+    audit.discord_audit(
+        action="discord.lab_activate.issued",
+        actor=user,
+        metadata={"lab_id": str(lab.id)},
+    )
+
+
+def find_live_lab_code(code_hash: str) -> tuple[LabConsumeOutcome, Lab | None]:
+    """Peek: is this code live? Returns (outcome, lab). Does NOT consume.
+
+    Used to run policy gates (e.g. the Mylo-server add-on) *before* consuming, so a
+    valid code is not burned when the lab can't yet use it.
+    """
+    now = timezone.now()
+    row = (
+        DiscordLabActivationCode.objects.filter(
+            code_hash=code_hash, consumed_at__isnull=True, expires_at__gt=now
+        )
+        .select_related("lab")
+        .order_by("-created_at")
+        .first()
+    )
+    if row is not None:
+        return (LabConsumeOutcome.OK, row.lab)
+    any_row = (
+        DiscordLabActivationCode.objects.filter(code_hash=code_hash)
+        .order_by("-created_at")
+        .first()
+    )
+    if any_row is None:
+        return (LabConsumeOutcome.NOT_FOUND, None)
+    if any_row.consumed_at is not None:
+        return (LabConsumeOutcome.ALREADY_USED, None)
+    return (LabConsumeOutcome.EXPIRED, None)
+
+
+def consume_lab_activation_code(
+    code_hash: str, discord_user_id: str, guild_id: str, guild_name: str = ""
+) -> LabCodeResult:
+    """Atomically redeem a lab code and bind *this guild* to *that lab* (ACTIVE).
+
+    Enforces one-guild-one-lab (and one-lab-one-guild): if this guild is already
+    bound to a different lab, or the lab to a different guild, returns ``CONFLICT``
+    and does **not** consume the code (so the manager can resolve it and retry).
+    The bind is ``verified_via_code_grant`` untouched — the code carries authority,
+    not the forgeable OAuth redirect. No linked identity is required of the redeemer.
+    """
+    discord_user_id = str(discord_user_id)
+    guild_id = str(guild_id or "")
+    now = timezone.now()
+    with transaction.atomic():
+        row = (
+            DiscordLabActivationCode.objects.select_for_update()
+            .filter(code_hash=code_hash, consumed_at__isnull=True, expires_at__gt=now)
+            .select_related("lab")
+            .order_by("-created_at")
+            .first()
+        )
+        if row is None:
+            any_row = (
+                DiscordLabActivationCode.objects.filter(code_hash=code_hash)
+                .order_by("-created_at")
+                .first()
+            )
+            if any_row is None:
+                return LabCodeResult(LabConsumeOutcome.NOT_FOUND)
+            if any_row.consumed_at is not None:
+                return LabCodeResult(LabConsumeOutcome.ALREADY_USED)
+            return LabCodeResult(LabConsumeOutcome.EXPIRED)
+
+        lab = row.lab
+        if not guild_id:
+            return LabCodeResult(LabConsumeOutcome.CONFLICT, lab=lab)
+
+        existing_for_guild = get_guild_link(guild_id)
+        if existing_for_guild and existing_for_guild.lab_id != lab.id:
+            audit.discord_audit(
+                action="discord.guild.rejected",
+                guild_id=guild_id,
+                metadata={"reason": "guild_bound_to_other_lab", "via": "lab_code"},
+            )
+            return LabCodeResult(LabConsumeOutcome.CONFLICT, lab=lab)
+        existing_for_lab = get_guild_link_for_lab(lab)
+        if existing_for_lab and existing_for_lab.guild_id != guild_id:
+            audit.discord_audit(
+                action="discord.guild.rejected",
+                guild_id=guild_id,
+                metadata={"reason": "lab_bound_to_other_guild", "via": "lab_code"},
+            )
+            return LabCodeResult(LabConsumeOutcome.CONFLICT, lab=lab)
+
+        confirmer = resolve_user(discord_user_id)  # may be None (identity optional)
+        link, _ = DiscordGuildLink.objects.get_or_create(
+            lab=lab, defaults={"guild_id": guild_id}
+        )
+        link.guild_id = guild_id
+        link.guild_name_cache = (guild_name or "")[:100]
+        if link.installed_by_id is None and confirmer is not None:
+            link.installed_by = confirmer
+        link.state = DiscordGuildLink.State.ACTIVE
+        link.confirmed_at = now
+        link.save()
+
+        row.consumed_at = now
+        row.consumed_by_discord_id = discord_user_id
+        row.consumed_guild_id = guild_id
+        row.save(
+            update_fields=[
+                "consumed_at",
+                "consumed_by_discord_id",
+                "consumed_guild_id",
+            ]
+        )
+        audit.discord_audit(
+            action="discord.lab_activate.consumed",
+            actor=confirmer,
+            guild_id=guild_id,
+            metadata={"lab_id": str(lab.id), "verified_via_code_grant": False},
+        )
+        return LabCodeResult(LabConsumeOutcome.OK, lab=lab, guild_link=link)
