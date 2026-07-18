@@ -25,8 +25,8 @@ import json
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.content.opportunities import DEFAULT_SURFACE
-from apps.content.refitting import DEFAULT_AREAS, refit_batch
-from apps.content.tasks import select_users
+from apps.content.refitting import DEFAULT_AREAS, refit_batch, refit_targets_batch
+from apps.content.tasks import select_targets, select_users
 
 
 class Command(BaseCommand):
@@ -80,6 +80,15 @@ class Command(BaseCommand):
             action="store_true",
             help="Run the refit but persist no RelevanceScore rows.",
         )
+        parser.add_argument(
+            "--no-labs",
+            action="store_true",
+            help=(
+                "Skip labs and lab projects. By default a full run (no --user) also "
+                "refits active-subscription labs + their projects, mirroring the "
+                "nightly run — the replace pass that re-expands a stale lab feed."
+            ),
+        )
 
     def _parse_max(self, raw: str) -> int | None:
         """``all`` (or blank) → no cap; otherwise a positive integer."""
@@ -123,22 +132,40 @@ class Command(BaseCommand):
         if max_users is not None:
             users = users[:max_users]
 
-        if not users:
-            self.stdout.write(self.style.WARNING("No matching users."))
-            return
-
-        cap = "all" if max_users is None else str(max_users)
-        self.stdout.write(
-            f"Refitting {len(users)} user(s) (max={cap}) "
-            f"over areas: {', '.join(options['areas'])}…"
-        )
-
         # ``--no-llm`` forces the deterministic fallback by injecting a complete
         # seam that always returns nothing usable (mirrors run_daily_opportunities).
         complete = (lambda _prompt: None) if options["no_llm"] else None
 
-        results = refit_batch(
-            users,
+        results: list = []
+        if users:
+            cap = "all" if max_users is None else str(max_users)
+            self.stdout.write(
+                f"Refitting {len(users)} user(s) (max={cap}) "
+                f"over areas: {', '.join(options['areas'])}…"
+            )
+            results = refit_batch(
+                users,
+                areas=options["areas"],
+                llm_limit=llm_limit,
+                complete=complete,
+                persist=not options["dry_run"],
+                log=self.stdout.write,
+            )
+        else:
+            self.stdout.write(self.style.WARNING("No matching users."))
+
+        # A full run (no --user) also re-personalizes active labs + their projects,
+        # the same target set the nightly run fans out to. ``select_targets``
+        # self-scopes to nothing for a --user-scoped run, so --no-labs is only for
+        # a full run that wants users only.
+        labs, projects = (
+            ([], [])
+            if options["no_labs"]
+            else select_targets(options["usernames"])
+        )
+        lab_results = refit_targets_batch(
+            labs,
+            projects,
             areas=options["areas"],
             llm_limit=llm_limit,
             complete=complete,
@@ -146,8 +173,14 @@ class Command(BaseCommand):
             log=self.stdout.write,
         )
 
-        self.stdout.write(json.dumps([r.as_dict() for r in results], indent=2))
-        ok = sum(1 for r in results if r.status == "ok")
-        self.stdout.write(
-            self.style.SUCCESS(f"{ok}/{len(results)} user refit(s) ok")
-        )
+        all_results = results + lab_results
+        self.stdout.write(json.dumps([r.as_dict() for r in all_results], indent=2))
+        user_ok = sum(1 for r in results if r.status == "ok")
+        summary = f"{user_ok}/{len(results)} user refit(s) ok"
+        if lab_results:
+            lab_ok = sum(1 for r in lab_results if r.status == "ok")
+            summary += (
+                f"; {lab_ok}/{len(lab_results)} lab+project refit(s) ok "
+                f"({len(labs)} lab(s), {len(projects)} project(s))"
+            )
+        self.stdout.write(self.style.SUCCESS(summary))

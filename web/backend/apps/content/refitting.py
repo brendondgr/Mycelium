@@ -148,6 +148,7 @@ def refit_target(
     target,
     *,
     areas: Sequence[str] = TARGET_AREAS,
+    llm_limit: int | None = None,
     complete: CompleteFn | None = None,
     persist: bool = True,
     log: Callable[[str], None] | None = None,
@@ -158,9 +159,18 @@ def refit_target(
     after a lab profile or project focus is edited: it re-runs the recommend
     (papers) and match (grants / conferences) halves against the already-populated
     corpus. Fellowships are excluded — they are an individual-eligibility area.
+
+    ``llm_limit`` mirrors :func:`refit_user`: how many of each area's surfaced items
+    go to the model (the rest are filled deterministically). ``None`` keeps each
+    pipeline's own default (top 10).
     """
     from .opportunities import run_opportunities_for_target
     from .pipeline import recommend_for_target
+
+    # Only pass the limit through when set, so ``None`` defers to each pipeline's
+    # own default rather than overriding it with a hardcoded number here.
+    paper_kwargs = {} if llm_limit is None else {"suggestion_limit": llm_limit}
+    opp_kwargs = {} if llm_limit is None else {"llm_limit": llm_limit}
 
     summaries: dict[str, dict] = {}
     if PAPER_AREA in areas:
@@ -171,6 +181,7 @@ def refit_target(
                 persist=persist,
                 reuse_prior=False,
                 log=log,
+                **paper_kwargs,
             )
         )
     opp_areas = tuple(a for a in areas if a in ("grants", "conferences"))
@@ -182,6 +193,7 @@ def refit_target(
             persist=persist,
             reuse_prior=False,
             log=log,
+            **opp_kwargs,
         ):
             summaries[result.area] = _opportunity_summary(result)
     return RefitResult(target.key, "ok", areas=summaries)
@@ -230,4 +242,50 @@ def refit_batch(
             if log is not None:
                 log(f"[{username}] ERROR (see worker log)")
             results.append(RefitResult(username, "error", note="refit failed"))
+    return results
+
+
+def refit_targets_batch(
+    labs: Sequence = (),
+    projects: Sequence = (),
+    *,
+    areas: Sequence[str] = TARGET_AREAS,
+    llm_limit: int | None = None,
+    complete: CompleteFn | None = None,
+    persist: bool = True,
+    log: Callable[[str], None] | None = None,
+) -> list[RefitResult]:
+    """Refit each lab, then each project, over the existing store (papers/grants/conf).
+
+    The institutional counterpart of :func:`refit_batch`: the whole-corpus *replace*
+    pass for labs and lab-scoped projects, so an existing lab's feed is re-expanded
+    to the current variable-length threshold size instead of a stale fixed slice
+    (the nightly run only *appends* new items and never re-expands). Fellowships are
+    excluded — they gate on individual eligibility. One target's failure never sinks
+    the batch. ``labs`` / ``projects`` are the model objects (e.g. from
+    :func:`apps.content.tasks.select_targets`).
+    """
+    results: list[RefitResult] = []
+    units: list[tuple[str, object, Callable]] = [
+        *(("lab", lab, refit_lab) for lab in labs),
+        *(("project", project, refit_project) for project in projects),
+    ]
+    for kind, obj, refit in units:
+        key = getattr(obj, "slug", None) or str(getattr(obj, "id", obj))
+        try:
+            results.append(
+                refit(
+                    obj,
+                    areas=areas,
+                    llm_limit=llm_limit,
+                    complete=complete,
+                    persist=persist,
+                    log=log,
+                )
+            )
+        except Exception:
+            logger.exception("refit failed for %s %s", kind, key)
+            if log is not None:
+                log(f"[{kind}:{key}] ERROR (see worker log)")
+            results.append(RefitResult(key, "error", note=f"{kind} refit failed"))
     return results
