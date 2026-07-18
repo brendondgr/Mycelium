@@ -1,5 +1,10 @@
 # Lab recommendation feeds capped at ~25 — plan
 
+> **Status: complete (2026-07-18).** Implemented `refit_targets_batch` +
+> `run_refitting` lab coverage; verified on the live stack (`pulse-lab` grants
+> 24→154, conferences 25→165, all threshold-mode with `embedding_match`); 76+
+> content tests pass; merged into `main`.
+
 ## Objective
 
 Make a lab's Research Papers / Grants / Conferences (and the lab-visible
