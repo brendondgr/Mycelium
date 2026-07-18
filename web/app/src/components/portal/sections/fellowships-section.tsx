@@ -26,7 +26,6 @@ import {
 } from "@/components/portal/sections/fellowship-filters";
 import { usePortal } from "@/components/portal/portal-context";
 import { Pill } from "@/components/portal/primitives/pill";
-import { LabFeedShell } from "@/components/portal/sections/lab-feed-shell";
 import { useFellowships, useLabRecommendations } from "@/lib/portal/hooks";
 import type {
   FellowshipOpportunity,
@@ -419,27 +418,88 @@ function LabFellowshipRow({ item }: { item: LabFellowship }) {
   );
 }
 
-/** The lab-scoped Fellowships feed — the union of eligible, consenting members. */
+/**
+ * The lab-scoped Fellowships feed — the union of eligible, consenting members.
+ * The lab payload is a distinct data model (fellowships members are eligible
+ * for, with per-member eligibility) rather than the caller's own eligibility, so
+ * it keeps its member-eligibility card; it reuses the personal page's outer
+ * structure — the header, loading/empty states, and top-25 "Show all" cap — for
+ * a consistent shell, without the personal filter rail (the lab data lacks the
+ * tier/stage/citizenship fields those filters need).
+ */
 function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
   const { data, isLoading, isError } = useLabRecommendations(lab.slug);
-  const fellowships = data?.fellowships ?? [];
+  const fellowships = React.useMemo(() => data?.fellowships ?? [], [data]);
+  const [showAll, setShowAll] = React.useState(false);
+
+  const capped = !showAll;
+  const displayed = React.useMemo(
+    () => (capped ? fellowships.slice(0, DEFAULT_FELLOWSHIP_LIMIT) : fellowships),
+    [fellowships, capped],
+  );
+  const hiddenCount = fellowships.length - displayed.length;
+
+  const subtitle = isLoading
+    ? `Checking what ${lab.name} members are eligible for…`
+    : fellowships.length > 0
+      ? `${fellowships.length} fellowship${
+          fellowships.length === 1 ? "" : "s"
+        } ${lab.name} members are eligible for.`
+      : `Fellowships ${lab.name} members are eligible for.`;
+
   return (
-    <LabFeedShell
-      title="Fellowships"
-      subtitle={`Fellowships ${lab.name} members are eligible for.`}
-      isLoading={isLoading}
-      isError={isError}
-      isEmpty={fellowships.length === 0}
-      emptyIcon={<SparkleIcon size={28} />}
-      emptyTitle="No lab fellowship matches yet"
-      emptyDescription="Fellowships appear here when a member is personally eligible and has opted into sharing their eligibility with the lab."
-    >
-      <div className="space-y-3">
-        {fellowships.map((item) => (
-          <LabFellowshipRow key={item.content_id} item={item} />
-        ))}
+    <div>
+      <SectionHeader title="Fellowships" subtitle={subtitle} />
+      <div className="min-w-0 flex-1">
+        {isLoading ? (
+          <div className="space-y-3.5">
+            <FellowshipSkeleton />
+            <FellowshipSkeleton />
+            <FellowshipSkeleton />
+          </div>
+        ) : isError ? (
+          <EmptyState
+            icon={<SparkleIcon size={26} className="text-accent" />}
+            title="Couldn't load this feed"
+            description="Something went wrong loading the lab's fellowship matches. Please try again in a moment."
+          />
+        ) : fellowships.length === 0 ? (
+          <EmptyState
+            icon={<SparkleIcon size={26} className="text-accent" />}
+            title="No lab fellowship matches yet"
+            description="Fellowships appear here when a member is personally eligible and has opted into sharing their eligibility with the lab."
+          />
+        ) : (
+          <>
+            <div className="space-y-3.5">
+              {displayed.map((item, index) => (
+                <div
+                  key={item.content_id}
+                  className="portal-fade-up"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <LabFellowshipRow item={item} />
+                </div>
+              ))}
+            </div>
+            {hiddenCount > 0 ? (
+              <div className="mt-5 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAll(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Show all {fellowships.length} fellowships
+                  <span className="text-[var(--text-muted)]">
+                    (+{hiddenCount} more)
+                  </span>
+                </button>
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
-    </LabFeedShell>
+    </div>
   );
 }
 

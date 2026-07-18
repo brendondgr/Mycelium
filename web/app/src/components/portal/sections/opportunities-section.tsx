@@ -25,7 +25,6 @@ import {
   type GrantFilterState,
 } from "@/components/portal/sections/grant-filters";
 import { usePortal } from "@/components/portal/portal-context";
-import { LabFeedShell } from "@/components/portal/sections/lab-feed-shell";
 import { useGrants, useLabRecommendations } from "@/lib/portal/hooks";
 import type { GrantOpportunity, MyLab } from "@/lib/portal/types";
 
@@ -188,30 +187,6 @@ function GrantsList({ grants }: { grants: GrantOpportunity[] }) {
 /** How many of the top recommended grants to show before "Show all". */
 const DEFAULT_GRANT_LIMIT = 25;
 
-/** The lab-scoped Grants feed (grants matched to the lab's shared profile). */
-function LabGrantsFeed({ lab }: { lab: MyLab }) {
-  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
-  const grants = data?.grants ?? [];
-  return (
-    <LabFeedShell
-      title="Grants"
-      subtitle={`Funding Mylo matched to ${lab.name}.`}
-      isLoading={isLoading}
-      isError={isError}
-      isEmpty={grants.length === 0}
-      emptyIcon={<BankIcon size={28} />}
-      emptyTitle="No lab grant matches yet"
-      emptyDescription="Once Mylo has run for this lab, funding opportunities matched to its purpose will appear here."
-    >
-      <div className="space-y-3">
-        {grants.map((grant) => (
-          <GrantRow key={grant.content_id} grant={grant} />
-        ))}
-      </div>
-    </LabFeedShell>
-  );
-}
-
 export function OpportunitiesSection() {
   const { currentLab } = usePortal();
   if (currentLab) {
@@ -220,9 +195,43 @@ export function OpportunitiesSection() {
   return <PersonalOpportunities />;
 }
 
+/** The lab-scoped Grants feed — the lab's matched funding, same UI as personal. */
+function LabGrantsFeed({ lab }: { lab: MyLab }) {
+  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+  const grants = React.useMemo(() => data?.grants ?? [], [data]);
+  return (
+    <GrantsFeed
+      grants={grants}
+      isLoading={isLoading}
+      isError={isError}
+      labName={lab.name}
+    />
+  );
+}
+
 function PersonalOpportunities() {
   const { data, isLoading, isError } = useGrants();
   const grants = React.useMemo(() => data?.items ?? [], [data]);
+  return <GrantsFeed grants={grants} isLoading={isLoading} isError={isError} />;
+}
+
+/**
+ * The shared Grants feed body — the filter rail, top-25 cap, and card list —
+ * used identically by the personal page and a lab workspace. `labName`, when
+ * set, marks the lab variant and only swaps the surrounding copy; the structure,
+ * filters, and card layout are the same in both.
+ */
+function GrantsFeed({
+  grants,
+  isLoading,
+  isError,
+  labName,
+}: {
+  grants: GrantOpportunity[];
+  isLoading: boolean;
+  isError: boolean;
+  labName?: string;
+}) {
   const [filters, setFilters] = React.useState<GrantFilterState>(
     DEFAULT_GRANT_FILTERS,
   );
@@ -251,12 +260,20 @@ function PersonalOpportunities() {
   const showRail = !isLoading && !isError && grants.length > 0;
 
   const subtitle = isLoading
-    ? "Matching funding to your research…"
+    ? labName
+      ? `Matching funding to ${labName}…`
+      : "Matching funding to your research…"
     : grants.length > 0
-      ? `${grants.length} grant${
-          grants.length === 1 ? "" : "s"
-        } matched your research profile and timeline.`
-      : "Funding matched to your research profile and timeline.";
+      ? labName
+        ? `${grants.length} grant${
+            grants.length === 1 ? "" : "s"
+          } Mylo matched to ${labName}.`
+        : `${grants.length} grant${
+            grants.length === 1 ? "" : "s"
+          } matched your research profile and timeline.`
+      : labName
+        ? `Funding matched to ${labName}.`
+        : "Funding matched to your research profile and timeline.";
 
   return (
     <div>
@@ -282,15 +299,23 @@ function PersonalOpportunities() {
           ) : isError ? (
             <EmptyState
               icon={<BankIcon size={26} className="text-accent" />}
-              title="Couldn't load your grants"
-              description="Something went wrong fetching your funding matches. Please try again in a moment."
+              title={labName ? "Couldn't load this feed" : "Couldn't load your grants"}
+              description={
+                labName
+                  ? "Something went wrong loading the lab's funding matches. Please try again in a moment."
+                  : "Something went wrong fetching your funding matches. Please try again in a moment."
+              }
             />
           ) : grants.length === 0 ? (
             <EmptyState
               icon={<BankIcon size={26} className="text-accent" />}
-              badge="Coming soon"
-              title="Your grant matches are on their way"
-              description="Once Mylo's nightly funding scan runs against your research profile, your best-fit grants — each with a percent-match score, its deadline, and why it fits — will appear here, newest strong matches pinned to the top."
+              badge={labName ? undefined : "Coming soon"}
+              title={labName ? "No lab grant matches yet" : "Your grant matches are on their way"}
+              description={
+                labName
+                  ? "Once Mylo has run for this lab, funding opportunities matched to its purpose will appear here."
+                  : "Once Mylo's nightly funding scan runs against your research profile, your best-fit grants — each with a percent-match score, its deadline, and why it fits — will appear here, newest strong matches pinned to the top."
+              }
             />
           ) : visible.length === 0 ? (
             <EmptyState

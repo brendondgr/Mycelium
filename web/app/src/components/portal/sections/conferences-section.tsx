@@ -27,7 +27,6 @@ import {
   type ConferenceFilterState,
 } from "@/components/portal/sections/conference-filters";
 import { usePortal } from "@/components/portal/portal-context";
-import { LabFeedShell } from "@/components/portal/sections/lab-feed-shell";
 import { useConferences, useLabRecommendations } from "@/lib/portal/hooks";
 import type { ConferenceOpportunity, MyLab } from "@/lib/portal/types";
 
@@ -198,30 +197,6 @@ function formatWhen(iso: string | null): string {
  * narrows the already-fetched feed in memory — instant, no refetch. Top-24 cap
  * before "Show all", matching the Grants / Fellowships pattern.
  */
-/** The lab-scoped Conferences feed (venues matched to the lab's shared profile). */
-function LabConferencesFeed({ lab }: { lab: MyLab }) {
-  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
-  const conferences = data?.conferences ?? [];
-  return (
-    <LabFeedShell
-      title="Conferences"
-      subtitle={`Conferences Mylo matched to ${lab.name}.`}
-      isLoading={isLoading}
-      isError={isError}
-      isEmpty={conferences.length === 0}
-      emptyIcon={<ConferenceIcon size={28} />}
-      emptyTitle="No lab conference matches yet"
-      emptyDescription="Once Mylo has run for this lab, conferences and calls for papers matching its purpose will appear here."
-    >
-      <div className="grid gap-3 md:grid-cols-2">
-        {conferences.map((conf) => (
-          <ConferenceCard key={conf.content_id} conf={conf} />
-        ))}
-      </div>
-    </LabFeedShell>
-  );
-}
-
 export function ConferencesSection() {
   const { currentLab } = usePortal();
   if (currentLab) {
@@ -230,10 +205,53 @@ export function ConferencesSection() {
   return <PersonalConferences />;
 }
 
+/** The lab-scoped Conferences feed — the lab's matches, same UI as personal. */
+function LabConferencesFeed({ lab }: { lab: MyLab }) {
+  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+  const conferences = React.useMemo(() => data?.conferences ?? [], [data]);
+  return (
+    <ConferencesFeed
+      conferences={conferences}
+      isLoading={isLoading}
+      isError={isError}
+      generatedAt={data?.generated_at ?? null}
+      labName={lab.name}
+    />
+  );
+}
+
 function PersonalConferences() {
   const { data, isLoading, isError } = useConferences();
   const conferences = React.useMemo(() => data?.items ?? [], [data]);
+  return (
+    <ConferencesFeed
+      conferences={conferences}
+      isLoading={isLoading}
+      isError={isError}
+      generatedAt={data?.generated_at ?? null}
+    />
+  );
+}
 
+/**
+ * The shared Conferences feed body — the filter rail, top-24 cap, and card grid
+ * — used identically by the personal page and a lab workspace. `labName`, when
+ * set, marks the lab variant and only swaps the surrounding copy; the structure,
+ * filters, and card layout are the same in both.
+ */
+function ConferencesFeed({
+  conferences,
+  isLoading,
+  isError,
+  generatedAt,
+  labName,
+}: {
+  conferences: ConferenceOpportunity[];
+  isLoading: boolean;
+  isError: boolean;
+  generatedAt: string | null;
+  labName?: string;
+}) {
   const [filters, setFilters] = React.useState<ConferenceFilterState>(
     DEFAULT_CONFERENCE_FILTERS,
   );
@@ -260,17 +278,22 @@ function PersonalConferences() {
   const showRail = !isLoading && !isError && conferences.length > 0;
 
   const subtitle: React.ReactNode = (() => {
-    if (isLoading) return "Gathering conferences that fit your work…";
+    if (isLoading) {
+      return labName
+        ? `Gathering conferences that fit ${labName}…`
+        : "Gathering conferences that fit your work…";
+    }
     if (conferences.length > 0) {
-      const when = formatWhen(data?.generated_at ?? null);
+      const when = formatWhen(generatedAt);
       const count = `${conferences.length} conference${
         conferences.length === 1 ? "" : "s"
       }`;
-      return when
-        ? `${count}, ranked by fit · gathered ${when}.`
-        : `${count}, ranked by fit.`;
+      const lead = labName ? `${count}, matched to ${labName}` : `${count}, ranked by fit`;
+      return when ? `${lead} · gathered ${when}.` : `${lead}.`;
     }
-    return "Conferences and calls for papers matched to your research, best fit first.";
+    return labName
+      ? `Conferences and calls for papers matched to ${labName}, best fit first.`
+      : "Conferences and calls for papers matched to your research, best fit first.";
   })();
 
   return (
@@ -299,15 +322,27 @@ function PersonalConferences() {
           ) : isError ? (
             <EmptyState
               icon={<ConferenceIcon size={28} />}
-              title="Couldn't load your conferences"
-              description="Something went wrong fetching your conference matches. Please try again in a moment."
+              title={labName ? "Couldn't load this feed" : "Couldn't load your conferences"}
+              description={
+                labName
+                  ? "Something went wrong loading the lab's conference matches. Please try again in a moment."
+                  : "Something went wrong fetching your conference matches. Please try again in a moment."
+              }
             />
           ) : conferences.length === 0 ? (
             <EmptyState
               icon={<ConferenceIcon size={28} />}
-              badge="Coming soon"
-              title="Your conference matches are on their way"
-              description="Once Mylo's nightly scan of calls for papers runs against your research profile, the venues that best fit your work — each with a percent match and its submission deadline — will appear here as cards."
+              badge={labName ? undefined : "Coming soon"}
+              title={
+                labName
+                  ? "No lab conference matches yet"
+                  : "Your conference matches are on their way"
+              }
+              description={
+                labName
+                  ? "Once Mylo has run for this lab, conferences and calls for papers matching its purpose will appear here."
+                  : "Once Mylo's nightly scan of calls for papers runs against your research profile, the venues that best fit your work — each with a percent match and its submission deadline — will appear here as cards."
+              }
             />
           ) : visible.length === 0 ? (
             <EmptyState

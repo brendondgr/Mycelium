@@ -7,7 +7,6 @@ import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { DocumentIcon, SearchIcon } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
-import { LabFeedShell } from "@/components/portal/sections/lab-feed-shell";
 import { SuggestionCard } from "@/components/portal/sections/suggestion-card";
 import { useDailyReport, useLabRecommendations } from "@/lib/portal/hooks";
 import type { MyLab, Suggestion } from "@/lib/portal/types";
@@ -84,30 +83,6 @@ function focusPercent(
  * derived focus %) and hides the ones that match none. Fed by the same daily run
  * as the Daily Report summary.
  */
-/** The lab-scoped Research Papers feed (papers matched to the lab's profile). */
-function LabPapersFeed({ lab }: { lab: MyLab }) {
-  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
-  const papers = data?.papers ?? [];
-  return (
-    <LabFeedShell
-      title="Research Papers"
-      subtitle={`Papers Mylo matched to ${lab.name}.`}
-      isLoading={isLoading}
-      isError={isError}
-      isEmpty={papers.length === 0}
-      emptyIcon={<DocumentIcon size={28} />}
-      emptyTitle="No lab paper matches yet"
-      emptyDescription="Once Mylo has run for this lab, papers matched to its shared research profile will appear here."
-    >
-      <div className="space-y-4">
-        {papers.map((paper) => (
-          <SuggestionCard key={paper.content_id} suggestion={paper} />
-        ))}
-      </div>
-    </LabFeedShell>
-  );
-}
-
 export function ResearchPapersSection() {
   const { currentLab } = usePortal();
   // In a lab workspace, this page is the lab's matched papers, not the caller's.
@@ -117,11 +92,62 @@ export function ResearchPapersSection() {
   return <PersonalResearchPapers />;
 }
 
+/** The lab-scoped Research Papers feed — the lab's matches, same UI as personal. */
+function LabPapersFeed({ lab }: { lab: MyLab }) {
+  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+  const suggestions = React.useMemo(() => data?.papers ?? [], [data]);
+  return (
+    <PapersFeed
+      suggestions={suggestions}
+      isLoading={isLoading}
+      isError={isError}
+      generatedAt={data?.generated_at ?? null}
+      labName={lab.name}
+    />
+  );
+}
+
 function PersonalResearchPapers() {
   const { data, isLoading, isError } = useDailyReport();
   const suggestions = React.useMemo(() => data?.suggestions ?? [], [data]);
-  // A sign-up background scan may be filling this feed; show a "scanning" state.
-  const scanning = data?.scanning ?? false;
+  return (
+    <PapersFeed
+      suggestions={suggestions}
+      isLoading={isLoading}
+      isError={isError}
+      // A sign-up background scan may be filling this feed; surface it.
+      scanning={data?.scanning ?? false}
+      generatedAt={data?.generated_at ?? null}
+      matchThreshold={data?.summary?.match_threshold}
+    />
+  );
+}
+
+/**
+ * The shared Research Papers feed body — keyword search, interest-chip focus
+ * filters, the LLM-ranked / cross-topics two-tier split, and the card list —
+ * used identically by the personal page and a lab workspace. `labName`, when
+ * set, marks the lab variant and only swaps the surrounding copy; the structure,
+ * filters, and card layout are the same in both. `scanning` is a personal-only
+ * sign-up state (a lab never passes it).
+ */
+function PapersFeed({
+  suggestions,
+  isLoading,
+  isError,
+  scanning = false,
+  generatedAt = null,
+  matchThreshold,
+  labName,
+}: {
+  suggestions: Suggestion[];
+  isLoading: boolean;
+  isError: boolean;
+  scanning?: boolean;
+  generatedAt?: string | null;
+  matchThreshold?: number;
+  labName?: string;
+}) {
   const [showMore, setShowMore] = React.useState(false);
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [query, setQuery] = React.useState("");
@@ -175,7 +201,9 @@ function PersonalResearchPapers() {
   const subtitle: React.ReactNode = (() => {
     if (isLoading) return "Gathering today's papers…";
     if (suggestions.length === 0) {
-      return "Your daily paper suggestions, ranked by how well they match your research.";
+      return labName
+        ? `Papers Mylo matched to ${labName}.`
+        : "Your daily paper suggestions, ranked by how well they match your research.";
     }
     if (filtering) {
       const n = filtered.length;
@@ -183,13 +211,13 @@ function PersonalResearchPapers() {
         focusMode ? ", scored against the selected interests" : ""
       }.`;
     }
-    const when = formatWhen(data?.generated_at ?? null);
+    const when = formatWhen(generatedAt);
     const total = suggestions.length;
-    const threshold = data?.summary?.match_threshold;
     const papers = `paper${total === 1 ? "" : "s"}`;
-    const met =
-      typeof threshold === "number"
-        ? `${total} ${papers} met your ${threshold}% match threshold`
+    const met = labName
+      ? `${total} ${papers} Mylo matched to ${labName}`
+      : typeof matchThreshold === "number"
+        ? `${total} ${papers} met your ${matchThreshold}% match threshold`
         : `${total} ${papers} matched your research`;
     const ranked = `top ${primary.length} ranked by Mylo`;
     return when
@@ -273,11 +301,21 @@ function PersonalResearchPapers() {
       ) : isError ? (
         <EmptyState
           icon={<DocumentIcon size={28} />}
-          title="Couldn't load your research papers"
-          description="Something went wrong fetching today's papers. Please try again in a moment."
+          title={labName ? "Couldn't load this feed" : "Couldn't load your research papers"}
+          description={
+            labName
+              ? "Something went wrong loading the lab's paper matches. Please try again in a moment."
+              : "Something went wrong fetching today's papers. Please try again in a moment."
+          }
         />
       ) : suggestions.length === 0 ? (
-        scanning ? (
+        labName ? (
+          <EmptyState
+            icon={<DocumentIcon size={28} />}
+            title="No lab paper matches yet"
+            description="Once Mylo has run for this lab, papers matched to its shared research profile will appear here."
+          />
+        ) : scanning ? (
           <EmptyState
             icon={<DocumentIcon size={28} />}
             title="Scanning new articles for you…"
