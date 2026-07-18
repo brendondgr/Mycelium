@@ -630,35 +630,6 @@ def store_lab_activation_code(lab, user, code_hash: str, expires_at: datetime) -
     )
 
 
-def find_live_lab_code(code_hash: str) -> tuple[LabConsumeOutcome, Lab | None]:
-    """Peek: is this code live? Returns (outcome, lab). Does NOT consume.
-
-    Used to run policy gates (e.g. the Mylo-server add-on) *before* consuming, so a
-    valid code is not burned when the lab can't yet use it.
-    """
-    now = timezone.now()
-    row = (
-        DiscordLabActivationCode.objects.filter(
-            code_hash=code_hash, consumed_at__isnull=True, expires_at__gt=now
-        )
-        .select_related("lab")
-        .order_by("-created_at")
-        .first()
-    )
-    if row is not None:
-        return (LabConsumeOutcome.OK, row.lab)
-    any_row = (
-        DiscordLabActivationCode.objects.filter(code_hash=code_hash)
-        .order_by("-created_at")
-        .first()
-    )
-    if any_row is None:
-        return (LabConsumeOutcome.NOT_FOUND, None)
-    if any_row.consumed_at is not None:
-        return (LabConsumeOutcome.ALREADY_USED, None)
-    return (LabConsumeOutcome.EXPIRED, None)
-
-
 def consume_lab_activation_code(
     code_hash: str, discord_user_id: str, guild_id: str, guild_name: str = ""
 ) -> LabCodeResult:

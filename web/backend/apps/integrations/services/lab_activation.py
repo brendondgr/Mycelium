@@ -8,15 +8,15 @@ command ran in* to *the lab that issued the code*.
 Authority model: the manager check happens at **issue** time on the website
 (``user_can_manage_lab``). Possession of the code is the authority in Discord, so the
 redeemer needs no linked identity — unlike the Discord-native path we removed, this
-is the website-driven flow. The Mylo-server add-on is re-checked at redemption
-(defence in depth) and, crucially, *before* the code is consumed, so a valid code is
-never burned when the lab can't yet use it.
+is the website-driven flow. No billing/add-on gate applies here: Mylo is already in
+the server (a slash command can only run where the bot is present) and a lab manager
+deliberately issued the code, so a valid code in that server is enough to bind it.
 
 Code policy: 10 numeric digits (~33 bits) shown grouped ``XXXXX-XXXXX``. Lower entropy
 than the Path B identity code is acceptable here: a guessed code only binds a *guild*
-(reversible, conflict-guarded, add-on-gated), not a user's account, and redemption is
-lockout-guarded (shared with Path B, keyed on the redeemer's snowflake) over a short
-TTL. Only the sha256 is stored; the plaintext is never persisted or logged.
+(reversible, conflict-guarded), not a user's account, and redemption is lockout-guarded
+(shared with Path B, keyed on the redeemer's snowflake) over a short TTL. Only the
+sha256 is stored; the plaintext is never persisted or logged.
 """
 
 from __future__ import annotations
@@ -28,8 +28,6 @@ from dataclasses import dataclass
 
 from django.conf import settings
 from django.utils import timezone
-
-from apps.billing.entitlements import Feature, lab_has_feature
 
 from . import resolve, state
 from .resolve import LabConsumeOutcome
@@ -77,7 +75,6 @@ class RedeemOutcome(enum.StrEnum):
     EXPIRED = "expired"
     ALREADY_USED = "already_used"
     CONFLICT = "conflict"
-    BOT_SERVER_REQUIRED = "bot_server_required"
 
 
 @dataclass
@@ -97,36 +94,32 @@ _CONSUME_MAP = {
 def redeem(
     code_input: str, discord_user_id: str, guild_id: str, guild_name: str = ""
 ) -> RedeemResult:
-    """Redeem a lab code for a guild. Lockout-guarded; add-on-gated before consume."""
+    """Redeem a lab code for a guild. Lockout-guarded and single-use.
+
+    No add-on/billing gate: Mylo is already in the server (a slash command only runs
+    where the bot is present) and a manager issued the code, so a valid code binds the
+    guild. Delivery-time billing checks, if any, live on the send path — not here.
+    """
     discord_user_id = str(discord_user_id)
     if state.is_locked_out(discord_user_id):
         return RedeemResult(RedeemOutcome.LOCKED_OUT)
 
     code_hash = hash_code(normalize(code_input))
-
-    # Peek before consuming so the add-on gate can't burn a valid code.
-    peek_outcome, lab = resolve.find_live_lab_code(code_hash)
-    if peek_outcome is not LabConsumeOutcome.OK:
-        state.record_failure(discord_user_id)  # bad/expired/used → counts to lockout
-        return RedeemResult(_CONSUME_MAP[peek_outcome])
-
-    if not lab_has_feature(lab, Feature.BOT_SERVER):
-        # Not consumed: add the add-on, then reuse the same code.
-        return RedeemResult(RedeemOutcome.BOT_SERVER_REQUIRED, lab_name=lab.name)
-
     result = resolve.consume_lab_activation_code(
         code_hash, discord_user_id, guild_id, guild_name
     )
     if result.outcome is LabConsumeOutcome.OK:
         state.clear_failures(discord_user_id)
-        name = result.lab.name if result.lab else lab.name
-        return RedeemResult(RedeemOutcome.OK, lab_name=name)
+        return RedeemResult(
+            RedeemOutcome.OK, lab_name=result.lab.name if result.lab else ""
+        )
 
     if result.outcome is LabConsumeOutcome.CONFLICT:
         # A real code, wrong guild binding — not a brute-force attempt; don't lock out.
-        name = result.lab.name if result.lab else lab.name
-        return RedeemResult(RedeemOutcome.CONFLICT, lab_name=name)
+        return RedeemResult(
+            RedeemOutcome.CONFLICT, lab_name=result.lab.name if result.lab else ""
+        )
 
-    # Lost a race (consumed between peek and consume) — classify, count as a failure.
+    # bad/expired/used → counts toward lockout.
     state.record_failure(discord_user_id)
     return RedeemResult(_CONSUME_MAP[result.outcome])

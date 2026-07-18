@@ -56,10 +56,12 @@ no Mylo database, schema, or migration history.
      server → the calling guild is bound `ACTIVE`. The **manager authority is proven
      at issue time** (`user_can_manage_lab` on the website), so the redeemer needs no
      linked identity; the code carries the authority into Discord. Redemption is
-     lockout-guarded (shared with Path B), add-on-gated (`Feature.BOT_SERVER`,
-     re-checked *before* the code is consumed so a valid code is never burned), and
-     one-guild-one-lab / one-lab-one-guild conflict-guarded. `verified_via_code_grant`
-     stays whatever the install set it to (True for a prior website install).
+     lockout-guarded (shared with Path B) and one-guild-one-lab / one-lab-one-guild
+     conflict-guarded. **No billing/add-on gate applies** — Mylo is already in the
+     server (a slash command only runs where the bot is present) and a manager issued
+     the code, so a valid code binds it; any billing checks live on the delivery path,
+     not activation. `verified_via_code_grant` stays whatever the install set it to
+     (True for a prior website install).
 
   **`/activate` is personal-only** (`code:` → Path B identity). **`/activate-lab`**
   is the lab flow above. No `default_member_permissions` gates either — the code is
@@ -154,11 +156,11 @@ consumed; plaintext code in zero logs / zero DB columns.
 posted; forged `guild_id` on the redirect → ignored. Manager clicks **Activate Lab**
 → 10-digit code (non-manager → 403, unknown lab → 404). `/activate-lab code:<code>`
 in the server → guild bound `ACTIVE` (the pending install's row flips); no linked
-identity required. Reused/expired code → rejected; bad code → rejected + counts to
-lockout; 6 bad attempts → lockout; lab lacks the `bot_server` add-on → refused,
-code **not** consumed; guild already bound to another lab, or lab to another guild →
-`CONFLICT`, not consumed; plaintext code in zero logs / zero DB columns; bot kicked
-→ sweep sets `KICKED`. **Post-activation `/setup`** — before activation → "run
+identity **and no billing add-on** required — the bot is already present and a manager
+issued the code. Reused/expired code → rejected; bad code → rejected + counts to
+lockout; 6 bad attempts → lockout; guild already bound to another lab, or lab to
+another guild → `CONFLICT`, not consumed; plaintext code in zero logs / zero DB
+columns; bot kicked → sweep sets `KICKED`. **Post-activation `/setup`** — before activation → "run
 `/activate-lab` first"; linked non-manager → denied; a linked admin/PI sees the menu,
 picks a deadline channel and an updates channel independently (each preflighted
 before binding), and can turn either off; a channel the bot can't post in → refused

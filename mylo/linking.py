@@ -177,11 +177,6 @@ def _activate_lab_code_sync(
             "is already connected to another server. Disconnect the existing link in "
             "Mycelium first, then run `/activate-lab` again."
         ),
-        O.BOT_SERVER_REQUIRED: (
-            f"**{lab}** doesn't include Mylo for your server yet. Add the Mylo-server "
-            f"add-on in Mycelium, then run `/activate-lab` again — your code still "
-            f"works: {portal}"
-        ),
     }
     return (result.outcome.value, messages[result.outcome])
 

@@ -13,7 +13,7 @@ from apps.accounts.models import Lab, LabMembership
 from apps.integrations.models import DiscordGuildLink, DiscordLabActivationCode
 from apps.integrations.services import lab_activation, resolve, state
 
-from .base import clear_discord_cache, discord_test_settings, grant_bot_server
+from .base import clear_discord_cache, discord_test_settings
 
 User = get_user_model()
 
@@ -22,8 +22,8 @@ User = get_user_model()
 class LabActivationServiceTests(TestCase):
     def setUp(self):
         clear_discord_cache()
+        # No Mylo-server add-on granted: lab activation must not require one.
         self.lab = Lab.objects.create(name="Reef Lab", slug="reef")
-        grant_bot_server(self.lab)
         self.manager = User.objects.create_user("mgr", password="x")
         LabMembership.objects.create(
             user=self.manager, lab=self.lab, role=LabMembership.Role.OWNER
@@ -93,19 +93,19 @@ class LabActivationServiceTests(TestCase):
         self.assertEqual(result.outcome, lab_activation.RedeemOutcome.CONFLICT)
         self.assertIsNone(DiscordLabActivationCode.objects.get(lab=self.lab).consumed_at)
 
-    def test_addon_required_gate_does_not_consume(self):
-        bare = Lab.objects.create(name="Bare", slug="bare")
+    def test_activates_without_any_billing_addon(self):
+        # Regression: a valid code binds the guild even with no Mylo-server add-on —
+        # the bot is already in the server, so activation must not gate on billing.
+        bare = Lab.objects.create(name="Bare", slug="bare")  # no subscription/add-on
         LabMembership.objects.create(
             user=self.manager, lab=bare, role=LabMembership.Role.OWNER
         )
         code = lab_activation.issue_code(self.manager, bare)
         result = lab_activation.redeem(code, "d-user", "g-9")
-        self.assertEqual(
-            result.outcome, lab_activation.RedeemOutcome.BOT_SERVER_REQUIRED
-        )
-        self.assertFalse(DiscordGuildLink.objects.filter(guild_id="g-9").exists())
-        # Not consumed — add the add-on, then reuse the same code.
-        self.assertIsNone(DiscordLabActivationCode.objects.get(lab=bare).consumed_at)
+        self.assertEqual(result.outcome, lab_activation.RedeemOutcome.OK)
+        link = DiscordGuildLink.objects.get(guild_id="g-9")
+        self.assertEqual(link.lab_id, bare.id)
+        self.assertEqual(link.state, DiscordGuildLink.State.ACTIVE)
 
     def test_issue_supersedes_prior_live_code(self):
         first = lab_activation.issue_code(self.manager, self.lab)
@@ -162,7 +162,6 @@ class LabActivationCodeViewTests(TestCase):
     def setUp(self):
         clear_discord_cache()
         self.lab = Lab.objects.create(name="Lab", slug="lab")
-        grant_bot_server(self.lab)
         self.manager = User.objects.create_user("manager", password="x")
         self.member = User.objects.create_user("member", password="x")
         LabMembership.objects.create(
