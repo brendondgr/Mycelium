@@ -111,12 +111,30 @@ def test_preflight_channel_refused_when_send_denied(transport) -> None:
     outcome = preflight_channel("100")
     assert not outcome.ok
     assert outcome.unreachable
+    # A real Discord 403 is NOT a server-side config gap: keep the two apart so the
+    # caller can word the message correctly (overwrite vs. "not set up server-side").
+    assert not outcome.not_configured
+    assert outcome.error_code == 50013
+
+
+def test_preflight_channel_missing_access_surfaces_50001(transport) -> None:
+    transport.message = RawResponse(403, {"code": 50001})  # Missing Access
+    outcome = preflight_channel("100")
+    assert not outcome.ok
+    assert outcome.unreachable
+    assert not outcome.not_configured
+    # 50001 means "not in the server / can't see it" — distinct from an overwrite.
+    assert outcome.error_code == 50001
 
 
 def test_preflight_channel_no_bot_token_is_unreachable(settings) -> None:
     settings.DISCORD_BOT_TOKEN = ""
     outcome = preflight_channel("100")
     assert not outcome.ok
+    # No token → we never contacted Discord. This must be flagged distinctly so the
+    # `/setup` handler never blames the channel's permissions for a server-side gap.
+    assert outcome.not_configured
+    assert outcome.error_code is None
 
 
 # --------------------------------------------------------------------------- #

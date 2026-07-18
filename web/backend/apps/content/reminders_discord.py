@@ -40,6 +40,7 @@ class SendOutcome:
     message_id: str = ""
     error_code: int | None = None
     unreachable: bool = False
+    not_configured: bool = False  # server-side: the bot token isn't set at all
     has_unlinked: bool | None = None  # lab sends: any mention target with no ping
 
 
@@ -208,7 +209,9 @@ def preflight_channel(
     "daily and weekly updates") so the confirmation reads correctly for each kind.
     """
     if not _bot_configured():
-        return SendOutcome(ok=False, unreachable=True)
+        # No token: we never reach Discord at all. Flag it distinctly so the caller
+        # doesn't misreport a server-side gap as the channel's own permissions.
+        return SendOutcome(ok=False, unreachable=True, not_configured=True)
     embed = {
         "title": "Mylo is set up here ✅",
         "description": f"This channel will receive this lab's {purpose}.",

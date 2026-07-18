@@ -253,12 +253,32 @@ def _bind_setup_channel_sync(
     outcome = preflight_channel(channel_id, purpose=_CHANNEL_PURPOSE.get(kind, "updates"))
     if not outcome.ok:
         payload = _state_payload(link)
-        if outcome.unreachable:
+        if outcome.not_configured:
+            # Not the channel's fault, and not this server's fault: Mylo has no bot
+            # token configured on the Mycelium side, so it can't post *anywhere*.
             payload["message"] = (
-                f"⚠️ I can't post in <#{channel_id}> (a permission overwrite denies me "
-                "View/Send/Embed there). Pick another channel, or fix my permissions "
-                "and try again."
+                "⚠️ Mylo isn't fully set up on the Mycelium side yet — my bot token "
+                "isn't configured, so I can't post in any channel (this is not about "
+                f"<#{channel_id}>'s permissions). A Mycelium admin needs to set "
+                "`DISCORD_API_KEY`, then try `/setup` again."
             )
+            return ("not_configured", payload)
+        if outcome.unreachable:
+            # A real 403 from Discord for *this* channel in *this* server. 50001
+            # (Missing Access) means I'm not in the server or can't even see the
+            # channel; 50013 (Missing Permissions) means an overwrite blocks posting.
+            if outcome.error_code == 50001:
+                payload["message"] = (
+                    f"⚠️ I can't see <#{channel_id}> in this server — either I'm not a "
+                    "member here or I lack **View Channel**. Add me to the server (or "
+                    "grant View Channel), then try again."
+                )
+            else:
+                payload["message"] = (
+                    f"⚠️ I can't post in <#{channel_id}> (a permission overwrite denies "
+                    "me View/Send/Embed there). Pick another channel, or fix my "
+                    "permissions and try again."
+                )
             return ("channel_denied", payload)
         payload["message"] = (
             f"⚠️ I couldn't verify <#{channel_id}> just now. Try again in a moment."

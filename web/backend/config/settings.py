@@ -10,6 +10,14 @@ ROOT_DIR = BASE_DIR.parent
 env = environ.FileAwareEnv(DEBUG=(bool, False))
 
 environ.Env.read_env(ROOT_DIR.parent / ".env")
+# Also fold in the Mylo gateway's env so the *one* bot identity is shared: the
+# bot TOKEN (`DISCORD_API_KEY`) and the activation/error channel ids live only in
+# `.env-mylo`. Without this, Django (and every in-process Django bootstrap — the
+# Mylo gateway serving `/setup`, the daily run) sees an empty `DISCORD_BOT_TOKEN`,
+# so every Discord REST call is skipped as "unreachable" and `/setup` wrongly
+# blames a channel permission overwrite. `read_env` is setdefault-style, so a real
+# process env var or a value already loaded from `.env` still wins.
+environ.Env.read_env(ROOT_DIR.parent / ".env-mylo")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="django-insecure-local-dev-only")
 DEBUG = env("DJANGO_DEBUG", default=False)

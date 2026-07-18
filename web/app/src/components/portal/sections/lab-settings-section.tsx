@@ -61,7 +61,7 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
         title={`${lab.name} settings`}
         subtitle="Set the lab's logo and purpose, invite members, and connect Mylo."
       />
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+      <div className="grid items-start gap-4 lg:grid-cols-[1.5fr_1fr]">
         {/* Left rail — setup cards */}
         <div className="space-y-4">
           <LabLogoCard lab={lab} />
