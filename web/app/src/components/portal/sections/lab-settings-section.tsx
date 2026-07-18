@@ -10,6 +10,7 @@ import {
   DiscordSyncCard,
   InviteCard,
   LabPurposeCard,
+  LabWatchCard,
   MembersCard,
   ProjectsCard,
 } from "@/components/portal/sections/labs-section";
@@ -70,9 +71,10 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
           <ProjectsCard lab={lab} canManage />
         </div>
 
-        {/* Right column — purpose & goals, then the member roster */}
+        {/* Right column — purpose & goals, watch topics, then the member roster */}
         <div className="space-y-4">
           <LabPurposeCard lab={lab} canManage />
+          <LabWatchCard lab={lab} />
           <MembersCard lab={lab} grid />
         </div>
       </div>

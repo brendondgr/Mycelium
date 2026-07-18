@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { MyloMark } from "@/components/brand/mylo-mark";
+import { ClusterOrganizer } from "@/components/onboarding/cluster-organizer";
 import MyceliumBranch from "@/components/onboarding/mycelium-branch";
 import { OnboardingMatch } from "@/components/onboarding/onboarding-match";
 import OnboardingStage from "@/components/onboarding/onboarding-stage";
@@ -21,6 +22,7 @@ import {
 import {
   confirmInterests,
   getWatch,
+  proposeClusters,
   saveProfileBasics,
   saveWatch,
   synthesizeProfile,
@@ -28,6 +30,7 @@ import {
 } from "@/lib/auth-client";
 import { fetchProfile } from "@/lib/portal/client";
 import type {
+  ClusterGroup,
   OnboardingMatchArea,
   ProfileEligibility,
   ResearchInterests,
@@ -101,18 +104,31 @@ const CADENCES: { id: WatchCadence; label: string }[] = [
  * signal on — so the eligibility questions are only asked of people who actually
  * want fellowship recommendations.
  */
-type StepKey = "about" | "import" | "review" | "watch" | "eligibility";
+type StepKey =
+  | "about"
+  | "import"
+  | "review"
+  | "organize"
+  | "watch"
+  | "eligibility";
 
 const STEP_LABEL: Record<StepKey, string> = {
   about: "About you",
   import: "Import your research",
   review: "Review profile",
+  organize: "Organize interests",
   watch: "What Mylo watches",
   eligibility: "Fellowship eligibility",
 };
 
 /** Steps every onboarding shows, in order; eligibility is appended when opted in. */
-const BASE_STEP_KEYS: StepKey[] = ["about", "import", "review", "watch"];
+const BASE_STEP_KEYS: StepKey[] = [
+  "about",
+  "import",
+  "review",
+  "organize",
+  "watch",
+];
 
 /**
  * The opportunity areas the live post-onboarding match can run, in report order.
@@ -206,7 +222,14 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   const [skills, setSkills] = useState<string[]>([]);
   const [draftSources, setDraftSources] = useState<Record<string, unknown>>({});
 
-  // Step 3 — fellowship eligibility
+  // Step 3 — organize interests into clusters
+  const [clusters, setClusters] = useState<ClusterGroup[]>([]);
+  // Guards the one-time auto-propose call on first landing on the organize
+  // step — never retried automatically after that (the ClusterOrganizer's own
+  // "Organize with Mylo" button covers a failed or skipped attempt).
+  const autoProposedRef = useRef(false);
+
+  // Step 4 — fellowship eligibility
   const [eligCitizenship, setEligCitizenship] = useState<ProfileEligibility["citizenship"]>("us");
   const [eligStage, setEligStage] = useState<ProfileEligibility["stage"]>("");
   const [eligFields, setEligFields] = useState<string[]>([]);
@@ -312,6 +335,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           setKeywords(interests.keywords ?? []);
           setSkills(interests.skills ?? []);
           setDraftSources(interests.sources ?? {});
+          setClusters(interests.clusters ?? []);
           if (interests.eligibility) {
             const elig = interests.eligibility;
             setEligCitizenship(elig.citizenship ?? "us");
@@ -344,6 +368,38 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
       cancelled = true;
     };
   }, [editing]);
+
+  // -- organize (auto-propose) ---------------------------------------------
+  // The first time the user reaches the organize step with no clusters yet
+  // and enough areas to group, ask Mylo for a starting grouping so the step
+  // never opens empty. Runs at most once per flow — a failed or skipped
+  // attempt is never retried automatically; the ClusterOrganizer's own
+  // "Organize with Mylo" button covers that.
+  useEffect(() => {
+    if (currentKey !== "organize" || autoProposedRef.current) {
+      return;
+    }
+    if (clusters.length > 0) {
+      autoProposedRef.current = true;
+      return;
+    }
+    if (areas.length < 2) {
+      // A single area is one implicit cluster — nothing to propose.
+      return;
+    }
+    autoProposedRef.current = true;
+    (async () => {
+      try {
+        const result = await proposeClusters({ areas, keywords, statement });
+        setClusters(result.clusters);
+        if (result.watch_topics.length) {
+          setWatchTopics(result.watch_topics);
+        }
+      } catch {
+        // Degrade silently — the manual "Organize with Mylo" button covers this.
+      }
+    })();
+  }, [currentKey, clusters.length, areas, keywords, statement]);
 
   // -- verify --------------------------------------------------------------
   async function verifyAndContinue() {
@@ -509,7 +565,28 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
 
   async function finish() {
     setSubmitError(null);
-    const interests: ResearchInterests = { version: 1, areas };
+    const interests: ResearchInterests = { version: 2, areas };
+    // The interests contract requires that IF `clusters` is present, every area
+    // is in exactly one cluster (no orphan, no phantom, no duplicate). Sanitize
+    // against the *current* areas first (the user may have edited areas after
+    // organizing), then attach only when the sanitized clusters cover every area
+    // — otherwise omit the key entirely, a valid v1-shaped fallback. This never
+    // sends a partial partition, so the save can't 400 on the partition rule.
+    const validAreas = new Set(areas);
+    const claimed = new Set<string>();
+    const cleaned = clusters
+      .map((cluster) => ({
+        ...cluster,
+        areas: cluster.areas.filter((area) => {
+          if (!validAreas.has(area) || claimed.has(area)) return false;
+          claimed.add(area);
+          return true;
+        }),
+      }))
+      .filter((cluster) => cluster.areas.length > 0);
+    if (cleaned.length > 0 && areas.every((area) => claimed.has(area))) {
+      interests.clusters = cleaned;
+    }
     if (statement.trim()) {
       interests.statement = statement.trim();
     }
@@ -1027,6 +1104,31 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     </div>
   );
 
+  const panelOrganize = (
+    <div className={cardClass}>
+      <div className="space-y-5">
+        <div>
+          <h2 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
+            Shape your research clusters
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Group related areas together so Mylo can report on each thread of
+            your work separately. Optional — skip it and everything stays in
+            one group.
+          </p>
+        </div>
+        <ClusterOrganizer
+          areas={areas}
+          clusters={clusters}
+          keywords={keywords}
+          statement={statement}
+          onChange={setClusters}
+          onWatchSeed={(topics) => setWatchTopics(topics)}
+        />
+      </div>
+    </div>
+  );
+
   const panelEligibility = (
     <div className={cardClass}>
       <div className="space-y-5">
@@ -1276,6 +1378,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     about: panelAbout,
     import: panelImport,
     review: panelReview,
+    organize: panelOrganize,
     watch: panelWatch,
     eligibility: panelEligibility,
   };

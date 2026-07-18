@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { ClusterOrganizer } from "@/components/onboarding/cluster-organizer";
 import {
   DiscordIcon,
   FolderIcon,
@@ -11,6 +12,7 @@ import {
 import { roleLabel, usePortal } from "@/components/portal/portal-context";
 import { Avatar } from "@/components/portal/primitives/avatar";
 import { Card } from "@/components/portal/primitives/card";
+import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -25,10 +27,12 @@ import {
   useLabMembers,
   useLabProfile,
   useLabProjects,
+  useLabWatch,
   useProjectMembership,
   useUpdateLabProfile,
 } from "@/lib/portal/hooks";
 import { ApiError } from "@/lib/api-error";
+import type { ClusterGroup } from "@/lib/auth-types";
 import type { LabMember, LabProfileData, MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +42,54 @@ function parseList(text: string): string[] {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+/** Pull the (untyped) `clusters` array off a lab's stored `interests` blob. */
+function readClusters(interests: Record<string, unknown> | undefined | null): ClusterGroup[] {
+  const raw = interests?.clusters;
+  return Array.isArray(raw) ? (raw as ClusterGroup[]) : [];
+}
+
+/**
+ * Partition `items` across `clusters` by membership test `inCluster`, in
+ * cluster order, claiming each item for at most one group. Anything unclaimed
+ * comes back as `other`.
+ */
+function groupByCluster<T>(
+  items: T[],
+  clusters: ClusterGroup[],
+  inCluster: (item: T, cluster: ClusterGroup) => boolean,
+): { groups: { cluster: ClusterGroup; items: T[] }[]; other: T[] } {
+  const claimed = new Set<T>();
+  const groups = clusters
+    .map((cluster) => {
+      const matched = items.filter(
+        (item) => !claimed.has(item) && inCluster(item, cluster),
+      );
+      matched.forEach((item) => claimed.add(item));
+      return { cluster, items: matched };
+    })
+    .filter((group) => group.items.length > 0);
+  const other = items.filter((item) => !claimed.has(item));
+  return { groups, other };
+}
+
+/** A small colored dot + label used as a cluster group header. */
+function ClusterGroupHeading({ cluster }: { cluster: ClusterGroup }) {
+  const token = clusterAccentVar(cluster.id);
+  return (
+    <p
+      className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em]"
+      style={{ color: `var(${token})` }}
+    >
+      <span
+        aria-hidden="true"
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: `var(${token})` }}
+      />
+      {cluster.label}
+    </p>
+  );
 }
 
 function canManageLab(lab: MyLab): boolean {
@@ -290,6 +342,14 @@ export function LabPurposeCard({
     profile.funding_needs.length === 0 &&
     profile.strategic_needs.length === 0;
 
+  const clusters = readClusters(profile.interests);
+  const { groups: areaGroups, other: otherAreas } =
+    clusters.length > 0
+      ? groupByCluster(profile.areas, clusters, (area, cluster) =>
+          cluster.areas.includes(area),
+        )
+      : { groups: [], other: [] };
+
   return (
     <DetailCard title="Purpose & goals">
       {empty ? (
@@ -305,7 +365,25 @@ export function LabPurposeCard({
               {profile.statement}
             </p>
           ) : null}
-          <ChipRow label="Focus areas" items={profile.areas} />
+          {clusters.length > 0 ? (
+            <div className="space-y-3">
+              {areaGroups.map(({ cluster, items }) => (
+                <div key={cluster.id}>
+                  <ClusterGroupHeading cluster={cluster} />
+                  <div className="flex flex-wrap gap-1.5">
+                    {items.map((item) => (
+                      <Pill key={item} tone="neutral">
+                        {item}
+                      </Pill>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <ChipRow label="Other" items={otherAreas} />
+            </div>
+          ) : (
+            <ChipRow label="Focus areas" items={profile.areas} />
+          )}
           <ChipRow label="Funding needs" items={profile.funding_needs} />
           <ChipRow label="Strategic needs" items={profile.strategic_needs} />
         </div>
@@ -320,6 +398,101 @@ export function LabPurposeCard({
           {empty ? "Add purpose & goals" : "Edit"}
         </button>
       ) : null}
+    </DetailCard>
+  );
+}
+
+// -- What Mylo watches (read card) -------------------------------------------
+
+/** A read-only view of a lab's watch topics, grouped by cluster when the lab
+ * profile has any (same treatment as the personal profile's WatchCard). */
+export function LabWatchCard({ lab }: { lab: MyLab }) {
+  const { data: watch, isLoading, isError } = useLabWatch(lab.slug);
+  const { data: profile } = useLabProfile(lab.slug);
+
+  if (isLoading) {
+    return (
+      <DetailCard title="What Mylo watches">
+        <div className="h-16 animate-pulse rounded-xl bg-surface-alt" />
+      </DetailCard>
+    );
+  }
+
+  if (isError || !watch) {
+    return (
+      <DetailCard title="What Mylo watches">
+        <p className="text-sm text-[var(--text-muted)]">
+          Couldn&apos;t load the lab&apos;s watch settings.
+        </p>
+      </DetailCard>
+    );
+  }
+
+  const topics = watch.topics ?? [];
+  const clusters = readClusters(profile?.interests);
+  const cadenceLabel = watch.cadence === "daily" ? "daily" : "weekly";
+
+  if (topics.length === 0) {
+    return (
+      <DetailCard title="What Mylo watches">
+        <p className="text-sm text-[var(--text-muted)]">
+          This lab hasn&apos;t set watch topics yet.
+        </p>
+      </DetailCard>
+    );
+  }
+
+  const { groups: topicGroups, other: otherTopics } =
+    clusters.length > 0
+      ? groupByCluster(topics, clusters, (topic, cluster) => {
+          const key = topic.toLowerCase();
+          return (
+            cluster.label.toLowerCase() === key ||
+            cluster.areas.some((area) => area.toLowerCase() === key)
+          );
+        })
+      : { groups: [], other: [] };
+
+  return (
+    <DetailCard title="What Mylo watches">
+      {clusters.length > 0 ? (
+        <div className="mb-3 flex flex-col gap-3">
+          {topicGroups.map(({ cluster, items }) => (
+            <div key={cluster.id}>
+              <ClusterGroupHeading cluster={cluster} />
+              <div className="flex flex-wrap gap-1.5">
+                {items.map((topic) => (
+                  <Pill key={topic} tone="neutral">
+                    {topic}
+                  </Pill>
+                ))}
+              </div>
+            </div>
+          ))}
+          {otherTopics.length > 0 ? (
+            <ChipRow label="Other" items={otherTopics} />
+          ) : null}
+        </div>
+      ) : (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {topics.map((topic) => (
+            <Pill key={topic} tone="neutral">
+              {topic}
+            </Pill>
+          ))}
+        </div>
+      )}
+
+      {watch.categories?.length ? (
+        <p className="mb-1.5 text-[12.5px] text-[var(--text-secondary)]">
+          Signals:{" "}
+          <span className="font-medium">{watch.categories.join(", ")}</span>
+        </p>
+      ) : null}
+
+      <p className="text-[12.5px] text-[var(--text-secondary)]">
+        Cadence: <span className="font-medium">{cadenceLabel} digest</span>
+      </p>
     </DetailCard>
   );
 }
@@ -359,6 +532,7 @@ function LabPurposeForm({
     areas: string[];
     funding_needs: string[];
     strategic_needs: string[];
+    interests?: Record<string, unknown>;
   }) => void;
   onCancel: () => void;
 }) {
@@ -368,17 +542,53 @@ function LabPurposeForm({
   const [strategic, setStrategic] = React.useState(
     profile.strategic_needs.join(", "),
   );
+  const [clusters, setClusters] = React.useState<ClusterGroup[]>(() =>
+    readClusters(profile.interests),
+  );
+
+  const parsedAreas = parseList(areas);
 
   return (
     <form
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
+        const cleanAreas = parseList(areas);
+        // Same partial-partition guard as onboarding's organize step: sanitize the
+        // clusters against the current areas (drop phantom/duplicate areas the user
+        // may have introduced by editing the comma list after organizing), then
+        // attach only when they cover every area — else omit the key so a stale or
+        // partial grouping never overwrites a valid saved one or 400s on save.
+        const validAreas = new Set(cleanAreas);
+        const claimed = new Set<string>();
+        const cleanedClusters = clusters
+          .map((cluster) => ({
+            ...cluster,
+            areas: cluster.areas.filter((area) => {
+              if (!validAreas.has(area) || claimed.has(area)) return false;
+              claimed.add(area);
+              return true;
+            }),
+          }))
+          .filter((cluster) => cluster.areas.length > 0);
+        const allAssigned =
+          cleanedClusters.length > 0 && cleanAreas.every((area) => claimed.has(area));
+        const nextInterests: Record<string, unknown> = {
+          ...(profile.interests ?? {}),
+          version: 2,
+          areas: cleanAreas,
+        };
+        if (allAssigned) {
+          nextInterests.clusters = cleanedClusters;
+        } else {
+          delete nextInterests.clusters;
+        }
         onSave({
           statement: statement.trim(),
-          areas: parseList(areas),
+          areas: cleanAreas,
           funding_needs: parseList(funding),
           strategic_needs: parseList(strategic),
+          interests: nextInterests,
         });
       }}
     >
@@ -399,6 +609,12 @@ function LabPurposeForm({
           className={INPUT}
         />
       </Field>
+      <ClusterOrganizer
+        areas={parsedAreas}
+        clusters={clusters}
+        statement={statement}
+        onChange={setClusters}
+      />
       <Field label="Funding needs (comma-separated)">
         <input
           value={funding}

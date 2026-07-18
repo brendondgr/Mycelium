@@ -59,6 +59,17 @@ export type ProfileEligibility = {
   career_stage?: string;
 };
 
+/**
+ * One named grouping of a profile's research areas (interest-clusters feature).
+ * `id` is a stable slug — never regenerated on rename, only assigned when a
+ * cluster is first created (mirrors the backend's `make_cluster_id`).
+ */
+export type ClusterGroup = {
+  id: string;
+  label: string;
+  areas: string[];
+};
+
 /** The contract-shaped research interests stored on a profile. */
 export type ResearchInterests = {
   version: number;
@@ -71,7 +82,31 @@ export type ResearchInterests = {
   eligibility?: ProfileEligibility;
   /** Research-interest clusters derived from the profile's areas (interest-
    * clusters feature) — absent on a single/no-cluster profile. */
-  clusters?: { id: string; label: string; areas: string[] }[];
+  clusters?: ClusterGroup[];
+};
+
+/**
+ * Input to `proposeClusters` (`POST /api/auth/intake/clusters/`). Two modes on
+ * one shape: **propose** (`areas` [+ `keywords`/`statement`]) groups areas into
+ * named clusters; **sort** (`clusters` + `unsorted`) routes new areas into the
+ * given clusters, preserving their ids. The caller picks a mode by which fields
+ * it populates — the backend branches on `clusters && unsorted` both present.
+ */
+export type ProposeClustersInput = {
+  /** Optional so the sort mode (`clusters` + `unsorted`, no full `areas` list)
+   * type-checks — the propose mode is the one that populates this. */
+  areas?: string[];
+  keywords?: string[];
+  statement?: string;
+  clusters?: ClusterGroup[];
+  unsorted?: string[];
+};
+
+/** The response shape for both `proposeClusters` modes. */
+export type ProposeClustersResult = {
+  clusters: ClusterGroup[];
+  watch_topics: string[];
+  source: string;
 };
 
 /** The aggregated author draft returned alongside synthesized interests. */

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { usePortal } from "@/components/portal/portal-context";
 import { LabSettingsSection } from "@/components/portal/sections/lab-settings-section";
 import { Card } from "@/components/portal/primitives/card";
+import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -22,7 +23,49 @@ import {
   useWatch,
 } from "@/lib/portal/hooks";
 import { computeCompleteness } from "@/lib/portal/completeness";
-import type { ProfileEligibility } from "@/lib/auth-types";
+import type { ClusterGroup, ProfileEligibility } from "@/lib/auth-types";
+
+/**
+ * Partition `items` across `clusters` by membership test `inCluster`, in
+ * cluster order, claiming each item for at most one group (first cluster to
+ * claim it wins). Anything unclaimed comes back as `other`. Shared by the
+ * areas and watch-topics grouping below so both read the same way.
+ */
+function groupByCluster<T>(
+  items: T[],
+  clusters: ClusterGroup[],
+  inCluster: (item: T, cluster: ClusterGroup) => boolean,
+): { cluster: ClusterGroup; items: T[] }[] {
+  const claimed = new Set<T>();
+  const groups = clusters
+    .map((cluster) => {
+      const matched = items.filter(
+        (item) => !claimed.has(item) && inCluster(item, cluster),
+      );
+      matched.forEach((item) => claimed.add(item));
+      return { cluster, items: matched };
+    })
+    .filter((group) => group.items.length > 0);
+  return groups;
+}
+
+/** A small colored dot + label used as a cluster group header. */
+function ClusterGroupHeading({ cluster }: { cluster: ClusterGroup }) {
+  const token = clusterAccentVar(cluster.id);
+  return (
+    <p
+      className="mb-1.5 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em]"
+      style={{ color: `var(${token})` }}
+    >
+      <span
+        aria-hidden="true"
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: `var(${token})` }}
+      />
+      {cluster.label}
+    </p>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Research focus card (LEFT)
@@ -58,12 +101,30 @@ function ResearchFocusCard() {
   const statement = interests?.statement?.trim() ?? "";
   const keywords = interests?.keywords ?? [];
   const skills = interests?.skills ?? [];
+  const clusters = interests?.clusters ?? [];
+
+  const areaGroups =
+    clusters.length > 0
+      ? groupByCluster(areas, clusters, (area, cluster) =>
+          cluster.areas.includes(area),
+        )
+      : [];
+  const groupedAreas = new Set(areaGroups.flatMap((group) => group.items));
+  const otherAreas = areas.filter((area) => !groupedAreas.has(area));
 
   return (
     <Card className="p-[22px]">
-      <h2 className="mb-4 text-base font-semibold text-[var(--text-primary)]">
-        Research focus
-      </h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">
+          Research focus
+        </h2>
+        <Link
+          href="/app/onboarding?edit=1"
+          className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+        >
+          Organize
+        </Link>
+      </div>
 
       {/* Statement */}
       {statement ? (
@@ -72,21 +133,64 @@ function ResearchFocusCard() {
         </p>
       ) : null}
 
-      {/* Areas */}
+      {/* Areas — grouped by cluster when the profile has any, flat otherwise */}
       {areas.length > 0 ? (
-        <div className="mb-4 flex flex-col gap-2.5">
-          {areas.map((area) => (
-            <div key={area} className="flex items-start gap-2.5">
-              <TargetIcon
-                size={18}
-                className="mt-0.5 shrink-0 text-primary"
-              />
-              <span className="text-sm font-medium text-[var(--text-primary)]">
-                {area}
-              </span>
-            </div>
-          ))}
-        </div>
+        clusters.length > 0 ? (
+          <div className="mb-4 flex flex-col gap-4">
+            {areaGroups.map(({ cluster, items }) => (
+              <div key={cluster.id}>
+                <ClusterGroupHeading cluster={cluster} />
+                <div className="flex flex-col gap-2.5">
+                  {items.map((area) => (
+                    <div key={area} className="flex items-start gap-2.5">
+                      <TargetIcon
+                        size={18}
+                        className="mt-0.5 shrink-0 text-primary"
+                      />
+                      <span className="text-sm font-medium text-[var(--text-primary)]">
+                        {area}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {otherAreas.length > 0 ? (
+              <div>
+                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+                  Other
+                </p>
+                <div className="flex flex-col gap-2.5">
+                  {otherAreas.map((area) => (
+                    <div key={area} className="flex items-start gap-2.5">
+                      <TargetIcon
+                        size={18}
+                        className="mt-0.5 shrink-0 text-primary"
+                      />
+                      <span className="text-sm font-medium text-[var(--text-primary)]">
+                        {area}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="mb-4 flex flex-col gap-2.5">
+            {areas.map((area) => (
+              <div key={area} className="flex items-start gap-2.5">
+                <TargetIcon
+                  size={18}
+                  className="mt-0.5 shrink-0 text-primary"
+                />
+                <span className="text-sm font-medium text-[var(--text-primary)]">
+                  {area}
+                </span>
+              </div>
+            ))}
+          </div>
+        )
       ) : (
         <p className="mb-4 text-sm text-[var(--text-muted)]">
           Add research areas in your profile so Mylo can match work to you.
@@ -204,6 +308,7 @@ function ProfileCompletenessCard() {
 
 function WatchCard() {
   const { data: watch, isLoading, isError } = useWatch();
+  const { data: profile } = useProfile();
 
   if (isLoading) {
     return (
@@ -230,8 +335,22 @@ function WatchCard() {
   const topics = watch?.topics ?? [];
   const categories = watch?.categories ?? [];
   const cadence = watch?.cadence ?? "weekly";
+  const clusters = profile?.interests?.clusters ?? [];
 
   const cadenceLabel = cadence === "daily" ? "daily" : "weekly";
+
+  const topicGroups =
+    clusters.length > 0
+      ? groupByCluster(topics, clusters, (topic, cluster) => {
+          const key = topic.toLowerCase();
+          return (
+            cluster.label.toLowerCase() === key ||
+            cluster.areas.some((area) => area.toLowerCase() === key)
+          );
+        })
+      : [];
+  const groupedTopics = new Set(topicGroups.flatMap((group) => group.items));
+  const otherTopics = topics.filter((topic) => !groupedTopics.has(topic));
 
   return (
     <Card className="p-[22px]">
@@ -245,13 +364,44 @@ function WatchCard() {
         </p>
       ) : (
         <>
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            {topics.map((topic) => (
-              <Pill key={topic} tone="neutral">
-                {topic}
-              </Pill>
-            ))}
-          </div>
+          {clusters.length > 0 ? (
+            <div className="mb-3 flex flex-col gap-3">
+              {topicGroups.map(({ cluster, items }) => (
+                <div key={cluster.id}>
+                  <ClusterGroupHeading cluster={cluster} />
+                  <div className="flex flex-wrap gap-1.5">
+                    {items.map((topic) => (
+                      <Pill key={topic} tone="neutral">
+                        {topic}
+                      </Pill>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {otherTopics.length > 0 ? (
+                <div>
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+                    Other
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {otherTopics.map((topic) => (
+                      <Pill key={topic} tone="neutral">
+                        {topic}
+                      </Pill>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {topics.map((topic) => (
+                <Pill key={topic} tone="neutral">
+                  {topic}
+                </Pill>
+              ))}
+            </div>
+          )}
 
           {categories.length > 0 ? (
             <p className="mb-1.5 text-xs text-[var(--text-secondary)]">

@@ -4,6 +4,8 @@ import type {
   OnboardingMatchArea,
   OnboardingMatchResult,
   ProfileBasics,
+  ProposeClustersInput,
+  ProposeClustersResult,
   RegisterInput,
   ResearchInterests,
   SynthesizeInput,
@@ -271,6 +273,50 @@ export async function confirmInterests(
       firstFieldError(body) ?? "Could not save your research interests.",
     );
   }
+}
+
+/**
+ * Propose (or re-sort) interest clusters for the "Organize your interests" step.
+ * Two modes on one endpoint, chosen by which fields the caller populates:
+ *   - Propose: `{ areas[, keywords, statement] }` groups the areas into named
+ *     clusters — LLM grouping with a geometric fallback.
+ *   - Sort: `{ clusters, unsorted }` routes the `unsorted` areas into the given
+ *     clusters, preserving their ids — the "sort these" affordance.
+ * Same response shape either way: the resulting clusters, a watch-topic seed
+ * derived from them, and which strategy produced the grouping.
+ */
+export async function proposeClusters(
+  input: ProposeClustersInput,
+): Promise<ProposeClustersResult> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "intake", "clusters"),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+      },
+      body: JSON.stringify(input),
+    },
+  );
+
+  const body = await parseJson<ProposeClustersResult & Record<string, unknown>>(
+    response,
+  );
+  if (!response.ok || !body?.clusters) {
+    throw new Error(
+      firstFieldError(body) ?? "Could not organize your interests. Try again.",
+    );
+  }
+  return {
+    clusters: body.clusters,
+    watch_topics: body.watch_topics ?? [],
+    source: body.source ?? "single",
+  };
 }
 
 /** Read what Mylo keeps an eye on for the caller (own only). */
