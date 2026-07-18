@@ -254,28 +254,6 @@ class PathCViewTests(TestCase):
         self.assertFalse(body["synced"])
         self.assertIsNone(body["state"])
 
-    def test_labs_managed_by_discord_user(self):
-        # The manager's linked identity sees the lab; a plain member sees none.
-        resolve.bind_identity(self.manager, "d-mgr", method=resolve.LINK_OAUTH)
-        resolve.bind_identity(self.member, "d-mem", method=resolve.LINK_OAUTH)
-        managed = resolve.labs_managed_by_discord_user("d-mgr")
-        self.assertEqual([lab.slug for lab in managed], ["lab"])
-        self.assertEqual(resolve.labs_managed_by_discord_user("d-mem"), [])
-
-    def test_bind_guild_via_command_activates(self):
-        resolve.bind_identity(self.manager, "d-mgr", method=resolve.LINK_OAUTH)
-        link = resolve.bind_guild_via_command("d-mgr", "g-99", "My Server", self.lab)
-        self.assertEqual(link.state, DiscordGuildLink.State.ACTIVE)
-        self.assertFalse(link.verified_via_code_grant)
-        self.assertEqual(link.guild_name_cache, "My Server")
-
-    def test_bind_guild_via_command_conflict(self):
-        other = Lab.objects.create(name="Other", slug="other")
-        resolve.bind_guild(other, {"id": "g-99"})  # g-99 already taken
-        resolve.bind_identity(self.manager, "d-mgr", method=resolve.LINK_OAUTH)
-        with self.assertRaises(resolve.GuildConflict):
-            resolve.bind_guild_via_command("d-mgr", "g-99", "S", self.lab)
-
     def test_guild_status_pending_then_active(self):
         # Installed but unconfirmed → pending_setup, not yet synced.
         resolve.bind_guild(self.lab, {"id": "g-77", "name": "S"})

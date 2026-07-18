@@ -23,7 +23,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import Lab, LabMembership
+from apps.accounts.models import Lab
 from apps.accounts.permissions import user_can_manage_lab
 
 from ..models import (
@@ -478,49 +478,6 @@ def confirm_guild(guild_id: str, *, confirmed_by) -> DiscordGuildLink | None:
     return link
 
 
-def bind_guild_via_command(discord_user_id: str, guild_id: str, guild_name, lab):
-    """Bind + activate a guild to a lab straight from ``/activate lab:``.
-
-    The install-OAuth path (:func:`bind_guild` + :func:`confirm_guild`) is verified
-    by the code-grant token exchange; this is the Discord-native alternative the
-    product opted into. Trust here rests on two authoritative facts, not the
-    forgeable redirect params: Discord guarantees the interaction's ``guild_id``,
-    and the caller's authority is the *existing* lab-manager check (the cog only
-    reaches this after :func:`can_manage_lab_via_discord`). The link is created
-    ACTIVE with ``verified_via_code_grant=False`` so its provenance stays honest.
-    One-guild-one-lab is still enforced (``GuildConflict`` → surfaced to the user).
-    """
-    guild_id = str(guild_id or "")
-    if not guild_id:
-        raise GuildConflict("no guild")
-
-    existing_for_guild = get_guild_link(guild_id)
-    if existing_for_guild and existing_for_guild.lab_id != lab.id:
-        raise GuildConflict(guild_id)
-    existing_for_lab = get_guild_link_for_lab(lab)
-    if existing_for_lab and existing_for_lab.guild_id != guild_id:
-        raise GuildConflict(f"lab already bound to guild {existing_for_lab.guild_id}")
-
-    confirmer = resolve_user(discord_user_id)
-    link, _ = DiscordGuildLink.objects.get_or_create(
-        lab=lab, defaults={"guild_id": guild_id}
-    )
-    link.guild_id = guild_id
-    link.guild_name_cache = (guild_name or "")[:100]
-    if link.installed_by_id is None:
-        link.installed_by = confirmer
-    link.state = DiscordGuildLink.State.ACTIVE
-    link.confirmed_at = timezone.now()
-    link.save()
-    audit.discord_audit(
-        action="discord.guild.command_bound",
-        actor=confirmer,
-        guild_id=guild_id,
-        metadata={"lab_id": str(lab.id), "verified_via_code_grant": False},
-    )
-    return link
-
-
 def mark_guild_kicked(guild_id: str) -> None:
     link = get_guild_link(guild_id)
     if not link or link.state == DiscordGuildLink.State.KICKED:
@@ -552,24 +509,6 @@ def can_manage_lab_via_discord(discord_user_id: str, lab) -> bool:
     if user is None:
         return False
     return user_can_manage_lab(user, lab)
-
-
-def labs_managed_by_discord_user(discord_user_id: str) -> list[Lab]:
-    """Labs the linked user is a PI/manager of — the `/activate lab:` pick list.
-
-    Same authority as ``user_can_manage_lab``: OWNER/ADMIN membership or the lab
-    lead flag. Deduped and name-sorted for a stable menu; empty if not linked.
-    """
-    user = resolve_user(discord_user_id)
-    if user is None:
-        return []
-    memberships = LabMembership.objects.filter(user=user).select_related("lab")
-    manager_roles = {LabMembership.Role.OWNER, LabMembership.Role.ADMIN}
-    labs: dict[object, Lab] = {}
-    for m in memberships:
-        if m.is_lead or m.role in manager_roles:
-            labs[m.lab_id] = m.lab
-    return sorted(labs.values(), key=lambda lab: lab.name.lower())
 
 
 # --------------------------------------------------------------------------- #

@@ -119,7 +119,7 @@ def complete_guild_link(lab, code: str, *, installed_by=None):
 
 
 def _post_setup_nudge(guild: dict) -> None:
-    """Best-effort: post the 'run /mylo setup' nudge to the guild system channel."""
+    """Best-effort: post the 'run /activate-lab' nudge to the guild system channel."""
     channel_id = guild.get("system_channel_id")
     if not channel_id:
         return
@@ -129,8 +129,9 @@ def _post_setup_nudge(guild: dict) -> None:
             embed={
                 "title": "Mylo joined this server",
                 "description": (
-                    "A lab lead needs to run `/mylo setup` here to finish "
-                    "connecting this server to your Mycelium lab."
+                    "To connect this server to your Mycelium lab, a lab lead clicks "
+                    "**Activate Lab** in the lab's settings for a code, then runs "
+                    "`/activate-lab code:<code>` here."
                 ),
                 "color": 0x5E7A3E,
             },

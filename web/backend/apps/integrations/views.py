@@ -11,8 +11,9 @@ Two audiences:
   behaviour is testable.
 
 No model is imported here — every DB touch goes through ``services.resolve``. Slash
-commands (``/activate``, ``/mylo setup``, ``/mylo status``) are NOT here; they are
-delivered over the Mylo gateway (mylo/bot), which calls the same services.
+commands (``/activate``, ``/activate-lab``, ``/setup``, ``/mylo status``) are NOT
+here; they are delivered over the Mylo gateway (mylo/bot), which calls the same
+services.
 """
 
 from __future__ import annotations
