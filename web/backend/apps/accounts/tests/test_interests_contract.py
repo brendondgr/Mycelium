@@ -5,6 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 from apps.accounts.interests import (
     CURRENT_VERSION,
+    MAX_CLUSTERS,
     stamp_version,
     validate_interests,
 )
@@ -79,6 +80,108 @@ def test_stamped_seeder_row_is_contract_valid() -> None:
         "seeking": ["fellowship"],
     }
     assert validate_interests(row)["seeking"] == ["fellowship"]
+
+
+# ---- Clusters (v2) ----------------------------------------------------------
+
+
+def _clustered() -> dict:
+    return {
+        "version": 2,
+        "areas": ["agentic AI in healthcare", "medical imaging", "data assimilation"],
+        "clusters": [
+            {
+                "id": "c-medai",
+                "label": "Medical AI Agents",
+                "areas": ["agentic AI in healthcare", "medical imaging"],
+            },
+            {
+                "id": "c-ocean",
+                "label": "Oceanography & Data Assimilation",
+                "areas": ["data assimilation"],
+            },
+        ],
+    }
+
+
+def test_default_version_is_v2() -> None:
+    assert CURRENT_VERSION == 2
+    validated = validate_interests({"areas": ["genomics"]})
+    assert validated["version"] == 2
+
+
+def test_clusterless_payload_still_valid() -> None:
+    # A v1-shaped payload (no clusters) remains valid — it behaves as one implicit
+    # cluster downstream; no data migration is needed.
+    validated = validate_interests({"areas": ["genomics", "proteomics"]})
+    assert "clusters" not in validated
+
+
+def test_valid_cluster_partition_accepted() -> None:
+    validated = validate_interests(_clustered())
+    labels = {c["label"] for c in validated["clusters"]}
+    assert labels == {"Medical AI Agents", "Oceanography & Data Assimilation"}
+
+
+def test_orphan_area_rejected() -> None:
+    data = _clustered()
+    data["areas"].append("PINNs")  # declared but assigned to no cluster
+    with pytest.raises(ValidationError) as exc:
+        validate_interests(data)
+    assert "cluster" in str(exc.value).lower()
+
+
+def test_cluster_area_not_in_areas_rejected() -> None:
+    data = _clustered()
+    data["clusters"][0]["areas"].append("quantum gravity")  # not a declared area
+    with pytest.raises(ValidationError):
+        validate_interests(data)
+
+
+def test_area_in_two_clusters_rejected() -> None:
+    data = _clustered()
+    data["clusters"][1]["areas"].append("medical imaging")  # also in c-medai
+    with pytest.raises(ValidationError):
+        validate_interests(data)
+
+
+def test_duplicate_cluster_ids_rejected() -> None:
+    data = _clustered()
+    data["clusters"][1]["id"] = "c-medai"
+    with pytest.raises(ValidationError):
+        validate_interests(data)
+
+
+def test_empty_cluster_areas_rejected() -> None:
+    data = _clustered()
+    data["clusters"][1]["areas"] = []
+    with pytest.raises(ValidationError):
+        validate_interests(data)
+
+
+def test_too_many_clusters_rejected() -> None:
+    areas = [f"area {i}" for i in range(MAX_CLUSTERS + 1)]
+    data = {
+        "version": 2,
+        "areas": areas,
+        "clusters": [
+            {"id": f"c-{i}", "label": f"C{i}", "areas": [areas[i]]}
+            for i in range(MAX_CLUSTERS + 1)
+        ],
+    }
+    with pytest.raises(ValidationError):
+        validate_interests(data)
+
+
+def test_cluster_area_case_insensitive_match() -> None:
+    # A cluster area that differs only in case from the declared area still
+    # partitions cleanly (trivial drift is tolerated).
+    data = {
+        "version": 2,
+        "areas": ["Data Assimilation"],
+        "clusters": [{"id": "c-o", "label": "Ocean", "areas": ["data assimilation"]}],
+    }
+    assert validate_interests(data)["clusters"][0]["id"] == "c-o"
 
 
 # ---- Eligibility sub-contract -----------------------------------------------

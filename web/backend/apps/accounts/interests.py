@@ -15,6 +15,7 @@ pipeline; the table's "Feeds" column is the contract for what reads it:
 | ``statement``  | str       | no       | embedding (primary text), LLM      |
 | ``areas``      | list[str] | yes      | focus re-rank boost + LLM judgment |
 | ``keywords``   | list[str] | no       | embedding + LLM (semantic match)   |
+| ``clusters``   | list[obj] | no (v2)  | cluster-scoped scoring + attribution |
 | ``skills``     | list[str] | no       | fellowship matching (future)       |
 | ``funding_needs`` | list[str] | no    | grant matching                     |
 | ``eligibility``| dict      | no       | grant/fellowship gating            |
@@ -41,8 +42,12 @@ from typing import Any
 
 from rest_framework import serializers
 
-CURRENT_VERSION = 1
-SUPPORTED_VERSIONS = (1,)
+CURRENT_VERSION = 2
+SUPPORTED_VERSIONS = (1, 2)
+
+# UI/validation sanity cap on clusters per profile (Open Decision D-C3). Kept in
+# sync with apps.content.clustering.MAX_CLUSTERS.
+MAX_CLUSTERS = 6
 
 # Broad fellowship-field buckets (matches Illinois Fellowship Finder vocabulary).
 ELIGIBILITY_FIELDS = [
@@ -136,13 +141,41 @@ class EligibilityContract(serializers.Serializer):
         return validated
 
 
+class ClusterContract(serializers.Serializer):
+    """Validated shape for one entry in ``Profile.interests["clusters"]``.
+
+    A cluster is a named grouping over a subset of the profile's ``areas``:
+
+      id     stable slug, generated once at creation and never regenerated on
+             relabel/edit — this is what makes badges, filters, and attribution
+             survive profile edits. Required and non-blank.
+      label  the human display name shown on cluster badges.
+      areas  this cluster's subset of the profile's declared areas (>= 1).
+
+    Cross-field rules (the partition — union == areas, no overlap, no orphan)
+    are enforced on the parent :class:`InterestsContract`, which is the only
+    place that sees both ``areas`` and ``clusters`` together.
+    """
+
+    id = serializers.CharField()
+    label = serializers.CharField()
+    areas = _str_list(allow_empty=False)
+
+
 class InterestsContract(serializers.Serializer):
-    """Validate one ``Profile.interests`` payload against the v1 contract."""
+    """Validate one ``Profile.interests`` payload against the contract.
+
+    v2 adds ``clusters`` (a partition of ``areas`` into named groups). A payload
+    with no ``clusters`` key is a valid v1 profile — it behaves downstream as one
+    implicit cluster over all areas (:mod:`apps.content.clustering`), so no data
+    migration is needed; v2 is written on the next profile save.
+    """
 
     version = serializers.IntegerField(required=False)
     statement = serializers.CharField(required=False, allow_blank=True)
     areas = _str_list()  # required: a profile must declare its research areas
     keywords = _str_list(required=False)
+    clusters = ClusterContract(many=True, required=False)
     skills = _str_list(required=False)
     funding_needs = _str_list(required=False)
     eligibility = EligibilityContract(required=False)
@@ -169,6 +202,56 @@ class InterestsContract(serializers.Serializer):
             )
         return value
 
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        """Enforce the cluster partition: every area in exactly one cluster.
+
+        Only runs when ``clusters`` is present; a clusterless payload is a valid
+        v1 profile. Rules (brief Phase 0): union of ``clusters[].areas`` equals
+        ``areas`` exactly (no orphan area, no cluster area outside ``areas``), no
+        area in two clusters, cluster ids unique, and at most ``MAX_CLUSTERS``.
+        Comparison is case-insensitive on whitespace-normalized strings so the
+        cluster areas need only match the declared areas up to trivial drift.
+        """
+        clusters = attrs.get("clusters")
+        if not clusters:
+            return attrs
+
+        if len(clusters) > MAX_CLUSTERS:
+            raise serializers.ValidationError(
+                {"clusters": [f"at most {MAX_CLUSTERS} clusters allowed"]}
+            )
+
+        ids = [str(c.get("id", "")).strip() for c in clusters]
+        if len(set(ids)) != len(ids):
+            raise serializers.ValidationError(
+                {"clusters": ["cluster ids must be unique"]}
+            )
+
+        area_folds = {" ".join(a.split()).casefold() for a in attrs.get("areas", [])}
+        seen: set[str] = set()
+        assigned: set[str] = set()
+        for cluster in clusters:
+            for area in cluster.get("areas", []):
+                fold = " ".join(str(area).split()).casefold()
+                if fold in seen:
+                    raise serializers.ValidationError(
+                        {"clusters": [f"area '{area}' is in more than one cluster"]}
+                    )
+                if fold not in area_folds:
+                    raise serializers.ValidationError(
+                        {"clusters": [f"cluster area '{area}' is not a declared area"]}
+                    )
+                seen.add(fold)
+                assigned.add(fold)
+
+        orphans = area_folds - assigned
+        if orphans:
+            raise serializers.ValidationError(
+                {"clusters": ["every area must belong to a cluster; unassigned: "
+                              + ", ".join(sorted(orphans))]}
+            )
+        return attrs
+
 
 def validate_interests(data: Any) -> dict[str, Any]:
     """Return a validated, version-stamped interests dict, or raise.
@@ -194,7 +277,9 @@ def stamp_version(interests: dict[str, Any] | None) -> dict[str, Any]:
     """
 
     data = dict(interests or {})
-    data.setdefault("version", CURRENT_VERSION)
+    # Legacy rows have no clusters; stamp them v1 (they behave as one implicit
+    # cluster). v2 is written the next time the profile is saved through the API.
+    data.setdefault("version", 1)
     seeking = data.get("seeking")
     if isinstance(seeking, str):
         data["seeking"] = [seeking] if seeking else []
