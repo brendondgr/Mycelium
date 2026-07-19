@@ -13,10 +13,20 @@ Type=simple
 
 WorkingDirectory=/home/bdgr/Agents/Mycelium
 
-# The bot only needs Python + discord.py + .env-mylo (read by absolute path). No
-# uv/docker. Runs through the root uv virtualenv interpreter (has discord.py).
-Environment=PATH=/home/bdgr/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/home/bdgr/Agents/Mycelium/.venv/bin/python -m mylo.bot
+# The interpreter MUST live outside $HOME. systemd (init_t) resolves this
+# ExecStart symlink before dropping to User=bdgr, and SELinux forbids init_t
+# from reading anything under user_home_t — a venv in the repo (or one whose
+# python symlinks back into ~/.local) triggers a 203/EXEC denial. So the venv
+# lives in /opt against the system python3.13 (bin_t). The code still lives in
+# the repo (WorkingDirectory), which bdgr reads as itself after the drop.
+# Build it with (as root):
+#     sudo dnf install -y python3.13
+#     sudo uv venv --python /usr/bin/python3.13 /opt/mylo-bot/venv
+#     sudo uv pip install --python /opt/mylo-bot/venv/bin/python \
+#          -r <(cd /home/bdgr/Agents/Mycelium && uv export --no-hashes --format requirements-txt)
+#     sudo restorecon -Rv /opt/mylo-bot
+Environment=PATH=/opt/mylo-bot/venv/bin:/usr/bin:/bin
+ExecStart=/opt/mylo-bot/venv/bin/python -m mylo.bot
 
 # A gateway client is long-lived; keep it up across transient failures.
 Restart=always

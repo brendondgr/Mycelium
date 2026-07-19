@@ -89,15 +89,40 @@ ownership, and Discord roles grant nothing.
   `DISCORD_GUILD_REDIRECT_URI`).
 * **No privileged intents.** Slash-commands only; do not enable `MESSAGE_CONTENT`.
 * Interactions Endpoint URL: **leave blank** — interactions come over the gateway.
-* **Sync the gateway venv.** The Mylo bot runs from the repo-root `.venv` and
-  configures Django in-process (`mylo/mycelium.py`), so it imports the backend's
-  models — including `apps/integrations/fields.py`'s `cryptography` import. After
-  any backend dependency the gateway imports is added (as `cryptography` was),
-  run `uv sync` at the repo root and restart the bot
-  (`sudo systemctl restart mylo-bot.service`). Skip this and every ORM-touching
-  slash command (`/activate`, `/activate-lab`, `/setup`, `/mylo status`) dies at
-  `django.setup()` with `ModuleNotFoundError`, surfacing to the user as the
-  generic "something went wrong on my end."
+* **Sync the gateway venv.** The Mylo bot runs from a venv at
+  `/opt/mylo-bot/venv` — deliberately **outside `$HOME`**. systemd (`init_t`)
+  resolves the `ExecStart` interpreter before dropping to `User=bdgr`, and
+  SELinux forbids `init_t` from reading anything under `user_home_t`; a venv in
+  the repo (or one whose `bin/python` symlinks back into `~/.local/share/uv`)
+  fails with `203/EXEC`. The venv is built against the **system** `python3.13`
+  (`/usr/bin/python3.13`, `bin_t`), not a uv-managed interpreter under home. The
+  bot configures Django in-process (`mylo/mycelium.py`), so it imports the
+  backend's models — including `apps/integrations/fields.py`'s `cryptography`
+  import. After any backend dependency the gateway imports is added (as
+  `cryptography` was), refresh the `/opt` venv and restart the bot:
+
+  ```bash
+  # regenerate the export, then install into the OUT-OF-HOME venv.
+  # NOTE: use a real file, not <(...) — sudo can't read the process-sub fd.
+  uv export --no-hashes --format requirements-txt > .mylo-requirements.txt
+  sudo uv pip install --python /opt/mylo-bot/venv/bin/python -r .mylo-requirements.txt
+  sudo restorecon -Rv /opt/mylo-bot          # relabel new site-packages -> lib_t
+  sudo systemctl restart mylo-bot.service
+  ```
+
+  First-time build of the venv:
+
+  ```bash
+  sudo dnf install -y python3.13
+  sudo uv venv --python /usr/bin/python3.13 /opt/mylo-bot/venv
+  sudo uv pip install --python /opt/mylo-bot/venv/bin/python -r .mylo-requirements.txt
+  sudo restorecon -Rv /opt/mylo-bot
+  ```
+
+  Skip the sync and every ORM-touching slash command (`/activate`,
+  `/activate-lab`, `/setup`, `/mylo status`) dies at `django.setup()` with
+  `ModuleNotFoundError`, surfacing to the user as the generic "something went
+  wrong on my end."
 * After deploy, run a one-time `@Mylo sync global` (owner-only) so the command set
   changes (`/activate-lab` and `/setup` added, `/mylo setup` removed) propagate.
 
