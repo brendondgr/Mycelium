@@ -15,6 +15,7 @@ import {
 import {
   MyloReason,
   NewTag,
+  RemindButton,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
 import {
@@ -160,7 +161,14 @@ function AwardClassChip({ awardClass }: { awardClass: string }) {
 // --------------------------------------------------------------------------- //
 
 /** One matched fellowship, exactly as the Fellowships page renders it (reused by Saves). */
-export function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
+export function FellowshipRow({
+  item,
+  remindLabSlug,
+}: {
+  item: FellowshipOpportunity;
+  /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
+  remindLabSlug?: string;
+}) {
   const deadlineLabel = fellowshipDeadlineLabel(item);
   const softDl = isSoftDeadline(item);
   const isMylo = item.origin === "llm";
@@ -195,14 +203,20 @@ export function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
 
         {/* Right: save bookmark + deadline + amount */}
         <div className="flex shrink-0 flex-col items-end gap-2 text-right">
-          <SaveButton
-            contentId={item.content_id}
-            saved={item.saved}
-            savedLabs={item.saved_labs}
-            variant="icon"
-            remindTitle={item.title}
-            remindDeadlines={item.addressable_deadlines}
-          />
+          <div className="flex items-center gap-1.5">
+            <RemindButton
+              contentId={item.content_id}
+              title={item.title}
+              deadlines={item.addressable_deadlines}
+              lockedLabSlug={remindLabSlug}
+            />
+            <SaveButton
+              contentId={item.content_id}
+              saved={item.saved}
+              savedLabs={item.saved_labs}
+              variant="icon"
+            />
+          </div>
           {deadlineLabel ? (
             <span
               className={`inline-flex items-center gap-1.5 text-xs font-semibold ${

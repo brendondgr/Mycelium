@@ -16,6 +16,7 @@ import {
   MatchBadge,
   MyloReason,
   NewTag,
+  RemindButton,
   SaveButton,
   deadlineLabel,
 } from "@/components/portal/sections/opportunity-bits";
@@ -55,7 +56,14 @@ function OpenChip({ label }: { label: string }) {
 }
 
 /** One matched conference, exactly as the Conferences page renders it (reused by Saves). */
-export function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
+export function ConferenceCard({
+  conf,
+  remindLabSlug,
+}: {
+  conf: ConferenceOpportunity;
+  /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
+  remindLabSlug?: string;
+}) {
   const where = conf.location || conf.country;
   // Use the semicolon-delimited subject categories, not the space-joined
   // `keywords` blob, so the tags render as real, separate chips.
@@ -77,13 +85,19 @@ export function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
           />
           {conf.cluster ? <ClusterBadge cluster={conf.cluster} /> : null}
         </div>
-        <SaveButton
-          contentId={conf.content_id}
-          saved={conf.saved}
-          savedLabs={conf.saved_labs}
-          remindTitle={conf.title}
-          remindDeadlines={conf.addressable_deadlines}
-        />
+        <div className="flex items-center gap-1.5">
+          <RemindButton
+            contentId={conf.content_id}
+            title={conf.title}
+            deadlines={conf.addressable_deadlines}
+            lockedLabSlug={remindLabSlug}
+          />
+          <SaveButton
+            contentId={conf.content_id}
+            saved={conf.saved}
+            savedLabs={conf.saved_labs}
+          />
+        </div>
       </div>
 
       <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">

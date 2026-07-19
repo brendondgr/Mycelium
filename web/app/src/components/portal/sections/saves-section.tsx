@@ -9,14 +9,15 @@ import {
   AlertTriangleIcon,
   ArrowRightIcon,
   BankIcon,
-  BellIcon,
   BookmarkIcon,
   ConferenceIcon,
   DocumentIcon,
   SparkleIcon,
 } from "@/components/portal/icons";
-import { ReminderComposer } from "@/components/portal/reminder-composer";
-import { deadlineLabel } from "@/components/portal/sections/opportunity-bits";
+import {
+  RemindButton,
+  deadlineLabel,
+} from "@/components/portal/sections/opportunity-bits";
 import { GrantRow } from "@/components/portal/sections/opportunities-section";
 import { FellowshipRow } from "@/components/portal/sections/fellowships-section";
 import { ConferenceCard } from "@/components/portal/sections/conferences-section";
@@ -79,15 +80,10 @@ function countdownLabel(days: number | null): string {
 
 /**
  * The small meta strip above each saved card: what kind of item this is, when
- * it was saved, the countdown when a deadline is near, and the user's note.
+ * it was saved, the countdown when a deadline is near, and the user's note. The
+ * reminder affordance itself now lives on the card below (the bell beside Save).
  */
-function SaveMeta({
-  item,
-  onRemind,
-}: {
-  item: SavedItem;
-  onRemind?: () => void;
-}) {
+function SaveMeta({ item }: { item: SavedItem }) {
   const AreaIcon = AREA_ICONS[item.area];
   const savedOn = formatDate(item.saved_at);
   const countdown = countdownLabel(item.days_remaining);
@@ -112,16 +108,6 @@ function SaveMeta({
           Note: {item.note}
         </span>
       ) : null}
-      {onRemind ? (
-        <button
-          type="button"
-          onClick={onRemind}
-          className="ml-auto inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <BellIcon size={11} aria-hidden="true" />
-          Remind me
-        </button>
-      ) : null}
     </div>
   );
 }
@@ -131,12 +117,28 @@ function SaveMeta({
  * the snapshot (title, subtitle, deadline) is all that remains, so it renders
  * as a compact card instead of the full feed layout.
  */
-function PrunedSaveRow({ item }: { item: SavedItem }) {
+function PrunedSaveRow({
+  item,
+  remindLabSlug,
+}: {
+  item: SavedItem;
+  remindLabSlug?: string;
+}) {
   return (
     <Card className="p-4">
-      <h3 className="font-serif text-base font-semibold leading-snug text-[var(--text-primary)]">
-        {item.title}
-      </h3>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="min-w-0 font-serif text-base font-semibold leading-snug text-[var(--text-primary)]">
+          {item.title}
+        </h3>
+        {item.content_id ? (
+          <RemindButton
+            contentId={item.content_id}
+            title={item.title}
+            deadlines={reminderDeadlines(item)}
+            lockedLabSlug={remindLabSlug}
+          />
+        ) : null}
+      </div>
       <p className="mt-0.5 text-xs text-[var(--text-muted)]">
         {[
           item.subtitle,
@@ -173,9 +175,9 @@ function PrunedSaveRow({ item }: { item: SavedItem }) {
 
 /**
  * One save: the meta strip + the item's own feed-page card (or the fallback).
- * In a lab's saved area, `labSlug` is set and the reminder is locked to that lab;
- * the "Remind me" affordance then shows only to a manager (`canManage`), since a
- * lab reminder posts to the lab channel and only managers may create one.
+ * The card carries its own reminder bell (beside Save). In a lab's saved area a
+ * manager's bell is pinned to that lab so the reminder posts to the lab channel;
+ * everyone else gets a personal DM reminder from the same bell.
  */
 function SavedRow({
   item,
@@ -186,38 +188,26 @@ function SavedRow({
   labSlug?: string;
   canManage?: boolean;
 }) {
-  const [composing, setComposing] = React.useState(false);
-  const deadlines = reminderDeadlines(item);
-  const canRemind =
-    deadlines.length > 0 && item.content_id !== null && canManage;
+  // A lab reminder posts to the lab channel and only a manager may create one,
+  // so the card's bell is pinned to the lab only for managers viewing a lab's
+  // saves. Personal saves — and non-managers — fall through to a personal DM
+  // reminder (the composer's default scope) from the same bell.
+  const remindLabSlug = labSlug && canManage ? labSlug : undefined;
 
   return (
     <div>
-      <SaveMeta
-        item={item}
-        onRemind={canRemind ? () => setComposing(true) : undefined}
-      />
+      <SaveMeta item={item} />
       {item.card === null ? (
-        <PrunedSaveRow item={item} />
+        <PrunedSaveRow item={item} remindLabSlug={remindLabSlug} />
       ) : item.area === "grant" ? (
-        <GrantRow grant={item.card} />
+        <GrantRow grant={item.card} remindLabSlug={remindLabSlug} />
       ) : item.area === "fellowship" ? (
-        <FellowshipRow item={item.card} />
+        <FellowshipRow item={item.card} remindLabSlug={remindLabSlug} />
       ) : item.area === "conference" ? (
-        <ConferenceCard conf={item.card} />
+        <ConferenceCard conf={item.card} remindLabSlug={remindLabSlug} />
       ) : (
         <SuggestionCard suggestion={item.card} />
       )}
-      {composing && item.content_id ? (
-        <ReminderComposer
-          contentId={item.content_id}
-          title={item.title}
-          deadlines={deadlines}
-          onClose={() => setComposing(false)}
-          lockedScope={labSlug ? "lab" : undefined}
-          lockedLabSlug={labSlug}
-        />
-      ) : null}
     </div>
   );
 }

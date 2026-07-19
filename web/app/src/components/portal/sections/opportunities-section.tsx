@@ -15,6 +15,7 @@ import {
   MatchBadge,
   MyloReason,
   NewTag,
+  RemindButton,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
 import {
@@ -42,7 +43,14 @@ function formatDate(iso: string): string {
 }
 
 /** One matched grant, exactly as the Grants page renders it (reused by Saves). */
-export function GrantRow({ grant }: { grant: GrantOpportunity }) {
+export function GrantRow({
+  grant,
+  remindLabSlug,
+}: {
+  grant: GrantOpportunity;
+  /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
+  remindLabSlug?: string;
+}) {
   const due = formatDate(grant.deadline_date);
   const posted = formatDate(grant.posted);
   const topics = grant.matched_topics
@@ -77,14 +85,20 @@ export function GrantRow({ grant }: { grant: GrantOpportunity }) {
 
         {/* Right: save bookmark, then the application due date and funding amount. */}
         <div className="flex shrink-0 flex-col items-end gap-2 text-right">
-          <SaveButton
-            contentId={grant.content_id}
-            saved={grant.saved}
-            savedLabs={grant.saved_labs}
-            variant="icon"
-            remindTitle={grant.title}
-            remindDeadlines={grant.addressable_deadlines}
-          />
+          <div className="flex items-center gap-1.5">
+            <RemindButton
+              contentId={grant.content_id}
+              title={grant.title}
+              deadlines={grant.addressable_deadlines}
+              lockedLabSlug={remindLabSlug}
+            />
+            <SaveButton
+              contentId={grant.content_id}
+              saved={grant.saved}
+              savedLabs={grant.saved_labs}
+              variant="icon"
+            />
+          </div>
           {due ? (
             <span
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--destructive)]"
