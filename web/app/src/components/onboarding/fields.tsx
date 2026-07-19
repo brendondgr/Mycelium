@@ -56,17 +56,25 @@ export function TokenField({
   items,
   onChange,
   placeholder,
+  maxItems,
 }: {
   label: string;
   items: string[];
   onChange: (next: string[]) => void;
   placeholder: string;
+  /** Optional cap on how many tokens may be added (a plan/tier limit). */
+  maxItems?: number;
 }) {
   const [draft, setDraft] = useState("");
+  const atCap = maxItems !== undefined && items.length >= maxItems;
 
   function add(raw?: string) {
     const value = (raw ?? draft).trim();
     if (!value) {
+      return;
+    }
+    if (atCap) {
+      setDraft("");
       return;
     }
     if (!items.some((item) => item.toLowerCase() === value.toLowerCase())) {
@@ -77,7 +85,19 @@ export function TokenField({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-[var(--text-primary)]">{label}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-[var(--text-primary)]">{label}</p>
+        {maxItems !== undefined ? (
+          <span
+            className={cn(
+              "text-xs",
+              atCap ? "font-semibold text-primary" : "text-[var(--text-muted)]",
+            )}
+          >
+            {items.length}/{maxItems}
+          </span>
+        ) : null}
+      </div>
       <div className="flex flex-wrap items-center gap-2 rounded-md border border-input bg-card p-2">
         {items.map((item) => (
           <span
@@ -97,6 +117,7 @@ export function TokenField({
         ))}
         <input
           value={draft}
+          disabled={atCap}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -105,10 +126,16 @@ export function TokenField({
             }
           }}
           onBlur={() => add()}
-          placeholder={placeholder}
-          className="min-w-40 flex-1 bg-transparent px-1 py-1 text-sm text-foreground outline-none"
+          placeholder={atCap ? "Plan limit reached" : placeholder}
+          className="min-w-40 flex-1 bg-transparent px-1 py-1 text-sm text-foreground outline-none disabled:cursor-not-allowed disabled:text-[var(--text-muted)]"
         />
       </div>
+      {atCap ? (
+        <p className="text-xs text-[var(--text-muted)]">
+          You&rsquo;ve reached your plan&rsquo;s limit of {maxItems} watch
+          topics. Remove one to add another, or upgrade for more.
+        </p>
+      ) : null}
     </div>
   );
 }

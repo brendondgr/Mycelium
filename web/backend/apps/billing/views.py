@@ -7,6 +7,8 @@ from rest_framework.views import APIView
 
 from .entitlements import (
     active_seat_count,
+    cluster_cap,
+    cluster_topic_cap,
     covering_subscriptions,
     effective_features,
     effective_tier,
@@ -36,6 +38,8 @@ def entitlements_payload(user) -> dict:
         "tier": tier,
         "features": sorted(effective_features(user)),
         "topic_cap": topic_cap(user),
+        "cluster_cap": cluster_cap(user),
+        "cluster_topic_cap": cluster_topic_cap(user),
         "topics_used": topics_used,
         "seat_count": seat_count,
         "pi_cap": pi_cap(tier),

@@ -6,7 +6,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { MyloMark } from "@/components/brand/mylo-mark";
-import { ClusterOrganizer } from "@/components/onboarding/cluster-organizer";
+import {
+  ClusterOrganizer,
+  clampClustersToCaps,
+} from "@/components/onboarding/cluster-organizer";
 import MyceliumBranch from "@/components/onboarding/mycelium-branch";
 import { OnboardingMatch } from "@/components/onboarding/onboarding-match";
 import OnboardingStage from "@/components/onboarding/onboarding-stage";
@@ -29,6 +32,7 @@ import {
   verifyEmail,
 } from "@/lib/auth-client";
 import { fetchProfile } from "@/lib/portal/client";
+import { useEntitlements } from "@/lib/portal/hooks";
 import type {
   ClusterGroup,
   OnboardingMatchArea,
@@ -191,6 +195,16 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   const router = useRouter();
   const queryClient = useQueryClient();
   const editing = mode === "edit";
+
+  // Tier caps drive the interactive limits in the organizer and the watch step,
+  // so a user is told their plan's limits up front instead of discovering them
+  // through a rejected save. Falls back to the Free plan (3 clusters × 2 topics =
+  // 6) until the entitlements load, so a brand-new account is never briefly
+  // shown a laxer limit than it actually has.
+  const { data: entitlements } = useEntitlements();
+  const clusterCap = entitlements?.cluster_cap ?? 3;
+  const clusterTopicCap = entitlements?.cluster_topic_cap ?? 2;
+  const topicCap = entitlements?.topic_cap ?? 6;
   const [screen, setScreen] = useState<
     "verify" | "intake" | "synthesizing" | "building" | "matching"
   >(editing ? "intake" : "verify");
@@ -303,7 +317,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     const seed = dedupe([
       ...(interests.areas ?? []),
       ...(interests.keywords ?? []),
-    ]).slice(0, 12);
+    ]).slice(0, topicCap);
     setWatchTopics((prev) => (prev.length ? prev : seed));
   }
 
@@ -335,6 +349,10 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           setKeywords(interests.keywords ?? []);
           setSkills(interests.skills ?? []);
           setDraftSources(interests.sources ?? {});
+          // Load saved clusters as-is — a plan downgrade never destroys a user's
+          // existing grouping (the organizer still blocks *new* over-cap edits,
+          // and the save truncates to the current cap). Clamping here would use
+          // the still-loading Free fallback and wrongly shrink a paid user's data.
           setClusters(interests.clusters ?? []);
           if (interests.eligibility) {
             const elig = interests.eligibility;
@@ -347,6 +365,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           }
         }
         if (watch) {
+          // As-is on load (see clusters above); the save truncates to the cap.
           setWatchTopics(watch.topics ?? []);
           setWatchCats(
             WATCH_CATEGORIES.reduce<Record<string, boolean>>((acc, category) => {
@@ -391,15 +410,29 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     (async () => {
       try {
         const result = await proposeClusters({ areas, keywords, statement });
-        setClusters(result.clusters);
+        setClusters(
+          clampClustersToCaps(result.clusters, {
+            maxClusters: clusterCap,
+            maxTopicsPerCluster: clusterTopicCap,
+          }),
+        );
         if (result.watch_topics.length) {
-          setWatchTopics(result.watch_topics);
+          setWatchTopics(result.watch_topics.slice(0, topicCap));
         }
       } catch {
         // Degrade silently — the manual "Organize with Mylo" button covers this.
       }
     })();
-  }, [currentKey, clusters.length, areas, keywords, statement]);
+  }, [
+    currentKey,
+    clusters.length,
+    areas,
+    keywords,
+    statement,
+    clusterCap,
+    clusterTopicCap,
+    topicCap,
+  ]);
 
   // -- verify --------------------------------------------------------------
   async function verifyAndContinue() {
@@ -617,13 +650,19 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
       (c) => c.key,
     );
 
+    // Final backstop so the watch save can never be rejected for exceeding the
+    // plan: keep only the first `topicCap` topics. The organizer already holds
+    // the user at/under this, so in practice this trims nothing — it just makes
+    // an over-cap edge (e.g. a downgrade) save cleanly instead of erroring out.
+    const cappedTopics = watchTopics.slice(0, topicCap);
+
     const saves = (): Promise<unknown>[] => [
       saveProfileBasics({
         academic_title: role,
         ...(institution.trim() ? { institution: institution.trim() } : {}),
       }),
       confirmInterests(interests),
-      saveWatch({ topics: watchTopics, categories, cadence }),
+      saveWatch({ topics: cappedTopics, categories, cadence }),
     ];
 
     // Edit mode: save in place and return to the profile with fresh data —
@@ -1124,7 +1163,9 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           statement={statement}
           onChange={setClusters}
           onAreasChange={setAreas}
-          onWatchSeed={(topics) => setWatchTopics(topics)}
+          onWatchSeed={(topics) => setWatchTopics(topics.slice(0, topicCap))}
+          maxClusters={clusterCap}
+          maxTopicsPerCluster={clusterTopicCap}
         />
       </div>
     </div>
@@ -1297,6 +1338,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           items={watchTopics}
           onChange={setWatchTopics}
           placeholder="Add a topic and press Enter"
+          maxItems={topicCap}
         />
 
         <div className="space-y-1">

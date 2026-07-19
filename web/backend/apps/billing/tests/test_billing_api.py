@@ -27,7 +27,9 @@ def test_free_me_endpoint(client: APIClient) -> None:
     assert resp.status_code == 200
     body = resp.data
     assert body["tier"] == "free"
-    assert body["topic_cap"] == 3
+    assert body["topic_cap"] == 6
+    assert body["cluster_cap"] == 3
+    assert body["cluster_topic_cap"] == 2
     assert body["topics_used"] == 0
     assert "llm_fit_scoring" not in body["features"]
     assert "semantic_search" in body["features"]

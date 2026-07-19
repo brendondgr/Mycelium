@@ -173,10 +173,10 @@ def test_addon_grants_bot_server_tier_alone_does_not(user: User) -> None:
 
 @pytest.mark.django_db
 def test_topic_cap_rejects_over_limit_per_tier(user: User) -> None:
-    # Free: cap 3.
-    assert topic_cap(user) == 3
-    assert within_topic_cap(user, 3)
-    assert not within_topic_cap(user, 4)
+    # Free: cap 6 (3 clusters × 2 terms).
+    assert topic_cap(user) == 6
+    assert within_topic_cap(user, 6)
+    assert not within_topic_cap(user, 7)
 
     # Spore: cap 10.
     Subscription.objects.create(tier=Tier.SPORE, scope_user=user)

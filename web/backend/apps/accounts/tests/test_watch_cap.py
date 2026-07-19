@@ -17,18 +17,20 @@ def client() -> APIClient:
 
 
 @pytest.mark.django_db
-def test_free_user_rejected_over_three_topics(client: APIClient) -> None:
+def test_free_user_rejected_over_six_topics(client: APIClient) -> None:
+    # Free = 3 clusters × 2 terms = 6 flat watch topics.
     user = User.objects.create_user(username="free", password="p")
     client.force_authenticate(user)
 
-    ok = client.patch(URL, {"topics": ["a", "b", "c"]}, format="json")
+    six = ["a", "b", "c", "d", "e", "f"]
+    ok = client.patch(URL, {"topics": six}, format="json")
     assert ok.status_code == 200
 
-    over = client.patch(URL, {"topics": ["a", "b", "c", "d"]}, format="json")
+    over = client.patch(URL, {"topics": [*six, "g"]}, format="json")
     assert over.status_code == 400
     assert "topics" in over.data
-    # Not silently truncated — the prior 3 stand.
-    assert WatchPreference.objects.get(user=user).topics == ["a", "b", "c"]
+    # Not silently truncated — the prior 6 stand.
+    assert WatchPreference.objects.get(user=user).topics == six
 
 
 @pytest.mark.django_db
@@ -58,11 +60,11 @@ def test_downgrade_does_not_delete_topics_over_cap(client: APIClient) -> None:
 
     # Stored topics are untouched...
     assert WatchPreference.objects.get(user=user).topics == ten
-    # ...but only the first 3 are honoured, and the overflow is reported.
-    assert effective_watch_topics(user) == ten[:3]
+    # ...but only the first 6 (the Free cap) are honoured, overflow is reported.
+    assert effective_watch_topics(user) == ten[:6]
     assert topics_over_cap(user) is True
 
     body = client.get(URL).data
-    assert body["topic_cap"] == 3
+    assert body["topic_cap"] == 6
     assert body["topics_over_cap"] is True
     assert body["topics"] == ten  # never deleted

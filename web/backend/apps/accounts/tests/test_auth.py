@@ -347,6 +347,46 @@ def test_me_reports_onboarding_completion(api_client: Client) -> None:
     assert done.json()["onboarding_completed"] is True
 
 
+@pytest.mark.django_db
+def test_basics_patch_does_not_clobber_concurrent_interests(
+    api_client: Client,
+) -> None:
+    """A basics PATCH must not revert interests written by a concurrent save.
+
+    Onboarding's ``finish`` fires the basics PATCH and the intake confirm at the
+    same time. Both load a still-empty profile; if the basics write persists the
+    whole row it writes back ``interests={}``, wiping the confirm — leaving
+    ``onboarding_completed`` false and bouncing the user back to the start.
+    Reproduced deterministically with two stale instances: confirm saves first,
+    the stale basics write lands second and must leave ``interests`` intact.
+    """
+    from apps.accounts.serializers import ProfileSerializer
+
+    assert _register(api_client, _personal_payload()).status_code == 201
+    user = User.objects.get(username="newuser")
+
+    # Two requests that both loaded the profile while it was still blank.
+    stale_basics = Profile.objects.get(user=user)
+    stale_confirm = Profile.objects.get(user=user)
+
+    # The confirm request writes interests (scoped save).
+    stale_confirm.interests = {"version": 1, "areas": ["Genomics"]}
+    stale_confirm.save(
+        update_fields=["interests", "embedding_text", "embedding", "updated_at"]
+    )
+
+    # The basics request lands afterwards with its stale (empty) interests.
+    serializer = ProfileSerializer(
+        stale_basics, data={"academic_title": "pi"}, partial=True
+    )
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+
+    fresh = Profile.objects.get(user=user)
+    assert fresh.academic_title == "pi"
+    assert fresh.interests.get("areas") == ["Genomics"]  # not clobbered
+
+
 # -- Email verification (scaffold) + throttling --------------------------------
 
 

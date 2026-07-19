@@ -611,7 +611,12 @@ class ConfirmIntakeView(APIView):
         validated = validate_interests(interests)  # 400 on contract violation
         profile = request.user.profile
         profile.interests = validated
-        profile.save()
+        # Scope the write to interests + the columns the pre_save embed hook
+        # re-derives, so a concurrent basics PATCH (onboarding fires both at
+        # once) can't clobber interests and this can't clobber the basics.
+        profile.save(
+            update_fields=["interests", "embedding_text", "embedding", "updated_at"]
+        )
         return Response(ProfileSerializer(profile).data)
 
 
@@ -630,6 +635,8 @@ class ProposeClustersView(APIView):
     """
 
     def post(self, request: Request) -> Response:
+        from apps.billing.entitlements import topic_cap
+
         from apps.content.clustering import seed_watch_topics
 
         from .intake.clusters import propose_clusters, sort_into_clusters
@@ -647,7 +654,11 @@ class ProposeClustersView(APIView):
                 statement=str(data.get("statement") or ""),
             )
         areas = [area for cluster in clusters for area in cluster["areas"]]
-        watch_topics = seed_watch_topics({"areas": areas, "clusters": clusters})
+        # Seed only as many watch topics as the caller's tier can actually save,
+        # so a proposal never prefills more than the watch step will accept.
+        watch_topics = seed_watch_topics(
+            {"areas": areas, "clusters": clusters}, cap=topic_cap(request.user)
+        )
         return Response(
             {"clusters": clusters, "watch_topics": watch_topics, "source": source}
         )

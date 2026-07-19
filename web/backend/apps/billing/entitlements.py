@@ -121,10 +121,34 @@ PI_CAPS: dict[str, int | None] = {
     Tier.CANOPY: None,
 }
 
+# Per-tier interest-cluster caps. Mylo runs one literature search per cluster, so
+# ``CLUSTER_CAPS`` is "how many distinct searches you get" and ``CLUSTER_TOPIC_CAPS``
+# is "how many search terms each of those searches may carry". Free is deliberately
+# tight — 3 clusters × 2 terms — and ``TOPIC_CAPS`` below is the flat projection of
+# that (clusters × per-cluster) so the two limits never disagree. Paid tiers keep
+# the structural cluster ceiling and let the flat topic cap govern per-cluster
+# breadth (so no paid user is newly boxed in by the per-cluster number).
+CLUSTER_CAPS: dict[str, int] = {
+    Tier.FREE: 3,
+    Tier.SPORE: 6,
+    Tier.LAB: 6,
+    Tier.CANOPY: 6,
+}
+
+CLUSTER_TOPIC_CAPS: dict[str, int] = {
+    Tier.FREE: 2,
+    Tier.SPORE: 10,
+    Tier.LAB: 15,
+    Tier.CANOPY: 15,
+}
+
 # Per-tier watch-topic caps — **per member** for Lab/Canopy, so the same number
 # applies to each user's own WatchPreference and the lookup stays uniform (A5).
+# Free is CLUSTER_CAPS × CLUSTER_TOPIC_CAPS (3 × 2 = 6): the flat count a user who
+# fills every cluster to the brim lands on, so the watch-save never rejects a
+# grouping the organizer let them build.
 TOPIC_CAPS: dict[str, int] = {
-    Tier.FREE: 3,
+    Tier.FREE: 6,
     Tier.SPORE: 10,
     Tier.LAB: 15,
     Tier.CANOPY: 15,
@@ -274,6 +298,26 @@ def topic_cap(user: User) -> int:
     if override is not None:
         return override
     return topic_cap_for_tier(effective_tier(user))
+
+
+def cluster_cap_for_tier(tier: str) -> int:
+    """How many interest clusters (distinct searches) ``tier`` allows."""
+    return CLUSTER_CAPS.get(tier, CLUSTER_CAPS[Tier.FREE])
+
+
+def cluster_cap(user: User) -> int:
+    """The interest-cluster cap for a user's effective tier."""
+    return cluster_cap_for_tier(effective_tier(user))
+
+
+def cluster_topic_cap_for_tier(tier: str) -> int:
+    """How many search terms one cluster may hold under ``tier``."""
+    return CLUSTER_TOPIC_CAPS.get(tier, CLUSTER_TOPIC_CAPS[Tier.FREE])
+
+
+def cluster_topic_cap(user: User) -> int:
+    """The per-cluster search-term cap for a user's effective tier."""
+    return cluster_topic_cap_for_tier(effective_tier(user))
 
 
 def within_topic_cap(user: User, count: int) -> bool:

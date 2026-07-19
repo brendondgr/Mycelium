@@ -13,6 +13,8 @@ class EntitlementSerializer(serializers.Serializer):
     tier = serializers.CharField()
     features = serializers.ListField(child=serializers.CharField())
     topic_cap = serializers.IntegerField()
+    cluster_cap = serializers.IntegerField()
+    cluster_topic_cap = serializers.IntegerField()
     topics_used = serializers.IntegerField()
     seat_count = serializers.IntegerField()
     pi_cap = serializers.IntegerField(allow_null=True)

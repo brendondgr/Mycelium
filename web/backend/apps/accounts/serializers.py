@@ -103,9 +103,41 @@ class RegisterSerializer(serializers.Serializer):
 class _ContractInterestsMixin(serializers.ModelSerializer):
     """Run ``interests`` through the shared Phase A gate on write."""
 
+    # Columns the ``embed_interest_surface`` pre_save hook re-derives, and the
+    # contract/curated inputs that feed them. A save that changes an input must
+    # also persist the derived columns; a save that touches neither leaves them
+    # alone.
+    _EMBED_INPUTS = frozenset({"interests", "statement", "areas", "keywords"})
+    _EMBED_OUTPUTS = ("embedding_text", "embedding")
+
     def validate_interests(self, value):
         # Raises rest_framework ValidationError on any contract violation.
         return _validate_interests_contract(value)
+
+    def update(self, instance, validated_data):
+        """Persist only the fields this request changed (plus derived columns).
+
+        The default DRF update writes the whole row, so a basics PATCH would
+        write back the ``interests`` it loaded — clobbering a *concurrent*
+        interests save (e.g. the three parallel writes onboarding fires on
+        finish). Scoping the ``UPDATE`` to the changed columns makes the two
+        writes touch disjoint columns, so neither can revert the other.
+        """
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        update_fields = set(validated_data)
+        if not update_fields:
+            instance.save()
+            return instance
+        update_fields.add("updated_at")
+        if update_fields & self._EMBED_INPUTS:
+            update_fields.update(
+                field
+                for field in self._EMBED_OUTPUTS
+                if hasattr(instance, field)
+            )
+        instance.save(update_fields=update_fields)
+        return instance
 
 
 class ProfileSerializer(_ContractInterestsMixin):
@@ -174,7 +206,7 @@ class DeptProfileSerializer(_ContractInterestsMixin):
 class WatchPreferenceSerializer(serializers.ModelSerializer):
     """Read/update what Mylo keeps an eye on for the caller (own only).
 
-    The watch-topic count is capped **per tier** (Free 3, Spore 10, Lab/Canopy 15);
+    The watch-topic count is capped **per tier** (Free 6, Spore 10, Lab/Canopy 15);
     ``categories`` keeps the generous structural cap. The read payload also reports
     the caller's ``topic_cap`` and whether they are ``topics_over_cap`` (which only
     happens after a downgrade — the excess is honoured on read, never deleted).

@@ -790,6 +790,10 @@ export type Entitlements = {
   tier: "free" | "spore" | "lab" | "canopy";
   features: string[];
   topic_cap: number;
+  /** How many interest clusters (distinct searches) the tier allows. */
+  cluster_cap: number;
+  /** How many search terms one cluster may hold under the tier. */
+  cluster_topic_cap: number;
   topics_used: number;
   seat_count: number;
   pi_cap: number | null;

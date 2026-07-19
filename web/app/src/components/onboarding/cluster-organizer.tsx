@@ -34,7 +34,28 @@ export type ClusterOrganizerProps = {
    * interest inside the organizer. When omitted, the area list is read-only and
    * only the move affordances show (the organizer can't invent or drop areas). */
   onAreasChange?: (areas: string[]) => void;
+  /** Tier cap on how many clusters may exist (defaults to the structural max). */
+  maxClusters?: number;
+  /** Tier cap on how many interests one cluster may hold (defaults to no limit).
+   * The Free plan sets this to 2, so a cluster is a tight "one search, two terms". */
+  maxTopicsPerCluster?: number;
 };
+
+/**
+ * Force `clusters` under the tier caps: keep at most `maxClusters` clusters, and
+ * at most `maxTopicsPerCluster` areas in each. Anything trimmed simply loses its
+ * membership and falls back to the Unsorted tray (no area is ever deleted). Used
+ * to clamp an LLM proposal or a pre-cap saved grouping before it reaches the UI.
+ */
+export function clampClustersToCaps(
+  clusters: ClusterGroup[],
+  { maxClusters, maxTopicsPerCluster }: { maxClusters: number; maxTopicsPerCluster: number },
+): ClusterGroup[] {
+  return clusters.slice(0, maxClusters).map((cluster) => ({
+    ...cluster,
+    areas: cluster.areas.slice(0, maxTopicsPerCluster),
+  }));
+}
 
 /**
  * A stable, collision-free slug for a **new** cluster: `c-<slug-of-label>`,
@@ -109,8 +130,14 @@ export function ClusterOrganizer({
   onChange,
   onWatchSeed,
   onAreasChange,
+  maxClusters,
+  maxTopicsPerCluster,
 }: ClusterOrganizerProps) {
   const canEditAreas = typeof onAreasChange === "function";
+  // Effective caps — a missing prop means "structural default / no tier limit".
+  const clusterLimit = maxClusters ?? MAX_CLUSTERS;
+  const perClusterLimit = maxTopicsPerCluster ?? Infinity;
+  const hasPerClusterLimit = Number.isFinite(perClusterLimit);
   const sanitized = useMemo(
     () => sanitizeClusters(clusters, areas),
     [clusters, areas],
@@ -128,12 +155,22 @@ export function ClusterOrganizer({
     onChange(sanitizeClusters(next, areas));
   }
 
+  /** Whether `cluster` is already at the per-cluster interest cap. */
+  function isClusterFull(cluster: ClusterGroup): boolean {
+    return hasPerClusterLimit && cluster.areas.length >= perClusterLimit;
+  }
+
+  /** The "cluster is full" message shown when a move/add is blocked by the cap. */
+  const clusterFullMessage = `Each cluster can hold up to ${perClusterLimit} ${
+    perClusterLimit === 1 ? "topic" : "topics"
+  } on your plan. Remove one first, or upgrade to widen a search.`;
+
   function handleRename(id: string, label: string) {
     emit(sanitized.map((cluster) => (cluster.id === id ? { ...cluster, label } : cluster)));
   }
 
   function handleCreate() {
-    if (sanitized.length >= MAX_CLUSTERS) {
+    if (sanitized.length >= clusterLimit) {
       return;
     }
     const id = makeClusterId("New cluster", sanitized.map((cluster) => cluster.id));
@@ -148,8 +185,18 @@ export function ClusterOrganizer({
 
   /** Move `area` to `targetId` (a cluster id, or `UNSORTED_ID`). Works from any
    * source — cluster or Unsorted — since it first strips the area from every
-   * cluster, then adds it to the target (a no-op add for Unsorted). */
+   * cluster, then adds it to the target (a no-op add for Unsorted). Blocked when
+   * the target cluster is already at the per-cluster cap. */
   function handleMoveArea(area: string, targetId: string) {
+    if (targetId !== UNSORTED_ID) {
+      const target = sanitized.find((cluster) => cluster.id === targetId);
+      const alreadyThere = target?.areas.includes(area);
+      if (target && !alreadyThere && isClusterFull(target)) {
+        setError(clusterFullMessage);
+        return;
+      }
+    }
+    setError(null);
     let next = sanitized.map((cluster) => ({
       ...cluster,
       areas: cluster.areas.filter((a) => a !== area),
@@ -174,6 +221,17 @@ export function ClusterOrganizer({
     if (!onAreasChange) return;
     const text = raw.replace(/\s+/g, " ").trim();
     if (!text) return;
+    if (clusterId !== UNSORTED_ID) {
+      const target = sanitized.find((cluster) => cluster.id === clusterId);
+      const alreadyThere = target?.areas.some(
+        (a) => a.toLowerCase() === text.toLowerCase(),
+      );
+      if (target && !alreadyThere && isClusterFull(target)) {
+        setError(clusterFullMessage);
+        return;
+      }
+    }
+    setError(null);
     const nextAreas = areaExists(text) ? areas : [...areas, text];
     let nextClusters = sanitized.map((cluster) => ({
       ...cluster,
@@ -227,6 +285,18 @@ export function ClusterOrganizer({
     if (!source) {
       return;
     }
+    const target = sanitized.find((cluster) => cluster.id === targetId);
+    if (
+      target &&
+      hasPerClusterLimit &&
+      target.areas.length + source.areas.length > perClusterLimit
+    ) {
+      setError(
+        `That merge would exceed the ${perClusterLimit}-topic limit per cluster on your plan.`,
+      );
+      return;
+    }
+    setError(null);
     const next = sanitized
       .filter((cluster) => cluster.id !== sourceId)
       .map((cluster) =>
@@ -239,7 +309,7 @@ export function ClusterOrganizer({
 
   /** Split `area` out of its current cluster into a brand-new singleton cluster. */
   function handleSplitArea(area: string) {
-    if (sanitized.length >= MAX_CLUSTERS) {
+    if (sanitized.length >= clusterLimit) {
       return;
     }
     const id = makeClusterId(area, sanitized.map((cluster) => cluster.id));
@@ -273,7 +343,15 @@ export function ClusterOrganizer({
     setBusy("propose");
     try {
       const result = await proposeClusters({ areas, keywords, statement });
-      onChange(sanitizeClusters(result.clusters, areas));
+      onChange(
+        sanitizeClusters(
+          clampClustersToCaps(result.clusters, {
+            maxClusters: clusterLimit,
+            maxTopicsPerCluster: perClusterLimit,
+          }),
+          areas,
+        ),
+      );
       onWatchSeed?.(result.watch_topics);
     } catch (err) {
       setError(
@@ -291,7 +369,15 @@ export function ClusterOrganizer({
     setBusy("sort");
     try {
       const result = await proposeClusters({ clusters: sanitized, unsorted });
-      onChange(sanitizeClusters(result.clusters, areas));
+      onChange(
+        sanitizeClusters(
+          clampClustersToCaps(result.clusters, {
+            maxClusters: clusterLimit,
+            maxTopicsPerCluster: perClusterLimit,
+          }),
+          areas,
+        ),
+      );
       onWatchSeed?.(result.watch_topics);
     } catch (err) {
       setError(
@@ -315,7 +401,11 @@ export function ClusterOrganizer({
     );
   }
 
-  const canCreateMore = sanitized.length < MAX_CLUSTERS;
+  const canCreateMore = sanitized.length < clusterLimit;
+  // Show the plan-limit banner only when a tier cap was actually passed in — the
+  // profile-edit / unrestricted usage keeps just the structural cluster ceiling.
+  const showPlanLimits =
+    maxClusters !== undefined || maxTopicsPerCluster !== undefined;
 
   return (
     <div className="space-y-4">
@@ -340,6 +430,31 @@ export function ClusterOrganizer({
           {busy === "propose" ? "Organizing…" : "Organize with Mylo"}
         </Button>
       </div>
+
+      {showPlanLimits ? (
+        <div
+          role="note"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-[var(--text-secondary)]"
+        >
+          <span className="font-semibold text-[var(--text-primary)]">
+            Your plan:
+          </span>
+          <span>
+            up to <strong>{clusterLimit}</strong>{" "}
+            {clusterLimit === 1 ? "cluster" : "clusters"}
+            {hasPerClusterLimit ? (
+              <>
+                , with <strong>{perClusterLimit}</strong>{" "}
+                {perClusterLimit === 1 ? "topic" : "topics"} in each
+              </>
+            ) : null}
+            . Mylo runs one search per cluster — upgrade to add more.
+          </span>
+          <span className="text-[var(--text-muted)]">
+            ({sanitized.length}/{clusterLimit} clusters used)
+          </span>
+        </div>
+      ) : null}
 
       {/* A high-level explanation of what clusters do, with a concrete example. */}
       <div className="rounded-xl border border-dashed border-border bg-[var(--surface-alt)] p-4 text-xs leading-relaxed text-[var(--text-secondary)]">
@@ -386,12 +501,19 @@ export function ClusterOrganizer({
           <ClusterCard
             key={cluster.id}
             cluster={cluster}
+            capacity={hasPerClusterLimit ? perClusterLimit : null}
+            // A full cluster can't be a move/merge destination — leave it out of
+            // the menus so the limit is felt as "no longer offered", not a error.
             mergeTargets={sanitized
-              .filter((other) => other.id !== cluster.id)
+              .filter((other) => other.id !== cluster.id && !isClusterFull(other))
               .map((other) => ({ key: other.id, label: other.label || "Untitled cluster" }))}
             moveTargetsFor={(area) => [
               ...sanitized
-                .filter((other) => other.id !== cluster.id)
+                .filter(
+                  (other) =>
+                    other.id !== cluster.id &&
+                    (other.areas.includes(area) || !isClusterFull(other)),
+                )
                 .map((other) => ({ key: other.id, label: other.label || "Untitled cluster" })),
               { key: UNSORTED_ID, label: "Unsorted" },
               ...(canCreateMore
@@ -426,7 +548,9 @@ export function ClusterOrganizer({
         <span aria-hidden="true" className="text-lg leading-none">
           +
         </span>
-        {canCreateMore ? "Add a cluster" : "Cluster limit reached (max 6)"}
+        {canCreateMore
+          ? "Add a cluster"
+          : `Cluster limit reached (max ${clusterLimit})`}
       </button>
 
       <Card
@@ -499,6 +623,8 @@ export function ClusterOrganizer({
 
 type ClusterCardProps = {
   cluster: ClusterGroup;
+  /** Per-cluster interest cap (tier limit), or null when uncapped. */
+  capacity: number | null;
   mergeTargets: MenuItem[];
   moveTargetsFor: (area: string) => MenuItem[];
   isDragOver: boolean;
@@ -518,6 +644,7 @@ type ClusterCardProps = {
 
 function ClusterCard({
   cluster,
+  capacity,
   mergeTargets,
   moveTargetsFor,
   isDragOver,
@@ -535,6 +662,7 @@ function ClusterCard({
   onDeleteArea,
 }: ClusterCardProps) {
   const token = clusterAccentVar(cluster.id);
+  const isFull = capacity !== null && cluster.areas.length >= capacity;
 
   return (
     <Card
@@ -565,8 +693,16 @@ function ClusterCard({
           aria-label="Cluster name"
           className="min-w-0 flex-1 rounded-md border border-border bg-[var(--surface-alt)] px-2 py-1 text-sm font-semibold text-[var(--text-primary)] outline-none transition focus-visible:border-input focus-visible:bg-[var(--surface)] focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
         />
-        <span className="shrink-0 text-xs text-[var(--text-muted)]">
-          {cluster.areas.length}
+        <span
+          className={cn(
+            "shrink-0 text-xs",
+            isFull ? "font-semibold text-primary" : "text-[var(--text-muted)]",
+          )}
+          title={capacity !== null ? `${cluster.areas.length} of ${capacity} topics` : undefined}
+        >
+          {capacity !== null
+            ? `${cluster.areas.length}/${capacity}`
+            : cluster.areas.length}
         </span>
         <InlineMenu
           trigger="Merge into"
@@ -616,10 +752,17 @@ function ClusterCard({
       </div>
 
       {canEditAreas ? (
-        <AddInterest
-          placeholder="Add an interest to this cluster…"
-          onAdd={onAddArea}
-        />
+        isFull ? (
+          <p className="text-xs text-[var(--text-muted)]">
+            This cluster is full ({capacity}/{capacity}). Remove a topic to add
+            another, or start a new cluster.
+          </p>
+        ) : (
+          <AddInterest
+            placeholder="Add an interest to this cluster…"
+            onAdd={onAddArea}
+          />
+        )
       ) : null}
     </Card>
   );
