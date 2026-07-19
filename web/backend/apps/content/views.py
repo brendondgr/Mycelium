@@ -1011,6 +1011,7 @@ class SavedItemsView(APIView):
         saves = list(
             SavedOpportunity.objects.filter(user=request.user)
             .select_related("content")
+            .prefetch_related("content__deadline_rows")
             .order_by("-created_at")
         )
         content_ids = [s.content_id for s in saves if s.content_id]
@@ -1062,6 +1063,7 @@ class LabSavedItemsView(APIView):
         saves = list(
             SavedOpportunity.objects.filter(target_lab=lab)
             .select_related("content")
+            .prefetch_related("content__deadline_rows")
             .order_by("-created_at")
         )
         content_ids = [s.content_id for s in saves if s.content_id]

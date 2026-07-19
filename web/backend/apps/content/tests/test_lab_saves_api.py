@@ -213,6 +213,56 @@ def test_lab_saves_list_visible_to_members(client: APIClient):
 
 
 @pytest.mark.django_db
+def test_lab_save_of_unscored_live_grant_renders_full_card(client: APIClient):
+    """Saving a still-active grant to a lab must show the real card, not the
+    "Original listing has closed" fallback.
+
+    A grant saved to a lab is usually not lab-scored (the daily match may never
+    have surfaced it for the lab), so there is no ``target_lab`` RelevanceScore.
+    The card must still be built from the live item — a null card is reserved for
+    a pruned listing (``content`` SET_NULL), which is what the UI reads as closed.
+    """
+    lab = _lab()
+    owner = _member(lab, "owner", role=LabMembership.Role.OWNER)
+    client.force_authenticate(owner)
+    grant = _grant("g1", "Active Lab Grant")  # live item, no lab score
+    client.post(
+        "/api/opportunities/save/",
+        {"content_id": str(grant.id), "lab_slug": "lab"},
+        format="json",
+    )
+
+    body = client.get("/api/labs/lab/saves/").data
+    assert len(body["items"]) == 1
+    card = body["items"][0]["card"]
+    assert card is not None  # not the pruned "listing closed" fallback
+    assert card["title"] == "Active Lab Grant"
+    assert card["sponsor"] == "NSF"
+    assert card["match_percent"] is None  # unscored for the lab, but still shown
+
+
+@pytest.mark.django_db
+def test_pruned_lab_save_still_renders_null_card(client: APIClient):
+    """When the source item is pruned (``content`` SET_NULL) the card is null so
+    the client falls back to the save snapshot ("listing closed")."""
+    lab = _lab()
+    owner = _member(lab, "owner", role=LabMembership.Role.OWNER)
+    client.force_authenticate(owner)
+    grant = _grant("g1", "Doomed Grant")
+    client.post(
+        "/api/opportunities/save/",
+        {"content_id": str(grant.id), "lab_slug": "lab"},
+        format="json",
+    )
+    grant.delete()  # prune → SavedOpportunity.content SET_NULL, snapshot survives
+
+    body = client.get("/api/labs/lab/saves/").data
+    assert len(body["items"]) == 1
+    assert body["items"][0]["card"] is None
+    assert body["items"][0]["title"] == "Doomed Grant"  # snapshot fallback
+
+
+@pytest.mark.django_db
 def test_lab_saves_list_denies_non_members(client: APIClient):
     lab = _lab()
     _member(lab, "owner", role=LabMembership.Role.OWNER)

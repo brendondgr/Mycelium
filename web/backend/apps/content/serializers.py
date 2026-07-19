@@ -669,22 +669,31 @@ _SAVED_CARD_SERIALIZERS = {
 class SavedItemSerializer(SavedDeadlineSerializer):
     """One bookmark for the Saves page: the snapshot plus a feed-parity card.
 
-    ``card`` is the exact payload the item's own feed page serializer emits,
-    built from the user's :class:`RelevanceScore` row passed in the context as
-    ``scores_by_content``; it is ``null`` once the source item was pruned (the
-    snapshot fields on the envelope are the fallback display).
+    ``card`` is the exact payload the item's own feed page serializer emits. It is
+    built from the target's :class:`RelevanceScore` row (passed in the context as
+    ``scores_by_content``) when one exists; otherwise — while the source item is
+    still live in the corpus — it falls back to a neutral, in-memory score over the
+    live item so the full card still renders. ``card`` is ``null`` **only** once the
+    item was pruned (``content`` is ``SET_NULL``), and the snapshot fields on the
+    envelope are then the fallback display.
     """
 
     saved_at = serializers.DateTimeField(source="created_at", read_only=True)
     card = serializers.SerializerMethodField()
 
     def get_card(self, saved: SavedOpportunity):
-        if not saved.content_id:
+        serializer_class = _SAVED_CARD_SERIALIZERS.get(saved.area)
+        # No live item left (pruned → SET_NULL) or an unknown area: only the
+        # snapshot remains, so signal "listing closed" with a null card.
+        if not saved.content_id or serializer_class is None:
             return None
         score = (self.context.get("scores_by_content") or {}).get(saved.content_id)
-        serializer_class = _SAVED_CARD_SERIALIZERS.get(saved.area)
-        if score is None or serializer_class is None:
-            return None
+        if score is None:
+            # The item is still live but was never scored for this target — e.g. a
+            # grant saved to a lab the daily match never surfaced it for. Render the
+            # real card from the live item with a neutral (unscored) placeholder;
+            # this is NOT the pruned case, so it must not read as "listing closed".
+            score = RelevanceScore(content=saved.content, score=0.0, signals={})
         return serializer_class(score, context=self.context).data
 
 
