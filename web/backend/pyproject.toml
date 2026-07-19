@@ -23,6 +23,9 @@ dependencies = [
     "python-dateutil>=2.9.0,<3.0.0",
     "rank-bm25>=0.2.2,<1.0.0",
     "redis>=5.2.0,<6.0.0",
+    # Server-side PDF generation for the daily Discord "Mylo Report" (pure-Python,
+    # no system libraries — apps.content.daily_report_pdf).
+    "reportlab>=4.2.0,<5.0.0",
 ]
 
 [project.optional-dependencies]

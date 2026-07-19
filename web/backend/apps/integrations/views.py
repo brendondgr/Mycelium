@@ -153,6 +153,28 @@ class DiscordProbeView(APIView):
         return Response(DiscordStatusSerializer(identity).data)
 
 
+class DiscordDailyReportView(APIView):
+    """Toggle the daily "Mylo Report" DM for the caller ("Daily report" switch).
+
+    ``POST {"opt_out": true|false}`` flips the delivery preference on the caller's
+    identity and returns the refreshed status shape. ``404`` when the caller has no
+    linked identity (the switch is only shown on a connected card).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        identity = resolve.get_identity_for_user(request.user)
+        if identity is None:
+            return Response(
+                {"detail": "not linked"}, status=status.HTTP_404_NOT_FOUND
+            )
+        opt_out = bool(request.data.get("opt_out"))
+        resolve.set_daily_report_opt_out(identity, opt_out=opt_out)
+        identity = resolve.get_identity_for_user(request.user)
+        return Response(DiscordStatusSerializer(identity).data)
+
+
 class DiscordDisconnectView(APIView):
     permission_classes = [IsAuthenticated]
 

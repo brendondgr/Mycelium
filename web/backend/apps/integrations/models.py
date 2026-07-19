@@ -63,6 +63,13 @@ class DiscordIdentity(models.Model):
     # null = unknown, True = a probe DM landed, False = blocked (50007).
     dm_ok = models.BooleanField(null=True, blank=True)
     dm_checked_at = models.DateTimeField(null=True, blank=True)
+    # Delivery preference for the daily "Mylo Report" DM (the PDF report). Opt-OUT,
+    # not opt-in: an ACTIVE, entitled user is messaged by default, and unchecking the
+    # toggle on the profile Discord card suppresses only this scheduled DM (reminders
+    # and everything else are unaffected). Kept here, not on WatchPreference, because
+    # it is meaningful only for a linked identity and reads/writes through the same
+    # resolve boundary as the rest of the Discord state.
+    daily_report_opt_out = models.BooleanField(default=False)
 
     linked_at = models.DateTimeField(null=True, blank=True)
     last_error_at = models.DateTimeField(null=True, blank=True)

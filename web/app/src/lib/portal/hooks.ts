@@ -58,6 +58,7 @@ import {
   ingestProjectLink,
   issueActivationCode,
   issueLabActivationCode,
+  setDiscordDailyReport,
   testDiscordDm,
   inviteToLab,
   joinProject,
@@ -761,6 +762,17 @@ export function useTestDiscordDm() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => testDiscordDm(),
+    onSuccess: (status) => {
+      queryClient.setQueryData(["portal", "discord"], status);
+    },
+  });
+}
+
+/** Toggle the daily "Mylo Report" DM; write the fresh status into the card. */
+export function useSetDiscordDailyReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (optOut: boolean) => setDiscordDailyReport(optOut),
     onSuccess: (status) => {
       queryClient.setQueryData(["portal", "discord"], status);
     },

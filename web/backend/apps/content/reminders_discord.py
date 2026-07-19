@@ -103,6 +103,52 @@ def send_personal_dm(subscription, title: str, body: str) -> SendOutcome:
     return SendOutcome(ok=False, error_code=_code(resp))
 
 
+def send_personal_report(
+    user,
+    *,
+    title: str,
+    body: str,
+    filename: str,
+    pdf_bytes: bytes,
+    url: str = "",
+) -> SendOutcome:
+    """DM a user their daily "Mylo Report" as a PDF attachment (never raises).
+
+    Reuses the same identity resolution + DM-open + ``dm_ok`` handling as
+    :func:`send_personal_dm`; the difference is the attachment, sent via
+    ``discord_api.create_message_with_attachment`` (which keeps ``parse: []``). The
+    embed carries a short summary so the message reads well even before the reader
+    opens the PDF. "Unreachable" (no active identity / blocked DM / no bot token) is
+    a soft outcome — the caller just logs the skip.
+    """
+    if not _bot_configured():
+        return SendOutcome(ok=False, unreachable=True, not_configured=True)
+
+    identity = resolve.active_identity_for_user(user)
+    if identity is None or identity.dm_ok is False:
+        return SendOutcome(ok=False, unreachable=True)
+
+    try:
+        channel_id = identity.dm_channel_id or _open_dm(identity)
+        if not channel_id:
+            return SendOutcome(ok=False, unreachable=True)
+        resp = discord_api.create_message_with_attachment(
+            channel_id,
+            filename=filename,
+            file_bytes=pdf_bytes,
+            embed=reminder_embed(title, body, url),
+        )
+    except DiscordHTTPError as exc:
+        return SendOutcome(ok=False, error_code=exc.code)
+
+    if resp.status in (200, 201):
+        return SendOutcome(ok=True, message_id=str(resp.json.get("id") or ""))
+    if resp.status == 403:
+        resolve.set_identity_dm(identity, dm_ok=False, error_code=_code(resp))
+        return SendOutcome(ok=False, error_code=_code(resp), unreachable=True)
+    return SendOutcome(ok=False, error_code=_code(resp))
+
+
 def send_lab_channel(subscription, title: str, body: str) -> SendOutcome:
     """Post a lab reminder to its channel with resolved member pings (R5).
 
