@@ -3,14 +3,17 @@
 import * as React from "react";
 
 import {
+  BellIcon,
   BookmarkIcon,
   CheckIcon,
   ChevronDownIcon,
+  CloseIcon,
   SparkleIcon,
 } from "@/components/portal/icons";
+import { ReminderComposer } from "@/components/portal/reminder-composer";
 import { useMyLabs, useSaveOpportunity } from "@/lib/portal/hooks";
 import { useDismissable } from "@/lib/portal/use-dismissable";
-import type { MyLab } from "@/lib/portal/types";
+import type { DeadlineOption, MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
 /** A member with owner/admin/PI rights may save to that lab's shared saves. */
@@ -191,11 +194,18 @@ export function SaveButton({
   saved,
   savedLabs = [],
   variant = "full",
+  remindTitle,
+  remindDeadlines,
 }: {
   contentId: string;
   saved: boolean;
   savedLabs?: string[];
   variant?: "full" | "icon";
+  /** Title + addressable deadlines for the post-save "set a reminder?" prompt.
+   * Passed for grants/conferences/fellowships; omitted for papers, so a paper
+   * save never offers a deadline reminder. */
+  remindTitle?: string;
+  remindDeadlines?: DeadlineOption[];
 }) {
   const { save, unsave } = useSaveOpportunity();
   const labsQuery = useMyLabs();
@@ -204,30 +214,75 @@ export function SaveButton({
     [labsQuery.data],
   );
   const { open, setOpen, ref } = useDismissable<HTMLDivElement>();
+  const [promptOpen, setPromptOpen] = React.useState(false);
+  const [composing, setComposing] = React.useState(false);
 
   const pending = save.isPending || unsave.isPending;
   const savedLabSet = React.useMemo(() => new Set(savedLabs), [savedLabs]);
   const anySaved = saved || savedLabs.length > 0;
 
+  // Only *dated* deadlines are remindable; papers pass none, so canRemind is false.
+  const datedDeadlines = React.useMemo(
+    () => (remindDeadlines ?? []).filter((d) => d.due_date),
+    [remindDeadlines],
+  );
+  const canRemind = datedDeadlines.length > 0;
+
   const toggleScope = (labSlug?: string) => {
     const already = labSlug ? savedLabSet.has(labSlug) : saved;
     if (already) {
       unsave.mutate({ contentId, labSlug });
-    } else {
-      save.mutate({ contentId, labSlug });
+      return;
     }
+    save.mutate(
+      { contentId, labSlug },
+      {
+        onSuccess: () => {
+          // A fresh *personal* save of a dated opportunity offers a DM reminder.
+          if (!labSlug && canRemind) setPromptOpen(true);
+        },
+      },
+    );
+    if (labSlug) setOpen(false);
   };
+
+  // The post-save prompt + composer, anchored under the button. Shared by both
+  // the plain-toggle and the save-menu branches below.
+  const reminderUi = (
+    <>
+      {promptOpen && !composing ? (
+        <ReminderPrompt
+          onSet={() => {
+            setPromptOpen(false);
+            setComposing(true);
+          }}
+          onDismiss={() => setPromptOpen(false)}
+        />
+      ) : null}
+      {composing ? (
+        <ReminderComposer
+          contentId={contentId}
+          title={remindTitle ?? ""}
+          deadlines={datedDeadlines}
+          onClose={() => setComposing(false)}
+        />
+      ) : null}
+    </>
+  );
 
   // No labs to save into → the original one-click personal toggle.
   if (managedLabs.length === 0) {
     return (
-      <SaveTrigger
-        variant={variant}
-        active={saved}
-        pending={pending}
-        label={saved ? "Remove from your saves" : "Save for later"}
-        onClick={() => toggleScope()}
-      />
+      <div className="relative inline-flex shrink-0">
+        <SaveTrigger
+          variant={variant}
+          active={saved}
+          pending={pending}
+          label={saved ? "Remove from your saves" : "Save for later"}
+          onClick={() => toggleScope()}
+        />
+        {reminderUi}
+      </div>
     );
   }
 
@@ -267,6 +322,66 @@ export function SaveButton({
           ))}
         </div>
       ) : null}
+      {reminderUi}
+    </div>
+  );
+}
+
+/**
+ * The small popover shown right after a personal save of a dated opportunity,
+ * asking whether to set a deadline reminder (a personal Discord DM). "Set a
+ * reminder" opens the full composer; "Not now" dismisses it.
+ */
+function ReminderPrompt({
+  onSet,
+  onDismiss,
+}: {
+  onSet: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-label="Set a reminder for this deadline?"
+      className="absolute right-0 top-[calc(100%+6px)] z-40 w-64 rounded-2xl border border-border bg-surface p-3 shadow-[var(--shadow)]"
+    >
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 shrink-0 text-accent">
+          <BellIcon size={16} aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold text-[var(--text-primary)]">
+            Saved. Want a deadline reminder?
+          </p>
+          <p className="mt-0.5 text-[12px] text-[var(--text-secondary)]">
+            Mylo can DM you before the deadline.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="shrink-0 rounded-full p-1 text-[var(--text-muted)] hover:bg-surface-alt hover:text-[var(--text-secondary)]"
+        >
+          <CloseIcon size={13} />
+        </button>
+      </div>
+      <div className="mt-2.5 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="rounded-full px-2.5 py-1 text-[12.5px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt"
+        >
+          Not now
+        </button>
+        <button
+          type="button"
+          onClick={onSet}
+          className="rounded-full bg-primary px-3 py-1 text-[12.5px] font-semibold text-[#fffdf8] hover:bg-[var(--brand-primary-hover)]"
+        >
+          Set a reminder
+        </button>
+      </div>
     </div>
   );
 }

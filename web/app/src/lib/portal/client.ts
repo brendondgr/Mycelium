@@ -20,6 +20,7 @@ import type {
   NotificationFeed,
   OpportunityFeed,
   Project,
+  LabReminderChannels,
   ProfileData,
   ProjectFeed,
   Reminder,
@@ -207,6 +208,18 @@ export async function fetchReminders(): Promise<{ items: Reminder[] }> {
   return getJson<{ items: Reminder[] }>(
     buildApiUrl(getPublicApiBase(), "reminders"),
     "Could not load your reminders.",
+  );
+}
+
+/** A lab's postable Discord channels + its `/setup` default, for the reminder
+ * channel picker (manager-only). Degrades to an empty roster server-side. */
+export async function fetchLabReminderChannels(
+  slug: string,
+): Promise<LabReminderChannels> {
+  const base = buildApiUrl(getPublicApiBase(), "reminders", "lab-channels");
+  return getJson<LabReminderChannels>(
+    `${base}?lab=${encodeURIComponent(slug)}`,
+    "Could not load the lab's channels.",
   );
 }
 

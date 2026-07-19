@@ -557,6 +557,18 @@ export type Reminder = {
   created_at: string;
 };
 
+/** A postable Discord channel option for the lab reminder channel picker. */
+export type ReminderChannel = { id: string; name: string; type?: number };
+
+/** The lab's postable channels + its `/setup` default (GET
+ * `/api/reminders/lab-channels/`). An empty `channels` list means the guild is
+ * unlinked or Discord was unreachable — the composer then offers only the default. */
+export type LabReminderChannels = {
+  channels: ReminderChannel[];
+  default_channel_id: string;
+  default_channel_name: string;
+};
+
 /** The body for creating a reminder (POST `/api/reminders/`). */
 export type ReminderInput = {
   content_id: string;

@@ -200,6 +200,8 @@ export function FellowshipRow({ item }: { item: FellowshipOpportunity }) {
             saved={item.saved}
             savedLabs={item.saved_labs}
             variant="icon"
+            remindTitle={item.title}
+            remindDeadlines={item.addressable_deadlines}
           />
           {deadlineLabel ? (
             <span

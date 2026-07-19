@@ -27,6 +27,7 @@ import {
   fetchLabRecommendations,
   fetchLabWatch,
   fetchMemberSuggestions,
+  fetchLabReminderChannels,
   fetchMyInvitations,
   fetchMyLabs,
   fetchNotifications,
@@ -299,6 +300,17 @@ export function useReminders() {
     queryKey: ["portal", "reminders"],
     queryFn: fetchReminders,
     staleTime: 30_000,
+  });
+}
+
+/** A lab's postable Discord channels for the reminder channel picker. Only
+ * fetched when a slug is given (lab scope + a lab the caller manages). */
+export function useLabReminderChannels(slug?: string) {
+  return useQuery({
+    queryKey: ["portal", "lab-reminder-channels", slug],
+    queryFn: () => fetchLabReminderChannels(slug!),
+    enabled: Boolean(slug),
+    staleTime: 60_000,
   });
 }
 

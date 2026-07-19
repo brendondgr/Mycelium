@@ -82,6 +82,8 @@ export function GrantRow({ grant }: { grant: GrantOpportunity }) {
             saved={grant.saved}
             savedLabs={grant.saved_labs}
             variant="icon"
+            remindTitle={grant.title}
+            remindDeadlines={grant.addressable_deadlines}
           />
           {due ? (
             <span

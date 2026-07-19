@@ -81,6 +81,8 @@ export function ConferenceCard({ conf }: { conf: ConferenceOpportunity }) {
           contentId={conf.content_id}
           saved={conf.saved}
           savedLabs={conf.saved_labs}
+          remindTitle={conf.title}
+          remindDeadlines={conf.addressable_deadlines}
         />
       </div>
 
