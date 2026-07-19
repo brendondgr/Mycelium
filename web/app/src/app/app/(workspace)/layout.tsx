@@ -23,6 +23,7 @@ export default async function WorkspaceLayout({
     email: user.email ?? "",
     name: user.name?.trim() || user.username,
     initials: user.initials?.trim() || user.username.slice(0, 2).toUpperCase(),
+    isStaff: user.is_staff,
     isSuperuser: user.is_superuser,
   };
 

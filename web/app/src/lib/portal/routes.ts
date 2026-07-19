@@ -19,7 +19,8 @@ export type SectionKey =
   | "labs"
   | "members"
   | "reports"
-  | "suggested";
+  | "suggested"
+  | "admin";
 
 /** Canonical route for each section. */
 export const SECTION_ROUTES: Record<SectionKey, string> = {
@@ -37,6 +38,7 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   members: "/app/members",
   reports: "/app/reports",
   suggested: "/app/suggested",
+  admin: "/app/admin",
 };
 
 /** Route for a single project's detail view. */
@@ -64,6 +66,7 @@ export function sectionFromPathname(pathname: string): SectionKey {
     "members",
     "reports",
     "suggested",
+    "admin",
     "overview",
   ];
   for (const key of keys) {

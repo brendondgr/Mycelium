@@ -8,10 +8,12 @@ import {
   FolderIcon,
   GridIcon,
   MembersIcon,
+  ShieldIcon,
   SparkleIcon,
   TargetIcon,
 } from "@/components/portal/icons";
 import {
+  isPlatformAdmin,
   usePortal,
   type SectionKey,
 } from "@/components/portal/portal-context";
@@ -32,7 +34,7 @@ function canManageLab(lab: MyLab): boolean {
  * otherwise. The standalone Daily tab is gone — it now lives on the overview.
  */
 export function PortalMobileNav() {
-  const { section, goToSection, currentLab } = usePortal();
+  const { section, goToSection, currentLab, user } = usePortal();
   const inLab = Boolean(currentLab);
   const manageLab = currentLab ? canManageLab(currentLab) : false;
 
@@ -59,6 +61,9 @@ export function PortalMobileNav() {
         { key: "fellowships", label: "Fellowships", icon: <SparkleIcon size={15} /> },
         { key: "conferences", label: "Conferences", icon: <ConferenceIcon size={15} /> },
         { key: "projects", label: "Projects", icon: <FolderIcon size={15} /> },
+        ...(isPlatformAdmin(user)
+          ? [{ key: "admin" as SectionKey, label: "Admin", icon: <ShieldIcon size={15} /> }]
+          : []),
       ];
 
   return (

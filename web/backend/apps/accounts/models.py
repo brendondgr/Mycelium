@@ -240,6 +240,15 @@ class Profile(models.Model):
         default=False,
         help_text="Email verified. Non-blocking at signup; gates sensitive actions.",
     )
+    watch_topic_limit = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Admin-granted override for how many watch topics this user may "
+            "monitor. Null uses the plan's per-tier cap; set only from the admin "
+            "dashboard. Read through apps.billing.entitlements.topic_cap."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

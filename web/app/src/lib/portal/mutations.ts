@@ -3,6 +3,8 @@
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import { ensureCsrfCookie, readCsrfToken } from "@/lib/auth-client";
 import type {
+  AdminUserDetail,
+  AdminUserUpdate,
   CollectionBrief,
   CollectionDetail,
   DiscordCodeResponse,
@@ -593,5 +595,18 @@ export function issueLabActivationCode(
     `${url}?lab=${encodeURIComponent(slug)}`,
     undefined,
     "Could not generate a lab activation code. Try again.",
+  );
+}
+
+/** Update a user's plan and/or watch quota (staff/superuser only). */
+export function updateAdminUser(
+  id: number,
+  patch: AdminUserUpdate,
+): Promise<AdminUserDetail> {
+  return sendJson<AdminUserDetail>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "admin", "users", String(id)),
+    patch,
+    "Could not update this user.",
   );
 }

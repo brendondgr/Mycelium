@@ -29,8 +29,14 @@ export type PortalUser = {
   email: string;
   name: string;
   initials: string;
+  isStaff: boolean;
   isSuperuser: boolean;
 };
+
+/** Whether a user may see the admin dashboard (staff or superuser). */
+export function isPlatformAdmin(user: Pick<PortalUser, "isStaff" | "isSuperuser">): boolean {
+  return user.isStaff || user.isSuperuser;
+}
 
 export type PortalContextValue = {
   user: PortalUser;

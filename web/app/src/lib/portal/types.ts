@@ -793,3 +793,77 @@ export type Entitlements = {
   pi_cap: number | null;
   addons: string[];
 };
+
+// -- Admin dashboard (staff/superuser only, GET/PATCH /api/admin/users) --------
+
+/** Subscription tiers, as the admin API reports and accepts them. */
+export type AdminTier = "free" | "spore" | "lab" | "canopy";
+
+/** Subscription statuses the admin API reports and accepts. */
+export type AdminSubscriptionStatus = "active" | "past_due" | "canceled";
+
+/** The personal subscription an admin manages for a user (null if they have none). */
+export type AdminSubscriptionSummary = {
+  tier: AdminTier;
+  status: AdminSubscriptionStatus;
+  expires_at: string | null;
+};
+
+/** One user row in the admin table (GET /admin/users/ → results[]). */
+export type AdminUserRow = {
+  id: number;
+  username: string;
+  email: string;
+  name: string;
+  is_staff: boolean;
+  is_superuser: boolean;
+  is_active: boolean;
+  date_joined: string;
+  effective_tier: AdminTier;
+  subscription: AdminSubscriptionSummary | null;
+  watch_topics_used: number;
+  watch_topic_cap: number;
+  watch_topic_limit: number | null;
+};
+
+/** A single user's full admin view (GET /admin/users/<id>/). */
+export type AdminUserDetail = AdminUserRow & {
+  academic_title: string;
+  watch_topics: string[];
+  watch_categories: string[];
+  lab_memberships: {
+    slug: string;
+    name: string;
+    role: LabRole;
+    is_lead: boolean;
+  }[];
+};
+
+/** One page of the admin roster (DRF PageNumberPagination envelope). */
+export type AdminUsersPage = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: AdminUserRow[];
+};
+
+/** Query params for the admin roster. */
+export type AdminUsersQuery = {
+  q?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+/**
+ * A partial admin PATCH over a user's plan + watch quota. Only the keys sent are
+ * applied; `duration_days`/`expires_at` are mutually exclusive, and either sent
+ * as null clears the expiry (open-ended). `watch_topic_limit: null` clears the
+ * override back to the tier cap.
+ */
+export type AdminUserUpdate = {
+  tier?: AdminTier;
+  duration_days?: number | null;
+  expires_at?: string | null;
+  subscription_status?: AdminSubscriptionStatus;
+  watch_topic_limit?: number | null;
+};

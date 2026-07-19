@@ -508,3 +508,73 @@ Deadline alerts for the header bell: saved items due within a week. Success `200
   ]
 }
 ```
+
+## Admin dashboard
+
+Base path: `/api/admin/`. **Every endpoint requires an authenticated staff or
+superuser** (`is_staff` or `is_superuser`); anyone else gets `403`. This is the
+authorization boundary — the frontend nav gate is only a rendering hint. All
+writes record an `AuditEvent`. Standalone admins are minted out-of-band by the
+`create_admin` management command / root `create_admin.py` (password from
+`ADMIN_USER_PASS`), never through this API.
+
+### `GET /api/admin/users/`
+
+Paginated, searchable roster (DRF `PageNumberPagination`; default 25/page, max
+100). Query params: `page`, `page_size`, and `q` (matches username/email/first/
+last name). Success `200`:
+
+```json
+{
+  "count": 412,
+  "next": "http://.../api/admin/users/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": 7, "username": "marie.curie", "email": "mc@lab.test",
+      "name": "Marie Curie", "is_staff": false, "is_superuser": false,
+      "is_active": true, "date_joined": "2026-01-04T12:00:00Z",
+      "effective_tier": "spore",
+      "subscription": { "tier": "spore", "status": "active", "expires_at": "2026-10-01T00:00:00Z" },
+      "watch_topics_used": 4, "watch_topic_cap": 10, "watch_topic_limit": null
+    }
+  ]
+}
+```
+
+`subscription` is the user's personal (`scope_user`) plan, or `null` if they have
+none; `effective_tier` is the resolved tier (max across every covering plan, an
+expired plan excluded). `watch_topic_limit` is the per-user override (null = the
+tier default).
+
+### `GET /api/admin/users/<id>/`
+
+One user's full detail — every row field plus `academic_title`, `watch_topics`,
+`watch_categories`, and `lab_memberships` (`{slug, name, role, is_lead}`).
+
+### `PATCH /api/admin/users/<id>/`
+
+Assign the user's personal subscription and/or set their watch quota. All fields
+optional; send at least one. Returns the updated detail object (same shape as the
+`GET` detail).
+
+```json
+{
+  "tier": "spore",
+  "duration_days": 90,
+  "subscription_status": "active",
+  "watch_topic_limit": 20
+}
+```
+
+- `tier` — one of `free` | `spore` | `lab` | `canopy`.
+- `duration_days` (int ≥ 1) **or** `expires_at` (ISO 8601) — mutually exclusive;
+  either sent as `null` clears the expiry (open-ended). Omit both to leave the
+  current expiry untouched. Expiry is enforced at read-time: a lapsed plan reverts
+  to Free automatically, and no stored data is deleted.
+- `subscription_status` — `active` | `past_due` | `canceled`.
+- `watch_topic_limit` (int 0–50, or `null` to clear back to the tier cap) — the
+  per-user override for how many subjects Mylo watches.
+
+Errors `400` on an empty body, on `duration_days` + `expires_at` together, or on a
+`watch_topic_limit` out of range.

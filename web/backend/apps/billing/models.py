@@ -2,6 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from apps.core.db import exactly_one, validate_exactly_one
 
@@ -60,6 +61,17 @@ class Subscription(models.Model):
         choices=Status.choices,
         default=Status.ACTIVE,
     )
+    # When set, the plan stops granting entitlements once this instant passes —
+    # the read path treats an expired subscription as if it were not there, so a
+    # timed grant (e.g. an admin-assigned 90-day Spore) reverts to Free on its own
+    # with no cleanup job. Null means "no expiry" (the default open-ended plan).
+    # Expiry NEVER deletes data (topics, saves): it only changes what is unlocked,
+    # mirroring the no-data-loss downgrade behaviour.
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the plan stops granting entitlements; null = no expiry.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -74,6 +86,14 @@ class Subscription(models.Model):
 
     def clean(self) -> None:
         validate_exactly_one(self, *SCOPE_FIELDS)
+
+    def is_current(self, *, now=None) -> bool:
+        """True when this subscription is ACTIVE and not past its expiry."""
+        if self.status != Subscription.Status.ACTIVE:
+            return False
+        if self.expires_at is None:
+            return True
+        return self.expires_at > (now or timezone.now())
 
     @property
     def scope_type(self) -> str:

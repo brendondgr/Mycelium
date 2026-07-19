@@ -1,6 +1,9 @@
 import { ApiError } from "@/lib/api-error";
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import type {
+  AdminUserDetail,
+  AdminUsersPage,
+  AdminUsersQuery,
   CollectionBrief,
   CollectionDetail,
   ConferenceOpportunity,
@@ -389,5 +392,29 @@ export async function fetchLabDiscordStart(
   return getJson<DiscordStartResponse>(
     `${url}?lab=${encodeURIComponent(slug)}`,
     "Could not start adding Mylo to your server.",
+  );
+}
+
+/** One page of the admin user roster (staff/superuser only; the API 403s else). */
+export async function fetchAdminUsers(
+  params: AdminUsersQuery,
+): Promise<AdminUsersPage> {
+  const search = new URLSearchParams();
+  if (params.q) search.set("q", params.q);
+  if (params.page) search.set("page", String(params.page));
+  if (params.pageSize) search.set("page_size", String(params.pageSize));
+  const base = buildApiUrl(getPublicApiBase(), "admin", "users");
+  const qs = search.toString();
+  return getJson<AdminUsersPage>(
+    qs ? `${base}?${qs}` : base,
+    "Could not load the user list.",
+  );
+}
+
+/** One user's full admin detail (staff/superuser only). */
+export async function fetchAdminUser(id: number): Promise<AdminUserDetail> {
+  return getJson<AdminUserDetail>(
+    buildApiUrl(getPublicApiBase(), "admin", "users", String(id)),
+    "Could not load this user.",
   );
 }

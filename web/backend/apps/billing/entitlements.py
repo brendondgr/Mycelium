@@ -20,8 +20,20 @@ Add-ons are orthogonal to tiers (A4): the Mylo-server capability is granted by a
 
 from django.contrib.auth.models import User
 from django.db.models import Q, QuerySet
+from django.utils import timezone
 
 from .models import AddOn, Seat, Subscription, SubscriptionAddOn, Tier
+
+
+def _unexpired() -> Q:
+    """Q matching subscriptions that have not passed their ``expires_at``.
+
+    A null ``expires_at`` is open-ended (never expires); a set one only counts
+    while it is still in the future. Combined with a ``status=ACTIVE`` filter this
+    is the full "currently grants entitlements" predicate, so a timed grant reverts
+    to Free the instant it lapses — no cleanup job, matching read-time enforcement.
+    """
+    return Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now())
 
 
 class Feature:
@@ -135,10 +147,11 @@ def features_for_tier(tier: str) -> frozenset[str]:
 
 
 def covering_subscriptions(user: User) -> QuerySet[Subscription]:
-    """Active subscriptions that cover a user: their own plan or any plan where
-    they hold an active seat."""
+    """Active, unexpired subscriptions that cover a user: their own plan or any
+    plan where they hold an active seat."""
     return (
         Subscription.objects.filter(status=Subscription.Status.ACTIVE)
+        .filter(_unexpired())
         .filter(
             Q(scope_user=user)
             | Q(seats__member=user, seats__status=Seat.Status.ACTIVE)
@@ -190,9 +203,11 @@ def users_with_feature(feature: str, user_ids=None) -> set[int]:
     addon_sub_ids = SubscriptionAddOn.objects.filter(
         status=SubscriptionAddOn.Status.ACTIVE, add_on__feature=feature
     ).values_list("subscription_id", flat=True)
-    granting_subs = Subscription.objects.filter(
-        status=Subscription.Status.ACTIVE
-    ).filter(Q(tier__in=granting_tiers) | Q(id__in=addon_sub_ids))
+    granting_subs = (
+        Subscription.objects.filter(status=Subscription.Status.ACTIVE)
+        .filter(_unexpired())
+        .filter(Q(tier__in=granting_tiers) | Q(id__in=addon_sub_ids))
+    )
 
     covered: set[int] = set(
         granting_subs.filter(scope_user__isnull=False).values_list(
@@ -240,8 +255,24 @@ def topic_cap_for_tier(tier: str) -> int:
     return TOPIC_CAPS.get(tier, TOPIC_CAPS[Tier.FREE])
 
 
+def watch_topic_override(user: User) -> int | None:
+    """An admin-granted per-user watch-topic cap, or ``None`` for the tier default.
+
+    Stored on ``Profile.watch_topic_limit`` and set only from the admin dashboard;
+    when present it wins over the tier cap so an operator can widen (or narrow) how
+    many subjects one user may monitor without changing their plan.
+    """
+    profile = getattr(user, "profile", None)
+    limit = getattr(profile, "watch_topic_limit", None)
+    return limit if isinstance(limit, int) else None
+
+
 def topic_cap(user: User) -> int:
-    """The watch-topic cap for a user's effective tier (per member for Lab/Canopy)."""
+    """The watch-topic cap for a user: the admin override if set, else the tier cap
+    (per member for Lab/Canopy)."""
+    override = watch_topic_override(user)
+    if override is not None:
+        return override
     return topic_cap_for_tier(effective_tier(user))
 
 
@@ -293,9 +324,11 @@ def _lab_subscriptions(lab) -> QuerySet[Subscription]:
     dept_id = getattr(lab, "department_id", None)
     if dept_id:
         query |= Q(scope_department_id=dept_id)
-    return Subscription.objects.filter(
-        status=Subscription.Status.ACTIVE
-    ).filter(query)
+    return (
+        Subscription.objects.filter(status=Subscription.Status.ACTIVE)
+        .filter(_unexpired())
+        .filter(query)
+    )
 
 
 def lab_features(lab) -> frozenset[str]:

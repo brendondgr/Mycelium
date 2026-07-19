@@ -64,6 +64,16 @@ export function SporeNode({ size = 16, className, ...props }: IconProps) {
   );
 }
 
+/** Shield with a check — the platform-admin marker (staff/superuser nav). */
+export function ShieldIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3l7 3v5c0 4.4-3 7.5-7 9-4-1.5-7-4.6-7-9V6l7-3z" />
+      <path d="M9 11.8l2 2 4-4" />
+    </Svg>
+  );
+}
+
 export function GridIcon(props: IconProps) {
   return (
     <Svg {...props}>

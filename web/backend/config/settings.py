@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.billing",
     "apps.scraper",
     "apps.integrations",
+    "apps.adminpanel",
 ]
 
 MIDDLEWARE = [

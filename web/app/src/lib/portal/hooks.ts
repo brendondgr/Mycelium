@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -8,6 +9,8 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  fetchAdminUser,
+  fetchAdminUsers,
   fetchConferences,
   fetchDailyBriefing,
   fetchDailyReport,
@@ -68,6 +71,7 @@ import {
   shareToProject,
   synthesizeLabProfile,
   unsaveOpportunity,
+  updateAdminUser,
   updateCollection,
   updateLabProfile,
   updateLabWatch,
@@ -75,6 +79,8 @@ import {
 } from "@/lib/portal/mutations";
 import {
   PERSONAL_SLUG,
+  type AdminUsersQuery,
+  type AdminUserUpdate,
   type InvitationAction,
   type SearchSort,
 } from "@/lib/portal/types";
@@ -786,4 +792,48 @@ export function useIssueActivationCode() {
 /** Issue a one-time 10-digit lab activation code (Path C) for `/activate-lab`. */
 export function useIssueLabActivationCode() {
   return useMutation({ mutationFn: (slug: string) => issueLabActivationCode(slug) });
+}
+
+/**
+ * The admin roster — paginated + searchable. `keepPreviousData` holds the current
+ * page visible while the next one loads, so paging/searching doesn't flash empty.
+ * Staff/superuser only (the API 403s otherwise); the section also hides for
+ * non-admins, so this never fires for them.
+ */
+export function useAdminUsers(query: AdminUsersQuery) {
+  return useQuery({
+    queryKey: [
+      "portal",
+      "admin-users",
+      query.q ?? "",
+      query.page ?? 1,
+      query.pageSize ?? 0,
+    ],
+    queryFn: () => fetchAdminUsers(query),
+    placeholderData: keepPreviousData,
+    staleTime: 15_000,
+  });
+}
+
+/** One user's full admin detail (drives the editor). */
+export function useAdminUser(id?: number) {
+  return useQuery({
+    queryKey: ["portal", "admin-user", id ?? 0],
+    queryFn: () => fetchAdminUser(id as number),
+    enabled: Boolean(id),
+    staleTime: 15_000,
+  });
+}
+
+/** Apply an admin update; refresh that user's detail + the roster. */
+export function useUpdateAdminUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: number; patch: AdminUserUpdate }) =>
+      updateAdminUser(input.id, input.patch),
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(["portal", "admin-user", variables.id], data);
+      queryClient.invalidateQueries({ queryKey: ["portal", "admin-users"] });
+    },
+  });
 }

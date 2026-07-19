@@ -7,11 +7,12 @@ import {
   DocumentIcon,
   GridIcon,
   MembersIcon,
+  ShieldIcon,
   SparkleIcon,
   SporeNode,
   TargetIcon,
 } from "@/components/portal/icons";
-import { usePortal } from "@/components/portal/portal-context";
+import { isPlatformAdmin, usePortal } from "@/components/portal/portal-context";
 import { ProjectsNav } from "@/components/portal/projects-nav";
 import { SidebarNavItem } from "@/components/portal/sidebar-nav-item";
 import { labLogoUrl } from "@/lib/portal/client";
@@ -75,7 +76,7 @@ function PersonalIdentity() {
 
 /** The left workspace navigation (desktop). Mobile uses a separate tab strip. */
 export function PortalSidebar() {
-  const { section, goToSection, currentLab } = usePortal();
+  const { section, goToSection, currentLab, user } = usePortal();
   const { data: entitlements } = useEntitlements();
   // Personal research entries only populate on a paid personal plan; a lab is on
   // its own (paid) plan, so lab research entries are always shown to members.
@@ -176,6 +177,22 @@ export function PortalSidebar() {
         ) : null}
         <ProjectsNav />
       </nav>
+
+      {/* Personal-workspace admin surface — only staff/superusers see it, and only
+          in the personal scope (it manages platform users, not a lab). */}
+      {!inLab && isPlatformAdmin(user) ? (
+        <div className="mt-[18px]">
+          <GroupLabel>Admin</GroupLabel>
+          <nav className="flex flex-col gap-0.5">
+            <SidebarNavItem
+              icon={<ShieldIcon size={18} />}
+              label="Admin dashboard"
+              active={section === "admin"}
+              onClick={() => goToSection("admin")}
+            />
+          </nav>
+        </div>
+      ) : null}
     </aside>
   );
 }
