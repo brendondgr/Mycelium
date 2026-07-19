@@ -575,6 +575,16 @@ export function testDiscordDm(): Promise<DiscordStatus> {
   );
 }
 
+/** Toggle the daily "Mylo Report" PDF DM for the caller → the refreshed status. */
+export function setDiscordDailyReport(optOut: boolean): Promise<DiscordStatus> {
+  return sendJson<DiscordStatus>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "integrations", "discord", "daily-report"),
+    { opt_out: optOut },
+    "Could not update your daily report setting. Try again.",
+  );
+}
+
 /** Issue a one-time Path B activation code to redeem from Discord with /activate code:. */
 export function issueActivationCode(): Promise<DiscordCodeResponse> {
   return sendJson<DiscordCodeResponse>(

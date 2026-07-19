@@ -27,6 +27,11 @@ Stages, in order:
        lab** (LLM with a deterministic fallback). Like the summary itself, this is
        a per-run *replace* — it re-describes the day's matches, never rewrites the
        stored recommendations — so it stays consistent with the append-only rule.
+    5. Send daily Discord reports (backend) — ``send_daily_discord_reports``: DM
+       each linked, entitled, opted-in user their day as a PDF (the written report
+       plus the top-25 papers and top-25 grants/fellowships/conferences and a full
+       appendix). Best-effort: an unreachable DM or Discord outage is counted, never
+       fatal, so it can safely be the last stage.
 
 Deliberately **no refit stage**: the daily run only scores that day's *new*
 items and appends them. Mylo's already-written recommendations are never
@@ -115,6 +120,11 @@ CONTAINER_STAGES = [
     ("run_reminder_tick", [], "Firing due deadline reminders…"),
     ("prune_opportunities", [], "Pruning expired opportunities…"),
     ("generate_daily_briefing", [], "Writing each user's and lab's daily briefing…"),
+    (
+        "send_daily_discord_reports",
+        [],
+        "DMing each linked user their daily PDF report…",
+    ),
 ]
 
 
@@ -363,15 +373,16 @@ def main() -> int:
         stages_run.append(command)
 
     print(
-        "\nAll stages completed: scrape → search → match → remind → prune → briefing,"
-        " for all users.",
+        "\nAll stages completed: scrape → search → match → remind → prune → briefing "
+        "→ report, for all users.",
         flush=True,
     )
     _write_run_state(ok=True, scrape_ran=scrape_ran, stages_run=stages_run)
     _notify(
         "info",
         "Daily run complete",
-        "scrape → search → match → remind → prune → briefing finished for all users."
+        "scrape → search → match → remind → prune → briefing → report finished for "
+        "all users."
         + ("" if scrape_ran else " (opportunity scrape was skipped — see earlier alert)."),
         stage="done",
         fields={"Scrape ran": "yes" if scrape_ran else "no"},

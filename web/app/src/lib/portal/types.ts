@@ -742,6 +742,8 @@ export type DiscordStatus = {
   dm_ok: boolean | null;
   dm_checked_at: string | null;
   linked_at: string | null;
+  /** When true, this user is excluded from the daily "Mylo Report" PDF DM. */
+  daily_report_opt_out: boolean;
 };
 
 /** Whether a Lab's Discord server is synced (Manage & Invite page badge). */

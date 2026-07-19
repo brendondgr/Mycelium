@@ -198,6 +198,38 @@ def set_identity_dm(
         )
 
 
+def set_daily_report_opt_out(identity: DiscordIdentity, *, opt_out: bool) -> None:
+    """Set whether this identity is excluded from the daily "Mylo Report" DM."""
+    identity.daily_report_opt_out = bool(opt_out)
+    identity.save(update_fields=["daily_report_opt_out", "updated_at"])
+    audit.discord_audit(
+        action="discord.daily_report.opt_out"
+        if opt_out
+        else "discord.daily_report.opt_in",
+        actor=identity.user,
+        discord_user_id=identity.discord_user_id,
+    )
+
+
+def report_recipient_user_ids(user_ids) -> set:
+    """User ids among ``user_ids`` reachable for the daily report DM.
+
+    A recipient must have an ACTIVE identity, not have opted out, and not be a known
+    DM-blocked address (``dm_ok is False``). ``dm_ok is None`` (never probed) is kept
+    — the send path opens the DM and finds out. Bulk query so the daily command never
+    resolves identities one user at a time.
+    """
+    ids = [u.id if hasattr(u, "id") else u for u in user_ids]
+    if not ids:
+        return set()
+    rows = DiscordIdentity.objects.filter(
+        user_id__in=ids,
+        state=DiscordIdentity.State.ACTIVE,
+        daily_report_opt_out=False,
+    ).exclude(dm_ok=False).values_list("user_id", flat=True)
+    return set(rows)
+
+
 def pop_identity_tokens_and_delete(user) -> dict:
     """Delete a user's identity, returning its (decrypted) tokens to revoke.
 

@@ -17,6 +17,8 @@ class DiscordStatusSerializer(serializers.Serializer):
     dm_ok = serializers.BooleanField(allow_null=True)
     dm_checked_at = serializers.DateTimeField(allow_null=True)
     linked_at = serializers.DateTimeField(allow_null=True)
+    # Delivery preference for the daily report DM (opt-out; default delivered).
+    daily_report_opt_out = serializers.BooleanField()
 
     def get_connected(self, obj) -> bool:
         return bool(obj and obj.state == DiscordIdentity.State.ACTIVE)
@@ -32,6 +34,7 @@ class DiscordStatusSerializer(serializers.Serializer):
             "dm_ok": None,
             "dm_checked_at": None,
             "linked_at": None,
+            "daily_report_opt_out": False,
         }
 
 

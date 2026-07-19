@@ -19,6 +19,7 @@ import {
   useDiscordStatus,
   useIssueActivationCode,
   useProfile,
+  useSetDiscordDailyReport,
   useTestDiscordDm,
   useWatch,
 } from "@/lib/portal/hooks";
@@ -578,6 +579,7 @@ function DiscordCard() {
   const disconnect = useDisconnectDiscord();
   const issueCode = useIssueActivationCode();
   const testDm = useTestDiscordDm();
+  const dailyReport = useSetDiscordDailyReport();
   const searchParams = useSearchParams();
   const notice = DISCORD_RETURN_NOTICE[searchParams.get("discord") ?? ""];
 
@@ -635,6 +637,44 @@ function DiscordCard() {
               {testDm.isPending ? "Testing…" : "Test"}
             </Button>
           </div>
+          {(() => {
+            const reportOn = !status?.daily_report_opt_out;
+            return (
+              <div className="flex items-start justify-between gap-3 rounded-lg bg-[var(--surface-alt)] px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                    Daily research report
+                  </p>
+                  <p className="mt-0.5 text-sm text-[var(--text-muted)]">
+                    {dailyReport.isError
+                      ? "Couldn’t update. Try again."
+                      : reportOn
+                        ? "Mylo DMs you a daily PDF of your top papers and opportunities."
+                        : "Paused — Mylo won’t DM you the daily report."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={reportOn}
+                  aria-label="Daily research report DM"
+                  onClick={() => dailyReport.mutate(reportOn)}
+                  disabled={dailyReport.isPending}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${
+                    reportOn
+                      ? "bg-[var(--primary)]"
+                      : "bg-[var(--border)]"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      reportOn ? "translate-x-[22px]" : "translate-x-[2px]"
+                    }`}
+                  />
+                </button>
+              </div>
+            );
+          })()}
           <Button
             variant="secondary"
             className="rounded-full"

@@ -22,6 +22,11 @@ urlpatterns = [
     *_both("discord/status", views.DiscordStatusView, "discord-status"),
     *_both("discord/probe", views.DiscordProbeView, "discord-probe"),
     *_both("discord/disconnect", views.DiscordDisconnectView, "discord-disconnect"),
+    *_both(
+        "discord/daily-report",
+        views.DiscordDailyReportView,
+        "discord-daily-report",
+    ),
     *_both("discord/code", views.DiscordActivationCodeView, "discord-code"),
     *_both(
         "discord/lab-code", views.DiscordLabActivationCodeView, "discord-lab-code"

@@ -19,6 +19,7 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from dataclasses import dataclass
 
 from django.conf import settings
@@ -156,6 +157,76 @@ def create_message(
         auth=("Bot", _bot_token()),
         json_body=body,
     )
+
+
+def create_message_with_attachment(
+    channel_id: str,
+    *,
+    filename: str,
+    file_bytes: bytes,
+    content: str = "",
+    embed: dict | None = None,
+    allowed_mentions: dict | None = None,
+    file_content_type: str = "application/pdf",
+):
+    """Post a message with a single file attachment (``multipart/form-data``).
+
+    Same ``allowed_mentions.parse == []`` guarantee as :func:`create_message`: the
+    message body may interpolate scraped titles, so the mention parse categories stay
+    empty regardless of what is passed. The file is sent as ``files[0]`` and declared
+    in ``attachments[0]`` (id 0), the pairing Discord requires. Used for the daily
+    "Mylo Report" PDF DM.
+    """
+    mentions: dict = {"parse": []}
+    if allowed_mentions:
+        if allowed_mentions.get("users"):
+            mentions["users"] = [str(u) for u in allowed_mentions["users"]]
+        if allowed_mentions.get("roles"):
+            mentions["roles"] = [str(r) for r in allowed_mentions["roles"]]
+    payload: dict = {
+        "allowed_mentions": mentions,
+        "attachments": [{"id": 0, "filename": filename}],
+    }
+    if content:
+        payload["content"] = content
+    if embed:
+        payload["embeds"] = [embed]
+    body, content_type = _multipart_body(
+        payload, filename, file_bytes, file_content_type
+    )
+    return _request(
+        "POST",
+        f"/channels/{channel_id}/messages",
+        auth=("Bot", _bot_token()),
+        raw_body=body,
+        content_type=content_type,
+    )
+
+
+def _multipart_body(
+    payload: dict, filename: str, file_bytes: bytes, file_content_type: str
+) -> tuple[bytes, str]:
+    """Build a two-part multipart body: a ``payload_json`` field + one file part."""
+    boundary = "----mycelium" + uuid.uuid4().hex
+    bnd = boundary.encode("ascii")
+    crlf = b"\r\n"
+    safe_name = filename.replace('"', "").replace("\r", "").replace("\n", "")
+    file_disposition = (
+        f'Content-Disposition: form-data; name="files[0]"; filename="{safe_name}"'
+    )
+    parts = [
+        b"--" + bnd + crlf,
+        b'Content-Disposition: form-data; name="payload_json"' + crlf,
+        b"Content-Type: application/json" + crlf + crlf,
+        json.dumps(payload).encode("utf-8") + crlf,
+        b"--" + bnd + crlf,
+        file_disposition.encode("utf-8") + crlf,
+        f"Content-Type: {file_content_type}".encode("ascii") + crlf + crlf,
+        file_bytes,
+        crlf,
+        b"--" + bnd + b"--" + crlf,
+    ]
+    return b"".join(parts), f"multipart/form-data; boundary={boundary}"
 
 
 def _bot_token() -> str:
