@@ -23,7 +23,9 @@ from apps.accounts.permissions import (
     user_has_lab_access,
 )
 from apps.core.people import display_name
+from apps.integrations.services import resolve as discord_resolve
 
+from . import reminders_discord
 from .models import (
     ContentDeadline,
     ContentItem,
@@ -247,6 +249,48 @@ class ReminderDetailView(APIView):
             return _bad("Only a lab PI or admin can remove a lab reminder.", 403)
         sub.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class LabReminderChannelsView(APIView):
+    """List a lab's postable Discord channels for the reminder channel picker.
+
+    Manager-gated (same authority as creating a lab reminder). Returns the lab's
+    ``/setup`` announcement channel as the default so the composer can label it and
+    fall back to it when the user picks nothing (which is exactly what
+    ``send_lab_channel`` does server-side when ``channel_id_override`` is empty).
+
+    Degrades gracefully: an unlinked guild, an unset default, or a Discord API
+    hiccup all return HTTP 200 with an empty ``channels`` list, so the composer can
+    still submit a "lab default" reminder without a live channel roster.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        lab = Lab.objects.filter(slug=request.GET.get("lab", "")).first()
+        if lab is None:
+            return _bad("No such lab.", 404)
+        if not user_can_edit_lab_profile(request.user, lab):
+            return _bad("Only a lab PI or admin can view lab channels.", 403)
+
+        link = discord_resolve.get_guild_link_for_lab(lab)
+        default_id = link.announcement_channel_id if link else ""
+        channels: list[dict] = []
+        if link and link.guild_id:
+            try:
+                channels = reminders_discord.list_postable_channels(link.guild_id)
+            except Exception:  # noqa: BLE001 — a live Discord call; never 500 the picker
+                channels = []
+        default_name = next(
+            (c["name"] for c in channels if c["id"] == default_id), ""
+        )
+        return Response(
+            {
+                "channels": channels,
+                "default_channel_id": default_id,
+                "default_channel_name": default_name,
+            }
+        )
 
 
 def _bad(detail: str, code: int = status.HTTP_400_BAD_REQUEST) -> Response:

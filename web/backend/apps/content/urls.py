@@ -129,6 +129,16 @@ urlpatterns = [
         name="reminders",
     ),
     path("reminders", reminders_views.ReminderListCreateView.as_view()),
+    # Postable Discord channels for the lab reminder channel picker (manager-only).
+    path(
+        "reminders/lab-channels/",
+        reminders_views.LabReminderChannelsView.as_view(),
+        name="reminder-lab-channels",
+    ),
+    path(
+        "reminders/lab-channels",
+        reminders_views.LabReminderChannelsView.as_view(),
+    ),
     path(
         "reminders/<uuid:pk>/",
         reminders_views.ReminderDetailView.as_view(),
