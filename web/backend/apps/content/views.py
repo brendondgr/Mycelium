@@ -729,16 +729,52 @@ def _attach_search_clusters(items, user) -> None:
             item._cluster = {"id": best.id, "label": best.label}
 
 
-def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dict:
+# The per-area caps for a project's short-list digest — the condensed "Mylo's
+# picks for this project" surface (the full feeds are uncapped beyond the payload
+# backstop). Papers get the deepest slice since they are the highest-volume area.
+DIGEST_CAPS = {"papers": 10, "grants": 5, "fellowships": 5, "conferences": 5}
+
+
+def _drop_passed_conferences(scores: list[RelevanceScore], today: str) -> list:
+    """Conferences whose next deadline has not already passed (empty = keep).
+
+    A conference with a stored ``deadline_date`` strictly before today is no longer
+    actionable, so the digest drops it; an unknown/blank deadline is kept (we don't
+    hide something we can't date)."""
+    out = []
+    for s in scores:
+        deadline = s.signals.get("deadline_date") or ""
+        if not deadline or deadline >= today:
+            out.append(s)
+    return out
+
+
+def _recommendations_payload(
+    target_filter: dict,
+    *,
+    user,
+    member_ids=(),
+    project_fellowships: bool = False,
+    digest: bool = False,
+) -> dict:
     """The combined papers + grants + conferences + fellowships a lab / project matched.
 
-    ``counts`` powers the lab overview stat cards; the lists power the feeds.
-    ``interested`` maps each paper/grant/conference to the lab members who personally
-    matched it strongly (from ``member_ids``). **Fellowships** are individual by nature
-    (D-1), so they surface only as a union of member matches, named by the eligible
-    members who consented to lab-visible eligibility (see ``_lab_eligible_fellowships``)
-    — never who was ineligible (D-11). Saves remain personal, so ``saved`` reflects the
-    signed-in user regardless of whose recommendations these are.
+    ``counts`` powers the overview stat cards; the lists power the feeds.
+    ``interested`` maps each paper/grant/conference to the members who personally
+    matched it strongly (from ``member_ids``).
+
+    Fellowships differ by scope. For a **lab** they are individual by nature (D-1),
+    so they surface only as a union of member matches, named by the eligible members
+    who consented to lab-visible eligibility (``_lab_eligible_fellowships``) — never
+    who was ineligible (D-11). For a **project** (``project_fellowships=True``) they
+    are the project's own interest-matched fellowships scored under
+    ``target_project`` (no personal eligibility involved), rendered with the normal
+    fellowship card.
+
+    ``digest`` returns the condensed short list — top ``DIGEST_CAPS`` per area, with
+    passed-deadline conferences dropped — for the per-project "Mylo's picks" block.
+    ``counts`` stays the full totals so the UI can say "top 5 of N". Saves remain
+    personal, so ``saved`` reflects the signed-in user regardless of scope.
     """
     today = timezone.now().date().isoformat()
     opp_context = {
@@ -750,17 +786,45 @@ def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dic
     papers = _latest_scores(target_filter, ContentItem.Type.PAPER)
     grants = _accumulated_scores(target_filter, ContentItem.Type.GRANT)
     conferences = _accumulated_scores(target_filter, ContentItem.Type.CONFERENCE)
-    fellowships = _lab_eligible_fellowships(list(member_ids))
+    if digest:
+        conferences = _drop_passed_conferences(conferences, today)
+
+    if project_fellowships:
+        fellowship_scores = _accumulated_scores(
+            target_filter, ContentItem.Type.FELLOWSHIP
+        )
+        fellowship_count = len(fellowship_scores)
+    else:
+        fellowship_union = _lab_eligible_fellowships(list(member_ids))
+        fellowship_count = len(fellowship_union)
+
+    # Full counts (before any digest slice) so the UI can show "top N of total".
+    counts = {
+        "papers": len(papers),
+        "grants": len(grants),
+        "conferences": len(conferences),
+        "fellowships": fellowship_count,
+    }
+
+    if digest:
+        papers = papers[: DIGEST_CAPS["papers"]]
+        grants = grants[: DIGEST_CAPS["grants"]]
+        conferences = conferences[: DIGEST_CAPS["conferences"]]
+        if project_fellowships:
+            fellowship_scores = fellowship_scores[: DIGEST_CAPS["fellowships"]]
+
+    if project_fellowships:
+        fellowships_data = FellowshipSerializer(
+            fellowship_scores, many=True, context=opp_context
+        ).data
+    else:
+        fellowships_data = fellowship_union
+
     content_ids = [s.content_id for s in (*papers, *grants, *conferences)]
     return {
         "generated_at": _generated_at([*papers, *grants, *conferences]),
-        "counts": {
-            "papers": len(papers),
-            "grants": len(grants),
-            "conferences": len(conferences),
-            "fellowships": len(fellowships),
-        },
-        # Per-area today/week/month/year totals for the lab overview stats block.
+        "counts": counts,
+        # Per-area today/week/month/year totals for the overview stats block.
         "window_counts": _window_counts(target_filter, list(member_ids)),
         "papers": SuggestionSerializer(
             papers,
@@ -774,7 +838,7 @@ def _recommendations_payload(target_filter: dict, *, user, member_ids=()) -> dic
         "conferences": ConferenceSerializer(
             conferences, many=True, context=opp_context
         ).data,
-        "fellowships": fellowships,
+        "fellowships": fellowships_data,
         "interested": _interested_members(list(member_ids), content_ids),
     }
 
@@ -823,11 +887,14 @@ class ProjectRecommendationsView(APIView):
             ).values_list("user_id", flat=True)
         else:
             member_ids = project.members.values_list("id", flat=True)
+        digest = request.query_params.get("digest") in ("1", "true", "yes")
         return Response(
             _recommendations_payload(
                 {"target_project": project},
                 user=request.user,
                 member_ids=member_ids,
+                project_fellowships=True,
+                digest=digest,
             )
         )
 
