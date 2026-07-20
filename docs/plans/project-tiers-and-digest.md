@@ -1,8 +1,11 @@
 # Projects: plan-based limits, guided creation, clusters, fellowships & the short-list digest
 
-**Status:** in progress
+**Status:** implemented (Phases 1–10 complete; backend + frontend verified via
+pytest / tsc / eslint / `next build`). Phase 11 = merge to `main` + worktree cleanup.
 **Worktree:** `.claude/worktrees/project-tiers` (branch `worktree-project-tiers`)
 **Owner:** this session
+
+> **Known pre-existing failure (not from this work):** `apps/content/tests/test_high_signal.py::test_command_delivers_when_enabled` is date-sensitive — it hardcodes `TODAY=2026-07-16` but the delivery command uses the real clock, so on any date > 3 days later the fixture's freshness window has lapsed and the gate correctly drops the item. Fails on `main` too; left untouched (out of scope).
 
 ## Objective
 
