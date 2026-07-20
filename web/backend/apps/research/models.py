@@ -32,6 +32,16 @@ class ProjectQuerySet(models.QuerySet):
     explicit project members get visibility from the rank-and-file side.
     """
 
+    def active(self) -> "ProjectQuerySet":
+        """Non-archived projects — the ones that still get scored / counted.
+
+        Archiving a project keeps its row and its already-stored recommendations
+        readable but stops any new search work; it also frees a slot against the
+        owner's plan cap. Every cap count and every scoring fan-out reads through
+        here so an archived project never consumes budget.
+        """
+        return self.filter(is_archived=False)
+
     def visible_to(self, user) -> "ProjectQuerySet":
         if not getattr(user, "is_authenticated", False):
             return self.none()
@@ -117,6 +127,15 @@ class Project(models.Model):
         related_name="projects",
         blank=True,
     )
+    is_archived = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text=(
+            "An archived project keeps its stored recommendations visible but "
+            "stops getting new ones and frees a slot against the plan cap."
+        ),
+    )
+    archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

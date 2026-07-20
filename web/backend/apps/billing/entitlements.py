@@ -357,6 +357,74 @@ def within_member_cap(seat_count: int, tier: str) -> bool:
     return cap is None or seat_count <= cap
 
 
+# --------------------------------------------------------------------------- #
+# Project caps
+#
+# A project is a *scored target* — each active project runs the daily retrieve →
+# fuse → LLM-fit pipeline, so its cost scales with the active project count, not
+# the row count. The cap is therefore a compute budget: it counts **active
+# (non-archived)** projects, and archiving frees a slot. Personal caps key on the
+# user's effective tier; lab/department caps require the owning org to actually
+# carry the team / department feature, so a Free or unsubscribed org gets 0 (no
+# project creation) while an individual keeps a small personal allowance even on
+# Free. The counting + enforcement live in ``apps.research.limits`` so this module
+# stays free of a research import; here we only publish the numbers.
+# --------------------------------------------------------------------------- #
+
+PERSONAL_PROJECT_CAPS: dict[str, int] = {
+    Tier.FREE: 2,
+    Tier.SPORE: 5,
+    Tier.LAB: 5,
+    Tier.CANOPY: 5,
+}
+LAB_PROJECT_CAP = 10
+DEPARTMENT_PROJECT_CAP = 30
+
+
+def personal_project_cap(user: User) -> int:
+    """How many active personal projects a user's effective tier allows."""
+    return PERSONAL_PROJECT_CAPS.get(
+        effective_tier(user), PERSONAL_PROJECT_CAPS[Tier.FREE]
+    )
+
+
+def lab_project_cap(lab) -> int:
+    """A lab may hold projects only while it carries the team-workspace feature."""
+    return LAB_PROJECT_CAP if lab_has_feature(lab, Feature.TEAM_WORKSPACE) else 0
+
+
+def _department_subscriptions(department) -> QuerySet[Subscription]:
+    """Active, unexpired subscriptions scoped to a department."""
+    return (
+        Subscription.objects.filter(status=Subscription.Status.ACTIVE)
+        .filter(_unexpired())
+        .filter(scope_department=department)
+    )
+
+
+def department_features(department) -> frozenset[str]:
+    """The features a department is entitled to (its subscription's tier ∪ add-ons)."""
+    subs = list(_department_subscriptions(department))
+    features = set(_FREE)
+    for sub in subs:
+        features |= TIER_FEATURES.get(sub.tier, _FREE)
+    features |= addon_features_for_subscriptions(subs)
+    return frozenset(features)
+
+
+def department_has_feature(department, feature: str) -> bool:
+    return feature in department_features(department)
+
+
+def department_project_cap(department) -> int:
+    """A department may hold projects only while it carries department routing."""
+    return (
+        DEPARTMENT_PROJECT_CAP
+        if department_has_feature(department, Feature.DEPARTMENT_ROUTING)
+        else 0
+    )
+
+
 def bot_server_addon() -> AddOn | None:
     """The canonical Mylo-server add-on row (seeded by migration), if present."""
     return AddOn.objects.filter(feature=Feature.BOT_SERVER).first()
