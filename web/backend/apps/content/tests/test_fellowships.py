@@ -757,3 +757,112 @@ def test_match_fellowships_headline_reflects_strong_research_fit():
         embed_threshold=0.0,
     )
     assert out[0]["headline"] == "Strong research-fit match"
+
+
+# ---- Interest-only mode (project targets, no eligibility gate) ----------------
+
+
+def test_skip_eligibility_ranks_purely_on_embedding():
+    """A project has no eligibility; fellowships rank by the embedding cosine, and
+    an item an eligibility gate would drop (INTL-only) still surfaces on fit."""
+    intl_only = _FakeItem(
+        "intl",
+        _meta(
+            citizenship=(INTL,),  # a US-only user's eligibility gate would drop this
+            flags={"requires_us_citizenship": False, "open_to_international": True},
+        ),
+    )
+    on_topic = _FakeItem("ontopic", _meta())
+    items = [intl_only, on_topic]
+    embed_by_id = {"intl": 0.9, "ontopic": 0.5}
+
+    out = match_fellowships(
+        items,
+        None,  # no Elig — skip_eligibility mode ignores it
+        TODAY,
+        embed_by_id=embed_by_id,
+        embed_threshold=0.4,
+        skip_eligibility=True,
+    )
+    ids = [s["content_id"] for s in out]
+    # Both surface (no eligibility filter); the higher-cosine one ranks first.
+    assert ids == ["intl", "ontopic"]
+    top = out[0]
+    assert top["tier"] == ""  # no eligibility verdict at project scope
+    assert top["fit"] == 0.9  # pure embedding, not a blend
+    assert top["match_percent"] == 90
+    assert top["gates_failed"] == []
+
+
+def test_skip_eligibility_applies_embed_threshold():
+    below = _FakeItem("below", _meta())
+    above = _FakeItem("above", _meta())
+    out = match_fellowships(
+        [below, above],
+        None,
+        TODAY,
+        embed_by_id={"below": 0.2, "above": 0.7},
+        embed_threshold=0.4,
+        skip_eligibility=True,
+    )
+    assert [s["content_id"] for s in out] == ["above"]
+
+
+def test_skip_eligibility_without_embedding_surfaces_nothing():
+    """With no embedding signal a project can't rank fellowships — surface none."""
+    out = match_fellowships(
+        [_FakeItem("x", _meta())],
+        None,
+        TODAY,
+        embed_by_id=None,
+        skip_eligibility=True,
+    )
+    assert out == []
+
+
+@pytest.mark.django_db
+def test_persist_fellowships_writes_under_target_project():
+    """The generalized persist path writes a project's fellowship scores under
+    target_project (not target_user)."""
+    from apps.accounts.models import Lab
+    from apps.content.models import ContentItem, RelevanceScore
+    from apps.content.opportunities import _persist_fellowships
+    from apps.research.models import Project
+
+    lab = Lab.objects.create(name="L", slug="l-fp")
+    project = Project.objects.create(scope_lab=lab, name="P")
+    item = ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="fp1",
+        metadata=_meta(),
+    )
+    cid = str(item.id)
+    suggestion = {
+        "content_id": cid,
+        "tier": "",
+        "fit": 0.8,
+        "rule_fit": 0.0,
+        "match_percent": 80,
+        "gates_failed": [],
+        "reasons": [],
+        "headline": "Research-fit match",
+        "reason": "Strong topical alignment",
+        "source": "llm",
+        "status": "open",
+        "status_summary": "",
+        "rank": 1,
+        "embedding_match": 0.8,
+    }
+    _persist_fellowships(
+        {"target_project": project},
+        [suggestion],
+        {cid},
+        {cid: item},
+        {cid: {"is_new": True, "pinned_until": None, "first_seen": ""}},
+        today=TODAY,
+    )
+    row = RelevanceScore.objects.get(content=item, target_project=project)
+    assert row.target_user_id is None
+    assert row.signals["match_percent"] == 80
+    assert row.signals["suggested"] is True

@@ -313,6 +313,7 @@ def match_fellowships(
     max_surface: int = FELLOWSHIP_SURFACE_LIMIT,
     embed_by_id: dict[str, float] | None = None,
     embed_threshold: float = 0.0,
+    skip_eligibility: bool = False,
 ) -> list[dict]:
     """Evaluate + filter + rank fellowship ContentItems for a user.
 
@@ -352,6 +353,13 @@ def match_fellowships(
         grants/conferences matchers persist, so the serializer reads it
         unchanged.
     """
+    # Interest-only mode (project / institutional targets): a project has no
+    # citizenship or career stage, so eligibility is meaningless — rank purely on
+    # research fit (the embedding cosine). Without an embedding signal there is
+    # nothing to rank on, so we surface nothing rather than guess.
+    if skip_eligibility and embed_by_id is None:
+        return []
+
     ranked: list[tuple[float, str, str, dict]] = []
 
     for item in items:
@@ -361,28 +369,39 @@ def match_fellowships(
         if meta.get("award_class") == "grant":
             continue
 
-        ev = evaluate_eligibility(meta, elig)
         st = fellowship_status(meta, today)
-
-        # Drop hard-ineligible and closed/suspended.
-        if ev["tier"] == "not_eligible":
-            continue
+        # Drop closed/suspended regardless of mode.
         if st["status"] in ("closed", "suspended"):
             continue
 
         content_id = str(item.id)
-        rule_fit = fit(ev, st, today)
 
-        embed_match: float | None = None
-        if embed_by_id is not None:
+        if skip_eligibility:
+            # No eligibility gate; rank on the embedding cosine alone.
+            ev = {"tier": "", "gates_failed": [], "reasons": []}
+            rule_fit = 0.0
             embed_match = embed_by_id.get(content_id, 0.0)
-            # Relevance gate: eligible-but-irrelevant fellowships stop here,
-            # before they ever reach the blend or the rank.
             if embed_match < embed_threshold:
                 continue
-            blended = round(_EMBED_WEIGHT * embed_match + _RULE_WEIGHT * rule_fit, 4)
+            blended = round(embed_match, 4)
         else:
-            blended = rule_fit
+            ev = evaluate_eligibility(meta, elig)
+            # Drop hard-ineligible.
+            if ev["tier"] == "not_eligible":
+                continue
+            rule_fit = fit(ev, st, today)
+            embed_match = None
+            if embed_by_id is not None:
+                embed_match = embed_by_id.get(content_id, 0.0)
+                # Relevance gate: eligible-but-irrelevant fellowships stop here,
+                # before they ever reach the blend or the rank.
+                if embed_match < embed_threshold:
+                    continue
+                blended = round(
+                    _EMBED_WEIGHT * embed_match + _RULE_WEIGHT * rule_fit, 4
+                )
+            else:
+                blended = rule_fit
 
         # Fit threshold: trims the weakly-related tail so the feed stays "most
         # related" (0.0 keeps everything that passed the gates above).

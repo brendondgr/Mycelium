@@ -442,7 +442,7 @@ def _finalize_fellowship_match(
         # Whole-corpus runs (sign-up/refit, created_on is None) replace the feed;
         # daily new-only runs accumulate.
         _persist_fellowships(
-            job.user,
+            {"target_user": job.user},
             suggestions,
             visible_ids,
             items_by_id,
@@ -465,7 +465,7 @@ def _finalize_fellowship_match(
 
 
 def _persist_fellowships(
-    user: User,
+    persist_kwargs: dict,
     suggestions: list[dict],
     visible_ids: set[str],
     items_by_id: dict,
@@ -474,22 +474,24 @@ def _persist_fellowships(
     today: str | None,
     replace: bool = False,
 ) -> None:
-    """Upsert one RelevanceScore per eligible fellowship, with eligibility signals.
+    """Upsert one RelevanceScore per fellowship under ``persist_kwargs``'s target.
 
-    Every eligible fellowship is persisted (so the carry-forward store remembers
+    Every surfaced fellowship is persisted (so the carry-forward store remembers
     its verdict), but only those in ``visible_ids`` (cleared the match-percent
-    floor) are flagged ``suggested`` — the rest are hidden from the feed.
+    floor) are flagged ``suggested`` — the rest are hidden from the feed. The
+    target is polymorphic: ``{"target_user": user}`` for a person's eligible feed,
+    ``{"target_project": project}`` for a project's interest-matched feed.
 
-    ``replace`` (a whole-corpus sign-up/refit run) drops this user's prior fellowship
-    scores that this run did not re-evaluate — so a profile edit that changes
-    eligibility clears fellowships the user no longer qualifies for. A daily new-only
-    run leaves ``replace`` false and accumulates.
+    ``replace`` (a whole-corpus sign-up/refit run) drops the target's prior
+    fellowship scores that this run did not re-evaluate — so a profile edit that
+    changes eligibility (or a project focus edit) clears the ones it no longer
+    matches. A daily new-only run leaves ``replace`` false and accumulates.
     """
     run_at = timezone.now().isoformat()
     if replace:
         surfaced_ids = [s["content_id"] for s in suggestions]
         RelevanceScore.objects.filter(
-            target_user=user, content__type=ContentItem.Type.FELLOWSHIP
+            **persist_kwargs, content__type=ContentItem.Type.FELLOWSHIP
         ).exclude(content_id__in=surfaced_ids).delete()
     for s in suggestions:
         cid = s["content_id"]
@@ -523,7 +525,7 @@ def _persist_fellowships(
         if item:
             RelevanceScore.objects.update_or_create(
                 content=item,
-                target_user=user,
+                **persist_kwargs,
                 defaults={"score": round(s.get("fit", 0.0), 6), "signals": signals},
             )
 
@@ -788,24 +790,192 @@ def run_opportunities_for_user(
     return results
 
 
+def _target_fellowship_embed_by_id(
+    target: MatchTarget,
+    *,
+    emit: Callable[[str], None],
+    created_on: date | None = None,
+) -> dict[str, float] | None:
+    """The target's embedding match to each fellowship (interest-only ranking).
+
+    The institutional twin of :func:`_fellowship_embed_by_id`: it reuses the same
+    multi-interest search-interest builder + retrieve/fuse step grants/conferences
+    use, but reads the interests off the :class:`MatchTarget` (a project's focus)
+    rather than a user Profile. Returns ``None`` when there is nothing to rank on
+    (no declared interests, no embedder, no embedded fellowships, or retrieval
+    raised) — the caller then surfaces no project fellowships rather than guessing.
+    """
+    search_ints = opportunity_search_interests(target.interests, target.watch_topics)
+    if not search_ints:
+        return None
+    try:
+        _pairs, rows, pool = fuse_interests_pool(
+            search_ints,
+            content_type=ContentItem.Type.FELLOWSHIP,
+            surface_limit=_opportunity_max_surface(),
+            pool_per_interest=DEFAULT_POOL_PER_INTEREST,
+            beta=DEFAULT_BETA,
+            emit=emit,
+            created_on=created_on,
+            match_threshold=0.0,
+        )
+    except Exception:
+        logger.exception(
+            "fellowship embedding retrieval failed for target %s", target.key
+        )
+        return None
+    if pool == 0:
+        emit("no embedded fellowships to retrieve yet")
+        return None
+    embed_by_id: dict[str, float] = {}
+    for item, _score, extra in rows:
+        match = extra.get("embedding_match")
+        if match is not None:
+            embed_by_id[str(item.id)] = float(match)
+    return embed_by_id
+
+
+def match_fellowships_for_target(
+    target: MatchTarget,
+    *,
+    llm_limit: int = DEFAULT_LLM_LIMIT,
+    complete: Callable[[str], str | None] | None = None,
+    persist: bool = True,
+    reuse_prior: bool = True,
+    created_on: date | None = None,
+    today: str | None = None,
+    log: Callable[[str], None] | None = None,
+) -> OppRunResult:
+    """Interest-based fellowship matching for a project target (no eligibility gate).
+
+    A project has no citizenship or career stage, so its fellowships are ranked
+    purely on research fit to the project's interests — the same embedding signal
+    grants/conferences use — then the top slice gets an LLM report. Scores persist
+    under ``target.persist_kwargs`` (``target_project``). ``created_on`` ``None``
+    (sign-up/refit) replaces the feed; a run date appends the day's new arrivals.
+    """
+    key = target.key
+
+    def emit(message: str) -> None:
+        if log is not None:
+            log(f"[{key}:fellowships] {message}")
+
+    from django.utils import timezone as tz
+
+    from .fellowships import match_fellowships
+
+    today_final = today or tz.now().date().isoformat()
+    queryset = ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP)
+    if created_on is not None:
+        queryset = queryset.filter(created_at__date=created_on)
+    items = list(queryset.only("id", "metadata"))
+    if not items:
+        return OppRunResult(
+            key, "fellowships", "no_results", note="no fellowship items in DB"
+        )
+
+    embed_by_id = _target_fellowship_embed_by_id(
+        target, emit=emit, created_on=created_on
+    )
+    if not embed_by_id:
+        emit("no interest embedding signal; skipping project fellowships")
+        return OppRunResult(
+            key, "fellowships", "no_results", note="no interest signal"
+        )
+
+    ranked = match_fellowships(
+        items,
+        None,
+        today_final,
+        match_threshold=getattr(settings, "FELLOWSHIP_FIT_THRESHOLD", 0.0),
+        max_surface=_opportunity_max_surface(),
+        embed_by_id=embed_by_id,
+        embed_threshold=getattr(settings, "FELLOWSHIP_MATCH_THRESHOLD", 0.4),
+        skip_eligibility=True,
+    )
+    items_by_id = {str(item.id): item for item in items}
+    prior = (
+        load_prior_llm_verdicts(target.persist_kwargs, ContentItem.Type.FELLOWSHIP)
+        if reuse_prior
+        else {}
+    )
+    suggestions = generate_fellowship_suggestions(
+        target.interests,
+        target.profile_meta,
+        ranked,
+        items_by_id,
+        llm_limit=llm_limit,
+        complete=complete,
+        prior=prior,
+        new_ids=new_content_ids(items, today=today_final),
+    )
+    floor = _opportunity_min_match_percent()
+    visible, hidden = split_by_floor(suggestions, floor)
+    pins = compute_pins(visible, items_by_id, today=today_final)
+    new_count = sum(1 for p in pins.values() if p["is_new"])
+    llm = sum(1 for s in visible if s.get("source") == "llm")
+    emit(
+        f"scored {len(suggestions)} project fellowships "
+        f"({llm} llm / {len(visible) - llm} fallback), {new_count} new"
+    )
+    if persist:
+        visible_ids = {s["content_id"] for s in visible}
+        _persist_fellowships(
+            target.persist_kwargs,
+            suggestions,
+            visible_ids,
+            items_by_id,
+            pins,
+            today=today_final,
+            replace=created_on is None,
+        )
+    return OppRunResult(
+        key,
+        "fellowships",
+        "ok",
+        retrieved=len(items),
+        suggestions=len(visible),
+        llm=llm,
+        fallback=len(visible) - llm,
+        new=new_count,
+        hidden=len(hidden),
+    )
+
+
 def run_opportunities_for_target(
     target: MatchTarget,
     *,
     areas: tuple[str, ...] = ("grants", "conferences"),
     **kwargs,
 ) -> list[OppRunResult]:
-    """Match grants + conferences for a lab or project target.
+    """Match opportunities for a lab or project target.
 
-    Fellowships are intentionally excluded: they gate on an *individual's*
-    eligibility (citizenship, career stage, demographic restrictions), which has no
-    meaning for a lab or a project, so institutional targets match funding and
-    conferences only.
+    Grants + conferences run for any institutional target. **Fellowships** run only
+    for a **project** target, ranked on the project's research interests (no
+    eligibility gate — a project has no citizenship or career stage). A lab still
+    excludes fellowships: at lab scope they are surfaced as the union of members'
+    *personal* eligibility, not scored to the lab.
     """
-    return [
-        match_opportunities_for_target(target, area, **kwargs)
-        for area in areas
-        if area != "fellowships"
-    ]
+    results: list[OppRunResult] = []
+    for area in areas:
+        if area == "fellowships":
+            if target.kind == "project":
+                results.append(
+                    match_fellowships_for_target(
+                        target,
+                        complete=kwargs.get("complete"),
+                        persist=kwargs.get("persist", True),
+                        reuse_prior=kwargs.get("reuse_prior", True),
+                        created_on=kwargs.get("created_on"),
+                        today=kwargs.get("today"),
+                        log=kwargs.get("log"),
+                    )
+                )
+            # Labs: fellowships are the member-eligibility union, handled at read
+            # time — skip here.
+            continue
+        results.append(match_opportunities_for_target(target, area, **kwargs))
+    return results
 
 
 def run_opportunities_for_lab(lab, **kwargs) -> list[OppRunResult]:

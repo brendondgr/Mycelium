@@ -140,8 +140,13 @@ def refit_user(
     return RefitResult(username, "ok", areas=summaries)
 
 
-#: The areas an institutional refit covers (fellowships are individual-only).
+#: The areas a lab refit covers (a lab's fellowships are the member-eligibility
+#: union, surfaced at read time — never scored to the lab).
 TARGET_AREAS: tuple[str, ...] = ("papers", "grants", "conferences")
+
+#: A project refit also covers fellowships, ranked on the project's interests
+#: (no eligibility gate — a project has no citizenship or career stage).
+PROJECT_AREAS: tuple[str, ...] = ("papers", "grants", "conferences", "fellowships")
 
 
 def refit_target(
@@ -184,7 +189,7 @@ def refit_target(
                 **paper_kwargs,
             )
         )
-    opp_areas = tuple(a for a in areas if a in ("grants", "conferences"))
+    opp_areas = tuple(a for a in areas if a in ("grants", "conferences", "fellowships"))
     if opp_areas:
         for result in run_opportunities_for_target(
             target,
@@ -207,9 +212,14 @@ def refit_lab(lab, **kwargs) -> RefitResult:
 
 
 def refit_project(project, **kwargs) -> RefitResult:
-    """Re-personalize one project's recommendations over the existing store."""
+    """Re-personalize one project's recommendations over the existing store.
+
+    Covers papers, grants, conferences **and** interest-matched fellowships (a
+    project's fellowships rank on its focus, not personal eligibility).
+    """
     from .targets import target_for_project
 
+    kwargs.setdefault("areas", PROJECT_AREAS)
     return refit_target(target_for_project(project), **kwargs)
 
 
@@ -255,28 +265,31 @@ def refit_targets_batch(
     persist: bool = True,
     log: Callable[[str], None] | None = None,
 ) -> list[RefitResult]:
-    """Refit each lab, then each project, over the existing store (papers/grants/conf).
+    """Refit each lab, then each project, over the existing store.
 
     The institutional counterpart of :func:`refit_batch`: the whole-corpus *replace*
-    pass for labs and lab-scoped projects, so an existing lab's feed is re-expanded
-    to the current variable-length threshold size instead of a stale fixed slice
-    (the nightly run only *appends* new items and never re-expands). Fellowships are
-    excluded — they gate on individual eligibility. One target's failure never sinks
-    the batch. ``labs`` / ``projects`` are the model objects (e.g. from
-    :func:`apps.content.tasks.select_targets`).
+    pass for labs and lab-scoped projects, so an existing feed is re-expanded to the
+    current variable-length threshold size instead of a stale fixed slice (the
+    nightly run only *appends* new items and never re-expands). A **lab** refits
+    papers/grants/conferences (its fellowships are the member-eligibility union); a
+    **project** additionally refits interest-matched fellowships. One target's
+    failure never sinks the batch. ``labs`` / ``projects`` are the model objects
+    (e.g. from :func:`apps.content.tasks.select_targets`).
     """
     results: list[RefitResult] = []
-    units: list[tuple[str, object, Callable]] = [
-        *(("lab", lab, refit_lab) for lab in labs),
-        *(("project", project, refit_project) for project in projects),
+    # Projects get the fellowship-inclusive area set unless the caller overrode it.
+    project_areas = PROJECT_AREAS if areas is TARGET_AREAS else areas
+    units: list[tuple[str, object, Callable, Sequence[str]]] = [
+        *(("lab", lab, refit_lab, areas) for lab in labs),
+        *(("project", project, refit_project, project_areas) for project in projects),
     ]
-    for kind, obj, refit in units:
+    for kind, obj, refit, obj_areas in units:
         key = getattr(obj, "slug", None) or str(getattr(obj, "id", obj))
         try:
             results.append(
                 refit(
                     obj,
-                    areas=areas,
+                    areas=obj_areas,
                     llm_limit=llm_limit,
                     complete=complete,
                     persist=persist,
