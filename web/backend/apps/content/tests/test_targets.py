@@ -121,6 +121,71 @@ def test_target_for_project_scopes_persist_to_project():
     assert target.persist_kwargs == {"target_project": project}
 
 
+def test_project_interests_carries_v2_clusters():
+    """A project with organized clusters exposes the partition (dispatch signal)."""
+    from apps.content.clustering import cluster_interests
+
+    project = Project(
+        name="Structural ML",
+        goals={
+            "interests": {
+                "areas": ["graph neural networks", "protein folding"],
+                "keywords": [],
+                "statement": "",
+                "clusters": [
+                    {
+                        "id": "c-ml",
+                        "label": "ML",
+                        "areas": ["graph neural networks"],
+                    },
+                    {"id": "c-bio", "label": "Bio", "areas": ["protein folding"]},
+                ],
+            }
+        },
+    )
+    target = target_for_project(project)
+    clusters = cluster_interests(target.interests)
+    # Two real clusters → the recommend_for_target dispatch takes the cluster path.
+    assert [c.id for c in clusters] == ["c-ml", "c-bio"]
+    assert not any(c.is_implicit for c in clusters)
+
+
+def test_clustered_project_team_merge_keeps_partition(db):
+    """Team-signal broadening must not orphan areas outside a project's clusters."""
+    from apps.content.clustering import cluster_interests
+    from apps.content.models import ProjectProfile
+
+    lab = Lab.objects.create(name="L", slug="l-merge")
+    project = Project.objects.create(
+        scope_lab=lab,
+        name="P",
+        goals={
+            "interests": {
+                "areas": ["graph neural networks"],
+                "keywords": ["gnn"],
+                "statement": "",
+                "clusters": [
+                    {
+                        "id": "c-ml",
+                        "label": "ML",
+                        "areas": ["graph neural networks"],
+                    }
+                ],
+            }
+        },
+    )
+    ProjectProfile.objects.create(
+        project=project,
+        interests={"areas": ["unrelated topic"], "keywords": ["extra"]},
+    )
+    target = target_for_project(project)
+    # Areas stay the declared partition; keywords still broaden.
+    assert target.interests["areas"] == ["graph neural networks"]
+    assert "extra" in target.interests["keywords"]
+    clusters = cluster_interests(target.interests)
+    assert [c.id for c in clusters] == ["c-ml"]
+
+
 # -- full recommend / match over pgvector -------------------------------------
 
 

@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Lab, LabMembership
+from apps.billing.models import Subscription, Tier
 from apps.research.models import Project
 
 
@@ -13,10 +14,15 @@ def client() -> APIClient:
     return APIClient()
 
 
-def _lab_with(role: str, is_lead: bool = False) -> tuple[User, Lab]:
+def _lab_with(
+    role: str, is_lead: bool = False, *, subscribed: bool = True
+) -> tuple[User, Lab]:
     user = User.objects.create_user(username="u", password="p")
     lab = Lab.objects.create(name="Reyes Lab", slug="reyes-lab")
     LabMembership.objects.create(user=user, lab=lab, role=role, is_lead=is_lead)
+    if subscribed:
+        # Lab projects require the lab to carry an active Lab-tier plan.
+        Subscription.objects.create(tier=Tier.LAB, scope_lab=lab)
     return user, lab
 
 

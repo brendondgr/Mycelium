@@ -27,6 +27,17 @@ urlpatterns = [
         views.ProjectDetailView.as_view(),
         name="project-detail-no-slash",
     ),
+    # Archive (POST) / unarchive (DELETE) a project. Never deletes the row.
+    path(
+        "projects/<uuid:pk>/archive/",
+        views.ProjectArchiveView.as_view(),
+        name="project-archive",
+    ),
+    path(
+        "projects/<uuid:pk>/archive",
+        views.ProjectArchiveView.as_view(),
+        name="project-archive-no-slash",
+    ),
     # Self-join / leave a project; managers add another member. Both slash and
     # no-slash variants — the Next `/api` proxy strips the trailing slash and
     # Django's APPEND_SLASH cannot redirect a POST (it would 500).

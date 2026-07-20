@@ -132,9 +132,15 @@ def _merge_team_interests(project, interests: dict) -> dict:
     if not team:
         return interests
     merged = dict(interests)
-    merged["areas"] = _clean(
-        [*(interests.get("areas") or []), *(team.get("areas") or [])]
-    )[:12]
+    # When the project has organized its areas into clusters, the areas list is a
+    # partition — appending team areas outside it would orphan them from every
+    # cluster and silently drop them from cluster-scoped scoring. So keep the
+    # declared area partition authoritative and only broaden keywords; a flat
+    # (clusterless) project still broadens both as before.
+    if not interests.get("clusters"):
+        merged["areas"] = _clean(
+            [*(interests.get("areas") or []), *(team.get("areas") or [])]
+        )[:12]
     merged["keywords"] = _clean(
         [*(interests.get("keywords") or []), *(team.get("keywords") or [])]
     )[:32]
@@ -198,19 +204,26 @@ def _lab_interests(profile) -> dict:
 def project_interests(project) -> dict:
     """The project's interests contract, read from its free-form ``goals`` JSON.
 
-    A project author sets ``goals.interests`` = ``{areas, keywords, statement}``
-    explicitly (the focus surface); failing that we derive a contract from the
-    legacy goals fields so an older project still matches — ``topics`` / ``areas``
-    become the areas and ``description`` / ``goal`` becomes the statement.
+    A project author sets ``goals.interests`` = ``{areas, keywords, statement,
+    clusters?}`` explicitly (the focus surface); failing that we derive a contract
+    from the legacy goals fields so an older project still matches — ``topics`` /
+    ``areas`` become the areas and ``description`` / ``goal`` becomes the
+    statement. When the project has organized its areas into v2 ``clusters`` the
+    partition is carried through so cluster-scoped scoring lights up exactly as it
+    does for a user or lab profile (:mod:`apps.content.clustering`).
     """
     goals = project.goals if isinstance(project.goals, dict) else {}
     explicit = goals.get("interests")
     if isinstance(explicit, dict):
-        return {
+        interests = {
             "areas": _clean(explicit.get("areas")),
             "keywords": _clean(explicit.get("keywords")),
             "statement": str(explicit.get("statement") or "").strip(),
         }
+        clusters = explicit.get("clusters")
+        if clusters:
+            interests["clusters"] = clusters
+        return interests
     statement = (
         goals.get("description") or goals.get("goal") or goals.get("statement") or ""
     )
@@ -226,3 +239,23 @@ def project_watch_topics(project) -> list[str]:
     goals = project.goals if isinstance(project.goals, dict) else {}
     explicit = _clean(goals.get("watch_topics"))
     return explicit or project_interests(project)["areas"]
+
+
+#: Every recommendation area a project can run, in report order.
+PROJECT_CATEGORIES: tuple[str, ...] = ("papers", "grants", "fellowships", "conferences")
+
+
+def project_watch_categories(project) -> list[str]:
+    """Which recommendation areas a project runs (``goals.watch_categories``).
+
+    Defaults to all four when unset, so an existing project keeps its full feed.
+    An author narrows the feed (e.g. papers + grants only) and every scoring path
+    — daily fan-out, seeding, refit — reads through here to skip the rest.
+    """
+    goals = project.goals if isinstance(project.goals, dict) else {}
+    stored = goals.get("watch_categories")
+    if not isinstance(stored, list):
+        return list(PROJECT_CATEGORIES)
+    chosen = {str(c).strip().lower() for c in stored}
+    picked = [c for c in PROJECT_CATEGORIES if c in chosen]
+    return picked or list(PROJECT_CATEGORIES)

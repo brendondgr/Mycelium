@@ -2,7 +2,9 @@ import logging
 from collections import OrderedDict
 
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import ListAPIView, ListCreateAPIView
@@ -10,8 +12,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.models import Lab, LabMembership
+from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
+    user_can_edit_dept_profile,
+    user_can_edit_lab_profile,
     user_can_manage_lab,
     user_has_department_access,
     user_has_lab_access,
@@ -36,6 +40,13 @@ from apps.content.models import (
 from apps.content.team_profile import recompute_project_profile
 from apps.core.people import display_name, initials
 
+from .limits import (
+    ScopeCap,
+    department_scope_cap,
+    in_cap_ids,
+    lab_scope_cap,
+    personal_scope_cap,
+)
 from .models import Project, ProjectMember
 from .serializers import (
     ProjectCreateSerializer,
@@ -44,6 +55,45 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _over_cap_ids(projects) -> set:
+    """The ids among ``projects`` that sit beyond their owner's active plan cap.
+
+    Groups the active projects by scope owner, computes each owner's in-cap set
+    (oldest-first, :func:`in_cap_ids`), and returns the active ids that fall
+    outside it — the ones a downgrade pushed over the limit. Archived projects are
+    ignored (they already don't consume budget).
+    """
+    by_owner: dict[tuple[str, object], list] = {}
+    for project in projects:
+        if project.is_archived:
+            continue
+        if project.scope_user_id is not None:
+            key = ("scope_user", project.scope_user_id)
+        elif project.scope_lab_id is not None:
+            key = ("scope_lab", project.scope_lab_id)
+        elif project.scope_department_id is not None:
+            key = ("scope_department", project.scope_department_id)
+        else:
+            continue
+        by_owner.setdefault(key, []).append(project)
+
+    over: set = set()
+    for (field, owner_id), group in by_owner.items():
+        cap = _cap_for(field, owner_id)
+        keep = in_cap_ids(field, owner_id, cap)
+        over |= {p.id for p in group if p.id not in keep}
+    return over
+
+
+def _cap_for(scope_field: str, owner_id) -> int:
+    """The numeric active-project cap for one resolved scope owner."""
+    if scope_field == "scope_user":
+        return personal_scope_cap(User.objects.get(pk=owner_id)).cap
+    if scope_field == "scope_lab":
+        return lab_scope_cap(Lab.objects.get(pk=owner_id)).cap
+    return department_scope_cap(Department.objects.get(pk=owner_id)).cap
 
 
 def _maybe_recompute_team(project: "Project") -> None:
@@ -97,20 +147,61 @@ class ProjectListView(ListCreateAPIView):
             qs = qs.filter(scope_lab__slug=lab_slug)
         return qs
 
+    def get_serializer_context(self) -> dict:
+        context = super().get_serializer_context()
+        # Only meaningful for the read (list) side; the create serializer ignores it.
+        if self.request.method == "GET":
+            context["over_cap_ids"] = _over_cap_ids(list(self.get_queryset()))
+        return context
+
     def perform_create(self, serializer: ProjectCreateSerializer) -> None:
-        lab_slug = (serializer.validated_data.pop("lab", "") or "").strip()
+        data = serializer.validated_data
+        lab_slug = (data.pop("lab", "") or "").strip()
+        dept_slug = (data.pop("department", "") or "").strip()
+        focus = data.pop("focus", None)
         user = self.request.user
-        if lab_slug:
-            lab = get_object_or_404(Lab, slug=lab_slug)
-            if not user_can_manage_lab(user, lab):
-                raise PermissionDenied(
-                    "Only a lab owner or admin can add projects to this lab."
+
+        # Resolve the scope, check the manage permission, and enforce the plan cap
+        # atomically: the count-then-create runs under a row lock on the scope
+        # owner so two concurrent creates can't both slip past the last slot.
+        if lab_slug and dept_slug:
+            raise ValidationError("A project belongs to a lab OR a department, not both.")
+
+        with transaction.atomic():
+            if lab_slug:
+                lab = get_object_or_404(
+                    Lab.objects.select_for_update(), slug=lab_slug
                 )
-            project = serializer.save(scope_lab=lab)
-            target = {"scope": "lab", "lab_id": str(lab.id)}
-        else:
-            project = serializer.save(scope_user=user)
-            target = {"scope": "user"}
+                if not user_can_edit_lab_profile(user, lab):
+                    raise PermissionDenied(
+                        "Only a lab owner, admin, or PI can add projects to this lab."
+                    )
+                self._enforce_cap(lab_scope_cap(lab))
+                save_kwargs = {"scope_lab": lab}
+                target = {"scope": "lab", "lab_id": str(lab.id)}
+            elif dept_slug:
+                department = get_object_or_404(
+                    Department.objects.select_for_update(), pk=dept_slug
+                )
+                if not user_can_edit_dept_profile(user, department):
+                    raise PermissionDenied(
+                        "Only a department owner or admin can add projects to it."
+                    )
+                self._enforce_cap(department_scope_cap(department))
+                save_kwargs = {"scope_department": department}
+                target = {"scope": "department", "department_id": str(department.id)}
+            else:
+                User.objects.select_for_update().get(pk=user.pk)
+                self._enforce_cap(personal_scope_cap(user))
+                save_kwargs = {"scope_user": user}
+                target = {"scope": "user"}
+
+            if focus is not None:
+                from .serializers import apply_focus
+
+                data["goals"] = apply_focus(data.get("goals") or {}, focus)
+            project = serializer.save(**save_kwargs)
+
         record_audit_event(
             actor=user,
             action="project.create",
@@ -118,6 +209,40 @@ class ProjectListView(ListCreateAPIView):
             target_id=str(project.id),
             metadata={"name": project.name, **target},
         )
+        # Seed the new project's recommendations over the existing corpus (Phase 6
+        # wires the background task; a no-op stub keeps creation working until then).
+        _seed_project(project)
+
+    @staticmethod
+    def _enforce_cap(cap: ScopeCap) -> None:
+        if not cap.has_headroom:
+            raise PermissionDenied(
+                {
+                    "detail": (
+                        "You have reached your plan's project limit "
+                        f"({cap.cap}). Archive a project or upgrade to add more."
+                    ),
+                    "code": "project_cap_reached",
+                    "scope": cap.scope,
+                    "cap": cap.cap,
+                    "active": cap.active,
+                }
+            )
+
+
+def _seed_project(project: "Project") -> None:
+    """Kick off initial recommendation seeding for a just-created project.
+
+    Phase 6 replaces this with a background ``seed_project_recommendations`` task
+    (whole-corpus refit + a "researching…" flag). Kept as a best-effort no-op stub
+    now so creation is fully wired end-to-end without waiting on that phase.
+    """
+    try:
+        from apps.content.tasks import enqueue_project_seed
+
+        enqueue_project_seed(project)
+    except Exception:  # pragma: no cover - seeding is best-effort, never blocks create
+        logger.warning("project seed enqueue failed for %s", project.id, exc_info=True)
 
 
 class LabProjectsView(ListAPIView):
@@ -170,9 +295,14 @@ class ProjectDetailView(APIView):
             raise PermissionDenied("You do not have access to this project.")
         return project
 
+    def _context(self, request, project) -> dict:
+        return {"request": request, "over_cap_ids": _over_cap_ids([project])}
+
     def get(self, request: Request, pk) -> Response:
         project = self._get_visible(request, pk)
-        return Response(ProjectSerializer(project, context={"request": request}).data)
+        return Response(
+            ProjectSerializer(project, context=self._context(request, project)).data
+        )
 
     def patch(self, request: Request, pk) -> Response:
         project = self._get_visible(request, pk)
@@ -188,7 +318,112 @@ class ProjectDetailView(APIView):
             target_id=str(project.id),
             metadata={"name": project.name},
         )
-        return Response(ProjectSerializer(project, context={"request": request}).data)
+        # A focus / category edit changes what the project should match — re-seed
+        # over the existing corpus (best-effort) so the feed reflects the change.
+        if {"focus", "watch_categories"} & set(request.data):
+            _seed_project(project)
+        return Response(
+            ProjectSerializer(project, context=self._context(request, project)).data
+        )
+
+
+class ProjectArchiveView(APIView):
+    """Archive or unarchive a project (its editor only).
+
+    Archiving keeps the project and its already-stored recommendations visible but
+    drops it from every scoring path and frees a slot against the plan cap.
+    Unarchiving re-checks the cap so a team can't exceed its limit by reviving an
+    old project — they must archive another or upgrade first. A project is never
+    deleted here.
+    """
+
+    def _get_editable(self, request, pk) -> Project:
+        project = get_object_or_404(
+            Project.objects.select_related(
+                "scope_lab", "scope_department", "scope_user"
+            ),
+            pk=pk,
+        )
+        if not project.is_visible_to(request.user):
+            raise PermissionDenied("You do not have access to this project.")
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot archive this project.")
+        return project
+
+    def post(self, request: Request, pk) -> Response:
+        """Archive the project."""
+        project = self._get_editable(request, pk)
+        if not project.is_archived:
+            project.is_archived = True
+            project.archived_at = timezone.now()
+            project.save(update_fields=["is_archived", "archived_at", "updated_at"])
+            record_audit_event(
+                actor=request.user,
+                action="project.archive",
+                target_type="project",
+                target_id=str(project.id),
+                metadata={"name": project.name},
+            )
+        return Response(
+            ProjectSerializer(project, context={"request": request}).data
+        )
+
+    def delete(self, request: Request, pk) -> Response:
+        """Unarchive the project (re-checking the plan cap)."""
+        project = self._get_editable(request, pk)
+        if project.is_archived:
+            with transaction.atomic():
+                cap = _scope_cap_for_project(project, lock=True)
+                if not cap.has_headroom:
+                    raise PermissionDenied(
+                        {
+                            "detail": (
+                                "Restoring this project would exceed your plan's "
+                                f"limit ({cap.cap}). Archive another or upgrade first."
+                            ),
+                            "code": "project_cap_reached",
+                            "scope": cap.scope,
+                            "cap": cap.cap,
+                            "active": cap.active,
+                        }
+                    )
+                project.is_archived = False
+                project.archived_at = None
+                project.save(
+                    update_fields=["is_archived", "archived_at", "updated_at"]
+                )
+            record_audit_event(
+                actor=request.user,
+                action="project.unarchive",
+                target_type="project",
+                target_id=str(project.id),
+                metadata={"name": project.name},
+            )
+        return Response(
+            ProjectSerializer(project, context={"request": request}).data
+        )
+
+
+def _scope_cap_for_project(project: Project, *, lock: bool = False) -> ScopeCap:
+    """The active-project cap for whichever scope owns ``project``.
+
+    ``lock`` takes a row lock on the scope owner so an unarchive's cap check and
+    flip run atomically against concurrent creates.
+    """
+    if project.scope_user_id is not None:
+        owner = project.scope_user
+        if lock:
+            User.objects.select_for_update().get(pk=owner.pk)
+        return personal_scope_cap(owner)
+    if project.scope_lab_id is not None:
+        lab = project.scope_lab
+        if lock:
+            Lab.objects.select_for_update().get(pk=lab.pk)
+        return lab_scope_cap(lab)
+    department = project.scope_department
+    if lock:
+        Department.objects.select_for_update().get(pk=department.pk)
+    return department_scope_cap(department)
 
 
 def _user_can_join(user, project: Project) -> bool:
