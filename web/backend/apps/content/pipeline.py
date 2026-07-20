@@ -658,8 +658,17 @@ def run_daily_batch(
     path), then each lab and project (their aggregate / declared focus). A failure
     for one target is caught and logged so it never sinks the batch.
     """
+    from .targets import project_watch_categories
+
     lab_targets = [target_for_lab(lab) for lab in labs]
-    project_targets = [target_for_project(project) for project in projects]
+    # A project only gets daily paper recommendations if it opted into the papers
+    # category (default on); an off-papers project is skipped so neither its scan
+    # terms nor a paper feed are produced for it.
+    project_targets = [
+        target_for_project(project)
+        for project in projects
+        if "papers" in project_watch_categories(project)
+    ]
 
     def emit(message: str) -> None:
         if log is not None:

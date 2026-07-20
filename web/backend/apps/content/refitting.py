@@ -215,11 +215,15 @@ def refit_project(project, **kwargs) -> RefitResult:
     """Re-personalize one project's recommendations over the existing store.
 
     Covers papers, grants, conferences **and** interest-matched fellowships (a
-    project's fellowships rank on its focus, not personal eligibility).
+    project's fellowships rank on its focus, not personal eligibility), narrowed to
+    the categories the project has opted into (``goals.watch_categories``, default
+    all four) — so toggling a category off stops that feed on the next reseed.
     """
-    from .targets import target_for_project
+    from .targets import project_watch_categories, target_for_project
 
-    kwargs.setdefault("areas", PROJECT_AREAS)
+    if "areas" not in kwargs:
+        chosen = set(project_watch_categories(project))
+        kwargs["areas"] = tuple(a for a in PROJECT_AREAS if a in chosen)
     return refit_target(target_for_project(project), **kwargs)
 
 
@@ -277,25 +281,24 @@ def refit_targets_batch(
     (e.g. from :func:`apps.content.tasks.select_targets`).
     """
     results: list[RefitResult] = []
-    # Projects get the fellowship-inclusive area set unless the caller overrode it.
-    project_areas = PROJECT_AREAS if areas is TARGET_AREAS else areas
-    units: list[tuple[str, object, Callable, Sequence[str]]] = [
+    # ``None`` for a project's areas lets ``refit_project`` self-select from the
+    # project's opted-in categories (default all four, incl. fellowships); a lab
+    # uses the caller's area set. A caller that passed a non-default ``areas`` still
+    # wins for both.
+    override = None if areas is TARGET_AREAS else areas
+    units: list[tuple[str, object, Callable, Sequence[str] | None]] = [
         *(("lab", lab, refit_lab, areas) for lab in labs),
-        *(("project", project, refit_project, project_areas) for project in projects),
+        *(("project", project, refit_project, override) for project in projects),
     ]
     for kind, obj, refit, obj_areas in units:
         key = getattr(obj, "slug", None) or str(getattr(obj, "id", obj))
+        refit_kwargs = dict(
+            llm_limit=llm_limit, complete=complete, persist=persist, log=log
+        )
+        if obj_areas is not None:
+            refit_kwargs["areas"] = obj_areas
         try:
-            results.append(
-                refit(
-                    obj,
-                    areas=obj_areas,
-                    llm_limit=llm_limit,
-                    complete=complete,
-                    persist=persist,
-                    log=log,
-                )
-            )
+            results.append(refit(obj, **refit_kwargs))
         except Exception:
             logger.exception("refit failed for %s %s", kind, key)
             if log is not None:

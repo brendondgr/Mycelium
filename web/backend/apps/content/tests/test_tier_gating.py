@@ -74,6 +74,54 @@ def test_canceled_lab_drops_from_select_targets() -> None:
 
 
 @pytest.mark.django_db
+def test_archived_lab_project_excluded_from_select_targets() -> None:
+    from apps.research.models import Project
+
+    founder = User.objects.create_user(username="founder", password="p")
+    lab = create_lab_workspace(founder, "Rivera Lab").lab
+    live = Project.objects.create(scope_lab=lab, name="Live")
+    archived = Project.objects.create(scope_lab=lab, name="Archived", is_archived=True)
+
+    _labs, projects = select_targets(None)
+    assert live in projects
+    assert archived not in projects
+
+
+@pytest.mark.django_db
+def test_personal_projects_of_entitled_user_are_targets() -> None:
+    from apps.research.models import Project
+
+    spore = _spore("spore")
+    free = User.objects.create_user(username="free", password="p")
+    spore_project = Project.objects.create(scope_user=spore, name="Mine")
+    free_project = Project.objects.create(scope_user=free, name="Free")
+
+    _labs, projects = select_targets(None)
+    # A Spore user's personal project is daily-scored; a Free user's is not
+    # (Free is on-demand — seeded on create, never pushed).
+    assert spore_project in projects
+    assert free_project not in projects
+
+
+@pytest.mark.django_db
+def test_over_cap_personal_projects_excluded_after_downgrade() -> None:
+    from apps.research.models import Project
+
+    user = _spore("spore")
+    projects = [Project.objects.create(scope_user=user, name=f"P{i}") for i in range(5)]
+    # All 5 are in budget under Spore (cap 5).
+    _labs, selected = select_targets(None)
+    assert all(p in selected for p in projects)
+
+    Subscription.objects.filter(scope_user=user).update(
+        status=Subscription.Status.CANCELED
+    )
+    # Now Free — but Free personal projects are on-demand only, so none are pushed.
+    _labs, selected = select_targets(None)
+    assert all(p not in selected for p in projects)
+
+
+@pytest.mark.django_db
 def test_watch_topics_capped_on_read_after_downgrade() -> None:
     from apps.content.pipeline import _watch_topics
 
@@ -84,8 +132,9 @@ def test_watch_topics_capped_on_read_after_downgrade() -> None:
 
     sub.status = Subscription.Status.CANCELED
     sub.save(update_fields=["status"])
-    # Free cap 3 → only the first 3 honoured; stored topics untouched.
-    assert _watch_topics(user) == ["t0", "t1", "t2"]
+    # Free cap 6 (3 clusters × 2 terms) → only the first 6 honoured; stored
+    # topics untouched (no data loss on downgrade).
+    assert _watch_topics(user) == [f"t{n}" for n in range(6)]
     assert WatchPreference.objects.get(user=user).topics == [f"t{n}" for n in range(8)]
 
 

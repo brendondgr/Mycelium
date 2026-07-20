@@ -62,6 +62,36 @@ def is_paper_scan_inflight(user: User) -> bool:
         return False
 
 
+def _project_key(project_id) -> str:
+    return f"project_seed_inflight:{project_id}"
+
+
+def mark_project_seed_inflight(project_id) -> None:
+    """Flag that a project's initial recommendation seeding is running (best-effort)."""
+    ttl = getattr(settings, "PAPER_SCAN_INFLIGHT_TTL", 1800)
+    try:
+        caches[_CACHE_ALIAS].set(_project_key(project_id), "1", timeout=ttl)
+    except Exception:  # pragma: no cover - Redis down: degrade, never raise
+        logger.warning("could not set project-seed flag for %s", project_id, exc_info=True)
+
+
+def clear_project_seed_inflight(project_id) -> None:
+    """Clear the project-seed flag once seeding has landed (best-effort)."""
+    try:
+        caches[_CACHE_ALIAS].delete(_project_key(project_id))
+    except Exception:  # pragma: no cover - Redis down: degrade, never raise
+        logger.warning("could not clear project-seed flag for %s", project_id, exc_info=True)
+
+
+def is_project_seed_inflight(project_id) -> bool:
+    """Whether a project's recommendations are still being seeded (best-effort)."""
+    try:
+        return bool(caches[_CACHE_ALIAS].get(_project_key(project_id)))
+    except Exception:  # pragma: no cover - Redis down: degrade, never raise
+        logger.warning("could not read project-seed flag for %s", project_id, exc_info=True)
+        return False
+
+
 def trigger_paper_scan(user: User, *, enqueue=None) -> bool:
     """Flag ``user`` as scanning and enqueue the background scan (best-effort).
 

@@ -1175,14 +1175,23 @@ def run_daily_opportunities_batch(
                 elif job is not None:
                     llm_jobs.append(job)
 
-    # Lab + project targets: grants + conferences only (no fellowships).
-    from .targets import target_for_lab, target_for_project
+    # Lab + project targets: grants + conferences only (no fellowships here). A
+    # project only runs the areas it has opted into (``goals.watch_categories``);
+    # a lab runs them all (its own watch config gates upstream).
+    from .targets import target_for_lab, target_for_project, project_watch_categories
 
-    inst_targets = [target_for_lab(lab) for lab in labs]
-    inst_targets += [target_for_project(project) for project in projects]
     inst_areas = tuple(a for a in areas if a != "fellowships")
-    for target in inst_targets:
-        for area in inst_areas:
+    inst_units = [(target_for_lab(lab), inst_areas) for lab in labs]
+    for project in projects:
+        chosen = set(project_watch_categories(project))
+        inst_units.append(
+            (
+                target_for_project(project),
+                tuple(a for a in inst_areas if a in chosen),
+            )
+        )
+    for target, target_areas in inst_units:
+        for area in target_areas:
             try:
                 job, short = _prepare_match(
                     target,
@@ -1273,6 +1282,38 @@ def run_daily_opportunities_batch(
             results.append(
                 OppRunResult(job.username, job.area, "error", note="finalize failed")
             )
+
+    # Project fellowships (interest-matched, no eligibility gate) — appended for the
+    # day's new arrivals. Serial (the LLM slice is small; a project's new-fellowship
+    # count on any given day is tiny), keeping this out of the eligibility-coupled
+    # pool above. Labs are intentionally excluded — their fellowships are the
+    # member-eligibility union surfaced at read time.
+    if "fellowships" in areas and projects:
+        from .targets import project_watch_categories, target_for_project
+
+        for project in projects:
+            if "fellowships" not in project_watch_categories(project):
+                continue
+            target = target_for_project(project)
+            try:
+                results.append(
+                    match_fellowships_for_target(
+                        target,
+                        complete=complete,
+                        persist=persist,
+                        created_on=run_date,
+                        today=today,
+                        log=log,
+                    )
+                )
+            except Exception:
+                logger.exception(
+                    "project fellowship match failed for %s", target.key
+                )
+                results.append(
+                    OppRunResult(target.key, "fellowships", "error", note="failed")
+                )
+
     return OppBatchResult(ingest=ingest_summary, results=results)
 
 

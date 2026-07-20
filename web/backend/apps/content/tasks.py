@@ -44,18 +44,26 @@ def select_users(usernames: list[str] | None) -> list[User]:
 
 
 def select_targets(usernames: list[str] | None) -> tuple[list, list]:
-    """The labs and lab-scoped projects to also match on a full run.
+    """The labs and projects to also match on a full run.
 
-    Only labs on an **active** subscription (a lab-scoped plan, or a department plan
-    covering the lab) are scoring targets — a canceled or Free lab's projects drop
-    out. The matcher short-circuits cheaply for any target that has not declared a
-    focus, so passing all of an active lab's projects is safe. A *targeted* run
-    (``usernames`` given) stays user-scoped and returns nothing here.
+    Institutional scoring targets are:
+
+    * Labs on an **active** subscription (a lab-scoped plan, or a department plan
+      covering the lab).
+    * Those labs' projects, each department's projects, and the personal projects
+      of scheduled-eligible users — but only the **active (non-archived)** ones that
+      fit inside the owner's plan cap (oldest-first), so an archived project or one
+      pushed over the limit by a downgrade never consumes daily budget.
+
+    The matcher short-circuits cheaply for any target with no declared focus, so
+    passing a focus-less project is safe. A *targeted* run (``usernames`` given)
+    stays user-scoped and returns nothing here.
     """
     if usernames:
         return [], []
     from apps.accounts.models import Lab
     from apps.billing.models import Subscription
+    from apps.research.limits import in_cap_ids
     from apps.research.models import Project
 
     active_lab_ids = set(
@@ -73,9 +81,33 @@ def select_targets(usernames: list[str] | None) -> tuple[list, list]:
         for lab in Lab.objects.select_related("profile", "watch").order_by("id")
         if lab.id in active_lab_ids or lab.department_id in active_dept_ids
     ]
-    target_lab_ids = [lab.id for lab in labs]
+
+    # Collect the in-cap active project ids per scope owner. Each owner is only a
+    # scoring owner if it currently holds a project cap (> 0), which mirrors the
+    # creation gate exactly, so scoring and creation never disagree.
+    keep_ids: set = set()
+    for lab in labs:
+        from apps.billing.entitlements import lab_project_cap
+
+        keep_ids |= in_cap_ids("scope_lab", lab.id, lab_project_cap(lab))
+    for dept_id in active_dept_ids:
+        from apps.accounts.models import Department
+        from apps.billing.entitlements import department_project_cap
+
+        dept = Department.objects.filter(pk=dept_id).first()
+        if dept is not None:
+            keep_ids |= in_cap_ids(
+                "scope_department", dept_id, department_project_cap(dept)
+            )
+    # Personal projects of scheduled-eligible users (Spore+): Free is on-demand
+    # only, so its personal projects are seeded on create but never daily-pushed.
+    for user in select_users(None):
+        from apps.billing.entitlements import personal_project_cap
+
+        keep_ids |= in_cap_ids("scope_user", user.id, personal_project_cap(user))
+
     projects = list(
-        Project.objects.filter(scope_lab_id__in=target_lab_ids).order_by("id")
+        Project.objects.filter(id__in=keep_ids).order_by("id")
     )
     return labs, projects
 
@@ -221,6 +253,60 @@ def fanout_relevance(share_id: str) -> dict:
     if share is None:
         return {"error": "share_not_found", "share_id": str(share_id)}
     return fan_out_relevance(share, embed_missing=True)
+
+
+@shared_task(name="apps.content.seed_project_recommendations")
+def seed_project_recommendations(project_id: str) -> dict:
+    """Seed a freshly-created (or re-focused) project's recommendations.
+
+    Runs a whole-corpus :func:`apps.content.refitting.refit_project` — the same
+    replace pass sign-up uses for a user — so the project's feed is populated from
+    the existing corpus immediately (papers, grants, conferences, and
+    interest-matched fellowships), with no scan/ingest. Clears the "seeding" flag
+    when done (even on failure, so the page never wedges). Skips scoring for a
+    project that has no declared focus (nothing to match).
+    """
+    from apps.research.models import Project
+
+    from .refitting import refit_project
+    from .scan_status import clear_project_seed_inflight
+
+    project = Project.objects.filter(id=project_id).first()
+    if project is None:
+        return {"error": "project_not_found", "project_id": str(project_id)}
+    try:
+        from .targets import project_interests
+
+        if not project_interests(project)["areas"]:
+            return {"skipped": "no_focus", "project_id": str(project_id)}
+        return refit_project(project).as_dict()
+    finally:
+        clear_project_seed_inflight(project_id)
+
+
+def enqueue_project_seed(project) -> bool:
+    """Flag a project as seeding and hand the seed off to Celery (best-effort).
+
+    Mirrors :func:`apps.content.scan_status.trigger_paper_scan`: the flag lets the
+    project page show a "Mylo is researching…" state, and a failed hand-off (no
+    broker) clears it so the UI never promises a run that won't happen. A project
+    with no declared focus is not seeded (nothing to match).
+    """
+    from .scan_status import clear_project_seed_inflight, mark_project_seed_inflight
+    from .targets import project_interests
+
+    if not project_interests(project)["areas"]:
+        return False
+    mark_project_seed_inflight(project.id)
+    try:
+        seed_project_recommendations.delay(str(project.id))
+        return True
+    except Exception:
+        logger.warning(
+            "could not enqueue project seed for %s", project.id, exc_info=True
+        )
+        clear_project_seed_inflight(project.id)
+        return False
 
 
 @shared_task(name="apps.content.recompute_project_profiles")
