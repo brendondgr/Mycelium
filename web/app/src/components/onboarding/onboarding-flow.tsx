@@ -314,6 +314,17 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     setKeywords(interests.keywords ?? []);
     setSkills(interests.skills ?? []);
     setDraftSources(interests.sources ?? {});
+    // Mylo now builds theme clusters during synthesis — carry them into the
+    // organize step (clamped to the plan) so it opens pre-grouped instead of
+    // empty; this also short-circuits the step's one-time auto-propose.
+    if (interests.clusters?.length) {
+      setClusters(
+        clampClustersToCaps(interests.clusters, {
+          maxClusters: clusterCap,
+          maxTopicsPerCluster: clusterTopicCap,
+        }),
+      );
+    }
     const seed = dedupe([
       ...(interests.areas ?? []),
       ...(interests.keywords ?? []),

@@ -102,9 +102,28 @@ export type ProposeClustersInput = {
   unsorted?: string[];
 };
 
-/** The response shape for both `proposeClusters` modes. */
+/**
+ * Input to `composeClusters` (the "instruct" mode of the clusters endpoint):
+ * a free-text `instruction` plus the caller's *current* profile as context so
+ * Mylo refines rather than blindly replaces (a persisting theme keeps its id).
+ * Unlike propose/sort, this can invent concrete sub-topics — so the response's
+ * `areas` is a widened union the returned clusters partition.
+ */
+export type ComposeClustersInput = {
+  instruction: string;
+  clusters?: ClusterGroup[];
+  areas?: string[];
+  keywords?: string[];
+  statement?: string;
+  watch_topics?: string[];
+};
+
+/** The response shape for `proposeClusters` and `composeClusters`. `areas` is
+ * the union the clusters partition — unchanged for propose/sort, widened (with
+ * invented sub-topics) for compose. */
 export type ProposeClustersResult = {
   clusters: ClusterGroup[];
+  areas: string[];
   watch_topics: string[];
   source: string;
 };

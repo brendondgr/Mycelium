@@ -623,28 +623,54 @@ class ConfirmIntakeView(APIView):
 class ProposeClustersView(APIView):
     """Propose (or re-sort) interest clusters for the "Organize your interests" step.
 
-    Two modes on one POST:
+    Three modes on one POST:
+      - **Instruct** ``{instruction, clusters?, areas?, keywords?, statement?,
+        watch_topics?}`` → build theme→sub-topic clusters from a free-text
+        description, refining the caller's current clusters (ids preserved for a
+        persisting theme) — the "Build clusters with Mylo" box. May **invent**
+        concrete sub-topics, so it returns a widened ``areas`` union too.
       - **Propose** ``{areas, keywords?, statement?}`` → group the areas into named
         clusters (LLM, geometric fallback) — the intake / "organize" affordance.
       - **Sort** ``{clusters, unsorted}`` → route the ``unsorted`` new areas into the
         existing clusters (ids preserved) — the profile-edit "sort these" affordance.
 
-    Always returns ``{clusters: [{id, label, areas}], watch_topics: [...], source}``
-    where ``watch_topics`` is the per-cluster seed the caller prefills for what Mylo
+    Always returns ``{clusters: [{id, label, areas}], areas: [...],
+    watch_topics: [...], source}`` where ``areas`` is the union the clusters
+    partition (unchanged for propose/sort, widened for instruct) and
+    ``watch_topics`` is the per-cluster seed the caller prefills for what Mylo
     watches. Pure per-user; no lab scope.
     """
 
     def post(self, request: Request) -> Response:
-        from apps.billing.entitlements import topic_cap
-
+        from apps.billing.entitlements import (
+            cluster_cap,
+            cluster_topic_cap,
+            topic_cap,
+        )
         from apps.content.clustering import seed_watch_topics
 
-        from .intake.clusters import propose_clusters, sort_into_clusters
+        from .intake.clusters import (
+            compose_clusters,
+            propose_clusters,
+            sort_into_clusters,
+        )
 
         data = request.data or {}
         existing = data.get("clusters") or []
         unsorted = data.get("unsorted") or []
-        if existing and unsorted:
+        instruction = str(data.get("instruction") or "").strip()
+        if instruction:
+            clusters, source = compose_clusters(
+                instruction=instruction,
+                areas=data.get("areas") or [],
+                keywords=data.get("keywords") or [],
+                statement=str(data.get("statement") or ""),
+                existing_clusters=existing,
+                watch_topics=data.get("watch_topics") or [],
+                max_clusters=cluster_cap(request.user),
+                max_areas_per_cluster=cluster_topic_cap(request.user),
+            )
+        elif existing and unsorted:
             clusters = sort_into_clusters(existing, unsorted)
             source = "sorted"
         else:
@@ -660,7 +686,12 @@ class ProposeClustersView(APIView):
             {"areas": areas, "clusters": clusters}, cap=topic_cap(request.user)
         )
         return Response(
-            {"clusters": clusters, "watch_topics": watch_topics, "source": source}
+            {
+                "clusters": clusters,
+                "areas": areas,
+                "watch_topics": watch_topics,
+                "source": source,
+            }
         )
 
 

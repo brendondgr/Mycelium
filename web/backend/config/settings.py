@@ -245,6 +245,10 @@ LLM_REASONING = env("LLM_REASONING", default="medium")
 # How reasoning levels are sent to the server: "effort" maps to vLLM's
 # `reasoning_effort`; "thinking" toggles `chat_template_kwargs.enable_thinking`.
 LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
+# Thinking-token budget for the harder reasoning tasks (cluster composition):
+# sent as `thinking_token_budget` in the request's extra_body so the server
+# reserves room to reason before answering. Keep >= 512 (see clusters.py).
+LLM_THINKING_BUDGET = env.int("LLM_THINKING_BUDGET", default=512)
 
 # Daily-suggestion ranking (apps.content.ranking). Weight applied to a paper's
 # research-focus overlap when re-ranking retrieved papers: blended score =

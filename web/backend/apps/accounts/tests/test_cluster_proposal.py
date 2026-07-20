@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from apps.accounts.intake.clusters import (
+    compose_clusters,
     propose_clusters,
     sort_into_clusters,
 )
@@ -127,6 +128,158 @@ def test_sort_into_clusters_preserves_ids() -> None:
     assert set(by_id) == {"c-med", "c-sci"}  # ids preserved, no new clusters
     assert "medical imaging" in by_id["c-med"]["areas"]
     assert "data assimilation" in by_id["c-sci"]["areas"]
+
+
+# -- compose (theme -> sub-topic, may invent) --------------------------------
+
+
+def _compose_partition(clusters) -> None:
+    """A composed result is a valid stable-id partition of its own area union."""
+    members = [a for c in clusters for a in c["areas"]]
+    assert len(members) == len(set(members))  # no sub-topic in two clusters
+    ids = [c["id"] for c in clusters]
+    assert len(ids) == len(set(ids))
+    assert all(c["id"] and c["label"] and c["areas"] for c in clusters)
+
+
+def test_compose_builds_themes_with_subtopics() -> None:
+    # Free-text instruction -> niche themes, each with several concrete (partly
+    # invented) sub-topics — the initial-build / instruct-box reasoning.
+    def fake_complete(_prompt: str) -> str:
+        return json.dumps(
+            {
+                "clusters": [
+                    {
+                        "label": "AI & Healthcare",
+                        "areas": [
+                            "AI agents in health",
+                            "computer vision for health",
+                            "robotic surgery",
+                        ],
+                    },
+                    {
+                        "label": "Robotics",
+                        "areas": [
+                            "vision-language-action models",
+                            "robotic automation",
+                        ],
+                    },
+                ]
+            }
+        )
+
+    clusters, source = compose_clusters(
+        instruction="AI in healthcare, and robotics like VLA and surgical robots",
+        complete=fake_complete,
+    )
+    assert source == "llm"
+    _compose_partition(clusters)
+    assert {c["label"] for c in clusters} == {"AI & Healthcare", "Robotics"}
+    # Sub-topics not present in any declared-area list were still accepted.
+    union = _all_areas(clusters)
+    assert "vision-language-action models" in union
+
+
+def test_compose_preserves_existing_theme_id() -> None:
+    existing = [
+        {
+            "id": "c-aihealth",
+            "label": "AI & Healthcare",
+            "areas": ["AI agents in health"],
+        },
+    ]
+
+    def fake_complete(_prompt: str) -> str:
+        return json.dumps(
+            {
+                "clusters": [
+                    {
+                        "label": "AI & Healthcare",
+                        "areas": ["AI agents in health", "medical imaging"],
+                    },
+                    {"label": "Robotics", "areas": ["robotic surgery"]},
+                ]
+            }
+        )
+
+    clusters, _source = compose_clusters(
+        instruction="refine my interests",
+        existing_clusters=existing,
+        complete=fake_complete,
+    )
+    by_label = {c["label"]: c for c in clusters}
+    # The persisting theme keeps its original id; the new theme gets a fresh one.
+    assert by_label["AI & Healthcare"]["id"] == "c-aihealth"
+    assert by_label["Robotics"]["id"] != "c-aihealth"
+
+
+def test_compose_clamps_to_caps() -> None:
+    def fake_complete(_prompt: str) -> str:
+        return json.dumps(
+            {
+                "clusters": [
+                    {"label": f"Theme {i}", "areas": [f"a{i}", f"b{i}", f"c{i}"]}
+                    for i in range(4)
+                ]
+            }
+        )
+
+    clusters, _source = compose_clusters(
+        instruction="lots of things",
+        complete=fake_complete,
+        max_clusters=2,
+        max_areas_per_cluster=2,
+    )
+    assert len(clusters) == 2
+    assert all(len(c["areas"]) <= 2 for c in clusters)
+
+
+def test_compose_fallback_keeps_existing_when_llm_down() -> None:
+    existing = [
+        {"id": "c-med", "label": "Medical AI", "areas": ["agentic AI in healthcare"]},
+    ]
+    clusters, source = compose_clusters(
+        instruction="anything", existing_clusters=existing, complete=lambda _p: None
+    )
+    assert source == "fallback"
+    assert clusters[0]["id"] == "c-med"
+
+
+def test_compose_fallback_groups_areas_when_no_existing() -> None:
+    clusters, source = compose_clusters(
+        instruction="", areas=_AREAS, complete=lambda _p: None,
+    )
+    assert source == "fallback"
+    assert _all_areas(clusters) == set(_AREAS)  # every declared area kept
+
+
+def test_compose_empty_when_nothing_to_reason_over() -> None:
+    clusters, source = compose_clusters(complete=lambda _p: None)
+    assert clusters == []
+    assert source == "fallback"
+
+
+@pytest.mark.django_db
+def test_compose_endpoint_instruct_mode() -> None:
+    api = APIClient()
+    user = User.objects.create_user("ci", password="x")
+    api.force_authenticate(user)
+    # No LLM configured in tests, so the instruct mode degrades to grouping the
+    # supplied areas — the response shape (clusters + widened areas + seed) is
+    # what we assert.
+    resp = api.post(
+        "/api/auth/intake/clusters/",
+        {
+            "instruction": "AI for healthcare and robotics",
+            "areas": ["healthcare ML", "robotics"],
+        },
+        format="json",
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body) >= {"clusters", "areas", "watch_topics", "source"}
+    assert _all_areas(body["clusters"]) == {"healthcare ML", "robotics"}
+    assert set(body["areas"]) == {"healthcare ML", "robotics"}
 
 
 @pytest.mark.django_db

@@ -1,6 +1,7 @@
 import type {
   AuthErrorBody,
   AuthUser,
+  ComposeClustersInput,
   OnboardingMatchArea,
   OnboardingMatchResult,
   ProfileBasics,
@@ -314,8 +315,52 @@ export async function proposeClusters(
   }
   return {
     clusters: body.clusters,
+    areas: body.areas ?? body.clusters.flatMap((cluster) => cluster.areas),
     watch_topics: body.watch_topics ?? [],
     source: body.source ?? "single",
+  };
+}
+
+/**
+ * Build theme→sub-topic clusters from a free-text description (the "Build
+ * clusters with Mylo" box). The instruction plus the caller's current profile
+ * are sent to the same `intake/clusters` endpoint in its "instruct" mode; Mylo
+ * refines the current grouping (persisting themes keep their ids) and may invent
+ * concrete sub-topics, so the result's `areas` is a widened union the returned
+ * clusters partition — the caller replaces its area list with it.
+ */
+export async function composeClusters(
+  input: ComposeClustersInput,
+): Promise<ProposeClustersResult> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "intake", "clusters"),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+      },
+      body: JSON.stringify(input),
+    },
+  );
+
+  const body = await parseJson<ProposeClustersResult & Record<string, unknown>>(
+    response,
+  );
+  if (!response.ok || !body?.clusters) {
+    throw new Error(
+      firstFieldError(body) ?? "Could not build your clusters. Try again.",
+    );
+  }
+  return {
+    clusters: body.clusters,
+    areas: body.areas ?? body.clusters.flatMap((cluster) => cluster.areas),
+    watch_topics: body.watch_topics ?? [],
+    source: body.source ?? "llm",
   };
 }
 

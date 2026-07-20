@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/portal/primitives/card";
 import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
-import { proposeClusters } from "@/lib/auth-client";
+import { composeClusters, proposeClusters } from "@/lib/auth-client";
 import type { ClusterGroup } from "@/lib/auth-types";
 import { cn } from "@/lib/utils";
 
@@ -148,8 +148,10 @@ export function ClusterOrganizer({
   );
 
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"propose" | "sort" | null>(null);
+  const [busy, setBusy] = useState<"propose" | "sort" | "compose" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The free-text description driving "Build clusters with Mylo".
+  const [instruction, setInstruction] = useState("");
 
   function emit(next: ClusterGroup[]) {
     onChange(sanitizeClusters(next, areas));
@@ -338,6 +340,50 @@ export function ClusterOrganizer({
     };
   }
 
+  /** "Build clusters with Mylo": turn the free-text description into theme→
+   * sub-topic clusters. Because Mylo may invent concrete sub-topics, this
+   * rewrites the area list (to the returned union) as well as the clusters, and
+   * reseeds the watch topics. Only offered when area-editing is wired. */
+  async function handleCompose() {
+    const text = instruction.trim();
+    if (!text || !onAreasChange) {
+      return;
+    }
+    setError(null);
+    setBusy("compose");
+    try {
+      const result = await composeClusters({
+        instruction: text,
+        clusters: sanitized,
+        areas,
+        keywords,
+        statement,
+        watch_topics: [],
+      });
+      const nextClusters = sanitizeClusters(
+        clampClustersToCaps(result.clusters, {
+          maxClusters: clusterLimit,
+          maxTopicsPerCluster: perClusterLimit,
+        }),
+        result.areas,
+      );
+      // Order: hand the parent the widened areas first, then the clusters keyed
+      // to those same areas, so the partition stays consistent across the update.
+      onAreasChange(result.areas);
+      onChange(nextClusters);
+      onWatchSeed?.(result.watch_topics);
+      setInstruction("");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not build your clusters. Try again.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function handlePropose() {
     setError(null);
     setBusy("propose");
@@ -390,14 +436,62 @@ export function ClusterOrganizer({
     }
   }
 
+  // The agentic "describe it and Mylo builds it" box. Only where area-editing is
+  // wired (onboarding + profile edit) — it invents areas, so a read-only surface
+  // can't accept its output. A cluster here is a niche theme; Mylo fills each with
+  // a few concrete, searchable sub-topics.
+  const composePanel = canEditAreas ? (
+    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <label
+        htmlFor="cluster-instruction"
+        className="text-sm font-semibold text-[var(--text-primary)]"
+      >
+        Tell Mylo what you want to research
+      </label>
+      <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+        Describe your interests in your own words and Mylo builds themed clusters
+        — each a niche theme with a few specific topics it will track. For
+        example: “AI in healthcare — agents, medical imaging — and robotics like
+        VLA models and robotic surgery.”
+      </p>
+      <textarea
+        id="cluster-instruction"
+        value={instruction}
+        onChange={(event) => setInstruction(event.target.value)}
+        rows={3}
+        placeholder="e.g. I work on AI for healthcare and on robotics — surgical robots and VLA models."
+        className="mt-2 w-full resize-y rounded-lg border border-border bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus-visible:border-input focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+      />
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="text-xs text-[var(--text-muted)]">
+          {areas.length > 0
+            ? "Mylo refines your current clusters using this description."
+            : "Mylo builds your clusters from scratch."}
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleCompose}
+          disabled={busy !== null || instruction.trim() === ""}
+        >
+          {busy === "compose" ? "Building…" : "Build clusters with Mylo"}
+        </Button>
+      </div>
+    </div>
+  ) : null;
+
   if (areas.length === 0) {
     return (
-      <Card className="p-6 text-center">
-        <p className="text-sm text-[var(--text-secondary)]">
-          Add a few research areas first — Mylo can group them into clusters once
-          you have some.
-        </p>
-      </Card>
+      <div className="space-y-4">
+        {composePanel}
+        <Card className="p-6 text-center">
+          <p className="text-sm text-[var(--text-secondary)]">
+            {canEditAreas
+              ? "No research areas yet — describe your interests above and Mylo will build your clusters, or add areas manually."
+              : "Add a few research areas first — Mylo can group them into clusters once you have some."}
+          </p>
+        </Card>
+      </div>
     );
   }
 
@@ -430,6 +524,8 @@ export function ClusterOrganizer({
           {busy === "propose" ? "Organizing…" : "Organize with Mylo"}
         </Button>
       </div>
+
+      {composePanel}
 
       {showPlanLimits ? (
         <div

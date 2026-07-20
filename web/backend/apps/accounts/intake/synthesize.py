@@ -52,7 +52,50 @@ def synthesize_interests(
         fallback=lambda: _fields_from_draft(merged),
     )
     interests = _interests_from_fields(fields, merged, provenance or {})
+    _attach_clusters(interests, corpus=corpus, complete=complete)
     return merged, interests
+
+
+def _attach_clusters(
+    interests: dict[str, Any], *, corpus: str, complete: CompleteFn | None
+) -> None:
+    """Organise the just-built interests into theme→sub-topic clusters in place.
+
+    Runs the same :func:`compose_clusters` reasoning the "instruct Mylo" box uses,
+    grounded in the source corpus, so a profile Mylo builds at sign-up ships the
+    same cluster shape a user would get from describing their interests by hand.
+    The widened area list (union of the clusters' sub-topics) replaces ``areas``
+    so the contract's partition rule holds. A no-op when composition yields
+    nothing (e.g. the model is unavailable and there is nothing to group).
+    """
+    from .clusters import compose_clusters
+
+    clusters, _source = compose_clusters(
+        corpus=corpus,
+        areas=interests.get("areas", []),
+        keywords=interests.get("keywords", []),
+        statement=interests.get("statement", ""),
+        complete=complete,
+    )
+    if not clusters:
+        return
+    union = _union_areas(clusters)
+    if union:
+        interests["areas"] = union
+        interests["clusters"] = clusters
+
+
+def _union_areas(clusters: list[dict]) -> list[str]:
+    """Ordered, case-insensitively de-duplicated union of every cluster's areas."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for cluster in clusters:
+        for area in cluster.get("areas", []):
+            key = str(area).casefold()
+            if area and key not in seen:
+                seen.add(key)
+                out.append(area)
+    return out
 
 
 def build_corpus(draft: AuthorProfileDraft | None, resume_text: str) -> str:
