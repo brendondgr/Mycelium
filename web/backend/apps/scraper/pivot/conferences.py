@@ -391,12 +391,31 @@ def _needs_enrich(rec: dict) -> bool:
     return not (rec.get("scope") or rec.get("location"))
 
 
+def _retry_after_seconds(resp, attempt: int) -> float:
+    """How long to wait before retrying a throttled response.
+
+    Honors the server's ``Retry-After`` header (seconds form) when present so we
+    back off exactly as long as Pivot asks; otherwise falls back to exponential
+    backoff. This is what makes a higher enrich concurrency safe — if the server
+    starts pushing back with 429s, the workers self-throttle instead of hammering
+    it into killing the session.
+    """
+    try:
+        raw = (resp.headers or {}).get("retry-after", "").strip()
+        if raw:
+            return min(60.0, max(1.0, float(raw)))
+    except Exception:  # noqa: BLE001 - header is best-effort
+        pass
+    return min(30.0, 2.0**attempt)
+
+
 async def _fetch_one_detail(
     req, sem, rec: dict, delay: float, retries: int = 2
 ) -> dict:
     async with sem:
         last_err = ""
         for attempt in range(retries + 1):
+            throttled = False
             try:
                 resp = await req.get(rec["url"], timeout=30000)
                 if "session/login" in (resp.url or ""):
@@ -407,11 +426,17 @@ async def _fetch_one_detail(
                         await asyncio.sleep(delay)
                     return {k: data.get(k, "") for k in DETAIL_FIELDS}
                 last_err = f"HTTP {resp.status}"
+                # 429 Too Many Requests / 503 Service Unavailable → back off per
+                # the server's Retry-After (still inside the semaphore, so an
+                # overloaded server naturally throttles all workers).
+                if resp.status in (429, 503) and attempt < retries:
+                    await asyncio.sleep(_retry_after_seconds(resp, attempt))
+                    throttled = True
             except SessionExpired:
                 raise
             except Exception as e:
                 last_err = str(e).splitlines()[0][:80]
-            if attempt < retries:
+            if attempt < retries and not throttled:
                 await asyncio.sleep(1.0 * (attempt + 1))
         out = {k: "" for k in DETAIL_FIELDS}
         out["_error"] = last_err
@@ -419,19 +444,27 @@ async def _fetch_one_detail(
 
 
 async def _enrich_records(
-    records: list[dict], concurrency: int = 5, delay: float = 0.25
+    records: list[dict],
+    concurrency: int = 5,
+    delay: float = 0.25,
+    log: Callable[[str], None] | None = None,
 ) -> None:
     from playwright.async_api import async_playwright  # lazy
 
+    _log = log or (lambda _: None)
     todo = [r for r in records if _needs_enrich(r)]
     if not todo:
         return
+
+    total = len(todo)
+    done = 0
 
     async with async_playwright() as p:
         req = await p.request.new_context(storage_state=str(STATE_PATH))
         sem = asyncio.Semaphore(concurrency)
 
         async def worker(rec: dict) -> None:
+            nonlocal done
             fields = await _fetch_one_detail(req, sem, rec, delay)
             fields.pop("_error", None)
             # Keep row-supplied fallback fields if detail page returned empty.
@@ -439,6 +472,11 @@ async def _enrich_records(
                 if not fields.get(k) and rec.get(k):
                     fields.pop(k, None)
             rec.update(fields)
+            done += 1
+            # Progress heartbeat every 100 (and on the final record) so the
+            # otherwise-silent enrich phase shows it is still working.
+            if done % 100 == 0 or done == total:
+                _log(f"  conferences enriched {done}/{total}")
 
         tasks = [asyncio.create_task(worker(r)) for r in todo]
         try:
@@ -486,7 +524,7 @@ def scrape_conferences(
     rows: int = 100,
     max_pages: int = 60,
     list_concurrency: int = 5,
-    enrich_concurrency: int = 5,
+    enrich_concurrency: int = 15,
     delay: float = 0.25,
     enrich: bool = True,
     log: Callable[[str], None] | None = None,
@@ -558,7 +596,9 @@ def scrape_conferences(
     if enrich and records:
         _log(f"  enriching {len(records)} conferences…")
         asyncio.run(
-            _enrich_records(records, concurrency=enrich_concurrency, delay=delay)
+            _enrich_records(
+                records, concurrency=enrich_concurrency, delay=delay, log=_log
+            )
         )
 
     return records
