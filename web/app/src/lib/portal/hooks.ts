@@ -39,6 +39,7 @@ import {
   fetchProfile,
   fetchProjectCollection,
   fetchProjectCollections,
+  fetchProjectDigest,
   fetchProjectFeed,
   fetchProjectRecommendations,
   fetchProjects,
@@ -50,6 +51,7 @@ import {
   actOnNotification,
   addProjectMember,
   addToCollection,
+  archiveProject,
   createCollection,
   createLab,
   createProject,
@@ -71,17 +73,21 @@ import {
   saveOpportunity,
   shareToProject,
   synthesizeLabProfile,
+  unarchiveProject,
   unsaveOpportunity,
   updateAdminUser,
   updateCollection,
   updateLabProfile,
   updateLabWatch,
+  updateProjectCategories,
+  updateProjectFocus,
   uploadLabLogo,
 } from "@/lib/portal/mutations";
 import {
   PERSONAL_SLUG,
   type AdminUsersQuery,
   type AdminUserUpdate,
+  type BriefingCategory,
   type InvitationAction,
   type SearchSort,
 } from "@/lib/portal/types";
@@ -447,11 +453,88 @@ export function useRespondInvitation() {
 export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; labSlug?: string }) =>
-      createProject(input.name, input.labSlug),
+    mutationFn: (input: Parameters<typeof createProject>[0]) =>
+      createProject(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
       queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
+    },
+  });
+}
+
+/** Archive a project (owner or lab manager only); refreshes the project lists
+ * so it moves into the Archived section and frees a cap slot. */
+export function useArchiveProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => archiveProject(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
+    },
+  });
+}
+
+/** Restore an archived project; may reject with `ProjectCapReachedError` if
+ * the owning scope is at its plan's limit. Refreshes the project lists. */
+export function useUnarchiveProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unarchiveProject(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
+    },
+  });
+}
+
+/** One project's matched papers/grants/fellowships/conferences, capped to
+ * Mylo's digest slice ("Mylo's picks for this project"). */
+export function useProjectDigest(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "project-digest", id ?? "none"],
+    queryFn: () => fetchProjectDigest(id as string),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+}
+
+/** Update which categories Mylo tracks for a project; refreshes its
+ * recommendations (both the full list and the digest) and the project lists. */
+export function useUpdateProjectCategories() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, categories }: { id: string; categories: BriefingCategory[] }) =>
+      updateProjectCategories(id, categories),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-recommendations", variables.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-digest", variables.id],
+      });
+    },
+  });
+}
+
+/** Update a project's research focus; refreshes its recommendations once
+ * Mylo's background re-seed lands. */
+export function useUpdateProjectFocus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; focus: Parameters<typeof updateProjectFocus>[1] }) =>
+      updateProjectFocus(input.id, input.focus),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-recommendations", variables.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-digest", variables.id],
+      });
     },
   });
 }

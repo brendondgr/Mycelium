@@ -23,6 +23,7 @@ import type {
   NotificationFeed,
   OpportunityFeed,
   Project,
+  ProjectRecommendations,
   LabReminderChannels,
   ProfileData,
   ProjectFeed,
@@ -260,13 +261,30 @@ export async function fetchLabRecommendations(
   );
 }
 
-/** One project's matched papers, grants, and conferences (its declared focus). */
+/** One project's matched papers, grants, fellowships, and conferences (its
+ * declared focus) — the full, uncapped lists. */
 export async function fetchProjectRecommendations(
   id: string,
-): Promise<TargetRecommendations> {
-  return getJson<TargetRecommendations>(
+): Promise<ProjectRecommendations> {
+  return getJson<ProjectRecommendations>(
     buildApiUrl(getPublicApiBase(), "projects", id, "recommendations"),
     "Could not load the project's recommendations.",
+  );
+}
+
+/**
+ * "Mylo's picks" for a project — the same recommendations, capped to the
+ * digest slice (top 10 papers / 5 grants / 5 fellowships / 5 conferences,
+ * passed-deadline conferences dropped). `counts` still reflects the full
+ * totals, so the UI can show "top 5 of N".
+ */
+export async function fetchProjectDigest(
+  id: string,
+): Promise<ProjectRecommendations> {
+  const base = buildApiUrl(getPublicApiBase(), "projects", id, "recommendations");
+  return getJson<ProjectRecommendations>(
+    `${base}?digest=1`,
+    "Could not load Mylo's picks for this project.",
   );
 }
 

@@ -1,6 +1,6 @@
 /** Shapes returned by the workspace read endpoints (see docs/api-contract.md). */
 
-import type { ResearchInterests, WatchCadence } from "@/lib/auth-types";
+import type { ClusterGroup, ResearchInterests, WatchCadence } from "@/lib/auth-types";
 
 export type LabRole = "owner" | "admin" | "member" | "viewer";
 
@@ -65,6 +65,23 @@ export type ProjectFocus = {
   keywords: string[];
   statement: string;
   watch_topics: string[];
+  /** Interest-cluster grouping (theme label + concrete sub-topic areas) — the
+   * same v2 partition shape a profile or lab declares. Empty on a project that
+   * hasn't been given a clustered focus. */
+  clusters: ClusterGroup[];
+};
+
+/**
+ * The write shape for a project's `focus` (create body, or PATCH `focus`).
+ * `clusters`/`watch_topics` are optional — omitting them leaves that part of
+ * the stored focus untouched (PATCH) or simply unset (create).
+ */
+export type ProjectFocusInput = {
+  areas: string[];
+  keywords: string[];
+  statement: string;
+  clusters?: ClusterGroup[];
+  watch_topics?: string[];
 };
 
 export type Project = {
@@ -76,13 +93,34 @@ export type Project = {
   /** Optional display hints read from `goals`; null when the author set none. */
   status: string | null;
   progress: number | null;
-  /** Normalized research focus (areas/keywords/statement/watch topics). */
+  /** Normalized research focus (areas/keywords/statement/watch topics/clusters). */
   focus: ProjectFocus;
+  /** Which of papers/grants/fellowships/conferences Mylo tracks for this project. */
+  watch_categories: BriefingCategory[];
   member_count: number;
   /** Whether the signed-in user belongs to this project. */
   is_member: boolean;
+  /** Archived projects keep their stored recommendations but stop new search
+   * work and free a slot against the owner's plan cap. Never deleted. */
+  is_archived: boolean;
+  /** True when a plan downgrade pushed this (active) project past its owner's
+   * cap — Mylo pauses new recommendations for it until it's archived or the
+   * plan is upgraded. Always false once archived. */
+  is_over_cap: boolean;
   members: ProjectMember[];
   updated_at: string;
+};
+
+/**
+ * The 403 body a project-cap violation returns — creating beyond the plan's
+ * limit, or restoring an archived project that would exceed it.
+ */
+export type ProjectCapErrorBody = {
+  detail: string;
+  code: "project_cap_reached";
+  scope: ProjectScope;
+  cap: number;
+  active: number;
 };
 
 /** The caller's own research profile (from `/api/auth/profile/me/`). */
@@ -379,6 +417,19 @@ export type TargetRecommendations = {
   conferences: ConferenceOpportunity[];
   fellowships: LabFellowship[];
   interested: Record<string, InterestedMember[]>;
+};
+
+/**
+ * A project's combined recommendations (from
+ * `/api/projects/<id>/recommendations/`, optionally `?digest=1` for the
+ * capped picks — top 10 papers / 5 grants / 5 fellowships / 5 conferences,
+ * passed-deadline conferences dropped). Same shape as `TargetRecommendations`
+ * except `fellowships`: unlike a lab (a member-eligibility union), a project's
+ * fellowships are its own interest-matched opportunity cards — the same shape
+ * the personal/lab Fellowships page renders.
+ */
+export type ProjectRecommendations = Omit<TargetRecommendations, "fellowships"> & {
+  fellowships: FellowshipOpportunity[];
 };
 
 /**

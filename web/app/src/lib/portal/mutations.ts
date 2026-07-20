@@ -5,6 +5,7 @@ import { ensureCsrfCookie, readCsrfToken } from "@/lib/auth-client";
 import type {
   AdminUserDetail,
   AdminUserUpdate,
+  BriefingCategory,
   CollectionBrief,
   CollectionDetail,
   DiscordCodeResponse,
@@ -14,6 +15,9 @@ import type {
   InvitationAction,
   LabProfileData,
   MyLab,
+  Project,
+  ProjectCapErrorBody,
+  ProjectFocusInput,
   Reminder,
   ReminderInput,
   SavedDeadline,
@@ -44,8 +48,38 @@ function firstError(body: Record<string, unknown> | null): string | null {
   return null;
 }
 
+/**
+ * Thrown when a project create or unarchive 403s because the owning scope
+ * (personal/lab/department) is at its plan's project cap. Carries the
+ * structured fields the backend sends alongside `detail`, so a caller can show
+ * the exact limit ("archive one of your 5 projects or upgrade") instead of a
+ * generic error string.
+ */
+export class ProjectCapReachedError extends Error {
+  readonly code = "project_cap_reached" as const;
+  readonly scope: ProjectCapErrorBody["scope"];
+  readonly cap: number;
+  readonly active: number;
+
+  constructor(body: ProjectCapErrorBody) {
+    super(body.detail);
+    this.name = "ProjectCapReachedError";
+    this.scope = body.scope;
+    this.cap = body.cap;
+    this.active = body.active;
+  }
+}
+
+function isProjectCapError(body: unknown): body is ProjectCapErrorBody {
+  return (
+    !!body &&
+    typeof body === "object" &&
+    (body as Record<string, unknown>).code === "project_cap_reached"
+  );
+}
+
 async function sendJson<T>(
-  method: "POST" | "PATCH",
+  method: "POST" | "PATCH" | "DELETE",
   url: string,
   body: unknown,
   fallbackMessage: string,
@@ -71,6 +105,9 @@ async function sendJson<T>(
   }
 
   if (!response.ok) {
+    if (isProjectCapError(parsed)) {
+      throw new ProjectCapReachedError(parsed);
+    }
     throw new Error(firstError(parsed) ?? fallbackMessage);
   }
   return parsed as T;
@@ -113,16 +150,82 @@ export function respondToInvitation(
   );
 }
 
-/** Create a project scoped to a lab (slug) or personally (no slug). */
-export function createProject(
-  name: string,
-  labSlug?: string,
-): Promise<{ id: string; name: string }> {
-  return sendJson(
+/**
+ * Create a project scoped to a lab (slug), a department (id), or personally
+ * (neither) — mutually exclusive, matching the backend. An optional `focus`
+ * (areas/keywords/statement/clusters/watch_topics) seeds Mylo's first pass at
+ * this project's recommendations. Returns the full created `Project`; on a
+ * plan-cap violation the backend 403s with `{code: "project_cap_reached", ...}`,
+ * surfaced here as a `ProjectCapReachedError`.
+ */
+export function createProject(input: {
+  name: string;
+  labSlug?: string;
+  departmentId?: string;
+  focus?: ProjectFocusInput;
+}): Promise<Project> {
+  const body: Record<string, unknown> = { name: input.name };
+  if (input.labSlug) body.lab = input.labSlug;
+  if (input.departmentId) body.department = input.departmentId;
+  if (input.focus) body.focus = input.focus;
+  return sendJson<Project>(
     "POST",
     buildApiUrl(getPublicApiBase(), "projects"),
-    labSlug ? { name, lab: labSlug } : { name },
+    body,
     "Could not create the project.",
+  );
+}
+
+/** Archive a project — keeps its stored recommendations but stops new search
+ * work and frees a slot against the owner's plan cap. Never deletes it. */
+export function archiveProject(id: string): Promise<Project> {
+  return sendJson<Project>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "archive"),
+    undefined,
+    "Could not archive the project.",
+  );
+}
+
+/**
+ * Restore an archived project. Re-checks the owning scope's plan cap; if
+ * restoring would exceed it, the backend 403s with `{code:
+ * "project_cap_reached", ...}`, surfaced here as a `ProjectCapReachedError`.
+ */
+export function unarchiveProject(id: string): Promise<Project> {
+  return sendJson<Project>(
+    "DELETE",
+    buildApiUrl(getPublicApiBase(), "projects", id, "archive"),
+    undefined,
+    "Could not unarchive the project.",
+  );
+}
+
+/** Update which of papers/grants/fellowships/conferences Mylo tracks for a
+ * project (owner or lab manager only). */
+export function updateProjectCategories(
+  id: string,
+  categories: BriefingCategory[],
+): Promise<Project> {
+  return sendJson<Project>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "projects", id),
+    { watch_categories: categories },
+    "Could not update this project's watch settings.",
+  );
+}
+
+/** Update a project's research focus (owner or lab manager only) — re-seeds
+ * Mylo's recommendations for it in the background. */
+export function updateProjectFocus(
+  id: string,
+  focus: ProjectFocusInput,
+): Promise<Project> {
+  return sendJson<Project>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "projects", id),
+    { focus },
+    "Could not update this project's focus.",
   );
 }
 

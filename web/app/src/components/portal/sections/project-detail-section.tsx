@@ -7,13 +7,17 @@ import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
 import {
+  BankIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   CloseIcon,
+  ConferenceIcon,
+  DocumentIcon,
   EditIcon,
   LinkIcon,
   ListIcon,
   PlusIcon,
+  SparkleIcon,
   SporeNode,
   TargetIcon,
   ThumbsDownIcon,
@@ -24,29 +28,54 @@ import {
   displayStatus,
   statusPillTone,
 } from "@/components/portal/project-status";
+import { ConferenceCard } from "@/components/portal/sections/conferences-section";
+import { FellowshipRow } from "@/components/portal/sections/fellowships-section";
+import { GrantRow } from "@/components/portal/sections/opportunities-section";
+import { SuggestionCard } from "@/components/portal/sections/suggestion-card";
 import {
   useAddToCollection,
+  useArchiveProject,
   useCreateCollection,
   useIngestProjectLink,
   useProjectCollection,
   useProjectCollections,
+  useProjectDigest,
   useProjectFeed,
   useProjectRecommendations,
   useRemoveFromCollection,
   useShareToProject,
+  useUnarchiveProject,
   useUpdateCollection,
+  useUpdateProjectCategories,
 } from "@/lib/portal/hooks";
-import { markProjectItemSeen, recordProjectEvent } from "@/lib/portal/mutations";
+import {
+  markProjectItemSeen,
+  ProjectCapReachedError,
+  recordProjectEvent,
+} from "@/lib/portal/mutations";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 import type {
+  BriefingCategory,
   CollectionBrief,
+  ConferenceOpportunity,
+  FellowshipOpportunity,
+  GrantOpportunity,
   InterestedMember,
+  MyLab,
+  Project,
   ProjectFeedItem,
   ProjectMember,
+  ProjectRecommendations,
   Suggestion,
-  TargetRecommendations,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
+
+/** A member with owner/admin/PI rights may edit a lab-scoped project — mirrors
+ * the backend's edit-permission check (owner/admin/PI, same as `canManageLab`
+ * elsewhere). A personal project's only ever visible to its own owner. */
+function canManageLab(lab: MyLab): boolean {
+  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
+}
 
 /** Shared input style for the small inline forms on this page. */
 const INPUT =
@@ -56,7 +85,7 @@ const INPUT =
 type MiniRec = { key: string; area: string; title: string; match: number | null; url: string };
 
 /** Top few recommendations across areas for the sidebar "Recommended by Mylo" card. */
-function topRecommendations(rec: TargetRecommendations): MiniRec[] {
+function topRecommendations(rec: ProjectRecommendations): MiniRec[] {
   const out: MiniRec[] = [];
   for (const p of rec.papers.slice(0, 3)) {
     out.push({ key: `p-${p.content_id}`, area: "Paper", title: p.title, match: p.match_percent, url: p.url });
@@ -90,13 +119,14 @@ function relativeTime(isoString: string): string {
 }
 
 export function ProjectDetailSection() {
-  const { projects, activeProjectId, openProjectsList } = usePortal();
+  const { projects, activeProjectId, openProjectsList, currentLab } = usePortal();
 
   const project = projects.find((p) => p.id === activeProjectId);
   // Hooks must run every render (before the early return), so each takes the id
   // optionally and stays disabled until a project is selected.
   const recQuery = useProjectRecommendations(project?.id);
   const feedQuery = useProjectFeed(project?.id);
+  const digestQuery = useProjectDigest(project?.id);
 
   const backButton = (
     <button
@@ -141,6 +171,13 @@ export function ProjectDetailSection() {
   // (scope "user") is only ever visible to its owner and carries no member row,
   // so its owner collaborates too — matching the backend participant gate.
   const canCollaborate = project.is_member || project.scope === "user";
+  // Editing (focus/watch categories/archive) is narrower than collaborating:
+  // the backend allows only the personal owner, or a lab's owner/admin/PI. A
+  // lab project is normally only opened while that lab is the active
+  // workspace, so its manager rights come from the current lab scope.
+  const canEditProject =
+    project.scope === "user" ||
+    (project.scope === "lab" && currentLab !== null && canManageLab(currentLab));
 
   return (
     <div>
@@ -276,6 +313,9 @@ export function ProjectDetailSection() {
             )}
           </Card>
 
+          {/* Mylo's picks — the capped digest across all four areas */}
+          <ProjectDigestCard digestQuery={digestQuery} />
+
           {/* Collections — shared reading lists the team curates together */}
           <CollectionsCard
             projectId={project.id}
@@ -382,9 +422,244 @@ export function ProjectDetailSection() {
               <span>Linked to: {goalLabel ?? "—"}</span>
             </div>
           </Card>
+
+          {/* Settings — watch categories + archive, editors only */}
+          {canEditProject ? <ProjectSettingsCard project={project} /> : null}
         </div>
       </div>
     </div>
+  );
+}
+
+/** The four categories Mylo can track for a project, with the icon used for
+ * each area elsewhere in the portal (nav, stat cards). */
+const WATCH_CATEGORY_OPTIONS: {
+  key: BriefingCategory;
+  label: string;
+  icon: React.ReactNode;
+}[] = [
+  { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },
+  { key: "grants", label: "Grants", icon: <BankIcon size={15} /> },
+  { key: "fellowships", label: "Fellowships", icon: <SparkleIcon size={15} /> },
+  { key: "conferences", label: "Conferences", icon: <ConferenceIcon size={15} /> },
+];
+
+/**
+ * Editor-only settings: which categories Mylo tracks for this project (a
+ * toggle per category, saved immediately) and an archive/unarchive control.
+ * Only rendered for the project's owner or lab manager — never a plain
+ * collaborator, matching the backend's edit gate.
+ */
+function ProjectSettingsCard({ project }: { project: Project }) {
+  const updateCategories = useUpdateProjectCategories();
+  const archive = useArchiveProject();
+  const unarchive = useUnarchiveProject();
+  const [archiveError, setArchiveError] = React.useState<string | null>(null);
+
+  const toggleCategory = (key: BriefingCategory) => {
+    if (updateCategories.isPending) {
+      return;
+    }
+    const next = project.watch_categories.includes(key)
+      ? project.watch_categories.filter((c) => c !== key)
+      : [...project.watch_categories, key];
+    updateCategories.mutate({ id: project.id, categories: next });
+  };
+
+  const handleArchiveToggle = () => {
+    setArchiveError(null);
+    if (project.is_archived) {
+      unarchive.mutate(project.id, {
+        onError: (err) => {
+          setArchiveError(
+            err instanceof ProjectCapReachedError
+              ? `Restoring this project would exceed your plan's limit of ${err.cap} projects — archive another first, or upgrade.`
+              : (err as Error).message,
+          );
+        },
+      });
+    } else {
+      archive.mutate(project.id, {
+        onError: (err) => setArchiveError((err as Error).message),
+      });
+    }
+  };
+
+  return (
+    <Card className="p-[22px]">
+      <h2 className="mb-[3px] text-[15px] font-semibold text-[var(--text-primary)]">
+        Mylo settings
+      </h2>
+      <p className="mb-[14px] text-[12.5px] text-[var(--text-muted)]">
+        Choose which areas Mylo tracks for this project.
+      </p>
+
+      <div className="flex flex-col gap-2">
+        {WATCH_CATEGORY_OPTIONS.map((option) => {
+          const on = project.watch_categories.includes(option.key);
+          return (
+            <div
+              key={option.key}
+              className="flex items-center justify-between gap-3 rounded-lg bg-surface-alt px-3 py-2.5"
+            >
+              <span className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-primary)]">
+                {option.icon}
+                {option.label}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={on}
+                aria-label={option.label}
+                onClick={() => toggleCategory(option.key)}
+                disabled={updateCategories.isPending}
+                className={cn(
+                  "relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60",
+                  on ? "bg-primary" : "bg-border",
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all",
+                    on ? "left-[22px]" : "left-0.5",
+                  )}
+                />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      {updateCategories.isError ? (
+        <p className="mt-2 text-[11.5px] text-clay" role="alert">
+          Couldn&apos;t update — try again.
+        </p>
+      ) : null}
+
+      <div className="mt-4 border-t border-[var(--divider)] pt-4">
+        <button
+          type="button"
+          onClick={handleArchiveToggle}
+          disabled={archive.isPending || unarchive.isPending}
+          className="w-full rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt disabled:opacity-50"
+        >
+          {project.is_archived
+            ? unarchive.isPending
+              ? "Restoring…"
+              : "Unarchive project"
+            : archive.isPending
+              ? "Archiving…"
+              : "Archive project"}
+        </button>
+        {archiveError ? (
+          <p className="mt-2 text-[11.5px] text-clay" role="alert">
+            {archiveError}
+          </p>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+/** One group of digest picks ("Papers", "Grants", …) — hidden when empty. */
+function DigestGroup<T extends { content_id: string }>({
+  title,
+  items,
+  render,
+}: {
+  title: string;
+  items: T[];
+  render: (item: T) => React.ReactNode;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+  return (
+    <div>
+      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+        {title} <span className="text-[var(--text-muted)]">({items.length})</span>
+      </p>
+      <div className="space-y-3">{items.map(render)}</div>
+    </div>
+  );
+}
+
+/**
+ * "Mylo's picks for this project" — the capped digest (top 10 papers / 5
+ * grants / 5 fellowships / 5 conferences) reusing each area's own feed card so
+ * a project's picks read exactly like the personal/lab pages, complete with
+ * match percent and Mylo's reason.
+ */
+function ProjectDigestCard({
+  digestQuery,
+}: {
+  digestQuery: ReturnType<typeof useProjectDigest>;
+}) {
+  const digest = digestQuery.data;
+  const papers: Suggestion[] = digest?.papers ?? [];
+  const grants: GrantOpportunity[] = digest?.grants ?? [];
+  const fellowships: FellowshipOpportunity[] = digest?.fellowships ?? [];
+  const conferences: ConferenceOpportunity[] = digest?.conferences ?? [];
+  const total = papers.length + grants.length + fellowships.length + conferences.length;
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b border-[var(--divider)] px-5 pb-[14px] pt-[18px]">
+        <div className="flex items-center gap-2">
+          <SporeNode size={16} className="text-primary" />
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            Mylo&apos;s picks for this project
+          </h2>
+        </div>
+        <p className="mt-[3px] text-[12.5px] text-[var(--text-muted)]">
+          The best-matching papers, grants, fellowships, and conferences for
+          this project&apos;s focus.
+        </p>
+      </div>
+
+      {digestQuery.isLoading ? (
+        <div className="space-y-3 p-5">
+          <div className="h-24 animate-pulse rounded-xl bg-surface-alt" />
+          <div className="h-24 animate-pulse rounded-xl bg-surface-alt" />
+        </div>
+      ) : digestQuery.isError ? (
+        <div className="py-8 text-center">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+            Couldn&apos;t load Mylo&apos;s picks for this project.
+          </p>
+        </div>
+      ) : total === 0 ? (
+        <div className="py-8 text-center">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+            Mylo is still gathering picks for this project.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6 p-5">
+          <DigestGroup
+            title="Papers"
+            items={papers}
+            render={(paper) => (
+              <SuggestionCard key={paper.content_id} suggestion={paper} />
+            )}
+          />
+          <DigestGroup
+            title="Grants"
+            items={grants}
+            render={(grant) => <GrantRow key={grant.content_id} grant={grant} />}
+          />
+          <DigestGroup
+            title="Fellowships"
+            items={fellowships}
+            render={(item) => <FellowshipRow key={item.content_id} item={item} />}
+          />
+          <DigestGroup
+            title="Conferences"
+            items={conferences}
+            render={(conf) => <ConferenceCard key={conf.content_id} conf={conf} />}
+          />
+        </div>
+      )}
+    </Card>
   );
 }
 
