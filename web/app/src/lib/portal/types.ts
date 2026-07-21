@@ -837,6 +837,19 @@ export const FEATURE = {
 } as const;
 
 /** GET /billing/me → the signed-in user's resolved entitlements (read-time gate). */
+/** One plan active on the account — the personal plan or a lab/department seat. */
+export type PlanSummary = {
+  scope_type: "personal" | "lab" | "department";
+  /** Lab slug or department id, for linking to management; null for personal. */
+  scope_slug: string | null;
+  scope_name: string;
+  tier: "free" | "spore" | "lab" | "canopy";
+  status: string;
+  seat_status: string | null;
+  payer_type: string | null;
+  current_period_end: string | null;
+};
+
 export type Entitlements = {
   tier: "free" | "spore" | "lab" | "canopy";
   features: string[];
@@ -849,6 +862,46 @@ export type Entitlements = {
   seat_count: number;
   pi_cap: number | null;
   addons: string[];
+  /** Every subscription active on the account (account visibility). */
+  plans: PlanSummary[];
+};
+
+/** A lab or department plan's seat-priced state (cents; nothing is charged). */
+export type OrgBilling = {
+  scope_type: "lab" | "department";
+  scope_slug: string | null;
+  scope_name: string;
+  tier: "lab" | "canopy" | null;
+  status: string | null;
+  is_active: boolean;
+  seat_count: number;
+  seat_price_cents: number;
+  recurring_monthly_cents: number;
+  add_member_proration_cents: number;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  activated_at: string | null;
+  can_manage: boolean;
+};
+
+/** A row in a department's effective-membership roster. */
+export type DeptMemberRow = {
+  username: string;
+  name: string;
+  initials: string;
+  email: string;
+  role: LabRole;
+  source: "direct" | "lab";
+  lab: string | null;
+  seat_status: string | null;
+};
+
+/** A lab under a department (department labs card). */
+export type DeptLabRow = {
+  slug: string;
+  name: string;
+  member_count: number;
+  has_logo: boolean;
 };
 
 // -- Admin dashboard (staff/superuser only, GET/PATCH /api/admin/users) --------

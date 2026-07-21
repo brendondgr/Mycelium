@@ -1,4 +1,4 @@
-"""Seat integrity (P0): membership grants a seat; removal revokes, never deletes."""
+"""Seat integrity (P0): membership grants a seat; removal defers, never deletes."""
 
 import pytest
 from django.contrib.auth.models import User
@@ -6,6 +6,7 @@ from django.core.management import call_command
 
 from apps.accounts.models import Lab, LabInvitation, LabMembership
 from apps.accounts.services import accept_invitation
+from apps.billing import period
 from apps.billing.entitlements import Feature, effective_tier, has_feature
 from apps.billing.models import Seat, Tier
 from apps.billing.seats import (
@@ -13,14 +14,19 @@ from apps.billing.seats import (
     grant_seat_for_lab_member,
     revoke_seat_for_lab_member,
 )
-from apps.billing.services import create_lab_workspace
+from apps.billing.services import activate_lab_subscription, create_lab_workspace
 
 
 @pytest.fixture
 def paying_lab(db: None) -> tuple[User, Lab]:
-    """A lab on an active LAB subscription, with its founder already seated."""
+    """A lab on an ACTIVE LAB subscription, with its founder already seated.
+
+    Labs are provisioned INACTIVE (decision L1), so the fixture activates the plan —
+    which opens the billing period and seats the founder ACTIVE.
+    """
     founder = User.objects.create_user(username="founder", password="p")
     result = create_lab_workspace(founder, "Rivera Lab")
+    activate_lab_subscription(result.lab)
     return founder, result.lab
 
 
@@ -47,16 +53,25 @@ def test_invited_lab_member_resolves_to_lab_tier(paying_lab) -> None:
 
 
 @pytest.mark.django_db
-def test_seat_revoked_not_deleted_on_membership_removal(paying_lab) -> None:
+def test_membership_removal_defers_to_period_end_then_tick_revokes(paying_lab) -> None:
+    """Removal keeps access until period end (L3), then the tick revokes — no delete."""
     founder, lab = paying_lab
     member = User.objects.create_user(username="member", password="p")
     grant_seat_for_lab_member(member, lab)
     assert effective_tier(member) == Tier.LAB
+    sub = lab.subscriptions.get()
 
     revoke_seat_for_lab_member(member, lab)
 
-    # The seat row survives (audit trail) — status flipped, not deleted.
+    # Deferred: the seat is still ACTIVE (access retained) with a removal cutoff.
     seat = Seat.objects.get(subscription__scope_lab=lab, member=member)
+    assert seat.status == Seat.Status.ACTIVE
+    assert seat.ends_at == sub.current_period_end
+    assert effective_tier(member) == Tier.LAB
+
+    # The tick at period end flips it to REVOKED (row survives) and access ends.
+    period.end_lapsed_seats(now=sub.current_period_end)
+    seat.refresh_from_db()
     assert seat.status == Seat.Status.REVOKED
     assert effective_tier(member) == Tier.FREE
 
@@ -104,11 +119,33 @@ def test_free_lab_membership_grants_no_seat(db: None) -> None:
 
 
 @pytest.mark.django_db
-def test_reactivating_revoked_seat_restores_tier(paying_lab) -> None:
+def test_re_adding_before_period_end_clears_removal(paying_lab) -> None:
+    """Re-adding a member scheduled for removal un-schedules it (clears ends_at)."""
+    founder, lab = paying_lab
+    member = User.objects.create_user(username="member", password="p")
+    grant_seat_for_lab_member(member, lab)
+    revoke_seat_for_lab_member(member, lab)  # deferred removal
+    seat = Seat.objects.get(subscription__scope_lab=lab, member=member)
+    assert seat.ends_at is not None
+
+    grant_seat_for_lab_member(member, lab)  # changed their mind
+
+    seat.refresh_from_db()
+    assert seat.status == Seat.Status.ACTIVE
+    assert seat.ends_at is None
+    assert Seat.objects.filter(subscription__scope_lab=lab, member=member).count() == 1
+    assert effective_tier(member) == Tier.LAB
+
+
+@pytest.mark.django_db
+def test_reactivating_a_revoked_seat_restores_tier(paying_lab) -> None:
+    """A fully REVOKED seat (past the tick) can be re-granted on the same row."""
     founder, lab = paying_lab
     member = User.objects.create_user(username="member", password="p")
     grant_seat_for_lab_member(member, lab)
     revoke_seat_for_lab_member(member, lab)
+    sub = lab.subscriptions.get()
+    period.end_lapsed_seats(now=sub.current_period_end)  # actually revoke
     assert effective_tier(member) == Tier.FREE
 
     grant_seat_for_lab_member(member, lab)  # re-activate the same row

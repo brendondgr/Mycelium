@@ -14,6 +14,7 @@ import {
   MembersCard,
   ProjectsCard,
 } from "@/components/portal/sections/labs-section";
+import { LabPlanCard } from "@/components/portal/sections/org-plan-card";
 import { labLogoUrl } from "@/lib/portal/client";
 import { useDeleteLabLogo, useUploadLabLogo } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
@@ -66,6 +67,7 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
         {/* Left rail — setup cards */}
         <div className="space-y-4">
           <LabLogoCard lab={lab} />
+          <LabPlanCard slug={lab.slug} />
           <InviteCard lab={lab} />
           <DiscordSyncCard lab={lab} />
           <ProjectsCard lab={lab} canManage />

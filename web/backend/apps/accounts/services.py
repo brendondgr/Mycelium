@@ -185,7 +185,8 @@ def accept_invitation(invitation: LabInvitation, user: User) -> LabMembership:
     member ceiling refuses the whole acceptance rather than silently over-seating.
     """
     # Imported here (not at module top) to avoid an accounts↔billing import cycle.
-    from apps.billing.seats import SeatCeilingExceeded, grant_seat_for_lab_member
+    from apps.billing.seat_sync import sync_lab_member
+    from apps.billing.seats import SeatCeilingExceeded
 
     membership, _ = LabMembership.objects.get_or_create(
         lab=invitation.lab,
@@ -193,7 +194,9 @@ def accept_invitation(invitation: LabInvitation, user: User) -> LabMembership:
         defaults={"role": invitation.role},
     )
     try:
-        grant_seat_for_lab_member(user, invitation.lab)
+        # Seats on the correct paying scope: the lab's plan, or its department's plan
+        # when the lab belongs to an active department (decision B2 / rule 2).
+        sync_lab_member(user, invitation.lab)
     except SeatCeilingExceeded as exc:
         raise ValidationError({"detail": [str(exc)]}) from exc
     _close_invitation(
@@ -255,3 +258,298 @@ def claim_pending_invitations(user: User) -> int:
         invite.save(update_fields=["invitee"])
         claimed += 1
     return claimed
+
+
+# -- Lab & department membership management (seat-synced) ----------------------
+#
+# Every mutation routes through the billing ``seat_sync`` service so a member's
+# entitlement tracks their membership (rules 1 & 2). Removal is deferred: the seat
+# stays ACTIVE (billed + entitled) until the billing tick revokes it at period end,
+# and a member who is still *effective* through another lab/direct membership keeps
+# their seat. Memberships are never re-parented silently — billing follows structure.
+
+
+def add_lab_member(
+    lab: Lab,
+    user: User,
+    *,
+    role: str = LabMembership.Role.MEMBER,
+    actor: User | None = None,
+) -> LabMembership:
+    """Add an existing user to a lab and seat them on the paying scope (rules 1/2)."""
+    from apps.billing.seat_sync import sync_lab_member
+    from apps.billing.seats import SeatCeilingExceeded
+
+    if role not in dict(LabMembership.Role.choices):
+        role = LabMembership.Role.MEMBER
+    with transaction.atomic():
+        membership, _ = LabMembership.objects.get_or_create(
+            lab=lab, user=user, defaults={"role": role}
+        )
+        try:
+            sync_lab_member(user, lab)
+        except SeatCeilingExceeded as exc:
+            raise ValidationError({"detail": [str(exc)]}) from exc
+        record_audit_event(
+            actor=actor or user,
+            action="lab.member.add",
+            target_type="lab",
+            target_id=str(lab.id),
+            metadata={"user_id": user.id, "role": role},
+        )
+    return membership
+
+
+def set_lab_member_role(
+    lab: Lab, user: User, role: str, *, actor: User | None = None
+) -> LabMembership:
+    """Change a lab member's permission role (owner/admin/member/viewer)."""
+    if role not in dict(LabMembership.Role.choices):
+        raise ValidationError({"role": ["Unknown role."]})
+    membership = LabMembership.objects.filter(lab=lab, user=user).first()
+    if membership is None:
+        raise ValidationError({"detail": ["That user is not a member of this lab."]})
+    membership.role = role
+    membership.save(update_fields=["role"])
+    record_audit_event(
+        actor=actor,
+        action="lab.member.role",
+        target_type="lab",
+        target_id=str(lab.id),
+        metadata={"user_id": user.id, "role": role},
+    )
+    return membership
+
+
+def remove_lab_member(lab: Lab, user: User, *, actor: User | None = None) -> None:
+    """Remove a lab member; defer their seat unless they remain effective (L3)."""
+    from apps.billing.seat_sync import paying_scope_for_lab
+    from apps.billing.seats import schedule_seat_removal
+
+    with transaction.atomic():
+        kind, subscription = paying_scope_for_lab(lab)
+        LabMembership.objects.filter(lab=lab, user=user).delete()
+        if subscription is not None:
+            # A department-paid member who is still effective (another lab under the
+            # department, or a direct dept membership) keeps their seat.
+            if kind == "department":
+                if user.id not in effective_member_ids(lab.department):
+                    schedule_seat_removal(subscription, user)
+            else:
+                schedule_seat_removal(subscription, user)
+        record_audit_event(
+            actor=actor,
+            action="lab.member.remove",
+            target_type="lab",
+            target_id=str(lab.id),
+            metadata={"user_id": user.id},
+        )
+
+
+def add_dept_member(
+    department: Department,
+    user: User,
+    *,
+    role: str = DeptMembership.Role.MEMBER,
+    actor: User | None = None,
+) -> DeptMembership:
+    """Add a direct department member and seat them on the department plan (rule 2)."""
+    from apps.billing.seat_sync import sync_dept_member
+
+    if role not in dict(DeptMembership.Role.choices):
+        role = DeptMembership.Role.MEMBER
+    with transaction.atomic():
+        membership, _ = DeptMembership.objects.get_or_create(
+            department=department, user=user, defaults={"role": role}
+        )
+        sync_dept_member(user, department)
+        record_audit_event(
+            actor=actor or user,
+            action="dept.member.add",
+            target_type="department",
+            target_id=str(department.id),
+            metadata={"user_id": user.id, "role": role},
+        )
+    return membership
+
+
+def remove_dept_member(
+    department: Department, user: User, *, actor: User | None = None
+) -> None:
+    """Remove a direct dept member; defer their seat unless still effective (L3)."""
+    from apps.billing.seats import (
+        _active_subscription_for_department,
+        schedule_seat_removal,
+    )
+
+    with transaction.atomic():
+        DeptMembership.objects.filter(department=department, user=user).delete()
+        if user.id not in effective_member_ids(department):
+            schedule_seat_removal(
+                _active_subscription_for_department(department), user
+            )
+        record_audit_event(
+            actor=actor,
+            action="dept.member.remove",
+            target_type="department",
+            target_id=str(department.id),
+            metadata={"user_id": user.id},
+        )
+
+
+def attach_existing_lab_to_department(
+    department: Department, lab: Lab, *, actor: User | None = None
+) -> Lab:
+    """Attach an unowned lab to a department, re-seating its members (B2)."""
+    from apps.billing.services import attach_lab_to_department
+
+    if lab.department_id and lab.department_id != department.id:
+        raise ValidationError({"detail": ["That lab already belongs to a department."]})
+    with transaction.atomic():
+        attach_lab_to_department(lab, department)
+        record_audit_event(
+            actor=actor,
+            action="dept.lab.attach",
+            target_type="department",
+            target_id=str(department.id),
+            metadata={"lab_id": str(lab.id)},
+        )
+    return lab
+
+
+def create_lab_in_department(
+    department: Department, name: str, owner: User, *, actor: User | None = None
+) -> Lab:
+    """Create a new lab under a department (owner is its PI), re-seating on the plan."""
+    from apps.billing.services import attach_lab_to_department, create_lab_workspace
+
+    with transaction.atomic():
+        result = create_lab_workspace(owner, name)
+        attach_lab_to_department(result.lab, department)
+        record_audit_event(
+            actor=actor,
+            action="dept.lab.create",
+            target_type="department",
+            target_id=str(department.id),
+            metadata={"lab_id": str(result.lab.id), "name": name},
+        )
+    return result.lab
+
+
+def detach_lab_from_department(
+    department: Department, lab: Lab, *, actor: User | None = None
+) -> Lab:
+    """Detach a lab from a dept; defer the dept seats of members it alone covered."""
+    from apps.billing.seats import (
+        _active_subscription_for_department,
+        schedule_seat_removal,
+    )
+
+    if lab.department_id != department.id:
+        raise ValidationError({"detail": ["That lab is not in this department."]})
+    with transaction.atomic():
+        lab.department = None
+        lab.save(update_fields=["department", "updated_at"])
+        dept_sub = _active_subscription_for_department(department)
+        if dept_sub is not None:
+            remaining = effective_member_ids(department)  # recomputed after detach
+            for membership in LabMembership.objects.filter(lab=lab).select_related(
+                "user"
+            ):
+                if membership.user_id not in remaining:
+                    schedule_seat_removal(dept_sub, membership.user)
+        record_audit_event(
+            actor=actor,
+            action="dept.lab.detach",
+            target_type="department",
+            target_id=str(department.id),
+            metadata={"lab_id": str(lab.id)},
+        )
+    return lab
+
+
+def cancel_invitation(
+    invitation: LabInvitation, *, actor: User | None = None
+) -> LabInvitation:
+    """Withdraw a pending invitation the manager sent (the unused CANCELLED status)."""
+    if invitation.status != LabInvitation.Status.PENDING:
+        raise ValidationError({"detail": ["That invitation is no longer pending."]})
+    invitation.status = LabInvitation.Status.CANCELLED
+    invitation.responded_at = timezone.now()
+    invitation.save(update_fields=["status", "responded_at"])
+    record_audit_event(
+        actor=actor,
+        action="lab.invitation.cancel",
+        target_type="lab_invitation",
+        target_id=str(invitation.id),
+        metadata={"lab_id": str(invitation.lab_id)},
+    )
+    return invitation
+
+
+def department_members_payload(department: Department) -> list[dict]:
+    """The department's effective-membership roster with role, source, and seat state.
+
+    Direct department members are listed first, then members who belong only through a
+    lab under the department. ``seat_status`` reflects each person's seat on the active
+    department plan (``None`` while the plan is inactive).
+    """
+    from apps.billing.models import Seat
+    from apps.billing.seats import _active_subscription_for_department
+    from apps.core.people import display_name, initials
+
+    sub = _active_subscription_for_department(department)
+    seat_status: dict[int, str] = {}
+    if sub is not None:
+        seat_status = dict(
+            Seat.objects.filter(subscription=sub).values_list("member_id", "status")
+        )
+
+    rows: dict[int, dict] = {}
+    for membership in DeptMembership.objects.filter(
+        department=department
+    ).select_related("user"):
+        rows[membership.user_id] = {
+            "username": membership.user.username,
+            "name": display_name(membership.user),
+            "initials": initials(membership.user),
+            "email": membership.user.email,
+            "role": membership.role,
+            "source": "direct",
+            "lab": None,
+            "seat_status": seat_status.get(membership.user_id),
+        }
+    for lm in LabMembership.objects.filter(
+        lab__department=department
+    ).select_related("user", "lab"):
+        if lm.user_id in rows:
+            continue
+        rows[lm.user_id] = {
+            "username": lm.user.username,
+            "name": display_name(lm.user),
+            "initials": initials(lm.user),
+            "email": lm.user.email,
+            "role": lm.role,
+            "source": "lab",
+            "lab": lm.lab.name,
+            "seat_status": seat_status.get(lm.user_id),
+        }
+    return sorted(
+        rows.values(), key=lambda r: (r["source"] != "direct", r["name"].lower())
+    )
+
+
+def department_labs_payload(department: Department) -> list[dict]:
+    """The labs under a department with their member counts (for the labs card)."""
+    from django.db.models import Count
+
+    labs = department.labs.annotate(n=Count("memberships")).order_by("name")
+    return [
+        {
+            "slug": lab.slug,
+            "name": lab.name,
+            "member_count": lab.n,
+            "has_logo": lab.has_logo,
+        }
+        for lab in labs
+    ]

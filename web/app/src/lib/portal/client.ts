@@ -9,11 +9,14 @@ import type {
   ConferenceOpportunity,
   DailyBriefing,
   DailyReport,
+  DeptLabRow,
+  DeptMemberRow,
   DiscordGuildStatus,
   DiscordStartResponse,
   DiscordStatus,
   Entitlements,
   FellowshipOpportunity,
+  OrgBilling,
   GrantOpportunity,
   LabMember,
   LabProfileData,
@@ -380,6 +383,38 @@ export async function fetchEntitlements(): Promise<Entitlements> {
   return getJson<Entitlements>(
     buildApiUrl(getPublicApiBase(), "billing", "me"),
     "Could not load your plan details.",
+  );
+}
+
+/** A lab's seat-priced plan state (any member reads; managers can activate). */
+export async function fetchLabBilling(slug: string): Promise<OrgBilling> {
+  return getJson<OrgBilling>(
+    buildApiUrl(getPublicApiBase(), "labs", slug, "billing"),
+    "Could not load the lab plan.",
+  );
+}
+
+/** A department's seat-priced plan state. */
+export async function fetchDeptBilling(id: string): Promise<OrgBilling> {
+  return getJson<OrgBilling>(
+    buildApiUrl(getPublicApiBase(), "departments", id, "billing"),
+    "Could not load the department plan.",
+  );
+}
+
+/** A department's effective-membership roster (direct members + lab members). */
+export async function fetchDeptMembers(id: string): Promise<DeptMemberRow[]> {
+  return getJson<DeptMemberRow[]>(
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "members"),
+    "Could not load the department members.",
+  );
+}
+
+/** The labs under a department. */
+export async function fetchDeptLabs(id: string): Promise<DeptLabRow[]> {
+  return getJson<DeptLabRow[]>(
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "labs"),
+    "Could not load the department's labs.",
   );
 }
 

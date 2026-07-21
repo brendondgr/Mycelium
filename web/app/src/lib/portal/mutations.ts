@@ -8,6 +8,7 @@ import type {
   BriefingCategory,
   CollectionBrief,
   CollectionDetail,
+  DeptLabRow,
   DiscordCodeResponse,
   DiscordLabCodeResponse,
   DiscordStatus,
@@ -15,6 +16,7 @@ import type {
   InvitationAction,
   LabProfileData,
   MyLab,
+  OrgBilling,
   Project,
   ProjectCapErrorBody,
   ProjectFocusInput,
@@ -134,6 +136,130 @@ export function inviteToLab(
     buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "invitations"),
     { identifier, role },
     "Could not send the invitation.",
+  );
+}
+
+/** Withdraw a pending invitation a manager sent. */
+export function cancelInvitation(slug: string, id: string): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(
+      getPublicApiBase(), "auth", "labs", slug, "invitations", id, "cancel",
+    ),
+    undefined,
+    "Could not cancel the invitation.",
+  );
+}
+
+/** Add an existing user to a lab directly (managers). */
+export function addLabMember(
+  slug: string,
+  username: string,
+  role = "member",
+): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "members"),
+    { username, role },
+    "Could not add that member.",
+  );
+}
+
+/** Change a lab member's role (managers). */
+export function setLabMemberRole(
+  slug: string,
+  username: string,
+  role: string,
+): Promise<unknown> {
+  return sendJson(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "members", username),
+    { role },
+    "Could not change the member's role.",
+  );
+}
+
+/** Remove a lab member (their seat defers to period end). */
+export function removeLabMember(slug: string, username: string): Promise<unknown> {
+  return sendJson(
+    "DELETE",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "members", username),
+    undefined,
+    "Could not remove that member.",
+  );
+}
+
+/** Activate a lab's (inactive) plan — opens the billing period and seats members. */
+export function activateLabBilling(slug: string): Promise<OrgBilling> {
+  return sendJson<OrgBilling>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "labs", slug, "billing", "activate"),
+    undefined,
+    "Could not activate the plan.",
+  );
+}
+
+/** Add a direct department member (managers). */
+export function addDeptMember(
+  id: string,
+  username: string,
+  role = "member",
+): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "members"),
+    { username, role },
+    "Could not add that member.",
+  );
+}
+
+/** Remove a direct department member (their seat defers to period end). */
+export function removeDeptMember(id: string, username: string): Promise<unknown> {
+  return sendJson(
+    "DELETE",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "members", username),
+    undefined,
+    "Could not remove that member.",
+  );
+}
+
+/** Attach an existing (unowned) lab to a department by slug (managers). */
+export function attachLabToDept(id: string, slug: string): Promise<DeptLabRow[]> {
+  return sendJson<DeptLabRow[]>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "labs"),
+    { slug },
+    "Could not attach that lab.",
+  );
+}
+
+/** Create a new lab under a department (managers). */
+export function createLabInDept(id: string, name: string): Promise<DeptLabRow[]> {
+  return sendJson<DeptLabRow[]>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "labs"),
+    { name },
+    "Could not create the lab.",
+  );
+}
+
+/** Detach a lab from a department (managers). */
+export function detachLabFromDept(id: string, slug: string): Promise<unknown> {
+  return sendJson(
+    "DELETE",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "labs", slug),
+    undefined,
+    "Could not detach that lab.",
+  );
+}
+
+/** Activate a department's (inactive) plan — seats the effective membership. */
+export function activateDeptBilling(id: string): Promise<OrgBilling> {
+  return sendJson<OrgBilling>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "departments", id, "billing", "activate"),
+    undefined,
+    "Could not activate the plan.",
   );
 }
 

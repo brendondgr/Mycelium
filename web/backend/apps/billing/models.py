@@ -29,6 +29,10 @@ class Subscription(models.Model):
     """
 
     class Status(models.TextChoices):
+        # The created state for an org (lab/department) plan: the structure exists
+        # but the paid plan grants nothing until an explicit activation step. Personal
+        # plans skip this — they are created ACTIVE (Free is the ACTIVE baseline).
+        INACTIVE = "inactive", "Inactive"
         ACTIVE = "active", "Active"
         PAST_DUE = "past_due", "Past due"
         CANCELED = "canceled", "Canceled"
@@ -71,6 +75,30 @@ class Subscription(models.Model):
         null=True,
         blank=True,
         help_text="When the plan stops granting entitlements; null = no expiry.",
+    )
+    # Billing lifecycle (lab/department plans). An org plan is created INACTIVE and
+    # carries no period until a PI/head activates it; activation stamps ``activated_at``
+    # and opens the first ``[current_period_start, current_period_end)`` window. The
+    # period is date-granular (monthly), which is all seat-based proration needs.
+    activated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this plan was first activated; null while inactive.",
+    )
+    current_period_start = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Start of the current billing period; set on activation.",
+    )
+    current_period_end = models.DateField(
+        null=True,
+        blank=True,
+        help_text="End (exclusive) of the current billing period.",
+    )
+    billing_interval = models.CharField(
+        max_length=20,
+        default="monthly",
+        help_text="Billing cadence; monthly for now.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -162,6 +190,15 @@ class Seat(models.Model):
         choices=Status.choices,
         default=Status.ACTIVE,
     )
+    # Scheduled access/billing cutoff for a *deferred* removal. When a member is
+    # removed mid-cycle the seat stays ACTIVE (entitled + billed) until this date,
+    # then a billing tick flips it to REVOKED — "keep access until end of the current
+    # period, no refund" (decision L3). Null = no scheduled removal.
+    ends_at = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Deferred-removal cutoff; seat stays ACTIVE until a tick revokes it.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -196,6 +233,39 @@ class Seat(models.Model):
 
     def __str__(self) -> str:
         return f"{self.member} seat ({self.payer_type}-paid, {self.status})"
+
+
+class SeatEvent(models.Model):
+    """Append-only billing-math ledger for one seat lifecycle change (decision B6).
+
+    Records every add / activation / removal / expiry with the date it takes effect
+    and the prorated amount attributed to it for the current period. This is the audit
+    trail behind seat-based billing and the seam a future payment processor would read;
+    it is never charged here and never mutated after write. Cents are informational,
+    mirroring :class:`AddOn.price_cents`.
+    """
+
+    class Kind(models.TextChoices):
+        ADDED = "added", "Added"
+        ACTIVATED = "activated", "Activated"
+        REMOVED = "removed", "Removed"
+        EXPIRED = "expired", "Expired"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    seat = models.ForeignKey(Seat, on_delete=models.CASCADE, related_name="events")
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    effective_date = models.DateField()
+    prorated_cents = models.PositiveIntegerField(
+        default=0,
+        help_text="Amount attributed to this event this period (never charged).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.kind} {self.seat_id} @ {self.effective_date}"
 
 
 class AddOn(models.Model):

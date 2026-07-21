@@ -61,3 +61,13 @@ def user_can_edit_dept_profile(user: UserOrAnon, department: Department) -> bool
         department=department,
         role__in=[DeptMembership.Role.OWNER, DeptMembership.Role.ADMIN],
     ).exists()
+
+
+def user_can_manage_department(user: UserOrAnon, department: Department) -> bool:
+    """Manage a department's members, labs, and subscription: owner or admin only.
+
+    Same authority as editing the department profile — the head (owner) plus any
+    ``DeptMembership`` with an OWNER/ADMIN role — surfaced under a management-intent
+    name so the member/lab/billing endpoints read clearly.
+    """
+    return user_can_edit_dept_profile(user, department)
