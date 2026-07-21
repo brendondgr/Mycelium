@@ -156,7 +156,8 @@ function DeptMembersCard({
 
 function DeptLabsCard({ deptId, canManage }: { deptId: string; canManage: boolean }) {
   const { data, isLoading, isError } = useDeptLabs(deptId);
-  const { attachLab, createLab, detachLab } = useDeptManagement(deptId);
+  const { attachLab, createLab, detachLab, setLabInclusion } =
+    useDeptManagement(deptId);
   const [name, setName] = React.useState("");
   const [slug, setSlug] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -243,17 +244,43 @@ function DeptLabsCard({ deptId, canManage }: { deptId: string; canManage: boolea
                 </span>
                 <span className="block text-xs text-[var(--text-muted)]">
                   {lab.member_count} member{lab.member_count === 1 ? "" : "s"}
+                  {lab.included_in_plan ? (
+                    <span className="ml-2 rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.04em] text-[var(--text-secondary)]">
+                      In plan
+                    </span>
+                  ) : null}
                 </span>
               </div>
               {canManage ? (
-                <button
-                  type="button"
-                  className={GHOST_BUTTON}
-                  onClick={() => detachLab.mutate(lab.slug)}
-                  disabled={detachLab.isPending}
-                >
-                  Detach
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className={GHOST_BUTTON}
+                    onClick={() => {
+                      setError(null);
+                      setLabInclusion.mutate(
+                        { slug: lab.slug, included: !lab.included_in_plan },
+                        { onError },
+                      );
+                    }}
+                    disabled={setLabInclusion.isPending}
+                    title={
+                      lab.included_in_plan
+                        ? "Stop the department paying for this lab's members"
+                        : "Cover this lab's members on the department plan"
+                    }
+                  >
+                    {lab.included_in_plan ? "Remove from plan" : "Include in plan"}
+                  </button>
+                  <button
+                    type="button"
+                    className={GHOST_BUTTON}
+                    onClick={() => detachLab.mutate(lab.slug)}
+                    disabled={detachLab.isPending}
+                  >
+                    Detach
+                  </button>
+                </div>
               ) : null}
             </li>
           ))}

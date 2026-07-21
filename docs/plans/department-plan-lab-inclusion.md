@@ -1,7 +1,9 @@
 # Department plan: per-lab inclusion (opt-in)
 
-**Status:** in progress
+**Status:** implemented (backend + frontend, verified via pytest / tsc / eslint / `next build`). Merge to `main` + worktree cleanup follows.
 **Worktree:** `.claude/worktrees/dept-plan-inclusion` (branch `worktree-dept-plan-inclusion`, based on `main`/`6e5e221`)
+
+> **Note on exclude semantics:** excluding a lab schedules its members' department seat to end (deferred, L3 — still ACTIVE + billed through the period, no credit) and does **not** re-seat them lab-paid inline (that would double-bill during the deferral window). The lab-paid fallback is picked up by the normal seat sync once the dept seat lapses — identical to detaching a lab.
 
 ## Objective
 

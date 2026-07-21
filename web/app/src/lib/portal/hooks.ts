@@ -79,6 +79,7 @@ import {
   removeLabMember,
   setDiscordDailyReport,
   setLabMemberRole,
+  setLabPlanInclusion,
   testDiscordDm,
   inviteToLab,
   joinProject,
@@ -957,7 +958,22 @@ export function useDeptManagement(id: string) {
     mutationFn: (slug: string) => detachLabFromDept(id, slug),
     onSuccess: invalidate,
   });
-  return { addMember, removeMember, attachLab, createLab, detachLab };
+  const setLabInclusion = useMutation({
+    mutationFn: (input: { slug: string; included: boolean }) =>
+      setLabPlanInclusion(id, input.slug, input.included),
+    onSuccess: () => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ["portal", "entitlements"] });
+    },
+  });
+  return {
+    addMember,
+    removeMember,
+    attachLab,
+    createLab,
+    detachLab,
+    setLabInclusion,
+  };
 }
 
 /** A lab's Discord sync status (Manage & Invite page; managers only). */

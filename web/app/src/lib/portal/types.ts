@@ -902,6 +902,8 @@ export type DeptLabRow = {
   name: string;
   member_count: number;
   has_logo: boolean;
+  /** Whether this lab's members are covered (and paid for) by the department plan. */
+  included_in_plan: boolean;
 };
 
 // -- Admin dashboard (staff/superuser only, GET/PATCH /api/admin/users) --------

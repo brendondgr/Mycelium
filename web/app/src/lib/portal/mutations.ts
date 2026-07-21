@@ -253,6 +253,22 @@ export function detachLabFromDept(id: string, slug: string): Promise<unknown> {
   );
 }
 
+/** Include or exclude a lab in the department's plan (managers). Returns the
+ * refreshed labs list. Including seats the lab's members department-paid;
+ * excluding stops the department paying for them (deferred to period end). */
+export function setLabPlanInclusion(
+  id: string,
+  slug: string,
+  included: boolean,
+): Promise<DeptLabRow[]> {
+  return sendJson<DeptLabRow[]>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "labs", slug),
+    { included_in_plan: included },
+    "Could not update the lab's plan inclusion.",
+  );
+}
+
 /** Activate a department's (inactive) plan — seats the effective membership. */
 export function activateDeptBilling(id: string): Promise<OrgBilling> {
   return sendJson<OrgBilling>(
