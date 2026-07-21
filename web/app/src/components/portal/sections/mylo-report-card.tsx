@@ -30,8 +30,9 @@ export function MyloReportCard({
   isLoading?: boolean;
   title?: string;
   className?: string;
-  /** Cap the report body's height and let it scroll internally, keeping the
-   * header fixed — for a personal overview page that must fit the screen. */
+  /** Fill the parent cell's height and let the body scroll internally, keeping
+   * the header fixed — so the overview's left column scrolls on its own (needs a
+   * height-bounded parent, which the overview grid provides at `lg`). */
   scrollable?: boolean;
 }) {
   if (isLoading) {
@@ -50,8 +51,11 @@ export function MyloReportCard({
   const when = formatBriefingWhen(data?.generated_at ?? null);
 
   return (
-    <Card accent="primary-rule" className={`flex flex-col p-6 ${className ?? ""}`}>
-      <div className="mb-3 flex items-center gap-2">
+    <Card
+      accent="primary-rule"
+      className={`flex flex-col p-6 ${scrollable ? "min-h-0 lg:h-full" : ""} ${className ?? ""}`}
+    >
+      <div className="mb-3 flex shrink-0 items-center gap-2">
         <MyloGlyph size={20} className="text-primary" aria-hidden="true" />
         <span className="text-[10.5px] font-semibold uppercase tracking-[.09em] text-primary">
           {title}
@@ -59,7 +63,7 @@ export function MyloReportCard({
         </span>
       </div>
 
-      <div className={scrollable ? "max-h-[60vh] overflow-y-auto pr-1" : undefined}>
+      <div className={scrollable ? "min-h-0 flex-1 overflow-y-auto pr-1" : undefined}>
         {body ? (
           <MarkdownProse text={body} />
         ) : (

@@ -12,7 +12,7 @@ import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
-import { CheckIcon, TargetIcon } from "@/components/portal/icons";
+import { CheckIcon } from "@/components/portal/icons";
 import {
   useConnectDiscord,
   useDisconnectDiscord,
@@ -25,30 +25,6 @@ import {
 } from "@/lib/portal/hooks";
 import { computeCompleteness } from "@/lib/portal/completeness";
 import type { ClusterGroup, ProfileEligibility } from "@/lib/auth-types";
-
-/**
- * Partition `items` across `clusters` by membership test `inCluster`, in
- * cluster order, claiming each item for at most one group (first cluster to
- * claim it wins). Anything unclaimed comes back as `other`. Shared by the
- * areas and watch-topics grouping below so both read the same way.
- */
-function groupByCluster<T>(
-  items: T[],
-  clusters: ClusterGroup[],
-  inCluster: (item: T, cluster: ClusterGroup) => boolean,
-): { cluster: ClusterGroup; items: T[] }[] {
-  const claimed = new Set<T>();
-  const groups = clusters
-    .map((cluster) => {
-      const matched = items.filter(
-        (item) => !claimed.has(item) && inCluster(item, cluster),
-      );
-      matched.forEach((item) => claimed.add(item));
-      return { cluster, items: matched };
-    })
-    .filter((group) => group.items.length > 0);
-  return groups;
-}
 
 /** A small colored dot + label used as a cluster group header. */
 function ClusterGroupHeading({ cluster }: { cluster: ClusterGroup }) {
@@ -98,20 +74,12 @@ function ResearchFocusCard() {
   }
 
   const interests = profile?.interests;
-  const areas = interests?.areas ?? [];
   const statement = interests?.statement?.trim() ?? "";
   const keywords = interests?.keywords ?? [];
   const skills = interests?.skills ?? [];
-  const clusters = interests?.clusters ?? [];
 
-  const areaGroups =
-    clusters.length > 0
-      ? groupByCluster(areas, clusters, (area, cluster) =>
-          cluster.areas.includes(area),
-        )
-      : [];
-  const groupedAreas = new Set(areaGroups.flatMap((group) => group.items));
-  const otherAreas = areas.filter((area) => !groupedAreas.has(area));
+  const hasContent =
+    Boolean(statement) || keywords.length > 0 || skills.length > 0;
 
   return (
     <Card className="p-[22px]">
@@ -134,70 +102,6 @@ function ResearchFocusCard() {
         </p>
       ) : null}
 
-      {/* Areas — grouped by cluster when the profile has any, flat otherwise */}
-      {areas.length > 0 ? (
-        clusters.length > 0 ? (
-          <div className="mb-4 flex flex-col gap-4">
-            {areaGroups.map(({ cluster, items }) => (
-              <div key={cluster.id}>
-                <ClusterGroupHeading cluster={cluster} />
-                <div className="flex flex-col gap-2.5">
-                  {items.map((area) => (
-                    <div key={area} className="flex items-start gap-2.5">
-                      <TargetIcon
-                        size={18}
-                        className="mt-0.5 shrink-0 text-primary"
-                      />
-                      <span className="text-sm font-medium text-[var(--text-primary)]">
-                        {area}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {otherAreas.length > 0 ? (
-              <div>
-                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
-                  Other
-                </p>
-                <div className="flex flex-col gap-2.5">
-                  {otherAreas.map((area) => (
-                    <div key={area} className="flex items-start gap-2.5">
-                      <TargetIcon
-                        size={18}
-                        className="mt-0.5 shrink-0 text-primary"
-                      />
-                      <span className="text-sm font-medium text-[var(--text-primary)]">
-                        {area}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="mb-4 flex flex-col gap-2.5">
-            {areas.map((area) => (
-              <div key={area} className="flex items-start gap-2.5">
-                <TargetIcon
-                  size={18}
-                  className="mt-0.5 shrink-0 text-primary"
-                />
-                <span className="text-sm font-medium text-[var(--text-primary)]">
-                  {area}
-                </span>
-              </div>
-            ))}
-          </div>
-        )
-      ) : (
-        <p className="mb-4 text-sm text-[var(--text-muted)]">
-          Add research areas in your profile so Mylo can match work to you.
-        </p>
-      )}
-
       {/* Keyword / skill chip groups */}
       {[
         { label: "Keywords", items: keywords },
@@ -219,6 +123,12 @@ function ResearchFocusCard() {
           </div>
         ))}
 
+      {!hasContent ? (
+        <p className="text-sm text-[var(--text-muted)]">
+          Add a research statement and keywords in your profile so Mylo can match
+          work to you.
+        </p>
+      ) : null}
     </Card>
   );
 }
@@ -340,18 +250,30 @@ function WatchCard() {
 
   const cadenceLabel = cadence === "daily" ? "daily" : "weekly";
 
-  const topicGroups =
-    clusters.length > 0
-      ? groupByCluster(topics, clusters, (topic, cluster) => {
-          const key = topic.toLowerCase();
-          return (
-            cluster.label.toLowerCase() === key ||
-            cluster.areas.some((area) => area.toLowerCase() === key)
-          );
-        })
-      : [];
-  const groupedTopics = new Set(topicGroups.flatMap((group) => group.items));
-  const otherTopics = topics.filter((topic) => !groupedTopics.has(topic));
+  // Group watch topics under EVERY cluster (interest-clusters feature): a topic
+  // is claimed by the first cluster whose label or one of its areas matches it.
+  // Clusters that claim no topic still render — they fall back to showing their
+  // own areas — so the card always reflects all of the profile's clusters.
+  const claimed = new Set<string>();
+  const clusterRows = clusters.map((cluster) => {
+    const matched = topics.filter((topic) => {
+      if (claimed.has(topic)) return false;
+      const key = topic.toLowerCase();
+      return (
+        cluster.label.toLowerCase() === key ||
+        cluster.areas.some((area) => area.toLowerCase() === key)
+      );
+    });
+    matched.forEach((topic) => claimed.add(topic));
+    return {
+      cluster,
+      items: matched.length > 0 ? matched : cluster.areas,
+    };
+  });
+  const otherTopics = topics.filter((topic) => !claimed.has(topic));
+
+  const hasClusters = clusterRows.length > 0;
+  const isEmpty = !hasClusters && topics.length === 0;
 
   return (
     <Card className="p-[22px]">
@@ -359,21 +281,21 @@ function WatchCard() {
         What Mylo watches
       </h2>
 
-      {topics.length === 0 ? (
+      {isEmpty ? (
         <p className="text-sm text-[var(--text-muted)]">
           You haven&apos;t set watch topics yet.
         </p>
       ) : (
         <>
-          {clusters.length > 0 ? (
+          {hasClusters ? (
             <div className="mb-3 flex flex-col gap-3">
-              {topicGroups.map(({ cluster, items }) => (
+              {clusterRows.map(({ cluster, items }) => (
                 <div key={cluster.id}>
                   <ClusterGroupHeading cluster={cluster} />
                   <div className="flex flex-wrap gap-1.5">
-                    {items.map((topic) => (
-                      <Pill key={topic} tone="neutral">
-                        {topic}
+                    {items.map((item) => (
+                      <Pill key={item} tone="neutral">
+                        {item}
                       </Pill>
                     ))}
                   </div>
@@ -755,17 +677,17 @@ export function ProfileSection() {
       />
 
       <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">
-        {/* LEFT — research focus + connected services */}
+        {/* LEFT — research focus + connected services + fellowship eligibility */}
         <div className="flex flex-col gap-[22px]">
           <ResearchFocusCard />
           <DiscordCard />
+          <EligibilityCard />
         </div>
 
-        {/* RIGHT — stacked completeness + eligibility + watch */}
+        {/* RIGHT — what Mylo watches (all clusters) + profile completeness */}
         <div className="flex flex-col gap-[22px]">
-          <ProfileCompletenessCard />
-          <EligibilityCard />
           <WatchCard />
+          <ProfileCompletenessCard />
         </div>
       </div>
     </div>

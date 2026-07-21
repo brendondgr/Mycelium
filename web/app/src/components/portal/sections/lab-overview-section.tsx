@@ -96,7 +96,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
   const rec = recQuery.data;
 
   return (
-    <div>
+    <div className="flex h-full flex-col">
       <Greeting
         greeting={greeting}
         first={first}
@@ -104,8 +104,10 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
         scopeLabel={scopeLabel}
       />
 
-      {/* Report left (scrollable); what Mylo found + papers + deadlines right. */}
-      <div className="grid grid-cols-1 items-start gap-[22px] lg:grid-cols-[1.5fr_1fr]">
+      {/* Report left; what Mylo found + papers + deadlines right. Each column is
+          its own scroll region at `lg` — structurally identical to the personal
+          overview so the two sides scroll independently. */}
+      <div className="grid grid-cols-1 gap-[22px] lg:min-h-0 lg:flex-1 lg:grid-cols-[1.5fr_1fr]">
         {/* Left: the lab's written Mylo Report. */}
         <MyloReportCard
           data={briefingQuery.data}
@@ -115,7 +117,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
         />
 
         {/* Right: what Mylo found + top papers + nearest deadlines. */}
-        <div className="flex flex-col gap-[22px]">
+        <div className="flex flex-col gap-[22px] lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           <MyloFoundCard
             windowCounts={rec?.window_counts}
             isLoading={recQuery.isLoading}
@@ -147,7 +149,7 @@ function Greeting({
   scopeLabel: string;
 }) {
   return (
-    <div className="mb-[22px]">
+    <div className="mb-[22px] shrink-0">
       <h1 className="m-0 mb-[6px] font-serif text-[31px] font-semibold leading-[1.12] tracking-[-0.015em] text-[var(--text-primary)]">
         Good {greeting}, {first}
       </h1>

@@ -16,7 +16,7 @@ export function SectionStage({
   children: React.ReactNode;
 }) {
   return (
-    <div key={stageKey} className="portal-fade-up min-w-0">
+    <div key={stageKey} className="portal-fade-up h-full min-w-0">
       {children}
     </div>
   );

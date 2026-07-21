@@ -74,9 +74,9 @@ export function OverviewSection() {
   });
 
   return (
-    <div>
+    <div className="flex h-full flex-col">
       {/* Greeting */}
-      <div className="mb-[22px]">
+      <div className="mb-[22px] shrink-0">
         <h1 className="m-0 mb-[6px] font-serif text-[31px] font-semibold leading-[1.12] tracking-[-0.015em] text-[var(--text-primary)]">
           Good {greeting}, {first}
         </h1>
@@ -85,8 +85,9 @@ export function OverviewSection() {
         </p>
       </div>
 
-      {/* Report left (scrollable); what Mylo found + papers + deadlines right. */}
-      <div className="grid grid-cols-1 items-start gap-[22px] lg:grid-cols-[1.5fr_1fr]">
+      {/* Report left; what Mylo found + papers + deadlines right. Each column is
+          its own scroll region at `lg` so the two sides scroll independently. */}
+      <div className="grid grid-cols-1 gap-[22px] lg:min-h-0 lg:flex-1 lg:grid-cols-[1.5fr_1fr]">
         {/* Left: the folded-in Mylo Report (was a standalone Daily page). */}
         <MyloReportCard
           data={briefingQuery.data}
@@ -95,7 +96,7 @@ export function OverviewSection() {
         />
 
         {/* Right: what Mylo found + top papers + nearest deadlines. */}
-        <div className="flex flex-col gap-[22px]">
+        <div className="flex flex-col gap-[22px] lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           <MyloFoundCard
             windowCounts={windowCountsQuery.data?.window_counts}
             isLoading={windowCountsQuery.isLoading}
