@@ -46,24 +46,39 @@ import {
   fetchSearch,
   fetchWatch,
   fetchWindowCounts,
+  fetchLabBilling,
+  fetchDeptBilling,
+  fetchDeptMembers,
+  fetchDeptLabs,
 } from "@/lib/portal/client";
 import {
   actOnNotification,
+  activateDeptBilling,
+  activateLabBilling,
+  addDeptMember,
+  addLabMember,
   addProjectMember,
   addToCollection,
   archiveProject,
+  attachLabToDept,
+  cancelInvitation,
   createCollection,
   createLab,
+  createLabInDept,
   createProject,
   createReminder,
   deleteLabLogo,
   deleteReminder,
+  detachLabFromDept,
   disconnectDiscord,
   dismissSuggestion,
   ingestProjectLink,
   issueActivationCode,
   issueLabActivationCode,
+  removeDeptMember,
+  removeLabMember,
   setDiscordDailyReport,
+  setLabMemberRole,
   testDiscordDm,
   inviteToLab,
   joinProject,
@@ -813,6 +828,136 @@ export function useEntitlements() {
     queryFn: fetchEntitlements,
     staleTime: 60_000,
   });
+}
+
+// -- Lab & department billing / member management -----------------------------
+
+/** A lab's seat-priced plan state. */
+export function useLabBilling(slug?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
+  return useQuery({
+    queryKey: ["portal", "lab-billing", slug ?? "none"],
+    queryFn: () => fetchLabBilling(slug as string),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Activate a lab's plan, then refresh billing, members, and entitlements. */
+export function useActivateLabBilling(slug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => activateLabBilling(slug),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "lab-billing", slug] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "members", slug] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "entitlements"] });
+    },
+  });
+}
+
+/** Add / remove / re-role a lab member, or cancel an invite; refresh the roster. */
+export function useLabMemberMutations(slug: string) {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["portal", "members", slug] });
+    queryClient.invalidateQueries({ queryKey: ["portal", "lab-billing", slug] });
+  };
+  const add = useMutation({
+    mutationFn: (input: { username: string; role?: string }) =>
+      addLabMember(slug, input.username, input.role),
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: (username: string) => removeLabMember(slug, username),
+    onSuccess: invalidate,
+  });
+  const setRole = useMutation({
+    mutationFn: (input: { username: string; role: string }) =>
+      setLabMemberRole(slug, input.username, input.role),
+    onSuccess: invalidate,
+  });
+  const cancelInvite = useMutation({
+    mutationFn: (id: string) => cancelInvitation(slug, id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["portal", "invitations"] }),
+  });
+  return { add, remove, setRole, cancelInvite };
+}
+
+/** A department's plan state. */
+export function useDeptBilling(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "dept-billing", id ?? "none"],
+    queryFn: () => fetchDeptBilling(id as string),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
+/** A department's effective-membership roster. */
+export function useDeptMembers(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "dept-members", id ?? "none"],
+    queryFn: () => fetchDeptMembers(id as string),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
+/** The labs under a department. */
+export function useDeptLabs(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "dept-labs", id ?? "none"],
+    queryFn: () => fetchDeptLabs(id as string),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
+/** Activate a department's plan, then refresh its billing, members, entitlements. */
+export function useActivateDeptBilling(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => activateDeptBilling(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "dept-billing", id] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "dept-members", id] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "entitlements"] });
+    },
+  });
+}
+
+/** Add / remove department members and attach / create / detach labs. */
+export function useDeptManagement(id: string) {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["portal", "dept-members", id] });
+    queryClient.invalidateQueries({ queryKey: ["portal", "dept-labs", id] });
+    queryClient.invalidateQueries({ queryKey: ["portal", "dept-billing", id] });
+  };
+  const addMember = useMutation({
+    mutationFn: (input: { username: string; role?: string }) =>
+      addDeptMember(id, input.username, input.role),
+    onSuccess: invalidate,
+  });
+  const removeMember = useMutation({
+    mutationFn: (username: string) => removeDeptMember(id, username),
+    onSuccess: invalidate,
+  });
+  const attachLab = useMutation({
+    mutationFn: (slug: string) => attachLabToDept(id, slug),
+    onSuccess: invalidate,
+  });
+  const createLab = useMutation({
+    mutationFn: (name: string) => createLabInDept(id, name),
+    onSuccess: invalidate,
+  });
+  const detachLab = useMutation({
+    mutationFn: (slug: string) => detachLabFromDept(id, slug),
+    onSuccess: invalidate,
+  });
+  return { addMember, removeMember, attachLab, createLab, detachLab };
 }
 
 /** A lab's Discord sync status (Manage & Invite page; managers only). */

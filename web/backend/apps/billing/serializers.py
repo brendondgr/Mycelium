@@ -7,6 +7,7 @@ class PlanSerializer(serializers.Serializer):
     """One plan covering a user — their personal plan or a lab/department seat."""
 
     scope_type = serializers.CharField()
+    scope_slug = serializers.CharField(allow_null=True)
     scope_name = serializers.CharField()
     tier = serializers.CharField()
     status = serializers.CharField()

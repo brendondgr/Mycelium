@@ -58,6 +58,7 @@ def user_plans_payload(user) -> list[dict]:
         entries.append(
             {
                 "scope_type": "personal",
+                "scope_slug": None,
                 "scope_name": "Personal",
                 "tier": personal.tier,
                 "status": personal.status,
@@ -78,9 +79,11 @@ def user_plans_payload(user) -> list[dict]:
     for seat in seats:
         sub = seat.subscription
         scope = sub.scope_lab or sub.scope_department
+        slug = sub.scope_lab.slug if sub.scope_lab_id else str(sub.scope_department_id)
         entries.append(
             {
                 "scope_type": sub.scope_type,
+                "scope_slug": slug,
                 "scope_name": getattr(scope, "name", "—"),
                 "tier": sub.tier,
                 "status": sub.status,

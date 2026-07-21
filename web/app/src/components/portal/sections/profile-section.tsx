@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { usePortal } from "@/components/portal/portal-context";
 import { LabSettingsSection } from "@/components/portal/sections/lab-settings-section";
 import { Card } from "@/components/portal/primitives/card";
+import { PlansCard } from "@/components/portal/sections/plans-card";
 import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
@@ -761,9 +762,10 @@ export function ProfileSection() {
           <DiscordCard />
         </div>
 
-        {/* RIGHT — stacked completeness + eligibility + watch */}
+        {/* RIGHT — stacked completeness + plans + eligibility + watch */}
         <div className="flex flex-col gap-[22px]">
           <ProfileCompletenessCard />
+          <PlansCard />
           <EligibilityCard />
           <WatchCard />
         </div>
