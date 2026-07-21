@@ -275,3 +275,16 @@ No real payment processing, no Stripe/card capture/charging, no dunning/`PAST_DU
 (kept as tier-enforcement D3), no per-member "prompt to choose payer" UX (Canopy default is
 department-paid; self/lab-paid mixing stays a model capability, not a built flow this pass),
 no institution-level billing (briefing D10, deferred).
+
+## As-built deviations from this plan
+
+- **Seat wiring is an explicit service, not global signals (B5 revised).** Every membership
+  mutation routes through `billing.seat_sync` (invite-accept + the new member/lab endpoints),
+  with `reconcile_seats` as the bulk backstop. Global `post_save`/`post_delete` signals were
+  dropped to avoid surprising seat writes during seeding/admin/tests — since this work builds
+  *every* runtime membership path, explicit calls cover them all.
+- **Whole-plan cancel/deactivate deferred.** Single-member deferred removal (the requirement's
+  "access until period end") is fully built; a whole-subscription cancel (which needs a
+  `cancel_at_period_end` flag + tick finalization) is a small follow-up, not shipped this pass.
+- **Frontend verified by typecheck + lint + build**, not the browser preview (the Preview MCP
+  serves the main checkout, not this worktree). Interactive verification is a post-merge step.
