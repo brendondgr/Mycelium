@@ -37,11 +37,14 @@ def _active_standalone_lab(username: str) -> tuple[User, object]:
 
 @pytest.mark.django_db
 def test_lab_under_active_dept_member_seated_on_dept_not_lab() -> None:
-    """B2: a lab belonging to an active department seats its members department-paid."""
+    """B2: an *included* lab in an active department seats its members department-paid."""
+    from apps.billing.services import set_lab_plan_inclusion
+
     _head, dept = _active_department("head")
     founder = User.objects.create_user(username="pi", password="p")
     lab = create_lab_workspace(founder, "Sub Lab").lab
     attach_lab_to_department(lab, dept)  # lab is under the active department now
+    set_lab_plan_inclusion(lab, True)  # ...and opted into its plan
 
     member = User.objects.create_user(username="student", password="p")
     LabMembership.objects.create(user=member, lab=lab, role=LabMembership.Role.MEMBER)

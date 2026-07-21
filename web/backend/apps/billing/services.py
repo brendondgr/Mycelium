@@ -188,20 +188,22 @@ def activate_lab_subscription(lab, *, on: date | None = None) -> Subscription:
 def activate_department_subscription(
     department, *, on: date | None = None
 ) -> Subscription:
-    """Activate a department's plan and seat its **effective** membership ACTIVE (L2).
+    """Activate a department's plan and seat its **plan** membership ACTIVE (L2).
 
-    Effective membership is direct department members ∪ every member of every lab under
-    the department (``effective_member_ids``), so a lab-under-department member is
-    auto-entitled — the department-paid seat is what makes rule 2 real.
+    Plan membership is direct department members ∪ every member of every lab the head
+    has **included** in the plan (``plan_member_ids``), so an included lab's member is
+    auto-entitled department-paid — the seat is what makes rule 2 real. A lab under the
+    department that has not been opted in is not seated here (its members keep their
+    lab's own plan, or Free).
     """
     # Local import avoids an accounts↔billing import cycle at module load.
-    from apps.accounts.services import effective_member_ids
+    from apps.accounts.services import plan_member_ids
 
     sub = department_subscription(department)
     if sub is None:
         raise ValueError("Department has no subscription to activate.")
     period.activate(sub, on=on)
-    member_ids = effective_member_ids(department)
+    member_ids = plan_member_ids(department)
     for user in User.objects.filter(id__in=member_ids):
         _ensure_seat(
             sub,
@@ -216,27 +218,68 @@ def activate_department_subscription(
 
 @transaction.atomic
 def attach_lab_to_department(lab, department) -> Lab:
-    """Attach a lab to a department, re-seating its members onto the dept plan (B2).
+    """Attach a lab to a department (B2).
 
-    If the department plan is active, every lab member is seated department-paid and
-    their now-redundant lab seat (if the lab had an active plan) is scheduled to end —
-    one paying scope per member. A no-op on seats when the department is inactive.
+    Attaching only sets the department FK; it does **not** put the lab on the plan.
+    Inclusion is opt-in — the department head includes the lab explicitly via
+    :func:`set_lab_plan_inclusion`, which is what seats its members department-paid.
+    A freshly-attached lab therefore starts opt-out and its members keep whatever
+    they had (their lab's own plan, or Free).
     """
     lab.department = department
     lab.save(update_fields=["department", "updated_at"])
+    return lab
+
+
+@transaction.atomic
+def set_lab_plan_inclusion(lab, included: bool) -> Lab:
+    """Include or exclude a lab in its department's plan, re-seating its members (B2).
+
+    On **include** (plan active): each lab member is seated ACTIVE department-paid and
+    their now-redundant lab seat (if the lab has its own active plan) is scheduled to
+    end — one paying scope per member. On **exclude**: the department seat is scheduled
+    to end (deferred, L3 — it stays ACTIVE and billed through the current period, no
+    credit) for every member no longer covered by the plan (``plan_member_ids``,
+    recomputed with the flag now off). Removal is deferred rather than re-seating the
+    member lab-paid inline, so a member is never on two paid seats at once (B2); the
+    lab-paid fallback is picked up by the normal seat sync once the dept seat lapses,
+    exactly as detaching a lab behaves. A no-op on seats while the department plan is
+    inactive (the flag is stored and takes effect at activation, which seats
+    ``plan_member_ids``).
+    """
+    from apps.accounts.services import plan_member_ids
+
+    if lab.department_id is None:
+        raise ValueError("Lab is not in a department.")
+    if lab.department_plan_included == included:
+        return lab
+    lab.department_plan_included = included
+    lab.save(update_fields=["department_plan_included", "updated_at"])
+
+    department = lab.department
     dept_sub = _active_subscription_for_department(department)
     if dept_sub is None:
         return lab
     lab_sub = _active_subscription_for_lab(lab)
-    for membership in LabMembership.objects.filter(lab=lab).select_related("user"):
-        _ensure_seat(
-            dept_sub,
-            membership.user,
-            status=Seat.Status.ACTIVE,
-            payer_type="department",
-            payer_obj=department,
-            event_kind=SeatEvent.Kind.ACTIVATED,
-        )
-        if lab_sub is not None:
-            schedule_seat_removal(lab_sub, membership.user)
+    memberships = list(
+        LabMembership.objects.filter(lab=lab).select_related("user")
+    )
+    if included:
+        for membership in memberships:
+            _ensure_seat(
+                dept_sub,
+                membership.user,
+                status=Seat.Status.ACTIVE,
+                payer_type="department",
+                payer_obj=department,
+                event_kind=SeatEvent.Kind.ACTIVATED,
+            )
+            if lab_sub is not None:
+                schedule_seat_removal(lab_sub, membership.user)
+    else:
+        remaining = plan_member_ids(department)  # recomputed with the flag off
+        for membership in memberships:
+            if membership.user_id in remaining:
+                continue  # still covered (direct member, or another included lab)
+            schedule_seat_removal(dept_sub, membership.user)
     return lab

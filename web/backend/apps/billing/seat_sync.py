@@ -28,11 +28,14 @@ from .seats import (
 def paying_scope_for_lab(lab) -> tuple[str | None, Subscription | None]:
     """The subscription that should pay for this lab's members (B2).
 
-    Returns ``("department", sub)`` when the lab belongs to a department with an active
-    plan, else ``("lab", sub)`` for the lab's own active plan, else ``(None, None)``.
+    Returns ``("department", sub)`` when the lab is **included** in a department with
+    an active plan, else ``("lab", sub)`` for the lab's own active plan, else
+    ``(None, None)``. Department inclusion is opt-in: a lab under a department whose
+    head has not included it (``department_plan_included`` False) is not paid for by
+    the department, so its members fall back to the lab's own plan (or nothing).
     """
     dept = getattr(lab, "department", None)
-    if dept is not None:
+    if dept is not None and getattr(lab, "department_plan_included", False):
         dept_sub = _active_subscription_for_department(dept)
         if dept_sub is not None:
             return "department", dept_sub

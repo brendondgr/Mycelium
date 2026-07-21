@@ -73,6 +73,24 @@ def effective_member_ids(department: Department) -> set[int]:
     return set(direct) | set(via_labs)
 
 
+def plan_member_ids(department: Department) -> set[int]:
+    """The users the department **plan** covers — direct members ∪ included labs.
+
+    The billing-only twin of :func:`effective_member_ids`: same direct-department
+    members, but a lab-under-department member is only counted when the department
+    head has opted that lab into the plan (``Lab.department_plan_included``).
+    Inclusion is a billing choice, so this — not ``effective_member_ids`` — is what
+    the seat-issuing paths read; visibility/access keep using the full effective set.
+    """
+    direct = DeptMembership.objects.filter(department=department).values_list(
+        "user_id", flat=True
+    )
+    via_included_labs = LabMembership.objects.filter(
+        lab__department=department, lab__department_plan_included=True
+    ).values_list("user_id", flat=True)
+    return set(direct) | set(via_included_labs)
+
+
 def effective_members(department: Department) -> QuerySet[User]:
     """Return the users in a department's effective membership set."""
     return User.objects.filter(id__in=effective_member_ids(department))
@@ -449,10 +467,15 @@ def detach_lab_from_department(
         raise ValidationError({"detail": ["That lab is not in this department."]})
     with transaction.atomic():
         lab.department = None
-        lab.save(update_fields=["department", "updated_at"])
+        # Leaving the department also drops the lab out of its plan; reset the flag
+        # so a future re-attach starts opt-out again.
+        lab.department_plan_included = False
+        lab.save(
+            update_fields=["department", "department_plan_included", "updated_at"]
+        )
         dept_sub = _active_subscription_for_department(department)
         if dept_sub is not None:
-            remaining = effective_member_ids(department)  # recomputed after detach
+            remaining = plan_member_ids(department)  # recomputed after detach
             for membership in LabMembership.objects.filter(lab=lab).select_related(
                 "user"
             ):
@@ -464,6 +487,31 @@ def detach_lab_from_department(
             target_type="department",
             target_id=str(department.id),
             metadata={"lab_id": str(lab.id)},
+        )
+    return lab
+
+
+def set_lab_department_inclusion(
+    department: Department, lab: Lab, included: bool, *, actor: User | None = None
+) -> Lab:
+    """Include/exclude one of a department's labs in its plan (dept head choice).
+
+    Thin orchestration around :func:`apps.billing.services.set_lab_plan_inclusion`
+    (which owns the seat lifecycle), adding the membership guard + audit — mirroring
+    :func:`attach_existing_lab_to_department` / :func:`detach_lab_from_department`.
+    """
+    from apps.billing.services import set_lab_plan_inclusion
+
+    if lab.department_id != department.id:
+        raise ValidationError({"detail": ["That lab is not in this department."]})
+    with transaction.atomic():
+        set_lab_plan_inclusion(lab, included)
+        record_audit_event(
+            actor=actor,
+            action="dept.lab.plan_inclusion",
+            target_type="department",
+            target_id=str(department.id),
+            metadata={"lab_id": str(lab.id), "included": included},
         )
     return lab
 
@@ -550,6 +598,7 @@ def department_labs_payload(department: Department) -> list[dict]:
             "name": lab.name,
             "member_count": lab.n,
             "has_logo": lab.has_logo,
+            "included_in_plan": lab.department_plan_included,
         }
         for lab in labs
     ]

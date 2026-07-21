@@ -155,9 +155,24 @@ def test_department_attach_lab_lists_and_reseats(client: APIClient) -> None:
     assert resp.status_code == 201
     lab.refresh_from_db()
     assert lab.department_id == dept.id
-    assert effective_tier(pi) == Tier.CANOPY  # re-seated on the department plan
+    # Attach alone does not put the lab on the plan (opt-in).
+    assert effective_tier(pi) != Tier.CANOPY
     slugs = {row["slug"] for row in resp.data}
     assert lab.slug in slugs
+    assert all(row["included_in_plan"] is False for row in resp.data)
+
+    # The head includes the lab in the plan → its PI is seated department-paid.
+    inc = client.patch(
+        f"/api/auth/departments/{dept.id}/labs/{lab.slug}/",
+        {"included_in_plan": True},
+        format="json",
+    )
+    assert inc.status_code == 200
+    assert any(
+        row["slug"] == lab.slug and row["included_in_plan"] is True
+        for row in inc.data
+    )
+    assert effective_tier(pi) == Tier.CANOPY
 
 
 @pytest.mark.django_db

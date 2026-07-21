@@ -63,7 +63,8 @@ def test_department_billing_activation_seats_effective(client: APIClient) -> Non
     pi = _user("pi")
     lab = create_lab_workspace(pi, "Sub Lab").lab
     lab.department = dept
-    lab.save(update_fields=["department"])
+    lab.department_plan_included = True  # opted into the department plan
+    lab.save(update_fields=["department", "department_plan_included"])
     client.force_authenticate(head)
 
     resp = client.post(f"/api/departments/{dept.id}/billing/activate/")
@@ -72,7 +73,7 @@ def test_department_billing_activation_seats_effective(client: APIClient) -> Non
     assert resp.data["is_active"] is True
     assert resp.data["tier"] == "canopy"
     assert resp.data["seat_price_cents"] == 2000
-    # The head and the lab-under-dept PI are both entitled (rule 2).
+    # The head and the included lab-under-dept PI are both entitled (rule 2).
     assert effective_tier(head) == Tier.CANOPY
     assert effective_tier(pi) == Tier.CANOPY
 

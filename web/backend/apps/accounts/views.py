@@ -81,6 +81,7 @@ from .services import (
     detach_lab_from_department,
     invite_to_lab,
     record_audit_event,
+    set_lab_department_inclusion,
     remove_dept_member,
     remove_lab_member,
     set_lab_member_role,
@@ -688,7 +689,22 @@ class DeptLabsView(APIView):
 
 
 class DeptLabDetailView(APIView):
-    """A department manager detaches a lab from the department."""
+    """A department manager detaches a lab, or toggles its inclusion in the plan."""
+
+    def patch(self, request: Request, pk, slug: str) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if not user_can_manage_department(request.user, department):
+            raise PermissionDenied("Only an owner or admin can change a lab's plan.")
+        lab = get_object_or_404(Lab, slug=slug)
+        if "included_in_plan" not in request.data:
+            return Response(
+                {"included_in_plan": ["This field is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        set_lab_department_inclusion(
+            department, lab, bool(request.data.get("included_in_plan")), actor=request.user
+        )
+        return Response(department_labs_payload(department))
 
     def delete(self, request: Request, pk, slug: str) -> Response:
         department = get_object_or_404(Department, id=pk)

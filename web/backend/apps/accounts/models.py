@@ -56,6 +56,14 @@ class Lab(models.Model):
         related_name="labs",
         help_text="Set or cleared by the department owner.",
     )
+    department_plan_included = models.BooleanField(
+        default=False,
+        help_text=(
+            "When true, this lab's members are covered (and paid for) by the "
+            "department's plan. Opt-in: the department head includes a lab "
+            "explicitly. Only meaningful while the lab belongs to a department."
+        ),
+    )
     # Reminder scheduling (Discord reminders R4). Use the IANA zone name, not "EST":
     # the zone handles the DST transition, so a "9am" reminder is 9am local year-round.
     timezone = models.CharField(

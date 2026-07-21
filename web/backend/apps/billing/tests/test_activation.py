@@ -55,33 +55,47 @@ def test_new_department_is_inactive_effective_members_are_free() -> None:
 
 
 @pytest.mark.django_db
-def test_activating_department_seats_effective_membership() -> None:
-    """Rule 2: activating a department entitles every member of every lab under it."""
+def test_activating_department_seats_included_labs() -> None:
+    """Rule 2 (opt-in): activating a department entitles direct members + members of
+    every lab the head has **included** in the plan; a non-included lab is untouched."""
+    from apps.billing.services import set_lab_plan_inclusion
+
     head = User.objects.create_user(username="head", password="p")
     dept = provision_workspace(head, "department", org_name="Systems").department
 
-    # A lab under the department, with its own founder + a student, attached while the
-    # department is still inactive (so nobody is seated yet).
+    # An included lab (opted in while the dept is still inactive — flag only, no seats
+    # yet) and a separate lab left opt-out.
     founder = User.objects.create_user(username="pi", password="p")
     lab = create_lab_workspace(founder, "Sub Lab").lab
     attach_lab_to_department(lab, dept)
+    set_lab_plan_inclusion(lab, True)
     student = User.objects.create_user(username="student", password="p")
     LabMembership.objects.create(user=student, lab=lab, role=LabMembership.Role.MEMBER)
 
+    excluded_pi = User.objects.create_user(username="excluded", password="p")
+    excluded_lab = create_lab_workspace(excluded_pi, "Excluded Lab").lab
+    attach_lab_to_department(excluded_lab, dept)  # attached but not opted in
+
     activate_department_subscription(dept)
 
-    # The direct head AND both members of the lab under the department are entitled.
+    # The direct head AND both members of the included lab are entitled.
     for user in (head, founder, student):
         assert effective_tier(user) == Tier.CANOPY, user.username
         seat = Seat.objects.get(
             member=user, subscription__scope_department=dept, status=Seat.Status.ACTIVE
         )
         assert seat.payer_type == "department"
+    # The excluded lab's founder is NOT on the department plan.
+    assert not Seat.objects.filter(
+        member=excluded_pi, subscription__scope_department=dept
+    ).exists()
 
 
 @pytest.mark.django_db
-def test_attach_lab_to_active_department_moves_members_to_dept() -> None:
-    """B2: attaching a lab to an active dept re-seats members, defers the lab seat."""
+def test_including_lab_in_active_department_moves_members_to_dept() -> None:
+    """B2: including a lab in an active dept re-seats members, defers the lab seat."""
+    from apps.billing.services import set_lab_plan_inclusion
+
     head = User.objects.create_user(username="head", password="p")
     dept = provision_workspace(head, "department", org_name="Systems").department
     activate_department_subscription(dept)
@@ -92,6 +106,9 @@ def test_attach_lab_to_active_department_moves_members_to_dept() -> None:
     assert effective_tier(founder) == Tier.LAB
 
     attach_lab_to_department(lab, dept)
+    assert effective_tier(founder) == Tier.LAB  # attach alone doesn't move them (opt-in)
+
+    set_lab_plan_inclusion(lab, True)
 
     # Now department-paid; the old lab seat is scheduled to end (deferred).
     dept_seat = Seat.objects.get(
@@ -101,3 +118,30 @@ def test_attach_lab_to_active_department_moves_members_to_dept() -> None:
     lab_seat = Seat.objects.get(member=founder, subscription__scope_lab=lab)
     assert lab_seat.ends_at is not None
     assert effective_tier(founder) == Tier.CANOPY
+
+
+@pytest.mark.django_db
+def test_excluding_lab_defers_the_department_seat() -> None:
+    """Excluding an included lab schedules its members' department seat to end
+    (deferred, L3 — still ACTIVE + billed through the period, no inline lab re-seat,
+    so a member is never double-billed). The lab-paid fallback is picked up later by
+    the normal seat sync, matching detach."""
+    from apps.billing.services import set_lab_plan_inclusion
+
+    head = User.objects.create_user(username="head", password="p")
+    dept = provision_workspace(head, "department", org_name="Systems").department
+    activate_department_subscription(dept)
+
+    founder = User.objects.create_user(username="pi", password="p")
+    lab = create_lab_workspace(founder, "Sub Lab").lab
+    activate_lab_subscription(lab)
+    attach_lab_to_department(lab, dept)
+    set_lab_plan_inclusion(lab, True)
+    assert effective_tier(founder) == Tier.CANOPY
+
+    set_lab_plan_inclusion(lab, False)
+
+    # The dept seat is scheduled to end (deferred), so entitlement holds this period.
+    dept_seat = Seat.objects.get(member=founder, subscription__scope_department=dept)
+    assert dept_seat.ends_at is not None
+    assert effective_tier(founder) == Tier.CANOPY  # deferred: no immediate downgrade
