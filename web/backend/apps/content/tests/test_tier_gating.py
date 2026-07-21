@@ -13,7 +13,7 @@ from django.contrib.auth.models import User
 
 from apps.accounts.models import WatchPreference
 from apps.billing.models import Subscription, Tier
-from apps.billing.services import create_lab_workspace
+from apps.billing.services import activate_lab_subscription, create_lab_workspace
 from apps.content.opportunities import areas_for
 from apps.content.tasks import select_targets, select_users
 
@@ -59,6 +59,7 @@ def test_canceled_lab_drops_from_select_targets() -> None:
     founder = User.objects.create_user(username="founder", password="p")
     result = create_lab_workspace(founder, "Rivera Lab")
     lab = result.lab
+    activate_lab_subscription(lab)  # labs start INACTIVE (L1)
     project = Project.objects.create(scope_lab=lab, name="P1")
 
     labs, projects = select_targets(None)
@@ -79,6 +80,7 @@ def test_archived_lab_project_excluded_from_select_targets() -> None:
 
     founder = User.objects.create_user(username="founder", password="p")
     lab = create_lab_workspace(founder, "Rivera Lab").lab
+    activate_lab_subscription(lab)  # labs start INACTIVE (L1)
     live = Project.objects.create(scope_lab=lab, name="Live")
     archived = Project.objects.create(scope_lab=lab, name="Archived", is_archived=True)
 

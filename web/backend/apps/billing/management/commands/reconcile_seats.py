@@ -1,10 +1,15 @@
-"""Backfill billing seats for memberships that predate seat-on-accept.
+"""Backfill billing seats so every membership on an ACTIVE org plan holds its seat.
 
-Before ``accept_invitation`` granted a seat, an invited member of a paying lab got
-a ``LabMembership`` and **no** ``Seat`` — so they silently resolved to Free. This
-command sweeps every lab / department membership and grants the missing seat
-(lab members ACTIVE + lab-paid; department members PENDING). Memberships on a lab
-with no active subscription (a Free lab) are left alone.
+The live path is the ``seat_sync`` service (called from invite-accept and the member/lab
+endpoints); this command is the bulk backstop for memberships that predate a fix, seed,
+or a direct admin add. It seats against the same rules the live path uses:
+
+- Lab members are seated on the correct **paying scope** — the lab's active plan, or its
+  department's plan when the lab belongs to an active department (decision B2).
+- A department's plan seats its full **effective** membership (direct members ∪ every
+  member of every lab under it, decision L2) ACTIVE + department-paid.
+
+Memberships on an INACTIVE / unsubscribed org are left alone (nothing to seat yet).
 
     # preview only — no writes
     uv run --project web/backend python web/backend/manage.py reconcile_seats --dry-run
@@ -17,16 +22,20 @@ Safe to re-run: granting is idempotent, so an already-seated member is skipped.
 
 from __future__ import annotations
 
+from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
-from apps.accounts.models import DeptMembership, LabMembership
+from apps.accounts.models import Department, LabMembership
+from apps.accounts.services import effective_member_ids
 from apps.billing.models import Seat
+from apps.billing.seat_sync import (
+    paying_scope_for_lab,
+    sync_dept_member,
+    sync_lab_member,
+)
 from apps.billing.seats import (
     SeatCeilingExceeded,
     _active_subscription_for_department,
-    _active_subscription_for_lab,
-    grant_seat_for_dept_member,
-    grant_seat_for_lab_member,
 )
 
 
@@ -45,57 +54,57 @@ class Command(BaseCommand):
         over_cap = 0
         no_subscription = 0
 
-        def needs_seat(subscription, user) -> bool:
-            return not Seat.objects.filter(
+        def has_active_seat(subscription, user_id: int) -> bool:
+            return Seat.objects.filter(
                 subscription=subscription,
-                member=user,
+                member_id=user_id,
                 status=Seat.Status.ACTIVE,
             ).exists()
 
-        for membership in LabMembership.objects.select_related("lab", "user"):
-            subscription = _active_subscription_for_lab(membership.lab)
+        # Lab members → the correct paying scope (lab, or its active department).
+        for membership in LabMembership.objects.select_related(
+            "lab", "lab__department", "user"
+        ):
+            kind, subscription = paying_scope_for_lab(membership.lab)
             if subscription is None:
                 no_subscription += 1
                 continue
-            if not needs_seat(subscription, membership.user):
+            if has_active_seat(subscription, membership.user_id):
                 continue
             label = f"lab {membership.lab.slug} ← {membership.user.get_username()}"
             if dry_run:
                 granted += 1
-                self.stdout.write(f"would seat {label}")
+                self.stdout.write(f"would seat ({kind}) {label}")
                 continue
             try:
-                grant_seat_for_lab_member(membership.user, membership.lab)
+                sync_lab_member(membership.user, membership.lab)
                 granted += 1
             except SeatCeilingExceeded:
                 over_cap += 1
                 self.stderr.write(f"over member ceiling, skipped {label}")
 
-        # Department members seat as PENDING (an admin activates them). A PENDING
-        # seat still counts as "seated" for reconcile — we only backfill absences.
-        for membership in DeptMembership.objects.select_related("department", "user"):
-            subscription = _active_subscription_for_department(membership.department)
+        # Department effective membership → ACTIVE, department-paid. Lab-under-dept
+        # members already seated above are skipped by the active-seat check.
+        for department in Department.objects.all():
+            subscription = _active_subscription_for_department(department)
             if subscription is None:
-                no_subscription += 1
                 continue
-            if Seat.objects.filter(
-                subscription=subscription, member=membership.user
-            ).exists():
-                continue
-            label = (
-                f"dept {membership.department_id} ← {membership.user.get_username()}"
-            )
-            if dry_run:
+            for user_id in effective_member_ids(department):
+                if has_active_seat(subscription, user_id):
+                    continue
+                if dry_run:
+                    granted += 1
+                    self.stdout.write(
+                        f"would seat (department) dept {department.id} ← user {user_id}"
+                    )
+                    continue
+                sync_dept_member(User.objects.get(id=user_id), department)
                 granted += 1
-                self.stdout.write(f"would seat (pending) {label}")
-                continue
-            grant_seat_for_dept_member(membership.user, membership.department)
-            granted += 1
 
         verb = "would grant" if dry_run else "granted"
         self.stdout.write(
             self.style.SUCCESS(
-                f"{verb} {granted} seat(s); {no_subscription} membership(s) on a "
-                f"lab/dept with no active subscription; {over_cap} over the ceiling."
+                f"{verb} {granted} seat(s); {no_subscription} membership(s) on an "
+                f"inactive/unsubscribed org; {over_cap} over the ceiling."
             )
         )

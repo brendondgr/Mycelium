@@ -57,10 +57,14 @@ def test_provision_lab_makes_founder_owner_pi(user: User) -> None:
     assert membership.role == LabMembership.Role.OWNER
     assert membership.is_lead is True
 
+    # Labs start INACTIVE (L1): the plan + founder seat are provisioned but dormant.
     assert result.subscription.tier == Tier.LAB
     assert result.subscription.scope_lab == result.lab
+    assert result.subscription.status == Subscription.Status.INACTIVE
     assert result.seat.member == user
-    assert result.seat.payer_user == user
+    assert result.seat.payer_lab == result.lab
+    assert result.seat.payer_type == "lab"
+    assert result.seat.status == Seat.Status.PENDING
 
     assert Department.objects.count() == 0
 
@@ -79,10 +83,14 @@ def test_provision_department_makes_founder_owner(user: User) -> None:
     membership = DeptMembership.objects.get(user=user, department=result.department)
     assert membership.role == DeptMembership.Role.OWNER
 
+    # Departments start INACTIVE (L1): inactive until the head activates the plan.
     assert result.subscription.tier == Tier.CANOPY
     assert result.subscription.scope_department == result.department
+    assert result.subscription.status == Subscription.Status.INACTIVE
     assert result.seat.member == user
-    assert result.seat.payer_user == user
+    assert result.seat.payer_department == result.department
+    assert result.seat.payer_type == "department"
+    assert result.seat.status == Seat.Status.PENDING
 
     assert Lab.objects.count() == 0
 

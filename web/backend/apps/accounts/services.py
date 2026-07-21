@@ -185,7 +185,8 @@ def accept_invitation(invitation: LabInvitation, user: User) -> LabMembership:
     member ceiling refuses the whole acceptance rather than silently over-seating.
     """
     # Imported here (not at module top) to avoid an accounts↔billing import cycle.
-    from apps.billing.seats import SeatCeilingExceeded, grant_seat_for_lab_member
+    from apps.billing.seat_sync import sync_lab_member
+    from apps.billing.seats import SeatCeilingExceeded
 
     membership, _ = LabMembership.objects.get_or_create(
         lab=invitation.lab,
@@ -193,7 +194,9 @@ def accept_invitation(invitation: LabInvitation, user: User) -> LabMembership:
         defaults={"role": invitation.role},
     )
     try:
-        grant_seat_for_lab_member(user, invitation.lab)
+        # Seats on the correct paying scope: the lab's plan, or its department's plan
+        # when the lab belongs to an active department (decision B2 / rule 2).
+        sync_lab_member(user, invitation.lab)
     except SeatCeilingExceeded as exc:
         raise ValidationError({"detail": [str(exc)]}) from exc
     _close_invitation(
