@@ -64,6 +64,24 @@ def sync_dept_member(user: User, department) -> Seat | None:
     return grant_seat_for_dept_member(user, department)
 
 
+def fallback_lab_seats(user: User) -> None:
+    """Re-seat ``user`` on their labs' correct paying scope after a seat lapses.
+
+    When a member's department-paid seat is revoked (an excluded or detached lab, a
+    department removal), they should not silently drop to Free while a lab they are
+    still in carries its own active plan — they belong on that lab-paid seat. This
+    re-runs :func:`sync_lab_member` for every lab the user is in, which grants the
+    lab-paid seat wherever :func:`paying_scope_for_lab` now resolves to the lab. It
+    cannot revive the just-revoked department seat: a member whose department seat
+    lapsed is, by construction, no longer covered by that department through any of
+    their labs, so none of those labs resolve to the department scope.
+    """
+    from apps.accounts.models import LabMembership
+
+    for membership in LabMembership.objects.filter(user=user).select_related("lab"):
+        sync_lab_member(user, membership.lab)
+
+
 def unsync_lab_member(user: User, lab) -> Seat | None:
     """Schedule removal of a lab member's seat on whichever scope pays for the lab."""
     _kind, sub = paying_scope_for_lab(lab)

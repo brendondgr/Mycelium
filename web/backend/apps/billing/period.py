@@ -96,14 +96,27 @@ def end_lapsed_seats(*, now: date | None = None) -> int:
     This is where a mid-cycle removal actually takes effect: the seat stayed ACTIVE
     (entitled + billed) through ``ends_at``; now it flips to REVOKED with an ``expired``
     ledger row and no credit (decision L3).
+
+    When the lapsing seat was **department-paid** (an excluded or detached lab, a
+    department removal), the member falls back to their lab's own active plan instead
+    of dropping to Free — so a lab that still carries its own plan keeps covering its
+    people once the department stops. The fallback runs after the revoke so
+    :func:`~apps.billing.seat_sync.paying_scope_for_lab` sees the final state.
     """
+    from .seat_sync import fallback_lab_seats  # local: avoids a period↔seat_sync cycle
+
     ref = now or today()
-    count = 0
-    lapsed = Seat.objects.filter(
-        status=Seat.Status.ACTIVE,
-        ends_at__isnull=False,
-        ends_at__lte=ref,
+    lapsed = list(
+        Seat.objects.filter(
+            status=Seat.Status.ACTIVE,
+            ends_at__isnull=False,
+            ends_at__lte=ref,
+        ).select_related("member")
     )
+    # Phase 1 — revoke every lapsed seat. Do this fully before any fallback so a
+    # member's stale lab seat (deferred when they were moved to the department plan)
+    # is revoked here rather than re-revoked after the fallback re-grants it.
+    fallback_members = []
     for seat in lapsed:
         seat.status = Seat.Status.REVOKED
         seat.save(update_fields=["status", "updated_at"])
@@ -113,5 +126,10 @@ def end_lapsed_seats(*, now: date | None = None) -> int:
             effective_date=ref,
             prorated_cents=0,
         )
-        count += 1
-    return count
+        if seat.payer_department_id is not None:
+            fallback_members.append(seat.member)
+    # Phase 2 — a member whose department-paid seat lapsed falls back to their lab's
+    # own active plan (if any), so a still-running lab plan keeps covering its people.
+    for member in fallback_members:
+        fallback_lab_seats(member)
+    return len(lapsed)
