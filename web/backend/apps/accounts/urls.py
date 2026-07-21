@@ -31,6 +31,16 @@ urlpatterns = [
         views.LabMembersView.as_view(),
         name="lab-members-no-slash",
     ),
+    path(
+        "labs/<slug:slug>/members/<str:username>/",
+        views.LabMemberDetailView.as_view(),
+        name="lab-member-detail",
+    ),
+    path(
+        "labs/<slug:slug>/members/<str:username>",
+        views.LabMemberDetailView.as_view(),
+        name="lab-member-detail-no-slash",
+    ),
     # Both slash and no-slash variants: the browser reaches these through the
     # Next `/api` proxy, which strips the trailing slash — and Django's
     # APPEND_SLASH cannot redirect a POST/PATCH, so a slash-only route 500s.
@@ -88,6 +98,16 @@ urlpatterns = [
         views.LabInvitationsView.as_view(),
         name="lab-invitations-no-slash",
     ),
+    path(
+        "labs/<slug:slug>/invitations/<uuid:pk>/cancel/",
+        views.LabInvitationCancelView.as_view(),
+        name="lab-invitation-cancel",
+    ),
+    path(
+        "labs/<slug:slug>/invitations/<uuid:pk>/cancel",
+        views.LabInvitationCancelView.as_view(),
+        name="lab-invitation-cancel-no-slash",
+    ),
     path("invitations/", views.MyInvitationsView.as_view(), name="my-invitations"),
     path(
         "invitations",
@@ -108,6 +128,48 @@ urlpatterns = [
         "departments/<uuid:pk>/profile/",
         views.DeptProfileView.as_view(),
         name="dept-profile",
+    ),
+    # Department members (effective roster) + direct-member management.
+    path(
+        "departments/<uuid:pk>/members/",
+        views.DeptMembersView.as_view(),
+        name="dept-members",
+    ),
+    path(
+        "departments/<uuid:pk>/members",
+        views.DeptMembersView.as_view(),
+        name="dept-members-no-slash",
+    ),
+    path(
+        "departments/<uuid:pk>/members/<str:username>/",
+        views.DeptMemberDetailView.as_view(),
+        name="dept-member-detail",
+    ),
+    path(
+        "departments/<uuid:pk>/members/<str:username>",
+        views.DeptMemberDetailView.as_view(),
+        name="dept-member-detail-no-slash",
+    ),
+    # Labs under a department: list, attach an existing lab / create one, detach.
+    path(
+        "departments/<uuid:pk>/labs/",
+        views.DeptLabsView.as_view(),
+        name="dept-labs",
+    ),
+    path(
+        "departments/<uuid:pk>/labs",
+        views.DeptLabsView.as_view(),
+        name="dept-labs-no-slash",
+    ),
+    path(
+        "departments/<uuid:pk>/labs/<slug:slug>/",
+        views.DeptLabDetailView.as_view(),
+        name="dept-lab-detail",
+    ),
+    path(
+        "departments/<uuid:pk>/labs/<slug:slug>",
+        views.DeptLabDetailView.as_view(),
+        name="dept-lab-detail-no-slash",
     ),
     # What Mylo keeps an eye on (own only).
     path("watch/me/", views.MyWatchView.as_view(), name="watch-me"),

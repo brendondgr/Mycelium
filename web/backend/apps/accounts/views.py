@@ -38,6 +38,7 @@ from .intake import (
 from .interests import validate_interests
 from .models import (
     Department,
+    DeptMembership,
     Lab,
     LabInvitation,
     LabMembership,
@@ -48,6 +49,8 @@ from .permissions import (
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
     user_can_invite_to_lab,
+    user_can_manage_department,
+    user_can_manage_lab,
     user_has_department_access,
     user_has_lab_access,
 )
@@ -66,10 +69,21 @@ from .serializers import (
 )
 from .services import (
     accept_invitation,
+    add_dept_member,
+    add_lab_member,
+    attach_existing_lab_to_department,
+    cancel_invitation,
     claim_pending_invitations,
+    create_lab_in_department,
     decline_invitation,
+    department_labs_payload,
+    department_members_payload,
+    detach_lab_from_department,
     invite_to_lab,
     record_audit_event,
+    remove_dept_member,
+    remove_lab_member,
+    set_lab_member_role,
 )
 
 INVALID_CREDENTIALS_MESSAGE = "Invalid username or password."
@@ -447,7 +461,12 @@ class MyLabsView(ListAPIView):
 
 
 class LabMembersView(ListAPIView):
-    """Members of a lab the caller can access (any member may read the roster)."""
+    """A lab's member roster: any member reads; a manager adds an existing user.
+
+    ``GET`` lists members. ``POST {username, role}`` adds an existing user directly
+    (distinct from an emailed invitation) and seats them on the lab's paying scope; a
+    seat-ceiling breach returns 400.
+    """
 
     serializer_class = LabMemberSerializer
 
@@ -460,6 +479,47 @@ class LabMembersView(ListAPIView):
             .select_related("user")
             .order_by("-is_lead", "user__username")
         )
+
+    def post(self, request: Request, slug: str) -> Response:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_can_manage_lab(request.user, lab):
+            raise PermissionDenied("Only a lab owner or admin can add members.")
+        username = str(request.data.get("username", "")).strip()
+        target = get_object_or_404(User, username=username)
+        role = str(request.data.get("role", "") or LabMembership.Role.MEMBER)
+        membership = add_lab_member(lab, target, role=role, actor=request.user)
+        return Response(
+            LabMemberSerializer(membership).data, status=status.HTTP_201_CREATED
+        )
+
+
+class LabMemberDetailView(APIView):
+    """A lab manager changes a member's role or removes them (deferred seat removal)."""
+
+    def _managed_lab(self, slug: str) -> Lab:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_can_manage_lab(self.request.user, lab):
+            raise PermissionDenied("Only a lab owner or admin can manage members.")
+        return lab
+
+    def patch(self, request: Request, slug: str, username: str) -> Response:
+        lab = self._managed_lab(slug)
+        target = get_object_or_404(User, username=username)
+        role = str(request.data.get("role", "")).strip()
+        membership = set_lab_member_role(lab, target, role, actor=request.user)
+        return Response(LabMemberSerializer(membership).data)
+
+    def delete(self, request: Request, slug: str, username: str) -> Response:
+        lab = self._managed_lab(slug)
+        target = get_object_or_404(User, username=username)
+        owners = LabMembership.objects.filter(lab=lab, role=LabMembership.Role.OWNER)
+        if owners.filter(user=target).exists() and owners.count() == 1:
+            return Response(
+                {"detail": "A lab must keep at least one owner."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        remove_lab_member(lab, target, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # -- Lab invitations -----------------------------------------------------------
@@ -541,6 +601,102 @@ class InvitationRespondView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response({"id": str(invitation.id), "status": invitation.status})
+
+
+class LabInvitationCancelView(APIView):
+    """A lab manager withdraws a pending invitation they sent."""
+
+    def post(self, request: Request, slug: str, pk) -> Response:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_can_invite_to_lab(request.user, lab):
+            raise PermissionDenied("Only a lab lead or admin can manage invitations.")
+        invitation = get_object_or_404(LabInvitation, pk=pk, lab=lab)
+        cancel_invitation(invitation, actor=request.user)  # 400 if not pending
+        return Response({"id": str(invitation.id), "status": invitation.status})
+
+
+# -- Department members & labs -------------------------------------------------
+
+
+class DeptMembersView(APIView):
+    """Effective dept roster (any member reads); a manager adds a direct member."""
+
+    def get(self, request: Request, pk) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if not user_has_department_access(request.user, department):
+            raise PermissionDenied("You do not have access to this department.")
+        return Response(department_members_payload(department))
+
+    def post(self, request: Request, pk) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if not user_can_manage_department(request.user, department):
+            raise PermissionDenied("Only an owner or admin can add members.")
+        username = str(request.data.get("username", "")).strip()
+        target = get_object_or_404(User, username=username)
+        role = str(request.data.get("role", "") or DeptMembership.Role.MEMBER)
+        add_dept_member(department, target, role=role, actor=request.user)
+        return Response(
+            department_members_payload(department), status=status.HTTP_201_CREATED
+        )
+
+
+class DeptMemberDetailView(APIView):
+    """A department manager removes a direct member (deferred seat removal)."""
+
+    def delete(self, request: Request, pk, username: str) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if not user_can_manage_department(request.user, department):
+            raise PermissionDenied("Only an owner or admin can remove members.")
+        target = get_object_or_404(User, username=username)
+        if department.owner_id == target.id:
+            return Response(
+                {"detail": "The department owner cannot be removed."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        remove_dept_member(department, target, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DeptLabsView(APIView):
+    """Labs under a department (any member reads); a manager attaches or creates one."""
+
+    def get(self, request: Request, pk) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if not user_has_department_access(request.user, department):
+            raise PermissionDenied("You do not have access to this department.")
+        return Response(department_labs_payload(department))
+
+    def post(self, request: Request, pk) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if not user_can_manage_department(request.user, department):
+            raise PermissionDenied("Only an owner or admin can add labs.")
+        slug = str(request.data.get("slug", "")).strip()
+        name = str(request.data.get("name", "")).strip()
+        if slug:
+            lab = get_object_or_404(Lab, slug=slug)
+            attach_existing_lab_to_department(department, lab, actor=request.user)
+        elif name:
+            create_lab_in_department(department, name, request.user, actor=request.user)
+        else:
+            return Response(
+                {"detail": ["Provide a lab name to create, or a slug to attach."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            department_labs_payload(department), status=status.HTTP_201_CREATED
+        )
+
+
+class DeptLabDetailView(APIView):
+    """A department manager detaches a lab from the department."""
+
+    def delete(self, request: Request, pk, slug: str) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if not user_can_manage_department(request.user, department):
+            raise PermissionDenied("Only an owner or admin can detach labs.")
+        lab = get_object_or_404(Lab, slug=slug)
+        detach_lab_from_department(department, lab, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # -- Author import + intake session (brief Phase G) ---------------------------
