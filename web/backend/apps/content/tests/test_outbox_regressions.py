@@ -1,8 +1,8 @@
 """The two guarantees Phase A exists to protect, written before the mechanism.
 
-Both are ``xfail(strict=True)`` until A-5 routes the reminder senders through the
-outbox. ``strict`` matters: an *unexpected pass* also fails the build, so these
-markers cannot quietly rot once the feature lands — A-5 must delete them.
+Written as ``xfail(strict=True)`` before the mechanism existed, and un-marked in A-5
+once they genuinely passed — ``strict`` is what forced that, since an unexpected pass
+fails the build too.
 
 Why these two specifically. Introducing a queue is most likely to regress exactly
 the duplicate-prevention rules that already work:
@@ -121,11 +121,6 @@ def _subscribe(user, *, due, offsets, content=None):
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail(
-    strict=True,
-    reason="A-5: the failed send is sealed and never retried. Remove this marker "
-    "once reminder sends go through the outbox.",
-)
 def test_transient_discord_failure_is_retried_not_lost(
     linked, monkeypatch, settings
 ) -> None:
@@ -157,11 +152,6 @@ def test_transient_discord_failure_is_retried_not_lost(
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail(
-    strict=True,
-    reason="A-5: queueing is not wired yet. Remove this marker once reminder sends "
-    "go through the outbox.",
-)
 def test_one_subscription_one_message_per_day_survives_queueing(
     linked, monkeypatch
 ) -> None:

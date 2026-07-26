@@ -323,3 +323,31 @@ def _on_dead(message, verdict: Classification) -> None:
         message.kind,
         verdict.reason,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Retention
+# --------------------------------------------------------------------------- #
+def purge(*, now: datetime | None = None) -> dict:
+    """Drop delivered rows past their retention window, and their attachments.
+
+    Only successes are purged. A failed or dead row is the record of what went wrong
+    and for whom — deleting it would throw away the evidence exactly when someone is
+    trying to work out why a report never arrived.
+
+    The database and the filesystem are settled in that order deliberately: a file
+    left behind is recoverable litter, whereas a deleted file whose row survived would
+    make the outbox promise an attachment it can no longer read.
+    """
+    now = now or timezone.now()
+    days = int(getattr(settings, "DISCORD_OUTBOX_RETENTION_DAYS", 30))
+    paths = resolve.purge_outbox(before=now - timedelta(days=days))
+
+    removed = 0
+    for raw in paths:
+        try:
+            Path(raw).unlink(missing_ok=True)
+            removed += 1
+        except OSError:  # a stale mount or a path we no longer own
+            log.warning("could not remove outbox attachment: %s", raw)
+    return {"rows": len(paths), "files_removed": removed}

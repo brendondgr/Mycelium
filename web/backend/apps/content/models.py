@@ -995,6 +995,7 @@ class ReminderFire(models.Model):
 
     class Result(models.TextChoices):
         SENT = "sent", "Sent"
+        QUEUED = "queued", "Queued"  # handed to the outbox; delivery is its record
         SKIPPED = "skipped", "Skipped"
         FAILED = "failed", "Failed"
 
@@ -1010,6 +1011,11 @@ class ReminderFire(models.Model):
     channel = models.CharField(max_length=20, choices=Channel.choices)
     state = models.CharField(max_length=20, choices=Result.choices)
     skip_reason = models.CharField(max_length=40, blank=True, default="")
+    # The outbox row this fire handed its Discord message to, by dedupe key rather
+    # than a foreign key: the seal belongs to `content`, the delivery record belongs
+    # to `integrations`, and neither app needs to know the other's schema to join
+    # them. Blank when the fire had nothing to send to Discord.
+    outbox_key = models.CharField(max_length=200, blank=True, default="")
     discord_message_id = models.CharField(max_length=32, blank=True, default="")
     attempts = models.PositiveSmallIntegerField(default=0)
     error_code = models.IntegerField(null=True, blank=True)

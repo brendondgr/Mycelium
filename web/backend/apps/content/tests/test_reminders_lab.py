@@ -21,7 +21,7 @@ from apps.content.reminders import ReminderError, create_subscription
 from apps.content.reminders_discord import send_lab_channel
 from apps.content.reminders_tick import run_tick
 from apps.integrations.models import DiscordGuildLink, DiscordIdentity
-from apps.integrations.services import discord_api
+from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse
 
 TODAY = date(2026, 7, 16)
@@ -156,7 +156,8 @@ def test_lab_reminder_pings_linked_members(transport) -> None:
     linked = _member(lab, "linked", discord_id="777")
     sub = _lab_sub(lab, mentions=[linked])
     outcome = send_lab_channel(sub, sub.title, "Application due Jul 23 — 7 days left")
-    assert outcome.ok
+    assert outcome.ok and outcome.queued
+    outbox.drain()
     post = transport.posts()[0]
     assert post["path"] == "/channels/default-chan/messages"
     assert "<@777>" in post["json_body"]["content"]
@@ -169,7 +170,8 @@ def test_unlinked_mention_target_renders_plain_text_not_dropped(transport) -> No
     unlinked = _member(lab, "unlinked-person")  # lab member, no Discord identity
     sub = _lab_sub(lab, mentions=[unlinked])
     outcome = send_lab_channel(sub, sub.title, "body")
-    assert outcome.ok
+    assert outcome.ok and outcome.queued
+    outbox.drain()
     post = transport.posts()[0]
     # Named as plain text (escaped), no ping, and no explicit user id.
     assert "unlinked-person" in post["json_body"]["content"]
@@ -184,7 +186,8 @@ def test_scraped_everyone_title_produces_no_ping_in_lab_channel(transport) -> No
     sub = _lab_sub(lab)
     sub.title = "@everyone urgent grant"
     outcome = send_lab_channel(sub, sub.title, "body")
-    assert outcome.ok
+    assert outcome.ok and outcome.queued
+    outbox.drain()
     body = transport.posts()[0]["json_body"]
     assert body["allowed_mentions"] == {"parse": []}
     assert "@​everyone" in body["embeds"][0]["title"]  # escaped in the embed
@@ -200,6 +203,7 @@ def test_per_reminder_override_beats_lab_default(transport) -> None:
     lab = _lab(channel="default-chan")
     sub = _lab_sub(lab, override="override-chan")
     send_lab_channel(sub, sub.title, "body")
+    outbox.drain()
     assert transport.posts()[0]["path"] == "/channels/override-chan/messages"
 
 
@@ -208,6 +212,7 @@ def test_blank_override_falls_back_to_lab_default(transport) -> None:
     lab = _lab(channel="default-chan")
     sub = _lab_sub(lab, override="")
     send_lab_channel(sub, sub.title, "body")
+    outbox.drain()
     assert transport.posts()[0]["path"] == "/channels/default-chan/messages"
 
 
@@ -217,6 +222,7 @@ def test_lab_reminder_with_no_channel_falls_back_to_in_app(transport) -> None:
     _member(lab, "m1")
     _lab_sub(lab)
     result = run_tick(TODAY)
+    outbox.drain()
     assert result.notifications == 1  # in-app to the member
     fire = ReminderFire.objects.get()
     assert fire.channel == ReminderFire.Channel.IN_APP
@@ -235,9 +241,11 @@ def test_tick_posts_lab_reminder_and_records_channel(transport) -> None:
     sub = _lab_sub(lab, mentions=[User.objects.get(username="member-a")])
     result = run_tick(TODAY)
     assert result.notifications >= 1  # in-app to lab members
-    fire = ReminderFire.objects.get(state=ReminderFire.Result.SENT)
+    fire = ReminderFire.objects.get(state=ReminderFire.Result.QUEUED)
     assert fire.channel == ReminderFire.Channel.DISCORD_CHANNEL
-    assert fire.discord_message_id == "msg-1"
+    assert fire.outbox_key
+    outbox.drain()
+    assert transport.posts()[0]["path"] == "/channels/default-chan/messages"
     sub.refresh_from_db()
     assert sub.has_unlinked_targets is False
 

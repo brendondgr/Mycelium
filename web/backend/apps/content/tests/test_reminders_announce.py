@@ -22,7 +22,7 @@ from apps.content.models import (
 from apps.content.reminders import create_subscription
 from apps.content.reminders_announce import announce_deadline_changes
 from apps.integrations.models import DiscordGuildLink
-from apps.integrations.services import discord_api
+from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse
 
 TODAY = date(2026, 9, 5)
@@ -207,6 +207,7 @@ def test_lab_deadline_move_posts_to_channel(transport) -> None:
 
     result = announce_deadline_changes(TODAY, now=NOW)
     assert result.announced == 1
+    outbox.drain()
     posts = [c for c in transport.calls if c["path"].endswith("/messages")]
     assert posts[0]["path"] == "/channels/chan-1/messages"
     assert posts[0]["json_body"]["allowed_mentions"] == {"parse": []}
