@@ -216,6 +216,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.integrations.drain_outbox",
         "schedule": crontab(minute="*"),
     },
+    # Weekly clean-up of delivered outbox rows and the report PDFs they carried.
+    # Sunday, well away from the daily run and the other sweeps.
+    "purge-discord-outbox": {
+        "task": "apps.integrations.purge_outbox",
+        "schedule": crontab(day_of_week=0, hour=5, minute=30),
+    },
 }
 
 # How many per-(user, area) grant/conference LLM scoring calls run concurrently

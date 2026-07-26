@@ -59,6 +59,16 @@ def reconcile_discord() -> dict:
     return reconcile.reconcile()
 
 
+@shared_task(name="apps.integrations.purge_outbox")
+def purge_outbox() -> dict:
+    """Drop delivered rows past their retention window, and their attachments.
+
+    Successes only — a failed or dead row is the evidence someone needs when they ask
+    why a report never arrived.
+    """
+    return outbox.purge()
+
+
 @shared_task(name="apps.integrations.drain_outbox")
 def drain_outbox() -> dict:
     """Deliver whatever is due in the outbound queue.
