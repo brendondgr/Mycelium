@@ -783,6 +783,41 @@ export type SearchParams = {
   limit?: number;
 };
 
+/** Why Mylo can or cannot reach a lab and its people.
+ *
+ * `linked`/`dm_ok` are independent of guild membership: a personal DM works through
+ * the person's own installation, so someone who left the lab's server still gets
+ * their reminders — they just cannot be tagged in a channel post. */
+export type DiscordChannelHealth = {
+  bound: boolean;
+  channel_id: string;
+  ok: boolean | null;
+  verified_at: string | null;
+};
+
+export type DiscordMemberHealth = {
+  username: string;
+  name: string;
+  role: string;
+  linked: boolean;
+  dm_ok: boolean | null;
+  checked_at?: string | null;
+};
+
+export type DiscordHealth = {
+  guild: {
+    state: "pending_setup" | "active" | "kicked" | null;
+    guild_name: string | null;
+    checked_at: string | null;
+  };
+  channels: {
+    announcements: DiscordChannelHealth;
+    updates: DiscordChannelHealth;
+  };
+  addon: { active: boolean | null };
+  members: DiscordMemberHealth[];
+};
+
 /** Discord link status for the profile "Connected services" card. */
 export type DiscordStatus = {
   connected: boolean;

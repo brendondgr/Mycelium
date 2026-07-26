@@ -19,6 +19,7 @@ import {
   fetchEntitlements,
   fetchLabDailyBriefing,
   fetchLabDiscordStart,
+  fetchLabDiscordHealth,
   fetchLabDiscordStatus,
   fetchLabSaves,
   fetchDeadlines,
@@ -982,6 +983,20 @@ export function useLabDiscordStatus(slug?: string) {
   return useQuery({
     queryKey: ["portal", "lab-discord", slug ?? "none"],
     queryFn: () => fetchLabDiscordStatus(slug as string),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** A lab's Discord health — drives the manager-only reachability panel.
+ *
+ * Manager-gated server-side (403 for anyone else), so this is only ever mounted
+ * inside the lab settings surface. */
+export function useLabDiscordHealth(slug?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
+  return useQuery({
+    queryKey: ["portal", "lab-discord-health", slug ?? "none"],
+    queryFn: () => fetchLabDiscordHealth(slug as string),
     enabled,
     staleTime: 30_000,
   });

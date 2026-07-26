@@ -401,3 +401,35 @@ def _user_labs_sync(discord_user_id: str) -> list[dict]:
         return []
     rows = LabMembership.objects.filter(user=user).select_related("lab")
     return [{"slug": m.lab.slug, "name": m.lab.name} for m in rows]
+
+
+# --------------------------------------------------------------------------- #
+# Live drift events (Phase E)
+# --------------------------------------------------------------------------- #
+async def guild_removed(guild_id: str) -> str:
+    """Mylo was removed from a server — mark the link kicked."""
+    return await mycelium.db(_guild_removed_sync, str(guild_id))
+
+
+async def channel_deleted(guild_id: str, channel_id: str) -> str:
+    """A channel vanished — unbind it if Mylo was posting there."""
+    return await mycelium.db(
+        _channel_deleted_sync, str(guild_id), str(channel_id)
+    )
+
+
+def _guild_removed_sync(guild_id: str) -> str:
+    from apps.integrations.services import resolve
+
+    if resolve.get_guild_link(guild_id) is None:
+        return "unknown_guild"
+    resolve.mark_guild_kicked(guild_id)
+    return "kicked"
+
+
+def _channel_deleted_sync(guild_id: str, channel_id: str) -> str:
+    from apps.integrations.services import resolve
+
+    # Returns which binding held it ("deadlines"/"updates"), or "" for the common
+    # case of a channel Mylo never used.
+    return resolve.clear_channel_by_id(guild_id, channel_id) or "not_bound"

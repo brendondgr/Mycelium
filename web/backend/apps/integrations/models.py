@@ -187,6 +187,18 @@ class DiscordGuildLink(models.Model):
     # = opt-out). Config only for now; recurring delivery to it is a follow-up.
     updates_channel_id = models.CharField(max_length=32, blank=True, default="")
     updates_channel_verified_at = models.DateTimeField(null=True, blank=True)
+    # Live reachability of each bound channel, mirroring DiscordIdentity.dm_ok:
+    # null = not checked, True = Mylo can post there, False = it cannot (deleted,
+    # made private, or an overwrite denies posting). Written by the reconcile sweep,
+    # by a permanent outbox failure, and by a gateway channel-delete event — three
+    # sources for one fact, because none of them alone is reliable.
+    announcement_channel_ok = models.BooleanField(null=True, blank=True)
+    updates_channel_ok = models.BooleanField(null=True, blank=True)
+    channel_checked_at = models.DateTimeField(null=True, blank=True)
+    last_error_code = models.IntegerField(null=True, blank=True)
+    # Whether the lab's Mylo add-on was live at the last check. A lapse stops
+    # scheduled delivery and nothing else — see `lab_digest.eligible_labs`.
+    addon_ok = models.BooleanField(null=True, blank=True)
     installed_at = models.DateTimeField(auto_now_add=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)

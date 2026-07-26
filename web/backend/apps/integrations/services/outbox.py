@@ -317,6 +317,23 @@ def _on_permanent(message, verdict: Classification) -> None:
             resolve.set_identity_dm(
                 identity, dm_ok=False, error_code=verdict.error_code
             )
+        return
+
+    # A channel we cannot post to is a fact about the binding, and the queue is
+    # often the first to learn it — sooner than the nightly sweep. Recording it here
+    # is what stops the same message being retried into a void every day, and is
+    # what the portal reads to explain the silence.
+    channel_failures = (
+        Reason.NO_PERMISSION,
+        Reason.NO_ACCESS,
+        Reason.CHANNEL_GONE,
+        Reason.GUILD_GONE,
+    )
+    if verdict.reason in channel_failures and message.lab_id:
+        kind = "updates" if message.kind == "lab_digest" else "deadlines"
+        resolve.set_channel_health_for_lab(
+            message.lab, kind=kind, ok=False, error_code=verdict.error_code
+        )
 
 
 def _notify_undelivered(message, verdict: Classification) -> None:

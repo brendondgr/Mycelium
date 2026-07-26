@@ -57,6 +57,13 @@ def reconcile() -> dict:
         else:
             summary["revoked"] += 1
 
+    # --- Channel liveness + entitlement ----------------------------------- #
+    # Events are lost across restarts, deploys and gateway disconnects, so this
+    # sweep is the safety net rather than the optimisation. It re-verifies what
+    # `/setup` proved once, because "it worked when we bound it" stops being true
+    # the moment someone deletes a channel or edits its permissions.
+    summary.update(_reconcile_guild_health())
+
     if summary["kicked"] or summary["refreshed"] or summary["revoked"]:
         errors.post_embed(
             "Discord reconciliation",
@@ -66,4 +73,53 @@ def reconcile() -> dict:
             ),
             severity="info",
         )
+    return summary
+
+
+def _reconcile_guild_health() -> dict:
+    """Re-verify each active link's channels and its lab's Mylo add-on.
+
+    Channel existence is checked with the guild's channel list rather than by
+    posting: ``preflight_channel`` proves postability by sending a real message,
+    which is right at bind time (an admin is watching and wants proof) and wrong
+    nightly (it would spam every lab's channel). Existence catches the common case —
+    a deleted channel — without that cost.
+
+    The add-on check is the hole the brief named: it was verified once, when the bot
+    was first added, and never again. A lab that stopped paying kept receiving
+    delivery indefinitely.
+    """
+    from apps.billing.entitlements import Feature, lab_has_feature
+
+    summary = {"channels_checked": 0, "channels_lost": 0, "addons_lapsed": 0}
+    for link in resolve.active_guild_links():
+        bound = {
+            "deadlines": link.announcement_channel_id,
+            "updates": link.updates_channel_id,
+        }
+        if any(bound.values()):
+            try:
+                channels = discord_api.get_guild_channels(link.guild_id)
+                present = {str(c.get("id")) for c in channels}
+            except discord_api.DiscordHTTPError:
+                # Same guard as the guild sweep: a blip must not mark every lab's
+                # channels dead. Leave the last known state and try again tomorrow.
+                present = None
+            if present is not None:
+                for kind, channel_id in bound.items():
+                    if not channel_id:
+                        continue
+                    summary["channels_checked"] += 1
+                    alive = channel_id in present
+                    resolve.set_channel_health(
+                        link.guild_id, kind=kind, ok=alive
+                    )
+                    if not alive:
+                        summary["channels_lost"] += 1
+
+        entitled = lab_has_feature(link.lab, Feature.BOT_SERVER)
+        if link.addon_ok is not entitled:
+            resolve.set_addon_ok(link.lab, ok=entitled)
+            if not entitled:
+                summary["addons_lapsed"] += 1
     return summary

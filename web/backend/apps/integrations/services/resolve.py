@@ -23,7 +23,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import Lab
+from apps.accounts.models import Lab, LabMembership
 from apps.accounts.permissions import user_can_manage_lab
 
 from ..models import (
@@ -995,4 +995,177 @@ def outbox_attachment_paths_for_settled() -> list[str]:
             status__in=DiscordOutboxMessage.TERMINAL
         ).values_list("attachment_path", flat=True)
         if p
+    ]
+
+
+# --------------------------------------------------------------------------- #
+# Guild-link health (Workstream E)
+# --------------------------------------------------------------------------- #
+def set_channel_health(
+    guild_id: str,
+    *,
+    kind: str,
+    ok: bool | None,
+    error_code: int | None = None,
+) -> DiscordGuildLink | None:
+    """Record whether Mylo can still post to a bound channel.
+
+    ``kind`` is ``"deadlines"`` or ``"updates"``. Mirrors
+    :func:`set_identity_dm` for people: reachability is *measured* and stored, never
+    inferred at read time, so the portal can explain a silence instead of a lab
+    discovering it by noticing nothing arrived.
+    """
+    link = get_guild_link(guild_id)
+    if link is None:
+        return None
+    field = "updates_channel_ok" if kind == "updates" else "announcement_channel_ok"
+    setattr(link, field, ok)
+    link.channel_checked_at = timezone.now()
+    fields = [field, "channel_checked_at", "updated_at"]
+    if error_code is not None:
+        link.last_error_code = error_code
+        fields.append("last_error_code")
+    link.save(update_fields=fields)
+    if ok is False:
+        audit.discord_audit(
+            action="discord.guild.channel_unreachable",
+            guild_id=guild_id,
+            metadata={"kind": kind, "error_code": error_code},
+        )
+    return link
+
+
+def set_channel_health_for_lab(lab, *, kind: str, ok: bool | None, error_code=None):
+    """``set_channel_health`` reached from a lab rather than a guild id."""
+    link = get_guild_link_for_lab(lab)
+    if link is None:
+        return None
+    return set_channel_health(
+        link.guild_id, kind=kind, ok=ok, error_code=error_code
+    )
+
+
+def clear_channel_by_id(guild_id: str, channel_id: str) -> str:
+    """Unbind whichever slot held ``channel_id``; return which one ("" if neither).
+
+    Used when Discord tells us a channel was deleted: we know the id, not which of
+    the two roles it was playing.
+    """
+    link = get_guild_link(guild_id)
+    if link is None:
+        return ""
+    channel_id = str(channel_id)
+    if link.announcement_channel_id == channel_id:
+        clear_announcement_channel(guild_id)
+        set_channel_health(guild_id, kind="deadlines", ok=False)
+        return "deadlines"
+    if link.updates_channel_id == channel_id:
+        clear_updates_channel(guild_id)
+        set_channel_health(guild_id, kind="updates", ok=False)
+        return "updates"
+    return ""
+
+
+def set_addon_ok(lab, *, ok: bool) -> DiscordGuildLink | None:
+    """Record whether the lab's Mylo add-on was live at the last delivery check."""
+    link = get_guild_link_for_lab(lab)
+    if link is None or link.addon_ok == ok:
+        return link
+    link.addon_ok = ok
+    link.save(update_fields=["addon_ok", "updated_at"])
+    if not ok:
+        audit.discord_audit(
+            action="discord.guild.addon_lapsed",
+            guild_id=link.guild_id,
+            metadata={"lab_id": str(lab.id)},
+        )
+    return link
+
+
+def active_guild_links():
+    """Every non-KICKED link, with its lab — the reconcile sweep's candidate set."""
+    return list(
+        DiscordGuildLink.objects.exclude(
+            state=DiscordGuildLink.State.KICKED
+        ).select_related("lab")
+    )
+
+
+def guild_health_for_lab(lab) -> dict | None:
+    """The lab's Discord health, flattened for the portal. ``None`` when unlinked."""
+    link = get_guild_link_for_lab(lab)
+    if link is None:
+        return None
+    return {
+        "state": link.state,
+        "guild_name": link.guild_name_cache,
+        "checked_at": link.channel_checked_at,
+        "addon_ok": link.addon_ok,
+        "last_error_code": link.last_error_code,
+        "channels": {
+            "announcements": {
+                "bound": bool(link.announcement_channel_id),
+                "channel_id": link.announcement_channel_id,
+                "ok": link.announcement_channel_ok,
+                "verified_at": link.channel_verified_at,
+            },
+            "updates": {
+                "bound": bool(link.updates_channel_id),
+                "channel_id": link.updates_channel_id,
+                "ok": link.updates_channel_ok,
+                "verified_at": link.updates_channel_verified_at,
+            },
+        },
+    }
+
+
+def member_reachability(users) -> dict:
+    """``{user_id: {linked, dm_ok, ...}}`` for a lab roster.
+
+    Note ``linked`` and ``dm_ok`` are genuinely independent of guild membership: a
+    personal DM works through the user's own installation and does not require
+    sharing a server with the bot. Conflating them would tell someone their
+    reminders are broken when only their ability to be *tagged* is.
+    """
+    ids = [u.id for u in users]
+    if not ids:
+        return {}
+    rows = DiscordIdentity.objects.filter(user_id__in=ids)
+    by_user = {r.user_id: r for r in rows}
+    out = {}
+    for user in users:
+        identity = by_user.get(user.id)
+        out[user.id] = {
+            "linked": bool(
+                identity and identity.state == DiscordIdentity.State.ACTIVE
+            ),
+            "dm_ok": identity.dm_ok if identity else None,
+            "checked_at": identity.dm_checked_at if identity else None,
+        }
+    return out
+
+
+def lab_member_reachability(lab) -> list[dict]:
+    """The lab's roster with each person's Discord reachability, for the portal.
+
+    Lives here rather than in the view because ``views.py`` is one of the modules the
+    import-graph test forbids from touching a model at all — the whole point of the
+    boundary. One query for memberships, one for identities.
+    """
+    from apps.core.people import display_name
+
+    memberships = list(
+        LabMembership.objects.filter(lab=lab)
+        .select_related("user")
+        .order_by("user__username")
+    )
+    reach = member_reachability([m.user for m in memberships])
+    return [
+        {
+            "username": m.user.get_username(),
+            "name": display_name(m.user),
+            "role": m.role,
+            **reach.get(m.user_id, {"linked": False, "dm_ok": None}),
+        }
+        for m in memberships
     ]
