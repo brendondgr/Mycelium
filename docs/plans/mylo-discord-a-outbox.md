@@ -126,11 +126,30 @@ Mapping per **AD-2** in the umbrella. Note `discord_api._request` raises
 Then rewrite `probe.run_probe` to branch on `classify(...)`. Its observable behaviour
 must not change; `ProbeTests` passes untouched.
 
-**Also in this step:** verify Discord's `nonce` / `enforce_nonce` contract on
-`POST /channels/{id}/messages` against the current API reference, and record the
-finding in this document. A-4's exactly-once guarantee leans on it; if it is not
-available as understood, say so here and fall back to accepting the narrow
-ambiguous-timeout duplicate risk explicitly rather than silently.
+**Also in this step:** verify Discord's `nonce` / `enforce_nonce` contract.
+
+> **Finding (verified 2026-07-26).** `enforce_nonce` is real and behaves as assumed:
+> with `enforce_nonce: true` and a `nonce` present, Discord checks the nonce for
+> uniqueness **"in the past few minutes"**; if the same author already sent a message
+> with that nonce, *that* message is returned and no new one is created.
+>
+> Two constraints the design must absorb:
+>
+> 1. **`nonce` is capped at 25 characters.** A UUID (32 hex / 36 with dashes) does not
+>    fit. → **A-3 uses an integer `BigAutoField` primary key**, not a UUID, so the
+>    nonce is simply `str(outbox.id)`. This also gives the claim query a cheap,
+>    monotonic ordering.
+> 2. **The dedup window is only "a few minutes", but L4 mandates a 5-minute retry
+>    interval.** So `enforce_nonce` reliably protects a fast in-drain retry, and may
+>    *not* protect the 5-minutes-later attempt. It is a strong mitigation, not a
+>    total guarantee.
+>
+> Residual risk, stated plainly rather than papered over: a send that Discord accepted
+> but whose response we never received (a timeout at exactly the wrong moment) can
+> still duplicate when retried outside Discord's dedup window. The claim-before-send
+> in AD-4.2 means this requires a genuinely ambiguous outcome, not merely a crash.
+> Narrowing it further would mean overriding L4's 5-minute interval for the first
+> retry, which is the user's decision, not mine — flagged, not silently changed.
 
 **Validation**
 
