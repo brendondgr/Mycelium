@@ -31,6 +31,7 @@ from ..models import (
     DiscordGuildLink,
     DiscordIdentity,
     DiscordLabActivationCode,
+    DiscordOutboxMessage,
 )
 from . import audit
 
@@ -746,3 +747,252 @@ def consume_lab_activation_code(
             metadata={"lab_id": str(lab.id), "verified_via_code_grant": False},
         )
         return LabCodeResult(LabConsumeOutcome.OK, lab=lab, guild_link=link)
+
+
+# --------------------------------------------------------------------------- #
+# Outbound message queue (Workstream A)
+# --------------------------------------------------------------------------- #
+# Re-exported so ``services.outbox`` can branch on state without importing the model.
+OUTBOX_PENDING = DiscordOutboxMessage.Status.PENDING
+OUTBOX_SENDING = DiscordOutboxMessage.Status.SENDING
+OUTBOX_SENT = DiscordOutboxMessage.Status.SENT
+OUTBOX_FAILED = DiscordOutboxMessage.Status.FAILED
+OUTBOX_DEAD = DiscordOutboxMessage.Status.DEAD
+OUTBOX_DM = DiscordOutboxMessage.Target.DM
+OUTBOX_CHANNEL = DiscordOutboxMessage.Target.CHANNEL
+
+
+def enqueue_outbox(
+    *,
+    dedupe_key: str,
+    kind: str,
+    target_type: str,
+    recipient_user=None,
+    channel_id: str = "",
+    lab=None,
+    content: str = "",
+    embed: dict | None = None,
+    allowed_mentions: dict | None = None,
+    attachment_path: str = "",
+    attachment_filename: str = "",
+    subject_type: str = "",
+    subject_id: str = "",
+    now: datetime | None = None,
+) -> tuple[DiscordOutboxMessage, bool]:
+    """Queue one message. Returns ``(row, created)``.
+
+    Idempotent on ``dedupe_key``: re-running a producer re-finds the existing row
+    rather than queueing a second message. That is what lets the daily chain be
+    re-run without spamming anyone, and it is deliberately a database uniqueness
+    constraint rather than an application check.
+    """
+    now = now or timezone.now()
+    return DiscordOutboxMessage.objects.get_or_create(
+        dedupe_key=dedupe_key,
+        defaults={
+            "kind": kind,
+            "target_type": target_type,
+            "recipient_user": recipient_user,
+            "channel_id": channel_id,
+            "lab": lab,
+            "content": content,
+            "embed": embed,
+            "allowed_mentions": allowed_mentions,
+            "attachment_path": attachment_path,
+            "attachment_filename": attachment_filename,
+            "subject_type": subject_type,
+            "subject_id": subject_id,
+            "next_attempt_at": now,
+        },
+    )
+
+
+def claim_outbox_batch(
+    *, limit: int = 50, now: datetime | None = None
+) -> list[DiscordOutboxMessage]:
+    """Claim up to ``limit`` due messages, marking each in flight.
+
+    ``attempts`` is incremented and the status flipped to SENDING **before** the HTTP
+    call, inside the lock. A process that dies mid-send therefore leaves a row that
+    has visibly consumed an attempt, instead of one that looks untouched and gets
+    re-sent from scratch by the next drain.
+
+    ``skip_locked`` keeps concurrent drains from contending over the same rows; it is
+    Postgres-only, so on SQLite (most of the test suite) this degrades to a plain
+    ordered read, which is correct for the single-threaded case tests exercise.
+    """
+    now = now or timezone.now()
+    with transaction.atomic():
+        rows = list(
+            DiscordOutboxMessage.objects.select_for_update(skip_locked=True)
+            .filter(
+                status__in=(
+                    DiscordOutboxMessage.Status.PENDING,
+                    DiscordOutboxMessage.Status.SENDING,
+                ),
+                next_attempt_at__lte=now,
+            )
+            .order_by("next_attempt_at", "id")[:limit]
+        )
+        for row in rows:
+            row.status = DiscordOutboxMessage.Status.SENDING
+            row.attempts += 1
+            row.save(update_fields=["status", "attempts", "updated_at"])
+    return rows
+
+
+def mark_outbox_sent(
+    message: DiscordOutboxMessage,
+    *,
+    discord_message_id: str = "",
+    now: datetime | None = None,
+) -> None:
+    now = now or timezone.now()
+    message.status = DiscordOutboxMessage.Status.SENT
+    message.discord_message_id = discord_message_id or ""
+    message.last_error_code = None
+    message.last_error_reason = ""
+    message.sent_at = now
+    message.settled_at = now
+    message.save(
+        update_fields=[
+            "status",
+            "discord_message_id",
+            "last_error_code",
+            "last_error_reason",
+            "sent_at",
+            "settled_at",
+            "updated_at",
+        ]
+    )
+
+
+def mark_outbox_retry(
+    message: DiscordOutboxMessage,
+    *,
+    next_attempt_at: datetime,
+    error_code: int | None = None,
+    reason: str = "",
+) -> None:
+    """Release a claimed message back to PENDING, due later."""
+    message.status = DiscordOutboxMessage.Status.PENDING
+    message.next_attempt_at = next_attempt_at
+    message.last_error_code = error_code
+    message.last_error_reason = reason
+    message.save(
+        update_fields=[
+            "status",
+            "next_attempt_at",
+            "last_error_code",
+            "last_error_reason",
+            "updated_at",
+        ]
+    )
+
+
+def mark_outbox_permanent(
+    message: DiscordOutboxMessage,
+    *,
+    error_code: int | None = None,
+    reason: str = "",
+    now: datetime | None = None,
+) -> None:
+    """Settle a message that retrying cannot help."""
+    _settle_unsendable(
+        message,
+        status=DiscordOutboxMessage.Status.FAILED,
+        error_code=error_code,
+        reason=reason,
+        now=now,
+    )
+
+
+def mark_outbox_dead(
+    message: DiscordOutboxMessage,
+    *,
+    error_code: int | None = None,
+    reason: str = "",
+    now: datetime | None = None,
+) -> None:
+    """Settle a message whose attempts are exhausted."""
+    _settle_unsendable(
+        message,
+        status=DiscordOutboxMessage.Status.DEAD,
+        error_code=error_code,
+        reason=reason,
+        now=now,
+    )
+
+
+def _settle_unsendable(
+    message: DiscordOutboxMessage,
+    *,
+    status: str,
+    error_code: int | None,
+    reason: str,
+    now: datetime | None,
+) -> None:
+    message.status = status
+    message.last_error_code = error_code
+    message.last_error_reason = reason
+    message.settled_at = now or timezone.now()
+    message.save(
+        update_fields=[
+            "status",
+            "last_error_code",
+            "last_error_reason",
+            "settled_at",
+            "updated_at",
+        ]
+    )
+
+
+def get_outbox_message(pk) -> DiscordOutboxMessage | None:
+    return DiscordOutboxMessage.objects.filter(pk=pk).first()
+
+
+def outbox_counters(*, since: datetime | None = None) -> dict:
+    """Attempted / delivered / retried / dead, for operations and the portal."""
+    rows = DiscordOutboxMessage.objects.all()
+    if since is not None:
+        rows = rows.filter(created_at__gte=since)
+    return {
+        "queued": rows.count(),
+        "attempted": rows.filter(attempts__gt=0).count(),
+        "delivered": rows.filter(status=DiscordOutboxMessage.Status.SENT).count(),
+        "retried": rows.filter(attempts__gt=1).count(),
+        "failed": rows.filter(status=DiscordOutboxMessage.Status.FAILED).count(),
+        "dead": rows.filter(status=DiscordOutboxMessage.Status.DEAD).count(),
+        "pending": rows.filter(
+            status__in=(
+                DiscordOutboxMessage.Status.PENDING,
+                DiscordOutboxMessage.Status.SENDING,
+            )
+        ).count(),
+    }
+
+
+def purge_outbox(*, before: datetime) -> list[str]:
+    """Delete settled-successful rows older than ``before``; return their file paths.
+
+    Only SENT rows are purged. FAILED and DEAD rows are the diagnostic record of what
+    went wrong and why, so they stay until someone looks at them. The caller unlinks
+    the returned attachment paths — this module owns the database, not the filesystem.
+    """
+    rows = DiscordOutboxMessage.objects.filter(
+        status=DiscordOutboxMessage.Status.SENT, settled_at__lt=before
+    )
+    paths = [p for p in rows.values_list("attachment_path", flat=True) if p]
+    rows.delete()
+    return paths
+
+
+def outbox_attachment_paths_for_settled() -> list[str]:
+    """Attachment paths on rows that will never be sent again (FAILED/DEAD/SENT)."""
+    return [
+        p
+        for p in DiscordOutboxMessage.objects.filter(
+            status__in=DiscordOutboxMessage.TERMINAL
+        ).values_list("attachment_path", flat=True)
+        if p
+    ]

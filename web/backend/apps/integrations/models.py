@@ -193,3 +193,99 @@ class DiscordGuildLink(models.Model):
 
     def __str__(self) -> str:
         return f"DiscordGuildLink(lab={self.lab_id}, state={self.state})"
+
+
+class DiscordOutboxMessage(models.Model):
+    """One outbound Discord message, durable from decision to delivery.
+
+    The problem this exists for: senders used to call Discord inline and record the
+    attempt as done either way, so a thirty-second outage silently retired that
+    person's reminder for good. The queue moves the "don't send this twice" record to
+    **enqueue** time, so the guarantee survives while a failed attempt stays claimable
+    instead of vanishing.
+
+    ``dedupe_key`` is the logical identity of a message ("this subscription's fire for
+    this deadline date"), unique so a producer can be re-run safely — re-enqueueing is
+    a no-op, not a second message. ``id`` is a plain integer rather than a UUID
+    specifically so it fits Discord's 25-character ``nonce`` limit: it is sent with
+    ``enforce_nonce`` so an attempt Discord accepted but whose response we never saw
+    returns the existing message instead of posting a duplicate.
+
+    ``subject_type``/``subject_id`` are provenance, not a foreign key: they point back
+    at whatever produced the message (a reminder fire, a daily briefing) across app
+    boundaries and survive that row being deleted, which is what makes a dead letter
+    traceable months later.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENDING = "sending", "Sending"  # claimed by a drain, attempt in flight
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"  # permanent — retrying cannot help
+        DEAD = "dead", "Dead"  # attempts exhausted
+
+    #: Statuses no drain will ever pick up again.
+    TERMINAL = (Status.SENT, Status.FAILED, Status.DEAD)
+
+    class Target(models.TextChoices):
+        DM = "dm", "Direct message"
+        CHANNEL = "channel", "Channel"
+
+    dedupe_key = models.CharField(max_length=200, unique=True)
+    kind = models.CharField(max_length=40)  # reminder | daily_report | lab_digest | …
+    target_type = models.CharField(max_length=16, choices=Target.choices)
+    # DM: whose identity to resolve *at send time* — a cached dm_channel_id can go
+    # stale between enqueue and delivery, so the channel is never frozen here.
+    recipient_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="discord_outbox",
+    )
+    channel_id = models.CharField(max_length=32, blank=True, default="")
+    # Provenance for a channel send: which lab's binding produced it, so a permanent
+    # failure can flag that binding and reach the right managers.
+    lab = models.ForeignKey(
+        "accounts.Lab",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="discord_outbox",
+    )
+    content = models.TextField(blank=True, default="")
+    embed = models.JSONField(null=True, blank=True)
+    allowed_mentions = models.JSONField(null=True, blank=True)
+    # A path, not bytes: the daily report runs 0.2–2 MB and would bloat both this
+    # table and every unqualified SELECT against it. The retention sweep owns deletion.
+    attachment_path = models.CharField(max_length=500, blank=True, default="")
+    attachment_filename = models.CharField(max_length=200, blank=True, default="")
+    subject_type = models.CharField(max_length=40, blank=True, default="")
+    subject_id = models.CharField(max_length=64, blank=True, default="")
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.PENDING
+    )
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(db_index=True)
+    last_error_code = models.IntegerField(null=True, blank=True)
+    last_error_reason = models.CharField(max_length=40, blank=True, default="")
+    discord_message_id = models.CharField(max_length=32, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    settled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            # The drain's only query: due, unsettled work in arrival order.
+            models.Index(fields=["status", "next_attempt_at"]),
+        ]
+        ordering = ["next_attempt_at", "id"]
+
+    def __str__(self) -> str:
+        return f"DiscordOutboxMessage({self.kind}, {self.status}, {self.dedupe_key})"
+
+    @property
+    def nonce(self) -> str:
+        """Discord's idempotency token for this row (25-char limit — an int fits)."""
+        return str(self.pk)
