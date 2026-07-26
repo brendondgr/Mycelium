@@ -42,6 +42,7 @@ class TickResult:
     fired: int = 0
     staled: int = 0
     fired_out: int = 0
+    snoozed: int = 0
     notifications: int = 0
 
     def as_dict(self) -> dict:
@@ -50,6 +51,7 @@ class TickResult:
             "fired": self.fired,
             "staled": self.staled,
             "fired_out": self.fired_out,
+            "snoozed": self.snoozed,
             "notifications": self.notifications,
         }
 
@@ -84,6 +86,13 @@ def run_tick(today=None, *, now=None) -> TickResult:
         if local_today > due:
             _set_state(sub, ReminderSubscription.State.FIRED_OUT)
             result.fired_out += 1
+            continue
+
+        # Snoozed: skip without sealing anything, so the offsets stay open. When the
+        # date passes they trigger together and the one-message-per-day collapse
+        # sends a single reminder with the true days remaining — deferred, not lost.
+        if sub.snoozed_until and local_today < sub.snoozed_until:
+            result.snoozed += 1
             continue
 
         keys = _triggered_keys(sub, due, local_today)

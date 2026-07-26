@@ -9,7 +9,7 @@ from __future__ import annotations
 import unittest
 
 from mylo.bot.client import INITIAL_EXTENSIONS, MyloBot
-from mylo.bot.cogs.status import StatusCog
+from mylo.bot.cogs.mylo_commands import MyloCog
 from mylo.bot.errors import MyloCommandTree
 from mylo.config import MyloConfig
 
@@ -24,11 +24,25 @@ class BotConstructionTests(unittest.TestCase):
         self.assertIsInstance(bot.tree, MyloCommandTree)
         self.assertEqual(bot.config.error_channel_id, 1)
 
-    def test_status_group_exposes_expected_subcommands(self) -> None:
-        names = {command.name for command in StatusCog.mylo.commands}
-        # health/lastrun (observability) + status (link health). Channel setup moved
-        # to the top-level /setup command.
-        self.assertEqual(names, {"health", "lastrun", "status"})
+    def test_mylo_group_exposes_every_subcommand(self) -> None:
+        names = {command.name for command in MyloCog.mylo.commands}
+        # Observability (health/lastrun), link health (status), research
+        # (search/digest/saves) and reminder control (snooze/cancel). All in one cog
+        # because discord.py cannot share an app_commands.Group across cogs.
+        # Channel setup stays the top-level /setup command.
+        self.assertEqual(
+            names,
+            {
+                "health",
+                "lastrun",
+                "status",
+                "search",
+                "digest",
+                "saves",
+                "snooze",
+                "cancel",
+            },
+        )
 
 
 class BotExtensionLoadTests(unittest.IsolatedAsyncioTestCase):
@@ -46,6 +60,9 @@ class BotExtensionLoadTests(unittest.IsolatedAsyncioTestCase):
                 {p.name for p in commands["activate-lab"].parameters}, {"code"}
             )
             self.assertIn("setup", commands)
+            # Every /mylo subcommand reaches the tree, not just the group itself.
+            group = commands["mylo"]
+            self.assertIn("search", {c.name for c in group.commands})
         finally:
             await bot.close()
 

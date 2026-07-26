@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 #: Every cog is an extension exposing ``async def setup(bot)``.
 INITIAL_EXTENSIONS: tuple[str, ...] = (
     "mylo.bot.cogs.admin",
-    "mylo.bot.cogs.status",
+    "mylo.bot.cogs.mylo_commands",
     "mylo.bot.cogs.link",
     "mylo.bot.cogs.setup",
 )

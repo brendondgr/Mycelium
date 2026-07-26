@@ -306,3 +306,98 @@ def _bind_setup_channel_sync(
         f"✅ {label} for **{lab_name}** → <#{channel_id}> (I sent a confirmation there)."
     )
     return ("ok", payload)
+
+
+# --------------------------------------------------------------------------- #
+# The `/mylo` research + reminder commands (Phase C)
+# --------------------------------------------------------------------------- #
+# Each is a thin async wrapper: the decision and the data live in
+# `apps.content.discord_commands`, which starts every call at the authorization gate.
+# Nothing here branches on permission — that would be a second place for the policy
+# to live, and the two would eventually disagree.
+async def search(discord_user_id: str, query: str) -> tuple[str, dict]:
+    return await mycelium.db(_search_sync, str(discord_user_id), query or "")
+
+
+async def digest(discord_user_id: str, lab_slug: str = "") -> tuple[str, dict]:
+    return await mycelium.db(_digest_sync, str(discord_user_id), lab_slug or "")
+
+
+async def saves(discord_user_id: str, page: int = 0) -> tuple[str, dict]:
+    return await mycelium.db(_saves_sync, str(discord_user_id), int(page or 0))
+
+
+async def snooze(
+    discord_user_id: str, *, reminder_id: str, amount: int, unit: str
+) -> tuple[str, dict]:
+    return await mycelium.db(
+        _snooze_sync, str(discord_user_id), str(reminder_id), int(amount), str(unit)
+    )
+
+
+async def cancel(discord_user_id: str, *, reminder_id: str) -> tuple[str, dict]:
+    return await mycelium.db(_cancel_sync, str(discord_user_id), str(reminder_id))
+
+
+async def manageable_reminders(
+    discord_user_id: str, prefix: str = ""
+) -> tuple[str, dict]:
+    return await mycelium.db(
+        _manageable_sync, str(discord_user_id), str(prefix or "")
+    )
+
+
+def _search_sync(discord_user_id: str, query: str) -> tuple[str, dict]:
+    from apps.content import discord_commands
+
+    return discord_commands.search(discord_user_id, query)
+
+
+def _digest_sync(discord_user_id: str, lab_slug: str) -> tuple[str, dict]:
+    from apps.content import discord_commands
+
+    return discord_commands.digest(discord_user_id, lab_slug)
+
+
+def _saves_sync(discord_user_id: str, page: int) -> tuple[str, dict]:
+    from apps.content import discord_commands
+
+    return discord_commands.saves(discord_user_id, page)
+
+
+def _snooze_sync(
+    discord_user_id: str, reminder_id: str, amount: int, unit: str
+) -> tuple[str, dict]:
+    from apps.content import discord_commands
+
+    return discord_commands.snooze(
+        discord_user_id, reminder_id=reminder_id, amount=amount, unit=unit
+    )
+
+
+def _cancel_sync(discord_user_id: str, reminder_id: str) -> tuple[str, dict]:
+    from apps.content import discord_commands
+
+    return discord_commands.cancel(discord_user_id, reminder_id=reminder_id)
+
+
+def _manageable_sync(discord_user_id: str, prefix: str) -> tuple[str, dict]:
+    from apps.content import discord_commands
+
+    return discord_commands.list_manageable(discord_user_id, prefix)
+
+
+def user_labs(discord_user_id: str):
+    """Labs the caller can pick for a lab-scoped command. Empty when unlinked."""
+    return mycelium.db(_user_labs_sync, str(discord_user_id))
+
+
+def _user_labs_sync(discord_user_id: str) -> list[dict]:
+    from apps.accounts.models import LabMembership
+    from apps.integrations.services import resolve
+
+    user = resolve.resolve_user(discord_user_id)
+    if user is None:
+        return []
+    rows = LabMembership.objects.filter(user=user).select_related("lab")
+    return [{"slug": m.lab.slug, "name": m.lab.name} for m in rows]

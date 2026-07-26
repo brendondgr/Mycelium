@@ -860,6 +860,12 @@ class ReminderSubscription(models.Model):
         default="",
         help_text="Lab only: a specific channel instead of the lab default.",
     )
+    # Suppress firing until this date (exclusive). Deliberately *not* a seal: the
+    # offsets stay unsealed while snoozed, so when the date passes the still-pending
+    # ones trigger and the one-message-per-day collapse sends a single reminder with
+    # the true days remaining. Sealing instead would swallow the reminder rather than
+    # defer it — the difference between "later" and "never".
+    snoozed_until = models.DateField(null=True, blank=True)
     has_unlinked_targets = models.BooleanField(
         default=False,
         help_text="A mention target has no active Discord identity (portal prompts).",
