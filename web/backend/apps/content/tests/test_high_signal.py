@@ -152,7 +152,16 @@ def test_command_delivers_when_enabled(user, settings) -> None:
     Subscription.objects.create(tier=Tier.SPORE, scope_user=user)
     _score(user, ext="g1")
     settings.HIGH_SIGNAL_DELIVERY_ENABLED = True
+    # Pin the command's clock to the fixtures' date; the freshness window is only
+    # a few days wide, so without this the test rots the moment the real date moves.
     call_command(
-        "high_signal_shadow", "--deliver", "--floor", "90", "--user", "hs-user"
+        "high_signal_shadow",
+        "--deliver",
+        "--floor",
+        "90",
+        "--user",
+        "hs-user",
+        "--today",
+        TODAY.isoformat(),
     )
     assert Notification.objects.filter(kind=Notification.Kind.HIGH_SIGNAL).count() == 1
