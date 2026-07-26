@@ -14,7 +14,7 @@ from django.contrib.auth.models import User
 
 from apps.content.reminders_discord import send_personal_report
 from apps.integrations.models import DiscordIdentity
-from apps.integrations.services import discord_api, resolve
+from apps.integrations.services import discord_api, outbox, resolve
 from apps.integrations.services.discord_api import (
     RawResponse,
     create_message_with_attachment,
@@ -104,23 +104,59 @@ def _active_identity(user, *, dm_ok=True, channel="dm-chan", opt_out=False):
 
 
 @pytest.mark.django_db
-def test_send_personal_report_dms_the_pdf(transport) -> None:
+def test_send_personal_report_dms_the_pdf(transport, tmp_path) -> None:
+    """Queued now, so the bytes are read from disk when the drain gets to it."""
     user = User.objects.create_user("rpt")
     _active_identity(user)
+    pdf = tmp_path / "mylo.pdf"
+    pdf.write_bytes(b"%PDF-xyz")
+
     outcome = send_personal_report(
-        user, title="Daily report", body="Mylo found 3 papers.",
-        filename="mylo.pdf", pdf_bytes=b"%PDF-xyz",
+        user,
+        title="Daily report",
+        body="Mylo found 3 papers.",
+        filename="mylo.pdf",
+        attachment_path=str(pdf),
+        dedupe_key="daily_report:1:2026-07-16",
     )
-    assert outcome.ok
+    assert outcome.ok and outcome.queued
+    outbox.drain()
+
     call = transport.last_message()
     assert b"%PDF-xyz" in call["raw_body"]
+
+
+@pytest.mark.django_db
+def test_a_report_whose_file_vanished_is_not_retried_forever(
+    transport, tmp_path
+) -> None:
+    """A missing attachment is permanent: no retry can conjure the bytes back."""
+    from apps.integrations.models import DiscordOutboxMessage
+
+    user = User.objects.create_user("gone")
+    _active_identity(user)
+    send_personal_report(
+        user,
+        title="t",
+        body="b",
+        filename="f.pdf",
+        attachment_path=str(tmp_path / "never-written.pdf"),
+        dedupe_key="daily_report:9:2026-07-16",
+    )
+
+    outbox.drain()
+
+    row = DiscordOutboxMessage.objects.get()
+    assert row.status == DiscordOutboxMessage.Status.FAILED
+    assert row.last_error_reason == "attachment_gone"
 
 
 @pytest.mark.django_db
 def test_send_personal_report_unreachable_when_no_identity(transport) -> None:
     user = User.objects.create_user("noident")
     outcome = send_personal_report(
-        user, title="t", body="b", filename="f.pdf", pdf_bytes=b"%PDF"
+        user, title="t", body="b", filename="f.pdf",
+        attachment_path="/tmp/x.pdf", dedupe_key="k1",
     )
     assert not outcome.ok
     assert outcome.unreachable
@@ -132,7 +168,8 @@ def test_send_personal_report_no_token_is_soft(monkeypatch, settings) -> None:
     user = User.objects.create_user("notoken")
     _active_identity(user)
     outcome = send_personal_report(
-        user, title="t", body="b", filename="f.pdf", pdf_bytes=b"%PDF"
+        user, title="t", body="b", filename="f.pdf",
+        attachment_path="/tmp/x.pdf", dedupe_key="k2",
     )
     assert not outcome.ok
     assert outcome.unreachable

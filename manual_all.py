@@ -125,6 +125,13 @@ CONTAINER_STAGES = [
         [],
         "DMing each linked user their daily PDF report…",
     ),
+    # After the briefings, and last alongside the personal report: both only queue
+    # messages, so a failure here costs a day's post rather than the day's data.
+    (
+        "send_lab_digests",
+        [],
+        "Posting each lab's digest to its Discord updates channel…",
+    ),
 ]
 
 

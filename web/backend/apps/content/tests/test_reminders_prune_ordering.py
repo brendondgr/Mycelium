@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 from django.contrib.auth.models import User
 
+from apps.content import reminders
 from apps.content.models import (
     ContentDeadline,
     ContentItem,
@@ -32,6 +33,19 @@ _State = ReminderSubscription.State
 @pytest.fixture
 def user(db):
     return User.objects.create_user("prune-user")
+
+
+@pytest.fixture(autouse=True)
+def pinned_prune_clock(monkeypatch):
+    """Pin the prune → stale hook's wall clock to ``TODAY`` for this whole module.
+
+    The hook runs from a ``pre_delete`` receiver, which cannot be handed a reference
+    date and so reads ``reminders.reference_today()``. Every deadline here is anchored
+    to ``TODAY``; leaving this one on the real clock made the module's verdict depend
+    on the day it was run, and two tests here duly went red once the wall clock passed
+    ``TODAY + 7 days``.
+    """
+    monkeypatch.setattr(reminders, "reference_today", lambda: TODAY)
 
 
 def _content_with_deadline(due: date):

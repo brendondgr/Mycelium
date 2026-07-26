@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { DiscordHealthCard } from "@/components/portal/sections/discord-health-card";
 import { CloseIcon, TargetIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
@@ -70,6 +71,7 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
           <LabPlanCard slug={lab.slug} />
           <InviteCard lab={lab} />
           <DiscordSyncCard lab={lab} />
+          <DiscordHealthCard lab={lab} />
           <ProjectsCard lab={lab} canManage />
         </div>
 

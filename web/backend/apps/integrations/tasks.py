@@ -5,6 +5,7 @@ All fire-and-forget, out of any request path:
 * ``post_discord_incident`` — the actual ERROR_CHANNEL POST (the sink enqueues it).
 * ``probe_identity`` — the DM reachability probe, with backoff on 429/5xx.
 * ``reconcile_discord`` — the nightly presence + token-health sweep.
+* ``drain_outbox`` — the outbound queue's worker, every minute on Beat.
 
 None import a model; DB access is via ``services.resolve``.
 """
@@ -15,7 +16,7 @@ import logging
 
 from celery import shared_task
 
-from .services import errors, probe, reconcile, resolve
+from .services import errors, outbox, probe, reconcile, resolve
 
 logger = logging.getLogger("mycelium.integrations.discord")
 
@@ -56,3 +57,24 @@ def probe_identity(self, identity_id: int) -> dict:
 @shared_task(name="apps.integrations.reconcile_discord")
 def reconcile_discord() -> dict:
     return reconcile.reconcile()
+
+
+@shared_task(name="apps.integrations.purge_outbox")
+def purge_outbox() -> dict:
+    """Drop delivered rows past their retention window, and their attachments.
+
+    Successes only — a failed or dead row is the evidence someone needs when they ask
+    why a report never arrived.
+    """
+    return outbox.purge()
+
+
+@shared_task(name="apps.integrations.drain_outbox")
+def drain_outbox() -> dict:
+    """Deliver whatever is due in the outbound queue.
+
+    Retry state lives in the rows, not in Celery: a message that fails carries its own
+    ``next_attempt_at``, so this task never retries itself and a missed run costs a
+    minute of latency rather than a lost message.
+    """
+    return outbox.drain().as_dict()

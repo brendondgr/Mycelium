@@ -125,12 +125,34 @@ def open_dm_raw(recipient_id: str) -> RawResponse:
     )
 
 
+#: Discord caps ``nonce`` at 25 characters (documented on Create Message).
+NONCE_MAX_LENGTH = 25
+
+
+def _nonce_fields(nonce: str) -> dict:
+    """``nonce`` + ``enforce_nonce`` for an idempotent retry, if one was supplied.
+
+    With ``enforce_nonce`` set, Discord checks the nonce for uniqueness over the last
+    few minutes and, if this author already sent a message carrying it, returns *that*
+    message instead of creating a second one. That is what makes retrying a send whose
+    response we never saw safe rather than a coin flip.
+
+    A nonce longer than the documented limit is dropped rather than sent: an
+    over-length value would be rejected by Discord, turning a recoverable retry into a
+    hard failure — worse than simply losing the deduplication.
+    """
+    if not nonce or len(nonce) > NONCE_MAX_LENGTH:
+        return {}
+    return {"nonce": nonce, "enforce_nonce": True}
+
+
 def create_message(
     channel_id: str,
     *,
     content: str = "",
     embed: dict | None = None,
     allowed_mentions: dict | None = None,
+    nonce: str = "",
 ):
     """Post a message. ``allowed_mentions.parse`` is **always forced to ``[]``**.
 
@@ -139,6 +161,8 @@ def create_message(
     the server from a trusted bot. Callers may pass explicit ``users`` / ``roles`` id
     lists to ping specific members (``<@id>`` in the body then resolves), but the
     parse categories stay empty regardless of what is passed.
+
+    ``nonce`` opts into Discord-side deduplication — see :func:`_nonce_fields`.
     """
     mentions: dict = {"parse": []}
     if allowed_mentions:
@@ -146,7 +170,7 @@ def create_message(
             mentions["users"] = [str(u) for u in allowed_mentions["users"]]
         if allowed_mentions.get("roles"):
             mentions["roles"] = [str(r) for r in allowed_mentions["roles"]]
-    body: dict = {"allowed_mentions": mentions}
+    body: dict = {"allowed_mentions": mentions, **_nonce_fields(nonce)}
     if content:
         body["content"] = content
     if embed:
@@ -168,6 +192,7 @@ def create_message_with_attachment(
     embed: dict | None = None,
     allowed_mentions: dict | None = None,
     file_content_type: str = "application/pdf",
+    nonce: str = "",
 ):
     """Post a message with a single file attachment (``multipart/form-data``).
 
@@ -186,6 +211,7 @@ def create_message_with_attachment(
     payload: dict = {
         "allowed_mentions": mentions,
         "attachments": [{"id": 0, "filename": filename}],
+        **_nonce_fields(nonce),
     }
     if content:
         payload["content"] = content

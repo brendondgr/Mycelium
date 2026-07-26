@@ -26,9 +26,8 @@ from .models import (
     SavedOpportunity,
 )
 from .onboarding_match import UnknownArea, onboarding_match_area
-from .query_embedding import embed_query
 from .scan_status import is_paper_scan_inflight
-from .search import SearchFilters, normalize_query, run_search
+from .search import SearchFilters
 from .serializers import (
     ConferenceSerializer,
     FellowshipSerializer,
@@ -1293,31 +1292,27 @@ class SearchView(APIView):
             date_to=_parse_date(params.get("date_to")),
         )
 
-        # Embed the query in the shared corpus space for the semantic channel
-        # (cached by normalized query in Phase 3). The embedder is the slow part,
-        # so the view owns it while the search module stays embedder-free.
-        normalized = normalize_query(query)
-        query_vector = embed_query(normalized) if normalized else None
+        # Query embedding, saved state and cluster attribution all live in
+        # `search_service`, so Mylo's `/mylo search` runs the identical path and the
+        # two surfaces cannot drift apart on the same query.
+        from apps.content.search_service import search_for_user
 
-        result = run_search(
+        context = search_for_user(
+            request.user,
             query,
             filters=filters,
             sort=params.get("sort", "relevance"),
             limit=params.get("limit"),
             offset=_parse_offset(params),
-            query_vector=query_vector,
         )
-
-        saved_ids = _saved_content_ids(request.user) if result.items else set()
-        saved_labs = (
-            _saved_lab_slugs_by_content(request.user) if result.items else {}
-        )
-        if result.items:
-            _attach_search_clusters(result.items, request.user)
+        result = context.result
         serializer = SearchResultSerializer(
             result.items,
             many=True,
-            context={"saved_ids": saved_ids, "saved_labs": saved_labs},
+            context={
+                "saved_ids": context.saved_ids,
+                "saved_labs": context.saved_labs,
+            },
         )
         return Response(
             {

@@ -234,7 +234,13 @@ class ReminderListCreateView(APIView):
 
 
 class ReminderDetailView(APIView):
-    """DELETE (cancel + remove) a reminder the user owns or manages."""
+    """DELETE (cancel) a reminder the user owns or manages.
+
+    A **soft** cancel: the row is marked ``CANCELLED`` rather than destroyed, so the
+    tick stops seeing it while "why did this stop reminding me?" keeps an answer, and
+    the fired ledger it seals stays intact. ``/mylo cancel`` does exactly the same
+    thing, so the two surfaces cannot drift.
+    """
 
     permission_classes = [IsAuthenticated]
 
@@ -247,7 +253,9 @@ class ReminderDetailView(APIView):
                 return _bad("Not your reminder.", 403)
         elif not user_can_edit_lab_profile(request.user, sub.target_lab):
             return _bad("Only a lab PI or admin can remove a lab reminder.", 403)
-        sub.delete()
+        if sub.state != ReminderSubscription.State.CANCELLED:
+            sub.state = ReminderSubscription.State.CANCELLED
+            sub.save(update_fields=["state", "updated_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -9,7 +9,6 @@ live Discord.
 
 from __future__ import annotations
 
-import tempfile
 from io import BytesIO
 from pathlib import Path
 
@@ -252,19 +251,26 @@ def _report_for(user) -> ReportData:
     )
 
 
-def test_send_flow_is_phased_and_cleans_up(monkeypatch, tmp_path) -> None:
+def test_send_flow_is_phased_and_keeps_the_bytes_for_the_drain(
+    monkeypatch, tmp_path
+) -> None:
+    """Compile-all, render-all, queue-all — and the PDFs survive the batch.
+
+    They used to be deleted the moment the batch finished, which was correct while
+    sending was synchronous. Now the drain reads them minutes later (longer during an
+    outage), so deleting here would guarantee the very failure the queue exists to
+    prevent. The outbox retention sweep owns removal instead, once a row has settled.
+    """
     recipients = [_FakeUser(1, "alice"), _FakeUser(2, "bob")]
     monkeypatch.setattr(daily_report_send, "eligible_recipients", lambda u: recipients)
+    monkeypatch.setattr(daily_report_send, "_report_dir", lambda: tmp_path / "outbox")
 
-    made_dir = tmp_path / "run"
-    monkeypatch.setattr(tempfile, "mkdtemp", lambda prefix="": str(made_dir))
+    queued: list[str] = []
 
-    sent: list[str] = []
-
-    def send_fn(user, data, pdf_bytes, filename):
-        assert pdf_bytes == b"%PDF-fake"
+    def send_fn(user, data, path, filename):
+        assert Path(path).read_bytes() == b"%PDF-fake"
         assert filename.startswith("mylo-report-")
-        sent.append(user.get_username())
+        queued.append(user.get_username())
         return _Outcome(True)
 
     summary = run_daily_report_send(
@@ -277,9 +283,8 @@ def test_send_flow_is_phased_and_cleans_up(monkeypatch, tmp_path) -> None:
     assert summary.compiled == 2
     assert summary.rendered == 2
     assert summary.sent == 2
-    assert sorted(sent) == ["alice", "bob"]
-    # The temp dir (and every PDF in it) is deleted afterwards.
-    assert not made_dir.exists()
+    assert sorted(queued) == ["alice", "bob"]
+    assert len(list((tmp_path / "outbox").glob("*.pdf"))) == 2
 
 
 def test_send_flow_isolates_one_failure(monkeypatch) -> None:
@@ -303,9 +308,10 @@ def test_send_flow_isolates_one_failure(monkeypatch) -> None:
     assert summary.errors == 1
 
 
-def test_unreachable_send_is_counted_not_sent(monkeypatch) -> None:
+def test_unreachable_send_is_counted_not_sent(monkeypatch, tmp_path) -> None:
     recipients = [_FakeUser(1, "u")]
     monkeypatch.setattr(daily_report_send, "eligible_recipients", lambda u: recipients)
+    monkeypatch.setattr(daily_report_send, "_report_dir", lambda: tmp_path / "outbox")
     summary = run_daily_report_send(
         compile_fn=_report_for,
         render_fn=lambda d: b"%PDF-x",
@@ -313,6 +319,8 @@ def test_unreachable_send_is_counted_not_sent(monkeypatch) -> None:
     )
     assert summary.sent == 0
     assert summary.unreachable == 1
+    # Nothing was queued, so no sweep will ever come for this file — drop it now.
+    assert list((tmp_path / "outbox").glob("*.pdf")) == []
 
 
 def test_saved_dir_keeps_the_pdfs(monkeypatch, tmp_path) -> None:

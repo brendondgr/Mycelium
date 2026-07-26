@@ -860,6 +860,12 @@ class ReminderSubscription(models.Model):
         default="",
         help_text="Lab only: a specific channel instead of the lab default.",
     )
+    # Suppress firing until this date (exclusive). Deliberately *not* a seal: the
+    # offsets stay unsealed while snoozed, so when the date passes the still-pending
+    # ones trigger and the one-message-per-day collapse sends a single reminder with
+    # the true days remaining. Sealing instead would swallow the reminder rather than
+    # defer it — the difference between "later" and "never".
+    snoozed_until = models.DateField(null=True, blank=True)
     has_unlinked_targets = models.BooleanField(
         default=False,
         help_text="A mention target has no active Discord identity (portal prompts).",
@@ -995,6 +1001,7 @@ class ReminderFire(models.Model):
 
     class Result(models.TextChoices):
         SENT = "sent", "Sent"
+        QUEUED = "queued", "Queued"  # handed to the outbox; delivery is its record
         SKIPPED = "skipped", "Skipped"
         FAILED = "failed", "Failed"
 
@@ -1010,6 +1017,11 @@ class ReminderFire(models.Model):
     channel = models.CharField(max_length=20, choices=Channel.choices)
     state = models.CharField(max_length=20, choices=Result.choices)
     skip_reason = models.CharField(max_length=40, blank=True, default="")
+    # The outbox row this fire handed its Discord message to, by dedupe key rather
+    # than a foreign key: the seal belongs to `content`, the delivery record belongs
+    # to `integrations`, and neither app needs to know the other's schema to join
+    # them. Blank when the fire had nothing to send to Discord.
+    outbox_key = models.CharField(max_length=200, blank=True, default="")
     discord_message_id = models.CharField(max_length=32, blank=True, default="")
     attempts = models.PositiveSmallIntegerField(default=0)
     error_code = models.IntegerField(null=True, blank=True)
@@ -1062,6 +1074,10 @@ class Notification(models.Model):
         REMINDER = "reminder", "Reminder"
         DEADLINE_MOVED = "deadline_moved", "Deadline moved"
         HIGH_SIGNAL = "high_signal", "High signal"
+        # Mylo gave up delivering something to Discord. In-app is the only channel
+        # that can carry this: if Discord is the broken thing, a Discord message
+        # would fail for the same reason the original one did.
+        DELIVERY_FAILED = "delivery_failed", "Delivery failed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

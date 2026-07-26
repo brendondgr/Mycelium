@@ -7,7 +7,44 @@ from apps.scraper.pivot.normalize import normalize_amount
 from .models import ContentItem, RelevanceScore, SavedOpportunity
 
 
-class SuggestionSerializer(serializers.Serializer):
+class ClusterAttributionMixin:
+    """The three cluster fields, shared by papers and opportunities.
+
+    Cluster attribution is a property of a scored row, not of papers specifically —
+    the matcher writes the same ``cluster_id``/``per_cluster``/``bridge_cluster_ids``
+    signals whichever content type it scored. Keeping the readers here means a grant
+    card and a paper card resolve a renamed cluster identically instead of drifting.
+    """
+
+    def _cluster_label(self, cluster_id: str, persisted: str = "") -> str:
+        # Resolve a cluster id to its *current* label so a renamed cluster shows
+        # its new name everywhere without a re-score; fall back to the label frozen
+        # in the signals when the caller supplied no live map (e.g. saves feed).
+        labels = self.context.get("cluster_labels") or {}
+        return labels.get(cluster_id) or persisted or ""
+
+    def get_cluster(self, score):
+        # {id, label} of the attributed (argmax) cluster, or null on the flat /
+        # single-cluster path (no cluster attribution).
+        cluster_id = score.signals.get("cluster_id")
+        if not cluster_id:
+            return None
+        label = self._cluster_label(cluster_id, score.signals.get("cluster_label", ""))
+        return {"id": cluster_id, "label": label}
+
+    def get_per_cluster(self, score) -> dict:
+        # {cluster_id -> [0,1] combined score} across every cluster this item
+        # cleared; empty on the flat path.
+        return score.signals.get("per_cluster") or {}
+
+    def get_bridge_clusters(self, score) -> list:
+        # Secondary "also relevant to …" clusters (the item cleared the floor in
+        # >= 2 clusters); each resolved to its current {id, label}.
+        ids = score.signals.get("bridge_cluster_ids") or []
+        return [{"id": cid, "label": self._cluster_label(cid)} for cid in ids]
+
+
+class SuggestionSerializer(ClusterAttributionMixin, serializers.Serializer):
     """One research-article suggestion for the daily report (read-only).
 
     Flattens a :class:`RelevanceScore` and its content item into what the Daily
@@ -92,33 +129,6 @@ class SuggestionSerializer(serializers.Serializer):
         # The interest labels this paper matched — the source of the page's chips.
         return score.signals.get("focus_areas") or []
 
-    def _cluster_label(self, cluster_id: str, persisted: str = "") -> str:
-        # Resolve a cluster id to its *current* label so a renamed cluster shows
-        # its new name everywhere without a re-score; fall back to the label frozen
-        # in the signals when the caller supplied no live map (e.g. saves feed).
-        labels = self.context.get("cluster_labels") or {}
-        return labels.get(cluster_id) or persisted or ""
-
-    def get_cluster(self, score: RelevanceScore):
-        # {id, label} of the attributed (argmax) cluster, or null on the flat /
-        # single-cluster path (no cluster attribution).
-        cluster_id = score.signals.get("cluster_id")
-        if not cluster_id:
-            return None
-        label = self._cluster_label(cluster_id, score.signals.get("cluster_label", ""))
-        return {"id": cluster_id, "label": label}
-
-    def get_per_cluster(self, score: RelevanceScore) -> dict:
-        # {cluster_id -> [0,1] combined score} across every cluster this paper
-        # cleared; empty on the flat path.
-        return score.signals.get("per_cluster") or {}
-
-    def get_bridge_clusters(self, score: RelevanceScore) -> list:
-        # Secondary "also relevant to …" clusters (the paper cleared the floor in
-        # >= 2 clusters); each resolved to its current {id, label}.
-        ids = score.signals.get("bridge_cluster_ids") or []
-        return [{"id": cid, "label": self._cluster_label(cid)} for cid in ids]
-
     def get_rank(self, score: RelevanceScore):
         return score.signals.get("rank")
 
@@ -153,7 +163,7 @@ class SuggestionSerializer(serializers.Serializer):
         return self.context.get("saved_labs", {}).get(str(score.content_id), [])
 
 
-class _OpportunitySerializer(serializers.Serializer):
+class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     """Shared read shape for a matched grant/conference (a :class:`RelevanceScore`).
 
     Flattens the score + its content item + the pipeline's ``signals`` into what the
@@ -168,6 +178,12 @@ class _OpportunitySerializer(serializers.Serializer):
     score = serializers.FloatField()
     match_percent = serializers.SerializerMethodField()
     embedding_match = serializers.SerializerMethodField()
+    # Which of the reader's research themes this opportunity belongs to. The cards
+    # have rendered a cluster badge since the cluster sprint; until the matcher
+    # started scoring opportunities per cluster there was never anything to put in it.
+    cluster = serializers.SerializerMethodField()
+    per_cluster = serializers.SerializerMethodField()
+    bridge_clusters = serializers.SerializerMethodField()
     rank = serializers.SerializerMethodField()
     headline = serializers.SerializerMethodField()
     reason = serializers.SerializerMethodField()

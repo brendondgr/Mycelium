@@ -34,6 +34,7 @@ urlpatterns = [
     *_both(
         "discord/guild/status", views.DiscordGuildStatusView, "discord-guild-status"
     ),
+    *_both("discord/health", views.DiscordHealthView, "discord-health"),
     *_both("discord/guild/start", views.DiscordGuildStartView, "discord-guild-start"),
     # OAuth callbacks — Discord redirects the browser here (GET). No-slash form is
     # the canonical registered redirect URI.

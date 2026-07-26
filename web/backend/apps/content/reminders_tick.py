@@ -42,6 +42,7 @@ class TickResult:
     fired: int = 0
     staled: int = 0
     fired_out: int = 0
+    snoozed: int = 0
     notifications: int = 0
 
     def as_dict(self) -> dict:
@@ -50,6 +51,7 @@ class TickResult:
             "fired": self.fired,
             "staled": self.staled,
             "fired_out": self.fired_out,
+            "snoozed": self.snoozed,
             "notifications": self.notifications,
         }
 
@@ -86,6 +88,13 @@ def run_tick(today=None, *, now=None) -> TickResult:
             result.fired_out += 1
             continue
 
+        # Snoozed: skip without sealing anything, so the offsets stay open. When the
+        # date passes they trigger together and the one-message-per-day collapse
+        # sends a single reminder with the true days remaining — deferred, not lost.
+        if sub.snoozed_until and local_today < sub.snoozed_until:
+            result.snoozed += 1
+            continue
+
         keys = _triggered_keys(sub, due, local_today)
         if not keys:
             continue
@@ -117,6 +126,8 @@ class _Delivery:
     channel: str
     message_id: str = ""
     error_code: int | None = None
+    queued: bool = False
+    outbox_key: str = ""
 
 
 def _triggered_keys(sub, due, today) -> list[str]:
@@ -131,33 +142,46 @@ def _triggered_keys(sub, due, today) -> list[str]:
 
 
 def _deliver(sub, due, days_remaining) -> _Delivery:
-    """Deliver one fire: always in-app; personal reminders also DM (R3)."""
+    """Deliver one fire: always in-app; personal reminders also DM (R3).
+
+    The Discord half is now *queued*, so this makes no network call at all. That also
+    closes a hole that predates the queue: the tick used to send, then write the seal,
+    so a crash in between meant the next tick re-sent a message Discord had already
+    accepted. Enqueue and seal are both local writes now, with nothing slow between
+    them.
+    """
     title, body = reminder_copy(sub, due, days_remaining)
     notified = _deliver_in_app(sub, title, body)
 
     channel = ReminderFire.Channel.IN_APP
-    message_id = ""
     error_code = None
-    if sub.target_user_id:  # personal → attempt a Discord DM on top of in-app
+    # One key per (subscription, deadline date) — the same shape as the in-app
+    # dedupe, so several offsets triggering on one day queue one message, not three.
+    dedupe_key = f"reminder:{sub.id}:{due:%Y-%m-%d}"
+
+    if sub.target_user_id:  # personal → queue a Discord DM on top of in-app
         from apps.content.reminders_discord import send_personal_dm
 
-        outcome = send_personal_dm(sub, title, body)
+        outcome = send_personal_dm(sub, title, body, dedupe_key=dedupe_key)
         if outcome.ok:
             channel = ReminderFire.Channel.DISCORD_DM
-            message_id = outcome.message_id
-        elif outcome.error_code is not None:
-            error_code = outcome.error_code
     else:  # lab → post to the announcement channel with resolved member pings (R5)
         from apps.content.reminders_discord import send_lab_channel
 
-        outcome = send_lab_channel(sub, title, body)
+        outcome = send_lab_channel(sub, title, body, dedupe_key=dedupe_key)
         _sync_unlinked_flag(sub, outcome.has_unlinked)
         if outcome.ok:
             channel = ReminderFire.Channel.DISCORD_CHANNEL
-            message_id = outcome.message_id
-        elif outcome.error_code is not None:
-            error_code = outcome.error_code
-    return _Delivery(notified, channel, message_id, error_code)
+    if not outcome.ok and outcome.error_code is not None:
+        error_code = outcome.error_code
+
+    return _Delivery(
+        notified,
+        channel,
+        error_code=error_code,
+        queued=outcome.queued,
+        outbox_key=outcome.outbox_key,
+    )
 
 
 def _sync_unlinked_flag(sub, has_unlinked) -> None:
@@ -187,9 +211,24 @@ def _deliver_in_app(sub, title, body) -> int:
 
 
 def _seal(sub, today, days_remaining, keys, now, delivery) -> None:
-    """Seal every triggering offset with a ``ReminderFire`` row (all in one fire)."""
-    sent = delivery.notified > 0 or bool(delivery.message_id)
-    state = ReminderFire.Result.SENT if sent else ReminderFire.Result.FAILED
+    """Seal every triggering offset with a ``ReminderFire`` row (all in one fire).
+
+    The seal is what stops a re-fire, and it is now written with nothing slow in
+    front of it — the Discord message is already queued, so "we decided to send this"
+    and "we recorded that we decided" cannot come apart.
+
+    ``QUEUED`` is deliberate rather than an optimistic ``SENT``: the message is in the
+    outbox, not in Discord. Whether it actually arrived is the outbox row's record,
+    reachable by ``outbox_key``, and claiming otherwise here would be the same
+    dishonesty that made a failed send look like a delivered one.
+    """
+    if delivery.queued:
+        state = ReminderFire.Result.QUEUED
+    elif delivery.notified > 0:
+        state = ReminderFire.Result.SENT
+    else:
+        state = ReminderFire.Result.FAILED
+    realised = state in (ReminderFire.Result.SENT, ReminderFire.Result.QUEUED)
     for key in keys:
         ReminderFire.objects.get_or_create(
             idempotency_key=key,
@@ -199,9 +238,9 @@ def _seal(sub, today, days_remaining, keys, now, delivery) -> None:
                 "days_remaining": days_remaining,
                 "channel": delivery.channel,
                 "state": state,
-                "discord_message_id": delivery.message_id,
+                "outbox_key": delivery.outbox_key,
                 "error_code": delivery.error_code,
-                "sent_at": now if sent else None,
+                "sent_at": now if realised else None,
             },
         )
 

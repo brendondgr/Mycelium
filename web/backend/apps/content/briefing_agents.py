@@ -145,6 +145,18 @@ def generate_report_body(
     model wrote any part (so the caller records ``origin=llm``); it is ``False``
     only when every stage fell back deterministically (writer offline).
     """
+    by_cluster = group_by_cluster(items_by_category, categories)
+    if by_cluster is not None:
+        return _cluster_first_body(
+            profile_text,
+            categories,
+            counts,
+            new_counts,
+            items_by_category,
+            by_cluster,
+            complete=complete,
+        )
+
     used_llm = False
     sections: list[tuple[str, str]] = []  # (label, body markdown)
     for category in categories:
@@ -167,6 +179,101 @@ def generate_report_body(
     for label, body in sections:
         blocks.append(f"## {label}\n\n{body}")
     return "\n\n".join(b for b in blocks if b).strip(), used_llm
+
+
+def group_by_cluster(
+    items_by_category: dict[str, list[dict]], categories: list[str]
+) -> dict[str, dict[str, list[dict]]] | None:
+    """Pivot ``{category: items}`` into ``{cluster_label: {category: items}}``.
+
+    Returns ``None`` when the report should stay category-first: fewer than two
+    themes carry items, or some items have no attribution at all. That second
+    condition is the one that matters — a half-attributed report would put some
+    grants under a theme and silently strand the rest, which reads as a bug to
+    whoever is looking at it. Better the whole report keeps its old shape than
+    that it becomes quietly incomplete.
+    """
+    grouped: dict[str, dict[str, list[dict]]] = {}
+    order: list[str] = []
+    for category in categories:
+        for item in items_by_category.get(category) or []:
+            label = str(item.get("cluster_label") or "")
+            if not label:
+                return None  # unattributed item — do not half-organise the report
+            if label not in grouped:
+                grouped[label] = {}
+                order.append(label)
+            grouped[label].setdefault(category, []).append(item)
+    if len(order) < 2:
+        return None
+    return {label: grouped[label] for label in order}
+
+
+def _cluster_first_body(
+    profile_text: str,
+    categories: list[str],
+    counts: dict[str, int],
+    new_counts: dict[str, int],
+    items_by_category: dict[str, list[dict]],
+    by_cluster: dict[str, dict[str, list[dict]]],
+    *,
+    complete: CompleteFn | None,
+) -> tuple[str, bool]:
+    """One ``## <Theme>`` section per research cluster, categories inside it.
+
+    A researcher does not think in *paper / grant / conference* — they think in the
+    themes they work on and want to know what each one brought today. With every
+    content type now carrying cluster attribution, the report can finally be
+    organised the way the work is.
+
+    Each specialist agent still writes its own category's prose; it is simply handed
+    one theme's slice at a time. That costs one model call per populated
+    (theme, category) pair instead of per category — more calls, but each with a
+    tighter, more coherent set of items to write about, and every one of them keeps
+    its deterministic fallback.
+    """
+    used_llm = False
+    section_bodies: list[tuple[str, str]] = []
+    blocks: list[str] = []
+
+    for label, per_category in by_cluster.items():
+        lines = [f"## {label}", ""]
+        tally = [
+            f"{len(items)} {SECTION_NOUN.get(cat, cat)}{'' if len(items) == 1 else 's'}"
+            for cat, items in per_category.items()
+            if items
+        ]
+        if tally:
+            lines.append(f"_{_join_english(tally)} today._")
+            lines.append("")
+        for category in categories:
+            items = per_category.get(category) or []
+            if not items:
+                continue
+            body, from_llm = write_section(
+                category, profile_text, items, complete=complete
+            )
+            used_llm = used_llm or from_llm
+            if not body:
+                continue
+            heading = SECTION_LABELS.get(category, category.title())
+            lines.append(f"**{heading}**")
+            lines.append("")
+            lines.append(body)
+            lines.append("")
+            section_bodies.append((f"{label} · {heading}", body))
+        blocks.append("\n".join(lines).rstrip())
+
+    summary, summary_from_llm = write_summary(
+        counts,
+        new_counts,
+        categories,
+        items_by_category,
+        section_bodies,
+        complete=complete,
+    )
+    used_llm = used_llm or summary_from_llm
+    return "\n\n".join(b for b in ([summary] + blocks) if b).strip(), used_llm
 
 
 # --------------------------------------------------------------------------- #

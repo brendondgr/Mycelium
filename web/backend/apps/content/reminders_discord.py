@@ -23,7 +23,7 @@ from dataclasses import dataclass
 
 from django.conf import settings
 
-from apps.integrations.services import discord_api, resolve
+from apps.integrations.services import discord_api, outbox, resolve
 from apps.integrations.services.discord_api import DiscordHTTPError
 
 # Mycelium green, for the embed accent.
@@ -34,7 +34,14 @@ _ZWSP = "​"
 
 @dataclass
 class SendOutcome:
-    """Result of one outbound send."""
+    """Result of one outbound send.
+
+    Product messages are now *queued*, so ``ok`` means "accepted for delivery", not
+    "Discord has it" — ``queued`` says which. ``message_id`` stays empty for queued
+    sends; the delivery record lives on the outbox row named by ``outbox_key``.
+    The diagnostic senders (``preflight_channel``) still fill ``ok``/``message_id``
+    synchronously, because their whole point is an immediate verdict.
+    """
 
     ok: bool
     message_id: str = ""
@@ -42,6 +49,8 @@ class SendOutcome:
     unreachable: bool = False
     not_configured: bool = False  # server-side: the bot token isn't set at all
     has_unlinked: bool | None = None  # lab sends: any mention target with no ping
+    queued: bool = False
+    outbox_key: str = ""
 
 
 def escape_mentions(text: str) -> str:
@@ -70,37 +79,37 @@ def _bot_configured() -> bool:
     return bool(getattr(settings, "DISCORD_BOT_TOKEN", ""))
 
 
-def send_personal_dm(subscription, title: str, body: str) -> SendOutcome:
-    """DM the subscription's target user; returns the outcome (never raises).
+def send_personal_dm(
+    subscription, title: str, body: str, *, dedupe_key: str = ""
+) -> SendOutcome:
+    """Queue a DM to the subscription's target user (never raises).
 
-    Falls back to "unreachable" when the user has no ACTIVE identity, the DM is
-    known-blocked, or the bot token is unconfigured — the caller still delivers
-    in-app, so a failed DM only means the bell carries the reminder alone.
+    Queued, not sent: the tick used to block on a live HTTP round-trip here and treat
+    a thirty-second outage as a permanent loss. Reachability is now judged at delivery
+    time by the outbox, so this only refuses the cases that are certain up front — no
+    linked identity at all, or a DM we already know is blocked — where queueing would
+    just manufacture a dead letter.
+
+    The caller still delivers in-app unconditionally, so a refused DM means the bell
+    carries the reminder alone.
     """
     if not _bot_configured():
-        return SendOutcome(ok=False, unreachable=True)
+        return SendOutcome(ok=False, unreachable=True, not_configured=True)
 
     identity = resolve.active_identity_for_user(subscription.target_user)
     if identity is None or identity.dm_ok is False:
         return SendOutcome(ok=False, unreachable=True)
 
-    try:
-        channel_id = identity.dm_channel_id or _open_dm(identity)
-        if not channel_id:
-            return SendOutcome(ok=False, unreachable=True)
-        resp = discord_api.create_message(
-            channel_id, embed=reminder_embed(title, body, subscription.url)
-        )
-    except DiscordHTTPError as exc:
-        return SendOutcome(ok=False, error_code=exc.code)
-
-    if resp.status in (200, 201):
-        return SendOutcome(ok=True, message_id=str(resp.json.get("id") or ""))
-    if resp.status == 403:
-        # DM closed since we last checked — record it so we stop trying.
-        resolve.set_identity_dm(identity, dm_ok=False, error_code=_code(resp))
-        return SendOutcome(ok=False, error_code=_code(resp), unreachable=True)
-    return SendOutcome(ok=False, error_code=_code(resp))
+    key = dedupe_key or f"reminder:{subscription.id}:{subscription.due_date:%Y-%m-%d}"
+    outbox.enqueue_dm(
+        dedupe_key=key,
+        kind="reminder",
+        user=subscription.target_user,
+        embed=reminder_embed(title, body, subscription.url),
+        subject_type="reminder_subscription",
+        subject_id=str(subscription.id),
+    )
+    return SendOutcome(ok=True, queued=True, outbox_key=key)
 
 
 def send_personal_report(
@@ -109,17 +118,19 @@ def send_personal_report(
     title: str,
     body: str,
     filename: str,
-    pdf_bytes: bytes,
+    attachment_path: str,
+    dedupe_key: str,
     url: str = "",
 ) -> SendOutcome:
-    """DM a user their daily "Mylo Report" as a PDF attachment (never raises).
+    """Queue a user's daily "Mylo Report" PDF as a DM attachment (never raises).
 
-    Reuses the same identity resolution + DM-open + ``dm_ok`` handling as
-    :func:`send_personal_dm`; the difference is the attachment, sent via
-    ``discord_api.create_message_with_attachment`` (which keeps ``parse: []``). The
-    embed carries a short summary so the message reads well even before the reader
-    opens the PDF. "Unreachable" (no active identity / blocked DM / no bot token) is
-    a soft outcome — the caller just logs the skip.
+    Takes a *path*, not bytes: the report is 0.2–2 MB, and the whole point of queueing
+    is that delivery can happen minutes after the batch that rendered it. Whoever
+    writes the file owns it until the outbox settles the row; the retention sweep
+    removes it afterwards.
+
+    "Unreachable" (no active identity, blocked DM, no bot token) is a soft outcome —
+    the caller counts the skip rather than manufacturing a dead letter.
     """
     if not _bot_configured():
         return SendOutcome(ok=False, unreachable=True, not_configured=True)
@@ -128,29 +139,23 @@ def send_personal_report(
     if identity is None or identity.dm_ok is False:
         return SendOutcome(ok=False, unreachable=True)
 
-    try:
-        channel_id = identity.dm_channel_id or _open_dm(identity)
-        if not channel_id:
-            return SendOutcome(ok=False, unreachable=True)
-        resp = discord_api.create_message_with_attachment(
-            channel_id,
-            filename=filename,
-            file_bytes=pdf_bytes,
-            embed=reminder_embed(title, body, url),
-        )
-    except DiscordHTTPError as exc:
-        return SendOutcome(ok=False, error_code=exc.code)
-
-    if resp.status in (200, 201):
-        return SendOutcome(ok=True, message_id=str(resp.json.get("id") or ""))
-    if resp.status == 403:
-        resolve.set_identity_dm(identity, dm_ok=False, error_code=_code(resp))
-        return SendOutcome(ok=False, error_code=_code(resp), unreachable=True)
-    return SendOutcome(ok=False, error_code=_code(resp))
+    outbox.enqueue_dm(
+        dedupe_key=dedupe_key,
+        kind="daily_report",
+        user=user,
+        embed=reminder_embed(title, body, url),
+        attachment_path=attachment_path,
+        attachment_filename=filename,
+        subject_type="daily_report",
+        subject_id=str(user.id),
+    )
+    return SendOutcome(ok=True, queued=True, outbox_key=dedupe_key)
 
 
-def send_lab_channel(subscription, title: str, body: str) -> SendOutcome:
-    """Post a lab reminder to its channel with resolved member pings (R5).
+def send_lab_channel(
+    subscription, title: str, body: str, *, dedupe_key: str = ""
+) -> SendOutcome:
+    """Queue a lab reminder to its channel with resolved member pings (R5).
 
     Channel = the per-reminder ``channel_id_override`` if set, else the lab's default
     ``announcement_channel_id``. Mention targets with an ACTIVE Discord identity are
@@ -158,43 +163,40 @@ def send_lab_channel(subscription, title: str, body: str) -> SendOutcome:
     without are rendered as plain escaped names — **never dropped**, and the outcome
     flags that the subscription has unlinked targets so the portal can prompt them.
     ``parse: []`` still holds, so the scraped title can never ``@everyone``.
+
+    Mentions are resolved *now* rather than at delivery: who was meant to be tagged is
+    part of what this reminder said, and should not silently change because someone
+    linked their account in the twenty minutes a retry took.
     """
     user_ids, plain_names = _resolve_mentions(subscription)
     has_unlinked = bool(plain_names)
 
     if not _bot_configured():
-        return SendOutcome(ok=False, unreachable=True, has_unlinked=has_unlinked)
+        return SendOutcome(
+            ok=False,
+            unreachable=True,
+            not_configured=True,
+            has_unlinked=has_unlinked,
+        )
     channel_id = subscription.channel_id_override or _lab_default_channel(subscription)
     if not channel_id:
         return SendOutcome(ok=False, unreachable=True, has_unlinked=has_unlinked)
 
-    content = _mention_line(user_ids, plain_names)
-    try:
-        resp = discord_api.create_message(
-            channel_id,
-            content=content,
-            embed=reminder_embed(title, body, subscription.url),
-            allowed_mentions={"users": user_ids},
-        )
-    except DiscordHTTPError as exc:
-        return SendOutcome(
-            ok=False, error_code=exc.code, has_unlinked=has_unlinked
-        )
-
-    if resp.status in (200, 201):
-        return SendOutcome(
-            ok=True,
-            message_id=str(resp.json.get("id") or ""),
-            has_unlinked=has_unlinked,
-        )
-    if resp.status == 403:
-        return SendOutcome(
-            ok=False,
-            error_code=_code(resp),
-            unreachable=True,
-            has_unlinked=has_unlinked,
-        )
-    return SendOutcome(ok=False, error_code=_code(resp), has_unlinked=has_unlinked)
+    key = dedupe_key or f"reminder:{subscription.id}:{subscription.due_date:%Y-%m-%d}"
+    outbox.enqueue_channel(
+        dedupe_key=key,
+        kind="reminder",
+        channel_id=channel_id,
+        lab=subscription.target_lab,
+        content=_mention_line(user_ids, plain_names),
+        embed=reminder_embed(title, body, subscription.url),
+        allowed_mentions={"users": user_ids},
+        subject_type="reminder_subscription",
+        subject_id=str(subscription.id),
+    )
+    return SendOutcome(
+        ok=True, queued=True, outbox_key=key, has_unlinked=has_unlinked
+    )
 
 
 def _lab_default_channel(subscription) -> str:

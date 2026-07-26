@@ -23,7 +23,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import Lab
+from apps.accounts.models import Lab, LabMembership
 from apps.accounts.permissions import user_can_manage_lab
 
 from ..models import (
@@ -31,6 +31,7 @@ from ..models import (
     DiscordGuildLink,
     DiscordIdentity,
     DiscordLabActivationCode,
+    DiscordOutboxMessage,
 )
 from . import audit
 
@@ -746,3 +747,425 @@ def consume_lab_activation_code(
             metadata={"lab_id": str(lab.id), "verified_via_code_grant": False},
         )
         return LabCodeResult(LabConsumeOutcome.OK, lab=lab, guild_link=link)
+
+
+# --------------------------------------------------------------------------- #
+# Outbound message queue (Workstream A)
+# --------------------------------------------------------------------------- #
+# Re-exported so ``services.outbox`` can branch on state without importing the model.
+OUTBOX_PENDING = DiscordOutboxMessage.Status.PENDING
+OUTBOX_SENDING = DiscordOutboxMessage.Status.SENDING
+OUTBOX_SENT = DiscordOutboxMessage.Status.SENT
+OUTBOX_FAILED = DiscordOutboxMessage.Status.FAILED
+OUTBOX_DEAD = DiscordOutboxMessage.Status.DEAD
+OUTBOX_DM = DiscordOutboxMessage.Target.DM
+OUTBOX_CHANNEL = DiscordOutboxMessage.Target.CHANNEL
+
+
+def enqueue_outbox(
+    *,
+    dedupe_key: str,
+    kind: str,
+    target_type: str,
+    recipient_user=None,
+    channel_id: str = "",
+    lab=None,
+    content: str = "",
+    embed: dict | None = None,
+    allowed_mentions: dict | None = None,
+    attachment_path: str = "",
+    attachment_filename: str = "",
+    subject_type: str = "",
+    subject_id: str = "",
+    now: datetime | None = None,
+) -> tuple[DiscordOutboxMessage, bool]:
+    """Queue one message. Returns ``(row, created)``.
+
+    Idempotent on ``dedupe_key``: re-running a producer re-finds the existing row
+    rather than queueing a second message. That is what lets the daily chain be
+    re-run without spamming anyone, and it is deliberately a database uniqueness
+    constraint rather than an application check.
+    """
+    now = now or timezone.now()
+    return DiscordOutboxMessage.objects.get_or_create(
+        dedupe_key=dedupe_key,
+        defaults={
+            "kind": kind,
+            "target_type": target_type,
+            "recipient_user": recipient_user,
+            "channel_id": channel_id,
+            "lab": lab,
+            "content": content,
+            "embed": embed,
+            "allowed_mentions": allowed_mentions,
+            "attachment_path": attachment_path,
+            "attachment_filename": attachment_filename,
+            "subject_type": subject_type,
+            "subject_id": subject_id,
+            "next_attempt_at": now,
+        },
+    )
+
+
+def claim_outbox_batch(
+    *, limit: int = 50, now: datetime | None = None
+) -> list[DiscordOutboxMessage]:
+    """Claim up to ``limit`` due messages, marking each in flight.
+
+    ``attempts`` is incremented and the status flipped to SENDING **before** the HTTP
+    call, inside the lock. A process that dies mid-send therefore leaves a row that
+    has visibly consumed an attempt, instead of one that looks untouched and gets
+    re-sent from scratch by the next drain.
+
+    ``skip_locked`` keeps concurrent drains from contending over the same rows; it is
+    Postgres-only, so on SQLite (most of the test suite) this degrades to a plain
+    ordered read, which is correct for the single-threaded case tests exercise.
+    """
+    now = now or timezone.now()
+    with transaction.atomic():
+        rows = list(
+            DiscordOutboxMessage.objects.select_for_update(skip_locked=True)
+            .filter(
+                status__in=(
+                    DiscordOutboxMessage.Status.PENDING,
+                    DiscordOutboxMessage.Status.SENDING,
+                ),
+                next_attempt_at__lte=now,
+            )
+            .order_by("next_attempt_at", "id")[:limit]
+        )
+        for row in rows:
+            row.status = DiscordOutboxMessage.Status.SENDING
+            row.attempts += 1
+            row.save(update_fields=["status", "attempts", "updated_at"])
+    return rows
+
+
+def mark_outbox_sent(
+    message: DiscordOutboxMessage,
+    *,
+    discord_message_id: str = "",
+    now: datetime | None = None,
+) -> None:
+    now = now or timezone.now()
+    message.status = DiscordOutboxMessage.Status.SENT
+    message.discord_message_id = discord_message_id or ""
+    message.last_error_code = None
+    message.last_error_reason = ""
+    message.sent_at = now
+    message.settled_at = now
+    message.save(
+        update_fields=[
+            "status",
+            "discord_message_id",
+            "last_error_code",
+            "last_error_reason",
+            "sent_at",
+            "settled_at",
+            "updated_at",
+        ]
+    )
+
+
+def mark_outbox_retry(
+    message: DiscordOutboxMessage,
+    *,
+    next_attempt_at: datetime,
+    error_code: int | None = None,
+    reason: str = "",
+) -> None:
+    """Release a claimed message back to PENDING, due later."""
+    message.status = DiscordOutboxMessage.Status.PENDING
+    message.next_attempt_at = next_attempt_at
+    message.last_error_code = error_code
+    message.last_error_reason = reason
+    message.save(
+        update_fields=[
+            "status",
+            "next_attempt_at",
+            "last_error_code",
+            "last_error_reason",
+            "updated_at",
+        ]
+    )
+
+
+def mark_outbox_permanent(
+    message: DiscordOutboxMessage,
+    *,
+    error_code: int | None = None,
+    reason: str = "",
+    now: datetime | None = None,
+) -> None:
+    """Settle a message that retrying cannot help."""
+    _settle_unsendable(
+        message,
+        status=DiscordOutboxMessage.Status.FAILED,
+        error_code=error_code,
+        reason=reason,
+        now=now,
+    )
+
+
+def mark_outbox_dead(
+    message: DiscordOutboxMessage,
+    *,
+    error_code: int | None = None,
+    reason: str = "",
+    now: datetime | None = None,
+) -> None:
+    """Settle a message whose attempts are exhausted."""
+    _settle_unsendable(
+        message,
+        status=DiscordOutboxMessage.Status.DEAD,
+        error_code=error_code,
+        reason=reason,
+        now=now,
+    )
+
+
+def _settle_unsendable(
+    message: DiscordOutboxMessage,
+    *,
+    status: str,
+    error_code: int | None,
+    reason: str,
+    now: datetime | None,
+) -> None:
+    message.status = status
+    message.last_error_code = error_code
+    message.last_error_reason = reason
+    message.settled_at = now or timezone.now()
+    message.save(
+        update_fields=[
+            "status",
+            "last_error_code",
+            "last_error_reason",
+            "settled_at",
+            "updated_at",
+        ]
+    )
+
+
+def get_outbox_message(pk) -> DiscordOutboxMessage | None:
+    return DiscordOutboxMessage.objects.filter(pk=pk).first()
+
+
+def outbox_counters(*, since: datetime | None = None) -> dict:
+    """Attempted / delivered / retried / dead, for operations and the portal."""
+    rows = DiscordOutboxMessage.objects.all()
+    if since is not None:
+        rows = rows.filter(created_at__gte=since)
+    return {
+        "queued": rows.count(),
+        "attempted": rows.filter(attempts__gt=0).count(),
+        "delivered": rows.filter(status=DiscordOutboxMessage.Status.SENT).count(),
+        "retried": rows.filter(attempts__gt=1).count(),
+        "failed": rows.filter(status=DiscordOutboxMessage.Status.FAILED).count(),
+        "dead": rows.filter(status=DiscordOutboxMessage.Status.DEAD).count(),
+        "pending": rows.filter(
+            status__in=(
+                DiscordOutboxMessage.Status.PENDING,
+                DiscordOutboxMessage.Status.SENDING,
+            )
+        ).count(),
+    }
+
+
+def purge_outbox(*, before: datetime) -> list[str]:
+    """Delete settled-successful rows older than ``before``; return their file paths.
+
+    Only SENT rows are purged. FAILED and DEAD rows are the diagnostic record of what
+    went wrong and why, so they stay until someone looks at them. The caller unlinks
+    the returned attachment paths — this module owns the database, not the filesystem.
+    """
+    rows = DiscordOutboxMessage.objects.filter(
+        status=DiscordOutboxMessage.Status.SENT, settled_at__lt=before
+    )
+    paths = [p for p in rows.values_list("attachment_path", flat=True) if p]
+    rows.delete()
+    return paths
+
+
+def outbox_attachment_paths_for_settled() -> list[str]:
+    """Attachment paths on rows that will never be sent again (FAILED/DEAD/SENT)."""
+    return [
+        p
+        for p in DiscordOutboxMessage.objects.filter(
+            status__in=DiscordOutboxMessage.TERMINAL
+        ).values_list("attachment_path", flat=True)
+        if p
+    ]
+
+
+# --------------------------------------------------------------------------- #
+# Guild-link health (Workstream E)
+# --------------------------------------------------------------------------- #
+def set_channel_health(
+    guild_id: str,
+    *,
+    kind: str,
+    ok: bool | None,
+    error_code: int | None = None,
+) -> DiscordGuildLink | None:
+    """Record whether Mylo can still post to a bound channel.
+
+    ``kind`` is ``"deadlines"`` or ``"updates"``. Mirrors
+    :func:`set_identity_dm` for people: reachability is *measured* and stored, never
+    inferred at read time, so the portal can explain a silence instead of a lab
+    discovering it by noticing nothing arrived.
+    """
+    link = get_guild_link(guild_id)
+    if link is None:
+        return None
+    field = "updates_channel_ok" if kind == "updates" else "announcement_channel_ok"
+    setattr(link, field, ok)
+    link.channel_checked_at = timezone.now()
+    fields = [field, "channel_checked_at", "updated_at"]
+    if error_code is not None:
+        link.last_error_code = error_code
+        fields.append("last_error_code")
+    link.save(update_fields=fields)
+    if ok is False:
+        audit.discord_audit(
+            action="discord.guild.channel_unreachable",
+            guild_id=guild_id,
+            metadata={"kind": kind, "error_code": error_code},
+        )
+    return link
+
+
+def set_channel_health_for_lab(lab, *, kind: str, ok: bool | None, error_code=None):
+    """``set_channel_health`` reached from a lab rather than a guild id."""
+    link = get_guild_link_for_lab(lab)
+    if link is None:
+        return None
+    return set_channel_health(
+        link.guild_id, kind=kind, ok=ok, error_code=error_code
+    )
+
+
+def clear_channel_by_id(guild_id: str, channel_id: str) -> str:
+    """Unbind whichever slot held ``channel_id``; return which one ("" if neither).
+
+    Used when Discord tells us a channel was deleted: we know the id, not which of
+    the two roles it was playing.
+    """
+    link = get_guild_link(guild_id)
+    if link is None:
+        return ""
+    channel_id = str(channel_id)
+    if link.announcement_channel_id == channel_id:
+        clear_announcement_channel(guild_id)
+        set_channel_health(guild_id, kind="deadlines", ok=False)
+        return "deadlines"
+    if link.updates_channel_id == channel_id:
+        clear_updates_channel(guild_id)
+        set_channel_health(guild_id, kind="updates", ok=False)
+        return "updates"
+    return ""
+
+
+def set_addon_ok(lab, *, ok: bool) -> DiscordGuildLink | None:
+    """Record whether the lab's Mylo add-on was live at the last delivery check."""
+    link = get_guild_link_for_lab(lab)
+    if link is None or link.addon_ok == ok:
+        return link
+    link.addon_ok = ok
+    link.save(update_fields=["addon_ok", "updated_at"])
+    if not ok:
+        audit.discord_audit(
+            action="discord.guild.addon_lapsed",
+            guild_id=link.guild_id,
+            metadata={"lab_id": str(lab.id)},
+        )
+    return link
+
+
+def active_guild_links():
+    """Every non-KICKED link, with its lab — the reconcile sweep's candidate set."""
+    return list(
+        DiscordGuildLink.objects.exclude(
+            state=DiscordGuildLink.State.KICKED
+        ).select_related("lab")
+    )
+
+
+def guild_health_for_lab(lab) -> dict | None:
+    """The lab's Discord health, flattened for the portal. ``None`` when unlinked."""
+    link = get_guild_link_for_lab(lab)
+    if link is None:
+        return None
+    return {
+        "state": link.state,
+        "guild_name": link.guild_name_cache,
+        "checked_at": link.channel_checked_at,
+        "addon_ok": link.addon_ok,
+        "last_error_code": link.last_error_code,
+        "channels": {
+            "announcements": {
+                "bound": bool(link.announcement_channel_id),
+                "channel_id": link.announcement_channel_id,
+                "ok": link.announcement_channel_ok,
+                "verified_at": link.channel_verified_at,
+            },
+            "updates": {
+                "bound": bool(link.updates_channel_id),
+                "channel_id": link.updates_channel_id,
+                "ok": link.updates_channel_ok,
+                "verified_at": link.updates_channel_verified_at,
+            },
+        },
+    }
+
+
+def member_reachability(users) -> dict:
+    """``{user_id: {linked, dm_ok, ...}}`` for a lab roster.
+
+    Note ``linked`` and ``dm_ok`` are genuinely independent of guild membership: a
+    personal DM works through the user's own installation and does not require
+    sharing a server with the bot. Conflating them would tell someone their
+    reminders are broken when only their ability to be *tagged* is.
+    """
+    ids = [u.id for u in users]
+    if not ids:
+        return {}
+    rows = DiscordIdentity.objects.filter(user_id__in=ids)
+    by_user = {r.user_id: r for r in rows}
+    out = {}
+    for user in users:
+        identity = by_user.get(user.id)
+        out[user.id] = {
+            "linked": bool(
+                identity and identity.state == DiscordIdentity.State.ACTIVE
+            ),
+            "dm_ok": identity.dm_ok if identity else None,
+            "checked_at": identity.dm_checked_at if identity else None,
+        }
+    return out
+
+
+def lab_member_reachability(lab) -> list[dict]:
+    """The lab's roster with each person's Discord reachability, for the portal.
+
+    Lives here rather than in the view because ``views.py`` is one of the modules the
+    import-graph test forbids from touching a model at all — the whole point of the
+    boundary. One query for memberships, one for identities.
+    """
+    from apps.core.people import display_name
+
+    memberships = list(
+        LabMembership.objects.filter(lab=lab)
+        .select_related("user")
+        .order_by("user__username")
+    )
+    reach = member_reachability([m.user for m in memberships])
+    return [
+        {
+            "username": m.user.get_username(),
+            "name": display_name(m.user),
+            "role": m.role,
+            **reach.get(m.user_id, {"linked": False, "dm_ok": None}),
+        }
+        for m in memberships
+    ]

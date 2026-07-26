@@ -85,15 +85,21 @@ def _announce_one(sub, row, today, now) -> bool:
             },
         )
 
-    # Same Discord surface as the reminder itself.
+    # Same Discord surface as the reminder itself, with its own idempotency key.
+    #
+    # The Discord side previously borrowed the in-app dedupe above and could re-send
+    # after a partial failure — the notification rows already existed, so the guard
+    # returned early on some paths but not others. Its own key closes that: the outbox
+    # unique constraint makes a repeat announcement a no-op rather than a second ping.
+    dedupe_key = f"deadline_moved:{sub.id}:{row.due_date:%Y-%m-%d}"
     if sub.target_user_id:
         from apps.content.reminders_discord import send_personal_dm
 
-        send_personal_dm(sub, title, body)
+        send_personal_dm(sub, title, body, dedupe_key=dedupe_key)
     else:
         from apps.content.reminders_discord import send_lab_channel
 
-        outcome = send_lab_channel(sub, title, body)
+        outcome = send_lab_channel(sub, title, body, dedupe_key=dedupe_key)
         if outcome.has_unlinked is not None:
             _sync_unlinked(sub, outcome.has_unlinked)
     return True

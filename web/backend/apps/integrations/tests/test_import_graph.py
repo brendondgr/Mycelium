@@ -15,12 +15,20 @@ from pathlib import Path
 from django.test import SimpleTestCase
 
 _APP = Path(__file__).resolve().parent.parent
+_APPS = _APP.parent
 
 # Modules on the Discord action path that must NOT import a model.
+#
+# `apps/content/reminders_discord.py` is on that path too — it is the send surface
+# every reminder and report goes through — but it lives in a different app, so the
+# glob below would never have reached it. It has followed the rule by convention
+# since it was written; naming it here is what makes that enforceable rather than
+# merely intended.
 _GUARDED = [
     _APP / "views.py",
     _APP / "tasks.py",
     *sorted((_APP / "services").glob("*.py")),
+    _APPS / "content" / "reminders_discord.py",
 ]
 _EXEMPT_NAMES = {"resolve.py", "__init__.py"}
 

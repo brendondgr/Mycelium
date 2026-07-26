@@ -12,6 +12,7 @@ import type {
   DeptLabRow,
   DeptMemberRow,
   DiscordGuildStatus,
+  DiscordHealth,
   DiscordStartResponse,
   DiscordStatus,
   Entitlements,
@@ -434,6 +435,15 @@ export async function fetchLabDiscordStatus(
   return getJson<DiscordGuildStatus>(
     `${url}?lab=${encodeURIComponent(slug)}`,
     "Could not load this lab's Discord connection.",
+  );
+}
+
+/** A lab's Discord health: guild, channels, add-on, and per-member reachability. */
+export async function fetchLabDiscordHealth(slug: string): Promise<DiscordHealth> {
+  const url = buildApiUrl(getPublicApiBase(), "integrations", "discord", "health");
+  return getJson<DiscordHealth>(
+    `${url}?lab=${encodeURIComponent(slug)}`,
+    "Could not load this lab's Discord health.",
   );
 }
 

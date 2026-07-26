@@ -207,6 +207,21 @@ CELERY_BEAT_SCHEDULE = {
             hour=env.int("DISCORD_RECONCILE_HOUR", default=4), minute=0
         ),
     },
+    # The outbound Discord queue. Every minute, because the point of the queue is
+    # that a message delayed by an outage arrives shortly after it clears — a slower
+    # cadence would just move the latency somewhere the user notices. The task holds
+    # no retry state of its own (each row carries its own next_attempt_at), so a
+    # missed run costs a minute, not a message.
+    "drain-discord-outbox": {
+        "task": "apps.integrations.drain_outbox",
+        "schedule": crontab(minute="*"),
+    },
+    # Weekly clean-up of delivered outbox rows and the report PDFs they carried.
+    # Sunday, well away from the daily run and the other sweeps.
+    "purge-discord-outbox": {
+        "task": "apps.integrations.purge_outbox",
+        "schedule": crontab(day_of_week=0, hour=5, minute=30),
+    },
 }
 
 # How many per-(user, area) grant/conference LLM scoring calls run concurrently
@@ -542,6 +557,37 @@ DISCORD_ACTIVATION_FAILURE_WINDOW_SECONDS = env.int(
 DISCORD_ACTIVATION_LOCKOUT_SECONDS = env.int(
     "DISCORD_ACTIVATION_LOCKOUT_SECONDS", default=3600
 )
+
+# The outbound Discord queue (apps.integrations.services.outbox). Every product
+# message is queued and drained by a worker, so a brief Discord outage delays a
+# reminder instead of losing it.
+#
+# The retry interval is a flat wait, not exponential backoff: five attempts five
+# minutes apart, a ~20-minute window. Discord's own Retry-After on a 429 may only
+# *lengthen* a wait, never shorten it. Note the interval is longer than Discord's
+# enforce_nonce dedup window ("a few minutes"), so the nonce reliably protects a
+# fast in-drain retry but not necessarily the next scheduled one.
+DISCORD_OUTBOX_RETRY_SECONDS = env.int("DISCORD_OUTBOX_RETRY_SECONDS", default=300)
+DISCORD_OUTBOX_MAX_ATTEMPTS = env.int("DISCORD_OUTBOX_MAX_ATTEMPTS", default=5)
+DISCORD_OUTBOX_BATCH_LIMIT = env.int("DISCORD_OUTBOX_BATCH_LIMIT", default=50)
+# Delivered rows (and their attachment files) are swept after this many days.
+# Failed and dead rows are kept — they are the record of what went wrong.
+DISCORD_OUTBOX_RETENTION_DAYS = env.int("DISCORD_OUTBOX_RETENTION_DAYS", default=30)
+# Where a queued attachment (the daily PDF report) waits for its send. Bytes must
+# outlive the batch that rendered them, so this is a durable path, not a temp dir.
+DISCORD_OUTBOX_ATTACHMENT_DIR = env(
+    "DISCORD_OUTBOX_ATTACHMENT_DIR",
+    default=str(ROOT_DIR.parent / "data" / "outbox"),
+)
+
+# Per-user, per-bucket slash-command limits as (calls, seconds), enforced by the
+# authorization gate. Search is tighter than the rest because one call can trigger a
+# query embedding plus several Postgres scans; the others are cheap reads. The check
+# fails closed, so a cache outage denies rather than leaving the surface unmetered.
+DISCORD_COMMAND_RATE_LIMITS = {
+    "search": (env.int("DISCORD_RATE_SEARCH", default=5), 60),
+    "command": (env.int("DISCORD_RATE_COMMAND", default=20), 60),
+}
 
 LOGGING = {
     "version": 1,

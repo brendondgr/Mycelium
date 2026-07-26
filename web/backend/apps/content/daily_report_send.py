@@ -11,9 +11,15 @@ gates already owned elsewhere:
 The run is deliberately **phased** (the product brief's ordering), not interleaved:
 
 1. compile every recipient's :class:`~apps.content.daily_report.ReportData`,
-2. render every report to a PDF on disk (a throwaway temp dir),
-3. send every PDF as a personal DM, then
-4. delete the temp dir — the PDFs never linger.
+2. render every report to a PDF on disk,
+3. **queue** every PDF as a personal DM.
+
+Phase 3 used to send, and phase 4 deleted the PDFs immediately afterwards. Now that
+delivery is queued, those bytes have to outlive this batch — the drain may run minutes
+later, and an outage means later still. So the reports are written to a durable
+directory (``DISCORD_OUTBOX_ATTACHMENT_DIR``) rather than a throwaway temp dir, and the
+outbox retention sweep deletes each file once its row has actually settled. A report
+that cannot be read at delivery time is a permanent failure, not an endless retry.
 
 The ``compile_fn`` / ``render_fn`` / ``send_fn`` seams are injected so tests can
 drive the whole flow without a database of scores or a live Discord. A failure for
@@ -23,11 +29,11 @@ one user is caught and counted; it never sinks the batch.
 from __future__ import annotations
 
 import logging
-import shutil
-import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from django.conf import settings
 
 from apps.content import reminders_discord
 from apps.content.daily_report import ReportData, compile_report_for_user
@@ -38,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 CompileFn = Callable[[object], ReportData]
 RenderFn = Callable[[ReportData], bytes]
-# send_fn(user, report_data, pdf_bytes, filename) -> outcome with a bool `.ok`.
+# send_fn(user, report_data, path, filename) -> outcome with a bool `.ok`.
 SendFn = Callable[..., object]
 
 REPORT_TITLE = "Your daily research report"
@@ -65,14 +71,24 @@ class SendSummary:
         }
 
 
-def _default_send(user, data: ReportData, pdf_bytes: bytes, filename: str):
+def _default_send(user, data: ReportData, path: Path, filename: str):
     return reminders_discord.send_personal_report(
         user,
         title=REPORT_TITLE,
         body=data.summary_line() + "\nYour full report is attached as a PDF.",
         filename=filename,
-        pdf_bytes=pdf_bytes,
+        attachment_path=str(path),
+        dedupe_key=f"daily_report:{user.id}:{data.generated_on}",
     )
+
+
+def _report_dir() -> Path:
+    """Where a queued report waits for its send.
+
+    Durable by necessity, not preference: the bytes must survive until the drain
+    reaches the row, which may be minutes away and, during an outage, longer.
+    """
+    return Path(getattr(settings, "DISCORD_OUTBOX_ATTACHMENT_DIR", "data/outbox"))
 
 
 def eligible_recipients(usernames: list[str] | None):
@@ -93,7 +109,7 @@ def run_daily_report_send(
     report_dir: str | None = None,
     log: Callable[[str], None] = logger.info,
 ) -> SendSummary:
-    """Compile → render → send → cleanup for every eligible user. Never raises."""
+    """Compile → render → queue, for every eligible user. Never raises."""
     summary = SendSummary()
     recipients = eligible_recipients(usernames)
     summary.eligible = len(recipients)
@@ -101,59 +117,53 @@ def run_daily_report_send(
     if not recipients:
         return summary
 
-    workdir = (
-        Path(report_dir)
-        if report_dir
-        else Path(tempfile.mkdtemp(prefix="mylo-report-"))
-    )
+    workdir = Path(report_dir) if report_dir else _report_dir()
     workdir.mkdir(parents=True, exist_ok=True)
-    try:
-        # Phase 1 — compile every recipient's day.
-        compiled: list[tuple[object, ReportData]] = []
-        for user in recipients:
-            try:
-                compiled.append((user, compile_fn(user)))
-                summary.compiled += 1
-            except Exception as exc:  # noqa: BLE001 — one user never sinks the batch
-                summary.errors += 1
-                summary.error_detail.append(f"{user.get_username()}: compile — {exc}")
-                logger.warning("report compile failed for %s", user, exc_info=True)
+    # Phase 1 — compile every recipient's day.
+    compiled: list[tuple[object, ReportData]] = []
+    for user in recipients:
+        try:
+            compiled.append((user, compile_fn(user)))
+            summary.compiled += 1
+        except Exception as exc:  # noqa: BLE001 — one user never sinks the batch
+            summary.errors += 1
+            summary.error_detail.append(f"{user.get_username()}: compile — {exc}")
+            logger.warning("report compile failed for %s", user, exc_info=True)
 
-        # Phase 2 — render every report to a PDF on disk.
-        rendered: list[tuple[object, ReportData, Path, str]] = []
-        for user, data in compiled:
-            try:
-                pdf = render_fn(data)
-                filename = f"mylo-report-{user.get_username()}-{data.generated_on}.pdf"
-                path = workdir / filename
-                path.write_bytes(pdf)
-                rendered.append((user, data, path, filename))
-                summary.rendered += 1
-            except Exception as exc:  # noqa: BLE001
-                summary.errors += 1
-                summary.error_detail.append(f"{user.get_username()}: render — {exc}")
-                logger.warning("daily report render failed for %s", user, exc_info=True)
+    # Phase 2 — render every report to a PDF on disk.
+    rendered: list[tuple[object, ReportData, Path, str]] = []
+    for user, data in compiled:
+        try:
+            pdf = render_fn(data)
+            filename = f"mylo-report-{user.get_username()}-{data.generated_on}.pdf"
+            path = workdir / filename
+            path.write_bytes(pdf)
+            rendered.append((user, data, path, filename))
+            summary.rendered += 1
+        except Exception as exc:  # noqa: BLE001
+            summary.errors += 1
+            summary.error_detail.append(f"{user.get_username()}: render — {exc}")
+            logger.warning("daily report render failed for %s", user, exc_info=True)
 
-        # Phase 3 — send every PDF (read back from disk, per the brief's ordering).
-        for user, data, path, filename in rendered:
-            try:
-                outcome = send_fn(user, data, path.read_bytes(), filename)
-            except Exception as exc:  # noqa: BLE001
-                summary.errors += 1
-                summary.error_detail.append(f"{user.get_username()}: send — {exc}")
-                logger.warning("daily report send failed for %s", user, exc_info=True)
-                continue
-            if getattr(outcome, "ok", False):
-                summary.sent += 1
-            else:
-                summary.unreachable += 1
-    finally:
-        # Phase 4 — delete the generated PDFs no matter what happened above.
-        if report_dir is None:
-            shutil.rmtree(workdir, ignore_errors=True)
+    # Phase 3 — queue every PDF. The file stays put until the row settles.
+    for user, data, path, filename in rendered:
+        try:
+            outcome = send_fn(user, data, path, filename)
+        except Exception as exc:  # noqa: BLE001
+            summary.errors += 1
+            summary.error_detail.append(f"{user.get_username()}: send — {exc}")
+            logger.warning("daily report send failed for %s", user, exc_info=True)
+            continue
+        if getattr(outcome, "ok", False):
+            summary.sent += 1
+        else:
+            # Not reachable, so nothing was queued — drop the file now rather
+            # than leave it for a sweep that only knows about outbox rows.
+            path.unlink(missing_ok=True)
+            summary.unreachable += 1
 
     log(
-        f"daily report: {summary.sent} sent, {summary.unreachable} unreachable, "
+        f"daily report: {summary.sent} queued, {summary.unreachable} unreachable, "
         f"{summary.errors} error(s)"
     )
     return summary

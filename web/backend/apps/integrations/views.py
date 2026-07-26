@@ -255,6 +255,53 @@ class DiscordLabActivationCodeView(APIView):
         )
 
 
+class DiscordHealthView(APIView):
+    """Why Mylo can or cannot reach this lab and its people.
+
+    Manager-only, and deliberately one endpoint rather than three: a lab lead asking
+    "why is nobody getting anything?" needs the guild, the channels, the add-on and
+    the roster in one answer, because the cause could be any of them and the useful
+    reply names which.
+
+    Note ``linked``/``dm_ok`` are independent of guild membership — a personal DM
+    works through the person's own installation and does not require sharing a
+    server with the bot. Someone who left the server still gets their reminders; they
+    just cannot be tagged in a channel post. Conflating the two would tell people
+    their reminders are broken when they are not.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        lab, error = _manager_lab_or_error(request)
+        if error is not None:
+            return error
+
+        health = resolve.guild_health_for_lab(lab)
+        return Response(
+            {
+                "guild": (
+                    {
+                        "state": health["state"],
+                        "guild_name": health["guild_name"],
+                        "checked_at": health["checked_at"],
+                    }
+                    if health
+                    else {"state": None, "guild_name": None, "checked_at": None}
+                ),
+                "channels": health["channels"] if health else _empty_channels(),
+                "addon": {"active": health["addon_ok"] if health else None},
+                "members": resolve.lab_member_reachability(lab),
+            }
+        )
+
+
+def _empty_channels() -> dict:
+    """The honest not-linked shape, so the card renders an empty state not an error."""
+    blank = {"bound": False, "channel_id": "", "ok": None, "verified_at": None}
+    return {"announcements": dict(blank), "updates": dict(blank)}
+
+
 class DiscordGuildStatusView(APIView):
     """Is this Lab's Discord server synced? Drives the Manage & Invite badge."""
 

@@ -1,6 +1,9 @@
 # Mylo Discord Pipeline — Implementation Plan
 
-**Status:** Umbrella plan. Q-1 / Q-2 / Q-3 closed 2026-07-26. Blocked on Q-4 … Q-11.
+**Status:** Complete. All five phases built and merged. Q-11 (the department-plan
+inclusion asymmetry in `entitlements._lab_subscriptions`) remains open as a separate
+billing change, and umbrella step E-7 (rendering `has_unlinked_targets`) is deferred
+for want of a reminder-management UI to hang it on.
 **Correlation ID:** `20260726-mylo-discord-pipeline`
 **Source:** `mylo-discord-pipeline-handoff.md` (behavioural brief, supplied 2026-07-26)
 **Owner:** BDGR
@@ -11,11 +14,11 @@ actually stands at that moment:
 
 | Phase | Plan doc | Status |
 |---|---|---|
-| A — Outbox | `docs/plans/mylo-discord-a-outbox.md` | next |
-| B — Authorization gate | `docs/plans/mylo-discord-b-gate.md` | not started |
-| C — Slash commands | `docs/plans/mylo-discord-c-commands.md` | not started |
-| D — Cluster digests + lab channel | `docs/plans/mylo-discord-d-digest.md` | not started |
-| E — Drift + portal health | `docs/plans/mylo-discord-e-drift.md` | not started |
+| A — Outbox | `docs/plans/mylo-discord-a-outbox.md` | **done** |
+| B — Authorization gate | `docs/plans/mylo-discord-b-gate.md` | **done** |
+| C — Slash commands | `docs/plans/mylo-discord-c-commands.md` | **done** |
+| D — Cluster digests + lab channel | `docs/plans/mylo-discord-d-digest.md` | **done** |
+| E — Drift + portal health | `docs/plans/mylo-discord-e-drift.md` | **done** |
 
 Phases are implemented **one at a time, sequentially**. Within a phase, every step is
 validated and committed before the next begins.

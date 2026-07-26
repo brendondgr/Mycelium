@@ -13,6 +13,7 @@ import pytest
 from django.contrib.auth.models import User
 
 from apps.accounts.models import Lab, LabMembership
+from apps.content import reminders
 from apps.content.models import (
     ContentDeadline,
     ContentItem,
@@ -36,6 +37,18 @@ _Area = SavedOpportunity.Area
 @pytest.fixture
 def user(db):
     return User.objects.create_user("reminder-user")
+
+
+@pytest.fixture
+def pinned_prune_clock(monkeypatch):
+    """Pin the prune → stale hook's wall clock to ``TODAY``.
+
+    ``content.delete()`` fires a ``pre_delete`` receiver, which cannot be handed a
+    reference date and so reads ``reminders.reference_today()``. Every other date in
+    this module is anchored to ``TODAY``; without pinning this one too, any test that
+    deletes content silently rots the day the real clock passes the fixture deadline.
+    """
+    monkeypatch.setattr(reminders, "reference_today", lambda: TODAY)
 
 
 def _content_with_deadline(due: date | None, kind=_Kind.APPLICATION):
@@ -211,7 +224,7 @@ def test_snapshot_due_date_resyncs_from_content_deadline_each_tick(user) -> None
 
 
 @pytest.mark.django_db
-def test_reminder_survives_content_prune_via_snapshot(user) -> None:
+def test_reminder_survives_content_prune_via_snapshot(user, pinned_prune_clock) -> None:
     content = _content_with_deadline(TODAY + timedelta(days=7))
     _subscribe(
         user, due=TODAY + timedelta(days=7), offsets=[(1, "week")], content=content

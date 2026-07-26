@@ -209,7 +209,10 @@ def test_delete_personal_reminder_owner_only(client) -> None:
 
     client.force_authenticate(owner)
     assert client.delete(f"/api/reminders/{rid}/").status_code == 204
-    assert ReminderSubscription.objects.count() == 0
+    # A soft cancel: the tick stops seeing it, but the row survives so "why did this
+    # stop reminding me?" still has an answer — and so does the ledger it sealed.
+    sub = ReminderSubscription.objects.get()
+    assert sub.state == ReminderSubscription.State.CANCELLED
 
 
 @pytest.mark.django_db

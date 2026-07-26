@@ -223,3 +223,39 @@ class DeliveryResult:
 
     delivered: bool
     notified: int = 0
+
+
+def reference_today() -> date:
+    """The wall-clock date the prune → stale hook reads.
+
+    A named seam, not a convenience: :func:`stale_reminders_for_deleted_content` runs
+    from a ``pre_delete`` signal, which cannot take an extra argument, so a test has
+    no way to pass a reference date in. Monkeypatching this function is how a test
+    pins the clock — see ``test_reminders_prune_ordering.py``.
+    """
+    return timezone.localdate()
+
+
+def stale_reminders_for_deleted_content(content, *, today: date | None = None) -> int:
+    """Resync every live reminder on a vanishing item; stale the ones now past.
+
+    Called from the ``pre_delete`` backstop in :mod:`apps.content.signals` (R2). The
+    danger it guards: a deadline moves *earlier* into the past, the item is pruned,
+    and the reminder is left holding a snapshot with the old, later date that it would
+    cheerfully fire on. A reminder whose deadline is genuinely still upcoming survives
+    on its snapshot and keeps firing — the item merely disappeared from the source.
+
+    Returns how many subscriptions were marked stale.
+    """
+    today = today or reference_today()
+    staled = 0
+    subs = ReminderSubscription.objects.filter(
+        content=content, state=ReminderSubscription.State.ACTIVE
+    )
+    for sub in subs:
+        resync_snapshot(sub)
+        if sub.due_date is None or sub.due_date < today:
+            sub.state = ReminderSubscription.State.STALE
+            sub.save(update_fields=["state", "updated_at"])
+            staled += 1
+    return staled

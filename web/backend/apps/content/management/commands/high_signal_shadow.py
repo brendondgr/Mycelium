@@ -43,9 +43,20 @@ class Command(BaseCommand):
             action="store_true",
             help="Deliver in-app (requires HIGH_SIGNAL_DELIVERY_ENABLED).",
         )
+        parser.add_argument(
+            "--today",
+            default=None,
+            metavar="YYYY-MM-DD",
+            help="Reference date to measure against. Default: today.",
+        )
 
     def handle(self, *args, **options) -> None:
-        today = timezone.now().date()
+        raw = options.get("today")
+        today = (
+            timezone.datetime.fromisoformat(raw).date()
+            if raw
+            else timezone.localdate()
+        )
         users = select_users(options.get("usernames"))
         floor = options.get("floor")
 
