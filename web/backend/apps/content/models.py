@@ -1068,6 +1068,10 @@ class Notification(models.Model):
         REMINDER = "reminder", "Reminder"
         DEADLINE_MOVED = "deadline_moved", "Deadline moved"
         HIGH_SIGNAL = "high_signal", "High signal"
+        # Mylo gave up delivering something to Discord. In-app is the only channel
+        # that can carry this: if Discord is the broken thing, a Discord message
+        # would fail for the same reason the original one did.
+        DELIVERY_FAILED = "delivery_failed", "Delivery failed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

@@ -270,6 +270,10 @@ def _settle(message, verdict: Classification, result: DrainResult, *, now) -> No
             message, error_code=verdict.error_code, reason=reason, now=now
         )
         result.failed += 1
+        # A permanent failure is the *more* actionable of the two — "your DMs are
+        # closed" is something the person can fix today — so it is reported just
+        # like an exhausted one.
+        _notify_undelivered(message, verdict)
         return
 
     max_attempts = getattr(settings, "DISCORD_OUTBOX_MAX_ATTEMPTS", 5)
@@ -278,7 +282,7 @@ def _settle(message, verdict: Classification, result: DrainResult, *, now) -> No
             message, error_code=verdict.error_code, reason=reason, now=now
         )
         result.dead += 1
-        _on_dead(message, verdict)
+        _notify_undelivered(message, verdict)
         return
 
     resolve.mark_outbox_retry(
@@ -315,14 +319,33 @@ def _on_permanent(message, verdict: Classification) -> None:
             )
 
 
-def _on_dead(message, verdict: Classification) -> None:
-    """Hook for A-7's one-and-only-one user notification."""
+def _notify_undelivered(message, verdict: Classification) -> None:
+    """Tell the affected person, once, in the Mycelium app.
+
+    Imported lazily and by service module rather than by model: the queue must not
+    reach the ORM directly (the boundary test enforces it), and a top-level import
+    would put ``integrations`` and ``content`` in a cycle. A failure to notify must
+    never turn one undelivered message into a broken drain, so it is swallowed.
+    """
     log.warning(
         "outbox message dead after %s attempts: kind=%s reason=%s",
         message.attempts,
         message.kind,
         verdict.reason,
     )
+    try:
+        from apps.content.delivery_failures import notify_delivery_failed
+
+        notify_delivery_failed(
+            outbox_id=message.pk,
+            reason=str(verdict.reason or ""),
+            target_type=message.target_type,
+            recipient_user=message.recipient_user,
+            lab=message.lab,
+            kind=message.kind,
+        )
+    except Exception:  # noqa: BLE001 — never let the notice sink the drain
+        log.exception("could not record a delivery-failure notice")
 
 
 # --------------------------------------------------------------------------- #
