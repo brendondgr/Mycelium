@@ -26,6 +26,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+from .clustering import cluster_interests
 from .digest_selection import new_content_ids, split_by_floor
 from .fusion import DEFAULT_BETA
 from .interests_query import SearchInterest, search_interests
@@ -36,7 +37,11 @@ from .opportunity_llm import (
     load_prior_llm_verdicts,
 )
 from .pinning import compute_pins
-from .pipeline import PersistRow, fuse_interests_pool
+from .pipeline import (
+    PersistRow,
+    fuse_clusters_pool,
+    fuse_interests_pool,
+)
 from .targets import MatchTarget, target_for_user
 
 logger = logging.getLogger(__name__)
@@ -575,16 +580,36 @@ def _prepare_match(
     threshold = _area_match_threshold(content_type)
     cap = _opportunity_max_surface() if threshold is not None else surface_limit
 
-    pairs, rows, pool = fuse_interests_pool(
-        search_ints,
-        content_type=content_type,
-        surface_limit=cap,
-        pool_per_interest=pool_per_interest,
-        beta=beta,
-        emit=emit,
-        created_on=created_on,
-        match_threshold=threshold,
-    )
+    # Cluster-scoped when the target declares >= 2 real research themes, exactly as
+    # papers have been since the cluster sprint. ``fuse_clusters_pool`` was already
+    # generic over ``content_type``; grants and conferences simply never dispatched
+    # to it, which is why an opportunity carried no cluster attribution and the
+    # cluster badge on its card stayed dark. One or no cluster keeps the flat path
+    # byte-for-byte — the invariant every cluster feature in this codebase preserves.
+    clusters = cluster_interests(target.interests or {})
+    if len(clusters) >= 2:
+        pairs, rows, pool = fuse_clusters_pool(
+            search_ints,
+            clusters,
+            content_type=content_type,
+            surface_limit=cap,
+            pool_per_interest=pool_per_interest,
+            beta=beta,
+            emit=emit,
+            created_on=created_on,
+            match_threshold=threshold,
+        )
+    else:
+        pairs, rows, pool = fuse_interests_pool(
+            search_ints,
+            content_type=content_type,
+            surface_limit=cap,
+            pool_per_interest=pool_per_interest,
+            beta=beta,
+            emit=emit,
+            created_on=created_on,
+            match_threshold=threshold,
+        )
     if not pairs:
         scope = "new today" if created_on is not None else "in corpus"
         emit(f"no embedded opportunities {scope} to retrieve")
@@ -1178,7 +1203,7 @@ def run_daily_opportunities_batch(
     # Lab + project targets: grants + conferences only (no fellowships here). A
     # project only runs the areas it has opted into (``goals.watch_categories``);
     # a lab runs them all (its own watch config gates upstream).
-    from .targets import target_for_lab, target_for_project, project_watch_categories
+    from .targets import project_watch_categories, target_for_lab, target_for_project
 
     inst_areas = tuple(a for a in areas if a != "fellowships")
     inst_units = [(target_for_lab(lab), inst_areas) for lab in labs]
