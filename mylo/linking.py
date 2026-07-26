@@ -189,7 +189,15 @@ _CHANNEL_PURPOSE = {"deadlines": "deadline reminders", "updates": "daily and wee
 
 
 def _setup_gate(resolve, link, discord_user_id: str) -> tuple[str, dict] | None:
-    """Common `/setup` guard: server must be ACTIVE and the caller a linked manager."""
+    """Common `/setup` guard: server must be ACTIVE and the caller a linked manager.
+
+    The activation state is checked here because it is a *Discord* fact — this guild
+    is not yet bound to any lab — and saying so plainly is the whole point of the
+    message. Everything after that (is this person linked, may they manage this lab,
+    does the lab's plan cover Mylo, is anyone hammering the command) goes through the
+    single authorization gate, so `/setup` cannot drift from what the slash commands
+    enforce.
+    """
     if link is None or link.state != resolve.GUILD_ACTIVE:
         return (
             "not_active",
@@ -197,13 +205,16 @@ def _setup_gate(resolve, link, discord_user_id: str) -> tuple[str, dict] | None:
              "runs `/activate-lab code:<code>` first — generate the code from the "
              "lab's settings in Mycelium."},
         )
-    if not resolve.can_manage_lab_via_discord(discord_user_id, link.lab):
-        return (
-            "denied",
-            {"message": f"Only a **linked** admin or PI of **{link.lab.name}** can "
-             "configure Mylo here. Link your Discord in your Mycelium profile (or "
-             "`/activate code:`), then run `/setup` again."},
-        )
+
+    from apps.integrations.services import gate
+
+    verdict = gate.authorize(
+        discord_user_id=discord_user_id,
+        action="setup",
+        guild_id=link.guild_id,
+    )
+    if not verdict.ok:
+        return (str(verdict.denial), {"message": verdict.message})
     return None
 
 

@@ -131,3 +131,39 @@ def _fail_key(discord_user_id: str) -> str:
 
 def _lock_key(discord_user_id: str) -> str:
     return f"activate_lock:{discord_user_id}"
+
+
+# --------------------------------------------------------------------------- #
+# Per-command rate limiting
+# --------------------------------------------------------------------------- #
+def check_rate(subject: str, *, bucket: str, limit: int, window: int) -> bool:
+    """Consume one unit of ``bucket`` for ``subject``. False = refuse.
+
+    Fail-**closed**, matching :func:`is_locked_out`: if the cache is unreachable we
+    deny rather than wave everything through. The alternative is that a Redis outage
+    silently converts an expensive, rate-limited command surface into an unmetered
+    one — precisely when the system is least able to absorb it.
+
+    A fixed window rather than a sliding one: at these limits the burst a window edge
+    allows is at most one extra command, which is not worth the extra keys.
+    """
+    key = f"rate:{bucket}:{subject}"
+    try:
+        try:
+            count = _cache().incr(key)
+        except ValueError:
+            # No counter yet — `add` (not `set`) so two concurrent first-calls
+            # cannot each install a fresh window and both start from one.
+            _cache().add(key, 1, timeout=window)
+            count = _cache().get(key) or 1
+        return int(count) <= limit
+    except Exception:
+        return False  # fail closed
+
+
+def reset_rate(subject: str, *, bucket: str) -> None:
+    """Drop a subject's counter for one bucket (tests, and manual relief)."""
+    try:
+        _cache().delete(f"rate:{bucket}:{subject}")
+    except Exception:
+        pass

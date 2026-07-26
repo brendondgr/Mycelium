@@ -580,6 +580,15 @@ DISCORD_OUTBOX_ATTACHMENT_DIR = env(
     default=str(ROOT_DIR.parent / "data" / "outbox"),
 )
 
+# Per-user, per-bucket slash-command limits as (calls, seconds), enforced by the
+# authorization gate. Search is tighter than the rest because one call can trigger a
+# query embedding plus several Postgres scans; the others are cheap reads. The check
+# fails closed, so a cache outage denies rather than leaving the surface unmetered.
+DISCORD_COMMAND_RATE_LIMITS = {
+    "search": (env.int("DISCORD_RATE_SEARCH", default=5), 60),
+    "command": (env.int("DISCORD_RATE_COMMAND", default=20), 60),
+}
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
