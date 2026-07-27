@@ -160,7 +160,7 @@ function FilterGroup({
 }) {
   return (
     <div className="border-t border-[var(--divider)] pt-3.5 first:border-t-0 first:pt-0">
-      <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+      <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
         {label}
       </p>
       {children}
@@ -227,7 +227,7 @@ function CheckRow({
         {label}
       </span>
       {typeof count === "number" ? (
-        <span className="shrink-0 text-xs text-[var(--text-muted)]">{count}</span>
+        <span className="shrink-0 text-xs text-[var(--text-secondary)]">{count}</span>
       ) : null}
     </label>
   );
@@ -265,7 +265,7 @@ export function SavesFilters({
         className="mb-3 flex w-full items-center justify-between rounded-xl border border-border bg-surface-alt px-3.5 py-2.5 text-sm font-semibold text-[var(--text-primary)] lg:hidden"
       >
         <span>Filters{active ? ` · ${resultCount}` : ""}</span>
-        <span className="text-xs text-[var(--text-muted)]">
+        <span className="text-xs text-[var(--text-secondary)]">
           {open ? "Hide" : "Show"}
         </span>
         <ChevronDownIcon
@@ -308,7 +308,7 @@ export function SavesFilters({
               <SearchIcon
                 size={14}
                 aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"
               />
               <input
                 type="search"

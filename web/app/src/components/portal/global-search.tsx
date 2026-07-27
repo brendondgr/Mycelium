@@ -31,7 +31,7 @@ export function GlobalSearch() {
         onSubmit={submit}
         className="flex w-full max-w-[420px] items-center gap-2.5 rounded-full border border-border bg-surface-alt px-3.5 py-2 focus-within:ring-2 focus-within:ring-ring"
       >
-        <SearchIcon size={16} className="text-[var(--text-muted)]" />
+        <SearchIcon size={16} className="text-[var(--text-secondary)]" />
         <input
           type="search"
           value={value}

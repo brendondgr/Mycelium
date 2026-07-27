@@ -73,7 +73,7 @@ export function MyloReportCard({
         )}
 
         {isFallback ? (
-          <p className="mt-4 text-xs text-[var(--text-muted)]">
+          <p className="mt-4 text-xs text-[var(--text-secondary)]">
             Written from today&rsquo;s counts — Mylo&rsquo;s writer was offline when
             this ran.
           </p>

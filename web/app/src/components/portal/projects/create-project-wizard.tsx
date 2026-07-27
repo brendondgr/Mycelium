@@ -171,7 +171,7 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-start justify-between border-b border-[var(--divider)] px-5 py-3.5">
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
               {created ? "Project created" : `Step ${step} of 2`}
             </p>
             <p className="mt-0.5 truncate text-sm font-semibold text-[var(--text-primary)]">
@@ -182,7 +182,7 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="shrink-0 rounded-full p-1 text-[var(--text-muted)] hover:bg-surface-alt hover:text-[var(--text-secondary)]"
+            className="shrink-0 rounded-full p-1 text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-secondary)]"
           >
             <CloseIcon size={15} />
           </button>
@@ -298,7 +298,7 @@ function ScopeChip({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         {label}
       </p>
       {children}
@@ -429,7 +429,7 @@ function StepFocus({
           className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </Field>
-      <p className="text-[12px] text-[var(--text-muted)]">
+      <p className="text-[12px] text-[var(--text-secondary)]">
         Mylo will build a themed research focus for this project — areas,
         clusters, and watch topics it can search on. You can review and edit
         the result before creating the project, or skip this and add a focus

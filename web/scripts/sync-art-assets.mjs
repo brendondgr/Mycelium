@@ -70,9 +70,13 @@ const ASSETS = [
     // Mylo's portrait carries the mascot everywhere inside the app: the auth
     // brand panel and onboarding at large sizes, the match ring's attribution
     // marker and Mylo's reason note at small ones. One master, four widths.
+    //
+    // These land at public/ root, not public/images/, because the gateway only
+    // proxies single-segment root static files to the app — /images/* is the
+    // landing site's own directory (infra/nginx/default.conf).
     src: "art/Mylo/MyloHeadshot.png",
     name: "mylo-portrait",
-    out: "app/public/images",
+    out: "app/public",
     widths: [512, 256, 128, 64],
     quality: 82,
   },

@@ -95,7 +95,7 @@ function SaveMeta({ item }: { item: SavedItem }) {
         {AREA_LABELS[item.area].replace(/s$/, "")}
       </span>
       {savedOn ? (
-        <span className="text-xs text-[var(--text-muted)]">Saved {savedOn}</span>
+        <span className="text-xs text-[var(--text-secondary)]">Saved {savedOn}</span>
       ) : null}
       {countdown && item.within_week ? (
         <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--accent)_45%,transparent)] px-2 py-0.5 text-xs font-semibold text-accent">
@@ -104,7 +104,7 @@ function SaveMeta({ item }: { item: SavedItem }) {
         </span>
       ) : null}
       {item.note ? (
-        <span className="min-w-0 truncate text-xs italic text-[var(--text-muted)]">
+        <span className="min-w-0 truncate text-xs italic text-[var(--text-secondary)]">
           Note: {item.note}
         </span>
       ) : null}
@@ -139,7 +139,7 @@ function PrunedSaveRow({
           />
         ) : null}
       </div>
-      <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+      <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
         {[
           item.subtitle,
           item.deadline_date
@@ -150,7 +150,7 @@ function PrunedSaveRow({
           .join(" · ")}
       </p>
       <div className="mt-2.5 flex flex-wrap items-center gap-3">
-        <span className="text-xs italic text-[var(--text-muted)]">
+        <span className="text-xs italic text-[var(--text-secondary)]">
           Original listing has closed — kept from your save.
         </span>
         {item.url ? (
@@ -334,7 +334,7 @@ function SavesBody({
 
   return (
     <div>
-      <SectionHeader title={title} subtitle={subtitle} />
+      <SectionHeader eyebrow="Workspace" title={title} subtitle={subtitle} />
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (
           <SavesFilters

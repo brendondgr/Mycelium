@@ -31,14 +31,14 @@ export function DiscordHealthCard({ lab }: { lab: MyLab }) {
   if (isLoading) {
     return (
       <DetailCard title="Mylo in Discord">
-        <p className="text-sm text-[var(--text-muted)]">Checking…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Checking…</p>
       </DetailCard>
     );
   }
   if (isError || !data) {
     return (
       <DetailCard title="Mylo in Discord">
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Couldn&apos;t check right now. Try again in a moment.
         </p>
       </DetailCard>
@@ -99,7 +99,7 @@ export function DiscordHealthCard({ lab }: { lab: MyLab }) {
                   className="flex items-start justify-between gap-3 text-sm"
                 >
                   <span className="text-[var(--text-secondary)]">{member.name}</span>
-                  <span className="shrink-0 text-right text-xs text-[var(--text-muted)]">
+                  <span className="shrink-0 text-right text-xs text-[var(--text-secondary)]">
                     {memberReason(member)}
                   </span>
                 </li>

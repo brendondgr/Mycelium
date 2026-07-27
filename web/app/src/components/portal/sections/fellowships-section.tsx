@@ -234,7 +234,7 @@ export function FellowshipRow({
                 <span
                   className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
                     softDl
-                      ? "text-[var(--text-muted)]"
+                      ? "text-[var(--text-secondary)]"
                       : "text-[var(--destructive)]"
                   }`}
                   title={deadlineLabel}
@@ -261,7 +261,7 @@ export function FellowshipRow({
 
           {/* Amount note as subtext when it's a short phrase */}
           {item.amount_note && item.amount_note.length <= 40 ? (
-            <p className="mt-1 text-xs text-[var(--text-muted)]">
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">
               {item.amount_note}
             </p>
           ) : null}
@@ -290,7 +290,7 @@ export function FellowshipRow({
           {eligibilityBullets.length > 0 ? (
             eligibilityLong ? (
               <details className="mt-3">
-                <summary className="cursor-pointer text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-secondary)]">
+                <summary className="cursor-pointer text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-secondary)]">
                   Eligibility details ({eligibilityBullets.length})
                 </summary>
                 <ul className="mt-2 space-y-1 pl-4">
@@ -330,7 +330,7 @@ export function FellowshipRow({
                 </span>
               ))}
               {moreFacets > 0 ? (
-                <span className="px-1 text-xs font-medium text-[var(--text-muted)]">
+                <span className="px-1 text-xs font-medium text-[var(--text-secondary)]">
                   +{moreFacets} more
                 </span>
               ) : null}
@@ -428,7 +428,7 @@ function LabFellowshipRow({ item }: { item: LabFellowship }) {
           </h3>
         )}
         {item.deadline_date ? (
-          <span className="shrink-0 text-[12px] text-[var(--text-muted)]">
+          <span className="shrink-0 text-[12px] text-[var(--text-secondary)]">
             Deadline {item.deadline_date}
           </span>
         ) : null}
@@ -439,13 +439,13 @@ function LabFellowshipRow({ item }: { item: LabFellowship }) {
         </p>
       ) : null}
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
           Eligible:
         </span>
         {item.eligible.map((member) => (
           <Pill key={member.username} tone="neutral">
             {member.name}{" "}
-            <span className="text-[var(--text-muted)]">({member.tier})</span>
+            <span className="text-[var(--text-secondary)]">({member.tier})</span>
           </Pill>
         ))}
       </div>
@@ -485,7 +485,11 @@ function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
 
   return (
     <div>
-      <SectionHeader title="Fellowships" subtitle={subtitle} />
+      <SectionHeader
+        eyebrow="Opportunities"
+        title="Fellowships"
+        subtitle={subtitle}
+      />
       <div className="min-w-0 flex-1">
         {isLoading ? (
           <div className="space-y-3.5">
@@ -526,7 +530,7 @@ function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
                   className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   Show all {fellowships.length} fellowships
-                  <span className="text-[var(--text-muted)]">
+                  <span className="text-[var(--text-secondary)]">
                     (+{hiddenCount} more)
                   </span>
                 </button>
@@ -586,7 +590,11 @@ function PersonalFellowships() {
 
   return (
     <div>
-      <SectionHeader title="Fellowships" subtitle={subtitle} />
+      <SectionHeader
+        eyebrow="Opportunities"
+        title="Fellowships"
+        subtitle={subtitle}
+      />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (
@@ -645,7 +653,7 @@ function PersonalFellowships() {
                     className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     Show all {items.length} fellowships
-                    <span className="text-[var(--text-muted)]">
+                    <span className="text-[var(--text-secondary)]">
                       (+{hiddenCount} more)
                     </span>
                   </button>

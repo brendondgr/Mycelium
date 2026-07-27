@@ -196,7 +196,11 @@ function PapersFeed({
 
   return (
     <div>
-      <SectionHeader title="Research Papers" subtitle={subtitle} />
+      <SectionHeader
+        eyebrow="Your feed"
+        title="Research Papers"
+        subtitle={subtitle}
+      />
 
       {scanning ? (
         <div
@@ -216,7 +220,7 @@ function PapersFeed({
             <SearchIcon
               size={16}
               aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"
             />
             <input
               type="search"
@@ -392,7 +396,7 @@ function PapersFeed({
             </div>
           ) : null}
 
-          <p className="mt-5 text-xs text-[var(--text-muted)]">
+          <p className="mt-5 text-xs text-[var(--text-secondary)]">
             The top papers marked “Mylo pick” were ranked and percent-matched by
             the language model — the percent reflects how well it judges each
             paper fits your research. The cross-topics matches are the rest of

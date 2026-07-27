@@ -117,7 +117,7 @@ export function LabSwitcher() {
           )}
           <span className="truncate">{labSegmentLabel}</span>
           {hasPicker ? (
-            <ChevronDownIcon size={13} className="shrink-0 text-[var(--text-muted)]" />
+            <ChevronDownIcon size={13} className="shrink-0 text-[var(--text-secondary)]" />
           ) : null}
         </button>
       </div>
@@ -127,7 +127,7 @@ export function LabSwitcher() {
           role="menu"
           className="absolute left-0 top-11 z-40 min-w-[248px] rounded-2xl border border-border bg-surface p-1.5 shadow-[var(--shadow)]"
         >
-          <p className="px-2.5 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+          <p className="px-2.5 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
             Choose a lab
           </p>
           {labs.map((lab) => (
@@ -146,7 +146,7 @@ export function LabSwitcher() {
                 <SporeNode size={13} />
               </span>
               <span className="flex-1 truncate">{lab.name}</span>
-              <span className="text-[11px] text-[var(--text-muted)]">
+              <span className="text-[11px] text-[var(--text-secondary)]">
                 {roleLabel(lab)}
               </span>
             </button>

@@ -198,7 +198,7 @@ function FilterGroup({
 }) {
   return (
     <div className="border-t border-[var(--divider)] pt-3.5 first:border-t-0 first:pt-0">
-      <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+      <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
         {label}
       </p>
       {children}
@@ -229,7 +229,7 @@ function CollapsibleFilterGroup({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]"
+        className="flex w-full items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]"
       >
         <span className="min-w-0 flex-1 text-left">{label}</span>
         {activeCount ? (
@@ -314,7 +314,7 @@ function CheckRow({
         {label}
       </span>
       {typeof count === "number" ? (
-        <span className="shrink-0 text-xs text-[var(--text-muted)]">{count}</span>
+        <span className="shrink-0 text-xs text-[var(--text-secondary)]">{count}</span>
       ) : null}
     </label>
   );
@@ -352,7 +352,7 @@ export function GrantFilters({
         className="mb-3 flex w-full items-center justify-between rounded-xl border border-border bg-surface-alt px-3.5 py-2.5 text-sm font-semibold text-[var(--text-primary)] lg:hidden"
       >
         <span>Filters{active ? ` · ${resultCount}` : ""}</span>
-        <span className="text-xs text-[var(--text-muted)]">
+        <span className="text-xs text-[var(--text-secondary)]">
           {open ? "Hide" : "Show"}
         </span>
       </button>
@@ -489,7 +489,7 @@ export function GrantFilters({
               label="Matched topic"
               activeCount={filters.topics.length}
             >
-              <p className="mb-1.5 text-[11px] leading-snug text-[var(--text-muted)]">
+              <p className="mb-1.5 text-[11px] leading-snug text-[var(--text-secondary)]">
                 Selecting more than one shows grants matching every topic.
               </p>
               <div className="max-h-52 overflow-y-auto pr-1">

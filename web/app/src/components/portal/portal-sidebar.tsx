@@ -21,7 +21,7 @@ import { FEATURE, type MyLab } from "@/lib/portal/types";
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-1.5 px-3.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+    <p className="mb-1.5 px-3.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
       {children}
     </p>
   );

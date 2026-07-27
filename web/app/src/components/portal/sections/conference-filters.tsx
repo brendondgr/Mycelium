@@ -381,7 +381,7 @@ function FilterGroup({
 }) {
   return (
     <div className="border-t border-[var(--divider)] pt-3.5 first:border-t-0 first:pt-0">
-      <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+      <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
         {label}
       </p>
       {children}
@@ -407,7 +407,7 @@ function CollapsibleFilterGroup({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]"
+        className="flex w-full items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]"
       >
         <span className="min-w-0 flex-1 text-left">{label}</span>
         {activeCount ? (
@@ -488,7 +488,7 @@ function CheckRow({
         {label}
       </span>
       {typeof count === "number" ? (
-        <span className="shrink-0 text-xs text-[var(--text-muted)]">{count}</span>
+        <span className="shrink-0 text-xs text-[var(--text-secondary)]">{count}</span>
       ) : null}
     </label>
   );
@@ -543,7 +543,7 @@ export function ConferenceFilters({
           Filters
           {active ? ` · ${activeGroupCount} active` : ""}
         </span>
-        <span className="text-xs text-[var(--text-muted)]">
+        <span className="text-xs text-[var(--text-secondary)]">
           {open ? "Hide" : "Show"}
         </span>
       </button>

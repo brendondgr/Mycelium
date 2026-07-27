@@ -38,7 +38,7 @@ export function EmptyState({
         </div>
       ) : null}
       {badge ? (
-        <span className="mb-3.5 inline-block rounded-full border border-dashed border-border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+        <span className="mb-3.5 inline-block rounded-full border border-dashed border-border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
           {badge}
         </span>
       ) : null}

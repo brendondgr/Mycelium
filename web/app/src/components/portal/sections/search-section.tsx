@@ -178,7 +178,7 @@ export function SearchSection() {
 
   return (
     <div className="portal-fade-up">
-      <SectionHeader title="Search" subtitle={subtitle} />
+      <SectionHeader eyebrow="Everything" title="Search" subtitle={subtitle} />
 
       {/* Query box + sort */}
       <div className="mb-5 flex flex-wrap items-center gap-3">
@@ -186,7 +186,7 @@ export function SearchSection() {
           <span className="sr-only">Search the content library</span>
           <SearchIcon
             size={16}
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"
           />
           <input
             type="search"
@@ -327,7 +327,7 @@ function FacetGroup({
   if (buckets.length === 0) return null;
   return (
     <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         {title}
       </p>
       <div className="flex flex-wrap gap-1.5 lg:flex-col lg:items-start">
@@ -349,7 +349,7 @@ function FacetGroup({
               <span className="truncate">
                 {labelFor ? labelFor(bucket.value) : bucket.value}
               </span>
-              <span className="shrink-0 text-xs text-[var(--text-muted)]">
+              <span className="shrink-0 text-xs text-[var(--text-secondary)]">
                 {bucket.count.toLocaleString()}
               </span>
             </button>

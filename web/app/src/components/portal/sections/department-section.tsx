@@ -36,6 +36,7 @@ export function DepartmentSection() {
   return (
     <div>
       <SectionHeader
+        eyebrow="Workspace"
         title={`${deptName} settings`}
         subtitle="Manage the department's members, labs, and subscription plan."
       />
@@ -86,7 +87,7 @@ function DeptMembersCard({
 
   return (
     <Card className="p-5">
-      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         Members
       </h3>
 
@@ -110,11 +111,11 @@ function DeptMembersCard({
       ) : null}
 
       {isLoading ? (
-        <p className="text-sm text-[var(--text-muted)]">Loading members…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Loading members…</p>
       ) : isError ? (
-        <p className="text-sm text-[var(--text-muted)]">Couldn&apos;t load members.</p>
+        <p className="text-sm text-[var(--text-secondary)]">Couldn&apos;t load members.</p>
       ) : !data || data.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">No members yet.</p>
+        <p className="text-sm text-[var(--text-secondary)]">No members yet.</p>
       ) : (
         <ul className="divide-y divide-border">
           {data.map((m: DeptMemberRow) => (
@@ -131,7 +132,7 @@ function DeptMembersCard({
                     </Pill>
                   ) : null}
                 </div>
-                <span className="truncate text-xs text-[var(--text-muted)]">
+                <span className="truncate text-xs text-[var(--text-secondary)]">
                   {m.email || m.username}
                 </span>
               </div>
@@ -179,7 +180,7 @@ function DeptLabsCard({ deptId, canManage }: { deptId: string; canManage: boolea
 
   return (
     <Card className="p-5">
-      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         Labs
       </h3>
 
@@ -226,9 +227,9 @@ function DeptLabsCard({ deptId, canManage }: { deptId: string; canManage: boolea
       ) : null}
 
       {isLoading ? (
-        <p className="text-sm text-[var(--text-muted)]">Loading labs…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Loading labs…</p>
       ) : isError ? (
-        <p className="text-sm text-[var(--text-muted)]">Couldn&apos;t load labs.</p>
+        <p className="text-sm text-[var(--text-secondary)]">Couldn&apos;t load labs.</p>
       ) : !data || data.length === 0 ? (
         <EmptyState
           title="No labs yet"
@@ -242,7 +243,7 @@ function DeptLabsCard({ deptId, canManage }: { deptId: string; canManage: boolea
                 <span className="truncate text-sm font-medium text-[var(--text-primary)]">
                   {lab.name}
                 </span>
-                <span className="block text-xs text-[var(--text-muted)]">
+                <span className="block text-xs text-[var(--text-secondary)]">
                   {lab.member_count} member{lab.member_count === 1 ? "" : "s"}
                   {lab.included_in_plan ? (
                     <span className="ml-2 rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.04em] text-[var(--text-secondary)]">

@@ -200,7 +200,7 @@ export function LabsSection() {
             ))}
           </div>
 
-          <p className="mt-6 text-sm text-[var(--text-muted)]">
+          <p className="mt-6 text-sm text-[var(--text-secondary)]">
             Select a lab to make it your active workspace, then manage it here.
           </p>
         </>
@@ -248,7 +248,7 @@ function LabCard({
         </span>
         {active ? <Pill tone="primary">Active</Pill> : null}
       </div>
-      <div className="flex items-center gap-2 text-[12.5px] text-[var(--text-muted)]">
+      <div className="flex items-center gap-2 text-[12.5px] text-[var(--text-secondary)]">
         <Pill tone="neutral">{roleLabel(lab)}</Pill>
         {lab.department ? <span>{lab.department}</span> : null}
       </div>
@@ -283,7 +283,7 @@ export function DetailCard({
 }) {
   return (
     <Card className="p-5">
-      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         {title}
       </h3>
       {children}
@@ -353,7 +353,7 @@ export function LabPurposeCard({
   return (
     <DetailCard title="Purpose & goals">
       {empty ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           {canManage
             ? "Describe this lab's collective research purpose and focus areas."
             : "This lab hasn't described its purpose yet."}
@@ -421,7 +421,7 @@ export function LabWatchCard({ lab }: { lab: MyLab }) {
   if (isError || !watch) {
     return (
       <DetailCard title="What Mylo watches">
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Couldn&apos;t load the lab&apos;s watch settings.
         </p>
       </DetailCard>
@@ -435,7 +435,7 @@ export function LabWatchCard({ lab }: { lab: MyLab }) {
   if (topics.length === 0) {
     return (
       <DetailCard title="What Mylo watches">
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           This lab hasn&apos;t set watch topics yet.
         </p>
       </DetailCard>
@@ -503,7 +503,7 @@ function ChipRow({ label, items }: { label: string; items: string[] }) {
   }
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         {label}
       </p>
       <div className="flex flex-wrap gap-1.5">
@@ -729,7 +729,7 @@ export function InviteCard({ lab }: { lab: MyLab }) {
           {invite.isPending ? "Sending…" : "Invite"}
         </button>
       </form>
-      <p className="mt-2 text-[12px] text-[var(--text-muted)]">
+      <p className="mt-2 text-[12px] text-[var(--text-secondary)]">
         People with an account are notified in-app. An email with no account yet
         is invited when they sign up.
       </p>
@@ -797,7 +797,7 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
         </span>
         <Pill tone={badge.tone}>{badge.label}</Pill>
       </div>
-      <p className="mt-2 text-[12.5px] text-[var(--text-muted)]">{detail}</p>
+      <p className="mt-2 text-[12.5px] text-[var(--text-secondary)]">{detail}</p>
       {!synced && !isLoading ? (
         <div className="mt-3 space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -868,11 +868,11 @@ export function MembersCard({
       {isLoading ? (
         <div className="h-12 animate-pulse rounded-xl bg-surface-alt" />
       ) : isError ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Couldn&apos;t load members.
         </p>
       ) : !members || members.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">No members yet.</p>
+        <p className="text-sm text-[var(--text-secondary)]">No members yet.</p>
       ) : grid ? (
         <div className="grid gap-2.5 sm:grid-cols-2">
           {members.map((member) => (
@@ -903,7 +903,7 @@ function MemberTile({ member }: { member: LabMember }) {
         <p className="m-0 truncate text-sm font-medium text-[var(--text-primary)]">
           {member.name}
         </p>
-        <p className="m-0 truncate text-xs text-[var(--text-muted)]">
+        <p className="m-0 truncate text-xs text-[var(--text-secondary)]">
           {member.email}
         </p>
       </div>
@@ -956,7 +956,7 @@ export function ProjectsCard({
       {isLoading ? (
         <div className="h-10 animate-pulse rounded-xl bg-surface-alt" />
       ) : !projects || projects.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           No projects yet. Each project can represent a distinct focus area.
         </p>
       ) : (
@@ -969,7 +969,7 @@ export function ProjectsCard({
               <span className="flex min-w-0 items-center gap-2 text-[13.5px] text-[var(--text-primary)]">
                 <FolderIcon size={14} className="shrink-0 text-brand-secondary" />
                 <span className="truncate font-medium">{project.name}</span>
-                <span className="shrink-0 text-[12px] text-[var(--text-muted)]">
+                <span className="shrink-0 text-[12px] text-[var(--text-secondary)]">
                   {project.member_count} member
                   {project.member_count === 1 ? "" : "s"}
                 </span>

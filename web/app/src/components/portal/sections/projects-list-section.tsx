@@ -81,6 +81,7 @@ export function ProjectsListSection() {
   return (
     <div>
       <SectionHeader
+        eyebrow="Workspace"
         title="Projects"
         subtitle={`Active research projects across ${scopeLabel}. Open one for its feed.`}
         action={newProjectAction}
@@ -112,7 +113,7 @@ export function ProjectsListSection() {
       {projectsLoading ? (
         <Card className="overflow-hidden">
           {/* Column header row */}
-          <div className="flex items-center gap-[14px] border-b border-[var(--divider)] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--text-muted)]">
+          <div className="flex items-center gap-[14px] border-b border-[var(--divider)] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--text-secondary)]">
             <span className="flex-1">Project</span>
             <span className="w-[120px]">Status</span>
             <span className="w-[150px]">Progress</span>
@@ -129,7 +130,7 @@ export function ProjectsListSection() {
           ))}
         </Card>
       ) : projectsError ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Couldn&apos;t load your projects.
         </p>
       ) : projects.length === 0 ? (
@@ -158,7 +159,7 @@ export function ProjectsListSection() {
           ) : (
             <Card className="overflow-hidden">
               {/* Column header row */}
-              <div className="flex items-center gap-[14px] border-b border-[var(--divider)] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--text-muted)]">
+              <div className="flex items-center gap-[14px] border-b border-[var(--divider)] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--text-secondary)]">
                 <span className="flex-1">Project</span>
                 <span className="w-[120px]">Status</span>
                 <span className="w-[150px]">Progress</span>
@@ -278,7 +279,7 @@ function ProjectRow({
               </Pill>
             ) : null}
           </p>
-          <p className="m-0 text-[11.5px] text-[var(--text-muted)]">
+          <p className="m-0 text-[11.5px] text-[var(--text-secondary)]">
             Updated {relativeTime(project.updated_at)}
           </p>
         </div>
@@ -295,12 +296,12 @@ function ProjectRow({
           {project.progress !== null ? (
             <>
               <ProgressBar value={project.progress} />
-              <span className="mt-1 block text-[11px] text-[var(--text-muted)]">
+              <span className="mt-1 block text-[11px] text-[var(--text-secondary)]">
                 {project.progress}%
               </span>
             </>
           ) : (
-            <span className="text-[11px] text-[var(--text-muted)]">—</span>
+            <span className="text-[11px] text-[var(--text-secondary)]">—</span>
           )}
         </div>
 
@@ -312,7 +313,7 @@ function ProjectRow({
         {/* Chevron */}
         <ChevronRightIcon
           size={18}
-          className="shrink-0 text-[var(--text-muted)]"
+          className="shrink-0 text-[var(--text-secondary)]"
         />
       </button>
 

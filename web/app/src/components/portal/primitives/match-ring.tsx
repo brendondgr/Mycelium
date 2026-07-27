@@ -92,7 +92,7 @@ export function MatchRing({
           /* Attribution rides the ring rather than taking a row of its own. */
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src="/images/mylo-portrait-64.webp"
+            src="/mylo-portrait-64.webp"
             alt=""
             width={20}
             height={20}

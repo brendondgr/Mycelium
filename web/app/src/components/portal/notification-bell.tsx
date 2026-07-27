@@ -75,20 +75,20 @@ export function NotificationBell() {
           aria-label="Notifications"
           className="absolute right-0 top-11 z-40 w-[320px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--shadow)]"
         >
-          <p className="border-b border-[var(--divider)] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+          <p className="border-b border-[var(--divider)] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
             Notifications
           </p>
 
           {loading ? (
-            <p className="px-4 py-6 text-center text-sm text-[var(--text-muted)]">
+            <p className="px-4 py-6 text-center text-sm text-[var(--text-secondary)]">
               Loading…
             </p>
           ) : errored ? (
-            <p className="px-4 py-6 text-center text-sm text-[var(--text-muted)]">
+            <p className="px-4 py-6 text-center text-sm text-[var(--text-secondary)]">
               Couldn&apos;t load your notifications.
             </p>
           ) : count === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+            <p className="px-4 py-8 text-center text-sm text-[var(--text-secondary)]">
               You&apos;re all caught up.
             </p>
           ) : (
@@ -147,7 +147,7 @@ function NotificationRow({ note }: { note: NotificationItem }) {
             </p>
           )}
           {note.body ? (
-            <p className="mt-0.5 text-[12.5px] text-[var(--text-muted)]">
+            <p className="mt-0.5 text-[12.5px] text-[var(--text-secondary)]">
               {note.body}
             </p>
           ) : null}
@@ -158,7 +158,7 @@ function NotificationRow({ note }: { note: NotificationItem }) {
           disabled={act.isPending}
           aria-label={`Dismiss notification: ${note.title}`}
           title="Dismiss"
-          className="shrink-0 rounded-full p-1 text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          className="shrink-0 rounded-full p-1 text-[var(--text-secondary)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         >
           <CloseIcon size={13} />
         </button>
@@ -188,7 +188,7 @@ function InvitationRow({ invitation }: { invitation: MyInvitation }) {
         {roleLabel({ role: invitation.role, is_lead: false })}.
       </p>
       {invitation.inviter ? (
-        <p className="mt-0.5 text-[12px] text-[var(--text-muted)]">
+        <p className="mt-0.5 text-[12px] text-[var(--text-secondary)]">
           From {invitation.inviter}
         </p>
       ) : null}
@@ -298,7 +298,7 @@ function SuggestionRow({
           ) : (
             <p className="text-sm text-[var(--text-primary)]">{suggestion.title}</p>
           )}
-          <p className="mt-0.5 text-[12px] text-[var(--text-muted)]">
+          <p className="mt-0.5 text-[12px] text-[var(--text-secondary)]">
             {suggestion.shared_by ? `Shared by ${suggestion.shared_by.name} · ` : ""}
             {suggestion.project.name}
             {suggestion.match_percent !== null
@@ -317,7 +317,7 @@ function SuggestionRow({
           disabled={dismiss.isPending}
           aria-label={`Dismiss suggestion: ${suggestion.title}`}
           title="Dismiss"
-          className="shrink-0 rounded-full p-1 text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          className="shrink-0 rounded-full p-1 text-[var(--text-secondary)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         >
           <CloseIcon size={13} />
         </button>

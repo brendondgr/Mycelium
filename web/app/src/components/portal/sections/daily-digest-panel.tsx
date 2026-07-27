@@ -122,7 +122,7 @@ export function DailyDigestPanel() {
         ) : null}
 
         {top.length === 0 && !profileIncomplete && !reportQuery.isLoading ? (
-          <p className="m-0 text-[12.5px] leading-snug text-[var(--text-muted)]">
+          <p className="m-0 text-[12.5px] leading-snug text-[var(--text-secondary)]">
             Your morning digest will appear here as soon as the first scan runs.
           </p>
         ) : null}

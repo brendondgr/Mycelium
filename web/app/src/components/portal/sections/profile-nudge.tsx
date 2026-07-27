@@ -43,7 +43,7 @@ export function ProfileNudge() {
           "absolute top-3 right-3",
           "w-7 h-7 rounded-lg border-none bg-transparent",
           "flex items-center justify-center",
-          "text-[var(--text-muted)] cursor-pointer",
+          "text-[var(--text-secondary)] cursor-pointer",
           "hover:bg-surface-alt",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         ].join(" ")}

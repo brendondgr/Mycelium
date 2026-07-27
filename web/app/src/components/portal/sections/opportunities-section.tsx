@@ -133,7 +133,7 @@ export function GrantRow({
           </div>
 
           {posted ? (
-            <p className="mt-2 text-xs text-[var(--text-muted)]">
+            <p className="mt-2 text-xs text-[var(--text-secondary)]">
               Posted {posted}
             </p>
           ) : null}
@@ -156,7 +156,7 @@ export function GrantRow({
           ) : null}
 
           {topics.length > 0 ? (
-            <p className="mt-2.5 text-xs text-[var(--text-muted)]">
+            <p className="mt-2.5 text-xs text-[var(--text-secondary)]">
               Matched: {topics.join(" · ")}
             </p>
           ) : null}
@@ -311,7 +311,7 @@ function GrantsFeed({
 
   return (
     <div>
-      <SectionHeader title="Grants" subtitle={subtitle} />
+      <SectionHeader eyebrow="Opportunities" title="Grants" subtitle={subtitle} />
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (
           <GrantFilters
@@ -385,7 +385,7 @@ function GrantsFeed({
                     className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     Show all {grants.length} grants
-                    <span className="text-[var(--text-muted)]">
+                    <span className="text-[var(--text-secondary)]">
                       (+{hiddenCount} more)
                     </span>
                   </button>

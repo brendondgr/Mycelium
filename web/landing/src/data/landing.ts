@@ -49,9 +49,15 @@ export type FeedItem = {
   meta: string;
   /** The "why this matched" line — never omit it; it is the whole point. */
   reason: string;
-  /** Numeric fit, or a qualitative verdict where a percent would overclaim. */
-  score: string;
-  scoreLabel: string;
+  /** Percent fit, exactly as the app's match ring shows it. */
+  score: number;
+  /**
+   * Eligibility tier, for fellowships only. In the app this is a deterministic
+   * rule-engine verdict shown beside the ring, never folded into the percent.
+   */
+  verdict?: "Qualified" | "Possible fit";
+  /** True when Mylo (the language model) wrote the reason. */
+  byMylo?: boolean;
   cluster: string;
   clusterToken: string;
   flag?: string;
@@ -80,8 +86,8 @@ export const feedTabs: readonly FeedTab[] = [
         meta: "Nature Machine Intelligence · 4 days ago",
         reason:
           "Matches your Retrieval grounding cluster and shares the MIMIC-IV dataset with Clinical CDS safety.",
-        score: "92%",
-        scoreLabel: "match",
+        score: 92,
+        byMylo: true,
         cluster: "Retrieval grounding",
         clusterToken: "1",
         flag: "New",
@@ -91,8 +97,8 @@ export const feedTabs: readonly FeedTab[] = [
         meta: "bioRxiv preprint · 6 days ago",
         reason:
           "Strengthens the readout argument in your Q3 proposal; method overlaps two saved papers.",
-        score: "84%",
-        scoreLabel: "match",
+        score: 84,
+        byMylo: true,
         cluster: "Plasticity mechanisms",
         clusterToken: "2",
       },
@@ -101,8 +107,7 @@ export const feedTabs: readonly FeedTab[] = [
         meta: "JAMIA · 9 days ago",
         reason:
           "Bridges two of your clusters — retrieval grounding and clinical CDS safety.",
-        score: "78%",
-        scoreLabel: "match",
+        score: 78,
         cluster: "Retrieval grounding",
         clusterToken: "1",
         flag: "Bridges 2 clusters",
@@ -119,8 +124,8 @@ export const feedTabs: readonly FeedTab[] = [
         meta: "National Science Foundation · full proposal",
         reason:
           "Scope fits Clinical CDS safety; your last two awards sit inside the stated budget band.",
-        score: "88%",
-        scoreLabel: "fit",
+        score: 88,
+        byMylo: true,
         cluster: "Clinical CDS safety",
         clusterToken: "3",
         flag: "Due in 18 days",
@@ -130,8 +135,7 @@ export const feedTabs: readonly FeedTab[] = [
         meta: "National Institutes of Health · standard due date",
         reason:
           "Matches the pilot-scale framing of your plasticity work; no preliminary data required.",
-        score: "74%",
-        scoreLabel: "fit",
+        score: 74,
         cluster: "Plasticity mechanisms",
         clusterToken: "2",
         flag: "Due in 46 days",
@@ -149,8 +153,9 @@ export const feedTabs: readonly FeedTab[] = [
         meta: "Trainee award · annual cycle",
         reason:
           "Citizenship, stage, and field all clear for two members. Research fit checked separately.",
-        score: "Qualified",
-        scoreLabel: "eligibility",
+        score: 91,
+        verdict: "Qualified",
+        byMylo: true,
         cluster: "Plasticity mechanisms",
         clusterToken: "2",
         flag: "2 members eligible",
@@ -160,8 +165,8 @@ export const feedTabs: readonly FeedTab[] = [
         meta: "Trainee award · annual cycle",
         reason:
           "Field match is strong, but institutional support needs confirming before applying.",
-        score: "Review",
-        scoreLabel: "eligibility",
+        score: 67,
+        verdict: "Possible fit",
         cluster: "Retrieval grounding",
         clusterToken: "1",
         flag: "Needs human check",
@@ -178,8 +183,8 @@ export const feedTabs: readonly FeedTab[] = [
         meta: "San Diego, USA · December",
         reason:
           "Your benchmark work matches the track scope; abstract deadline lands before your defense.",
-        score: "81%",
-        scoreLabel: "fit",
+        score: 81,
+        byMylo: true,
         cluster: "Retrieval grounding",
         clusterToken: "1",
         flag: "Abstract due in 12 days",
@@ -189,8 +194,7 @@ export const feedTabs: readonly FeedTab[] = [
         meta: "Washington DC, USA · November",
         reason:
           "Clinical informatics venue with a track that fits the CDS safety project directly.",
-        score: "76%",
-        scoreLabel: "fit",
+        score: 76,
         cluster: "Clinical CDS safety",
         clusterToken: "3",
         flag: "Full paper due in 31 days",

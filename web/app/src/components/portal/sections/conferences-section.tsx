@@ -109,7 +109,7 @@ export function ConferenceCard({
       <dl className="mt-2.5 space-y-1.5 text-sm text-[var(--text-secondary)]">
         {where ? (
           <div className="flex gap-2">
-            <dt className="w-12 shrink-0 font-bold text-[var(--text-muted)]">
+            <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
               Where
             </dt>
             <dd className="min-w-0">{where}</dd>
@@ -117,7 +117,7 @@ export function ConferenceCard({
         ) : null}
         {conf.event_dates ? (
           <div className="flex gap-2">
-            <dt className="w-12 shrink-0 font-bold text-[var(--text-muted)]">
+            <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
               When
             </dt>
             <dd>{conf.event_dates}</dd>
@@ -162,7 +162,7 @@ export function ConferenceCard({
             </span>
           ))}
           {moreSubjects > 0 ? (
-            <span className="px-1 text-xs font-medium text-[var(--text-muted)]">
+            <span className="px-1 text-xs font-medium text-[var(--text-secondary)]">
               +{moreSubjects} more
             </span>
           ) : null}
@@ -320,7 +320,11 @@ function ConferencesFeed({
 
   return (
     <div>
-      <SectionHeader title="Conferences" subtitle={subtitle} />
+      <SectionHeader
+        eyebrow="Opportunities"
+        title="Conferences"
+        subtitle={subtitle}
+      />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (
@@ -406,7 +410,7 @@ function ConferencesFeed({
                     className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     Show all {conferences.length} conferences
-                    <span className="text-[var(--text-muted)]">
+                    <span className="text-[var(--text-secondary)]">
                       (+{hiddenCount} more)
                     </span>
                   </button>

@@ -68,7 +68,7 @@ export function ProjectsNav() {
           onClick={toggleProjectsExpanded}
           aria-label={projectsExpanded ? "Collapse projects" : "Expand projects"}
           aria-expanded={projectsExpanded}
-          className="absolute right-1.5 flex h-6 w-6 items-center justify-center rounded-[7px] text-[var(--text-muted)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-1.5 flex h-6 w-6 items-center justify-center rounded-[7px] text-[var(--text-secondary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {projectsExpanded ? (
             <ChevronUpIcon size={14} />
@@ -85,7 +85,7 @@ export function ProjectsNav() {
             onClick={openProjectsList}
             className={cn(
               "relative rounded-lg px-2.5 py-1.5 text-left text-[12.5px] font-medium transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              allActive ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]",
+              allActive ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]",
             )}
           >
             {allActive ? (
@@ -128,7 +128,7 @@ export function ProjectsNav() {
           })}
 
           {!projectsLoading && projects.length === 0 ? (
-            <p className="px-2.5 py-1.5 text-[12px] text-[var(--text-muted)]">
+            <p className="px-2.5 py-1.5 text-[12px] text-[var(--text-secondary)]">
               No projects yet.
             </p>
           ) : null}

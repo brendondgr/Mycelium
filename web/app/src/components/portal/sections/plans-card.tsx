@@ -48,7 +48,7 @@ function PlanRow({ plan }: { plan: PlanSummary }) {
             {SCOPE_LABEL[plan.scope_type]}
           </Pill>
         </div>
-        <span className="truncate text-xs text-[var(--text-muted)]">
+        <span className="truncate text-xs text-[var(--text-secondary)]">
           {plan.scope_name}
           {plan.payer_type && PAYER_LABEL[plan.payer_type]
             ? ` · ${PAYER_LABEL[plan.payer_type]}`
@@ -90,16 +90,16 @@ export function PlansCard() {
       <h2 className="mb-1 text-base font-semibold text-[var(--text-primary)]">
         Your plans
       </h2>
-      <p className="mb-3 text-xs text-[var(--text-muted)]">
+      <p className="mb-3 text-xs text-[var(--text-secondary)]">
         Every subscription active on your account.
       </p>
 
       {isLoading ? (
-        <p className="text-sm text-[var(--text-muted)]">Loading your plans…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Loading your plans…</p>
       ) : isError ? (
-        <p className="text-sm text-[var(--text-muted)]">Couldn&apos;t load your plans.</p>
+        <p className="text-sm text-[var(--text-secondary)]">Couldn&apos;t load your plans.</p>
       ) : !data || data.plans.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           You&apos;re on the Free plan. Join or activate a Lab or Canopy plan to unlock
           shared intelligence.
         </p>

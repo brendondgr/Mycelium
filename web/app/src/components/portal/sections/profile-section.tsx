@@ -58,7 +58,7 @@ function ResearchFocusCard() {
         <h2 className="mb-4 text-base font-semibold text-[var(--text-primary)]">
           Research focus
         </h2>
-        <p className="text-sm text-[var(--text-muted)]">Loading your profile…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Loading your profile…</p>
       </Card>
     );
   }
@@ -69,7 +69,7 @@ function ResearchFocusCard() {
         <h2 className="mb-4 text-base font-semibold text-[var(--text-primary)]">
           Research focus
         </h2>
-        <p className="text-sm text-[var(--text-muted)]">Couldn&apos;t load your profile.</p>
+        <p className="text-sm text-[var(--text-secondary)]">Couldn&apos;t load your profile.</p>
       </Card>
     );
   }
@@ -111,7 +111,7 @@ function ResearchFocusCard() {
         .filter(({ items }) => items.length > 0)
         .map(({ label, items }) => (
           <div key={label} className="mb-3">
-            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-secondary)]">
               {label}
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -125,7 +125,7 @@ function ResearchFocusCard() {
         ))}
 
       {!hasContent ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Add a research statement and keywords in your profile so Mylo can match
           work to you.
         </p>
@@ -147,7 +147,7 @@ function ProfileCompletenessCard() {
         <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
           Profile completeness
         </h2>
-        <p className="text-sm text-[var(--text-muted)]">Loading…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Loading…</p>
       </Card>
     );
   }
@@ -158,7 +158,7 @@ function ProfileCompletenessCard() {
         <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
           Profile completeness
         </h2>
-        <p className="text-sm text-[var(--text-muted)]">Couldn&apos;t load your profile.</p>
+        <p className="text-sm text-[var(--text-secondary)]">Couldn&apos;t load your profile.</p>
       </Card>
     );
   }
@@ -202,7 +202,7 @@ function ProfileCompletenessCard() {
               className={
                 item.done
                   ? "text-[var(--text-primary)]"
-                  : "text-[var(--text-muted)]"
+                  : "text-[var(--text-secondary)]"
               }
             >
               {item.label}
@@ -228,7 +228,7 @@ function WatchCard() {
         <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
           What Mylo watches
         </h2>
-        <p className="text-sm text-[var(--text-muted)]">Loading…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Loading…</p>
       </Card>
     );
   }
@@ -239,7 +239,7 @@ function WatchCard() {
         <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
           What Mylo watches
         </h2>
-        <p className="text-sm text-[var(--text-muted)]">Couldn&apos;t load your watch settings.</p>
+        <p className="text-sm text-[var(--text-secondary)]">Couldn&apos;t load your watch settings.</p>
       </Card>
     );
   }
@@ -283,7 +283,7 @@ function WatchCard() {
       </h2>
 
       {isEmpty ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           You haven&apos;t set watch topics yet.
         </p>
       ) : (
@@ -304,7 +304,7 @@ function WatchCard() {
               ))}
               {otherTopics.length > 0 ? (
                 <div>
-                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-secondary)]">
                     Other
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -374,7 +374,7 @@ function EligibilityCard() {
         <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
           Fellowship eligibility
         </h2>
-        <p className="text-sm text-[var(--text-muted)]">Loading…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Loading…</p>
       </Card>
     );
   }
@@ -385,7 +385,7 @@ function EligibilityCard() {
         <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
           Fellowship eligibility
         </h2>
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Couldn&apos;t load your eligibility details.
         </p>
       </Card>
@@ -400,7 +400,7 @@ function EligibilityCard() {
         <h2 className="mb-2 text-base font-semibold text-[var(--text-primary)]">
           Fellowship eligibility
         </h2>
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Fellowship matching uses your eligibility profile — citizenship,
           career stage, and field. Set it from{" "}
           <Link
@@ -429,7 +429,7 @@ function EligibilityCard() {
       <div className="space-y-3">
         {/* Citizenship */}
         <div className="flex flex-col gap-0.5">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-secondary)]">
             Citizenship
           </p>
           <p className="text-sm text-[var(--text-primary)]">{citizenshipLabel}</p>
@@ -437,7 +437,7 @@ function EligibilityCard() {
 
         {/* Stage */}
         <div className="flex flex-col gap-0.5">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-secondary)]">
             Career stage
           </p>
           <p className="text-sm text-[var(--text-primary)]">{stageLabel}</p>
@@ -445,7 +445,7 @@ function EligibilityCard() {
 
         {/* Broad fields */}
         <div className="flex flex-col gap-1.5">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-secondary)]">
             Broad fields
           </p>
           {fields.length > 0 ? (
@@ -457,13 +457,13 @@ function EligibilityCard() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[var(--text-muted)]">None selected</p>
+            <p className="text-sm text-[var(--text-secondary)]">None selected</p>
           )}
         </div>
 
         {/* Restriction groups */}
         <div className="flex flex-col gap-1.5">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-secondary)]">
             Eligible restriction groups
           </p>
           {restrictions.length > 0 ? (
@@ -475,7 +475,7 @@ function EligibilityCard() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[var(--text-muted)]">None selected</p>
+            <p className="text-sm text-[var(--text-secondary)]">None selected</p>
           )}
         </div>
       </div>
@@ -526,7 +526,7 @@ function DiscordCard() {
       ) : null}
 
       {isLoading ? (
-        <p className="text-sm text-[var(--text-muted)]">Loading…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Loading…</p>
       ) : connected ? (
         <div className="space-y-3">
           <p className="text-sm text-[var(--text-secondary)]">
@@ -541,7 +541,7 @@ function DiscordCard() {
               <p className="text-sm font-medium text-[var(--text-primary)]">
                 Can Mylo reach you?
               </p>
-              <p className="mt-0.5 text-sm text-[var(--text-muted)]">
+              <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
                 {testDm.isError
                   ? "Couldn’t run the test. Try again."
                   : status?.dm_ok === false
@@ -568,7 +568,7 @@ function DiscordCard() {
                   <p className="text-sm font-medium text-[var(--text-primary)]">
                     Daily research report
                   </p>
-                  <p className="mt-0.5 text-sm text-[var(--text-muted)]">
+                  <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
                     {dailyReport.isError
                       ? "Couldn’t update. Try again."
                       : reportOn
@@ -642,7 +642,7 @@ function DiscordCard() {
             </div>
           ) : null}
           {issueCode.isError ? (
-            <p className="text-sm text-[var(--text-muted)]">
+            <p className="text-sm text-[var(--text-secondary)]">
               Couldn’t generate a code. Try again.
             </p>
           ) : null}
@@ -668,6 +668,7 @@ export function ProfileSection() {
   return (
     <div>
       <SectionHeader
+        eyebrow="Workspace"
         title="Profile"
         subtitle="Your research focus and goals — what Mylo uses to find matches."
         action={

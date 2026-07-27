@@ -143,7 +143,7 @@ export function ProjectDetailSection() {
     return (
       <div>
         {backButton}
-        <p className="text-sm text-[var(--text-muted)]">Loading project…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Loading project…</p>
       </div>
     );
   }
@@ -193,12 +193,12 @@ export function ProjectDetailSection() {
             <Pill tone={statusPillTone(project.status)}>
               {displayStatus(project.status)}
             </Pill>
-            <span className="text-[12.5px] text-[var(--text-muted)]">
+            <span className="text-[12.5px] text-[var(--text-secondary)]">
               updated {relativeTime(project.updated_at)}
             </span>
             {project.progress !== null && (
               <>
-                <span className="text-[12.5px] text-[var(--text-muted)]">·</span>
+                <span className="text-[12.5px] text-[var(--text-secondary)]">·</span>
                 <span className="text-[12.5px] text-[var(--text-secondary)]">
                   {project.progress}% complete
                 </span>
@@ -221,7 +221,7 @@ export function ProjectDetailSection() {
       {/* Description */}
       <p className="mb-[22px] max-w-[74ch] text-sm leading-[1.55] text-[var(--text-secondary)]">
         {description ?? (
-          <span className="text-[var(--text-muted)]">No description yet.</span>
+          <span className="text-[var(--text-secondary)]">No description yet.</span>
         )}
       </p>
 
@@ -235,7 +235,7 @@ export function ProjectDetailSection() {
               <h2 className="mb-[3px] text-base font-semibold text-[var(--text-primary)]">
                 Project feed
               </h2>
-              <p className="mb-[14px] text-[12.5px] text-[var(--text-muted)]">
+              <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
                 Papers the team has shared, plus articles you paste in directly.
               </p>
 
@@ -245,13 +245,13 @@ export function ProjectDetailSection() {
             {/* The team's shared feed — the primary content of this card. */}
             {feedQuery.isLoading ? (
               <div className="py-8 text-center">
-                <p className="text-sm text-[var(--text-muted)]">
+                <p className="text-sm text-[var(--text-secondary)]">
                   Loading the shared feed…
                 </p>
               </div>
             ) : feedQuery.isError ? (
               <div className="py-8 text-center">
-                <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+                <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
                   Couldn&apos;t load the shared feed.
                 </p>
               </div>
@@ -268,7 +268,7 @@ export function ProjectDetailSection() {
               </ul>
             ) : (
               <div className="py-8 text-center">
-                <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+                <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
                   No shared papers yet — paste a link above or share one of
                   Mylo&apos;s picks below.
                 </p>
@@ -280,13 +280,13 @@ export function ProjectDetailSection() {
               <h3 className="mb-[3px] text-[13px] font-semibold text-[var(--text-primary)]">
                 Recommended for this project
               </h3>
-              <p className="text-[11.5px] text-[var(--text-muted)]">
+              <p className="text-[11.5px] text-[var(--text-secondary)]">
                 Mylo&apos;s picks for this project&apos;s focus.
               </p>
             </div>
             {recQuery.isLoading ? (
               <div className="py-8 text-center">
-                <p className="text-sm text-[var(--text-muted)]">
+                <p className="text-sm text-[var(--text-secondary)]">
                   Loading recommendations…
                 </p>
               </div>
@@ -304,7 +304,7 @@ export function ProjectDetailSection() {
               </ul>
             ) : (
               <div className="py-8 text-center">
-                <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+                <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
                   {hasFocus
                     ? "No matching papers yet. Mylo will recommend papers for this project on its next run."
                     : "Set this project's research focus so Mylo can recommend papers for it."}
@@ -331,13 +331,13 @@ export function ProjectDetailSection() {
               <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">
                 Members
               </h2>
-              <span className="text-xs text-[var(--text-muted)]">
+              <span className="text-xs text-[var(--text-secondary)]">
                 {project.member_count}
               </span>
             </div>
 
             {project.members.length === 0 ? (
-              <p className="text-[12.5px] text-[var(--text-muted)]">
+              <p className="text-[12.5px] text-[var(--text-secondary)]">
                 No members yet.
               </p>
             ) : (
@@ -353,7 +353,7 @@ export function ProjectDetailSection() {
                       <p className="m-0 text-[13px] font-medium text-[var(--text-primary)]">
                         {m.name}
                       </p>
-                      <p className="m-0 text-[11.5px] text-[var(--text-muted)]">
+                      <p className="m-0 text-[11.5px] text-[var(--text-secondary)]">
                         @{m.username}
                       </p>
                     </div>
@@ -372,11 +372,11 @@ export function ProjectDetailSection() {
               </h2>
             </div>
             {recQuery.isLoading ? (
-              <p className="m-0 text-[12.5px] text-[var(--text-muted)]">
+              <p className="m-0 text-[12.5px] text-[var(--text-secondary)]">
                 Loading recommendations…
               </p>
             ) : recTotal === 0 ? (
-              <p className="m-0 text-[12.5px] text-[var(--text-muted)]">
+              <p className="m-0 text-[12.5px] text-[var(--text-secondary)]">
                 {hasFocus
                   ? "Recommendations arrive after Mylo's next run."
                   : "Set this project's focus so Mylo can find matching work."}
@@ -409,7 +409,7 @@ export function ProjectDetailSection() {
                 <ProgressBar value={project.progress} className="mb-[14px]" />
               </>
             ) : (
-              <p className="mb-[14px] text-[12.5px] text-[var(--text-muted)]">
+              <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
                 Not tracked yet
               </p>
             )}
@@ -490,7 +490,7 @@ function ProjectSettingsCard({ project }: { project: Project }) {
       <h2 className="mb-[3px] text-[15px] font-semibold text-[var(--text-primary)]">
         Mylo settings
       </h2>
-      <p className="mb-[14px] text-[12.5px] text-[var(--text-muted)]">
+      <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
         Choose which areas Mylo tracks for this project.
       </p>
 
@@ -575,8 +575,8 @@ function DigestGroup<T extends { content_id: string }>({
   }
   return (
     <div>
-      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
-        {title} <span className="text-[var(--text-muted)]">({items.length})</span>
+      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
+        {title} <span className="text-[var(--text-secondary)]">({items.length})</span>
       </p>
       <div className="space-y-3">{items.map(render)}</div>
     </div>
@@ -610,7 +610,7 @@ function ProjectDigestCard({
             Mylo&apos;s picks for this project
           </h2>
         </div>
-        <p className="mt-[3px] text-[12.5px] text-[var(--text-muted)]">
+        <p className="mt-[3px] text-[12.5px] text-[var(--text-secondary)]">
           The best-matching papers, grants, fellowships, and conferences for
           this project&apos;s focus.
         </p>
@@ -623,13 +623,13 @@ function ProjectDigestCard({
         </div>
       ) : digestQuery.isError ? (
         <div className="py-8 text-center">
-          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
             Couldn&apos;t load Mylo&apos;s picks for this project.
           </p>
         </div>
       ) : total === 0 ? (
         <div className="py-8 text-center">
-          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
             Mylo is still gathering picks for this project.
           </p>
         </div>
@@ -724,7 +724,7 @@ function IngestLinkForm({
               : "flex flex-1 cursor-not-allowed items-center gap-2 rounded-[10px] border border-border bg-surface-alt px-[13px] py-2 opacity-60"
           }
         >
-          <LinkIcon size={15} className="shrink-0 text-[var(--text-muted)]" />
+          <LinkIcon size={15} className="shrink-0 text-[var(--text-secondary)]" />
           <input
             value={rawInput}
             onChange={(e) => setRawInput(e.target.value)}
@@ -744,7 +744,7 @@ function IngestLinkForm({
         </button>
       </div>
       {!canIngest ? (
-        <p className="mt-1.5 text-[11.5px] text-[var(--text-muted)]">
+        <p className="mt-1.5 text-[11.5px] text-[var(--text-secondary)]">
           Join this project to add papers.
         </p>
       ) : null}
@@ -803,7 +803,7 @@ function EngagementButtons({
         aria-label="Mark helpful"
         title="Helpful"
         className={cn(
-          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           pressed === "up" &&
             "bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] text-primary",
         )}
@@ -817,7 +817,7 @@ function EngagementButtons({
         aria-label="Mark not helpful"
         title="Not helpful"
         className={cn(
-          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           pressed === "down" && "bg-clay-soft text-clay",
         )}
       >
@@ -883,7 +883,7 @@ function AddToCollectionButton({
         aria-label={added ? `Added to ${added}` : "Add to a list"}
         title={added ? `Added to ${added}` : "Add to a list"}
         className={cn(
-          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           added && "text-primary",
         )}
       >
@@ -896,11 +896,11 @@ function AddToCollectionButton({
           className="absolute right-0 top-8 z-30 w-[220px] rounded-xl border border-border bg-surface p-1.5 shadow-[var(--shadow)]"
         >
           {collectionsQuery.isLoading ? (
-            <p className="px-2.5 py-2 text-[12px] text-[var(--text-muted)]">
+            <p className="px-2.5 py-2 text-[12px] text-[var(--text-secondary)]">
               Loading lists…
             </p>
           ) : collections.length === 0 ? (
-            <p className="px-2.5 py-2 text-[12px] text-[var(--text-muted)]">
+            <p className="px-2.5 py-2 text-[12px] text-[var(--text-secondary)]">
               No lists yet — start one in Collections below.
             </p>
           ) : (
@@ -1034,7 +1034,7 @@ function PaperFeedRow({
         </div>
       </div>
       {paper.source ? (
-        <p className="mt-1 text-[11.5px] uppercase tracking-wide text-[var(--text-muted)]">
+        <p className="mt-1 text-[11.5px] uppercase tracking-wide text-[var(--text-secondary)]">
           {paper.source}
         </p>
       ) : null}
@@ -1054,7 +1054,7 @@ function InterestedRow({ members }: { members: InterestedMember[] }) {
   const shown = members.slice(0, 4);
   return (
     <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-      <span className="text-[11px] font-medium text-[var(--text-muted)]">
+      <span className="text-[11px] font-medium text-[var(--text-secondary)]">
         Also interested:
       </span>
       {shown.map((m) => (
@@ -1068,7 +1068,7 @@ function InterestedRow({ members }: { members: InterestedMember[] }) {
         </span>
       ))}
       {members.length > shown.length ? (
-        <span className="text-[11px] text-[var(--text-muted)]">
+        <span className="text-[11px] text-[var(--text-secondary)]">
           +{members.length - shown.length} more
         </span>
       ) : null}
@@ -1143,12 +1143,12 @@ function FeedItemRow({
       </div>
 
       {item.source ? (
-        <p className="mt-1 text-[11.5px] uppercase tracking-wide text-[var(--text-muted)]">
+        <p className="mt-1 text-[11.5px] uppercase tracking-wide text-[var(--text-secondary)]">
           {item.source}
         </p>
       ) : null}
       {meta.length > 0 ? (
-        <p className="mt-1 text-[12px] text-[var(--text-muted)]">
+        <p className="mt-1 text-[12px] text-[var(--text-secondary)]">
           {meta.join(" · ")}
         </p>
       ) : null}
@@ -1162,7 +1162,7 @@ function FeedItemRow({
         <span className="text-[12.5px] font-medium text-[var(--text-secondary)]">
           {item.shared_by.name}
         </span>
-        <span className="text-[11px] text-[var(--text-muted)]">
+        <span className="text-[11px] text-[var(--text-secondary)]">
           shared {relativeTime(item.shared_at)}
         </span>
       </div>
@@ -1175,7 +1175,7 @@ function FeedItemRow({
 
       {item.share_count > 1 ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pl-[28px]">
-          <span className="text-[11px] font-medium text-[var(--text-muted)]">
+          <span className="text-[11px] font-medium text-[var(--text-secondary)]">
             +{item.share_count - 1} also shared:
           </span>
           {otherSharers.map((m) => (
@@ -1189,7 +1189,7 @@ function FeedItemRow({
             </span>
           ))}
           {item.co_sharers.length > otherSharers.length ? (
-            <span className="text-[11px] text-[var(--text-muted)]">
+            <span className="text-[11px] text-[var(--text-secondary)]">
               +{item.co_sharers.length - otherSharers.length} more
             </span>
           ) : null}
@@ -1204,7 +1204,7 @@ function MiniRecRow({ rec }: { rec: MiniRec }) {
   return (
     <li className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
           {rec.area}
         </span>
         <MatchChip match={rec.match} />
@@ -1256,7 +1256,7 @@ function CollectionsCard({
             <h2 className="mb-[3px] text-base font-semibold text-[var(--text-primary)]">
               Collections
             </h2>
-            <p className="text-[12.5px] text-[var(--text-muted)]">
+            <p className="text-[12.5px] text-[var(--text-secondary)]">
               Shared reading lists the team curates together.
             </p>
           </div>
@@ -1283,19 +1283,19 @@ function CollectionsCard({
 
       {isLoading ? (
         <div className="py-8 text-center">
-          <p className="text-sm text-[var(--text-muted)]">
+          <p className="text-sm text-[var(--text-secondary)]">
             Loading collections…
           </p>
         </div>
       ) : isError ? (
         <div className="py-8 text-center">
-          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
             Couldn&apos;t load the project&apos;s collections.
           </p>
         </div>
       ) : collections.length === 0 ? (
         <div className="py-8 text-center">
-          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-muted)]">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
             {canCollaborate
               ? "No lists yet. Start one to group papers the team wants to revisit."
               : "No shared lists yet."}
@@ -1439,7 +1439,7 @@ function CollectionRow({
             {collection.name}
           </span>
           {collection.description ? (
-            <span className="block truncate text-[12px] text-[var(--text-muted)]">
+            <span className="block truncate text-[12px] text-[var(--text-secondary)]">
               {collection.description}
             </span>
           ) : null}
@@ -1460,7 +1460,7 @@ function CollectionRow({
             size={14}
             aria-hidden="true"
             className={cn(
-              "text-[var(--text-muted)] transition-transform duration-200 motion-reduce:transition-none",
+              "text-[var(--text-secondary)] transition-transform duration-200 motion-reduce:transition-none",
               expanded && "rotate-180",
             )}
           />
@@ -1487,15 +1487,15 @@ function CollectionRow({
           ) : null}
 
           {detailQuery.isLoading ? (
-            <p className="text-[12.5px] text-[var(--text-muted)]">
+            <p className="text-[12.5px] text-[var(--text-secondary)]">
               Loading items…
             </p>
           ) : detailQuery.isError ? (
-            <p className="text-[12.5px] text-[var(--text-muted)]">
+            <p className="text-[12.5px] text-[var(--text-secondary)]">
               Couldn&apos;t load this list&apos;s items.
             </p>
           ) : items.length === 0 ? (
-            <p className="text-[12.5px] text-[var(--text-muted)]">
+            <p className="text-[12.5px] text-[var(--text-secondary)]">
               No items in this list yet.
             </p>
           ) : (
@@ -1542,7 +1542,7 @@ function CollectionRow({
                       disabled={remove.isPending}
                       aria-label={`Remove ${item.title} from ${collection.name}`}
                       title="Remove from list"
-                      className="shrink-0 rounded-full p-1 text-[var(--text-muted)] transition-colors hover:bg-surface hover:text-clay focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                      className="shrink-0 rounded-full p-1 text-[var(--text-secondary)] transition-colors hover:bg-surface hover:text-clay focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                     >
                       <CloseIcon size={12} />
                     </button>

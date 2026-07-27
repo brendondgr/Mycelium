@@ -34,7 +34,7 @@ dist/
 # derivatives are rebuilt on predev/prebuild, so none of them belong in git
 landing/public/images/*
 !landing/public/images/.gitkeep
-app/public/images/
+app/public/mylo-portrait-*.webp
 
 # misc
 .DS_Store

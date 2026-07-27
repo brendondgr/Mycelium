@@ -10,6 +10,7 @@ export function ReportsSection() {
   return (
     <div>
       <SectionHeader
+        eyebrow="From Mylo"
         title="Reports"
         subtitle="Shareable summaries of what changed across your labs."
       />
@@ -20,7 +21,7 @@ export function ReportsSection() {
         description="Soon Mylo will compile monthly summaries of new papers, opportunity matches, and project progress — formatted to share with collaborators and department heads."
         action={
           <span
-            className="rounded-full bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-muted)] cursor-not-allowed"
+            className="rounded-full bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] cursor-not-allowed"
             aria-disabled="true"
           >
             Notify me when ready

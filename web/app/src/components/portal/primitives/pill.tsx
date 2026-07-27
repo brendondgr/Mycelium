@@ -22,7 +22,7 @@ const TONE: Record<PillTone, string> = {
   // Needs review (warm gold-soft)
   review: "bg-brand-accent-soft text-[color-mix(in_srgb,var(--accent)_75%,var(--text-primary))]",
   // Soon / coming
-  dashed: "border border-dashed border-border text-[var(--text-muted)]",
+  dashed: "border border-dashed border-border text-[var(--text-secondary)]",
 };
 
 type PillProps = React.HTMLAttributes<HTMLSpanElement> & {

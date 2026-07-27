@@ -59,7 +59,7 @@ export function StatCard({
 
       {/* Muted sub line */}
       {sub && (
-        <div className="text-[12px] text-[var(--text-muted)]">{sub}</div>
+        <div className="text-[12px] text-[var(--text-secondary)]">{sub}</div>
       )}
     </button>
   );

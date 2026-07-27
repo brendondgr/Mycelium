@@ -60,11 +60,11 @@ export function TopPapersPanel({
         onView={() => goToSection("papers")}
       />
       {isLoading ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Gathering today&apos;s papers…
         </p>
       ) : top.length === 0 ? (
-        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+        <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
           <DocumentIcon size={16} />
           Your first paper matches will appear here after tonight&apos;s scan.
         </div>
@@ -129,11 +129,11 @@ export function DeadlinesPanel({
     <Card className="p-5">
       <PanelHeader title="Deadlines" onView={() => goToSection("saves")} />
       {isLoading ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Loading your deadlines…
         </p>
       ) : items.length === 0 ? (
-        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+        <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
           <CalendarIcon size={16} />
           Save a grant or conference to start tracking its deadline here.
         </div>

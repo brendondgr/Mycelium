@@ -37,7 +37,7 @@ export function MyloReason({ reason }: { reason: string }) {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/images/mylo-portrait-64.webp"
+        src="/mylo-portrait-64.webp"
         alt=""
         width={24}
         height={24}
@@ -185,7 +185,7 @@ export function SaveButton({
           role="menu"
           className="absolute right-0 top-[calc(100%+6px)] z-40 min-w-[220px] rounded-2xl border border-border bg-surface p-1.5 shadow-[var(--shadow)]"
         >
-          <p className="px-2.5 pb-1 pt-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+          <p className="px-2.5 pb-1 pt-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
             Save to
           </p>
           <SaveScopeItem
@@ -298,7 +298,7 @@ function SaveTrigger({
   if (variant === "icon") {
     const iconTone = active
       ? "border-[color-mix(in_srgb,var(--accent)_45%,transparent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-accent hover:bg-[color-mix(in_srgb,var(--accent)_24%,transparent)]"
-      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] hover:text-accent";
+      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] hover:text-accent";
     return (
       <button
         type="button"

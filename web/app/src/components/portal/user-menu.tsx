@@ -38,7 +38,7 @@ export function UserMenu() {
         className="flex items-center gap-2 rounded-full border border-border bg-surface-alt p-1 pr-1.5 transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Avatar initials={user.initials} seed={user.username} size={30} />
-        <ChevronDownIcon size={14} className="text-[var(--text-muted)]" />
+        <ChevronDownIcon size={14} className="text-[var(--text-secondary)]" />
       </button>
 
       {open ? (
@@ -50,7 +50,7 @@ export function UserMenu() {
             <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
               {user.name}
             </p>
-            <p className="truncate text-xs text-[var(--text-muted)]">
+            <p className="truncate text-xs text-[var(--text-secondary)]">
               {user.email || user.username}
             </p>
           </div>

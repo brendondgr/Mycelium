@@ -276,7 +276,7 @@ function LabEditorForm({
             }
             className={cn(inputClass, "min-h-36 resize-y py-2")}
           />
-          <p className="mt-1 text-[11.5px] text-[var(--text-muted)]">
+          <p className="mt-1 text-[11.5px] text-[var(--text-secondary)]">
             Google Scholar, Semantic Scholar, OpenAlex, or ORCID profiles.
           </p>
         </Field>
@@ -296,7 +296,7 @@ function LabEditorForm({
           {/* Small decorative brand mark — a plain img is right here. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/mylo-portrait-64.webp"
+            src="/mylo-portrait-64.webp"
             alt=""
             width={20}
             height={20}
@@ -307,7 +307,7 @@ function LabEditorForm({
         {synthNote ? (
           <span className="text-[12.5px] text-primary">{synthNote}</span>
         ) : (
-          <span className="text-[12px] text-[var(--text-muted)]">
+          <span className="text-[12px] text-[var(--text-secondary)]">
             Optional — you can also fill everything in by hand.
           </span>
         )}
@@ -410,7 +410,7 @@ function LabEditorForm({
                     <span className="block text-[13.5px] font-medium text-[var(--text-primary)]">
                       {category.label}
                     </span>
-                    <span className="block text-[12px] text-[var(--text-muted)]">
+                    <span className="block text-[12px] text-[var(--text-secondary)]">
                       {category.desc}
                     </span>
                   </span>
@@ -497,7 +497,7 @@ function DropZone({
         <span className="text-[13px] font-medium text-[var(--text-primary)]">
           Drop files here
         </span>
-        <span className="text-[11.5px] text-[var(--text-muted)]">
+        <span className="text-[11.5px] text-[var(--text-secondary)]">
           or click to browse · PDF or text
         </span>
       </button>
@@ -528,7 +528,7 @@ function DropZone({
                 onClick={() =>
                   onChange(files.filter((f) => f !== file))
                 }
-                className="shrink-0 text-[var(--text-muted)] hover:text-foreground"
+                className="shrink-0 text-[var(--text-secondary)] hover:text-foreground"
               >
                 <CloseIcon size={13} />
               </button>
@@ -559,7 +559,7 @@ function Field({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+    <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
       {children}
     </h2>
   );

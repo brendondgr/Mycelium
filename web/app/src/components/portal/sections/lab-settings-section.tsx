@@ -48,7 +48,7 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
   if (!canManageLab(lab)) {
     return (
       <div>
-        <SectionHeader title="Lab settings" />
+        <SectionHeader eyebrow="Workspace" title="Lab settings" />
         <EmptyState
           icon={<TargetIcon size={28} />}
           title="Only lab managers can edit the lab"
@@ -108,7 +108,7 @@ function LabLogoCard({ lab }: { lab: MyLab }) {
 
   return (
     <Card className="p-5">
-      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         Lab logo
       </h3>
       <div className="flex flex-wrap items-center gap-4">
@@ -126,7 +126,7 @@ function LabLogoCard({ lab }: { lab: MyLab }) {
               className="h-full w-full object-contain"
             />
           ) : (
-            <span className="font-serif text-[15px] font-semibold text-[var(--text-muted)]">
+            <span className="font-serif text-[15px] font-semibold text-[var(--text-secondary)]">
               {lab.name.slice(0, 2).toUpperCase()}
             </span>
           )}
@@ -165,7 +165,7 @@ function LabLogoCard({ lab }: { lab: MyLab }) {
               </button>
             ) : null}
           </div>
-          <p className="text-[12px] text-[var(--text-muted)]">
+          <p className="text-[12px] text-[var(--text-secondary)]">
             PNG, JPG, GIF, WebP, or SVG · up to 2 MB. Shown in the sidebar as the
             lab&apos;s brand mark.
           </p>

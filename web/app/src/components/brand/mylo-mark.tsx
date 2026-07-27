@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 /** The widths `sync-art-assets.mjs` emits for the portrait master. */
 const SRCSET = [64, 128, 256, 512]
-  .map((w) => `/images/mylo-portrait-${w}.webp ${w}w`)
+  .map((w) => `/mylo-portrait-${w}.webp ${w}w`)
   .join(", ");
 
 type MyloMarkProps = Omit<React.HTMLAttributes<HTMLSpanElement>, "children"> & {
@@ -44,7 +44,7 @@ export function MyloMark({
           optimizer would only add a round trip. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/images/mylo-portrait-256.webp"
+        src="/mylo-portrait-256.webp"
         srcSet={SRCSET}
         sizes={sizes}
         alt={alt}

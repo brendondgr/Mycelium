@@ -38,6 +38,7 @@ export function SuggestedSection() {
   return (
     <div>
       <SectionHeader
+        eyebrow="From your team"
         title="Suggested for you"
         subtitle="Papers your teammates shared that closely match your own research profile."
       />
@@ -49,7 +50,7 @@ export function SuggestedSection() {
           ))}
         </Card>
       ) : isError ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Couldn&apos;t load your suggestions.
         </p>
       ) : suggestions.length === 0 ? (
@@ -113,14 +114,14 @@ function SuggestionListRow({ suggestion }: { suggestion: MemberSuggestion }) {
             disabled={dismiss.isPending}
             aria-label={`Dismiss suggestion: ${suggestion.title}`}
             title="Dismiss"
-            className="shrink-0 rounded-full p-1.5 text-[var(--text-muted)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            className="shrink-0 rounded-full p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-surface-alt hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
             <CloseIcon size={12} />
           </button>
         </div>
       </div>
 
-      <p className="mt-1 text-[11.5px] uppercase tracking-wide text-[var(--text-muted)]">
+      <p className="mt-1 text-[11.5px] uppercase tracking-wide text-[var(--text-secondary)]">
         {suggestion.project.name}
       </p>
 
@@ -134,7 +135,7 @@ function SuggestionListRow({ suggestion }: { suggestion: MemberSuggestion }) {
           <span className="text-[12.5px] font-medium text-[var(--text-secondary)]">
             {suggestion.shared_by.name}
           </span>
-          <span className="text-[11px] text-[var(--text-muted)]">shared this</span>
+          <span className="text-[11px] text-[var(--text-secondary)]">shared this</span>
         </div>
       ) : null}
 

@@ -41,13 +41,13 @@ export function MyloFoundCard({
 }) {
   return (
     <Card className="p-5">
-      <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         {title}
       </h2>
       <table className="w-full border-collapse text-[13px]">
         <caption className="sr-only">Items Mylo found by recency window</caption>
         <thead>
-          <tr className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-muted)]">
+          <tr className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-secondary)]">
             <th scope="col" className="pb-2 text-left font-semibold">
               Area
             </th>

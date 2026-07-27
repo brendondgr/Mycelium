@@ -176,7 +176,7 @@ export function ReminderComposer({
       >
         <div className="flex items-start justify-between border-b border-[var(--divider)] px-5 py-3.5">
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
               Set a reminder
             </p>
             <p className="mt-0.5 truncate text-sm font-semibold text-[var(--text-primary)]">
@@ -187,7 +187,7 @@ export function ReminderComposer({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="shrink-0 rounded-full p-1 text-[var(--text-muted)] hover:bg-surface-alt hover:text-[var(--text-secondary)]"
+            className="shrink-0 rounded-full p-1 text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-secondary)]"
           >
             <CloseIcon size={15} />
           </button>
@@ -195,7 +195,7 @@ export function ReminderComposer({
 
         <div className="space-y-4 px-5 py-4">
           {datedDeadlines.length === 0 ? (
-            <p className="text-sm text-[var(--text-muted)]">
+            <p className="text-sm text-[var(--text-secondary)]">
               This item has no fixed deadline, so it can&apos;t be reminded (a
               rolling or continuous deadline has no date to count down to).
             </p>
@@ -308,7 +308,7 @@ export function ReminderComposer({
                       </option>
                     ))}
                   </select>
-                  <span className="text-[13px] text-[var(--text-muted)]">
+                  <span className="text-[13px] text-[var(--text-secondary)]">
                     before
                   </span>
                   <button
@@ -332,7 +332,7 @@ export function ReminderComposer({
                           type="button"
                           onClick={() => removeOffset(o)}
                           aria-label={`Remove ${formatOffset(o)} reminder`}
-                          className="rounded-full p-0.5 text-[var(--text-muted)] hover:bg-surface hover:text-[var(--text-primary)]"
+                          className="rounded-full p-0.5 text-[var(--text-secondary)] hover:bg-surface hover:text-[var(--text-primary)]"
                         >
                           <CloseIcon size={12} />
                         </button>
@@ -340,7 +340,7 @@ export function ReminderComposer({
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-2 text-[12px] text-[var(--text-muted)]">
+                  <p className="mt-2 text-[12px] text-[var(--text-secondary)]">
                     Add at least one reminder time.
                   </p>
                 )}
@@ -405,7 +405,7 @@ function ChannelField({
   if (loading) {
     return (
       <Field label="Channel">
-        <p className="text-[13px] text-[var(--text-muted)]">Loading channels…</p>
+        <p className="text-[13px] text-[var(--text-secondary)]">Loading channels…</p>
       </Field>
     );
   }
@@ -454,7 +454,7 @@ function Field({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         {label}
       </p>
       {children}

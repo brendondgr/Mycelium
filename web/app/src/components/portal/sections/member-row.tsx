@@ -25,7 +25,7 @@ export function MemberRow({ member }: { member: LabMember }) {
         <p className="m-0 truncate text-sm font-medium text-[var(--text-primary)]">
           {member.name}
         </p>
-        <p className="m-0 text-xs text-[var(--text-muted)]">{roleDisplay}</p>
+        <p className="m-0 text-xs text-[var(--text-secondary)]">{roleDisplay}</p>
       </div>
 
       {/* Email — hidden on small screens */}

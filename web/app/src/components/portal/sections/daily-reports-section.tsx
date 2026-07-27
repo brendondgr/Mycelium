@@ -91,7 +91,7 @@ function TodaySummaries({ data }: { data: DailyBriefing }) {
           })}
         </div>
       ) : (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           You aren&rsquo;t watching any categories yet.
         </p>
       )}
@@ -110,7 +110,7 @@ function ShowcaseRow({ item }: { item: BriefingShowcaseItem }) {
           {item.title}
         </span>
         {item.deadline_date ? (
-          <span className="mt-0.5 block text-[11.5px] text-[var(--text-muted)]">
+          <span className="mt-0.5 block text-[11.5px] text-[var(--text-secondary)]">
             Deadline {item.deadline_date}
           </span>
         ) : null}
@@ -154,7 +154,7 @@ function BriefingShowcase({ data }: { data: DailyBriefing }) {
                 <button
                   type="button"
                   onClick={() => goToSection(meta.section)}
-                  className="group mb-2 inline-flex items-center gap-1.5 rounded text-[11px] font-semibold uppercase tracking-[.07em] text-[var(--text-muted)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="group mb-2 inline-flex items-center gap-1.5 rounded text-[11px] font-semibold uppercase tracking-[.07em] text-[var(--text-secondary)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {meta.label}
                   <ArrowRightIcon
@@ -173,7 +173,7 @@ function BriefingShowcase({ data }: { data: DailyBriefing }) {
           })}
         </div>
       ) : (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           No standout items today — check back after the next scan.
         </p>
       )}
@@ -234,7 +234,11 @@ export function DailyReportsSection() {
 
   return (
     <div>
-      <SectionHeader title="Daily Reports" subtitle={subtitle} />
+      <SectionHeader
+        eyebrow="From Mylo"
+        title="Daily Reports"
+        subtitle={subtitle}
+      />
 
       {isLoading ? (
         <SkeletonReport />

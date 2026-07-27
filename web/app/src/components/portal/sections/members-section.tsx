@@ -57,7 +57,7 @@ export function MembersSection() {
       disabled
       title="Inviting — coming soon"
       aria-disabled="true"
-      className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold text-[var(--text-muted)] opacity-60"
+      className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] opacity-60"
     >
       <PlusIcon size={14} aria-hidden="true" />
       Invite member
@@ -67,6 +67,7 @@ export function MembersSection() {
   return (
     <div>
       <SectionHeader
+        eyebrow="Workspace"
         title="Members"
         subtitle={subtitle}
         action={inviteButton}
@@ -86,11 +87,11 @@ export function MembersSection() {
           ))}
         </Card>
       ) : isError ? (
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Couldn&apos;t load members.
         </p>
       ) : !members || members.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">No members yet.</p>
+        <p className="text-sm text-[var(--text-secondary)]">No members yet.</p>
       ) : (
         <Card className="overflow-hidden">
           {members.map((member) => (

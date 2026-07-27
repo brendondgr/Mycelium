@@ -41,10 +41,10 @@ function PlanBody({
   activateError: string | null;
 }) {
   if (isLoading) {
-    return <p className="text-sm text-[var(--text-muted)]">Loading the plan…</p>;
+    return <p className="text-sm text-[var(--text-secondary)]">Loading the plan…</p>;
   }
   if (isError || !billing) {
-    return <p className="text-sm text-[var(--text-muted)]">Couldn&apos;t load the plan.</p>;
+    return <p className="text-sm text-[var(--text-secondary)]">Couldn&apos;t load the plan.</p>;
   }
 
   const tierLabel = billing.tier ? (TIER_LABEL[billing.tier] ?? billing.tier) : "—";
@@ -63,19 +63,19 @@ function PlanBody({
 
       {billing.is_active ? (
         <dl className="grid grid-cols-2 gap-y-1.5 text-sm">
-          <dt className="text-[var(--text-muted)]">Seats</dt>
+          <dt className="text-[var(--text-secondary)]">Seats</dt>
           <dd className="text-right font-medium text-[var(--text-primary)]">
             {billing.seat_count}
           </dd>
-          <dt className="text-[var(--text-muted)]">Per seat / mo</dt>
+          <dt className="text-[var(--text-secondary)]">Per seat / mo</dt>
           <dd className="text-right font-medium text-[var(--text-primary)]">{perSeat}</dd>
-          <dt className="text-[var(--text-muted)]">Monthly total</dt>
+          <dt className="text-[var(--text-secondary)]">Monthly total</dt>
           <dd className="text-right font-semibold text-[var(--text-primary)]">
             {usd(billing.recurring_monthly_cents)}
           </dd>
           {billing.current_period_end ? (
             <>
-              <dt className="text-[var(--text-muted)]">Renews</dt>
+              <dt className="text-[var(--text-secondary)]">Renews</dt>
               <dd className="text-right text-[var(--text-secondary)]">
                 {billing.current_period_end}
               </dd>
@@ -117,7 +117,7 @@ export function LabPlanCard({ slug }: { slug: string }) {
 
   return (
     <Card className="p-5">
-      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         Lab plan
       </h3>
       <PlanBody
@@ -145,7 +145,7 @@ export function DeptPlanCard({ deptId }: { deptId: string }) {
 
   return (
     <Card className="p-5">
-      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         Department plan
       </h3>
       <PlanBody
