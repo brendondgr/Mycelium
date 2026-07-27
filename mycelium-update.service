@@ -8,7 +8,7 @@ Requires=mycelium.service
 [Service]
 Type=oneshot
 
-WorkingDirectory=/home/bdgr/Agents/Mycelium
+WorkingDirectory=__MYCELIUM_ROOT__
 
 # Pull fresh images for every service defined in compose.yaml
 ExecStart=/usr/bin/docker compose pull --quiet
@@ -18,8 +18,8 @@ ExecStart=/usr/bin/docker compose up -d --build --remove-orphans
 # Let a slow pull/build take up to 15 minutes before giving up
 TimeoutStartSec=900
 
-User=bdgr
-Group=bdgr
+User=__MYCELIUM_USER__
+Group=__MYCELIUM_USER__
 
 StandardOutput=journal
 StandardError=journal

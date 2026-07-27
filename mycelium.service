@@ -10,12 +10,19 @@ Wants=network-online.target
 Type=oneshot
 RemainAfterExit=yes
 
-WorkingDirectory=/home/bdgr/Agents/Mycelium
+WorkingDirectory=__MYCELIUM_ROOT__
 
 # Start the full stack detached
 ExecStart=/usr/bin/docker compose up -d --remove-orphans
 # Graceful stop on system shutdown
 ExecStop=/usr/bin/docker compose down --remove-orphans
+
+# `up -d` does NOT return as soon as the containers are spawned: the web-deps
+# and backend-deps one-shots are `condition: service_completed_successfully`
+# dependencies, so compose blocks until `npm install` and `uv sync` finish. On a
+# cold volume that is minutes, well past systemd's 90s default — which would
+# kill a perfectly healthy first start. Bound it generously instead.
+TimeoutStartSec=1800
 
 # Give the stack a chance to fully shut down before systemd kills it
 TimeoutStopSec=120
@@ -24,8 +31,8 @@ TimeoutStopSec=120
 Restart=no
 
 # Run as the user who owns the repo so Docker socket auth is correct
-User=bdgr
-Group=bdgr
+User=__MYCELIUM_USER__
+Group=__MYCELIUM_USER__
 
 # Surface compose logs via journalctl -u mycelium
 StandardOutput=journal

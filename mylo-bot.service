@@ -1,8 +1,12 @@
 [Unit]
 Description=Mycelium — Mylo Discord bot (persistent gateway)
 Documentation=https://github.com/brendondgr/mycelium
-After=network-online.target
-Wants=network-online.target
+# The gateway configures Django in-process (mylo/mycelium.py) and talks to the
+# stack's Postgres, so at boot it should come up after the stack. `Wants` (not
+# `Requires`) on purpose: if the stack is down the bot should still connect to
+# Discord and report health rather than refusing to start.
+After=mycelium.service network-online.target
+Wants=mycelium.service network-online.target
 # discord.py reconnects through transient network drops on its own, so a crash
 # is a real bug — don't let it fast-loop forever.
 StartLimitIntervalSec=60
@@ -11,29 +15,28 @@ StartLimitBurst=5
 [Service]
 Type=simple
 
-WorkingDirectory=/home/bdgr/Agents/Mycelium
+WorkingDirectory=__MYCELIUM_ROOT__
 
-# The interpreter MUST live outside $HOME. systemd (init_t) resolves this
-# ExecStart symlink before dropping to User=bdgr, and SELinux forbids init_t
-# from reading anything under user_home_t — a venv in the repo (or one whose
-# python symlinks back into ~/.local) triggers a 203/EXEC denial. So the venv
-# lives in /opt against the system python3.13 (bin_t). The code still lives in
-# the repo (WorkingDirectory), which bdgr reads as itself after the drop.
-# Build it with (as root):
-#     sudo dnf install -y python3.13
-#     sudo uv venv --python /usr/bin/python3.13 /opt/mylo-bot/venv
-#     sudo uv pip install --python /opt/mylo-bot/venv/bin/python \
-#          -r <(cd /home/bdgr/Agents/Mycelium && uv export --no-hashes --format requirements-txt)
-#     sudo restorecon -Rv /opt/mylo-bot
-Environment=PATH=/opt/mylo-bot/venv/bin:/usr/bin:/bin
-ExecStart=/opt/mylo-bot/venv/bin/python -m mylo.bot
+# Runs the repo's uv-managed root virtualenv — the same interpreter the daily
+# run uses, so the gateway and the pipeline never drift apart on dependency
+# versions. Build it with:  uv sync  (from the repo root).
+#
+# On SELinux hosts a venv under $HOME is not directly executable by systemd:
+# init_t resolves this ExecStart before dropping to User=, and both the venv
+# symlink (user_home_t) and the uv-cached interpreter it points at (data_home_t)
+# are unreadable to init_t, which surfaces as a 203/EXEC failure. That is
+# handled at install time — `mycelium install-service` labels both directories
+# bin_t via semanage+restorecon when SELinux is enforcing. On non-SELinux hosts
+# (Ubuntu/Debian) that step is a no-op and nothing extra is required.
+Environment=PATH=__MYCELIUM_ROOT__/.venv/bin:/usr/bin:/bin
+ExecStart=__MYCELIUM_ROOT__/.venv/bin/python -m mylo.bot
 
 # A gateway client is long-lived; keep it up across transient failures.
 Restart=always
 RestartSec=5
 
-User=bdgr
-Group=bdgr
+User=__MYCELIUM_USER__
+Group=__MYCELIUM_USER__
 
 StandardOutput=journal
 StandardError=journal
@@ -41,10 +44,12 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 
-# Enable on this (or any) host — copy the unit and the (gitignored) .env-mylo:
-#     sudo cp mylo-bot.service /etc/systemd/system/
-#     sudo systemctl daemon-reload
-#     sudo systemctl enable --now mylo-bot.service
+# Enable on this (or any) host. The installer substitutes __MYCELIUM_ROOT__ and
+# __MYCELIUM_USER__ for this checkout, so do NOT `cp` this file by hand:
+#     uv sync                              # build the root .venv first
+#     sudo scripts/mycelium install-service
+#     sudo systemctl start mylo-bot.service
 #     journalctl -u mylo-bot -f
+# Requires the gitignored .env-mylo (token + channel ids) at the repo root.
 # First deploy only: register the slash commands once from inside a server where
 # Mylo is present:  @Mylo sync global   (owner-only; propagation can take an hour)

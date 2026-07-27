@@ -242,7 +242,49 @@ def cmd_status(base: list[str]) -> int:
 # ── Service installation ──────────────────────────────────────────────────────
 
 SYSTEMD_DIR = Path("/etc/systemd/system")
-SERVICE_FILES = ["mycelium.service", "mycelium-update.service", MYLO_UNIT]
+DAILY_TIMER = "mylo-daily.timer"
+SERVICE_FILES = [
+    "mycelium.service",
+    "mycelium-update.service",
+    MYLO_UNIT,
+    "mylo-daily.service",
+    DAILY_TIMER,
+]
+# Units are committed with placeholders instead of one host's paths, so the same
+# files work from any checkout under any account. Substituted on install.
+UNITS_ENABLED_AT_BOOT = ("mycelium.service", MYLO_UNIT, DAILY_TIMER)
+
+
+def _install_identity() -> tuple[str, Path]:
+    """The account the units should run as, and its home directory.
+
+    Must NOT come from geteuid(): install-service runs under sudo, so that is
+    always root — which would silently install `User=root` units that write
+    root-owned files into the repo and break the Docker socket auth comment in
+    mycelium.service. Prefer SUDO_USER; fall back to whoever owns the checkout.
+    """
+    import os
+    import pwd
+
+    name = os.environ.get("SUDO_USER") or ""
+    if name and name != "root":
+        try:
+            return name, Path(pwd.getpwnam(name).pw_dir)
+        except KeyError:
+            pass
+    owner = pwd.getpwuid(ROOT.stat().st_uid)
+    return owner.pw_name, Path(owner.pw_dir)
+
+
+def _render_unit(src: Path, user: str, home: Path) -> str:
+    text = src.read_text(encoding="utf-8")
+    for token, value in (
+        ("__MYCELIUM_ROOT__", str(ROOT)),
+        ("__MYCELIUM_USER__", user),
+        ("__MYCELIUM_HOME__", str(home)),
+    ):
+        text = text.replace(token, value)
+    return text
 
 
 def _selinux_enforcing() -> bool:
@@ -306,12 +348,34 @@ def cmd_install_service() -> int:
     if any_missing:
         return 1
 
+    # mylo-bot.service and mylo-daily.service both ExecStart this interpreter.
+    # Catch it here rather than as a 203/EXEC in the journal after "start".
+    if not (ROOT / ".venv" / "bin" / "python").exists():
+        print(red("  ✗ no root virtualenv at .venv — the Mylo units cannot start without it."))
+        print(dim(f"    build it first:  cd {ROOT} && uv sync"))
+        return 1
+
+    user, home = _install_identity()
+    print(dim(f"  installing for user {user} from {ROOT}"))
+
     for name in SERVICE_FILES:
         src = ROOT / name
         dst = SYSTEMD_DIR / name
-        shutil.copy2(src, dst)
+        rendered = _render_unit(src, user, home)
+        if "__MYCELIUM_" in rendered:
+            leftover = sorted(
+                {
+                    tok
+                    for line in rendered.splitlines()
+                    for tok in line.split()
+                    if "__MYCELIUM_" in tok
+                }
+            )
+            print(red(f"  ✗ {name}: unsubstituted placeholder(s): {', '.join(leftover)}"), file=sys.stderr)
+            return 1
+        dst.write_text(rendered, encoding="utf-8")
         dst.chmod(0o644)
-        print(green(f"  ✓ copied  {name}  →  {dst}"))
+        print(green(f"  ✓ installed  {name}  →  {dst}"))
 
     # On SELinux systems, a plain copy keeps the source's context (e.g.
     # user_home_t from a home-directory repo checkout). systemd silently
@@ -347,8 +411,10 @@ def cmd_install_service() -> int:
         return r.returncode
     print(dim("  ✓ daemon-reload"))
 
-    # enable the main services (mycelium-update.service is invoked, not enabled)
-    for unit in ("mycelium.service", MYLO_UNIT):
+    # Enable the boot-time units. mycelium-update.service is deliberately absent:
+    # it is invoked on demand, not enabled. mylo-daily.service is driven by its
+    # timer, so the timer (not the service) is what gets enabled.
+    for unit in UNITS_ENABLED_AT_BOOT:
         r = subprocess.run(["systemctl", "enable", unit])
         if r.returncode != 0:
             print(red(f"  ✗ systemctl enable {unit} failed"), file=sys.stderr)
@@ -356,8 +422,10 @@ def cmd_install_service() -> int:
         print(green(f"  ✓ {unit} enabled — will start automatically on next boot"))
 
     print()
-    print(bold("  Done. To start the stack now:"))
+    print(bold("  Done. To start everything now:"))
     print(dim("    sudo systemctl start mycelium.service"))
+    print(dim(f"    sudo systemctl start {MYLO_UNIT}"))
+    print(dim(f"    sudo systemctl start {DAILY_TIMER}"))
     print(dim("    mycelium status"))
     print()
     return 0

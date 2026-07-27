@@ -11,13 +11,13 @@ Wants=mycelium.service network-online.target
 [Service]
 Type=oneshot
 
-WorkingDirectory=/home/bdgr/Agents/Mycelium
+WorkingDirectory=__MYCELIUM_ROOT__
 
 # Run through the root uv virtualenv interpreter (has the runner deps). The
 # scrape stage shells out to `uv` and `docker` by name, so keep them on PATH.
 # ~/.local/bin is included for hosts where uv installs there instead of /usr/bin.
-Environment=PATH=/home/bdgr/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/home/bdgr/Agents/Mycelium/.venv/bin/python /home/bdgr/Agents/Mycelium/manual_all.py
+Environment=PATH=__MYCELIUM_HOME__/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=__MYCELIUM_ROOT__/.venv/bin/python __MYCELIUM_ROOT__/manual_all.py
 
 # The full run (scan + embed + LLM scoring for every user) can take well over an
 # hour. Bound it generously so a genuinely hung run is eventually killed and the
@@ -26,8 +26,8 @@ TimeoutStartSec=14400
 
 # Run as the user who owns the repo, the Docker socket auth, the .venv, and the
 # saved Pivot session.
-User=bdgr
-Group=bdgr
+User=__MYCELIUM_USER__
+Group=__MYCELIUM_USER__
 
 # Surface the run via journalctl -u mylo-daily
 StandardOutput=journal
