@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { MatchRing } from "@/components/portal/primitives/match-ring";
 import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -12,7 +13,6 @@ import {
   CalendarIcon,
 } from "@/components/portal/icons";
 import {
-  MatchBadge,
   MyloReason,
   NewTag,
   RemindButton,
@@ -62,106 +62,122 @@ export function GrantRow({
 
   return (
     <Card className="p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-      <div className="flex items-start justify-between gap-3">
-        {/* Left: the fit signals sit top-left, then the title and hosts. */}
+      <div className="flex gap-4 sm:gap-5">
+        {/* Left gutter: how well this fits, before anything else is read. */}
+        <MatchRing
+          percent={grant.match_percent ?? grant.embedding_match}
+          origin={grant.origin}
+          className="mt-0.5 hidden sm:flex"
+        />
+
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {grant.is_new ? <NewTag /> : null}
-            <MatchBadge
-              percent={grant.match_percent ?? grant.embedding_match}
-              origin={grant.origin}
-            />
-            {grant.cluster ? <ClusterBadge cluster={grant.cluster} /> : null}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                {grant.is_new ? <NewTag /> : null}
+                <MatchRing
+                  percent={grant.match_percent ?? grant.embedding_match}
+                  origin={grant.origin}
+                  size="sm"
+                  className="sm:hidden"
+                />
+                {grant.cluster ? (
+                  <ClusterBadge cluster={grant.cluster} />
+                ) : null}
+              </div>
+              <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+                {grant.title}
+              </h3>
+              {grant.sponsor ? (
+                <p className="mt-1 text-xs font-medium text-[var(--text-secondary)]">
+                  {grant.sponsor}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Right: save bookmark, then the application due date and funding amount. */}
+            <div className="flex shrink-0 flex-col items-end gap-2 text-right">
+              <div className="flex items-center gap-1.5">
+                <RemindButton
+                  contentId={grant.content_id}
+                  title={grant.title}
+                  deadlines={grant.addressable_deadlines}
+                  lockedLabSlug={remindLabSlug}
+                />
+                <SaveButton
+                  contentId={grant.content_id}
+                  saved={grant.saved}
+                  savedLabs={grant.saved_labs}
+                  variant="icon"
+                />
+              </div>
+              {due ? (
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--destructive)]"
+                  title={`Deadline ${due}`}
+                >
+                  <CalendarIcon size={13} aria-hidden="true" />
+                  {due}
+                </span>
+              ) : null}
+              {grant.amount ? (
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
+                  title={`Funding ${grant.amount}`}
+                >
+                  <BankIcon size={13} aria-hidden="true" />
+                  {grant.amount}
+                </span>
+              ) : null}
+            </div>
           </div>
-          <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
-            {grant.title}
-          </h3>
-          {grant.sponsor ? (
-            <p className="mt-1 text-xs font-medium text-[var(--text-secondary)]">
-              {grant.sponsor}
+
+          {posted ? (
+            <p className="mt-2 text-xs text-[var(--text-muted)]">
+              Posted {posted}
             </p>
           ) : null}
-        </div>
 
-        {/* Right: save bookmark, then the application due date and funding amount. */}
-        <div className="flex shrink-0 flex-col items-end gap-2 text-right">
-          <div className="flex items-center gap-1.5">
-            <RemindButton
-              contentId={grant.content_id}
-              title={grant.title}
-              deadlines={grant.addressable_deadlines}
-              lockedLabSlug={remindLabSlug}
-            />
-            <SaveButton
-              contentId={grant.content_id}
-              saved={grant.saved}
-              savedLabs={grant.saved_labs}
-              variant="icon"
-            />
-          </div>
-          {due ? (
-            <span
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--destructive)]"
-              title={`Deadline ${due}`}
-            >
-              <CalendarIcon size={13} aria-hidden="true" />
-              {due}
-            </span>
+          {grant.description ? (
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+              {grant.description}
+            </p>
           ) : null}
-          {grant.amount ? (
-            <span
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
-              title={`Funding ${grant.amount}`}
+
+          {/* Mylo's read on why this fits — a soft green field flags the AI note. */}
+          {grant.reason ? (
+            isMylo ? (
+              <MyloReason reason={grant.reason} />
+            ) : (
+              <p className="mt-2.5 text-sm leading-relaxed text-[var(--text-secondary)]">
+                {grant.reason}
+              </p>
+            )
+          ) : null}
+
+          {topics.length > 0 ? (
+            <p className="mt-2.5 text-xs text-[var(--text-muted)]">
+              Matched: {topics.join(" · ")}
+            </p>
+          ) : null}
+
+          {grant.url ? (
+            <a
+              href={grant.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
             >
-              <BankIcon size={13} aria-hidden="true" />
-              {grant.amount}
-            </span>
+              View opportunity
+              <ArrowRightIcon
+                size={14}
+                aria-hidden="true"
+                className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+              />
+            </a>
           ) : null}
         </div>
       </div>
-
-      {posted ? (
-        <p className="mt-2 text-xs text-[var(--text-muted)]">Posted {posted}</p>
-      ) : null}
-
-      {grant.description ? (
-        <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
-          {grant.description}
-        </p>
-      ) : null}
-
-      {/* Mylo's read on why this fits — a soft green field flags the AI note. */}
-      {grant.reason ? (
-        isMylo ? (
-          <MyloReason reason={grant.reason} />
-        ) : (
-          <p className="mt-2.5 text-sm leading-relaxed text-[var(--text-secondary)]">
-            {grant.reason}
-          </p>
-        )
-      ) : null}
-
-      {topics.length > 0 ? (
-        <p className="mt-2.5 text-xs text-[var(--text-muted)]">
-          Matched: {topics.join(" · ")}
-        </p>
-      ) : null}
-
-      {grant.url ? (
-        <a
-          href={grant.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-        >
-          View opportunity
-          <ArrowRightIcon
-            size={14}
-            aria-hidden="true"
-            className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-          />
-        </a>
-      ) : null}
     </Card>
   );
 }
@@ -317,7 +333,11 @@ function GrantsFeed({
           ) : isError ? (
             <EmptyState
               icon={<BankIcon size={26} className="text-accent" />}
-              title={labName ? "Couldn't load this feed" : "Couldn't load your grants"}
+              title={
+                labName
+                  ? "Couldn't load this feed"
+                  : "Couldn't load your grants"
+              }
               description={
                 labName
                   ? "Something went wrong loading the lab's funding matches. Please try again in a moment."
@@ -328,7 +348,11 @@ function GrantsFeed({
             <EmptyState
               icon={<BankIcon size={26} className="text-accent" />}
               badge={labName ? undefined : "Coming soon"}
-              title={labName ? "No lab grant matches yet" : "Your grant matches are on their way"}
+              title={
+                labName
+                  ? "No lab grant matches yet"
+                  : "Your grant matches are on their way"
+              }
               description={
                 labName
                   ? "Once Mylo has run for this lab, funding opportunities matched to its purpose will appear here."

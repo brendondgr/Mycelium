@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { MatchRing } from "@/components/portal/primitives/match-ring";
 import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -82,7 +83,7 @@ function isSoftDeadline(item: FellowshipOpportunity): boolean {
 }
 
 // --------------------------------------------------------------------------- //
-// Eligibility tier badge (replaces MatchBadge for fellowships)
+// Eligibility tier badge (a rule-engine verdict, distinct from the match ring)
 // --------------------------------------------------------------------------- //
 
 /**
@@ -102,12 +103,14 @@ function EligibilityBadge({ item }: { item: FellowshipOpportunity }) {
       style={
         isQualified
           ? {
-              borderColor: "color-mix(in srgb, var(--success) 35%, var(--border))",
+              borderColor:
+                "color-mix(in srgb, var(--success) 35%, var(--border))",
               backgroundColor:
                 "color-mix(in srgb, var(--success) 10%, var(--surface))",
             }
           : {
-              borderColor: "color-mix(in srgb, var(--warning) 35%, var(--border))",
+              borderColor:
+                "color-mix(in srgb, var(--warning) 35%, var(--border))",
               backgroundColor:
                 "color-mix(in srgb, var(--warning) 10%, var(--surface))",
             }
@@ -126,11 +129,6 @@ function EligibilityBadge({ item }: { item: FellowshipOpportunity }) {
       <span className="text-xs font-bold leading-none text-[var(--text-primary)]">
         {isQualified ? "Qualified" : "Possible fit"}
       </span>
-      {typeof item.match_percent === "number" ? (
-        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-          {item.match_percent}%
-        </span>
-      ) : null}
     </span>
   );
 }
@@ -185,159 +183,178 @@ export function FellowshipRow({
 
   return (
     <Card className="p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-      <div className="flex items-start justify-between gap-3">
-        {/* Left: eligibility tier + title + award class */}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {item.is_new ? <NewTag /> : null}
-            <EligibilityBadge item={item} />
-            {item.cluster ? <ClusterBadge cluster={item.cluster} /> : null}
-          </div>
-          <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
-            {item.title}
-          </h3>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <AwardClassChip awardClass={item.award_class} />
-          </div>
-        </div>
+      <div className="flex gap-4 sm:gap-5">
+        {/* Left gutter: research fit. Eligibility is a separate claim and keeps
+            its own badge in the row below. */}
+        <MatchRing
+          percent={item.match_percent}
+          origin={item.origin}
+          className="mt-0.5 hidden sm:flex"
+        />
 
-        {/* Right: save bookmark + deadline + amount */}
-        <div className="flex shrink-0 flex-col items-end gap-2 text-right">
-          <div className="flex items-center gap-1.5">
-            <RemindButton
-              contentId={item.content_id}
-              title={item.title}
-              deadlines={item.addressable_deadlines}
-              lockedLabSlug={remindLabSlug}
-            />
-            <SaveButton
-              contentId={item.content_id}
-              saved={item.saved}
-              savedLabs={item.saved_labs}
-              variant="icon"
-            />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                {item.is_new ? <NewTag /> : null}
+                <MatchRing
+                  percent={item.match_percent}
+                  origin={item.origin}
+                  size="sm"
+                  className="sm:hidden"
+                />
+                <EligibilityBadge item={item} />
+                {item.cluster ? <ClusterBadge cluster={item.cluster} /> : null}
+              </div>
+              <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+                {item.title}
+              </h3>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <AwardClassChip awardClass={item.award_class} />
+              </div>
+            </div>
+
+            {/* Right: save bookmark + deadline + amount */}
+            <div className="flex shrink-0 flex-col items-end gap-2 text-right">
+              <div className="flex items-center gap-1.5">
+                <RemindButton
+                  contentId={item.content_id}
+                  title={item.title}
+                  deadlines={item.addressable_deadlines}
+                  lockedLabSlug={remindLabSlug}
+                />
+                <SaveButton
+                  contentId={item.content_id}
+                  saved={item.saved}
+                  savedLabs={item.saved_labs}
+                  variant="icon"
+                />
+              </div>
+              {deadlineLabel ? (
+                <span
+                  className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
+                    softDl
+                      ? "text-[var(--text-muted)]"
+                      : "text-[var(--destructive)]"
+                  }`}
+                  title={deadlineLabel}
+                >
+                  <CalendarIcon size={13} aria-hidden="true" />
+                  {deadlineLabel}
+                </span>
+              ) : null}
+              {item.amount ? (
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
+                  title={
+                    item.amount_note
+                      ? `${item.amount} — ${item.amount_note}`
+                      : item.amount
+                  }
+                >
+                  <BankIcon size={13} aria-hidden="true" />
+                  {item.amount}
+                </span>
+              ) : null}
+            </div>
           </div>
-          {deadlineLabel ? (
-            <span
-              className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
-                softDl
-                  ? "text-[var(--text-muted)]"
-                  : "text-[var(--destructive)]"
-              }`}
-              title={deadlineLabel}
-            >
-              <CalendarIcon size={13} aria-hidden="true" />
-              {deadlineLabel}
-            </span>
+
+          {/* Amount note as subtext when it's a short phrase */}
+          {item.amount_note && item.amount_note.length <= 40 ? (
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              {item.amount_note}
+            </p>
           ) : null}
-          {item.amount ? (
-            <span
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
-              title={
-                item.amount_note
-                  ? `${item.amount} — ${item.amount_note}`
-                  : item.amount
-              }
+
+          {/* The fellowship's own blurb from the source listing (matches the
+          description line on grant cards). */}
+          {item.description ? (
+            <p className="mt-2 line-clamp-5 text-sm leading-relaxed text-[var(--text-secondary)]">
+              {item.description}
+            </p>
+          ) : null}
+
+          {/* Mylo's read on why this fellowship fits the researcher — the tailored
+          AI report (origin "llm"); a plain rule-engine summary is the fallback. */}
+          {item.reason ? (
+            isMylo ? (
+              <MyloReason reason={item.reason} />
+            ) : (
+              <p className="mt-2.5 text-sm leading-relaxed text-[var(--text-secondary)]">
+                {item.reason}
+              </p>
+            )
+          ) : null}
+
+          {/* Eligibility bullets — short list inline, long list behind disclosure */}
+          {eligibilityBullets.length > 0 ? (
+            eligibilityLong ? (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-secondary)]">
+                  Eligibility details ({eligibilityBullets.length})
+                </summary>
+                <ul className="mt-2 space-y-1 pl-4">
+                  {eligibilityBullets.map((line) => (
+                    <li
+                      key={line}
+                      className="list-disc text-sm leading-relaxed text-[var(--text-secondary)]"
+                    >
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : (
+              <ul className="mt-3 space-y-1 pl-4">
+                {eligibilityBullets.map((line) => (
+                  <li
+                    key={line}
+                    className="list-disc text-sm leading-relaxed text-[var(--text-secondary)]"
+                  >
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : null}
+
+          {/* Facet chips: fields + stages */}
+          {facetChips.length > 0 ? (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {facetChips.map((chip) => (
+                <span
+                  key={chip}
+                  className="rounded-full border border-[var(--border)] bg-[var(--surface-alt)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]"
+                >
+                  {chip}
+                </span>
+              ))}
+              {moreFacets > 0 ? (
+                <span className="px-1 text-xs font-medium text-[var(--text-muted)]">
+                  +{moreFacets} more
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* External link */}
+          {item.url ? (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
             >
-              <BankIcon size={13} aria-hidden="true" />
-              {item.amount}
-            </span>
+              View fellowship
+              <ArrowRightIcon
+                size={14}
+                aria-hidden="true"
+                className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+              />
+            </a>
           ) : null}
         </div>
       </div>
-
-      {/* Amount note as subtext when it's a short phrase */}
-      {item.amount_note && item.amount_note.length <= 40 ? (
-        <p className="mt-1 text-xs text-[var(--text-muted)]">{item.amount_note}</p>
-      ) : null}
-
-      {/* The fellowship's own blurb from the source listing (matches the
-          description line on grant cards). */}
-      {item.description ? (
-        <p className="mt-2 line-clamp-5 text-sm leading-relaxed text-[var(--text-secondary)]">
-          {item.description}
-        </p>
-      ) : null}
-
-      {/* Mylo's read on why this fellowship fits the researcher — the tailored
-          AI report (origin "llm"); a plain rule-engine summary is the fallback. */}
-      {item.reason ? (
-        isMylo ? (
-          <MyloReason reason={item.reason} />
-        ) : (
-          <p className="mt-2.5 text-sm leading-relaxed text-[var(--text-secondary)]">
-            {item.reason}
-          </p>
-        )
-      ) : null}
-
-      {/* Eligibility bullets — short list inline, long list behind disclosure */}
-      {eligibilityBullets.length > 0 ? (
-        eligibilityLong ? (
-          <details className="mt-3">
-            <summary className="cursor-pointer text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-secondary)]">
-              Eligibility details ({eligibilityBullets.length})
-            </summary>
-            <ul className="mt-2 space-y-1 pl-4">
-              {eligibilityBullets.map((line) => (
-                <li
-                  key={line}
-                  className="list-disc text-sm leading-relaxed text-[var(--text-secondary)]"
-                >
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </details>
-        ) : (
-          <ul className="mt-3 space-y-1 pl-4">
-            {eligibilityBullets.map((line) => (
-              <li
-                key={line}
-                className="list-disc text-sm leading-relaxed text-[var(--text-secondary)]"
-              >
-                {line}
-              </li>
-            ))}
-          </ul>
-        )
-      ) : null}
-
-      {/* Facet chips: fields + stages */}
-      {facetChips.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {facetChips.map((chip) => (
-            <span
-              key={chip}
-              className="rounded-full border border-[var(--border)] bg-[var(--surface-alt)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]"
-            >
-              {chip}
-            </span>
-          ))}
-          {moreFacets > 0 ? (
-            <span className="px-1 text-xs font-medium text-[var(--text-muted)]">
-              +{moreFacets} more
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* External link */}
-      {item.url ? (
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-        >
-          View fellowship
-          <ArrowRightIcon
-            size={14}
-            aria-hidden="true"
-            className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-          />
-        </a>
-      ) : null}
     </Card>
   );
 }
@@ -452,7 +469,8 @@ function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
 
   const capped = !showAll;
   const displayed = React.useMemo(
-    () => (capped ? fellowships.slice(0, DEFAULT_FELLOWSHIP_LIMIT) : fellowships),
+    () =>
+      capped ? fellowships.slice(0, DEFAULT_FELLOWSHIP_LIMIT) : fellowships,
     [fellowships, capped],
   );
   const hiddenCount = fellowships.length - displayed.length;

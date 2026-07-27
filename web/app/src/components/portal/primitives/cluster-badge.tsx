@@ -34,8 +34,8 @@ export type ClusterRef = { id: string; label: string };
 /**
  * The primary cluster badge: a filled dot in the cluster's stable accent color
  * plus its label, in a soft tinted pill — the same border/tint `color-mix`
- * treatment as `MatchBadge`, just keyed on the cluster's accent token instead
- * of a semantic fit color. Renders next to `MatchBadge` at the top-left of a
+ * treatment as the match ring, just keyed on the cluster's accent token
+ * instead of a semantic fit color. Renders in the badge row at the top of a
  * card whenever the item carries an attributed `cluster`.
  */
 export function ClusterBadge({ cluster }: { cluster: ClusterRef }) {

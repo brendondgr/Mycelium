@@ -77,7 +77,7 @@ export default function ProfileSynthesisProgress({
             />
           </g>
         </svg>
-        <div className="absolute left-1/2 top-[58%] h-[64px] w-[58px] -translate-x-1/2 -translate-y-1/2">
+        <div className="absolute left-1/2 top-[58%] h-16 w-16 -translate-x-1/2 -translate-y-1/2">
           <MyloMark className="mylo-float h-full w-full" />
         </div>
       </div>

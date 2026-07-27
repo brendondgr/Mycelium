@@ -39,32 +39,11 @@ function SkeletonCard() {
 /** How many papers show by default; the rest are cross-embedding matches. */
 const PRIMARY_COUNT = 10;
 
-/** One paper prepared for display: the suggestion plus, in focus mode, its
- * per-interest-derived percent. */
-type Displayed = { suggestion: Suggestion; displayPercent?: number };
-
-/** The union of interests that matched at least one of today's papers, in the
- * order they first appear — the source of the filter chips (no dead chips). */
-function chipSet(suggestions: Suggestion[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const s of suggestions) {
-    for (const label of s.matched_interests ?? []) {
-      if (label && !seen.has(label)) {
-        seen.add(label);
-        out.push(label);
-      }
-    }
-  }
-  return out;
-}
-
 type ClusterOption = { id: string; label: string };
 
 /** The distinct clusters attributed across today's papers, in the order they
- * first appear — the source of the cluster filter tier. A profile with a
- * single (or no) cluster never populates more than one entry, so the tier
- * stays hidden and the page renders exactly as before. */
+ * first appear — the source of the cluster filter row. A profile whose papers
+ * carry no cluster at all yields an empty list and the row stays hidden. */
 function clusterSet(suggestions: Suggestion[]): ClusterOption[] {
   const seen = new Map<string, string>();
   for (const s of suggestions) {
@@ -75,40 +54,12 @@ function clusterSet(suggestions: Suggestion[]): ClusterOption[] {
   return Array.from(seen, ([id, label]) => ({ id, label }));
 }
 
-/** Every interest label matched by papers belonging to one cluster — used both
- * to scope the interest-chip tier once a cluster is selected, and as the
- * "select all this cluster's interests" sugar when the cluster chip is clicked. */
-function interestsForCluster(
-  suggestions: Suggestion[],
-  clusterId: string,
-): string[] {
-  return chipSet(suggestions.filter((s) => s.cluster?.id === clusterId));
-}
-
-/** A 0–100 "focus %" for a paper against the selected interests: the mean of the
- * paper's fusion scores for the selected interests it actually matched, or null
- * when it matched none of them. */
-function focusPercent(
-  suggestion: Suggestion,
-  selected: Set<string>,
-): number | null {
-  const present: number[] = [];
-  for (const label of selected) {
-    const score = suggestion.per_interest?.[label];
-    if (typeof score === "number") present.push(score);
-  }
-  if (present.length === 0) return null;
-  const mean = present.reduce((a, b) => a + b, 0) / present.length;
-  return Math.round(mean * 100);
-}
-
 /**
  * The Research Papers page: the top papers ranked and percent-matched by the
  * language model, with the remaining cross-embedding matches tucked behind a
- * "show more" toggle. A keyword search and interest-chip filters sit above the
- * list — selecting chips re-scores papers against just those interests (a
- * derived focus %) and hides the ones that match none. Fed by the same daily run
- * as the Daily Report summary.
+ * "show more" toggle. Above the list sit a keyword search and one row of
+ * cluster chips — pick a research theme, or see everything. Fed by the same
+ * daily run as the Daily Report summary.
  */
 export function ResearchPapersSection() {
   const { currentLab } = usePortal();
@@ -151,8 +102,8 @@ function PersonalResearchPapers() {
 }
 
 /**
- * The shared Research Papers feed body — keyword search, interest-chip focus
- * filters, the LLM-ranked / cross-topics two-tier split, and the card list —
+ * The shared Research Papers feed body — keyword search, the cluster row, the
+ * LLM-ranked / cross-topics two-tier split, and the card list —
  * used identically by the personal page and a lab workspace. `labName`, when
  * set, marks the lab variant and only swaps the surrounding copy; the structure,
  * filters, and card layout are the same in both. `scanning` is a personal-only
@@ -176,34 +127,22 @@ function PapersFeed({
   labName?: string;
 }) {
   const [showMore, setShowMore] = React.useState(false);
-  const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [selectedCluster, setSelectedCluster] = React.useState<string | null>(
     null,
   );
   const [query, setQuery] = React.useState("");
 
   const clusters = React.useMemo(() => clusterSet(suggestions), [suggestions]);
-  const showClusterTier = clusters.length >= 2;
+  const showClusterTier = clusters.length >= 1;
 
-  // The interest chips on offer: scoped to the selected cluster's papers once
-  // one is chosen, otherwise the full feed's chip set.
-  const chips = React.useMemo(
-    () =>
-      selectedCluster
-        ? interestsForCluster(suggestions, selectedCluster)
-        : chipSet(suggestions),
-    [suggestions, selectedCluster],
-  );
-
-  const focusMode = selected.size > 0;
   const searchActive = query.trim() !== "";
-  const filtering = focusMode || searchActive || selectedCluster !== null;
+  const filtering = searchActive || selectedCluster !== null;
 
-  // The filtered/rescored list, computed only when filtering is active. Search
-  // (title OR abstract substring), the cluster, and interest chips combine with
-  // AND; in focus mode the survivors are re-scored and re-sorted by their
-  // derived focus %.
-  const filtered: Displayed[] = React.useMemo(() => {
+  // The filtered list, computed only when filtering is active. Search (title OR
+  // abstract substring) and the selected cluster combine with AND. Papers keep
+  // their own match percent throughout — the ring always shows the real score
+  // rather than a number derived from whatever happens to be selected.
+  const filtered: Suggestion[] = React.useMemo(() => {
     if (!filtering) return [];
     const needle = query.trim().toLowerCase();
     let rows = suggestions;
@@ -217,50 +156,17 @@ function PapersFeed({
     if (selectedCluster) {
       rows = rows.filter((s) => s.cluster?.id === selectedCluster);
     }
-    if (!focusMode) return rows.map((suggestion) => ({ suggestion }));
-
-    const scored: Displayed[] = [];
-    for (const suggestion of rows) {
-      const pct = focusPercent(suggestion, selected);
-      if (pct === null) continue; // matched none of the selected interests
-      scored.push({ suggestion, displayPercent: pct });
-    }
-    scored.sort((a, b) => (b.displayPercent ?? 0) - (a.displayPercent ?? 0));
-    return scored;
-  }, [filtering, focusMode, query, selected, selectedCluster, suggestions]);
+    return rows;
+  }, [filtering, query, selectedCluster, suggestions]);
 
   // The default two-tier split (no filtering): LLM-ranked papers, then the
   // cross-embedding tail behind a toggle.
   const primary = suggestions.slice(0, PRIMARY_COUNT);
   const extra = suggestions.slice(PRIMARY_COUNT);
 
-  const toggleChip = (label: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
-  };
-
-  // Selecting a cluster chip is sugar for selecting every interest matched by
-  // that cluster's papers (so the existing focus-% scoring keeps working) plus
-  // an explicit cluster filter (so a paper outside the cluster that happens to
-  // share one of those interest labels doesn't sneak in). Re-selecting the
-  // active cluster clears both.
+  /** Selecting a cluster narrows the feed to it; re-selecting clears. */
   const toggleCluster = (clusterId: string) => {
-    if (selectedCluster === clusterId) {
-      setSelectedCluster(null);
-      setSelected(new Set());
-      return;
-    }
-    setSelectedCluster(clusterId);
-    setSelected(new Set(interestsForCluster(suggestions, clusterId)));
-  };
-
-  const clearFilters = () => {
-    setSelected(new Set());
-    setSelectedCluster(null);
+    setSelectedCluster((prev) => (prev === clusterId ? null : clusterId));
   };
 
   const subtitle: React.ReactNode = (() => {
@@ -272,9 +178,7 @@ function PapersFeed({
     }
     if (filtering) {
       const n = filtered.length;
-      return `${n} paper${n === 1 ? "" : "s"} match your filters${
-        focusMode ? ", scored against the selected interests" : ""
-      }.`;
+      return `${n} paper${n === 1 ? "" : "s"} match your filters.`;
     }
     const when = formatWhen(generatedAt);
     const total = suggestions.length;
@@ -323,14 +227,27 @@ function PapersFeed({
             />
           </label>
 
-          {/* Cluster tier — only surfaces once the profile has 2+ distinct
-              clusters; a single/no-cluster feed skips straight to interest
-              chips, unchanged from before this feature. */}
+          {/* Clusters, and only clusters. The per-interest chip tier that used
+              to sit under this row restated what the cluster already says and
+              crowded the top of the page, so the rail stays one line: pick a
+              theme, or see everything. */}
           {showClusterTier ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
                 Clusters
               </span>
+              <button
+                type="button"
+                onClick={() => setSelectedCluster(null)}
+                aria-pressed={selectedCluster === null}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  selectedCluster === null
+                    ? "border-[color-mix(in_srgb,var(--primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] text-primary"
+                    : "border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                All
+              </button>
               {clusters.map((cluster) => {
                 const on = selectedCluster === cluster.id;
                 const token = clusterAccentVar(cluster.id);
@@ -366,38 +283,6 @@ function PapersFeed({
               })}
             </div>
           ) : null}
-
-          {chips.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {chips.map((label) => {
-                const on = selected.has(label);
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => toggleChip(label)}
-                    aria-pressed={on}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                      on
-                        ? "border-[color-mix(in_srgb,var(--primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] text-primary"
-                        : "border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-              {focusMode || selectedCluster ? (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="text-xs font-medium text-[var(--text-muted)] underline-offset-2 hover:text-[var(--text-primary)] hover:underline"
-                >
-                  Clear
-                </button>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       ) : null}
 
@@ -410,7 +295,11 @@ function PapersFeed({
       ) : isError ? (
         <EmptyState
           icon={<DocumentIcon size={28} />}
-          title={labName ? "Couldn't load this feed" : "Couldn't load your research papers"}
+          title={
+            labName
+              ? "Couldn't load this feed"
+              : "Couldn't load your research papers"
+          }
           description={
             labName
               ? "Something went wrong loading the lab's paper matches. Please try again in a moment."
@@ -443,21 +332,17 @@ function PapersFeed({
           <EmptyState
             icon={<DocumentIcon size={28} />}
             title="No papers match your filters"
-            description="Try removing an interest chip or clearing the search to widen the results."
+            description="Try picking a different cluster, or clearing the search to widen the results."
           />
         ) : (
           <div className="space-y-4">
-            {filtered.map(({ suggestion, displayPercent }, index) => (
+            {filtered.map((suggestion, index) => (
               <div
                 key={suggestion.content_id}
                 className="portal-fade-up"
                 style={{ animationDelay: `${index * 60}ms` }}
               >
-                <SuggestionCard
-                  suggestion={suggestion}
-                  displayPercent={displayPercent}
-                  focusMode={focusMode}
-                />
+                <SuggestionCard suggestion={suggestion} />
               </div>
             ))}
           </div>
@@ -508,11 +393,12 @@ function PapersFeed({
           ) : null}
 
           <p className="mt-5 text-xs text-[var(--text-muted)]">
-            The top papers marked “Mylo pick” were ranked and percent-matched by the
-            language model — the percent reflects how well it judges each paper fits
-            your research. The cross-topics matches are the rest of the papers that
-            cleared your match threshold, each showing its transformer
-            (embedding-similarity) match percent, in recommendation order.
+            The top papers marked “Mylo pick” were ranked and percent-matched by
+            the language model — the percent reflects how well it judges each
+            paper fits your research. The cross-topics matches are the rest of
+            the papers that cleared your match threshold, each showing its
+            transformer (embedding-similarity) match percent, in recommendation
+            order.
           </p>
         </>
       )}

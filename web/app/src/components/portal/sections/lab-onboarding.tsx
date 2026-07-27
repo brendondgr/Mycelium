@@ -296,7 +296,7 @@ function LabEditorForm({
           {/* Small decorative brand mark — a plain img is right here. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/mylo-headshot.webp"
+            src="/images/mylo-portrait-64.webp"
             alt=""
             width={20}
             height={20}

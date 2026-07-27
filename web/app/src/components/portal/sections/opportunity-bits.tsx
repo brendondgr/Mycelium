@@ -20,71 +20,6 @@ function canManageLab(lab: MyLab): boolean {
   return lab.is_lead || lab.role === "owner" || lab.role === "admin";
 }
 
-/** Percent-match tiers: strong (green), fair (amber), low (terracotta). */
-const STRONG_MATCH = 85;
-const FAIR_MATCH = 60;
-
-/** Resolve a percent into a fit tier and its semantic color token + word. */
-function matchTier(percent: number): { token: string; word: string } {
-  if (percent >= STRONG_MATCH) return { token: "--success", word: "strong" };
-  if (percent >= FAIR_MATCH) return { token: "--warning", word: "fair" };
-  return { token: "--clay", word: "low" };
-}
-
-/**
- * The model's percent match. The number is always dark and bold for legibility;
- * the fit tier (strong ≥ 85, fair 60–84, low below) shows as a small colored dot
- * and the aria-label, so color reinforces but never replaces the reading. When
- * Mylo (the LLM) judged the match, its headshot leads the badge in place of the
- * dot. Null percent (the fallback tail) renders nothing.
- */
-export function MatchBadge({
-  percent,
-  origin,
-}: {
-  percent: number | null;
-  origin?: "llm" | "fallback" | "rules";
-}) {
-  if (typeof percent !== "number") return null;
-  const { token, word } = matchTier(percent);
-  const byMylo = origin === "llm";
-  return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1"
-      style={{
-        borderColor: `color-mix(in srgb, var(${token}) 35%, var(--border))`,
-        backgroundColor: `color-mix(in srgb, var(${token}) 10%, var(--surface))`,
-      }}
-      aria-label={`${percent} percent match to your research profile, a ${word} match${
-        byMylo ? ", matched by Mylo" : ""
-      }`}
-    >
-      {byMylo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src="/mylo-headshot.webp"
-          alt=""
-          width={16}
-          height={16}
-          className="h-4 w-4 shrink-0 rounded-full object-cover ring-1 ring-[var(--border)]"
-        />
-      ) : (
-        <span
-          aria-hidden="true"
-          className="h-2 w-2 rounded-full"
-          style={{ backgroundColor: `var(${token})` }}
-        />
-      )}
-      <span className="text-sm font-bold leading-none text-[var(--text-primary)]">
-        {percent}%
-      </span>
-      <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-        match
-      </span>
-    </span>
-  );
-}
-
 /**
  * Mylo's read on why an opportunity fits — the LLM's tailored explanation in a
  * soft green field led by Mylo's headshot. Shared across the Grants,
@@ -102,7 +37,7 @@ export function MyloReason({ reason }: { reason: string }) {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/mylo-headshot.webp"
+        src="/images/mylo-portrait-64.webp"
         alt=""
         width={24}
         height={24}
@@ -439,7 +374,9 @@ function SaveScopeItem({
       >
         <CheckIcon size={12} aria-hidden="true" />
       </span>
-      <span className="flex-1 truncate text-[var(--text-primary)]">{label}</span>
+      <span className="flex-1 truncate text-[var(--text-primary)]">
+        {label}
+      </span>
     </button>
   );
 }

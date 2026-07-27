@@ -123,7 +123,7 @@ export function OnboardingMatch({ areas, onDone }: OnboardingMatchProps) {
     <div className="mx-auto w-full max-w-2xl">
       <div className="mb-6 flex items-center gap-4">
         <MyloMark
-          className={cn("h-14 w-[52px] flex-none", !finished && "mylo-float")}
+          className={cn("h-14 w-14 flex-none", !finished && "mylo-float")}
         />
         <div>
           <h1 className="font-serif text-2xl font-semibold text-[var(--text-primary)]">

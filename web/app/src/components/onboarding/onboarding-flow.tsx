@@ -722,7 +722,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   if (editing && !hydrated) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <MyloMark className="mylo-float h-14 w-[50px]" />
+        <MyloMark className="mylo-float h-14 w-14" />
         <p className="text-sm text-[var(--text-secondary)]">
           Loading your profile…
         </p>
@@ -764,7 +764,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
               <circle cx="120" cy="30" r="6" fill="var(--brand-accent)" className="motion-safe:animate-pulse" />
             </g>
           </svg>
-          <div className="absolute left-1/2 top-[55%] h-[82px] w-[74px] -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute left-1/2 top-[55%] h-[82px] w-[82px] -translate-x-1/2 -translate-y-1/2">
             <MyloMark className="mylo-float h-full w-full" />
           </div>
         </div>
@@ -795,7 +795,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   if (screen === "verify") {
     return (
       <div className="mx-auto w-full max-w-md text-center">
-        <MyloMark className="mylo-float mx-auto mb-4 h-16 w-[58px]" />
+        <MyloMark className="mylo-float mx-auto mb-4 h-16 w-16" />
         <h1 className="font-serif text-3xl font-semibold text-[var(--text-primary)]">
           Check your inbox
         </h1>
@@ -1441,7 +1441,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   return (
     <div className="mx-auto w-full max-w-2xl">
       <div className="mb-4 flex items-center gap-4">
-        <MyloMark className="h-12 w-11 flex-none" />
+        <MyloMark className="h-12 w-12 flex-none" />
         <div className="flex-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">
             {editing ? "Edit your research radar" : "Let’s tune your research radar"}

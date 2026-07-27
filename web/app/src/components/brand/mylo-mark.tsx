@@ -2,64 +2,58 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+/** The widths `sync-art-assets.mjs` emits for the portrait master. */
+const SRCSET = [64, 128, 256, 512]
+  .map((w) => `/images/mylo-portrait-${w}.webp ${w}w`)
+  .join(", ");
+
+type MyloMarkProps = Omit<React.HTMLAttributes<HTMLSpanElement>, "children"> & {
+  /**
+   * Roughly how wide the mark renders, so the browser picks a sensible source.
+   * Defaults to the small end — pass a larger hint for hero-sized marks.
+   */
+  sizes?: string;
+  /**
+   * Accessible name. Mylo is decorative in most placements (he sits beside copy
+   * that already says what is happening), so this is empty by default and the
+   * image is hidden from assistive tech. Pass a label only where the mark is
+   * the sole carrier of meaning.
+   */
+  alt?: string;
+};
+
 /**
- * Mylo — the mushroom scout mascot. A brand illustration with its own fixed
- * palette (not theme tokens); size it via `className` on the wrapper.
+ * Mylo — the mushroom scout. Renders the canonical portrait from
+ * `web/art/Mylo/MyloHeadshot.png`, resized to WebP at build time (see
+ * `web/scripts/sync-art-assets.mjs`), rather than the hand-drawn SVG that used
+ * to stand in for him.
+ *
+ * The portrait is square; size it with `className` on the wrapper (e.g.
+ * `className="h-16 w-16"`). `object-contain` keeps him undistorted if a caller
+ * passes a non-square box.
  */
 export function MyloMark({
   className,
+  sizes = "128px",
+  alt = "",
   ...props
-}: React.HTMLAttributes<HTMLSpanElement>) {
+}: MyloMarkProps) {
   return (
-    <span
-      aria-hidden="true"
-      className={cn("inline-block leading-none", className)}
-      {...props}
-    >
-      <svg
-        viewBox="0 0 100 112"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="block h-full w-full"
-      >
-        <g stroke="#C9A35A" strokeWidth="1.4" opacity=".55">
-          <path d="M50 96 C42 102 34 101 26 107" />
-          <path d="M50 96 C58 102 67 101 76 106" />
-          <path d="M50 96 C50 103 50 106 50 110" />
-        </g>
-        <g fill="#C9A35A" opacity=".75">
-          <circle cx="26" cy="107" r="2" />
-          <circle cx="76" cy="106" r="2" />
-          <circle cx="50" cy="110" r="2" />
-        </g>
-        <path
-          d="M37 60 Q35 93 50 93 Q65 93 63 60 Z"
-          fill="#FBF6EC"
-          stroke="#E2D6BE"
-          strokeWidth="1.2"
-        />
-        <ellipse cx="50" cy="60" rx="27" ry="5" fill="#7E552F" />
-        <path
-          d="M23 58 Q23 29 50 29 Q77 29 77 58 Q77 61 73 61 L27 61 Q23 61 23 58 Z"
-          fill="#A6713E"
-        />
-        <circle cx="39" cy="46" r="4" fill="#F1E4CE" />
-        <circle cx="57" cy="43" r="5.2" fill="#F1E4CE" />
-        <circle cx="65" cy="53" r="3" fill="#F1E4CE" />
-        <circle cx="46" cy="52" r="2.4" fill="#F1E4CE" />
-        <circle cx="44.5" cy="73" r="2.7" fill="#2E3627" />
-        <circle cx="55.5" cy="73" r="2.7" fill="#2E3627" />
-        <circle cx="45.3" cy="72.2" r=".8" fill="#fff" />
-        <circle cx="56.3" cy="72.2" r=".8" fill="#fff" />
-        <circle cx="39" cy="78" r="2.6" fill="#E7C49B" opacity=".75" />
-        <circle cx="61" cy="78" r="2.6" fill="#E7C49B" opacity=".75" />
-        <path
-          d="M46 79 Q50 82.5 54 79"
-          stroke="#2E3627"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
+    <span className={cn("inline-block leading-none", className)} {...props}>
+      {/* Plain <img>: this is a static, already-optimized asset, so Next's
+          optimizer would only add a round trip. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/mylo-portrait-256.webp"
+        srcSet={SRCSET}
+        sizes={sizes}
+        alt={alt}
+        aria-hidden={alt === "" ? true : undefined}
+        width={256}
+        height={256}
+        decoding="async"
+        className="block h-full w-full object-contain"
+      />
     </span>
   );
 }

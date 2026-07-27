@@ -1,10 +1,14 @@
 "use client";
 
 import { usePortal } from "@/components/portal/portal-context";
-import { ArrowRightIcon, CalendarIcon, DocumentIcon } from "@/components/portal/icons";
+import {
+  ArrowRightIcon,
+  CalendarIcon,
+  DocumentIcon,
+} from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
+import { MatchRing } from "@/components/portal/primitives/match-ring";
 import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
-import { MatchBadge } from "@/components/portal/sections/opportunity-bits";
 import type { SavedDeadline, Suggestion } from "@/lib/portal/types";
 
 /**
@@ -51,7 +55,10 @@ export function TopPapersPanel({
 
   return (
     <Card className="p-5">
-      <PanelHeader title="Research Papers" onView={() => goToSection("papers")} />
+      <PanelHeader
+        title="Research Papers"
+        onView={() => goToSection("papers")}
+      />
       {isLoading ? (
         <p className="text-sm text-[var(--text-muted)]">
           Gathering today&apos;s papers…
@@ -89,10 +96,12 @@ export function TopPapersPanel({
                         backgroundColor: `var(${clusterAccentVar(paper.cluster.id)})`,
                       }}
                     />
-                    <span className="sr-only">{paper.cluster.label} cluster</span>
+                    <span className="sr-only">
+                      {paper.cluster.label} cluster
+                    </span>
                   </>
                 ) : null}
-                <MatchBadge percent={paper.match_percent} />
+                <MatchRing percent={paper.match_percent} size="sm" />
               </div>
             </li>
           ))}
@@ -120,7 +129,9 @@ export function DeadlinesPanel({
     <Card className="p-5">
       <PanelHeader title="Deadlines" onView={() => goToSection("saves")} />
       {isLoading ? (
-        <p className="text-sm text-[var(--text-muted)]">Loading your deadlines…</p>
+        <p className="text-sm text-[var(--text-muted)]">
+          Loading your deadlines…
+        </p>
       ) : items.length === 0 ? (
         <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
           <CalendarIcon size={16} />

@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { MatchRing } from "@/components/portal/primitives/match-ring";
 import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -13,7 +14,6 @@ import {
   ConferenceIcon,
 } from "@/components/portal/icons";
 import {
-  MatchBadge,
   MyloReason,
   NewTag,
   RemindButton,
@@ -45,7 +45,8 @@ function OpenChip({ label }: { label: string }) {
       className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
       style={{
         borderColor: "color-mix(in srgb, var(--success) 35%, var(--border))",
-        backgroundColor: "color-mix(in srgb, var(--success) 10%, var(--surface))",
+        backgroundColor:
+          "color-mix(in srgb, var(--success) 10%, var(--surface))",
         color: "var(--text-primary)",
       }}
     >
@@ -79,9 +80,10 @@ export function ConferenceCard({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {conf.is_new ? <NewTag /> : null}
-          <MatchBadge
+          <MatchRing
             percent={conf.match_percent ?? conf.embedding_match}
             origin={conf.origin}
+            size="sm"
           />
           {conf.cluster ? <ClusterBadge cluster={conf.cluster} /> : null}
         </div>
@@ -306,7 +308,9 @@ function ConferencesFeed({
       const count = `${conferences.length} conference${
         conferences.length === 1 ? "" : "s"
       }`;
-      const lead = labName ? `${count}, matched to ${labName}` : `${count}, ranked by fit`;
+      const lead = labName
+        ? `${count}, matched to ${labName}`
+        : `${count}, ranked by fit`;
       return when ? `${lead} · gathered ${when}.` : `${lead}.`;
     }
     return labName
@@ -340,7 +344,11 @@ function ConferencesFeed({
           ) : isError ? (
             <EmptyState
               icon={<ConferenceIcon size={28} />}
-              title={labName ? "Couldn't load this feed" : "Couldn't load your conferences"}
+              title={
+                labName
+                  ? "Couldn't load this feed"
+                  : "Couldn't load your conferences"
+              }
               description={
                 labName
                   ? "Something went wrong loading the lab's conference matches. Please try again in a moment."

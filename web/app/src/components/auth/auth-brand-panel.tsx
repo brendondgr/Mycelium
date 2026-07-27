@@ -54,14 +54,14 @@ export function AuthBrandPanel({
       <MyceliumBackdrop />
 
       <div className="relative flex items-center gap-3">
-        <MyloMark className="h-8 w-7" />
+        <MyloMark className="h-8 w-8" />
         <span className="font-serif text-xl font-semibold tracking-tight">
           Mycelium
         </span>
       </div>
 
       <div className="relative max-w-md">
-        <MyloMark className="mylo-float mb-6 h-28 w-24" />
+        <MyloMark className="mylo-float mb-6 h-28 w-28" sizes="112px" />
         <h1 className="font-serif text-4xl font-semibold leading-[1.1]">
           {heading}
         </h1>

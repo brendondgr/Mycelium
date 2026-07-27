@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node ../scripts/sync-landing-assets.mjs",
-    "prebuild": "node ../scripts/sync-landing-assets.mjs",
+    "predev": "node ../scripts/sync-art-assets.mjs",
+    "prebuild": "node ../scripts/sync-art-assets.mjs",
     "dev": "astro dev",
     "build": "astro check && astro build",
     "preview": "astro preview",
