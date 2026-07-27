@@ -203,6 +203,65 @@ services:
       redis:
         condition: service_healthy
 
+  # Optional SSH tunnel to a remote LLM server, run *inside* the compose network.
+  #
+  # A tunnel on the host does not work: the backend runs in a container, so it
+  # reaches the host only via the docker gateway, and (a) `ssh -L 127.0.0.1:...`
+  # binds loopback only, (b) a host firewall with a default-DROP input policy
+  # (ufw's default) silently drops container -> host packets. Both failures look
+  # identical from the app — the LLM call hangs until it times out and every
+  # LLM-backed feature quietly drops to its deterministic fallback.
+  #
+  # Running the forward in a service sidesteps both: the port is published on the
+  # compose network, where the backend already talks to postgres and redis. Set
+  # LLM_TUNNEL_HOST in `.env` to an ssh host alias from your ssh config and point
+  # LLM_BASE_URL at http://llm-tunnel:9090/v1. Unset, the service idles.
+  llm-tunnel:
+    image: alpine:3.22
+    restart: unless-stopped
+    environment:
+      # An ssh host alias (resolved from the mounted ssh config), not a hostname:
+      # ProxyJump, IdentityFile, and key-algorithm options come from there.
+      LLM_TUNNEL_HOST: ${LLM_TUNNEL_HOST:-}
+      # Listen port inside this container = the port the backend connects to.
+      LLM_TUNNEL_PORT: ${LLM_TUNNEL_PORT:-9090}
+      # Port the model server listens on, on the far side of the ssh hop.
+      LLM_TUNNEL_REMOTE_PORT: ${LLM_TUNNEL_REMOTE_PORT:-9090}
+    volumes:
+      # Your ssh directory (config + keys + known_hosts), read-only: they are
+      # copied to a root-owned /root/.ssh at start, because ssh refuses a private
+      # key owned by another uid. The default is an inert placeholder that only
+      # ever gets mounted while the tunnel is disabled — set LLM_TUNNEL_SSH_DIR
+      # in `.env` to an absolute path (e.g. /home/you/.ssh) to enable it.
+      - ${LLM_TUNNEL_SSH_DIR:-/etc/ssh}:/ssh-src:ro
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        if [ -z "$$LLM_TUNNEL_HOST" ]; then
+          echo "llm-tunnel: LLM_TUNNEL_HOST unset — tunnel disabled; idling."
+          exec sleep infinity
+        fi
+        if [ ! -r /ssh-src/config ]; then
+          echo "llm-tunnel: no ssh config at /ssh-src — set LLM_TUNNEL_SSH_DIR to your ssh directory; idling."
+          exec sleep infinity
+        fi
+        apk add --no-cache openssh-client >/dev/null
+        mkdir -p /root/.ssh
+        cp -r /ssh-src/. /root/.ssh/
+        chmod 700 /root/.ssh
+        find /root/.ssh -type f -exec chmod 600 {} +
+        echo "llm-tunnel: forwarding :$$LLM_TUNNEL_PORT -> $$LLM_TUNNEL_HOST:$$LLM_TUNNEL_REMOTE_PORT"
+        exec ssh -N -T \
+          -o BatchMode=yes \
+          -o ExitOnForwardFailure=yes \
+          -o ForwardX11=no \
+          -o ServerAliveInterval=30 \
+          -o ServerAliveCountMax=3 \
+          -L "0.0.0.0:$$LLM_TUNNEL_PORT:127.0.0.1:$$LLM_TUNNEL_REMOTE_PORT" \
+          "$$LLM_TUNNEL_HOST"
+
   postgres:
     image: pgvector/pgvector:pg17
     environment:

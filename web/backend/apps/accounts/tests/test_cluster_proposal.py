@@ -79,9 +79,7 @@ def test_geometric_fallback_when_llm_unusable() -> None:
         }
         return [axis.get(t, [0.5, 0.5]) for t in texts]
 
-    clusters, source = propose_clusters(
-        _AREAS, complete=bad_complete, embed=fake_embed
-    )
+    clusters, source = propose_clusters(_AREAS, complete=bad_complete, embed=fake_embed)
     assert source == "geometric"
     _assert_partition(clusters, _AREAS)
 
@@ -247,7 +245,9 @@ def test_compose_fallback_keeps_existing_when_llm_down() -> None:
 
 def test_compose_fallback_groups_areas_when_no_existing() -> None:
     clusters, source = compose_clusters(
-        instruction="", areas=_AREAS, complete=lambda _p: None,
+        instruction="",
+        areas=_AREAS,
+        complete=lambda _p: None,
     )
     assert source == "fallback"
     assert _all_areas(clusters) == set(_AREAS)  # every declared area kept
@@ -260,13 +260,17 @@ def test_compose_empty_when_nothing_to_reason_over() -> None:
 
 
 @pytest.mark.django_db
-def test_compose_endpoint_instruct_mode() -> None:
+def test_compose_endpoint_instruct_mode(settings) -> None:
     api = APIClient()
     user = User.objects.create_user("ci", password="x")
     api.force_authenticate(user)
-    # No LLM configured in tests, so the instruct mode degrades to grouping the
-    # supplied areas — the response shape (clusters + widened areas + seed) is
-    # what we assert.
+    # Pin the endpoint to its no-model path: instruct mode then degrades to
+    # grouping the supplied areas, and the response shape (clusters + widened
+    # areas + seed) is what we assert. Without this the test asserts a fallback
+    # while silently calling whatever LLM the developer has configured — it then
+    # passes only while that endpoint is unreachable, and fails the moment it
+    # works, because composition legitimately invents sub-topics.
+    settings.LLM_MODEL = ""
     resp = api.post(
         "/api/auth/intake/clusters/",
         {
@@ -283,10 +287,13 @@ def test_compose_endpoint_instruct_mode() -> None:
 
 
 @pytest.mark.django_db
-def test_propose_endpoint(client=None) -> None:
+def test_propose_endpoint(settings) -> None:
     api = APIClient()
     user = User.objects.create_user("cp", password="x")
     api.force_authenticate(user)
+    # Same reason as above: keep the endpoint off any configured LLM so the
+    # partition assertion is about the view, not about a reachable model.
+    settings.LLM_MODEL = ""
     resp = api.post(
         "/api/auth/intake/clusters/",
         {"areas": ["oceanography", "healthcare ML"]},

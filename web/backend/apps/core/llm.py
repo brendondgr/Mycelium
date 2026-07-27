@@ -99,6 +99,16 @@ class LLMConfig:
     max_tokens: int = 1024
     reasoning: ReasoningLevel = ReasoningLevel.MEDIUM
     reasoning_style: ReasoningStyle = ReasoningStyle.EFFORT
+    # Reaching the server and waiting for a slow answer are different failures.
+    # ``timeout`` is generous because generation is slow; a *connect* attempt
+    # that takes more than a couple of seconds means the endpoint is unreachable,
+    # and callers with a deterministic fallback (onboarding synthesis, clusters,
+    # statements) should get there in seconds rather than minutes.
+    connect_timeout: float = 5.0
+    # The SDK retries twice by default, so an unreachable endpoint costs
+    # 3x the timeout per call. Retrying a dead endpoint only delays the
+    # fallback; leave retries to the caller.
+    max_retries: int = 0
 
     @classmethod
     def from_settings(cls, settings: Any) -> LLMConfig:
@@ -113,6 +123,8 @@ class LLMConfig:
             max_tokens=int(settings.LLM_MAX_TOKENS),
             reasoning=ReasoningLevel.coerce(settings.LLM_REASONING),
             reasoning_style=ReasoningStyle.coerce(settings.LLM_REASONING_STYLE),
+            connect_timeout=float(getattr(settings, "LLM_CONNECT_TIMEOUT", 5.0)),
+            max_retries=int(getattr(settings, "LLM_MAX_RETRIES", 0)),
         )
 
 
@@ -262,12 +274,21 @@ class LLMClient:
         return self._completions
 
     def _build_completions(self) -> ChatCompletions:
+        import httpx  # lazy (an openai dependency): only needed for a real client
         from openai import OpenAI  # lazy: importing this module needs no SDK
 
+        # Split the budget: a short connect deadline so an unreachable endpoint
+        # falls back fast, the full timeout for read/write so a slow model still
+        # gets to finish. A single float would apply the long timeout to connect.
+        timeout = httpx.Timeout(
+            self.config.timeout,
+            connect=min(self.config.connect_timeout, self.config.timeout),
+        )
         client = OpenAI(
             base_url=self.config.base_url,
             api_key=self.config.api_key or "EMPTY",
-            timeout=self.config.timeout,
+            timeout=timeout,
+            max_retries=self.config.max_retries,
         )
         return client.chat.completions
 

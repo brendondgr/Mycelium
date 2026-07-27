@@ -288,6 +288,15 @@ LLM_BASE_URL = env("LLM_BASE_URL", default="http://localhost:8001/v1")
 LLM_API_KEY = env("LLM_API_KEY", default="EMPTY")
 LLM_MODEL = env("LLM_MODEL", default="")
 LLM_TIMEOUT = env.float("LLM_TIMEOUT", default=60.0)
+# How long to wait to *reach* the server, as opposed to waiting for it to answer.
+# Generation is slow, so LLM_TIMEOUT is generous; a connect that takes seconds
+# means the endpoint is unreachable, and every LLM seam has a deterministic
+# fallback that should be reached quickly instead of after the full timeout.
+LLM_CONNECT_TIMEOUT = env.float("LLM_CONNECT_TIMEOUT", default=5.0)
+# SDK-level retries. Default 0: retrying an unreachable endpoint multiplies the
+# wait before the fallback (the SDK's own default of 2 turns one dead call into
+# three timeouts).
+LLM_MAX_RETRIES = env.int("LLM_MAX_RETRIES", default=0)
 LLM_TEMPERATURE = env.float("LLM_TEMPERATURE", default=0.2)
 LLM_MAX_TOKENS = env.int("LLM_MAX_TOKENS", default=1024)
 # Default reasoning level: one of "none", "low", "medium", "high".
