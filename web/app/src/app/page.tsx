@@ -45,7 +45,7 @@ export default function Home() {
           </Button>
           <Button asChild variant="secondary" size="lg">
             <a
-              href={`${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:11350/api"}/health/`}
+              href={`${process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api"}/health/`}
             >
               API health
             </a>

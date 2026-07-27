@@ -2,9 +2,13 @@ export const siteName = "Mycelium";
 
 export const siteTagline = "Living intelligence for research labs";
 
-const appBaseUrl = (
-  import.meta.env.PUBLIC_APP_URL ?? "http://localhost:11050"
-).replace(/\/$/, "");
+// This site and the authenticated app share one origin behind the nginx
+// gateway (`/` → landing, `/login` and `/app` → Next), so app links stay
+// relative and follow whatever host the visitor arrived on — localhost, a
+// tunnel domain, a real domain. Hardcoding an absolute base here sent every
+// visitor on a public hostname back to http://localhost:11050/login. Set
+// PUBLIC_APP_URL only when the app genuinely lives on a different origin.
+const appBaseUrl = (import.meta.env.PUBLIC_APP_URL ?? "").replace(/\/$/, "");
 
 export const appLoginUrl = `${appBaseUrl}/login`;
 

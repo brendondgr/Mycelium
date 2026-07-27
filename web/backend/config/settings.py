@@ -19,12 +19,39 @@ environ.Env.read_env(ROOT_DIR.parent / ".env")
 # process env var or a value already loaded from `.env` still wins.
 environ.Env.read_env(ROOT_DIR.parent / ".env-mylo")
 
+
+
+def env_str(name: str, default: str = "") -> str:
+    """Read an env var, treating blank/whitespace as unset.
+
+    compose passes optional URLs through as `${VAR:-}`, which arrives as an
+    empty string rather than an absent variable; plain `env(...)` would take
+    that empty value over the default and hand out URLs like `/login`.
+    """
+    return (env(name, default="") or "").strip() or default
+
+
+# The external hostname this stack is served at (Cloudflare tunnel, reverse
+# proxy, real domain) — the single knob for public routing. Every absolute URL
+# Django hands to a browser derives from PUBLIC_BASE_URL, so nothing sends a
+# visitor on the public host back to localhost. Assumed HTTPS, since that is
+# what a tunnel or public proxy terminates.
+PUBLIC_HOSTNAME = env_str("PUBLIC_HOSTNAME")
+PUBLIC_BASE_URL = (
+    f"https://{PUBLIC_HOSTNAME}" if PUBLIC_HOSTNAME else "http://localhost:11050"
+)
+
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="django-insecure-local-dev-only")
 DEBUG = env("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
     default=["localhost", "127.0.0.1"],
 )
+# Setting PUBLIC_HOSTNAME alone is enough to be reachable there: an explicit
+# DJANGO_ALLOWED_HOSTS left over from local-only work would otherwise 400 every
+# proxied request with DisallowedHost.
+if PUBLIC_HOSTNAME and PUBLIC_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(PUBLIC_HOSTNAME)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -129,6 +156,14 @@ CSRF_TRUSTED_ORIGINS = env.list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
     default=["http://localhost:11050", "http://localhost:11250"],
 )
+
+# Same rule as ALLOWED_HOSTS: the public origin is always trusted when
+# PUBLIC_HOSTNAME is set, so a login POST from the public host is not rejected
+# as a CSRF failure just because the configured lists still say localhost.
+if PUBLIC_HOSTNAME:
+    for _origin_list in (CORS_ALLOWED_ORIGINS, CSRF_TRUSTED_ORIGINS):
+        if PUBLIC_BASE_URL not in _origin_list:
+            _origin_list.append(PUBLIC_BASE_URL)
 
 # Namespace the auth cookies. Browsers key cookies by domain but NOT by port, so
 # several Django apps on `localhost:<port>` share one cookie jar and Django's
@@ -510,23 +545,25 @@ DISCORD_TOKEN_ENC_KEY = env("DISCORD_TOKEN_ENC_KEY", default="")
 
 # Where Discord redirects the browser after the user + guild OAuth flows. These
 # resolve to apps.integrations views under /api/integrations/discord/. Must be the
-# public single origin (the nginx gateway, 11050) that /api/ proxies to Django —
-# NOT the Next.js container port (11250). Production points this at the public API
-# host. Whatever this resolves to must be registered verbatim in the Discord app's
-# OAuth2 redirect list, or Discord returns "Invalid OAuth2 redirect_uri".
-DISCORD_APP_BASE_URL = env("DISCORD_APP_BASE_URL", default="http://localhost:11050")
-DISCORD_OAUTH_REDIRECT_URI = env(
+# public single origin (the nginx gateway) that /api/ proxies to Django — NOT the
+# Next.js container port (11250). Defaults to PUBLIC_BASE_URL, so a stack served
+# at a public hostname redirects there instead of at localhost; set this only to
+# pin a different origin. Whatever this resolves to must be registered verbatim in
+# the Discord app's OAuth2 redirect list, or Discord returns "Invalid OAuth2
+# redirect_uri".
+DISCORD_APP_BASE_URL = env_str("DISCORD_APP_BASE_URL", PUBLIC_BASE_URL).rstrip("/")
+DISCORD_OAUTH_REDIRECT_URI = env_str(
     "DISCORD_OAUTH_REDIRECT_URI",
-    default=f"{DISCORD_APP_BASE_URL}/api/integrations/discord/callback",
+    f"{DISCORD_APP_BASE_URL}/api/integrations/discord/callback",
 )
-DISCORD_GUILD_REDIRECT_URI = env(
+DISCORD_GUILD_REDIRECT_URI = env_str(
     "DISCORD_GUILD_REDIRECT_URI",
-    default=f"{DISCORD_APP_BASE_URL}/api/integrations/discord/guild-callback",
+    f"{DISCORD_APP_BASE_URL}/api/integrations/discord/guild-callback",
 )
 # Where the user lands back in the portal after a link attempt (success or error
 # is carried as a query param). The frontend profile page reads it.
-DISCORD_PORTAL_RETURN_URL = env(
-    "DISCORD_PORTAL_RETURN_URL", default="http://localhost:11050/app/profile"
+DISCORD_PORTAL_RETURN_URL = env_str(
+    "DISCORD_PORTAL_RETURN_URL", f"{DISCORD_APP_BASE_URL}/app/profile"
 )
 # Guild permissions integer requested on the bot install (Path C). The floor for
 # *this* scope: View Channels (1<<10) + Send Messages (1<<11) + Embed Links
