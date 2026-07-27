@@ -110,28 +110,30 @@ export function ConferenceCard({
           <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
             {conf.title}
           </h3>
+
+          {/* Where and when sit with the title beside the ring — they identify
+              the event, the way a grant's sponsor line does. */}
+          <dl className="mt-2.5 space-y-1.5 text-sm text-[var(--text-secondary)]">
+            {where ? (
+              <div className="flex gap-2">
+                <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
+                  Where
+                </dt>
+                <dd className="min-w-0">{where}</dd>
+              </div>
+            ) : null}
+            {conf.event_dates ? (
+              <div className="flex gap-2">
+                <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
+                  When
+                </dt>
+                <dd>{conf.event_dates}</dd>
+              </div>
+            ) : null}
+          </dl>
         </>
       }
     >
-      <dl className="mt-2.5 space-y-1.5 text-sm text-[var(--text-secondary)]">
-        {where ? (
-          <div className="flex gap-2">
-            <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
-              Where
-            </dt>
-            <dd className="min-w-0">{where}</dd>
-          </div>
-        ) : null}
-        {conf.event_dates ? (
-          <div className="flex gap-2">
-            <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
-              When
-            </dt>
-            <dd>{conf.event_dates}</dd>
-          </div>
-        ) : null}
-      </dl>
-
       {conf.deadline_date ? (
         <p className="mt-2.5 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--destructive)]">
           <CalendarIcon size={15} aria-hidden="true" />

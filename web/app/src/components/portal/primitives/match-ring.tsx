@@ -18,8 +18,10 @@ type Size = "sm" | "md";
 const RING: Record<Size, { box: string; track: string; text: string }> = {
   // Dense panels (overview lists) — number only, no caption.
   sm: { box: "h-9 w-9", track: "inset-[3px]", text: "text-[11px]" },
-  // Feed cards — the card's left gutter.
-  md: { box: "h-14 w-14", track: "inset-[5px]", text: "text-sm" },
+  // Feed cards — the notch at the card's top-left. Kept deliberately compact:
+  // this block sets the notch height, so every pixel here is repeated down the
+  // whole feed.
+  md: { box: "h-12 w-12", track: "inset-[4px]", text: "text-[13px]" },
 };
 
 /**
@@ -102,11 +104,11 @@ export function MatchRing({
       </div>
 
       {caption && size === "md" ? (
-        /* Wrapped to the ring's own width. On one line "strong match" is half
-           again as wide as the ring, and since this sits in a card's left notch
-           that extra width is dead space on every card in the feed. */
-        <span className="w-14 text-center text-[10px] font-semibold uppercase leading-[1.15] tracking-[0.06em] text-[var(--text-secondary)]">
-          {word} match
+        /* Just the tier word. "strong match" needed two lines at the ring's
+           width, and the second line only repeated what the ring already
+           says — the aria-label still reads the full phrase. */
+        <span className="text-[10px] font-semibold uppercase leading-none tracking-[0.06em] text-[var(--text-secondary)]">
+          {word}
         </span>
       ) : null}
     </div>

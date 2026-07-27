@@ -90,12 +90,11 @@ const Heading = headingLevel;
                           />
                         ) : null}
                       </span>
-                      <span class="w-14 text-center text-[10px] font-semibold uppercase leading-[1.15] tracking-[0.06em] text-[var(--text-secondary)]">
-                        {tier.word} match
+                      <span class="text-[10px] font-semibold uppercase leading-none tracking-[0.06em] text-[var(--text-secondary)]">
+                        {tier.word}
                       </span>
                       <span class="sr-only">
-                        {item.score} percent match — a {tier.word} match
-                        {item.byMylo ? ", judged by Mylo" : ""}
+                        {`${item.score} percent match — a ${tier.word} match${item.byMylo ? ", judged by Mylo" : ""}`}
                       </span>
                     </div>
 
@@ -187,8 +186,8 @@ const Heading = headingLevel;
     position: relative;
     display: inline-grid;
     place-items: center;
-    inline-size: 3.5rem;
-    block-size: 3.5rem;
+    inline-size: 3rem;
+    block-size: 3rem;
     border-radius: 9999px;
     background: conic-gradient(
       var(--arc) calc(var(--pct) * 1%),
@@ -199,14 +198,14 @@ const Heading = headingLevel;
   .score-ring::before {
     content: "";
     position: absolute;
-    inset: 0.32rem;
+    inset: 0.25rem;
     border-radius: 9999px;
     background: var(--card);
   }
 
   .score-ring-value {
     position: relative;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--text-primary);
@@ -215,10 +214,10 @@ const Heading = headingLevel;
   /* Mylo rides the rim when he made the judgement. */
   .score-ring-mylo {
     position: absolute;
-    right: -0.1rem;
-    bottom: -0.1rem;
-    inline-size: 1.25rem;
-    block-size: 1.25rem;
+    right: -0.15rem;
+    bottom: -0.15rem;
+    inline-size: 1.1rem;
+    block-size: 1.1rem;
     border-radius: 9999px;
     object-fit: cover;
     box-shadow: 0 0 0 2px var(--card);

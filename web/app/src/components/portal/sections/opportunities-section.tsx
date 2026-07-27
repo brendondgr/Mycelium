@@ -87,6 +87,13 @@ export function GrantRow({
                   {grant.sponsor}
                 </p>
               ) : null}
+              {/* Posted date belongs with the sponsor line beside the ring, not
+                  down in the body with the description. */}
+              {posted ? (
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                  Posted {posted}
+                </p>
+              ) : null}
             </div>
 
             {/* Right: save bookmark, then the application due date and funding amount. */}
@@ -128,12 +135,6 @@ export function GrantRow({
         </>
       }
     >
-      {posted ? (
-        <p className="mt-2 text-xs text-[var(--text-secondary)]">
-          Posted {posted}
-        </p>
-      ) : null}
-
       {grant.description ? (
         <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
           {grant.description}

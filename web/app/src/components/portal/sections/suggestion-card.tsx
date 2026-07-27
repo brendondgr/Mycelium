@@ -96,13 +96,16 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
               {suggestion.headline}
             </h3>
           </div>
-
-          <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
-            {metaLine(suggestion)}
-          </p>
         </>
       }
     >
+      {/* Source, venue, year and authors run full width below the notch rather
+          than beside the ring — it is a long line, and keeping it out of the
+          head is what stops the notch growing a third row taller. */}
+      <p className="mt-2 text-xs text-[var(--text-secondary)]">
+        {metaLine(suggestion)}
+      </p>
+
       {suggestion.abstract ? (
         <p className="mt-3 line-clamp-5 text-sm leading-relaxed text-[var(--text-secondary)]">
           {suggestion.abstract}
