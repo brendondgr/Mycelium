@@ -303,3 +303,31 @@ def test_propose_endpoint(settings) -> None:
     body = resp.json()
     assert "clusters" in body and "watch_topics" in body and "source" in body
     assert _all_areas(body["clusters"]) == {"oceanography", "healthcare ML"}
+
+
+# -- breadth contract ---------------------------------------------------------
+# Regression guard for the "hyper-specific interests" report: the composer used
+# to ask for "concrete, searchable sub-topics", and the model answered by
+# restating résumé bullets ("nanoscale morphology-ionic conductivity
+# relationships") — true of the researcher, but too narrow for any paper to
+# match. The prompt must keep asking for broad, recognisable topic names.
+
+
+def test_compose_prompt_asks_for_broad_topics() -> None:
+    seen: list[str] = []
+
+    def capture(prompt: str) -> str:
+        seen.append(prompt)
+        return json.dumps(
+            {"clusters": [{"label": "AI Agents", "areas": ["AI agents in health"]}]}
+        )
+
+    compose_clusters(instruction="agentic AI for hospital triage", complete=capture)
+
+    prompt = seen[0]
+    assert "BROAD" in prompt
+    assert "Generalise up" in prompt
+    # The rule that keeps breadth honest: don't collapse to a bare discipline.
+    assert "stay on target" in prompt
+    # And the closing instruction the user prompt ends on.
+    assert "not restatements of individual projects" in prompt

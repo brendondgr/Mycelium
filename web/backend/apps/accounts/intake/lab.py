@@ -35,9 +35,17 @@ _LAB_SYSTEM_PROMPT = (
     "these keys:\n"
     '  "statement": a 2-4 sentence summary of the lab\'s shared research '
     "purpose, written in the third person about the lab (\"The lab studies...\"),\n"
-    '  "areas": list of the lab\'s research areas or fields,\n'
-    '  "keywords": list of specific topics or keywords,\n'
+    '  "areas": 4-8 BROAD research areas — the recognisable field, sub-field, '
+    "or topic names a peer would use to describe the lab's work (e.g. "
+    '"AI agents", "medical imaging", "block-copolymer self-assembly"), each '
+    "1-4 words,\n"
+    '  "keywords": the specific topics, methods, systems, and datasets named in '
+    "the text — all the fine-grained detail belongs here, not in areas,\n"
     '  "skills": list of methods, tools, or techniques the lab uses.\n'
+    "Generalise up when writing areas: a single project, technique, instrument, "
+    "or paper title is never an area — name the topic it belongs to. Stay broad "
+    "but stay on target: keep the qualifier that names what this lab actually "
+    "works on rather than collapsing to a bare discipline.\n"
     "Ground every value in the supplied text — do not invent topics, "
     "affiliations, or accomplishments. Use an empty string or empty list when "
     "the text does not support a field. Output only the JSON object: no prose, "

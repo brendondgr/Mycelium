@@ -45,34 +45,53 @@ COMPOSE_THINKING_BUDGET = 512
 #: Cap on the source-text the composer reads (mirrors extract.py's ``_MAX_TEXT``).
 _COMPOSE_MAX_CORPUS = 12000
 
-# The composer's contract: a cluster is a niche THEME whose members are the
-# concrete sub-topics Mylo will actually search on. This is the single reasoning
-# shared by the initial profile build (grounded in a source corpus) and the
-# "instruct Mylo" box (grounded in a free-text description) — same shape, same
-# theme→sub-topic model, so a profile reads identically however it was created.
+# The composer's contract: a cluster is a THEME whose members are the broad
+# research topics Mylo will follow. This is the single reasoning shared by the
+# initial profile build (grounded in a source corpus) and the "instruct Mylo" box
+# (grounded in a free-text description) — same shape, same theme→topic model, so
+# a profile reads identically however it was created.
+#
+# Breadth is the whole point of the wording below. An earlier version asked for
+# "concrete, searchable sub-topics", which made the model restate résumé bullets
+# ("nanoscale morphology-ionic conductivity relationships") — technically true of
+# the researcher, but so narrow that almost no paper matches. Topics must be the
+# names of fields peers would recognise, kept honest by the qualifier the
+# researcher actually works under.
 _COMPOSE_SYSTEM_PROMPT = (
     "You are Mylo, a research librarian, organising a researcher's interests into "
-    "clusters. A cluster is a NICHE THEME (a short umbrella label) holding a few "
-    "CONCRETE SUB-TOPICS — the specific things Mylo will search the literature "
-    "for. For example:\n"
-    '  {"label": "AI & Healthcare", "areas": ["AI agents in health", '
-    '"computer vision for health", "robotic surgery"]}\n'
+    "clusters. A cluster is a THEME (a short umbrella label) holding a few BROAD "
+    "RESEARCH TOPICS — the recognisable topics Mylo will follow in the "
+    "literature. For example:\n"
+    '  {"label": "AI & Healthcare", "areas": ["AI agents in healthcare", '
+    '"medical imaging", "clinical NLP"]}\n'
     '  {"label": "Robotics", "areas": ["vision-language-action models", '
-    '"robotic surgery", "robotic automation"]}\n'
+    '"surgical robotics", "robot learning"]}\n'
     "Rules:\n"
     "- Produce 2 to {max_clusters} clusters; prefer a few sharp themes over many "
     "tiny ones.\n"
-    "- Each cluster holds 2-6 specific, searchable sub-topics — never one-word "
-    "fields; make them concrete enough to be a good literature-search query.\n"
-    "- Ground every theme and sub-topic in what the researcher told you or the "
-    "supplied source text. You MAY add a closely-related sub-topic the researcher "
+    "- Each cluster holds 2-6 topics. Keep every topic BROAD: the name of a "
+    "field, sub-field, or method area that many groups work on, usually 2-5 "
+    "words — never a sentence and never a project description.\n"
+    "- Generalise up from the source material. A single project, technique, "
+    "instrument, dataset, or paper title is NOT a topic — name the topic it "
+    'belongs to. "Agentic querying over MITRE ATT&CK and CAPEC frameworks" '
+    'becomes "AI agents" or "AI for threat intelligence"; "U-Net segmentation of '
+    'TEM micrographs" becomes "deep learning for microscopy"; "nanoscale '
+    'morphology-ionic conductivity relationships" becomes "solid-state '
+    'electrolytes".\n'
+    "- Stay broad but stay on target: keep the qualifier that names what the "
+    "researcher actually works on. Someone doing agentic AI for healthcare gets "
+    '"AI agents in healthcare" — not the bare field "artificial intelligence", '
+    'and not "multi-agent triage over EHR FHIR bundles".\n'
+    "- Ground every theme and topic in what the researcher told you or the "
+    "supplied source text. You MAY add a closely-related topic the researcher "
     "clearly implies, but never drift into unrelated fields or invent "
     "affiliations or accomplishments.\n"
     "- When existing clusters are supplied, KEEP a theme's exact label when it "
     "still fits, so it is recognised as the same cluster; refine or add only "
     "where the new description calls for it.\n"
     "Return ONLY one JSON object, no prose and no markdown fences:\n"
-    '  {"clusters": [{"label": <theme>, "areas": [<sub-topic>, ...]}]}'
+    '  {"clusters": [{"label": <theme>, "areas": [<topic>, ...]}]}'
 )
 
 
@@ -166,9 +185,10 @@ def compose_clusters(
     The single reasoning shared by the initial profile build (``corpus`` = the
     gathered author/résumé text) and the "instruct Mylo" box (``instruction`` =
     the researcher's free-text description). Unlike :func:`propose_clusters` — a
-    pure *partition* of already-declared areas — this may **invent** concrete
-    sub-topics grounded in the input: each cluster's ``label`` is a niche theme
-    and its ``areas`` are the specific things Mylo will search on.
+    pure *partition* of already-declared areas — this may **invent** topics
+    grounded in the input: each cluster's ``label`` is a theme and its ``areas``
+    are the broad research topics Mylo will search on (deliberately generalised
+    up from project-level detail, so the feed is not starved).
 
     ``existing_clusters`` / ``areas`` / ``keywords`` / ``statement`` /
     ``watch_topics`` are the researcher's *current* profile, passed as context so
@@ -348,8 +368,9 @@ def _build_compose_prompt(
         )
         parts.append(corpus.strip()[:_COMPOSE_MAX_CORPUS])
     parts.append(
-        f"\nOrganise this into 2-{max_clusters} niche theme clusters, each with a "
-        "few concrete, searchable sub-topics."
+        f"\nOrganise this into 2-{max_clusters} theme clusters, each with a few "
+        "broad, recognisable research topics — the field names a peer would use, "
+        "not restatements of individual projects, methods, or paper titles."
     )
     return "\n".join(parts)
 

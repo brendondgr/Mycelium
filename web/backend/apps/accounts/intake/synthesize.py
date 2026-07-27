@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from apps.accounts.interests import CURRENT_VERSION
+from apps.content.clustering import MAX_CLUSTERS
 
 from .drafts import AuthorProfileDraft
 from .extract import CompleteFn, ProfileFields, extract_profile_fields
@@ -30,11 +31,17 @@ def synthesize_interests(
     resume_text: str = "",
     provenance: dict[str, str] | None = None,
     complete: CompleteFn | None = None,
+    max_clusters: int = MAX_CLUSTERS,
+    max_areas_per_cluster: int | None = None,
 ) -> tuple[AuthorProfileDraft, dict[str, Any]]:
     """Return ``(merged_draft, interests)`` for the gathered sources.
 
     ``site_draft`` is an imported author draft (optional); ``resume_text`` is the
     raw extracted résumé text (optional). At least one should carry signal.
+    ``max_clusters`` / ``max_areas_per_cluster`` are the caller's plan caps: the
+    synthesised clusters are clamped to them here so the organize step opens with
+    a grouping the user can actually save, instead of spilling the overflow into
+    the Unsorted tray.
     """
 
     # A deterministic résumé draft backs the fallback path (no model needed).
@@ -52,12 +59,23 @@ def synthesize_interests(
         fallback=lambda: _fields_from_draft(merged),
     )
     interests = _interests_from_fields(fields, merged, provenance or {})
-    _attach_clusters(interests, corpus=corpus, complete=complete)
+    _attach_clusters(
+        interests,
+        corpus=corpus,
+        complete=complete,
+        max_clusters=max_clusters,
+        max_areas_per_cluster=max_areas_per_cluster,
+    )
     return merged, interests
 
 
 def _attach_clusters(
-    interests: dict[str, Any], *, corpus: str, complete: CompleteFn | None
+    interests: dict[str, Any],
+    *,
+    corpus: str,
+    complete: CompleteFn | None,
+    max_clusters: int = MAX_CLUSTERS,
+    max_areas_per_cluster: int | None = None,
 ) -> None:
     """Organise the just-built interests into theme→sub-topic clusters in place.
 
@@ -76,6 +94,8 @@ def _attach_clusters(
         keywords=interests.get("keywords", []),
         statement=interests.get("statement", ""),
         complete=complete,
+        max_clusters=max_clusters,
+        max_areas_per_cluster=max_areas_per_cluster,
     )
     if not clusters:
         return

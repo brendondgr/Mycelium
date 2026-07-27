@@ -947,10 +947,16 @@ class SynthesizeView(APIView):
 
         # The LLM reads the gathered text and fills every field in one call; the
         # structured draft is the deterministic fallback when no model is up.
+        # Clamp to the caller's plan so the organize step opens with a grouping
+        # they can save outright rather than an overflowing Unsorted tray.
+        from apps.billing.entitlements import cluster_cap, cluster_topic_cap
+
         draft, interests = synthesize_interests(
             site_draft=site_draft,
             resume_text=resume_text,
             provenance=provenance,
+            max_clusters=cluster_cap(request.user),
+            max_areas_per_cluster=cluster_topic_cap(request.user),
         )
         return Response(
             {"draft": dataclasses.asdict(draft), "interests": interests}

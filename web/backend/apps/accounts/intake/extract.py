@@ -33,9 +33,20 @@ _SYSTEM_PROMPT = (
     "papers, declared interests, and/or résumé). Return ONLY one JSON object "
     "with exactly these keys:\n"
     '  "statement": a 2-4 sentence first-person research summary,\n'
-    '  "areas": list of research areas or fields,\n'
-    '  "keywords": list of specific topics or keywords,\n'
+    '  "areas": 4-8 BROAD research areas — the recognisable field, sub-field, '
+    "or topic names a peer would use to describe this person's work (e.g. "
+    '"AI agents", "medical imaging", "block-copolymer self-assembly"), each '
+    "1-4 words,\n"
+    '  "keywords": the specific topics, methods, systems, and datasets named in '
+    "the text — all the fine-grained detail belongs here, not in areas,\n"
     '  "skills": list of tools, languages, and technical skills.\n'
+    "Generalise up when writing areas: a single project, technique, instrument, "
+    "or paper title is never an area — name the topic it belongs to. "
+    '"Agentic querying over MITRE ATT&CK and CAPEC frameworks" is the area '
+    '"AI agents" (and "AI for threat intelligence" if security is central); '
+    '"U-Net segmentation of TEM micrographs" is "deep learning for microscopy". '
+    "Stay broad but stay on target: keep the qualifier that names what this "
+    "researcher actually works on rather than collapsing to a bare discipline.\n"
     "Ground every value in the supplied text — do not invent topics, "
     "affiliations, or accomplishments. Use an empty string or empty list when "
     "the text does not support a field. Output only the JSON object: no prose, "
