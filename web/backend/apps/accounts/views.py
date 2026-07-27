@@ -25,6 +25,7 @@ from rest_framework.views import APIView
 
 from apps.billing.services import create_lab_workspace, provision_workspace
 
+from . import signup_gate
 from .intake import (
     AuthorImportError,
     IntakeAgent,
@@ -81,9 +82,9 @@ from .services import (
     detach_lab_from_department,
     invite_to_lab,
     record_audit_event,
-    set_lab_department_inclusion,
     remove_dept_member,
     remove_lab_member,
+    set_lab_department_inclusion,
     set_lab_member_role,
 )
 
@@ -133,11 +134,30 @@ def login_view(request: Request) -> Response:
 def register_view(request: Request) -> Response:
     """Create a user + workspace in one atomic step, then log them in.
 
-    Two phases inside one transaction: create the ``User`` (the post_save signal
-    creates the ``Profile``), then ``provision_workspace`` builds the org +
-    billing rows. A failure in either phase rolls back the whole thing, so a
-    half-built account never persists.
+    Sign-up is invite-only: the payload must carry the live verification code.
+    That check runs first, before any other validation, so a wrong code costs a
+    strike and reveals nothing else about the payload. Three consecutive misses
+    shadow-ban the client for an hour — see ``signup_gate`` for why every
+    outcome shares one message.
+
+    After the gate, two phases inside one transaction: create the ``User`` (the
+    post_save signal creates the ``Profile``), then ``provision_workspace``
+    builds the org + billing rows. A failure in either phase rolls back the whole
+    thing, so a half-built account never persists.
     """
+    subject = signup_gate.client_subject(request)
+    banned = signup_gate.is_shadow_banned(subject)
+    if banned or not signup_gate.code_matches(request.data.get("access_code", "")):
+        # Only a genuine miss adds a strike; an attempt made while already banned
+        # neither extends the ban nor tells the caller anything new.
+        if not banned:
+            signup_gate.record_failure(subject)
+        return Response(
+            {"access_code": [signup_gate.INVALID_CODE_MESSAGE]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    signup_gate.clear_failures(subject)
+
     serializer = RegisterSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)  # -> 400 with field errors
     data = serializer.validated_data
@@ -157,6 +177,10 @@ def register_view(request: Request) -> Response:
             org_name=data.get("org_name", ""),
             institution=data.get("institution", ""),
         )
+
+        # The account cleared the invite gate, so it starts verified.
+        user.profile.is_verified = True
+        user.profile.save(update_fields=["is_verified"])
 
         # Surface any lab invitations that were sent to this email before signup.
         claim_pending_invitations(user)

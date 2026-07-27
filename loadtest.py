@@ -44,6 +44,7 @@ import asyncio
 import csv
 import logging
 import math
+import os
 import random
 import shutil
 import statistics
@@ -97,6 +98,9 @@ MARKER_EMAIL_DOMAIN = "loadtest.mycelium.test"
 USERNAME_PREFIX = "lt_"
 # Meets AUTH_PASSWORD_VALIDATORS (length, not all-numeric, not too common).
 FAKE_PASSWORD = "Mycelium-Load-9271"
+# The invite-only sign-up code the target deployment is running (backend
+# `SIGNUP_ACCESS_CODE`). Override via the env var when it is rotated.
+SIGNUP_ACCESS_CODE = os.environ.get("SIGNUP_ACCESS_CODE", "251253")
 
 
 # --------------------------------------------------------------------------- #
@@ -345,6 +349,10 @@ class UserSim:
                     "account_type": "personal",
                     "first_name": "Load",
                     "last_name": f"Test{self.idx}",
+                    # Sign-up is invite-only; without the live code every virtual
+                    # user 400s at this stage (and three misses shadow-ban the
+                    # host for an hour).
+                    "access_code": SIGNUP_ACCESS_CODE,
                 },
             )
             if reg is None:

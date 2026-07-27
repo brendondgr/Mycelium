@@ -43,6 +43,10 @@ class RegisterSerializer(serializers.Serializer):
     Identity fields are always required; ``org_name`` is required only for lab
     and department accounts. Password strength is checked through the project's
     ``AUTH_PASSWORD_VALIDATORS`` so the policy stays in one place.
+
+    The invite-only ``access_code`` is *declared* here but checked in the view
+    (``apps.accounts.signup_gate``), before any of this runs: a wrong code must
+    cost a strike and must never leak which other fields would also have failed.
     """
 
     username = serializers.CharField(max_length=150)
@@ -56,6 +60,10 @@ class RegisterSerializer(serializers.Serializer):
         max_length=150, required=False, allow_blank=True
     )
     account_type = serializers.ChoiceField(choices=ACCOUNT_TYPES)
+    # Accepted so the payload validates; correctness is the view's job.
+    access_code = serializers.CharField(
+        write_only=True, required=False, allow_blank=True
+    )
     # Required only for lab / department (checked in validate()).
     org_name = serializers.CharField(
         max_length=200, required=False, allow_blank=True

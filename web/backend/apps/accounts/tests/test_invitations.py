@@ -1,6 +1,7 @@
 """Lab invitations: invite by email/username, pending-email claim, and responses."""
 
 import pytest
+from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
@@ -98,6 +99,7 @@ def test_pending_email_invite_claimed_on_signup(client: APIClient) -> None:
             "password": "Str0ng-P4ssw0rd!",
             "password_confirm": "Str0ng-P4ssw0rd!",
             "account_type": "personal",
+            "access_code": settings.SIGNUP_ACCESS_CODE,
         },
         format="json",
     )

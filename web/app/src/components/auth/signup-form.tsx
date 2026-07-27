@@ -59,7 +59,8 @@ type FieldKey =
   | "email"
   | "password"
   | "password_confirm"
-  | "org_name";
+  | "org_name"
+  | "access_code";
 
 type FieldErrors = Partial<Record<FieldKey, string>>;
 
@@ -76,6 +77,7 @@ export function SignupForm() {
   const [confirm, setConfirm] = useState("");
   const [orgName, setOrgName] = useState("");
   const [institution, setInstitution] = useState("");
+  const [accessCode, setAccessCode] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
@@ -86,6 +88,9 @@ export function SignupForm() {
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
+    if (!accessCode.trim()) {
+      errors.access_code = "Enter your verification code.";
+    }
     if (!username.trim()) {
       errors.username = "Choose a username.";
     }
@@ -131,6 +136,7 @@ export function SignupForm() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         account_type: accountType,
+        access_code: accessCode.trim(),
         ...(needsOrgName ? { org_name: orgName.trim() } : {}),
         ...(accountType === "department"
           ? { institution: institution.trim() }
@@ -413,6 +419,38 @@ export function SignupForm() {
             </p>
           ) : null}
         </div>
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="access_code">
+          Verification code
+        </label>
+        <input
+          id="access_code"
+          name="access_code"
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder="6-digit code"
+          required
+          value={accessCode}
+          disabled={isBusy}
+          aria-invalid={Boolean(fieldErrors.access_code)}
+          aria-describedby={
+            fieldErrors.access_code ? "access_code-error" : "access_code-hint"
+          }
+          onChange={(event) => setAccessCode(event.target.value)}
+          className={fieldClass}
+        />
+        {fieldErrors.access_code ? (
+          <p className={errorClass} id="access_code-error" role="alert">
+            {fieldErrors.access_code}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-xs text-[var(--text-muted)]" id="access_code-hint">
+            Mycelium is invite-only right now — use the code you were given.
+          </p>
+        )}
       </div>
 
       <Button

@@ -197,6 +197,23 @@ REST_FRAMEWORK = {
     },
 }
 
+# Sign-up gate: registration is invite-only, so a new account must carry a valid
+# verification code. One shared code is live at a time (rotate it by setting the
+# env var) and it is compared in constant time.
+#
+# Brute-force policy: 3 consecutive wrong codes from the same client → a 1-hour
+# *shadow* ban. During the ban every attempt gets the same generic "code is not
+# valid" answer as a plain miss, so a prober cannot tell a wrong code from a
+# blocked one — and a correct code is refused too. The counters live in Redis
+# (apps.accounts.signup_gate) so a ban survives a web restart and is shared
+# across processes.
+SIGNUP_ACCESS_CODE = env_str("SIGNUP_ACCESS_CODE", "251253")
+SIGNUP_CODE_MAX_FAILURES = env.int("SIGNUP_CODE_MAX_FAILURES", default=3)
+SIGNUP_CODE_FAILURE_WINDOW_SECONDS = env.int(
+    "SIGNUP_CODE_FAILURE_WINDOW_SECONDS", default=3600
+)
+SIGNUP_CODE_LOCKOUT_SECONDS = env.int("SIGNUP_CODE_LOCKOUT_SECONDS", default=3600)
+
 # Email: console backend in dev (messages print to the runserver console). A real
 # transactional provider is wired in via this env var for non-dev environments.
 EMAIL_BACKEND = env(
@@ -485,6 +502,12 @@ SCAN_CACHE_URL = env("SCAN_CACHE_URL", default=re.sub(r"/\d+$", "/3", _REDIS_URL
 # to short TTLs. A Redis outage fails these lookups closed (see services.state).
 DISCORD_CACHE_URL = env("DISCORD_CACHE_URL", default=re.sub(r"/\d+$", "/4", _REDIS_URL))
 
+# Sign-up verification-code failure counters / shadow bans (apps.accounts
+# .signup_gate). Same reasoning as the Discord cache: a ban kept in process memory
+# would reset on redeploy and would not be seen by a sibling web process, so it
+# lives in Redis in its own db. Reads fail *closed* (see signup_gate).
+SIGNUP_CACHE_URL = env("SIGNUP_CACHE_URL", default=re.sub(r"/\d+$", "/5", _REDIS_URL))
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -506,6 +529,13 @@ CACHES = {
         "LOCATION": DISCORD_CACHE_URL,
         "KEY_PREFIX": "mycelium_discord",
         # No blanket TTL: every write sets its own (nonce 10 min, lockout 1 hr).
+        "TIMEOUT": None,
+    },
+    "signup": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": SIGNUP_CACHE_URL,
+        "KEY_PREFIX": "mycelium_signup",
+        # No blanket TTL: the failure counter and the ban each set their own.
         "TIMEOUT": None,
     },
 }

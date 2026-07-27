@@ -28,6 +28,8 @@ export type RegisterInput = {
   account_type: AccountType;
   org_name?: string;
   institution?: string;
+  /** Invite-only verification code; sign-up is refused without the live one. */
+  access_code: string;
 };
 
 /** A single publication source the onboarding importer can pull an author from. */

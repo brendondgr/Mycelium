@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import Client
 
+from apps.accounts import signup_gate
 from apps.accounts.models import (
     Department,
     DeptMembership,
@@ -42,6 +43,7 @@ def _personal_payload(**overrides) -> dict:
         "first_name": "Jamie",
         "last_name": "Rivera",
         "account_type": "personal",
+        "access_code": settings.SIGNUP_ACCESS_CODE,
     }
     payload.update(overrides)
     return payload
@@ -438,3 +440,121 @@ def test_register_is_rate_limited() -> None:
             _personal_payload(username="rl2", email="rl2@example.com"),
         )
         assert second.status_code == 429
+
+
+# --------------------------------------------------------------------------- #
+# Invite-only sign-up code + shadow ban (apps.accounts.signup_gate)
+# --------------------------------------------------------------------------- #
+INVALID_CODE = signup_gate.INVALID_CODE_MESSAGE
+
+
+@pytest.mark.django_db
+def test_register_with_valid_code_marks_account_verified(api_client: Client) -> None:
+    response = _register(api_client, _personal_payload())
+
+    assert response.status_code == 201
+    assert User.objects.get(username="newuser").profile.is_verified is True
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("code", ["", "000000", "251254", " 25125 3"])
+def test_register_rejects_a_bad_code_and_creates_nothing(
+    api_client: Client, code: str
+) -> None:
+    response = _register(api_client, _personal_payload(access_code=code))
+
+    assert response.status_code == 400
+    assert response.json()["access_code"] == [INVALID_CODE]
+    assert not User.objects.filter(username="newuser").exists()
+
+
+@pytest.mark.django_db
+def test_register_accepts_a_padded_code(api_client: Client) -> None:
+    response = _register(
+        api_client, _personal_payload(access_code=f"  {settings.SIGNUP_ACCESS_CODE} ")
+    )
+
+    assert response.status_code == 201
+
+
+@pytest.mark.django_db
+def test_three_wrong_codes_shadow_ban_the_client_for_an_hour(
+    api_client: Client,
+) -> None:
+    for _ in range(settings.SIGNUP_CODE_MAX_FAILURES):
+        assert (
+            _register(api_client, _personal_payload(access_code="000000")).status_code
+            == 400
+        )
+
+    assert signup_gate.is_shadow_banned("127.0.0.1") is True
+
+    # The right code is now refused too, with the *same* body — that is what makes
+    # the ban shadow: the caller cannot tell a wrong code from a blocked client.
+    blocked = _register(api_client, _personal_payload())
+    assert blocked.status_code == 400
+    assert blocked.json()["access_code"] == [INVALID_CODE]
+    assert not User.objects.filter(username="newuser").exists()
+
+    # The ban expires on its own after the configured hour.
+    assert settings.SIGNUP_CODE_LOCKOUT_SECONDS == 3600
+
+
+@pytest.mark.django_db
+def test_two_wrong_codes_then_a_right_one_still_registers(api_client: Client) -> None:
+    for _ in range(settings.SIGNUP_CODE_MAX_FAILURES - 1):
+        assert (
+            _register(api_client, _personal_payload(access_code="000000")).status_code
+            == 400
+        )
+
+    assert _register(api_client, _personal_payload()).status_code == 201
+
+
+@pytest.mark.django_db
+def test_a_success_resets_the_failure_streak(api_client: Client) -> None:
+    _register(api_client, _personal_payload(access_code="000000"))
+    _register(api_client, _personal_payload(access_code="000000"))
+    assert _register(api_client, _personal_payload()).status_code == 201
+
+    # Two more misses would have tripped the ban had the streak carried over.
+    for _ in range(settings.SIGNUP_CODE_MAX_FAILURES - 1):
+        _register(
+            Client(enforce_csrf_checks=True), _personal_payload(access_code="000000")
+        )
+    assert signup_gate.is_shadow_banned("127.0.0.1") is False
+
+
+@pytest.mark.django_db
+def test_ban_is_keyed_per_client_ip(api_client: Client) -> None:
+    for _ in range(settings.SIGNUP_CODE_MAX_FAILURES):
+        _register(api_client, _personal_payload(access_code="000000"))
+    assert signup_gate.is_shadow_banned("127.0.0.1") is True
+
+    other = Client(enforce_csrf_checks=True, REMOTE_ADDR="10.0.0.7")
+    other.get("/api/auth/csrf/")
+    csrf = other.cookies[settings.CSRF_COOKIE_NAME].value
+    response = other.post(
+        "/api/auth/register/",
+        data=_personal_payload(),
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf,
+    )
+    assert response.status_code == 201
+
+
+@pytest.mark.django_db
+def test_a_banned_client_never_reaches_field_validation(api_client: Client) -> None:
+    """A ban answers before the serializer, so it leaks no other field errors."""
+    User.objects.create_user(username="taken", email="taken@example.com")
+    for _ in range(settings.SIGNUP_CODE_MAX_FAILURES):
+        _register(api_client, _personal_payload(access_code="000000"))
+
+    response = _register(api_client, _personal_payload(username="taken"))
+    assert response.json() == {"access_code": [INVALID_CODE]}
+
+
+def test_gate_fails_closed_when_the_cache_is_down() -> None:
+    """A Redis outage must not turn the gate into an unmetered guessing surface."""
+    with patch.object(signup_gate, "_cache", side_effect=RuntimeError("redis down")):
+        assert signup_gate.is_shadow_banned("127.0.0.1") is True
