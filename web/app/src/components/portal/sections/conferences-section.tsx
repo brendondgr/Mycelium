@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { MatchCard } from "@/components/portal/primitives/match-card";
 import { MatchRing } from "@/components/portal/primitives/match-ring";
 import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
@@ -76,36 +77,42 @@ export function ConferenceCard({
   const moreSubjects = subjects.length - shownSubjects.length;
 
   return (
-    <Card className="flex h-full flex-col p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          {conf.is_new ? <NewTag /> : null}
-          <MatchRing
-            percent={conf.match_percent ?? conf.embedding_match}
-            origin={conf.origin}
-            size="sm"
-          />
-          {conf.cluster ? <ClusterBadge cluster={conf.cluster} /> : null}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <RemindButton
-            contentId={conf.content_id}
-            title={conf.title}
-            deadlines={conf.addressable_deadlines}
-            lockedLabSlug={remindLabSlug}
-          />
-          <SaveButton
-            contentId={conf.content_id}
-            saved={conf.saved}
-            savedLabs={conf.saved_labs}
-          />
-        </div>
-      </div>
+    <MatchCard
+      fill
+      ring={
+        <MatchRing
+          percent={conf.match_percent ?? conf.embedding_match}
+          origin={conf.origin}
+        />
+      }
+      head={
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {conf.is_new ? <NewTag /> : null}
+              {conf.cluster ? <ClusterBadge cluster={conf.cluster} /> : null}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <RemindButton
+                contentId={conf.content_id}
+                title={conf.title}
+                deadlines={conf.addressable_deadlines}
+                lockedLabSlug={remindLabSlug}
+              />
+              <SaveButton
+                contentId={conf.content_id}
+                saved={conf.saved}
+                savedLabs={conf.saved_labs}
+              />
+            </div>
+          </div>
 
-      <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
-        {conf.title}
-      </h3>
-
+          <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+            {conf.title}
+          </h3>
+        </>
+      }
+    >
       <dl className="mt-2.5 space-y-1.5 text-sm text-[var(--text-secondary)]">
         {where ? (
           <div className="flex gap-2">
@@ -184,7 +191,7 @@ export function ConferenceCard({
           />
         </a>
       ) : null}
-    </Card>
+    </MatchCard>
   );
 }
 

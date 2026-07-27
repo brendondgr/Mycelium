@@ -102,7 +102,10 @@ export function MatchRing({
       </div>
 
       {caption && size === "md" ? (
-        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
+        /* Wrapped to the ring's own width. On one line "strong match" is half
+           again as wide as the ring, and since this sits in a card's left notch
+           that extra width is dead space on every card in the feed. */
+        <span className="w-14 text-center text-[10px] font-semibold uppercase leading-[1.15] tracking-[0.06em] text-[var(--text-secondary)]">
           {word} match
         </span>
       ) : null}

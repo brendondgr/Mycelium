@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { Card } from "@/components/portal/primitives/card";
+import { MatchCard } from "@/components/portal/primitives/match-card";
 import { MatchRing } from "@/components/portal/primitives/match-ring";
 import { Pill } from "@/components/portal/primitives/pill";
 import {
@@ -38,36 +38,26 @@ function metaLine(suggestion: Suggestion): string {
  * signal, the chip always carries text. Lifts gently on hover (reduced-motion
  * aware via the global transition).
  *
- * Layout is a left gutter holding the match ring, with the card's content stack
- * beside it. The ring shows the language model's own percent and, when Mylo
- * authored the judgement, his portrait as attribution; the cross-embedding tail
- * (no model percent) falls back to its transformer `embedding_match`. Every
- * feed card in the workspace shares this shape.
+ * Laid out by `MatchCard`: the ring sits in a notch at the top-left beside the
+ * badges, title and meta line, and the abstract, reason and link run the card's
+ * full width beneath it. The ring shows the language model's own percent and,
+ * when Mylo authored the judgement, his portrait as attribution; the
+ * cross-embedding tail (no model percent) falls back to its transformer
+ * `embedding_match`. Every scored feed card in the workspace shares this shape.
  */
 export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
   const isMylo = suggestion.origin === "llm";
 
-  return (
-    <Card className="p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-      <div className="flex gap-4 sm:gap-5">
-        {/* Left gutter: how well this fits, before anything else is read. */}
-        <MatchRing
-          percent={suggestion.match_percent ?? suggestion.embedding_match}
-          origin={suggestion.origin}
-          className="mt-0.5 hidden sm:flex"
-        />
+  const percent = suggestion.match_percent ?? suggestion.embedding_match;
 
-        <div className="min-w-0 flex-1">
-          {/* Top row: the ring's mobile stand-in and cluster attribution lead;
-              status + actions trail on the right. */}
+  return (
+    <MatchCard
+      ring={<MatchRing percent={percent} origin={suggestion.origin} />}
+      head={
+        <>
+          {/* Cluster attribution leads; status + actions trail on the right. */}
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <MatchRing
-                percent={suggestion.match_percent ?? suggestion.embedding_match}
-                origin={suggestion.origin}
-                size="sm"
-                className="sm:hidden"
-              />
               {suggestion.cluster ? (
                 <ClusterBadge cluster={suggestion.cluster} />
               ) : null}
@@ -110,42 +100,42 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
           <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
             {metaLine(suggestion)}
           </p>
+        </>
+      }
+    >
+      {suggestion.abstract ? (
+        <p className="mt-3 line-clamp-5 text-sm leading-relaxed text-[var(--text-secondary)]">
+          {suggestion.abstract}
+        </p>
+      ) : null}
 
-          {suggestion.abstract ? (
-            <p className="mt-3 line-clamp-5 text-sm leading-relaxed text-[var(--text-secondary)]">
-              {suggestion.abstract}
-            </p>
-          ) : null}
+      {/* Mylo's read on why this fits — a soft primary field flags the AI
+          note. A templated topical match stays a plain line. */}
+      {suggestion.reason ? (
+        isMylo ? (
+          <MyloReason reason={suggestion.reason} />
+        ) : (
+          <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+            {suggestion.reason}
+          </p>
+        )
+      ) : null}
 
-          {/* Mylo's read on why this fits — a soft primary field flags the AI
-              note. A templated topical match stays a plain line. */}
-          {suggestion.reason ? (
-            isMylo ? (
-              <MyloReason reason={suggestion.reason} />
-            ) : (
-              <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
-                {suggestion.reason}
-              </p>
-            )
-          ) : null}
-
-          {suggestion.url ? (
-            <a
-              href={suggestion.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group mt-3.5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-            >
-              Read paper
-              <ArrowRightIcon
-                size={14}
-                aria-hidden="true"
-                className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-              />
-            </a>
-          ) : null}
-        </div>
-      </div>
-    </Card>
+      {suggestion.url ? (
+        <a
+          href={suggestion.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group mt-3.5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+        >
+          Read paper
+          <ArrowRightIcon
+            size={14}
+            aria-hidden="true"
+            className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+          />
+        </a>
+      ) : null}
+    </MatchCard>
   );
 }
