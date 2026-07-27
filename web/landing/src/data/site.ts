@@ -38,6 +38,7 @@ export const secondaryCta = {
 export const contactEmail = "hello@mycelium.example";
 
 export const primaryNav = [
+  { href: "/", label: "Home" },
   { href: "/product", label: "Product" },
   { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },

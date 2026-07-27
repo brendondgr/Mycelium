@@ -21,7 +21,7 @@ import { roles } from "@/data/landing";
     <div class="mt-10 grid gap-6 lg:grid-cols-[16rem_1fr] lg:gap-10">
       <fieldset class="reveal">
         <legend class="sr-only">Choose a role</legend>
-        <div class="flex flex-wrap gap-2 lg:flex-col lg:gap-1.5">
+        <div class="role-options">
           {
             roles.map((role, index) => (
               <>
@@ -29,13 +29,10 @@ import { roles } from "@/data/landing";
                   type="radio"
                   name="role-preview"
                   id={`role-${role.id}`}
-                  class="peer sr-only"
+                  class="segmented-input"
                   checked={index === 0}
                 />
-                <label
-                  for={`role-${role.id}`}
-                  class="inline-flex min-h-11 cursor-pointer items-center rounded-full px-4 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-secondary hover:text-[var(--text-primary)] peer-checked:bg-secondary peer-checked:font-semibold peer-checked:text-[var(--text-primary)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--ring)] lg:justify-start lg:rounded-lg"
-                >
+                <label for={`role-${role.id}`} class="role-option">
                   {role.label}
                 </label>
               </>
@@ -104,6 +101,67 @@ import { roles } from "@/data/landing";
 </section>
 
 <style>
+  /*
+    Wrapped pills on small screens, a vertical rail beside the panel on large
+    ones. Uses `:checked + label` for the same reason as the segmented control
+    in global.css — Tailwind's peer-checked utilities light up every following
+    label, not just the selected one.
+  */
+  .role-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .role-option {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    background: var(--card);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background-color 200ms ease,
+      border-color 200ms ease,
+      color 200ms ease;
+  }
+
+  .role-option:hover {
+    border-color: color-mix(in srgb, var(--brand-primary) 45%, transparent);
+    color: var(--text-primary);
+  }
+
+  .segmented-input:checked + .role-option {
+    border-color: var(--brand-primary);
+    background: color-mix(in srgb, var(--brand-primary) 12%, var(--card));
+    font-weight: 600;
+    color: var(--brand-primary-hover);
+  }
+
+  .segmented-input:focus-visible + .role-option {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 1024px) {
+    .role-options {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.4rem;
+    }
+
+    .role-option {
+      justify-content: flex-start;
+      border-radius: 0.6rem;
+    }
+  }
+
   .role-panel {
     display: none;
   }

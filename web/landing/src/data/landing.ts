@@ -44,19 +44,6 @@ export const features = [
   icon: LucideIcon;
 }>;
 
-/**
- * Sources Mycelium actually ingests today. Keep this list honest — it is a
- * trust claim, not a wish list. Add a source here only once its scraper is
- * live in `apps/scraper`.
- */
-export const sources = [
-  "OpenAlex",
-  "PubMed",
-  "Semantic Scholar",
-  "ProQuest Pivot",
-  "Illinois Fellowship Finder",
-] as const;
-
 export type FeedItem = {
   title: string;
   meta: string;

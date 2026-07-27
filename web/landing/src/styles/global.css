@@ -197,6 +197,84 @@ body {
 }
 
 /*
+ * Segmented control (the feed switcher).
+ *
+ * Deliberately NOT Tailwind's `peer-checked:` utilities. Those compile to
+ * `:is(:where(.peer):checked ~ *)` — a *general* sibling combinator — so in a
+ * group of several radios every label after the checked one matches, and the
+ * whole control renders as if all segments were selected. The adjacent-sibling
+ * rule below is scoped to each input's own label, which is what a segmented
+ * control actually needs.
+ */
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--surface-alt);
+}
+
+/* Visually hidden but still focusable, and still adjacent to its label. */
+.segmented-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding-inline: 1.35rem;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.segmented-option:hover {
+  color: var(--text-primary);
+}
+
+.segmented-input:checked + .segmented-option {
+  background: var(--card);
+  font-weight: 600;
+  color: var(--brand-primary-hover);
+  box-shadow:
+    0 1px 2px rgb(46 54 39 / 8%),
+    0 6px 16px rgb(46 54 39 / 8%);
+}
+
+.segmented-input:focus-visible + .segmented-option {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .segmented {
+    width: 100%;
+  }
+
+  .segmented-option {
+    flex: 1 1 40%;
+    padding-inline: 0.75rem;
+  }
+}
+
+/*
  * Featured pricing tier. A green border carries the emphasis and a hairline
  * gold ring sits just inside it — gold is the brand's "valuable signal" color,
  * so it marks the recommended plan without shouting. Lives here rather than in
