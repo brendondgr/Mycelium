@@ -1,4 +1,5 @@
 ---
+import FinalCta from "@/components/landing/FinalCta.astro";
 import { PricingSection } from "@/components/pricing/PricingSection";
 import PublicLayout from "@/layouts/PublicLayout.astro";
 ---
@@ -7,7 +8,28 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
   title="Pricing"
   description="Spore, Mycelium Lab, and Canopy plans for solo researchers through departments—with a 14-day free trial."
 >
-  <div class="mycelium-network-bg bg-background py-16 text-foreground sm:py-20 lg:py-24">
-    <PricingSection />
+  <div
+    class="mycelium-network-bg relative overflow-hidden border-b border-border bg-background py-16 text-foreground sm:py-20 lg:py-24"
+  >
+    <div aria-hidden="true" class="pricing-wash"></div>
+    <div class="relative">
+      <PricingSection />
+    </div>
   </div>
+
+  <FinalCta
+    title="Not sure which plan fits?"
+    description="Start on the free trial with no card, or tell us how your lab is structured and we will point you at the right tier."
+  />
 </PublicLayout>
+
+<style>
+  .pricing-wash {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse 60% 50% at 50% -5%, color-mix(in srgb, var(--brand-secondary) 14%, transparent) 0, transparent 65%),
+      radial-gradient(ellipse 45% 40% at 88% 62%, color-mix(in srgb, var(--brand-accent) 10%, transparent) 0, transparent 60%);
+    pointer-events: none;
+  }
+</style>

@@ -37,35 +37,35 @@ const planCellKeys = ["spore", "lab", "canopy"] as const;
 
 export function PricingComparison() {
   return (
-    <section className="py-8 sm:py-10" aria-labelledby="pricing-comparison-heading">
-      <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#7a9e6e]">
+    <section className="py-12 sm:py-14" aria-labelledby="pricing-comparison-heading">
+      <p className="text-xs font-medium uppercase tracking-[0.14em] eyebrow">
         {pricingComparison.eyebrow}
       </p>
       <h2
         id="pricing-comparison-heading"
-        className="mt-1.5 text-[22px] font-medium text-[var(--text-primary)]"
+        className="font-display mt-2 text-[clamp(1.5rem,3.2vw,2rem)] font-medium leading-tight text-[var(--text-primary)]"
       >
         {pricingComparison.title}
       </h2>
-      <p className="mt-1.5 text-[13px] text-[var(--text-secondary)]">
+      <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
         {pricingComparison.subtitle}
       </p>
 
-      <div className="mt-7 overflow-x-auto">
-        <table className="w-full min-w-[40rem] border-collapse text-[13px]">
+      <div className="mt-8 overflow-x-auto rounded-2xl border border-border bg-card">
+        <table className="compare-table w-full min-w-[40rem] border-collapse text-[13px]">
           <caption className="sr-only">
             Feature comparison across Spore, Mycelium Lab, and Canopy
           </caption>
           <thead>
-            <tr className="border-b border-border/80">
-              <th scope="col" className="w-[38%] px-4 py-2.5 text-left" />
+            <tr className="border-b border-border/80 bg-[var(--surface-alt)]">
+              <th scope="col" className="w-[38%] px-4 py-4 text-left" />
               {pricingComparison.plans.map((plan) => (
                 <th
                   key={plan.id}
                   scope="col"
                   className={cn(
-                    "px-4 py-2.5 text-center text-xs font-medium text-[var(--text-secondary)]",
-                    "highlighted" in plan && plan.highlighted && "text-[#7a9e6e]",
+                    "px-4 py-4 text-center text-xs font-medium text-[var(--text-secondary)]",
+                    "highlighted" in plan && plan.highlighted && "text-primary",
                   )}
                 >
                   <div className="flex flex-col items-center gap-1">
@@ -77,7 +77,7 @@ export function PricingComparison() {
                     >
                       {plan.name}
                     </span>
-                    <span className="text-[15px] font-medium text-[var(--text-primary)]">
+                    <span className="font-display text-base font-medium text-[var(--text-primary)]">
                       {plan.price}
                     </span>
                     <span className="text-[10px] text-[var(--text-secondary)]">
@@ -94,7 +94,7 @@ export function PricingComparison() {
                 <tr>
                   <td
                     colSpan={4}
-                    className="border-t border-border/80 bg-surface-alt px-4 pb-1 pt-3.5 text-[10.5px] font-medium uppercase tracking-[0.09em] text-[var(--text-secondary)]"
+                    className="border-y border-border/80 bg-[var(--surface-alt)] px-4 py-2.5 font-display text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-secondary)]"
                   >
                     {category.title}
                   </td>
@@ -102,7 +102,7 @@ export function PricingComparison() {
                 {category.rows.map((row) => (
                   <tr
                     key={row.feature}
-                    className="border-b border-border/80 transition-colors hover:bg-surface-alt"
+                    className="compare-row border-b border-divider transition-colors hover:bg-[color-mix(in_srgb,var(--brand-secondary)_8%,transparent)]"
                   >
                     <th scope="row" className="px-4 py-2.5 text-left font-normal">
                       <span className="text-[13px] text-[var(--text-primary)]">{row.feature}</span>
@@ -131,7 +131,7 @@ export function PricingComparison() {
         </table>
       </div>
 
-      <p className="mt-5 text-[11px] leading-[1.7] text-[var(--text-secondary)]">
+      <p className="mt-5 text-xs leading-[1.8] text-[var(--text-secondary)]">
         <span className="font-medium text-[var(--text-primary)]">Mycelium Lab</span> requires a
         minimum of 3 members and supports up to 15 members and 5 PIs/Co-PIs. &nbsp;·&nbsp;
         <span className="font-medium text-[var(--text-primary)]">Canopy</span> requires a minimum

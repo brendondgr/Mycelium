@@ -1,34 +1,86 @@
 ---
-import PageIntro from "@/components/landing/PageIntro.astro";
+import PageHero from "@/components/site/PageHero.astro";
+import { contactEmail, primaryCta } from "@/data/site";
 import PublicLayout from "@/layouts/PublicLayout.astro";
+
+const routes = [
+  {
+    title: "You just want to try it",
+    description:
+      "You do not need to talk to anyone. Start the free trial, set up a profile, and judge it against a field you already know well.",
+    action: { label: primaryCta.label, href: primaryCta.href, primary: true },
+  },
+  {
+    title: "A lab or department rollout",
+    description:
+      "Seats, department-wide routing, and per-lab plan inclusion take a short conversation. Tell us how your group is structured and we will map it to a tier.",
+    action: { label: "Email us", href: `mailto:${contactEmail}?subject=Lab%20rollout`, primary: false },
+  },
+  {
+    title: "Security, procurement, or data questions",
+    description:
+      "Institutional review, permissions, or data handling — ask directly rather than guessing from a marketing page. We would rather answer it.",
+    action: {
+      label: "Email us",
+      href: `mailto:${contactEmail}?subject=Security%20review`,
+      primary: false,
+    },
+  },
+];
 ---
 
 <PublicLayout
   title="Contact"
-  description="Contact the Mycelium team about pilots, partnerships, and product questions."
+  description="Reach the Mycelium team about lab and department rollouts, security reviews, and research partnerships."
 >
-  <PageIntro
+  <PageHero
     eyebrow="Contact"
-    title="Talk with the Mycelium team"
-    description="Reach out about pilots, security reviews, or research partnerships. Public forms will post through an approved API with validation and rate limiting when backend contracts are ready."
+    title="Talk to us"
+    description="Three reasons people get in touch, and the fastest route for each."
   />
-  <section class="pb-14">
-    <div class="mx-auto w-full max-w-xl px-4 sm:px-6 lg:px-8">
-      <div class="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <p class="text-sm leading-6 text-[var(--text-secondary)]">
-          Email placeholder:
-          <a class="font-medium text-primary underline-offset-2 hover:underline" href="mailto:hello@mycelium.example">
-            hello@mycelium.example
-          </a>
-        </p>
-        <p class="mt-4 text-sm leading-6 text-[var(--text-secondary)]">
-          Prefer a walkthrough?
-          <a class="font-medium text-primary underline-offset-2 hover:underline" href="/demo">
-            Request a demo
-          </a>
-          instead.
-        </p>
-      </div>
+
+  <section class="border-b border-border py-16 sm:py-20" aria-labelledby="routes-heading">
+    <div class="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
+      <h2 id="routes-heading" class="sr-only">How to reach us</h2>
+
+      <ul class="grid gap-5">
+        {
+          routes.map((route) => (
+            <li class="lift reveal grid gap-5 rounded-2xl border border-border bg-card p-6 shadow-[0_10px_28px_rgb(52_39_20/5%)] sm:grid-cols-[1fr_auto] sm:items-center sm:gap-8 sm:p-7">
+              <div>
+                <h3 class="text-lg font-semibold leading-snug text-[var(--text-primary)]">
+                  {route.title}
+                </h3>
+                <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                  {route.description}
+                </p>
+              </div>
+              <a
+                class:list={[
+                  "inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-6 text-sm font-medium transition",
+                  route.action.primary
+                    ? "bg-primary text-primary-foreground hover:bg-brand-primary-hover"
+                    : "border border-border text-[var(--text-primary)] hover:bg-secondary",
+                ]}
+                href={route.action.href}
+              >
+                {route.action.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <p class="mt-10 text-center text-sm text-[var(--text-secondary)] reveal">
+        Or write to
+        <a
+          class="font-medium text-[var(--brand-primary-hover)] underline-offset-2 hover:underline"
+          href={`mailto:${contactEmail}`}
+        >
+          {contactEmail}
+        </a>
+        about anything else.
+      </p>
     </div>
   </section>
 </PublicLayout>

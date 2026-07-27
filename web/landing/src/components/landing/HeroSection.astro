@@ -1,5 +1,5 @@
 ---
-const heroImage = "/images/mylo-hero.png";
+import { appLoginUrl, primaryCta } from "@/data/site";
 ---
 
 <section
@@ -7,11 +7,13 @@ const heroImage = "/images/mylo-hero.png";
   aria-labelledby="hero-heading"
 >
   <img
-    src={heroImage}
+    src="/images/mylo-hero-1600.webp"
+    srcset="/images/mylo-hero-900.webp 900w, /images/mylo-hero-1600.webp 1600w"
+    sizes="100vw"
     alt="Mylo, the Mycelium mushroom scout, standing in a warm forest network with research papers, grants, and connection lines"
     class="absolute inset-0 h-full w-full object-cover object-[70%_center] sm:object-[65%_center]"
-    width="1672"
-    height="941"
+    width="1600"
+    height="686"
     fetchpriority="high"
     decoding="async"
   />
@@ -20,7 +22,7 @@ const heroImage = "/images/mylo-hero.png";
     class="relative z-10 mx-auto flex min-h-[min(92vh,52rem)] w-full max-w-6xl flex-col justify-center px-4 py-16 sm:min-h-[min(88vh,48rem)] sm:px-6 sm:py-20 lg:px-8"
   >
     <div class="max-w-xl sm:max-w-2xl lg:max-w-[34rem]">
-      <p class="text-sm font-medium uppercase tracking-[0.14em] text-primary">
+      <p class="text-sm font-medium uppercase tracking-[0.14em] eyebrow">
         Lab intelligence platform
       </p>
       <h1
@@ -34,20 +36,21 @@ const heroImage = "/images/mylo-hero.png";
         reports, and next actions—so your team can see what changed, what
         matters, and what to do next.
       </p>
-      <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+      <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <a
-          class="inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-brand-primary-hover"
-          href="/demo"
+          class="inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-7 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-brand-primary-hover"
+          href={primaryCta.href}
         >
-          Get started
+          {primaryCta.label}
         </a>
         <a
-          class="inline-flex min-h-11 items-center justify-center rounded-full border border-border bg-[color-mix(in_srgb,var(--card)_88%,transparent)] px-6 text-sm font-medium text-[var(--text-primary)] backdrop-blur-sm transition hover:bg-card"
-          href="#meet-mylo"
+          class="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-[color-mix(in_srgb,var(--card)_88%,transparent)] px-7 text-sm font-medium text-[var(--text-primary)] backdrop-blur-sm transition hover:bg-card"
+          href={appLoginUrl}
         >
-          Meet Mylo
+          Log in
         </a>
       </div>
+      <p class="mt-4 text-sm text-[var(--text-secondary)]">{primaryCta.note}</p>
     </div>
   </div>
 </section>

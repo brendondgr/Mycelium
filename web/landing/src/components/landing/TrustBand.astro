@@ -1,0 +1,110 @@
+---
+import { trustTenets } from "@/data/landing";
+
+const anatomy = [
+  {
+    label: "The item",
+    value: "NSF Smart Health and Biomedical Research in the Era of AI",
+    note: "Linked to the source record, never paraphrased away from it.",
+  },
+  {
+    label: "What it matched",
+    value: "Clinical CDS safety · Retrieval grounding",
+    note: "The exact research clusters that pulled it in.",
+  },
+  {
+    label: "How strongly",
+    value: "88% fit · due in 18 days",
+    note: "Score and deadline stated as numbers, not adjectives.",
+  },
+  {
+    label: "What is still unknown",
+    value: "Cost-share requirement not confirmed",
+    note: "Named plainly instead of rounded up to confidence.",
+  },
+];
+---
+
+<section class="trust-band relative overflow-hidden py-16 sm:py-20" aria-labelledby="trust-heading">
+  <div aria-hidden="true" class="trust-glow"></div>
+
+  <div class="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class="max-w-2xl reveal">
+      <p class="text-sm font-medium uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--brand-accent)_88%,white)]">
+        Why labs trust it
+      </p>
+      <h2
+        id="trust-heading"
+        class="font-display mt-3 text-[clamp(1.9rem,4.2vw,2.75rem)] font-medium leading-[1.1] text-[var(--brand-panel-foreground)]"
+      >
+        Every recommendation shows its work
+      </h2>
+      <p class="mt-4 text-base leading-7 text-[color-mix(in_srgb,var(--brand-panel-foreground)_78%,transparent)]">
+        A generic assistant asks you to trust an answer. Mycelium hands you the item,
+        the reason, the score, and the part it is not sure about — so a human can make
+        the call.
+      </p>
+    </div>
+
+    <div class="mt-12 grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
+      <div class="reveal rounded-2xl border border-[color-mix(in_srgb,var(--brand-panel-foreground)_16%,transparent)] bg-[color-mix(in_srgb,white_6%,transparent)] p-6 backdrop-blur-sm sm:p-8">
+        <h3 class="text-xs font-semibold uppercase tracking-[0.16em] text-[color-mix(in_srgb,var(--brand-panel-foreground)_76%,transparent)]">
+          Anatomy of one match
+        </h3>
+        <dl class="mt-6 grid gap-5">
+          {
+            anatomy.map((row) => (
+              <div class="border-t border-[color-mix(in_srgb,var(--brand-panel-foreground)_14%,transparent)] pt-5 first:border-0 first:pt-0">
+                <dt class="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[color-mix(in_srgb,var(--brand-accent)_82%,white)]">
+                  {row.label}
+                </dt>
+                <dd class="mt-1.5 text-sm font-medium leading-6 text-[var(--brand-panel-foreground)]">
+                  {row.value}
+                </dd>
+                <dd class="mt-1 text-sm leading-6 text-[color-mix(in_srgb,var(--brand-panel-foreground)_66%,transparent)]">
+                  {row.note}
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
+      </div>
+
+      <ul class="grid gap-8 self-center">
+        {
+          trustTenets.map((tenet) => (
+            <li class="reveal">
+              <h3 class="flex items-center gap-3 text-lg font-semibold text-[var(--brand-panel-foreground)]">
+                <span class="inline-flex size-2 shrink-0 rounded-full bg-[var(--brand-accent)]" aria-hidden="true" />
+                {tenet.title}
+              </h3>
+              <p class="mt-2 pl-5 text-sm leading-6 text-[color-mix(in_srgb,var(--brand-panel-foreground)_76%,transparent)]">
+                {tenet.description}
+              </p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+</section>
+
+<style>
+  /*
+    A deep-forest band mid-page. Uses the fixed --brand-panel tokens so it
+    stays the same warm forest green in either theme, and breaks up the run of
+    light cream sections above and below it.
+  */
+  .trust-band {
+    background: var(--brand-panel);
+  }
+
+  .trust-glow {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgb(184 217 154 / 12%) 0, transparent 42%),
+      radial-gradient(circle at 82% 75%, rgb(211 174 102 / 12%) 0, transparent 38%);
+    pointer-events: none;
+  }
+</style>

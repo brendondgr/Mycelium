@@ -1,20 +1,24 @@
 ---
-import DashboardPreview from "@/components/landing/DashboardPreview.astro";
 import { FeatureStrip } from "@/components/landing/FeatureStrip";
 import FinalCta from "@/components/landing/FinalCta.astro";
 import HeroSection from "@/components/landing/HeroSection.astro";
-import HowItWorks from "@/components/landing/HowItWorks.astro";
+import LiveFeed from "@/components/landing/LiveFeed.astro";
 import MeetMylo from "@/components/landing/MeetMylo.astro";
-import { UseCases } from "@/components/landing/UseCases";
+import PipelineSection from "@/components/landing/PipelineSection.astro";
+import RoleSwitcher from "@/components/landing/RoleSwitcher.astro";
+import SourceStrip from "@/components/landing/SourceStrip.astro";
+import TrustBand from "@/components/landing/TrustBand.astro";
 import PublicLayout from "@/layouts/PublicLayout.astro";
 ---
 
 <PublicLayout>
   <HeroSection />
   <FeatureStrip />
-  <DashboardPreview />
-  <HowItWorks />
-  <UseCases />
+  <SourceStrip />
+  <LiveFeed />
+  <PipelineSection />
+  <RoleSwitcher />
+  <TrustBand />
   <MeetMylo />
   <FinalCta />
 </PublicLayout>

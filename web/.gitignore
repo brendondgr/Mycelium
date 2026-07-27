@@ -30,8 +30,10 @@ dist-verify*/
 dist/
 .astro/
 
-# generated from web/art via npm run sync:assets
-landing/public/images/mylo-hero.png
+# generated from web/art via npm run sync:assets — masters live in web/art/,
+# derivatives are rebuilt on predev/prebuild, so none of them belong in git
+landing/public/images/*
+!landing/public/images/.gitkeep
 
 # misc
 .DS_Store

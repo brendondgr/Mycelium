@@ -17,8 +17,6 @@ function IconBubble({ children, className }: { children: ReactNode; className?: 
   );
 }
 
-const workspaceImage = "/images/connected-workspace.png";
-
 export function FeatureStrip() {
   return (
     <section
@@ -26,12 +24,14 @@ export function FeatureStrip() {
       aria-labelledby="features-heading"
     >
       <img
-        src={workspaceImage}
+        src="/images/connected-workspace-1600.webp"
+        srcSet="/images/connected-workspace-900.webp 900w, /images/connected-workspace-1600.webp 1600w"
+        sizes="100vw"
         alt=""
         aria-hidden="true"
         className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
-        width="1916"
-        height="821"
+        width="1600"
+        height="686"
         loading="lazy"
         decoding="async"
       />

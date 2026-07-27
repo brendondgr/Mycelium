@@ -1,31 +1,67 @@
 #!/usr/bin/env node
 /**
- * Copy canonical art assets into the Astro landing public directory.
- * Run via `npm run sync:assets` (also runs before dev and build).
+ * Derive web-ready art for the Astro landing site from the canonical PNGs in
+ * `web/art/`.
+ *
+ * The source files are full-resolution masters (1–2 MB each). Shipping those
+ * straight to the browser dwarfs everything else on the public site — the
+ * whole page ships no framework JavaScript, so images are the entire payload
+ * budget. Each master is therefore resized to the widths it is actually
+ * displayed at and encoded as WebP, which typically cuts 1.8 MB to well under
+ * 200 kB.
+ *
+ * Run via `npm run sync:assets` (also runs before dev and build). Outputs are
+ * regenerated only when the master is newer than the derivative, so repeat
+ * runs are free.
  */
-import { copyFileSync, mkdirSync, statSync } from "node:fs";
+import { mkdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 
 const webRoot = join(fileURLToPath(new URL(".", import.meta.url)), "..");
+const outDir = "landing/public/images";
 
-/** @type {{ src: string; dest: string }[]} */
+/**
+ * @type {{ src: string; name: string; widths: number[]; quality?: number }[]}
+ * `widths` are CSS-pixel display widths ×~1.6 for retina headroom; the first
+ * entry is the default `src`, the rest feed `srcset`.
+ */
 const ASSETS = [
   {
+    // Full-bleed hero background.
     src: "art/frontpage/MyloHero.png",
-    dest: "landing/public/images/mylo-hero.png",
+    name: "mylo-hero",
+    widths: [1600, 900],
+    quality: 74,
   },
   {
+    // Section background, sitting under a 60–76% cream scrim.
     src: "art/frontpage/ConnectedWorkspace.png",
-    dest: "landing/public/images/connected-workspace.png",
+    name: "connected-workspace",
+    widths: [1600, 900],
+    quality: 70,
+  },
+  {
+    // Circular portrait, displayed at most ~304 CSS px.
+    src: "art/Mylo/MyloHeadshot.png",
+    name: "mylo-headshot",
+    widths: [512, 256],
+    quality: 80,
+  },
+  {
+    // About-page concept art.
+    src: "art/logo/ConceptArt.png",
+    name: "mylo-concept",
+    widths: [900],
+    quality: 78,
   },
 ];
 
-let copied = 0;
+let written = 0;
 
-for (const { src: srcRel, dest: destRel } of ASSETS) {
+for (const { src: srcRel, name, widths, quality = 76 } of ASSETS) {
   const src = join(webRoot, srcRel);
-  const dest = join(webRoot, destRel);
 
   let srcStat;
   try {
@@ -38,31 +74,34 @@ for (const { src: srcRel, dest: destRel } of ASSETS) {
     process.exit(1);
   }
 
-  mkdirSync(dirname(dest), { recursive: true });
+  for (const width of widths) {
+    const destRel = `${outDir}/${name}-${width}.webp`;
+    const dest = join(webRoot, destRel);
 
-  let skip = false;
-  try {
-    const destStat = statSync(dest);
-    if (
-      destStat.isFile() &&
-      destStat.mtimeMs >= srcStat.mtimeMs &&
-      destStat.size === srcStat.size
-    ) {
-      skip = true;
+    mkdirSync(dirname(dest), { recursive: true });
+
+    try {
+      const destStat = statSync(dest);
+      if (destStat.isFile() && destStat.mtimeMs >= srcStat.mtimeMs) {
+        continue;
+      }
+    } catch {
+      // destination missing — encode below
     }
-  } catch {
-    // destination missing — copy below
-  }
 
-  if (skip) {
-    continue;
-  }
+    const info = await sharp(src)
+      .resize({ width, withoutEnlargement: true })
+      .webp({ quality })
+      .toFile(dest);
 
-  copyFileSync(src, dest);
-  copied += 1;
-  console.log(`sync-landing-assets: ${srcRel} -> ${destRel}`);
+    written += 1;
+    console.log(
+      `sync-landing-assets: ${srcRel} -> ${destRel} ` +
+        `(${info.width}×${info.height}, ${Math.round(info.size / 1024)} kB)`,
+    );
+  }
 }
 
-if (copied === 0) {
+if (written === 0) {
   console.log("sync-landing-assets: landing public images are up to date");
 }

@@ -43,7 +43,7 @@ export function PricingAddons() {
   return (
     <section className="mt-16 sm:mt-20" aria-labelledby="pricing-addons-heading">
       <div className="text-center">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-primary">Add-on</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.1em] eyebrow">Add-on</p>
         <h2
           id="pricing-addons-heading"
           className="font-display mt-2 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl"
@@ -75,7 +75,7 @@ export function PricingAddons() {
 
             <div className="mt-5 border-t border-border pt-4">
               <p className="text-lg font-semibold text-[var(--text-primary)]">{addon.price}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{addon.availability}</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">{addon.availability}</p>
             </div>
           </article>
         ))}

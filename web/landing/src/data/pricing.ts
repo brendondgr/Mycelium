@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { Building2, FlaskConical, Sprout } from "lucide-react";
 
-import { appLoginUrl } from "@/data/site";
+import { appSignupUrl } from "@/data/site";
 
 export type PricingFeature = {
   text: string;
@@ -52,7 +52,7 @@ export const pricingTiers = [
       { text: "Team features", included: false },
       { text: "Discord / Slack bot", included: false },
     ],
-    ctaHref: appLoginUrl,
+    ctaHref: appSignupUrl,
   },
   {
     id: "mycelium-lab",
@@ -71,7 +71,7 @@ export const pricingTiers = [
       { text: "Grant alerts", included: true },
       { text: "Discord / Slack bot eligible", included: true },
     ],
-    ctaHref: appLoginUrl,
+    ctaHref: appSignupUrl,
   },
   {
     id: "canopy",
@@ -89,7 +89,7 @@ export const pricingTiers = [
       { text: "Advanced admin controls", included: true },
       { text: "Department bot eligible", included: true },
     ],
-    ctaHref: appLoginUrl,
+    ctaHref: appSignupUrl,
   },
 ] as const satisfies ReadonlyArray<PricingTier>;
 

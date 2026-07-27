@@ -19,7 +19,7 @@ for the layout standard.
 
 | I need to work on… | Start here |
 |---|---|
-| A public marketing/landing page | `web/landing/src/pages/*.astro` (+ `.mdx`) |
+| A public marketing/landing page | `web/landing/src/pages/*.astro` — five pages only: `index`, `product`, `pricing`, `about`, `contact` (nav is Product · Pricing · About; `/solutions`, `/resources`, `/research`, `/demo` were removed as stubs that duplicated the homepage). Every "Start free" CTA points at the real `/signup` (`data/site.ts` `primaryCta`/`appSignupUrl`); `/contact` is the institutional "talk to us" path and holds the one published address (`contactEmail`). **The public site ships zero framework JavaScript** — no page emits a `<script>` tag. Interactivity is CSS-only: the homepage/product feed tabs and role switcher are radio groups selected with `:has()` (`components/landing/{LiveFeed,RoleSwitcher}.astro`), the mobile menu is a native `<details>` in `components/site/SiteHeader.astro`, and reveals plus the mycelium thread draw are scroll-driven `animation-timeline: view()` rules in `src/styles/global.css` (each gated behind `@supports` + `prefers-reduced-motion`, with the *visible/drawn* state as the default so an unsupported browser still renders a complete page). Copy lives in `src/data/{landing,product,pricing,pricingComparison,site}.ts` — keep source and capability claims there honest, they are trust claims. React components under `components/pricing/` and `FeatureStrip.tsx` are server-rendered only; adding a `client:*` directive anywhere would start shipping React |
 | An authenticated app page/route | `web/app/src/app/app/**` (Next.js App Router) |
 | A React component used in the portal | `web/app/src/components/portal/` |
 | Onboarding / profile-edit flow (UI) | `web/app/src/components/onboarding/` + route `app/app/onboarding/`. Steps in order: About → Import → Review → **Watch** ("What should Mylo keep an eye on?") → **Fellowship eligibility** (only shown when the Fellowships signal is kept on; citizenship/stage/fields/restrictions saved in `interests.eligibility`). The watch step toggles papers/grants/fellowships/**conferences** individually. First-run finish shows the live match window (`onboarding-match.tsx`) instead of jumping to the overview |
@@ -107,7 +107,10 @@ web/app/src/
 ```
 
 `web/landing/` is the separate **Astro** public site (`src/pages/`, `src/components/`,
-`src/data/`, `src/layouts/`). `web/art/` holds source art assets (logo, Mylo, frontpage).
+`src/data/`, `src/layouts/`). `web/art/` holds the canonical art masters (logo, Mylo,
+frontpage); `web/scripts/sync-landing-assets.mjs` resizes them to WebP derivatives in
+`landing/public/images/` on predev/prebuild — the derivatives are git-ignored, so edit
+the master in `web/art/` and re-run the sync, never the file in `public/`.
 
 ## Backend — `web/backend/apps/` (Django + DRF + Celery)
 
