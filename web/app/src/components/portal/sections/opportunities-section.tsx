@@ -73,26 +73,31 @@ export function GrantRow({
         <>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                {grant.is_new ? <NewTag /> : null}
-                {grant.cluster ? (
-                  <ClusterBadge cluster={grant.cluster} />
-                ) : null}
-              </div>
-              <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+              {/* Title always first, so it lines up with the top of the ring
+                  whether or not this grant has a cluster or a New tag. */}
+              <h3 className="font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
                 {grant.title}
               </h3>
               {grant.sponsor ? (
-                <p className="mt-1 text-xs font-medium text-[var(--text-secondary)]">
+                <p
+                  className="mt-1.5 line-clamp-1 text-xs font-medium text-[var(--text-secondary)]"
+                  title={grant.sponsor}
+                >
                   {grant.sponsor}
                 </p>
               ) : null}
-              {/* Posted date belongs with the sponsor line beside the ring, not
-                  down in the body with the description. */}
               {posted ? (
-                <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
                   Posted {posted}
                 </p>
+              ) : null}
+              {grant.is_new || grant.cluster ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {grant.is_new ? <NewTag /> : null}
+                  {grant.cluster ? (
+                    <ClusterBadge cluster={grant.cluster} />
+                  ) : null}
+                </div>
               ) : null}
             </div>
 

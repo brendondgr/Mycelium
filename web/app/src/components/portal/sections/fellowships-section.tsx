@@ -191,16 +191,16 @@ export function FellowshipRow({
         <>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                {item.is_new ? <NewTag /> : null}
-                <EligibilityBadge item={item} />
-                {item.cluster ? <ClusterBadge cluster={item.cluster} /> : null}
-              </div>
-              <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+              {/* Title always first, so it lines up with the top of the ring
+                  whether or not this fellowship has a cluster or a New tag. */}
+              <h3 className="font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
                 {item.title}
               </h3>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <EligibilityBadge item={item} />
                 <AwardClassChip awardClass={item.award_class} />
+                {item.is_new ? <NewTag /> : null}
+                {item.cluster ? <ClusterBadge cluster={item.cluster} /> : null}
               </div>
             </div>
 

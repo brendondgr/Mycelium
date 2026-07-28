@@ -99,7 +99,12 @@ const Heading = headingLevel;
                     </div>
 
                     <div class="col-start-2 row-start-1 min-w-0">
-                      <div class="flex flex-wrap items-center gap-2">
+                      <h3 class="font-display text-lg font-medium leading-snug text-[var(--text-primary)]">
+                        {item.title}
+                      </h3>
+                      <p class="mt-1.5 text-sm text-[var(--text-secondary)]">{item.meta}</p>
+
+                      <div class="mt-2.5 flex flex-wrap items-center gap-2">
                         {item.verdict ? (
                           <span class="verdict-badge">{item.verdict}</span>
                         ) : null}
@@ -109,11 +114,6 @@ const Heading = headingLevel;
                         </span>
                         {item.flag ? <span class="flag-badge">{item.flag}</span> : null}
                       </div>
-
-                      <h3 class="font-display mt-3 text-lg font-medium leading-snug text-[var(--text-primary)]">
-                        {item.title}
-                      </h3>
-                      <p class="mt-1 text-sm text-[var(--text-secondary)]">{item.meta}</p>
                     </div>
 
                     {/* The reason runs the card's full width, beneath the ring —

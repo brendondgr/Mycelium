@@ -87,12 +87,46 @@ export function ConferenceCard({
       }
       head={
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {conf.is_new ? <NewTag /> : null}
-              {conf.cluster ? <ClusterBadge cluster={conf.cluster} /> : null}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              {/* Title always first, so it lines up with the top of the ring
+                  whether or not this conference has a cluster or a New tag. */}
+              <h3 className="font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+                {conf.title}
+              </h3>
+
+              {/* Where and when sit with the title beside the ring — they
+                  identify the event, the way a grant's sponsor line does. */}
+              <dl className="mt-2 space-y-1 text-sm text-[var(--text-secondary)]">
+                {where ? (
+                  <div className="flex gap-2">
+                    <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
+                      Where
+                    </dt>
+                    <dd className="min-w-0">{where}</dd>
+                  </div>
+                ) : null}
+                {conf.event_dates ? (
+                  <div className="flex gap-2">
+                    <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
+                      When
+                    </dt>
+                    <dd>{conf.event_dates}</dd>
+                  </div>
+                ) : null}
+              </dl>
+
+              {conf.is_new || conf.cluster ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {conf.is_new ? <NewTag /> : null}
+                  {conf.cluster ? (
+                    <ClusterBadge cluster={conf.cluster} />
+                  ) : null}
+                </div>
+              ) : null}
             </div>
-            <div className="flex items-center gap-1.5">
+
+            <div className="flex shrink-0 items-center gap-1.5">
               <RemindButton
                 contentId={conf.content_id}
                 title={conf.title}
@@ -106,31 +140,6 @@ export function ConferenceCard({
               />
             </div>
           </div>
-
-          <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
-            {conf.title}
-          </h3>
-
-          {/* Where and when sit with the title beside the ring — they identify
-              the event, the way a grant's sponsor line does. */}
-          <dl className="mt-2.5 space-y-1.5 text-sm text-[var(--text-secondary)]">
-            {where ? (
-              <div className="flex gap-2">
-                <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
-                  Where
-                </dt>
-                <dd className="min-w-0">{where}</dd>
-              </div>
-            ) : null}
-            {conf.event_dates ? (
-              <div className="flex gap-2">
-                <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
-                  When
-                </dt>
-                <dd>{conf.event_dates}</dd>
-              </div>
-            ) : null}
-          </dl>
         </>
       }
     >
