@@ -329,6 +329,18 @@ def get_guild_link_for_lab(lab) -> DiscordGuildLink | None:
     return DiscordGuildLink.objects.filter(lab=lab).first()
 
 
+def lab_guild_is_active(lab) -> bool:
+    """Whether the lab has a live, claimed Discord server bound.
+
+    ``PENDING_SETUP`` is not live — the bot sits in the guild but no manager has
+    claimed the link, so nothing may be posted on the lab's behalf yet; ``KICKED``
+    is plainly dead. Callers outside this boundary ask through here rather than
+    comparing ``link.state`` themselves, so the meaning of "synced" is defined once.
+    """
+    link = get_guild_link_for_lab(lab)
+    return bool(link and link.state == DiscordGuildLink.State.ACTIVE)
+
+
 def resolve_lab_for_guild(guild_id: str) -> Lab | None:
     link = get_guild_link(guild_id)
     return link.lab if link else None

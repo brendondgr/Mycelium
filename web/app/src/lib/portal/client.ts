@@ -32,6 +32,7 @@ import type {
   ProfileData,
   ProjectFeed,
   Reminder,
+  ReminderAccess,
   SavedDeadline,
   LabSavesResponse,
   SavedItem,
@@ -216,6 +217,21 @@ export async function fetchReminders(): Promise<{ items: Reminder[] }> {
   return getJson<{ items: Reminder[] }>(
     buildApiUrl(getPublicApiBase(), "reminders"),
     "Could not load your reminders.",
+  );
+}
+
+/** Whether the caller may set a reminder — personally, or for `labSlug`.
+ *
+ * The server computes this with the same module the create path enforces with, so
+ * the button state cannot drift from the rule that would reject the POST. */
+export async function fetchReminderAccess(
+  labSlug?: string,
+): Promise<ReminderAccess> {
+  const base = buildApiUrl(getPublicApiBase(), "reminders", "access");
+  const url = labSlug ? `${base}?lab=${encodeURIComponent(labSlug)}` : base;
+  return getJson<ReminderAccess>(
+    url,
+    "Could not check whether reminders are available.",
   );
 }
 

@@ -15,6 +15,7 @@ from apps.content.models import (
     ReminderSubscription,
     SavedOpportunity,
 )
+from apps.content.tests.entitle import entitle_lab, entitle_user
 
 _Kind = SavedOpportunity.DeadlineKind
 
@@ -38,9 +39,23 @@ def _grant(ext="g1", *, due=date(2026, 12, 1), confidence=None):
     return item
 
 
+def _user(username="u"):
+    """A user who may actually set reminders: paid plan + Discord linked.
+
+    Both are required (see ``apps.content.reminder_access``); the refusals get their
+    own suite in ``test_reminder_access.py`` so the tests here stay about the API.
+    """
+    return entitle_user(User.objects.create_user(username))
+
+
+def _paid_lab(slug="lab"):
+    """A lab on a paid plan with a live Discord server bound."""
+    return entitle_lab(Lab.objects.create(name="Lab", slug=slug))
+
+
 @pytest.mark.django_db
 def test_create_personal_reminder(client) -> None:
-    user = User.objects.create_user("u")
+    user = _user()
     client.force_authenticate(user)
     item = _grant()
     resp = client.post(
@@ -61,7 +76,7 @@ def test_create_personal_reminder(client) -> None:
 
 @pytest.mark.django_db
 def test_create_uses_default_offsets_when_omitted(client) -> None:
-    user = User.objects.create_user("u")
+    user = _user()
     client.force_authenticate(user)
     item = _grant()
     resp = client.post(
@@ -141,8 +156,8 @@ def test_lab_reminder_requires_manager(client) -> None:
 
 @pytest.mark.django_db
 def test_lab_manager_creates_lab_reminder(client) -> None:
-    lab = Lab.objects.create(name="Lab", slug="lab")
-    owner = User.objects.create_user("owner")
+    lab = _paid_lab()
+    owner = _user("owner")
     LabMembership.objects.create(user=owner, lab=lab, role=LabMembership.Role.OWNER)
     item = _grant()
     client.force_authenticate(owner)
@@ -165,8 +180,8 @@ def test_lab_manager_creates_lab_reminder(client) -> None:
 
 @pytest.mark.django_db
 def test_list_returns_personal_and_accessible_lab_reminders(client) -> None:
-    lab = Lab.objects.create(name="Lab", slug="lab")
-    owner = User.objects.create_user("owner")
+    lab = _paid_lab()
+    owner = _user("owner")
     LabMembership.objects.create(user=owner, lab=lab, role=LabMembership.Role.OWNER)
     item = _grant()
     client.force_authenticate(owner)
@@ -193,8 +208,8 @@ def test_list_returns_personal_and_accessible_lab_reminders(client) -> None:
 
 @pytest.mark.django_db
 def test_delete_personal_reminder_owner_only(client) -> None:
-    owner = User.objects.create_user("owner")
-    other = User.objects.create_user("other")
+    owner = _user("owner")
+    other = _user("other")
     item = _grant()
     client.force_authenticate(owner)
     created = client.post(
@@ -218,7 +233,7 @@ def test_delete_personal_reminder_owner_only(client) -> None:
 @pytest.mark.django_db
 def test_deadlines_array_lets_composer_pick_kind(client) -> None:
     # A conference exposes independently-remindable abstract/event deadlines.
-    user = User.objects.create_user("u")
+    user = _user()
     client.force_authenticate(user)
     item = ContentItem.objects.create(
         type=ContentItem.Type.CONFERENCE, source="pivot", external_id="c1"

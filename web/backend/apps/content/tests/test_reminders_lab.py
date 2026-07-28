@@ -20,6 +20,7 @@ from apps.content.models import (
 from apps.content.reminders import ReminderError, create_subscription
 from apps.content.reminders_discord import send_lab_channel
 from apps.content.reminders_tick import run_tick
+from apps.content.tests.entitle import entitle_lab, paid_plan
 from apps.integrations.models import DiscordGuildLink, DiscordIdentity
 from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse
@@ -56,16 +57,23 @@ def transport(monkeypatch, settings):
 
 
 def _lab(*, channel="default-chan"):
+    """A lab on a paid plan with a live, claimed Discord server.
+
+    Both are part of the fixture, not the subject: lab reminders are gated on the
+    lab's plan and guild link at create *and* send time, and these tests are about
+    mention resolution and channel routing. ``test_reminder_access`` owns the gate.
+    """
     lab = Lab.objects.create(name="Lab", slug="lab")
     DiscordGuildLink.objects.create(
         lab=lab, guild_id="g1", announcement_channel_id=channel
     )
-    return lab
+    return entitle_lab(lab)
 
 
 def _member(lab, username, *, role=LabMembership.Role.MEMBER, discord_id=None):
     user = User.objects.create_user(username)
     LabMembership.objects.create(user=user, lab=lab, role=role)
+    paid_plan(user)
     if discord_id:
         DiscordIdentity.objects.create(
             user=user,

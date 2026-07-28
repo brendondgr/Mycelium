@@ -34,6 +34,10 @@ from apps.content.models import (
     ReminderSubscription,
     SavedOpportunity,
 )
+from apps.content.reminder_access import (
+    lab_reminder_access,
+    personal_reminder_access,
+)
 
 # Free-form bound (D-13): a subscription may carry at most this many offsets.
 MAX_OFFSETS_PER_SUBSCRIPTION = 5
@@ -49,6 +53,21 @@ _KIND_LABEL = {
 
 class ReminderError(ValueError):
     """A subscription could not be created (dateless deadline, too many offsets…)."""
+
+
+class ReminderAccessError(ReminderError):
+    """The actor is not entitled to reminders (no paid plan, or Discord unlinked).
+
+    A distinct subclass so the API can answer **403** rather than 400: this is not a
+    malformed request, it is a capability the account does not currently have.
+    ``reason`` carries the machine-readable slug from
+    :mod:`apps.content.reminder_access` so the client can point at the right fix.
+    """
+
+    def __init__(self, access) -> None:
+        super().__init__(access.detail)
+        self.reason = access.reason
+        self.access = access
 
 
 def offset_fire_date(due: date, amount: int, unit: str) -> date:
@@ -169,6 +188,12 @@ def create_subscription(
     Rejects a dateless deadline (rolling / unknown) — the affordance is disabled for
     those in the UI, and the service is the backstop. Enforces exactly-one target and
     the per-subscription offset cap (D-13).
+
+    Entitlement (a paid plan + synced Discord, see :mod:`apps.content.reminder_access`)
+    is checked here for the same reason the lab-manager rule is, and under the same
+    condition: only when ``created_by`` is set. A ``created_by`` of ``None`` marks a
+    system-initiated create — a backfill, a copy, a test fixture — which has no human
+    whose plan could be read, and which is not the surface being gated.
     """
     if (target_user is None) == (target_lab is None):
         raise ReminderError("exactly one of target_user / target_lab is required")
@@ -185,6 +210,14 @@ def create_subscription(
         for member in mentions:
             if not user_has_lab_access(member, target_lab):
                 raise ReminderError("mention target must be a lab member")
+    if created_by is not None:
+        access = (
+            lab_reminder_access(target_lab)
+            if target_lab is not None
+            else personal_reminder_access(target_user)
+        )
+        if not access.allowed:
+            raise ReminderAccessError(access)
     unique_offsets = list(dict.fromkeys(offsets))  # dedupe, preserve order
     if not unique_offsets:
         raise ReminderError("at least one offset is required")

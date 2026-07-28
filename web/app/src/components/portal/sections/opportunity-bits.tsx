@@ -10,7 +10,11 @@ import {
   SparkleIcon,
 } from "@/components/portal/icons";
 import { ReminderComposer } from "@/components/portal/reminder-composer";
-import { useMyLabs, useSaveOpportunity } from "@/lib/portal/hooks";
+import {
+  useMyLabs,
+  useReminderAccess,
+  useSaveOpportunity,
+} from "@/lib/portal/hooks";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 import type { DeadlineOption, MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
@@ -232,6 +236,12 @@ export function RemindButton({
   lockedLabSlug?: string;
 }) {
   const [composing, setComposing] = React.useState(false);
+  // Reminders need a paid plan and a synced Discord account (the lab's server, in
+  // lab scope). One shared query answers for every bell on the page. The control
+  // stays visible and clickable when locked — a missing button teaches nothing,
+  // and the composer names exactly which of the two conditions is unmet.
+  const access = useReminderAccess(lockedLabSlug);
+  const locked = access.data ? !access.data.allowed : false;
   // Only *dated* deadlines are remindable — a rolling call has no date to count
   // down to, so the bell simply doesn't render for it.
   const datedDeadlines = React.useMemo(
@@ -245,11 +255,25 @@ export function RemindButton({
       <button
         type="button"
         onClick={() => setComposing(true)}
-        aria-label={`Set a reminder for ${title}`}
-        title="Set a reminder"
+        aria-label={
+          locked
+            ? `Reminders unavailable for ${title} — see what's needed`
+            : `Set a reminder for ${title}`
+        }
+        title={
+          locked
+            ? access.data?.detail || "Reminders aren't available on your plan"
+            : "Set a reminder"
+        }
         // Blue bell — deliberately off the warm palette so the reminder action
-        // reads as clearly distinct from the neighbouring Save control.
-        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-transparent bg-[#3f6fa3] text-white transition-colors hover:bg-[#345c85] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        // reads as clearly distinct from the neighbouring Save control. Locked, it
+        // drops to the neutral surface tone so it never reads as an active control.
+        className={cn(
+          "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          locked
+            ? "border-border bg-surface text-[var(--text-secondary)] opacity-70 hover:opacity-100"
+            : "border-transparent bg-[#3f6fa3] text-white hover:bg-[#345c85]",
+        )}
       >
         <BellIcon size={14} aria-hidden="true" />
       </button>

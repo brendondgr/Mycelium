@@ -35,6 +35,7 @@ import {
   fetchMyInvitations,
   fetchMyLabs,
   fetchNotifications,
+  fetchReminderAccess,
   fetchReminders,
   fetchSaves,
   fetchProfile,
@@ -330,6 +331,22 @@ export function useReminders() {
     queryKey: ["portal", "reminders"],
     queryFn: fetchReminders,
     staleTime: 30_000,
+  });
+}
+
+/**
+ * Whether reminders are available to the caller — personally, or for `labSlug`.
+ *
+ * One account-level query shared by every bell on the page (react-query dedupes by
+ * key), so gating a hundred feed cards costs a single request. The answer comes
+ * from the server rather than being re-derived from entitlements + Discord status
+ * on the client, so the button and the endpoint can never disagree.
+ */
+export function useReminderAccess(labSlug?: string) {
+  return useQuery({
+    queryKey: ["portal", "reminder-access", labSlug ?? "personal"],
+    queryFn: () => fetchReminderAccess(labSlug),
+    staleTime: 60_000,
   });
 }
 

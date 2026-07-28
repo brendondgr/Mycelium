@@ -2,14 +2,18 @@
 
 import * as React from "react";
 
+import Link from "next/link";
+
 import { CloseIcon } from "@/components/portal/icons";
 import {
   useLabReminderChannels,
   useMyLabs,
+  useReminderAccess,
   useReminderMutations,
 } from "@/lib/portal/hooks";
 import type {
   DeadlineOption,
+  ReminderAccess,
   ReminderOffset,
   ReminderUnit,
 } from "@/lib/portal/types";
@@ -103,6 +107,14 @@ export function ReminderComposer({
   // Derive the effective lab (no state-syncing effect): the chosen slug, else the
   // first lab. The <select> is controlled by this so it shows a lab by default.
   const effectiveLabSlug = labSlug || labOptions[0]?.slug || "";
+
+  // Reminders need a paid plan and synced Discord — a different answer per scope
+  // (your plan + your account for a DM; the lab's plan + its server for a channel),
+  // so this follows the scope picker rather than being resolved once for the modal.
+  const access = useReminderAccess(
+    scope === "lab" ? effectiveLabSlug || undefined : undefined,
+  );
+  const blocked = access.data ? !access.data.allowed : false;
 
   // The lab's postable channels — only fetched in lab scope for a managed lab.
   const channels = useLabReminderChannels(
@@ -201,7 +213,7 @@ export function ReminderComposer({
             </p>
           ) : (
             <>
-              {datedDeadlines.length > 1 ? (
+              {datedDeadlines.length > 1 && !blocked ? (
                 <Field label="Which deadline">
                   <div className="flex flex-wrap gap-1.5">
                     {datedDeadlines.map((d) => (
@@ -269,111 +281,187 @@ export function ReminderComposer({
                 </>
               )}
 
-              {scope === "lab" ? (
-                <ChannelField
-                  channels={channels.data?.channels ?? []}
-                  defaultId={channels.data?.default_channel_id ?? ""}
-                  defaultName={channels.data?.default_channel_name ?? ""}
-                  value={channelId}
-                  loading={channels.isLoading}
-                  onChange={setChannelId}
-                />
-              ) : null}
-
-              <Field label="Remind me before">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <input
-                    type="number"
-                    min={1}
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addOffset();
-                      }
-                    }}
-                    aria-label="Amount"
-                    className="w-16 rounded-lg border border-border bg-surface px-2.5 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              {blocked && access.data ? (
+                <ReminderGate access={access.data} onClose={onClose} />
+              ) : (
+                <>
+                {scope === "lab" ? (
+                  <ChannelField
+                    channels={channels.data?.channels ?? []}
+                    defaultId={channels.data?.default_channel_id ?? ""}
+                    defaultName={channels.data?.default_channel_name ?? ""}
+                    value={channelId}
+                    loading={channels.isLoading}
+                    onChange={setChannelId}
                   />
-                  <select
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value as ReminderUnit)}
-                    aria-label="Unit"
-                    className="rounded-lg border border-border bg-surface px-2.5 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {UNIT_OPTIONS.map((u) => (
-                      <option key={u.value} value={u.value}>
-                        {u.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-[13px] text-[var(--text-secondary)]">
-                    before
-                  </span>
+                ) : null}
+
+                <Field label="Remind me before">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={1}
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addOffset();
+                        }
+                      }}
+                      aria-label="Amount"
+                      className="w-16 rounded-lg border border-border bg-surface px-2.5 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                    <select
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value as ReminderUnit)}
+                      aria-label="Unit"
+                      className="rounded-lg border border-border bg-surface px-2.5 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {UNIT_OPTIONS.map((u) => (
+                        <option key={u.value} value={u.value}>
+                          {u.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[13px] text-[var(--text-secondary)]">
+                      before
+                    </span>
+                    <button
+                      type="button"
+                      onClick={addOffset}
+                      className="rounded-full border border-primary bg-primary/10 px-3 py-1.5 text-[12.5px] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  {offsets.length > 0 ? (
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {offsets.map((o) => (
+                        <span
+                          key={`${o.amount}-${o.unit}`}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-2.5 py-1 text-[12.5px] font-semibold text-[var(--text-secondary)]"
+                        >
+                          {formatOffset(o)} before
+                          <button
+                            type="button"
+                            onClick={() => removeOffset(o)}
+                            aria-label={`Remove ${formatOffset(o)} reminder`}
+                            className="rounded-full p-0.5 text-[var(--text-secondary)] hover:bg-surface hover:text-[var(--text-primary)]"
+                          >
+                            <CloseIcon size={12} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-[12px] text-[var(--text-secondary)]">
+                      Add at least one reminder time.
+                    </p>
+                  )}
+                </Field>
+
+                {error ? (
+                  <p className="text-[12.5px] text-clay" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+
+                <div className="flex items-center justify-end gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={addOffset}
-                    className="rounded-full border border-primary bg-primary/10 px-3 py-1.5 text-[12.5px] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={onClose}
+                    className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt"
                   >
-                    Add
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submit}
+                    disabled={!canSubmit}
+                    className="rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-[#fffdf8] hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+                  >
+                    {create.isPending ? "Setting…" : "Set reminder"}
                   </button>
                 </div>
-
-                {offsets.length > 0 ? (
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {offsets.map((o) => (
-                      <span
-                        key={`${o.amount}-${o.unit}`}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-2.5 py-1 text-[12.5px] font-semibold text-[var(--text-secondary)]"
-                      >
-                        {formatOffset(o)} before
-                        <button
-                          type="button"
-                          onClick={() => removeOffset(o)}
-                          aria-label={`Remove ${formatOffset(o)} reminder`}
-                          className="rounded-full p-0.5 text-[var(--text-secondary)] hover:bg-surface hover:text-[var(--text-primary)]"
-                        >
-                          <CloseIcon size={12} />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-2 text-[12px] text-[var(--text-secondary)]">
-                    Add at least one reminder time.
-                  </p>
-                )}
-              </Field>
-
-              {error ? (
-                <p className="text-[12.5px] text-clay" role="alert">
-                  {error}
-                </p>
-              ) : null}
-
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={submit}
-                  disabled={!canSubmit}
-                  className="rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-[#fffdf8] hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
-                >
-                  {create.isPending ? "Setting…" : "Set reminder"}
-                </button>
-              </div>
+                </>
+              )}
             </>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Shown in place of the form when reminders aren't available for the chosen scope.
+ *
+ * It names both conditions rather than only the blocking one, with the satisfied
+ * half checked off, so "what do I actually have to do?" is answered on screen
+ * instead of arriving one 403 at a time. The scope picker above stays live, so
+ * someone whose own plan is Free can still switch to a lab that is covered.
+ */
+function ReminderGate({
+  access,
+  onClose,
+}: {
+  access: ReminderAccess;
+  onClose: () => void;
+}) {
+  // A lab the caller doesn't manage: the answer is "not you", not a billing report.
+  const isPermission = access.reason === "permission";
+  return (
+    <div className="rounded-xl border border-border bg-surface-alt p-4">
+      <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+        {access.detail}
+      </p>
+      {isPermission ? null : (
+        <>
+          <ul className="mt-3 space-y-1.5">
+            <GateCondition ok={access.plan_ok} label="An active paid plan" />
+            <GateCondition ok={access.discord_ok} label="Discord connected" />
+          </ul>
+          <Link
+            href="/app/profile"
+            onClick={onClose}
+            className="mt-3.5 inline-flex rounded-full border border-primary bg-primary/10 px-3.5 py-1.5 text-[12.5px] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {access.plan_ok ? "Connect Discord" : "See your plan"}
+          </Link>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** One condition in the gate list — met or not, in words, never colour alone. */
+function GateCondition({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <li className="flex items-center gap-2 text-[12.5px]">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+          ok
+            ? "bg-[var(--success)] text-[var(--destructive-foreground)]"
+            : "border border-border text-[var(--text-secondary)]",
+        )}
+      >
+        {ok ? "✓" : "—"}
+      </span>
+      <span
+        className={
+          ok ? "text-[var(--text-secondary)]" : "text-[var(--text-primary)]"
+        }
+      >
+        {label}
+        <span className="sr-only">
+          {ok ? " — already set up" : " — still needed"}
+        </span>
+      </span>
+    </li>
   );
 }
 

@@ -35,7 +35,8 @@ from .models import (
     SavedOpportunity,
     default_reminder_offsets,
 )
-from .reminders import ReminderError, create_subscription
+from .reminder_access import lab_reminder_access, personal_reminder_access
+from .reminders import ReminderAccessError, ReminderError, create_subscription
 
 User = get_user_model()
 
@@ -225,6 +226,13 @@ class ReminderListCreateView(APIView):
                 channel_id_override=channel_override,
                 created_by=request.user,
             )
+        except ReminderAccessError as exc:
+            # 403, not 400: the request is well-formed, the capability is missing.
+            # The reason slug lets the client point at the exact fix (plan vs link).
+            return Response(
+                {"detail": str(exc), "reason": exc.reason, **exc.access.as_dict()},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         except ReminderError as exc:
             return _bad(str(exc))
 
@@ -257,6 +265,40 @@ class ReminderDetailView(APIView):
             sub.state = ReminderSubscription.State.CANCELLED
             sub.save(update_fields=["state", "updated_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ReminderAccessView(APIView):
+    """``GET /api/reminders/access/[?lab=<slug>]`` — may I set a reminder here?
+
+    The same :mod:`apps.content.reminder_access` answer the create path enforces
+    with, so the button the user sees and the rule the server applies come from one
+    computation. Without ``lab`` it answers for the caller personally (DM delivery);
+    with it, for the lab (channel delivery) — and, since only a manager may create a
+    lab reminder at all, a non-manager is answered "not allowed" rather than being
+    told about the lab's plan.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        slug = request.GET.get("lab", "")
+        if not slug:
+            return Response(personal_reminder_access(request.user).as_dict())
+
+        lab = Lab.objects.filter(slug=slug).first()
+        if lab is None:
+            return _bad("No such lab.", 404)
+        if not user_can_edit_lab_profile(request.user, lab):
+            return Response(
+                {
+                    "allowed": False,
+                    "plan_ok": False,
+                    "discord_ok": False,
+                    "reason": "permission",
+                    "detail": "Only a lab PI or admin can set a lab reminder.",
+                }
+            )
+        return Response(lab_reminder_access(lab).as_dict())
 
 
 class LabReminderChannelsView(APIView):

@@ -23,6 +23,10 @@ from dataclasses import dataclass
 
 from django.conf import settings
 
+from apps.content.reminder_access import (
+    lab_plan_allows_reminders,
+    user_plan_allows_reminders,
+)
 from apps.integrations.services import discord_api, outbox, resolve
 from apps.integrations.services.discord_api import DiscordHTTPError
 
@@ -48,6 +52,7 @@ class SendOutcome:
     error_code: int | None = None
     unreachable: bool = False
     not_configured: bool = False  # server-side: the bot token isn't set at all
+    not_entitled: bool = False  # the recipient's plan no longer covers reminders
     has_unlinked: bool | None = None  # lab sends: any mention target with no ping
     queued: bool = False
     outbox_key: str = ""
@@ -92,9 +97,17 @@ def send_personal_dm(
 
     The caller still delivers in-app unconditionally, so a refused DM means the bell
     carries the reminder alone.
+
+    Entitlement is re-checked at *send* time, not trusted from create time: a plan
+    can lapse or a seat be revoked in the weeks between subscribing and the first
+    offset firing, and Discord delivery is the paid half of this feature. We never
+    delete the subscription over a billing event — it simply stops being DMed.
     """
     if not _bot_configured():
         return SendOutcome(ok=False, unreachable=True, not_configured=True)
+
+    if not user_plan_allows_reminders(subscription.target_user):
+        return SendOutcome(ok=False, unreachable=True, not_entitled=True)
 
     identity = resolve.active_identity_for_user(subscription.target_user)
     if identity is None or identity.dm_ok is False:
@@ -176,6 +189,15 @@ def send_lab_channel(
             ok=False,
             unreachable=True,
             not_configured=True,
+            has_unlinked=has_unlinked,
+        )
+    # Same lapse guard as the personal path: a lab whose plan ended keeps its
+    # reminders and its in-app notifications, but stops posting to Discord.
+    if not lab_plan_allows_reminders(subscription.target_lab):
+        return SendOutcome(
+            ok=False,
+            unreachable=True,
+            not_entitled=True,
             has_unlinked=has_unlinked,
         )
     channel_id = subscription.channel_id_override or _lab_default_channel(subscription)

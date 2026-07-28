@@ -35,6 +35,7 @@ from apps.content.models import (
 )
 from apps.content.reminders import create_subscription
 from apps.content.reminders_tick import run_tick
+from apps.content.tests.entitle import paid_plan
 from apps.integrations.services import discord_api
 from apps.integrations.services.discord_api import RawResponse
 
@@ -45,7 +46,10 @@ _Area = SavedOpportunity.Area
 
 @pytest.fixture
 def user(db):
-    return User.objects.create_user("outbox-user")
+    """A reminder recipient on a paid plan — Discord delivery is gated on one."""
+    person = User.objects.create_user("outbox-user")
+    paid_plan(person)
+    return person
 
 
 @pytest.fixture

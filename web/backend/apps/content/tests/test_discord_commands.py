@@ -21,6 +21,7 @@ from apps.content.models import (
     SavedOpportunity,
 )
 from apps.content.reminders import create_subscription
+from apps.content.tests.entitle import entitle_user, paid_plan
 from apps.integrations.models import DiscordIdentity
 from apps.integrations.tests.base import (
     clear_discord_cache,
@@ -43,7 +44,13 @@ def _discord_settings():
         clear_discord_cache()
 
 
-def _linked(username="dc-user", snowflake=SNOWFLAKE):
+def _linked(username="dc-user", snowflake=SNOWFLAKE, *, paid=True):
+    """A Discord-linked user, by default on a paid plan.
+
+    Paid by default because reminders — which most of these commands act on — need
+    one. ``paid=False`` is for the tests that are specifically about what a Free
+    account is told.
+    """
     user = User.objects.create_user(username)
     DiscordIdentity.objects.create(
         user=user,
@@ -51,6 +58,8 @@ def _linked(username="dc-user", snowflake=SNOWFLAKE):
         state=DiscordIdentity.State.ACTIVE,
         link_method=DiscordIdentity.LinkMethod.OAUTH,
     )
+    if paid:
+        paid_plan(user)
     return user
 
 
@@ -132,7 +141,7 @@ def test_a_free_user_is_told_plainly_rather_than_shown_a_hollow_report(db) -> No
     Saying so — and naming what Spore adds — beats assembling something
     report-shaped from whatever happens to be stored.
     """
-    _linked()
+    _linked(paid=False)
 
     status, payload = cmd.digest(SNOWFLAKE)
 
@@ -144,10 +153,7 @@ def test_a_free_user_is_told_plainly_rather_than_shown_a_hollow_report(db) -> No
 @pytest.mark.django_db
 def test_an_entitled_user_with_no_report_yet_is_told_it_is_coming(db) -> None:
     """A different, and honest, message: entitled means one *will* be written."""
-    from apps.billing.models import Subscription, Tier
-
-    user = _linked()
-    Subscription.objects.create(tier=Tier.SPORE, scope_user=user)
+    _linked()  # paid by default
 
     status, payload = cmd.digest(SNOWFLAKE)
 
@@ -322,6 +328,7 @@ def test_a_snoozed_reminder_is_deferred_not_swallowed(db) -> None:
 def test_you_cannot_snooze_someone_elses_reminder(db) -> None:
     _linked()
     stranger = User.objects.create_user("stranger")
+    entitle_user(stranger)
     theirs = _reminder(user=stranger, title="Theirs")
 
     status, payload = cmd.snooze(SNOWFLAKE, reminder_id=str(theirs.id))
@@ -409,6 +416,7 @@ def test_autocomplete_offers_only_what_you_may_act_on(db) -> None:
     """Offering a reminder you'd then be refused still tells you it exists."""
     user = _linked()
     stranger = User.objects.create_user("stranger")
+    entitle_user(stranger)
     mine = _reminder(user=user, title="Mine")
     _reminder(user=stranger, title="Theirs")
 

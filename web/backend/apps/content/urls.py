@@ -129,6 +129,14 @@ urlpatterns = [
         name="reminders",
     ),
     path("reminders", reminders_views.ReminderListCreateView.as_view()),
+    # "May I set a reminder here?" — the paid-plan + Discord-sync gate the UI reads
+    # to lock the bell, computed by the same module the create path enforces with.
+    path(
+        "reminders/access/",
+        reminders_views.ReminderAccessView.as_view(),
+        name="reminder-access",
+    ),
+    path("reminders/access", reminders_views.ReminderAccessView.as_view()),
     # Postable Discord channels for the lab reminder channel picker (manager-only).
     path(
         "reminders/lab-channels/",

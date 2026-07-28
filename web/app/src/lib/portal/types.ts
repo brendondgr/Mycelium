@@ -622,6 +622,22 @@ export type LabReminderChannels = {
   default_channel_name: string;
 };
 
+/**
+ * Whether the caller may set a reminder here (GET `/api/reminders/access/`).
+ *
+ * Reminders are Discord-delivered and paid, so two independent conditions gate
+ * them; both are reported so the UI can name the one thing to fix rather than
+ * showing a generic "unavailable". `reason` is `"permission"` only for a lab the
+ * caller does not manage.
+ */
+export type ReminderAccess = {
+  allowed: boolean;
+  plan_ok: boolean;
+  discord_ok: boolean;
+  reason: "" | "plan" | "discord" | "plan_and_discord" | "permission";
+  detail: string;
+};
+
 /** The body for creating a reminder (POST `/api/reminders/`). */
 export type ReminderInput = {
   content_id: string;
@@ -871,6 +887,7 @@ export const FEATURE = {
   API_ACCESS: "api_access",
   BOT_DM: "bot_dm",
   BOT_SERVER: "bot_server",
+  DEADLINE_REMINDERS: "deadline_reminders",
 } as const;
 
 /** GET /billing/me → the signed-in user's resolved entitlements (read-time gate). */

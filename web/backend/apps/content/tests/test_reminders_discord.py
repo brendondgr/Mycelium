@@ -28,6 +28,7 @@ from apps.content.models import (
 from apps.content.reminders import create_subscription
 from apps.content.reminders_discord import escape_mentions, send_personal_dm
 from apps.content.reminders_tick import run_tick
+from apps.content.tests.entitle import paid_plan
 from apps.integrations.models import DiscordIdentity, DiscordOutboxMessage
 from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse, create_message
@@ -67,7 +68,16 @@ def transport(monkeypatch, settings):
 
 @pytest.fixture
 def user(db):
-    return User.objects.create_user("dm-user")
+    """A DM recipient on a paid plan.
+
+    The plan is part of the fixture because Discord delivery is a paid capability —
+    ``send_personal_dm`` re-checks entitlement at send time — and every test here is
+    about the *transport*, not about the gate (which ``test_reminder_access`` owns).
+    The identity is left to each test, since half of them vary its reachability.
+    """
+    person = User.objects.create_user("dm-user")
+    paid_plan(person)
+    return person
 
 
 def _active_identity(user, *, dm_ok=True, channel="dm-chan"):

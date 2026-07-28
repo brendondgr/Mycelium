@@ -52,6 +52,10 @@ class Feature:
     FELLOWSHIP_MATCHING = "fellowship_matching"
     CONFERENCE_ALERTS = "conference_alerts"
     BOT_DM = "bot_dm"  # Mylo DMs you on a linked Discord account
+    # Deadline reminders — Mylo nudges you (DM) or your lab (channel) ahead of an
+    # application/abstract/event date. Discord-delivered, so it is paid-only; the
+    # matching Discord-sync half of the gate lives in ``content.reminder_access``.
+    DEADLINE_REMINDERS = "deadline_reminders"
 
     # The team line — Lab and up.
     TEAM_WORKSPACE = "team_workspace"
@@ -81,7 +85,7 @@ _FREE = frozenset(
     }
 )
 # Spore adds the whole intelligence line (LLM verdicts, scheduled delivery, grant /
-# conference alerts, personal fellowship matching, Mylo DMs).
+# conference alerts, personal fellowship matching, Mylo DMs, deadline reminders).
 _SPORE = _FREE | {
     Feature.LLM_FIT_SCORING,
     Feature.SCHEDULED_REPORTS,
@@ -89,6 +93,7 @@ _SPORE = _FREE | {
     Feature.FELLOWSHIP_MATCHING,
     Feature.CONFERENCE_ALERTS,
     Feature.BOT_DM,
+    Feature.DEADLINE_REMINDERS,
 }
 # Lab adds the shared/team line. It does **not** add BOT_SERVER — that is an add-on.
 _LAB = _SPORE | {
