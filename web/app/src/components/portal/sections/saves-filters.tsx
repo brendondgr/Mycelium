@@ -280,7 +280,7 @@ export function SavesFilters({
 
       <div
         className={cn(
-          "lg:sticky lg:top-0 lg:block lg:max-h-[calc(100vh-125px)] lg:overflow-y-auto",
+          "lg:sticky lg:top-0 lg:block lg:max-h-[calc(100vh-125px)] lg:overflow-y-auto lg:pr-2.5",
           open ? "block" : "hidden",
         )}
       >

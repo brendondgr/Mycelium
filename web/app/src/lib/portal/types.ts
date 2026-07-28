@@ -335,8 +335,10 @@ export type ConferenceOpportunity = OpportunityBase & {
   manuscript_open: boolean;
   /** Submission status: "open" | "closed" | "unknown". */
   status: string;
-  /** Pivot scope label (e.g. "International", "National"), or "". */
+  /** Pivot's raw "Scope" section, or "". */
   scope: string;
+  /** The venue's own blurb (Pivot files it under "Scope"), collapsed, or "". */
+  description: string;
 };
 
 /** A ranked opportunity feed for one area. */

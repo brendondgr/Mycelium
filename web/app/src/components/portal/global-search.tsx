@@ -36,8 +36,8 @@ export function GlobalSearch() {
           type="search"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          aria-label="Search papers, grants, fellowships, conferences"
-          placeholder="Search papers, grants, fellowships…"
+          aria-label="Search the full database"
+          placeholder="Search the full database here."
           className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-[var(--text-muted)]"
         />
       </form>

@@ -78,7 +78,6 @@ export function ConferenceCard({
 
   return (
     <MatchCard
-      fill
       ring={
         <MatchRing
           percent={conf.match_percent ?? conf.embedding_match}
@@ -150,6 +149,13 @@ export function ConferenceCard({
         </p>
       ) : null}
 
+      {/* The venue's own blurb, when the listing carries one (many don't). */}
+      {conf.description ? (
+        <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+          {conf.description}
+        </p>
+      ) : null}
+
       {/* What's still accepting — the open submission windows for this venue. */}
       {conf.abstract_open || conf.manuscript_open ? (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -192,7 +198,7 @@ export function ConferenceCard({
           href={conf.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="group mt-auto inline-flex items-center gap-1.5 pt-3 text-sm font-semibold text-primary hover:underline"
+          className="group mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
         >
           View conference
           <ArrowRightIcon
@@ -229,8 +235,9 @@ function formatWhen(iso: string | null): string {
 
 /**
  * The Conferences page: calls for papers matched to the researcher, in
- * recommendation order, as a card grid (percent match and any "New" tag lead
- * each card). A left-hand filter rail (submission status, abstract/paper open,
+ * recommendation order, one card per row like Papers / Grants / Fellowships
+ * (percent match and any "New" tag lead each card). A left-hand filter rail
+ * (submission status, abstract/paper open,
  * deadline & event-date windows, continent, country, subject, new/saved, sort)
  * narrows the already-fetched feed in memory — instant, no refetch. Top-24 cap
  * before "Show all", matching the Grants / Fellowships pattern.
@@ -272,7 +279,7 @@ function PersonalConferences() {
 }
 
 /**
- * The shared Conferences feed body — the filter rail, top-24 cap, and card grid
+ * The shared Conferences feed body — the filter rail, top-24 cap, and card list
  * — used identically by the personal page and a lab workspace. `labName`, when
  * set, marks the lab variant and only swaps the surrounding copy; the structure,
  * filters, and card layout are the same in both.
@@ -357,7 +364,7 @@ function ConferencesFeed({
 
         <div className="min-w-0 flex-1">
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-3.5">
               <CardSkeleton />
               <CardSkeleton />
               <CardSkeleton />
@@ -409,7 +416,7 @@ function ConferencesFeed({
             />
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-3.5">
                 {displayed.map((conf, index) => (
                   <div
                     key={conf.content_id}

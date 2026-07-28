@@ -333,6 +333,7 @@ class ConferenceSerializer(_OpportunitySerializer):
     manuscript_open = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     scope = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
 
     def get_title(self, score: RelevanceScore) -> str:
         return self._meta(score).get("name") or "Untitled conference"
@@ -377,8 +378,18 @@ class ConferenceSerializer(_OpportunitySerializer):
         return score.signals.get("status") or self._meta(score).get("status") or ""
 
     def get_scope(self, score: RelevanceScore) -> str:
-        # Pivot's scope label (e.g. "International", "National"), or "".
+        # Pivot's "Scope" section verbatim — in practice the venue's own prose
+        # description of the call, not a one-word label. Kept for compatibility;
+        # ``description`` is the cleaned-up field the card renders.
         return self._meta(score).get("scope") or ""
+
+    def get_description(self, score: RelevanceScore) -> str:
+        # The conference's own blurb. Pivot files it under "Scope" — a theme line
+        # ("Cultural Connections in Conservation") or a full call-for-papers
+        # paragraph. Whitespace-collapsed; "" when the listing carries none, which
+        # is common enough that the card must render without it.
+        text = self._meta(score).get("scope") or ""
+        return " ".join(str(text).split())
 
 
 class FellowshipSerializer(_OpportunitySerializer):
