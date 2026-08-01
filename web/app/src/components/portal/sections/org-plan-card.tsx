@@ -49,6 +49,57 @@ function Price({ cents, comped }: { cents: number; comped: boolean }) {
   );
 }
 
+/**
+ * What activating costs, priced against the roster — the reason a team plan is bought
+ * here rather than on someone's personal account.
+ *
+ * The number has to come from `member_count`, not `seat_count`: before activation every
+ * seat is still PENDING, so a seat-based figure would quote a five-person lab at $0 and
+ * then bill for five. Showing the multiplication (people × rate = total) makes the
+ * commitment explicit before the button is pressed.
+ */
+function ActivationQuote({
+  billing,
+  perSeat,
+}: {
+  billing: OrgBilling;
+  perSeat: string;
+}) {
+  const noun = billing.scope_type === "lab" ? "lab" : "department";
+  if (billing.member_count === 0) {
+    return (
+      <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+        The structure is free. Add people to the {noun} first — the plan covers everyone
+        in it and is billed at {perSeat} per member per month.
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+        The structure is free. Activating covers everyone in the {noun} — all{" "}
+        {billing.member_count}{" "}
+        {billing.member_count === 1 ? "member" : "members"}, you included.
+      </p>
+      <div className="rounded-xl border border-border bg-surface-alt px-3.5 py-3">
+        <p className="text-[12.5px] text-[var(--text-secondary)]">
+          {billing.member_count} × {perSeat} / member / month
+        </p>
+        <p className="mt-0.5 text-base font-semibold text-[var(--text-primary)]">
+          {usd(billing.activation_monthly_cents)}
+          <span className="ml-1 text-[12.5px] font-normal text-[var(--text-secondary)]">
+            per month
+          </span>
+        </p>
+      </div>
+      <p className="text-[12px] leading-relaxed text-[var(--text-secondary)]">
+        Someone joining later is prorated for the rest of the month; someone leaving is
+        covered through the end of it.
+      </p>
+    </div>
+  );
+}
+
 /** Shared body for a lab / department plan card, given resolved billing state. */
 function PlanBody({
   billing,
@@ -135,10 +186,7 @@ function PlanBody({
           ) : null}
         </dl>
       ) : (
-        <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-          The structure is free. Activate the plan to unlock shared intelligence for
-          everyone — billed at {perSeat} per member per month once active.
-        </p>
+        <ActivationQuote billing={billing} perSeat={perSeat} />
       )}
 
       {comped && billing.is_active ? (
@@ -152,10 +200,17 @@ function PlanBody({
         <button
           type="button"
           onClick={onActivate}
-          disabled={activating}
+          // Nobody to cover means nothing to price — adding people comes first.
+          disabled={activating || billing.member_count === 0}
           className="inline-flex items-center justify-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         >
-          {activating ? "Activating…" : "Activate plan"}
+          {activating
+            ? "Activating…"
+            : billing.member_count === 0
+              ? "Activate plan"
+              : `Activate for ${billing.member_count} ${
+                  billing.member_count === 1 ? "member" : "members"
+                }`}
         </button>
       ) : null}
 

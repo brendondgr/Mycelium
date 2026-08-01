@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -124,6 +125,15 @@ class Subscription(models.Model):
 
     def clean(self) -> None:
         validate_exactly_one(self, *SCOPE_FIELDS)
+        # A tier names who it covers, so it belongs to a scope: Free/Spore cover one
+        # researcher, Lab covers a roster, Canopy a department. Deliberately not a DB
+        # constraint — see apps.billing.tiers for why.
+        from .tiers import TierScopeError, validate_tier_for_scope
+
+        try:
+            validate_tier_for_scope(self.scope_type, self.tier)
+        except TierScopeError as exc:
+            raise ValidationError({"tier": str(exc)}) from exc
 
     def is_current(self, *, now=None) -> bool:
         """True when this subscription is ACTIVE and not past its expiry."""

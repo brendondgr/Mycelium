@@ -17,6 +17,7 @@ from apps.billing.entitlements import active_seat_count, effective_tier, topic_c
 from apps.billing.models import Subscription, Tier
 from apps.billing.pricing import recurring_monthly_cents, seat_price_cents
 from apps.billing.services import lab_subscription
+from apps.billing.tiers import LAB_TIERS, PERSONAL_TIERS
 from apps.core.people import display_name
 
 from .services import personal_subscription
@@ -24,6 +25,16 @@ from .services import personal_subscription
 #: The override can never usefully exceed the WatchPreference structural ceiling
 #: (WatchPreferenceSerializer._MAX_ITEMS = 50), so cap the grant there.
 WATCH_TOPIC_LIMIT_MAX = 50
+
+
+def _tier_choices(allowed: frozenset[str]) -> list[tuple[str, str]]:
+    """``Tier.choices`` narrowed to the tiers a scope is actually sold, in tier order.
+
+    Narrowing the *choices* (rather than validating afterwards) means an out-of-scope
+    tier is rejected by the serializer with the field named, and the browsable API only
+    ever offers what that surface can grant.
+    """
+    return [(value, label) for value, label in Tier.choices if value in allowed]
 
 
 def _watch_topics(user) -> list[str]:
@@ -119,7 +130,12 @@ class AdminUserUpdateSerializer(serializers.Serializer):
     either sent as ``null`` clears it (open-ended).
     """
 
-    tier = serializers.ChoiceField(choices=Tier.choices, required=False)
+    # Personal tiers only. Mycelium Lab and Canopy are team plans priced per member,
+    # so they are granted on the lab (or department) that has the roster — see the
+    # Labs context and ``apps.billing.tiers``.
+    tier = serializers.ChoiceField(
+        choices=_tier_choices(PERSONAL_TIERS), required=False
+    )
     duration_days = serializers.IntegerField(
         min_value=1, required=False, allow_null=True
     )
@@ -234,7 +250,7 @@ class AdminLabUpdateSerializer(serializers.Serializer):
     fields so an operator can grant an open-ended *paid* plan if they mean to.
     """
 
-    tier = serializers.ChoiceField(choices=Tier.choices, required=False)
+    tier = serializers.ChoiceField(choices=_tier_choices(LAB_TIERS), required=False)
     status = serializers.ChoiceField(
         choices=Subscription.Status.choices, required=False
     )

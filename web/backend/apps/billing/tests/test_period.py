@@ -5,14 +5,17 @@ from datetime import date, timedelta
 import pytest
 from django.contrib.auth.models import User
 
+from apps.accounts.models import Lab
 from apps.billing import period
 from apps.billing.models import Seat, SeatEvent, Subscription, Tier
 
 
 def _sub(status=Subscription.Status.INACTIVE, **kwargs) -> Subscription:
-    user = User.objects.create_user(username=f"u{User.objects.count()}", password="p")
+    lab = Lab.objects.create(
+        name=f"Lab {Lab.objects.count()}", slug=f"lab-{Lab.objects.count()}"
+    )
     return Subscription.objects.create(
-        tier=Tier.LAB, scope_user=user, status=status, **kwargs
+        tier=Tier.LAB, scope_lab=lab, status=status, **kwargs
     )
 
 

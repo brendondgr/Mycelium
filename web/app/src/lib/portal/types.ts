@@ -936,6 +936,14 @@ export type OrgBilling = {
   is_comped: boolean;
   /** Whether Mylo on Discord (the `bot_server` add-on) is part of this plan. */
   mylo_included: boolean;
+  /**
+   * The roster the plan covers. Distinct from `seat_count`, which counts already-ACTIVE
+   * seats — before activation every seat is PENDING, so only this prices the plan a
+   * manager is about to switch on. It is why a Lab plan is bought on the lab.
+   */
+  member_count: number;
+  /** What activating now would cost per month: the roster at the per-member rate. */
+  activation_monthly_cents: number;
   seat_count: number;
   seat_price_cents: number;
   recurring_monthly_cents: number;
@@ -972,8 +980,17 @@ export type DeptLabRow = {
 
 // -- Admin dashboard (staff/superuser only, GET/PATCH /api/admin/users) --------
 
-/** Subscription tiers, as the admin API reports and accepts them. */
+/** Subscription tiers, as the admin API reports them. */
 export type AdminTier = "free" | "spore" | "lab" | "canopy";
+
+/**
+ * The tiers each scope is actually *sold*. A tier names who it covers, so Mycelium Lab
+ * and Canopy are granted on a lab or department — where a roster exists to price them —
+ * and never on a personal account. The API narrows its choices the same way, so sending
+ * an out-of-scope tier is a 400 on the `tier` field.
+ */
+export type AdminPersonalTier = "free" | "spore";
+export type AdminLabTier = "lab" | "canopy";
 
 /** Subscription statuses the admin API reports and accepts. */
 export type AdminSubscriptionStatus = "active" | "past_due" | "canceled";
@@ -1037,7 +1054,7 @@ export type AdminUsersQuery = {
  * override back to the tier cap.
  */
 export type AdminUserUpdate = {
-  tier?: AdminTier;
+  tier?: AdminPersonalTier;
   duration_days?: number | null;
   expires_at?: string | null;
   subscription_status?: AdminSubscriptionStatus;
@@ -1104,7 +1121,7 @@ export type AdminLabsPage = {
  * which opens the billing period and seats every member.
  */
 export type AdminLabUpdate = {
-  tier?: AdminTier;
+  tier?: AdminLabTier;
   status?: AdminOrgStatus;
   duration_days?: number | null;
   expires_at?: string | null;

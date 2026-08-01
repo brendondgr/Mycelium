@@ -288,3 +288,39 @@ no institution-level billing (briefing D10, deferred).
   `cancel_at_period_end` flag + tick finalization) is a small follow-up, not shipped this pass.
 - **Frontend verified by typecheck + lint + build**, not the browser preview (the Preview MCP
   serves the main checkout, not this worktree). Interactive verification is a post-merge step.
+
+---
+
+## Follow-up: a tier belongs to a scope (2026-08-01)
+
+**Decision.** Mycelium Lab is sold on a lab and nowhere else. Canopy likewise on a
+department. Free and Spore are the only tiers a personal (`scope_user`) plan may hold.
+
+**Why.** A team plan is priced *per member*, so it needs a roster to count. On a lab the
+roster is the membership; on a personal account there is only the buyer, so a personal
+Lab plan would grant team features to an account with no team and bill exactly one seat
+however large the real group. Activating on the lab is also what makes the plan cover
+everyone at once — the PI and every member are seated in the same transaction.
+
+**Where it lives.** `apps/billing/tiers.py` states the rule once
+(`PERSONAL_TIERS`/`LAB_TIERS`/`DEPARTMENT_TIERS`, `validate_tier_for_scope`,
+`TierScopeError`). It is enforced at every point a plan is **granted**:
+
+- `services.provision_workspace` (the signup entry point; signup itself never asks for
+  a tier, so this is a guard, not a behaviour change)
+- `services.activate_lab_subscription` / `activate_department_subscription` — a
+  mis-tiered plan cannot be switched on however it got there
+- `Subscription.clean()` — catches the Django admin and any `full_clean()` path
+- both admin dashboard write paths, with narrowed serializer `choices` so an
+  out-of-scope tier is a 400 on the `tier` field
+
+Deliberately **not** a database `CheckConstraint`: the rule is about *selling* a plan,
+not about which rows may exist. A constraint would break historical rows and force a
+data migration on billing data, and the entitlement read path must stay untouched so a
+downgrade never loses anything.
+
+**Pricing before purchase.** `OrgBillingSerializer` gained `member_count` (the roster)
+and `activation_monthly_cents`. `seat_count` cannot be used pre-activation — every seat
+is still PENDING, so it reads 0 — and quoting from it would show a five-person lab $0
+and then bill for five. The lab's plan card shows `member_count × per-seat = total`
+before the manager commits, and the button reads "Activate for N members".

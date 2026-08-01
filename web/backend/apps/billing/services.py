@@ -36,6 +36,7 @@ from .seats import (
     _ensure_seat,
     schedule_seat_removal,
 )
+from .tiers import validate_tier_for_scope
 
 ACCOUNT_TYPES = ("personal", "lab", "department")
 
@@ -107,6 +108,10 @@ def provision_workspace(
     and a **PENDING** founder seat (org-paid) that activation later turns ACTIVE.
     """
     if account_type == "personal":
+        # A personal account can only ever be sold a personal tier. Signup never asks
+        # for one, but this is a public entry point — a Lab tier here would hand team
+        # features to an account with no roster to price them against.
+        validate_tier_for_scope("user", personal_tier)
         sub = Subscription.objects.create(tier=personal_tier, scope_user=user)
         seat = Seat.objects.create(subscription=sub, member=user, payer_user=user)
         return ProvisionResult(subscription=sub, seat=seat)
@@ -171,6 +176,7 @@ def activate_lab_subscription(lab, *, on: date | None = None) -> Subscription:
     sub = lab_subscription(lab)
     if sub is None:
         raise ValueError("Lab has no subscription to activate.")
+    validate_tier_for_scope("lab", sub.tier)
     period.activate(sub, on=on)
     for membership in LabMembership.objects.filter(lab=lab).select_related("user"):
         _ensure_seat(
@@ -202,6 +208,7 @@ def activate_department_subscription(
     sub = department_subscription(department)
     if sub is None:
         raise ValueError("Department has no subscription to activate.")
+    validate_tier_for_scope("department", sub.tier)
     period.activate(sub, on=on)
     member_ids = plan_member_ids(department)
     for user in User.objects.filter(id__in=member_ids):

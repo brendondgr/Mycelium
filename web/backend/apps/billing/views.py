@@ -13,7 +13,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.models import Department, Lab
+from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
     user_can_edit_lab_profile,
     user_can_manage_department,
@@ -34,7 +34,12 @@ from .entitlements import (
 )
 from .models import Seat, Subscription, SubscriptionAddOn
 from .period import today
-from .pricing import prorate_add, recurring_monthly_cents, seat_price_cents
+from .pricing import (
+    activation_quote,
+    prorate_add,
+    recurring_monthly_cents,
+    seat_price_cents,
+)
 from .seats import SeatCeilingExceeded
 from .serializers import EntitlementSerializer, OrgBillingSerializer
 from .services import (
@@ -43,6 +48,18 @@ from .services import (
     department_subscription,
     lab_subscription,
 )
+
+
+def lab_member_count(lab) -> int:
+    """How many people a lab plan would cover — the roster it is priced against."""
+    return LabMembership.objects.filter(lab=lab).count()
+
+
+def department_member_count(department) -> int:
+    """The department's *plan* membership: direct members + included labs' members."""
+    from apps.accounts.services import plan_member_ids  # avoids an import cycle
+
+    return len(plan_member_ids(department))
 
 
 def user_plans_payload(user) -> list[dict]:
@@ -136,9 +153,22 @@ class EntitlementsView(APIView):
 
 
 def org_billing_payload(
-    subscription, *, scope_type: str, scope_slug, scope_name: str, can_manage: bool
+    subscription,
+    *,
+    scope_type: str,
+    scope_slug,
+    scope_name: str,
+    can_manage: bool,
+    member_count: int = 0,
 ) -> dict:
-    """The seat-priced state of one org plan (empty-ish when there is no plan yet)."""
+    """The seat-priced state of one org plan (empty-ish when there is no plan yet).
+
+    ``member_count`` is the org's **roster** — the people the plan would cover — as
+    opposed to ``seat_count``, which counts seats that are already ACTIVE. Before
+    activation every seat is still PENDING, so the roster is the only honest basis for
+    the price a manager is about to commit to; this is exactly why a Lab plan is bought
+    here and not on a personal account, where there is no roster to count.
+    """
     if subscription is None:
         return {
             "scope_type": scope_type,
@@ -149,6 +179,8 @@ def org_billing_payload(
             "is_active": False,
             "is_comped": False,
             "mylo_included": False,
+            "member_count": member_count,
+            "activation_monthly_cents": 0,
             "seat_count": 0,
             "seat_price_cents": 0,
             "recurring_monthly_cents": 0,
@@ -182,6 +214,14 @@ def org_billing_payload(
         "is_active": is_active,
         "is_comped": comped,
         "mylo_included": mylo_included(subscription),
+        "member_count": member_count,
+        # What activating now would cost per month: the roster priced at the plan's
+        # per-member rate. Zero on a comped plan.
+        "activation_monthly_cents": (
+            0 if comped else activation_quote(subscription, seat_count=member_count)[
+                "recurring_monthly_cents"
+            ]
+        ),
         "seat_count": active_seat_count(subscription),
         "seat_price_cents": price,
         "recurring_monthly_cents": recurring_monthly_cents(subscription),
@@ -207,6 +247,7 @@ class LabBillingView(APIView):
             scope_slug=lab.slug,
             scope_name=lab.name,
             can_manage=user_can_edit_lab_profile(request.user, lab),
+            member_count=lab_member_count(lab),
         )
         return Response(OrgBillingSerializer(payload).data)
 
@@ -228,6 +269,7 @@ class LabBillingActivateView(APIView):
             scope_slug=lab.slug,
             scope_name=lab.name,
             can_manage=True,
+            member_count=lab_member_count(lab),
         )
         return Response(OrgBillingSerializer(payload).data)
 
@@ -245,6 +287,7 @@ class DeptBillingView(APIView):
             scope_slug=str(department.id),
             scope_name=department.name,
             can_manage=user_can_manage_department(request.user, department),
+            member_count=department_member_count(department),
         )
         return Response(OrgBillingSerializer(payload).data)
 
@@ -266,5 +309,6 @@ class DeptBillingActivateView(APIView):
             scope_slug=str(department.id),
             scope_name=department.name,
             can_manage=True,
+            member_count=department_member_count(department),
         )
         return Response(OrgBillingSerializer(payload).data)

@@ -5,14 +5,17 @@ from datetime import date
 import pytest
 from django.contrib.auth.models import User
 
+from apps.accounts.models import Department, Lab
 from apps.billing import pricing
 from apps.billing.models import Seat, Subscription, Tier
 
 
 def _lab_sub(**kwargs) -> Subscription:
-    user = User.objects.create_user(username=f"u{User.objects.count()}", password="p")
+    lab = Lab.objects.create(
+        name=f"Lab {Lab.objects.count()}", slug=f"lab-{Lab.objects.count()}"
+    )
     return Subscription.objects.create(
-        tier=Tier.LAB, scope_user=user, status=Subscription.Status.ACTIVE, **kwargs
+        tier=Tier.LAB, scope_lab=lab, status=Subscription.Status.ACTIVE, **kwargs
     )
 
 
@@ -106,9 +109,13 @@ def test_activation_quote_is_full_period() -> None:
 
 @pytest.mark.django_db
 def test_add_members_quote_inactive_plan_is_full_price() -> None:
-    user = User.objects.create_user(username="head", password="p")
+    department = Department.objects.create(
+        owner=User.objects.create_user(username="head", password="p"), name="Dept"
+    )
     inactive = Subscription.objects.create(
-        tier=Tier.CANOPY, scope_user=user, status=Subscription.Status.INACTIVE
+        tier=Tier.CANOPY,
+        scope_department=department,
+        status=Subscription.Status.INACTIVE,
     )
     quote = pricing.add_members_quote(inactive, count=2, added_on=date(2026, 7, 21))
     assert quote == {"count": 2, "prorated_cents": 2 * 2000, "prorated": False}

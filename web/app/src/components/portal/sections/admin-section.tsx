@@ -20,7 +20,9 @@ import {
 import type {
   AdminLabDetail,
   AdminLabRow,
+  AdminLabTier,
   AdminLabUpdate,
+  AdminPersonalTier,
   AdminOrgStatus,
   AdminSubscriptionStatus,
   AdminTier,
@@ -33,9 +35,18 @@ import { cn } from "@/lib/utils";
 const INPUT_CLASS =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-const TIERS: { value: AdminTier; label: string }[] = [
+/**
+ * A tier names who it covers, so each scope is offered only what it is sold. Free and
+ * Spore cover one researcher; Mycelium Lab and Canopy are priced per member and are
+ * granted on the lab or department that has the roster. The API narrows its choices the
+ * same way, so this is a convenience, not the gate.
+ */
+const PERSONAL_TIERS: { value: AdminPersonalTier; label: string }[] = [
   { value: "free", label: "Free" },
   { value: "spore", label: "Spore" },
+];
+
+const LAB_TIERS: { value: AdminLabTier; label: string }[] = [
   { value: "lab", label: "Mycelium Lab" },
   { value: "canopy", label: "Canopy" },
 ];
@@ -660,11 +671,15 @@ function UserEditor({ id, onClose }: { id: number; onClose: () => void }) {
 function UserEditorForm({ detail }: { detail: AdminUserDetail }) {
   const update = useUpdateAdminUser();
 
-  const currentTier = detail.subscription?.tier ?? "free";
+  // A stored plan can only be a personal tier now, but historical rows may hold a
+  // team tier; fall back to Free rather than offering a value the picker can't show.
+  const stored = detail.subscription?.tier;
+  const currentTier: AdminPersonalTier =
+    stored === "spore" || stored === "free" ? stored : "free";
   const currentStatus = detail.subscription?.status ?? "active";
   const hasOverride = detail.watch_topic_limit != null;
 
-  const [tier, setTier] = React.useState<AdminTier>(currentTier);
+  const [tier, setTier] = React.useState<AdminPersonalTier>(currentTier);
   const [status, setStatus] = React.useState<AdminSubscriptionStatus>(currentStatus);
   const [duration, setDuration] = React.useState("");
   const [customLimit, setCustomLimit] = React.useState(hasOverride);
@@ -709,14 +724,18 @@ function UserEditorForm({ detail }: { detail: AdminUserDetail }) {
     <form onSubmit={onSubmit} className="space-y-4">
       <UserMeta detail={detail} />
 
-      <Field label="Subscription tier" htmlFor="admin-tier">
+      <Field
+        label="Subscription tier"
+        htmlFor="admin-tier"
+        hint="Mycelium Lab and Canopy are team plans — grant them on the Labs tab, where the roster sets the price."
+      >
         <select
           id="admin-tier"
           className={INPUT_CLASS}
           value={tier}
-          onChange={(event) => setTier(event.target.value as AdminTier)}
+          onChange={(event) => setTier(event.target.value as AdminPersonalTier)}
         >
-          {TIERS.map((option) => (
+          {PERSONAL_TIERS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -1065,7 +1084,9 @@ function LabEditorForm({ detail }: { detail: AdminLabDetail }) {
   const update = useUpdateAdminLab();
   const sub = detail.subscription;
 
-  const [tier, setTier] = React.useState<AdminTier>(sub?.tier ?? "lab");
+  const [tier, setTier] = React.useState<AdminLabTier>(
+    sub?.tier === "canopy" ? "canopy" : "lab",
+  );
   const [status, setStatus] = React.useState<AdminOrgStatus>(sub?.status ?? "inactive");
   const [ending, setEnding] = React.useState("");
   const [endDate, setEndDate] = React.useState(dateInputValue(sub?.expires_at ?? null));
@@ -1104,14 +1125,18 @@ function LabEditorForm({ detail }: { detail: AdminLabDetail }) {
     <form onSubmit={onSubmit} className="space-y-4">
       <LabMeta detail={detail} />
 
-      <Field label="Plan tier" htmlFor="admin-lab-tier">
+      <Field
+        label="Plan tier"
+        htmlFor="admin-lab-tier"
+        hint={`Priced per member — ${detail.member_count} in this lab today.`}
+      >
         <select
           id="admin-lab-tier"
           className={INPUT_CLASS}
           value={tier}
-          onChange={(event) => setTier(event.target.value as AdminTier)}
+          onChange={(event) => setTier(event.target.value as AdminLabTier)}
         >
-          {TIERS.map((option) => (
+          {LAB_TIERS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>

@@ -31,7 +31,12 @@ from .serializers import (
     AdminUserRowSerializer,
     AdminUserUpdateSerializer,
 )
-from .services import SeatCeilingExceeded, apply_lab_update, apply_user_update
+from .services import (
+    SeatCeilingExceeded,
+    TierScopeError,
+    apply_lab_update,
+    apply_user_update,
+)
 
 
 class AdminUserListView(ListAPIView):
@@ -74,9 +79,13 @@ class AdminUserDetailView(APIView):
         user = self._get_user(pk)
         serializer = AdminUserUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        apply_user_update(
-            admin=request.user, user=user, data=serializer.validated_data
-        )
+        try:
+            apply_user_update(
+                admin=request.user, user=user, data=serializer.validated_data
+            )
+        except TierScopeError as exc:
+            # A team plan aimed at one person — say where it is actually bought.
+            raise ValidationError({"tier": [str(exc)]}) from exc
         user.refresh_from_db()
         return Response(AdminUserDetailSerializer(user).data)
 
@@ -121,6 +130,8 @@ class AdminLabDetailView(APIView):
             apply_lab_update(
                 admin=request.user, lab=lab, data=serializer.validated_data
             )
+        except TierScopeError as exc:
+            raise ValidationError({"tier": [str(exc)]}) from exc
         except SeatCeilingExceeded as exc:
             # The roster is larger than the chosen tier allows — an honest 400 naming
             # the ceiling beats a 500, and nothing was written (the service is atomic).

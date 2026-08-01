@@ -118,7 +118,7 @@ def test_past_due_subscription_resolution(user: User) -> None:
     """D3: a PAST_DUE plan does not cover (hard cutoff). A grace window needs
     dunning, which is deferred to P7; this pins the current resolver behaviour."""
     Subscription.objects.create(
-        tier=Tier.LAB, scope_user=user, status=Subscription.Status.PAST_DUE
+        tier=Tier.SPORE, scope_user=user, status=Subscription.Status.PAST_DUE
     )
     assert effective_tier(user) == Tier.FREE
     assert not has_feature(user, Feature.LLM_FIT_SCORING)

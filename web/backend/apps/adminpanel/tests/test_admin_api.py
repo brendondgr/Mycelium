@@ -184,12 +184,12 @@ def test_expired_grant_reverts_via_read_path(
     past = timezone.now() - timedelta(days=1)
     resp = client.patch(
         detail_url(member),
-        {"tier": Tier.LAB, "expires_at": past.isoformat()},
+        {"tier": Tier.SPORE, "expires_at": past.isoformat()},
         format="json",
     )
     assert resp.status_code == 200
-    # Persisted as LAB but already expired -> resolves to Free.
-    assert Subscription.objects.get(scope_user=member).tier == Tier.LAB
+    # Persisted as SPORE but already expired -> resolves to Free.
+    assert Subscription.objects.get(scope_user=member).tier == Tier.SPORE
     assert effective_tier(member) == Tier.FREE
 
 

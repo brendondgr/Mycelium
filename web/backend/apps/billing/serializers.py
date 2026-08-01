@@ -54,6 +54,10 @@ class OrgBillingSerializer(serializers.Serializer):
     is_active = serializers.BooleanField()
     is_comped = serializers.BooleanField()
     mylo_included = serializers.BooleanField()
+    #: The roster the plan covers — the basis for the pre-activation quote, since every
+    #: seat is still PENDING before activation and ``seat_count`` would read 0.
+    member_count = serializers.IntegerField()
+    activation_monthly_cents = serializers.IntegerField()
     seat_count = serializers.IntegerField()
     seat_price_cents = serializers.IntegerField()
     recurring_monthly_cents = serializers.IntegerField()

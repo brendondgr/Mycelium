@@ -27,6 +27,7 @@ from apps.billing.addons import mylo_included, set_mylo_included
 from apps.billing.models import Seat, Subscription, Tier
 from apps.billing.seats import SeatCeilingExceeded
 from apps.billing.services import activate_lab_subscription, lab_subscription
+from apps.billing.tiers import TierScopeError, validate_tier_for_scope
 
 
 def personal_subscription(user: User) -> Subscription | None:
@@ -73,6 +74,10 @@ def assign_subscription(
     read-time (see :mod:`apps.billing.entitlements`), so a lapsed grant reverts to
     Free on its own.
     """
+    # A personal plan is only ever a personal tier; Mycelium Lab is bought on a lab,
+    # where a roster exists to price it against (``apps.billing.tiers``).
+    if tier is not None:
+        validate_tier_for_scope("user", tier)
     sub = _ensure_personal_subscription(user, tier=tier or Tier.FREE)
 
     changed: list[str] = []
@@ -184,6 +189,7 @@ def apply_lab_update(*, admin: User, lab, data: dict) -> Subscription:
     sub = ensure_lab_subscription(lab)
 
     if "tier" in data:
+        validate_tier_for_scope("lab", data["tier"])
         sub.tier = data["tier"]
         sub.save(update_fields=["tier", "updated_at"])
 
@@ -240,6 +246,7 @@ def apply_lab_update(*, admin: User, lab, data: dict) -> Subscription:
 
 __all__ = [
     "SeatCeilingExceeded",
+    "TierScopeError",
     "apply_lab_update",
     "apply_user_update",
     "assign_subscription",

@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 
 import { BankIcon } from "@/components/portal/icons";
@@ -52,12 +53,71 @@ function PersonalBilling() {
       <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">
         <div className="flex flex-col gap-[22px]">
           <PlansCard />
+          <TeamPlanCard />
         </div>
         <div className="flex flex-col gap-[22px]">
           <CurrentPlanCard />
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Where a team plan actually comes from.
+ *
+ * Mycelium Lab is priced per member, so it is activated on a lab — the lab has the
+ * roster that sets the price, and activating there covers everyone in it at once. A
+ * personal account has nobody to count, which is why it cannot hold one. Rather than
+ * leave that as an unexplained absence, say it here and point at the lab.
+ */
+function TeamPlanCard() {
+  const { labs } = usePortal();
+  const managed = (labs ?? []).filter(canManageLab);
+
+  return (
+    <Card className="p-[22px]">
+      <h2 className="mb-1 text-base font-semibold text-[var(--text-primary)]">
+        Working with a team?
+      </h2>
+      <p className="mb-3 text-xs text-[var(--text-secondary)]">
+        Mycelium Lab covers a whole research group.
+      </p>
+      <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+        A lab plan is activated on the lab itself, not here — the lab&apos;s roster is
+        what sets the price, and switching it on covers every member at once, you
+        included. You need to be the PI, owner, or an admin of the lab.
+      </p>
+      {managed.length > 0 ? (
+        <p className="mt-3 text-sm text-[var(--text-secondary)]">
+          {managed.length === 1 ? "Your lab: " : "Your labs: "}
+          {managed.map((lab, index) => (
+            <React.Fragment key={lab.slug}>
+              {index > 0 ? ", " : ""}
+              <Link
+                href={`/app/${lab.slug}/dashboard`}
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                {lab.name}
+              </Link>
+            </React.Fragment>
+          ))}
+          . Switch to it in the workspace switcher, then open Billing there.
+        </p>
+      ) : (
+        <p className="mt-3 text-sm text-[var(--text-secondary)]">
+          You don&apos;t manage a lab yet.{" "}
+          <Link
+            href="/app/labs"
+            className="font-medium text-primary underline-offset-2 hover:underline"
+          >
+            Create one
+          </Link>{" "}
+          — the workspace itself is free — then activate its plan from the lab&apos;s own
+          Billing page.
+        </p>
+      )}
+    </Card>
   );
 }
 
