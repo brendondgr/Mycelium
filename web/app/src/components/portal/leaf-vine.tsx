@@ -10,8 +10,8 @@ import * as React from "react";
  * rather than fixed hex.
  *
  * It is purely ornamental: `aria-hidden`, non-interactive, and it renders
- * nothing under `prefers-reduced-motion: reduce` so the row's tint + accent rule
- * remain the sole (motion-free) state signal there.
+ * nothing under `prefers-reduced-motion: reduce`, where the row's tint, heavier
+ * label, and `aria-current` are the (motion-free) state signal instead.
  */
 type LeafVineProps = {
   /** Row is hovered, focused, or active — grow the vine + leaves in. */

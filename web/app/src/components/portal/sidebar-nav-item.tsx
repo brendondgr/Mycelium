@@ -15,9 +15,12 @@ type SidebarNavItemProps = {
 };
 
 /**
- * One sidebar row. The active state is signaled three ways (not color alone): a
- * left accent rule, a soft tint, and a heavier/darker label — so it reads under
- * the contrast and reduced-color expectations in the style guide.
+ * One sidebar row. Selecting a row leaves its hover animation in its finished
+ * state — the vine stays drawn and gently sways — over a soft tint. There is
+ * deliberately no left accent rule: the grown vine is the selection mark. The
+ * state never rests on color alone, since the label also goes heavier/darker and
+ * the row carries `aria-current="page"`, so it still reads under the contrast
+ * and reduced-motion expectations in the style guide.
  */
 export function SidebarNavItem({
   icon,
@@ -48,16 +51,10 @@ export function SidebarNavItem({
     >
       <LeafVine grown={grown} active={active} />
       {active ? (
-        <>
-          <span
-            aria-hidden
-            className="absolute inset-0 rounded-[10px] bg-[color-mix(in_srgb,var(--primary)_13%,transparent)]"
-          />
-          <span
-            aria-hidden
-            className="absolute bottom-2 left-0 top-2 z-[2] w-[3px] rounded-full bg-primary"
-          />
-        </>
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-[10px] bg-[color-mix(in_srgb,var(--primary)_13%,transparent)]"
+        />
       ) : null}
       <span className="relative z-[2] shrink-0">{icon}</span>
       <span className="relative z-[2] flex-1">{label}</span>

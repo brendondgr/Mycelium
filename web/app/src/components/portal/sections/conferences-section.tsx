@@ -26,15 +26,19 @@ import {
   DEFAULT_CONFERENCE_FILTERS,
   deriveConferenceFilterOptions,
   filterAndSortConferences,
-  hasActiveConferenceFilters,
   type ConferenceFilterState,
 } from "@/components/portal/sections/conference-filters";
+import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
 import { usePortal } from "@/components/portal/portal-context";
 import { useConferences, useLabRecommendations } from "@/lib/portal/hooks";
+import {
+  revealDelay,
+  useInfiniteReveal,
+} from "@/lib/portal/use-infinite-reveal";
 import type { ConferenceOpportunity, MyLab } from "@/lib/portal/types";
 
-/** How many of the top matched conferences to show before "Show all". */
-const DEFAULT_CONFERENCE_LIMIT = 24;
+/** How many conferences each infinite-scroll slice reveals. */
+const CONFERENCE_PAGE_SIZE = 24;
 
 /**
  * A small green "still accepting" pill for an open submission window (abstract
@@ -239,8 +243,9 @@ function formatWhen(iso: string | null): string {
  * (percent match and any "New" tag lead each card). A left-hand filter rail
  * (submission status, abstract/paper open,
  * deadline & event-date windows, continent, country, subject, new/saved, sort)
- * narrows the already-fetched feed in memory — instant, no refetch. Top-24 cap
- * before "Show all", matching the Grants / Fellowships pattern.
+ * narrows the already-fetched feed in memory — instant, no refetch. The results
+ * scroll infinitely, revealing a slice at a time as the reader nears the bottom,
+ * matching the Grants / Fellowships pattern.
  */
 export function ConferencesSection() {
   const { currentLab } = usePortal();
@@ -279,8 +284,8 @@ function PersonalConferences() {
 }
 
 /**
- * The shared Conferences feed body — the filter rail, top-24 cap, and card list
- * — used identically by the personal page and a lab workspace. `labName`, when
+ * The shared Conferences feed body — the filter rail, infinite-scroll card list,
+ * and end-of-feed marker — used identically by the personal page and a lab workspace. `labName`, when
  * set, marks the lab variant and only swaps the surrounding copy; the structure,
  * filters, and card layout are the same in both.
  */
@@ -300,8 +305,6 @@ function ConferencesFeed({
   const [filters, setFilters] = React.useState<ConferenceFilterState>(
     DEFAULT_CONFERENCE_FILTERS,
   );
-  const [showAll, setShowAll] = React.useState(false);
-
   const options = React.useMemo(
     () => deriveConferenceFilterOptions(conferences),
     [conferences],
@@ -312,13 +315,10 @@ function ConferencesFeed({
     [conferences, filters, today],
   );
 
-  const filtersActive = hasActiveConferenceFilters(filters);
-  const capped = !filtersActive && !showAll;
-  const displayed = React.useMemo(
-    () => (capped ? visible.slice(0, DEFAULT_CONFERENCE_LIMIT) : visible),
-    [visible, capped],
-  );
-  const hiddenCount = visible.length - displayed.length;
+  // Filters always search the full feed; the result set then streams in as the
+  // reader scrolls, so reaching the bottom widens the list instead of ending it.
+  const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
+    useInfiniteReveal(visible, CONFERENCE_PAGE_SIZE, filters);
 
   const showRail = !isLoading && !isError && conferences.length > 0;
 
@@ -421,26 +421,26 @@ function ConferencesFeed({
                   <div
                     key={conf.content_id}
                     className="portal-fade-up"
-                    style={{ animationDelay: `${index * 45}ms` }}
+                    style={{
+                      animationDelay: revealDelay(
+                        index,
+                        CONFERENCE_PAGE_SIZE,
+                        45,
+                      ),
+                    }}
                   >
                     <ConferenceCard conf={conf} />
                   </div>
                 ))}
               </div>
-              {hiddenCount > 0 ? (
-                <div className="mt-5 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowAll(true)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    Show all {conferences.length} conferences
-                    <span className="text-[var(--text-secondary)]">
-                      (+{hiddenCount} more)
-                    </span>
-                  </button>
-                </div>
-              ) : null}
+              <FeedSentinel
+                sentinelRef={sentinelRef}
+                hasMore={hasMore}
+                remaining={remaining}
+                onRevealMore={revealMore}
+                totalShown={displayed.length}
+                noun="conferences"
+              />
             </>
           )}
         </div>

@@ -25,20 +25,24 @@ import {
   FellowshipFilters,
   deriveFellowshipFilterOptions,
   filterAndSortFellowships,
-  hasActiveFellowshipFilters,
   type FellowshipFilterState,
 } from "@/components/portal/sections/fellowship-filters";
+import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
 import { usePortal } from "@/components/portal/portal-context";
 import { Pill } from "@/components/portal/primitives/pill";
 import { useFellowships, useLabRecommendations } from "@/lib/portal/hooks";
+import {
+  revealDelay,
+  useInfiniteReveal,
+} from "@/lib/portal/use-infinite-reveal";
 import type {
   FellowshipOpportunity,
   LabFellowship,
   MyLab,
 } from "@/lib/portal/types";
 
-/** How many of the top matched fellowships to show before "Show all". */
-const DEFAULT_FELLOWSHIP_LIMIT = 25;
+/** How many fellowships each infinite-scroll slice reveals. */
+const FELLOWSHIP_PAGE_SIZE = 25;
 
 // --------------------------------------------------------------------------- //
 // Deadline display helpers
@@ -379,7 +383,7 @@ function FellowshipList({ items }: { items: FellowshipOpportunity[] }) {
         <div
           key={item.content_id}
           className="portal-fade-up"
-          style={{ animationDelay: `${index * 50}ms` }}
+          style={{ animationDelay: revealDelay(index, FELLOWSHIP_PAGE_SIZE) }}
         >
           <FellowshipRow item={item} />
         </div>
@@ -396,7 +400,8 @@ function FellowshipList({ items }: { items: FellowshipOpportunity[] }) {
  * The Fellowships page: matched fellowships with a deterministic eligibility
  * rule engine. Shows a left-hand filter rail (tier, deadline, field, stage,
  * citizenship, award type, saved/new, sort) with instant in-memory filtering.
- * Top-25 cap before "Show all", matching the Grants page pattern.
+ * The results scroll infinitely, revealing a slice at a time as the reader nears
+ * the bottom, matching the Grants page pattern.
  */
 /** One lab fellowship: a fellowship a member is eligible for (union of members). */
 function LabFellowshipRow({ item }: { item: LabFellowship }) {
@@ -450,22 +455,15 @@ function LabFellowshipRow({ item }: { item: LabFellowship }) {
  * The lab payload is a distinct data model (fellowships members are eligible
  * for, with per-member eligibility) rather than the caller's own eligibility, so
  * it keeps its member-eligibility card; it reuses the personal page's outer
- * structure — the header, loading/empty states, and top-25 "Show all" cap — for
+ * structure — the header, loading/empty states, and infinite-scroll list — for
  * a consistent shell, without the personal filter rail (the lab data lacks the
  * tier/stage/citizenship fields those filters need).
  */
 function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
   const { data, isLoading, isError } = useLabRecommendations(lab.slug);
   const fellowships = React.useMemo(() => data?.fellowships ?? [], [data]);
-  const [showAll, setShowAll] = React.useState(false);
-
-  const capped = !showAll;
-  const displayed = React.useMemo(
-    () =>
-      capped ? fellowships.slice(0, DEFAULT_FELLOWSHIP_LIMIT) : fellowships,
-    [fellowships, capped],
-  );
-  const hiddenCount = fellowships.length - displayed.length;
+  const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
+    useInfiniteReveal(fellowships, FELLOWSHIP_PAGE_SIZE);
 
   const subtitle = isLoading
     ? `Checking what ${lab.name} members are eligible for…`
@@ -508,26 +506,20 @@ function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
                 <div
                   key={item.content_id}
                   className="portal-fade-up"
-                  style={{ animationDelay: `${index * 50}ms` }}
+                  style={{ animationDelay: revealDelay(index, FELLOWSHIP_PAGE_SIZE) }}
                 >
                   <LabFellowshipRow item={item} />
                 </div>
               ))}
             </div>
-            {hiddenCount > 0 ? (
-              <div className="mt-5 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setShowAll(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  Show all {fellowships.length} fellowships
-                  <span className="text-[var(--text-secondary)]">
-                    (+{hiddenCount} more)
-                  </span>
-                </button>
-              </div>
-            ) : null}
+            <FeedSentinel
+              sentinelRef={sentinelRef}
+              hasMore={hasMore}
+              remaining={remaining}
+              onRevealMore={revealMore}
+              totalShown={displayed.length}
+              noun="fellowships"
+            />
           </>
         )}
       </div>
@@ -550,8 +542,6 @@ function PersonalFellowships() {
   const [filters, setFilters] = React.useState<FellowshipFilterState>(
     DEFAULT_FELLOWSHIP_FILTERS,
   );
-  const [showAll, setShowAll] = React.useState(false);
-
   const options = React.useMemo(
     () => deriveFellowshipFilterOptions(items),
     [items],
@@ -562,13 +552,10 @@ function PersonalFellowships() {
     [items, filters, today],
   );
 
-  const filtersActive = hasActiveFellowshipFilters(filters);
-  const capped = !filtersActive && !showAll;
-  const displayed = React.useMemo(
-    () => (capped ? visible.slice(0, DEFAULT_FELLOWSHIP_LIMIT) : visible),
-    [visible, capped],
-  );
-  const hiddenCount = visible.length - displayed.length;
+  // Filters always search the full feed; the result set then streams in as the
+  // reader scrolls, so reaching the bottom widens the list instead of ending it.
+  const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
+    useInfiniteReveal(visible, FELLOWSHIP_PAGE_SIZE, filters);
 
   const showRail = !isLoading && !isError && items.length > 0;
 
@@ -637,20 +624,14 @@ function PersonalFellowships() {
           ) : (
             <>
               <FellowshipList items={displayed} />
-              {hiddenCount > 0 ? (
-                <div className="mt-5 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowAll(true)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    Show all {items.length} fellowships
-                    <span className="text-[var(--text-secondary)]">
-                      (+{hiddenCount} more)
-                    </span>
-                  </button>
-                </div>
-              ) : null}
+              <FeedSentinel
+                sentinelRef={sentinelRef}
+                hasMore={hasMore}
+                remaining={remaining}
+                onRevealMore={revealMore}
+                totalShown={displayed.length}
+                noun="fellowships"
+              />
             </>
           )}
         </div>

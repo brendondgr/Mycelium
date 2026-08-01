@@ -8,8 +8,13 @@ import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { DocumentIcon, SearchIcon } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
+import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
 import { SuggestionCard } from "@/components/portal/sections/suggestion-card";
 import { useDailyReport, useLabRecommendations } from "@/lib/portal/hooks";
+import {
+  revealDelay,
+  useInfiniteReveal,
+} from "@/lib/portal/use-infinite-reveal";
 import type { MyLab, Suggestion } from "@/lib/portal/types";
 
 function formatWhen(iso: string | null): string {
@@ -36,8 +41,13 @@ function SkeletonCard() {
   );
 }
 
-/** How many papers show by default; the rest are cross-embedding matches. */
+/** How many papers Mylo ranks itself; the rest are cross-embedding matches. */
 const PRIMARY_COUNT = 10;
+
+/** How many papers each infinite-scroll slice reveals — one Mylo tier's worth,
+ * so the first slice is exactly the LLM-ranked picks and the cross-topics tail
+ * follows on its own as the reader keeps going. */
+const PAPER_PAGE_SIZE = PRIMARY_COUNT;
 
 type ClusterOption = { id: string; label: string };
 
@@ -56,8 +66,9 @@ function clusterSet(suggestions: Suggestion[]): ClusterOption[] {
 
 /**
  * The Research Papers page: the top papers ranked and percent-matched by the
- * language model, with the remaining cross-embedding matches tucked behind a
- * "show more" toggle. Above the list sit a keyword search and one row of
+ * language model, with the remaining cross-embedding matches following in the
+ * same scroll — the feed keeps loading as the reader goes rather than stopping
+ * at a toggle. Above the list sit a keyword search and one row of
  * cluster chips — pick a research theme, or see everything. Fed by the same
  * daily run as the Daily Report summary.
  */
@@ -102,8 +113,25 @@ function PersonalResearchPapers() {
 }
 
 /**
+ * Marks where Mylo's own ranked picks end and the cross-embedding tail begins.
+ * The tail used to sit behind a "show more" button; now that it streams in with
+ * the scroll, this rule is what keeps the two tiers legible.
+ */
+function CrossTopicsDivider() {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <span aria-hidden className="h-px flex-1 bg-border" />
+      <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
+        Cross-topics matches
+      </span>
+      <span aria-hidden className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+/**
  * The shared Research Papers feed body — keyword search, the cluster row, the
- * LLM-ranked / cross-topics two-tier split, and the card list —
+ * LLM-ranked / cross-topics two-tier split, and the infinite-scroll card list —
  * used identically by the personal page and a lab workspace. `labName`, when
  * set, marks the lab variant and only swaps the surrounding copy; the structure,
  * filters, and card layout are the same in both. `scanning` is a personal-only
@@ -126,7 +154,6 @@ function PapersFeed({
   matchThreshold?: number;
   labName?: string;
 }) {
-  const [showMore, setShowMore] = React.useState(false);
   const [selectedCluster, setSelectedCluster] = React.useState<string | null>(
     null,
   );
@@ -159,10 +186,16 @@ function PapersFeed({
     return rows;
   }, [filtering, query, selectedCluster, suggestions]);
 
-  // The default two-tier split (no filtering): LLM-ranked papers, then the
-  // cross-embedding tail behind a toggle.
-  const primary = suggestions.slice(0, PRIMARY_COUNT);
-  const extra = suggestions.slice(PRIMARY_COUNT);
+  // One ordered list either way: the filtered results, or the full feed with the
+  // LLM-ranked papers first and the cross-embedding tail behind them. The tail is
+  // no longer gated behind a toggle — it simply keeps arriving as the reader
+  // scrolls, with a divider marking where Mylo's own ranking ends.
+  const feed = filtering ? filtered : suggestions;
+  const rankedCount = Math.min(PRIMARY_COUNT, suggestions.length);
+  const dividerAt = !filtering && suggestions.length > rankedCount ? rankedCount : -1;
+
+  const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
+    useInfiniteReveal(feed, PAPER_PAGE_SIZE, `${query}|${selectedCluster ?? ""}`);
 
   /** Selecting a cluster narrows the feed to it; re-selecting clears. */
   const toggleCluster = (clusterId: string) => {
@@ -188,7 +221,7 @@ function PapersFeed({
       : typeof matchThreshold === "number"
         ? `${total} ${papers} met your ${matchThreshold}% match threshold`
         : `${total} ${papers} matched your research`;
-    const ranked = `top ${primary.length} ranked by Mylo`;
+    const ranked = `top ${rankedCount} ranked by Mylo`;
     return when
       ? `${met} — ${ranked} · gathered ${when}.`
       : `${met} — ${ranked}.`;
@@ -331,79 +364,50 @@ function PapersFeed({
             description="Once Mylo's literature scan runs against your research profile, your top matching papers — each with a percent-match score and why-it-matters context — will appear here."
           />
         )
-      ) : filtering ? (
-        filtered.length === 0 ? (
-          <EmptyState
-            icon={<DocumentIcon size={28} />}
-            title="No papers match your filters"
-            description="Try picking a different cluster, or clearing the search to widen the results."
-          />
-        ) : (
-          <div className="space-y-4">
-            {filtered.map((suggestion, index) => (
-              <div
-                key={suggestion.content_id}
-                className="portal-fade-up"
-                style={{ animationDelay: `${index * 60}ms` }}
-              >
-                <SuggestionCard suggestion={suggestion} />
-              </div>
-            ))}
-          </div>
-        )
+      ) : filtering && filtered.length === 0 ? (
+        <EmptyState
+          icon={<DocumentIcon size={28} />}
+          title="No papers match your filters"
+          description="Try picking a different cluster, or clearing the search to widen the results."
+        />
       ) : (
         <>
           <div className="space-y-4">
-            {primary.map((suggestion, index) => (
-              <div
-                key={suggestion.content_id}
-                className="portal-fade-up"
-                style={{ animationDelay: `${index * 60}ms` }}
-              >
-                <SuggestionCard suggestion={suggestion} />
-              </div>
+            {displayed.map((suggestion, index) => (
+              <React.Fragment key={suggestion.content_id}>
+                {index === dividerAt ? <CrossTopicsDivider /> : null}
+                <div
+                  className="portal-fade-up"
+                  style={{
+                    animationDelay: revealDelay(index, PAPER_PAGE_SIZE, 60),
+                  }}
+                >
+                  <SuggestionCard suggestion={suggestion} />
+                </div>
+              </React.Fragment>
             ))}
           </div>
 
-          {extra.length > 0 ? (
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={() => setShowMore((open) => !open)}
-                aria-expanded={showMore}
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
-              >
-                {showMore
-                  ? "Hide cross-topics matches"
-                  : `Show ${extra.length} more cross-topics match${
-                      extra.length === 1 ? "" : "es"
-                    }`}
-              </button>
+          <FeedSentinel
+            sentinelRef={sentinelRef}
+            hasMore={hasMore}
+            remaining={remaining}
+            onRevealMore={revealMore}
+            totalShown={displayed.length}
+            noun="papers"
+          />
 
-              {showMore ? (
-                <div className="mt-4 space-y-4">
-                  {extra.map((suggestion, index) => (
-                    <div
-                      key={suggestion.content_id}
-                      className="portal-fade-up"
-                      style={{ animationDelay: `${index * 60}ms` }}
-                    >
-                      <SuggestionCard suggestion={suggestion} />
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+          {!filtering ? (
+            <p className="mt-5 text-xs text-[var(--text-secondary)]">
+              The top papers marked “Mylo pick” were ranked and
+              percent-matched by
+              the language model — the percent reflects how well it judges each
+              paper fits your research. The cross-topics matches are the rest of
+              the papers that cleared your match threshold, each showing its
+              transformer (embedding-similarity) match percent, in
+              recommendation order.
+            </p>
           ) : null}
-
-          <p className="mt-5 text-xs text-[var(--text-secondary)]">
-            The top papers marked “Mylo pick” were ranked and percent-matched by
-            the language model — the percent reflects how well it judges each
-            paper fits your research. The cross-topics matches are the rest of
-            the papers that cleared your match threshold, each showing its
-            transformer (embedding-similarity) match percent, in recommendation
-            order.
-          </p>
         </>
       )}
     </div>

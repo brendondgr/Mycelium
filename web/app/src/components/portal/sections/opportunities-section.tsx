@@ -24,11 +24,15 @@ import {
   GrantFilters,
   deriveGrantFilterOptions,
   filterAndSortGrants,
-  hasActiveGrantFilters,
   type GrantFilterState,
 } from "@/components/portal/sections/grant-filters";
+import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
 import { usePortal } from "@/components/portal/portal-context";
 import { useGrants, useLabRecommendations } from "@/lib/portal/hooks";
+import {
+  revealDelay,
+  useInfiniteReveal,
+} from "@/lib/portal/use-infinite-reveal";
 import type { GrantOpportunity, MyLab } from "@/lib/portal/types";
 
 /** Format an ISO date as "Jul 6, 2026" (used for Posted and the deadline). */
@@ -203,7 +207,7 @@ function GrantsList({ grants }: { grants: GrantOpportunity[] }) {
         <div
           key={grant.content_id}
           className="portal-fade-up"
-          style={{ animationDelay: `${index * 50}ms` }}
+          style={{ animationDelay: revealDelay(index, GRANT_PAGE_SIZE) }}
         >
           <GrantRow grant={grant} />
         </div>
@@ -216,10 +220,11 @@ function GrantsList({ grants }: { grants: GrantOpportunity[] }) {
  * The Grants page: matched funding opportunities in a scannable, detail-forward
  * row format, with a left-hand filter rail (match strength, deadline, sponsor,
  * matched topic, source, sort) that narrows the already-fetched feed in memory.
- * Fellowships and Conferences live on their own pages.
+ * The list scrolls infinitely — slices reveal themselves as the reader nears the
+ * bottom. Fellowships and Conferences live on their own pages.
  */
-/** How many of the top recommended grants to show before "Show all". */
-const DEFAULT_GRANT_LIMIT = 25;
+/** How many grants each infinite-scroll slice reveals. */
+const GRANT_PAGE_SIZE = 25;
 
 export function OpportunitiesSection() {
   const { currentLab } = usePortal();
@@ -250,8 +255,8 @@ function PersonalOpportunities() {
 }
 
 /**
- * The shared Grants feed body — the filter rail, top-25 cap, and card list —
- * used identically by the personal page and a lab workspace. `labName`, when
+ * The shared Grants feed body — the filter rail, infinite-scroll card list, and
+ * end-of-feed marker — used identically by the personal page and a lab workspace. `labName`, when
  * set, marks the lab variant and only swaps the surrounding copy; the structure,
  * filters, and card layout are the same in both.
  */
@@ -269,7 +274,6 @@ function GrantsFeed({
   const [filters, setFilters] = React.useState<GrantFilterState>(
     DEFAULT_GRANT_FILTERS,
   );
-  const [showAll, setShowAll] = React.useState(false);
 
   const options = React.useMemo(
     () => deriveGrantFilterOptions(grants),
@@ -281,15 +285,10 @@ function GrantsFeed({
     [grants, filters, today],
   );
 
-  // Filters always search the full feed. With no active filter, cap the view to
-  // the top recommended grants until the user opts into the full list.
-  const filtersActive = hasActiveGrantFilters(filters);
-  const capped = !filtersActive && !showAll;
-  const displayed = React.useMemo(
-    () => (capped ? visible.slice(0, DEFAULT_GRANT_LIMIT) : visible),
-    [visible, capped],
-  );
-  const hiddenCount = visible.length - displayed.length;
+  // Filters always search the full feed; the result set then streams in as the
+  // reader scrolls, so reaching the bottom widens the list instead of ending it.
+  const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
+    useInfiniteReveal(visible, GRANT_PAGE_SIZE, filters);
 
   const showRail = !isLoading && !isError && grants.length > 0;
 
@@ -381,20 +380,14 @@ function GrantsFeed({
           ) : (
             <>
               <GrantsList grants={displayed} />
-              {hiddenCount > 0 ? (
-                <div className="mt-5 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowAll(true)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    Show all {grants.length} grants
-                    <span className="text-[var(--text-secondary)]">
-                      (+{hiddenCount} more)
-                    </span>
-                  </button>
-                </div>
-              ) : null}
+              <FeedSentinel
+                sentinelRef={sentinelRef}
+                hasMore={hasMore}
+                remaining={remaining}
+                onRevealMore={revealMore}
+                totalShown={displayed.length}
+                noun="grants"
+              />
             </>
           )}
         </div>

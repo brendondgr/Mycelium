@@ -44,16 +44,10 @@ export function ProjectsNav() {
           )}
         >
           {active ? (
-            <>
-              <span
-                aria-hidden
-                className="absolute inset-0 rounded-[10px] bg-[color-mix(in_srgb,var(--primary)_13%,transparent)]"
-              />
-              <span
-                aria-hidden
-                className="absolute bottom-2 left-0 top-2 w-[3px] rounded-full bg-primary"
-              />
-            </>
+            <span
+              aria-hidden
+              className="absolute inset-0 rounded-[10px] bg-[color-mix(in_srgb,var(--primary)_13%,transparent)]"
+            />
           ) : null}
           <span className="relative shrink-0">
             <FolderIcon size={18} />
