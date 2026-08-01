@@ -42,6 +42,19 @@ embeddings = [
     "fastembed>=0.8.0,<1.0.0",
     "numpy>=2.0.0",
 ]
+# The same embedder on a CUDA GPU. `fastembed-gpu` imports as `fastembed` (no
+# call-site change) but depends on `onnxruntime-gpu`, which is what actually
+# exposes CUDAExecutionProvider — the plain `embeddings` extra ships the CPU-only
+# runtime, so it can never use the card. The two flavours must never share an
+# environment (see [tool.uv] conflicts below): install exactly one with
+# `uv sync --extra embeddings` or `uv sync --extra embeddings-gpu`.
+# Needs an NVIDIA driver + CUDA 12.x runtime on the host; in Docker the service
+# also needs the GPU granted to it (nvidia-container-toolkit).
+embeddings-gpu = [
+    "fastembed-gpu>=0.8.0,<1.0.0",
+    "onnxruntime-gpu>=1.20.0,<2.0.0",
+    "numpy>=2.0.0",
+]
 # Pivot-RP (ProQuest) grants/conferences scraping (apps.scraper.pivot). Kept
 # optional and lazily imported because Playwright pulls a browser runtime
 # (needs `playwright install chromium`) and only the best-effort refresh path
@@ -62,6 +75,10 @@ dev = [
 
 [tool.uv]
 package = false
+# `fastembed` and `fastembed-gpu` install the same `fastembed` module (and pull
+# rival onnxruntime wheels), so resolving both into one environment silently
+# breaks provider selection. Make uv refuse it instead.
+conflicts = [[{ extra = "embeddings" }, { extra = "embeddings-gpu" }]]
 
 [tool.ruff]
 line-length = 88

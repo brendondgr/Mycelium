@@ -566,6 +566,19 @@ SCRAPER_EMBEDDING_MODEL = env(
     "SCRAPER_EMBEDDING_MODEL", default="BAAI/bge-small-en-v1.5"
 )
 
+# Embedding device (apps.scraper.embedding). "auto" runs on a CUDA GPU whenever
+# ONNX Runtime actually exposes CUDAExecutionProvider — which requires the GPU
+# flavour of the extra (`uv sync --extra embeddings-gpu`) — and on the CPU
+# otherwise. "cuda" demands the GPU (and warns, then falls back, if it is
+# missing); "cpu" pins the CPU even on a GPU host, e.g. when the card is fully
+# claimed by the local LLM. EMBEDDING_DEVICE_ID picks a card on a multi-GPU box.
+# The batch sizes are handed to fastembed: a GPU is throughput-bound and wants a
+# large batch, a CPU is latency-bound and wants a modest one.
+EMBEDDING_DEVICE = env("EMBEDDING_DEVICE", default="auto")
+EMBEDDING_DEVICE_ID = env("EMBEDDING_DEVICE_ID", default="")
+EMBEDDING_BATCH_SIZE_CPU = env.int("EMBEDDING_BATCH_SIZE_CPU", default=64)
+EMBEDDING_BATCH_SIZE_GPU = env.int("EMBEDDING_BATCH_SIZE_GPU", default=256)
+
 # ---------------------------------------------------------------------------
 # Discord integration (apps.integrations) — identity + lab linking.
 #

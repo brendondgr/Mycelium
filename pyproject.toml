@@ -23,7 +23,6 @@ dependencies = [
     "django-cors-headers>=4.7,<5",
     "django-environ>=0.12,<1",
     "djangorestframework>=3.16,<4",
-    "fastembed>=0.8,<1",
     "neo4j>=5.28,<6",
     "numpy>=2.0",
     "openai>=1.50,<2",
@@ -34,3 +33,23 @@ dependencies = [
     "rank-bm25>=0.2.2,<1",
     "redis>=5.2,<6",
 ]
+
+# fastembed comes from a dependency group rather than the dependency list so the
+# host runner can pick its flavour. `embeddings-cpu` is synced by default;
+# `embeddings-gpu` swaps in the CUDA build (`fastembed-gpu` imports as
+# `fastembed`, and `onnxruntime-gpu` is what exposes CUDAExecutionProvider).
+# On a CUDA host, install the GPU flavour once:
+#     uv sync --no-group embeddings-cpu --group embeddings-gpu
+#     uv run python web/backend/manage.py embedding_device --benchmark
+[dependency-groups]
+embeddings-cpu = ["fastembed>=0.8,<1"]
+embeddings-gpu = [
+    "fastembed-gpu>=0.8,<1",
+    "onnxruntime-gpu>=1.20,<2",
+]
+
+[tool.uv]
+# The two flavours install the same `fastembed` module and rival onnxruntime
+# wheels; sharing one environment silently breaks provider selection.
+conflicts = [[{ group = "embeddings-cpu" }, { group = "embeddings-gpu" }]]
+default-groups = ["embeddings-cpu"]
