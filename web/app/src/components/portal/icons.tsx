@@ -276,6 +276,16 @@ export function BankIcon(props: IconProps) {
   );
 }
 
+/** A torn receipt — the Billing section's nav mark. */
+export function ReceiptIcon(props: IconProps) {
+  return (
+    <Svg strokeWidth={1.6} {...props}>
+      <path d="M5 3h14v18l-2.3-1.6L14.4 21 12 19.4 9.6 21l-2.3-1.6L5 21z" />
+      <path d="M9 8h6M9 12h6" />
+    </Svg>
+  );
+}
+
 export function AlertTriangleIcon(props: IconProps) {
   return (
     <Svg strokeWidth={2} {...props}>

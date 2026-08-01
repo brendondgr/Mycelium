@@ -9,14 +9,26 @@ import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill, type PillTone } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { Button } from "@/components/ui/button";
-import { useAdminUser, useAdminUsers, useUpdateAdminUser } from "@/lib/portal/hooks";
+import {
+  useAdminLab,
+  useAdminLabs,
+  useAdminUser,
+  useAdminUsers,
+  useUpdateAdminLab,
+  useUpdateAdminUser,
+} from "@/lib/portal/hooks";
 import type {
+  AdminLabDetail,
+  AdminLabRow,
+  AdminLabUpdate,
+  AdminOrgStatus,
   AdminSubscriptionStatus,
   AdminTier,
   AdminUserDetail,
   AdminUserRow,
   AdminUserUpdate,
 } from "@/lib/portal/types";
+import { cn } from "@/lib/utils";
 
 const INPUT_CLASS =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -34,6 +46,14 @@ const STATUSES: { value: AdminSubscriptionStatus; label: string }[] = [
   { value: "canceled", label: "Canceled" },
 ];
 
+/** Org plans additionally carry the created-but-not-granting `inactive` state. */
+const ORG_STATUSES: { value: AdminOrgStatus; label: string }[] = [
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive (granted nothing yet)" },
+  { value: "past_due", label: "Past due" },
+  { value: "canceled", label: "Canceled" },
+];
+
 /** Duration presets; "" = leave the current expiry untouched. */
 const DURATIONS: { value: string; label: string }[] = [
   { value: "", label: "Keep current expiry" },
@@ -42,6 +62,22 @@ const DURATIONS: { value: string; label: string }[] = [
   { value: "90", label: "90 days" },
   { value: "180", label: "180 days" },
   { value: "365", label: "1 year" },
+];
+
+/**
+ * How a lab's plan ends. "Never" is the free case: no end date and comped, which is
+ * what the lab's plan page renders as a struck-through price. Everything else lapses
+ * on a date, after which the read path stops granting and the lab falls back to Free —
+ * nothing is ever deleted.
+ */
+const LAB_ENDINGS: { value: string; label: string }[] = [
+  { value: "", label: "Keep as is" },
+  { value: "never", label: "Never — free / complimentary" },
+  { value: "30", label: "Ends in 30 days" },
+  { value: "90", label: "Ends in 90 days" },
+  { value: "180", label: "Ends in 180 days" },
+  { value: "365", label: "Ends in 1 year" },
+  { value: "custom", label: "Ends on a specific date…" },
 ];
 
 /** Highest watch-topic override the API accepts (mirrors the server ceiling). */
@@ -60,9 +96,10 @@ function tierTone(tier: AdminTier): PillTone {
   return "primary";
 }
 
-function statusTone(status: AdminSubscriptionStatus): PillTone {
+function statusTone(status: AdminSubscriptionStatus | AdminOrgStatus): PillTone {
   if (status === "active") return "primary";
   if (status === "past_due") return "review";
+  if (status === "inactive") return "dashed";
   return "clay";
 }
 
@@ -77,24 +114,34 @@ function formatDate(iso: string | null): string {
   });
 }
 
+function usd(cents: number): string {
+  return (cents / 100).toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+  });
+}
+
+/** An `<input type="date">` value for a datetime the API returned, or "". */
+function dateInputValue(iso: string | null): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+type Context = "users" | "labs";
+
 /**
- * The admin dashboard (Research → Personal Workspace → Admin). Staff/superusers
- * page and search every user, then set a user's subscription tier + duration and
- * their watch-topic quota. The backend is the real gate (every endpoint requires
- * staff/superuser); this client guard just avoids rendering the surface for others.
+ * The admin dashboard (Research → Personal Workspace → Admin). Two management
+ * contexts behind one switch: **Users** (a person's personal plan + watch quota) and
+ * **Labs** (a lab's subscription — tier, status, how it ends, whether it is
+ * complimentary, whether Mylo is included). The backend is the real gate (every
+ * endpoint requires staff/superuser); this client guard just avoids rendering the
+ * surface for others.
  */
 export function AdminSection() {
   const { user } = usePortal();
-  const [rawQuery, setRawQuery] = React.useState("");
-  const [page, setPage] = React.useState(1);
-  const [selectedId, setSelectedId] = React.useState<number | null>(null);
-
-  // Defer the query so typing stays responsive without firing a request per key.
-  const query = React.useDeferredValue(rawQuery).trim();
-  const { data, isLoading, isError, isPlaceholderData } = useAdminUsers({
-    q: query || undefined,
-    page,
-  });
+  const [context, setContext] = React.useState<Context>("users");
 
   if (!isPlatformAdmin(user)) {
     return (
@@ -110,62 +157,326 @@ export function AdminSection() {
     );
   }
 
-  const rows = data?.results ?? [];
-  const total = data?.count ?? 0;
-  const hasPrev = Boolean(data?.previous) && page > 1;
-  const hasNext = Boolean(data?.next);
-
-  const onSearchChange = (value: string) => {
-    setRawQuery(value);
-    setPage(1);
-  };
-
   return (
     <div>
       <SectionHeader
         title="Admin"
-        subtitle="Manage users, their subscription plan and duration, and how many subjects Mylo watches for them."
+        subtitle={
+          context === "users"
+            ? "Manage users, their subscription plan and duration, and how many subjects Mylo watches for them."
+            : "Manage each lab's subscription — tier, how the plan ends, and whether Mylo is part of it."
+        }
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <label className="relative flex-1 min-w-[220px]">
-          <span className="sr-only">Search users</span>
-          <input
-            type="search"
-            value={rawQuery}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search by name, username, or email…"
-            className={INPUT_CLASS}
-          />
-        </label>
-        <p aria-live="polite" className="text-sm text-[var(--text-secondary)]">
-          {total} {total === 1 ? "user" : "users"}
-        </p>
+      <ContextSwitch value={context} onChange={setContext} />
+
+      {context === "users" ? <UsersPanel /> : <LabsPanel />}
+    </div>
+  );
+}
+
+/** The Users ⇄ Labs selector — a labelled radio group, not two lookalike buttons. */
+function ContextSwitch({
+  value,
+  onChange,
+}: {
+  value: Context;
+  onChange: (next: Context) => void;
+}) {
+  const options: { value: Context; label: string }[] = [
+    { value: "users", label: "Users" },
+    { value: "labs", label: "Labs" },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label="What to manage"
+      className="mb-4 inline-flex gap-1 rounded-full border border-border bg-surface-alt p-1"
+    >
+      {options.map((option) => {
+        const active = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              active
+                ? "bg-primary text-[#fffdf8]"
+                : "text-[var(--text-secondary)] hover:bg-surface",
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// -- shared chrome -------------------------------------------------------------
+
+/** Search box + result count, shared by both contexts. */
+function SearchBar({
+  value,
+  onChange,
+  total,
+  noun,
+  placeholder,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  total: number;
+  noun: [string, string];
+  placeholder: string;
+}) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <label className="relative flex-1 min-w-[220px]">
+        <span className="sr-only">{placeholder}</span>
+        <input
+          type="search"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          className={INPUT_CLASS}
+        />
+      </label>
+      <p aria-live="polite" className="text-sm text-[var(--text-secondary)]">
+        {total} {total === 1 ? noun[0] : noun[1]}
+      </p>
+    </div>
+  );
+}
+
+function TablePager({
+  page,
+  showing,
+  total,
+  hasPrev,
+  hasNext,
+  onPrev,
+  onNext,
+}: {
+  page: number;
+  showing: number;
+  total: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  if (total === 0) return null;
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-[var(--divider)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+      <span>
+        Showing {showing} of {total} · page {page}
+      </span>
+      <div className="flex gap-2">
+        <Button variant="secondary" size="sm" onClick={onPrev} disabled={!hasPrev}>
+          Previous
+        </Button>
+        <Button variant="secondary" size="sm" onClick={onNext} disabled={!hasNext}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Loading / error / empty states shared by both tables; null when there are rows. */
+function TableState({
+  loading,
+  error,
+  empty,
+  errorText,
+  emptyText,
+}: {
+  loading: boolean;
+  error: boolean;
+  empty: boolean;
+  errorText: string;
+  emptyText: string;
+}) {
+  if (loading) {
+    return (
+      <div className="space-y-2 p-4">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="h-12 animate-pulse rounded-lg bg-surface-alt" />
+        ))}
+      </div>
+    );
+  }
+  if (error) {
+    return <p className="px-5 py-10 text-center text-sm text-clay">{errorText}</p>;
+  }
+  if (empty) {
+    return (
+      <p className="px-5 py-10 text-center text-sm text-[var(--text-secondary)]">
+        {emptyText}
+      </p>
+    );
+  }
+  return null;
+}
+
+function Field({
+  label,
+  htmlFor,
+  hint,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={htmlFor}
+        className="mb-1 block text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]"
+      >
+        {label}
+      </label>
+      {children}
+      {hint ? (
+        <p className="mt-1 text-[11px] text-[var(--text-secondary)]">{hint}</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** The editor shell: a titled card with a Close control and load/error handling. */
+function EditorCard({
+  eyebrow,
+  title,
+  subtitle,
+  loading,
+  error,
+  onClose,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+  loading: boolean;
+  error: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="p-[22px]">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
+            {eyebrow}
+          </p>
+          <h2 className="truncate font-serif text-lg font-semibold text-[var(--text-primary)]">
+            {title}
+          </h2>
+          {subtitle ? (
+            <p className="truncate text-xs text-[var(--text-secondary)]">{subtitle}</p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 rounded-full px-2 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-secondary)]"
+        >
+          Close
+        </button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <Card className="overflow-hidden">
-          <UsersTable
-            rows={rows}
-            loading={isLoading}
-            error={isError}
-            fetching={isPlaceholderData}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-          />
-          <TablePager
-            page={page}
-            showing={rows.length}
-            total={total}
-            hasPrev={hasPrev}
-            hasNext={hasNext}
-            onPrev={() => setPage((p) => Math.max(1, p - 1))}
-            onNext={() => setPage((p) => p + 1)}
-          />
-        </Card>
+      {loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-10 animate-pulse rounded-lg bg-surface-alt" />
+          ))}
+        </div>
+      ) : error ? (
+        <p className="text-sm text-clay">Could not load this record.</p>
+      ) : (
+        children
+      )}
+    </Card>
+  );
+}
 
-        <div>
-          {selectedId != null ? (
+/** The two-column table + editor layout both contexts use. */
+function ManagePanel({
+  table,
+  editor,
+}: {
+  table: React.ReactNode;
+  editor: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <Card className="overflow-hidden">{table}</Card>
+      <div>{editor}</div>
+    </div>
+  );
+}
+
+// ==============================================================================
+// Users
+// ==============================================================================
+
+function UsersPanel() {
+  const [rawQuery, setRawQuery] = React.useState("");
+  const [page, setPage] = React.useState(1);
+  const [selectedId, setSelectedId] = React.useState<number | null>(null);
+
+  // Defer the query so typing stays responsive without firing a request per key.
+  const query = React.useDeferredValue(rawQuery).trim();
+  const { data, isLoading, isError, isPlaceholderData } = useAdminUsers({
+    q: query || undefined,
+    page,
+  });
+
+  const rows = data?.results ?? [];
+  const total = data?.count ?? 0;
+
+  return (
+    <>
+      <SearchBar
+        value={rawQuery}
+        onChange={(value) => {
+          setRawQuery(value);
+          setPage(1);
+        }}
+        total={total}
+        noun={["user", "users"]}
+        placeholder="Search by name, username, or email…"
+      />
+      <ManagePanel
+        table={
+          <>
+            <UsersTable
+              rows={rows}
+              loading={isLoading}
+              error={isError}
+              fetching={isPlaceholderData}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+            <TablePager
+              page={page}
+              showing={rows.length}
+              total={total}
+              hasPrev={Boolean(data?.previous) && page > 1}
+              hasNext={Boolean(data?.next)}
+              onPrev={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => p + 1)}
+            />
+          </>
+        }
+        editor={
+          selectedId != null ? (
             <UserEditor
               key={selectedId}
               id={selectedId}
@@ -178,14 +489,12 @@ export function AdminSection() {
               description="Choose a user from the list to change their subscription or watch limit."
               className="h-full"
             />
-          )}
-        </div>
-      </div>
-    </div>
+          )
+        }
+      />
+    </>
   );
 }
-
-// -- table ---------------------------------------------------------------------
 
 function UsersTable({
   rows,
@@ -202,34 +511,16 @@ function UsersTable({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
-  if (loading) {
-    return (
-      <div className="space-y-2 p-4">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div
-            key={index}
-            className="h-12 animate-pulse rounded-lg bg-surface-alt"
-          />
-        ))}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <p className="px-5 py-10 text-center text-sm text-clay">
-        Could not load the user list. Refresh to try again.
-      </p>
-    );
-  }
-
-  if (rows.length === 0) {
-    return (
-      <p className="px-5 py-10 text-center text-sm text-[var(--text-secondary)]">
-        No users match your search.
-      </p>
-    );
-  }
+  const state = (
+    <TableState
+      loading={loading}
+      error={error}
+      empty={rows.length === 0}
+      errorText="Could not load the user list. Refresh to try again."
+      emptyText="No users match your search."
+    />
+  );
+  if (state) return state;
 
   return (
     <div
@@ -345,88 +636,28 @@ function UserRow({
   );
 }
 
-function TablePager({
-  page,
-  showing,
-  total,
-  hasPrev,
-  hasNext,
-  onPrev,
-  onNext,
-}: {
-  page: number;
-  showing: number;
-  total: number;
-  hasPrev: boolean;
-  hasNext: boolean;
-  onPrev: () => void;
-  onNext: () => void;
-}) {
-  if (total === 0) return null;
-  return (
-    <div className="flex items-center justify-between gap-3 border-t border-[var(--divider)] px-4 py-3 text-sm text-[var(--text-secondary)]">
-      <span>
-        Showing {showing} of {total} · page {page}
-      </span>
-      <div className="flex gap-2">
-        <Button variant="secondary" size="sm" onClick={onPrev} disabled={!hasPrev}>
-          Previous
-        </Button>
-        <Button variant="secondary" size="sm" onClick={onNext} disabled={!hasNext}>
-          Next
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// -- editor --------------------------------------------------------------------
-
 function UserEditor({ id, onClose }: { id: number; onClose: () => void }) {
   const { data: detail, isLoading, isError } = useAdminUser(id);
 
   return (
-    <Card className="p-[22px]">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
-            Manage user
-          </p>
-          <h2 className="truncate font-serif text-lg font-semibold text-[var(--text-primary)]">
-            {detail?.name ?? "Loading…"}
-          </h2>
-          {detail ? (
-            <p className="truncate text-xs text-[var(--text-secondary)]">
-              @{detail.username}
-              {detail.email ? ` · ${detail.email}` : ""}
-            </p>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 rounded-full px-2 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-secondary)]"
-        >
-          Close
-        </button>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-10 animate-pulse rounded-lg bg-surface-alt" />
-          ))}
-        </div>
-      ) : isError || !detail ? (
-        <p className="text-sm text-clay">Could not load this user.</p>
-      ) : (
-        <EditorForm detail={detail} />
-      )}
-    </Card>
+    <EditorCard
+      eyebrow="Manage user"
+      title={detail?.name ?? "Loading…"}
+      subtitle={
+        detail
+          ? `@${detail.username}${detail.email ? ` · ${detail.email}` : ""}`
+          : undefined
+      }
+      loading={isLoading}
+      error={isError || !detail}
+      onClose={onClose}
+    >
+      {detail ? <UserEditorForm detail={detail} /> : null}
+    </EditorCard>
   );
 }
 
-function EditorForm({ detail }: { detail: AdminUserDetail }) {
+function UserEditorForm({ detail }: { detail: AdminUserDetail }) {
   const update = useUpdateAdminUser();
 
   const currentTier = detail.subscription?.tier ?? "free";
@@ -476,7 +707,7 @@ function EditorForm({ detail }: { detail: AdminUserDetail }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <ReadOnlyMeta detail={detail} />
+      <UserMeta detail={detail} />
 
       <Field label="Subscription tier" htmlFor="admin-tier">
         <select
@@ -569,23 +800,17 @@ function EditorForm({ detail }: { detail: AdminUserDetail }) {
         )}
       </fieldset>
 
-      {update.isError ? (
-        <p className="text-sm text-clay">
-          {(update.error as Error)?.message ?? "Could not save the changes."}
-        </p>
-      ) : null}
-      {saved && !update.isPending ? (
-        <p className="text-sm text-primary">Changes saved.</p>
-      ) : null}
-
-      <Button type="submit" disabled={update.isPending || limitInvalid}>
-        {update.isPending ? "Saving…" : "Save changes"}
-      </Button>
+      <SaveRow
+        pending={update.isPending}
+        disabled={limitInvalid}
+        error={update.isError ? (update.error as Error)?.message : null}
+        saved={saved && !update.isPending}
+      />
     </form>
   );
 }
 
-function ReadOnlyMeta({ detail }: { detail: AdminUserDetail }) {
+function UserMeta({ detail }: { detail: AdminUserDetail }) {
   return (
     <div className="rounded-lg border border-border bg-surface-alt px-3.5 py-3 text-xs text-[var(--text-secondary)]">
       <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -605,37 +830,450 @@ function ReadOnlyMeta({ detail }: { detail: AdminUserDetail }) {
       </div>
       {detail.lab_memberships.length > 0 ? (
         <div className="mt-1.5">
-          Labs:{" "}
-          {detail.lab_memberships.map((m) => m.name).join(", ")}
+          Labs: {detail.lab_memberships.map((m) => m.name).join(", ")}
         </div>
       ) : null}
     </div>
   );
 }
 
-function Field({
-  label,
-  htmlFor,
-  hint,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
+// ==============================================================================
+// Labs
+// ==============================================================================
+
+function LabsPanel() {
+  const [rawQuery, setRawQuery] = React.useState("");
+  const [page, setPage] = React.useState(1);
+  const [selectedSlug, setSelectedSlug] = React.useState<string | null>(null);
+
+  const query = React.useDeferredValue(rawQuery).trim();
+  const { data, isLoading, isError, isPlaceholderData } = useAdminLabs({
+    q: query || undefined,
+    page,
+  });
+
+  const rows = data?.results ?? [];
+  const total = data?.count ?? 0;
+
   return (
-    <div>
-      <label
-        htmlFor={htmlFor}
-        className="mb-1 block text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]"
+    <>
+      <SearchBar
+        value={rawQuery}
+        onChange={(value) => {
+          setRawQuery(value);
+          setPage(1);
+        }}
+        total={total}
+        noun={["lab", "labs"]}
+        placeholder="Search by lab name, slug, or department…"
+      />
+      <ManagePanel
+        table={
+          <>
+            <LabsTable
+              rows={rows}
+              loading={isLoading}
+              error={isError}
+              fetching={isPlaceholderData}
+              selectedSlug={selectedSlug}
+              onSelect={setSelectedSlug}
+            />
+            <TablePager
+              page={page}
+              showing={rows.length}
+              total={total}
+              hasPrev={Boolean(data?.previous) && page > 1}
+              hasNext={Boolean(data?.next)}
+              onPrev={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => p + 1)}
+            />
+          </>
+        }
+        editor={
+          selectedSlug != null ? (
+            <LabEditor
+              key={selectedSlug}
+              slug={selectedSlug}
+              onClose={() => setSelectedSlug(null)}
+            />
+          ) : (
+            <EmptyState
+              icon={<ShieldIcon size={24} />}
+              title="Select a lab"
+              description="Choose a lab from the list to change its plan, how it ends, or whether Mylo is included."
+              className="h-full"
+            />
+          )
+        }
+      />
+    </>
+  );
+}
+
+function LabsTable({
+  rows,
+  loading,
+  error,
+  fetching,
+  selectedSlug,
+  onSelect,
+}: {
+  rows: AdminLabRow[];
+  loading: boolean;
+  error: boolean;
+  fetching: boolean;
+  selectedSlug: string | null;
+  onSelect: (slug: string) => void;
+}) {
+  const state = (
+    <TableState
+      loading={loading}
+      error={error}
+      empty={rows.length === 0}
+      errorText="Could not load the lab list. Refresh to try again."
+      emptyText="No labs match your search."
+    />
+  );
+  if (state) return state;
+
+  return (
+    <div
+      className="overflow-x-auto"
+      aria-busy={fetching}
+      style={{ opacity: fetching ? 0.6 : 1 }}
+    >
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-[var(--divider)] text-left text-[11px] uppercase tracking-[0.06em] text-[var(--text-secondary)]">
+            <th scope="col" className="px-4 py-2.5 font-semibold">
+              Lab
+            </th>
+            <th scope="col" className="px-3 py-2.5 font-semibold">
+              Plan
+            </th>
+            <th scope="col" className="px-3 py-2.5 font-semibold">
+              Mylo
+            </th>
+            <th scope="col" className="px-4 py-2.5 font-semibold text-right">
+              <span className="sr-only">Manage</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <LabRow
+              key={row.slug}
+              row={row}
+              selected={row.slug === selectedSlug}
+              onSelect={() => onSelect(row.slug)}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function LabRow({
+  row,
+  selected,
+  onSelect,
+}: {
+  row: AdminLabRow;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const sub = row.subscription;
+  return (
+    <tr
+      className={
+        selected
+          ? "border-b border-[var(--divider)] bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]"
+          : "border-b border-[var(--divider)] hover:bg-surface-alt"
+      }
+    >
+      <td className="px-4 py-3 align-top">
+        <div className="font-semibold text-[var(--text-primary)]">{row.name}</div>
+        <div className="text-xs text-[var(--text-secondary)]">
+          {row.member_count} {row.member_count === 1 ? "member" : "members"}
+          {row.department ? ` · ${row.department.name}` : ""}
+        </div>
+      </td>
+      <td className="px-3 py-3 align-top">
+        {sub ? (
+          <>
+            <div className="flex flex-wrap items-center gap-1">
+              <Pill tone={tierTone(sub.tier)}>{TIER_LABEL[sub.tier]}</Pill>
+              <Pill tone={statusTone(sub.status)} className="text-[10px]">
+                {sub.status.replace("_", " ")}
+              </Pill>
+              {sub.is_comped ? (
+                <Pill tone="accent" className="text-[10px]">
+                  Free
+                </Pill>
+              ) : null}
+            </div>
+            <div className="mt-1 text-[11px] text-[var(--text-secondary)]">
+              {sub.is_comped
+                ? "No end date"
+                : sub.expires_at
+                  ? `until ${formatDate(sub.expires_at)}`
+                  : `${usd(sub.recurring_monthly_cents)} / mo`}
+            </div>
+          </>
+        ) : (
+          <span className="text-xs text-[var(--text-secondary)]">No plan</span>
+        )}
+      </td>
+      <td className="px-3 py-3 align-top">
+        <Pill tone={sub?.mylo_included ? "primary" : "dashed"}>
+          {sub?.mylo_included ? "Included" : "No"}
+        </Pill>
+      </td>
+      <td className="px-4 py-3 align-top text-right">
+        <Button
+          variant={selected ? "default" : "secondary"}
+          size="sm"
+          onClick={onSelect}
+          aria-pressed={selected}
+        >
+          Manage
+        </Button>
+      </td>
+    </tr>
+  );
+}
+
+function LabEditor({ slug, onClose }: { slug: string; onClose: () => void }) {
+  const { data: detail, isLoading, isError } = useAdminLab(slug);
+
+  return (
+    <EditorCard
+      eyebrow="Manage lab"
+      title={detail?.name ?? "Loading…"}
+      subtitle={detail ? `/${detail.slug}` : undefined}
+      loading={isLoading}
+      error={isError || !detail}
+      onClose={onClose}
+    >
+      {detail ? <LabEditorForm detail={detail} /> : null}
+    </EditorCard>
+  );
+}
+
+function LabEditorForm({ detail }: { detail: AdminLabDetail }) {
+  const update = useUpdateAdminLab();
+  const sub = detail.subscription;
+
+  const [tier, setTier] = React.useState<AdminTier>(sub?.tier ?? "lab");
+  const [status, setStatus] = React.useState<AdminOrgStatus>(sub?.status ?? "inactive");
+  const [ending, setEnding] = React.useState("");
+  const [endDate, setEndDate] = React.useState(dateInputValue(sub?.expires_at ?? null));
+  const [mylo, setMylo] = React.useState(Boolean(sub?.mylo_included));
+  const [saved, setSaved] = React.useState(false);
+
+  const customDateMissing = ending === "custom" && endDate === "";
+
+  const buildPatch = (): AdminLabUpdate => {
+    const patch: AdminLabUpdate = { tier, status, mylo_included: mylo };
+    if (ending === "never") {
+      // The free case: no end date, and comped so the plan page strikes the price.
+      patch.duration_days = null;
+      patch.is_comped = true;
+    } else if (ending === "custom") {
+      patch.expires_at = new Date(`${endDate}T23:59:59`).toISOString();
+      patch.is_comped = false;
+    } else if (ending !== "") {
+      patch.duration_days = Number(ending);
+      patch.is_comped = false;
+    }
+    return patch;
+  };
+
+  const onSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (customDateMissing) return;
+    setSaved(false);
+    update.mutate(
+      { slug: detail.slug, patch: buildPatch() },
+      { onSuccess: () => setSaved(true) },
+    );
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <LabMeta detail={detail} />
+
+      <Field label="Plan tier" htmlFor="admin-lab-tier">
+        <select
+          id="admin-lab-tier"
+          className={INPUT_CLASS}
+          value={tier}
+          onChange={(event) => setTier(event.target.value as AdminTier)}
+        >
+          {TIERS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field
+        label="Plan status"
+        htmlFor="admin-lab-status"
+        hint="Setting this Active opens the billing period and seats every current member."
       >
-        {label}
-      </label>
-      {children}
-      {hint ? (
-        <p className="mt-1 text-[11px] text-[var(--text-secondary)]">{hint}</p>
+        <select
+          id="admin-lab-status"
+          className={INPUT_CLASS}
+          value={status}
+          onChange={(event) => setStatus(event.target.value as AdminOrgStatus)}
+        >
+          {ORG_STATUSES.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field
+        label="How the plan ends"
+        htmlFor="admin-lab-ending"
+        hint={
+          sub?.is_comped
+            ? "Currently complimentary — no end date, nothing billed."
+            : sub?.expires_at
+              ? `Currently ends ${formatDate(sub.expires_at)}, then reverts to Free.`
+              : "Currently open-ended. Nothing is ever deleted when a plan ends — the lab just reverts to Free."
+        }
+      >
+        <select
+          id="admin-lab-ending"
+          className={INPUT_CLASS}
+          value={ending}
+          onChange={(event) => setEnding(event.target.value)}
+        >
+          {LAB_ENDINGS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      {ending === "custom" ? (
+        <Field label="End date" htmlFor="admin-lab-end-date">
+          <input
+            id="admin-lab-end-date"
+            type="date"
+            className={INPUT_CLASS}
+            value={endDate}
+            onChange={(event) => setEndDate(event.target.value)}
+            aria-invalid={customDateMissing}
+            required
+          />
+        </Field>
+      ) : null}
+
+      {ending === "never" ? (
+        <p className="rounded-lg border border-border bg-surface-alt px-3.5 py-2.5 text-[12px] leading-relaxed text-[var(--text-secondary)]">
+          A plan with no end date is treated as free: the lab keeps the full{" "}
+          {TIER_LABEL[tier]} entitlement and its plan page shows the price struck
+          through.
+        </p>
+      ) : null}
+
+      <fieldset>
+        <legend className="mb-1 block text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
+          Mylo on Discord
+        </legend>
+        <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+          <input
+            type="checkbox"
+            checked={mylo}
+            onChange={(event) => setMylo(event.target.checked)}
+            className="h-4 w-4 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          Include Mylo in this plan
+        </label>
+        <p className="mt-1 text-[11px] text-[var(--text-secondary)]">
+          Without it the lab can&apos;t add Mylo to a Discord server or activate one.
+        </p>
+      </fieldset>
+
+      <SaveRow
+        pending={update.isPending}
+        disabled={customDateMissing}
+        error={update.isError ? (update.error as Error)?.message : null}
+        saved={saved && !update.isPending}
+      />
+    </form>
+  );
+}
+
+function LabMeta({ detail }: { detail: AdminLabDetail }) {
+  const sub = detail.subscription;
+  const leads = detail.leads.filter((m) => m.is_lead);
+  return (
+    <div className="rounded-lg border border-border bg-surface-alt px-3.5 py-3 text-xs text-[var(--text-secondary)]">
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <span>
+          Created <strong className="font-semibold">{formatDate(detail.created_at)}</strong>
+        </span>
+        <span>
+          Members <strong className="font-semibold">{detail.member_count}</strong>
+        </span>
+        <span>
+          Seats <strong className="font-semibold">{sub?.seat_count ?? 0}</strong>
+        </span>
+        {sub ? (
+          <span>
+            Billed{" "}
+            <strong className="font-semibold">
+              {sub.is_comped ? "Free" : `${usd(sub.recurring_monthly_cents)} / mo`}
+            </strong>
+          </span>
+        ) : null}
+      </div>
+      {leads.length > 0 ? (
+        <div className="mt-1.5">PI: {leads.map((m) => m.name).join(", ")}</div>
+      ) : null}
+      {detail.department ? (
+        <div className="mt-1.5">
+          Department: {detail.department.name}
+          {detail.department.included_in_plan ? " · in the department plan" : ""}
+        </div>
       ) : null}
     </div>
+  );
+}
+
+// -- shared save footer --------------------------------------------------------
+
+function SaveRow({
+  pending,
+  disabled,
+  error,
+  saved,
+}: {
+  pending: boolean;
+  disabled: boolean;
+  error: string | null;
+  saved: boolean;
+}) {
+  return (
+    <>
+      {error ? (
+        <p className="text-sm text-clay" role="alert">
+          {error || "Could not save the changes."}
+        </p>
+      ) : null}
+      {saved ? <p className="text-sm text-primary">Changes saved.</p> : null}
+      <Button type="submit" disabled={pending || disabled}>
+        {pending ? "Saving…" : "Save changes"}
+      </Button>
+    </>
   );
 }

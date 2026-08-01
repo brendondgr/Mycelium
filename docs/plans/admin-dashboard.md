@@ -74,8 +74,31 @@ Backend and its permission gate landed and were proven **before** the UI.
 - Frontend: `tsc --noEmit`, ESLint, and `next build` all clean; `/app/admin`
   registered as a dynamic route.
 
+## Follow-up: the Labs context (2026-08-01)
+
+The dashboard now has two management contexts behind one switch. The Labs side adds:
+
+- **`Subscription.is_comped`** (migration `billing/0006`): a complimentary plan —
+  fully entitled, never billed. This is the durable discriminator behind "a lab
+  activated with no expiry date is free"; a null `expires_at` alone cannot mean it,
+  because a PI activating their own lab also leaves it null. `pricing.
+  recurring_monthly_cents` returns 0 for a comped plan while `seat_price_cents` keeps
+  the list price, so the plan page strikes the price through instead of hiding it.
+- **`billing/addons.py`**: the write side of A4 (`set_mylo_included` / `mylo_included`).
+  Detaching *cancels* the `SubscriptionAddOn` rather than deleting it, matching the
+  no-data-loss rule the rest of billing follows.
+- **`adminpanel.services.apply_lab_update`** + `GET /api/admin/labs/`, `GET|PATCH
+  /api/admin/labs/<slug>/`. Tier is written before activation so an activation in the
+  same request seats members at the chosen tier; activation itself calls the shared
+  `billing.services.activate_lab_subscription`, so an admin-granted plan is
+  indistinguishable from a self-activated one downstream. A `SeatCeilingExceeded`
+  surfaces as a 400 with nothing written (the service is atomic).
+- `OrgBillingSerializer` gains `is_comped` / `mylo_included` / `expires_at`, which is
+  what the lab's Discord setup card gates on — a lab without Mylo on its plan is told
+  so and pointed at billing rather than being offered an install that will fail.
+
 ## Out of scope
 
-Lab/department subscription assignment via this dashboard, Stripe/real billing,
-user enable/disable & hard-delete, editing another user's watch topic *content*
-(only the numeric cap), and any scheduled expiry job (handled at read-time).
+Department subscription assignment via this dashboard, Stripe/real billing, user
+enable/disable & hard-delete, editing another user's watch topic *content* (only the
+numeric cap), and any scheduled expiry job (handled at read-time).

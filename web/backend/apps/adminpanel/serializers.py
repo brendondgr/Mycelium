@@ -12,8 +12,11 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from apps.accounts.models import LabMembership
-from apps.billing.entitlements import effective_tier, topic_cap
+from apps.billing.addons import mylo_included
+from apps.billing.entitlements import active_seat_count, effective_tier, topic_cap
 from apps.billing.models import Subscription, Tier
+from apps.billing.pricing import recurring_monthly_cents, seat_price_cents
+from apps.billing.services import lab_subscription
 from apps.core.people import display_name
 
 from .services import personal_subscription
@@ -133,6 +136,118 @@ class AdminUserUpdateSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Provide at least one field to update."
             )
+        if "duration_days" in attrs and "expires_at" in attrs:
+            raise serializers.ValidationError(
+                "Provide either duration_days or expires_at, not both."
+            )
+        return attrs
+
+
+# --------------------------------------------------------------------------- #
+# Labs
+# --------------------------------------------------------------------------- #
+
+
+class AdminLabRowSerializer(serializers.Serializer):
+    """One lab as a row in the admin table — identity plus its plan at a glance."""
+
+    slug = serializers.CharField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    department = serializers.SerializerMethodField()
+    member_count = serializers.SerializerMethodField()
+    subscription = serializers.SerializerMethodField()
+
+    def get_department(self, lab) -> dict | None:
+        department = getattr(lab, "department", None)
+        if department is None:
+            return None
+        return {
+            "id": str(department.id),
+            "name": department.name,
+            "included_in_plan": lab.department_plan_included,
+        }
+
+    def get_member_count(self, lab) -> int:
+        return LabMembership.objects.filter(lab=lab).count()
+
+    def get_subscription(self, lab) -> dict | None:
+        sub = lab_subscription(lab)
+        if sub is None:
+            return None
+        return {
+            "tier": sub.tier,
+            "status": sub.status,
+            "expires_at": sub.expires_at,
+            "is_comped": sub.is_comped,
+            "mylo_included": mylo_included(sub),
+            "seat_count": active_seat_count(sub),
+            "seat_price_cents": seat_price_cents(sub.tier),
+            "recurring_monthly_cents": recurring_monthly_cents(sub),
+            "current_period_start": sub.current_period_start,
+            "current_period_end": sub.current_period_end,
+            "activated_at": sub.activated_at,
+            "billing_interval": sub.billing_interval,
+        }
+
+
+class AdminLabDetailSerializer(AdminLabRowSerializer):
+    """One lab's full admin view — the row plus its leads and watch configuration."""
+
+    timezone = serializers.CharField(read_only=True)
+    leads = serializers.SerializerMethodField()
+    watch_topics = serializers.SerializerMethodField()
+    watch_categories = serializers.SerializerMethodField()
+
+    def get_leads(self, lab) -> list[dict]:
+        memberships = (
+            LabMembership.objects.filter(lab=lab)
+            .select_related("user")
+            .order_by("-is_lead", "user__username")
+        )
+        return [
+            {
+                "username": m.user.username,
+                "name": display_name(m.user),
+                "role": m.role,
+                "is_lead": m.is_lead,
+            }
+            for m in memberships
+        ]
+
+    def get_watch_topics(self, lab) -> list[str]:
+        watch = getattr(lab, "watch", None)
+        return list(getattr(watch, "topics", None) or [])
+
+    def get_watch_categories(self, lab) -> list[str]:
+        watch = getattr(lab, "watch", None)
+        return list(getattr(watch, "categories", None) or [])
+
+
+class AdminLabUpdateSerializer(serializers.Serializer):
+    """A partial admin PATCH over one lab's plan.
+
+    Every field is optional; a request must carry at least one. ``duration_days`` and
+    ``expires_at`` are mutually exclusive ways to say when the plan ends, and either
+    sent as ``null`` means it never does. A never-ending plan is normally also
+    ``is_comped`` — that pairing is what makes a lab free — but the two are separate
+    fields so an operator can grant an open-ended *paid* plan if they mean to.
+    """
+
+    tier = serializers.ChoiceField(choices=Tier.choices, required=False)
+    status = serializers.ChoiceField(
+        choices=Subscription.Status.choices, required=False
+    )
+    duration_days = serializers.IntegerField(
+        min_value=1, required=False, allow_null=True
+    )
+    expires_at = serializers.DateTimeField(required=False, allow_null=True)
+    is_comped = serializers.BooleanField(required=False)
+    mylo_included = serializers.BooleanField(required=False)
+
+    def validate(self, attrs: dict) -> dict:
+        if not attrs:
+            raise serializers.ValidationError("Provide at least one field to update.")
         if "duration_days" in attrs and "expires_at" in attrs:
             raise serializers.ValidationError(
                 "Provide either duration_days or expires_at, not both."

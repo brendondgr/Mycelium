@@ -15,7 +15,6 @@ import {
   MembersCard,
   ProjectsCard,
 } from "@/components/portal/sections/labs-section";
-import { LabPlanCard } from "@/components/portal/sections/org-plan-card";
 import { labLogoUrl } from "@/lib/portal/client";
 import { useDeleteLabLogo, useUploadLabLogo } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
@@ -65,10 +64,10 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
         subtitle="Set the lab's logo and purpose, invite members, and connect Mylo."
       />
       <div className="grid items-start gap-4 lg:grid-cols-[1.5fr_1fr]">
-        {/* Left rail — setup cards */}
+        {/* Left rail — setup cards. The plan lives on the Billing page, so nothing
+            monetary sits in the middle of configuring the lab. */}
         <div className="space-y-4">
           <LabLogoCard lab={lab} />
-          <LabPlanCard slug={lab.slug} />
           <InviteCard lab={lab} />
           <DiscordSyncCard lab={lab} />
           <DiscordHealthCard lab={lab} />

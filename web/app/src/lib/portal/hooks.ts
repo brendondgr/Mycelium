@@ -9,6 +9,8 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  fetchAdminLab,
+  fetchAdminLabs,
   fetchAdminUser,
   fetchAdminUsers,
   fetchConferences,
@@ -93,6 +95,7 @@ import {
   synthesizeLabProfile,
   unarchiveProject,
   unsaveOpportunity,
+  updateAdminLab,
   updateAdminUser,
   updateCollection,
   updateLabProfile,
@@ -103,6 +106,7 @@ import {
 } from "@/lib/portal/mutations";
 import {
   PERSONAL_SLUG,
+  type AdminLabUpdate,
   type AdminUsersQuery,
   type AdminUserUpdate,
   type BriefingCategory,
@@ -1122,6 +1126,53 @@ export function useUpdateAdminUser() {
     onSuccess: (data, variables) => {
       queryClient.setQueryData(["portal", "admin-user", variables.id], data);
       queryClient.invalidateQueries({ queryKey: ["portal", "admin-users"] });
+    },
+  });
+}
+
+/** The admin lab roster — same paging/search contract as {@link useAdminUsers}. */
+export function useAdminLabs(query: AdminUsersQuery) {
+  return useQuery({
+    queryKey: [
+      "portal",
+      "admin-labs",
+      query.q ?? "",
+      query.page ?? 1,
+      query.pageSize ?? 0,
+    ],
+    queryFn: () => fetchAdminLabs(query),
+    placeholderData: keepPreviousData,
+    staleTime: 15_000,
+  });
+}
+
+/** One lab's full admin detail (drives the plan editor). */
+export function useAdminLab(slug?: string) {
+  return useQuery({
+    queryKey: ["portal", "admin-lab", slug ?? ""],
+    queryFn: () => fetchAdminLab(slug as string),
+    enabled: Boolean(slug),
+    staleTime: 15_000,
+  });
+}
+
+/**
+ * Apply an admin plan update to a lab; refresh that lab's detail + the roster, plus
+ * the lab-billing read the lab's own plan card and Discord gate render from — an
+ * admin granting Mylo should unlock the lab's setup flow without a reload.
+ */
+export function useUpdateAdminLab() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { slug: string; patch: AdminLabUpdate }) =>
+      updateAdminLab(input.slug, input.patch),
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(["portal", "admin-lab", variables.slug], data);
+      queryClient.invalidateQueries({ queryKey: ["portal", "admin-labs"] });
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "lab-billing", variables.slug],
+      });
+      queryClient.invalidateQueries({ queryKey: ["portal", "entitlements"] });
     },
   });
 }

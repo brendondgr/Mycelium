@@ -100,6 +100,16 @@ class Subscription(models.Model):
         default="monthly",
         help_text="Billing cadence; monthly for now.",
     )
+    # A complimentary plan: fully entitled, never charged. Set when a platform admin
+    # grants an org plan that never ends (admin dashboard: "Never — complimentary"),
+    # which is the durable discriminator the read surfaces need — a PI who activates
+    # their own lab also leaves ``expires_at`` null, so a null expiry alone cannot
+    # mean "free". Purely a *pricing* statement: entitlements are unaffected, and the
+    # plan page renders the seat price struck through.
+    is_comped = models.BooleanField(
+        default=False,
+        help_text="Complimentary plan — entitled but never billed.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

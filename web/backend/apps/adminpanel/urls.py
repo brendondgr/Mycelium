@@ -19,4 +19,16 @@ urlpatterns = [
         views.AdminUserDetailView.as_view(),
         name="admin-user-detail-no-slash",
     ),
+    path("labs/", views.AdminLabListView.as_view(), name="admin-labs"),
+    path("labs", views.AdminLabListView.as_view(), name="admin-labs-no-slash"),
+    path(
+        "labs/<slug:slug>/",
+        views.AdminLabDetailView.as_view(),
+        name="admin-lab-detail",
+    ),
+    path(
+        "labs/<slug:slug>",
+        views.AdminLabDetailView.as_view(),
+        name="admin-lab-detail-no-slash",
+    ),
 ]

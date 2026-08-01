@@ -1,10 +1,17 @@
-"""Admin write operations — assign a user's plan and set their watch quota.
+"""Admin write operations — assign a plan and set the quotas that hang off it.
 
 Kept out of the views so the mutations (and their audit trail) live in one place.
 Every write records an :class:`~apps.accounts.models.AuditEvent` naming the acting
-admin, since these change another person's entitlements. All operations target a
-user's *personal* (``scope_user``) subscription; lab/department plans are managed
-elsewhere.
+admin, since these change someone else's entitlements.
+
+Two targets, deliberately separate:
+
+* **A user** — their *personal* (``scope_user``) subscription plus the watch-topic
+  override. Seat-based org plans are never touched from here.
+* **A lab** — its ``scope_lab`` subscription: tier, status, how (and whether) the plan
+  ends, whether it is complimentary, and whether Mylo is part of it. Activation funnels
+  through :func:`apps.billing.services.activate_lab_subscription` so the billing period
+  and member seats are opened by the same code a PI's own activation uses.
 """
 
 from __future__ import annotations
@@ -16,7 +23,10 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.services import record_audit_event
+from apps.billing.addons import mylo_included, set_mylo_included
 from apps.billing.models import Seat, Subscription, Tier
+from apps.billing.seats import SeatCeilingExceeded
+from apps.billing.services import activate_lab_subscription, lab_subscription
 
 
 def personal_subscription(user: User) -> Subscription | None:
@@ -136,3 +146,98 @@ def apply_user_update(*, admin: User, user: User, data: dict) -> None:
         )
     if "watch_topic_limit" in data:
         set_watch_limit(admin=admin, user=user, limit=data["watch_topic_limit"])
+
+
+# --------------------------------------------------------------------------- #
+# Labs
+# --------------------------------------------------------------------------- #
+
+
+def ensure_lab_subscription(lab) -> Subscription:
+    """The lab's plan, creating an INACTIVE Lab-tier one if it somehow has none.
+
+    Every lab minted through :mod:`apps.billing.services` already has one; this covers
+    rows that predate that path so the admin surface never dead-ends on a missing plan.
+    """
+    sub = lab_subscription(lab)
+    if sub is not None:
+        return sub
+    return Subscription.objects.create(
+        tier=Tier.LAB, scope_lab=lab, status=Subscription.Status.INACTIVE
+    )
+
+
+@transaction.atomic
+def apply_lab_update(*, admin: User, lab, data: dict) -> Subscription:
+    """Apply a validated admin PATCH over one lab's plan.
+
+    Order matters. The tier is written first so an activation in the same request seats
+    members at the tier the admin just chose. Activation then runs through the shared
+    :func:`~apps.billing.services.activate_lab_subscription`, which opens the billing
+    period and seats every current member — the same path a PI's own "Activate plan"
+    button takes, so an admin-granted plan is indistinguishable from a self-activated
+    one downstream.
+
+    ``data`` is the serializer's ``validated_data``: only keys the client sent are
+    present, which is how "leave alone" is told from "set to null".
+    """
+    sub = ensure_lab_subscription(lab)
+
+    if "tier" in data:
+        sub.tier = data["tier"]
+        sub.save(update_fields=["tier", "updated_at"])
+
+    # Expiry: `expires_at` (an instant) and `duration_days` (now + N) are two ways to
+    # say the same thing; either sent as null means "never ends".
+    expiry_fields: list[str] = []
+    if "expires_at" in data:
+        sub.expires_at = data["expires_at"]
+        expiry_fields.append("expires_at")
+    elif "duration_days" in data:
+        days = data["duration_days"]
+        sub.expires_at = None if days is None else timezone.now() + timedelta(days=days)
+        expiry_fields.append("expires_at")
+    if "is_comped" in data:
+        sub.is_comped = data["is_comped"]
+        expiry_fields.append("is_comped")
+    if expiry_fields:
+        sub.save(update_fields=[*expiry_fields, "updated_at"])
+
+    status = data.get("status")
+    if status == Subscription.Status.ACTIVE:
+        # Seats + period come from the shared activation service; it is idempotent, so
+        # re-activating an already-active plan only re-seats any missing member.
+        activate_lab_subscription(lab)
+        sub.refresh_from_db()
+    elif status is not None and status != sub.status:
+        sub.status = status
+        sub.save(update_fields=["status", "updated_at"])
+
+    if "mylo_included" in data:
+        set_mylo_included(sub, data["mylo_included"])
+
+    record_audit_event(
+        actor=admin,
+        action="admin.lab_subscription.assign",
+        target_type="lab",
+        target_id=str(lab.pk),
+        metadata={
+            "tier": sub.tier,
+            "status": sub.status,
+            "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
+            "is_comped": sub.is_comped,
+            "mylo_included": mylo_included(sub),
+        },
+    )
+    return sub
+
+
+__all__ = [
+    "SeatCeilingExceeded",
+    "apply_lab_update",
+    "apply_user_update",
+    "assign_subscription",
+    "ensure_lab_subscription",
+    "personal_subscription",
+    "set_watch_limit",
+]

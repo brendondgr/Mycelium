@@ -38,7 +38,13 @@ class EntitlementSerializer(serializers.Serializer):
 
 
 class OrgBillingSerializer(serializers.Serializer):
-    """A lab or department plan's seat-priced state (cents; nothing is charged here)."""
+    """A lab or department plan's seat-priced state (cents; nothing is charged here).
+
+    ``is_comped`` is a *pricing* statement, not an entitlement one: a complimentary plan
+    is fully entitled but totals zero, and the plan page renders ``seat_price_cents``
+    struck through. ``mylo_included`` reports the Mylo-server add-on, which is what the
+    lab's Discord setup card gates on.
+    """
 
     scope_type = serializers.CharField()
     scope_slug = serializers.CharField(allow_null=True)
@@ -46,11 +52,14 @@ class OrgBillingSerializer(serializers.Serializer):
     tier = serializers.CharField(allow_null=True)
     status = serializers.CharField(allow_null=True)
     is_active = serializers.BooleanField()
+    is_comped = serializers.BooleanField()
+    mylo_included = serializers.BooleanField()
     seat_count = serializers.IntegerField()
     seat_price_cents = serializers.IntegerField()
     recurring_monthly_cents = serializers.IntegerField()
     add_member_proration_cents = serializers.IntegerField()
     current_period_start = serializers.DateField(allow_null=True)
     current_period_end = serializers.DateField(allow_null=True)
+    expires_at = serializers.DateTimeField(allow_null=True)
     activated_at = serializers.DateTimeField(allow_null=True)
     can_manage = serializers.BooleanField()

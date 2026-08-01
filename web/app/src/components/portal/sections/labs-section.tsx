@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import Link from "next/link";
+
 import { ClusterOrganizer } from "@/components/onboarding/cluster-organizer";
 import {
   DiscordIcon,
@@ -23,6 +25,7 @@ import {
   useCreateProject,
   useInviteToLab,
   useIssueLabActivationCode,
+  useLabBilling,
   useLabDiscordStatus,
   useLabMembers,
   useLabProfile,
@@ -32,6 +35,7 @@ import {
   useUpdateLabProfile,
 } from "@/lib/portal/hooks";
 import { ApiError } from "@/lib/api-error";
+import { SECTION_ROUTES } from "@/lib/portal/routes";
 import type { ClusterGroup } from "@/lib/auth-types";
 import type { LabMember, LabProfileData, MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
@@ -404,8 +408,16 @@ export function LabPurposeCard({
 
 // -- What Mylo watches (read card) -------------------------------------------
 
-/** A read-only view of a lab's watch topics, grouped by cluster when the lab
- * profile has any (same treatment as the personal profile's WatchCard). */
+/** A read-only view of what a lab has Mylo watching, grouped by cluster.
+ *
+ * Mirrors the personal profile's `WatchCard` exactly, including the part that used to
+ * be missing here: a lab's clusters carry their sub-topics in `cluster.areas`, and the
+ * lab's `watch.topics` is a *separate*, often-empty list seeded from them. Grouping
+ * only the stored topics therefore rendered an empty card ("hasn't set watch topics
+ * yet") for a lab that had a full set of clusters on screen right above it. So every
+ * cluster renders — showing the topics it claims, or falling back to its own areas —
+ * and the card is only empty when the lab has neither clusters nor topics.
+ */
 export function LabWatchCard({ lab }: { lab: MyLab }) {
   const { data: watch, isLoading, isError } = useLabWatch(lab.slug);
   const { data: profile } = useLabProfile(lab.slug);
@@ -432,7 +444,24 @@ export function LabWatchCard({ lab }: { lab: MyLab }) {
   const clusters = readClusters(profile?.interests);
   const cadenceLabel = watch.cadence === "daily" ? "daily" : "weekly";
 
-  if (topics.length === 0) {
+  const claimed = new Set<string>();
+  const clusterRows = clusters.map((cluster) => {
+    const matched = topics.filter((topic) => {
+      if (claimed.has(topic)) return false;
+      const key = topic.toLowerCase();
+      return (
+        cluster.label.toLowerCase() === key ||
+        cluster.areas.some((area) => area.toLowerCase() === key)
+      );
+    });
+    matched.forEach((topic) => claimed.add(topic));
+    return { cluster, items: matched.length > 0 ? matched : cluster.areas };
+  });
+  const otherTopics = topics.filter((topic) => !claimed.has(topic));
+
+  const hasClusters = clusterRows.length > 0;
+
+  if (!hasClusters && topics.length === 0) {
     return (
       <DetailCard title="What Mylo watches">
         <p className="text-sm text-[var(--text-secondary)]">
@@ -442,22 +471,11 @@ export function LabWatchCard({ lab }: { lab: MyLab }) {
     );
   }
 
-  const { groups: topicGroups, other: otherTopics } =
-    clusters.length > 0
-      ? groupByCluster(topics, clusters, (topic, cluster) => {
-          const key = topic.toLowerCase();
-          return (
-            cluster.label.toLowerCase() === key ||
-            cluster.areas.some((area) => area.toLowerCase() === key)
-          );
-        })
-      : { groups: [], other: [] };
-
   return (
     <DetailCard title="What Mylo watches">
-      {clusters.length > 0 ? (
+      {hasClusters ? (
         <div className="mb-3 flex flex-col gap-3">
-          {topicGroups.map(({ cluster, items }) => (
+          {clusterRows.map(({ cluster, items }) => (
             <div key={cluster.id}>
               <ClusterGroupHeading cluster={cluster} />
               <div className="flex flex-wrap gap-1.5">
@@ -747,17 +765,31 @@ export function InviteCard({ lab }: { lab: MyLab }) {
 
 // -- Discord ------------------------------------------------------------------
 
+/**
+ * Connect a lab's Discord server to Mylo — but only when Mylo is actually part of the
+ * lab's plan. Mylo on Discord is an add-on (`bot_server`), never granted by a tier, and
+ * the server-side install already refuses without it. Discovering that through a failed
+ * OAuth round-trip is a bad way to learn you need an upgrade, so the card reads the
+ * lab's plan first and, when Mylo isn't included, says so plainly and points at billing
+ * instead of offering buttons that cannot succeed.
+ */
 export function DiscordSyncCard({ lab }: { lab: MyLab }) {
   const { data: status, isLoading, isError } = useLabDiscordStatus(lab.slug);
+  const { data: billing, isLoading: billingLoading } = useLabBilling(lab.slug);
   const connect = useConnectLabDiscord();
   const issueCode = useIssueLabActivationCode();
 
   const synced = Boolean(status?.synced);
+  // Treat "still loading" as included so the card never flashes a false lock; the
+  // buttons stay disabled while either read is in flight anyway.
+  const myloIncluded = billingLoading || billing?.mylo_included !== false;
 
   const badge = (() => {
-    if (isLoading) return { tone: "neutral" as const, label: "Checking…" };
+    if (isLoading || billingLoading)
+      return { tone: "neutral" as const, label: "Checking…" };
     if (isError) return { tone: "clay" as const, label: "Unknown" };
     if (synced) return { tone: "primary" as const, label: "Synced" };
+    if (!myloIncluded) return { tone: "dashed" as const, label: "Not on plan" };
     if (status?.state === "pending_setup")
       return { tone: "review" as const, label: "Setup pending" };
     if (status?.state === "kicked")
@@ -766,8 +798,11 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
   })();
 
   const detail = (() => {
-    if (isLoading) return "Checking this lab's Discord connection…";
+    if (isLoading || billingLoading)
+      return "Checking this lab's Discord connection…";
     if (isError) return "Couldn't check the Discord connection. Try again.";
+    if (!myloIncluded && !synced)
+      return "Mylo isn't part of this lab's plan yet, so this lab can't add him to a Discord server. Add Mylo to the plan from Billing, then come back to connect your server.";
     if (synced) {
       const where = status?.guild_name
         ? `the ${status.guild_name} server`
@@ -798,7 +833,15 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
         <Pill tone={badge.tone}>{badge.label}</Pill>
       </div>
       <p className="mt-2 text-[12.5px] text-[var(--text-secondary)]">{detail}</p>
-      {!synced && !isLoading ? (
+      {!synced && !isLoading && !billingLoading && !myloIncluded ? (
+        <Link
+          href={SECTION_ROUTES.billing}
+          className="mt-3 inline-flex items-center gap-[7px] rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Activate Mylo on this plan
+        </Link>
+      ) : null}
+      {!synced && !isLoading && myloIncluded ? (
         <div className="mt-3 space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <button

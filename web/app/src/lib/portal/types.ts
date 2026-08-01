@@ -928,12 +928,22 @@ export type OrgBilling = {
   tier: "lab" | "canopy" | null;
   status: string | null;
   is_active: boolean;
+  /**
+   * A complimentary plan — fully entitled, never billed (a platform admin granted it
+   * with no end date). Purely a pricing statement: the plan page strikes
+   * `seat_price_cents` through rather than hiding it.
+   */
+  is_comped: boolean;
+  /** Whether Mylo on Discord (the `bot_server` add-on) is part of this plan. */
+  mylo_included: boolean;
   seat_count: number;
   seat_price_cents: number;
   recurring_monthly_cents: number;
   add_member_proration_cents: number;
   current_period_start: string | null;
   current_period_end: string | null;
+  /** When the plan stops granting entitlements; null = it never ends. */
+  expires_at: string | null;
   activated_at: string | null;
   can_manage: boolean;
 };
@@ -1032,4 +1042,72 @@ export type AdminUserUpdate = {
   expires_at?: string | null;
   subscription_status?: AdminSubscriptionStatus;
   watch_topic_limit?: number | null;
+};
+
+// -- Admin dashboard, Labs context (GET/PATCH /api/admin/labs) -----------------
+
+/**
+ * Org plans additionally use `inactive` — the created-but-not-yet-granting state every
+ * lab/department plan starts in.
+ */
+export type AdminOrgStatus = "inactive" | "active" | "past_due" | "canceled";
+
+/** A lab's plan as the admin dashboard reports it. */
+export type AdminLabSubscription = {
+  tier: AdminTier;
+  status: AdminOrgStatus;
+  /** When the plan stops granting entitlements; null = it never ends. */
+  expires_at: string | null;
+  /** Complimentary — entitled but never billed (a free lab). */
+  is_comped: boolean;
+  /** Whether Mylo on Discord is part of the plan (the `bot_server` add-on). */
+  mylo_included: boolean;
+  seat_count: number;
+  seat_price_cents: number;
+  recurring_monthly_cents: number;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  activated_at: string | null;
+  billing_interval: string;
+};
+
+/** One lab row in the admin table (GET /admin/labs/ → results[]). */
+export type AdminLabRow = {
+  slug: string;
+  name: string;
+  created_at: string;
+  department: { id: string; name: string; included_in_plan: boolean } | null;
+  member_count: number;
+  subscription: AdminLabSubscription | null;
+};
+
+/** A single lab's full admin view (GET /admin/labs/<slug>/). */
+export type AdminLabDetail = AdminLabRow & {
+  timezone: string;
+  leads: { username: string; name: string; role: LabRole; is_lead: boolean }[];
+  watch_topics: string[];
+  watch_categories: string[];
+};
+
+/** One page of the admin lab roster (same DRF envelope as the user roster). */
+export type AdminLabsPage = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: AdminLabRow[];
+};
+
+/**
+ * A partial admin PATCH over a lab's plan. Only the keys sent are applied;
+ * `duration_days`/`expires_at` are mutually exclusive, and either sent as null means
+ * the plan never ends. Setting `status: "active"` runs the shared activation service,
+ * which opens the billing period and seats every member.
+ */
+export type AdminLabUpdate = {
+  tier?: AdminTier;
+  status?: AdminOrgStatus;
+  duration_days?: number | null;
+  expires_at?: string | null;
+  is_comped?: boolean;
+  mylo_included?: boolean;
 };

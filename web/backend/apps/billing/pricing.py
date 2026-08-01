@@ -32,8 +32,12 @@ def recurring_monthly_cents(subscription: Subscription) -> int:
     """The steady-state monthly total: active seats × per-seat price.
 
     A seat pending deferred removal is still ACTIVE, so it still counts this cycle
-    (billed through period end, no credit — L3).
+    (billed through period end, no credit — L3). A **comped** plan totals zero however
+    many seats it holds — the list price stays readable via :func:`seat_price_cents`
+    so the plan page can strike it through rather than hide it.
     """
+    if getattr(subscription, "is_comped", False):
+        return 0
     return active_seat_count(subscription) * seat_price_cents(subscription.tier)
 
 

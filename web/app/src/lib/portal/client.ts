@@ -1,6 +1,8 @@
 import { ApiError } from "@/lib/api-error";
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import type {
+  AdminLabDetail,
+  AdminLabsPage,
   AdminUserDetail,
   AdminUsersPage,
   AdminUsersQuery,
@@ -495,5 +497,29 @@ export async function fetchAdminUser(id: number): Promise<AdminUserDetail> {
   return getJson<AdminUserDetail>(
     buildApiUrl(getPublicApiBase(), "admin", "users", String(id)),
     "Could not load this user.",
+  );
+}
+
+/** One page of the admin lab roster (staff/superuser only; the API 403s else). */
+export async function fetchAdminLabs(
+  params: AdminUsersQuery,
+): Promise<AdminLabsPage> {
+  const search = new URLSearchParams();
+  if (params.q) search.set("q", params.q);
+  if (params.page) search.set("page", String(params.page));
+  if (params.pageSize) search.set("page_size", String(params.pageSize));
+  const base = buildApiUrl(getPublicApiBase(), "admin", "labs");
+  const qs = search.toString();
+  return getJson<AdminLabsPage>(
+    qs ? `${base}?${qs}` : base,
+    "Could not load the lab list.",
+  );
+}
+
+/** One lab's full admin detail (staff/superuser only). */
+export async function fetchAdminLab(slug: string): Promise<AdminLabDetail> {
+  return getJson<AdminLabDetail>(
+    buildApiUrl(getPublicApiBase(), "admin", "labs", slug),
+    "Could not load this lab.",
   );
 }

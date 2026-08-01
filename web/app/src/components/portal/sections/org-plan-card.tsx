@@ -24,6 +24,31 @@ function usd(cents: number): string {
   });
 }
 
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/**
+ * A price on a plan. On a complimentary plan the list price is struck through with
+ * "Free" beside it, so the value of what was granted stays visible rather than being
+ * quietly replaced by a zero. `<s>` carries the meaning for screen readers too.
+ */
+function Price({ cents, comped }: { cents: number; comped: boolean }) {
+  if (!comped) return <>{usd(cents)}</>;
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <s className="text-[var(--text-muted)]">{usd(cents)}</s>
+      <span className="text-primary">Free</span>
+    </span>
+  );
+}
+
 /** Shared body for a lab / department plan card, given resolved billing state. */
 function PlanBody({
   billing,
@@ -49,6 +74,7 @@ function PlanBody({
 
   const tierLabel = billing.tier ? (TIER_LABEL[billing.tier] ?? billing.tier) : "—";
   const perSeat = usd(billing.seat_price_cents);
+  const comped = billing.is_comped;
 
   return (
     <div className="flex flex-col gap-3">
@@ -56,9 +82,12 @@ function PlanBody({
         <span className="text-sm font-semibold text-[var(--text-primary)]">
           {tierLabel}
         </span>
-        <Pill tone={billing.is_active ? "primary" : "dashed"}>
-          {billing.is_active ? "Active" : "Inactive"}
-        </Pill>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {comped ? <Pill tone="accent">Complimentary</Pill> : null}
+          <Pill tone={billing.is_active ? "primary" : "dashed"}>
+            {billing.is_active ? "Active" : "Inactive"}
+          </Pill>
+        </div>
       </div>
 
       {billing.is_active ? (
@@ -68,16 +97,39 @@ function PlanBody({
             {billing.seat_count}
           </dd>
           <dt className="text-[var(--text-secondary)]">Per seat / mo</dt>
-          <dd className="text-right font-medium text-[var(--text-primary)]">{perSeat}</dd>
+          <dd className="text-right font-medium text-[var(--text-primary)]">
+            <Price cents={billing.seat_price_cents} comped={comped} />
+          </dd>
           <dt className="text-[var(--text-secondary)]">Monthly total</dt>
           <dd className="text-right font-semibold text-[var(--text-primary)]">
-            {usd(billing.recurring_monthly_cents)}
+            {/* A comped plan bills zero, so strike the list total it *would* have
+                cost — striking the zero itself would say nothing. */}
+            <Price
+              cents={
+                comped
+                  ? billing.seat_count * billing.seat_price_cents
+                  : billing.recurring_monthly_cents
+              }
+              comped={comped}
+            />
           </dd>
-          {billing.current_period_end ? (
+          <dt className="text-[var(--text-secondary)]">Mylo on Discord</dt>
+          <dd className="text-right font-medium text-[var(--text-primary)]">
+            {billing.mylo_included ? "Included" : "Not included"}
+          </dd>
+          {comped ? null : billing.current_period_end ? (
             <>
               <dt className="text-[var(--text-secondary)]">Renews</dt>
               <dd className="text-right text-[var(--text-secondary)]">
                 {billing.current_period_end}
+              </dd>
+            </>
+          ) : null}
+          {billing.expires_at ? (
+            <>
+              <dt className="text-[var(--text-secondary)]">Plan ends</dt>
+              <dd className="text-right text-[var(--text-secondary)]">
+                {formatDate(billing.expires_at)}
               </dd>
             </>
           ) : null}
@@ -88,6 +140,13 @@ function PlanBody({
           everyone — billed at {perSeat} per member per month once active.
         </p>
       )}
+
+      {comped && billing.is_active ? (
+        <p className="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
+          This plan was granted with no end date, so nothing is billed. Every member
+          keeps the full {tierLabel} entitlement.
+        </p>
+      ) : null}
 
       {billing.can_manage && !billing.is_active ? (
         <button

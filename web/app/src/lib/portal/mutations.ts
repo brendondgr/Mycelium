@@ -3,6 +3,8 @@
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import { ensureCsrfCookie, readCsrfToken } from "@/lib/auth-client";
 import type {
+  AdminLabDetail,
+  AdminLabUpdate,
   AdminUserDetail,
   AdminUserUpdate,
   BriefingCategory,
@@ -863,5 +865,18 @@ export function updateAdminUser(
     buildApiUrl(getPublicApiBase(), "admin", "users", String(id)),
     patch,
     "Could not update this user.",
+  );
+}
+
+/** Update a lab's subscription (staff/superuser only). */
+export function updateAdminLab(
+  slug: string,
+  patch: AdminLabUpdate,
+): Promise<AdminLabDetail> {
+  return sendJson<AdminLabDetail>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "admin", "labs", slug),
+    patch,
+    "Could not update this lab's plan.",
   );
 }

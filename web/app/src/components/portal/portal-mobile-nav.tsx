@@ -8,6 +8,7 @@ import {
   FolderIcon,
   GridIcon,
   MembersIcon,
+  ReceiptIcon,
   ShieldIcon,
   SparkleIcon,
   TargetIcon,
@@ -43,7 +44,10 @@ export function PortalMobileNav() {
         { key: "overview", label: "Overview", icon: <GridIcon size={15} /> },
         { key: "members", label: "Members", icon: <MembersIcon size={15} /> },
         ...(manageLab
-          ? [{ key: "profile" as SectionKey, label: "Lab settings", icon: <TargetIcon size={15} /> }]
+          ? [
+              { key: "profile" as SectionKey, label: "Lab settings", icon: <TargetIcon size={15} /> },
+              { key: "billing" as SectionKey, label: "Billing", icon: <ReceiptIcon size={15} /> },
+            ]
           : []),
         { key: "saves", label: "Saves", icon: <BookmarkIcon size={15} /> },
         { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },
@@ -55,6 +59,7 @@ export function PortalMobileNav() {
     : [
         { key: "overview", label: "Overview", icon: <GridIcon size={15} /> },
         { key: "profile", label: "Profile", icon: <TargetIcon size={15} /> },
+        { key: "billing", label: "Billing", icon: <ReceiptIcon size={15} /> },
         { key: "saves", label: "Saves", icon: <BookmarkIcon size={15} /> },
         { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },
         { key: "opportunities", label: "Grants", icon: <BankIcon size={15} /> },

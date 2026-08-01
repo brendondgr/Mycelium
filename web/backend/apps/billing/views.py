@@ -21,6 +21,7 @@ from apps.accounts.permissions import (
     user_has_lab_access,
 )
 
+from .addons import mylo_included
 from .entitlements import (
     active_seat_count,
     cluster_cap,
@@ -146,19 +147,27 @@ def org_billing_payload(
             "tier": None,
             "status": None,
             "is_active": False,
+            "is_comped": False,
+            "mylo_included": False,
             "seat_count": 0,
             "seat_price_cents": 0,
             "recurring_monthly_cents": 0,
             "add_member_proration_cents": 0,
             "current_period_start": None,
             "current_period_end": None,
+            "expires_at": None,
             "activated_at": None,
             "can_manage": can_manage,
         }
     price = seat_price_cents(subscription.tier)
     is_active = subscription.status == Subscription.Status.ACTIVE
+    comped = subscription.is_comped
     start, end = subscription.current_period_start, subscription.current_period_end
-    if is_active and start and end:
+    if comped:
+        # Nothing is billed on a complimentary plan, so adding a member costs nothing.
+        # ``seat_price_cents`` stays the list price — the plan page strikes it through.
+        add_proration = 0
+    elif is_active and start and end:
         add_proration = prorate_add(
             subscription.tier, added_on=today(), period_start=start, period_end=end
         )
@@ -171,12 +180,15 @@ def org_billing_payload(
         "tier": subscription.tier,
         "status": subscription.status,
         "is_active": is_active,
+        "is_comped": comped,
+        "mylo_included": mylo_included(subscription),
         "seat_count": active_seat_count(subscription),
         "seat_price_cents": price,
         "recurring_monthly_cents": recurring_monthly_cents(subscription),
         "add_member_proration_cents": add_proration,
         "current_period_start": subscription.current_period_start,
         "current_period_end": subscription.current_period_end,
+        "expires_at": subscription.expires_at,
         "activated_at": subscription.activated_at,
         "can_manage": can_manage,
     }

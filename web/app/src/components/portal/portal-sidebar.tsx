@@ -7,6 +7,7 @@ import {
   DocumentIcon,
   GridIcon,
   MembersIcon,
+  ReceiptIcon,
   ShieldIcon,
   SparkleIcon,
   SporeNode,
@@ -133,6 +134,16 @@ export function PortalSidebar() {
           active={section === "saves"}
           onClick={() => goToSection("saves")}
         />
+        {/* Plans and pricing live here, off the settings surfaces. A lab's plan is
+            its managers' business, so members don't get the entry. */}
+        {!inLab || manageLab ? (
+          <SidebarNavItem
+            icon={<ReceiptIcon size={18} />}
+            label="Billing"
+            active={section === "billing"}
+            onClick={() => goToSection("billing")}
+          />
+        ) : null}
       </nav>
 
       <GroupLabel>Research</GroupLabel>

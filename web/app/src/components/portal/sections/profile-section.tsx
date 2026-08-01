@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { usePortal } from "@/components/portal/portal-context";
 import { LabSettingsSection } from "@/components/portal/sections/lab-settings-section";
 import { Card } from "@/components/portal/primitives/card";
-import { PlansCard } from "@/components/portal/sections/plans-card";
 import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
@@ -686,11 +685,11 @@ export function ProfileSection() {
           <EligibilityCard />
         </div>
 
-        {/* RIGHT — what Mylo watches + completeness + your active plans */}
+        {/* RIGHT — what Mylo watches + completeness. Plans and anything else
+            monetary live on their own Billing page, not in the open here. */}
         <div className="flex flex-col gap-[22px]">
           <WatchCard />
           <ProfileCompletenessCard />
-          <PlansCard />
         </div>
       </div>
     </div>
