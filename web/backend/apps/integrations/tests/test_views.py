@@ -6,7 +6,7 @@ import urllib.parse
 from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.accounts.models import Lab, LabMembership
@@ -148,6 +148,103 @@ class PathAViewTests(TestCase):
         self.client.logout()
         self.assertEqual(self.client.get(reverse("discord-start")).status_code, 403)
         self.assertEqual(self.client.get(reverse("discord-status")).status_code, 403)
+
+
+# Order matters: stacked override_settings merge with the OUTERMOST winning, so
+# these must sit above discord_test_settings to unpin the redirect URIs it sets.
+@override_settings(
+    # The unpinned production shape: no redirect URI configured at all, so both
+    # callbacks are derived from the request. DISCORD_APP_BASE_URL stays localhost
+    # to prove nothing leaks from it into a browser-facing URL.
+    DISCORD_OAUTH_REDIRECT_URI="",
+    DISCORD_GUILD_REDIRECT_URI="",
+    DISCORD_APP_BASE_URL="http://localhost:11050",
+    DISCORD_PORTAL_RETURN_URL="http://localhost:11050/app/profile",
+    ALLOWED_HOSTS=["mycelium.example.com", "testserver"],
+)
+@discord_test_settings
+class OriginDerivedRedirectTests(TestCase):
+    """A visitor on the public host must never be handed a localhost URL.
+
+    The regression this pins: DISCORD_APP_BASE_URL left pointing at the local
+    gateway sent Discord — and then the browser — to http://localhost:11050/...
+    for anyone using the deployed site.
+    """
+
+    def setUp(self):
+        clear_discord_cache()
+        self.user = User.objects.create_user("public-user", password="x")
+        self.client.force_login(self.user)
+
+    def _redirect_uri_from_start(self, **extra) -> str:
+        resp = self.client.get(reverse("discord-start"), **extra)
+        self.assertEqual(resp.status_code, 200)
+        query = urllib.parse.urlparse(resp.json()["authorize_url"]).query
+        return urllib.parse.parse_qs(query)["redirect_uri"][0]
+
+    def test_authorize_url_follows_the_requesting_host(self):
+        uri = self._redirect_uri_from_start(HTTP_HOST="mycelium.example.com")
+        self.assertEqual(
+            uri, "http://mycelium.example.com/api/integrations/discord/callback"
+        )
+        self.assertNotIn("localhost", uri)
+
+    def test_authorize_url_is_https_behind_a_tls_terminating_proxy(self):
+        # nginx forwards the front-door's scheme; SECURE_PROXY_SSL_HEADER reads it.
+        uri = self._redirect_uri_from_start(
+            HTTP_HOST="mycelium.example.com", HTTP_X_FORWARDED_PROTO="https"
+        )
+        self.assertEqual(
+            uri, "https://mycelium.example.com/api/integrations/discord/callback"
+        )
+
+    def test_pinned_setting_still_wins(self):
+        with override_settings(
+            DISCORD_OAUTH_REDIRECT_URI="https://pinned.example/cb"
+        ):
+            self.assertEqual(
+                self._redirect_uri_from_start(HTTP_HOST="mycelium.example.com"),
+                "https://pinned.example/cb",
+            )
+
+    def test_callback_exchanges_with_the_same_derived_uri(self):
+        state = _state_from(
+            self.client.get(
+                reverse("discord-start"),
+                HTTP_HOST="mycelium.example.com",
+                HTTP_X_FORWARDED_PROTO="https",
+            ).json()["authorize_url"]
+        )
+        with mock.patch.object(
+            discord_api, "exchange_code",
+            return_value={"access_token": "AT", "scope": "identify"},
+        ) as exchange, mock.patch.object(
+            discord_api, "get_current_user",
+            return_value={"id": "abc", "username": "u"},
+        ), mock.patch("apps.integrations.services.probe.run_probe"):
+            resp = self.client.get(
+                reverse("discord-callback"),
+                {"code": "c", "state": state},
+                HTTP_HOST="mycelium.example.com",
+                HTTP_X_FORWARDED_PROTO="https",
+            )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            exchange.call_args.args[1],
+            "https://mycelium.example.com/api/integrations/discord/callback",
+        )
+
+    def test_portal_bounce_is_relative(self):
+        # Unauthenticated → the login_required bounce, which is enough to assert
+        # the shape: a path, so the browser stays on the host it came from.
+        self.client.logout()
+        resp = self.client.get(
+            reverse("discord-callback"),
+            {"code": "c", "state": "s"},
+            HTTP_HOST="mycelium.example.com",
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp["Location"], "/app/profile?discord=login_required")
 
 
 @discord_test_settings

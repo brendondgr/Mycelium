@@ -85,8 +85,20 @@ ownership, and Discord roles grant nothing.
 
 * Application → both `GUILD_INSTALL` (0) and `USER_INSTALL` (1) integration types.
 * **`integration_require_code_grant` = ON** (load-bearing for Path C).
-* Register the two redirect URIs (`DISCORD_OAUTH_REDIRECT_URI`,
-  `DISCORD_GUILD_REDIRECT_URI`).
+* Register the two redirect URIs — `/api/integrations/discord/callback` and
+  `/api/integrations/discord/guild-callback`, on **every public origin** the
+  portal answers on. By default nothing pins them: `services.oauth` derives each
+  one from the origin of the live request (`_redirect_uri`), so the flow follows
+  whatever hostname the visitor used and a leftover config value can never send a
+  public visitor back to `localhost`. OAuth2 forbids a relative `redirect_uri`, so
+  request-derived is as close as it gets. `DISCORD_OAUTH_REDIRECT_URI` /
+  `DISCORD_GUILD_REDIRECT_URI` still exist to pin one fixed origin instead.
+  * This needs Django to know the real scheme: nginx forwards the front door's
+    `X-Forwarded-Proto` (it terminates plain HTTP itself) and settings set
+    `SECURE_PROXY_SSL_HEADER`, so a tunnelled HTTPS site builds `https://` URIs.
+  * `DISCORD_APP_BASE_URL` is now only for links Mylo writes *into* Discord
+    messages, which are composed with no request in hand; it follows
+    `PUBLIC_HOSTNAME`.
 * **No privileged intents.** Slash-commands only; do not enable `MESSAGE_CONTENT`.
 * Interactions Endpoint URL: **leave blank** — interactions come over the gateway.
 * **Sync the gateway venv.** The Mylo bot runs from a venv at

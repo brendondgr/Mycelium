@@ -173,6 +173,14 @@ if PUBLIC_HOSTNAME:
 SESSION_COOKIE_NAME = env("DJANGO_SESSION_COOKIE_NAME", default="mycelium_sessionid")
 CSRF_COOKIE_NAME = env("DJANGO_CSRF_COOKIE_NAME", default="mycelium_csrftoken")
 
+# Every request reaches Django through the nginx gateway (and usually a tunnel or
+# public proxy in front of that), so the socket Django sees is always plain HTTP.
+# Without this, `request.is_secure()` and `request.build_absolute_uri()` would call
+# a public HTTPS site "http://" — which matters because the Discord OAuth callback
+# is now built from the incoming request and must match the registered URI exactly.
+# nginx always overwrites X-Forwarded-Proto, so a client cannot forge it.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -582,25 +590,26 @@ DISCORD_BOT_TOKEN = env(
 # the encrypted field always works; production sets a real, rotated key here.
 DISCORD_TOKEN_ENC_KEY = env("DISCORD_TOKEN_ENC_KEY", default="")
 
-# Where Discord redirects the browser after the user + guild OAuth flows. These
-# resolve to apps.integrations views under /api/integrations/discord/. Must be the
-# public single origin (the nginx gateway) that /api/ proxies to Django — NOT the
-# Next.js container port (11250). Defaults to PUBLIC_BASE_URL, so a stack served
-# at a public hostname redirects there instead of at localhost; set this only to
-# pin a different origin. Whatever this resolves to must be registered verbatim in
-# the Discord app's OAuth2 redirect list, or Discord returns "Invalid OAuth2
-# redirect_uri".
+# Absolute origin for links Mylo writes into Discord messages (digests, nudges).
+# Those are composed outside any HTTP request, so they cannot be derived from one
+# and genuinely need a configured origin: PUBLIC_BASE_URL, or an explicit pin.
 DISCORD_APP_BASE_URL = env_str("DISCORD_APP_BASE_URL", PUBLIC_BASE_URL).rstrip("/")
-DISCORD_OAUTH_REDIRECT_URI = env_str(
-    "DISCORD_OAUTH_REDIRECT_URI",
-    f"{DISCORD_APP_BASE_URL}/api/integrations/discord/callback",
-)
-DISCORD_GUILD_REDIRECT_URI = env_str(
-    "DISCORD_GUILD_REDIRECT_URI",
-    f"{DISCORD_APP_BASE_URL}/api/integrations/discord/guild-callback",
-)
+
+# The two OAuth callbacks are NOT configured here by default. OAuth2 forbids a
+# relative redirect_uri, but the next best thing is to derive it per request from
+# the origin the browser is actually on (apps.integrations.services.oauth), so the
+# stack works at whatever hostname it is served at without re-pointing config —
+# and a leftover localhost value can never send a public visitor to localhost.
+# Set these only to PIN a fixed origin. Whatever they resolve to must be
+# registered verbatim in the Discord app's OAuth2 redirect list, or Discord
+# returns "Invalid OAuth2 redirect_uri"; with the derived form that means
+# registering every public origin the portal is reachable at.
+DISCORD_OAUTH_REDIRECT_URI = env_str("DISCORD_OAUTH_REDIRECT_URI")
+DISCORD_GUILD_REDIRECT_URI = env_str("DISCORD_GUILD_REDIRECT_URI")
 # Where the user lands back in the portal after a link attempt (success or error
-# is carried as a query param). The frontend profile page reads it.
+# is carried as a query param). The frontend profile page reads it. Kept absolute
+# because the Mylo gateway quotes it in DMs; the callback views redirect to its
+# path alone, so the browser stays on the origin it arrived from.
 DISCORD_PORTAL_RETURN_URL = env_str(
     "DISCORD_PORTAL_RETURN_URL", f"{DISCORD_APP_BASE_URL}/app/profile"
 )

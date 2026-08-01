@@ -29,6 +29,41 @@ _AUTHORIZE = "https://discord.com/oauth2/authorize"
 _USER_SCOPES = ["identify", "applications.commands"]
 _GUILD_SCOPES = ["bot", "applications.commands"]
 
+# Paths of the two callback views (apps.integrations.urls). Kept here as constants
+# rather than reversed, because they are also half of a redirect_uri that Discord
+# matches byte-for-byte — the no-slash form is the canonical registered one.
+USER_CALLBACK_PATH = "/api/integrations/discord/callback"
+GUILD_CALLBACK_PATH = "/api/integrations/discord/guild-callback"
+
+
+def user_redirect_uri(request=None) -> str:
+    return _redirect_uri(request, settings.DISCORD_OAUTH_REDIRECT_URI,
+                         USER_CALLBACK_PATH)
+
+
+def guild_redirect_uri(request=None) -> str:
+    return _redirect_uri(request, settings.DISCORD_GUILD_REDIRECT_URI,
+                         GUILD_CALLBACK_PATH)
+
+
+def _redirect_uri(request, pinned: str, path: str) -> str:
+    """Where Discord sends the browser back — the origin it is already on.
+
+    OAuth2 requires an absolute redirect_uri, so this cannot be a relative link;
+    deriving it from the live request is the equivalent, and keeps a deployment
+    from having to name its own hostname twice. ``request.get_host()`` is already
+    validated against ALLOWED_HOSTS, so a forged Host header cannot point the
+    callback at someone else's origin (don't set ALLOWED_HOSTS to "*").
+
+    An explicit setting wins, for stacks that must pin one registered origin, and
+    the configured base URL is the fallback when there is no request at all.
+    """
+    if pinned:
+        return pinned
+    if request is not None:
+        return request.build_absolute_uri(path)
+    return f"{settings.DISCORD_APP_BASE_URL}{path}"
+
 
 class BotServerRequired(Exception):
     """Raised when installing Mylo into a guild for a lab without the add-on.
@@ -44,39 +79,44 @@ class BotServerRequired(Exception):
         super().__init__(f"lab {slug} lacks the Mylo-server add-on")
 
 
-def user_authorize_url(state: str) -> str:
+def user_authorize_url(state: str, *, request=None) -> str:
     params = {
         "client_id": settings.DISCORD_CLIENT_ID,
         "response_type": "code",
         "scope": " ".join(_USER_SCOPES),
         "integration_type": 1,  # USER_INSTALL — grants DM rights
-        "redirect_uri": settings.DISCORD_OAUTH_REDIRECT_URI,
+        "redirect_uri": user_redirect_uri(request),
         "state": state,
         "prompt": "consent",
     }
     return f"{_AUTHORIZE}?{urllib.parse.urlencode(params)}"
 
 
-def guild_authorize_url(state: str) -> str:
+def guild_authorize_url(state: str, *, request=None) -> str:
     params = {
         "client_id": settings.DISCORD_CLIENT_ID,
         "response_type": "code",  # NOT the callback-less bot flow
         "scope": " ".join(_GUILD_SCOPES),
         "permissions": settings.DISCORD_INSTALL_PERMISSIONS,
         "integration_type": 0,  # GUILD_INSTALL
-        "redirect_uri": settings.DISCORD_GUILD_REDIRECT_URI,
+        "redirect_uri": guild_redirect_uri(request),
         "state": state,
     }
     return f"{_AUTHORIZE}?{urllib.parse.urlencode(params)}"
 
 
-def complete_user_link(user, code: str, *, actor=None) -> DiscordIdentity:
+def complete_user_link(user, code: str, *, actor=None, request=None) -> DiscordIdentity:
     """Exchange the code, read the authoritative snowflake, bind the identity.
+
+    The exchange must repeat the same redirect_uri the authorize step sent. It is
+    rebuilt from ``request`` rather than remembered: Discord only ever redirects
+    the browser to the URI we handed it, so the callback arrives on that very
+    origin and rebuilding there yields the identical string.
 
     Raises ``resolve.IdentityConflict`` if the snowflake belongs to another user,
     ``discord_api.DiscordHTTPError`` on any Discord failure.
     """
-    token = discord_api.exchange_code(code, settings.DISCORD_OAUTH_REDIRECT_URI)
+    token = discord_api.exchange_code(code, user_redirect_uri(request))
     profile = discord_api.get_current_user(token["access_token"])
 
     return resolve.bind_identity(
@@ -95,7 +135,7 @@ def complete_user_link(user, code: str, *, actor=None) -> DiscordIdentity:
     )
 
 
-def complete_guild_link(lab, code: str, *, installed_by=None):
+def complete_guild_link(lab, code: str, *, installed_by=None, request=None):
     """Exchange the code and bind the guild from the authoritative ``guild`` object.
 
     Raises ``resolve.GuildConflict`` if the guild/lab is already otherwise bound,
@@ -109,7 +149,7 @@ def complete_guild_link(lab, code: str, *, installed_by=None):
     if not lab_has_feature(lab, Feature.BOT_SERVER):
         raise BotServerRequired(lab)
 
-    token = discord_api.exchange_code(code, settings.DISCORD_GUILD_REDIRECT_URI)
+    token = discord_api.exchange_code(code, guild_redirect_uri(request))
     guild = token.get("guild")
     if not guild or not guild.get("id"):
         raise ValueError("token exchange returned no guild object")

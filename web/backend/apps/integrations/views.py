@@ -18,6 +18,8 @@ services.
 
 from __future__ import annotations
 
+from urllib.parse import urlsplit, urlunsplit
+
 from django.conf import settings
 from django.http import HttpResponseRedirect
 from rest_framework import status
@@ -31,10 +33,23 @@ from .services.state import StateBackendError
 
 
 def _return(outcome: str) -> HttpResponseRedirect:
-    sep = "&" if "?" in settings.DISCORD_PORTAL_RETURN_URL else "?"
-    return HttpResponseRedirect(
-        f"{settings.DISCORD_PORTAL_RETURN_URL}{sep}discord={outcome}"
-    )
+    """Bounce back into the portal, staying on the origin the browser is on.
+
+    DISCORD_PORTAL_RETURN_URL is absolute because the Mylo gateway quotes it in
+    DMs, but sending a *browser* to a configured origin is how a visitor on the
+    public site ends up back at localhost. Only its path is used here, so the
+    redirect is relative and resolves against whatever host served the callback.
+    """
+    target = _relative(settings.DISCORD_PORTAL_RETURN_URL)
+    sep = "&" if "?" in target else "?"
+    return HttpResponseRedirect(f"{target}{sep}discord={outcome}")
+
+
+def _relative(url: str) -> str:
+    parts = urlsplit(url)
+    if not parts.netloc:  # already relative
+        return url
+    return urlunsplit(("", "", parts.path or "/", parts.query, parts.fragment))
 
 
 def _session_key(request) -> str:
@@ -75,7 +90,9 @@ class DiscordStartView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         audit.discord_audit(action="discord.link.oauth_started", actor=request.user)
-        return Response({"authorize_url": oauth.user_authorize_url(nonce)})
+        return Response(
+            {"authorize_url": oauth.user_authorize_url(nonce, request=request)}
+        )
 
 
 class DiscordCallbackView(APIView):
@@ -99,7 +116,9 @@ class DiscordCallbackView(APIView):
             )
 
         try:
-            identity = oauth.complete_user_link(request.user, code, actor=request.user)
+            identity = oauth.complete_user_link(
+                request.user, code, actor=request.user, request=request
+            )
         except resolve.IdentityConflict:
             return Response(
                 {"detail": "This Discord account is already linked to another "
@@ -342,7 +361,9 @@ class DiscordGuildStartView(APIView):
                 {"detail": "install temporarily unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        return Response({"authorize_url": oauth.guild_authorize_url(nonce)})
+        return Response(
+            {"authorize_url": oauth.guild_authorize_url(nonce, request=request)}
+        )
 
 
 class DiscordGuildCallbackView(APIView):
@@ -368,7 +389,9 @@ class DiscordGuildCallbackView(APIView):
             )
         installer = resolve.get_user_by_id(payload.get("user_id"))
         try:
-            oauth.complete_guild_link(lab, code, installed_by=installer)
+            oauth.complete_guild_link(
+                lab, code, installed_by=installer, request=request
+            )
         except oauth.BotServerRequired:
             # The lab has no Mylo-server add-on — bounce back with an upgrade cue.
             return _return("bot_server_required")
