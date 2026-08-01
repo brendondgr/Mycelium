@@ -7,7 +7,7 @@ total while keeping the list price readable, and the Mylo toggle actually grants
 the ``bot_server`` add-on the Discord setup path gates on.
 """
 
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth.models import User
@@ -315,3 +315,32 @@ def test_over_ceiling_activation_is_a_400_not_a_500(
     assert resp.status_code == 400
     sub = Subscription.objects.get(scope_lab=lab)
     assert sub.status == Subscription.Status.INACTIVE
+
+
+@pytest.mark.django_db
+def test_unrelated_edit_does_not_reseat_a_live_plan(
+    client: APIClient, superuser: User, member: User, lab: Lab
+) -> None:
+    """The form always re-sends the current status; that must not re-run activation.
+
+    Re-activating a live plan re-seats every member, and re-seating clears a seat's
+    pending-removal cutoff — so toggling Mylo would silently un-schedule a departure
+    the lab had already arranged.
+    """
+    client.force_authenticate(superuser)
+    client.patch(detail_url(lab), {"status": Subscription.Status.ACTIVE}, format="json")
+    sub = Subscription.objects.get(scope_lab=lab)
+
+    leaving = Seat.objects.get(subscription=sub, member=member)
+    leaving.ends_at = date(2030, 1, 1)
+    leaving.save(update_fields=["ends_at"])
+
+    resp = client.patch(
+        detail_url(lab),
+        {"status": Subscription.Status.ACTIVE, "mylo_included": True},
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert resp.data["subscription"]["mylo_included"] is True
+    leaving.refresh_from_db()
+    assert leaving.ends_at == date(2030, 1, 1)

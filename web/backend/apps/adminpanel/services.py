@@ -204,9 +204,15 @@ def apply_lab_update(*, admin: User, lab, data: dict) -> Subscription:
         sub.save(update_fields=[*expiry_fields, "updated_at"])
 
     status = data.get("status")
-    if status == Subscription.Status.ACTIVE:
-        # Seats + period come from the shared activation service; it is idempotent, so
-        # re-activating an already-active plan only re-seats any missing member.
+    # Only a real transition into ACTIVE (or an ACTIVE plan that never opened a period)
+    # runs the activation service. Re-running it on an already-live plan would re-seat
+    # every member, and `_ensure_seat` clears a seat's pending-removal `ends_at` — so an
+    # admin toggling something unrelated would silently un-schedule departures the
+    # lab arranged. The form always sends the current status; that must be inert.
+    needs_activation = status == Subscription.Status.ACTIVE and (
+        sub.status != Subscription.Status.ACTIVE or sub.current_period_end is None
+    )
+    if needs_activation:
         activate_lab_subscription(lab)
         sub.refresh_from_db()
     elif status is not None and status != sub.status:
