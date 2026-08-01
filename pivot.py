@@ -18,6 +18,10 @@ never blocks.
 Granular steps (same in-process runner), if you want them separately:
 
     uv run pivot.py login        # force a fresh interactive SSO -> save session
+                                 #   add --transfer to rsync the saved session to
+                                 #   a remote host (default: zeus:/home/bdg20b/
+                                 #   Projects/Mycelium) so you can run the manual
+                                 #   process there with fresh credentials
     uv run pivot.py scrape        # browser scrape -> data/pivot/*.json
     uv run pivot.py import         # data/pivot/*.json -> content store
     uv run pivot.py distribute     # recommend on the existing corpus (no scrape)
@@ -184,7 +188,72 @@ def _prepare_scrape() -> None:
     login()
 
 
-def _login() -> int:
+def _remote_target(remote_host: str, remote_dir: str) -> str:
+    """Where the saved session should land on the remote host.
+
+    We mirror the file's path *relative to the repo root* under the remote
+    project directory, so the remote ``pivot.py`` finds it at its own default
+    ``STATE_PATH`` with no ``PIVOT_STORAGE_STATE`` needed. If the session lives
+    outside the repo (a custom ``PIVOT_STORAGE_STATE``), we fall back to dropping
+    it by basename directly in the remote project directory.
+    """
+    from apps.scraper.pivot.common import STATE_PATH
+
+    remote_dir = remote_dir.rstrip("/")
+    try:
+        rel = STATE_PATH.resolve().relative_to(ROOT)
+        remote_path = f"{remote_dir}/{rel.as_posix()}"
+    except ValueError:
+        remote_path = f"{remote_dir}/{STATE_PATH.name}"
+    return f"{remote_host}:{remote_path}"
+
+
+def _transfer_state(remote_host: str, remote_dir: str) -> int:
+    """rsync the saved session to the remote host, creating parent dirs first."""
+    import shlex
+    import subprocess
+
+    from apps.scraper.pivot.common import STATE_PATH, state_exists
+
+    if not state_exists():
+        print("No saved session to transfer — did the login complete?")
+        return 1
+
+    target = _remote_target(remote_host, remote_dir)
+    # Split "host:/path/to/storage_state.json" back into host + remote dir so we
+    # can pre-create the destination directory (rsync won't make deep parents).
+    host, _, remote_path = target.partition(":")
+    remote_parent = os.path.dirname(remote_path)
+
+    print(f"Ensuring remote directory exists: {host}:{remote_parent}")
+    mk = subprocess.run(
+        ["ssh", host, f"mkdir -p {shlex.quote(remote_parent)}"], check=False
+    )
+    if mk.returncode != 0:
+        print(f"[!] Could not create remote directory (ssh exit {mk.returncode}).")
+        return mk.returncode
+
+    print(f"Transferring session -> {target}")
+    rc = subprocess.run(
+        ["rsync", "-avz", str(STATE_PATH), target], check=False
+    ).returncode
+    if rc == 0:
+        print(f"[ok] Session is now on {host} — run the manual process there.")
+    else:
+        print(f"[!] rsync failed (exit {rc}).")
+    return rc
+
+
+def _login(rest: list[str]) -> int:
+    ap = argparse.ArgumentParser(prog="pivot.py login")
+    ap.add_argument("--transfer", action="store_true",
+                    help="After saving, rsync the session to the remote host.")
+    ap.add_argument("--remote-host", default="zeus",
+                    help="Remote host to transfer to (default: zeus).")
+    ap.add_argument("--remote-dir", default="/home/bdg20b/Projects/Mycelium",
+                    help="Remote project directory (default: /home/bdg20b/Projects/Mycelium).")
+    args = ap.parse_args(rest)
+
     _bootstrap_django()
     from apps.scraper.pivot.common import STATE_PATH, state_exists
 
@@ -193,7 +262,11 @@ def _login() -> int:
     from apps.scraper.pivot.login import login
 
     login()
-    return 0 if state_exists() else 1
+    if not state_exists():
+        return 1
+    if args.transfer:
+        return _transfer_state(args.remote_host, args.remote_dir)
+    return 0
 
 
 def _scrape(rest: list[str]) -> int:
@@ -287,7 +360,7 @@ def main() -> int:
     if step == "distribute":
         return _recommend(rest, ingest=False)
     if step == "login":
-        return _login()
+        return _login(rest)
     if step == "scrape":
         return _scrape(rest)
     if step == "import":
