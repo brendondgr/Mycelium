@@ -593,11 +593,18 @@ export type NotificationFeed = {
 export type ReminderUnit = "day" | "week" | "month" | "year";
 export type ReminderOffset = { amount: number; unit: ReminderUnit };
 
+/** An offset as the API reports it back: the lead time plus the date it lands on
+ * (computed server-side with the same maths the tick fires by). */
+export type ReminderOffsetRead = ReminderOffset & { fire_date: string | null };
+
+export type ReminderState = "active" | "fired_out" | "cancelled" | "stale";
+
 /** One deadline reminder (from `/api/reminders/`). */
 export type Reminder = {
   id: string;
   scope: "user" | "lab";
   lab_slug: string | null;
+  lab_name: string | null;
   content_id: string | null;
   deadline_kind: string;
   area: string;
@@ -605,12 +612,33 @@ export type Reminder = {
   url: string;
   due_date: string | null;
   confidence: string;
-  state: "active" | "fired_out" | "cancelled" | "stale";
+  state: ReminderState;
+  snoozed_until: string | null;
   channel_id_override: string;
   has_unlinked_targets: boolean;
-  offsets: ReminderOffset[];
+  offsets: ReminderOffsetRead[];
+  /** The soonest lead time still ahead (null once they've all fired//it's off). */
+  next_fire_date: string | null;
+  /** The lab's target local hour; null for a personal reminder, which rides the
+   * daily run rather than a configured hour. */
+  send_hour_local: number | null;
+  timezone: string;
+  /** Whether the caller may edit this one — owner, or a lab PI/admin. */
+  can_manage: boolean;
   mentions: { username: string; name: string }[];
   created_at: string;
+  updated_at: string;
+};
+
+/** A partial edit of an existing reminder (`PATCH /api/reminders/<id>/`). Every
+ * field is optional; an absent key means "leave alone", and an explicit
+ * `snoozed_until: null` clears a snooze. */
+export type ReminderUpdateInput = {
+  offsets?: ReminderOffset[];
+  mentions?: string[];
+  channel_id_override?: string;
+  snoozed_until?: string | null;
+  state?: "active" | "cancelled";
 };
 
 /** A postable Discord channel option for the lab reminder channel picker. */

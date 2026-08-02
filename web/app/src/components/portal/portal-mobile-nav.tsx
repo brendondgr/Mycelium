@@ -2,6 +2,7 @@
 
 import {
   BankIcon,
+  BellIcon,
   BookmarkIcon,
   ConferenceIcon,
   DocumentIcon,
@@ -50,6 +51,7 @@ export function PortalMobileNav() {
             ]
           : []),
         { key: "saves", label: "Saves", icon: <BookmarkIcon size={15} /> },
+        { key: "reminders", label: "Reminders", icon: <BellIcon size={15} /> },
         { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },
         { key: "opportunities", label: "Grants", icon: <BankIcon size={15} /> },
         { key: "fellowships", label: "Fellowships", icon: <SparkleIcon size={15} /> },
@@ -61,6 +63,7 @@ export function PortalMobileNav() {
         { key: "profile", label: "Profile", icon: <TargetIcon size={15} /> },
         { key: "billing", label: "Billing", icon: <ReceiptIcon size={15} /> },
         { key: "saves", label: "Saves", icon: <BookmarkIcon size={15} /> },
+        { key: "reminders", label: "Reminders", icon: <BellIcon size={15} /> },
         { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },
         { key: "opportunities", label: "Grants", icon: <BankIcon size={15} /> },
         { key: "fellowships", label: "Fellowships", icon: <SparkleIcon size={15} /> },

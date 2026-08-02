@@ -2,6 +2,7 @@
 
 import {
   BankIcon,
+  BellIcon,
   BookmarkIcon,
   ConferenceIcon,
   DocumentIcon,
@@ -133,6 +134,12 @@ export function PortalSidebar() {
           label="Saves"
           active={section === "saves"}
           onClick={() => goToSection("saves")}
+        />
+        <SidebarNavItem
+          icon={<BellIcon size={18} />}
+          label="Reminders"
+          active={section === "reminders"}
+          onClick={() => goToSection("reminders")}
         />
         {/* Plans and pricing live here, off the settings surfaces. A lab's plan is
             its managers' business, so members don't get the entry. */}

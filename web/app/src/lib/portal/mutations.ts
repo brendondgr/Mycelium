@@ -24,6 +24,7 @@ import type {
   ProjectFocusInput,
   Reminder,
   ReminderInput,
+  ReminderUpdateInput,
   SavedDeadline,
   WatchData,
 } from "@/lib/portal/types";
@@ -772,12 +773,35 @@ export function createReminder(input: ReminderInput): Promise<Reminder> {
   );
 }
 
-/** Cancel a reminder the caller owns (personal) or manages (lab). */
-export async function deleteReminder(id: string): Promise<void> {
+/** Edit an existing reminder: lead times, channel, mentions, snooze, or state. */
+export function updateReminder(
+  id: string,
+  input: ReminderUpdateInput,
+): Promise<Reminder> {
+  return sendJson<Reminder>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "reminders", id),
+    input,
+    "Could not update this reminder.",
+  );
+}
+
+/**
+ * Stop a reminder the caller owns (personal) or manages (lab).
+ *
+ * The default is the server's soft cancel — the row stays, so "why did this stop
+ * reminding me?" keeps an answer. `purge` destroys it for good, which is how the
+ * reminders page clears out finished rows.
+ */
+export async function deleteReminder(
+  id: string,
+  options: { purge?: boolean } = {},
+): Promise<void> {
   await ensureCsrfCookie();
   const csrfToken = readCsrfToken();
+  const base = buildApiUrl(getPublicApiBase(), "reminders", id);
   const response = await fetch(
-    buildApiUrl(getPublicApiBase(), "reminders", id),
+    options.purge ? `${base}?purge=1` : base,
     {
       method: "DELETE",
       credentials: "include",

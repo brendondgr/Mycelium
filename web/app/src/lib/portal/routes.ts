@@ -16,6 +16,7 @@ export type SectionKey =
   | "fellowships"
   | "conferences"
   | "saves"
+  | "reminders"
   | "projects"
   | "labs"
   | "members"
@@ -35,6 +36,7 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   fellowships: "/app/fellowships",
   conferences: "/app/conferences",
   saves: "/app/saves",
+  reminders: "/app/reminders",
   projects: "/app/projects",
   labs: "/app/labs",
   members: "/app/members",
@@ -64,6 +66,7 @@ export function sectionFromPathname(pathname: string): SectionKey {
     "fellowships",
     "conferences",
     "saves",
+    "reminders",
     "projects",
     "labs",
     "members",

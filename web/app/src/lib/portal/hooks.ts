@@ -102,6 +102,7 @@ import {
   updateLabWatch,
   updateProjectCategories,
   updateProjectFocus,
+  updateReminder,
   uploadLabLogo,
 } from "@/lib/portal/mutations";
 import {
@@ -111,6 +112,7 @@ import {
   type AdminUserUpdate,
   type BriefingCategory,
   type InvitationAction,
+  type ReminderUpdateInput,
   type SearchSort,
 } from "@/lib/portal/types";
 
@@ -365,7 +367,7 @@ export function useLabReminderChannels(slug?: string) {
   });
 }
 
-/** Create + delete reminders; both refresh the reminders list and the bell. */
+/** Create, edit and stop reminders; all refresh the reminders list and the bell. */
 export function useReminderMutations() {
   const queryClient = useQueryClient();
   const invalidate = () => {
@@ -373,11 +375,17 @@ export function useReminderMutations() {
     queryClient.invalidateQueries({ queryKey: ["portal", "notifications"] });
   };
   const create = useMutation({ mutationFn: createReminder, onSuccess: invalidate });
-  const remove = useMutation({
-    mutationFn: (id: string) => deleteReminder(id),
+  const update = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ReminderUpdateInput }) =>
+      updateReminder(id, input),
     onSuccess: invalidate,
   });
-  return { create, remove };
+  const remove = useMutation({
+    mutationFn: ({ id, purge }: { id: string; purge?: boolean }) =>
+      deleteReminder(id, { purge }),
+    onSuccess: invalidate,
+  });
+  return { create, update, remove };
 }
 
 /** Save or unsave a bookmarkable item; refreshes the feeds, saves, and bell. */
