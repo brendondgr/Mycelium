@@ -349,18 +349,26 @@ def compute_member_fit(
     llm_limit: int | None = None,
     floor: float | None = None,
     limit: int | None = None,
+    prior: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, list[dict]]:
     """``{content_id: [{username, fit, reason, source}]}`` for the given scores.
 
     ``scores`` is one area's rows for a single target, already in feed order (best
-    first), so the ``llm_limit`` slice Mylo writes for is the top of that feed. An
-    item with no embedding, or with no member above the floor, simply gets no entry
-    — the card then renders without a recommendation strip rather than with a
-    hedged one.
+    first). An item with no embedding, or with no member above the floor, simply
+    gets no entry — the card then renders without a recommendation strip rather
+    than with a hedged one.
+
+    ``prior`` is the last run's Mylo-written rationales (``{content_id: {username:
+    why}}``). An item Mylo has already explained is carried forward rather than
+    re-sent, exactly as the paper and opportunity digests carry their verdicts
+    forward: the nightly run then spends its ``llm_limit`` on items nobody has
+    explained yet, and the wording a reader saw yesterday does not churn overnight
+    for no reason.
     """
     if not candidates:
         return {}
     llm_limit = settings.MEMBER_FIT_LLM_LIMIT if llm_limit is None else llm_limit
+    prior = prior or {}
 
     units: list[tuple[ContentItem, list[tuple[MemberCandidate, float]]]] = []
     for score in scores:
@@ -374,7 +382,9 @@ def compute_member_fit(
     if not units:
         return {}
 
-    rationales = _mylo_rationales(units[:llm_limit], complete=complete)
+    unexplained = [unit for unit in units if str(unit[0].id) not in prior]
+    fresh = _mylo_rationales(unexplained[:llm_limit], complete=complete)
+    rationales = {**prior, **fresh}
 
     out: dict[str, list[dict]] = {}
     for item, shortlist in units:
@@ -415,7 +425,9 @@ def annotate_member_fit(
     Runs after that target's areas have been scored (the daily append or an
     on-demand refit), over the rows the feed actually shows. Rows that lose their
     recommendation — a member left the lab, a profile moved on — have the key
-    cleared rather than left stale. Returns ``{area: items annotated}``.
+    cleared rather than left stale. Rationales Mylo already wrote are carried
+    forward, so a nightly run explains the day's arrivals instead of re-writing
+    the whole feed. Returns ``{area: items annotated}``.
 
     Best-effort by contract: a failure here must never sink the scoring run that
     produced the feed, so callers wrap it. Nothing about the feed's contents
@@ -442,7 +454,11 @@ def annotate_member_fit(
             continue
         scores.sort(key=_feed_order)
         fits = compute_member_fit(
-            scores, candidates, complete=complete, llm_limit=llm_limit
+            scores,
+            candidates,
+            complete=complete,
+            llm_limit=llm_limit,
+            prior=_prior_rationales(scores),
         )
         changed: list[RelevanceScore] = []
         for score in scores:
@@ -461,6 +477,27 @@ def annotate_member_fit(
         if log is not None:
             log(f"[member-fit:{ctype}] named members on {len(fits)} of {len(scores)}")
     return written
+
+
+def _prior_rationales(scores: Sequence[RelevanceScore]) -> dict[str, dict[str, str]]:
+    """The Mylo-written rationales already stored, ``{content_id: {username: why}}``.
+
+    Only ``source == "llm"`` rows carry forward: a deterministic overlap line is a
+    stand-in for a rationale nobody wrote, so it must not block the item from
+    reaching the model on a later run.
+    """
+    out: dict[str, dict[str, str]] = {}
+    for score in scores:
+        written = {
+            entry["username"]: entry["reason"]
+            for entry in (score.signals.get("member_fit") or [])
+            if entry.get("source") == "llm"
+            and entry.get("username")
+            and entry.get("reason")
+        }
+        if written:
+            out[str(score.content_id)] = written
+    return out
 
 
 def _feed_order(score: RelevanceScore):

@@ -110,7 +110,11 @@ def test_mylo_writes_the_reason(lab) -> None:
 
     def complete(_prompt):
         return json.dumps(
-            {"items": [{"item": 1, "members": [{"member": 1, "why": "Ana's exact area."}]}]}
+            {
+                "items": [
+                    {"item": 1, "members": [{"member": 1, "why": "Ana's exact area."}]}
+                ]
+            }
         )
 
     fits = member_fit.compute_member_fit(
@@ -261,3 +265,60 @@ def test_a_departed_member_is_not_named_at_read_time(lab) -> None:
     rows = _recommended_for([score], [ana.id], {})[str(item.id)]
     assert [row["username"] for row in rows] == ["ana"]
     assert rows[0]["name"] == "Ana"  # resolved live, not from the stored signal
+
+
+@pytest.mark.django_db
+def test_a_written_rationale_carries_forward(lab) -> None:
+    """The nightly run explains the day's arrivals, not the whole feed again."""
+    ana = _member(lab, "ana", VEC_A)
+    old = _item("old", VEC_A)
+    old_score = _score(lab, old, match=90)
+    new = _item("new", VEC_A)
+    new_score = _score(lab, new, match=80)
+
+    calls: list[str] = []
+
+    def complete(prompt):
+        calls.append(prompt)
+        return json.dumps(
+            {"items": [{"item": 1, "members": [{"member": 1, "why": "Fresh line."}]}]}
+        )
+
+    candidates = member_fit.build_candidates([ana])
+    fits = member_fit.compute_member_fit(
+        [old_score, new_score],
+        candidates,
+        complete=complete,
+        prior={str(old.id): {"ana": "Yesterday's line."}},
+    )
+
+    # Only the unexplained item was sent to the model …
+    assert len(calls) == 1
+    assert "new" not in calls[0] or str(old.id) not in calls[0]
+    # … and yesterday's wording is preserved rather than churned.
+    assert fits[str(old.id)][0]["reason"] == "Yesterday's line."
+    assert fits[str(old.id)][0]["source"] == "llm"
+    assert fits[str(new.id)][0]["reason"] == "Fresh line."
+
+
+@pytest.mark.django_db
+def test_a_deterministic_reason_does_not_block_a_later_llm_pass(lab) -> None:
+    ana = _member(lab, "ana", VEC_A)
+    item = _item("p1", VEC_A)
+    score = _score(lab, item)
+
+    # First pass with the model down leaves a similarity reason …
+    member_fit.annotate_member_fit({"target_lab": lab}, [ana], complete=_no_llm)
+    score.refresh_from_db()
+    assert score.signals["member_fit"][0]["source"] == "similarity"
+
+    # … which must not be carried forward as if Mylo had written it.
+    def complete(_prompt):
+        return json.dumps(
+            {"items": [{"item": 1, "members": [{"member": 1, "why": "Mylo's line."}]}]}
+        )
+
+    member_fit.annotate_member_fit({"target_lab": lab}, [ana], complete=complete)
+    score.refresh_from_db()
+    assert score.signals["member_fit"][0]["reason"] == "Mylo's line."
+    assert score.signals["member_fit"][0]["source"] == "llm"
