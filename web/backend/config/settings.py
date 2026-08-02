@@ -456,6 +456,19 @@ PROJECT_PROFILE_HALFLIFE_DAYS = env.float("PROJECT_PROFILE_HALFLIFE_DAYS", defau
 # instead of running inline in the share request (needs a running worker).
 FANOUT_COSINE_FLOOR = env.float("FANOUT_COSINE_FLOOR", default=0.35)
 FANOUT_ASYNC = env.bool("FANOUT_ASYNC", default=False)
+
+# Per-item member recommendations (apps.content.member_fit) — the "who in this lab
+# is this most applicable to?" layer on every lab/project feed. A member is a
+# candidate when the cosine between the item and their own interest vector clears
+# MEMBER_FIT_COSINE_FLOOR (the FANOUT_COSINE_FLOOR convention); at most
+# MEMBER_FIT_MAX_MEMBERS are named per item, so a card stays readable in a large
+# lab. Mylo writes the rationale for the strongest MEMBER_FIT_LLM_LIMIT items of
+# each area (the digest's llm_limit convention); everything below carries a
+# deterministic reason built from the overlap, and an unreachable model degrades
+# the whole layer to that same deterministic ranking.
+MEMBER_FIT_COSINE_FLOOR = env.float("MEMBER_FIT_COSINE_FLOOR", default=0.35)
+MEMBER_FIT_MAX_MEMBERS = env.int("MEMBER_FIT_MAX_MEMBERS", default=3)
+MEMBER_FIT_LLM_LIMIT = env.int("MEMBER_FIT_LLM_LIMIT", default=10)
 # Recompute a project's team profile immediately when its membership changes.
 TEAM_PROFILE_AUTORECOMPUTE = env.bool("TEAM_PROFILE_AUTORECOMPUTE", default=True)
 

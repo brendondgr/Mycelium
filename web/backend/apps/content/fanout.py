@@ -25,7 +25,12 @@ from .models import MemberSuggestion
 logger = logging.getLogger(__name__)
 
 
-def _cosine(a, b) -> float:
+def cosine(a, b) -> float:
+    """Pure-Python cosine similarity; ``0.0`` for an empty or zero vector.
+
+    Shared with :mod:`apps.content.member_fit`, which thresholds on the same
+    absolute similarity to shortlist who an item is for.
+    """
     if not a or not b:
         return 0.0
     dot = sum(float(x) * float(y) for x, y in zip(a, b, strict=False))
@@ -34,6 +39,10 @@ def _cosine(a, b) -> float:
     if na == 0 or nb == 0:
         return 0.0
     return dot / (na * nb)
+
+
+#: Legacy private alias — existing callers/tests inside this module.
+_cosine = cosine
 
 
 def member_vector(user, *, embed_missing: bool = True) -> list[float] | None:

@@ -2,6 +2,7 @@ from collections import Counter, defaultdict
 from datetime import date, timedelta
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -500,84 +501,137 @@ def _interested_members(member_ids, content_ids) -> dict[str, list[dict]]:
     return interested
 
 
-#: The eligibility tiers that count as "eligible" for a lab fellowship surface.
+#: The eligibility tiers that count as "eligible" when naming who a fellowship suits.
 _ELIGIBLE_TIERS = ("qualified", "conditional")
 
 
-def _lab_fellowship_card(content, eligible: list[dict]) -> dict:
-    """A lab-visible fellowship card: public display fields + the eligible members.
+def _consented_eligibility(member_ids, content_ids) -> dict[str, dict[str, str]]:
+    """``{content_id: {username: tier}}`` for **eligible, consenting** members.
 
-    Deliberately reads only the fellowship's own metadata — never a member's personal
-    match reasoning (``reason``/``gates_failed``/``fit``) — so nothing beyond the
-    named members' consented eligibility is exposed to the lab.
+    The one disclosure gate on personal fellowship eligibility (D-11), unchanged by
+    the lab feed now being scored in its own right: a member is named as eligible
+    only when their own tier is qualified/conditional **and** they opted into
+    lab-visible eligibility (``interests.eligibility.lab_visible``, default off).
+    Members who are ineligible, or eligible but not consenting, are never named.
+
+    This is an *annotation* on the recommendation layer — it says who a fellowship
+    the lab already matched is additionally eligible for. It no longer decides what
+    the lab's Fellowships page contains.
     """
-    meta = content.metadata or {}
-    deadline = meta.get("deadline") or {}
-    return {
-        "content_id": str(content.id),
-        "title": meta.get("title") or "Untitled fellowship",
-        "url": meta.get("external_url") or meta.get("website") or content.source_url,
-        "award_class": meta.get("award_class") or "fellowship",
-        "amount": meta.get("amount_raw") or "",
-        "deadline_date": meta.get("deadline_date") or "",
-        "deadline_type": deadline.get("type") or meta.get("deadline_type") or "",
-        "fields": (meta.get("facets") or {}).get("field") or [],
-        "eligible": eligible,
-    }
-
-
-def _lab_fellowship_member_scores(member_ids):
-    """Yield each member fellowship match that is **eligible** and **consenting**.
-
-    The single gate the lab fellowship surface is built from (D-1/D-11): tier is
-    qualified/conditional **and** the member opted into lab-visible eligibility
-    (``interests.eligibility.lab_visible``, default off). Members who are ineligible,
-    or eligible but not consenting, never appear. Shared by the card list and the
-    time-window counts so both apply exactly the same disclosure rule.
-    """
-    if not member_ids:
-        return
+    if not member_ids or not content_ids:
+        return {}
+    out: dict[str, dict[str, str]] = defaultdict(dict)
     scores = RelevanceScore.objects.filter(
-        target_user_id__in=member_ids, content__type=ContentItem.Type.FELLOWSHIP
-    ).select_related("content", "target_user", "target_user__profile")
+        target_user_id__in=member_ids,
+        content_id__in=content_ids,
+        content__type=ContentItem.Type.FELLOWSHIP,
+    ).select_related("target_user", "target_user__profile")
     for score in scores:
-        if score.signals.get("tier") not in _ELIGIBLE_TIERS:
+        tier = score.signals.get("tier")
+        if tier not in _ELIGIBLE_TIERS:
             continue  # eligible only — an ineligible member is never surfaced
         member = score.target_user
         profile = getattr(member, "profile", None)
         interests = (profile.interests or {}) if profile else {}
         if not interests.get("eligibility", {}).get("lab_visible"):
             continue  # opt-in consent only
-        yield score, member
+        out[str(score.content_id)][member.get_username()] = tier
+    return out
 
 
-def _lab_eligible_fellowships(member_ids) -> list[dict]:
-    """Fellowships a lab can act on, named by their eligible **consenting** members.
+def _recommended_for(
+    scores: list[RelevanceScore],
+    member_ids: list,
+    interested: dict[str, list[dict]],
+) -> dict[str, list[dict]]:
+    """``{content_id: [member...]}`` — who each matched item is most applicable to.
 
-    A fellowship "matches a lab" only as a union of member matches (see
-    :func:`_lab_fellowship_member_scores`). This is the only place lab fellowships
-    surface; the whole-corpus feed stays user-only.
+    The one layer a lab feed has that a personal feed does not. Three bases, merged
+    per member and ordered strongest first:
+
+    - ``profile_fit`` — Mylo's own read, persisted at scoring time in
+      ``signals["member_fit"]`` (:mod:`apps.content.member_fit`): the member's
+      interest vector matched the item, and ``reason`` is the consultant's sentence
+      saying why (or the deterministic overlap line when the model was down).
+    - ``own_match`` — the item independently cleared this member's *personal* feed
+      at :data:`INTEREST_MATCH_THRESHOLD`, so they are already looking at it.
+    - ``eligible`` — fellowships only: this member personally qualifies, disclosed
+      only with their consent (:func:`_consented_eligibility`, D-11). Eligibility is
+      an annotation on a recommendation, never the reason a lab sees the fellowship.
+
+    Display fields (name, initials) resolve live from the member roster, so a rename
+    lands without a re-score; a member who has since left the lab is dropped here
+    even if a stale signal still names them.
     """
-    content_by_id: dict[str, ContentItem] = {}
-    members_by_content: dict[str, list[dict]] = defaultdict(list)
-    for score, member in _lab_fellowship_member_scores(member_ids):
-        cid = str(score.content_id)
-        content_by_id[cid] = score.content
-        members_by_content[cid].append(
-            {
-                "username": member.get_username(),
-                "name": display_name(member),
-                "initials": initials(member),
-                "tier": score.signals.get("tier"),
-            }
-        )
-
-    cards = [
-        _lab_fellowship_card(content_by_id[cid], members_by_content[cid])
-        for cid in content_by_id
+    if not member_ids or not scores:
+        return {}
+    roster = {
+        user.get_username(): user
+        for user in User.objects.filter(id__in=list(member_ids))
+    }
+    fellowship_ids = [
+        s.content_id for s in scores if s.content.type == ContentItem.Type.FELLOWSHIP
     ]
-    cards.sort(key=lambda c: (-len(c["eligible"]), c["title"]))
-    return cards
+    eligibility = _consented_eligibility(list(member_ids), fellowship_ids)
+
+    out: dict[str, list[dict]] = {}
+    for score in scores:
+        cid = str(score.content_id)
+        rows: dict[str, dict] = {}
+        for entry in score.signals.get("member_fit") or []:
+            username = entry.get("username")
+            user = roster.get(username)
+            if user is None:
+                continue  # left the lab since the last scoring run
+            rows[username] = {
+                "username": username,
+                "name": display_name(user),
+                "initials": initials(user),
+                "fit": entry.get("fit"),
+                "reason": entry.get("reason") or "",
+                "source": entry.get("source") or "similarity",
+                "basis": ["profile_fit"],
+            }
+        for member in interested.get(cid, []):
+            username = member["username"]
+            row = rows.get(username)
+            if row is None:
+                row = {
+                    "username": username,
+                    "name": member["name"],
+                    "initials": member["initials"],
+                    "fit": member["match_percent"],
+                    "reason": "",
+                    "source": "own_match",
+                    "basis": [],
+                }
+                rows[username] = row
+            row["basis"].append("own_match")
+            row["match_percent"] = member["match_percent"]
+        for username, tier in (eligibility.get(cid) or {}).items():
+            user = roster.get(username)
+            if user is None:
+                continue
+            row = rows.get(username)
+            if row is None:
+                row = {
+                    "username": username,
+                    "name": display_name(user),
+                    "initials": initials(user),
+                    "fit": None,
+                    "reason": "",
+                    "source": "eligibility",
+                    "basis": [],
+                }
+                rows[username] = row
+            row["basis"].append("eligible")
+            row["tier"] = tier
+        if rows:
+            out[cid] = sorted(
+                rows.values(),
+                key=lambda r: (-(r.get("fit") or 0), r["username"]),
+            )
+    return out
 
 
 def _count_windows(stamps, now) -> dict[str, int]:
@@ -605,14 +659,13 @@ def _count_windows(stamps, now) -> dict[str, int]:
     return counts
 
 
-def _window_counts(target_filter: dict, member_ids) -> dict[str, dict[str, int]]:
+def _window_counts(target_filter: dict) -> dict[str, dict[str, int]]:
     """Per-area today/week/month/year counts for a target's matched items.
 
-    Papers/grants/conferences count the target's own suggested ``RelevanceScore``
-    rows by their insert time (``created_at`` — when Mylo scored/appended it for the
-    target). Fellowships count the distinct fellowships surfaced to the lab (union of
-    eligible, consenting member matches), dated by when each first entered that
-    surface. Empty windows are still reported as zeroes.
+    All four areas count the target's own suggested ``RelevanceScore`` rows by their
+    insert time (``created_at`` — when Mylo scored/appended it for the target), the
+    same reckoning :func:`_personal_window_counts` uses, so a lab's recency matrix
+    means exactly what a person's does. Empty windows are still reported as zeroes.
     """
     now = timezone.now()
     counts: dict[str, dict[str, int]] = {}
@@ -620,20 +673,13 @@ def _window_counts(target_filter: dict, member_ids) -> dict[str, dict[str, int]]
         ("papers", ContentItem.Type.PAPER),
         ("grants", ContentItem.Type.GRANT),
         ("conferences", ContentItem.Type.CONFERENCE),
+        ("fellowships", ContentItem.Type.FELLOWSHIP),
     ):
         rows = RelevanceScore.objects.filter(
             **target_filter, content__type=ctype
         ).values_list("created_at", "signals")
         stamps = [ca for ca, sig in rows if (sig or {}).get("suggested")]
         counts[key] = _count_windows(stamps, now)
-
-    # A lab fellowship is dated by when it first entered the consented union.
-    earliest: dict[str, object] = {}
-    for score, _member in _lab_fellowship_member_scores(member_ids):
-        cid = str(score.content_id)
-        if cid not in earliest or score.created_at < earliest[cid]:
-            earliest[cid] = score.created_at
-    counts["fellowships"] = _count_windows(list(earliest.values()), now)
     return counts
 
 
@@ -753,22 +799,20 @@ def _recommendations_payload(
     *,
     user,
     member_ids=(),
-    project_fellowships: bool = False,
     digest: bool = False,
 ) -> dict:
     """The combined papers + grants + conferences + fellowships a lab / project matched.
 
-    ``counts`` powers the overview stat cards; the lists power the feeds.
-    ``interested`` maps each paper/grant/conference to the members who personally
-    matched it strongly (from ``member_ids``).
+    ``counts`` powers the overview stat cards; the lists power the feeds. All four
+    areas are the target's own ``RelevanceScore`` rows, serialized with the very
+    same serializers the personal pages use — a lab feed is structurally identical
+    to its personal counterpart, fellowships included (they rank on research fit;
+    an institution has no citizenship or career stage to gate on).
 
-    Fellowships differ by scope. For a **lab** they are individual by nature (D-1),
-    so they surface only as a union of member matches, named by the eligible members
-    who consented to lab-visible eligibility (``_lab_eligible_fellowships``) — never
-    who was ineligible (D-11). For a **project** (``project_fellowships=True``) they
-    are the project's own interest-matched fellowships scored under
-    ``target_project`` (no personal eligibility involved), rendered with the normal
-    fellowship card.
+    Who each item is *for* is a separate layer, not a filter on what the feed
+    contains: ``interested`` names the members who personally matched an item
+    strongly, and ``recommended_for`` is Mylo's read on which members it best suits
+    (see :func:`_recommended_for`).
 
     ``digest`` returns the condensed short list — top ``DIGEST_CAPS`` per area, with
     passed-deadline conferences dropped — for the per-project "Mylo's picks" block.
@@ -785,46 +829,32 @@ def _recommendations_payload(
     papers = _latest_scores(target_filter, ContentItem.Type.PAPER)
     grants = _accumulated_scores(target_filter, ContentItem.Type.GRANT)
     conferences = _accumulated_scores(target_filter, ContentItem.Type.CONFERENCE)
+    fellowships = _accumulated_scores(target_filter, ContentItem.Type.FELLOWSHIP)
     if digest:
         conferences = _drop_passed_conferences(conferences, today)
-
-    if project_fellowships:
-        fellowship_scores = _accumulated_scores(
-            target_filter, ContentItem.Type.FELLOWSHIP
-        )
-        fellowship_count = len(fellowship_scores)
-    else:
-        fellowship_union = _lab_eligible_fellowships(list(member_ids))
-        fellowship_count = len(fellowship_union)
 
     # Full counts (before any digest slice) so the UI can show "top N of total".
     counts = {
         "papers": len(papers),
         "grants": len(grants),
         "conferences": len(conferences),
-        "fellowships": fellowship_count,
+        "fellowships": len(fellowships),
     }
 
     if digest:
         papers = papers[: DIGEST_CAPS["papers"]]
         grants = grants[: DIGEST_CAPS["grants"]]
         conferences = conferences[: DIGEST_CAPS["conferences"]]
-        if project_fellowships:
-            fellowship_scores = fellowship_scores[: DIGEST_CAPS["fellowships"]]
+        fellowships = fellowships[: DIGEST_CAPS["fellowships"]]
 
-    if project_fellowships:
-        fellowships_data = FellowshipSerializer(
-            fellowship_scores, many=True, context=opp_context
-        ).data
-    else:
-        fellowships_data = fellowship_union
-
-    content_ids = [s.content_id for s in (*papers, *grants, *conferences)]
+    scores = [*papers, *grants, *conferences, *fellowships]
+    content_ids = [s.content_id for s in scores]
+    interested = _interested_members(list(member_ids), content_ids)
     return {
-        "generated_at": _generated_at([*papers, *grants, *conferences]),
+        "generated_at": _generated_at(scores),
         "counts": counts,
         # Per-area today/week/month/year totals for the overview stats block.
-        "window_counts": _window_counts(target_filter, list(member_ids)),
+        "window_counts": _window_counts(target_filter),
         "papers": SuggestionSerializer(
             papers,
             many=True,
@@ -837,13 +867,16 @@ def _recommendations_payload(
         "conferences": ConferenceSerializer(
             conferences, many=True, context=opp_context
         ).data,
-        "fellowships": fellowships_data,
-        "interested": _interested_members(list(member_ids), content_ids),
+        "fellowships": FellowshipSerializer(
+            fellowships, many=True, context=opp_context
+        ).data,
+        "interested": interested,
+        "recommended_for": _recommended_for(scores, list(member_ids), interested),
     }
 
 
 class LabRecommendationsView(APIView):
-    """A lab's matched papers/grants/conferences (its aggregate interests).
+    """A lab's matched papers/grants/fellowships/conferences (its aggregate interests).
 
     Any member of the lab may read them (``user_has_lab_access``); the lab overview
     reads ``counts`` and a lab feed reads the lists.
@@ -892,7 +925,6 @@ class ProjectRecommendationsView(APIView):
                 {"target_project": project},
                 user=request.user,
                 member_ids=member_ids,
-                project_fellowships=True,
                 digest=digest,
             )
         )

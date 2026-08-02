@@ -140,13 +140,16 @@ def refit_user(
     return RefitResult(username, "ok", areas=summaries)
 
 
-#: The areas a lab refit covers (a lab's fellowships are the member-eligibility
-#: union, surfaced at read time — never scored to the lab).
-TARGET_AREAS: tuple[str, ...] = ("papers", "grants", "conferences")
+#: The areas an institutional refit covers. Fellowships are included for labs as
+#: well as projects: neither has a citizenship or career stage, so both rank them
+#: on research fit alone, which is what keeps a lab's Fellowships page structurally
+#: identical to the personal one. Who each fellowship suits — including who is
+#: personally eligible — is the member-recommendation layer, not a feed gate.
+TARGET_AREAS: tuple[str, ...] = ("papers", "grants", "conferences", "fellowships")
 
-#: A project refit also covers fellowships, ranked on the project's interests
-#: (no eligibility gate — a project has no citizenship or career stage).
-PROJECT_AREAS: tuple[str, ...] = ("papers", "grants", "conferences", "fellowships")
+#: Kept as the project-facing alias of the same set (a project narrows it further
+#: by its opted-in ``goals.watch_categories``).
+PROJECT_AREAS: tuple[str, ...] = TARGET_AREAS
 
 
 def refit_target(
@@ -162,13 +165,14 @@ def refit_target(
 
     The institutional counterpart of :func:`refit_user`, for an immediate match
     after a lab profile or project focus is edited: it re-runs the recommend
-    (papers) and match (grants / conferences) halves against the already-populated
-    corpus. Fellowships are excluded — they are an individual-eligibility area.
+    (papers) and match (grants / conferences / fellowships) halves against the
+    already-populated corpus.
 
     ``llm_limit`` mirrors :func:`refit_user`: how many of each area's surfaced items
     go to the model (the rest are filled deterministically). ``None`` keeps each
     pipeline's own default (top 10).
     """
+    from .member_fit import annotate_for_target
     from .opportunities import run_opportunities_for_target
     from .pipeline import recommend_for_target
 
@@ -201,6 +205,9 @@ def refit_target(
             **opp_kwargs,
         ):
             summaries[result.area] = _opportunity_summary(result)
+    if persist:
+        # Who each of those items is for — recomputed over the feed we just wrote.
+        annotate_for_target(target, complete=complete, log=log)
     return RefitResult(target.key, "ok", areas=summaries)
 
 
@@ -274,10 +281,10 @@ def refit_targets_batch(
     The institutional counterpart of :func:`refit_batch`: the whole-corpus *replace*
     pass for labs and lab-scoped projects, so an existing feed is re-expanded to the
     current variable-length threshold size instead of a stale fixed slice (the
-    nightly run only *appends* new items and never re-expands). A **lab** refits
-    papers/grants/conferences (its fellowships are the member-eligibility union); a
-    **project** additionally refits interest-matched fellowships. One target's
-    failure never sinks the batch. ``labs`` / ``projects`` are the model objects
+    nightly run only *appends* new items and never re-expands). Both a **lab** and a
+    **project** refit all four areas, fellowships included (interest-matched, no
+    eligibility gate); a project narrows the set to its opted-in categories. One
+    target's failure never sinks the batch. ``labs`` / ``projects`` are the objects
     (e.g. from :func:`apps.content.tasks.select_targets`).
     """
     results: list[RefitResult] = []

@@ -825,10 +825,11 @@ def _target_fellowship_embed_by_id(
 
     The institutional twin of :func:`_fellowship_embed_by_id`: it reuses the same
     multi-interest search-interest builder + retrieve/fuse step grants/conferences
-    use, but reads the interests off the :class:`MatchTarget` (a project's focus)
-    rather than a user Profile. Returns ``None`` when there is nothing to rank on
-    (no declared interests, no embedder, no embedded fellowships, or retrieval
-    raised) — the caller then surfaces no project fellowships rather than guessing.
+    use, but reads the interests off the :class:`MatchTarget` (a lab's aggregate
+    interests, a project's focus) rather than a user Profile. Returns ``None`` when
+    there is nothing to rank on (no declared interests, no embedder, no embedded
+    fellowships, or retrieval raised) — the caller then surfaces nothing for that
+    target rather than guessing.
     """
     search_ints = opportunity_search_interests(target.interests, target.watch_topics)
     if not search_ints:
@@ -871,13 +872,18 @@ def match_fellowships_for_target(
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppRunResult:
-    """Interest-based fellowship matching for a project target (no eligibility gate).
+    """Interest-based fellowship matching for an institutional target.
 
-    A project has no citizenship or career stage, so its fellowships are ranked
-    purely on research fit to the project's interests — the same embedding signal
-    grants/conferences use — then the top slice gets an LLM report. Scores persist
-    under ``target.persist_kwargs`` (``target_project``). ``created_on`` ``None``
-    (sign-up/refit) replaces the feed; a run date appends the day's new arrivals.
+    Neither a lab nor a project has a citizenship or career stage, so their
+    fellowships are ranked purely on research fit to the target's interests — the
+    same embedding signal grants/conferences use — then the top slice gets an LLM
+    report. Scores persist under ``target.persist_kwargs`` (``target_lab`` /
+    ``target_project``). ``created_on`` ``None`` (sign-up/refit) replaces the feed;
+    a run date appends the day's new arrivals.
+
+    Who in a lab each fellowship actually *suits* — including who is personally
+    eligible — is the separate recommendation layer
+    (:mod:`apps.content.member_fit`); it never gates what the lab feed contains.
     """
     key = target.key
 
@@ -940,7 +946,7 @@ def match_fellowships_for_target(
     new_count = sum(1 for p in pins.values() if p["is_new"])
     llm = sum(1 for s in visible if s.get("source") == "llm")
     emit(
-        f"scored {len(suggestions)} project fellowships "
+        f"scored {len(suggestions)} {target.kind} fellowships "
         f"({llm} llm / {len(visible) - llm} fallback), {new_count} new"
     )
     if persist:
@@ -975,36 +981,34 @@ def run_opportunities_for_target(
 ) -> list[OppRunResult]:
     """Match opportunities for a lab or project target.
 
-    Grants + conferences run for any institutional target. **Fellowships** run only
-    for a **project** target, ranked on the project's research interests (no
-    eligibility gate — a project has no citizenship or career stage). A lab still
-    excludes fellowships: at lab scope they are surfaced as the union of members'
-    *personal* eligibility, not scored to the lab.
+    All three areas run for any institutional target. **Fellowships** are ranked on
+    the target's research interests with no eligibility gate — neither a lab nor a
+    project has a citizenship or career stage — which is what lets a lab's
+    Fellowships page be the same feed, with the same filters and cards, as the
+    personal one. Personal eligibility did not disappear: it is one basis in the
+    per-item member-recommendation layer (:mod:`apps.content.member_fit`).
     """
     results: list[OppRunResult] = []
     for area in areas:
         if area == "fellowships":
-            if target.kind == "project":
-                results.append(
-                    match_fellowships_for_target(
-                        target,
-                        complete=kwargs.get("complete"),
-                        persist=kwargs.get("persist", True),
-                        reuse_prior=kwargs.get("reuse_prior", True),
-                        created_on=kwargs.get("created_on"),
-                        today=kwargs.get("today"),
-                        log=kwargs.get("log"),
-                    )
+            results.append(
+                match_fellowships_for_target(
+                    target,
+                    complete=kwargs.get("complete"),
+                    persist=kwargs.get("persist", True),
+                    reuse_prior=kwargs.get("reuse_prior", True),
+                    created_on=kwargs.get("created_on"),
+                    today=kwargs.get("today"),
+                    log=kwargs.get("log"),
                 )
-            # Labs: fellowships are the member-eligibility union, handled at read
-            # time — skip here.
+            )
             continue
         results.append(match_opportunities_for_target(target, area, **kwargs))
     return results
 
 
 def run_opportunities_for_lab(lab, **kwargs) -> list[OppRunResult]:
-    """Match grants + conferences for a lab's aggregate interests."""
+    """Match grants + conferences (+ fellowships) for a lab's aggregate interests."""
     from .targets import target_for_lab
 
     return run_opportunities_for_target(target_for_lab(lab), **kwargs)
@@ -1071,9 +1075,13 @@ def run_daily_opportunities_batch(
     caught so it never sinks the run. (Sign-up / refit take the serial paths above,
     which score the whole corpus and replace the feed instead.)
 
-    Users match every requested area; labs and projects match grants + conferences
-    only (fellowships gate on individual eligibility, so they never apply to a lab
-    or project).
+    Every target matches every requested area — a lab's fellowships rank on its
+    research interests, not on anyone's citizenship (see
+    :func:`run_opportunities_for_target`). Phase 3 then re-annotates each
+    institutional target's feeds with who the items are for
+    (:func:`apps.content.member_fit.annotate_for_target`), best-effort: it runs
+    after the day's papers have already been appended by the paper pipeline, so one
+    pass covers all four areas.
     """
     if concurrency is None:
         concurrency = getattr(
@@ -1308,18 +1316,23 @@ def run_daily_opportunities_batch(
                 OppRunResult(job.username, job.area, "error", note="finalize failed")
             )
 
-    # Project fellowships (interest-matched, no eligibility gate) — appended for the
-    # day's new arrivals. Serial (the LLM slice is small; a project's new-fellowship
-    # count on any given day is tiny), keeping this out of the eligibility-coupled
-    # pool above. Labs are intentionally excluded — their fellowships are the
-    # member-eligibility union surfaced at read time.
-    if "fellowships" in areas and projects:
-        from .targets import project_watch_categories, target_for_project
+    # Institutional fellowships (interest-matched, no eligibility gate) — appended
+    # for the day's new arrivals. Serial (the LLM slice is small; a target's
+    # new-fellowship count on any given day is tiny), keeping this out of the
+    # eligibility-coupled pool above.
+    if "fellowships" in areas and (labs or projects):
+        from .targets import (
+            project_watch_categories,
+            target_for_lab,
+            target_for_project,
+        )
 
+        fellowship_targets = [target_for_lab(lab) for lab in labs]
         for project in projects:
             if "fellowships" not in project_watch_categories(project):
                 continue
-            target = target_for_project(project)
+            fellowship_targets.append(target_for_project(project))
+        for target in fellowship_targets:
             try:
                 results.append(
                     match_fellowships_for_target(
@@ -1333,11 +1346,23 @@ def run_daily_opportunities_batch(
                 )
             except Exception:
                 logger.exception(
-                    "project fellowship match failed for %s", target.key
+                    "%s fellowship match failed for %s", target.kind, target.key
                 )
                 results.append(
                     OppRunResult(target.key, "fellowships", "error", note="failed")
                 )
+
+    # Phase 3 — who is each item for? Re-annotated over the whole feed (papers
+    # included: the paper pipeline ran earlier in the daily chain), never fatal.
+    if persist and (labs or projects):
+        from .member_fit import annotate_for_target
+        from .targets import target_for_lab, target_for_project
+
+        for target in [
+            *(target_for_lab(lab) for lab in labs),
+            *(target_for_project(project) for project in projects),
+        ]:
+            annotate_for_target(target, complete=complete, log=log)
 
     return OppBatchResult(ingest=ingest_summary, results=results)
 

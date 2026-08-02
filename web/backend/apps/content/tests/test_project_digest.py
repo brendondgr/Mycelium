@@ -66,7 +66,6 @@ def test_project_fellowships_come_from_target_scores(project):
         {"target_project": project},
         user=None,
         member_ids=[],
-        project_fellowships=True,
     )
     assert payload["counts"]["fellowships"] == 1
     assert len(payload["fellowships"]) == 1
@@ -84,12 +83,12 @@ def test_digest_caps_each_area(project):
         _score(project, _item(ContentItem.Type.FELLOWSHIP, f"f{i}", deadline_date=FUTURE), rank=i + 1)
 
     full = _recommendations_payload(
-        {"target_project": project}, user=None, project_fellowships=True
+        {"target_project": project}, user=None
     )
     assert len(full["papers"]) == 15  # uncapped feed
 
     digest = _recommendations_payload(
-        {"target_project": project}, user=None, project_fellowships=True, digest=True
+        {"target_project": project}, user=None, digest=True
     )
     assert len(digest["papers"]) == 10
     assert len(digest["grants"]) == 5
@@ -106,7 +105,7 @@ def test_digest_drops_passed_conference_deadlines(project):
     _score(project, _item(ContentItem.Type.CONFERENCE, "undated"), deadline="")
 
     digest = _recommendations_payload(
-        {"target_project": project}, user=None, project_fellowships=True, digest=True
+        {"target_project": project}, user=None, digest=True
     )
     titles = {c["content_id"] for c in digest["conferences"]}
     # The past-deadline conference is dropped; future + undated stay.
