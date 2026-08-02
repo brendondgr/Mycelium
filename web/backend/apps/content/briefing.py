@@ -37,10 +37,16 @@ CATEGORY_TYPES: dict[str, str] = {
     "fellowships": ContentItem.Type.FELLOWSHIP,
 }
 
-#: The categories a lab briefing can cover. Labs are scored for papers/grants/
-#: conferences; fellowships stay user-only (they surface for a lab only as a
-#: consented union of member matches, handled on the overview — never in prose).
-LAB_BRIEFING_CATEGORIES: tuple[str, ...] = ("papers", "grants", "conferences")
+#: The categories a lab briefing can cover — all four. A lab is now scored for
+#: fellowships in its own right (ranked on research fit, no eligibility gate), so
+#: its report covers the same ground its feeds do. Who each item suits is named
+#: from the stored member-fit layer, never re-derived in prose.
+LAB_BRIEFING_CATEGORIES: tuple[str, ...] = (
+    "papers",
+    "grants",
+    "conferences",
+    "fellowships",
+)
 
 #: How many items per category to show in the briefing showcase (bottom-right UI).
 SHOWCASE_PER_CATEGORY = 3
@@ -132,8 +138,15 @@ def _is_new_today(signals: dict, today: str) -> bool:
     return bool(first_seen) and str(first_seen)[:10] == today
 
 
-def _showcase_item(score: RelevanceScore, today: str) -> dict:
-    """Flatten one score into the small display item the UI/prompt use."""
+def _showcase_item(
+    score: RelevanceScore, today: str, member_names: dict[str, str] | None = None
+) -> dict:
+    """Flatten one score into the small display item the UI/prompt use.
+
+    ``member_names`` maps a username to a display name; it is what turns the stored
+    member-fit layer (usernames only, so a rename never needs a re-score) into the
+    names the report actually says.
+    """
     content = score.content
     meta = content.metadata or {}
     signals = score.signals or {}
@@ -158,6 +171,15 @@ def _showcase_item(score: RelevanceScore, today: str) -> dict:
         # The attributed cluster (papers only; empty elsewhere) so the paper agent
         # can group its write-up by the researcher's focus clusters.
         "cluster_label": signals.get("cluster_label", ""),
+        # Who this item is for (institutional targets only — see
+        # :mod:`apps.content.member_fit`). Names only; the agent is told to pass
+        # them through, not to reason about who anyone is.
+        "for_members": [
+            (member_names or {}).get(entry["username"], entry["username"])
+            for entry in (signals.get("member_fit") or [])
+            if entry.get("username")
+            and (not member_names or entry["username"] in member_names)
+        ],
     }
 
 
@@ -165,6 +187,7 @@ def _gather(
     target_filter: dict,
     watch,
     allow: tuple[str, ...] | None = None,
+    member_names: dict[str, str] | None = None,
 ) -> tuple[
     list[str],
     dict[str, int],
@@ -200,7 +223,9 @@ def _gather(
         new_counts[category] = sum(
             1 for s in scores if _is_new_today(s.signals, today)
         )
-        flattened = [_showcase_item(s, today) for s in scores[:report_n]]
+        flattened = [
+            _showcase_item(s, today, member_names) for s in scores[:report_n]
+        ]
         showcase[category] = flattened[:SHOWCASE_PER_CATEGORY]
         report_items[category] = flattened
     return categories, counts, new_counts, showcase, report_items
@@ -269,6 +294,7 @@ def _write_briefing(
     target_filter: dict,
     watch,
     allow: tuple[str, ...] | None = None,
+    member_names: dict[str, str] | None = None,
     complete: briefing_agents.CompleteFn | None = None,
 ) -> DailyBriefing:
     """Gather a target's day, write the report, and persist it as a ``DailyBriefing``.
@@ -279,7 +305,7 @@ def _write_briefing(
     entry points so both apply the same gather + fallback rules.
     """
     categories, counts, new_counts, showcase, report_items = _gather(
-        target_filter, watch, allow
+        target_filter, watch, allow, member_names
     )
 
     if sum(counts.values()) > 0:
@@ -350,8 +376,12 @@ def generate_briefing_for_lab(
     Same shape as the personal briefing, but grounded in the lab's shared interest
     profile (:func:`apps.content.targets.target_for_lab`) and its ``target_lab``
     scores, and limited to the categories a lab is scored for
-    (:data:`LAB_BRIEFING_CATEGORIES` — fellowships stay user-only). The row is keyed
-    on the lab, so a lab's briefing is distinct from any member's own.
+    (:data:`LAB_BRIEFING_CATEGORIES`, now all four). The row is keyed on the lab, so
+    a lab's briefing is distinct from any member's own.
+
+    A lab report also names *who* each item suits, carried through from the stored
+    member-fit layer. Only current members are resolvable, so a departed member's
+    stale signal drops out of the prose the same way it drops out of the feed.
     """
     return _write_briefing(
         owner={"lab": lab},
@@ -359,5 +389,18 @@ def generate_briefing_for_lab(
         target_filter={"target_lab": lab},
         watch=getattr(lab, "watch", None),
         allow=LAB_BRIEFING_CATEGORIES,
+        member_names=_lab_member_names(lab),
         complete=complete,
     )
+
+
+def _lab_member_names(lab) -> dict[str, str]:
+    """``{username: display name}`` for a lab's current members."""
+    from apps.core.people import display_name
+
+    from .member_fit import scope_members
+
+    return {
+        user.get_username(): display_name(user)
+        for user in scope_members({"target_lab": lab})
+    }

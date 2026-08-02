@@ -69,6 +69,17 @@ _MARKDOWN_RULES = (
     "or deadline."
 )
 
+#: Appended to every section prompt for an institutional (lab) report. The
+#: recommendation is already made — the agent's job is to pass it on in a natural
+#: sentence, not to re-derive who anyone is or to name someone it wasn't given.
+_MEMBER_RULES = (
+    " Some items list who in the lab they are best suited to. When an item does, "
+    "say so plainly in its paragraph (e.g. \"Best suited to Ana Reyes\"), using "
+    "ONLY the names given for that item, spelled exactly as given. Never guess, "
+    "add, or drop a name, and never say anything about a person beyond what the "
+    "item's own note supports. Items with no names listed simply get none."
+)
+
 _SECTION_SYSTEM_PROMPT = {
     "papers": (
         "You are Mylo's papers specialist for a lab-intelligence platform. Given a "
@@ -86,13 +97,14 @@ _SECTION_SYSTEM_PROMPT = {
         "near-term deadline. Be specific and honest about fit. " + _MARKDOWN_RULES
     ),
     "fellowships": (
-        "You are Mylo's fellowships specialist. The researcher has already passed "
-        "each fellowship's hard eligibility gates, so do NOT re-litigate eligibility "
-        "or lead with it. Given their profile and the new eligible fellowships "
-        "matched today, write a short section that, for each notable fellowship, "
-        "explains how it fits their research topics, methods, and trajectory and "
-        "what it would let them pursue, flagging any near-term deadline. "
-        + _MARKDOWN_RULES
+        "You are Mylo's fellowships specialist. Do NOT re-litigate eligibility or "
+        "lead with it: for an individual it was already checked before the "
+        "fellowship reached this list, and for a lab it does not apply at all — a "
+        "lab has no citizenship or career stage, so its fellowships are matched on "
+        "research fit. Given the profile and the fellowships matched today, write a "
+        "short section that, for each notable one, explains how it fits the "
+        "research topics, methods, and trajectory and what it would let them "
+        "pursue, flagging any near-term deadline. " + _MARKDOWN_RULES
     ),
     "conferences": (
         "You are Mylo's conferences specialist. Given a researcher's profile and the "
@@ -294,6 +306,10 @@ def write_section(
     system = _SECTION_SYSTEM_PROMPT.get(category)
     if system is None:
         return _section_fallback(category, items), False
+    # A lab report's items carry who they suit; a personal report's never do, so
+    # the rule is added only where it applies and the personal prompt is unchanged.
+    if any(item.get("for_members") for item in items):
+        system += _MEMBER_RULES
 
     ask = complete if complete is not None else _settings_complete(_SECTION_MAX_TOKENS)
     prompt = _section_prompt(category, profile_text, items)
@@ -378,6 +394,9 @@ def _item_brief(index: int, item: dict) -> str:
     reason = item.get("reason") or item.get("headline")
     if reason:
         head += f"\n    Prior note: {reason}"
+    for_members = item.get("for_members") or []
+    if for_members:
+        head += f"\n    Best suited to: {', '.join(for_members)}"
     return head
 
 
@@ -409,6 +428,9 @@ def _section_fallback(category: str, items: list[dict]) -> str:
             reason = item.get("reason") or item.get("headline")
             if reason:
                 line += f"\n\n{reason}"
+            for_members = item.get("for_members") or []
+            if for_members:
+                line += f"\n\nBest suited to: {_join_english(for_members)}."
             blocks.append(line)
     return "\n\n".join(blocks)
 

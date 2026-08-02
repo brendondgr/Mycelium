@@ -64,25 +64,43 @@ def test_lab_briefing_is_keyed_to_the_lab_and_covers_its_matches(lab: Lab) -> No
 
     assert briefing.lab_id == lab.id
     assert briefing.user_id is None
-    assert briefing.counts == {"papers": 1, "grants": 1, "conferences": 0}
+    assert briefing.counts == {
+        "papers": 1,
+        "grants": 1,
+        "conferences": 0,
+        "fellowships": 0,
+    }
     assert "## Papers" in briefing.body
     assert "lab body" in briefing.body
     assert DailyBriefing.objects.filter(lab=lab).count() == 1
 
 
 @pytest.mark.django_db
-def test_lab_briefing_never_covers_fellowships(lab: Lab) -> None:
-    # Labs aren't scored for fellowships (user-only); even a stray target_lab
-    # fellowship score must not become a lab briefing section.
+def test_lab_briefing_covers_the_labs_own_fellowships(lab: Lab) -> None:
+    """A lab is scored for fellowships now, so its report covers them too."""
     lab.watch.categories = ["papers", "fellowships"]
     lab.watch.save()
     _lab_score(lab, _content(ContentItem.Type.PAPER, "Lab Paper"), rank=1)
-    _lab_score(lab, _content(ContentItem.Type.FELLOWSHIP, "Stray Fellowship"), rank=1)
+    _lab_score(lab, _content(ContentItem.Type.FELLOWSHIP, "Lab Fellowship"), rank=1)
+
+    briefing = generate_briefing_for_lab(lab, complete=_llm("body"))
+
+    assert set(briefing.categories) == {"papers", "fellowships"}
+    assert briefing.counts["fellowships"] == 1
+    assert "## Fellowships" in briefing.body
+
+
+@pytest.mark.django_db
+def test_lab_briefing_watch_config_still_narrows_it(lab: Lab) -> None:
+    """Fellowships being available doesn't mean an unwatching lab gets them."""
+    lab.watch.categories = ["papers"]
+    lab.watch.save()
+    _lab_score(lab, _content(ContentItem.Type.PAPER, "Lab Paper"), rank=1)
+    _lab_score(lab, _content(ContentItem.Type.FELLOWSHIP, "Lab Fellowship"), rank=1)
 
     briefing = generate_briefing_for_lab(lab, complete=_llm("body"))
 
     assert set(briefing.categories) == {"papers"}
-    assert "fellowships" not in briefing.counts
     assert "## Fellowships" not in briefing.body
 
 
@@ -108,7 +126,12 @@ def test_lab_briefing_api_member_reads(
 
     assert resp.status_code == 200
     assert resp.data["generated_at"] is not None
-    assert resp.data["counts"] == {"papers": 1, "grants": 0, "conferences": 0}
+    assert resp.data["counts"] == {
+        "papers": 1,
+        "grants": 0,
+        "conferences": 0,
+        "fellowships": 0,
+    }
     assert "hello lab" in resp.data["briefing"]["body"]
 
 
@@ -128,3 +151,62 @@ def test_lab_briefing_api_non_member_forbidden(client: APIClient, lab: Lab) -> N
     outsider = User.objects.create_user(username="out", password="p")
     client.force_authenticate(outsider)
     assert client.get(f"/api/labs/{lab.slug}/daily-briefing/").status_code == 403
+
+
+@pytest.mark.django_db
+def test_lab_report_names_who_each_item_is_for(lab: Lab, member: User) -> None:
+    """The stored member-fit layer reaches the prose — as names, not usernames."""
+    member.first_name = "Jordan"
+    member.last_name = "Reyes"
+    member.save(update_fields=["first_name", "last_name"])
+    score = _lab_score(lab, _content(ContentItem.Type.PAPER, "Lab Paper"), rank=1)
+    score.signals["member_fit"] = [
+        {"username": "jordan", "fit": 88, "reason": "Squarely theirs.", "source": "llm"}
+    ]
+    score.save(update_fields=["signals"])
+
+    # Every agent call, since the summary editor runs after the specialists.
+    calls: list[tuple[str, str]] = []
+
+    def capture(system: str, user: str) -> str:
+        calls.append((system, user))
+        return "body"
+
+    generate_briefing_for_lab(lab, complete=capture)
+
+    # The papers specialist is given the display name and told to pass it through.
+    assert any("Best suited to: Jordan Reyes" in user for _system, user in calls)
+    assert any("ONLY the names given" in system for system, _user in calls)
+
+
+@pytest.mark.django_db
+def test_lab_report_fallback_names_them_too(lab: Lab, member: User) -> None:
+    """With the model down, the deterministic body still says who it is for."""
+    member.first_name = "Jordan"
+    member.last_name = "Reyes"
+    member.save(update_fields=["first_name", "last_name"])
+    score = _lab_score(lab, _content(ContentItem.Type.PAPER, "Lab Paper"), rank=1)
+    score.signals["member_fit"] = [
+        {"username": "jordan", "fit": 88, "reason": "Squarely theirs.", "source": "llm"}
+    ]
+    score.save(update_fields=["signals"])
+
+    briefing = generate_briefing_for_lab(lab, complete=lambda system, user: None)
+
+    assert "Best suited to: Jordan Reyes." in briefing.body
+
+
+@pytest.mark.django_db
+def test_a_departed_members_stale_signal_never_reaches_the_prose(
+    lab: Lab, member: User
+) -> None:
+    score = _lab_score(lab, _content(ContentItem.Type.PAPER, "Lab Paper"), rank=1)
+    score.signals["member_fit"] = [
+        {"username": "ghost", "fit": 90, "reason": "r", "source": "llm"}
+    ]
+    score.save(update_fields=["signals"])
+
+    briefing = generate_briefing_for_lab(lab, complete=lambda system, user: None)
+
+    assert "ghost" not in briefing.body
+    assert "Best suited to" not in briefing.body
