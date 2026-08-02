@@ -70,7 +70,11 @@ def test_create_personal_reminder(client) -> None:
     )
     assert resp.status_code == 201
     assert resp.data["scope"] == "user"
-    assert resp.data["offsets"] == [{"amount": 2, "unit": "week"}]
+    # Each offset also reports the date it resolves to, for the reminders page.
+    assert [
+        (o["amount"], o["unit"]) for o in resp.data["offsets"]
+    ] == [(2, "week")]
+    assert resp.data["offsets"][0]["fire_date"]
     assert ReminderSubscription.objects.filter(target_user=user).count() == 1
 
 

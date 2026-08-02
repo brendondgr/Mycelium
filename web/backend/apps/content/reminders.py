@@ -165,6 +165,120 @@ def seal_backdated_offsets(subscription: ReminderSubscription, today: date) -> i
     return sealed
 
 
+def find_subscription(
+    *,
+    target_user=None,
+    target_lab=None,
+    content: ContentItem | None,
+    deadline_kind: str,
+) -> ReminderSubscription | None:
+    """The existing subscription for this (target, item, kind), if there is one.
+
+    The single expression of the uniqueness tuple the two partial unique constraints
+    on :class:`ReminderSubscription` enforce. A pruned reminder (``content`` NULL) is
+    outside those constraints and is never matched here — it lives on its snapshot and
+    a fresh item would legitimately get its own row.
+    """
+    if content is None:
+        return None
+    if target_user is not None:
+        return ReminderSubscription.objects.filter(
+            target_user=target_user, content=content, deadline_kind=deadline_kind
+        ).first()
+    return ReminderSubscription.objects.filter(
+        target_lab=target_lab, content=content, deadline_kind=deadline_kind
+    ).first()
+
+
+@transaction.atomic
+def update_subscription(
+    subscription: ReminderSubscription,
+    *,
+    offsets: list[tuple[int, str]] | None = None,
+    mentions=None,
+    channel_id_override: str | None = None,
+    snoozed_until: date | None = None,
+    clear_snooze: bool = False,
+    reactivate: bool = False,
+    today: date | None = None,
+) -> ReminderSubscription:
+    """Rewrite an existing reminder's configuration in place.
+
+    Every argument is optional and ``None`` means "leave alone", so one function backs
+    both a full re-set from the composer and a one-field tweak from the manage page.
+    Replacing the offsets re-runs :func:`seal_backdated_offsets` against the *current*
+    ``due_date``: a lead time that is already past when it is added must not fire
+    retroactively, exactly as on create.
+
+    ``reactivate`` returns a cancelled / stale / fired-out row to ``ACTIVE``. That is
+    what makes "set a reminder again on one I cancelled" work — the unique constraint
+    means there is no second row to create, so the original is re-armed instead.
+    """
+    fields: list[str] = []
+
+    if offsets is not None:
+        unique_offsets = _validated_offsets(offsets)
+        subscription.offsets.all().delete()
+        ReminderOffset.objects.bulk_create(
+            ReminderOffset(subscription=subscription, amount=amount, unit=unit)
+            for amount, unit in unique_offsets
+        )
+
+    if mentions is not None:
+        keep = {member.id for member in mentions}
+        subscription.mentions.exclude(member_id__in=keep).delete()
+        for member in mentions:
+            ReminderMention.objects.get_or_create(
+                subscription=subscription, member=member
+            )
+
+    if channel_id_override is not None:
+        subscription.channel_id_override = channel_id_override
+        fields.append("channel_id_override")
+
+    if clear_snooze:
+        subscription.snoozed_until = None
+        fields.append("snoozed_until")
+    elif snoozed_until is not None:
+        subscription.snoozed_until = snoozed_until
+        fields.append("snoozed_until")
+
+    if reactivate and subscription.state != ReminderSubscription.State.ACTIVE:
+        subscription.state = ReminderSubscription.State.ACTIVE
+        fields.append("state")
+
+    if fields:
+        subscription.save(update_fields=[*fields, "updated_at"])
+    if offsets is not None:
+        seal_backdated_offsets(subscription, today or timezone.now().date())
+    return subscription
+
+
+def set_state(subscription: ReminderSubscription, state: str) -> bool:
+    """Move a subscription to ``state``; returns whether it actually changed.
+
+    Shared by the API and ``/mylo cancel`` so a cancel means the same thing on both
+    surfaces — a soft stop that leaves the row (and its fired ledger) readable.
+    """
+    if subscription.state == state:
+        return False
+    subscription.state = state
+    subscription.save(update_fields=["state", "updated_at"])
+    return True
+
+
+def _validated_offsets(offsets: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    """Dedupe (order-preserving) and enforce the per-subscription cap (D-13)."""
+    unique_offsets = list(dict.fromkeys(offsets))
+    if not unique_offsets:
+        raise ReminderError("at least one offset is required")
+    if len(unique_offsets) > MAX_OFFSETS_PER_SUBSCRIPTION:
+        raise ReminderError(
+            f"at most {MAX_OFFSETS_PER_SUBSCRIPTION} offsets per reminder"
+        )
+    return unique_offsets
+
+
 @transaction.atomic
 def create_subscription(
     *,
@@ -194,6 +308,57 @@ def create_subscription(
     condition: only when ``created_by`` is set. A ``created_by`` of ``None`` marks a
     system-initiated create — a backfill, a copy, a test fixture — which has no human
     whose plan could be read, and which is not the surface being gated.
+
+    Thin wrapper over :func:`create_or_update_subscription` for callers that don't
+    care whether the row was new.
+    """
+    subscription, _ = create_or_update_subscription(
+        deadline_kind=deadline_kind,
+        area=area,
+        title=title,
+        due_date=due_date,
+        offsets=offsets,
+        target_user=target_user,
+        target_lab=target_lab,
+        content=content,
+        url=url,
+        confidence=confidence,
+        mentions=mentions,
+        channel_id_override=channel_id_override,
+        created_by=created_by,
+        today=today,
+    )
+    return subscription
+
+
+@transaction.atomic
+def create_or_update_subscription(
+    *,
+    deadline_kind: str,
+    area: str,
+    title: str,
+    due_date: date | None,
+    offsets: list[tuple[int, str]],
+    target_user=None,
+    target_lab=None,
+    content: ContentItem | None = None,
+    url: str = "",
+    confidence: str = ContentDeadline.Confidence.CONFIRMED,
+    mentions=(),
+    channel_id_override: str = "",
+    created_by=None,
+    today: date | None = None,
+) -> tuple[ReminderSubscription, bool]:
+    """Create a subscription, or reconfigure the one that already covers this deadline.
+
+    Returns ``(subscription, created)``.
+
+    Setting a reminder on an item + kind that already has one is an ordinary thing to
+    do — "actually, warn me a month out too", or re-arming one you cancelled. The two
+    partial unique constraints on ``(target, content, deadline_kind)`` mean there is
+    no second row to create, so the honest reading of a repeat request is an update of
+    the existing reminder rather than an ``IntegrityError``. Doing it in the service
+    (not the view) keeps every caller — API, ``/mylo``, backfills — on one rule.
     """
     if (target_user is None) == (target_lab is None):
         raise ReminderError("exactly one of target_user / target_lab is required")
@@ -218,13 +383,45 @@ def create_subscription(
         )
         if not access.allowed:
             raise ReminderAccessError(access)
-    unique_offsets = list(dict.fromkeys(offsets))  # dedupe, preserve order
-    if not unique_offsets:
-        raise ReminderError("at least one offset is required")
-    if len(unique_offsets) > MAX_OFFSETS_PER_SUBSCRIPTION:
-        raise ReminderError(
-            f"at most {MAX_OFFSETS_PER_SUBSCRIPTION} offsets per reminder"
+    unique_offsets = _validated_offsets(offsets)
+
+    existing = find_subscription(
+        target_user=target_user,
+        target_lab=target_lab,
+        content=content,
+        deadline_kind=deadline_kind,
+    )
+    if existing is not None:
+        # Refresh the snapshot too: the deadline may have moved since the reminder was
+        # first set, and the caller is looking at the current card.
+        for field, value in (
+            ("area", area),
+            ("title", title),
+            ("url", url),
+            ("due_date", due_date),
+            ("confidence", confidence),
+        ):
+            setattr(existing, field, value)
+        existing.save(
+            update_fields=[
+                "area",
+                "title",
+                "url",
+                "due_date",
+                "confidence",
+                "updated_at",
+            ]
         )
+        update_subscription(
+            existing,
+            offsets=unique_offsets,
+            mentions=list(mentions),
+            channel_id_override=channel_id_override,
+            clear_snooze=True,
+            reactivate=True,
+            today=today,
+        )
+        return existing, False
 
     subscription = ReminderSubscription.objects.create(
         target_user=target_user,
@@ -247,7 +444,7 @@ def create_subscription(
         ReminderMention.objects.get_or_create(subscription=subscription, member=member)
 
     seal_backdated_offsets(subscription, today or timezone.now().date())
-    return subscription
+    return subscription, True
 
 
 @dataclass
