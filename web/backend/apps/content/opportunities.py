@@ -588,7 +588,10 @@ def _prepare_match(
     # byte-for-byte — the invariant every cluster feature in this codebase preserves.
     clusters = cluster_interests(target.interests or {})
     if len(clusters) >= 2:
-        pairs, rows, pool = fuse_clusters_pool(
+        # No ``cluster_top_n``: the per-theme slate is a paper-feed concern. Grants
+        # and conferences accumulate across runs rather than being re-picked from
+        # one gather day, so they are not starved the way papers were.
+        pairs, rows, pool, _slate = fuse_clusters_pool(
             search_ints,
             clusters,
             content_type=content_type,

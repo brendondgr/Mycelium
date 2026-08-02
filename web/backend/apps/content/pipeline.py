@@ -43,7 +43,7 @@ from apps.scraper.window import ScanWindow
 
 from . import embeddings
 from .clustering import Cluster, cluster_interests
-from .digest_selection import new_content_ids, split_by_floor
+from .digest_selection import new_content_ids, renumber, split_by_floor
 from .fusion import (
     DEFAULT_BETA,
     ClusteredHit,
@@ -52,6 +52,7 @@ from .fusion import (
     combine_clusters,
     combine_interests,
     fuse_interest,
+    top_per_cluster,
     with_floor_guarantee,
 )
 from .interests_query import SearchInterest, search_interests
@@ -81,6 +82,8 @@ DEFAULT_DAYS_FORWARD = 7
 # In production these come from PAPER_MATCH_THRESHOLD / PAPER_MATCH_MAX_SURFACE.
 _FALLBACK_MATCH_THRESHOLD = 0.5
 _FALLBACK_MAX_SURFACE = 250
+# Papers each theme of an institutional target contributes (PAPER_CLUSTER_TOP_N).
+_FALLBACK_CLUSTER_TOP_N = 10
 
 
 def _paper_match_threshold() -> float:
@@ -96,6 +99,11 @@ def _paper_max_surface() -> int:
 def _paper_min_match_percent() -> int:
     """The match-percent floor below which an LLM verdict stays hidden."""
     return getattr(settings, "PAPER_MIN_MATCH_PERCENT", 60)
+
+
+def _paper_cluster_top_n() -> int:
+    """How many papers each of an institutional target's themes contributes."""
+    return getattr(settings, "PAPER_CLUSTER_TOP_N", _FALLBACK_CLUSTER_TOP_N)
 
 
 @dataclass
@@ -366,7 +374,11 @@ def recommend_for_user(
     clusters = cluster_interests(interests)
     retrieved_count = 0
     if search_ints and len(clusters) >= 2:
-        pairs, rows, retrieved_count = fuse_clusters_pool(
+        # A person's own feed keeps the global ranking (no ``cluster_top_n``): their
+        # areas are specific enough that the strongest papers already spread across
+        # them. The per-cluster slate exists for institutional targets, whose areas
+        # are broad theme names — see :func:`recommend_for_target`.
+        pairs, rows, retrieved_count, _slate = fuse_clusters_pool(
             search_ints,
             clusters,
             content_type=ContentItem.Type.PAPER,
@@ -432,6 +444,9 @@ def recommend_for_user(
     )
     floor = _paper_min_match_percent()
     visible, hidden = split_by_floor(suggestions, floor)
+    # Ranks were handed out over the pre-floor list; close the gaps the hidden
+    # papers leave behind so the feed numbers what it actually shows.
+    renumber(visible)
     llm = sum(1 for s in visible if s["source"] == "llm")
     emit(
         f"suggestions: {len(visible)} ({llm} llm / "
@@ -471,6 +486,7 @@ def recommend_for_target(
     complete: CompleteFn | None = None,
     persist: bool = True,
     reuse_prior: bool = True,
+    cluster_top_n: int | None = None,
     log: Callable[[str], None] | None = None,
 ) -> RunResult:
     """Retrieve → fuse → suggest research papers for *any* target (lab / project).
@@ -484,6 +500,26 @@ def recommend_for_target(
     with no interests at all short-circuits to ``no_interests`` rather than
     scanning the whole corpus. ``reuse_prior=False`` bypasses carry-forward (used by
     :mod:`.refitting` after a profile edit).
+
+    **One deliberate divergence from the personal path.** A lab that has organised
+    its work into themes gets its papers chosen **per theme**: each cluster's own
+    best ``cluster_top_n`` candidates form a slate that Mylo reads theme by theme,
+    and every slate member is surfaced. Two reasons the global ranking was the
+    wrong instrument here:
+
+    * A lab's areas are broad theme names, not a person's specific keywords, so one
+      theme's vocabulary consistently sits closer to the day's literature. Ranked
+      globally, that theme takes the whole model budget and the rest of the lab
+      reads as though nothing was found for it.
+    * Because the model only ever judged the global top slice, the feed was
+      ``{papers the model liked} ∪ {papers it never saw}`` — which is why a lab
+      could end up with seven papers, two of them explained. Choosing per theme and
+      judging everything chosen makes the feed one coherent set.
+
+    A slate member is therefore never withheld by ``PAPER_MIN_MATCH_PERCENT``: the
+    pipeline picked it as one of that theme's best, and hiding it would leave the
+    same gap-riddled list the split was meant to fix. The floor still applies to
+    everything outside the slate.
     """
     key = target.key
     if focus_weight is None:
@@ -492,6 +528,8 @@ def recommend_for_target(
         match_threshold = _paper_match_threshold()
     if max_surface is None:
         max_surface = _paper_max_surface()
+    if cluster_top_n is None:
+        cluster_top_n = _paper_cluster_top_n()
 
     def emit(message: str) -> None:
         if log is not None:
@@ -505,8 +543,9 @@ def recommend_for_target(
     search_ints = search_interests(interests)
     clusters = cluster_interests(interests)
     retrieved_count = 0
+    slate_groups: list[list[Hit]] = []
     if search_ints and len(clusters) >= 2:
-        pairs, rows, retrieved_count = fuse_clusters_pool(
+        pairs, rows, retrieved_count, slate_groups = fuse_clusters_pool(
             search_ints,
             clusters,
             content_type=ContentItem.Type.PAPER,
@@ -516,6 +555,7 @@ def recommend_for_target(
             emit=emit,
             created_on=created_on,
             match_threshold=match_threshold,
+            cluster_top_n=cluster_top_n,
         )
     elif search_ints:
         pairs, rows, retrieved_count = fuse_interests_pool(
@@ -568,14 +608,26 @@ def recommend_for_target(
     suggestions = generate_suggestions(
         interests,
         pairs,
-        llm_limit=suggestion_limit,
+        # With a per-theme slate the budget is per group, not one global slice.
+        llm_limit=cluster_top_n if slate_groups else suggestion_limit,
         complete=complete,
         prior=prior,
         new_ids=new_ids,
         cluster_by_id=_cluster_by_id(rows),
+        llm_groups=slate_groups or None,
     )
     floor = _paper_min_match_percent()
     visible, hidden = split_by_floor(suggestions, floor)
+    slate_ids = {str(item.id) for group in slate_groups for item, _score in group}
+    reinstated = [s for s in hidden if s["content_id"] in slate_ids]
+    if reinstated:
+        # A paper this run chose as one of its theme's best is shown with Mylo's
+        # honest percent rather than withheld — see the docstring. Rebuilding from
+        # ``suggestions`` keeps everything in its already-correct position.
+        hidden = [s for s in hidden if s["content_id"] not in slate_ids]
+        shown = {s["content_id"] for s in visible + reinstated}
+        visible = [s for s in suggestions if s["content_id"] in shown]
+    renumber(visible)
     llm = sum(1 for s in visible if s["source"] == "llm")
     emit(
         f"suggestions: {len(visible)} ({llm} llm / "
@@ -946,7 +998,8 @@ def fuse_clusters_pool(
     emit: Callable[[str], None],
     created_on: date | None = None,
     match_threshold: float | None = None,
-) -> tuple[list[Hit], list[PersistRow], int]:
+    cluster_top_n: int = 0,
+) -> tuple[list[Hit], list[PersistRow], int, list[list[Hit]]]:
     """Cluster-scoped twin of :func:`fuse_interests_pool` (papers, >= 2 clusters).
 
     Builds the same shared pool and per-interest scores, then combines **within
@@ -956,6 +1009,15 @@ def fuse_clusters_pool(
     as bridges. Surfacing mirrors the flat path but the truncation guarantee is
     per-cluster (:func:`.fusion.cap_clusters` reserves each cluster's best), and
     each row records the cluster attribution for the UI/report.
+
+    With ``cluster_top_n`` set, it additionally returns **slate groups** — each
+    cluster's own best ``cluster_top_n`` candidates (:func:`.fusion.top_per_cluster`),
+    one group per cluster. Any slate member the global surfacing missed is folded
+    into the surfaced set, so the slate is always a subset of what is persisted.
+    That union may exceed ``surface_limit`` by at most ``cluster_top_n`` per
+    cluster: a deliberate, bounded overshoot, because the whole point of the slate
+    is that a theme's ten best must survive whatever the global cut does.
+    Returns ``[]`` for the slate when ``cluster_top_n`` is 0.
     """
     pool, per_interest_scores, best_cosine = _build_pool(
         search_ints,
@@ -964,7 +1026,7 @@ def fuse_clusters_pool(
         created_on=created_on,
     )
     if not pool:
-        return [], [], 0
+        return [], [], 0, []
 
     cluster_areas = {cluster.id: cluster.areas for cluster in clusters}
     labels_by_id = {cluster.id: cluster.label for cluster in clusters}
@@ -972,33 +1034,55 @@ def fuse_clusters_pool(
 
     if match_threshold is None:
         surfaced = cap_clusters(clustered, limit=surface_limit)
-        emit(
-            f"fused {len(clusters)} cluster(s) over {len(pool)} candidates; "
-            f"surfaced {len(surfaced)}"
+        note = ""
+    else:
+        passing = [
+            hit
+            for hit in clustered
+            if best_cosine.get(str(hit.item.id), 0.0) >= match_threshold
+        ]
+        # cap_clusters is a no-op below surface_limit (the common case) and otherwise
+        # reserves each cluster's best paper before the backstop truncation.
+        surfaced = cap_clusters(passing, limit=surface_limit)
+        note = (
+            f"{len(passing)} cleared the {round(match_threshold * 100)}% match "
+            "threshold"
+            f"{f' (capped to {surface_limit})' if len(passing) > surface_limit else ''}"
         )
-        pairs = [(hit.item, hit.final_score) for hit in surfaced]
-        rows = [_cluster_row(hit, labels_by_id) for hit in surfaced]
-        return pairs, rows, len(pool)
 
-    passing = [
-        hit
-        for hit in clustered
-        if best_cosine.get(str(hit.item.id), 0.0) >= match_threshold
-    ]
-    # cap_clusters is a no-op below surface_limit (the common case) and otherwise
-    # reserves each cluster's best paper before the backstop truncation.
-    surfaced = cap_clusters(passing, limit=surface_limit)
+    slate = top_per_cluster(clustered, limit=cluster_top_n) if cluster_top_n else {}
+    if slate:
+        seen = {str(hit.item.id) for hit in surfaced}
+        added = 0
+        for hits in slate.values():
+            for hit in hits:
+                key = str(hit.item.id)
+                if key not in seen:
+                    seen.add(key)
+                    surfaced.append(hit)
+                    added += 1
+        surfaced.sort(key=lambda hit: hit.final_score, reverse=True)
+        note += (
+            f"{'; ' if note else ''}top {cluster_top_n} per cluster over "
+            f"{len(slate)} cluster(s) (+{added} beyond the global cut)"
+        )
+
     emit(
         f"fused {len(clusters)} cluster(s) over {len(pool)} candidates; "
-        f"{len(passing)} cleared the {round(match_threshold * 100)}% match threshold"
-        f"{f' (capped to {surface_limit})' if len(passing) > surface_limit else ''}"
+        + (note or f"surfaced {len(surfaced)}")
     )
+    def _match_of(hit: ClusteredHit) -> float | None:
+        # The opportunity matchers run threshold-free and record no cosine.
+        if match_threshold is None:
+            return None
+        return best_cosine.get(str(hit.item.id))
+
     pairs = [(hit.item, hit.final_score) for hit in surfaced]
-    rows = [
-        _cluster_row(hit, labels_by_id, match=best_cosine.get(str(hit.item.id)))
-        for hit in surfaced
+    rows = [_cluster_row(hit, labels_by_id, match=_match_of(hit)) for hit in surfaced]
+    slate_groups = [
+        [(hit.item, hit.final_score) for hit in hits] for hits in slate.values()
     ]
-    return pairs, rows, len(pool)
+    return pairs, rows, len(pool), slate_groups
 
 
 def _cluster_row(

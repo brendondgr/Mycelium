@@ -73,3 +73,19 @@ def split_by_floor(
         else:
             visible.append(suggestion)
     return visible, hidden
+
+
+def renumber(suggestions: list[dict]) -> list[dict]:
+    """Re-assign ``rank`` 1..N in list order, returning the same list.
+
+    Ranks are first handed out over the *whole* surfaced set, before
+    :func:`split_by_floor` removes the papers the model judged poorly. Left at
+    that, the rows that survive carry the numbering of a list they are no longer
+    a member of: a feed whose model rejected papers 3-10 renders "1, 2, 11, 12,
+    13" and reads as though eight items went missing. Renumbering the visible
+    list closes the gaps without reordering anything — position is the only thing
+    that changes, and it changes to match what is actually on screen.
+    """
+    for position, suggestion in enumerate(suggestions, start=1):
+        suggestion["rank"] = position
+    return suggestions

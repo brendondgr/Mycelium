@@ -288,6 +288,42 @@ def cap_clusters(
     return result
 
 
+def top_per_cluster(
+    clustered: Sequence[ClusteredHit], *, limit: int
+) -> dict[str, list[ClusteredHit]]:
+    """Each cluster's own best ``limit`` candidates, ranked by *that* cluster's score.
+
+    :func:`combine_clusters` ranks globally by ``final_score`` — the max over a
+    candidate's cluster scores — which answers "how strong is this paper anywhere?"
+    That is the right question for a person, whose areas are specific enough that
+    the strongest papers are spread across them. It is the wrong question for a
+    lab, whose areas are broad *theme* names: one theme's vocabulary sits closer to
+    the day's literature than another's, so a global ranking is swept by that theme
+    and the rest of the lab reads as though nothing was found for it.
+
+    Ranking within each cluster asks the question that actually matters — "what are
+    the ten best papers for *this* strand of the lab's work?" — and is scale-free,
+    so a theme whose absolute scores run lower still gets its ten. A candidate may
+    appear in several clusters' lists; callers dedupe on the union.
+
+    Clusters are keyed by id and only appear when at least one candidate cleared
+    them; the ordering of the returned mapping follows the order clusters were
+    first seen in ``clustered``.
+    """
+    if limit <= 0:
+        return {}
+    by_cluster: dict[str, list[ClusteredHit]] = {}
+    for hit in clustered:
+        for cluster_id in hit.per_cluster:
+            by_cluster.setdefault(cluster_id, []).append(hit)
+    return {
+        cluster_id: sorted(
+            hits, key=lambda h: h.per_cluster.get(cluster_id, 0.0), reverse=True
+        )[:limit]
+        for cluster_id, hits in by_cluster.items()
+    }
+
+
 def with_floor_guarantee(
     combined: Sequence[CombinedHit],
     per_interest_scores: Mapping[str, Mapping[str, float]],

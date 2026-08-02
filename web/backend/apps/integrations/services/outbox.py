@@ -330,7 +330,10 @@ def _on_permanent(message, verdict: Classification) -> None:
         Reason.GUILD_GONE,
     )
     if verdict.reason in channel_failures and message.lab_id:
-        kind = "updates" if message.kind == "lab_digest" else "deadlines"
+        # The daily summary and the report chunks that follow it share one binding,
+        # so a failure in either says the same thing about the updates channel.
+        updates_kinds = ("lab_digest", "lab_report")
+        kind = "updates" if message.kind in updates_kinds else "deadlines"
         resolve.set_channel_health_for_lab(
             message.lab, kind=kind, ok=False, error_code=verdict.error_code
         )

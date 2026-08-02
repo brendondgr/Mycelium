@@ -1,7 +1,8 @@
 """The lab digest finally reaches the channel labs have been configuring all along.
 
 The load-bearing assertion is idempotency: one post per lab per day, and re-running
-the daily pipeline produces no second post.
+the daily pipeline produces no second post — now across the summary *and* every
+message the written report is split into.
 """
 
 from __future__ import annotations
@@ -13,11 +14,16 @@ from django.contrib.auth.models import User
 
 from apps.accounts.models import Lab
 from apps.content.lab_digest import (
+    MAX_REPORT_CHUNKS,
+    REPORT_CHUNK_CHARS,
     compile_lab_digest,
+    digest_embed,
     eligible_labs,
     queue_lab_digest,
+    queue_lab_report,
+    report_chunks,
 )
-from apps.content.models import ContentItem, RelevanceScore
+from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.integrations.models import DiscordGuildLink, DiscordOutboxMessage
 from apps.integrations.tests.base import (
     clear_discord_cache,
@@ -122,7 +128,7 @@ def test_the_digest_groups_by_research_theme(db) -> None:
 
 
 @pytest.mark.django_db
-def test_unattributed_items_are_still_reported(db) -> None:
+def test_unattributed_items_are_still_counted(db) -> None:
     """They must not vanish just because they carry no theme."""
     lab = _lab()
     _scored(lab, title="Themed", cluster="Medical AI")
@@ -131,7 +137,26 @@ def test_unattributed_items_are_still_reported(db) -> None:
     digest = compile_lab_digest(lab, on=TODAY)
 
     assert digest.total == 2
-    assert [i["title"] for i in digest.ungrouped] == ["Themeless"]
+    assert digest.ungrouped is not None
+    assert digest.ungrouped.total == 1
+
+
+@pytest.mark.django_db
+def test_fellowships_are_counted_too(db) -> None:
+    """A lab is scored for fellowships, so its summary has to admit they exist."""
+    lab = _lab()
+    _scored(lab, title="A paper", cluster="Medical AI")
+    _scored(
+        lab,
+        title="A fellowship",
+        cluster="Medical AI",
+        category=ContentItem.Type.FELLOWSHIP,
+    )
+
+    digest = compile_lab_digest(lab, on=TODAY)
+
+    assert digest.counts["fellowships"] == 1
+    assert digest.themes[0].counts["fellowships"] == 1
 
 
 @pytest.mark.django_db
@@ -206,7 +231,7 @@ def test_the_post_goes_to_the_updates_channel_and_pings_nobody(db) -> None:
 
 @pytest.mark.django_db
 def test_the_post_stays_inside_discords_embed_limits(db) -> None:
-    """Bounded by construction — at most eight themes of three items."""
+    """Bounded by construction — at most eight themes, one line each."""
     lab = _lab()
     for theme in range(12):
         for n in range(6):
@@ -217,9 +242,153 @@ def test_the_post_stays_inside_discords_embed_limits(db) -> None:
     row = DiscordOutboxMessage.objects.get()
 
     assert len(digest.themes) <= 8
-    assert all(len(t.items) <= 3 for t in digest.themes)
     assert len(row.embed["fields"]) <= 25
     assert len(str(row.embed)) < 6000
+
+
+# --------------------------------------------------------------------------- #
+# The summary: names and numbers, nothing else
+# --------------------------------------------------------------------------- #
+@pytest.mark.django_db
+def test_the_summary_names_themes_and_counts_only(db) -> None:
+    """Three truncated titles per theme read as noise beside the report itself."""
+    lab = _lab()
+    _scored(lab, title="Segmentation nets", cluster="Medical AI")
+    _scored(
+        lab,
+        title="Imaging call",
+        cluster="Medical AI",
+        category=ContentItem.Type.GRANT,
+    )
+    _scored(lab, title="Soft actuators", cluster="Robotics")
+
+    embed = digest_embed(compile_lab_digest(lab, on=TODAY))
+
+    rendered = str(embed)
+    assert "Segmentation nets" not in rendered
+    assert "Soft actuators" not in rendered
+    assert "%" not in rendered  # no per-item match percentages either
+    fields = {f["name"]: f["value"] for f in embed["fields"]}
+    assert fields["Medical AI"] == "1 paper · 1 grant"
+    assert fields["Robotics"] == "1 paper"
+    assert embed["footer"]["text"] == "See the full report below."
+
+
+@pytest.mark.django_db
+def test_an_unthemed_lab_is_not_told_its_numbers_twice(db) -> None:
+    """With nothing to break down by, one line is the whole summary."""
+    lab = _lab()
+    _scored(lab, title="One", cluster="")
+    _scored(lab, title="Two", cluster="")
+
+    embed = digest_embed(compile_lab_digest(lab, on=TODAY))
+
+    assert embed["description"] == "**2** papers"
+    assert embed["fields"] == []
+
+
+@pytest.mark.django_db
+def test_the_summary_link_is_not_localhost(db) -> None:
+    """It goes to a whole lab's server; a loopback link helps nobody there."""
+    lab = _lab()
+    _scored(lab, title="Something", cluster="Medical AI")
+
+    embed = digest_embed(compile_lab_digest(lab, on=TODAY))
+
+    assert "localhost" not in embed.get("url", "")
+    assert "127.0.0.1" not in embed.get("url", "")
+
+
+# --------------------------------------------------------------------------- #
+# The written report, in the same channel
+# --------------------------------------------------------------------------- #
+def test_a_short_report_is_one_message() -> None:
+    assert report_chunks("## Papers\n\nOne short paragraph.") == [
+        "## Papers\n\nOne short paragraph."
+    ]
+
+
+def test_an_empty_report_is_no_message() -> None:
+    assert report_chunks("") == []
+    assert report_chunks("   \n\n ") == []
+
+
+def test_every_chunk_fits_and_nothing_is_lost() -> None:
+    """Over 2000 characters Discord returns a 400, which the outbox never retries."""
+    body = "\n\n".join(f"## Section {n}\n\n{'word ' * 120}" for n in range(6))
+
+    chunks = report_chunks(body)
+
+    assert len(chunks) > 1
+    assert all(len(c) <= REPORT_CHUNK_CHARS for c in chunks)
+    # Whitespace at the seams is normalised away; every word survives.
+    assert " ".join(" ".join(chunks).split()) == " ".join(body.split())
+
+
+def test_a_split_prefers_a_paragraph_boundary() -> None:
+    """A heading must never be orphaned from the paragraph it introduces."""
+    body = "\n\n".join(f"## Section {n}\n\n{'word ' * 100}" for n in range(4))
+
+    chunks = report_chunks(body)
+
+    assert all(not c.endswith("##") for c in chunks)
+    assert all(c.strip() for c in chunks)
+
+
+def test_a_runaway_report_is_cut_with_a_pointer_home() -> None:
+    """Past a certain length a channel is the wrong medium; flooding it is worse."""
+    body = "\n\n".join(f"paragraph {n} " + "word " * 200 for n in range(60))
+
+    chunks = report_chunks(body, tail_url="https://mycelium.example.com/app/daily")
+
+    assert len(chunks) == MAX_REPORT_CHUNKS
+    assert "the rest of today's report is in Mycelium" in chunks[-1]
+    assert len(chunks[-1]) <= REPORT_CHUNK_CHARS
+
+
+@pytest.mark.django_db
+def test_the_report_follows_the_summary_into_the_same_channel(db) -> None:
+    lab = _lab()
+    _scored(lab, title="Something", cluster="Medical AI")
+    DailyBriefing.objects.create(lab=lab, body="## Papers\n\nA readable report.")
+
+    queue_lab_digest(lab, on=TODAY)
+    queued = queue_lab_report(lab, on=TODAY)
+
+    assert queued == 1
+    rows = list(DiscordOutboxMessage.objects.order_by("id"))
+    assert [r.kind for r in rows] == ["lab_digest", "lab_report"]
+    assert all(r.channel_id == "updates-chan" for r in rows)
+    # The report is message text, not an embed — it is meant to be read in place.
+    assert rows[1].content == "## Papers\n\nA readable report."
+    assert not rows[1].embed
+
+
+@pytest.mark.django_db
+def test_a_lab_with_no_written_report_still_gets_its_summary(db) -> None:
+    lab = _lab()
+    _scored(lab, title="Something", cluster="Medical AI")
+
+    queue_lab_digest(lab, on=TODAY)
+    queued = queue_lab_report(lab, on=TODAY)
+
+    assert queued == 0
+    assert DiscordOutboxMessage.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_the_report_is_queued_once_per_day_too(db) -> None:
+    """Re-running the daily chain must not repost the report either."""
+    lab = _lab()
+    _scored(lab, title="Something", cluster="Medical AI")
+    DailyBriefing.objects.create(lab=lab, body="## Papers\n\n" + "word " * 900)
+
+    first = queue_lab_report(lab, on=TODAY)
+    second = queue_lab_report(lab, on=TODAY)
+
+    assert first > 1  # long enough to need several messages
+    assert second == 0
+    assert DiscordOutboxMessage.objects.filter(kind="lab_report").count() == first
 
 
 @pytest.mark.django_db
@@ -240,6 +409,7 @@ def test_the_digest_reads_the_same_scores_as_the_labs_feed(db) -> None:
 
     digest = compile_lab_digest(lab, on=TODAY)
 
-    titles = [i["title"] for t in digest.themes for i in t.items]
-    assert "Shown" in titles
-    assert "Hidden" not in titles
+    # Only the promoted row is counted; the computed-but-unpromoted one is not.
+    assert digest.total == 1
+    assert digest.counts["papers"] == 1
+    assert [t.label for t in digest.themes] == ["Medical AI"]

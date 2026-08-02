@@ -361,6 +361,17 @@ PAPER_MATCH_MAX_SURFACE = env.int("PAPER_MATCH_MAX_SURFACE", default=250)
 # (``suggested=False``) rather than surfaced with a low score.
 PAPER_MIN_MATCH_PERCENT = env.int("PAPER_MIN_MATCH_PERCENT", default=60)
 
+# Papers an institutional target (lab / lab project) draws from EACH of its
+# interest clusters (apps.content.pipeline.recommend_for_target). A lab's areas are
+# broad theme names rather than a person's specific keywords, so one theme's
+# vocabulary consistently sits closer to the day's literature; ranked globally it
+# took the whole model budget and the lab's other themes read as empty. Each theme
+# now contributes its own best N, all of which are scored by the model and shown —
+# a slate member is not withheld by PAPER_MIN_MATCH_PERCENT, since this run is what
+# chose it. Personal feeds are unaffected. Raise it for a wider lab feed at
+# proportionally more model calls (one call per theme).
+PAPER_CLUSTER_TOP_N = env.int("PAPER_CLUSTER_TOP_N", default=10)
+
 # Papers sign-up hybrid (apps.content.onboarding_match). A brand-new user is first
 # matched against the latest gather batch already in the store (no live scan). If
 # that yields at least PAPER_ONBOARDING_MIN_HIGH_QUALITY suggestions at or above
@@ -619,7 +630,45 @@ DISCORD_TOKEN_ENC_KEY = env("DISCORD_TOKEN_ENC_KEY", default="")
 # Absolute origin for links Mylo writes into Discord messages (digests, nudges).
 # Those are composed outside any HTTP request, so they cannot be derived from one
 # and genuinely need a configured origin: PUBLIC_BASE_URL, or an explicit pin.
-DISCORD_APP_BASE_URL = env_str("DISCORD_APP_BASE_URL", PUBLIC_BASE_URL).rstrip("/")
+#
+# One extra guard, because this origin leaves the building: a blank
+# PUBLIC_HOSTNAME leaves PUBLIC_BASE_URL on its localhost default, and a lab's
+# Discord channel then receives "http://localhost:11050/app/daily" — a link that
+# works only on the operator's own machine, with nothing in the stack objecting.
+# So when the resolved origin is a loopback host we substitute the deployment's
+# public origin instead. An explicit DISCORD_APP_BASE_URL still wins outright,
+# and nothing else in the app is affected — this only governs links written *into*
+# Discord, never what a browser is redirected to.
+PUBLIC_FALLBACK_HOSTNAME = env_str(
+    "PUBLIC_FALLBACK_HOSTNAME", "mycelium.brendondgr.com"
+)
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1"})
+
+
+def is_loopback_origin(url: str) -> bool:
+    """Whether ``url``'s host is a loopback address (so it must not be published)."""
+    host = re.sub(r"^[a-z]+://", "", str(url or "").strip(), flags=re.IGNORECASE)
+    host = host.split("/", 1)[0]
+    if host.startswith("["):  # bracketed IPv6 literal, e.g. [::1]:11050
+        host = host.split("]", 1)[0] + "]"
+    else:
+        host = host.split(":", 1)[0]
+    return host.casefold() in _LOOPBACK_HOSTS
+
+
+def outbound_base_url(configured: str) -> str:
+    """The origin safe to write into an outbound message, never a loopback one."""
+    configured = str(configured or "").rstrip("/")
+    if configured and not is_loopback_origin(configured):
+        return configured
+    if PUBLIC_FALLBACK_HOSTNAME:
+        return f"https://{PUBLIC_FALLBACK_HOSTNAME}"
+    return configured
+
+
+DISCORD_APP_BASE_URL = outbound_base_url(
+    env_str("DISCORD_APP_BASE_URL", PUBLIC_BASE_URL)
+)
 
 # The two OAuth callbacks are NOT configured here by default. OAuth2 forbids a
 # relative redirect_uri, but the next best thing is to derive it per request from

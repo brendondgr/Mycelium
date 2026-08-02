@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import WatchPreference
 from apps.content import embeddings
-from apps.content.digest_selection import split_by_floor
+from apps.content.digest_selection import renumber, split_by_floor
 from apps.content.models import ContentItem, RelevanceScore
 from apps.content.pipeline import (
     build_queries,
@@ -542,6 +542,72 @@ def test_paper_floor_hides_low_score_but_persists_verdict(settings) -> None:
     assert scores[strong.id].signals["match_percent"] == 90
     assert scores[weak.id].signals["suggested"] is False
     assert scores[weak.id].signals["match_percent"] == 10
+
+
+def test_renumber_closes_the_gaps_the_floor_leaves() -> None:
+    """Pure: ranks describe the list you are looking at, not the one before it."""
+    visible = [{"rank": 1}, {"rank": 2}, {"rank": 11}, {"rank": 12}]
+
+    assert [s["rank"] for s in renumber(visible)] == [1, 2, 3, 4]
+
+
+@pytest.mark.django_db
+def test_surfaced_papers_are_numbered_contiguously(settings) -> None:
+    """A lab reported papers arriving "1 → 2 → 11 → 12" — eight apparently missing.
+
+    Nothing was missing. Ranks are handed out over the whole surfaced set before
+    the match-percent floor removes the papers the model judged poorly, so the
+    survivors kept the numbering of a list they were no longer part of. The
+    numbering now describes what is actually shown.
+    """
+    import json
+
+    from apps.content.pipeline import _persist
+    from apps.content.suggest import generate_suggestions
+
+    settings.PAPER_MIN_MATCH_PERCENT = 60
+    user = User.objects.create_user("gaptest", password="x")
+    # Three go to the model (two pass, one is rejected); two never reach it and
+    # form the unscored tail that used to resume at a stranded number.
+    papers = [_paper(f"p{n}", f"Paper {n}") for n in range(5)]
+    verdicts = {"Paper 0": 90, "Paper 1": 80, "Paper 2": 20}
+
+    def complete(prompt: str) -> str:
+        rows = []
+        for line in prompt.splitlines():
+            if not line.startswith("["):
+                continue
+            idx = int(line[1 : line.index("]")])
+            for title, match in verdicts.items():
+                if title in line:
+                    rows.append({"paper": idx, "match": match, "reason": "Because."})
+        return json.dumps({"suggestions": rows})
+
+    pairs = [(paper, 1.0 - n / 10) for n, paper in enumerate(papers)]
+    suggestions = generate_suggestions({}, pairs, llm_limit=3, complete=complete)
+    # The bug, reproduced: pre-floor the survivors are 1, 2, 4, 5.
+    pre_floor = [
+        s["rank"] for s in suggestions if (s["match_percent"] or 100) >= 60
+    ]
+    assert pre_floor == [1, 2, 4, 5]
+
+    visible, hidden = split_by_floor(suggestions, 60)
+    renumber(visible)
+    assert len(visible) == 4 and len(hidden) == 1
+
+    _persist(
+        {"target_user": user},
+        [(paper, score, {}) for paper, score in pairs],
+        suggestions,
+        {s["content_id"] for s in visible},
+    )
+
+    shown = [
+        s.signals["rank"]
+        for s in RelevanceScore.objects.filter(target_user=user)
+        if s.signals["suggested"]
+    ]
+    assert sorted(shown) == [1, 2, 3, 4]
 
 
 @pytest.mark.django_db

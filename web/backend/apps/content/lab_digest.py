@@ -3,16 +3,24 @@
 A lab binds an updates channel in ``/setup``, sees a success confirmation, and — until
 now — waits forever. Nothing ever posted there. This is the missing send.
 
-Three things it deliberately is not:
+The post is **two parts**, in this order:
 
-* **Not the PDF report.** This lands in a shared channel people scroll past, not a
-  document someone sat down to read. Counts by theme, the day's best few items, and a
-  link into the portal for everything else.
-* **Not a second source of truth.** It reads the same ``RelevanceScore`` rows the
-  lab's feed and briefing read, so the channel post cannot drift from what the portal
-  shows.
-* **Not a ping.** ``allowed_mentions.parse`` stays empty and no member is tagged. It
-  is an update, not a summons.
+1. **A summary**: how much Mylo found, broken down by research theme — the theme's
+   name and its counts, nothing else. The first version of this named three example
+   items under every theme, which read as a wall of half-sentences and truncated
+   conference titles, and still answered neither "how much?" nor "what did it say?".
+2. **The written report itself**, the same one the lab reads in the portal, posted
+   into the same channel as follow-up messages. A summary that ends with a link is a
+   summary nobody follows.
+
+Two things it deliberately is not:
+
+* **Not a second source of truth.** It reads the same ``RelevanceScore`` rows and the
+  same ``DailyBriefing`` the lab's feed and portal read, so the channel post cannot
+  drift from what the portal shows.
+* **Not a ping.** ``allowed_mentions.parse`` stays empty and no member is tagged —
+  which matters more now that the report names who each item suits. It is an update,
+  not a summons.
 """
 
 from __future__ import annotations
@@ -29,22 +37,39 @@ from apps.integrations.services import outbox, resolve
 
 #: Themes shown before the post stops being scannable. Matches the cluster ceiling.
 MAX_THEMES = 8
-#: Items named per theme. Enough to be useful, few enough to skim.
-ITEMS_PER_THEME = 3
+
+#: Discord rejects a message body over 2000 characters with a 400, which the outbox
+#: classifies as permanent — a dead letter, not a retry. So the report is split well
+#: inside the limit rather than trusted to fit.
+REPORT_CHUNK_CHARS = 1900
+#: Messages one lab may post in a day. A report long enough to need more than this is
+#: better read in the portal than scrolled through in a channel.
+MAX_REPORT_CHUNKS = 8
 
 _CATEGORY_TYPE = {
     "papers": ContentItem.Type.PAPER,
     "grants": ContentItem.Type.GRANT,
     "conferences": ContentItem.Type.CONFERENCE,
+    "fellowships": ContentItem.Type.FELLOWSHIP,
 }
-_NOUN = {"papers": "paper", "grants": "grant", "conferences": "conference"}
+_NOUN = {
+    "papers": "paper",
+    "grants": "grant",
+    "conferences": "conference",
+    "fellowships": "fellowship",
+}
 
 
 @dataclass
 class ThemeBlock:
+    """One research theme's share of the day — its name and how much it found."""
+
     label: str
     counts: dict[str, int] = field(default_factory=dict)
-    items: list[dict] = field(default_factory=list)
+
+    @property
+    def total(self) -> int:
+        return sum(self.counts.values())
 
 
 @dataclass
@@ -55,7 +80,8 @@ class LabDigest:
     total: int = 0
     counts: dict[str, int] = field(default_factory=dict)
     themes: list[ThemeBlock] = field(default_factory=list)
-    ungrouped: list[dict] = field(default_factory=list)
+    #: Items carrying no theme attribution, as one count block (never itemised).
+    ungrouped: ThemeBlock | None = None
 
     @property
     def is_empty(self) -> bool:
@@ -68,6 +94,7 @@ def compile_lab_digest(lab, *, on: date | None = None) -> LabDigest:
     digest = LabDigest(lab_name=lab.name, lab_slug=lab.slug, on=on)
 
     by_theme: dict[str, ThemeBlock] = {}
+    ungrouped = ThemeBlock(label="Not yet themed")
     for category in LAB_BRIEFING_CATEGORIES:
         content_type = _CATEGORY_TYPE.get(category)
         if content_type is None:
@@ -78,38 +105,20 @@ def compile_lab_digest(lab, *, on: date | None = None) -> LabDigest:
         digest.counts[category] = len(scores)
         digest.total += len(scores)
         for score in scores:
-            row = _row(score, category)
             label = score.signals.get("cluster_label") or ""
-            if not label:
-                digest.ungrouped.append(row)
-                continue
-            block = by_theme.setdefault(label, ThemeBlock(label=label))
+            block = (
+                by_theme.setdefault(label, ThemeBlock(label=label))
+                if label
+                else ungrouped
+            )
             block.counts[category] = block.counts.get(category, 0) + 1
-            block.items.append(row)
 
-    # Strongest themes first: a channel post is skimmed, so the lab's busiest focus
-    # should be the first thing read, not whichever category happened to sort first.
-    ordered = sorted(by_theme.values(), key=lambda b: -sum(b.counts.values()))
-    for block in ordered[:MAX_THEMES]:
-        block.items.sort(key=lambda r: -r["match_percent"])
-        block.items = block.items[:ITEMS_PER_THEME]
+    # Busiest theme first: a channel post is skimmed, so the lab's main focus should
+    # be the first thing read, not whichever category happened to sort first.
+    ordered = sorted(by_theme.values(), key=lambda b: -b.total)
     digest.themes = ordered[:MAX_THEMES]
-    digest.ungrouped.sort(key=lambda r: -r["match_percent"])
-    digest.ungrouped = digest.ungrouped[:ITEMS_PER_THEME]
+    digest.ungrouped = ungrouped if ungrouped.total else None
     return digest
-
-
-def _row(score, category: str) -> dict:
-    meta = (score.content.metadata or {}) if score.content_id else {}
-    return {
-        "title": meta.get("title") or meta.get("name") or "Untitled",
-        "url": meta.get("website") or meta.get("pdf_url") or (
-            score.content.source_url if score.content_id else ""
-        ),
-        "category": category,
-        "match_percent": int(score.signals.get("match_percent") or 0),
-        "is_new": bool(score.signals.get("is_new")),
-    }
 
 
 # --------------------------------------------------------------------------- #
@@ -175,50 +184,45 @@ def queue_lab_digest(lab, *, on: date | None = None, digest: LabDigest | None = 
     )
 
 
-def digest_embed(digest: LabDigest) -> dict:
-    """The channel post: themes, counts, a few titles, and a way to see the rest.
+def _tally(counts: dict[str, int], *, bold: bool = False) -> str:
+    """"3 papers · 51 grants · 75 conferences" — the one phrasing used throughout."""
+    parts = []
+    for category, n in counts.items():
+        noun = _NOUN.get(category, category)
+        number = f"**{n}**" if bold else str(n)
+        parts.append(f"{number} {noun}{'' if n == 1 else 's'}")
+    return " · ".join(parts)
 
-    Kept well inside Discord's limits (25 fields, 6000 characters across embeds) by
-    construction rather than by truncation — at most eight themes of three items.
+
+def digest_embed(digest: LabDigest) -> dict:
+    """The channel post: how much Mylo found, by theme. Names and numbers only.
+
+    Example items used to sit under every theme — three truncated titles, each with a
+    percentage. In a channel that read as noise: too long to skim, too little to act
+    on, and it repeated what the report immediately below now says properly. A reader
+    scanning this wants one thing, which is where today's work landed.
+
+    Bounded by construction rather than truncation: at most eight themes plus one
+    "not yet themed" row, each a single line, well inside Discord's 25 fields and
+    6000 characters.
     """
-    tally = ", ".join(
-        f"**{n}** {_NOUN.get(cat, cat)}{'' if n == 1 else 's'}"
-        for cat, n in digest.counts.items()
-    )
     embed = {
         "title": f"{digest.lab_name} — what Mylo found today",
-        "description": tally or "A quiet day.",
+        "description": _tally(digest.counts, bold=True) or "A quiet day.",
         "color": 0x3B7A57,
         "fields": [],
     }
-    for block in digest.themes:
-        lines = []
-        for item in block.items:
-            mark = " · new" if item["is_new"] else ""
-            title = item["title"][:120]
-            line = f"[{title}]({item['url']})" if item["url"] else title
-            lines.append(f"{line} — {item['match_percent']}%{mark}")
-        counts = ", ".join(
-            f"{n} {_NOUN.get(cat, cat)}{'' if n == 1 else 's'}"
-            for cat, n in block.counts.items()
-        )
+    blocks = list(digest.themes)
+    # With no themes at all the "not yet themed" row would just restate the tally
+    # directly above it, so a lab that has not organised its focus simply gets the
+    # one line rather than the same numbers twice.
+    if digest.ungrouped is not None and blocks:
+        blocks.append(digest.ungrouped)
+    for block in blocks:
         embed["fields"].append(
             {
-                "name": f"{block.label} · {counts}",
-                "value": "\n".join(lines) or "—",
-                "inline": False,
-            }
-        )
-    if digest.ungrouped:
-        embed["fields"].append(
-            {
-                "name": "Also today",
-                "value": "\n".join(
-                    f"[{i['title'][:120]}]({i['url']}) — {i['match_percent']}%"
-                    if i["url"]
-                    else f"{i['title'][:120]} — {i['match_percent']}%"
-                    for i in digest.ungrouped
-                ),
+                "name": block.label,
+                "value": _tally(block.counts) or "—",
                 "inline": False,
             }
         )
@@ -226,16 +230,113 @@ def digest_embed(digest: LabDigest) -> dict:
     base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
     if base:
         embed["url"] = f"{base}/app/daily"
-    embed["footer"] = {"text": "The full report is in Mycelium."}
+    embed["footer"] = {"text": "See the full report below."}
     return embed
+
+
+# --------------------------------------------------------------------------- #
+# The written report, posted into the same channel
+# --------------------------------------------------------------------------- #
+def report_chunks(
+    body: str,
+    *,
+    limit: int = REPORT_CHUNK_CHARS,
+    max_chunks: int = MAX_REPORT_CHUNKS,
+    tail_url: str = "",
+) -> list[str]:
+    """Split a written report into Discord-sized messages on markdown boundaries.
+
+    Discord rejects anything over 2000 characters with a 400, which the outbox reads
+    as permanent — a dead letter rather than a retry — so this is a hard requirement,
+    not a nicety. Splitting prefers, in order: a blank line, the start of a ``##``
+    section, a line break, and only then a mid-line cut, so a section heading is
+    never orphaned from its paragraph.
+
+    A report needing more than ``max_chunks`` messages is cut there and closed with a
+    pointer to the portal: past a certain length a channel is the wrong medium, and
+    flooding it is worse than truncating.
+    """
+    text = (body or "").strip()
+    if not text:
+        return []
+
+    chunks: list[str] = []
+    while text and len(chunks) < max_chunks:
+        if len(text) <= limit:
+            chunks.append(text)
+            text = ""
+            break
+        window = text[:limit]
+        cut = window.rfind("\n\n")
+        if cut <= 0:
+            cut = window.rfind("\n## ")
+        if cut <= 0:
+            cut = window.rfind("\n")
+        if cut <= 0:
+            cut = limit
+        chunks.append(text[:cut].strip())
+        text = text[cut:].strip()
+
+    if text and chunks:
+        tail = "…the rest of today's report is in Mycelium."
+        if tail_url:
+            tail = f"…[the rest of today's report is in Mycelium]({tail_url})."
+        if len(chunks[-1]) + len(tail) + 2 <= limit:
+            chunks[-1] = f"{chunks[-1]}\n\n{tail}"
+        else:
+            chunks.append(tail)
+    return [c for c in chunks if c]
+
+
+def queue_lab_report(lab, *, on: date | None = None, body: str | None = None):
+    """Queue the lab's written report as follow-up messages in the same channel.
+
+    Ordering is the outbox's: rows are claimed by ``(next_attempt_at, id)`` and
+    delivered one at a time, so chunks enqueued after the summary arrive after it,
+    in order. Each chunk carries its own ``dedupe_key``
+    (``lab_report:<lab>:<date>:<i>``), so a re-run of the daily chain is a no-op per
+    chunk exactly as the summary is.
+
+    Returns the number of chunks queued. A lab with no written briefing yet queues
+    nothing — the summary still posts, and the day is not spent explaining absence.
+    """
+    on = on or timezone.localdate()
+    if body is None:
+        body = written_briefing_body(lab)
+    channel_id = resolve.get_updates_channel_for_lab(lab)
+    if not body.strip() or not channel_id:
+        return 0
+
+    base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
+    chunks = report_chunks(body, tail_url=f"{base}/app/daily" if base else "")
+    queued = 0
+    for index, chunk in enumerate(chunks, start=1):
+        # Belt and braces: the chunker is the only clamp between a written report and
+        # a permanent 400, so assert rather than trust.
+        assert len(chunk) <= REPORT_CHUNK_CHARS, "report chunk exceeds Discord's limit"
+        _row, created = outbox.enqueue_channel(
+            dedupe_key=f"lab_report:{lab.id}:{on:%Y-%m-%d}:{index}",
+            kind="lab_report",
+            channel_id=channel_id,
+            lab=lab,
+            content=chunk,
+            subject_type="lab_report",
+            subject_id=str(lab.id),
+        )
+        queued += int(bool(created))
+    return queued
+
+
+def written_briefing_body(lab) -> str:
+    """The lab's written daily report, or an empty string when none exists yet."""
+    briefing = DailyBriefing.objects.filter(lab=lab).first()
+    return (briefing.body or "") if briefing is not None else ""
 
 
 def written_briefing_line(lab) -> str:
     """The first line of the lab's written briefing, if one exists."""
-    briefing = DailyBriefing.objects.filter(lab=lab).first()
-    if briefing is None or not briefing.body:
-        return ""
-    for line in briefing.body.splitlines():
+    body = written_briefing_body(lab)
+    for line in body.splitlines():
         line = line.strip()
         if line and not line.startswith("#"):
             return line

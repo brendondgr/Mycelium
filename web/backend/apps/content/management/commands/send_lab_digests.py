@@ -1,8 +1,12 @@
 """Queue each entitled lab's daily digest to its bound Discord updates channel.
 
-Runs as a stage of the daily chain, after the briefings are written. Never raises:
-one lab's bad day must not sink the run, exactly as the personal report stage
-behaves.
+Two messages per lab, in order: the counts-by-theme summary, then the lab's written
+report — the same one it reads in the portal — split across follow-up messages in
+the same channel.
+
+Runs as a stage of the daily chain, after the briefings are written (which is what
+makes the report available to post at all). Never raises: one lab's bad day must not
+sink the run, exactly as the personal report stage behaves.
 
     manage.py send_lab_digests [--lab <slug>] [--dry-run]
 
@@ -39,6 +43,9 @@ class Command(BaseCommand):
             compile_lab_digest,
             eligible_labs,
             queue_lab_digest,
+            queue_lab_report,
+            report_chunks,
+            written_briefing_body,
         )
         from apps.content.tasks import select_targets
 
@@ -55,6 +62,7 @@ class Command(BaseCommand):
             "considered": len(labs),
             "eligible": len(eligible),
             "queued": 0,
+            "report_messages": 0,
             "empty": 0,
             "errors": 0,
         }
@@ -67,13 +75,18 @@ class Command(BaseCommand):
                     summary["empty"] += 1
                     continue
                 if options["dry_run"]:
+                    chunks = report_chunks(written_briefing_body(lab))
                     self.stdout.write(
                         f"{lab.slug}: {digest.total} item(s) across "
-                        f"{len(digest.themes)} theme(s)"
+                        f"{len(digest.themes)} theme(s); "
+                        f"{len(chunks)} report message(s)"
                     )
                     continue
                 _row, created = queue_lab_digest(lab, on=today, digest=digest)
                 summary["queued"] += int(bool(created))
+                # Enqueued after the summary so the outbox — which claims by
+                # (next_attempt_at, id) and delivers one at a time — posts it after.
+                summary["report_messages"] += queue_lab_report(lab, on=today)
             except Exception as exc:  # noqa: BLE001 — one lab never sinks the run
                 summary["errors"] += 1
                 self.stderr.write(self.style.WARNING(f"{lab.slug}: {exc}"))
@@ -82,6 +95,8 @@ class Command(BaseCommand):
         if summary["queued"]:
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"Queued {summary['queued']} lab digest(s); the outbox delivers."
+                    f"Queued {summary['queued']} lab digest(s) and "
+                    f"{summary['report_messages']} report message(s); "
+                    "the outbox delivers."
                 )
             )

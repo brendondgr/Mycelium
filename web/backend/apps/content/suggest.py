@@ -81,6 +81,7 @@ def generate_suggestions(
     prior: dict[str, dict] | None = None,
     new_ids: set[str] | None = None,
     cluster_by_id: dict[str, str] | None = None,
+    llm_groups: Sequence[Sequence[tuple[ContentItem, float]]] | None = None,
 ) -> list[Suggestion]:
     """Return the two-tier digest: every candidate surfaced, top ``llm_limit`` ranked.
 
@@ -101,6 +102,15 @@ def generate_suggestions(
     (``new_ids``) first. This mirrors the selection rule in
     :func:`apps.content.opportunity_llm.generate_opportunity_suggestions` — see
     :mod:`apps.content.digest_selection` for the shared ordering helper.
+
+    ``llm_groups`` hands the model *pre-chosen* slates instead of letting it take
+    the global top ``llm_limit`` — one group per interest cluster, so a lab's every
+    research theme gets its own share of the model's attention rather than losing
+    the whole budget to whichever theme happens to score highest today. Each group
+    is a separate call: the prompt stays short enough to answer in full, Mylo reads
+    one coherent strand of work at a time, and a model failure costs one theme
+    rather than the run. A paper appearing in two groups is scored once. Left
+    ``None``, selection is exactly as before.
     """
     candidates = list(hits)
     if not candidates:
@@ -111,13 +121,28 @@ def generate_suggestions(
 
     surfaced = candidates if surface_limit is None else candidates[:surface_limit]
 
-    unscored = [pair for pair in surfaced if str(pair[0].id) not in prior]
-    llm_subset = new_first(unscored, lambda pair: str(pair[0].id), new_ids)[:llm_limit]
+    groups = [surfaced] if llm_groups is None else [list(g) for g in llm_groups]
+    llm: list[Suggestion] = []
+    asked: set[str] = set()
+    scored_ids: set[str] = set()
+    for group in groups:
+        unscored = [
+            pair
+            for pair in group
+            if str(pair[0].id) not in prior and str(pair[0].id) not in asked
+        ]
+        subset = new_first(unscored, lambda pair: str(pair[0].id), new_ids)[:llm_limit]
+        if not subset:
+            continue
+        asked.update(str(item.id) for item, _score in subset)
+        for suggestion in _llm_suggestions(
+            interests, subset, limit=llm_limit, complete=complete,
+            cluster_by_id=cluster_by_id,
+        ):
+            if suggestion["content_id"] not in scored_ids:
+                scored_ids.add(suggestion["content_id"])
+                llm.append(suggestion)
 
-    llm = _llm_suggestions(
-        interests, llm_subset, limit=llm_limit, complete=complete,
-        cluster_by_id=cluster_by_id,
-    )
     now = timezone.now().isoformat()
     for suggestion in llm:
         suggestion["llm_scored_at"] = now
