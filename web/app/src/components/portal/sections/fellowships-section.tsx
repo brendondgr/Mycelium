@@ -28,6 +28,11 @@ import {
   type FellowshipFilterState,
 } from "@/components/portal/sections/fellowship-filters";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
+import {
+  FeedSearchBar,
+  clusterOptions,
+  matchesQuery,
+} from "@/components/portal/primitives/feed-search-bar";
 import { usePortal } from "@/components/portal/portal-context";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
 import { useFellowships, useLabRecommendations } from "@/lib/portal/hooks";
@@ -463,7 +468,8 @@ function PersonalFellowships() {
 }
 
 /**
- * The shared Fellowships feed body — the filter rail (tier, deadline, field,
+ * The shared Fellowships feed body — the keyword search and cluster chips at the
+ * top, the filter rail (tier, deadline, field,
  * stage, citizenship, award type, saved/new, sort), the loading/empty/error
  * states, and the infinite-scroll card list — used identically by the personal
  * page and a lab workspace. `labName`, when set, marks the lab variant and only
@@ -485,20 +491,58 @@ function FellowshipsFeed({
   const [filters, setFilters] = React.useState<FellowshipFilterState>(
     DEFAULT_FELLOWSHIP_FILTERS,
   );
+  const [query, setQuery] = React.useState("");
+  const [selectedCluster, setSelectedCluster] = React.useState<string | null>(
+    null,
+  );
+
+  const clusters = React.useMemo(() => clusterOptions(items), [items]);
+
+  // The top-of-page search and cluster chips scope the feed first; the rail's
+  // facets then narrow whatever that scope left, so its counts read against the
+  // theme the reader is looking at rather than the whole run.
+  const scoped = React.useMemo(() => {
+    const needle = query.trim();
+    if (!needle && !selectedCluster) return items;
+    return items.filter((item) => {
+      if (selectedCluster && item.cluster?.id !== selectedCluster) return false;
+      return matchesQuery(
+        [
+          item.title,
+          item.description,
+          item.reason,
+          item.fields.join(" "),
+          item.stages.join(" "),
+        ],
+        needle,
+      );
+    });
+  }, [items, query, selectedCluster]);
+
   const options = React.useMemo(
-    () => deriveFellowshipFilterOptions(items),
-    [items],
+    () => deriveFellowshipFilterOptions(scoped),
+    [scoped],
   );
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
   const visible = React.useMemo(
-    () => filterAndSortFellowships(items, filters, today),
-    [items, filters, today],
+    () => filterAndSortFellowships(scoped, filters, today),
+    [scoped, filters, today],
   );
+
+  const clearAll = () => {
+    setFilters(DEFAULT_FELLOWSHIP_FILTERS);
+    setQuery("");
+    setSelectedCluster(null);
+  };
 
   // Filters always search the full feed; the result set then streams in as the
   // reader scrolls, so reaching the bottom widens the list instead of ending it.
+  const resetKey = React.useMemo(
+    () => ({ filters, query, selectedCluster }),
+    [filters, query, selectedCluster],
+  );
   const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
-    useInfiniteReveal(visible, FELLOWSHIP_PAGE_SIZE, filters);
+    useInfiniteReveal(visible, FELLOWSHIP_PAGE_SIZE, resetKey);
 
   const showRail = !isLoading && !isError && items.length > 0;
 
@@ -526,6 +570,17 @@ function FellowshipsFeed({
         subtitle={subtitle}
       />
 
+      {items.length > 0 && !isLoading && !isError ? (
+        <FeedSearchBar
+          query={query}
+          onQueryChange={setQuery}
+          placeholder="Search fellowships by title, field, or description…"
+          clusters={clusters}
+          selectedCluster={selectedCluster}
+          onClusterChange={setSelectedCluster}
+        />
+      ) : null}
+
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (
           <FellowshipFilters
@@ -533,7 +588,7 @@ function FellowshipsFeed({
             filters={filters}
             onChange={setFilters}
             resultCount={visible.length}
-            totalCount={items.length}
+            totalCount={scoped.length}
           />
         ) : null}
 
@@ -577,11 +632,11 @@ function FellowshipsFeed({
             <EmptyState
               icon={<SparkleIcon size={26} className="text-accent" />}
               title="No fellowships match these filters"
-              description="Try widening your filters to see more of your matched fellowships."
+              description="Try a different search term, another cluster, or widen your filters to see more of your matched fellowships."
               action={
                 <button
                   type="button"
-                  onClick={() => setFilters(DEFAULT_FELLOWSHIP_FILTERS)}
+                  onClick={clearAll}
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
                 >
                   Clear all filters

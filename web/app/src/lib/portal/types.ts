@@ -293,8 +293,9 @@ type OpportunityBase = {
   saved: boolean;
   /** Slugs of the caller's *managed* labs that have already saved this item. */
   saved_labs: string[];
-  /** The attributed research-interest cluster (reserved — grants/conferences/
-   * fellowships don't send this yet; null/omitted renders no badge). */
+  /** The attributed research-interest cluster — the theme this opportunity was
+   * matched under. Null/omitted (a single- or no-cluster profile) renders no
+   * badge and leaves the cluster chip row on the feed empty. */
   cluster?: { id: string; label: string } | null;
 };
 

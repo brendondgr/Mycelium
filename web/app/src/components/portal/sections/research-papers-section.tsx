@@ -3,10 +3,13 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
-import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
+import {
+  FeedSearchBar,
+  clusterOptions,
+} from "@/components/portal/primitives/feed-search-bar";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
-import { DocumentIcon, SearchIcon } from "@/components/portal/icons";
+import { DocumentIcon } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
 import { SuggestionCard } from "@/components/portal/sections/suggestion-card";
@@ -52,21 +55,6 @@ const PRIMARY_COUNT = 10;
  * so the first slice is exactly the LLM-ranked picks and the cross-topics tail
  * follows on its own as the reader keeps going. */
 const PAPER_PAGE_SIZE = PRIMARY_COUNT;
-
-type ClusterOption = { id: string; label: string };
-
-/** The distinct clusters attributed across today's papers, in the order they
- * first appear — the source of the cluster filter row. A profile whose papers
- * carry no cluster at all yields an empty list and the row stays hidden. */
-function clusterSet(suggestions: Suggestion[]): ClusterOption[] {
-  const seen = new Map<string, string>();
-  for (const s of suggestions) {
-    if (s.cluster && !seen.has(s.cluster.id)) {
-      seen.set(s.cluster.id, s.cluster.label);
-    }
-  }
-  return Array.from(seen, ([id, label]) => ({ id, label }));
-}
 
 /**
  * The Research Papers page: the top papers ranked and percent-matched by the
@@ -167,8 +155,10 @@ function PapersFeed({
   );
   const [query, setQuery] = React.useState("");
 
-  const clusters = React.useMemo(() => clusterSet(suggestions), [suggestions]);
-  const showClusterTier = clusters.length >= 1;
+  const clusters = React.useMemo(
+    () => clusterOptions(suggestions),
+    [suggestions],
+  );
 
   const searchActive = query.trim() !== "";
   const filtering = searchActive || selectedCluster !== null;
@@ -204,11 +194,6 @@ function PapersFeed({
 
   const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
     useInfiniteReveal(feed, PAPER_PAGE_SIZE, `${query}|${selectedCluster ?? ""}`);
-
-  /** Selecting a cluster narrows the feed to it; re-selecting clears. */
-  const toggleCluster = (clusterId: string) => {
-    setSelectedCluster((prev) => (prev === clusterId ? null : clusterId));
-  };
 
   const subtitle: React.ReactNode = (() => {
     if (isLoading) return "Gathering today's papers…";
@@ -255,80 +240,14 @@ function PapersFeed({
       ) : null}
 
       {suggestions.length > 0 ? (
-        <div className="mb-5 space-y-3">
-          <label className="relative block">
-            <span className="sr-only">Search papers by title or abstract</span>
-            <SearchIcon
-              size={16}
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search papers by title or abstract…"
-              className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] py-2 pl-9 pr-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[color-mix(in_srgb,var(--primary)_45%,var(--border))] focus:outline-none"
-            />
-          </label>
-
-          {/* Clusters, and only clusters. The per-interest chip tier that used
-              to sit under this row restated what the cluster already says and
-              crowded the top of the page, so the rail stays one line: pick a
-              theme, or see everything. */}
-          {showClusterTier ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
-                Clusters
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedCluster(null)}
-                aria-pressed={selectedCluster === null}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  selectedCluster === null
-                    ? "border-[color-mix(in_srgb,var(--primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] text-primary"
-                    : "border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                All
-              </button>
-              {clusters.map((cluster) => {
-                const on = selectedCluster === cluster.id;
-                const token = clusterAccentVar(cluster.id);
-                return (
-                  <button
-                    key={cluster.id}
-                    type="button"
-                    onClick={() => toggleCluster(cluster.id)}
-                    aria-pressed={on}
-                    className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors"
-                    style={
-                      on
-                        ? {
-                            borderColor: `color-mix(in srgb, var(${token}) 45%, transparent)`,
-                            backgroundColor: `color-mix(in srgb, var(${token}) 14%, transparent)`,
-                            color: `var(${token})`,
-                          }
-                        : {
-                            borderColor: "var(--border)",
-                            backgroundColor: "var(--surface-alt)",
-                            color: "var(--text-secondary)",
-                          }
-                    }
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: `var(${token})` }}
-                    />
-                    {cluster.label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
+        <FeedSearchBar
+          query={query}
+          onQueryChange={setQuery}
+          placeholder="Search papers by title or abstract…"
+          clusters={clusters}
+          selectedCluster={selectedCluster}
+          onClusterChange={setSelectedCluster}
+        />
       ) : null}
 
       {isLoading ? (

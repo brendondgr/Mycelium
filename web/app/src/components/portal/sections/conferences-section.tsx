@@ -29,6 +29,11 @@ import {
   type ConferenceFilterState,
 } from "@/components/portal/sections/conference-filters";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
+import {
+  FeedSearchBar,
+  clusterOptions,
+  matchesQuery,
+} from "@/components/portal/primitives/feed-search-bar";
 import { usePortal } from "@/components/portal/portal-context";
 import { useConferences, useLabRecommendations } from "@/lib/portal/hooks";
 import {
@@ -295,7 +300,8 @@ function PersonalConferences() {
 }
 
 /**
- * The shared Conferences feed body — the filter rail, infinite-scroll card list,
+ * The shared Conferences feed body — the keyword search and cluster chips at the
+ * top, the filter rail, infinite-scroll card list,
  * and end-of-feed marker — used identically by the personal page and a lab workspace. `labName`, when
  * set, marks the lab variant and only swaps the surrounding copy; the structure,
  * filters, and card layout are the same in both.
@@ -319,20 +325,61 @@ function ConferencesFeed({
   const [filters, setFilters] = React.useState<ConferenceFilterState>(
     DEFAULT_CONFERENCE_FILTERS,
   );
-  const options = React.useMemo(
-    () => deriveConferenceFilterOptions(conferences),
+  const [query, setQuery] = React.useState("");
+  const [selectedCluster, setSelectedCluster] = React.useState<string | null>(
+    null,
+  );
+
+  const clusters = React.useMemo(
+    () => clusterOptions(conferences),
     [conferences],
+  );
+
+  // The top-of-page search and cluster chips scope the feed first; the rail's
+  // facets then narrow whatever that scope left, so its counts read against the
+  // theme the reader is looking at rather than the whole run.
+  const scoped = React.useMemo(() => {
+    const needle = query.trim();
+    if (!needle && !selectedCluster) return conferences;
+    return conferences.filter((conf) => {
+      if (selectedCluster && conf.cluster?.id !== selectedCluster) return false;
+      return matchesQuery(
+        [
+          conf.title,
+          conf.description,
+          conf.reason,
+          conf.location,
+          conf.matched_subjects,
+        ],
+        needle,
+      );
+    });
+  }, [conferences, query, selectedCluster]);
+
+  const options = React.useMemo(
+    () => deriveConferenceFilterOptions(scoped),
+    [scoped],
   );
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
   const visible = React.useMemo(
-    () => filterAndSortConferences(conferences, filters, today),
-    [conferences, filters, today],
+    () => filterAndSortConferences(scoped, filters, today),
+    [scoped, filters, today],
   );
+
+  const clearAll = () => {
+    setFilters(DEFAULT_CONFERENCE_FILTERS);
+    setQuery("");
+    setSelectedCluster(null);
+  };
 
   // Filters always search the full feed; the result set then streams in as the
   // reader scrolls, so reaching the bottom widens the list instead of ending it.
+  const resetKey = React.useMemo(
+    () => ({ filters, query, selectedCluster }),
+    [filters, query, selectedCluster],
+  );
   const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
-    useInfiniteReveal(visible, CONFERENCE_PAGE_SIZE, filters);
+    useInfiniteReveal(visible, CONFERENCE_PAGE_SIZE, resetKey);
 
   const showRail = !isLoading && !isError && conferences.length > 0;
 
@@ -365,6 +412,17 @@ function ConferencesFeed({
         subtitle={subtitle}
       />
 
+      {conferences.length > 0 && !isLoading && !isError ? (
+        <FeedSearchBar
+          query={query}
+          onQueryChange={setQuery}
+          placeholder="Search conferences by title, location, or subject…"
+          clusters={clusters}
+          selectedCluster={selectedCluster}
+          onClusterChange={setSelectedCluster}
+        />
+      ) : null}
+
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (
           <ConferenceFilters
@@ -372,7 +430,7 @@ function ConferencesFeed({
             filters={filters}
             onChange={setFilters}
             resultCount={visible.length}
-            totalCount={conferences.length}
+            totalCount={scoped.length}
           />
         ) : null}
 
@@ -417,11 +475,11 @@ function ConferencesFeed({
             <EmptyState
               icon={<ConferenceIcon size={28} />}
               title="No conferences match these filters"
-              description="Try widening your filters to see more of your matched conferences."
+              description="Try a different search term, another cluster, or widen your filters to see more of your matched conferences."
               action={
                 <button
                   type="button"
-                  onClick={() => setFilters(DEFAULT_CONFERENCE_FILTERS)}
+                  onClick={clearAll}
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
                 >
                   Clear all filters

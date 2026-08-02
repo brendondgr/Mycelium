@@ -27,6 +27,11 @@ import {
   type GrantFilterState,
 } from "@/components/portal/sections/grant-filters";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
+import {
+  FeedSearchBar,
+  clusterOptions,
+  matchesQuery,
+} from "@/components/portal/primitives/feed-search-bar";
 import { usePortal } from "@/components/portal/portal-context";
 import { useGrants, useLabRecommendations } from "@/lib/portal/hooks";
 import {
@@ -275,7 +280,8 @@ function PersonalOpportunities() {
 }
 
 /**
- * The shared Grants feed body — the filter rail, infinite-scroll card list, and
+ * The shared Grants feed body — the keyword search and cluster chips at the top,
+ * the filter rail, the infinite-scroll card list, and the
  * end-of-feed marker — used identically by the personal page and a lab workspace. `labName`, when
  * set, marks the lab variant and only swaps the surrounding copy; the structure,
  * filters, and card layout are the same in both.
@@ -297,21 +303,52 @@ function GrantsFeed({
   const [filters, setFilters] = React.useState<GrantFilterState>(
     DEFAULT_GRANT_FILTERS,
   );
+  const [query, setQuery] = React.useState("");
+  const [selectedCluster, setSelectedCluster] = React.useState<string | null>(
+    null,
+  );
+
+  const clusters = React.useMemo(() => clusterOptions(grants), [grants]);
+
+  // The top-of-page search and cluster chips scope the feed first; the rail's
+  // facets then narrow whatever that scope left, so its counts read against the
+  // theme the reader is looking at rather than the whole run.
+  const scoped = React.useMemo(() => {
+    const needle = query.trim();
+    if (!needle && !selectedCluster) return grants;
+    return grants.filter((g) => {
+      if (selectedCluster && g.cluster?.id !== selectedCluster) return false;
+      return matchesQuery(
+        [g.title, g.description, g.reason, g.sponsor, g.matched_topics],
+        needle,
+      );
+    });
+  }, [grants, query, selectedCluster]);
 
   const options = React.useMemo(
-    () => deriveGrantFilterOptions(grants),
-    [grants],
+    () => deriveGrantFilterOptions(scoped),
+    [scoped],
   );
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
   const visible = React.useMemo(
-    () => filterAndSortGrants(grants, filters, today),
-    [grants, filters, today],
+    () => filterAndSortGrants(scoped, filters, today),
+    [scoped, filters, today],
   );
+
+  const clearAll = () => {
+    setFilters(DEFAULT_GRANT_FILTERS);
+    setQuery("");
+    setSelectedCluster(null);
+  };
 
   // Filters always search the full feed; the result set then streams in as the
   // reader scrolls, so reaching the bottom widens the list instead of ending it.
+  const resetKey = React.useMemo(
+    () => ({ filters, query, selectedCluster }),
+    [filters, query, selectedCluster],
+  );
   const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
-    useInfiniteReveal(visible, GRANT_PAGE_SIZE, filters);
+    useInfiniteReveal(visible, GRANT_PAGE_SIZE, resetKey);
 
   const showRail = !isLoading && !isError && grants.length > 0;
 
@@ -338,6 +375,18 @@ function GrantsFeed({
         title="Grants"
         subtitle={subtitle}
       />
+
+      {grants.length > 0 && !isLoading && !isError ? (
+        <FeedSearchBar
+          query={query}
+          onQueryChange={setQuery}
+          placeholder="Search grants by title, sponsor, or description…"
+          clusters={clusters}
+          selectedCluster={selectedCluster}
+          onClusterChange={setSelectedCluster}
+        />
+      ) : null}
+
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (
           <GrantFilters
@@ -345,7 +394,7 @@ function GrantsFeed({
             filters={filters}
             onChange={setFilters}
             resultCount={visible.length}
-            totalCount={grants.length}
+            totalCount={scoped.length}
           />
         ) : null}
 
@@ -389,11 +438,11 @@ function GrantsFeed({
             <EmptyState
               icon={<BankIcon size={26} className="text-accent" />}
               title="No grants match these filters"
-              description="Try widening your filters to see more of your matched funding opportunities."
+              description="Try a different search term, another cluster, or widen your filters to see more of your matched funding opportunities."
               action={
                 <button
                   type="button"
-                  onClick={() => setFilters(DEFAULT_GRANT_FILTERS)}
+                  onClick={clearAll}
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
                 >
                   Clear all filters
