@@ -600,6 +600,9 @@ function ProjectDigestCard({
   const fellowships: FellowshipOpportunity[] = digest?.fellowships ?? [];
   const conferences: ConferenceOpportunity[] = digest?.conferences ?? [];
   const total = papers.length + grants.length + fellowships.length + conferences.length;
+  // Who each pick is for — the project's lab members (or its own, for a personal
+  // project). Same layer the lab feeds carry, on the same cards.
+  const forItem = digest?.recommended_for;
 
   return (
     <Card className="overflow-hidden">
@@ -639,23 +642,45 @@ function ProjectDigestCard({
             title="Papers"
             items={papers}
             render={(paper) => (
-              <SuggestionCard key={paper.content_id} suggestion={paper} />
+              <SuggestionCard
+                key={paper.content_id}
+                suggestion={paper}
+                recommendedFor={forItem?.[paper.content_id]}
+              />
             )}
           />
           <DigestGroup
             title="Grants"
             items={grants}
-            render={(grant) => <GrantRow key={grant.content_id} grant={grant} />}
+            render={(grant) => (
+              <GrantRow
+                key={grant.content_id}
+                grant={grant}
+                recommendedFor={forItem?.[grant.content_id]}
+              />
+            )}
           />
           <DigestGroup
             title="Fellowships"
             items={fellowships}
-            render={(item) => <FellowshipRow key={item.content_id} item={item} />}
+            render={(item) => (
+              <FellowshipRow
+                key={item.content_id}
+                item={item}
+                recommendedFor={forItem?.[item.content_id]}
+              />
+            )}
           />
           <DigestGroup
             title="Conferences"
             items={conferences}
-            render={(conf) => <ConferenceCard key={conf.content_id} conf={conf} />}
+            render={(conf) => (
+              <ConferenceCard
+                key={conf.content_id}
+                conf={conf}
+                recommendedFor={forItem?.[conf.content_id]}
+              />
+            )}
           />
         </div>
       )}

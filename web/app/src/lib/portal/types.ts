@@ -355,36 +355,32 @@ export type InterestedMember = {
   match_percent: number;
 };
 
-/** A lab member eligible for a fellowship who opted into lab-visible eligibility. */
-export type EligibleMember = {
+/**
+ * One member an item is recommended to — the "who is this for?" layer that a lab
+ * feed has and a personal feed does not.
+ *
+ * `basis` says *on what grounds*, and the card reads it rather than guessing:
+ * - `profile_fit` — Mylo matched the item to this member's own research; `reason`
+ *   is his sentence saying why (or the deterministic overlap line when the model
+ *   was unavailable, which `source` distinguishes).
+ * - `own_match`   — the item independently cleared this member's personal feed,
+ *   so `match_percent` is their own score for it.
+ * - `eligible`    — fellowships only: this member personally qualifies (`tier`),
+ *   disclosed only for members who opted into lab-visible eligibility.
+ */
+export type RecommendedMember = {
   username: string;
   name: string;
   initials: string;
-  tier: "qualified" | "conditional";
+  /** Profile-similarity percent, or null when only a non-fit basis applies. */
+  fit: number | null;
+  reason: string;
+  source: "llm" | "similarity" | "own_match" | "eligibility";
+  basis: Array<"profile_fit" | "own_match" | "eligible">;
+  match_percent?: number;
+  tier?: "qualified" | "conditional";
 };
 
-/** A fellowship a lab can act on, named by its eligible + consenting members. */
-export type LabFellowship = {
-  content_id: string;
-  title: string;
-  url: string;
-  award_class: string;
-  amount: string;
-  deadline_date: string;
-  deadline_type: string;
-  fields: string[];
-  /** Only members who qualify AND opted in — never who was ineligible (D-11). */
-  eligible: EligibleMember[];
-};
-
-/**
- * A lab's or a project's combined recommendations (from
- * `/api/labs/<slug>/recommendations/` and `/api/projects/<id>/recommendations/`).
- * Papers + grants + conferences the target matched, plus per-area counts for the
- * overview stat cards. `fellowships` surface as a union of member matches, naming
- * only members who are eligible and consented to lab-visible eligibility.
- * `interested` maps a content id to the members who personally matched it strongly.
- */
 /** Cumulative "found in the last …" totals for one area (today ≤ week ≤ month ≤ year). */
 export type WindowCounts = {
   today: number;
@@ -404,6 +400,17 @@ export type PersonalWindowCounts = {
   window_counts: WindowCountsMap;
 };
 
+/**
+ * A lab's or a project's combined recommendations (from
+ * `/api/labs/<slug>/recommendations/` and `/api/projects/<id>/recommendations/`).
+ *
+ * All four areas are the target's own matches in the *same* card shapes the
+ * personal pages render — a lab feed is structurally identical to its personal
+ * counterpart, fellowships included. What a lab adds is the layer on top:
+ * `recommended_for` maps a content id to the members Mylo judges it most
+ * applicable to, and `interested` to the members who matched it strongly on their
+ * own account.
+ */
 export type TargetRecommendations = {
   generated_at: string | null;
   counts: {
@@ -417,22 +424,18 @@ export type TargetRecommendations = {
   papers: Suggestion[];
   grants: GrantOpportunity[];
   conferences: ConferenceOpportunity[];
-  fellowships: LabFellowship[];
+  fellowships: FellowshipOpportunity[];
   interested: Record<string, InterestedMember[]>;
+  recommended_for: Record<string, RecommendedMember[]>;
 };
 
 /**
  * A project's combined recommendations (from
  * `/api/projects/<id>/recommendations/`, optionally `?digest=1` for the
  * capped picks — top 10 papers / 5 grants / 5 fellowships / 5 conferences,
- * passed-deadline conferences dropped). Same shape as `TargetRecommendations`
- * except `fellowships`: unlike a lab (a member-eligibility union), a project's
- * fellowships are its own interest-matched opportunity cards — the same shape
- * the personal/lab Fellowships page renders.
+ * passed-deadline conferences dropped). Identical in shape to a lab's.
  */
-export type ProjectRecommendations = Omit<TargetRecommendations, "fellowships"> & {
-  fellowships: FellowshipOpportunity[];
-};
+export type ProjectRecommendations = TargetRecommendations;
 
 /**
  * One paper shared into a project's team feed (from

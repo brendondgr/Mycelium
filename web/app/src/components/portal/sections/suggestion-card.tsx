@@ -15,7 +15,8 @@ import {
   NewTag,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
-import type { Suggestion } from "@/lib/portal/types";
+import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
+import type { RecommendedMember, Suggestion } from "@/lib/portal/types";
 
 /** Where we found it, and where it was published — one line. */
 function provenanceLine(suggestion: Suggestion): string {
@@ -50,8 +51,17 @@ function bylineLine(suggestion: Suggestion): string {
  * when Mylo authored the judgement, his portrait as attribution; the
  * cross-embedding tail (no model percent) falls back to its transformer
  * `embedding_match`. Every scored feed card in the workspace shares this shape.
+ *
+ * `recommendedFor` is the lab-only "who is this for?" strip. A personal feed
+ * never passes it and renders exactly as before.
  */
-export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
+export function SuggestionCard({
+  suggestion,
+  recommendedFor,
+}: {
+  suggestion: Suggestion;
+  recommendedFor?: RecommendedMember[];
+}) {
   const isMylo = suggestion.origin === "llm";
   const percent = suggestion.match_percent ?? suggestion.embedding_match;
   const provenance = provenanceLine(suggestion);
@@ -146,6 +156,8 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
           </p>
         )
       ) : null}
+
+      <RecommendedFor members={recommendedFor} />
 
       {suggestion.url ? (
         <a

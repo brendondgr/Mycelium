@@ -9,7 +9,12 @@ import {
 import { Card } from "@/components/portal/primitives/card";
 import { MatchRing } from "@/components/portal/primitives/match-ring";
 import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
-import type { SavedDeadline, Suggestion } from "@/lib/portal/types";
+import { Avatar } from "@/components/portal/primitives/avatar";
+import type {
+  RecommendedMember,
+  SavedDeadline,
+  Suggestion,
+} from "@/lib/portal/types";
 
 /**
  * The Overview's right-column panels — top papers and nearest deadlines — shared
@@ -46,9 +51,12 @@ function PanelHeader({ title, onView }: { title: string; onView: () => void }) {
 export function TopPapersPanel({
   suggestions,
   isLoading,
+  recommendedFor,
 }: {
   suggestions: Suggestion[];
   isLoading: boolean;
+  /** Lab-only: content id → who Mylo judges each paper is for. */
+  recommendedFor?: Record<string, RecommendedMember[]>;
 }) {
   const { goToSection } = usePortal();
   const top = suggestions.slice(0, 3);
@@ -81,8 +89,11 @@ export function TopPapersPanel({
                     {paper.rank}
                   </span>
                 ) : null}
-                <span className="min-w-0 text-sm font-medium leading-snug text-[var(--text-primary)]">
-                  {paper.headline || paper.title}
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium leading-snug text-[var(--text-primary)]">
+                    {paper.headline || paper.title}
+                  </span>
+                  <ForMembers members={recommendedFor?.[paper.content_id]} />
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
@@ -108,6 +119,36 @@ export function TopPapersPanel({
         </ul>
       )}
     </Card>
+  );
+}
+
+/**
+ * The overview's compact form of the "who is this for?" layer: just the faces
+ * and names, no rationale — the feed card carries the full strip. Renders
+ * nothing on a personal overview, which never passes the map.
+ */
+function ForMembers({ members }: { members?: RecommendedMember[] }) {
+  if (!members || members.length === 0) return null;
+  const shown = members.slice(0, 3);
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-1">
+      <span className="text-[11px] text-[var(--text-secondary)]">For</span>
+      {shown.map((member) => (
+        <span
+          key={member.username}
+          title={member.reason || member.name}
+          className="inline-flex items-center gap-1 rounded-full bg-surface-alt px-1.5 py-[1px] text-[11px] font-medium text-[var(--text-secondary)]"
+        >
+          <Avatar initials={member.initials} seed={member.username} size={14} />
+          {member.name}
+        </span>
+      ))}
+      {members.length > shown.length ? (
+        <span className="text-[11px] text-[var(--text-secondary)]">
+          +{members.length - shown.length}
+        </span>
+      ) : null}
+    </span>
   );
 }
 

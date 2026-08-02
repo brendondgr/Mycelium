@@ -126,6 +126,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
           <TopPapersPanel
             suggestions={rec?.papers ?? []}
             isLoading={recQuery.isLoading}
+            recommendedFor={rec?.recommended_for}
           />
           <DeadlinesPanel
             items={savesQuery.data?.items ?? []}

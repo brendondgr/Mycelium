@@ -35,7 +35,12 @@ import {
   revealDelay,
   useInfiniteReveal,
 } from "@/lib/portal/use-infinite-reveal";
-import type { ConferenceOpportunity, MyLab } from "@/lib/portal/types";
+import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
+import type {
+  ConferenceOpportunity,
+  MyLab,
+  RecommendedMember,
+} from "@/lib/portal/types";
 
 /** How many conferences each infinite-scroll slice reveals. */
 const CONFERENCE_PAGE_SIZE = 24;
@@ -65,10 +70,13 @@ function OpenChip({ label }: { label: string }) {
 export function ConferenceCard({
   conf,
   remindLabSlug,
+  recommendedFor,
 }: {
   conf: ConferenceOpportunity;
   /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
   remindLabSlug?: string;
+  /** Lab-only: who Mylo judges this most applicable to. Personal feeds omit it. */
+  recommendedFor?: RecommendedMember[];
 }) {
   const where = conf.location || conf.country;
   // Use the semicolon-delimited subject categories, not the space-joined
@@ -197,6 +205,8 @@ export function ConferenceCard({
         </div>
       ) : null}
 
+      <RecommendedFor members={recommendedFor} />
+
       {conf.url ? (
         <a
           href={conf.url}
@@ -265,6 +275,7 @@ function LabConferencesFeed({ lab }: { lab: MyLab }) {
       isLoading={isLoading}
       isError={isError}
       generatedAt={data?.generated_at ?? null}
+      recommendedFor={data?.recommended_for}
       labName={lab.name}
     />
   );
@@ -294,12 +305,15 @@ function ConferencesFeed({
   isLoading,
   isError,
   generatedAt,
+  recommendedFor,
   labName,
 }: {
   conferences: ConferenceOpportunity[];
   isLoading: boolean;
   isError: boolean;
   generatedAt: string | null;
+  /** Lab-only: content id → the members Mylo judges each conference is for. */
+  recommendedFor?: Record<string, RecommendedMember[]>;
   labName?: string;
 }) {
   const [filters, setFilters] = React.useState<ConferenceFilterState>(
@@ -429,7 +443,10 @@ function ConferencesFeed({
                       ),
                     }}
                   >
-                    <ConferenceCard conf={conf} />
+                    <ConferenceCard
+                      conf={conf}
+                      recommendedFor={recommendedFor?.[conf.content_id]}
+                    />
                   </div>
                 ))}
               </div>

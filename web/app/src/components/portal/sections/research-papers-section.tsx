@@ -15,7 +15,11 @@ import {
   revealDelay,
   useInfiniteReveal,
 } from "@/lib/portal/use-infinite-reveal";
-import type { MyLab, Suggestion } from "@/lib/portal/types";
+import type {
+  MyLab,
+  RecommendedMember,
+  Suggestion,
+} from "@/lib/portal/types";
 
 function formatWhen(iso: string | null): string {
   if (!iso) return "";
@@ -91,6 +95,7 @@ function LabPapersFeed({ lab }: { lab: MyLab }) {
       isLoading={isLoading}
       isError={isError}
       generatedAt={data?.generated_at ?? null}
+      recommendedFor={data?.recommended_for}
       labName={lab.name}
     />
   );
@@ -144,6 +149,7 @@ function PapersFeed({
   scanning = false,
   generatedAt = null,
   matchThreshold,
+  recommendedFor,
   labName,
 }: {
   suggestions: Suggestion[];
@@ -152,6 +158,8 @@ function PapersFeed({
   scanning?: boolean;
   generatedAt?: string | null;
   matchThreshold?: number;
+  /** Lab-only: content id → the members Mylo judges each paper is for. */
+  recommendedFor?: Record<string, RecommendedMember[]>;
   labName?: string;
 }) {
   const [selectedCluster, setSelectedCluster] = React.useState<string | null>(
@@ -382,7 +390,10 @@ function PapersFeed({
                     animationDelay: revealDelay(index, PAPER_PAGE_SIZE, 60),
                   }}
                 >
-                  <SuggestionCard suggestion={suggestion} />
+                  <SuggestionCard
+                    suggestion={suggestion}
+                    recommendedFor={recommendedFor?.[suggestion.content_id]}
+                  />
                 </div>
               </React.Fragment>
             ))}

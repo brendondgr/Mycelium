@@ -29,7 +29,7 @@ import {
 } from "@/components/portal/sections/fellowship-filters";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
 import { usePortal } from "@/components/portal/portal-context";
-import { Pill } from "@/components/portal/primitives/pill";
+import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
 import { useFellowships, useLabRecommendations } from "@/lib/portal/hooks";
 import {
   revealDelay,
@@ -37,8 +37,8 @@ import {
 } from "@/lib/portal/use-infinite-reveal";
 import type {
   FellowshipOpportunity,
-  LabFellowship,
   MyLab,
+  RecommendedMember,
 } from "@/lib/portal/types";
 
 /** How many fellowships each infinite-scroll slice reveals. */
@@ -99,8 +99,15 @@ function isSoftDeadline(item: FellowshipOpportunity): boolean {
  *   - "conditional" → "Possible fit" (amber)
  *
  * The tier is communicated via label + color-dot (never color alone).
+ *
+ * Renders nothing without a tier. A lab or project fellowship is ranked on
+ * research fit alone — an institution has no citizenship or career stage — so
+ * there is no eligibility verdict to report, and the badge must stay silent
+ * rather than call every such card a hedged "Possible fit". Who is personally
+ * eligible is said by name in the recommendation strip instead.
  */
 function EligibilityBadge({ item }: { item: FellowshipOpportunity }) {
+  if (!item.tier) return null;
   const isQualified = item.tier === "qualified";
   return (
     <span
@@ -167,10 +174,13 @@ function AwardClassChip({ awardClass }: { awardClass: string }) {
 export function FellowshipRow({
   item,
   remindLabSlug,
+  recommendedFor,
 }: {
   item: FellowshipOpportunity;
   /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
   remindLabSlug?: string;
+  /** Lab-only: who Mylo judges this most applicable to. Personal feeds omit it. */
+  recommendedFor?: RecommendedMember[];
 }) {
   const deadlineLabel = fellowshipDeadlineLabel(item);
   const softDl = isSoftDeadline(item);
@@ -333,6 +343,8 @@ export function FellowshipRow({
         </div>
       ) : null}
 
+      <RecommendedFor members={recommendedFor} />
+
       {/* External link */}
       {item.url ? (
         <a
@@ -376,7 +388,13 @@ function FellowshipSkeleton() {
 // Animated list wrapper
 // --------------------------------------------------------------------------- //
 
-function FellowshipList({ items }: { items: FellowshipOpportunity[] }) {
+function FellowshipList({
+  items,
+  recommendedFor,
+}: {
+  items: FellowshipOpportunity[];
+  recommendedFor?: Record<string, RecommendedMember[]>;
+}) {
   return (
     <div className="space-y-3.5">
       {items.map((item, index) => (
@@ -385,7 +403,10 @@ function FellowshipList({ items }: { items: FellowshipOpportunity[] }) {
           className="portal-fade-up"
           style={{ animationDelay: revealDelay(index, FELLOWSHIP_PAGE_SIZE) }}
         >
-          <FellowshipRow item={item} />
+          <FellowshipRow
+            item={item}
+            recommendedFor={recommendedFor?.[item.content_id]}
+          />
         </div>
       ))}
     </div>
@@ -397,136 +418,19 @@ function FellowshipList({ items }: { items: FellowshipOpportunity[] }) {
 // --------------------------------------------------------------------------- //
 
 /**
- * The Fellowships page: matched fellowships with a deterministic eligibility
- * rule engine. Shows a left-hand filter rail (tier, deadline, field, stage,
- * citizenship, award type, saved/new, sort) with instant in-memory filtering.
- * The results scroll infinitely, revealing a slice at a time as the reader nears
- * the bottom, matching the Grants page pattern.
+ * The Fellowships page — one page, two scopes.
+ *
+ * A lab's Fellowships feed is structurally identical to the personal one: the
+ * same filter rail, the same infinite-scroll list, the same card. It has to be —
+ * a lab has no citizenship or career stage, so its fellowships are ranked on
+ * research fit exactly the way its papers, grants and conferences are, and there
+ * is no reason for the page to look like a different product. `labName` swaps the
+ * copy and nothing else.
+ *
+ * The one lab-only addition is the recommendation strip on each card: who in the
+ * lab Mylo judges the fellowship most applicable to, and — for members who opted
+ * into sharing it — who is personally eligible.
  */
-/** One lab fellowship: a fellowship a member is eligible for (union of members). */
-function LabFellowshipRow({ item }: { item: LabFellowship }) {
-  return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between gap-3">
-        {item.url ? (
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noreferrer"
-            className="min-w-0 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)] hover:text-primary"
-          >
-            {item.title}
-          </a>
-        ) : (
-          <h3 className="min-w-0 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
-            {item.title}
-          </h3>
-        )}
-        {item.deadline_date ? (
-          <span className="shrink-0 text-[12px] text-[var(--text-secondary)]">
-            Deadline {item.deadline_date}
-          </span>
-        ) : null}
-      </div>
-      {item.amount ? (
-        <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
-          {item.amount}
-        </p>
-      ) : null}
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
-          Eligible:
-        </span>
-        {item.eligible.map((member) => (
-          <Pill key={member.username} tone="neutral">
-            {member.name}{" "}
-            <span className="text-[var(--text-secondary)]">
-              ({member.tier})
-            </span>
-          </Pill>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-/**
- * The lab-scoped Fellowships feed — the union of eligible, consenting members.
- * The lab payload is a distinct data model (fellowships members are eligible
- * for, with per-member eligibility) rather than the caller's own eligibility, so
- * it keeps its member-eligibility card; it reuses the personal page's outer
- * structure — the header, loading/empty states, and infinite-scroll list — for
- * a consistent shell, without the personal filter rail (the lab data lacks the
- * tier/stage/citizenship fields those filters need).
- */
-function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
-  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
-  const fellowships = React.useMemo(() => data?.fellowships ?? [], [data]);
-  const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
-    useInfiniteReveal(fellowships, FELLOWSHIP_PAGE_SIZE);
-
-  const subtitle = isLoading
-    ? `Checking what ${lab.name} members are eligible for…`
-    : fellowships.length > 0
-      ? `${fellowships.length} fellowship${
-          fellowships.length === 1 ? "" : "s"
-        } ${lab.name} members are eligible for.`
-      : `Fellowships ${lab.name} members are eligible for.`;
-
-  return (
-    <div>
-      <SectionHeader
-        eyebrow="Opportunities"
-        title="Fellowships"
-        subtitle={subtitle}
-      />
-      <div className="min-w-0 flex-1">
-        {isLoading ? (
-          <div className="space-y-3.5">
-            <FellowshipSkeleton />
-            <FellowshipSkeleton />
-            <FellowshipSkeleton />
-          </div>
-        ) : isError ? (
-          <EmptyState
-            icon={<SparkleIcon size={26} className="text-accent" />}
-            title="Couldn't load this feed"
-            description="Something went wrong loading the lab's fellowship matches. Please try again in a moment."
-          />
-        ) : fellowships.length === 0 ? (
-          <EmptyState
-            icon={<SparkleIcon size={26} className="text-accent" />}
-            title="No lab fellowship matches yet"
-            description="Fellowships appear here when a member is personally eligible and has opted into sharing their eligibility with the lab."
-          />
-        ) : (
-          <>
-            <div className="space-y-3.5">
-              {displayed.map((item, index) => (
-                <div
-                  key={item.content_id}
-                  className="portal-fade-up"
-                  style={{ animationDelay: revealDelay(index, FELLOWSHIP_PAGE_SIZE) }}
-                >
-                  <LabFellowshipRow item={item} />
-                </div>
-              ))}
-            </div>
-            <FeedSentinel
-              sentinelRef={sentinelRef}
-              hasMore={hasMore}
-              remaining={remaining}
-              onRevealMore={revealMore}
-              totalShown={displayed.length}
-              noun="fellowships"
-            />
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function FellowshipsSection() {
   const { currentLab } = usePortal();
   if (currentLab) {
@@ -535,10 +439,49 @@ export function FellowshipsSection() {
   return <PersonalFellowships />;
 }
 
+/** The lab-scoped Fellowships feed — the lab's matches, same UI as personal. */
+function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
+  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+  const items = React.useMemo(() => data?.fellowships ?? [], [data]);
+  return (
+    <FellowshipsFeed
+      items={items}
+      isLoading={isLoading}
+      isError={isError}
+      recommendedFor={data?.recommended_for}
+      labName={lab.name}
+    />
+  );
+}
+
 function PersonalFellowships() {
   const { data, isLoading, isError } = useFellowships();
   const items = React.useMemo(() => data?.items ?? [], [data]);
+  return (
+    <FellowshipsFeed items={items} isLoading={isLoading} isError={isError} />
+  );
+}
 
+/**
+ * The shared Fellowships feed body — the filter rail (tier, deadline, field,
+ * stage, citizenship, award type, saved/new, sort), the loading/empty/error
+ * states, and the infinite-scroll card list — used identically by the personal
+ * page and a lab workspace. `labName`, when set, marks the lab variant and only
+ * swaps the surrounding copy.
+ */
+function FellowshipsFeed({
+  items,
+  isLoading,
+  isError,
+  recommendedFor,
+  labName,
+}: {
+  items: FellowshipOpportunity[];
+  isLoading: boolean;
+  isError: boolean;
+  recommendedFor?: Record<string, RecommendedMember[]>;
+  labName?: string;
+}) {
   const [filters, setFilters] = React.useState<FellowshipFilterState>(
     DEFAULT_FELLOWSHIP_FILTERS,
   );
@@ -560,12 +503,20 @@ function PersonalFellowships() {
   const showRail = !isLoading && !isError && items.length > 0;
 
   const subtitle = isLoading
-    ? "Checking your eligibility…"
+    ? labName
+      ? `Matching fellowships to ${labName}…`
+      : "Checking your eligibility…"
     : items.length > 0
-      ? `${items.length} fellowship${
-          items.length === 1 ? "" : "s"
-        } you're eligible for, matched to your stage and timeline.`
-      : "Fellowships matched to your stage, eligibility, and timeline.";
+      ? labName
+        ? `${items.length} fellowship${
+            items.length === 1 ? "" : "s"
+          } Mylo matched to ${labName}.`
+        : `${items.length} fellowship${
+            items.length === 1 ? "" : "s"
+          } you're eligible for, matched to your stage and timeline.`
+      : labName
+        ? `Fellowships matched to ${labName}.`
+        : "Fellowships matched to your stage, eligibility, and timeline.";
 
   return (
     <div>
@@ -596,16 +547,32 @@ function PersonalFellowships() {
           ) : isError ? (
             <EmptyState
               icon={<SparkleIcon size={26} className="text-accent" />}
-              title="Couldn't load your fellowships"
-              description="Something went wrong fetching your fellowship matches. Please try again in a moment."
+              title={
+                labName
+                  ? "Couldn't load this feed"
+                  : "Couldn't load your fellowships"
+              }
+              description={
+                labName
+                  ? "Something went wrong loading the lab's fellowship matches. Please try again in a moment."
+                  : "Something went wrong fetching your fellowship matches. Please try again in a moment."
+              }
             />
           ) : items.length === 0 ? (
-            <EmptyState
-              icon={<SparkleIcon size={26} className="text-accent" />}
-              badge="Coming soon"
-              title="Your fellowship matches are on their way"
-              description="Once your Fellowship eligibility is set in your profile (citizenship, academic stage, and research fields), Mycelium will match you against the fellowship database and surface the best fits here."
-            />
+            labName ? (
+              <EmptyState
+                icon={<SparkleIcon size={26} className="text-accent" />}
+                title="No lab fellowship matches yet"
+                description="Once Mylo has run for this lab, fellowships matched to its shared research profile will appear here — each naming the members it suits best."
+              />
+            ) : (
+              <EmptyState
+                icon={<SparkleIcon size={26} className="text-accent" />}
+                badge="Coming soon"
+                title="Your fellowship matches are on their way"
+                description="Once your Fellowship eligibility is set in your profile (citizenship, academic stage, and research fields), Mycelium will match you against the fellowship database and surface the best fits here."
+              />
+            )
           ) : visible.length === 0 ? (
             <EmptyState
               icon={<SparkleIcon size={26} className="text-accent" />}
@@ -623,7 +590,7 @@ function PersonalFellowships() {
             />
           ) : (
             <>
-              <FellowshipList items={displayed} />
+              <FellowshipList items={displayed} recommendedFor={recommendedFor} />
               <FeedSentinel
                 sentinelRef={sentinelRef}
                 hasMore={hasMore}

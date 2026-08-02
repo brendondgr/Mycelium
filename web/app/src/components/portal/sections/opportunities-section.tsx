@@ -33,7 +33,12 @@ import {
   revealDelay,
   useInfiniteReveal,
 } from "@/lib/portal/use-infinite-reveal";
-import type { GrantOpportunity, MyLab } from "@/lib/portal/types";
+import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
+import type {
+  GrantOpportunity,
+  MyLab,
+  RecommendedMember,
+} from "@/lib/portal/types";
 
 /** Format an ISO date as "Jul 6, 2026" (used for Posted and the deadline). */
 function formatDate(iso: string): string {
@@ -51,10 +56,13 @@ function formatDate(iso: string): string {
 export function GrantRow({
   grant,
   remindLabSlug,
+  recommendedFor,
 }: {
   grant: GrantOpportunity;
   /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
   remindLabSlug?: string;
+  /** Lab-only: who Mylo judges this most applicable to. Personal feeds omit it. */
+  recommendedFor?: RecommendedMember[];
 }) {
   const due = formatDate(grant.deadline_date);
   const posted = formatDate(grant.posted);
@@ -167,6 +175,8 @@ export function GrantRow({
         </p>
       ) : null}
 
+      <RecommendedFor members={recommendedFor} />
+
       {grant.url ? (
         <a
           href={grant.url}
@@ -200,7 +210,13 @@ function GrantSkeleton() {
   );
 }
 
-function GrantsList({ grants }: { grants: GrantOpportunity[] }) {
+function GrantsList({
+  grants,
+  recommendedFor,
+}: {
+  grants: GrantOpportunity[];
+  recommendedFor?: Record<string, RecommendedMember[]>;
+}) {
   return (
     <div className="space-y-3.5">
       {grants.map((grant, index) => (
@@ -209,7 +225,10 @@ function GrantsList({ grants }: { grants: GrantOpportunity[] }) {
           className="portal-fade-up"
           style={{ animationDelay: revealDelay(index, GRANT_PAGE_SIZE) }}
         >
-          <GrantRow grant={grant} />
+          <GrantRow
+            grant={grant}
+            recommendedFor={recommendedFor?.[grant.content_id]}
+          />
         </div>
       ))}
     </div>
@@ -243,6 +262,7 @@ function LabGrantsFeed({ lab }: { lab: MyLab }) {
       grants={grants}
       isLoading={isLoading}
       isError={isError}
+      recommendedFor={data?.recommended_for}
       labName={lab.name}
     />
   );
@@ -264,11 +284,14 @@ function GrantsFeed({
   grants,
   isLoading,
   isError,
+  recommendedFor,
   labName,
 }: {
   grants: GrantOpportunity[];
   isLoading: boolean;
   isError: boolean;
+  /** Lab-only: content id → the members Mylo judges each grant is for. */
+  recommendedFor?: Record<string, RecommendedMember[]>;
   labName?: string;
 }) {
   const [filters, setFilters] = React.useState<GrantFilterState>(
@@ -379,7 +402,7 @@ function GrantsFeed({
             />
           ) : (
             <>
-              <GrantsList grants={displayed} />
+              <GrantsList grants={displayed} recommendedFor={recommendedFor} />
               <FeedSentinel
                 sentinelRef={sentinelRef}
                 hasMore={hasMore}
