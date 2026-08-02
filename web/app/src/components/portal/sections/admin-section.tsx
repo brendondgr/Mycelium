@@ -298,8 +298,16 @@ function TablePager({
   );
 }
 
-/** Loading / error / empty states shared by both tables; null when there are rows. */
-function TableState({
+/**
+ * Loading / error / empty states shared by both tables; **null when there are rows**,
+ * which is what lets a caller do `const state = tableState(...); if (state) return state`.
+ *
+ * Deliberately a plain function, not a component: as `<TableState … />` the caller's
+ * truthiness check tests a React *element*, which is always truthy, so the guard fired
+ * on every render and the table body was never reached — a silently blank table with no
+ * error and no spinner. Lowercase name so the call site reads as a call.
+ */
+function tableState({
   loading,
   error,
   empty,
@@ -311,7 +319,7 @@ function TableState({
   empty: boolean;
   errorText: string;
   emptyText: string;
-}) {
+}): React.ReactNode | null {
   if (loading) {
     return (
       <div className="space-y-2 p-4">
@@ -522,15 +530,13 @@ function UsersTable({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
-  const state = (
-    <TableState
-      loading={loading}
-      error={error}
-      empty={rows.length === 0}
-      errorText="Could not load the user list. Refresh to try again."
-      emptyText="No users match your search."
-    />
-  );
+  const state = tableState({
+    loading,
+    error,
+    empty: rows.length === 0,
+    errorText: "Could not load the user list. Refresh to try again.",
+    emptyText: "No users match your search.",
+  });
   if (state) return state;
 
   return (
@@ -944,15 +950,13 @@ function LabsTable({
   selectedSlug: string | null;
   onSelect: (slug: string) => void;
 }) {
-  const state = (
-    <TableState
-      loading={loading}
-      error={error}
-      empty={rows.length === 0}
-      errorText="Could not load the lab list. Refresh to try again."
-      emptyText="No labs match your search."
-    />
-  );
+  const state = tableState({
+    loading,
+    error,
+    empty: rows.length === 0,
+    errorText: "Could not load the lab list. Refresh to try again.",
+    emptyText: "No labs match your search.",
+  });
   if (state) return state;
 
   return (
