@@ -15,13 +15,6 @@ import {
   TopPapersPanel,
 } from "@/components/portal/sections/overview-panels";
 import { LabOverviewSection } from "@/components/portal/sections/lab-overview-section";
-import { LabEditor } from "@/components/portal/sections/lab-onboarding";
-import type { MyLab } from "@/lib/portal/types";
-
-/** A member with owner/admin/PI rights on a lab may run its setup/edit flow. */
-function canManageLab(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
 
 /** Derive time-of-day greeting word from the hour (0–23). */
 function timeOfDay(hour: number): "morning" | "afternoon" | "evening" {
@@ -42,25 +35,16 @@ function firstName(name: string): string {
  * top research papers (with percent match), and the nearest deadlines.
  */
 export function OverviewSection() {
-  const { user, scopeLabel, currentLab, labOnboardingEdit, setLabOnboardingEdit } =
-    usePortal();
+  const { user, scopeLabel, currentLab } = usePortal();
   const briefingQuery = useDailyBriefing();
   const windowCountsQuery = useWindowCounts();
   const dailyReportQuery = useDailyReport();
   const deadlinesQuery = useDeadlines();
 
   // When a lab is the active workspace, its overview replaces the personal one.
+  // Editing that lab is the overview's own "Edit profile" dialog — it no longer
+  // takes over this page with a re-run of the setup flow.
   if (currentLab) {
-    if (labOnboardingEdit && canManageLab(currentLab)) {
-      return (
-        <LabEditor
-          lab={currentLab}
-          mode="edit"
-          onDone={() => setLabOnboardingEdit(false)}
-          onCancel={() => setLabOnboardingEdit(false)}
-        />
-      );
-    }
     return <LabOverviewSection lab={currentLab} />;
   }
 

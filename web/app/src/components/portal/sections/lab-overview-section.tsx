@@ -1,7 +1,11 @@
 "use client";
 
+import * as React from "react";
+
 import { usePortal } from "@/components/portal/portal-context";
+import { EditIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
+import { LabEditorModal } from "@/components/portal/sections/lab-editor-modal";
 import { MyloReportCard } from "@/components/portal/sections/mylo-report-card";
 import { MyloFoundCard } from "@/components/portal/sections/mylo-found-card";
 import {
@@ -47,6 +51,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
   const recQuery = useLabRecommendations(lab.slug);
   const briefingQuery = useLabDailyBriefing(lab.slug);
   const savesQuery = useLabSaves(lab.slug);
+  const [editing, setEditing] = React.useState(false);
 
   const profile = profileQuery.data;
   const manage = canManage(lab);
@@ -71,7 +76,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
   if (profileEmpty) {
     if (manage) {
       return (
-        <LabEditor lab={lab} mode="create" onDone={() => profileQuery.refetch()} />
+        <LabEditor lab={lab} onDone={() => profileQuery.refetch()} />
       );
     }
     return (
@@ -102,6 +107,18 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
         first={first}
         dateLabel={dateLabel}
         scopeLabel={scopeLabel}
+        action={
+          manage ? (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="inline-flex items-center gap-[7px] rounded-full border border-border bg-surface px-4 py-[9px] text-[13px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <EditIcon size={14} />
+              Edit profile
+            </button>
+          ) : null
+        }
       />
 
       {/* Report left; what Mylo found + papers + deadlines right. Each column is
@@ -133,6 +150,10 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
           />
         </div>
       </div>
+
+      {editing ? (
+        <LabEditorModal lab={lab} onClose={() => setEditing(false)} />
+      ) : null}
     </div>
   );
 }
@@ -142,20 +163,26 @@ function Greeting({
   first,
   dateLabel,
   scopeLabel,
+  action,
 }: {
   greeting: string;
   first: string;
   dateLabel: string;
   scopeLabel: string;
+  /** Trailing control (the manager-only "Edit profile" button). */
+  action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-[22px] shrink-0">
-      <h1 className="m-0 mb-[6px] font-serif text-[31px] font-semibold leading-[1.12] tracking-[-0.015em] text-[var(--text-primary)]">
-        Good {greeting}, {first}
-      </h1>
-      <p className="m-0 text-[14px] text-[var(--text-secondary)]">
-        {dateLabel} · You&apos;re viewing {scopeLabel}
-      </p>
+    <div className="mb-[22px] flex shrink-0 flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="m-0 mb-[6px] font-serif text-[31px] font-semibold leading-[1.12] tracking-[-0.015em] text-[var(--text-primary)]">
+          Good {greeting}, {first}
+        </h1>
+        <p className="m-0 text-[14px] text-[var(--text-secondary)]">
+          {dateLabel} · You&apos;re viewing {scopeLabel}
+        </p>
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }

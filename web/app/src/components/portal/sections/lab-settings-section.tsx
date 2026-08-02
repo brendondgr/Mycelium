@@ -3,15 +3,18 @@
 import * as React from "react";
 
 import { DiscordHealthCard } from "@/components/portal/sections/discord-health-card";
-import { CloseIcon, TargetIcon } from "@/components/portal/icons";
+import { CloseIcon, EditIcon, TargetIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import {
+  LabEditorModal,
+  type LabEditorTab,
+} from "@/components/portal/sections/lab-editor-modal";
+import {
   DiscordSyncCard,
   InviteCard,
   LabPurposeCard,
-  LabWatchCard,
   MembersCard,
   ProjectsCard,
 } from "@/components/portal/sections/labs-section";
@@ -38,12 +41,21 @@ const MAX_BYTES = 2 * 1024 * 1024;
  * slot in a lab). Manager-only (PI / owner / admin): a non-manager who deep-links
  * here gets an honest permission note.
  *
- * Two-column layout: a narrow left rail of setup cards (logo, invites, Discord,
- * projects) beside a wide right column that leads with the lab's purpose & goals
- * and closes with the member roster as a tile grid. Collapses to one column on
- * small screens.
+ * Two-column layout: a narrow left rail of setup cards (logo, invites, connected
+ * services, projects) beside a wide right column that leads with the lab's purpose
+ * & goals and closes with the member roster as a tile grid. Collapses to one
+ * column on small screens.
+ *
+ * Everything editable about the lab's *profile* lives behind the Edit button in
+ * the header, which opens `LabEditorModal` — the same dialog the lab overview and
+ * the labs page open, so a lab is configured in exactly one place. The standalone
+ * "What Mylo watches" card that used to sit here is gone: it was a read-only
+ * restatement of the purpose card's clusters with no way to change the settings
+ * it displayed, and its one unique field (cadence) is now a tab in the editor.
  */
 export function LabSettingsSection({ lab }: { lab: MyLab }) {
+  const [editorTab, setEditorTab] = React.useState<LabEditorTab | null>(null);
+
   if (!canManageLab(lab)) {
     return (
       <div>
@@ -62,6 +74,16 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
       <SectionHeader
         title={`${lab.name} settings`}
         subtitle="Set the lab's logo and purpose, invite members, and connect Mylo."
+        action={
+          <button
+            type="button"
+            className={PRIMARY_BUTTON}
+            onClick={() => setEditorTab("purpose")}
+          >
+            <EditIcon size={14} />
+            Edit profile
+          </button>
+        }
       />
       <div className="grid items-start gap-4 lg:grid-cols-[1.5fr_1fr]">
         {/* Left rail — setup cards. The plan lives on the Billing page, so nothing
@@ -74,13 +96,24 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
           <ProjectsCard lab={lab} canManage />
         </div>
 
-        {/* Right column — purpose & goals, watch topics, then the member roster */}
+        {/* Right column — purpose & goals, then the member roster */}
         <div className="space-y-4">
-          <LabPurposeCard lab={lab} canManage />
-          <LabWatchCard lab={lab} />
+          <LabPurposeCard
+            lab={lab}
+            canManage
+            onEdit={() => setEditorTab("purpose")}
+          />
           <MembersCard lab={lab} grid />
         </div>
       </div>
+
+      {editorTab ? (
+        <LabEditorModal
+          lab={lab}
+          initialTab={editorTab}
+          onClose={() => setEditorTab(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,12 +1,15 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { usePortal } from "@/components/portal/portal-context";
 import { LabSettingsSection } from "@/components/portal/sections/lab-settings-section";
+import {
+  ProfileEditorModal,
+  type ProfileEditorTab,
+} from "@/components/portal/sections/profile-editor-modal";
 import { Card } from "@/components/portal/primitives/card";
 import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { Pill } from "@/components/portal/primitives/pill";
@@ -48,7 +51,7 @@ function ClusterGroupHeading({ cluster }: { cluster: ClusterGroup }) {
 // Research focus card (LEFT)
 // ---------------------------------------------------------------------------
 
-function ResearchFocusCard() {
+function ResearchFocusCard({ onOrganize }: { onOrganize: () => void }) {
   const { data: profile, isLoading, isError } = useProfile();
 
   if (isLoading) {
@@ -87,12 +90,13 @@ function ResearchFocusCard() {
         <h2 className="text-base font-semibold text-[var(--text-primary)]">
           Research focus
         </h2>
-        <Link
-          href="/app/onboarding?edit=1"
-          className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+        <button
+          type="button"
+          onClick={onOrganize}
+          className="text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Organize
-        </Link>
+        </button>
       </div>
 
       {/* Statement */}
@@ -217,7 +221,7 @@ function ProfileCompletenessCard() {
 // What Mylo watches card (RIGHT bottom)
 // ---------------------------------------------------------------------------
 
-function WatchCard() {
+function WatchCard({ onEdit }: { onEdit: () => void }) {
   const { data: watch, isLoading, isError } = useWatch();
   const { data: profile } = useProfile();
 
@@ -277,9 +281,18 @@ function WatchCard() {
 
   return (
     <Card className="p-[22px]">
-      <h2 className="mb-3 text-base font-semibold text-[var(--text-primary)]">
-        What Mylo watches
-      </h2>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">
+          What Mylo watches
+        </h2>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Adjust
+        </button>
+      </div>
 
       {isEmpty ? (
         <p className="text-sm text-[var(--text-secondary)]">
@@ -364,7 +377,7 @@ const STAGE_LABEL: Record<ProfileEligibility["stage"], string> = {
 // Fellowship eligibility card
 // ---------------------------------------------------------------------------
 
-function EligibilityCard() {
+function EligibilityCard({ onEdit }: { onEdit: () => void }) {
   const { data: profile, isLoading, isError } = useProfile();
 
   if (isLoading) {
@@ -402,12 +415,13 @@ function EligibilityCard() {
         <p className="text-sm text-[var(--text-secondary)]">
           Fellowship matching uses your eligibility profile — citizenship,
           career stage, and field. Set it from{" "}
-          <Link
-            href="/app/onboarding?edit=1"
-            className="font-medium text-primary underline-offset-2 hover:underline"
+          <button
+            type="button"
+            onClick={onEdit}
+            className="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Edit profile
-          </Link>
+          </button>
           .
         </p>
       </Card>
@@ -657,6 +671,10 @@ function DiscordCard() {
 
 export function ProfileSection() {
   const { currentLab } = usePortal();
+  // `null` = closed. Opening carries which tab to land on, so a card's own
+  // affordance ("Organize", "Adjust") drops the user straight into that surface
+  // instead of the editor's default tab.
+  const [editorTab, setEditorTab] = React.useState<ProfileEditorTab | null>(null);
 
   // In a lab workspace, the Profile slot is the lab's configuration (managers
   // only — the section itself guards non-managers who deep-link here).
@@ -671,8 +689,8 @@ export function ProfileSection() {
         title="Profile"
         subtitle="Your research focus and goals — what Mylo uses to find matches."
         action={
-          <Button asChild className="rounded-full">
-            <Link href="/app/onboarding?edit=1">Edit profile</Link>
+          <Button className="rounded-full" onClick={() => setEditorTab("focus")}>
+            Edit profile
           </Button>
         }
       />
@@ -680,18 +698,26 @@ export function ProfileSection() {
       <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">
         {/* LEFT — research focus + connected services + fellowship eligibility */}
         <div className="flex flex-col gap-[22px]">
-          <ResearchFocusCard />
+          <ResearchFocusCard onOrganize={() => setEditorTab("interests")} />
           <DiscordCard />
-          <EligibilityCard />
+          <EligibilityCard onEdit={() => setEditorTab("eligibility")} />
         </div>
 
         {/* RIGHT — what Mylo watches + completeness. Plans and anything else
             monetary live on their own Billing page, not in the open here. */}
         <div className="flex flex-col gap-[22px]">
-          <WatchCard />
+          <WatchCard onEdit={() => setEditorTab("watch")} />
           <ProfileCompletenessCard />
         </div>
       </div>
+
+      {editorTab ? (
+        <ProfileEditorModal
+          open
+          initialTab={editorTab}
+          onClose={() => setEditorTab(null)}
+        />
+      ) : null}
     </div>
   );
 }

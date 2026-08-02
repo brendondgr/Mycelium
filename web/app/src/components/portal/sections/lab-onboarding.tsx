@@ -6,8 +6,6 @@ import { Chip, TokenField, dedupe, inputClass } from "@/components/onboarding/fi
 import { CloseIcon, DocumentIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
 import {
-  useLabProfile,
-  useLabWatch,
   useSynthesizeLabProfile,
   useUpdateLabProfile,
   useUpdateLabWatch,
@@ -36,105 +34,27 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 const PRIMARY_BUTTON =
   "inline-flex items-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
-const GHOST_BUTTON =
-  "rounded-full border border-border bg-surface px-4 py-2 text-[13px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
-
-/** Prefilled values for editing an already-configured lab. */
-export type LabEditorInitial = {
-  statement: string;
-  areas: string[];
-  keywords: string[];
-  watchTopics: string[];
-  watchCats: string[];
-  cadence: WatchCadence;
-};
 
 /**
- * The lab setup/edit surface. A thin wrapper that reuses the already-cached lab
- * profile + watch queries (so opening "Edit setup" is instant — no extra
- * round-trips) and hands the settled values to the single-page form as
- * ``initial`` (lazy state seed — no set-state-in-effect).
+ * First-time lab setup: the inline gate an unconfigured lab shows its manager on
+ * the lab overview. Describe the lab + drop source files / paste profile links,
+ * let Mylo draft the purpose/areas/keywords, review and adjust, set what Mylo
+ * watches, and save — all on one page.
+ *
+ * Setup only. *Changing* an already-configured lab is `LabEditorModal`, opened
+ * from the Edit button on the lab's pages — re-running a setup flow was the wrong
+ * shape for adjusting one field.
  */
 export function LabEditor({
   lab,
-  mode = "create",
   onDone,
-  onCancel,
 }: {
   lab: MyLab;
-  mode?: "create" | "edit";
   onDone?: () => void;
-  onCancel?: () => void;
-}) {
-  const profileQuery = useLabProfile(lab.slug);
-  const watchQuery = useLabWatch(lab.slug);
-
-  // Create mode starts blank; edit mode waits for the (usually cached) values.
-  const ready =
-    mode === "create" || (!profileQuery.isLoading && !watchQuery.isLoading);
-
-  if (!ready) {
-    return (
-      <Card accent="primary-rule" className="p-6">
-        <div className="h-40 animate-pulse rounded-xl bg-surface-alt" />
-      </Card>
-    );
-  }
-
-  const profile = profileQuery.data;
-  const watch = watchQuery.data;
-  const initial: LabEditorInitial | undefined =
-    mode === "edit"
-      ? {
-          statement: profile?.statement ?? "",
-          areas: profile?.areas ?? [],
-          keywords: Array.isArray(profile?.interests?.keywords)
-            ? (profile?.interests?.keywords as string[])
-            : [],
-          watchTopics: watch?.topics ?? [],
-          watchCats: watch?.categories?.length ? watch.categories : DEFAULT_CATS,
-          cadence: watch?.cadence ?? "weekly",
-        }
-      : undefined;
-
-  return (
-    <LabEditorForm
-      key={`${lab.slug}:${mode}`}
-      lab={lab}
-      mode={mode}
-      initial={initial}
-      onDone={() => {
-        onDone?.();
-        profileQuery.refetch();
-        watchQuery.refetch();
-      }}
-      onCancel={onCancel}
-    />
-  );
-}
-
-/**
- * Single-page lab setup: describe the lab + drop source files / paste profile
- * links, let Mylo draft the purpose/areas/keywords, review and adjust, set what
- * Mylo watches, and save — all on one page.
- */
-function LabEditorForm({
-  lab,
-  mode,
-  initial,
-  onDone,
-  onCancel,
-}: {
-  lab: MyLab;
-  mode: "create" | "edit";
-  initial?: LabEditorInitial;
-  onDone?: () => void;
-  onCancel?: () => void;
 }) {
   const synthesize = useSynthesizeLabProfile(lab.slug);
   const saveProfile = useUpdateLabProfile(lab.slug);
   const saveWatch = useUpdateLabWatch(lab.slug);
-  const editing = mode === "edit";
 
   // Source material for Mylo's draft.
   const [description, setDescription] = React.useState("");
@@ -144,22 +64,14 @@ function LabEditorForm({
   const [synthNote, setSynthNote] = React.useState<string | null>(null);
 
   // The (draftable, editable) profile fields.
-  const [statement, setStatement] = React.useState(initial?.statement ?? "");
-  const [areas, setAreas] = React.useState<string[]>(initial?.areas ?? []);
-  const [keywords, setKeywords] = React.useState<string[]>(
-    initial?.keywords ?? [],
-  );
+  const [statement, setStatement] = React.useState("");
+  const [areas, setAreas] = React.useState<string[]>([]);
+  const [keywords, setKeywords] = React.useState<string[]>([]);
 
   // What Mylo watches.
-  const [watchTopics, setWatchTopics] = React.useState<string[]>(
-    initial?.watchTopics ?? [],
-  );
-  const [watchCats, setWatchCats] = React.useState<string[]>(
-    initial?.watchCats ?? DEFAULT_CATS,
-  );
-  const [cadence, setCadence] = React.useState<WatchCadence>(
-    initial?.cadence ?? "weekly",
-  );
+  const [watchTopics, setWatchTopics] = React.useState<string[]>([]);
+  const [watchCats, setWatchCats] = React.useState<string[]>(DEFAULT_CATS);
+  const [cadence, setCadence] = React.useState<WatchCadence>("weekly");
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
   function runSynthesis() {
@@ -429,18 +341,13 @@ function LabEditorForm({
 
       {/* Footer */}
       <div className="mt-6 flex items-center justify-end gap-2">
-        {editing && onCancel ? (
-          <button type="button" className={GHOST_BUTTON} onClick={onCancel}>
-            Cancel
-          </button>
-        ) : null}
         <button
           type="button"
           className={PRIMARY_BUTTON}
           onClick={finish}
           disabled={saving || !canSave}
         >
-          {saving ? "Saving…" : editing ? "Save changes" : "Finish setup"}
+          {saving ? "Saving…" : "Finish setup"}
         </button>
       </div>
     </Card>

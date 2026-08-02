@@ -58,12 +58,6 @@ export type PortalContextValue = {
   currentLab: MyLab | null;
   scopeLabel: string;
 
-  // Lab onboarding editor (re-run the setup flow on an existing lab)
-  labOnboardingEdit: boolean;
-  setLabOnboardingEdit: (editing: boolean) => void;
-  /** Activate a lab and open its setup/edit flow on the overview. */
-  openLabEditor: (slug: string) => void;
-
   // Projects (scoped to labScope)
   projects: Project[];
   projectsLoading: boolean;
@@ -105,7 +99,6 @@ export function PortalProvider({
     pathname.startsWith(SECTION_ROUTES.projects),
   );
   const [labScope, setLabScopeState] = useState<string>(PERSONAL_SLUG);
-  const [labOnboardingEdit, setLabOnboardingEdit] = useState(false);
 
   // Restore the last active workspace scope after mount so a refresh or a
   // deep-link stays in the lab (localStorage isn't available during SSR, so we
@@ -168,24 +161,14 @@ export function PortalProvider({
     [],
   );
 
-  // Switching labs leaves any in-progress edit flow behind, and is remembered
-  // across reloads (so a refresh keeps you in the same workspace).
+  // The active workspace is remembered across reloads, so a refresh keeps you
+  // in the same lab.
   const setLabScope = useCallback((slug: string) => {
     setLabScopeState(slug);
-    setLabOnboardingEdit(false);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(LAB_SCOPE_KEY, slug);
     }
   }, []);
-
-  const openLabEditor = useCallback(
-    (slug: string) => {
-      setLabScopeState(slug);
-      setLabOnboardingEdit(true);
-      router.push(SECTION_ROUTES.overview);
-    },
-    [router],
-  );
 
   const value: PortalContextValue = {
     user,
@@ -202,9 +185,6 @@ export function PortalProvider({
     setLabScope,
     currentLab,
     scopeLabel,
-    labOnboardingEdit,
-    setLabOnboardingEdit,
-    openLabEditor,
     projects,
     projectsLoading: projectsQuery.isLoading,
     projectsError: projectsQuery.isError,

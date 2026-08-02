@@ -4,9 +4,9 @@ import * as React from "react";
 
 import Link from "next/link";
 
-import { ClusterOrganizer } from "@/components/onboarding/cluster-organizer";
 import {
   DiscordIcon,
+  EditIcon,
   FolderIcon,
   MembersIcon,
   PlusIcon,
@@ -18,6 +18,7 @@ import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
+import { LabEditorModal } from "@/components/portal/sections/lab-editor-modal";
 import { MemberRow } from "@/components/portal/sections/member-row";
 import {
   useConnectLabDiscord,
@@ -30,23 +31,13 @@ import {
   useLabMembers,
   useLabProfile,
   useLabProjects,
-  useLabWatch,
   useProjectMembership,
-  useUpdateLabProfile,
 } from "@/lib/portal/hooks";
 import { ApiError } from "@/lib/api-error";
 import { SECTION_ROUTES } from "@/lib/portal/routes";
 import type { ClusterGroup } from "@/lib/auth-types";
-import type { LabMember, LabProfileData, MyLab } from "@/lib/portal/types";
+import type { LabMember, MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
-
-/** Split a comma-separated field into a trimmed, non-empty list. */
-function parseList(text: string): string[] {
-  return text
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
 
 /** Pull the (untyped) `clusters` array off a lab's stored `interests` blob. */
 function readClusters(interests: Record<string, unknown> | undefined | null): ClusterGroup[] {
@@ -121,6 +112,7 @@ const INPUT =
 export function LabsSection() {
   const { labs, labsLoading, labScope, setLabScope, currentLab } = usePortal();
   const [showCreate, setShowCreate] = React.useState(false);
+  const [editing, setEditing] = React.useState(false);
 
   const createAction = (
     <button
@@ -136,14 +128,39 @@ export function LabsSection() {
   // When a lab is the active workspace, this page is that lab's management —
   // no list of other labs (switch labs from the workspace switcher instead).
   if (currentLab) {
+    const canManage = canManageLab(currentLab);
     return (
       <div>
         <SectionHeader
           title={`Manage ${currentLab.name}`}
           subtitle="Switch labs from the workspace switcher in the top bar."
-          action={createAction}
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              {canManage ? (
+                <button
+                  type="button"
+                  className={SECONDARY_BUTTON}
+                  onClick={() => setEditing(true)}
+                >
+                  <EditIcon size={14} />
+                  Edit profile
+                </button>
+              ) : null}
+              {createAction}
+            </div>
+          }
         />
-        <LabDetail lab={currentLab} />
+        <LabDetail
+          lab={currentLab}
+          onEditProfile={canManage ? () => setEditing(true) : undefined}
+        />
+
+        {editing ? (
+          <LabEditorModal
+            lab={currentLab}
+            onClose={() => setEditing(false)}
+          />
+        ) : null}
 
         {showCreate ? (
           <CreateLabModal
@@ -264,12 +281,19 @@ function LabCard({
 // Lab detail — purpose & goals, invitations, members, projects
 // ---------------------------------------------------------------------------
 
-export function LabDetail({ lab }: { lab: MyLab }) {
+export function LabDetail({
+  lab,
+  onEditProfile,
+}: {
+  lab: MyLab;
+  /** Opens the lab editor on its Purpose tab (managers only). */
+  onEditProfile?: () => void;
+}) {
   const canManage = canManageLab(lab);
 
   return (
     <div className="space-y-4">
-      <LabPurposeCard lab={lab} canManage={canManage} />
+      <LabPurposeCard lab={lab} canManage={canManage} onEdit={onEditProfile} />
       {canManage ? <InviteCard lab={lab} /> : null}
       {canManage ? <DiscordSyncCard lab={lab} /> : null}
       <MembersCard lab={lab} />
@@ -297,45 +321,28 @@ export function DetailCard({
 
 // -- Purpose & goals ----------------------------------------------------------
 
+/**
+ * A read-only view of a lab's purpose & goals. Editing happens in
+ * `LabEditorModal`, opened from the Edit button in the page header — the card
+ * only offers `onEdit` as a shortcut into the same dialog, so there is exactly
+ * one editing surface for a lab no matter which page you started from.
+ */
 export function LabPurposeCard({
   lab,
   canManage,
+  onEdit,
 }: {
   lab: MyLab;
   canManage: boolean;
+  /** Opens the lab editor on its Purpose tab. Omitted → no inline affordance. */
+  onEdit?: () => void;
 }) {
   const { data: profile, isLoading } = useLabProfile(lab.slug);
-  const update = useUpdateLabProfile(lab.slug);
-  const [editing, setEditing] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
 
   if (isLoading || !profile) {
     return (
       <DetailCard title="Purpose & goals">
         <div className="h-16 animate-pulse rounded-xl bg-surface-alt" />
-      </DetailCard>
-    );
-  }
-
-  if (editing) {
-    return (
-      <DetailCard title="Purpose & goals">
-        <LabPurposeForm
-          profile={profile}
-          saving={update.isPending}
-          error={error}
-          onCancel={() => {
-            setError(null);
-            setEditing(false);
-          }}
-          onSave={(payload) => {
-            setError(null);
-            update.mutate(payload, {
-              onSuccess: () => setEditing(false),
-              onError: (e) => setError((e as Error).message),
-            });
-          }}
-        />
       </DetailCard>
     );
   }
@@ -393,124 +400,15 @@ export function LabPurposeCard({
         </div>
       )}
 
-      {canManage ? (
+      {canManage && onEdit ? (
         <button
           type="button"
           className="mt-4 rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={() => setEditing(true)}
+          onClick={onEdit}
         >
           {empty ? "Add purpose & goals" : "Edit"}
         </button>
       ) : null}
-    </DetailCard>
-  );
-}
-
-// -- What Mylo watches (read card) -------------------------------------------
-
-/** A read-only view of what a lab has Mylo watching, grouped by cluster.
- *
- * Mirrors the personal profile's `WatchCard` exactly, including the part that used to
- * be missing here: a lab's clusters carry their sub-topics in `cluster.areas`, and the
- * lab's `watch.topics` is a *separate*, often-empty list seeded from them. Grouping
- * only the stored topics therefore rendered an empty card ("hasn't set watch topics
- * yet") for a lab that had a full set of clusters on screen right above it. So every
- * cluster renders — showing the topics it claims, or falling back to its own areas —
- * and the card is only empty when the lab has neither clusters nor topics.
- */
-export function LabWatchCard({ lab }: { lab: MyLab }) {
-  const { data: watch, isLoading, isError } = useLabWatch(lab.slug);
-  const { data: profile } = useLabProfile(lab.slug);
-
-  if (isLoading) {
-    return (
-      <DetailCard title="What Mylo watches">
-        <div className="h-16 animate-pulse rounded-xl bg-surface-alt" />
-      </DetailCard>
-    );
-  }
-
-  if (isError || !watch) {
-    return (
-      <DetailCard title="What Mylo watches">
-        <p className="text-sm text-[var(--text-secondary)]">
-          Couldn&apos;t load the lab&apos;s watch settings.
-        </p>
-      </DetailCard>
-    );
-  }
-
-  const topics = watch.topics ?? [];
-  const clusters = readClusters(profile?.interests);
-  const cadenceLabel = watch.cadence === "daily" ? "daily" : "weekly";
-
-  const claimed = new Set<string>();
-  const clusterRows = clusters.map((cluster) => {
-    const matched = topics.filter((topic) => {
-      if (claimed.has(topic)) return false;
-      const key = topic.toLowerCase();
-      return (
-        cluster.label.toLowerCase() === key ||
-        cluster.areas.some((area) => area.toLowerCase() === key)
-      );
-    });
-    matched.forEach((topic) => claimed.add(topic));
-    return { cluster, items: matched.length > 0 ? matched : cluster.areas };
-  });
-  const otherTopics = topics.filter((topic) => !claimed.has(topic));
-
-  const hasClusters = clusterRows.length > 0;
-
-  if (!hasClusters && topics.length === 0) {
-    return (
-      <DetailCard title="What Mylo watches">
-        <p className="text-sm text-[var(--text-secondary)]">
-          This lab hasn&apos;t set watch topics yet.
-        </p>
-      </DetailCard>
-    );
-  }
-
-  return (
-    <DetailCard title="What Mylo watches">
-      {hasClusters ? (
-        <div className="mb-3 flex flex-col gap-3">
-          {clusterRows.map(({ cluster, items }) => (
-            <div key={cluster.id}>
-              <ClusterGroupHeading cluster={cluster} />
-              <div className="flex flex-wrap gap-1.5">
-                {items.map((topic) => (
-                  <Pill key={topic} tone="neutral">
-                    {topic}
-                  </Pill>
-                ))}
-              </div>
-            </div>
-          ))}
-          {otherTopics.length > 0 ? (
-            <ChipRow label="Other" items={otherTopics} />
-          ) : null}
-        </div>
-      ) : (
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {topics.map((topic) => (
-            <Pill key={topic} tone="neutral">
-              {topic}
-            </Pill>
-          ))}
-        </div>
-      )}
-
-      {watch.categories?.length ? (
-        <p className="mb-1.5 text-[12.5px] text-[var(--text-secondary)]">
-          Signals:{" "}
-          <span className="font-medium">{watch.categories.join(", ")}</span>
-        </p>
-      ) : null}
-
-      <p className="text-[12.5px] text-[var(--text-secondary)]">
-        Cadence: <span className="font-medium">{cadenceLabel} digest</span>
-      </p>
     </DetailCard>
   );
 }
@@ -532,144 +430,6 @@ function ChipRow({ label, items }: { label: string; items: string[] }) {
         ))}
       </div>
     </div>
-  );
-}
-
-function LabPurposeForm({
-  profile,
-  saving,
-  error,
-  onSave,
-  onCancel,
-}: {
-  profile: LabProfileData;
-  saving: boolean;
-  error: string | null;
-  onSave: (payload: {
-    statement: string;
-    areas: string[];
-    funding_needs: string[];
-    strategic_needs: string[];
-    interests?: Record<string, unknown>;
-  }) => void;
-  onCancel: () => void;
-}) {
-  const [statement, setStatement] = React.useState(profile.statement);
-  const [areas, setAreas] = React.useState(profile.areas.join(", "));
-  const [funding, setFunding] = React.useState(profile.funding_needs.join(", "));
-  const [strategic, setStrategic] = React.useState(
-    profile.strategic_needs.join(", "),
-  );
-  const [clusters, setClusters] = React.useState<ClusterGroup[]>(() =>
-    readClusters(profile.interests),
-  );
-
-  const parsedAreas = parseList(areas);
-
-  return (
-    <form
-      className="space-y-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const cleanAreas = parseList(areas);
-        // Same partial-partition guard as onboarding's organize step: sanitize the
-        // clusters against the current areas (drop phantom/duplicate areas the user
-        // may have introduced by editing the comma list after organizing), then
-        // attach only when they cover every area — else omit the key so a stale or
-        // partial grouping never overwrites a valid saved one or 400s on save.
-        const validAreas = new Set(cleanAreas);
-        const claimed = new Set<string>();
-        const cleanedClusters = clusters
-          .map((cluster) => ({
-            ...cluster,
-            areas: cluster.areas.filter((area) => {
-              if (!validAreas.has(area) || claimed.has(area)) return false;
-              claimed.add(area);
-              return true;
-            }),
-          }))
-          .filter((cluster) => cluster.areas.length > 0);
-        const allAssigned =
-          cleanedClusters.length > 0 && cleanAreas.every((area) => claimed.has(area));
-        const nextInterests: Record<string, unknown> = {
-          ...(profile.interests ?? {}),
-          version: 2,
-          areas: cleanAreas,
-        };
-        if (allAssigned) {
-          nextInterests.clusters = cleanedClusters;
-        } else {
-          delete nextInterests.clusters;
-        }
-        onSave({
-          statement: statement.trim(),
-          areas: cleanAreas,
-          funding_needs: parseList(funding),
-          strategic_needs: parseList(strategic),
-          interests: nextInterests,
-        });
-      }}
-    >
-      <Field label="Statement">
-        <textarea
-          value={statement}
-          onChange={(e) => setStatement(e.target.value)}
-          rows={3}
-          placeholder="The lab's shared research purpose."
-          className={cn(INPUT, "resize-y")}
-        />
-      </Field>
-      <Field label="Focus areas (comma-separated)">
-        <input
-          value={areas}
-          onChange={(e) => setAreas(e.target.value)}
-          placeholder="Oceanography, Healthcare ML"
-          className={INPUT}
-        />
-      </Field>
-      <ClusterOrganizer
-        areas={parsedAreas}
-        clusters={clusters}
-        statement={statement}
-        onChange={setClusters}
-        onAreasChange={(next) => setAreas(next.join(", "))}
-      />
-      <Field label="Funding needs (comma-separated)">
-        <input
-          value={funding}
-          onChange={(e) => setFunding(e.target.value)}
-          placeholder="NSF, NIH R01"
-          className={INPUT}
-        />
-      </Field>
-      <Field label="Strategic needs (comma-separated)">
-        <input
-          value={strategic}
-          onChange={(e) => setStrategic(e.target.value)}
-          placeholder="New postdoc, GPU cluster"
-          className={INPUT}
-        />
-      </Field>
-
-      {error ? (
-        <p className="text-[12.5px] text-clay" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="flex items-center gap-2">
-        <button type="submit" className={PRIMARY_BUTTON} disabled={saving}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
   );
 }
 
@@ -772,6 +532,10 @@ export function InviteCard({ lab }: { lab: MyLab }) {
  * OAuth round-trip is a bad way to learn you need an upgrade, so the card reads the
  * lab's plan first and, when Mylo isn't included, says so plainly and points at billing
  * instead of offering buttons that cannot succeed.
+ *
+ * Titled "Connected services" to match the personal profile's card: a lab's outside
+ * connections are the same kind of thing as a person's, and a manager moving between
+ * the two surfaces should recognise it without re-reading.
  */
 export function DiscordSyncCard({ lab }: { lab: MyLab }) {
   const { data: status, isLoading, isError } = useLabDiscordStatus(lab.slug);
@@ -824,7 +588,7 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
         : null;
 
   return (
-    <DetailCard title="Discord">
+    <DetailCard title="Connected services">
       <div className="flex items-center justify-between gap-3">
         <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
           <DiscordIcon size={16} className="text-[#5865F2]" />
