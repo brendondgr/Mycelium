@@ -1,11 +1,12 @@
-"""Compile one user's day into the data the daily Discord PDF report renders from.
+"""Compile a day into the data the daily Discord PDF report renders from.
 
-This is the *gather* half of the daily "Mylo Report" DM (the render half is
-:mod:`.daily_report_pdf`, the delivery is
-``apps.content.reminders_discord.send_personal_report``). It reads the same
-suggested :class:`RelevanceScore` feeds the portal and the written briefing read —
-reusing :mod:`apps.content.briefing`'s canonical readers so the PDF can never drift
-from what the app shows — and shapes them into a :class:`ReportData`:
+This is the *gather* half of the daily "Mylo Report" — as a DM to a person
+(``apps.content.reminders_discord.send_personal_report``) and as an attachment to a
+lab's channel (``apps.content.lab_digest.queue_lab_report``); the render half is
+:mod:`.daily_report_pdf`, which is target-agnostic. It reads the same suggested
+:class:`RelevanceScore` feeds the portal and the written briefing read — reusing
+:mod:`apps.content.briefing`'s canonical readers so the PDF can never drift from
+what the app shows — and shapes them into a :class:`ReportData`:
 
 * the day's per-category counts (and how many first surfaced today),
 * the **top 25 articles**,
@@ -149,10 +150,23 @@ def _opportunity_sort_key(item: ReportItem):
     return (0 if item.is_new else 1, -match, item.deadline_date or "9999-99-99")
 
 
-def compile_report_for_user(user) -> ReportData:
-    """Gather one user's day into a :class:`ReportData` (read-only)."""
-    watch = getattr(user, "watch", None)
-    categories = briefing._watched_categories(watch)
+def _compile(
+    *,
+    key: str,
+    display_name: str,
+    watch,
+    target_filter: dict,
+    briefing_filter: dict,
+    allow: tuple[str, ...] | None = None,
+) -> ReportData:
+    """The shared gather, over whatever target the two public compilers name.
+
+    Everything here — which categories are watched, which suggested scores to read,
+    which written briefing to attach — is the same work for a person and for a lab;
+    only the four identifying arguments differ. Keeping it one function is what makes
+    a lab's PDF structurally the same document its members already receive.
+    """
+    categories = briefing._watched_categories(watch, allow=allow)
     today = timezone.now().date().isoformat()
 
     counts: dict[str, int] = {}
@@ -160,7 +174,7 @@ def compile_report_for_user(user) -> ReportData:
     all_items: dict[str, list[ReportItem]] = {}
     for category in categories:
         content_type = briefing.CATEGORY_TYPES[category]
-        scores = briefing._suggested_scores({"target_user": user}, content_type)
+        scores = briefing._suggested_scores(target_filter, content_type)
         items = [_item_from_score(s, category, today) for s in scores]
         counts[category] = len(items)
         new_counts[category] = sum(1 for it in items if it.is_new)
@@ -175,20 +189,45 @@ def compile_report_for_user(user) -> ReportData:
     opportunities.sort(key=_opportunity_sort_key)
     top_opportunities = opportunities[:TOP_OPPORTUNITIES]
 
-    daily = DailyBriefing.objects.filter(user=user).first()
-    briefing_markdown = getattr(daily, "body", "") or ""
-    briefing_origin = getattr(daily, "origin", "") or ""
+    daily = DailyBriefing.objects.filter(**briefing_filter).first()
 
     return ReportData(
-        username=user.get_username(),
-        display_name=user.get_full_name() or user.get_username(),
+        username=key,
+        display_name=display_name,
         generated_on=today,
-        briefing_markdown=briefing_markdown,
-        briefing_origin=briefing_origin,
+        briefing_markdown=getattr(daily, "body", "") or "",
+        briefing_origin=getattr(daily, "origin", "") or "",
         categories=categories,
         counts=counts,
         new_counts=new_counts,
         top_papers=top_papers,
         top_opportunities=top_opportunities,
         all_items=all_items,
+    )
+
+
+def compile_report_for_user(user) -> ReportData:
+    """Gather one user's day into a :class:`ReportData` (read-only)."""
+    return _compile(
+        key=user.get_username(),
+        display_name=user.get_full_name() or user.get_username(),
+        watch=getattr(user, "watch", None),
+        target_filter={"target_user": user},
+        briefing_filter={"user": user},
+    )
+
+
+def compile_report_for_lab(lab) -> ReportData:
+    """Gather one lab's day into a :class:`ReportData` (read-only).
+
+    Narrowed to ``LAB_BRIEFING_CATEGORIES`` — the categories a lab is actually
+    scored for — so its report never advertises a section it cannot fill.
+    """
+    return _compile(
+        key=lab.slug,
+        display_name=lab.name,
+        watch=getattr(lab, "watch", None),
+        target_filter={"target_lab": lab},
+        briefing_filter={"lab": lab},
+        allow=briefing.LAB_BRIEFING_CATEGORIES,
     )

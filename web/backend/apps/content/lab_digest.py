@@ -9,15 +9,16 @@ The post is **two parts**, in this order:
    name and its counts, nothing else. The first version of this named three example
    items under every theme, which read as a wall of half-sentences and truncated
    conference titles, and still answered neither "how much?" nor "what did it say?".
-2. **The written report itself**, the same one the lab reads in the portal, posted
-   into the same channel as follow-up messages. A summary that ends with a link is a
-   summary nobody follows.
+2. **The report as an attached PDF** — the same document each member already gets by
+   DM, compiled for the lab. Pasting the report into the channel as message text was
+   tried and is wrong: a day's report runs to thousands of words, and a channel that
+   receives all of it every morning is a channel people mute.
 
 Two things it deliberately is not:
 
 * **Not a second source of truth.** It reads the same ``RelevanceScore`` rows and the
-  same ``DailyBriefing`` the lab's feed and portal read, so the channel post cannot
-  drift from what the portal shows.
+  same ``DailyBriefing`` the lab's feed and portal read, so neither the summary nor
+  the PDF can drift from what the portal shows.
 * **Not a ping.** ``allowed_mentions.parse`` stays empty and no member is tagged —
   which matters more now that the report names who each item suits. It is an update,
   not a summons.
@@ -25,26 +26,28 @@ Two things it deliberately is not:
 
 from __future__ import annotations
 
+import logging
+import os
 from dataclasses import dataclass, field
 from datetime import date
+from pathlib import Path
 
 from django.conf import settings
 from django.utils import timezone
 
 from apps.content.briefing import LAB_BRIEFING_CATEGORIES, _suggested_scores
+from apps.content.daily_report import compile_report_for_lab
+from apps.content.daily_report_pdf import render_report_pdf
 from apps.content.models import ContentItem, DailyBriefing
 from apps.integrations.services import outbox, resolve
+
+logger = logging.getLogger(__name__)
 
 #: Themes shown before the post stops being scannable. Matches the cluster ceiling.
 MAX_THEMES = 8
 
-#: Discord rejects a message body over 2000 characters with a 400, which the outbox
-#: classifies as permanent — a dead letter, not a retry. So the report is split well
-#: inside the limit rather than trusted to fit.
-REPORT_CHUNK_CHARS = 1900
-#: Messages one lab may post in a day. A report long enough to need more than this is
-#: better read in the portal than scrolled through in a channel.
-MAX_REPORT_CHUNKS = 8
+#: The line above the attached PDF. Discord shows the file card underneath it.
+REPORT_MESSAGE = "Today's full report is attached."
 
 _CATEGORY_TYPE = {
     "papers": ContentItem.Type.PAPER,
@@ -230,101 +233,78 @@ def digest_embed(digest: LabDigest) -> dict:
     base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
     if base:
         embed["url"] = f"{base}/app/daily"
-    embed["footer"] = {"text": "See the full report below."}
+    embed["footer"] = {"text": "The full report is attached below."}
     return embed
 
 
 # --------------------------------------------------------------------------- #
-# The written report, posted into the same channel
+# The report, attached as a PDF
 # --------------------------------------------------------------------------- #
-def report_chunks(
-    body: str,
-    *,
-    limit: int = REPORT_CHUNK_CHARS,
-    max_chunks: int = MAX_REPORT_CHUNKS,
-    tail_url: str = "",
-) -> list[str]:
-    """Split a written report into Discord-sized messages on markdown boundaries.
+def report_dir() -> Path:
+    """Where a queued report waits for its send.
 
-    Discord rejects anything over 2000 characters with a 400, which the outbox reads
-    as permanent — a dead letter rather than a retry — so this is a hard requirement,
-    not a nicety. Splitting prefers, in order: a blank line, the start of a ``##``
-    section, a line break, and only then a mid-line cut, so a section heading is
-    never orphaned from its paragraph.
-
-    A report needing more than ``max_chunks`` messages is cut there and closed with a
-    pointer to the portal: past a certain length a channel is the wrong medium, and
-    flooding it is worse than truncating.
+    Durable by necessity, not preference: the bytes must survive until the drain
+    reaches the row, which may be minutes away and, during an outage, longer. Shared
+    with the personal report (:mod:`.daily_report_send`), and swept by the outbox's
+    own retention pass once a row settles.
     """
-    text = (body or "").strip()
-    if not text:
-        return []
-
-    chunks: list[str] = []
-    while text and len(chunks) < max_chunks:
-        if len(text) <= limit:
-            chunks.append(text)
-            text = ""
-            break
-        window = text[:limit]
-        cut = window.rfind("\n\n")
-        if cut <= 0:
-            cut = window.rfind("\n## ")
-        if cut <= 0:
-            cut = window.rfind("\n")
-        if cut <= 0:
-            cut = limit
-        chunks.append(text[:cut].strip())
-        text = text[cut:].strip()
-
-    if text and chunks:
-        tail = "…the rest of today's report is in Mycelium."
-        if tail_url:
-            tail = f"…[the rest of today's report is in Mycelium]({tail_url})."
-        if len(chunks[-1]) + len(tail) + 2 <= limit:
-            chunks[-1] = f"{chunks[-1]}\n\n{tail}"
-        else:
-            chunks.append(tail)
-    return [c for c in chunks if c]
+    return Path(getattr(settings, "DISCORD_OUTBOX_ATTACHMENT_DIR", "data/outbox"))
 
 
-def queue_lab_report(lab, *, on: date | None = None, body: str | None = None):
-    """Queue the lab's written report as follow-up messages in the same channel.
+def report_filename(lab, on: date) -> str:
+    return f"mylo-report-{lab.slug}-{on:%Y-%m-%d}.pdf"
 
-    Ordering is the outbox's: rows are claimed by ``(next_attempt_at, id)`` and
-    delivered one at a time, so chunks enqueued after the summary arrive after it,
-    in order. Each chunk carries its own ``dedupe_key``
-    (``lab_report:<lab>:<date>:<i>``), so a re-run of the daily chain is a no-op per
-    chunk exactly as the summary is.
 
-    Returns the number of chunks queued. A lab with no written briefing yet queues
+def queue_lab_report(lab, *, on: date | None = None, workdir: Path | None = None):
+    """Render the lab's day to a PDF and queue it as an attachment on the summary's
+    channel.
+
+    The same document a member receives by DM, compiled for the lab: cover, contents,
+    the written report, the top articles and opportunities, then the full appendix.
+    Reusing :mod:`.daily_report`/:mod:`.daily_report_pdf` wholesale is the point — a
+    lab's report should not be a different artefact from a person's, and a second
+    renderer would drift from the first within a release.
+
+    Queued after the summary, and the outbox claims by ``(next_attempt_at, id)`` and
+    delivers one at a time, so the file lands under the counts it belongs to.
+    ``dedupe_key`` is ``lab_report:<lab>:<date>``, so re-running the daily chain is a
+    no-op rather than a second upload.
+
+    Returns ``True`` when a row was queued. A lab with nothing to report queues
     nothing — the summary still posts, and the day is not spent explaining absence.
     """
     on = on or timezone.localdate()
-    if body is None:
-        body = written_briefing_body(lab)
     channel_id = resolve.get_updates_channel_for_lab(lab)
-    if not body.strip() or not channel_id:
-        return 0
+    if not channel_id:
+        return False
 
-    base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
-    chunks = report_chunks(body, tail_url=f"{base}/app/daily" if base else "")
-    queued = 0
-    for index, chunk in enumerate(chunks, start=1):
-        # Belt and braces: the chunker is the only clamp between a written report and
-        # a permanent 400, so assert rather than trust.
-        assert len(chunk) <= REPORT_CHUNK_CHARS, "report chunk exceeds Discord's limit"
-        _row, created = outbox.enqueue_channel(
-            dedupe_key=f"lab_report:{lab.id}:{on:%Y-%m-%d}:{index}",
-            kind="lab_report",
-            channel_id=channel_id,
-            lab=lab,
-            content=chunk,
-            subject_type="lab_report",
-            subject_id=str(lab.id),
-        )
-        queued += int(bool(created))
-    return queued
+    data = compile_report_for_lab(lab)
+    if not data.total_count and not data.briefing_markdown.strip():
+        return False
+
+    workdir = workdir or report_dir()
+    workdir.mkdir(parents=True, exist_ok=True)
+    path = workdir / report_filename(lab, on)
+    # Written through a temp file and moved into place: the path is deterministic per
+    # (lab, day), so a re-run would otherwise truncate a file the drain might be
+    # reading at that moment. os.replace is atomic, so a reader sees one whole PDF or
+    # the other, never half of each.
+    staged = path.with_name(path.name + ".part")
+    staged.write_bytes(render_report_pdf(data))
+    os.replace(staged, path)
+
+    _row, created = outbox.enqueue_channel(
+        dedupe_key=f"lab_report:{lab.id}:{on:%Y-%m-%d}",
+        kind="lab_report",
+        channel_id=channel_id,
+        lab=lab,
+        content=REPORT_MESSAGE,
+        attachment_path=str(path),
+        attachment_filename=path.name,
+        subject_type="lab_report",
+        subject_id=str(lab.id),
+    )
+    return bool(created)
 
 
 def written_briefing_body(lab) -> str:

@@ -110,10 +110,20 @@ def enqueue_channel(
     content: str = "",
     embed: dict | None = None,
     allowed_mentions: dict | None = None,
+    attachment_path: str = "",
+    attachment_filename: str = "",
     subject_type: str = "",
     subject_id: str = "",
 ) -> tuple[object, bool]:
-    """Queue a channel post."""
+    """Queue a channel post, optionally carrying a file.
+
+    Attachments are held as a **path**, not bytes — the same contract as
+    :func:`enqueue_dm`, and for the same reason: a queued row may wait minutes for
+    the drain, so the file lives in ``DISCORD_OUTBOX_ATTACHMENT_DIR`` and the
+    retention sweep removes it once the row settles. :func:`deliver_one` branches on
+    the path alone, never on the target type, so a channel attachment takes exactly
+    the multipart path a DM attachment already did.
+    """
     return resolve.enqueue_outbox(
         dedupe_key=dedupe_key,
         kind=kind,
@@ -123,6 +133,8 @@ def enqueue_channel(
         content=content,
         embed=embed,
         allowed_mentions=allowed_mentions,
+        attachment_path=attachment_path,
+        attachment_filename=attachment_filename,
         subject_type=subject_type,
         subject_id=subject_id,
     )

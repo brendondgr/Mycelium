@@ -1,8 +1,7 @@
 """The lab digest finally reaches the channel labs have been configuring all along.
 
 The load-bearing assertion is idempotency: one post per lab per day, and re-running
-the daily pipeline produces no second post — now across the summary *and* every
-message the written report is split into.
+the daily pipeline produces no second post — the summary or the attached report.
 """
 
 from __future__ import annotations
@@ -14,17 +13,16 @@ from django.contrib.auth.models import User
 
 from apps.accounts.models import Lab
 from apps.content.lab_digest import (
-    MAX_REPORT_CHUNKS,
-    REPORT_CHUNK_CHARS,
     compile_lab_digest,
     digest_embed,
     eligible_labs,
     queue_lab_digest,
     queue_lab_report,
-    report_chunks,
 )
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.integrations.models import DiscordGuildLink, DiscordOutboxMessage
+from apps.integrations.services import discord_api, outbox
+from apps.integrations.services.discord_api import RawResponse
 from apps.integrations.tests.base import (
     clear_discord_cache,
     discord_test_settings,
@@ -271,7 +269,7 @@ def test_the_summary_names_themes_and_counts_only(db) -> None:
     fields = {f["name"]: f["value"] for f in embed["fields"]}
     assert fields["Medical AI"] == "1 paper · 1 grant"
     assert fields["Robotics"] == "1 paper"
-    assert embed["footer"]["text"] == "See the full report below."
+    assert embed["footer"]["text"] == "The full report is attached below."
 
 
 @pytest.mark.django_db
@@ -300,95 +298,121 @@ def test_the_summary_link_is_not_localhost(db) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# The written report, in the same channel
+# The report, attached as a PDF
 # --------------------------------------------------------------------------- #
-def test_a_short_report_is_one_message() -> None:
-    assert report_chunks("## Papers\n\nOne short paragraph.") == [
-        "## Papers\n\nOne short paragraph."
-    ]
-
-
-def test_an_empty_report_is_no_message() -> None:
-    assert report_chunks("") == []
-    assert report_chunks("   \n\n ") == []
-
-
-def test_every_chunk_fits_and_nothing_is_lost() -> None:
-    """Over 2000 characters Discord returns a 400, which the outbox never retries."""
-    body = "\n\n".join(f"## Section {n}\n\n{'word ' * 120}" for n in range(6))
-
-    chunks = report_chunks(body)
-
-    assert len(chunks) > 1
-    assert all(len(c) <= REPORT_CHUNK_CHARS for c in chunks)
-    # Whitespace at the seams is normalised away; every word survives.
-    assert " ".join(" ".join(chunks).split()) == " ".join(body.split())
-
-
-def test_a_split_prefers_a_paragraph_boundary() -> None:
-    """A heading must never be orphaned from the paragraph it introduces."""
-    body = "\n\n".join(f"## Section {n}\n\n{'word ' * 100}" for n in range(4))
-
-    chunks = report_chunks(body)
-
-    assert all(not c.endswith("##") for c in chunks)
-    assert all(c.strip() for c in chunks)
-
-
-def test_a_runaway_report_is_cut_with_a_pointer_home() -> None:
-    """Past a certain length a channel is the wrong medium; flooding it is worse."""
-    body = "\n\n".join(f"paragraph {n} " + "word " * 200 for n in range(60))
-
-    chunks = report_chunks(body, tail_url="https://mycelium.example.com/app/daily")
-
-    assert len(chunks) == MAX_REPORT_CHUNKS
-    assert "the rest of today's report is in Mycelium" in chunks[-1]
-    assert len(chunks[-1]) <= REPORT_CHUNK_CHARS
-
-
 @pytest.mark.django_db
-def test_the_report_follows_the_summary_into_the_same_channel(db) -> None:
+def test_the_report_is_attached_not_pasted(db, tmp_path) -> None:
+    """A day's report runs to thousands of words.
+
+    Posting it as message text — the first attempt — turns the channel into a wall
+    people mute. It goes as the same PDF a member already receives by DM.
+    """
     lab = _lab()
     _scored(lab, title="Something", cluster="Medical AI")
     DailyBriefing.objects.create(lab=lab, body="## Papers\n\nA readable report.")
 
     queue_lab_digest(lab, on=TODAY)
-    queued = queue_lab_report(lab, on=TODAY)
+    assert queue_lab_report(lab, on=TODAY, workdir=tmp_path) is True
 
-    assert queued == 1
     rows = list(DiscordOutboxMessage.objects.order_by("id"))
     assert [r.kind for r in rows] == ["lab_digest", "lab_report"]
     assert all(r.channel_id == "updates-chan" for r in rows)
-    # The report is message text, not an embed — it is meant to be read in place.
-    assert rows[1].content == "## Papers\n\nA readable report."
-    assert not rows[1].embed
+    report = rows[1]
+    # A one-line note, and the document itself as a file.
+    assert report.content == "Today's full report is attached."
+    assert "A readable report" not in report.content
+    assert report.attachment_filename == f"mylo-report-neuro-{TODAY:%Y-%m-%d}.pdf"
+    written = tmp_path / report.attachment_filename
+    assert written.exists()
+    assert written.read_bytes().startswith(b"%PDF")
+    assert str(written) == report.attachment_path
 
 
 @pytest.mark.django_db
-def test_a_lab_with_no_written_report_still_gets_its_summary(db) -> None:
+def test_the_report_carries_the_labs_own_matches(db, tmp_path) -> None:
+    """It must be the lab's day, not a blank template with the lab's name on it."""
+    from apps.content.daily_report import compile_report_for_lab
+
     lab = _lab()
-    _scored(lab, title="Something", cluster="Medical AI")
+    _scored(lab, title="A paper", cluster="Medical AI")
+    _scored(
+        lab,
+        title="A grant",
+        cluster="Medical AI",
+        category=ContentItem.Type.GRANT,
+    )
+    DailyBriefing.objects.create(lab=lab, body="## Papers\n\nToday's reading.")
 
-    queue_lab_digest(lab, on=TODAY)
-    queued = queue_lab_report(lab, on=TODAY)
+    data = compile_report_for_lab(lab)
 
-    assert queued == 0
-    assert DiscordOutboxMessage.objects.count() == 1
+    assert data.display_name == "Lab neuro"
+    assert data.counts["papers"] == 1
+    assert data.counts["grants"] == 1
+    assert [i.title for i in data.top_papers] == ["A paper"]
+    assert data.briefing_markdown == "## Papers\n\nToday's reading."
 
 
 @pytest.mark.django_db
-def test_the_report_is_queued_once_per_day_too(db) -> None:
-    """Re-running the daily chain must not repost the report either."""
+def test_a_lab_with_nothing_to_report_still_gets_its_summary(db, tmp_path) -> None:
+    lab = _lab()
+
+    assert queue_lab_report(lab, on=TODAY, workdir=tmp_path) is False
+    assert DiscordOutboxMessage.objects.count() == 0
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.django_db
+def test_the_report_is_queued_once_per_day_too(db, tmp_path) -> None:
+    """Re-running the daily chain must not upload the report a second time."""
     lab = _lab()
     _scored(lab, title="Something", cluster="Medical AI")
-    DailyBriefing.objects.create(lab=lab, body="## Papers\n\n" + "word " * 900)
+    DailyBriefing.objects.create(lab=lab, body="## Papers\n\nA readable report.")
 
-    first = queue_lab_report(lab, on=TODAY)
-    second = queue_lab_report(lab, on=TODAY)
+    first = queue_lab_report(lab, on=TODAY, workdir=tmp_path)
+    second = queue_lab_report(lab, on=TODAY, workdir=tmp_path)
 
-    assert first > 1  # long enough to need several messages
-    assert second == 0
-    assert DiscordOutboxMessage.objects.filter(kind="lab_report").count() == first
+    assert first is True
+    assert second is False
+    assert DiscordOutboxMessage.objects.filter(kind="lab_report").count() == 1
+    # And no half-written staging file is left behind by the second render.
+    assert [p.name for p in tmp_path.iterdir()] == [
+        f"mylo-report-neuro-{TODAY:%Y-%m-%d}.pdf"
+    ]
+
+
+@pytest.mark.django_db
+def test_the_pdf_is_uploaded_to_the_channel_and_pings_nobody(
+    db, tmp_path, monkeypatch, settings
+) -> None:
+    """The end the change is actually judged at: what Discord receives.
+
+    ``deliver_one`` branches on the attachment path, never on the target type, so a
+    channel row takes the same multipart upload a DM already did — this pins that it
+    genuinely does, at the lab's own channel, with mentions still disarmed.
+    """
+    settings.DISCORD_BOT_TOKEN = "test-token"
+    calls: list[dict] = []
+
+    def transport(method, path, *, auth=None, json_body=None, raw_body=None, **kw):
+        calls.append({"path": path, "raw_body": raw_body, **kw})
+        return RawResponse(200, {"id": "msg-1"})
+
+    monkeypatch.setattr(discord_api, "_request", transport)
+
+    lab = _lab()
+    _scored(lab, title="Something", cluster="Medical AI")
+    DailyBriefing.objects.create(lab=lab, body="## Papers\n\nA readable report.")
+    queue_lab_report(lab, on=TODAY, workdir=tmp_path)
+
+    result = outbox.drain()
+
+    assert result.delivered == 1
+    sent = calls[-1]
+    assert sent["path"] == "/channels/updates-chan/messages"
+    assert sent["content_type"].startswith("multipart/form-data; boundary=")
+    assert b"%PDF" in sent["raw_body"]
+    assert b'name="files[0]"; filename="mylo-report-neuro-' in sent["raw_body"]
+    assert b'"parse": []' in sent["raw_body"]
 
 
 @pytest.mark.django_db

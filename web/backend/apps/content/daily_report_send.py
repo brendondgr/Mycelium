@@ -86,7 +86,9 @@ def _report_dir() -> Path:
     """Where a queued report waits for its send.
 
     Durable by necessity, not preference: the bytes must survive until the drain
-    reaches the row, which may be minutes away and, during an outage, longer.
+    reaches the row, which may be minutes away and, during an outage, longer. The lab
+    report (:mod:`.lab_digest`) writes its PDF to the same directory, so both are
+    swept by the same outbox retention pass.
     """
     return Path(getattr(settings, "DISCORD_OUTBOX_ATTACHMENT_DIR", "data/outbox"))
 

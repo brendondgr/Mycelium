@@ -4,7 +4,9 @@
 > integrations / core tests pass and ruff is clean on every changed file. Verified
 > on the running stack: the digest link renders as
 > `https://mycelium.brendondgr.com/app/daily`, the summary is counts-by-theme only,
-> and a real 8.6k-character lab report chunks into five in-limit messages.
+> and PULSE Lab's real day renders to a 24-page, 242 KB PDF ("Prepared for PULSE
+> Lab", 184/153/164, working table of contents) that the drain uploads to the lab's
+> channel as a file. **D7 was revised after the first build** — see the decision.
 >
 > Four defects reported against the lab-facing half of the daily run: localhost
 > links in the Discord post, a starved lab paper feed, gapped article ordering, and
@@ -111,10 +113,15 @@ the digest even though a lab is scored for them.
   behaviour change.
 - **D6 — Personal feeds are untouched** by D2/D3/D4. `recommend_for_user` keeps its
   current selection and floor behaviour.
-- **D7 — The full report is chat text, not an attachment.** The request is for the
-  report to be readable in the channel. It is posted as follow-up plain-text
-  messages chunked on markdown boundaries, capped so a runaway report cannot flood
-  a channel; the tail links back to the portal when truncated.
+- **D7 — The full report is an attached PDF.** *(Revised after the first build.)*
+  It was first shipped as chunked plain-text messages, on the reading that "posted
+  into the same chat" meant readable in place. In practice a day's report is
+  thousands of words and the channel became something to mute. It is now the same
+  PDF a member already receives by DM, compiled for the lab
+  (`daily_report.compile_report_for_lab` → the unchanged `render_report_pdf`) and
+  attached to a one-line message under the summary. `enqueue_channel` gained the
+  `attachment_path`/`attachment_filename` kwargs the model and `deliver_one` already
+  supported.
 - **D8 — Fellowships join the digest counts.** They are already scored to the lab
   and already in its written report; excluding them from the summary is a bug.
 
@@ -219,22 +226,22 @@ added there).
    the overall tally, one field per cluster whose **name is the cluster label** and
    whose **value is only that cluster's counts**, and a closing line
    `See the full report below.` The portal URL stays on the embed.
-4. **`queue_lab_report(lab, *, on, body)`** — new. Splits the lab's
-   `DailyBriefing.body` into ≤ `REPORT_CHUNK_CHARS` (1900) pieces on markdown
-   boundaries (blank line, then heading, then hard split as a last resort), caps at
-   `MAX_REPORT_CHUNKS` (8) and appends a "continued in Mycelium" line with the
-   portal link when it overflows. Each chunk is one `outbox.enqueue_channel` row
-   with `dedupe_key=f"lab_report:{lab.id}:{on}:{i}"` and `kind="lab_report"`, so
-   the daily run stays idempotent per chunk. Enqueued **after** the digest row, and
+4. **`queue_lab_report(lab, *, on, workdir=None)`** — new. Compiles the lab's day
+   (`daily_report.compile_report_for_lab`), renders it with the existing
+   `render_report_pdf`, writes it into `DISCORD_OUTBOX_ATTACHMENT_DIR` through a
+   `.part` file plus `os.replace` (the path is deterministic per lab/day, so a
+   re-render must never truncate a file the drain is mid-read on), and queues one
+   `outbox.enqueue_channel` row with `dedupe_key=f"lab_report:{lab.id}:{on}"`,
+   `kind="lab_report"`, and the attachment. Enqueued **after** the digest row, and
    `claim_outbox_batch` orders by `(next_attempt_at, id)` while `drain` delivers
-   sequentially, so the channel reads summary-then-report.
-5. **`send_lab_digests`** calls `queue_lab_report` after `queue_lab_digest`, per
+   sequentially, so the channel reads summary-then-file.
+5. **`outbox.enqueue_channel`** gains `attachment_path` / `attachment_filename`,
+   forwarded to `resolve.enqueue_outbox`, which already accepted them —
+   `deliver_one` branches on the path, not the target type, so a channel attachment
+   takes the same multipart upload a DM attachment does.
+6. **`send_lab_digests`** calls `queue_lab_report` after `queue_lab_digest`, per
    lab, inside the same per-lab `try` so one lab never sinks the run. `--dry-run`
-   prints the chunk count.
-6. **Length safety.** Nothing in the outbox clamps to Discord's 2000-char message
-   limit today, and an over-length body is a permanent 400 (dead letter). The
-   chunker is the clamp for this feature; add a defensive assertion in the chunker
-   rather than a silent truncation elsewhere.
+   prints the filename it would attach.
 7. `outbox._on_permanent` maps a channel `lab_digest` kind onto the guild link's
    `updates` health flag — extend that mapping to `lab_report` so a broken channel
    is reported the same way.
@@ -242,11 +249,14 @@ added there).
 **Validation:** extend `apps/content/tests/test_lab_digest.py` —
 - the embed contains cluster names and counts and **no item titles**;
 - fellowship counts appear;
-- every chunk is ≤ 2000 chars and their concatenation equals the report body
-  (modulo the truncation tail);
+- the report row carries a real PDF on disk and a one-line body, not the report
+  text;
+- `compile_report_for_lab` carries the lab's own matches and written briefing;
+- draining actually uploads it: `POST /channels/<updates>/messages` as multipart,
+  with `allowed_mentions.parse == []` intact;
 - re-running the command queues nothing new (idempotency, the load-bearing
-  guarantee of this module);
-- a lab with no written briefing posts the summary and no report chunks;
+  guarantee of this module) and leaves no staging file behind;
+- a lab with nothing to report posts the summary and no file;
 - an empty day still posts nothing at all.
 
 ### Phase 5 — docs, changelog, and a real run
@@ -270,7 +280,9 @@ added there).
 | `suggest.generate_suggestions` | new optional `llm_groups` kwarg |
 | `digest_selection.renumber` | new pure helper |
 | `lab_digest.ThemeBlock` | loses `items` |
-| `lab_digest.queue_lab_report` | new |
+| `lab_digest.queue_lab_report` | new (attaches a PDF) |
+| `daily_report.compile_report_for_lab` | new (twin of `compile_report_for_user`) |
+| `outbox.enqueue_channel` | new `attachment_path` / `attachment_filename` kwargs |
 | `RelevanceScore.signals["rank"]` | now contiguous across `suggested` rows |
 | `GET /api/labs/<slug>/recommendations/` | same shape; more papers, contiguous `rank` |
 
@@ -294,6 +306,7 @@ the lab's own server — the same audience that can already read it in the porta
   appear in the new summary.
 - No change to the personal daily PDF report or its DM path.
 - No cluster-aware selection for the personal paper feed (D6).
-- No new Discord command, no attachment-based lab report (D7).
+- No new Discord command; no separate lab report *design* — it is deliberately the
+  same PDF a person receives, not a second document to maintain (D7).
 - No re-tuning of `PAPER_MATCH_THRESHOLD` or `PAPER_MIN_MATCH_PERCENT`; the
   per-cluster slate sidesteps them rather than moving them for everyone.
