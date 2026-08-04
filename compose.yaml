@@ -202,6 +202,43 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    # Liveness, not readiness. On 2026-08-04 Beat stopped scheduling for 2.5 hours
+    # while its process stayed alive and asleep, so `restart: on-failure` never fired
+    # and Docker still reported the container Up. Nothing was delivered — the daily
+    # run only *enqueues* into the Discord outbox, and `drain-discord-outbox` (every
+    # minute, here) is what actually sends — yet the run reported success, because
+    # every stage had in fact succeeded. A wedged-but-alive Beat is invisible unless
+    # something checks that it is still doing work.
+    #
+    # The signal is the mtime of Beat's own schedule state, which PersistentScheduler
+    # rewrites on its sync cadence (observed a few minutes apart). During the stall
+    # it froze at 10:40 while the last tick was 10:41, so it tracks the hang exactly.
+    #
+    # A Compose healthcheck only *marks* a container unhealthy; it restarts nothing.
+    # So on a stale read this kills the Beat process to make the container exit
+    # non-zero, which is what `restart: on-failure` above already knows how to
+    # recover. Note SIGKILL to PID 1 is ignored from inside its own PID namespace,
+    # so the pattern targets the celery process rather than the `sh -c` wrapper.
+    #
+    # The threshold is deliberately several times the sync cadence: a false positive
+    # here restarts a healthy Beat on a loop, which is worse than a late recovery.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          newest=$$(stat -c %Y /tmp/celerybeat-schedule* 2>/dev/null | sort -n | tail -1);
+          [ -z "$$newest" ] && exit 0;
+          age=$$(( $$(date +%s) - $$newest ));
+          [ "$$age" -lt ${BEAT_STALE_SECONDS:-900} ] && exit 0;
+          echo "beat: no schedule sync for $${age}s — killing it so restart:on-failure recovers it";
+          pkill -9 -f '[c]elery -A config beat';
+          exit 1
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      # Beat installs its schedule state only after the interpreter and Django are
+      # up; until then there is no file to read and the check exits 0 anyway.
+      start_period: 120s
 
   # Optional SSH tunnel to a remote LLM server, run *inside* the compose network.
   #
