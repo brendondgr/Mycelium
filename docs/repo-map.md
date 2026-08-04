@@ -164,6 +164,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `docs/discord-integration.md` | Discord identity & lab linking reference |
 | `docs/loadtest.md` | Onboarding load-test guide |
 | `docs/research-audit.md` | Independent audit of the ranking and agentic layers |
+| `docs/fellowship-matching-investigation.md` | Diagnosis: fellowship eligibility gating + percent-scale defects |
 | `docs/skills/` | Canonical agent guidance — start at `skills/index.md` |
 | `docs/changelog.md` | Append-only project history |
 | `docs/chats/`, `docs/Resources/` | Source conversations and the project brief |
