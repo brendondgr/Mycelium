@@ -246,6 +246,7 @@ class _FellowshipMatchJob:
     embed_by_id: dict | None = None   # {content_id: cosine}; None => rule-only
     has_interest_signal: bool = False  # user declared interests/watch topics
     embed_threshold: float = 0.0      # min cosine an eligible item must clear
+    withhold_unverified: bool = False  # drop scrape-miss records instead of labelling
     # False => whole corpus (sign-up/refit, *replaces* the feed); True => only
     # fellowships this user has never been scored on (the daily run, *accumulates*).
     unscored_only: bool = False
@@ -340,6 +341,9 @@ def _prepare_fellowship_match(
         embed_by_id=embed_by_id,
         has_interest_signal=has_interest_signal,
         embed_threshold=getattr(settings, "FELLOWSHIP_MATCH_THRESHOLD", 0.4),
+        withhold_unverified=getattr(
+            settings, "FELLOWSHIP_WITHHOLD_UNVERIFIED", False
+        ),
         unscored_only=unscored_only,
     )
     return job, None
@@ -432,6 +436,7 @@ def _score_fellowship_job(
         max_surface=job.max_surface,
         embed_by_id=job.embed_by_id,
         embed_threshold=job.embed_threshold,
+        withhold_unverified=job.withhold_unverified,
     )
     items_by_id = {str(item.id): item for item in job.items}
     return generate_fellowship_suggestions(

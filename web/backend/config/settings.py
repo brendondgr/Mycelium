@@ -408,6 +408,25 @@ FELLOWSHIP_FIT_THRESHOLD = env.float("FELLOWSHIP_FIT_THRESHOLD", default=0.0)
 FELLOWSHIP_MATCH_THRESHOLD = env.float("FELLOWSHIP_MATCH_THRESHOLD", default=0.4)
 OPPORTUNITY_MATCH_MAX_SURFACE = env.int("OPPORTUNITY_MATCH_MAX_SURFACE", default=250)
 
+# A fellowship whose scraped facet buckets are all empty (a failed detail render,
+# a missed selector) carries no eligibility information, so every facet test
+# trivially passes it and it would otherwise match everybody. It is tiered
+# "unverified" and labelled as unchecked instead. Withholding it entirely is the
+# stricter option, off by default: a parse failure should not silently cost a
+# researcher a real award.
+FELLOWSHIP_WITHHOLD_UNVERIFIED = env.bool(
+    "FELLOWSHIP_WITHHOLD_UNVERIFIED", default=False
+)
+
+# One-time, per-record extraction of the *prose* eligibility a facet cannot carry
+# ("must have received the PhD within 24 months"). A deterministic pattern pass
+# runs always; the language-model pass fills what the patterns miss and is what
+# this switch turns off. Extraction happens at ingest and is carried forward on
+# re-ingest, so the nightly run never pays for it twice.
+FELLOWSHIP_CONSTRAINT_EXTRACTION = env.bool(
+    "FELLOWSHIP_CONSTRAINT_EXTRACTION", default=True
+)
+
 # Opportunity feeds accumulate: the daily run scores only that day's *new* items and
 # appends them, so a grant/conference/fellowship feed is the union of every run's
 # matches (papers, by contrast, are fresh-only). OPPORTUNITY_FEED_MAX caps how many

@@ -206,7 +206,9 @@ def _build_fellowship_item(rec: dict, external_id: str, today: str) -> PivotItem
     Called exclusively from :func:`build_pivot_item` when ``area == "fellowships"``.
     Grant exclusion is already done by the caller.
     """
-    from .fellowships.parsers import deadline_status  # lazy: keeps package import clean
+    # Lazy imports keep the package import clean.
+    from .fellowships.constraints import extract_by_pattern
+    from .fellowships.parsers import deadline_status, facets_incomplete
 
     title = (rec.get("title") or "").strip()
     award_class = (rec.get("award_class") or "fellowship").strip()
@@ -229,6 +231,14 @@ def _build_fellowship_item(rec: dict, external_id: str, today: str) -> PivotItem
 
     ds = deadline_status(deadline, today)
 
+    # A record whose facet buckets are *all* empty told us nothing about who may
+    # apply — a failed detail render or a missed selector looks exactly like an
+    # award with no restrictions, and the matcher would otherwise read it as a
+    # clean match for everybody. Flag it so eligibility can label it unverified.
+    facets = rec.get("facets") or {}
+    flags = dict(rec.get("flags") or {})
+    flags["facets_incomplete"] = facets_incomplete(facets)
+
     # Amount.
     award_amount = rec.get("award_amount") or {}
     external_url = (rec.get("external_url") or "").strip()
@@ -248,8 +258,14 @@ def _build_fellowship_item(rec: dict, external_id: str, today: str) -> PivotItem
         "amount_raw": (award_amount.get("raw") or ""),
         "amount_note": (award_amount.get("note") or ""),
         "facets": rec.get("facets") or {},
-        "flags": rec.get("flags") or {},
+        "flags": flags,
         "eligibility": rec.get("eligibility") or [],
+        # What the facets cannot say — read from the eligibility prose. The
+        # pattern layer is free and runs on every build; the model layer runs
+        # once per record at ingest for what the patterns did not resolve.
+        "constraints": extract_by_pattern(
+            rec.get("eligibility") or [], (rec.get("note") or "")
+        ),
         "external_url": external_url,
         "contact_email": (rec.get("contact_email") or "").strip(),
         "note": (rec.get("note") or "").strip(),

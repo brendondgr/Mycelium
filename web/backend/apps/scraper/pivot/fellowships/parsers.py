@@ -91,6 +91,19 @@ def bucket_categories(categories) -> dict:
     return facets
 
 
+def facets_incomplete(facets: dict) -> bool:
+    """True when no facet bucket carries a single value.
+
+    The signature of a scrape miss. Every eligibility test is written as "does the
+    award's list conflict with the applicant" and an empty list conflicts with
+    nobody, so a record in this state passes every gate for every user. It is not
+    the same thing as an award with no restrictions — that award still lists a
+    field and a citizenship — so it is worth telling apart. ``other`` is ignored:
+    an unrecognized category is not eligibility information.
+    """
+    return not any(facets.get(bucket) for bucket in FACET_BUCKETS)
+
+
 def derive_flags(facets: dict) -> dict:
     """Boolean convenience flags derived from the facet buckets."""
     cit = facets.get("citizenship", [])

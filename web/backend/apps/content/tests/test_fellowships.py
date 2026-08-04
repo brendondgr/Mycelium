@@ -12,6 +12,8 @@ import pytest
 from apps.content.fellowships import (
     FELLOWSHIP_SURFACE_LIMIT,
     Elig,
+    derive_stage,
+    eligibility_from_profile,
     evaluate_eligibility,
     fellowship_status,
     fit,
@@ -154,15 +156,82 @@ def test_field_mismatch_is_conditional_not_hidden():
     assert ev["field_match"] is False
 
 
-def test_stage_mismatch_is_conditional():
+def test_award_above_the_applicants_stage_is_gated():
+    """The reported defect: a postdoctoral award reaching an early-doctoral user."""
     ev = evaluate_eligibility(_meta(stage=("Postdoctoral/Post-graduate",)), ELIG)
+    assert ev["tier"] == "not_eligible"
+    assert any("postdoctoral" in g.lower() for g in ev["gates_failed"])
+
+
+def test_award_below_the_applicants_stage_stays_soft():
+    """The other direction is odd, not disqualifying — a postdoc may still hold a
+    doctoral award, so it downgrades rather than disappears."""
+    postdoc = Elig(
+        citizenship="us",
+        stage_tokens={"Postdoctoral/Post-graduate"},
+        fields=["Sciences/Engineering/Math"],
+    )
+    ev = evaluate_eligibility(_meta(stage=(EARLY,)), postdoc)
     assert ev["tier"] == "conditional"
     assert ev["stage_match"] is False
+
+
+def test_stage_gate_silent_when_the_applicant_stage_is_unknown():
+    """Gating on an absence would empty the feed for every account that never
+    answered the question."""
+    unknown = Elig(citizenship="us", fields=["Sciences/Engineering/Math"])
+    ev = evaluate_eligibility(_meta(stage=("Postdoctoral/Post-graduate",)), unknown)
+    assert ev["tier"] == "conditional"
+
+
+def test_dissertation_applicant_reaches_dissertation_awards():
+    diss = Elig(
+        citizenship="us",
+        stage_tokens={"Dissertation Research", "Dissertation Write-Up"},
+        fields=["Sciences/Engineering/Math"],
+    )
+    ev = evaluate_eligibility(_meta(stage=("Dissertation Write-Up",)), diss)
+    assert ev["tier"] == "qualified"
+
+
+def test_multi_stage_award_gates_on_its_earliest_rung():
+    """An award open to doctoral *and* postdoc applicants is reachable by both."""
+    ev = evaluate_eligibility(
+        _meta(stage=(EARLY, "Postdoctoral/Post-graduate")), ELIG
+    )
+    assert ev["tier"] == "qualified"
 
 
 def test_empty_facets_qualify():
     ev = evaluate_eligibility(_meta(citizenship=(), stage=(), field=()), ELIG)
     assert ev["tier"] == "qualified"
+
+
+def test_scrape_miss_is_unverified_not_qualified():
+    """A record whose facets are all empty passes every facet test trivially; it
+    must read as unchecked rather than as a clean match for everybody."""
+    meta = _meta(citizenship=(), stage=(), field=())
+    meta["flags"] = {"facets_incomplete": True}
+    ev = evaluate_eligibility(meta, ELIG)
+    assert ev["tier"] == "unverified"
+    assert any("unavailable" in r.lower() for r in ev["reasons"])
+
+
+@pytest.mark.django_db
+def test_withhold_unverified_drops_the_record():
+    from apps.content.models import ContentItem
+
+    meta = _meta(citizenship=(), stage=(), field=())
+    meta["flags"] = {"facets_incomplete": True}
+    ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id="incomplete",
+        metadata=meta,
+    )
+    items = ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP)
+    assert len(match_fellowships(items, ELIG, TODAY)) == 1
+    assert match_fellowships(items, ELIG, TODAY, withhold_unverified=True) == []
 
 
 def test_reasons_include_citizenship_note():
@@ -394,11 +463,12 @@ def test_match_fellowships_fit_threshold_trims_weak():
         type=ContentItem.Type.FELLOWSHIP,
         source="illinois-fellowship-finder",
         external_id="weak",
-        # Eligible (passes hard gates) but neither field nor stage match -> conditional
-        # with a low fit (~0.25).
+        # Eligible (passes hard gates) but the field does not match -> conditional
+        # with a low fit. The stage is left unstated so the asymmetric stage gate
+        # has nothing to fire on; this case is about the *fit* threshold.
         metadata=_meta(
             field=("Humanities/Arts/Social Sciences",),
-            stage=("Postdoctoral/Post-graduate",),
+            stage=(),
         ),
     )
     items = ContentItem.objects.filter(type=ContentItem.Type.FELLOWSHIP)
@@ -866,3 +936,103 @@ def test_persist_fellowships_writes_under_target_project():
     assert row.target_user_id is None
     assert row.signals["match_percent"] == 80
     assert row.signals["suggested"] is True
+
+
+# ---- Stage derivation --------------------------------------------------------
+
+
+class _StubProfile:
+    """The two attributes eligibility_from_profile reads, and nothing else."""
+
+    def __init__(self, interests=None, academic_title="", institution=""):
+        self.interests = interests or {}
+        self.academic_title = academic_title
+        self.institution = institution
+
+
+def test_derive_stage_prefers_the_explicit_answer():
+    profile = _StubProfile(
+        interests={"eligibility": {"stage": "masters", "career_stage": "postdoc"}},
+        academic_title="pi",
+    )
+    assert derive_stage(profile) == "masters"
+
+
+def test_derive_stage_falls_back_to_intake_career_stage():
+    """The intake agent writes career_stage in its own vocabulary; nothing used to
+    bridge the two, so an answer of "postdoc" was invisible to matching."""
+    profile = _StubProfile(interests={"eligibility": {"career_stage": "postdoc"}})
+    assert derive_stage(profile) == "postdoc"
+
+
+def test_derive_stage_falls_back_to_academic_title():
+    """What makes the gate work for accounts that predate the eligibility step."""
+    assert derive_stage(_StubProfile(academic_title="student")) == "doctoral_early"
+    assert derive_stage(_StubProfile(academic_title="pi")) == "postdoc"
+
+
+def test_derive_stage_refuses_to_guess_ambiguous_titles():
+    """A staff scientist and a senior graduate student both pick these."""
+    assert derive_stage(_StubProfile(academic_title="researcher")) == ""
+    assert derive_stage(_StubProfile(academic_title="staff")) == ""
+
+
+def test_eligibility_from_profile_uses_the_derived_stage():
+    elig = eligibility_from_profile(_StubProfile(academic_title="student"))
+    assert elig.stage == "doctoral_early"
+    assert elig.stage_rank == 1
+    ev = evaluate_eligibility(_meta(stage=("Postdoctoral/Post-graduate",)), elig)
+    assert ev["tier"] == "not_eligible"
+
+
+# ---- Prose constraints -------------------------------------------------------
+
+
+def _constrained(**block):
+    meta = _meta(stage=(), field=())
+    meta["constraints"] = {
+        "min_stage": "",
+        "max_years_post_phd": None,
+        "degree_required": "",
+        "source": "patterns",
+        "evidence": "",
+        **block,
+    }
+    return meta
+
+
+def test_prose_min_stage_gates_where_no_facet_exists():
+    """The NSF class: the award lists no stage facet, the binding rule is prose."""
+    ev = evaluate_eligibility(_constrained(min_stage="postdoc"), ELIG, TODAY)
+    assert ev["tier"] == "not_eligible"
+
+
+def test_prose_degree_requirement_gates_a_pre_phd_applicant():
+    ev = evaluate_eligibility(_constrained(degree_required="phd"), ELIG, TODAY)
+    assert ev["tier"] == "not_eligible"
+
+
+def test_prose_constraints_are_silent_for_an_eligible_applicant():
+    postdoc = Elig(citizenship="us", stage_tokens={"Postdoctoral/Post-graduate"})
+    ev = evaluate_eligibility(_constrained(degree_required="phd"), postdoc, TODAY)
+    assert ev["tier"] != "not_eligible"
+
+
+def test_post_phd_window_gates_only_when_the_phd_year_is_known():
+    stale = Elig(
+        citizenship="us",
+        stage_tokens={"Postdoctoral/Post-graduate"},
+        phd_completed_year=2018,
+    )
+    meta = _constrained(max_years_post_phd=3, degree_required="phd")
+    assert evaluate_eligibility(meta, stale, TODAY)["tier"] == "not_eligible"
+
+    unknown_year = Elig(citizenship="us", stage_tokens={"Postdoctoral/Post-graduate"})
+    assert evaluate_eligibility(meta, unknown_year, TODAY)["tier"] != "not_eligible"
+
+    recent = Elig(
+        citizenship="us",
+        stage_tokens={"Postdoctoral/Post-graduate"},
+        phd_completed_year=2025,
+    )
+    assert evaluate_eligibility(meta, recent, TODAY)["tier"] != "not_eligible"

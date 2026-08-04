@@ -89,13 +89,23 @@ class EligibilityContract(serializers.Serializer):
 
     Fields:
       citizenship  "us" | "international" | "" — default "us".
-      stage        academic stage token — default "".
+      stage        academic stage token — default "". Blank is not the same as
+                   "no stage": :func:`apps.content.fellowships.derive_stage`
+                   falls back to ``career_stage`` and then to the profile's
+                   ``academic_title``, so an account that never answered the
+                   eligibility step still places on the ladder. The stage gate is
+                   asymmetric — it only ever hides an award whose *earliest*
+                   acceptable stage is above the applicant's.
       fields       subset of five broad field buckets — validated, allow empty.
       eligible_restrictions  subset of ["Women","Equity"] — default [].
       lab_visible  opt-in: may this member's fellowship eligibility be shown to
                    their labs? Default False — a lab fellowship recommendation names
                    only members who explicitly consent (D-11 privacy), never who
                    was ineligible, so nothing leaks by inference until opt-in.
+      phd_completed_year  the year the doctorate was conferred, when known. The
+                   one input for awards that limit how long ago that was ("within
+                   24 months of the PhD"); such a limit is only ever enforced when
+                   both it and this are known.
       career_stage  kept for backward-compat (intake/agent.py writes it).
     """
 
@@ -117,6 +127,10 @@ class EligibilityContract(serializers.Serializer):
     )
     # Opt-in consent for lab-visible fellowship eligibility (D-11). Default off.
     lab_visible = serializers.BooleanField(required=False, default=False)
+    # Year the doctorate was conferred; only meaningful for post-PhD applicants.
+    phd_completed_year = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1900, max_value=2200
+    )
     # Backward-compat: intake/agent.py writes career_stage; keep it as a plain
     # string so old data round-trips without error.
     career_stage = serializers.CharField(required=False, allow_blank=True)

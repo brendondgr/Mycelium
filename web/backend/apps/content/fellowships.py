@@ -59,7 +59,44 @@ STAGE_MAP: dict[str, list[str]] = {
     "postdoc": ["Postdoctoral/Post-graduate"],
 }
 
-TIER_RANK: dict[str, int] = {"qualified": 0, "conditional": 1, "not_eligible": 2}
+#: The career ladder, as an order. Used for the *asymmetric* stage gate: an award
+#: whose earliest acceptable stage is above the applicant's is a hard
+#: disqualification (a postdoc award cannot be held by a second-year PhD student),
+#: while an applicant standing above the award's range is merely an odd fit and
+#: stays a soft signal. Both directions previously produced the same
+#: ``conditional``, which is why postdoc awards reached students.
+STAGE_LADDER: dict[str, int] = {
+    "masters": 0,
+    "doctoral_early": 1,
+    "doctoral_dissertation": 2,
+    "postdoc": 3,
+}
+
+#: The same order over the Illinois facet vocabulary, so an award's stage list can
+#: be compared with an applicant's. Both dissertation facets are one rung: the
+#: site distinguishes research from write-up, the ladder does not need to.
+FACET_STAGE_RANK: dict[str, int] = {
+    "Master's": 0,
+    "Early Years of Doctoral Program": 1,
+    "Dissertation Research": 2,
+    "Dissertation Write-Up": 2,
+    "Postdoctoral/Post-graduate": 3,
+}
+
+#: Human phrasing for a ladder rung, for the gate's own explanation.
+STAGE_LABELS: dict[int, str] = {
+    0: "master's students",
+    1: "doctoral students",
+    2: "dissertation-stage doctoral students",
+    3: "postdoctoral or post-PhD researchers",
+}
+
+TIER_RANK: dict[str, int] = {
+    "qualified": 0,
+    "conditional": 1,
+    "unverified": 2,
+    "not_eligible": 3,
+}
 
 # Maximum fellowships to surface per user per run.
 FELLOWSHIP_SURFACE_LIMIT = 40
@@ -78,6 +115,67 @@ class Elig:
     university: str = ""
     is_illinois_student: bool = False
     eligible_restrictions: list = field(default_factory=list)   # ["Women","Equity"]
+    stage: str = ""              # the ladder token itself ("" when unknown)
+    phd_completed_year: int | None = None   # for post-PhD time-window limits
+
+    @property
+    def stage_rank(self) -> int | None:
+        """The applicant's rung on :data:`STAGE_LADDER`, or ``None`` if unknown.
+
+        Read from ``stage_tokens`` rather than ``stage`` so a hand-built
+        :class:`Elig` (tests, fixtures) gates the same way one derived from a
+        profile does — the facet set is the single source of truth for where the
+        applicant stands.
+        """
+        ranks = [
+            FACET_STAGE_RANK[token]
+            for token in self.stage_tokens
+            if token in FACET_STAGE_RANK
+        ]
+        return max(ranks) if ranks else None
+
+
+#: Profile career-stage vocabulary (``AcademicTitle`` / the intake agent's
+#: ``career_stage``) -> ladder token. ``researcher`` and ``staff`` are deliberately
+#: absent: a staff scientist and a senior graduate student both choose them, so
+#: they say nothing about the ladder and must not be guessed at. ``pi`` maps to the
+#: top rung, which — the gate being asymmetric — can only ever widen a feed.
+TITLE_TO_STAGE: dict[str, str] = {
+    "student": "doctoral_early",
+    "postdoc": "postdoc",
+    "pi": "postdoc",
+}
+
+
+def derive_stage(profile) -> str:
+    """The applicant's ladder token, from the most specific source that has one.
+
+    Precedence: what they told the eligibility step, then what the Mylo intake
+    agent recorded as their career stage, then their profile's academic title.
+    The last two are what make the stage gate work for accounts that predate the
+    eligibility step — without them the field is empty for essentially everybody
+    and the gate never fires (investigation, Cause 2). Returns ``""`` when nothing
+    resolves, which leaves stage a soft signal exactly as before.
+    """
+    interests = getattr(profile, "interests", None) or {}
+    e = interests.get("eligibility") or {}
+    explicit = (e.get("stage") or "").strip()
+    if explicit in STAGE_LADDER:
+        return explicit
+    career = (e.get("career_stage") or "").strip().lower()
+    if career in TITLE_TO_STAGE:
+        return TITLE_TO_STAGE[career]
+    title = (getattr(profile, "academic_title", "") or "").strip().lower()
+    return TITLE_TO_STAGE.get(title, "")
+
+
+def _as_year(value) -> int | None:
+    """A four-digit year from whatever the profile stored, or ``None``."""
+    try:
+        year = int(value)
+    except (TypeError, ValueError):
+        return None
+    return year if 1900 <= year <= 2200 else None
 
 
 def eligibility_from_profile(profile) -> Elig:
@@ -86,7 +184,8 @@ def eligibility_from_profile(profile) -> Elig:
     Reads ``profile.interests.get("eligibility")`` for the user-supplied block
     and ``profile.institution`` for the university/Illinois check.  All fields
     default safely when absent so users without an eligibility block still get a
-    sensible (US-citizen, empty stage/fields) profile.
+    sensible (US-citizen, empty fields) profile. The stage is *derived* rather
+    than read straight off the block — see :func:`derive_stage`.
     """
     interests = getattr(profile, "interests", None) or {}
     e = interests.get("eligibility") or {}
@@ -98,7 +197,7 @@ def eligibility_from_profile(profile) -> Elig:
     is_illinois = e.get("is_illinois_student")
     if is_illinois is None:
         is_illinois = "illinois" in university.lower()
-    stage = e.get("stage") or ""
+    stage = derive_stage(profile)
     return Elig(
         citizenship=(e.get("citizenship") or "us").lower(),
         stage_tokens=set(STAGE_MAP.get(stage, [])),
@@ -106,23 +205,110 @@ def eligibility_from_profile(profile) -> Elig:
         university=university,
         is_illinois_student=bool(is_illinois),
         eligible_restrictions=list(e.get("eligible_restrictions") or []),
+        stage=stage,
+        phd_completed_year=_as_year(e.get("phd_completed_year")),
     )
 
 
 # ---- Eligibility evaluation ----------------------------------------------------
 
 
-def evaluate_eligibility(metadata: dict, elig: Elig) -> dict:
-    """Tier a fellowship for a user: qualified | conditional | not_eligible.
+def _stage_gate(stage_f: set, elig: Elig) -> str:
+    """The asymmetric stage gate: a reason string when the award is out of reach.
+
+    Fires only when the award's *earliest* acceptable rung is above the
+    applicant's — a postdoctoral award reaching a second-year PhD student. The
+    opposite direction (a doctoral award, a postdoc applicant) is left soft: it
+    is often merely an odd fit, not a disqualification, and hard-gating it would
+    hide awards people legitimately still hold.
+
+    Silent when the applicant's stage is unknown. Gating on an absence would
+    empty the feed of every account that never answered the question, which is
+    the majority of them; those users keep the old soft behaviour and are asked
+    for their stage in onboarding instead.
+    """
+    if elig.stage_rank is None or not stage_f:
+        return ""
+    award_ranks = [
+        FACET_STAGE_RANK[token] for token in stage_f if token in FACET_STAGE_RANK
+    ]
+    if not award_ranks:
+        return ""
+    floor = min(award_ranks)
+    if floor <= elig.stage_rank:
+        return ""
+    return "Open to " + STAGE_LABELS.get(floor, "a later career stage")
+
+
+#: Degree requirement -> the lowest ladder rung that satisfies it. "Holds a PhD"
+#: is the same claim as "is at least a postdoc" as far as the ladder can express.
+_DEGREE_MIN_STAGE: dict[str, str] = {
+    "masters": "doctoral_early",
+    "phd": "postdoc",
+}
+
+
+def _constraint_gates(metadata: dict, elig: Elig, today: str) -> list[str]:
+    """Gates from ``metadata["constraints"]`` — the prose the facets cannot carry.
+
+    Three, each silent unless both sides are known:
+
+    - ``min_stage`` / ``degree_required``: the same asymmetric ladder rule as the
+      facet gate. This is what stops "must have received the PhD" reaching a
+      second-year student even when the award lists no stage facet at all.
+    - ``max_years_post_phd``: only enforced for an applicant who recorded the year
+      their doctorate was conferred. A window nobody can be measured against is
+      not a gate.
+    """
+    constraints = metadata.get("constraints") or {}
+    gates: list[str] = []
+
+    required = str(constraints.get("min_stage") or "")
+    if not required:
+        required = _DEGREE_MIN_STAGE.get(
+            str(constraints.get("degree_required") or ""), ""
+        )
+    floor = STAGE_LADDER.get(required)
+    if (
+        floor is not None
+        and elig.stage_rank is not None
+        and floor > elig.stage_rank
+    ):
+        gates.append("Open to " + STAGE_LABELS.get(floor, "a later career stage"))
+
+    window = constraints.get("max_years_post_phd")
+    if isinstance(window, int) and elig.phd_completed_year:
+        try:
+            current_year = int(today[:4])
+        except (TypeError, ValueError):
+            current_year = 0
+        if current_year and current_year - elig.phd_completed_year > window:
+            gates.append(
+                f"Within {window} year{'s' if window != 1 else ''} of the doctorate"
+            )
+    return gates
+
+
+def evaluate_eligibility(metadata: dict, elig: Elig, today: str = "") -> dict:
+    """Tier a fellowship: qualified | conditional | unverified | not_eligible.
 
     Hard gates (any failure -> not_eligible):
       - Citizenship mismatch (international-only vs US citizen, or vice versa).
       - Illinois-student restriction when the user is not at Illinois.
       - Women/Equity group restriction the user has not opted into.
+      - Career stage, asymmetrically (:func:`_stage_gate`): the award's earliest
+        acceptable stage is above the applicant's.
+      - The constraints read from the award's prose (:func:`_constraint_gates`),
+        which need ``today`` for the post-doctorate time windows.
 
     Soft signals (mismatch -> conditional, not hidden):
-      - Stage: typically doctoral_early, but fellowships are fuzzy.
+      - Stage in the other direction: the applicant stands past the award's range.
       - Field: broad bucket match; mismatches surface as conditional.
+
+    ``unverified`` is the scrape-miss tier: a record whose facet buckets are all
+    empty carries no eligibility information at all, and every facet test above
+    trivially passes it. Rather than let it read as a clean ``qualified`` for
+    everybody, it is tiered and labelled as unchecked.
     """
     facets = metadata.get("facets") or {}
     cit = facets.get("citizenship") or []
@@ -130,6 +316,7 @@ def evaluate_eligibility(metadata: dict, elig: Elig) -> dict:
     stage_f = set(facets.get("stage") or [])
     field_f = set(facets.get("field") or [])
     flags = metadata.get("flags") or {}
+    incomplete = bool(flags.get("facets_incomplete"))
     gates: list[str] = []
     reasons: list[str] = []
 
@@ -156,6 +343,15 @@ def evaluate_eligibility(metadata: dict, elig: Elig) -> dict:
         if limit in lim and limit not in elig.eligible_restrictions:
             gates.append(f"Restricted to {phrase}")
 
+    # Career stage — a hard gate in one direction only.
+    stage_gate = _stage_gate(stage_f, elig)
+    if stage_gate:
+        gates.append(stage_gate)
+
+    # Constraints read from the eligibility prose, which is where the binding
+    # rule usually lives ("must have received the PhD within 24 months").
+    gates.extend(_constraint_gates(metadata, elig, today))
+
     # Soft signals
     stage_match = (not stage_f) or bool(stage_f & elig.stage_tokens)
     field_match = (not field_f) or bool(field_f & set(elig.fields))
@@ -163,6 +359,9 @@ def evaluate_eligibility(metadata: dict, elig: Elig) -> dict:
 
     if gates:
         tier = "not_eligible"
+    elif incomplete:
+        tier = "unverified"
+        reasons.append("Eligibility details unavailable — check the award page")
     elif stage_match and field_match:
         tier = "qualified"
     else:
@@ -280,7 +479,9 @@ def recency(date_str: str, today: str) -> float:
 
 def fit(evaluation: dict, status: dict, today: str) -> float:
     """Compute a 0–1 fit score from tier, field/stage match, recency, stipend."""
-    qual = {"qualified": 1.0, "conditional": 0.55}.get(evaluation["tier"], 0.0)
+    qual = {"qualified": 1.0, "conditional": 0.55, "unverified": 0.35}.get(
+        evaluation["tier"], 0.0
+    )
     score = (
         0.45 * qual
         + 0.15 * (1.0 if evaluation["field_match"] else 0.0)
@@ -314,6 +515,7 @@ def match_fellowships(
     embed_by_id: dict[str, float] | None = None,
     embed_threshold: float = 0.0,
     skip_eligibility: bool = False,
+    withhold_unverified: bool = False,
 ) -> list[dict]:
     """Evaluate + filter + rank fellowship ContentItems for a user.
 
@@ -385,9 +587,16 @@ def match_fellowships(
                 continue
             blended = round(embed_match, 4)
         else:
-            ev = evaluate_eligibility(meta, elig)
+            ev = evaluate_eligibility(meta, elig, today)
             # Drop hard-ineligible.
             if ev["tier"] == "not_eligible":
+                continue
+            # A record the scraper could not read eligibility off is normally
+            # surfaced with an explicit "unverified" label rather than hidden —
+            # withholding it loses a real award to a parse failure. Deployments
+            # that would rather show nothing than show something unchecked can
+            # flip this.
+            if withhold_unverified and ev["tier"] == "unverified":
                 continue
             rule_fit = fit(ev, st, today)
             embed_match = None
@@ -415,6 +624,8 @@ def match_fellowships(
             headline = "Strong research-fit match"
         elif ev["tier"] == "qualified":
             headline = "Strong eligibility match"
+        elif ev["tier"] == "unverified":
+            headline = "Eligibility not listed"
         else:
             headline = "Possible fit"
         reason = "; ".join(ev["reasons"]) if ev["reasons"] else ""

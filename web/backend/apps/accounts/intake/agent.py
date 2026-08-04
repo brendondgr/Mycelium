@@ -25,6 +25,16 @@ from .drafts import AuthorProfileDraft
 # so the agent stays free of a hard model import for unit testing).
 CAREER_STAGES = ("student", "postdoc", "researcher", "pi", "staff")
 
+# Career stage -> the fellowship matcher's ladder token
+# (apps.content.fellowships.STAGE_LADDER). "researcher" and "staff" are absent on
+# purpose: a staff scientist and a senior graduate student both pick them, so they
+# place nobody on the ladder and must not be guessed at.
+CAREER_STAGE_TO_ELIGIBILITY_STAGE = {
+    "student": "doctoral_early",
+    "postdoc": "postdoc",
+    "pi": "postdoc",
+}
+
 _EMPTY_ANSWERS = {"", "none", "n/a", "na", "skip", "-"}
 
 
@@ -154,6 +164,13 @@ class IntakeAgent:
             if value:
                 eligibility = dict(interests.get("eligibility") or {})
                 eligibility["career_stage"] = value
+                # Also write the fellowship matcher's own vocabulary. The two
+                # vocabularies are different by design (this one mirrors
+                # AcademicTitle), and nothing used to bridge them, so an intake
+                # answer of "postdoc" was invisible to fellowship eligibility.
+                stage = CAREER_STAGE_TO_ELIGIBILITY_STAGE.get(value)
+                if stage:
+                    eligibility["stage"] = stage
                 interests["eligibility"] = eligibility
         elif value:  # list field — only set when the answer was non-empty
             interests[field.key] = value
