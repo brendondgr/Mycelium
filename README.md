@@ -16,7 +16,7 @@ What is running today:
 - **Four recommendation feeds** — research papers, grants, fellowships, and
   conferences, each scored for a user, a lab, or a project, each with a percent
   match and a written reason.
-- **Daily report** — a multi-agent written briefing per user and per lab, served
+- **Daily report** — a sectioned written briefing per user and per lab, served
   in-app, DM'd as a PDF, and posted to a lab's Discord channel.
 - **Deadline reminders** — saved items, addressable deadlines, and Discord-
   delivered reminders with lead times, snoozing, and a manage page.

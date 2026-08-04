@@ -1,6 +1,6 @@
 """The paper briefing section groups its write-up by focus cluster."""
 
-from apps.content.briefing_agents import _cluster_groups, write_section
+from apps.content.briefing_sections import _cluster_groups, write_section
 
 
 def _item(title, cluster, match=80):
@@ -53,7 +53,7 @@ def test_the_report_is_organised_by_research_theme() -> None:
     With every content type now carrying attribution, the report leads with one
     section per theme and puts the categories inside it.
     """
-    from apps.content.briefing_agents import generate_report_body
+    from apps.content.briefing_sections import generate_report_body
 
     items = {
         "papers": [_item("Segmentation nets", "Medical AI")],
@@ -84,7 +84,7 @@ def test_the_report_is_organised_by_research_theme() -> None:
 
 
 def test_a_theme_section_tallies_what_it_brought() -> None:
-    from apps.content.briefing_agents import generate_report_body
+    from apps.content.briefing_sections import generate_report_body
 
     items = {
         "papers": [_item("A", "Medical AI"), _item("B", "Medical AI")],
@@ -100,7 +100,7 @@ def test_a_theme_section_tallies_what_it_brought() -> None:
 
 def test_one_theme_keeps_the_old_category_first_report() -> None:
     """Nobody's report changes shape just because the capability now exists."""
-    from apps.content.briefing_agents import generate_report_body
+    from apps.content.briefing_sections import generate_report_body
 
     items = {"papers": [_item("Solo", "Medical AI")]}
     body, _ = generate_report_body(
@@ -117,7 +117,7 @@ def test_a_half_attributed_report_stays_category_first() -> None:
     If some items carry a theme and others do not, organising by theme would strand
     the unattributed ones somewhere the reader cannot account for.
     """
-    from apps.content.briefing_agents import generate_report_body
+    from apps.content.briefing_sections import generate_report_body
 
     items = {
         "papers": [_item("Attributed", "Medical AI")],

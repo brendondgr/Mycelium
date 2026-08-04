@@ -4,18 +4,19 @@ After the daily run has produced the day's paper suggestions and opportunity
 matches, this module reads each category's :class:`RelevanceScore` feed for a user
 (papers fresh-only, opportunities accumulated) across every category they watch,
 rolls them into per-category counts and a small showcase of top items, and hands
-the found items to the multi-agent report writer in :mod:`.briefing_agents`, which
+the found items to the sectioned report writer in :mod:`.briefing_sections`, which
 produces a structured, sectioned **markdown** report. The result is persisted as
 that day's :class:`DailyBriefing` — one row per target per ``generated_on``, so a
 rerun replaces today's report and the previous days stay readable.
 
-The report is a small agent pipeline (see :mod:`.briefing_agents`): a Paper, Grant,
-Fellowship, and Conference specialist each write a tailored ``## Section`` grounded
-in that area's found items — reusing the per-item rationale already persisted on
-each :class:`RelevanceScore` — and a summary agent writes the opening paragraph
-over those sections. Both the sections and the summary have deterministic markdown
-fallbacks, so a missing or flaky model degrades to a still-useful, honest report
-(``origin`` recorded as ``fallback``) rather than nothing.
+The report is a fan-out of five prompts (see :mod:`.briefing_sections`): four
+per-category section prompts — Paper, Grant, Fellowship, and Conference — each
+write a tailored ``## Section`` grounded in that area's found items, reusing the
+per-item rationale already persisted on each :class:`RelevanceScore`, and a fifth
+prompt writes the opening paragraph over those sections. Both the sections and the
+summary have deterministic markdown fallbacks, so a missing or flaky model degrades
+to a still-useful, honest report (``origin`` recorded as ``fallback``) rather than
+nothing.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ import logging
 
 from django.utils import timezone
 
-from apps.content import briefing_agents
+from apps.content import briefing_sections
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.content.targets import target_for_lab, target_for_user
 
@@ -169,11 +170,11 @@ def _showcase_item(
         "reason": signals.get("reason", ""),
         "deadline_date": signals.get("deadline_date") or "",
         "is_new": _is_new_today(signals, today),
-        # The attributed cluster (papers only; empty elsewhere) so the paper agent
-        # can group its write-up by the researcher's focus clusters.
+        # The attributed cluster (papers only; empty elsewhere) so the papers
+        # section prompt can group its write-up by the researcher's focus clusters.
         "cluster_label": signals.get("cluster_label", ""),
         # Who this item is for (institutional targets only — see
-        # :mod:`apps.content.member_fit`). Names only; the agent is told to pass
+        # :mod:`apps.content.member_fit`). Names only; the prompt is told to pass
         # them through, not to reason about who anyone is.
         "for_members": [
             (member_names or {}).get(entry["username"], entry["username"])
@@ -207,13 +208,14 @@ def _gather(
 
     ``showcase`` is the small top-``SHOWCASE_PER_CATEGORY`` set the UI card renders;
     ``report_items`` is a slightly larger top slice (``REPORT_ITEMS_PER_SECTION``,
-    from :mod:`.briefing_agents`) the area agents write their sections from — each
-    flattened item carries the per-item ``reason``/``headline`` the matcher already
-    wrote, so the agents enrich real, grounded rationale rather than inventing.
+    from :mod:`.briefing_sections`) the section prompts write their sections from —
+    each flattened item carries the per-item ``reason``/``headline`` the matcher
+    already wrote, so the prompts enrich real, grounded rationale rather than
+    inventing.
     """
     categories = _watched_categories(watch, allow)
     today = timezone.now().date().isoformat()
-    report_n = briefing_agents.REPORT_ITEMS_PER_SECTION
+    report_n = briefing_sections.REPORT_ITEMS_PER_SECTION
     counts: dict[str, int] = {}
     new_counts: dict[str, int] = {}
     showcase: dict[str, list[dict]] = {}
@@ -233,7 +235,7 @@ def _gather(
 
 
 def _profile_text(target) -> str:
-    """A compact natural-language description of the target for the agents.
+    """A compact natural-language description of the target for the prompts.
 
     Built from the same interest surface the matcher scores on (a
     :class:`apps.content.targets.MatchTarget`): the free-text research statement,
@@ -284,7 +286,7 @@ def _clean_list(value) -> list[str]:
 
 
 # --------------------------------------------------------------------------- #
-# Report generation (multi-agent, in briefing_agents)
+# Report generation (sectioned fan-out, in briefing_sections)
 # --------------------------------------------------------------------------- #
 
 
@@ -296,7 +298,7 @@ def _write_briefing(
     watch,
     allow: tuple[str, ...] | None = None,
     member_names: dict[str, str] | None = None,
-    complete: briefing_agents.CompleteFn | None = None,
+    complete: briefing_sections.CompleteFn | None = None,
 ) -> DailyBriefing:
     """Gather a target's day, write the report, and persist it as a ``DailyBriefing``.
 
@@ -310,7 +312,7 @@ def _write_briefing(
     )
 
     if sum(counts.values()) > 0:
-        body, used_llm = briefing_agents.generate_report_body(
+        body, used_llm = briefing_sections.generate_report_body(
             _profile_text(target),
             categories,
             counts,
@@ -323,11 +325,11 @@ def _write_briefing(
         )
     else:
         # Empty day: an honest, populated note — no model call needed.
-        body = briefing_agents.empty_report_body()
+        body = briefing_sections.empty_report_body()
         origin = DailyBriefing.Origin.FALLBACK
 
     if not body:
-        body = briefing_agents.empty_report_body()
+        body = briefing_sections.empty_report_body()
         origin = DailyBriefing.Origin.FALLBACK
 
     # Keyed on the day, so a same-day rerun replaces today's report while every
@@ -350,15 +352,15 @@ def _write_briefing(
 def generate_briefing_for_user(
     user,
     *,
-    complete: briefing_agents.CompleteFn | None = None,
+    complete: briefing_sections.CompleteFn | None = None,
 ) -> DailyBriefing:
     """Build and persist one user's daily report. Returns the saved row.
 
     Gathers the day's per-category counts and found items, then hands them to the
-    multi-agent writer (:func:`apps.content.briefing_agents.generate_report_body`),
+    sectioned writer (:func:`apps.content.briefing_sections.generate_report_body`),
     which produces the sectioned markdown body. ``complete`` is the injectable
     ``(system, user) -> text`` LLM seam (used in tests); when it is absent, fails,
-    or returns nothing usable, each agent's deterministic markdown fallback fills
+    or returns nothing usable, each prompt's deterministic markdown fallback fills
     in and ``origin`` is recorded as ``fallback``.
     """
     return _write_briefing(
@@ -373,7 +375,7 @@ def generate_briefing_for_user(
 def generate_briefing_for_lab(
     lab,
     *,
-    complete: briefing_agents.CompleteFn | None = None,
+    complete: briefing_sections.CompleteFn | None = None,
 ) -> DailyBriefing:
     """Build and persist a lab's daily report over its aggregate matches.
 

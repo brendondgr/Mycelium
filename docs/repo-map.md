@@ -87,7 +87,7 @@ Files below are inside `web/backend/apps/content/`.
 | Post-onboarding live match | `onboarding_match.py`, `scan_status.py` |
 | Member fit ("who is this for?") | `member_fit.py`, `fanout.py` |
 | Project team signal & sharing | `team_profile.py`, `collaboration.py` |
-| Daily briefing | `briefing.py`, `briefing_agents.py` |
+| Daily briefing | `briefing.py`, `briefing_sections.py` |
 | Briefing history & retention | `models.py` (`DailyBriefing.generated_on`), `views.py` (`BriefingHistoryView`), `management/commands/prune_briefings.py` |
 | Daily PDF report | `daily_report.py`, `daily_report_pdf.py`, `daily_report_send.py` |
 | Lab Discord digest | `lab_digest.py` |

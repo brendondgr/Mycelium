@@ -1,4 +1,4 @@
-"""The daily report: multi-agent markdown synthesis, the freshness gate, fallback,
+"""The daily report: sectioned markdown synthesis, the freshness gate, fallback,
 and the API."""
 
 import pytest

@@ -79,7 +79,7 @@ deterministic eligibility rule engine for people; labs and projects rank them on
 research fit alone.
 
 **Delivery.** Four in-app feeds with search, cluster chips, filter rails, and
-infinite reveal. A multi-agent written daily briefing per user and per lab. A
+infinite reveal. A sectioned written daily briefing per user and per lab. A
 rendered PDF report DM'd to linked users and attached to a lab's Discord channel
 beneath a counts-by-theme summary. Saves, addressable deadlines, and
 Discord-delivered reminders with lead times, snoozing, and a manage page.

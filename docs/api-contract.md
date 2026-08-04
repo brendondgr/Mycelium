@@ -382,8 +382,8 @@ daily run, scoped to the categories the caller watches.
 ```
 
 `origin` is `"llm"` or `"fallback"`. The body is sectioned markdown written by
-per-area specialist agents plus a summary agent, each with a deterministic
-fallback. Before the first run an honest empty envelope is returned
+four per-category section prompts plus a fifth summary prompt, each with a
+deterministic fallback. Before the first run an honest empty envelope is returned
 (`generated_at: null`, empty `categories` / `counts` / `showcase`,
 `briefing: null`).
 

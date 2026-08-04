@@ -1,24 +1,27 @@
-"""Multi-agent daily-report writer for the Mylo Report.
+"""Sectioned daily-report writer for the Mylo Report.
 
 The single-shot briefing synthesizer (one prompt over per-category counts) is
-replaced here by a small agent pipeline — one specialist per research surface,
-plus an editor:
+replaced here by a fan-out of five prompts — one per research surface, plus one
+that writes the opening paragraph over their output:
 
-- Four **area agents** — Paper, Grant, Fellowship, Conference — each receive the
-  researcher's profile and *only their* area's found items (title, match, deadline,
-  and the per-item tailored rationale already written and persisted on the
-  :class:`~apps.content.models.RelevanceScore`) and write a grounded markdown
+- Four **per-category section prompts** — Paper, Grant, Fellowship, Conference —
+  each receive the researcher's profile and *only their* area's found items (title,
+  match, deadline, and the per-item tailored rationale already written and persisted
+  on the :class:`~apps.content.models.RelevanceScore`) and write a grounded markdown
   section body explaining, item by item, why it fits *this* researcher and how it
   maps onto their interests and projects.
-- One **summary agent** (the editor) reads the day's counts and the four section
-  bodies and writes the opening paragraph — how many of each kind surfaced and what
-  stood out — which then *leads* the assembled report.
+- A **fifth prompt** reads the day's counts and the four section bodies and writes
+  the opening paragraph — how many of each kind surfaced and what stood out — which
+  then *leads* the assembled report.
+
+The fan-out is one pass: the prompts are independent, their results are
+concatenated once, and nothing plans, calls a tool, loops, or reflects.
 
 The assembled body is GitHub-flavored markdown: the summary paragraph, then a
-``## Heading`` + body for each non-empty area. Everything is **grounded** (agents
-see only real items) and every stage has a **deterministic markdown fallback**, so
-a missing or flaky model degrades to a still-useful, honest report rather than
-nothing — the same contract as :mod:`apps.content.suggest` /
+``## Heading`` + body for each non-empty area. Everything is **grounded** (each
+prompt sees only real items) and every stage has a **deterministic markdown
+fallback**, so a missing or flaky model degrades to a still-useful, honest report
+rather than nothing — the same contract as :mod:`apps.content.suggest` /
 :mod:`apps.content.opportunity_llm`.
 
 The report body is markdown; the frontend renders it (see the Daily section).
@@ -31,7 +34,7 @@ from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
-#: The agent seam: (system_prompt, user_prompt) -> raw completion text or None.
+#: The model seam: (system_prompt, user_prompt) -> raw completion text or None.
 #: Injected in tests; the default routes through the configured LLM client.
 CompleteFn = Callable[[str, str], str | None]
 
@@ -50,7 +53,7 @@ SECTION_NOUN = {
     "conferences": "conference",
 }
 
-#: How many items per area the specialist writes up (a little more than the
+#: How many items per area the section prompt writes up (a little more than the
 #: bottom-right UI showcase, which stays at 3).
 REPORT_ITEMS_PER_SECTION = 6
 
@@ -70,7 +73,7 @@ _MARKDOWN_RULES = (
 )
 
 #: Appended to every section prompt for an institutional (lab) report. The
-#: recommendation is already made — the agent's job is to pass it on in a natural
+#: recommendation is already made — the prompt's job is to pass it on in a natural
 #: sentence, not to re-derive who anyone is or to name someone it wasn't given.
 _MEMBER_RULES = (
     " Some items list who in the lab they are best suited to. When an item does, "
@@ -152,8 +155,8 @@ def generate_report_body(
 ) -> tuple[str, bool]:
     """Assemble the full markdown report body. Returns ``(body, used_llm)``.
 
-    Runs one area agent per watched category that actually has items, then the
-    summary agent over those section bodies. ``used_llm`` is ``True`` when the
+    Runs one section prompt per watched category that actually has items, then the
+    summary prompt over those section bodies. ``used_llm`` is ``True`` when the
     model wrote any part (so the caller records ``origin=llm``); it is ``False``
     only when every stage fell back deterministically (writer offline).
     """
@@ -238,7 +241,7 @@ def _cluster_first_body(
     content type now carrying cluster attribution, the report can finally be
     organised the way the work is.
 
-    Each specialist agent still writes its own category's prose; it is simply handed
+    Each category's section prompt still writes its own prose; it is simply handed
     one theme's slice at a time. That costs one model call per populated
     (theme, category) pair instead of per category — more calls, but each with a
     tighter, more coherent set of items to write about, and every one of them keeps
@@ -289,7 +292,7 @@ def _cluster_first_body(
 
 
 # --------------------------------------------------------------------------- #
-# Area agents
+# Per-category section prompts
 # --------------------------------------------------------------------------- #
 
 
@@ -404,7 +407,7 @@ def _section_fallback(category: str, items: list[dict]) -> str:
     """A deterministic markdown section body when the model is unavailable.
 
     Grouped by focus cluster when the items carry >= 2 distinct clusters (papers),
-    so the fallback mirrors the grouped write-up the agent would have produced.
+    so the fallback mirrors the grouped write-up the model would have produced.
     """
     groups = _cluster_groups(items)
     grouped = len(groups) > 1
@@ -436,7 +439,7 @@ def _section_fallback(category: str, items: list[dict]) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# Summary agent (the editor)
+# Summary prompt (the opening paragraph)
 # --------------------------------------------------------------------------- #
 
 
@@ -562,9 +565,9 @@ def _clean_block(raw: str | None) -> str:
 
 
 def _strip_headings(text: str) -> str:
-    """Drop any leading markdown ``#`` headings a section/summary agent added.
+    """Drop any leading markdown ``#`` headings a section/summary prompt added.
 
-    The report owns the ``## Label`` headings, so a stray one from an agent would
+    The report owns the ``## Label`` headings, so a stray one from a prompt would
     double up; the summary must be a plain paragraph. Only leading heading lines
     are removed — headings mid-body are left alone.
     """
