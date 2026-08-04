@@ -1,6 +1,28 @@
-from django.urls import path
+from datetime import date, datetime
+
+from django.urls import path, register_converter
 
 from . import reminders_views, views
+
+
+class IsoDateConverter:
+    """``YYYY-MM-DD`` path segments for the dated briefing routes.
+
+    Matching the shape in the URL rather than parsing it in the view means a
+    malformed date simply fails to resolve (a 404) instead of reaching the ORM as
+    an invalid ``DateField`` lookup.
+    """
+
+    regex = r"\d{4}-\d{2}-\d{2}"
+
+    def to_python(self, value: str) -> date:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+
+    def to_url(self, value) -> str:
+        return value.isoformat() if isinstance(value, date) else str(value)
+
+
+register_converter(IsoDateConverter, "isodate")
 
 urlpatterns = [
     # Both forms so a dev proxy that strips the trailing slash still resolves
@@ -14,6 +36,16 @@ urlpatterns = [
         views.DailyBriefingView.as_view(),
         name="daily-briefing-no-slash",
     ),
+    # Briefing history (the Reports page): the dated index, then one day's full
+    # envelope. The index carries no bodies so it stays cheap over the window.
+    path("briefings/", views.BriefingHistoryView.as_view(), name="briefings"),
+    path("briefings", views.BriefingHistoryView.as_view()),
+    path(
+        "briefings/<isodate:on>/",
+        views.BriefingDetailView.as_view(),
+        name="briefing-detail",
+    ),
+    path("briefings/<isodate:on>", views.BriefingDetailView.as_view()),
     # Unified query-first search over the content corpus.
     path("search/", views.SearchView.as_view(), name="search"),
     path("search", views.SearchView.as_view(), name="search-no-slash"),
@@ -79,6 +111,22 @@ urlpatterns = [
     path(
         "labs/<slug:slug>/daily-briefing",
         views.LabDailyBriefingView.as_view(),
+    ),
+    # A lab's retained briefing history, then one dated lab briefing.
+    path(
+        "labs/<slug:slug>/briefings/",
+        views.LabBriefingHistoryView.as_view(),
+        name="lab-briefings",
+    ),
+    path("labs/<slug:slug>/briefings", views.LabBriefingHistoryView.as_view()),
+    path(
+        "labs/<slug:slug>/briefings/<isodate:on>/",
+        views.LabBriefingDetailView.as_view(),
+        name="lab-briefing-detail",
+    ),
+    path(
+        "labs/<slug:slug>/briefings/<isodate:on>",
+        views.LabBriefingDetailView.as_view(),
     ),
     path(
         "projects/<uuid:pk>/recommendations/",

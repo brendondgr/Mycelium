@@ -5,6 +5,7 @@ from django.contrib.postgres.search import SearchVectorField
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 from pgvector.django import VectorField
 
 from apps.core.db import exactly_one, validate_exactly_one
@@ -692,7 +693,7 @@ class MemberSuggestion(models.Model):
 
 
 class DailyBriefing(models.Model):
-    """One user's current cross-category "Mylo Report".
+    """One target's cross-category "Mylo Report" for one day.
 
     A written 2–3 paragraph synthesis over the day's top papers, grants,
     conferences, and fellowships — gated to the categories the user watches
@@ -700,11 +701,15 @@ class DailyBriefing(models.Model):
     the top showcase items the prose is grounded in. This is the durable record
     behind ``GET /api/daily-briefing/`` and the Daily page's three-zone layout.
 
-    One row per user (a OneToOne), replaced in place by each daily run's
-    ``generate_daily_briefing`` stage: the app always serves the newest briefing
-    and the table cannot grow unbounded. ``origin`` records whether the language
-    model wrote the body or the deterministic fallback did, mirroring the paper
-    and opportunity pipelines so the surface is honest when the LLM is down.
+    One row per target **per day** (``generated_on``): the daily run's
+    ``generate_daily_briefing`` stage upserts on that key, so a same-day rerun
+    replaces the day in place while yesterday's report survives. The Reports page
+    reads the history; ``prune_briefings`` keeps it to
+    ``settings.BRIEFING_RETENTION_DAYS``. Every "current briefing" reader must
+    order by ``-generated_on`` explicitly rather than lean on ``Meta.ordering``.
+    ``origin`` records whether the language model wrote the body or the
+    deterministic fallback did, mirroring the paper and opportunity pipelines so
+    the surface is honest when the LLM is down.
     """
 
     class Origin(models.TextChoices):
@@ -714,19 +719,19 @@ class DailyBriefing(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # A briefing belongs to exactly one target: a person or a lab (the exactly_one
     # constraint below). A lab briefing synthesizes the lab's aggregate matches.
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
         on_delete=models.CASCADE,
-        related_name="daily_briefing",
+        related_name="daily_briefings",
     )
-    lab = models.OneToOneField(
+    lab = models.ForeignKey(
         "accounts.Lab",
         null=True,
         blank=True,
         on_delete=models.CASCADE,
-        related_name="daily_briefing",
+        related_name="daily_briefings",
     )
     body = models.TextField(
         blank=True,
@@ -762,25 +767,54 @@ class DailyBriefing(models.Model):
         blank=True,
         help_text="Top items per category the briefing references (grounding).",
     )
+    generated_on = models.DateField(
+        db_index=True,
+        default=timezone.localdate,
+        help_text="The local date this briefing covers — the history key.",
+    )
     generated_at = models.DateTimeField(
         auto_now=True,
         help_text="When this briefing was last (re)generated.",
     )
 
     class Meta:
-        ordering = ["-generated_at"]
+        ordering = ["-generated_on", "-generated_at"]
         constraints = [
             models.CheckConstraint(
                 name="content_dailybriefing_exactly_one_target",
                 condition=exactly_one("user", "lab"),
             ),
+            # One briefing per target per day. Split in two and conditioned on the
+            # populated side: a plain unique_together over a nullable column lets
+            # Postgres treat every NULL as distinct, which would not constrain the
+            # lab rows at all (and vice versa).
+            models.UniqueConstraint(
+                fields=["user", "generated_on"],
+                condition=Q(user__isnull=False),
+                name="content_dailybriefing_user_day_unique",
+            ),
+            models.UniqueConstraint(
+                fields=["lab", "generated_on"],
+                condition=Q(lab__isnull=False),
+                name="content_dailybriefing_lab_day_unique",
+            ),
         ]
+
+    @classmethod
+    def latest_for(cls, **target) -> "DailyBriefing | None":
+        """The newest briefing for one target (``user=`` or ``lab=``), or None.
+
+        Every "current briefing" surface goes through here. Ordering is stated
+        rather than inherited from ``Meta``: now that the table keeps history, a
+        bare ``.filter(user=…).first()`` would return an arbitrary day.
+        """
+        return cls.objects.filter(**target).order_by("-generated_on").first()
 
     def clean(self) -> None:
         validate_exactly_one(self, "user", "lab")
 
     def __str__(self) -> str:
-        return f"DailyBriefing<{self.user or self.lab}> ({self.origin})"
+        return f"DailyBriefing<{self.user or self.lab}> {self.generated_on} ({self.origin})"
 
 
 # --------------------------------------------------------------------------- #

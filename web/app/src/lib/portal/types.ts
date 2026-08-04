@@ -249,6 +249,9 @@ export type BriefingShowcaseItem = {
 export type DailyBriefing = {
   /** ISO timestamp of the last briefing generation, or null before the first run. */
   generated_at: string | null;
+  /** The `YYYY-MM-DD` day this briefing covers — the history key. Null before the
+   * first run. */
+  generated_on: string | null;
   /** The categories this briefing covered (what the user watches). */
   categories: BriefingCategory[];
   /** Per-category item counts ("Today's Summaries"). */
@@ -260,6 +263,22 @@ export type DailyBriefing = {
   showcase: Partial<Record<BriefingCategory, BriefingShowcaseItem[]>>;
   /** The written briefing, or null when no run has produced one yet. */
   briefing: { body: string; origin: "llm" | "fallback" } | null;
+};
+
+/**
+ * One row of the briefing index (`/api/briefings/`) — the Reports page's date
+ * list. Deliberately body-free: the index can span the whole retention window, so
+ * the prose is fetched only for the day the reader opens.
+ */
+export type DailyBriefingSummary = {
+  /** The `YYYY-MM-DD` day this briefing covers. */
+  generated_on: string;
+  /** When it was written (a same-day rerun moves this, not `generated_on`). */
+  generated_at: string;
+  origin: "llm" | "fallback";
+  categories: BriefingCategory[];
+  counts: Partial<Record<BriefingCategory, number>>;
+  new_counts?: Partial<Record<BriefingCategory, number>>;
 };
 
 /* -- Opportunities: grants, conferences, deadlines -------------------------- */

@@ -61,6 +61,10 @@ routes clients depend on most.
 | `daily-report/` | GET | The day's ranked paper suggestions |
 | `daily-briefing/` | GET | The written personal "Mylo Report" |
 | `labs/<slug>/daily-briefing/` | GET | The lab's written report |
+| `briefings/` | GET | The caller's retained report history (dates + counts) |
+| `briefings/<YYYY-MM-DD>/` | GET | One archived personal report |
+| `labs/<slug>/briefings/` | GET | A lab's retained report history |
+| `labs/<slug>/briefings/<YYYY-MM-DD>/` | GET | One archived lab report |
 | `opportunities/grants/` | GET | Ranked grants |
 | `opportunities/conferences/` | GET | Ranked conferences |
 | `opportunities/fellowships/` | GET | Eligibility-gated, ranked fellowships |
@@ -365,6 +369,7 @@ daily run, scoped to the categories the caller watches.
 ```json
 {
   "generated_at": "2026-07-11T13:00:00+00:00",
+  "generated_on": "2026-07-11",
   "categories": ["papers", "grants", "fellowships"],
   "counts": { "papers": 25, "grants": 25, "fellowships": 40 },
   "showcase": {
@@ -386,11 +391,41 @@ A **count is "new"** only when the item's immutable `first_seen` equals the run
 date, so the report announces each item once. The feed's "New" badge keeps its
 separate 7-day window — the two numbers are deliberately different.
 
+`generated_on` is the day the report covers — the history key. `generated_at` is
+when it was last written, which a same-day rerun moves and `generated_on` does not.
+This endpoint always serves the newest day.
+
 ### `GET /api/labs/<slug>/daily-briefing/`
 
 The same envelope over the lab's aggregate matches, across all four areas. Any
 member may read; the daily run writes it for entitled labs. Where an item carries
 member-fit names, the prose says who it suits. `403` for a non-member.
+
+### `GET /api/briefings/` · `GET /api/briefings/<YYYY-MM-DD>/`
+
+Report history — one row per day, retained for `BRIEFING_RETENTION_DAYS` (90) and
+swept by the daily run's `prune_briefings` stage. The index is newest-day-first and
+carries **no bodies**, so it stays cheap across the whole window:
+
+```json
+[
+  { "generated_on": "2026-07-11", "generated_at": "2026-07-11T13:00:00+00:00",
+    "origin": "llm", "categories": ["papers", "grants"],
+    "counts": { "papers": 25, "grants": 3 }, "new_counts": { "papers": 4 } }
+]
+```
+
+The detail route returns the same full envelope as `daily-briefing/` for that one
+date, and `404` when the date has no report (including one aged out of retention).
+A path that is not a `YYYY-MM-DD` date does not resolve, so it also `404`s. Own
+history only.
+
+Only the markdown is retained. The PDF a linked user is DM'd is an outbox
+attachment and ages out with the outbox's own sweep, not with this window.
+
+### `GET /api/labs/<slug>/briefings/` · `GET /api/labs/<slug>/briefings/<YYYY-MM-DD>/`
+
+The same pair for a lab, readable by any member. `403` for a non-member.
 
 ### `GET /api/labs/<slug>/recommendations/` · `GET /api/projects/<id>/recommendations/`
 

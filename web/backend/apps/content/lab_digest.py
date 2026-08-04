@@ -309,7 +309,7 @@ def queue_lab_report(lab, *, on: date | None = None, workdir: Path | None = None
 
 def written_briefing_body(lab) -> str:
     """The lab's written daily report, or an empty string when none exists yet."""
-    briefing = DailyBriefing.objects.filter(lab=lab).first()
+    briefing = DailyBriefing.latest_for(lab=lab)
     return (briefing.body or "") if briefing is not None else ""
 
 

@@ -10,6 +10,7 @@ import type {
   CollectionDetail,
   ConferenceOpportunity,
   DailyBriefing,
+  DailyBriefingSummary,
   DailyReport,
   DeptLabRow,
   DeptMemberRow,
@@ -131,6 +132,43 @@ export async function fetchLabDailyBriefing(
   return getJson<DailyBriefing>(
     buildApiUrl(getPublicApiBase(), "labs", slug, "daily-briefing"),
     "Could not load the lab's daily briefing.",
+  );
+}
+
+/** The caller's retained briefings, newest day first — dates and counts only. */
+export async function fetchBriefings(): Promise<DailyBriefingSummary[]> {
+  return getJson<DailyBriefingSummary[]>(
+    buildApiUrl(getPublicApiBase(), "briefings"),
+    "Could not load your report history.",
+  );
+}
+
+/** One archived day, in the same envelope the Daily page renders. */
+export async function fetchBriefingByDate(date: string): Promise<DailyBriefing> {
+  return getJson<DailyBriefing>(
+    buildApiUrl(getPublicApiBase(), "briefings", date),
+    "Could not load that report.",
+  );
+}
+
+/** A lab's retained briefings, newest day first — dates and counts only. */
+export async function fetchLabBriefings(
+  slug: string,
+): Promise<DailyBriefingSummary[]> {
+  return getJson<DailyBriefingSummary[]>(
+    buildApiUrl(getPublicApiBase(), "labs", slug, "briefings"),
+    "Could not load the lab's report history.",
+  );
+}
+
+/** One archived day for a lab, in the same envelope as the lab's current one. */
+export async function fetchLabBriefingByDate(
+  slug: string,
+  date: string,
+): Promise<DailyBriefing> {
+  return getJson<DailyBriefing>(
+    buildApiUrl(getPublicApiBase(), "labs", slug, "briefings", date),
+    "Could not load that report.",
   );
 }
 

@@ -123,6 +123,11 @@ CONTAINER_STAGES = [
     ),
     ("run_reminder_tick", [], "Firing due deadline reminders…"),
     ("prune_opportunities", [], "Pruning expired opportunities…"),
+    # Alongside the opportunity prune: both are pure deletions of expired rows, so
+    # neither rewrites or rescores anything the earlier stages just wrote. Keeping
+    # the briefing sweep in the daily chain is what stops the Reports page history
+    # from drifting past its retention window.
+    ("prune_briefings", [], "Pruning daily briefings past the retention window…"),
     ("generate_daily_briefing", [], "Writing each user's and lab's daily briefing…"),
     (
         "send_daily_discord_reports",

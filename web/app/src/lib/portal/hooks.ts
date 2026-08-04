@@ -14,11 +14,15 @@ import {
   fetchAdminUser,
   fetchAdminUsers,
   fetchConferences,
+  fetchBriefingByDate,
+  fetchBriefings,
   fetchDailyBriefing,
   fetchDailyReport,
   fetchDiscordStart,
   fetchDiscordStatus,
   fetchEntitlements,
+  fetchLabBriefingByDate,
+  fetchLabBriefings,
   fetchLabDailyBriefing,
   fetchLabDiscordStart,
   fetchLabDiscordHealth,
@@ -230,6 +234,48 @@ export function useLabDailyBriefing(slug?: string) {
     queryFn: () => fetchLabDailyBriefing(slug as string),
     enabled,
     staleTime: 60_000,
+  });
+}
+
+/** The caller's retained report history — the Reports page's date list. */
+export function useBriefings() {
+  return useQuery({
+    queryKey: ["portal", "briefings"],
+    queryFn: fetchBriefings,
+    staleTime: 60_000,
+  });
+}
+
+/** One archived day of the caller's history. Idle until a date is picked. */
+export function useBriefing(date?: string) {
+  return useQuery({
+    queryKey: ["portal", "briefing", date ?? "none"],
+    queryFn: () => fetchBriefingByDate(date as string),
+    enabled: Boolean(date),
+    // An archived day never changes once written, so there is nothing to refetch.
+    staleTime: Infinity,
+  });
+}
+
+/** A lab's retained report history. Disabled for personal scope. */
+export function useLabBriefings(slug?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
+  return useQuery({
+    queryKey: ["portal", "lab-briefings", slug ?? "none"],
+    queryFn: () => fetchLabBriefings(slug as string),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** One archived day of a lab's history. Idle until a lab and a date are picked. */
+export function useLabBriefing(slug?: string, date?: string) {
+  const enabled = Boolean(slug && slug !== PERSONAL_SLUG && date);
+  return useQuery({
+    queryKey: ["portal", "lab-briefing", slug ?? "none", date ?? "none"],
+    queryFn: () => fetchLabBriefingByDate(slug as string, date as string),
+    enabled,
+    staleTime: Infinity,
   });
 }
 

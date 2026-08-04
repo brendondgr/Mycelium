@@ -434,6 +434,13 @@ HIGH_SIGNAL_DEADLINE_MIN_DAYS = env.int("HIGH_SIGNAL_DEADLINE_MIN_DAYS", default
 HIGH_SIGNAL_DEADLINE_MAX_DAYS = env.int("HIGH_SIGNAL_DEADLINE_MAX_DAYS", default=120)
 HIGH_SIGNAL_DELIVERY_ENABLED = env.bool("HIGH_SIGNAL_DELIVERY_ENABLED", default=False)
 
+# How many days of written daily briefings the Reports page keeps (the
+# `prune_briefings` stage of the daily run deletes anything older). Flat for every
+# plan: only holders of the scheduled-reports feature are ever given a briefing, so
+# there is nothing to retain on the free tier. Markdown only — the DM'd PDF is an
+# outbox attachment and ages out with the outbox's own sweep.
+BRIEFING_RETENTION_DAYS = env.int("BRIEFING_RETENTION_DAYS", default=90)
+
 # Project collaboration (apps.content.collaboration). Per-action weight written on
 # each RelevanceEvent — the weak relevance labels a future team-signal recompute
 # reads. Positive for engagement, negative for rejection. Tunable so the eventual
