@@ -269,6 +269,41 @@ def _login(rest: list[str]) -> int:
     return 0
 
 
+def _default_grant_topics() -> list[str]:
+    """Every active user's watch topics — the grant scraper's search queries.
+
+    Conferences and fellowships enumerate their own listings, but the Pivot funding
+    search is *query-driven*: ``scrape_grants`` loops over the topics it is given, so
+    an empty list silently scrapes nothing at all and no grant ever reaches the store.
+    The daily runner (``manual_all.py``) invokes ``pivot.py scrape`` with no
+    ``--topic`` flags, and the in-container path that *does* know the watch topics
+    can't scrape (the backend image has no Playwright) — so with no default here,
+    grants are never collected on any path.
+
+    Deriving them from the same ``_union_watch_topics`` the container-side ingest
+    uses keeps the two paths searching for identical things. Returns ``[]`` when no
+    user watches anything; the caller then scrapes conferences/fellowships only.
+    """
+    from apps.content.opportunities import _union_watch_topics
+    from apps.content.tasks import select_users
+
+    topics = _union_watch_topics(select_users(None))
+    if topics:
+        print(
+            f"grant topics ({len(topics)}, from every user's watch list): "
+            + ", ".join(topics),
+            flush=True,
+        )
+    else:
+        print(
+            "note: no user has any watch topics, so there is nothing to search the "
+            "Pivot funding database for — skipping grants. Add watch topics in the "
+            "app, or pass --topic explicitly.",
+            flush=True,
+        )
+    return topics
+
+
 def _scrape(rest: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="pivot.py scrape")
     ap.add_argument("--topic", action="append", dest="topics", metavar="TEXT",
@@ -300,6 +335,8 @@ def _scrape(rest: list[str]) -> int:
     from apps.scraper.pivot.scrape import refresh
 
     topics = [t for t in (args.topics or []) if t and t.strip()]
+    if not topics and "grants" in areas:
+        topics = _default_grant_topics()
     pairs = list(refresh(areas=areas, topics=topics, log=lambda m: print(m, flush=True)))
     if not pairs:
         print("Scrape returned nothing.")

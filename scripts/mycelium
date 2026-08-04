@@ -10,9 +10,12 @@ Usage:
     mycelium build           rebuild images then start
     mycelium install-service copy .service files to /etc/systemd/system/ and enable boot startup
 
-start/stop/restart also drive mylo-bot.service via `sudo systemctl` (you'll be
-prompted for your password) if it's installed; otherwise they print a hint to
-run `sudo mycelium install-service` first.
+start/stop/restart drive systemd once the units are installed — mycelium.service
+for the stack and mylo-bot.service for the bot — so `mycelium restart` and
+`systemctl restart` cannot disagree about what is running. You'll be prompted
+for your sudo password. Before `install-service` has been run they fall back to
+driving Docker Compose directly, and `build` always does (the unit has no
+rebuild step of its own).
 """
 
 from __future__ import annotations
@@ -79,9 +82,34 @@ def _run_capture(cmd: list[str]) -> str:
 MYLO_UNIT = "mylo-bot.service"
 MYLO_UNIT_PATH = Path("/etc/systemd/system") / MYLO_UNIT
 
+STACK_UNIT = "mycelium.service"
+STACK_UNIT_PATH = Path("/etc/systemd/system") / STACK_UNIT
+
 
 def _mylo_installed() -> bool:
     return MYLO_UNIT_PATH.exists()
+
+
+def _stack_unit_installed() -> bool:
+    return STACK_UNIT_PATH.exists()
+
+
+def _stack_systemctl(action: str) -> int:
+    """start/stop/restart the stack through systemd.
+
+    Once mycelium.service is installed, systemd owns the stack. Driving compose
+    directly behind its back leaves the unit reporting `active (exited)` after
+    the containers are gone — it is Type=oneshot with RemainAfterExit=yes, so
+    nothing tells it otherwise. Going through systemctl keeps the two in step.
+    """
+    past = {"start": "started", "stop": "stopped", "restart": "restarted"}[action]
+    print(bold(f"Stack: {action} {STACK_UNIT}..."))
+    r = subprocess.run(["sudo", "systemctl", action, STACK_UNIT])
+    if r.returncode == 0:
+        print(green(f"  ✓ {STACK_UNIT} {past}"))
+    else:
+        print(red(f"  ✗ failed to {action} {STACK_UNIT}"))
+    return r.returncode
 
 
 def _mylo_is_active() -> bool:
@@ -147,22 +175,33 @@ def _compose_stop(base: list[str]) -> int:
 
 
 def cmd_start(base: list[str], build: bool = False) -> int:
-    code = _compose_start(base, build)
+    # `build` has no systemd equivalent (the unit runs a plain `up -d`), so an
+    # explicit rebuild always goes through compose.
+    if _stack_unit_installed() and not build:
+        code = _stack_systemctl("start")
+    else:
+        code = _compose_start(base, build)
     print()
     _mylo_systemctl("start")
     return code
 
 
 def cmd_stop(base: list[str]) -> int:
-    code = _compose_stop(base)
+    if _stack_unit_installed():
+        code = _stack_systemctl("stop")
+    else:
+        code = _compose_stop(base)
     print()
     _mylo_systemctl("stop")
     return code
 
 
 def cmd_restart(base: list[str], build: bool = False) -> int:
-    _compose_stop(base)
-    code = _compose_start(base, build)
+    if _stack_unit_installed() and not build:
+        code = _stack_systemctl("restart")
+    else:
+        _compose_stop(base)
+        code = _compose_start(base, build)
     print()
     _mylo_systemctl("restart")
     return code

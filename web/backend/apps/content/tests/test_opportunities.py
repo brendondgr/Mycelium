@@ -589,13 +589,13 @@ def test_batch_scores_units_concurrently(pgvector):
     assert state["peak"] >= 2  # units ran concurrently, not serially
 
 
-# -- two-process: daily new-only vs whole-corpus ------------------------------
+# -- two-process: daily append vs whole-corpus --------------------------------
 
 
 @pytest.mark.django_db
-def test_daily_batch_scores_only_new_items_and_accumulates(pgvector):
-    """The daily run scores only that day's new grants and appends them; a grant
-    already in the feed from an earlier day is left untouched (not re-scored)."""
+def test_daily_batch_scores_only_unscored_items_and_accumulates(pgvector):
+    """The daily run scores only grants this user has no score for, and appends them;
+    a grant already in the feed is left untouched (not re-scored)."""
     from datetime import UTC, datetime
 
     embeddings.set_embedder(_fake_embed)
@@ -655,8 +655,47 @@ def test_daily_batch_scores_only_new_items_and_accumulates(pgvector):
 
 
 @pytest.mark.django_db
+def test_daily_batch_picks_up_an_unscored_backlog_from_an_earlier_day(pgvector):
+    """A matchable grant ingested days ago that no run ever scored is picked up.
+
+    The regression this guards: the daily run used to gate on ``created_at`` == today,
+    so a corpus imported on a day the pipeline did not complete could never be scored
+    by any later run — it was no longer "new today" — and the feed stayed empty next
+    to a store full of matchable items.
+    """
+    from datetime import UTC, datetime
+
+    embeddings.set_embedder(_fake_embed)
+    user = _profile_user("backlog")
+    ingest_pivot(
+        [("grants", _grant("g_backlog", "Knowledge Graphs for biomedical health"))],
+        embedder=_fake_embed,
+        prune=False,
+        today="2026-07-05",
+    )
+    item = ContentItem.objects.get(external_id="g_backlog")
+    # Ingested four days ago, and never scored for this user.
+    ContentItem.objects.filter(pk=item.pk).update(
+        created_at=datetime(2026, 7, 1, tzinfo=UTC)
+    )
+
+    run_daily_opportunities_batch(
+        [user],
+        areas=("grants",),
+        ingest=False,
+        prune=False,
+        complete=lambda _p: None,
+        today="2026-07-05",
+    )
+
+    assert RelevanceScore.objects.filter(
+        target_user=user, content=item
+    ).exists()
+
+
+@pytest.mark.django_db
 def test_whole_corpus_match_replaces_stale_feed_rows(pgvector, settings):
-    """A whole-corpus run (sign-up/refit, ``created_on`` None) replaces the feed: a
+    """A whole-corpus run (sign-up/refit, ``unscored_only`` False) replaces the feed: a
     previously-suggested grant that no longer matches is dropped, not left behind."""
     settings.GRANT_MATCH_THRESHOLD = 0.6
     embeddings.set_embedder(_fake_embed)
@@ -687,7 +726,7 @@ def test_whole_corpus_match_replaces_stale_feed_rows(pgvector, settings):
         },
     )
 
-    # Serial path: created_on defaults to None -> whole corpus -> replace.
+    # Serial path: unscored_only defaults to False -> whole corpus -> replace.
     match_opportunities_for_user(
         user, "grants", complete=lambda _p: None, today="2026-07-05"
     )

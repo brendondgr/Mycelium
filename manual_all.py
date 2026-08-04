@@ -20,8 +20,9 @@ Stages, in order:
        recommend papers. The paper sources are scraped here, as part of the
        search — that is why stage 1 only has to add the opportunity sources.
     3. Match opportunities (backend)       — ``run_daily_opportunities``: score
-       only the grants / conferences / fellowships that arrived today for every
-       user and append the passers to each accumulating feed.
+       every grant / conference / fellowship each user has not been scored on yet
+       — normally just today's arrivals, plus any backlog an earlier missed run
+       left behind — and append the passers to each accumulating feed.
     4. Write daily briefings (backend)     — ``generate_daily_briefing``: the
        cross-category "Mylo Report" synthesis for every user **and every entitled
        lab** (LLM with a deterministic fallback). Like the summary itself, this is
@@ -33,10 +34,13 @@ Stages, in order:
        appendix). Best-effort: an unreachable DM or Discord outage is counted, never
        fatal, so it can safely be the last stage.
 
-Deliberately **no refit stage**: the daily run only scores that day's *new*
-items and appends them. Mylo's already-written recommendations are never
-re-scored, rewritten, or dropped by the daily run — an item stays in the feed
-until its deadline/event date passes and the ingest prune deletes it.
+Deliberately **no refit stage**: the daily run only scores items each target has
+never been scored on, and appends them. Mylo's already-written recommendations are
+never re-scored, rewritten, or dropped by the daily run — an item stays in the feed
+until its deadline/event date passes and the ingest prune deletes it. Because the
+gate is "not yet scored *for this target*" rather than "ingested today", a corpus
+that landed on a day this run did not complete is picked up by the next run instead
+of being stranded forever, so no refit is needed to recover from a missed day.
 Refitting (``run_refitting`` / ``utils/manual/manual_refitting.py``) is the
 explicit whole-corpus *replace* pass, reserved for sign-up and profile edits.
 

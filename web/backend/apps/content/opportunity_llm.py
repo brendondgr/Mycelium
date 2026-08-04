@@ -280,7 +280,7 @@ def generate_fellowship_suggestions(
                 "source": "llm",
                 "llm_scored_at": enriched.get("llm_scored_at", now),
             }
-            if enriched.get("match_percent") is not None:
+            if _usable_percent(enriched.get("match_percent")):
                 merged["match_percent"] = enriched["match_percent"]
             out.append(merged)
             continue
@@ -293,12 +293,25 @@ def generate_fellowship_suggestions(
                 "source": "llm",
                 "llm_scored_at": verdict.get("llm_scored_at", ""),
             }
-            if verdict.get("match_percent") is not None:
+            if _usable_percent(verdict.get("match_percent")):
                 merged["match_percent"] = verdict["match_percent"]
             out.append(merged)
             continue
         out.append(suggestion)
     return out
+
+
+def _usable_percent(value) -> bool:
+    """True when a model-supplied fellowship percent should override the computed one.
+
+    A fellowship arrives here already carrying a real ``match_percent`` — the
+    researcher's embedding cosine to the item, computed by the retrieve/fuse step.
+    The model's job in this overlay is the *written report*, not the number, so a
+    missing or zero percent (the model omitted it, or the parse fell back to 0)
+    must not overwrite a measured 48% match with 0 and drop the item under the feed's
+    match-percent floor. Any positive number is taken as a genuine verdict.
+    """
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0
 
 
 def _llm_suggestions(

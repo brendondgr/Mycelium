@@ -871,6 +871,7 @@ def fuse_interests_pool(
     beta: float,
     emit: Callable[[str], None],
     created_on: date | None = None,
+    exclude_ids: Sequence | None = None,
     match_threshold: float | None = None,
 ) -> tuple[list[Hit], list[PersistRow], int]:
     """Retrieve + fuse per interest; return suggest-pairs, persist-rows, pool size.
@@ -881,6 +882,9 @@ def fuse_interests_pool(
     grants/conferences, so the grants/conferences matcher reuses this unchanged.
     ``created_on`` (papers only) restricts the pool to the freshest gather day; the
     opportunity matchers leave it ``None`` so grants/conferences span their corpus.
+    ``exclude_ids`` drops candidates the caller has already handled — the daily
+    opportunity run passes the ids it has already scored for this target, so the
+    pool is exactly the target's unscored backlog.
 
     Two surfacing modes:
 
@@ -897,6 +901,7 @@ def fuse_interests_pool(
         content_type=content_type,
         pool_per_interest=pool_per_interest,
         created_on=created_on,
+        exclude_ids=exclude_ids,
     )
     if not pool:
         return [], [], 0
@@ -940,6 +945,7 @@ def _build_pool(
     content_type: str,
     pool_per_interest: int,
     created_on: date | None,
+    exclude_ids: Sequence | None = None,
 ) -> tuple[dict[str, ContentItem], dict[str, dict[str, float]], dict[str, float]]:
     """Retrieve one shared candidate pool and fuse every interest over it.
 
@@ -964,6 +970,7 @@ def _build_pool(
             content_type=content_type,
             limit=pool_per_interest,
             created_on=created_on,
+            exclude_ids=exclude_ids,
         ):
             key = str(item.id)
             pool.setdefault(key, item)
@@ -997,6 +1004,7 @@ def fuse_clusters_pool(
     beta: float,
     emit: Callable[[str], None],
     created_on: date | None = None,
+    exclude_ids: Sequence | None = None,
     match_threshold: float | None = None,
     cluster_top_n: int = 0,
 ) -> tuple[list[Hit], list[PersistRow], int, list[list[Hit]]]:
@@ -1024,6 +1032,7 @@ def fuse_clusters_pool(
         content_type=content_type,
         pool_per_interest=pool_per_interest,
         created_on=created_on,
+        exclude_ids=exclude_ids,
     )
     if not pool:
         return [], [], 0, []

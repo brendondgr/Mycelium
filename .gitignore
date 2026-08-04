@@ -93,6 +93,11 @@ data/pivot/
 # the daily run, removed by the outbox retention sweep once the row settles.
 data/outbox/
 
+# Database dumps. Large, binary, and they carry the real user table — accounts,
+# emails, Discord ids — so they must never reach the repository.
+data/*.dump
+data/*.sql
+
 # Generated or uploaded runtime files
 uploads/
 exports/

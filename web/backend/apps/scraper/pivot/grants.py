@@ -326,6 +326,18 @@ def scrape_grants(
     scraped_at = datetime.now(UTC).isoformat(timespec="seconds")
     _log(f"scrape_grants: {len(topics)} topic(s), filters={filters or 'none'}")
 
+    # The Pivot funding search is query-driven — with no topics there is nothing to
+    # search for and the loop below collects nothing. That used to look like a
+    # successful scrape returning zero records, which is indistinguishable from "no
+    # grants matched today"; say so plainly instead.
+    if not topics:
+        _log(
+            "scrape_grants: no topics supplied — the Pivot funding search needs at "
+            "least one query, so NO grants were scraped (this is a configuration "
+            "problem, not an empty result set)."
+        )
+        return []
+
     master: dict = {}
     with sync_playwright() as p:
         req = p.request.new_context(storage_state=str(STATE_PATH))
