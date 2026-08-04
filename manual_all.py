@@ -20,9 +20,15 @@ Stages, in order:
        recommend papers. The paper sources are scraped here, as part of the
        search — that is why stage 1 only has to add the opportunity sources.
     3. Match opportunities (backend)       — ``run_daily_opportunities``: score
-       every grant / conference / fellowship each user has not been scored on yet
+       every grant / conference / fellowship each target has not been scored on yet
        — normally just today's arrivals, plus any backlog an earlier missed run
        left behind — and append the passers to each accumulating feed.
+
+Stages 2 and 3 both run untargeted, so each covers all three target kinds: every
+entitled user, every lab on an active subscription, and their in-cap active
+projects (``apps.content.tasks.select_targets``). That has to match the briefing
+and digest stages below — a lab that is briefed nightly but not *scored* nightly
+has a frozen feed, and its report reads "N papers, 0 new" every day.
     4. Write daily briefings (backend)     — ``generate_daily_briefing``: the
        cross-category "Mylo Report" synthesis for every user **and every entitled
        lab** (LLM with a deterministic fallback). Like the summary itself, this is

@@ -1,4 +1,7 @@
-"""Match Pivot grants, conferences, and fellowships to every user (the 1am job).
+"""Match Pivot grants, conferences, and fellowships to every target (the 1am job).
+
+An untargeted run covers every entitled user, every lab on an active subscription,
+and their in-cap active projects — the same target set as the Celery task.
 
     uv run --project web/backend python web/backend/manage.py run_daily_opportunities
     uv run --project web/backend python web/backend/manage.py run_daily_opportunities \
@@ -18,7 +21,7 @@ import json
 from django.core.management.base import BaseCommand
 
 from apps.content.opportunities import run_daily_opportunities_batch
-from apps.content.tasks import select_users
+from apps.content.tasks import select_targets, select_users
 
 
 class Command(BaseCommand):
@@ -74,7 +77,13 @@ class Command(BaseCommand):
             return
 
         users = select_users(usernames)
-        self.stdout.write(f"Matching opportunities for {len(users)} user(s)…")
+        # A full run also matches each entitled lab and in-cap project, matching the
+        # Celery task and the briefing/digest stages; a --user run stays user-scoped.
+        labs, projects = select_targets(usernames)
+        self.stdout.write(
+            f"Matching opportunities for {len(users)} user(s), {len(labs)} lab(s), "
+            f"{len(projects)} project(s)…"
+        )
 
         # ``--no-llm`` forces the deterministic fallback by injecting a complete
         # seam that always returns nothing usable (mirrors run_daily_suggestions).
@@ -82,6 +91,8 @@ class Command(BaseCommand):
 
         batch = run_daily_opportunities_batch(
             users,
+            labs=labs,
+            projects=projects,
             areas=("grants", "conferences", "fellowships"),
             ingest=not options["no_ingest"],
             prune=not options["no_prune"],

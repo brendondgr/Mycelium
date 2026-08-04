@@ -134,8 +134,8 @@ All under `web/backend/apps/*/management/commands/`. Run with
 
 | Command | Purpose |
 |---|---|
-| `run_daily_suggestions` | Daily paper scan + score (append) |
-| `run_daily_opportunities` | Daily grants / conferences / fellowships match (append) |
+| `run_daily_suggestions` | Daily paper scan + score for users, labs, projects (append) |
+| `run_daily_opportunities` | Daily grants / conferences / fellowships match for users, labs, projects (append) |
 | `run_refitting` | Whole-corpus re-score for users, labs, and lab projects (replace) |
 | `generate_daily_briefing` | Write each user's and lab's briefing |
 | `send_daily_discord_reports` | DM the personal PDF report |
