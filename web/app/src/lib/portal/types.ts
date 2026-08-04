@@ -384,20 +384,37 @@ export type InterestedMember = {
  *   is his sentence saying why (or the deterministic overlap line when the model
  *   was unavailable, which `source` distinguishes).
  * - `own_match`   — the item independently cleared this member's personal feed,
- *   so `match_percent` is their own score for it.
+ *   so `own_feed_percent` is their own score for it.
  * - `eligible`    — fellowships only: this member personally qualifies (`tier`),
  *   disclosed only for members who opted into lab-visible eligibility.
+ *
+ * Eligibility also subtracts: a member a fellowship hard-excludes never appears
+ * here at all, whichever basis named them. That removal needs no consent — it
+ * publishes nothing.
  */
 export type RecommendedMember = {
   username: string;
   name: string;
   initials: string;
-  /** Profile-similarity percent, or null when only a non-fit basis applies. */
-  fit: number | null;
+  /**
+   * The cosine between the item and this member's profile vector, ×100. A
+   * geometric measurement — raw cosines between two short texts sit naturally in
+   * the 0.4–0.7 band, so 66 here is strong. Null when no profile vector matched.
+   */
+  profile_cosine: number | null;
+  /**
+   * This member's own score for the item on their personal feed — the model's
+   * 0–100 judgement, the number they see when they open their own page. Null
+   * when the item never cleared their personal feed.
+   *
+   * Not comparable with `profile_cosine`: different estimators on different
+   * scales, and a ~30-point gap between them is expected, not an anomaly. Label
+   * whichever one is shown with its scope; never present both as one list.
+   */
+  own_feed_percent: number | null;
   reason: string;
   source: "llm" | "similarity" | "own_match" | "eligibility";
   basis: Array<"profile_fit" | "own_match" | "eligible">;
-  match_percent?: number;
   tier?: "qualified" | "conditional";
 };
 
@@ -720,6 +737,17 @@ export type MemberSuggestion = {
 export type MemberSuggestionsFeed = {
   count: number;
   items: MemberSuggestion[];
+};
+
+/**
+ * The personal fellowships feed. `stage_set` reports whether the reader's career
+ * stage resolved at all — from the eligibility step, the intake answer, or their
+ * academic title. The stage gate is deliberately silent for anyone it cannot
+ * place on the ladder, so a feed built without one is genuinely less filtered
+ * than the page would otherwise imply, and the section says so.
+ */
+export type FellowshipsFeed = OpportunityFeed<FellowshipOpportunity> & {
+  stage_set: boolean;
 };
 
 /**

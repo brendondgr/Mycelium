@@ -81,6 +81,8 @@ Files below are inside `web/backend/apps/content/`.
 | Scoring target (user / lab / project) | `targets.py` |
 | Paper pipeline | `pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`, `clustering.py` |
 | Grants / conferences / fellowships matching | `opportunities.py`, `fellowships.py`, `opportunity_llm.py`, `pinning.py` |
+| Fellowship eligibility gates (stage ladder, prose constraints) | `fellowships.py` (`STAGE_LADDER`, `_stage_gate`, `_constraint_gates`, `derive_stage`) |
+| Fellowship eligibility extracted from prose | `apps/scraper/pivot/fellowships/constraints.py`, `apps/scraper/pivot/ingest.py` (`extract_fellowship_constraints`) |
 | On-demand whole-corpus refit | `refitting.py` |
 | Post-onboarding live match | `onboarding_match.py`, `scan_status.py` |
 | Member fit ("who is this for?") | `member_fit.py`, `fanout.py` |
@@ -167,7 +169,6 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `docs/discord-integration.md` | Discord identity & lab linking reference |
 | `docs/loadtest.md` | Onboarding load-test guide |
 | `docs/research-audit.md` | Independent audit of the ranking and agentic layers |
-| `docs/fellowship-matching-investigation.md` | Diagnosis: fellowship eligibility gating + percent-scale defects |
 | `docs/skills/` | Canonical agent guidance — start at `skills/index.md` |
 | `docs/changelog.md` | Append-only project history |
 | `docs/chats/`, `docs/Resources/` | Source conversations and the project brief |

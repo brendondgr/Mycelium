@@ -44,6 +44,7 @@ export function MatchRing({
   origin,
   size = "md",
   caption = true,
+  scope,
   className,
 }: {
   percent: number | null | undefined;
@@ -51,6 +52,14 @@ export function MatchRing({
   size?: Size;
   /** Show the "strong/fair/low match" line beneath the ring. */
   caption?: boolean;
+  /**
+   * Whose profile the percent is measured against, when it is not the reader's.
+   * A lab feed ranks items against the *lab's* aggregate interests, and a card
+   * that says nothing invites the number to be read as a personal one — on a
+   * fellowship card it can sit beside two other percentages with three different
+   * scopes. Pass the lab or project name.
+   */
+  scope?: string;
   className?: string;
 }) {
   if (typeof percent !== "number" || !Number.isFinite(percent)) return null;
@@ -64,9 +73,10 @@ export function MatchRing({
     <div
       className={cn("flex shrink-0 flex-col items-center gap-1", className)}
       role="img"
-      aria-label={`${pct} percent match to your research profile — a ${word} match${
-        byMylo ? ", judged by Mylo" : ""
-      }`}
+      title={scope ? `${pct}% match to ${scope}` : undefined}
+      aria-label={`${pct} percent match to ${
+        scope ? `${scope}'s research profile` : "your research profile"
+      } — a ${word} match${byMylo ? ", judged by Mylo" : ""}`}
     >
       <div className={cn("relative", dims.box)}>
         <div

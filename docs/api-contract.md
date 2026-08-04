@@ -441,6 +441,19 @@ its personal counterpart. The envelope adds:
   a consented eligibility flag. Mylo may drop a shortlisted member but can never
   add one; an unreachable model degrades to a stated overlap reason.
 
+  Each row carries **two separate percentages**, never merged:
+  `profile_cosine` (the item↔member-profile cosine ×100, a geometric measure that
+  sits naturally in the 40–70 band) and `own_feed_percent` (the member's own
+  personal-feed score, the model's 0–100 judgement). Either may be `null`. They
+  are different estimators on different scales — a ~30-point gap is the expected
+  steady state — so a consumer must label whichever it shows with its scope and
+  must not compare or average them. Rows are ordered with the members Mylo wrote
+  a rationale for first, each group sorted on its own scale.
+
+  On a fellowship, eligibility also **subtracts**: a member the award hard-excludes
+  is absent from the row entirely, whatever named them. That removal needs no
+  `lab_visible` consent — it publishes nothing, unlike the `eligible` annotation.
+
 `?digest=1` on a project returns the condensed short list (top 10 papers, 5 each
 of grants / fellowships / conferences, passed-deadline conferences dropped) while
 `counts` stays the full totals.
@@ -492,6 +505,17 @@ The same base shape plus `fields`, `stages`, `award_class`, `citizenship`, and a
 eligibility `tier`. For a **person** eligibility is a hard gate applied before
 research fit. A **lab or project** has no citizenship or career stage, so its
 fellowships rank on research fit alone and carry no eligibility verdict.
+
+`tier` is `qualified` | `conditional` | `unverified` | `""`. `unverified` says
+the award published no eligibility details for us to read — such a record passes
+every facet test trivially and would otherwise read as a clean match for
+everybody — not that the applicant is a poor fit.
+
+The personal envelope adds `stage_set`: whether the reader's career stage
+resolved at all (from the eligibility step, the intake answer, or their academic
+title). The stage gate is asymmetric and deliberately silent for anyone it cannot
+place on the ladder, so a feed built without a stage is genuinely less filtered
+and the page says so rather than claiming otherwise.
 
 ### `POST /api/onboarding/match/`
 

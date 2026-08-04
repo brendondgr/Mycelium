@@ -281,7 +281,9 @@ def generate_fellowship_suggestions(
                 "llm_scored_at": enriched.get("llm_scored_at", now),
             }
             if _usable_percent(enriched.get("match_percent")):
-                merged["match_percent"] = enriched["match_percent"]
+                merged["match_percent"] = _clamped_percent(
+                    suggestion, enriched["match_percent"]
+                )
             out.append(merged)
             continue
         verdict = prior.get(cid)
@@ -294,11 +296,36 @@ def generate_fellowship_suggestions(
                 "llm_scored_at": verdict.get("llm_scored_at", ""),
             }
             if _usable_percent(verdict.get("match_percent")):
-                merged["match_percent"] = verdict["match_percent"]
+                merged["match_percent"] = _clamped_percent(
+                    suggestion, verdict["match_percent"]
+                )
             out.append(merged)
             continue
         out.append(suggestion)
     return out
+
+
+#: Tiers the rule engine hedged on. The model is told eligibility is already
+#: settled and never re-litigates it, so its percent is a pure research-fit
+#: judgement — which is exactly why it must not be allowed to *raise* the number
+#: on an item eligibility only ever called a maybe.
+_HEDGED_TIERS = ("conditional", "unverified")
+
+
+def _clamped_percent(suggestion: Suggestion, model_percent):
+    """The model's percent, never louder than the eligibility verdict allows.
+
+    On a ``qualified`` row (or a lab row, which has no tier) the model's number
+    stands. On a hedged row it is capped at the computed topical percent, so a
+    fellowship the rule engine could only call a possible fit cannot arrive on the
+    card wearing a confident 95%.
+    """
+    if suggestion.get("tier") not in _HEDGED_TIERS:
+        return model_percent
+    computed = suggestion.get("match_percent")
+    if not isinstance(computed, (int, float)) or isinstance(computed, bool):
+        return model_percent
+    return min(model_percent, computed)
 
 
 def _usable_percent(value) -> bool:

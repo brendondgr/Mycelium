@@ -151,12 +151,18 @@ const CITIZENSHIP_OPTIONS: { value: ProfileEligibility["citizenship"]; label: st
   { value: "international", label: "International student" },
 ];
 
-const STAGE_OPTIONS: { value: ProfileEligibility["stage"]; label: string }[] = [
+// No "Not applicable" option: an unset stage is not a preference, it is a gap —
+// the fellowship matcher stops filtering on stage entirely for anyone it cannot
+// place, which is how postdoctoral awards reached doctoral students. "Postdoc /
+// beyond" is the catch-all for everyone past the doctorate.
+const STAGE_OPTIONS: {
+  value: Exclude<ProfileEligibility["stage"], "">;
+  label: string;
+}[] = [
   { value: "masters", label: "Master's" },
   { value: "doctoral_early", label: "Early doctoral" },
   { value: "doctoral_dissertation", label: "Dissertation research / write-up" },
   { value: "postdoc", label: "Postdoc / beyond" },
-  { value: "", label: "Not applicable" },
 ];
 
 const FIELD_OPTIONS = [
@@ -252,6 +258,9 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   const [eligLabVisible, setEligLabVisible] = useState(false);
   // Preserve any pre-existing career_stage (set by other code paths, not this step).
   const [eligCareerStage, setEligCareerStage] = useState<string | undefined>(undefined);
+  // Year the doctorate was conferred, as typed. Kept a string so the field can be
+  // empty; parsed once on save.
+  const [eligPhdYear, setEligPhdYear] = useState("");
 
   // Step 4 — watch
   const [watchTopics, setWatchTopics] = useState<string[]>([]);
@@ -301,9 +310,14 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
    * Derive a sensible default career stage from a role value.
    * Used to pre-select in the eligibility step when the user is not in edit
    * mode (edit mode loads from the saved profile instead).
+   *
+   * Mirrors `TITLE_TO_STAGE` on the backend, including its refusals: a
+   * "Researcher" or "Staff Scientist" could be at any point on the ladder, so
+   * neither pre-fills anything and the step asks. A PI maps to the top rung,
+   * which — the stage gate being asymmetric — can only ever widen their feed.
    */
   function stageFromRole(roleValue: string): ProfileEligibility["stage"] {
-    if (roleValue === "postdoc") return "postdoc";
+    if (roleValue === "postdoc" || roleValue === "pi") return "postdoc";
     if (roleValue === "student") return "doctoral_early";
     return "";
   }
@@ -373,6 +387,9 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
             setEligRestrictions(elig.eligible_restrictions ?? []);
             setEligLabVisible(elig.lab_visible ?? false);
             setEligCareerStage(elig.career_stage);
+            setEligPhdYear(
+              elig.phd_completed_year ? String(elig.phd_completed_year) : "",
+            );
           }
         }
         if (watch) {
@@ -567,6 +584,12 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
 
   // -- navigation ----------------------------------------------------------
   const reviewBlocked = currentKey === "review" && areas.length < 1;
+  // Stage is what makes fellowship eligibility mean anything: without it the
+  // matcher cannot tell a postdoctoral award from a doctoral one and stops
+  // filtering on stage entirely. Most people never see this block — the role
+  // they picked two steps ago pre-fills it — so requiring an answer costs a
+  // click only for the roles that genuinely do not imply a stage.
+  const stageMissing = currentKey === "eligibility" && !eligStage;
 
   function primaryAction() {
     if (currentKey === "import") {
@@ -574,6 +597,9 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
       return;
     }
     if (currentKey === "review" && areas.length < 1) {
+      return;
+    }
+    if (stageMissing) {
       return;
     }
     if (step < lastStep) {
@@ -654,6 +680,18 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     };
     if (eligCareerStage !== undefined) {
       eligibility.career_stage = eligCareerStage;
+    }
+    // Only ever sent for a postdoc, and only when it parses — the backend gates
+    // on the award's post-doctorate window solely when both sides are known, so a
+    // junk year would be worse than none.
+    const phdYear = Number.parseInt(eligPhdYear, 10);
+    if (
+      eligStage === "postdoc" &&
+      Number.isFinite(phdYear) &&
+      phdYear >= 1900 &&
+      phdYear <= 2200
+    ) {
+      eligibility.phd_completed_year = phdYear;
     }
     interests.eligibility = eligibility;
 
@@ -1192,8 +1230,9 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
             Fellowships are matched by eligibility, not just topics. These
             answers let Mylo filter to opportunities you can actually apply for.
-            You can skip anything — defaults apply and you can always update
-            this later.
+            Career stage is the one we need — without it, awards written for a
+            later stage keep showing up. The rest can be skipped; you can update
+            any of it later.
           </p>
         </div>
 
@@ -1215,15 +1254,15 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           </div>
         </div>
 
-        {/* Career stage */}
+        {/* Career stage — the one required answer on this step. */}
         <div className="space-y-2">
           <p className="text-sm font-medium text-[var(--text-primary)]">
-            Career stage
+            Career stage <span className="text-[var(--clay)]">*</span>
           </p>
           <div className="flex flex-wrap gap-2">
             {STAGE_OPTIONS.map((option) => (
               <Chip
-                key={option.value === "" ? "__none__" : option.value}
+                key={option.value}
                 selected={eligStage === option.value}
                 onClick={() => setEligStage(option.value)}
               >
@@ -1231,7 +1270,41 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
               </Chip>
             ))}
           </div>
+          {!eligStage ? (
+            <p className="text-xs text-[var(--text-muted)]">
+              Pick the one closest to where you are — it decides which awards are
+              even open to you.
+            </p>
+          ) : null}
         </div>
+
+        {/* Years since the doctorate — only postdocs are ever asked. */}
+        {eligStage === "postdoc" ? (
+          <div className="space-y-2">
+            <label
+              htmlFor="phd-year"
+              className="block text-sm font-medium text-[var(--text-primary)]"
+            >
+              Year your PhD was conferred{" "}
+              <span className="text-[var(--text-muted)]">(optional)</span>
+            </label>
+            <input
+              id="phd-year"
+              type="number"
+              inputMode="numeric"
+              min={1900}
+              max={2200}
+              value={eligPhdYear}
+              onChange={(event) => setEligPhdYear(event.target.value)}
+              placeholder="e.g. 2024"
+              className="w-40 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <p className="text-xs text-[var(--text-muted)]">
+              Many early-career awards close a fixed number of years after the
+              doctorate. Without this, Mylo cannot apply those limits.
+            </p>
+          </div>
+        ) : null}
 
         {/* Broad fields */}
         <div className="space-y-2">
@@ -1481,7 +1554,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
         <Button
           className="rounded-full"
           onClick={primaryAction}
-          disabled={importing || reviewBlocked || busy}
+          disabled={importing || reviewBlocked || stageMissing || busy}
         >
           {primaryLabel()}
         </Button>

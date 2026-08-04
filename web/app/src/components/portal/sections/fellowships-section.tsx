@@ -96,12 +96,36 @@ function isSoftDeadline(item: FellowshipOpportunity): boolean {
 // Eligibility tier badge (a rule-engine verdict, distinct from the match ring)
 // --------------------------------------------------------------------------- //
 
+/** The label, description, and color token for each eligibility verdict. */
+const TIER_BADGES: Record<
+  string,
+  { label: string; description: string; token: string }
+> = {
+  qualified: {
+    label: "Qualified",
+    description: "Qualified — strong eligibility match",
+    token: "--success",
+  },
+  conditional: {
+    label: "Possible fit",
+    description: "Possible fit",
+    token: "--warning",
+  },
+  unverified: {
+    label: "Eligibility not listed",
+    description:
+      "Eligibility not listed — this award published no eligibility details, so nothing was checked",
+    token: "--text-secondary",
+  },
+};
+
 /**
- * The fellowship eligibility tier badge. Two tiers driven by the backend
- * eligibility verdict (`tier`), independent of who wrote the reason — so it
- * stays correct once Mylo's LLM report replaces the rule-engine headline:
+ * The fellowship eligibility tier badge, driven by the backend verdict (`tier`)
+ * independently of who wrote the reason — so it stays correct once Mylo's report
+ * replaces the rule-engine headline:
  *   - "qualified"   → "Qualified" (green)
  *   - "conditional" → "Possible fit" (amber)
+ *   - "unverified"  → "Eligibility not listed" (neutral)
  *
  * The tier is communicated via label + color-dot (never color alone).
  *
@@ -110,41 +134,31 @@ function isSoftDeadline(item: FellowshipOpportunity): boolean {
  * there is no eligibility verdict to report, and the badge must stay silent
  * rather than call every such card a hedged "Possible fit". Who is personally
  * eligible is said by name in the recommendation strip instead.
+ *
+ * "unverified" is not a judgement about the applicant: it means the award
+ * published no eligibility details for us to read, so nothing was checked. Saying
+ * so is the point — such a record passes every gate trivially and would otherwise
+ * read as a clean "Qualified" for everybody.
  */
 function EligibilityBadge({ item }: { item: FellowshipOpportunity }) {
-  if (!item.tier) return null;
-  const isQualified = item.tier === "qualified";
+  const badge = item.tier ? TIER_BADGES[item.tier] : undefined;
+  if (!badge) return null;
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1"
-      style={
-        isQualified
-          ? {
-              borderColor:
-                "color-mix(in srgb, var(--success) 35%, var(--border))",
-              backgroundColor:
-                "color-mix(in srgb, var(--success) 10%, var(--surface))",
-            }
-          : {
-              borderColor:
-                "color-mix(in srgb, var(--warning) 35%, var(--border))",
-              backgroundColor:
-                "color-mix(in srgb, var(--warning) 10%, var(--surface))",
-            }
-      }
-      aria-label={
-        isQualified ? "Qualified — strong eligibility match" : "Possible fit"
-      }
+      style={{
+        borderColor: `color-mix(in srgb, var(${badge.token}) 35%, var(--border))`,
+        backgroundColor: `color-mix(in srgb, var(${badge.token}) 10%, var(--surface))`,
+      }}
+      aria-label={badge.description}
     >
       <span
         aria-hidden="true"
         className="h-2 w-2 rounded-full"
-        style={{
-          backgroundColor: isQualified ? "var(--success)" : "var(--warning)",
-        }}
+        style={{ backgroundColor: `var(${badge.token})` }}
       />
       <span className="text-xs font-bold leading-none text-[var(--text-primary)]">
-        {isQualified ? "Qualified" : "Possible fit"}
+        {badge.label}
       </span>
     </span>
   );
@@ -180,12 +194,20 @@ export function FellowshipRow({
   item,
   remindLabSlug,
   recommendedFor,
+  scopeName,
 }: {
   item: FellowshipOpportunity;
   /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
   remindLabSlug?: string;
   /** Lab-only: who Mylo judges this most applicable to. Personal feeds omit it. */
   recommendedFor?: RecommendedMember[];
+  /**
+   * The lab or project this card's ring is scored against. Unset on a personal
+   * feed, where the ring means the reader. A lab fellowship card can show three
+   * percentages with three different scopes — this one, the member chip, and the
+   * member's own-feed number in its note — so the ring has to say which is which.
+   */
+  scopeName?: string;
 }) {
   const deadlineLabel = fellowshipDeadlineLabel(item);
   const softDl = isSoftDeadline(item);
@@ -205,7 +227,13 @@ export function FellowshipRow({
     <MatchCard
       /* The ring is research fit; eligibility is a separate rule-engine claim
          and keeps its own badge in the head row. */
-      ring={<MatchRing percent={item.match_percent} origin={item.origin} />}
+      ring={
+        <MatchRing
+          percent={item.match_percent}
+          origin={item.origin}
+          scope={scopeName}
+        />
+      }
       head={
         <>
           <div className="flex items-start justify-between gap-3">
@@ -371,6 +399,43 @@ export function FellowshipRow({
 }
 
 // --------------------------------------------------------------------------- //
+// "We don't know your career stage" notice
+// --------------------------------------------------------------------------- //
+
+/**
+ * Shown on a personal feed when nothing placed the reader on the career ladder.
+ *
+ * The stage gate — which is what stops a postdoctoral award reaching a
+ * second-year PhD student — is deliberately silent for an applicant it cannot
+ * place, because gating on an absence would empty the feed instead of filtering
+ * it. That trade is defensible only if the reader is told: this feed is matched
+ * on research and deadlines, not on stage, and one answer changes that.
+ */
+function StageNotice() {
+  return (
+    <div
+      className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border px-3.5 py-2.5 text-[13px] leading-relaxed"
+      style={{
+        borderColor: "color-mix(in srgb, var(--accent) 30%, transparent)",
+        backgroundColor: "color-mix(in srgb, var(--accent) 7%, transparent)",
+      }}
+    >
+      <span className="text-[var(--text-secondary)]">
+        These are matched on research and deadlines only — we don&rsquo;t have
+        your career stage, so awards meant for a later stage aren&rsquo;t being
+        filtered out.
+      </span>
+      <a
+        href="/app/profile"
+        className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+      >
+        Set your career stage
+      </a>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------- //
 // Loading skeleton
 // --------------------------------------------------------------------------- //
 
@@ -396,9 +461,12 @@ function FellowshipSkeleton() {
 function FellowshipList({
   items,
   recommendedFor,
+  labName,
 }: {
   items: FellowshipOpportunity[];
   recommendedFor?: Record<string, RecommendedMember[]>;
+  /** Set on a lab feed: what each card's ring is scored against. */
+  labName?: string;
 }) {
   return (
     <div className="space-y-3.5">
@@ -411,6 +479,7 @@ function FellowshipList({
           <FellowshipRow
             item={item}
             recommendedFor={recommendedFor?.[item.content_id]}
+            scopeName={labName}
           />
         </div>
       ))}
@@ -463,7 +532,15 @@ function PersonalFellowships() {
   const { data, isLoading, isError } = useFellowships();
   const items = React.useMemo(() => data?.items ?? [], [data]);
   return (
-    <FellowshipsFeed items={items} isLoading={isLoading} isError={isError} />
+    <FellowshipsFeed
+      items={items}
+      isLoading={isLoading}
+      isError={isError}
+      // `stage_set === false` means nothing placed this reader on the career
+      // ladder, so the stage gate stayed silent for their whole feed. Default to
+      // true while loading, so the notice never flashes on a feed that has one.
+      stageSet={data?.stage_set ?? true}
+    />
   );
 }
 
@@ -481,12 +558,15 @@ function FellowshipsFeed({
   isError,
   recommendedFor,
   labName,
+  stageSet = true,
 }: {
   items: FellowshipOpportunity[];
   isLoading: boolean;
   isError: boolean;
   recommendedFor?: Record<string, RecommendedMember[]>;
   labName?: string;
+  /** Personal feed only: whether the reader's career stage resolved. */
+  stageSet?: boolean;
 }) {
   const [filters, setFilters] = React.useState<FellowshipFilterState>(
     DEFAULT_FELLOWSHIP_FILTERS,
@@ -546,6 +626,11 @@ function FellowshipsFeed({
 
   const showRail = !isLoading && !isError && items.length > 0;
 
+  // The old copy promised "fellowships you're eligible for, matched to your
+  // stage" unconditionally. Eligibility filtering is only as good as what we know
+  // about the reader: with no career stage on file the stage gate never fires,
+  // and claiming otherwise is the kind of false confidence that made a postdoc
+  // award on a student's feed read as vetted.
   const subtitle = isLoading
     ? labName
       ? `Matching fellowships to ${labName}…`
@@ -557,10 +642,12 @@ function FellowshipsFeed({
           } Mylo matched to ${labName}.`
         : `${items.length} fellowship${
             items.length === 1 ? "" : "s"
-          } you're eligible for, matched to your stage and timeline.`
+          } matched to your research${
+            stageSet ? ", career stage, and timeline" : " and timeline"
+          }.`
       : labName
         ? `Fellowships matched to ${labName}.`
-        : "Fellowships matched to your stage, eligibility, and timeline.";
+        : "Fellowships matched to your research, eligibility, and timeline.";
 
   return (
     <div>
@@ -569,6 +656,10 @@ function FellowshipsFeed({
         title="Fellowships"
         subtitle={subtitle}
       />
+
+      {!labName && !stageSet && !isLoading && !isError && items.length > 0 ? (
+        <StageNotice />
+      ) : null}
 
       {items.length > 0 && !isLoading && !isError ? (
         <FeedSearchBar
@@ -645,7 +736,11 @@ function FellowshipsFeed({
             />
           ) : (
             <>
-              <FellowshipList items={displayed} recommendedFor={recommendedFor} />
+              <FellowshipList
+                items={displayed}
+                recommendedFor={recommendedFor}
+                labName={labName}
+              />
               <FeedSentinel
                 sentinelRef={sentinelRef}
                 hasMore={hasMore}

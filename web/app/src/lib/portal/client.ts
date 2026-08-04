@@ -19,9 +19,9 @@ import type {
   DiscordStartResponse,
   DiscordStatus,
   Entitlements,
-  FellowshipOpportunity,
   OrgBilling,
   GrantOpportunity,
+  FellowshipsFeed,
   LabMember,
   LabProfileData,
   MemberSuggestionsFeed,
@@ -203,10 +203,8 @@ export async function fetchConferences(): Promise<
 }
 
 /** The user's matched fellowships (Fellowships page). */
-export async function fetchFellowships(): Promise<
-  OpportunityFeed<FellowshipOpportunity>
-> {
-  return getJson<OpportunityFeed<FellowshipOpportunity>>(
+export async function fetchFellowships(): Promise<FellowshipsFeed> {
+  return getJson<FellowshipsFeed>(
     buildApiUrl(getPublicApiBase(), "opportunities", "fellowships"),
     "Could not load your fellowships.",
   );

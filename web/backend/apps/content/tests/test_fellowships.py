@@ -1036,3 +1036,68 @@ def test_post_phd_window_gates_only_when_the_phd_year_is_known():
         phd_completed_year=2025,
     )
     assert evaluate_eligibility(meta, recent, TODAY)["tier"] != "not_eligible"
+
+
+def test_model_percent_is_clamped_on_a_hedged_row():
+    """The model is told eligibility is settled and never re-litigates it, so its
+    percent is pure research fit — it must not put a confident 95 on an item the
+    rule engine could only call a possible fit."""
+    from apps.content.opportunity_llm import generate_fellowship_suggestions
+
+    ranked = [_ranked_stub("ccc", tier="conditional", fit=0.45)]
+    items = {"ccc": _FakeItem("ccc", {"title": "X", "award_class": "fellowship"})}
+
+    out = generate_fellowship_suggestions(
+        {},
+        {},
+        ranked,
+        items,
+        complete=lambda _p: (
+            '{"suggestions": [{"item": 1, "match": 95, "headline": "H", '
+            '"reason": "R."}]}'
+        ),
+    )
+    assert out[0]["source"] == "llm"
+    assert out[0]["reason"] == "R."
+    assert out[0]["match_percent"] == ranked[0]["match_percent"] == 45
+
+
+def test_model_percent_stands_on_a_qualified_row():
+    """The clamp is about hedged verdicts, not about distrusting the model."""
+    from apps.content.opportunity_llm import generate_fellowship_suggestions
+
+    ranked = [_ranked_stub("ddd", tier="qualified", fit=0.45)]
+    items = {"ddd": _FakeItem("ddd", {"title": "X", "award_class": "fellowship"})}
+
+    out = generate_fellowship_suggestions(
+        {},
+        {},
+        ranked,
+        items,
+        complete=lambda _p: (
+            '{"suggestions": [{"item": 1, "match": 95, "headline": "H", '
+            '"reason": "R."}]}'
+        ),
+    )
+    assert out[0]["match_percent"] == 95
+
+
+def test_lab_rows_keep_the_model_percent():
+    """A lab fellowship has no tier at all — there is no eligibility verdict to
+    hedge against, so nothing is clamped."""
+    from apps.content.opportunity_llm import generate_fellowship_suggestions
+
+    ranked = [_ranked_stub("eee", tier="", fit=0.45)]
+    items = {"eee": _FakeItem("eee", {"title": "X", "award_class": "fellowship"})}
+
+    out = generate_fellowship_suggestions(
+        {},
+        {},
+        ranked,
+        items,
+        complete=lambda _p: (
+            '{"suggestions": [{"item": 1, "match": 95, "headline": "H", '
+            '"reason": "R."}]}'
+        ),
+    )
+    assert out[0]["match_percent"] == 95

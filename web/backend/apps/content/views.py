@@ -536,10 +536,25 @@ class ConferencesView(_OpportunityFeedView):
 
 
 class FellowshipsView(_OpportunityFeedView):
-    """The signed-in user's matched fellowships (Fellowships page)."""
+    """The signed-in user's matched fellowships (Fellowships page).
+
+    Adds ``stage_set``: whether this reader's career stage resolved at all. The
+    stage gate is silent for anyone it cannot place on the ladder, so a feed built
+    without one is genuinely less filtered than the page otherwise implies — the
+    honest thing is to say so and offer the fix, not to promise eligibility
+    filtering that did not happen.
+    """
 
     content_type = ContentItem.Type.FELLOWSHIP
     serializer_class = FellowshipSerializer
+
+    def get(self, request):
+        from .fellowships import derive_stage
+
+        response = super().get(request)
+        profile = getattr(request.user, "profile", None)
+        response.data["stage_set"] = bool(profile and derive_stage(profile))
+        return response
 
 
 # --------------------------------------------------------------------------- #
@@ -619,6 +634,70 @@ def _consented_eligibility(member_ids, content_ids) -> dict[str, dict[str, str]]
     return out
 
 
+def _ineligible_members(roster: dict, scores: list[RelevanceScore]) -> dict[str, set]:
+    """``{content_id: {username, …}}`` — members a fellowship hard-excludes.
+
+    The lab fellowship feed is ranked on research fit with no eligibility gate,
+    because a lab has no citizenship or career stage. That is correct for the
+    *feed* and wrong for the *strip*: naming the members an award suits was
+    running on topical cosine alone, so a postdoc-only award in a student's exact
+    subfield named the student, confidently. This runs each named member's own
+    eligibility against the item and removes the ones it hard-excludes.
+
+    Evaluated live rather than read from their personal scores: a hard-ineligible
+    row is dropped at scoring time and never persisted, so there is no stored
+    "ineligible" to look up — and evaluating here means a profile edit corrects
+    the strip without waiting for a re-score.
+
+    Nothing is disclosed. A member who fails is silently absent, which reveals
+    strictly less than the consented ``eligible`` annotation already does (D-11);
+    the opt-in gate on *naming* someone eligible is untouched.
+    """
+    from .fellowships import eligibility_from_profile, evaluate_eligibility
+
+    fellowships = [
+        score for score in scores if score.content.type == ContentItem.Type.FELLOWSHIP
+    ]
+    if not fellowships or not roster:
+        return {}
+    today = timezone.now().date().isoformat()
+    eligs = {}
+    for username, user in roster.items():
+        profile = getattr(user, "profile", None)
+        if profile is not None:
+            eligs[username] = eligibility_from_profile(profile)
+    if not eligs:
+        return {}
+
+    out: dict[str, set] = {}
+    for score in fellowships:
+        metadata = score.content.metadata or {}
+        blocked = {
+            username
+            for username, elig in eligs.items()
+            if evaluate_eligibility(metadata, elig, today)["tier"] == "not_eligible"
+        }
+        if blocked:
+            out[str(score.content_id)] = blocked
+    return out
+
+
+def _member_sort_key(row: dict):
+    """Strip order: the members Mylo reasoned about first, then the rest.
+
+    Two scales live on this strip and they are not comparable — a profile cosine
+    sits naturally in the 0.4–0.7 band while a model's own-feed percent uses the
+    80–100 one freely. Sorting the mixed column ranked own-feed members above
+    profile-fit members almost unconditionally, which pushed the one member Mylo
+    actually wrote a rationale for down the strip and out of the expanded slot.
+    Grouping first, then sorting each group on its own scale, keeps every
+    comparison within a single scale.
+    """
+    explained = "profile_fit" in row["basis"]
+    within = row.get("profile_cosine") if explained else row.get("own_feed_percent")
+    return (0 if explained else 1, -(within or 0), row["username"])
+
+
 def _recommended_for(
     scores: list[RelevanceScore],
     member_ids: list,
@@ -639,6 +718,16 @@ def _recommended_for(
       only with their consent (:func:`_consented_eligibility`, D-11). Eligibility is
       an annotation on a recommendation, never the reason a lab sees the fellowship.
 
+    Eligibility also *subtracts*: a member a fellowship hard-excludes is dropped
+    from its strip whatever named them (:func:`_ineligible_members`). That gate
+    needs no consent — it removes a name rather than publishing one.
+
+    Two percentages, each with its own field and its own meaning. ``profile_cosine``
+    is the geometric distance between the item and the member's profile vector;
+    ``own_feed_percent`` is the model's 0–100 judgement on the member's personal
+    feed. They are not the same quantity and a ~30-point gap between them is the
+    expected steady state, so they are never merged into one number.
+
     Display fields (name, initials) resolve live from the member roster, so a rename
     lands without a re-score; a member who has since left the lab is dropped here
     even if a stale signal still names them.
@@ -647,50 +736,58 @@ def _recommended_for(
         return {}
     roster = {
         user.get_username(): user
-        for user in User.objects.filter(id__in=list(member_ids))
+        for user in User.objects.filter(id__in=list(member_ids)).select_related(
+            "profile"
+        )
     }
     fellowship_ids = [
         s.content_id for s in scores if s.content.type == ContentItem.Type.FELLOWSHIP
     ]
     eligibility = _consented_eligibility(list(member_ids), fellowship_ids)
+    ineligible = _ineligible_members(roster, scores)
 
     out: dict[str, list[dict]] = {}
     for score in scores:
         cid = str(score.content_id)
+        blocked = ineligible.get(cid) or set()
         rows: dict[str, dict] = {}
         for entry in score.signals.get("member_fit") or []:
             username = entry.get("username")
             user = roster.get(username)
-            if user is None:
-                continue  # left the lab since the last scoring run
+            if user is None or username in blocked:
+                continue  # left the lab since the last scoring run, or cannot apply
             rows[username] = {
                 "username": username,
                 "name": display_name(user),
                 "initials": initials(user),
-                "fit": entry.get("fit"),
+                "profile_cosine": entry.get("fit"),
+                "own_feed_percent": None,
                 "reason": entry.get("reason") or "",
                 "source": entry.get("source") or "similarity",
                 "basis": ["profile_fit"],
             }
         for member in interested.get(cid, []):
             username = member["username"]
+            if username in blocked:
+                continue
             row = rows.get(username)
             if row is None:
                 row = {
                     "username": username,
                     "name": member["name"],
                     "initials": member["initials"],
-                    "fit": member["match_percent"],
+                    "profile_cosine": None,
+                    "own_feed_percent": None,
                     "reason": "",
                     "source": "own_match",
                     "basis": [],
                 }
                 rows[username] = row
             row["basis"].append("own_match")
-            row["match_percent"] = member["match_percent"]
+            row["own_feed_percent"] = member["match_percent"]
         for username, tier in (eligibility.get(cid) or {}).items():
             user = roster.get(username)
-            if user is None:
+            if user is None or username in blocked:
                 continue
             row = rows.get(username)
             if row is None:
@@ -698,7 +795,8 @@ def _recommended_for(
                     "username": username,
                     "name": display_name(user),
                     "initials": initials(user),
-                    "fit": None,
+                    "profile_cosine": None,
+                    "own_feed_percent": None,
                     "reason": "",
                     "source": "eligibility",
                     "basis": [],
@@ -707,10 +805,7 @@ def _recommended_for(
             row["basis"].append("eligible")
             row["tier"] = tier
         if rows:
-            out[cid] = sorted(
-                rows.values(),
-                key=lambda r: (-(r.get("fit") or 0), r["username"]),
-            )
+            out[cid] = sorted(rows.values(), key=_member_sort_key)
     return out
 
 

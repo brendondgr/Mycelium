@@ -910,3 +910,32 @@ def test_fellowship_no_interest_signal_keeps_rule_only_ranking(pgvector, setting
     assert "f_a" in scores and "f_b" in scores
     assert scores["f_a"].signals.get("embedding_match") is None
     assert scores["f_b"].signals.get("embedding_match") is None
+
+
+# ============================================================================ #
+# 4. The feed reports whether it could filter on career stage at all
+# ============================================================================ #
+
+
+@pytest.mark.django_db
+def test_feed_reports_an_unknown_career_stage(client: APIClient):
+    """The stage gate is silent for anyone it cannot place on the ladder, so a
+    feed built without a stage is genuinely less filtered — the page says so
+    rather than promising eligibility filtering that did not happen."""
+    user = User.objects.create_user("u_stage_unset", password="x")
+    user.profile.interests = {}
+    user.profile.academic_title = ""
+    user.profile.save()
+    client.force_authenticate(user)
+    assert client.get("/api/opportunities/fellowships/").data["stage_set"] is False
+
+
+@pytest.mark.django_db
+def test_feed_reports_a_stage_derived_from_the_academic_title(client: APIClient):
+    """Nothing was ever written to eligibility.stage — the title carries it."""
+    user = User.objects.create_user("u_stage_derived", password="x")
+    user.profile.interests = {}
+    user.profile.academic_title = "postdoc"
+    user.profile.save()
+    client.force_authenticate(user)
+    assert client.get("/api/opportunities/fellowships/").data["stage_set"] is True

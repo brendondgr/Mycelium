@@ -20,7 +20,12 @@ import type { RecommendedMember } from "@/lib/portal/types";
  *
  * Each member is a chip; expanding one reveals the reason. The first member's
  * reason is shown open, because a card the reader has to click to understand is
- * a card they will not click.
+ * a card they will not click — and the backend orders the members Mylo actually
+ * reasoned about first, so the open one is the explained one.
+ *
+ * A chip shows exactly one percent and the note under it says what that percent
+ * measures. The strip carries two incomparable scales (see `RecommendedMember`),
+ * and presenting them side by side made one member read as two different numbers.
  */
 export function RecommendedFor({
   members,
@@ -36,6 +41,7 @@ export function RecommendedFor({
   const lead = members[0];
   const active = members.find((m) => m.username === openFor) ?? lead;
   const activeReason = active.reason || describeBasis(active);
+  const activeNote = basisNote(active);
 
   return (
     <div
@@ -59,6 +65,7 @@ export function RecommendedFor({
         </span>
         {members.map((member) => {
           const on = member.username === active.username;
+          const shown = shownPercent(member);
           return (
             <button
               key={member.username}
@@ -76,8 +83,10 @@ export function RecommendedFor({
             >
               <Avatar initials={member.initials} seed={member.username} size={16} />
               {member.name}
-              {typeof member.fit === "number" ? (
-                <span className="text-[var(--text-secondary)]">{member.fit}%</span>
+              {shown ? (
+                <span className="text-[var(--text-secondary)]">
+                  {shown.percent}%
+                </span>
               ) : null}
               {member.basis.includes("eligible") ? (
                 <span
@@ -98,24 +107,44 @@ export function RecommendedFor({
         {activeReason}
       </p>
 
-      {active.basis.length > 1 || active.basis[0] !== "profile_fit" ? (
+      {activeNote ? (
         <p className="mt-1 text-[11px] text-[var(--text-secondary)]">
-          {basisNote(active)}
+          {activeNote}
         </p>
       ) : null}
     </div>
   );
 }
 
+/**
+ * The one percent a chip shows, and what it means.
+ *
+ * The strip carries two measurements that are not on the same scale: a profile
+ * cosine (geometry, naturally 0.4–0.7) and the member's own personal-feed score
+ * (a model's 0–100 judgement, which runs hot). Showing both side by side, as an
+ * undifferentiated middot list, made the same member read as "66%" and "95%" at
+ * once. So: prefer the number the member themselves sees on their own page, fall
+ * back to the cosine, and always say which one it is.
+ */
+function shownPercent(
+  member: RecommendedMember,
+): { percent: number; scope: string } | null {
+  if (member.own_feed_percent != null) {
+    return { percent: member.own_feed_percent, scope: "on their own feed" };
+  }
+  if (typeof member.profile_cosine === "number") {
+    return { percent: member.profile_cosine, scope: "profile fit" };
+  }
+  return null;
+}
+
 /** The chip's own tooltip — the whole claim in one line, for a hover or a screen
  * reader that never opens the panel. */
 function memberTitle(member: RecommendedMember): string {
   const parts = [member.name];
-  if (typeof member.fit === "number") {
-    parts.push(`${member.fit}% profile match`);
-  }
-  if (member.basis.includes("own_match") && member.match_percent != null) {
-    parts.push(`${member.match_percent}% on their own feed`);
+  const shown = shownPercent(member);
+  if (shown) {
+    parts.push(`${shown.percent}% ${shown.scope}`);
   }
   if (member.basis.includes("eligible")) {
     parts.push(member.tier === "qualified" ? "qualified" : "possibly eligible");
@@ -125,8 +154,8 @@ function memberTitle(member: RecommendedMember): string {
 
 /** The fallback sentence when a member was named on a basis with no prose. */
 function describeBasis(member: RecommendedMember): string {
-  if (member.basis.includes("own_match")) {
-    return `This already matched ${member.name}'s own feed at ${member.match_percent}%.`;
+  if (member.own_feed_percent != null) {
+    return `This already matched ${member.name}'s own feed at ${member.own_feed_percent}%.`;
   }
   if (member.basis.includes("eligible")) {
     return `${member.name} is personally eligible for this.`;
@@ -137,8 +166,18 @@ function describeBasis(member: RecommendedMember): string {
 /** The supporting line under the reason — what else is known about this member. */
 function basisNote(member: RecommendedMember): string {
   const notes: string[] = [];
-  if (member.basis.includes("own_match") && member.match_percent != null) {
-    notes.push(`already a ${member.match_percent}% match on their own feed`);
+  const shown = shownPercent(member);
+  // Name what the chip's number measures, then the *other* measurement if there
+  // is one. Repeating the same number under a chip that already shows it would
+  // be the two-scales confusion in miniature.
+  if (shown) {
+    notes.push(`${shown.percent}% ${shown.scope}`);
+    if (
+      member.own_feed_percent != null &&
+      typeof member.profile_cosine === "number"
+    ) {
+      notes.push(`${member.profile_cosine}% profile fit`);
+    }
   }
   if (member.basis.includes("eligible")) {
     notes.push(

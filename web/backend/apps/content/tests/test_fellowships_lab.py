@@ -184,3 +184,173 @@ def test_lab_fellowship_carries_eligibility_as_a_recommendation_basis(lab) -> No
     assert rows["owner"]["tier"] == "qualified"
     assert rows["quiet"]["basis"] == ["profile_fit"]
     assert "tier" not in rows["quiet"]
+
+
+# --------------------------------------------------------------------------- #
+# Eligibility subtracts: who a lab fellowship must never be recommended to
+# --------------------------------------------------------------------------- #
+
+
+def _staged_member(lab, username, *, stage, consented=False):
+    """A member placed on the career ladder, for the subtractive gate."""
+    user = User.objects.create_user(username)
+    LabMembership.objects.create(user=user, lab=lab, role=LabMembership.Role.MEMBER)
+    Profile.objects.filter(user=user).update(
+        interests={
+            "eligibility": {
+                "citizenship": "us",
+                "stage": stage,
+                "lab_visible": consented,
+            }
+        }
+    )
+    return user
+
+
+def _postdoc_only(ext="postdoc-award"):
+    """An award the Illinois facets mark postdoctoral — the reported case."""
+    return ContentItem.objects.create(
+        type=ContentItem.Type.FELLOWSHIP,
+        source="illinois-fellowship-finder",
+        external_id=ext,
+        metadata={
+            "title": "NSF Postdoctoral Research Fellowship",
+            "award_class": "fellowship",
+            "deadline": {"type": "true", "date": "2026-12-01"},
+            "facets": {
+                "citizenship": ["US Citizens, Nationals, or Permanent Residents"],
+                "stage": ["Postdoctoral/Post-graduate"],
+                "field": ["Sciences/Engineering/Math"],
+                "award_type": ["Fellowship/Grant"],
+                "limits": [],
+                "other": [],
+            },
+            "flags": {},
+        },
+    )
+
+
+@pytest.mark.django_db
+def test_lab_strip_never_names_a_member_the_award_excludes(lab) -> None:
+    """The lab feed has no eligibility gate — a lab has no career stage — so a
+    postdoc-only award in a student's exact subfield ranks high and names them on
+    topical cosine alone. Eligibility has to subtract at the recommendation layer.
+    """
+    from rest_framework.test import APIClient
+
+    owner = _member(lab, "owner", consented=True, role=LabMembership.Role.OWNER)
+    _staged_member(lab, "student", stage="doctoral_early")
+    _staged_member(lab, "postdoc", stage="postdoc")
+    fellowship = _postdoc_only()
+    _lab_score(
+        lab,
+        fellowship,
+        member_fit=[
+            {"username": "student", "fit": 88, "reason": "Exact subfield.",
+             "source": "llm"},
+            {"username": "postdoc", "fit": 61, "reason": "Adjacent work.",
+             "source": "llm"},
+        ],
+    )
+
+    client = APIClient()
+    client.force_authenticate(owner)
+    resp = client.get(f"/api/labs/{lab.slug}/recommendations/")
+    named = {r["username"] for r in resp.data["recommended_for"][str(fellowship.id)]}
+    assert named == {"postdoc"}
+
+
+@pytest.mark.django_db
+def test_the_exclusion_discloses_nothing(lab) -> None:
+    """A dropped member leaves no trace — no name, no tier, no basis entry. That is
+    why it needs no lab_visible consent: it publishes less, not more."""
+    from rest_framework.test import APIClient
+
+    owner = _member(lab, "owner", consented=True, role=LabMembership.Role.OWNER)
+    student = _staged_member(lab, "student", stage="doctoral_early", consented=True)
+    fellowship = _postdoc_only()
+
+    _lab_score(
+        lab,
+        fellowship,
+        member_fit=[
+            {"username": "student", "fit": 88, "reason": "Exact subfield.",
+             "source": "llm"},
+        ],
+    )
+    _score(student, fellowship, "qualified")  # a stale personal row still naming them
+
+    client = APIClient()
+    client.force_authenticate(owner)
+    resp = client.get(f"/api/labs/{lab.slug}/recommendations/")
+    assert str(fellowship.id) not in resp.data["recommended_for"]
+
+
+# --------------------------------------------------------------------------- #
+# One scale per label
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.django_db
+def test_the_two_percentages_are_separate_fields(lab) -> None:
+    """66 is a cosine and 95 is a model's judgement; merging them into one `fit`
+    made a single card show the same member as two different numbers."""
+    from rest_framework.test import APIClient
+
+    owner = _member(lab, "owner", consented=True, role=LabMembership.Role.OWNER)
+    fellowship = _fellowship()
+    _lab_score(
+        lab,
+        fellowship,
+        member_fit=[
+            {"username": "owner", "fit": 66, "reason": "Mylo's line.",
+             "source": "llm"},
+        ],
+    )
+    RelevanceScore.objects.create(
+        content=fellowship,
+        target_user=owner,
+        score=0.9,
+        signals={"tier": "qualified", "suggested": True, "match_percent": 95},
+    )
+
+    client = APIClient()
+    client.force_authenticate(owner)
+    resp = client.get(f"/api/labs/{lab.slug}/recommendations/")
+    row = resp.data["recommended_for"][str(fellowship.id)][0]
+    assert row["profile_cosine"] == 66
+    assert row["own_feed_percent"] == 95
+    assert "fit" not in row
+
+
+@pytest.mark.django_db
+def test_the_explained_member_leads_the_strip(lab) -> None:
+    """Sorting a mixed-scale column ranked own-feed-only members above the ones
+    Mylo wrote a rationale for, purely because the model's scale runs hotter — and
+    the card opens the first member's reason by default."""
+    from rest_framework.test import APIClient
+
+    owner = _member(lab, "owner", consented=True, role=LabMembership.Role.OWNER)
+    other = _member(lab, "other", consented=False)
+    fellowship = _fellowship()
+    _lab_score(
+        lab,
+        fellowship,
+        member_fit=[
+            {"username": "owner", "fit": 66, "reason": "Mylo's line.",
+             "source": "llm"},
+        ],
+    )
+    # `other` has no member_fit row at all, only a hot personal score.
+    RelevanceScore.objects.create(
+        content=fellowship,
+        target_user=other,
+        score=0.9,
+        signals={"tier": "qualified", "suggested": True, "match_percent": 97},
+    )
+
+    client = APIClient()
+    client.force_authenticate(owner)
+    resp = client.get(f"/api/labs/{lab.slug}/recommendations/")
+    rows = resp.data["recommended_for"][str(fellowship.id)]
+    assert [r["username"] for r in rows] == ["owner", "other"]

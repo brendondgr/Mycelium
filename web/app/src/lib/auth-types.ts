@@ -42,7 +42,13 @@ export type ResearchSource = "openalex" | "semantic" | "scholar";
  */
 export type ProfileEligibility = {
   citizenship: "us" | "international";
-  /** Academic stage used by the rule engine to filter fellowships. */
+  /**
+   * Where the applicant stands on the career ladder — the rule engine's one
+   * asymmetric gate: an award whose earliest acceptable stage is above this is
+   * hidden, while standing past an award's range only softens it. `""` means
+   * unknown, and the backend then derives it from `career_stage` or the profile's
+   * academic title before giving up and leaving stage unfiltered.
+   */
   stage: "masters" | "doctoral_early" | "doctoral_dissertation" | "postdoc" | "";
   /** Broad discipline buckets matched against fellowship field restrictions. */
   fields: string[];
@@ -57,6 +63,12 @@ export type ProfileEligibility = {
    * ineligible, so citizenship/stage can't be inferred (D-11).
    */
   lab_visible?: boolean;
+  /**
+   * Year the doctorate was conferred. The only input for awards that limit how
+   * long ago that was ("within 24 months of the PhD"); such a limit is enforced
+   * only when both it and this are known. Asked of postdocs only.
+   */
+  phd_completed_year?: number;
   /** Pre-existing key — never dropped; set only by other code paths. */
   career_stage?: string;
 };
