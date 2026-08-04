@@ -45,7 +45,9 @@ def _table(rows: list[dict]) -> list[str]:
         flag = " ⚠️dirty" if row.get("dirty") else ""
         lines.append(
             f"| `{row['arm']}` | {row['corpus_scope']} | {row['corpus_docs']:,} | "
-            f"{row['n_queries']} | " + " | ".join(cells) + f" | `{row['git_sha']}`{flag} |"
+            f"{row['n_queries']} | "
+            + " | ".join(cells)
+            + f" | `{row['git_sha']}`{flag} |"
         )
     return lines
 

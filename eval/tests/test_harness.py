@@ -90,8 +90,9 @@ def test_mismatched_matrix_is_rejected() -> None:
 
 def test_cache_key_depends_on_ids_and_order() -> None:
     base = dict(model="m", snapshot="s", scope="full")
-    assert cache_key(**base, doc_ids=["a", "b"]) == cache_key(**base, doc_ids=["a", "b"])
-    assert cache_key(**base, doc_ids=["a", "b"]) != cache_key(**base, doc_ids=["b", "a"])
+    ab, ba = ["a", "b"], ["b", "a"]
+    assert cache_key(**base, doc_ids=ab) == cache_key(**base, doc_ids=ab)
+    assert cache_key(**base, doc_ids=ab) != cache_key(**base, doc_ids=ba)
     assert cache_key(**base, doc_ids=["a"]) != cache_key(**base, doc_ids=["a", "b"])
     assert cache_key(**base, doc_ids=["a"]) != cache_key(
         model="m", snapshot="s", scope="pooled", doc_ids=["a"]
