@@ -78,6 +78,12 @@ and a deterministic tail. Scored for three target kinds — user, lab, and proje
 deterministic eligibility rule engine for people; labs and projects rank them on
 research fit alone.
 
+**Evaluation.** A reusable retrieval harness (`eval/`) that scores the production
+ranking stack against LongEval-Sci with `ir_measures`, emits TREC run files and
+`ir_metadata`, and accumulates a committed score history keyed by git SHA. Five
+arms, each a thin call into production code, so re-measuring after a ranking
+change is one command. See `docs/evaluation.md` for the claims boundary.
+
 **Delivery.** Four in-app feeds with search, cluster chips, filter rails, and
 infinite reveal. A sectioned written daily briefing per user and per lab. A
 rendered PDF report DM'd to linked users and attached to a lab's Discord channel

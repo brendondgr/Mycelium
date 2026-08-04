@@ -80,6 +80,7 @@ Files below are inside `web/backend/apps/content/`.
 | Content items, scores, saves, reminders, notifications | `models.py` |
 | Scoring target (user / lab / project) | `targets.py` |
 | Paper pipeline | `pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`, `clustering.py` |
+| Ranking-stack seams (ORM-free ranking, swappable vector index) | `protocols.py` (`Retrievable`, `VectorIndex`), `retrieval.py` (`PgVectorIndex`) |
 | Grants / conferences / fellowships matching | `opportunities.py`, `fellowships.py`, `opportunity_llm.py`, `pinning.py` |
 | Fellowship eligibility gates (stage ladder, prose constraints) | `fellowships.py` (`STAGE_LADDER`, `_stage_gate`, `_constraint_gates`, `derive_stage`) |
 | Fellowship eligibility extracted from prose | `apps/scraper/pivot/fellowships/constraints.py`, `apps/scraper/pivot/ingest.py` (`extract_fellowship_constraints`) |
@@ -129,6 +130,7 @@ Files below are inside `web/backend/apps/content/`.
 | Gateway routing | `web/infra/nginx/default.conf` |
 | Env contract | `.env.example`, `.env-mylo.example` |
 | Onboarding load test | `loadtest.py`, `loadtest_interests.py`; guide in [`loadtest.md`](loadtest.md) |
+| Retrieval evaluation | `eval/` — `run.py`, `report.py`, `collections.toml`, `configs/`, `harness/`; results in `eval/results/`, guide in [`evaluation.md`](evaluation.md) |
 | Admin bootstrap | `create_admin.py` |
 
 ## Management commands
@@ -169,6 +171,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `docs/discord-integration.md` | Discord identity & lab linking reference |
 | `docs/loadtest.md` | Onboarding load-test guide |
 | `docs/research-audit.md` | Independent audit of the ranking and agentic layers |
+| `docs/evaluation.md` | Retrieval evaluation leaderboard, qrels provenance, and the claims boundary |
 | `docs/skills/` | Canonical agent guidance — start at `skills/index.md` |
 | `docs/changelog.md` | Append-only project history |
 | `docs/chats/`, `docs/Resources/` | Source conversations and the project brief |

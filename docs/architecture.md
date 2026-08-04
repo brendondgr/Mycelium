@@ -41,6 +41,7 @@ mycelium/
 ├── mycelium*.service, mylo-daily.{service,timer}, mylo-bot.service  # systemd units
 ├── mylo/                          # host Discord bot package + daily-run observability
 ├── utils/                         # per-stage manual runners, vendored grants prototype
+├── eval/                          # retrieval evaluation harness (own uv project)
 ├── docs/                          # direction, reference, skills, changelog
 └── web/
     ├── landing/                   # Astro public site
@@ -155,6 +156,26 @@ Reads accumulate across runs (`views._accumulated_scores`,
 `briefing._suggested_scores`), capped by `OPPORTUNITY_FEED_MAX`. Papers are the
 exception: retrieval is scoped to the latest gather batch, so the Research Papers
 page shows only the current day's search.
+
+## The ranking-stack seams
+
+`apps/content/protocols.py` declares two structural protocols so the ranking
+stack can run without a database — which is what lets an offline harness measure
+the *production* code instead of a copy of it.
+
+- **`Retrievable`** — a candidate the stack can score: a stringable `id`, a
+  `metadata` dict, and an optional `embedding`. `ContentItem` satisfies it
+  already; `lexical.py`, `fusion.py`, and `ranking.py` annotate against it. This
+  is a typing change only, with no runtime effect.
+- **`VectorIndex`** — anything that answers nearest-neighbour queries.
+  `retrieval.PgVectorIndex` wraps the existing pgvector query and is what
+  production uses; `pipeline._build_pool` takes an optional `index` that defaults
+  to it, and that single parameter is the entire integration surface.
+
+The substitution is exact, not approximate: there is **no ANN index** on
+`ContentItem.embedding` (no `hnsw`, no `ivfflat`), so every production vector
+query is already a sequential scan ordered by cosine distance. An in-memory
+index therefore computes the identical ranking. See `docs/evaluation.md`.
 
 ## Running locally
 
