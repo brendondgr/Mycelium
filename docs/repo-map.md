@@ -136,8 +136,8 @@ All under `web/backend/apps/*/management/commands/`. Run with
 
 | Command | Purpose |
 |---|---|
-| `run_daily_suggestions` | Daily paper scan + score (append) |
-| `run_daily_opportunities` | Daily grants / conferences / fellowships match (append) |
+| `run_daily_suggestions` | Daily paper scan + score for users, labs, projects (append) |
+| `run_daily_opportunities` | Daily grants / conferences / fellowships match for users, labs, projects (append) |
 | `run_refitting` | Whole-corpus re-score for users, labs, and lab projects (replace) |
 | `generate_daily_briefing` | Write each user's and lab's briefing |
 | `send_daily_discord_reports` | DM the personal PDF report |
@@ -167,6 +167,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `docs/discord-integration.md` | Discord identity & lab linking reference |
 | `docs/loadtest.md` | Onboarding load-test guide |
 | `docs/research-audit.md` | Independent audit of the ranking and agentic layers |
+| `docs/fellowship-matching-investigation.md` | Diagnosis: fellowship eligibility gating + percent-scale defects |
 | `docs/skills/` | Canonical agent guidance — start at `skills/index.md` |
 | `docs/changelog.md` | Append-only project history |
 | `docs/chats/`, `docs/Resources/` | Source conversations and the project brief |

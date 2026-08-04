@@ -9,6 +9,10 @@
     # hand off to the worker
     python manage.py run_daily_suggestions --async
 
+A full (untargeted) run covers the same three target kinds as the Celery task:
+every entitled user, every lab on an active subscription, and their in-cap active
+projects. A ``--user`` run stays user-scoped.
+
 The same code path the Beat schedule uses, exposed for testing and manual runs.
 """
 
@@ -19,7 +23,7 @@ from django.core.management.base import BaseCommand
 
 from apps.content.pipeline import DEFAULT_SUGGESTIONS, run_daily_batch
 from apps.content.runlog import new_run_log
-from apps.content.tasks import run_daily_suggestions, select_users
+from apps.content.tasks import run_daily_suggestions, select_targets, select_users
 
 
 class Command(BaseCommand):
@@ -96,8 +100,16 @@ class Command(BaseCommand):
             return
 
         users = select_users(usernames or None)
-        if not users:
-            self.stdout.write(self.style.WARNING("No matching users."))
+        # A full run also scores each entitled lab and in-cap project over the same
+        # shared ingest — the institutional half of the nightly run. This is the same
+        # target set the Celery task and the briefing/digest stages fan out to, so a
+        # lab that is briefed every night is also *scored* every night. A targeted
+        # --user run stays user-scoped (select_targets returns nothing for it).
+        labs, projects = select_targets(usernames or None)
+        if not users and not labs and not projects:
+            self.stdout.write(
+                self.style.WARNING("No matching users, labs, or projects.")
+            )
             return
 
         complete = (lambda _prompt: None) if options["no_llm"] else None
@@ -109,11 +121,17 @@ class Command(BaseCommand):
             echo=lambda text: self.stdout.write(text),
         )
         self.stdout.write(self.style.SUCCESS(f"Run log: {runlog.path}"))
+        runlog.line(
+            f"daily run start: {len(users)} user(s), {len(labs)} lab(s), "
+            f"{len(projects)} project(s)"
+        )
         try:
             # One global ingest (search + embed shared topics once), then a
-            # per-user recommend pass over the shared store.
+            # recommend pass over the shared store for every user, lab, and project.
             batch = run_daily_batch(
                 users,
+                labs=labs,
+                projects=projects,
                 complete=complete,
                 persist=persist,
                 log=runlog.line,
