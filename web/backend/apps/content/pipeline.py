@@ -1002,11 +1002,11 @@ def _build_pool(
     if not pool:
         return {}, {}, {}
 
-    index = build_bm25_index(list(pool.values()))
+    bm25_index = build_bm25_index(list(pool.values()))
     per_interest_scores: dict[str, dict[str, float]] = {}
     for interest in search_ints:
         fused = fuse_interest(
-            rank_bm25_over(interest.query_text, index),
+            rank_bm25_over(interest.query_text, bm25_index),
             vector_hits.get(interest.label, []),
         )
         if fused:

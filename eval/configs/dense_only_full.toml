@@ -1,0 +1,9 @@
+# The bge-small ceiling on its own.
+arm = "dense_only"
+
+[corpus]
+scope = "full"
+
+[embedding]
+parallel = 16
+batch_size = 64

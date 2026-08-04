@@ -1,0 +1,18 @@
+# fusion_dense_pool plus the production focus re-rank (`rerank_by_focus`).
+arm = "fusion_full"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[embedding]
+parallel = 16
+batch_size = 64
+
+[params]
+pool_per_interest = 1000
+
+# Deep variant: pool_per_interest raised 100 -> 1000. Production uses 100
+# (DEFAULT_POOL_PER_INTEREST), which structurally caps how many candidates the
+# feed can ever consider; this arm separates the fusion algorithm from that
+# product-level width so the two are not confounded in the recall numbers.

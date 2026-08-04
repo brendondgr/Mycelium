@@ -16,7 +16,27 @@ drifted from the run that produced it is worse than no number.
 
 <!-- BEGIN GENERATED LEADERBOARD -->
 
-_No runs recorded yet._
+### `longeval-sci-2026/snapshot-1/train` — qrels `dctr`
+
+| Arm | Corpus | Docs | Queries | nDCG@10 | nDCG@100 | AP | R@100 | RR | P@10 | Run |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `bm25_only` | full | 869,902 | 100 | 0.3282 | 0.4340 | 0.2796 | 0.6854 | 0.4843 | 0.2110 | `4f0e100` |
+| `bm25_only` | pooled | 84,489 | 100 | 0.3212 | 0.4314 | 0.2760 | 0.6903 | 0.4788 | 0.2100 | `4f0e100` ⚠️dirty |
+| `dense_only` | pooled | 84,489 | 100 | 0.2401 | 0.3498 | 0.1965 | 0.6120 | 0.4067 | 0.1700 | `4f0e100` ⚠️dirty |
+| `fusion_dense_pool` | pooled | 84,489 | 100 | 0.2915 | 0.4191 | 0.2577 | 0.7021 | 0.4607 | 0.1910 | `4f0e100` ⚠️dirty |
+| `fusion_full` | pooled | 84,489 | 100 | 0.2968 | 0.4221 | 0.2614 | 0.6996 | 0.4753 | 0.1930 | `4f0e100` ⚠️dirty |
+| `fusion_union_pool` | pooled | 84,489 | 100 | 0.3001 | 0.4292 | 0.2665 | 0.7065 | 0.4645 | 0.2000 | `4f0e100` ⚠️dirty |
+
+### Published baselines (external, for comparison)
+
+Scored by this harness with the same `ir_measures` call used above, from the LongEval'26 organizers' own published runs — not numbers quoted from a paper.
+
+| System | Snapshot | qrels | nDCG@10 | nDCG@100 | AP | R@100 | RR | P@10 |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| BM25 (PyTerrier, organizers) | `longeval-sci-2026/snapshot-1/train` | dctr | 0.2922 | 0.4123 | 0.2573 | 0.6836 | 0.4717 | 0.1950 |
+| Qwen3-Embedding-4B (organizers) | `longeval-sci-2026/snapshot-1/train` | dctr | 0.2820 | 0.3919 | 0.2378 | 0.6390 | 0.4389 | 0.1880 |
+
+> **Do not compare across corpus scopes.** A `pooled` row is a re-ranking result over the judged set plus a lexical pool; a `full` row ranks the entire snapshot. Reordering metrics (nDCG@10) are broadly comparable, recall metrics are not.
 
 <!-- END GENERATED LEADERBOARD -->
 

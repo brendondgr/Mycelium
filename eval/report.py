@@ -51,8 +51,10 @@ def _table(rows: list[dict]) -> list[str]:
             value = row["metrics"].get(column)
             cells.append("—" if value is None else f"{value:.4f}")
         flag = " ⚠️dirty" if row.get("dirty") else ""
+        width = row.get("params", {}).get("pool_per_interest")
         lines.append(
-            f"| `{row['arm']}` | {row['corpus_scope']} | {row['corpus_docs']:,} | "
+            f"| `{row['arm']}`{f' (pool {width})' if width else ''} "
+            f"| {row['corpus_scope']} | {row['corpus_docs']:,} | "
             f"{row['n_queries']} | "
             + " | ".join(cells)
             + f" | `{row['git_sha']}`{flag} |"

@@ -143,3 +143,6 @@ loadtest_results/
 eval/cache/
 eval/runs/
 eval/.venv/
+# Downloaded evaluation corpora live outside the worktree so they survive a
+# worktree being deleted (tens of GB of LongEval snapshots + extracted JSONL).
+data/eval-cache/

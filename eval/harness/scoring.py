@@ -54,10 +54,17 @@ class RunRecord:
     params: dict = field(default_factory=dict)
 
     def filename(self) -> str:
+        """A name unique to everything that can change the number.
+
+        `config_hash` is part of it deliberately: two runs of the same arm at the
+        same commit but different parameters (say `pool_per_interest` 100 vs
+        1000) are *different results*, and leaving it out silently overwrote one
+        with the other.
+        """
         safe_snapshot = self.snapshot.replace("/", "_")
         return (
             f"{safe_snapshot}__{self.arm}__{self.corpus_scope}"
-            f"__{self.qrels}__{self.git_sha}.json"
+            f"__{self.qrels}__{self.config_hash}__{self.git_sha}.json"
         )
 
     def write(self, directory: Path | None = None) -> Path:
