@@ -43,6 +43,7 @@ Paths are relative to the repository root.
 | Search UI | `web/app/src/components/portal/global-search.tsx`, `portal/sections/{search-section,search-result-card}.tsx` |
 | Projects UI | `web/app/src/components/portal/sections/{projects-list-section,project-detail-section}.tsx`, `portal/projects/create-project-wizard.tsx` |
 | Labs / members / lab settings | `web/app/src/components/portal/sections/{labs-section,members-section,lab-settings-section}.tsx` |
+| Reports page (briefing history) | `web/app/src/components/portal/sections/reports-section.tsx` |
 | Billing page | `web/app/src/components/portal/sections/billing-section.tsx` |
 | Admin page | `web/app/src/components/portal/sections/admin-section.tsx` |
 | Notification bell | `web/app/src/components/portal/notification-bell.tsx` |
@@ -85,6 +86,7 @@ Files below are inside `web/backend/apps/content/`.
 | Member fit ("who is this for?") | `member_fit.py`, `fanout.py` |
 | Project team signal & sharing | `team_profile.py`, `collaboration.py` |
 | Daily briefing | `briefing.py`, `briefing_agents.py` |
+| Briefing history & retention | `models.py` (`DailyBriefing.generated_on`), `views.py` (`BriefingHistoryView`), `management/commands/prune_briefings.py` |
 | Daily PDF report | `daily_report.py`, `daily_report_pdf.py`, `daily_report_send.py` |
 | Lab Discord digest | `lab_digest.py` |
 | Reminders | `reminders.py`, `reminders_tick.py`, `reminders_views.py`, `reminders_discord.py`, `reminders_announce.py`, `reminder_access.py` |
@@ -141,6 +143,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `send_daily_discord_reports` | DM the personal PDF report |
 | `send_lab_digests` | Post a lab's summary + report PDF |
 | `run_reminder_tick`, `prune_opportunities` | Fire due reminders / delete expired listings |
+| `prune_briefings` | Delete briefings past `BRIEFING_RETENTION_DAYS` |
 | `drain_discord_outbox`, `reconcile_discord` | Deliver queued Discord messages / reconcile guild state |
 | `scan_literature` | Paper ingestion only |
 | `pivot_login`, `scrape_pivot`, `ingest_pivot` | Pivot-RP ingest chain |

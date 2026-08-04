@@ -6,7 +6,8 @@ matches, this module reads each category's :class:`RelevanceScore` feed for a us
 rolls them into per-category counts and a small showcase of top items, and hands
 the found items to the multi-agent report writer in :mod:`.briefing_agents`, which
 produces a structured, sectioned **markdown** report. The result is persisted as
-the user's :class:`DailyBriefing`.
+that day's :class:`DailyBriefing` — one row per target per ``generated_on``, so a
+rerun replaces today's report and the previous days stay readable.
 
 The report is a small agent pipeline (see :mod:`.briefing_agents`): a Paper, Grant,
 Fellowship, and Conference specialist each write a tailored ``## Section`` grounded
@@ -329,8 +330,11 @@ def _write_briefing(
         body = briefing_agents.empty_report_body()
         origin = DailyBriefing.Origin.FALLBACK
 
+    # Keyed on the day, so a same-day rerun replaces today's report while every
+    # earlier day stays readable on the Reports page.
     briefing, _ = DailyBriefing.objects.update_or_create(
         **owner,
+        generated_on=timezone.localdate(),
         defaults={
             "body": body,
             "origin": origin,

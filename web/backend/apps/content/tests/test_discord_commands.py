@@ -168,15 +168,16 @@ def test_a_stale_report_is_returned_but_named_as_stale(db) -> None:
     from django.utils import timezone
 
     user = _linked()
-    briefing = DailyBriefing.objects.create(user=user, body="Older news.")
-    DailyBriefing.objects.filter(pk=briefing.pk).update(
-        generated_at=timezone.now() - timedelta(days=2)
+    two_days_ago = timezone.localdate() - timedelta(days=2)
+    DailyBriefing.objects.create(
+        user=user, body="Older news.", generated_on=two_days_ago
     )
 
     status, payload = cmd.digest(SNOWFLAKE)
 
     assert status == "ok"
     assert payload["stale"] is True
+    assert payload["generated_on"] == two_days_ago.isoformat()
 
 
 @pytest.mark.django_db

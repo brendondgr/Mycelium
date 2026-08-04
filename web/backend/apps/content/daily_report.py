@@ -189,7 +189,7 @@ def _compile(
     opportunities.sort(key=_opportunity_sort_key)
     top_opportunities = opportunities[:TOP_OPPORTUNITIES]
 
-    daily = DailyBriefing.objects.filter(**briefing_filter).first()
+    daily = DailyBriefing.latest_for(**briefing_filter)
 
     return ReportData(
         username=key,

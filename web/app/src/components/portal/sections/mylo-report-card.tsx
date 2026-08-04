@@ -14,6 +14,25 @@ export function formatBriefingWhen(iso: string | null): string {
 }
 
 /**
+ * "Mon D, YYYY" from a `YYYY-MM-DD` day (the briefing's `generated_on`).
+ *
+ * Parsed field by field rather than through `new Date(day)`: that form is read as
+ * UTC midnight, which renders as the *previous* day for anyone west of Greenwich.
+ * Reports history is all dates, so an off-by-one there would be visible on every
+ * row rather than an edge case.
+ */
+export function formatBriefingDay(day: string | null): string {
+  if (!day) return "";
+  const [y, m, d] = day.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/**
  * The written "Mylo Report" as a standalone card — the daily briefing's prose
  * zone, reused by the Daily page and by both the personal and lab overviews so
  * the report reads identically wherever it appears. Handles the loading, empty,
@@ -48,7 +67,11 @@ export function MyloReportCard({
 
   const body = (data?.briefing?.body ?? "").trim();
   const isFallback = data?.briefing?.origin === "fallback";
-  const when = formatBriefingWhen(data?.generated_at ?? null);
+  // The day the report covers, not the moment it was written: a same-day rerun
+  // moves `generated_at`, and an archived day must be labelled by its own date.
+  const when = data?.generated_on
+    ? formatBriefingDay(data.generated_on)
+    : formatBriefingWhen(data?.generated_at ?? null);
 
   return (
     <Card

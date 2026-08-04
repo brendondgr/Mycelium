@@ -117,10 +117,10 @@ def digest(discord_user_id: str, lab_slug: str = "") -> tuple[str, dict]:
         return _denied(verdict)
 
     if lab_slug:
-        briefing = DailyBriefing.objects.filter(lab=verdict.lab).first()
+        briefing = DailyBriefing.latest_for(lab=verdict.lab)
         owner = verdict.lab.name
     else:
-        briefing = DailyBriefing.objects.filter(user=verdict.user).first()
+        briefing = DailyBriefing.latest_for(user=verdict.user)
         owner = ""
 
     if briefing is None:
@@ -129,11 +129,10 @@ def digest(discord_user_id: str, lab_slug: str = "") -> tuple[str, dict]:
             "message": _no_digest_message(verdict.user, lab_slug),
         }
 
-    generated_on = timezone.localtime(briefing.generated_at).date()
     return "ok", {
         "owner": owner,
-        "generated_on": generated_on.isoformat(),
-        "stale": generated_on < timezone.localdate(),
+        "generated_on": briefing.generated_on.isoformat(),
+        "stale": briefing.generated_on < timezone.localdate(),
         "counts": briefing.counts or {},
         "new_counts": briefing.new_counts or {},
         "body": briefing.body or "",

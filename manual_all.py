@@ -29,11 +29,17 @@ entitled user, every lab on an active subscription, and their in-cap active
 projects (``apps.content.tasks.select_targets``). That has to match the briefing
 and digest stages below — a lab that is briefed nightly but not *scored* nightly
 has a frozen feed, and its report reads "N papers, 0 new" every day.
+
+Between 3 and 4 sit the reminder tick and two sweeps — ``prune_opportunities``
+(expired listings) and ``prune_briefings`` (reports past
+``BRIEFING_RETENTION_DAYS``). Both are pure deletions of expired rows, so neither
+touches what the scoring stages just appended.
     4. Write daily briefings (backend)     — ``generate_daily_briefing``: the
        cross-category "Mylo Report" synthesis for every user **and every entitled
        lab** (LLM with a deterministic fallback). Like the summary itself, this is
-       a per-run *replace* — it re-describes the day's matches, never rewrites the
-       stored recommendations — so it stays consistent with the append-only rule.
+       a per-*day* replace — a rerun re-describes today's matches and leaves the
+       earlier days' reports standing, and it never rewrites the stored
+       recommendations — so it stays consistent with the append-only rule.
     5. Send daily Discord reports (backend) — ``send_daily_discord_reports``: DM
        each linked, entitled, opted-in user their day as a PDF (the written report
        plus the top-25 papers and top-25 grants/fellowships/conferences and a full
@@ -129,6 +135,11 @@ CONTAINER_STAGES = [
     ),
     ("run_reminder_tick", [], "Firing due deadline reminders…"),
     ("prune_opportunities", [], "Pruning expired opportunities…"),
+    # Alongside the opportunity prune: both are pure deletions of expired rows, so
+    # neither rewrites or rescores anything the earlier stages just wrote. Keeping
+    # the briefing sweep in the daily chain is what stops the Reports page history
+    # from drifting past its retention window.
+    ("prune_briefings", [], "Pruning daily briefings past the retention window…"),
     ("generate_daily_briefing", [], "Writing each user's and lab's daily briefing…"),
     (
         "send_daily_discord_reports",

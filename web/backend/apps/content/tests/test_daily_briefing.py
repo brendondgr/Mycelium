@@ -377,6 +377,7 @@ def test_api_empty_envelope_when_no_briefing(client: APIClient) -> None:
     assert resp.status_code == 200
     assert resp.data == {
         "generated_at": None,
+        "generated_on": None,
         "categories": [],
         "counts": {},
         "new_counts": {},
