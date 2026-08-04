@@ -136,3 +136,10 @@ loadtest_results/
 # Transient uv export for the out-of-home /opt/mylo-bot gateway venv (see docs/discord-integration.md).
 # Regenerated on demand from uv.lock; never commit.
 .mylo-requirements.txt
+
+# Retrieval evaluation harness (eval/). `results/` IS committed — the small JSON
+# score records are the run history. The corpora, embedding caches, and TREC run
+# files are large and regenerable, so they are not.
+eval/cache/
+eval/runs/
+eval/.venv/

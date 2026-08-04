@@ -1,0 +1,13 @@
+# fusion_dense_pool plus the production focus re-rank (`rerank_by_focus`).
+arm = "fusion_full"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[embedding]
+parallel = 16
+batch_size = 64
+
+[params]
+pool_per_interest = 100

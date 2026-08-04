@@ -24,7 +24,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from .models import ContentItem
+from .protocols import Retrievable
 
 #: Default weight applied to the focus overlap. At 0.25 a perfect focus match can
 #: lift a paper by up to +0.25 over its raw cosine similarity — enough to reorder
@@ -36,7 +36,7 @@ DEFAULT_FOCUS_WEIGHT = 0.25
 class RankedHit:
     """One retrieved paper after the focus re-rank, with its score breakdown."""
 
-    item: ContentItem
+    item: Retrievable
     similarity: float  # raw cosine similarity from retrieval
     focus_overlap: float  # fraction of focus areas present in the paper [0, 1]
     score: float  # blended score the digest ranks by
@@ -48,7 +48,7 @@ class RankedHit:
     _matched: tuple[str, ...] = ()
 
 
-def focus_overlap(areas: Sequence[str], item: ContentItem) -> tuple[float, list[str]]:
+def focus_overlap(areas: Sequence[str], item: Retrievable) -> tuple[float, list[str]]:
     """Return ``(fraction, matched_areas)`` for ``areas`` against ``item`` text.
 
     ``fraction`` is the share of distinct, non-empty focus areas whose text
@@ -66,7 +66,7 @@ def focus_overlap(areas: Sequence[str], item: ContentItem) -> tuple[float, list[
 
 
 def rerank_by_focus(
-    hits: Sequence[tuple[ContentItem, float]],
+    hits: Sequence[tuple[Retrievable, float]],
     areas: Sequence[str],
     *,
     weight: float = DEFAULT_FOCUS_WEIGHT,

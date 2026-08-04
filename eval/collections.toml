@@ -1,0 +1,70 @@
+# The evaluation collections, and what can currently be scored on each.
+#
+# This file is the ONLY place that knows which snapshots have judgments. LongEval
+# 2026 is an active shared task, so its three *test* snapshots ship documents and
+# queries but no qrels — the organizers release those after the task closes. When
+# they do, flip `scoreable` to true and name the qrels variants; no harness code
+# changes. That is deliberate: the blocked state is data, not a missing feature.
+#
+# `ir_datasets_id` is formatted with `{qrels}` when a qrels variant is selected.
+
+[[collection]]
+id = "sci-2026-train"
+ir_datasets_id = "longeval-sci-2026/snapshot-1/train/{qrels}"
+snapshot = "longeval-sci-2026/snapshot-1/train"
+timestamp = "2025-03"
+scoreable = true
+qrels_variants = ["dctr", "raw"]
+default_qrels = "dctr"
+note = "LongEval-Sci 2026 training snapshot. 869,902 docs, 100 queries."
+
+[[collection]]
+id = "sci-2025-11"
+ir_datasets_id = "longeval-sci/2024-11"
+snapshot = "longeval-sci/2024-11"
+timestamp = "2024-11"
+scoreable = true
+qrels_variants = ["test"]
+default_qrels = "test"
+note = "LongEval-Sci 2025 test snapshot 1. Released qrels; CLEF-2025 baselines published."
+
+[[collection]]
+id = "sci-2025-01"
+ir_datasets_id = "longeval-sci/2025-01"
+snapshot = "longeval-sci/2025-01"
+timestamp = "2025-01"
+scoreable = true
+qrels_variants = ["test"]
+default_qrels = "test"
+note = "LongEval-Sci 2025 test snapshot 2. The persistence pair with sci-2025-11."
+
+# --- Blocked: qrels withheld until CLEF 2026 closes -------------------------
+# Documents and queries download fine, so run files can already be produced for
+# a TIRA submission; only scoring is blocked.
+
+[[collection]]
+id = "sci-2026-s1"
+ir_datasets_id = "longeval-sci-2026/snapshot-1"
+snapshot = "longeval-sci-2026/snapshot-1"
+timestamp = "2025-03"
+scoreable = false
+qrels_variants = []
+blocked_reason = "CLEF 2026 test qrels unreleased (downloads.json url = null)."
+
+[[collection]]
+id = "sci-2026-s2"
+ir_datasets_id = "longeval-sci-2026/snapshot-2"
+snapshot = "longeval-sci-2026/snapshot-2"
+timestamp = "2025-06"
+scoreable = false
+qrels_variants = []
+blocked_reason = "CLEF 2026 test qrels unreleased (downloads.json url = null)."
+
+[[collection]]
+id = "sci-2026-s3"
+ir_datasets_id = "longeval-sci-2026/snapshot-3"
+snapshot = "longeval-sci-2026/snapshot-3"
+timestamp = "2025-09"
+scoreable = false
+qrels_variants = []
+blocked_reason = "CLEF 2026 test qrels unreleased (downloads.json url = null)."

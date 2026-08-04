@@ -1,0 +1,8 @@
+# Whether this repository's BM25 is correct at all — the plan's most important
+# checkpoint. Needs no embeddings, but this variant runs over the pooled subset so it is
+# directly comparable to the embedding arms.
+arm = "bm25_only"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000

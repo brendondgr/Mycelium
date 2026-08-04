@@ -7,7 +7,7 @@ fusion (:mod:`apps.content.fusion`) blends meaning with exact term overlap.
 
 Given the "targeted, bounded ingestion" architecture, BM25 needs no search engine:
 it runs in-process (``rank_bm25.BM25Okapi``) over the day's bounded candidate
-``ContentItem`` pool — the same pool the vector ANN draws from. The index is the
+candidate pool — the same pool the vector ANN draws from. The index is the
 expensive part, so build it **once per run** (:func:`build_bm25_index`) and score
 every interest query against that one index (:func:`rank_bm25_over`).
 
@@ -24,13 +24,13 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from .models import ContentItem
+from .protocols import Retrievable
 
 logger = logging.getLogger(__name__)
 
 #: A lexical hit: the item and its raw BM25 score (higher is more relevant). No
 #: normalization here — that happens per interest, after RRF (see fusion).
-Hit = tuple[ContentItem, float]
+Hit = tuple[Retrievable, float]
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
@@ -44,7 +44,7 @@ def _tokenize(text: str) -> list[str]:
     return _TOKEN_RE.findall((text or "").casefold())
 
 
-def _item_text(item: ContentItem) -> str:
+def _item_text(item: Retrievable) -> str:
     meta = item.metadata or {}
     # Pivot grants/conferences carry a prebuilt ``search_text`` (title/scope +
     # context); papers use title+abstract. Prefer the explicit field when present.
@@ -58,7 +58,7 @@ def _item_text(item: ContentItem) -> str:
 class BM25Index:
     """A BM25 index built once over a candidate pool, queryable per interest."""
 
-    items: list[ContentItem]
+    items: list[Retrievable]
     _bm25: object  # rank_bm25.BM25Okapi — kept opaque to avoid a hard import
 
     def rank(self, query_text: str) -> list[Hit]:
@@ -81,7 +81,7 @@ class BM25Index:
         return hits
 
 
-def build_bm25_index(candidates: Sequence[ContentItem]) -> BM25Index | None:
+def build_bm25_index(candidates: Sequence[Retrievable]) -> BM25Index | None:
     """Build one BM25 index over ``candidates``' title+abstract text.
 
     Returns ``None`` — the signal to skip the lexical channel — when ``rank_bm25``

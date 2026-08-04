@@ -82,6 +82,45 @@ def latest_gather_date(
     return timezone.localdate(latest) if latest is not None else None
 
 
+class PgVectorIndex:
+    """The production :class:`~apps.content.protocols.VectorIndex`.
+
+    A one-method adapter over :func:`retrieve_for_vector` so the pool builder in
+    :mod:`apps.content.pipeline` depends on the *protocol* rather than on this
+    module directly. The scoping arguments a caller cannot vary per query
+    (``content_type``, ``created_on``) are bound once at construction; ``limit``
+    and ``exclude_ids`` stay per-query because the pool builder varies them.
+
+    This carries no behaviour of its own — it exists so an alternative index (an
+    in-memory one, for offline evaluation) can be substituted without the pipeline
+    knowing. See :mod:`apps.content.protocols` for why that matters.
+    """
+
+    def __init__(
+        self,
+        *,
+        content_type: str | None = ContentItem.Type.PAPER,
+        created_on: date | None = None,
+    ) -> None:
+        self.content_type = content_type
+        self.created_on = created_on
+
+    def search(
+        self,
+        vector: Sequence[float] | None,
+        *,
+        limit: int,
+        exclude_ids: Sequence | None = None,
+    ) -> list[Hit]:
+        return retrieve_for_vector(
+            vector,
+            content_type=self.content_type,
+            limit=limit,
+            exclude_ids=exclude_ids,
+            created_on=self.created_on,
+        )
+
+
 def _similarity(distance: float | None) -> float:
     """Cosine similarity from cosine distance, clamped to ``[0, 1]``."""
     if distance is None:

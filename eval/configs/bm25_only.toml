@@ -1,0 +1,6 @@
+# Whether this repository's BM25 is correct at all — the plan's most important
+# checkpoint. Needs no embeddings, so it runs over the FULL corpus immediately.
+arm = "bm25_only"
+
+[corpus]
+scope = "full"

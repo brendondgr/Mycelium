@@ -1,0 +1,59 @@
+# The retrieval evaluation harness. Deliberately its own uv project, outside
+# `web/backend`, because it is a research artifact with heavy dependencies
+# (ir_datasets, ir_measures) that must never reach the deployed app.
+#
+# `web/backend` is a Django project, not an installable distribution, so it is
+# put on `sys.path` by `eval/run.py` rather than declared as a path dependency.
+# That means the app's runtime deps are mirrored here — the same arrangement the
+# root `pyproject.toml` uses for `pivot.py` / `manual_*.py`. Keep this list in
+# sync with `web/backend/pyproject.toml` when those change.
+#
+# The point of the mirroring is that the arms import `apps.content` directly, so
+# every number measures the *production* ranking code and not a copy of it.
+[project]
+name = "mycelium-eval"
+version = "0.1.0"
+description = "Reusable retrieval evaluation harness for the Mycelium ranking stack."
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    # --- enough of the backend to import `config.settings` + `apps.content` ---
+    "django>=5.2,<6",
+    "django-cors-headers>=4.7,<5",
+    "django-environ>=0.12,<1",
+    "djangorestframework>=3.16,<4",
+    "celery>=5.5,<6",
+    "cryptography>=44,<47",
+    "neo4j>=5.28,<6",
+    "openai>=1.50,<2",
+    "pgvector>=0.3,<1",
+    "psycopg[binary]>=3.2,<4",
+    "pypdf>=5.0,<7",
+    "redis>=5.2,<6",
+    "reportlab>=4.2,<5",
+    "python-dateutil>=2.9,<3",
+    # The production lexical channel. Not a reimplementation — the same package
+    # `apps.content.lexical` imports.
+    "rank-bm25>=0.2.2,<1",
+    # --- the harness's own dependencies ---
+    # The production embedder, so the harness never reimplements vectorization.
+    "fastembed>=0.8.0,<1.0.0",
+    # LongEval-Sci collections + the ir_datasets core they register into.
+    "ir-datasets-longeval>=0.0.15,<0.1.0",
+    # Standard TREC metrics. Never hand-roll nDCG.
+    "ir-measures>=0.3.6,<1.0.0",
+    "numpy>=2.0",
+    "pyyaml>=6.0,<7.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "ruff>=0.13.0,<1.0.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

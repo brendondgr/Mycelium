@@ -35,9 +35,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from .models import ContentItem
+from .protocols import Retrievable
 
-Hit = tuple[ContentItem, float]
+Hit = tuple[Retrievable, float]
 
 #: RRF dampening constant. 60 is the value from the original RRF paper (Cormack
 #: et al.) and the de-facto default; it flattens the contribution of deep ranks.
@@ -57,7 +57,7 @@ DEFAULT_BETA = 0.15
 class CombinedHit:
     """One candidate after cross-interest combination, with its breakdown."""
 
-    item: ContentItem
+    item: Retrievable
     combined_score: float
     per_interest: dict[str, float]  # interest label -> that interest's [0,1] score
     n_matched: int
@@ -100,7 +100,7 @@ def fuse_interest(
 
 def combine_interests(
     per_interest_scores: Mapping[str, Mapping[str, float]],
-    items_by_id: Mapping[str, ContentItem],
+    items_by_id: Mapping[str, Retrievable],
     *,
     beta: float = DEFAULT_BETA,
 ) -> list[CombinedHit]:
@@ -153,7 +153,7 @@ class ClusteredHit:
     strong single-cluster match.
     """
 
-    item: ContentItem
+    item: Retrievable
     final_score: float  # max over per-cluster combined scores (the ranking key)
     cluster_id: str  # the argmax cluster (attribution)
     per_cluster: dict[str, float]  # cluster_id -> that cluster's combined score
@@ -165,7 +165,7 @@ class ClusteredHit:
 def combine_clusters(
     per_interest_scores: Mapping[str, Mapping[str, float]],
     cluster_interest_labels: Mapping[str, Sequence[str]],
-    items_by_id: Mapping[str, ContentItem],
+    items_by_id: Mapping[str, Retrievable],
     *,
     beta: float = DEFAULT_BETA,
 ) -> list[ClusteredHit]:

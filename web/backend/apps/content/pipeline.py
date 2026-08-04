@@ -60,8 +60,14 @@ from .lexical import build_bm25_index, rank_bm25_over
 from .models import ContentItem, RelevanceScore
 from .opportunity_llm import load_prior_llm_verdicts
 from .pinning import compute_pins
+from .protocols import Retrievable, VectorIndex
 from .ranking import DEFAULT_FOCUS_WEIGHT, rerank_by_focus
-from .retrieval import Hit, latest_gather_date, retrieve_for_vector
+from .retrieval import (
+    Hit,
+    PgVectorIndex,
+    latest_gather_date,
+    retrieve_for_vector,
+)
 from .suggest import CompleteFn, generate_suggestions
 from .targets import target_for_lab, target_for_project
 
@@ -873,6 +879,7 @@ def fuse_interests_pool(
     created_on: date | None = None,
     exclude_ids: Sequence | None = None,
     match_threshold: float | None = None,
+    index: VectorIndex | None = None,
 ) -> tuple[list[Hit], list[PersistRow], int]:
     """Retrieve + fuse per interest; return suggest-pairs, persist-rows, pool size.
 
@@ -895,6 +902,10 @@ def fuse_interests_pool(
       transformer (embedding) cosine match across the interests clears the threshold
       — a variable-length list — capped only by ``surface_limit`` as a backstop. Each
       surfaced row records that cosine as ``embedding_match`` for the UI.
+
+    ``index`` overrides the vector channel (default: pgvector over the content
+    store). It is the sole seam an offline evaluation harness needs — see
+    :mod:`apps.content.protocols`.
     """
     pool, per_interest_scores, best_cosine = _build_pool(
         search_ints,
@@ -902,6 +913,7 @@ def fuse_interests_pool(
         pool_per_interest=pool_per_interest,
         created_on=created_on,
         exclude_ids=exclude_ids,
+        index=index,
     )
     if not pool:
         return [], [], 0
@@ -946,7 +958,8 @@ def _build_pool(
     pool_per_interest: int,
     created_on: date | None,
     exclude_ids: Sequence | None = None,
-) -> tuple[dict[str, ContentItem], dict[str, dict[str, float]], dict[str, float]]:
+    index: VectorIndex | None = None,
+) -> tuple[dict[str, Retrievable], dict[str, dict[str, float]], dict[str, float]]:
     """Retrieve one shared candidate pool and fuse every interest over it.
 
     Shared by the flat (:func:`fuse_interests_pool`) and cluster-scoped
@@ -956,8 +969,17 @@ def _build_pool(
     maps ``interest_label -> {item_id: [0,1] fused score}`` and ``best_cosine``
     the best raw transformer cosine each candidate earned in any interest's vector
     channel (the paper feed thresholds on it). An empty pool returns empties.
+
+    ``index`` is the vector channel. It defaults to
+    :class:`apps.content.retrieval.PgVectorIndex` scoped by ``content_type`` and
+    ``created_on`` — i.e. production is unchanged — and is the single parameter an
+    offline evaluation harness overrides to score this same code against an
+    external collection without a database. When it is supplied, ``content_type``
+    and ``created_on`` are the index's business, not this function's.
     """
-    pool: dict[str, ContentItem] = {}
+    if index is None:
+        index = PgVectorIndex(content_type=content_type, created_on=created_on)
+    pool: dict[str, Retrievable] = {}
     vector_hits: dict[str, list[Hit]] = {}
     best_cosine: dict[str, float] = {}
     for interest in search_ints:
@@ -965,11 +987,9 @@ def _build_pool(
         if vector is None:
             continue
         unified: list[Hit] = []
-        for item, similarity in retrieve_for_vector(
+        for item, similarity in index.search(
             vector,
-            content_type=content_type,
             limit=pool_per_interest,
-            created_on=created_on,
             exclude_ids=exclude_ids,
         ):
             key = str(item.id)
@@ -1007,6 +1027,7 @@ def fuse_clusters_pool(
     exclude_ids: Sequence | None = None,
     match_threshold: float | None = None,
     cluster_top_n: int = 0,
+    index: VectorIndex | None = None,
 ) -> tuple[list[Hit], list[PersistRow], int, list[list[Hit]]]:
     """Cluster-scoped twin of :func:`fuse_interests_pool` (papers, >= 2 clusters).
 
@@ -1026,6 +1047,9 @@ def fuse_clusters_pool(
     cluster: a deliberate, bounded overshoot, because the whole point of the slate
     is that a theme's ten best must survive whatever the global cut does.
     Returns ``[]`` for the slate when ``cluster_top_n`` is 0.
+
+    ``index`` overrides the vector channel exactly as in
+    :func:`fuse_interests_pool`.
     """
     pool, per_interest_scores, best_cosine = _build_pool(
         search_ints,
@@ -1033,6 +1057,7 @@ def fuse_clusters_pool(
         pool_per_interest=pool_per_interest,
         created_on=created_on,
         exclude_ids=exclude_ids,
+        index=index,
     )
     if not pool:
         return [], [], 0, []
