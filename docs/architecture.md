@@ -1,59 +1,61 @@
 # Mycelium Architecture
 
-**Status:** Foundation finalized (June 21, 2026) — repo structure, tech stack,
-service boundaries, and data/secrets management are in place and running.
-**See also:** [`docs/skills/repo-structure.md`](skills/repo-structure.md) (the
-canonical layout standard this document applies), [`docs/purpose.md`](purpose.md),
-[`docs/goals.md`](goals.md), and [`docs/api-contract.md`](api-contract.md).
+**Scope:** how the system is put together and who owns what. For *where* code
+lives, read [`repo-map.md`](repo-map.md). For HTTP shapes, read
+[`api-contract.md`](api-contract.md). For product direction, read
+[`purpose.md`](purpose.md) and [`goals.md`](goals.md).
 
 Mycelium is a full-stack monorepo with **root-level orchestration**: editable
-config (`compose.yaml`, `.env.example`, `package.json`) lives at the repository
-root, and all implementation/install state lives under `web/`, separated by
-service boundary. A new contributor should be able to identify root config, the
-public site, the app, the Django API, the worker layer, infra, and docs without
-guessing.
+config (`compose.yaml`, `.env.example`, `package.json`, the systemd units) lives
+at the repository root, and all implementation and install state lives under
+`web/`, separated by service boundary.
 
 ## Tech stack
 
 | Layer | Technology | Location |
 |---|---|---|
-| Public marketing site | Astro, Tailwind, MDX, GSAP, React islands | `web/landing/` |
-| Authenticated app | Next.js (App Router), React, Tailwind, shadcn/ui, TanStack Query/Table, Cytoscape.js | `web/app/` |
-| Shared design tokens | Tailwind v4 theme tokens | `web/packages/config/` |
-| Backend API & orchestration | Django, Django REST Framework | `web/backend/` |
-| Background work | Celery | `web/backend/` (worker process) |
-| Relational store | PostgreSQL 17 + **pgvector** | `postgres` service |
-| Graph store | Neo4j 5 | `neo4j` service |
+| Public marketing site | Astro 6, Tailwind v4, MDX — no framework JS shipped | `web/landing/` |
+| Authenticated app | Next.js 16 App Router, React 19, Tailwind v4, Radix UI, TanStack Query/Table | `web/app/` |
+| Shared design tokens | Tailwind v4 theme | `web/packages/config/src/theme.css` |
+| Backend API & orchestration | Django 5, Django REST Framework | `web/backend/` |
+| Background work | Celery 5 + Beat | `worker` / `beat` services |
+| Relational store | PostgreSQL 17 + pgvector | `postgres` service |
 | Cache / broker / job state | Redis 8 | `redis` service |
-| Object storage | S3-compatible (MinIO locally) | `minio` service |
-| Edge gateway | Nginx (single-origin routing) | `web/infra/nginx/` |
+| Embeddings | fastembed / ONNX Runtime (`BAAI/bge-small-en-v1.5`), CPU or CUDA | `apps/scraper/embedding.py` |
+| LLM | OpenAI-compatible endpoint (self-hosted vLLM is the reference target) | `apps/core/llm.py` |
+| Edge gateway | Nginx, single origin | `web/infra/nginx/` |
 | Python deps & commands | `uv` | `web/backend/` |
 | Node workspace | npm workspaces | `web/` |
+
+**Declared but unused.** `compose.yaml` runs **Neo4j** and **MinIO**, and
+`settings.py` reads their env vars, but no application code touches either — the
+graph phase and object-storage phase are not built. `cytoscape` is an unused
+`web/app` dependency. Treat all three as reserved, not as working infrastructure.
 
 ## Repository layout
 
 ```text
 mycelium/
-├── README.md, package.json, compose.yaml, .env.example   # root orchestration
-├── docs/                          # purpose, goals, styles, architecture, api-contract, skills, plans
+├── CLAUDE.md, README.md, package.json, compose.yaml, .env.example   # root orchestration
+├── run.py, manual_all.py, manual_mylo.py, pivot.py                  # host runners
+├── mycelium*.service, mylo-daily.{service,timer}, mylo-bot.service  # systemd units
+├── mylo/                          # host Discord bot package + daily-run observability
+├── utils/                         # per-stage manual runners, vendored grants prototype
+├── docs/                          # direction, reference, skills, changelog
 └── web/
     ├── landing/                   # Astro public site
     ├── app/                       # Next.js authenticated app
     ├── packages/config/           # shared theme tokens
+    ├── art/, scripts/             # artwork masters + sync/dev-gateway scripts
     ├── backend/                   # Django API + Celery
     │   ├── config/                # settings, urls, celery, asgi/wsgi
-    │   ├── apps/                   # Django apps (see boundaries below)
-    │   ├── manage.py, pyproject.toml, uv.lock
+    │   └── apps/                  # Django apps (see boundaries below)
     └── infra/nginx/               # gateway config
 ```
 
-Root scripts delegate into `web/` so the site and Django server can be built and
-run from the repository root (`npm run dev`, `npm run build`, `npm run test`).
+## Service boundaries
 
-## Service boundaries (separation of concerns)
-
-Five distinct responsibilities, each with a clear owner. **The browser never
-talks directly to Postgres, Neo4j, Redis, object storage, workers, or the vector
+**The browser never talks directly to Postgres, Redis, the worker, or the vector
 store** — only to the public site and, through the Next.js proxy, the Django API.
 
 | Concern | Owner | Notes |
@@ -61,8 +63,10 @@ store** — only to the public site and, through the Next.js proxy, the Django A
 | Public content | `web/landing/` (Astro) | Marketing, pricing, explanation; no private data |
 | Authenticated app behavior | `web/app/` (Next.js) | Session-gated UI; calls the API via a same-origin proxy |
 | Backend orchestration | `web/backend/` (Django + DRF) | Auth, permissions, business logic, admin, audit, API contracts |
-| Background work | Celery workers | Research scans, matching, extraction, graph updates, reports, digests |
-| Data storage | Postgres / Neo4j / Redis / S3 | Durable records, relationships, queue/cache, blobs |
+| Background work | Celery worker + Beat | Reminder ticks, outbox drain, project-profile recompute, seeding |
+| Scheduled pipeline | Host `mylo-daily.timer` → `manual_all.py` | The nightly research run (see below) |
+| Discord gateway | Host `mylo-bot.service` → `python -m mylo.bot` | Slash commands, drift events, run observability |
+| Data storage | Postgres / Redis | Durable records, vectors, queue/cache |
 
 Single-origin routing through Nginx at `http://localhost:11050`:
 
@@ -72,73 +76,85 @@ Single-origin routing through Nginx at `http://localhost:11050`:
 | `/login`, `/signup`, `/app/*`, `/_next/*` | Next.js app |
 | `/api/*`, `/admin/*` | Django |
 
-## Backend app boundaries (as built)
-
-The Django apps below realize the conceptual `auth` / `labs` / `scraper` /
-`graph` / `reports` boundaries from the early plan. Identity and labs were
-consolidated into `accounts`; the matching and billing layers became their own
-apps; the planner, graph, and reporting apps are planned but not yet built.
+## Backend app boundaries
 
 | App | Responsibility |
 |---|---|
-| `core` | Shared infrastructure: health endpoint, the pgvector extension migration, the polymorphic exactly-one-FK helper, and the OpenAI-compatible LLM client (`apps/core/llm.py`) |
-| `accounts` | Identity & organization: users, profiles, departments, labs, memberships, permission roles, academic titles, audit events, plus derived-membership services. Owns session auth (CSRF, login/logout/me) |
-| `research` | Research context: projects (scoped to a user, lab, or department), project membership, and project visibility over the org hierarchy (members; lab heads; the department head above any involved lab) |
-| `content` | Matching layer: deduplicated content items (papers, grants, fellowships) keyed by source + external id, and per-target relevance scores |
-| `billing` | Subscriptions, per-seat billing, and tier-based entitlement resolution. A subscription can carry an `expires_at`, enforced at read-time (an expired plan reverts to Free with no cleanup job); a `Profile.watch_topic_limit` override lets an admin widen/narrow one user's watch quota through the same `topic_cap` read path |
-| `adminpanel` | Platform-admin surface (staff/superuser only): a paginated, searchable user roster and per-user writes to assign a subscription tier + duration and set the watch-topic quota. Composes `accounts` + `billing`; every write records an `accounts.AuditEvent`. Mounted at `/api/admin/` |
-| `scraper` | Literature ingestion: ported OpenAlex/PubMed/Semantic Scholar source scrapers + registry, a publication-date scan window (today −2mo → +1mo), cross-source and against-store de-duplication, optional fastembed embedding, and upsert into `content.ContentItem`. Triggered by a Celery task or `scan_literature` management command — a placeholder wired to no schedule or member profile yet |
-| _planned_ | `planner` (knowledge-graph query-planning agent — routing, liveness, self-evaluation; early logic currently in `accounts/intake/agent.py` and `core/llm.py`), `graph` (Neo4j orchestration), `reports` (digests, reports, alerts) |
+| `core` | Shared infrastructure: health endpoint, the pgvector extension migration, the exactly-one-FK helper (`db.py`), and the OpenAI-compatible LLM client (`llm.py`) |
+| `accounts` | Identity & organization: users, profiles, departments, labs, memberships, permission roles, academic titles, audit events, derived membership. Owns session auth (CSRF, login/logout/me), the invite-only sign-up gate, lab invitations, the interests contract, and profile/lab intake (`intake/`) |
+| `research` | Projects scoped to a user, lab, or department: membership, visibility over the org hierarchy, plan-gated creation and archiving, team collaboration (shares, feed, link ingest, seen ledger, events), and collections |
+| `content` | The matching and delivery layer — the largest app. Deduplicated `ContentItem`s, per-target `RelevanceScore`s, the four feeds, clustering and fusion, the daily briefing and PDF report, saves, addressable deadlines, reminders, notifications, unified search, member fit, and the Discord digest producers |
+| `billing` | Subscriptions, per-seat billing, add-ons, and tier-based entitlement resolution. `entitlements.py` is the single read path; an expired plan reverts to Free at read time with no cleanup job |
+| `integrations` | Discord identity and lab linking: OAuth, activation codes, guild install, the durable outbox, and the single ORM boundary in `services/resolve.py` |
+| `adminpanel` | Platform-admin API (staff/superuser only): user and lab rosters, subscription assignment, watch quotas. Every write records an `accounts.AuditEvent`. Mounted at `/api/admin/` |
+| `scraper` | Ingestion: OpenAlex / PubMed / Semantic Scholar paper sources with a scan window and cross-source dedup, the Pivot-RP (ProQuest) grants / conferences / fellowships importer, the device-aware embedder, and the external DOI/arXiv/URL resolver |
+
+There is no `graph`, `reports`, or `planner` app. Reporting lives in `content`;
+query-planning logic lives in `accounts/intake/agent.py` and `core/llm.py`; the
+graph phase has not started.
 
 ## Data ownership
 
-- **PostgreSQL + pgvector** — source of truth for users, labs, departments,
-  memberships, permissions, profiles, projects, content items, relevance scores,
-  subscriptions, seats, and audit logs. pgvector columns
+- **PostgreSQL + pgvector** — the source of truth for everything: users, labs,
+  departments, memberships, permissions, profiles, projects, content items,
+  relevance scores, saves, deadlines, reminders, notifications, subscriptions,
+  seats, Discord identities, the outbox, and audit logs. Vector columns
   (`Profile.embedding`, `Project.embedding`, `ContentItem.embedding`) carry
-  semantic vectors; the dimension is intentionally unlocked until a scoring model
-  is chosen.
-- **Neo4j** — structured relationships for people, projects, claims, evidence,
-  papers, opportunities, and research goals (graph phase).
-- **Redis** — Celery broker/result backend, caching, and short-lived job state.
-- **Object storage (S3/MinIO)** — PDFs, uploads, generated reports, exports, and
-  figures.
+  semantic vectors; `ContentItem.search_vector` is a trigger-maintained tsvector
+  and there is a pg_trgm title index for fuzzy search.
+- **Redis** — Celery broker/result backend plus several named caches (`signup`
+  lockouts, the `scan` status flag, query embeddings).
+- **Filesystem** — Discord outbox attachments (`DISCORD_OUTBOX_ATTACHMENT_DIR`)
+  and the daily-run state file. Object storage is not wired up.
 
-## Configuration, environment & secrets management
+## Configuration & secrets
 
-- Settings load through **django-environ**: `config/settings.py` reads a `.env`
-  file at the repository root, then falls back to environment variables and safe
-  local defaults (e.g. SQLite when `DATABASE_URL` is unset).
-- **`.env.example`** at the root documents every required variable. The real
-  `.env` is **git-ignored** (`.env`, `.env.*`, with `.env.example` explicitly
-  exempted), so secrets are never committed.
-- **`compose.yaml`** injects per-service URLs (Postgres, Redis, Neo4j, MinIO)
-  for the Compose network and points the backend at the shared `.env.example`
-  defaults.
+- Settings load through **django-environ**. `config/settings.py` reads the root
+  `.env` **and** `.env-mylo` (the Discord bot's token and channel ids — Django
+  needs them too), then falls back to environment variables and safe defaults
+  (SQLite when `DATABASE_URL` is unset).
+- `.env.example` documents every variable. Real `.env` files are git-ignored.
+- `compose.yaml` overrides per-service URLs so containers reach `postgres:5432`
+  and `redis:6379` on the Compose network, while host tooling uses the published
+  `11450` / `11550` ports.
 
 | Group | Variables |
 |---|---|
-| Django | `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CORS_ALLOWED_ORIGINS`, `DJANGO_CSRF_TRUSTED_ORIGINS` |
+| Django | `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CORS_ALLOWED_ORIGINS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `PUBLIC_HOSTNAME` |
 | Frontend wiring | `NEXT_PUBLIC_API_BASE_URL`, `API_INTERNAL_URL` |
-| Data services | `DATABASE_URL`, `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` |
-| Object storage | `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME` |
-| LLM | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_TIMEOUT`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`, `LLM_REASONING`, `LLM_REASONING_STYLE` |
+| Data services | `DATABASE_URL`, `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` |
+| LLM | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_TIMEOUT`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`, `LLM_REASONING`, `LLM_REASONING_STYLE`, `LLM_THINKING_BUDGET` |
+| Embedding | `EMBEDDING_DEVICE` (`auto`/`cuda`/`cpu`), `EMBEDDING_BATCH_SIZE_CPU`, `EMBEDDING_BATCH_SIZE_GPU` |
+| Sign-up gate | `SIGNUP_ACCESS_CODE`, `SIGNUP_CODE_MAX_FAILURES`, `SIGNUP_CODE_FAILURE_WINDOW_SECONDS`, `SIGNUP_CODE_LOCKOUT_SECONDS` |
+| Discord (`.env-mylo`) | `DISCORD_API_KEY`, `ERROR_CHANNEL`, `ACTIVATION_CHANNEL`, `SUMMARY_CHANNEL` |
+| Reserved (unused) | `NEO4J_*`, `S3_*` |
 
-The LLM group configures an OpenAI-compatible endpoint (a self-hosted **vLLM**
-server is the reference target). `apps/core/llm.py` exposes a reusable
-`LLMClient` that future features (planner drafting, relevance rationales, digest
-and report drafting) route through. It supports structured **reasoning levels**
-(`none`/`low`/`medium`/`high`) sent either as vLLM's `reasoning_effort`
-(`LLM_REASONING_STYLE=effort`) or as a `chat_template_kwargs.enable_thinking`
-toggle (`thinking`), and reads back the server's separated `reasoning_content`.
-The server's reasoning parser and tool definitions are assumed to be configured
-server-side. The client lazily imports the `openai` SDK and accepts an injected
-transport, so importing it requires no SDK and tests run fully offline.
+`PUBLIC_HOSTNAME` backs every absolute URL Mycelium emits. Leaving it blank once
+published `localhost` links into a lab's Discord channel; links that leave the
+building now fall back to the public site rather than loopback.
 
-Secrets (`DJANGO_SECRET_KEY`, database credentials, `NEO4J_PASSWORD`, S3 keys)
-come only from `.env` or the deployment environment. In production, `DEBUG` is
-off, which turns on secure session and CSRF cookies; real secret values must
-replace the `change-me` placeholders.
+The LLM client supports structured reasoning levels (`none`/`low`/`medium`/
+`high`) sent either as `reasoning_effort` (`LLM_REASONING_STYLE=effort`) or as a
+`chat_template_kwargs.enable_thinking` toggle, and reads back the server's
+separated `reasoning_content`. It lazily imports the `openai` SDK and accepts an
+injected transport, so tests run fully offline. The optional `llm-tunnel` Compose
+service is an SSH forward to a remote LLM host, run inside the Compose network.
+
+## The two recommendation processes
+
+This split is load-bearing; changing one without the other corrupts feeds.
+
+- **Daily append** — the nightly run scores only items created that day
+  (`created_on=run_date`) and **appends** them. It never rewrites or deletes what
+  Mylo already wrote.
+- **On-demand replace** — refitting (`refit_*`, `run_refitting`, `manual_mylo.py`)
+  scores the **whole corpus** and **replaces**. It runs at sign-up and after a
+  profile or focus edit, and must never be scheduled into the daily chain.
+
+Reads accumulate across runs (`views._accumulated_scores`,
+`briefing._suggested_scores`), capped by `OPPORTUNITY_FEED_MAX`. Papers are the
+exception: retrieval is scoped to the latest gather batch, so the Research Papers
+page shows only the current day's search.
 
 ## Running locally
 
@@ -146,22 +162,12 @@ replace the `change-me` placeholders.
 |---|---|
 | Full stack, single origin | `docker compose up` (or `python run.py`) → `http://localhost:11050` |
 | Backend + data services only | `docker compose up backend` |
-| Dev gateway (host processes) | `npm run dev` |
+| Host dev gateway | `npm run dev` |
 | Backend management command | `uv run --project web/backend python web/backend/manage.py <cmd>` |
 | Backend tests | `npm run test` (or `uv run --directory web/backend python -m pytest`) |
+| GPU embedding | `docker compose -f compose.yaml -f compose.gpu.yaml up` |
 
-Run migrations against Postgres by setting `DATABASE_URL`; without it, Django
-uses the local SQLite database for quick checks. Embedding-column migrations
-depend on `core.0001_enable_pgvector`, so a fresh database provisions the
-`vector` type before any table that uses it.
-
-## Foundation checklist (Month 1, Week 1)
-
-- [x] Repo structure and tech stack finalized: Django backend, Postgres, Celery,
-  and clear app boundaries (documented above).
-- [x] Public content, authenticated app behavior, backend orchestration,
-  background work, and data storage separated by service boundary.
-- [x] Postgres configured with environment and secrets management
-  (`django-environ` + git-ignored `.env`, documented in `.env.example`).
-- [x] **Milestone:** Django project runs locally with Postgres connected
-  (verified: `vendor=postgresql`, pgvector enabled).
+Without `DATABASE_URL`, Django uses SQLite for quick checks — but pgvector tests
+skip there, so anything touching vectors needs the Compose Postgres. Embedding
+migrations depend on `core.0001_enable_pgvector`, so a fresh database provisions
+the `vector` type before any table that uses it.

@@ -5,35 +5,36 @@ site, authenticated lab app, Django API, or Dockerized deployment.
 
 ## Core Rules
 
-- Use Astro for the public landing/content site.
-- Use Next.js as the Node web server for the authenticated lab workspace and
-  dynamic React application.
-- Use Django as the backend API and orchestration layer.
-- Route public site traffic through Astro, authenticated app traffic through
-  Next.js, and API/admin traffic through Django.
-- Keep the Astro site, Next.js app, Django backend, local infrastructure, and
-  Node install state inside `web/`.
-- Plan build, run, and deployment commands from the repository root.
-- Root scripts should launch commands from the repository root while delegating
-  runtime files to `web/`.
-- Keep editable orchestration config at the root when the tool supports it.
+- Astro serves the public landing/content site; it ships no framework JavaScript.
+- Next.js (App Router) serves the authenticated lab workspace.
+- Django + DRF is the backend API and orchestration layer.
+- Nginx is the single public entrypoint: public traffic to Astro, app traffic to
+  Next.js, `/api` and `/admin` to Django.
+- Keep the Astro site, Next.js app, Django backend, infra config, and Node
+  install state inside `web/`.
+- Plan build, run, and deployment commands from the repository root; root scripts
+  delegate runtime files to `web/`.
+- Keep editable orchestration config at the root.
 
-## Runtime Shape
+## Runtime shape
 
 ```text
 Browser
-  -> Nginx
-  -> Astro public site for /, /research, docs, marketing, and content routes
-  -> Next.js web app for /app, /login, dashboards, reports, and UI routes
-  -> Django API for /api and /admin
-  -> Postgres, Redis/Celery, Neo4j, vector search, and object storage
+  -> Nginx (:11050, single origin)
+     -> Astro       /  and public pages
+     -> Next.js     /login, /signup, /app/*, /_next/*
+     -> Django      /api/*, /admin/*
+                    -> Postgres + pgvector, Redis, Celery worker + beat
+Host (outside the gateway)
+  -> mylo-daily.timer  -> manual_all.py   (the nightly research run)
+  -> mylo-bot.service  -> python -m mylo.bot (the Discord gateway)
 ```
 
-Astro owns the public static/content-heavy site. Next.js renders the dynamic lab
-workspace. Django owns business logic, auth, permissions, orchestration, data
-access, admin, and job creation.
+Astro owns the public content-heavy site. Next.js renders the dynamic workspace
+and proxies `/api` same-origin. Django owns business logic, auth, permissions,
+orchestration, data access, admin, and job creation.
 
-## Required Planning Artifact
+## Required planning artifact
 
 Before generating web code, define:
 
@@ -46,48 +47,58 @@ Before generating web code, define:
 7. Required docs.
 8. Root-level build, run, and test commands.
 
-## Route Expectations
+## Route expectations
 
-Public routes should cover landing, product explanation, use cases, demo,
-pricing or pilot information, blog or docs, contact, and login entry.
+**Public** (`web/landing/src/pages/`) — five pages only: `index`, `product`,
+`pricing`, `about`, `contact`. Adding a sixth needs a reason; `/solutions`,
+`/resources`, `/research`, and `/demo` were removed as stubs that duplicated the
+homepage. Every "Start free" CTA points at the real `/signup`.
 
-Authenticated routes should use a lab-aware shape such as:
+**Authenticated** (`web/app/src/app/app/`) — the workspace is **scope-switched,
+not slug-routed**. Routes are flat under `(workspace)` and the active scope
+(personal vs. a specific lab) lives in `portal-context.tsx`, persisted to
+`localStorage`:
 
 ```text
-/app/[labSlug]/dashboard
-/app/[labSlug]/research-feed
-/app/[labSlug]/papers
-/app/[labSlug]/projects
-/app/[labSlug]/members
-/app/[labSlug]/goals
-/app/[labSlug]/grants
-/app/[labSlug]/fellowships
-/app/[labSlug]/reports
-/app/[labSlug]/knowledge-graph
-/app/[labSlug]/settings
+/app/overview      /app/daily        /app/research-papers
+/app/grants        /app/fellowships  /app/conferences
+/app/saves         /app/reminders    /app/search
+/app/projects      /app/projects/[projectId]
+/app/labs          /app/members      /app/profile
+/app/billing       /app/admin        /app/department/[id]
+/app/onboarding    (first run only)
 ```
 
+Do not introduce `/app/[labSlug]/…` routes. A lab page is the personal page with
+`currentLab` set — that is what keeps the two from drifting apart.
+
 Every authenticated route must state required role, lab membership checks, data
-dependencies, API endpoints, loading states, empty states, and error states.
+dependencies, API endpoints, and its loading, empty, populated, error, and
+permission-denied states.
 
-## Backend and API Contracts
+## Backend and API contracts
 
-- Django REST Framework is the default API layer unless a later decision
-  replaces it.
-- Django should own accounts, labs, memberships, object-level permissions,
-  projects, reports, documents, opportunities, jobs, graph operations, audit
-  logs, and admin workflows.
-- Use Django or Celery for long-running research scans, grant matching,
-  fellowship matching, extraction, report generation, and graph updates.
-- Create `docs/api-contract.md` before the web app depends on explicit API
-  payloads.
+- Django REST Framework is the API layer.
+- Django owns accounts, labs, memberships, object-level permissions, projects,
+  content matching, reminders, billing, integrations, audit logs, and admin.
+- Long-running work splits two ways: **Celery** for in-app background jobs
+  (reminder ticks, outbox drain, profile recompute, project seeding) and the
+  **host daily timer** for the nightly research pipeline. Do not move the daily
+  pipeline into Celery Beat, and do not schedule a whole-corpus refit.
+- Register every POST-able route **both** with and without a trailing slash — the
+  Next `/api` proxy strips it and `APPEND_SLASH` cannot redirect an unsafe method.
+- Update [`../api-contract.md`](../api-contract.md) in the same change as any
+  payload the web app depends on.
 
-## Security Baseline
+## Security baseline
 
-- Nginx is the public entrypoint for TLS, routing, rate limits, static/media
-  handling, request limits, compression, and security headers.
-- The web app must call Django only through approved API routes.
-- Every lab-scoped endpoint must enforce authentication, lab membership,
-  role permission, object-level permission, and audit logging where sensitive.
-- Do not expose database, graph, queue, object storage, or worker services to
-  the browser.
+- Nginx is the public entrypoint for TLS, routing, rate limits, static handling,
+  request limits, compression, and security headers.
+- `PUBLIC_HOSTNAME` backs every absolute URL Mycelium emits. A blank value once
+  published `localhost` links into a lab's Discord channel — anything leaving the
+  building must fall back to the public site, never loopback.
+- Session cookies are namespaced (`mycelium_sessionid` / `mycelium_csrftoken`) so
+  a co-hosted localhost app cannot collide with them.
+- Every lab-scoped endpoint must enforce authentication, lab membership, role
+  permission, object-level permission, and audit logging where sensitive.
+- Do not expose the database, queue, or worker services to the browser.

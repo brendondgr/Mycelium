@@ -1,305 +1,366 @@
 # Mycelium API Contract
 
-Committed shapes for frontend consumers. Session authentication uses Django
-session cookies and CSRF tokens; do not store credentials in browser storage.
+Committed shapes for frontend consumers.
+
+**Conventions**
+
+- Session authentication with Django session cookies plus a CSRF token. Never
+  store credentials in browser storage. Cookies are namespaced
+  (`mycelium_sessionid` / `mycelium_csrftoken`) so a co-hosted localhost app
+  cannot collide with them.
+- Almost every route is registered **both** with and without a trailing slash.
+  The Next.js `/api` proxy strips the trailing slash and Django's `APPEND_SLASH`
+  cannot redirect an unsafe method, so a POST must resolve either way. Add both
+  forms for any new POST-able route.
+- Every endpoint requires an authenticated session unless stated otherwise.
+  Anonymous callers get `401`; authorized-but-forbidden callers get `403`.
+- Reads return the signed-in user's own data unless the path names a lab,
+  department, or project the caller may access.
+
+---
+
+## Route index
+
+Everything mounted under `/api/`. One line each; detailed shapes follow for the
+routes clients depend on most.
+
+### Auth & profile — `/api/auth/`
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `csrf/` | GET | Ensure the CSRF cookie is set |
+| `login/` `logout/` `me/` | POST / POST / GET | Session lifecycle + current user |
+| `register/` | POST | Create user + provision workspace, atomically |
+| `verify-email/` | POST | Flip `Profile.is_verified` (scaffold) |
+| `profile/me/` | GET, PATCH | The caller's own profile |
+| `watch/me/` | GET, PATCH | What Mylo watches for the caller |
+| `intake/import/` | POST | Author draft from one publication source |
+| `intake/synthesize/` | POST | LLM-built interest profile from a source and/or résumé |
+| `intake/session/` | POST | One step of the bounded intake loop |
+| `intake/clusters/` | POST | Propose / sort / instruct interest clusters |
+| `intake/confirm/` | POST | Validate + save interests |
+| `labs/` | GET, POST | The caller's lab memberships; create a lab |
+| `labs/<slug>/profile/` | GET, PATCH | Lab interest profile |
+| `labs/<slug>/watch/` | GET, PATCH | Lab watch preference |
+| `labs/<slug>/intake/synthesize/` | POST | Lab profile synthesis |
+| `labs/<slug>/logo/` | GET, POST, PUT, DELETE | Lab logo, served through the API |
+| `labs/<slug>/members/` | GET, POST | Roster; add a member (manager) |
+| `labs/<slug>/members/<username>/` | PATCH, DELETE | Change role / remove |
+| `labs/<slug>/invitations/` | GET, POST | Lab's invitations; invite someone |
+| `labs/<slug>/invitations/<id>/cancel/` | POST | Withdraw an invitation |
+| `invitations/` | GET | The caller's pending invitations |
+| `invitations/<id>/respond/` | POST | Accept / reject / ignore |
+| `departments/<id>/profile/` | GET, PATCH | Department interest profile |
+| `departments/<id>/labs/` `…/labs/<slug>/` | GET, POST / DELETE | Labs under a department |
+| `departments/<id>/members/` `…/members/<username>/` | GET, POST / PATCH, DELETE | Department roster |
+
+### Recommendations & content — `/api/`
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `daily-report/` | GET | The day's ranked paper suggestions |
+| `daily-briefing/` | GET | The written personal "Mylo Report" |
+| `labs/<slug>/daily-briefing/` | GET | The lab's written report |
+| `opportunities/grants/` | GET | Ranked grants |
+| `opportunities/conferences/` | GET | Ranked conferences |
+| `opportunities/fellowships/` | GET | Eligibility-gated, ranked fellowships |
+| `labs/<slug>/recommendations/` | GET | A lab's four feeds + counts + window counts |
+| `projects/<id>/recommendations/[?digest=1]` | GET | A project's four feeds, or its short list |
+| `recommendations/window-counts/` | GET | The personal "what Mylo found" recency matrix |
+| `search/` | GET | Unified query-first search over the corpus |
+| `onboarding/match/` | POST | Live match for one area during onboarding |
+| `opportunities/save/` | POST | Bookmark an item (personal or to a managed lab) |
+| `opportunities/save/<content_id>/` | DELETE | Remove a bookmark |
+| `saves/` | GET | Personal bookmarks with feed-parity cards |
+| `labs/<slug>/saves/` | GET | A lab's shared saves |
+| `deadlines/` | GET | Saved deadlines, soonest first |
+| `notifications/` | GET | The header bell |
+| `notifications/<id>/action/` | POST | Mark read / dismiss |
+| `reminders/` | GET, POST | List / create-or-update a reminder |
+| `reminders/<id>/` | PATCH, DELETE | Edit / cancel (`?purge=1` destroys) |
+| `reminders/access/[?lab=<slug>]` | GET | The paid-plan + Discord gate state |
+| `reminders/lab-channels/?lab=<slug>` | GET | Postable channels for the picker |
+| `suggestions/` | GET | Cross-member fan-out suggestions |
+| `suggestions/<id>/dismiss/` | POST | Dismiss one |
+
+### Projects — `/api/projects/`
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `/` | GET, POST | Visible projects; create (plan-capped) |
+| `lab/<slug>/` | GET | Every project of one lab, to browse and join |
+| `<id>/` | GET, PATCH | Detail; edit name / focus / watch categories |
+| `<id>/archive/` | POST, DELETE | Archive / unarchive (never deletes) |
+| `<id>/join/` `<id>/leave/` | POST | Self-join / leave |
+| `<id>/members/` | GET, POST | Roster; add a member |
+| `<id>/shares/` `<id>/feed/` | POST / GET | Share into, and read, the team feed |
+| `<id>/ingest-link/` | POST | Resolve and ingest a pasted DOI / arXiv / URL |
+| `<id>/items/<content_id>/seen/` | POST | Mark seen |
+| `<id>/events/` | POST | Record a weighted engagement event |
+| `<id>/collections/…` | GET, POST, PATCH, DELETE | Shared reading lists and their items |
+
+### Billing — `/api/`
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `billing/me/` | GET | Resolved entitlements + active plans |
+| `labs/<slug>/billing/` | GET | A lab plan's seat-priced state |
+| `labs/<slug>/billing/activate/` | POST | Activate the lab plan |
+| `departments/<id>/billing/` `…/activate/` | GET / POST | Same for a department |
+
+### Discord — `/api/integrations/discord/`
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `start/` `callback/` | POST / GET | Personal OAuth link |
+| `guild/start/` `guild-callback/` | POST / GET | Guild (server) install |
+| `status/` `guild/status/` `health/` `probe/` | GET | Link state and reachability |
+| `code/` `lab-code/` | POST | Mint a personal / lab activation code |
+| `daily-report/` | POST | Toggle the daily PDF DM |
+| `disconnect/` | POST | Unlink |
+
+### Platform admin — `/api/admin/` (staff or superuser only)
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `users/` `users/<id>/` | GET / GET, PATCH | Roster; detail; assign plan + quota |
+| `labs/` `labs/<slug>/` | GET / GET, PATCH | Lab roster; detail; assign plan |
+
+### Health — `/api/health/`
+
+Unauthenticated liveness check.
+
+---
 
 ## Auth
 
-Base path: `/api/auth/`
-
 ### `GET /api/auth/csrf/`
 
-Ensures a `csrftoken` cookie is set. Response body:
-
-```json
-{ "detail": "ok" }
-```
+Ensures a CSRF cookie is set. `{ "detail": "ok" }`.
 
 ### `POST /api/auth/login/`
 
-Request:
+Request `{ "username", "password" }`. Success `200` — the user summary:
 
 ```json
 {
-  "username": "string",
-  "password": "string"
-}
-```
-
-Success `200` — authenticated user summary:
-
-```json
-{
-  "id": 1,
-  "username": "string",
-  "email": "string",
-  "name": "string",
-  "initials": "AB",
-  "is_staff": false,
-  "is_superuser": false,
+  "id": 1, "username": "string", "email": "string",
+  "name": "string", "initials": "AB",
+  "is_staff": false, "is_superuser": false,
   "onboarding_completed": false
 }
 ```
 
-`name` is the full name when set (else the username) and `initials` is its
-one- or two-letter avatar form; the dashboard greets and labels the user with
-these. `onboarding_completed` is false until research interests are saved.
+`name` is the full name when set (else the username); `initials` is its avatar
+form. `onboarding_completed` is false until research interests are saved.
 
-Errors:
-
-- `400` — `{ "non_field_errors": ["Enter both username and password."] }`
-- `401` — `{ "non_field_errors": ["Invalid username or password."] }`
+Errors: `400` `{ "non_field_errors": ["Enter both username and password."] }`;
+`401` `{ "non_field_errors": ["Invalid username or password."] }`.
 
 ### `POST /api/auth/register/`
 
-Creates the user and provisions a starting workspace in one atomic step, then
-sets the session (the caller is logged in on success).
-
-Request:
+Creates the user and provisions a starting workspace atomically, then sets the
+session.
 
 ```json
 {
-  "username": "string",
-  "email": "string",
-  "password": "string",
-  "password_confirm": "string",
-  "first_name": "string (optional)",
-  "last_name": "string (optional)",
+  "username": "string", "email": "string",
+  "password": "string", "password_confirm": "string",
+  "first_name": "string (optional)", "last_name": "string (optional)",
   "account_type": "personal | lab | department",
   "org_name": "string (required for lab/department)",
-  "institution": "string (optional)"
+  "institution": "string (optional)",
+  "access_code": "string"
 }
 ```
 
 `account_type` chooses what is provisioned: `personal` creates a user-scoped
-subscription (Free) and a self-paid seat; `lab` also creates a Lab with the
-founder as owner + PI lead (Lab tier); `department` also creates a Department the
-founder owns (Canopy tier). Every account gets one founding seat.
+subscription and a self-paid seat; `lab` also creates a Lab with the founder as
+owner + PI lead; `department` also creates a Department the founder owns. Every
+account gets one founding seat. Org plans start **inactive** and are activated
+explicitly from the billing page.
 
-Success `201` — same user summary as login (id, username, email, is_staff,
-is_superuser); session set.
+`access_code` clears the invite-only sign-up gate — a constant-time compare with
+a per-IP failure counter and a one-hour shadow ban, enforced before any other
+validation. Clearing it sets `Profile.is_verified`.
 
-Errors:
+Success `201` — the user summary; session set. `400` on field errors; `403` on
+CSRF failure or a failed/locked-out access code.
 
-- `400` — field errors, e.g. `{ "email": ["An account with that email already exists."] }`,
-  `{ "password_confirm": ["Passwords do not match."] }`,
-  `{ "org_name": ["A lab name is required."] }`.
-- `403` — CSRF missing or blocked.
+### `POST /api/auth/logout/` · `GET /api/auth/me/` · `POST /api/auth/verify-email/`
 
-### `POST /api/auth/logout/`
+`logout` returns `204`. `me` returns the user summary, `401` when anonymous.
+`verify-email` flips `Profile.is_verified` and returns `{ "is_verified": true }`
+— real token signing and SMTP delivery are deferred.
 
-Success `204` with empty body. Requires CSRF header when using session auth.
-
-### `GET /api/auth/me/`
-
-Success `200` — same user summary as login.
-
-`401` with empty body when anonymous.
-
-### `POST /api/auth/verify-email/`
-
-Marks the signed-in caller's email verified (scaffold). Verification is
-non-blocking at signup; this only flips `Profile.is_verified`. Real token
-signing, email templates, and SMTP delivery are deferred.
-
-Success `200` — `{ "is_verified": true }`.
-
-`401` / `403` when anonymous.
-
-## Profile & onboarding intake
-
-All endpoints below require an authenticated session.
+## Profile & intake
 
 ### `POST /api/auth/intake/synthesize/`
 
 Builds an editable research-interest draft from **at most one** publication
-source plus an **optional** résumé/CV upload. `multipart/form-data` fields:
+source plus an **optional** résumé. `multipart/form-data`:
 
 | Field | Required | Notes |
-| --- | --- | --- |
-| `source` | with `identifier` | One of `openalex`, `semantic`, `scholar`, `orcid`. |
-| `identifier` | with `source` | The author id for that source. |
-| `resume` | optional | A PDF or text file (≤ 5 MB). Parsed and discarded — never stored. |
+|---|---|---|
+| `source` | with `identifier` | `openalex`, `semantic`, `scholar`, or `orcid` |
+| `identifier` | with `source` | The author id for that source |
+| `resume` | optional | PDF or text, ≤ 5 MB. Parsed and discarded — never stored |
 
 At least one of (`source` + `identifier`) or `resume` must be present. The
-importer takes ~10 most-cited and ~10 most-recent works (titles + abstracts +
-declared interests) from the site and the raw résumé text, then asks the
-configured language model to return all five interest fields at once
-(`statement`, `areas`, `keywords`, `methods`, `skills`). When no model is
-available it falls back to the structured author draft, so the endpoint always
-returns a contract-valid profile.
+importer takes ~10 most-cited and ~10 most-recent works (titles, abstracts,
+declared interests) plus the raw résumé text and asks the model for every
+interest field at once, then runs `compose_clusters` over the same corpus so the
+draft ships themed `clusters` alongside a widened `areas` union, clamped to the
+caller's plan caps. A deterministic fallback keeps the endpoint contract-valid
+when no model is reachable.
 
-Success `200` — `{ "draft": { … }, "interests": { "version": 1, "areas": [...],
-"keywords": [...], "methods": [...], "skills": [...], "statement": "…",
-"sources": { … } } }`. The `interests` object is contract-valid and ready to
-post to `confirm`.
-
-`400` for a missing/partial/unknown source or an unreadable/oversize/unsupported
-file (`{ "resume": ["…"] }`). `502` when an upstream source fails.
+Success `200` — `{ "draft": {…}, "interests": {…} }`. The `interests` object is
+contract-valid and ready to post to `confirm`. `400` for a missing/partial source
+or an unreadable/oversize file; `502` when an upstream source fails.
 
 ### `POST /api/auth/intake/import/`
 
-JSON `{ "identifier", "source" }` → `{ "draft", "interests" }` from a single
-source (no résumé, no statement). The lighter sibling of `synthesize`.
+`{ "identifier", "source" }` → `{ "draft", "interests" }` from a single source.
+The lighter sibling of `synthesize`.
+
+### `POST /api/auth/intake/clusters/`
+
+Three modes over the v2 interests contract:
+
+- **instruct** — free-text `instruction` describing what the caller wants to
+  research; Mylo composes theme clusters with concrete sub-topics.
+- **propose** — group the caller's existing areas into labelled clusters.
+- **sort** — route new areas into the existing clusters, keeping their ids.
+
+Returns `{ "clusters", "areas", "watch_topics", "source" }`. The result is always
+a valid partition; an LLM failure degrades to a geometric agglomerative fallback.
 
 ### `POST /api/auth/intake/session/`
 
-Drives one stateless step of the bounded Mylo intake loop. Body
-`{ "interests", "free_text"?, "answer"? }` → `{ "interests", "question",
-"summary", "done" }`.
+One stateless step of the bounded intake loop. `{ "interests", "free_text"?,
+"answer"? }` → `{ "interests", "question", "summary", "done" }`.
 
 ### `POST /api/auth/intake/confirm/`
 
-Validates `{ "interests" }` against the contract and saves it onto the caller's
-own profile. Success `200` returns the profile; `400` on contract violation.
+Validates `{ "interests" }` against the contract and saves it to the caller's own
+profile. `200` with the profile; `400` on contract violation.
 
 ### `GET` / `PATCH` `/api/auth/profile/me/`
 
 Reads or updates the caller's own profile (`academic_title`, `institution`,
-`interests`, external ids). `interests` is validated against the contract.
+`interests`, `eligibility`, external ids). Writes are **scoped to the columns
+that changed** — a full-row update once let one concurrent save clobber another's
+columns.
 
 ### `GET` / `PATCH` `/api/auth/watch/me/`
 
-Reads or updates what Milo keeps an eye on for the caller (own only). The row is
-created on first access with defaults. Body / response:
-`{ "topics": [...], "categories": [...], "cadence": "daily|weekly" }`.
-`topics` and `categories` are deduped string lists (≤ 50 each); an unknown
-cadence or a non-list value returns `400`.
+What Mylo keeps an eye on: `{ "topics": [...], "categories": [...], "cadence":
+"daily|weekly" }`. Created on first access with defaults. `topics` and
+`categories` are deduped string lists; the topic count is capped by the caller's
+entitlement. An unknown cadence or non-list value returns `400`.
 
-## Workspace (labs, members, projects)
-
-Endpoints that back the authenticated dashboard. All require a session. Reads are
-listed first; lab creation and project creation are documented inline.
+## Workspace
 
 ### `GET /api/auth/labs/`
 
-The caller's lab memberships, for the workspace switcher. Success `200` — a list:
+The caller's lab memberships, for the workspace switcher:
 
 ```json
 [
-  { "slug": "reyes-lab", "name": "Reyes Lab", "role": "owner", "is_lead": true, "department": "Biology", "has_logo": true, "logo_version": 1752719700 }
+  { "slug": "reyes-lab", "name": "Reyes Lab", "role": "owner", "is_lead": true,
+    "department": "Biology", "has_logo": true, "logo_version": 1752719700 }
 ]
 ```
 
-`role` is the raw membership role (`owner | admin | member | viewer`); `is_lead`
-marks a PI. `department` is the lab's department name or `null`. `has_logo` says
-whether the lab has an uploaded logo; `logo_version` is a cache-busting token
-(its last-modified epoch, `null` when unset) the client appends to the logo URL.
-The frontend derives a human label (e.g. lead → "PI"). `401`/`403` when anonymous.
-
-### `GET | POST | PUT | DELETE /api/auth/labs/<slug>/logo/`
-
-The lab's logo, served **through the API gateway** (no `MEDIA_URL`/static route).
-`GET` streams the stored image to any lab member (`image/png|jpeg|gif|webp|svg+xml`,
-`X-Content-Type-Options: nosniff`); `404` when the lab has no logo. `POST`/`PUT`
-take a multipart `file` (≤2 MB; PNG/JPG/GIF/WebP/SVG validated by magic bytes) and
-set the logo — restricted to the lead PI / owner / admin; success `200` returns
-`{ "has_logo": true, "logo_version": <int> }`. `DELETE` clears it (same gate,
-returns `{ "has_logo": false, "logo_version": null }`). `400` on a missing/oversize/
-non-image file; `403` for a plain member; `404` for an unknown slug.
+`role` is `owner | admin | member | viewer`; `is_lead` marks a PI. `logo_version`
+is a cache-busting token (`null` when unset).
 
 ### `POST /api/auth/labs/`
 
-Create a new lab after the account already exists. Body `{ "name": "Ocean Lab" }`.
-The caller becomes the lab OWNER and PI lead, and a `LAB` subscription + founding
-seat are provisioned (same path as a signup lab). Success `201` returns the new
-membership in the `GET /api/auth/labs/` row shape. `400` if `name` is blank.
+`{ "name": "Ocean Lab" }`. The caller becomes OWNER and PI lead and a Lab
+subscription + founding seat are provisioned. `201` with the membership row.
+
+### `GET | POST | PUT | DELETE /api/auth/labs/<slug>/logo/`
+
+Served **through the API** — there is no `MEDIA_URL` route. `GET` streams the
+image to any member (`image/png|jpeg|gif|webp|svg+xml`, `nosniff`); `404` when
+unset. `POST`/`PUT` take a multipart `file` (≤ 2 MB, validated by magic bytes),
+restricted to lead PI / owner / admin, returning `{ "has_logo", "logo_version" }`.
+`DELETE` clears it.
 
 ### `GET /api/auth/labs/<slug>/members/`
 
-The roster of a lab the caller can access (any member may read). Success `200`:
+Any member may read. Leads sort first.
 
 ```json
-[
-  { "username": "lena", "name": "Lena Reyes", "initials": "LR", "email": "l@uni.edu", "role": "owner", "is_lead": true }
-]
+[{ "username": "lena", "name": "Lena Reyes", "initials": "LR",
+   "email": "l@uni.edu", "role": "owner", "is_lead": true }]
 ```
 
-Leads sort first. `403` for a non-member, `404` for an unknown slug.
+### Lab invitations
 
-## Lab invitations
+`POST /api/auth/labs/<slug>/invitations/` invites by email or username:
+`{ "identifier", "role"? }`. An email with no account stays **pending** and is
+claimed at signup; a username with no account is a `400`, as is an existing
+member or duplicate invite. Managers only.
 
-A lab lead or owner/admin invites people; the invitee accepts, rejects, or
-ignores. All require a session.
+`GET /api/auth/invitations/` returns the caller's pending invitations;
+`POST /api/auth/invitations/<id>/respond/` takes
+`{ "action": "accept" | "reject" | "ignore" }`. Accept creates the membership
+(idempotent). `403` if the invitation is not addressed to the caller; `409` if it
+was already answered.
 
-### `POST /api/auth/labs/<slug>/invitations/`
+## Projects
 
-Invite by email or username: body `{ "identifier": "jsmith" | "jsmith@uni.edu",
-"role": "member" }` (`role` optional, defaults to `member`). An email is matched
-to an existing account when possible; an email with no account stays a **pending**
-invite (`invitee` null) claimed when that person signs up. A username with no
-account is a `400`. Also `400` if the target is already a member or already has a
-pending invite. `403` for non-managers. Success `201` returns the invitation.
+### `GET /api/projects/[?lab=<slug>]`
 
-### `GET /api/auth/labs/<slug>/invitations/`
-
-The lab's invitations (managers only). Success `200` — a list of
-`{ id, lab_slug, role, status, invited_email, invited_username, invitee, inviter,
-created_at, responded_at }`. `403` for non-managers.
-
-### `GET /api/auth/invitations/`
-
-The caller's **pending** invitations — the notifications-panel feed. Success
-`200`:
+Projects the caller may see under the org visibility cascade
+(`Project.objects.visible_to`). `lab` narrows and never widens.
 
 ```json
-[
-  { "id": "uuid", "lab_slug": "reyes-lab", "lab_name": "Reyes Lab", "role": "member", "inviter": "Lena Reyes", "created_at": "..." }
-]
+[{ "id": "uuid", "name": "Drought study", "scope": "lab",
+   "scope_name": "Reyes Lab", "goals": {}, "focus": { "clusters": [] },
+   "watch_categories": ["papers"], "is_archived": false, "is_over_cap": false,
+   "member_count": 3, "members": [{ "username", "name", "initials" }],
+   "updated_at": "…" }]
 ```
 
-### `POST /api/auth/invitations/<id>/respond/`
-
-The invitee answers: body `{ "action": "accept" | "reject" | "ignore" }`. Accept
-creates the `LabMembership` (idempotent). Reject and ignore add no membership;
-ignore silently dismisses it from the feed. Success `200`
-`{ "id": "...", "status": "accepted" | "rejected" | "ignored" }`. `403` if the
-invitation is not addressed to the caller; `409` if it was already answered.
-
-### `GET /api/projects/?lab=<slug>`
-
-Projects the caller may see under the lab/department visibility cascade
-(`Project.objects.visible_to`). The optional `lab` query param narrows to one
-lab's projects and never widens visibility. Success `200`:
-
-```json
-[
-  {
-    "id": "uuid", "name": "Drought study", "scope": "lab",
-    "scope_name": "Reyes Lab", "goals": { "...": "..." },
-    "status": "On track", "progress": 68, "member_count": 3,
-    "members": [{ "username": "lena", "name": "Lena Reyes", "initials": "LR" }],
-    "updated_at": "..."
-  }
-]
-```
-
-`scope` is `user | lab | department`. `status` and `progress` are read out of the
-free-form `goals` JSON when an author set them, else `null` (the model has no such
-columns). `401`/`403` when anonymous.
+`scope` is `user | lab | department`. `is_over_cap` marks a project sitting above
+the plan's allowance after a downgrade.
 
 ### `POST /api/projects/`
 
-Create a project. Body `{ "name": "Oceanography", "lab": "reyes-lab",
-"goals": { "...": "..." } }`. With `lab`, the project is scoped to that lab and
-requires manage rights on it (owner/admin); without `lab`, it is a personal
-project scoped to the caller. `goals` is optional. Success `201`. `400` for a
-blank name; `403` when the caller cannot manage the named lab.
+`{ "name", "labSlug"?, "departmentId"?, "focus"? }`. Scope resolves to personal,
+lab, or department; lab/department creation needs both the org's plan and PI or
+admin rights. The per-scope **project cap** is enforced atomically (row-locked
+count-then-create) and a breach returns `403`. `focus` accepts a Mylo-composed
+cluster payload. On create the project is seeded over the existing corpus in the
+background.
 
-## Research & opportunities (personal workspace)
+### `POST | DELETE /api/projects/<id>/archive/`
 
-Base path: `/api/`. All require authentication; each returns the signed-in user's
-own data only. Papers come from `GET /api/daily-report/` (the daily research
-digest). Grants and conferences come from the daily opportunity matching (run by
-the host `mylo-daily` job). The cross-category summary is `GET /api/daily-briefing/`.
+Archives / unarchives. Never deletes: stored recommendations survive, the slot is
+freed, and the cap is re-checked on restore.
+
+### Collaboration & collections
+
+`shares`, `feed`, `ingest-link`, `items/<content_id>/seen`, and `events` are all
+participant- and visibility-gated. `ingest-link` resolves an external DOI, arXiv
+id, or URL into a `ContentItem`. `events` records a weighted engagement signal
+(`settings.RELEVANCE_EVENT_WEIGHTS`) that feeds the project's team vector.
+`collections/…` are shared reading lists (create, rename, archive, add/remove
+items).
+
+## Recommendations
+
+Papers come from `GET /api/daily-report/`. Grants, conferences, and fellowships
+come from the daily opportunity matching. All four are also available per lab and
+per project.
 
 ### `GET /api/daily-briefing/`
 
-The "Mylo Report" — the Daily page's three-zone surface. Returns the durable
-`DailyBriefing` written by the daily run's briefing stage: a 2–3 paragraph prose
-summary, per-category counts, and the top showcase items the prose is grounded
-in — scoped to the categories the caller watches
-(`accounts.WatchPreference.categories`). Own briefing only. Success `200`:
+The written personal "Mylo Report" — the durable `DailyBriefing` produced by the
+daily run, scoped to the categories the caller watches.
 
 ```json
 {
@@ -307,274 +368,348 @@ in — scoped to the categories the caller watches
   "categories": ["papers", "grants", "fellowships"],
   "counts": { "papers": 25, "grants": 25, "fellowships": 40 },
   "showcase": {
-    "papers": [
-      {
-        "content_id": "…", "type": "paper", "title": "…", "url": "…",
-        "match_percent": 91, "headline": "…", "deadline_date": "", "is_new": false
-      }
-    ],
-    "grants": [ { "…": "…", "deadline_date": "2026-11-12" } ],
-    "fellowships": [ { "…": "…" } ]
+    "papers": [{ "content_id": "…", "type": "paper", "title": "…", "url": "…",
+                 "match_percent": 91, "headline": "…", "deadline_date": "",
+                 "is_new": false }]
   },
   "briefing": { "body": "Good morning. Today's scan surfaced …", "origin": "llm" }
 }
 ```
 
-`origin` is `"llm"` or `"fallback"` (the deterministic template used when the
-model is down). Before the first run, an honest empty envelope is returned:
-`{"generated_at": null, "categories": [], "counts": {}, "showcase": {}, "briefing": null}`.
+`origin` is `"llm"` or `"fallback"`. The body is sectioned markdown written by
+per-area specialist agents plus a summary agent, each with a deterministic
+fallback. Before the first run an honest empty envelope is returned
+(`generated_at: null`, empty `categories` / `counts` / `showcase`,
+`briefing: null`).
+
+A **count is "new"** only when the item's immutable `first_seen` equals the run
+date, so the report announces each item once. The feed's "New" badge keeps its
+separate 7-day window — the two numbers are deliberately different.
 
 ### `GET /api/labs/<slug>/daily-briefing/`
 
-The lab's "Mylo Report" — the same envelope shape as the personal one, but written
-over the lab's aggregate matches (its shared interest profile + `target_lab`
-scores) and limited to the categories a lab is scored for (papers/grants/
-conferences; fellowships stay user-only). Any lab member may read it; the daily
-run writes it for entitled labs. `403` for a non-member; empty envelope before the
-first run.
+The same envelope over the lab's aggregate matches, across all four areas. Any
+member may read; the daily run writes it for entitled labs. Where an item carries
+member-fit names, the prose says who it suits. `403` for a non-member.
+
+### `GET /api/labs/<slug>/recommendations/` · `GET /api/projects/<id>/recommendations/`
+
+All four areas from the target's own `RelevanceScore` rows, through the **same
+serializers the personal pages use** — a lab feed is structurally identical to
+its personal counterpart. The envelope adds:
+
+- `counts` — per-area totals.
+- `window_counts` — per-area today / week / month / year totals, cumulative.
+- `interested` — lab members who personally matched the item.
+- `recommended_for` — Mylo's read on which members it best suits: a shortlist
+  computed from members' own profiles, a written reason, and (fellowships only)
+  a consented eligibility flag. Mylo may drop a shortlisted member but can never
+  add one; an unreachable model degrades to a stated overlap reason.
+
+`?digest=1` on a project returns the condensed short list (top 10 papers, 5 each
+of grants / fellowships / conferences, passed-deadline conferences dropped) while
+`counts` stays the full totals.
+
+`GET /api/recommendations/window-counts/` is the personal equivalent of
+`window_counts` alone.
+
+### `GET /api/opportunities/grants/`
+
+Ranked funding opportunities from the accumulated feed, pinned-first (a brand-new
+high-fit grant floats to the top for its first week).
+
+```json
+{
+  "generated_at": "2026-07-05T01:00:00+00:00",
+  "items": [{
+    "content_id": "uuid", "title": "…", "sponsor": "Amazon",
+    "amount": "Upper: $70,000 USD", "matched_topics": "Agentic AI; Knowledge Graphs",
+    "url": "https://…", "score": 1.19, "match_percent": 88, "rank": 1,
+    "headline": "Strong Fit", "reason": "Aligns with your agentic AI work.",
+    "origin": "llm", "is_new": true, "pinned": true,
+    "deadline_date": "2026-11-12", "deadline_kind": "application",
+    "status_summary": "Application due 2026-11-12",
+    "saved": false, "saved_labs": ["reyes-lab"],
+    "addressable_deadlines": [{ "kind": "application", "date": "2026-11-12" }],
+    "cluster": { "id": "…", "label": "…" }, "bridge_clusters": []
+  }]
+}
+```
+
+`match_percent` is the model's 0–100 judgement (`null` on the deterministic
+tail). `saved_labs` lists managed labs already holding the item.
+`addressable_deadlines` drives the reminder composer's kind picker.
+`generated_at` is `null` before the first run.
+
+### `GET /api/opportunities/conferences/`
+
+The same base shape with `location`, `country`, `event_dates`, `deadlines`,
+`keywords`, `matched_subjects`, and a venue `description` where the listing has
+one. Filter-rail fields computed at ingest: `event_date` (ISO, or `""`),
+`abstract_open` / `manuscript_open`, `status` (`open|closed|unknown`), and
+Pivot's `scope` label. `deadline_kind` is the next actionable kind
+(`abstract` / `manuscript` / `event`). Continent is derived client-side from
+`country`.
+
+### `GET /api/opportunities/fellowships/`
+
+The same base shape plus `fields`, `stages`, `award_class`, `citizenship`, and an
+eligibility `tier`. For a **person** eligibility is a hard gate applied before
+research fit. A **lab or project** has no citizenship or career stage, so its
+fellowships rank on research fit alone and carry no eligibility verdict.
+
+### `POST /api/onboarding/match/`
+
+Live match for one area during onboarding, reusing the whole-corpus refit path.
+For papers it is a hybrid: if the latest batch yields too few high-quality
+matches it fires a background scan and returns `scanning: true`.
 
 ### `GET /api/search/`
 
-Query-first search across the whole content corpus (papers, grants, fellowships,
-conferences) — the digest retrieval pipeline run against a search box instead of
-a profile. Requires authentication; reads the **global** corpus, so it is not
-user-scoped. Query params:
+Query-first search over the whole corpus — the digest retrieval pipeline pointed
+at a search box instead of a profile. Reads the **global** corpus, so it is not
+user-scoped. Params:
 
-- `q` — the search text. Blank returns an empty result (not an error).
-- `type` — repeatable/comma (`paper|grant|fellowship|conference`); scopes results.
-- `year` / `sponsor` / `award_class` / `country` — repeatable/comma **per-type
-  facet filters**: papers by `year`, grants by `sponsor`, fellowships by
-  `award_class`, conferences by `country`. Each matches its `metadata` value as
-  text and so naturally scopes to its own type.
-- `date_from` / `date_to` — ISO dates, filtering on ingest date.
-- `sort` — `relevance` (default) | `date` (newest) | `deadline` (soonest, nulls last).
-- `limit` — page size (bounded). `cursor` — opaque paging cursor from `next_cursor`.
+- `q` — the search text. Blank returns an empty result, not an error.
+- `type` — repeatable/comma (`paper|grant|fellowship|conference`).
+- `year` / `sponsor` / `award_class` / `country` — per-type facet filters.
+- `date_from` / `date_to` — ISO dates over ingest date.
+- `sort` — `relevance` (default) | `date` | `deadline`.
+- `limit`, `cursor` — bounded page size and the opaque cursor from `next_cursor`.
 
 Search **never abstains**: an in-corpus query always returns its best matches,
-blending a lexical (full-text), a semantic (embedding), and a fuzzy (typo)
-channel via reciprocal-rank fusion. `confidence` is `"low"` when the top semantic
-match is weak — a display cue, never an empty page. Success `200`:
+blending a lexical (full-text), a semantic (pgvector), and a fuzzy (pg_trgm)
+channel through rank-only reciprocal-rank fusion. `confidence` is `"low"` when
+the top semantic match is weak — a display cue, never an empty page.
 
 ```json
 {
   "query": "protein folding", "normalized": "protein folding",
   "sort": "relevance", "confidence": "ok",
   "count": 559, "pool_truncated": true,
-  "facets": {
-    "type": [{ "value": "paper", "count": 85 }, { "value": "grant", "count": 1 }],
-    "year": [{ "value": "2026", "count": 80 }, { "value": "2025", "count": 5 }]
-  },
+  "facets": { "type": [{ "value": "paper", "count": 85 }],
+              "year": [{ "value": "2026", "count": 80 }] },
   "limit": 20, "offset": 0, "next_cursor": "20",
-  "results": [
-    {
-      "content_id": "uuid", "type": "paper",
-      "title": "Generalizable Protein Folding Pathway Exploration",
-      "summary": "…", "url": "https://…",
-      "created_at": "2026-07-09T…", "score": 0.021,
-      "matched_on": ["lexical", "semantic", "fuzzy"], "saved": false,
-      "authors": ["…"], "venue": "Nature", "year": 2026,
-      "sponsor": "", "amount": "", "location": "", "event_dates": "",
-      "award_class": "", "deadline": ""
-    }
-  ]
+  "results": [{
+    "content_id": "uuid", "type": "paper", "title": "…", "summary": "…",
+    "url": "https://…", "created_at": "…", "score": 0.021,
+    "matched_on": ["lexical", "semantic", "fuzzy"], "saved": false,
+    "authors": ["…"], "venue": "Nature", "year": 2026,
+    "sponsor": "", "amount": "", "location": "", "event_dates": "",
+    "award_class": "", "deadline": ""
+  }]
 }
 ```
 
-`facets.type` is always present and its counts ignore the `type` filter (so the
-UI can offer switching types). The **per-type facet** is contextual: it appears
-under its own key (`year`/`sponsor`/`award_class`/`country`) **only when exactly
-one `type` is selected**, is capped to its top values, and its own counts ignore
-its own selection (so multi-select stays legible). `pool_truncated` is true when
-more matches exist beyond the bounded relevance pool. Type-specific result fields
-are populated per `type` and `""`/`[]`/`null` otherwise. `score` is the fused rank
-weight (for ordering, not display).
+`facets.type` is always present and its counts ignore the `type` filter. A
+per-type facet appears **only when exactly one `type` is selected**, is capped to
+its top values, and ignores its own selection. `pool_truncated` is true when
+matches exist beyond the bounded relevance pool. `score` is the fused rank weight
+— for ordering, not display.
 
-### `GET /api/opportunities/grants/`
-
-The user's ranked funding opportunities from the latest run, pinned-first (a
-brand-new high-fit grant floats to the top for its first week). Success `200`:
-
-```json
-{
-  "generated_at": "2026-07-05T01:00:00+00:00",
-  "items": [
-    {
-      "content_id": "uuid", "title": "Amazon Agentic AI Award", "sponsor": "Amazon",
-      "amount": "Upper: $70,000 USD", "matched_topics": "Agentic AI; Knowledge Graphs",
-      "url": "https://...", "score": 1.19, "match_percent": 88, "rank": 1,
-      "headline": "Strong Fit", "reason": "Aligns with your agentic AI work.",
-      "origin": "llm", "is_new": true, "pinned": true,
-      "deadline_date": "2026-11-12", "deadline_kind": "application",
-      "status_summary": "Application due 2026-11-12", "saved": false
-    }
-  ]
-}
-```
-
-`match_percent` is the model's 0–100 fit judgement (null on the fallback tail).
-`is_new`/`pinned` hold while the one-week window is open. `saved` reflects whether
-the user has saved the item to their deadlines. `generated_at` is `null` before
-the first run.
-
-### `GET /api/opportunities/conferences/`
-
-Same shape for conferences (card format), with `location`, `country`,
-`event_dates`, `deadlines`, `keywords`, and `matched_subjects` instead of the
-grant fields. It also carries the fields the Conferences filter rail narrows on
-(all additive, read from the item metadata computed at ingest):
-
-- `event_date` — the (first) event date as ISO `YYYY-MM-DD`, or `""` (drives the
-  event-date window filter/sort; `event_dates` stays the human display string).
-- `abstract_open` / `manuscript_open` — booleans, true while that submission
-  window (abstract / full paper) is still upcoming.
-- `status` — submission status: `"open" | "closed" | "unknown"`.
-- `scope` — Pivot scope label (e.g. `"International"`), or `""`.
-
-The `deadline_kind` on the shared base is the next actionable kind
-(`abstract` / `manuscript` / `event`). Continent is derived client-side from
-`country`, so it is not a response field.
+## Saves, deadlines, notifications
 
 ### `POST /api/opportunities/save/`
 
-Bookmark an item — a paper, grant, conference, or fellowship — to the user's
-Saves page. Body `{ "content_id": "uuid", "note": "optional" }`. Snapshots the
-display + deadline fields so the save survives the daily prune of expired items
-(papers carry no deadline; their deadline fields stay null). Success `201` with
-the saved snapshot. `400` without `content_id`; `404` for an unknown item.
+Bookmark a paper, grant, conference, or fellowship. Body
+`{ "content_id", "note"?, "lab_slug"? }`. With `lab_slug` the save belongs to
+that lab and requires manage rights on it. The display and deadline fields are
+snapshotted so the save survives the daily prune. `201` with the snapshot; `400`
+without `content_id`; `404` for an unknown item.
 
-### `DELETE /api/opportunities/save/<content_id>/`
+`DELETE /api/opportunities/save/<content_id>/[?lab=<slug>]` removes it. `204`, or
+`404` if not saved.
 
-Remove the user's save for that item. `204` on success, `404` if not saved.
+### `GET /api/saves/` · `GET /api/labs/<slug>/saves/`
+
+Every bookmark, newest first, with **feed-card parity**: each save is joined back
+to the relevance score for the item and `card` carries exactly the payload that
+item's own feed page renders. The lab variant reads the lab's scores and its
+envelope carries `can_manage`, which gates the remind and remove affordances.
+
+```json
+{ "items": [{
+  "id": "uuid", "content_id": "uuid", "area": "paper",
+  "title": "…", "url": "https://…", "subtitle": "NeurIPS",
+  "deadline_date": null, "deadline_kind": "other", "note": "",
+  "days_remaining": null, "within_week": false, "saved_at": "…",
+  "card": { "content_id": "uuid", "title": "…", "match_percent": 88, "saved": true }
+}] }
+```
+
+`card` is `null` once the source listing was pruned or was never scored for this
+caller — the envelope fields are then the fallback display.
 
 ### `GET /api/deadlines/`
 
-All the user's saved deadlines, soonest first. Success `200`:
-
-```json
-{
-  "items": [
-    {
-      "id": "uuid", "content_id": "uuid", "area": "grant",
-      "title": "Amazon Agentic AI Award", "url": "https://...", "subtitle": "Amazon",
-      "deadline_date": "2026-11-12", "deadline_kind": "application", "note": "",
-      "days_remaining": 5, "within_week": true
-    }
-  ]
-}
-```
-
-`content_id` is `null` once the source item has been pruned (the snapshot
-remains). `days_remaining`/`within_week` are relative to today.
-
-### `GET /api/saves/`
-
-Every bookmark for the Saves page, newest save first, with **feed-card parity**:
-each save is joined back to the user's relevance score for the item and `card`
-carries the exact payload the item's own feed page renders — the grants shape
-for a grant, the fellowships shape for a fellowship, the conferences shape for
-a conference, and the daily-report suggestion shape for a paper. Success `200`:
-
-```json
-{
-  "items": [
-    {
-      "id": "uuid", "content_id": "uuid", "area": "paper",
-      "title": "Graph Learning Advances", "url": "https://...", "subtitle": "NeurIPS",
-      "deadline_date": null, "deadline_kind": "other", "note": "",
-      "days_remaining": null, "within_week": false,
-      "saved_at": "2026-07-12T14:00:00Z",
-      "card": { "content_id": "uuid", "title": "…", "match_percent": 88, "saved": true }
-    }
-  ]
-}
-```
-
-`card` is `null` once the source listing was pruned (or was never scored for
-this user) — the snapshot fields on the envelope are the fallback display.
+All saved deadlines, soonest first: `id`, `content_id`, `area`, `title`, `url`,
+`subtitle`, `deadline_date`, `deadline_kind`, `note`, `days_remaining`,
+`within_week`. `content_id` is `null` once the source item was pruned.
 
 ### `GET /api/notifications/`
 
-Deadline alerts for the header bell: saved items due within a week. Success `200`:
+The header bell, backed by the `Notification` model — **not** an on-the-fly scan
+of saves. Three kinds: `reminder` (one fired), `deadline_moved`, and
+`high_signal`. Saving something no longer produces an alert; a reminder created
+*from* a save does. Returns undismissed notifications, newest first, with the
+unread count.
 
 ```json
-{
-  "count": 1,
-  "items": [
-    {
-      "id": "uuid", "content_id": "uuid", "area": "grant", "title": "Amazon Award",
-      "url": "https://...", "deadline_date": "2026-07-09", "days_remaining": 4,
-      "message": "“Amazon Award” — less than a week left (4 days left)."
-    }
-  ]
-}
+{ "count": 1, "items": [{
+  "id": "uuid", "kind": "reminder", "content_id": "uuid",
+  "title": "…", "body": "…", "url": "https://…",
+  "created_at": "…", "read_at": null }] }
 ```
 
-## Admin dashboard
+`POST /api/notifications/<id>/action/` takes `{ "action": "read" | "dismiss" }`.
 
-Base path: `/api/admin/`. **Every endpoint requires an authenticated staff or
-superuser** (`is_staff` or `is_superuser`); anyone else gets `403`. This is the
-authorization boundary — the frontend nav gate is only a rendering hint. All
-writes record an `AuditEvent`. Standalone admins are minted out-of-band by the
-`create_admin` management command / root `create_admin.py` (password from
-`ADMIN_USER_PASS`), never through this API.
+## Reminders
+
+Deadline reminders are a **paid, Discord-delivered** capability.
+
+### `GET | POST /api/reminders/`
+
+`GET` lists the caller's reminders, narrowed by `?state=` and `?lab=`.
+
+`POST` creates a personal or lab reminder from a content item:
+`{ "content_id", "deadline_kind", "offsets": [{ "amount", "unit" }],
+"lab_slug"?, "channel_id_override"?, "mentions"? }`. Dateless deadlines are
+rejected; a lab reminder needs manage rights.
+
+**POST upserts.** A repeat request for a (target, content, deadline_kind) that
+already has a row reconfigures it and answers **200**; `201` is only for a
+genuinely new one. This is also how a cancelled reminder is re-armed.
+
+`403` with a `reason` slug when the gate is not satisfied.
+
+### `PATCH | DELETE /api/reminders/<id>/`
+
+`PATCH` accepts `offsets`, `channel_id_override`, `mentions`, `snoozed_until`
+(explicit `null` un-snoozes; a past date is rejected), and `state`
+(`active` | `cancelled`). An absent key is left alone. `DELETE` soft-cancels;
+`?purge=1` destroys the row.
+
+**Neither is entitlement-gated** — delivery is already gated at send time, and
+locking someone out of stopping their own reminders would only trap them.
+
+### Read shape
+
+Each reminder carries `scope`, `lab_slug`, `lab_name`, `content_id`,
+`deadline_kind`, `area`, `title`, `url`, `due_date`, `confidence`, `state`,
+`snoozed_until`, `channel_id_override`, `has_unlinked_targets`, `mentions`,
+`can_manage`, and timestamps — plus, per offset, the `fire_date` it resolves to,
+the overall `next_fire_date`, and `send_hour_local` / `timezone`. The hour is a
+real configured value for a lab and **`null`** for a personal reminder, which
+rides the daily run rather than an hour anything honours. Offset dates are
+computed with the same function the tick uses, so the page and delivery cannot
+drift.
+
+### `GET /api/reminders/access/[?lab=<slug>]`
+
+`{ "allowed", "plan_ok", "discord_ok", "reason", "detail" }` — the one
+computation the UI's lock state and the server's enforcement both read. Personal
+access needs the `DEADLINE_REMINDERS` feature (a lab-paid seat entitles the
+member) **and** an active `DiscordIdentity`; lab access needs the lab's feature
+**and** an active guild link (`PENDING_SETUP` does not count). It is enforced
+again at send time: a lapsed plan stops the Discord delivery but the in-app
+notification still fires, and nothing is deleted on a billing event.
+
+### `GET /api/reminders/lab-channels/?lab=<slug>`
+
+Postable Discord channels for the composer's picker, plus the `/setup`
+announcement channel as the labelled default. Manager-gated. Degrades to an empty
+list — never a 500 — when the guild is unlinked or Discord is unreachable.
+
+## Billing
+
+### `GET /api/billing/me/`
+
+The caller's resolved entitlements — what the UI locks affordances against
+instead of discovering limits through 403s.
+
+```json
+{ "tier": "spore", "features": ["deadline_reminders", "…"],
+  "topic_cap": 10, "cluster_cap": 5, "cluster_topic_cap": 4,
+  "topics_used": 4, "seat_count": 1, "pi_cap": null,
+  "addons": ["mylo_server"],
+  "plans": [{ "tier": "spore", "status": "active", "expires_at": "…" }] }
+```
+
+`tier` is the maximum across every covering plan, with expired plans excluded at
+read time. A Free account is capped at 3 clusters × 2 topics.
+
+### `GET | POST /api/labs/<slug>/billing/[activate/]` · `/api/departments/<id>/billing/…`
+
+`GET` returns the org plan's seat-priced state: `scope_type`, `scope_slug`,
+`scope_name`, `tier`, `status`, `is_active`, `is_comped`, `seat_price_cents`,
+`seat_count`, `member_count`, `mylo_included`, `can_manage`. `member_count` is
+the roster the plan would cover; `seat_count` counts seats already ACTIVE. Org
+plans start inactive; `activate/` turns the plan on and auto-entitles the
+effective membership. Nothing is charged here — payment processing is out of
+scope.
+
+## Discord
+
+`POST /api/integrations/discord/start/` begins the personal OAuth link and
+`GET …/callback` completes it (Discord redirects the browser to the exact
+registered no-slash URI). `guild/start/` and `guild-callback` do the same for
+installing Mylo into a server. `code/` and `lab-code/` mint the activation codes
+used by the in-Discord `/mylo` commands as the alternative link paths.
+`status/`, `guild/status/`, `health/`, and `probe/` report link and reachability
+state. `daily-report/` toggles `DiscordIdentity.daily_report_opt_out` (the
+profile card's "Daily research report" switch). `disconnect/` unlinks.
+
+Slash commands are served by the persistent gateway process (`mylo/`), not by an
+HTTP interactions endpoint. Outbound messages go through a durable outbox with a
+nonce and dedupe key, drained on a schedule. See
+[`discord-integration.md`](discord-integration.md).
+
+## Platform admin
+
+Base path `/api/admin/`. **Every endpoint requires staff or superuser**; anyone
+else gets `403`. This is the authorization boundary — the frontend nav gate is
+only a rendering hint. Every write records an `AuditEvent`. Standalone admins are
+minted out-of-band by the `create_admin` command, never through this API.
 
 ### `GET /api/admin/users/`
 
-Paginated, searchable roster (DRF `PageNumberPagination`; default 25/page, max
-100). Query params: `page`, `page_size`, and `q` (matches username/email/first/
-last name). Success `200`:
+Paginated, searchable roster (default 25/page, max 100). Params `page`,
+`page_size`, `q` (username / email / first / last name).
 
 ```json
-{
-  "count": 412,
-  "next": "http://.../api/admin/users/?page=2",
-  "previous": null,
-  "results": [
-    {
-      "id": 7, "username": "marie.curie", "email": "mc@lab.test",
-      "name": "Marie Curie", "is_staff": false, "is_superuser": false,
-      "is_active": true, "date_joined": "2026-01-04T12:00:00Z",
-      "effective_tier": "spore",
-      "subscription": { "tier": "spore", "status": "active", "expires_at": "2026-10-01T00:00:00Z" },
-      "watch_topics_used": 4, "watch_topic_cap": 10, "watch_topic_limit": null
-    }
-  ]
-}
+{ "count": 412, "next": "…?page=2", "previous": null,
+  "results": [{
+    "id": 7, "username": "marie.curie", "email": "mc@lab.test",
+    "name": "Marie Curie", "is_staff": false, "is_superuser": false,
+    "is_active": true, "date_joined": "…", "effective_tier": "spore",
+    "subscription": { "tier": "spore", "status": "active", "expires_at": "…" },
+    "watch_topics_used": 4, "watch_topic_cap": 10, "watch_topic_limit": null }] }
 ```
 
-`subscription` is the user's personal (`scope_user`) plan, or `null` if they have
-none; `effective_tier` is the resolved tier (max across every covering plan, an
-expired plan excluded). `watch_topic_limit` is the per-user override (null = the
-tier default).
+`subscription` is the personal (`scope_user`) plan or `null`; `effective_tier` is
+the resolved maximum across covering plans, excluding expired ones.
 
-### `GET /api/admin/users/<id>/`
+### `GET | PATCH /api/admin/users/<id>/`
 
-One user's full detail — every row field plus `academic_title`, `watch_topics`,
-`watch_categories`, and `lab_memberships` (`{slug, name, role, is_lead}`).
-
-### `PATCH /api/admin/users/<id>/`
-
-Assign the user's personal subscription and/or set their watch quota. All fields
-optional; send at least one. Returns the updated detail object (same shape as the
-`GET` detail).
+`GET` adds `academic_title`, `watch_topics`, `watch_categories`, and
+`lab_memberships`. `PATCH` assigns the plan and/or quota — all fields optional,
+send at least one:
 
 ```json
-{
-  "tier": "spore",
-  "duration_days": 90,
-  "subscription_status": "active",
-  "watch_topic_limit": 20
-}
+{ "tier": "spore", "duration_days": 90,
+  "subscription_status": "active", "watch_topic_limit": 20 }
 ```
 
-- `tier` — one of `free` | `spore` | `lab` | `canopy`.
-- `duration_days` (int ≥ 1) **or** `expires_at` (ISO 8601) — mutually exclusive;
-  either sent as `null` clears the expiry (open-ended). Omit both to leave the
-  current expiry untouched. Expiry is enforced at read-time: a lapsed plan reverts
-  to Free automatically, and no stored data is deleted.
+- `tier` — `free` | `spore` | `lab` | `canopy`.
+- `duration_days` (≥ 1) **or** `expires_at` (ISO 8601), mutually exclusive; either
+  sent as `null` clears the expiry. Omit both to leave it untouched. Expiry is
+  enforced at read time: a lapsed plan reverts to Free and nothing is deleted.
 - `subscription_status` — `active` | `past_due` | `canceled`.
-- `watch_topic_limit` (int 0–50, or `null` to clear back to the tier cap) — the
-  per-user override for how many subjects Mylo watches.
+- `watch_topic_limit` — 0–50, or `null` to clear back to the tier cap.
 
-Errors `400` on an empty body, on `duration_days` + `expires_at` together, or on a
-`watch_topic_limit` out of range.
+`400` on an empty body, on `duration_days` + `expires_at` together, or on an
+out-of-range limit.
+
+### `GET | PATCH /api/admin/labs/[<slug>/]`
+
+The same roster / detail / plan-assignment pattern for labs.

@@ -60,21 +60,32 @@ danger          #C97A70
 focus           #B8D99A
 ```
 
-## UI Stack
+## UI Stack (as built)
 
-- Astro, Tailwind, MDX, GSAP, and light React islands for the public landing
-  site.
-- Next.js App Router and React for the authenticated lab app.
+- **Public site:** Astro + Tailwind v4 + MDX. It ships **zero framework
+  JavaScript** — React components are server-rendered only. Interactivity is CSS:
+  `:has()` panel selection, `:checked + label` styling, native `<details>` for the
+  mobile menu, and `animation-timeline: view()` reveals behind `@supports` +
+  `prefers-reduced-motion`, with the visible state as the default so an
+  unsupported browser still renders a complete page. Do not add a `client:*`
+  directive without deciding to start shipping React. Do not reach for Tailwind's
+  `peer-checked:` in a radio group — it compiles to a *general* sibling
+  combinator, so every label after the checked one matches.
+- **App:** Next.js App Router + React 19 + Tailwind v4.
 - Shared Tailwind v4 color tokens in `web/packages/config/src/theme.css`.
-- shadcn/ui and Radix UI for accessible React primitives.
-- Framer Motion for dynamic app transitions and workflow motion.
-- TanStack Table for sortable, filterable research, opportunity, and member
-  tables.
-- TanStack Query for API-backed app state.
-- React Hook Form and Zod for forms.
-- Cytoscape.js first for knowledge graph exploration; consider Sigma.js later
-  if graph scale demands it.
-- TipTap for editable reports, citations, comments, and rich text sections.
+- Radix UI primitives, styled locally (shadcn-style, `class-variance-authority` +
+  `tailwind-merge`). There is no full shadcn/ui component set — copy the existing
+  pattern in `web/app/src/components/ui/`.
+- TanStack Query for API-backed state; TanStack Table where a real table is
+  warranted.
+- React Hook Form + Zod for forms.
+- Prefer **CSS transforms** over an animation library for step transitions.
+  `framer-motion` is present but used in only two onboarding components — do not
+  spread it further without a reason.
+- Feed cards go through the shared primitives (`MatchRing`, `MatchCard`,
+  `ClusterBadge`, `FeedSearchBar`, `FeedSentinel`) rather than new one-offs.
+- Not in use: Cytoscape (declared, unused — the graph phase has not started) and
+  TipTap (no rich-text editing exists yet).
 
 ## Component Rules
 

@@ -1,105 +1,126 @@
 # Mycelium
 
-Mycelium is a planned lab intelligence platform for research teams. It is meant
-to help labs track research goals, monitor papers, match grants and fellowships,
-build evidence-backed reports, and maintain a living knowledge graph of people,
-projects, claims, opportunities, and lab priorities.
+Mycelium is a lab intelligence platform for research teams. It builds a living
+profile of a lab and its members, ingests literature and funding sources every
+day, scores what it finds against that profile, and delivers the result as an
+in-app feed, a written daily report, and a Discord digest.
 
-## Planned Stack
+What is running today:
 
-- Public landing site: Astro, Tailwind, MDX, GSAP, React islands, and shared
-  Mycelium theme tokens under `web/landing/`.
-- Dynamic lab app: Next.js, React, Tailwind, shadcn/ui, Radix UI, Framer
-  Motion, Cytoscape.js, TanStack Query/Table, React Hook Form, and Zod under
-  `web/app/`.
-- Backend: Django, Django REST Framework, Celery, and local web infrastructure
-  under `web/backend/` and `web/infra/`.
-- Workers: Celery and Redis for long-running research scans, opportunity
-  matching, graph updates, report generation, and alerts.
-- Data: Postgres with pgvector, Neo4j, Redis, and S3-compatible object storage.
-- Deployment: Nginx in front of the web app and API, with Docker Compose as
-  the preferred initial orchestration path.
+- **Personal and lab workspaces** — session auth, labs, departments, memberships,
+  roles, projects (with team collaboration, collections, and shared reading
+  lists), and an invite-only sign-up gate.
+- **Interest profiles** — author import (OpenAlex / Semantic Scholar / Google
+  Scholar / ORCID) plus optional résumé parsing, LLM synthesis into themed
+  interest clusters, and an editing surface for people, labs, and projects.
+- **Four recommendation feeds** — research papers, grants, fellowships, and
+  conferences, each scored for a user, a lab, or a project, each with a percent
+  match and a written reason.
+- **Daily report** — a multi-agent written briefing per user and per lab, served
+  in-app, DM'd as a PDF, and posted to a lab's Discord channel.
+- **Deadline reminders** — saved items, addressable deadlines, and Discord-
+  delivered reminders with lead times, snoozing, and a manage page.
+- **Unified search** over the whole corpus, fusing full-text, vector, and fuzzy
+  channels.
+- **Billing & entitlements** — tiered plans with per-seat billing for labs and
+  departments, enforced in the API, the daily pipelines, and the frontend.
+- **Discord integration** — identity linking, guild activation, slash commands, a
+  durable outbox, and drift detection.
+- **Platform admin** — a staff-only roster with subscription and quota writes.
 
-## Repository Status
+## Stack
 
-This repository now has the basic full-stack scaffold in place. Root scripts
-delegate into `web/`, where the Node workspace, Astro landing site, Next.js
-app, Django backend, Nginx config, and Node install state live.
+| Layer | Technology | Location |
+|---|---|---|
+| Public marketing site | Astro 6, Tailwind v4, MDX (zero framework JS shipped) | `web/landing/` |
+| Authenticated app | Next.js 16 (App Router), React 19, Tailwind v4, Radix UI, TanStack Query/Table | `web/app/` |
+| Shared design tokens | Tailwind v4 theme | `web/packages/config/` |
+| Backend API | Django 5 + Django REST Framework | `web/backend/` |
+| Background work | Celery + Celery Beat | `web/backend/` (`worker`, `beat` services) |
+| Relational store | PostgreSQL 17 + pgvector | `postgres` service |
+| Cache / broker | Redis 8 | `redis` service |
+| Embeddings | fastembed / ONNX Runtime, CPU or CUDA | `web/backend/apps/scraper/embedding.py` |
+| LLM | any OpenAI-compatible endpoint (vLLM is the reference target) | `web/backend/apps/core/llm.py` |
+| Edge gateway | Nginx, single origin | `web/infra/nginx/` |
+| Python deps & commands | `uv` | `web/backend/` |
+| Node workspace | npm workspaces | `web/` |
 
-Editable orchestration config such as `compose.yaml`, `.env.example`, and the
-root `package.json` stays at the repository root.
+Neo4j and MinIO run in `compose.yaml` and have settings entries, but no
+application code reads them yet — the graph and object-storage phases are not
+built. `cytoscape` is likewise declared in `web/app` but unused.
 
-## Docker Backend Setup
+## Running locally
 
-The preferred local backend path is Docker Compose. The backend container uses
-the `ghcr.io/astral-sh/uv:python3.13-bookworm` image, installs the Python
-environment from `web/backend/`, and runs the Django development server on port
-8000 inside the container, published on host port 11350.
+The whole stack is Docker Compose:
 
-Prerequisites:
-
-- Docker Desktop or another Docker Compose compatible runtime.
-- The root `.env.example` file, which is already wired into the backend
-  service for local defaults. `compose.yaml` overrides service URLs such as
-  Postgres and Redis so containers talk over the Compose network.
-
-Start the Django backend and its local service dependencies:
-
-```sh
-docker compose up backend
-```
-
-This starts Postgres, Redis, Neo4j, MinIO, and the Django backend. The backend
-is available at:
-
-- API health check: `http://localhost:11350/api/health/`
-- Django admin route: `http://localhost:11350/admin/`
-
-Stop the backend container stack:
-
-```sh
-docker compose down
-```
-
-To run the full local web stack through Docker Compose, including Nginx, Astro,
-Next.js, and the backend:
-
-```sh
+```bash
 docker compose up
 ```
 
-Nginx is exposed at `http://localhost:11050`, with landing traffic routed to
-Astro, app traffic routed to Next.js, and API/admin traffic routed to Django.
+Nginx serves everything on a single origin at **http://localhost:11050** —
+landing at `/`, the app at `/app/*`, `/login`, `/signup`, and Django at `/api/*`
+and `/admin/*`. `python run.py` wraps the same thing (`up`, `down`, `restart`,
+`logs`, `status`, `--build`).
 
-If the landing container cannot resolve `@mycelium/config/theme.css`, reset
-container volumes so `node_modules` is recreated inside Docker:
+Host-published ports follow `11050 + 100·n`: landing `11150`, app `11250`,
+Django `11350`, Postgres `11450`, Redis `11550`, Neo4j `11650`/`11750`, MinIO
+`11850`/`11950`. Only the gateway is needed for normal use; the rest exist for
+host tooling.
 
-```sh
-docker compose down -v
-docker compose up
+Root commands:
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Dev gateway + Astro + Next.js + Django on http://localhost:11050 |
+| `npm run dev:landing` | Astro only, port 4321 |
+| `npm run dev:web` | Next.js only, port 3001 (bypasses the gateway) |
+| `npm run dev:backend` | Django only, port 8000 |
+| `npm run build` | Build shared config, landing, and app |
+| `npm run lint` | Astro check, Next.js eslint, backend ruff |
+| `npm run test` | Backend pytest |
+| `npm run compose:up` / `compose:down` | Full Compose stack |
+
+Backend management commands run through `uv`:
+
+```bash
+uv run --project web/backend python web/backend/manage.py <command>
 ```
 
-## Root Commands
+Configuration comes from a git-ignored root `.env` (every variable is documented
+in `.env.example`) plus `.env-mylo` for the Discord bot's token and channel ids.
+Both are read by `web/backend/config/settings.py`.
 
-- `npm run dev`: run the dev gateway, Astro, Next.js, and Django together on
-  **http://localhost:11050**.
-- `npm run dev:landing`: run only the Astro landing site on port 4321.
-- `npm run dev:web`: run only the Next.js app on port 3001 (bypasses gateway).
-- `npm run dev:backend`: run only the Django server on port 8000.
-- `npm run build`: build the shared config, Astro landing site, and Next.js app.
-- `npm run lint`: check Astro, Next.js, and backend Python linting.
-- `npm run test`: run backend tests.
-- `npm run compose:up`: run the full Docker Compose stack.
-- `npm run compose:down`: stop the Docker Compose stack.
+## The daily run
+
+The nightly pipeline is a **host** systemd timer, not Celery Beat.
+`mylo-daily.timer` fires `manual_all.py` at 07:00; it scrapes the opportunity
+sources on the host, then runs each backend stage in order inside the container:
+
+`run_daily_suggestions` → `run_daily_opportunities --no-prune` →
+`run_reminder_tick` → `prune_opportunities` → `generate_daily_briefing` →
+`send_daily_discord_reports` → `send_lab_digests`
+
+The daily run only ever **appends** the day's new items. Re-scoring the whole
+corpus is the on-demand refit pass (`manual_mylo.py` / `run_refitting`), run at
+sign-up and after profile edits — never on a schedule.
+
+Other host units: `mycelium.service` (stack up at boot), `mycelium-update.service`
+(image pull + rolling restart), `mylo-bot.service` (the persistent Discord
+gateway, `python -m mylo.bot`).
 
 ## Documentation
 
-- `docs/architecture.md` records the finalized repo structure, tech stack,
-  service boundaries, data ownership, and environment/secrets management.
-- `docs/purpose.md`, `docs/goals.md`, and `docs/styles.md` hold the canonical
-  product direction; `docs/api-contract.md` holds committed API shapes.
-- `docs/chats/` contains source conversations that define the product,
-  architecture, and visual direction.
-- `docs/skills/` contains canonical agent guidance for planning, repository
-  structure, website architecture, frontend UI, mobile behavior, and
-  accessibility.
+Start at [`docs/`](docs/README.md). The short version:
+
+- **Direction** — [`docs/purpose.md`](docs/purpose.md),
+  [`docs/goals.md`](docs/goals.md), [`docs/styles.md`](docs/styles.md).
+- **Navigation** — [`docs/repo-map.md`](docs/repo-map.md) maps a task to a path.
+  Read it before searching the tree.
+- **Reference** — [`docs/architecture.md`](docs/architecture.md),
+  [`docs/api-contract.md`](docs/api-contract.md),
+  [`docs/discord-integration.md`](docs/discord-integration.md),
+  [`docs/loadtest.md`](docs/loadtest.md),
+  [`docs/research-audit.md`](docs/research-audit.md).
+- **Agent guidance** — [`CLAUDE.md`](CLAUDE.md) and
+  [`docs/skills/`](docs/skills/index.md).
+- **History** — [`docs/changelog.md`](docs/changelog.md).

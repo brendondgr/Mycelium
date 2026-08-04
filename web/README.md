@@ -2,13 +2,17 @@
 
 `web/` is the implementation workspace for the product's web stack.
 
-- `landing/`: Astro public site with Tailwind, MDX, GSAP, React islands, and
-  shadcn-compatible primitives.
-- `app/`: Next.js dynamic lab app with Tailwind, shadcn/ui, Radix UI, Framer
-  Motion, Cytoscape.js, TanStack Query/Table, React Hook Form, and Zod.
+- `landing/`: Astro public site with Tailwind and MDX. It ships **zero framework
+  JavaScript** — React components are server-rendered only and interactivity is
+  CSS (`:has()`, `:checked`, `animation-timeline: view()`). Adding a `client:*`
+  directive would start shipping React.
+- `app/`: Next.js App Router lab workspace with Tailwind, Radix UI, TanStack
+  Query/Table, React Hook Form, and Zod.
 - `packages/config/`: shared Mycelium Tailwind v4 theme tokens.
 - `backend/`: Django API, orchestration layer, and Celery entrypoint.
-- `infra/`: local Nginx and deployment support.
+- `art/`: Mylo and hero artwork masters.
+- `scripts/`: dev gateway and the art-sync step.
+- `infra/`: local Nginx config.
 
 Run commands from the repository root when possible. The root `package.json`
 delegates into this workspace so Node install state remains under `web/`.
@@ -22,7 +26,7 @@ path-based routing:
 | Path | Service |
 | --- | --- |
 | `/` and public pages | Astro landing (internal `:4321`) |
-| `/login`, `/app/*`, `/_next/*` | Next.js app (internal `:3001`) |
+| `/login`, `/signup`, `/app/*`, `/_next/*` | Next.js app (internal `:3001`) |
 | `/api/*`, `/admin/*` | Django (internal `:8000`) |
 
 Direct ports remain available for focused debugging (`:4321`, `:3001`, `:8000`).
@@ -43,6 +47,10 @@ docker compose down -v
 docker compose up
 ```
 
-Landing hero images are copied from `art/` into `landing/public/images/` by
-`npm run sync:assets`. That step runs automatically before `npm run dev`,
-`npm run dev:landing`, and `npm run build`.
+Artwork masters in `art/` are resized to WebP derivatives by
+`scripts/sync-art-assets.mjs` (`npm run sync:assets`), which runs automatically
+on every workspace's `predev` / `prebuild`. Landing derivatives go to
+`landing/public/images/`; **app derivatives go to `app/public/` root**, not a
+subdirectory, because the gateway only proxies single-segment root static files
+to the app. All derivatives are git-ignored — edit the master and re-run the
+sync.

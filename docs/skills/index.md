@@ -2,36 +2,42 @@
 
 Canonical skill definitions for this repository live in `docs/skills/`.
 
-The folders under `.agents/skills/`, `.claude/skills/`, and `.cursor/rules/`
-are tool entrypoints that should point back to these canonical docs. Keep the
-behavioral guidance here so all agents share the same project assumptions.
+The folders under `.agents/skills/`, `.claude/skills/`, and `.cursor/rules/` are
+tool entrypoints and nothing more — each is a stub pointing back at the canonical
+doc here. Keep the behavioral guidance in this directory so every agent shares
+the same project assumptions, and when you add a skill, add all three
+entrypoints.
 
-## Canonical Skills
+## Canonical skills
 
-| Skill | Canonical Doc | Entry Folder |
-| --- | --- | --- |
-| Global project guidance | [global.md](./global.md) | `global/` |
-| Plan creation | [planner.md](./planner.md) | `plan/` |
-| Repository structure | [repo-structure.md](./repo-structure.md) | `repo-structure/` |
-| Website architecture | [website-architecture.md](./website-architecture.md) | `website-architecture/` |
-| UI frontend | [ui-frontend.md](./ui-frontend.md) | `ui-frontend/` |
-| Mobile friendly | [mobile-friendly.md](./mobile-friendly.md) | `mobile-friendly/` |
-| ADA compliance | [ada-compliance.md](./ada-compliance.md) | `ada-compliance/` |
-| Discord bot (discord.py) | [discord-bot.md](./discord-bot.md) | `discord-bot/` |
+| Skill | Canonical doc | Entry folder | Load it when |
+|---|---|---|---|
+| Global project guidance | [global.md](./global.md) | `global/` | Always, at the start of a session |
+| Plan creation | [planner.md](./planner.md) | `plan/` | Sequencing work before coding |
+| Repository structure | [repo-structure.md](./repo-structure.md) | `repo-structure/` | Moving or adding a top-level area |
+| Website architecture | [website-architecture.md](./website-architecture.md) | `website-architecture/` | Routes, service boundaries, deployment shape |
+| UI frontend | [ui-frontend.md](./ui-frontend.md) | `ui-frontend/` | Components, pages, visual system |
+| Mobile friendly | [mobile-friendly.md](./mobile-friendly.md) | `mobile-friendly/` | Responsive behavior |
+| ADA compliance | [ada-compliance.md](./ada-compliance.md) | `ada-compliance/` | WCAG 2.2 AA work |
+| Discord bot (discord.py) | [discord-bot.md](./discord-bot.md) | `discord-bot/` | Anything touching `mylo/` or slash commands |
 
 Most canonical skills are a single document. `discord-bot` additionally ships
 verified reference implementations in [`discord-bot/`](./discord-bot/) — copy
 from those rather than writing interaction plumbing from memory.
 
-## Project Defaults
+## Project defaults
 
-- Mycelium is a lab intelligence platform for research discovery, lab memory,
-  grants, fellowships, reports, and knowledge graph backed evidence trails.
-- Canonical project direction lives in `docs/purpose.md`, `docs/styles.md`,
-  and `docs/goals.md`; agents should load `global` before starting work.
-- The planned stack is Next.js, React, Tailwind, Django, Django REST Framework,
-  Celery, Redis, Postgres with pgvector, Neo4j, object storage, Nginx, and
-  Docker Compose.
-- Future build and run commands should be launched from the repository root.
-  Root scripts should delegate application files to `web/`, while editable
-  orchestration config such as `compose.yaml` stays at the root.
+- Mycelium is a lab intelligence platform for research teams — profiles,
+  literature monitoring, grants, fellowships, conferences, reports, and
+  reminders. It is not a paper search tool or a chatbot.
+- Canonical direction lives in [`../purpose.md`](../purpose.md),
+  [`../styles.md`](../styles.md), and [`../goals.md`](../goals.md). Load `global`
+  before starting work.
+- The stack as built: Astro (public site, no framework JS), Next.js App Router
+  (app), Django + DRF (API), Celery + Redis (in-app jobs), a host systemd timer
+  (the nightly research run), Postgres + pgvector (everything durable, including
+  semantic retrieval), Nginx, and Docker Compose. Neo4j and MinIO run in Compose
+  but no code uses them.
+- Run commands from the repository root; root scripts delegate into `web/`, while
+  editable orchestration config stays at the root. Use `uv` for backend
+  dependencies, commands, linting, and tests.

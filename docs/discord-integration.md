@@ -158,22 +158,27 @@ Generate the token-encryption key:
 python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"
 ```
 
-## Reconciliation (the HTTP-only tradeoff)
+## Drift detection and reconciliation
 
-Without gateway `GUILD_DELETE`/deauthorize events, a nightly sweep
-(`apps.integrations.reconcile_discord`, Celery Beat `DISCORD_RECONCILE_HOUR`, or
-`manage.py reconcile_discord`) marks absent guilds `KICKED` and refreshes/revokes
-lapsing OAuth tokens. It skips the guild sweep on a transient API failure rather
-than mass-marking links kicked.
+Two layers, deliberately:
+
+- **Live gateway events** (`mylo/bot/cogs/drift.py`) — `on_guild_remove` (the bot
+  was kicked or the server deleted) and `on_guild_channel_delete` (a channel
+  Mylo may post to vanished), using the `guilds` intent only. `on_member_remove`
+  is deliberately **not** used: it needs a privileged intent.
+- **A nightly sweep** (`apps.integrations.reconcile_discord`, Celery Beat
+  `DISCORD_RECONCILE_HOUR`, or `manage.py reconcile_discord`) marks absent guilds
+  `KICKED` and refreshes or revokes lapsing OAuth tokens. It skips the guild
+  sweep on a transient API failure rather than mass-marking links kicked.
 
 ## Verification status
 
-The `apps/integrations` regression suite (47 tests) + the `mylo` bot tests cover
-the model, service, OAuth-flow, activation, guild-binding, authorization-invariant,
-error-sink, and import-graph logic with Discord HTTP mocked. **Live OAuth /
-interaction round-trips require a Discord app + a test guild and were not exercised
-in CI** — run the manual smoke checklist below against a real app before enabling
-for users.
+The `apps/integrations` regression suite plus the `mylo` bot tests cover the
+model, service, OAuth-flow, activation, guild-binding, authorization-invariant,
+error-sink, and import-graph logic with Discord HTTP mocked. **Live OAuth and
+interaction round-trips need a real Discord app and a test guild and are not
+exercised in CI** — run the manual smoke checklist below against a real app
+before enabling for users.
 
 ## Manual smoke checklist (needs a live Discord app + test guild)
 

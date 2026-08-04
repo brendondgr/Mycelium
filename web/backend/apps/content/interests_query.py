@@ -7,7 +7,7 @@ becomes its own retrieval query downstream (a pgvector channel + a BM25 channel,
 fused per interest — see :mod:`apps.content.fusion`). A paper that matches several
 of these interests can then be preferred over one that only matches a single area.
 
-Design (locked in ``docs/plans/multi-interest-fusion.md``):
+Design:
 
 - One :class:`SearchInterest` per distinct, non-empty entry in ``interests.areas``.
 - ``interests.keywords`` are auxiliary terms attached to *every* interest (they

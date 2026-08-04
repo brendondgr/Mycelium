@@ -7,8 +7,9 @@ Use this guidance at the start of every Mycelium session before planning, editin
 - Read `docs/purpose.md` to understand what Mycelium is and why it exists.
 - Read `docs/styles.md` before design, frontend, copy, mascot, dashboard, or UX decisions.
 - Read `docs/goals.md` before sequencing work, proposing features, or deciding what should come next.
-- Read the task-specific skill from `docs/skills/` when the work touches planning, repository structure, website architecture, frontend UI, mobile behavior, or accessibility.
+- Read the task-specific skill from `docs/skills/` when the work touches planning, repository structure, website architecture, frontend UI, mobile behavior, accessibility, or the Discord bot. `docs/skills/index.md` is the registry.
 - Read `docs/repo-map.md` to locate code by path before searching the tree; keep it updated when top-level areas move.
+- Read `docs/architecture.md` for service boundaries and configuration, and `docs/api-contract.md` before changing anything the web app consumes.
 
 ## Project Defaults
 
@@ -29,7 +30,9 @@ Use this guidance at the start of every Mycelium session before planning, editin
 - For UI work, account for loading, empty, populated, error, permission denied, job running, stale data, mobile, keyboard, contrast, and reduced-motion states.
 - For backend work, keep Django responsible for auth, permissions, business logic, orchestration, admin, audit logs, and API contracts.
 - For background work, prefer worker jobs for research scans, opportunity matching, extraction, graph updates, report generation, alerts, and scheduled digests.
-- For data ownership, keep durable app records, semantic retrieval, graph relationships, object storage, and queue/cache concerns conceptually separate.
+- For data ownership, keep durable app records, semantic retrieval, and queue/cache concerns conceptually separate — even though Postgres physically holds the first two. Neo4j and MinIO run in Compose but no code uses them; do not describe them as working infrastructure or build a dependency on either without building the phase that needs it.
+- Keep documentation accurate over comprehensive. A claim that is no longer true of the code is worse than no claim. When a change makes a doc wrong, fix the doc in the same commit.
+- Implementation plans are working documents. Delete a plan once its work has shipped and record the outcome in `docs/changelog.md` plus whichever canonical doc it affects.
 - When changing recommendation-pipeline logic (papers, opportunities, fellowships, refitting, briefing), audit the daily orchestrator in the same change: `manual_all.py` (run nightly by `mylo-daily.timer`) chains those stages, so confirm its stage list and each stage's semantics still match the intended split — the daily run scores only that day's new items and appends, never rewriting or deleting recommendations Mylo already wrote; whole-corpus replace passes (refitting) are on-demand only (sign-up / profile edits) and must never be scheduled into the daily chain.
 
 ## Validation
