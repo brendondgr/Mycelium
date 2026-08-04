@@ -1,0 +1,46 @@
+{
+  "_comment": [
+    "Published third-party baselines, scored by THIS harness with the same",
+    "`harness.scoring.score` call used for our own arms — never numbers quoted",
+    "from a paper. That is what makes the comparison in docs/evaluation.md a real",
+    "check on our implementation rather than an appeal to authority.",
+    "",
+    "Source: the LongEval'26 organizers' published runs, linked from",
+    "github.com/clef-longeval/longeval-code (clef26/scientific-retrieval).",
+    "These are NOT this repository's results, so they are kept out of results/."
+  ],
+  "baselines": [
+    {
+      "name": "BM25 (PyTerrier, organizers)",
+      "system": "pyterrier",
+      "snapshot": "longeval-sci-2026/snapshot-1/train",
+      "qrels": "dctr",
+      "corpus_scope": "full",
+      "n_queries": 100,
+      "metrics": {
+        "nDCG@10": 0.2922,
+        "nDCG@100": 0.4123,
+        "AP": 0.2573,
+        "R@100": 0.6836,
+        "RR": 0.4717,
+        "P@10": 0.195
+      }
+    },
+    {
+      "name": "Qwen3-Embedding-4B (organizers)",
+      "system": "pyterrier-dense",
+      "snapshot": "longeval-sci-2026/snapshot-1/train",
+      "qrels": "dctr",
+      "corpus_scope": "full",
+      "n_queries": 100,
+      "metrics": {
+        "nDCG@10": 0.282,
+        "nDCG@100": 0.3919,
+        "AP": 0.2378,
+        "R@100": 0.639,
+        "RR": 0.4389,
+        "P@10": 0.188
+      }
+    }
+  ]
+}

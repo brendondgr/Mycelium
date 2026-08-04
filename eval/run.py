@@ -51,38 +51,70 @@ def config_hash(config: dict) -> str:
     ).hexdigest()[:16]
 
 
-def build_corpus(dataset, collection, config, ranking_for_pool=None):
+def read_run_file(path: Path) -> dict[str, list[tuple[str, float]]]:
+    """Parse a gzipped TREC run file back into a ranking.
+
+    Lets a pooled run reuse the lexical pool a previous `bm25_only` run already
+    computed, instead of rebuilding a corpus-wide BM25 index (~17 GB and several
+    minutes on this collection) just to decide which documents to embed.
+    """
+    import gzip
+
+    ranking: dict[str, list[tuple[str, float]]] = {}
+    with gzip.open(path, "rt") as handle:
+        for line in handle:
+            parts = line.split()
+            if len(parts) < 5:
+                continue
+            ranking.setdefault(parts[0], []).append((parts[2], float(parts[4])))
+    return ranking
+
+
+def build_corpus(dataset, config, all_docs, queries, pool_from: Path | None):
     """The document set an arm scores over, honouring the corpus scope.
 
-    `full` streams every document. `pooled` is the plan's documented fallback:
-    the union of every judged document with a deep lexical pool. It makes the
-    embedding cost minutes instead of hours, and it is a **re-ranking**
-    evaluation — recall numbers from it are not comparable to full-corpus ones,
-    which is why `corpus_scope` is stamped onto every result row.
+    `full` is every document. `pooled` is the plan's documented fallback: the
+    union of every judged document with a deep corpus-wide lexical pool. It makes
+    the embedding cost minutes instead of hours, and it is a **re-ranking**
+    evaluation — recall numbers from it do not transfer to the full corpus, which
+    is why `corpus_scope` is stamped onto every result row.
+
+    The pool is seeded from a corpus-wide BM25 ranking rather than from the judged
+    set alone: pooling only judged documents would flatter every arm equally and
+    make the comparison meaningless.
     """
     scope = config.get("corpus", {}).get("scope", "full")
-    limit = config.get("corpus", {}).get("limit")
-    log(f"loading documents (scope={scope}) …")
-    all_docs = list(datasets.docs(dataset, limit=limit))
-    log(f"{len(all_docs)} documents loaded")
     if scope == "full":
         return all_docs, scope
 
     depth = int(config.get("corpus", {}).get("pool_depth", 1000))
     judged = datasets.judged_doc_ids(dataset)
     keep = set(judged)
-    if ranking_for_pool:
-        for hits in ranking_for_pool.values():
-            keep.update(doc_id for doc_id, _ in hits[:depth])
+
+    if pool_from and pool_from.exists():
+        log(f"seeding pooled subset from {pool_from.name}")
+        seed = read_run_file(pool_from)
+    else:
+        log("seeding pooled subset with a fresh corpus-wide BM25 pool …")
+        seed = arms_mod.bm25_only(queries, all_docs, log=log)
+    for hits in seed.values():
+        keep.update(doc_id for doc_id, _ in hits[:depth])
+
     pooled = [doc for doc in all_docs if str(doc.id) in keep]
     log(
         f"pooled subset: {len(pooled)} docs "
-        f"({len(judged)} judged + lexical pool depth {depth})"
+        f"({len(judged)} judged + BM25 pool depth {depth})"
     )
     return pooled, scope
 
 
-def run_arm(arm_name: str, collection_id: str, config: dict, qrels: str | None):
+def run_arm(
+    arm_name: str,
+    collection_id: str,
+    config: dict,
+    qrels: str | None,
+    pool_from: Path | None = None,
+):
     collections = datasets.load_collections()
     collection = collections[collection_id]
     if not collection.scoreable:
@@ -97,17 +129,14 @@ def run_arm(arm_name: str, collection_id: str, config: dict, qrels: str | None):
     queries = datasets.queries(dataset)
     log(f"{len(queries)} queries")
 
-    scope_cfg = config.get("corpus", {}).get("scope", "full")
-    pool_seed = None
-    if scope_cfg == "pooled":
-        # Seed the pooled subset with a corpus-wide lexical pool so the subset is
-        # not merely the judged set (which would flatter every arm equally).
-        log("seeding pooled subset with a corpus-wide BM25 pool …")
-        seed_docs = list(datasets.docs(dataset))
-        pool_seed = arms_mod.bm25_only(queries, seed_docs, log=log)
-        del seed_docs
+    limit = config.get("corpus", {}).get("limit")
+    log("loading documents …")
+    all_docs = list(datasets.docs(dataset, limit=limit))
+    log(f"{len(all_docs)} documents loaded")
 
-    docs, scope = build_corpus(dataset, collection, config, pool_seed)
+    docs, scope = build_corpus(dataset, config, all_docs, queries, pool_from)
+    if docs is not all_docs:
+        del all_docs
 
     arm = arms_mod.ARMS[arm_name]
     vector_index = None
@@ -178,6 +207,12 @@ def main() -> int:
     parser.add_argument("--qrels", default=None)
     parser.add_argument("--arm", default=None, help="override the config's arm")
     parser.add_argument(
+        "--pool-from",
+        type=Path,
+        default=None,
+        help="a bm25_only TREC run file to seed the pooled subset from",
+    )
+    parser.add_argument(
         "--list-collections", action="store_true", help="show what can be scored"
     )
     args = parser.parse_args()
@@ -198,7 +233,7 @@ def main() -> int:
 
     for name in arm_names:
         log(f"=== {name} on {args.collection} ===")
-        run_arm(name, args.collection, config, args.qrels)
+        run_arm(name, args.collection, config, args.qrels, args.pool_from)
     return 0
 
 

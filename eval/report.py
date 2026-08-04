@@ -26,6 +26,14 @@ END = "<!-- END GENERATED LEADERBOARD -->"
 COLUMNS = ["nDCG@10", "nDCG@100", "AP", "R@100", "RR", "P@10"]
 
 
+def _load_baselines() -> list[dict]:
+    """Third-party published baselines, if any have been scored."""
+    path = EVAL_ROOT / "baselines.json"
+    if not path.exists():
+        return []
+    return json.loads(path.read_text()).get("baselines", [])
+
+
 def load() -> list[dict]:
     rows = []
     for path in sorted(RESULTS.glob("*.json")):
@@ -66,6 +74,31 @@ def render(rows: list[dict]) -> str:
         out.append(f"### `{snapshot}` — qrels `{qrels}`")
         out.append("")
         out.extend(_table(group))
+        out.append("")
+
+    baselines = _load_baselines()
+    if baselines:
+        out.append("### Published baselines (external, for comparison)")
+        out.append("")
+        out.append(
+            "Scored by this harness with the same `ir_measures` call used above, "
+            "from the LongEval'26 organizers' own published runs — not numbers "
+            "quoted from a paper."
+        )
+        out.append("")
+        header = "| System | Snapshot | qrels | " + " | ".join(COLUMNS) + " |"
+        out.append(header)
+        out.append("|---|---|---|" + "---:|" * len(COLUMNS))
+        for base in baselines:
+            cells = [
+                "—" if base["metrics"].get(c) is None else f"{base['metrics'][c]:.4f}"
+                for c in COLUMNS
+            ]
+            out.append(
+                f"| {base['name']} | `{base['snapshot']}` | {base['qrels']} | "
+                + " | ".join(cells)
+                + " |"
+            )
         out.append("")
 
     scopes = {row["corpus_scope"] for row in rows}
