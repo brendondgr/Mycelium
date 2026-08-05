@@ -65,6 +65,19 @@ after the task closes. Adding them is a `collections.toml` edit (flip `scoreable
 name the variants), never a code change. Run files for the blocked snapshots can
 already be produced for a TIRA submission; only scoring is unavailable.
 
+## Where the caches live (and why not under `eval/`)
+
+Both heavy caches sit under `data/eval-cache/`, outside `eval/`:
+
+- **Corpora** — set `IR_DATASETS_HOME=data/eval-cache/ir_datasets` when running.
+- **Embedding matrices** — `data/eval-cache/embeddings/`, overridable with
+  `MYCELIUM_EVAL_CACHE`.
+
+This is not tidiness. `eval/cache/` is gitignored, so `git worktree remove`
+deletes it without warning — and an embedding cache is hours of compute. Putting
+both under `data/eval-cache/` (also gitignored, but never inside a worktree)
+means a torn-down worktree costs nothing. Learned the hard way.
+
 ## Corpus scope: `full` vs `pooled`
 
 Every result row carries `corpus_scope`, and **the two are not comparable**:
@@ -91,7 +104,7 @@ eval/
     arms.py           each arm as a thin call into apps.content.*
     scoring.py        ir_measures wrapper + the results contract
     metadata.py       ir_metadata emission (LongEval tracks this)
-  cache/              gitignored — corpora and embedding matrices
+  cache/              gitignored, and NOT where the caches actually live
   results/            COMMITTED — one small JSON per run, the score history
   runs/               gitignored — TREC run files
 ```

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -24,7 +25,20 @@ from typing import Any
 import numpy as np
 
 EVAL_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_CACHE_DIR = EVAL_ROOT / "cache" / "embeddings"
+REPO_ROOT = EVAL_ROOT.parent
+
+#: Where embedding matrices live. **Deliberately outside `eval/`**, next to the
+#: downloaded corpora. `eval/cache/` is gitignored, so a `git worktree remove`
+#: deletes it — and with it hours of embedding compute, silently. Keeping the
+#: matrices under `data/eval-cache/` (also gitignored, but never inside a
+#: worktree) means they survive a worktree being torn down, which is the normal
+#: end of an agent session. Override with `MYCELIUM_EVAL_CACHE` if you want them
+#: elsewhere; point it at a path that is not inside a worktree.
+DEFAULT_CACHE_DIR = Path(
+    os.environ.get(
+        "MYCELIUM_EVAL_CACHE", REPO_ROOT / "data" / "eval-cache" / "embeddings"
+    )
+)
 
 
 class NumpyIndex:
