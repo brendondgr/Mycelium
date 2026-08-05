@@ -11,10 +11,11 @@ later. Two fields exist specifically to stop dishonest comparisons:
 - `corpus_scope` — `full` or `pooled`. Reordering metrics (nDCG@10) are close
   between the two; **recall metrics are not**. A pooled number is a re-ranking
   result and cannot support a recall claim.
-- `dirty` — whether the measured *code* differed from the recorded commit. A
-  number from a dirty tree is not reproducible and must be visibly marked as
-  such. The harness's own `eval/results/` output is excluded, or a batch would
-  flag every run after its first and the signal would be lost.
+- `dirty` — whether the code that *feeds a run* (the ranking stack in
+  `web/backend` and the harness in `eval/`) differed from the recorded commit.
+  Such a number is not reproducible and must be visibly marked. Deliberately
+  scoped: docs edits cannot move a metric, and the harness's own results/runs
+  output would otherwise flag every run in a batch after the first.
 """
 
 from __future__ import annotations
@@ -87,11 +88,16 @@ def git_state(repo_root: Path) -> tuple[str, bool]:
 
     try:
         sha = run("rev-parse", "--short", "HEAD")
-        # Ignore the harness's own outputs. A batch writes result JSONs as it
-        # goes, so counting them would mark every run after the first as dirty
-        # and turn the flag into noise. What matters is whether the *measured
-        # code* differs from the recorded commit.
-        status = run("status", "--porcelain", "--", ".", ":(exclude)eval/results")
+        # Scope dirtiness to what can actually change a number: the ranking
+        # stack under test and the harness that drives it. A docs or changelog
+        # edit cannot move a metric, and the harness writes its own results and
+        # run files as a batch proceeds — counting either would mark almost
+        # every run dirty and destroy the flag's meaning.
+        status = run(
+            "status", "--porcelain", "--",
+            "web/backend", "eval",
+            ":(exclude)eval/results", ":(exclude)eval/runs", ":(exclude)eval/cache",
+        )
         dirty = bool(status.strip())
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "unknown", True
