@@ -1,0 +1,27 @@
+{
+  "arm": "fusion_full",
+  "collection": "sci-2025-01",
+  "config_hash": "b30468e432efc297",
+  "corpus_docs": 261294,
+  "corpus_scope": "pooled",
+  "dirty": false,
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "git_sha": "de31887",
+  "metrics": {
+    "AP": 0.15005152156730028,
+    "P@10": 0.13150406504065065,
+    "R@100": 0.49148691159691316,
+    "RR": 0.32861189852488604,
+    "nDCG@10": 0.1709511677419274,
+    "nDCG@100": 0.26777292117704604
+  },
+  "n_queries": 492,
+  "notes": "",
+  "params": {
+    "pool_per_interest": 1000
+  },
+  "qrels": "test",
+  "snapshot": "longeval-sci/2025-01",
+  "timestamp": "2026-08-05T04:01:18Z",
+  "wall_clock_s": 92.1
+}

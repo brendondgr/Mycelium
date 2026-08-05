@@ -1,0 +1,27 @@
+{
+  "arm": "fusion_dense_pool",
+  "collection": "sci-2026-train",
+  "config_hash": "d1babe417b766049",
+  "corpus_docs": 84489,
+  "corpus_scope": "pooled",
+  "dirty": false,
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "git_sha": "de31887",
+  "metrics": {
+    "AP": 0.25774779597803277,
+    "P@10": 0.19099999999999992,
+    "R@100": 0.7020758299995243,
+    "RR": 0.46066095161354204,
+    "nDCG@10": 0.29149246550928265,
+    "nDCG@100": 0.41911623957281924
+  },
+  "n_queries": 100,
+  "notes": "",
+  "params": {
+    "pool_per_interest": 1000
+  },
+  "qrels": "dctr",
+  "snapshot": "longeval-sci-2026/snapshot-1/train",
+  "timestamp": "2026-08-05T03:22:50Z",
+  "wall_clock_s": 26.9
+}
