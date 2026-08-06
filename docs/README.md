@@ -11,6 +11,15 @@ document wrong, fix the document in the same commit.
 | [`goals.md`](goals.md) | You are deciding what to build next, or want current build status |
 | [`styles.md`](styles.md) | You are making a design, copy, mascot, or UX decision |
 
+## Research record
+
+Every experiment, result, figure, and claim lives in
+[`research/`](research/). Nothing that will appear in a paper is recorded
+anywhere else. Start at [`research/README.md`](research/README.md); the contract
+is [`research/AGENT_INSTRUCTIONS.md`](research/AGENT_INSTRUCTIONS.md), and
+[`research/CLAIMS.md`](research/CLAIMS.md) is the file to read first — its
+`unsupported` rows are the experiment backlog.
+
 ## Reference — how it is built
 
 | Doc | Read it when |
@@ -20,7 +29,8 @@ document wrong, fix the document in the same commit.
 | [`api-contract.md`](api-contract.md) | You are changing or consuming an HTTP payload |
 | [`discord-integration.md`](discord-integration.md) | You are touching identity linking, guild activation, or delivery |
 | [`loadtest.md`](loadtest.md) | You are stress-testing onboarding |
-| [`research-audit.md`](research-audit.md) | You want an independent read on the ranking and agentic layers |
+| [`evaluation.md`](evaluation.md) | You are running the retrieval harness or reading its leaderboard |
+| [`research-audit.md`](research-audit.md) | You want an independent read on the ranking and agentic layers. **Its claims and workstreams are now tracked in [`research/CLAIMS.md`](research/CLAIMS.md) and [`research/OPEN_QUESTIONS.md`](research/OPEN_QUESTIONS.md)** — read those for current status, this for the reasoning behind them |
 
 ## Agent guidance
 

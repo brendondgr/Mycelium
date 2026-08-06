@@ -1,18 +1,28 @@
 # Evaluation
 
-Mycelium's ranking stack measured against an external collection with published
-baselines. The harness lives in [`eval/`](../eval/README.md); re-running is one
-command:
+How to run the harness, how to read what it produces, and what the numbers do and
+do not license you to claim. The harness lives in [`eval/`](../eval/README.md);
+re-running is one command:
 
 ```bash
 uv run --project eval eval/run.py --config eval/configs/fusion_dense_pool.toml --collection sci-2026-train
 ```
 
-The table below is **generated** from `eval/results/*.json` by
-`uv run --project eval eval/report.py`. Never edit it by hand — a number that has
-drifted from the run that produced it is worse than no number.
+> **The findings live in the research record.** These runs are recorded as
+> [`EXP-2026-08-001`](research/experiments/EXP-2026-08-001-longeval-retrieval-baseline/RESULTS.md)
+> (does the stack beat BM25?) and
+> [`EXP-2026-08-002`](research/experiments/EXP-2026-08-002-dense-pool-vs-union-pool/RESULTS.md)
+> (what does the dense-pool restriction cost?). Read those for the hypothesis,
+> the interpretation, the threats to validity, and the figures. A new evaluation
+> run needs a new experiment folder — see
+> [`research/AGENT_INSTRUCTIONS.md`](research/AGENT_INSTRUCTIONS.md).
 
-## Results
+The leaderboard below is **generated** from `eval/results/*.json` by
+`uv run --project eval eval/report.py`. It is the operator's view of every run on
+record. Never edit it by hand — a number that has drifted from the run that
+produced it is worse than no number.
+
+## Leaderboard
 
 <!-- BEGIN GENERATED LEADERBOARD -->
 
@@ -167,5 +177,13 @@ silently inherits whatever is wrong at this layer.
 
 Any change to `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, or
 `pipeline.py`'s pool construction must be accompanied by a fresh evaluation run,
-with the before/after numbers in the changelog entry. The harness exists so that
-this costs one command; see `docs/skills/global.md`.
+with the before/after numbers in the changelog entry **and an experiment folder
+recording them**:
+
+```bash
+make new-experiment SLUG=<what-changed>
+```
+
+The harness exists so that the run costs one command and the record costs one
+more; see `docs/skills/global.md` and
+[`research/AGENT_INSTRUCTIONS.md`](research/AGENT_INSTRUCTIONS.md).

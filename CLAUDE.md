@@ -22,6 +22,19 @@ management, backend commands, linting, and tests.
 
 If working inside `web/`, also follow `web/CLAUDE.md`.
 
+## Research record (mandatory)
+
+- Any experiment, benchmark, baseline, ablation, or evaluation run MUST be
+  recorded under `docs/research/experiments/` following
+  `docs/research/AGENT_INSTRUCTIONS.md`.
+- Never report a metric in chat or a commit message without also writing it to
+  the corresponding `manifest.yaml` and `RESULTS.md`.
+- Never hand-edit a figure. Never hardcode a number in a plotting script.
+- Failed and abandoned runs are recorded, not deleted.
+- If asked to "just quickly check" a number, still create the experiment folder.
+- Scaffold with `make new-experiment SLUG=<slug>`; check with
+  `make validate-research`. CI runs the validator on every pull request.
+
 ## Documentation rules
 
 - `CLAUDE.md` is the only agent-instruction file. There is no `AGENTS.md`; do not

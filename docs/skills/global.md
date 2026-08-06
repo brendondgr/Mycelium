@@ -10,6 +10,7 @@ Use this guidance at the start of every Mycelium session before planning, editin
 - Read the task-specific skill from `docs/skills/` when the work touches planning, repository structure, website architecture, frontend UI, mobile behavior, accessibility, or the Discord bot. `docs/skills/index.md` is the registry.
 - Read `docs/repo-map.md` to locate code by path before searching the tree; keep it updated when top-level areas move.
 - Read `docs/architecture.md` for service boundaries and configuration, and `docs/api-contract.md` before changing anything the web app consumes.
+- Read `docs/research/AGENT_INSTRUCTIONS.md` before running any experiment, benchmark, ablation, or evaluation. `docs/research/` is the only place a research finding is allowed to live.
 
 ## Project Defaults
 
@@ -34,6 +35,7 @@ Use this guidance at the start of every Mycelium session before planning, editin
 - Keep documentation accurate over comprehensive. A claim that is no longer true of the code is worse than no claim. When a change makes a doc wrong, fix the doc in the same commit.
 - Implementation plans are working documents. Delete a plan once its work has shipped and record the outcome in `docs/changelog.md` plus whichever canonical doc it affects.
 - When changing ranking logic — `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, or `pipeline.py`'s pool construction — re-run the evaluation harness and put the before/after numbers in the changelog entry. It is one command (`uv run --project eval eval/run.py --config eval/configs/<arm>.toml`) precisely so this is never skipped; see `docs/evaluation.md`. Relevance is a regression suite now, not a matter of opinion.
+- Record every experiment, benchmark, baseline, ablation, or evaluation run in `docs/research/experiments/`, following `docs/research/AGENT_INSTRUCTIONS.md`. Scaffold with `make new-experiment SLUG=<slug>`, fill `PROTOCOL.md` before running, and check with `make validate-research`. Never report a metric in chat or a commit message without also writing it into the experiment's `manifest.yaml` and `RESULTS.md`; never hardcode a number into a plotting script; never delete a failed run. `docs/research/CLAIMS.md` is the ledger of what the project can actually claim — update it when an experiment changes a claim's status.
 - When changing recommendation-pipeline logic (papers, opportunities, fellowships, refitting, briefing), audit the daily orchestrator in the same change: `manual_all.py` (run nightly by `mylo-daily.timer`) chains those stages, so confirm its stage list and each stage's semantics still match the intended split — the daily run scores only that day's new items and appends, never rewriting or deleting recommendations Mylo already wrote; whole-corpus replace passes (refitting) are on-demand only (sign-up / profile edits) and must never be scheduled into the daily chain.
 
 ## Validation

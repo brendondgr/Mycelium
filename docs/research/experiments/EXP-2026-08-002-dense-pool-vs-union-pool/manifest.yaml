@@ -1,0 +1,81 @@
+# BACK-FILLED on 2026-08-06. Shares its runs with EXP-2026-08-001 — the arms
+# were executed once and answer two different questions. This folder derives the
+# paired comparison rather than duplicating the run records.
+
+id: EXP-2026-08-002
+slug: dense-pool-vs-union-pool
+title: What does confining the lexical channel to the dense-retrieved pool cost in recall?
+status: complete
+date_started: 2026-08-04
+date_completed: 2026-08-05
+authors: [brendondgr]
+
+purpose: >
+  The research audit's sharpest structural criticism of the ranking stack is
+  that `build_bm25_index(list(pool.values()))` indexes only what vector
+  retrieval already found, so the lexical channel can reorder a document but can
+  never add one. That makes the deployed system's C-001 a reordering claim, not
+  a recall claim. This ablation turns the criticism into a number by comparing
+  the deployed dense-pool construction against a union pool at matched pool
+  width and matched corpus scope.
+
+hypothesis: >
+  A union pool retrieves documents the dense channel misses, so R@100 rises,
+  and the gain is larger where the dense channel is weaker.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: de31887
+  branch: main
+  entrypoint: "uv run --project eval eval/run.py --all --collection sci-2026-train"
+  dirty: false
+config:
+  path: eval/configs/
+  hash: sha256:73920eb40ca57cf58d9a7f1b66c9f64890cbcfec402353a8fc995f6af317ac00
+data:
+  name: LongEval-Sci (CLEF)
+  version: "snapshots longeval-sci-2026/snapshot-1/train, longeval-sci/2024-11, longeval-sci/2025-01"
+  split: train (2026) / test (2025 pair)
+  n_examples: "691 queries (100 + 99 + 492), pooled corpus scope"
+  qrels: dctr (2026), test (2025 pair)
+  hash: null
+  access: "pip install ir-datasets-longeval"
+  card: docs/research/datasets/cards/longeval-sci.md
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "32 CPU cores, 130 GB RAM, no CUDA device"
+  wall_clock_hours: 0
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+# The primary value is the relative R@100 gain of the union pool over the
+# deployed dense pool, at the deployed pool width of 100, on the 2026 training
+# snapshot. `std` is null and n=1 per cell for the same reason as
+# EXP-2026-08-001: the arms are deterministic.
+#
+# The three per-snapshot gains at width 100 differ by an order of magnitude
+# (+8.7%, +79.7%, +74.6%), so the headline single number is the conservative one
+# and the range is the finding. All six paired rows: data/metrics.csv.
+metrics:
+  primary: recall_gain_pct@100
+  values:
+    recall_gain_pct@100: {mean: 8.74, std: null, n: 1}
+    recall_gain_pct@100_2024_11: {mean: 79.65, std: null, n: 1}
+    recall_gain_pct@100_2025_01: {mean: 74.64, std: null, n: 1}
+    recall_gain_pct@1000: {mean: 0.63, std: null, n: 1}
+baselines_compared: [fusion_dense_pool]
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-008]
+refutes_claims: []
+figures: [fig-pool-recall-gap]
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-001]

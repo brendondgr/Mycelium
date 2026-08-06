@@ -1,0 +1,91 @@
+# BACK-FILLED on 2026-08-06 from the runs recorded in `eval/results/*.json`
+# between 2026-08-04 and 2026-08-05, before this record existed. Every field
+# below is recovered from a committed run file, a config file, or the harness
+# source. Fields that could not be recovered say so; see ISSUES.md.
+
+id: EXP-2026-08-001
+slug: longeval-retrieval-baseline
+title: Does the deployed retrieval and fusion stack beat BM25 on an external scholarly collection?
+status: complete
+date_started: 2026-08-04
+date_completed: 2026-08-05
+authors: [brendondgr]
+
+purpose: >
+  The ranking stack had no external measurement of any kind. This is workstream
+  W2 from the research audit and the cheapest decisive falsification test of
+  C-001: run the production retrieval, lexical, and fusion code unchanged
+  against LongEval-Sci, a scholarly collection with judgments and published
+  baselines, and find out whether hybrid fusion is worth its cost. If it is not,
+  the retrieval layer has no defensible claim and the project should reallocate
+  to the funding and routing halves.
+
+hypothesis: >
+  RRF fusion over a dense-retrieved pool orders scholarly search results better
+  than dense retrieval alone, and competitively with a strong BM25 baseline. The
+  falsifying result — stated in advance — is BM25 alone outranking every fusion
+  arm on nDCG@10.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: de31887
+  branch: main
+  entrypoint: "uv run --project eval eval/run.py --all --collection sci-2026-train"
+  dirty: false
+config:
+  path: eval/configs/
+  hash: sha256:73920eb40ca57cf58d9a7f1b66c9f64890cbcfec402353a8fc995f6af317ac00
+data:
+  name: LongEval-Sci (CLEF)
+  version: "snapshots longeval-sci-2026/snapshot-1/train, longeval-sci/2024-11, longeval-sci/2025-01"
+  split: train (2026) / test (2025 pair)
+  n_examples: "691 queries (100 + 99 + 492) over 869,902 / 2,014,265 / 1,213,728 documents"
+  qrels: dctr (2026), test (2025 pair)
+  hash: null
+  access: "pip install ir-datasets-longeval"
+  card: docs/research/datasets/cards/longeval-sci.md
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "32 CPU cores, 130 GB RAM, no CUDA device — every number produced on CPU"
+  wall_clock_hours: 7.97
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+# n=1 on every value: the arms are deterministic (fixed embeddings, exact
+# similarity, no ANN index in production), so a repeat run reproduces the number
+# exactly. There is no seed variance to average over, and reporting one would be
+# a fiction.
+#
+# The headline is `fusion_dense_pool` on the 2026 training snapshot, pooled
+# scope, pool width 100 — the arm that IS the deployed configuration, not the
+# best arm. On the same row BM25 alone scores nDCG@10 0.3212, which is the
+# finding. Reporting the winner here would hide it. All 33 rows: data/metrics.csv.
+metrics:
+  primary: nDCG@10
+  values:
+    nDCG@10: {mean: 0.2937, std: null, n: 1}
+    nDCG@100: {mean: 0.3829, std: null, n: 1}
+    AP: {mean: 0.2360, std: null, n: 1}
+    R@100: {mean: 0.5988, std: null, n: 1}
+    RR: {mean: 0.4589, std: null, n: 1}
+    P@10: {mean: 0.2010, std: null, n: 1}
+baselines_compared:
+  - "BM25 (PyTerrier, LongEval'26 organizers)"
+  - "Qwen3-Embedding-4B (LongEval'26 organizers)"
+  - bm25_only
+  - dense_only
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-001]
+refutes_claims: [C-010]
+figures: [fig-arm-comparison, fig-baseline-gap]
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-002]

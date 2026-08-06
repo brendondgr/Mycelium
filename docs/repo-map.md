@@ -133,6 +133,9 @@ Files below are inside `web/backend/apps/content/`.
 | Env contract | `.env.example`, `.env-mylo.example` |
 | Onboarding load test | `loadtest.py`, `loadtest_interests.py`; guide in [`loadtest.md`](loadtest.md) |
 | Retrieval evaluation | `eval/` — `run.py`, `report.py`, `collections.toml`, `configs/`, `harness/`; results in `eval/results/`, guide in [`evaluation.md`](evaluation.md) |
+| Research record (experiments, claims, figures) | `docs/research/` — start at [`research/README.md`](research/README.md) |
+| Research-record tooling | `scripts/research/` — `new_experiment.py`, `validate_research.py`, `generate_index.py`, `build_figures.py`, `manifest.schema.json`; driven by the root `Makefile` |
+| Research-record CI | `.github/workflows/research-record.yml` |
 | Admin bootstrap | `create_admin.py` |
 
 ## Management commands
@@ -173,8 +176,9 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `docs/repo-map.md` | This file |
 | `docs/discord-integration.md` | Discord identity & lab linking reference |
 | `docs/loadtest.md` | Onboarding load-test guide |
-| `docs/research-audit.md` | Independent audit of the ranking and agentic layers |
-| `docs/evaluation.md` | Retrieval evaluation leaderboard, qrels provenance, and the claims boundary |
+| `docs/research-audit.md` | Independent audit of the ranking and agentic layers; its C-claims and W-workstreams are tracked live in `docs/research/` |
+| `docs/evaluation.md` | How to run the retrieval harness, the leaderboard, qrels provenance, and the claims boundary |
+| `docs/research/` | The research record — experiments, claims ledger, decisions, open questions, figures, paper plan |
 | `docs/skills/` | Canonical agent guidance — start at `skills/index.md` |
 | `docs/changelog.md` | Append-only project history |
 | `docs/chats/`, `docs/Resources/` | Source conversations and the project brief |

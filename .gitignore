@@ -152,3 +152,23 @@ eval/.venv/
 # Downloaded evaluation corpora live outside the worktree so they survive a
 # worktree being deleted (tens of GB of LongEval snapshots + extracted JSONL).
 data/eval-cache/
+
+# Research record (docs/research/). SVG, PDF figures, and small JSON/CSV metrics
+# ARE committed — they are the record, and they must stay diffable. Nothing above
+# ~10 MB belongs here; `make validate-research` fails on anything larger. Large
+# artifacts stay where they were produced and are referenced by path + hash in an
+# experiment's data/POINTERS.md.
+docs/research/**/*.ckpt
+docs/research/**/*.parquet
+docs/research/**/*.npy
+docs/research/**/*.npz
+docs/research/**/*.log
+
+# The repository-wide `env/` rule above (Python virtualenvs) would otherwise
+# swallow every experiment's env/ folder, which holds the lockfile pointer and
+# the hardware notes a reproduction needs.
+!docs/research/**/env/
+!docs/research/**/env/**
+
+# Research tooling venv (scripts/research/ is its own small uv project).
+scripts/research/.venv/

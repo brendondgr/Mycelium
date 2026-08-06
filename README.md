@@ -1,5 +1,14 @@
 # Mycelium
 
+## Research record
+
+This is a research repository. All experiments, results, figures, and findings
+live in [`docs/research/`](docs/research/). Nothing that will appear in a paper
+is recorded anywhere else. Before running an experiment, read
+[`docs/research/AGENT_INSTRUCTIONS.md`](docs/research/AGENT_INSTRUCTIONS.md).
+
+---
+
 Mycelium is a lab intelligence platform for research teams. It builds a living
 profile of a lab and its members, ingests literature and funding sources every
 day, scores what it finds against that profile, and delivers the result as an

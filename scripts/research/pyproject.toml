@@ -1,0 +1,26 @@
+# Tooling for the research record (`docs/research/`). Deliberately its own tiny
+# uv project: scaffolding an experiment, validating a manifest, and drawing a
+# figure must never require the eval harness's heavy stack (ir_datasets,
+# fastembed) or the root runner's Playwright. `make validate-research` has to be
+# cheap enough to run in a pre-commit hook and in CI on every pull request.
+[project]
+name = "mycelium-research-tools"
+version = "0.1.0"
+description = "Scaffolding, validation, and figure generation for docs/research/."
+requires-python = ">=3.11"
+dependencies = [
+    "jsonschema>=4.21,<5",
+    "matplotlib>=3.9,<4",
+    "pyyaml>=6.0,<7",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+# The scripts import each other by bare module name (they run from this
+# directory), so `record` and `generate_index` are first-party, not third-party.
+known-first-party = ["record", "generate_index"]
