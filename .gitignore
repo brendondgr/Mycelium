@@ -93,6 +93,12 @@ data/pivot/
 # the daily run, removed by the outbox retention sweep once the row settles.
 data/outbox/
 
+# Nightly internal analytics: the metrics handoff file (rewritten every run) and
+# the PDF reports (binary, one a day). Both are derived from the database and can
+# be re-rendered for any past day with `run_analytics_report --date`.
+data/logs/mylo-run-analytics.json
+data/analytics/
+
 # Database dumps. Large, binary, and they carry the real user table — accounts,
 # emails, Discord ids — so they must never reach the repository.
 data/*.dump
