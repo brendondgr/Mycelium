@@ -10,7 +10,9 @@ network — no live Discord calls.
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from mylo.config import MyloConfig
 from mylo.reporting import Severity, report, report_error, report_warning
@@ -92,6 +94,117 @@ class ReportPayloadTests(unittest.TestCase):
         self.assertEqual(
             transport.calls[0][2]["embeds"][0]["color"], Severity.WARN.color
         )
+
+
+class RawRecordingTransport:
+    """Captures the raw bytes, so a multipart body can be inspected as sent."""
+
+    def __init__(self, status: int = 200) -> None:
+        self.status = status
+        self.calls: list[tuple[str, dict, bytes]] = []
+
+    def __call__(self, url: str, headers: dict, body: bytes) -> int:
+        self.calls.append((url, headers, body))
+        return self.status
+
+
+class InlineFieldTests(unittest.TestCase):
+    def test_a_value_pair_marks_the_field_inline(self) -> None:
+        transport = RecordingTransport()
+        report(
+            "summary",
+            fields={"Coverage": ("12 people", True), "Detail": "full width"},
+            config=_enabled_config(),
+            transport=transport,
+        )
+        fields = {
+            f["name"]: f for f in transport.calls[0][2]["embeds"][0]["fields"]
+        }
+        self.assertTrue(fields["Coverage"]["inline"])
+        self.assertEqual(fields["Coverage"]["value"], "12 people")
+        self.assertFalse(fields["Detail"]["inline"])
+
+    def test_more_than_25_fields_are_clamped(self) -> None:
+        transport = RecordingTransport()
+        report(
+            "summary",
+            fields={f"f{index}": str(index) for index in range(40)},
+            config=_enabled_config(),
+            transport=transport,
+        )
+        self.assertEqual(len(transport.calls[0][2]["embeds"][0]["fields"]), 25)
+
+
+class AttachmentTests(unittest.TestCase):
+    def _pdf(self, directory: str, size: int = 1024) -> str:
+        path = Path(directory) / "run-analytics.pdf"
+        path.write_bytes(b"%PDF-1.4\n" + b"0" * size)
+        return str(path)
+
+    def test_attachment_is_sent_as_multipart_with_payload_json(self) -> None:
+        transport = RawRecordingTransport()
+        with tempfile.TemporaryDirectory() as tmp:
+            ok = report(
+                "Daily run complete",
+                "all good",
+                severity=Severity.INFO,
+                attachment=self._pdf(tmp),
+                config=_enabled_config(),
+                transport=transport,
+            )
+        self.assertTrue(ok)
+        _url, headers, body = transport.calls[0]
+        self.assertTrue(headers["Content-Type"].startswith("multipart/form-data"))
+        self.assertIn(b'name="payload_json"', body)
+        self.assertIn(b'name="files[0]"', body)
+        self.assertIn(b'filename="run-analytics.pdf"', body)
+        self.assertIn(b"application/pdf", body)
+        self.assertIn(b"%PDF-1.4", body)
+        # The boundary in the header must be the one used in the body.
+        boundary = headers["Content-Type"].split("boundary=")[1]
+        self.assertIn(boundary.encode(), body)
+        self.assertTrue(body.rstrip().endswith(f"--{boundary}--".encode()))
+
+    def test_embed_still_travels_with_the_file(self) -> None:
+        transport = RawRecordingTransport()
+        with tempfile.TemporaryDirectory() as tmp:
+            report(
+                "Daily run complete",
+                "all good",
+                attachment=self._pdf(tmp),
+                config=_enabled_config(),
+                transport=transport,
+            )
+        body = transport.calls[0][2]
+        start = body.index(b"{")
+        payload = json.loads(body[start : body.index(b"\r\n--", start)].decode())
+        self.assertIn("Daily run complete", payload["embeds"][0]["title"])
+
+    def test_missing_file_posts_the_message_without_it(self) -> None:
+        transport = RawRecordingTransport()
+        ok = report(
+            "Daily run complete",
+            attachment="/nonexistent/report.pdf",
+            config=_enabled_config(),
+            transport=transport,
+        )
+        self.assertTrue(ok)  # the summary is worth more than the file
+        headers = transport.calls[0][1]
+        self.assertEqual(headers["Content-Type"], "application/json")
+
+    def test_oversize_file_is_dropped_not_rejected_by_discord(self) -> None:
+        transport = RawRecordingTransport()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "huge.pdf"
+            path.write_bytes(b"0" * (9 * 1024 * 1024))
+            ok = report(
+                "Daily run complete",
+                attachment=str(path),
+                config=_enabled_config(),
+                transport=transport,
+            )
+        self.assertTrue(ok)
+        self.assertEqual(transport.calls[0][1]["Content-Type"], "application/json")
 
 
 class ReportResilienceTests(unittest.TestCase):

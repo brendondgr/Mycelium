@@ -92,6 +92,7 @@ Files below are inside `web/backend/apps/content/`.
 | Briefing history & retention | `models.py` (`DailyBriefing.generated_on`), `views.py` (`BriefingHistoryView`), `management/commands/prune_briefings.py` |
 | Daily PDF report | `daily_report.py`, `daily_report_pdf.py`, `daily_report_send.py` |
 | Lab Discord digest | `lab_digest.py` |
+| Nightly run analytics | `run_analytics.py`, `analytics_report_pdf.py`, `management/commands/run_analytics_report.py` |
 | Reminders | `reminders.py`, `reminders_tick.py`, `reminders_views.py`, `reminders_discord.py`, `reminders_announce.py`, `reminder_access.py` |
 | Deadline projection | `deadlines_projection.py` |
 | Unified search | `search.py`, `search_service.py`, `query_embedding.py` |
@@ -113,6 +114,7 @@ Files below are inside `web/backend/apps/content/`.
 | Embedder (CPU / CUDA) | `web/backend/apps/scraper/embedding.py` |
 | External DOI / arXiv / URL resolver | `web/backend/apps/scraper/resolver.py` |
 | LLM client | `web/backend/apps/core/llm.py` |
+| LLM call / token ledger | `web/backend/apps/core/{models,llm_usage}.py` |
 | Health endpoint, exactly-one-FK helper | `web/backend/apps/core/{views,db}.py` |
 | Django settings / URLs / Celery | `web/backend/config/` |
 
@@ -125,7 +127,7 @@ Files below are inside `web/backend/apps/content/`.
 | On-demand re-score everyone | `manual_mylo.py` |
 | Pivot login → scrape → import | `pivot.py` |
 | Per-stage manual runners | `utils/manual/` |
-| Mylo Discord bot & run observability | `mylo/` — `bot/`, `config.py`, `reporting.py`, `runstate.py`, `linking.py` |
+| Mylo Discord bot & run observability | `mylo/` — `bot/`, `config.py`, `reporting.py`, `analytics.py`, `runstate.py`, `linking.py` |
 | systemd units | `mycelium.service`, `mycelium-update.service`, `mylo-daily.{service,timer}`, `mylo-bot.service` |
 | Gateway routing | `web/infra/nginx/default.conf` |
 | Env contract | `.env.example`, `.env-mylo.example` |
@@ -148,6 +150,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `send_lab_digests` | Post a lab's summary + report PDF |
 | `run_reminder_tick`, `prune_opportunities` | Fire due reminders / delete expired listings |
 | `prune_briefings` | Delete briefings past `BRIEFING_RETENTION_DAYS` |
+| `run_analytics_report` | Measure the run: metrics JSON + analytics PDF for the Discord summary |
 | `drain_discord_outbox`, `reconcile_discord` | Deliver queued Discord messages / reconcile guild state |
 | `scan_literature` | Paper ingestion only |
 | `pivot_login`, `scrape_pivot`, `ingest_pivot` | Pivot-RP ingest chain |

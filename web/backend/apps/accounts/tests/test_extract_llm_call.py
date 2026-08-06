@@ -35,7 +35,7 @@ class _FakeClient:
 
 def test_settings_call_does_not_override_token_budget(monkeypatch) -> None:
     fake = _FakeClient()
-    monkeypatch.setattr(llm_module, "build_llm_client", lambda: fake)
+    monkeypatch.setattr(llm_module, "build_llm_client", lambda **_kwargs: fake)
 
     extract._settings_complete("some prompt")
 
@@ -50,7 +50,7 @@ def test_settings_call_does_not_override_token_budget(monkeypatch) -> None:
 def test_truncated_empty_response_warns(monkeypatch, caplog) -> None:
     fake = _FakeClient()
     fake.response = _FakeResponse("", finish_reason="length")
-    monkeypatch.setattr(llm_module, "build_llm_client", lambda: fake)
+    monkeypatch.setattr(llm_module, "build_llm_client", lambda **_kwargs: fake)
 
     with caplog.at_level(logging.WARNING):
         extract._settings_complete("some prompt")

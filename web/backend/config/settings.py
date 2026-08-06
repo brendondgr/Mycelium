@@ -296,6 +296,22 @@ DAILY_SUGGESTIONS_LOG_DIR = env(
     default=str(ROOT_DIR.parent / "data" / "logs" / "daily-suggestions"),
 )
 
+# The nightly internal analytics artifacts. Both live under the repo's data/ dir
+# because the *host* runner reads them: `manual_all.py` builds its Discord summary
+# from the JSON and attaches the PDF, and it has neither Django nor a database.
+# Keep these paths in step with `mylo/analytics.py`, the reader on the other side.
+RUN_ANALYTICS_JSON_PATH = env(
+    "RUN_ANALYTICS_JSON_PATH",
+    default=str(ROOT_DIR.parent / "data" / "logs" / "mylo-run-analytics.json"),
+)
+RUN_ANALYTICS_PDF_DIR = env(
+    "RUN_ANALYTICS_PDF_DIR",
+    default=str(ROOT_DIR.parent / "data" / "analytics"),
+)
+# One report a day, kept forever, is a slow disk leak. The command sweeps its own
+# directory rather than adding another prune stage to the nightly chain.
+RUN_ANALYTICS_RETENTION_DAYS = env.int("RUN_ANALYTICS_RETENTION_DAYS", default=90)
+
 NEO4J_URI = env("NEO4J_URI", default="bolt://localhost:11750")
 NEO4J_USERNAME = env("NEO4J_USERNAME", default="neo4j")
 NEO4J_PASSWORD = env("NEO4J_PASSWORD", default="")

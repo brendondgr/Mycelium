@@ -128,6 +128,7 @@ graph phase has not started.
 | Embedding | `EMBEDDING_DEVICE` (`auto`/`cuda`/`cpu`), `EMBEDDING_BATCH_SIZE_CPU`, `EMBEDDING_BATCH_SIZE_GPU` |
 | Sign-up gate | `SIGNUP_ACCESS_CODE`, `SIGNUP_CODE_MAX_FAILURES`, `SIGNUP_CODE_FAILURE_WINDOW_SECONDS`, `SIGNUP_CODE_LOCKOUT_SECONDS` |
 | Discord (`.env-mylo`) | `DISCORD_API_KEY`, `ERROR_CHANNEL`, `ACTIVATION_CHANNEL`, `SUMMARY_CHANNEL` |
+| Run analytics | `RUN_ANALYTICS_JSON_PATH`, `RUN_ANALYTICS_PDF_DIR`, `RUN_ANALYTICS_RETENTION_DAYS` |
 | Reserved (unused) | `NEO4J_*`, `S3_*` |
 
 `PUBLIC_HOSTNAME` backs every absolute URL Mycelium emits. Leaving it blank once
@@ -156,6 +157,26 @@ Reads accumulate across runs (`views._accumulated_scores`,
 `briefing._suggested_scores`), capped by `OPPORTUNITY_FEED_MAX`. Papers are the
 exception: retrieval is scoped to the latest gather batch, so the Research Papers
 page shows only the current day's search.
+
+## Nightly run analytics
+
+The nightly run measures itself. A final, non-fatal `run_analytics_report` stage
+reads the rows the run just wrote — coverage, discovery, recommendations, report
+delivery — plus the per-day LLM ledger (`core.LLMUsageDaily`, written from
+`apps.core.llm.LLMClient.complete`, which is the one seam every LLM caller routes
+through). It leaves the metrics at `RUN_ANALYTICS_JSON_PATH` and a PDF in
+`RUN_ANALYTICS_PDF_DIR`.
+
+The split exists because the two halves run in different worlds: the stages
+execute in the backend container, where the database and the PDF renderer live,
+while the Discord summary is posted from the **host**, by the same stdlib-only
+runner that already reports a failed stage. The JSON file under the shared
+`data/` bind mount is the seam; `mylo/analytics.py` reads it back and formats the
+tables and bar charts, and `mylo/reporting.py` posts them with the PDF attached.
+
+Measurement is deliberately outside `CONTAINER_STAGES`: a failure there means
+users did not get their day, whereas a failure here only costs the summary its
+detail. The run still announces itself either way.
 
 ## The ranking-stack seams
 

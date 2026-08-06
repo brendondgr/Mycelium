@@ -65,8 +65,20 @@ on the next scheduled run.
 Observability: every notable condition is posted to Mylo's Discord error channel
 via :mod:`mylo.reporting` (a stdlib-only REST poster that never raises) — a
 needed Pivot re-login, an unreachable LLM (the run is skipped), a stage that
-exited non-zero, and a short "run complete" summary. The run also writes its
-outcome to ``data/logs/mylo-last-run.json`` for the bot's ``/mylo lastrun``.
+exited non-zero, and the "run complete" summary. The run also writes its outcome
+to ``data/logs/mylo-last-run.json`` for the bot's ``/mylo lastrun``.
+
+That summary used to be one line ("all stages finished"), which proved the
+pipeline had not crashed and said nothing about whether the night was worth
+having. After the stages, a final **analytics** step runs
+``run_analytics_report`` in the container: it measures the run against the rows
+it just wrote — coverage, discovery, recommendations, LLM calls / failures /
+tokens, report delivery — leaving the metrics in
+``data/logs/mylo-run-analytics.json`` and a full report in ``data/analytics/``.
+The host reads that JSON back through :mod:`mylo.analytics`, posts the numbers as
+tables and bar charts, and attaches the PDF beneath the message. The step sits
+outside ``CONTAINER_STAGES`` on purpose: measurement failing must not fail a run
+that succeeded, so its exit code degrades the summary rather than the run.
 
 The scrape stage runs on the host because Playwright/Chromium and the saved Pivot
 session live there, not in the backend container (the container has no Playwright,
@@ -105,9 +117,10 @@ from _runner import ensure_ready, have_uv, run_host, run_manage  # noqa: E402
 # complete. Every reporter call goes through ``_notify`` which no-ops when the
 # reporter is unavailable; ``write_run_state`` is guarded the same way.
 try:  # pragma: no cover - trivial import guard
-    from mylo import reporting
+    from mylo import analytics, reporting
     from mylo.runstate import write_run_state
 except Exception:  # noqa: BLE001
+    analytics = None  # type: ignore[assignment]
     reporting = None  # type: ignore[assignment]
     write_run_state = None  # type: ignore[assignment]
 
@@ -171,6 +184,71 @@ def _notify(kind: str, title: str, body: str = "", **kwargs) -> None:
         fn(title, body, **kwargs)
     except Exception:  # noqa: BLE001 - reporting must never break the run
         pass
+
+
+def compile_analytics(base: list[str]) -> dict | None:
+    """Measure the run inside the container, then read the metrics back (non-fatal).
+
+    Runs deliberately *outside* ``CONTAINER_STAGES``. Every stage in that list is
+    load-bearing — a failure there means users did not get their day — while this
+    one only describes what already happened. A chart that will not render, or an
+    unwritable ``data/`` directory, must cost the summary's detail and nothing
+    else, so a non-zero exit here is a note, not a run failure.
+
+    Returns the metrics dict, or ``None`` when the stage or the read failed.
+    """
+    if analytics is None:
+        return None
+    print("\n=== Analytics · Compiling the internal usage report… ===", flush=True)
+    code = run_manage("run_analytics_report", [], intro=None, base=base)
+    if code != 0:
+        message = (
+            f"The analytics stage exited with code {code}; the run itself "
+            "completed. Tonight's summary is posted without its detail."
+        )
+        print(f"note: {message}", flush=True)
+        _notify("warn", "Daily analytics not compiled", message, stage="analytics")
+        return None
+    return analytics.read_analytics()
+
+
+def report_run_complete(payload: dict | None, *, scrape_ran: bool) -> None:
+    """Post the run summary — enriched with analytics and the PDF when available.
+
+    Falls back to the plain completion notice when the analytics stage produced
+    nothing. A finished run must always announce itself; the detail is a bonus,
+    never a precondition.
+    """
+    if payload is None:
+        _notify(
+            "info",
+            "Daily run complete",
+            "scrape → search → match → remind → prune → briefing → report finished "
+            "for all users."
+            + (
+                ""
+                if scrape_ran
+                else " (opportunity scrape was skipped — see earlier alert)."
+            ),
+            stage="done",
+            fields={"Scrape ran": "yes" if scrape_ran else "no"},
+        )
+        return
+
+    fields: dict = {"Scrape ran": ("yes" if scrape_ran else "no", True)}
+    fields.update(analytics.summary_fields(payload))
+    attention = analytics.attention_line(payload)
+    if attention:
+        fields["Worth a look"] = attention
+
+    _notify(
+        "info",
+        f"Daily run complete · {payload.get('generated_on', '')}".strip(" ·"),
+        analytics.summary_body(payload, scrape_ran=scrape_ran),
+        stage="done",
+        fields=fields,
+        attachment=payload.get("pdf_path") or None,
+    )
 
 
 def _write_run_state(**kwargs) -> None:
@@ -406,15 +484,7 @@ def main() -> int:
         flush=True,
     )
     _write_run_state(ok=True, scrape_ran=scrape_ran, stages_run=stages_run)
-    _notify(
-        "info",
-        "Daily run complete",
-        "scrape → search → match → remind → prune → briefing → report finished for "
-        "all users."
-        + ("" if scrape_ran else " (opportunity scrape was skipped — see earlier alert)."),
-        stage="done",
-        fields={"Scrape ran": "yes" if scrape_ran else "no"},
-    )
+    report_run_complete(compile_analytics(base), scrape_ran=scrape_ran)
     return 0
 
 

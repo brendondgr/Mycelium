@@ -2,11 +2,11 @@
 
 This is the out-of-process delivery seam the daily run (``manual_all.py``) calls
 when something needs a human's attention — a Pivot re-login, an unreachable LLM,
-a stage that failed — plus an optional success summary. It posts straight to the
-channel over Discord's REST API with the bot token, so it works whether or not
-the gateway bot process is up. This matches the ``discord-bot`` standard: an
-out-of-band announcement from another process uses REST/webhooks, not the
-gateway.
+a stage that failed — plus the nightly run summary, which carries the analytics
+PDF as an attachment. It posts straight to the channel over Discord's REST API
+with the bot token, so it works whether or not the gateway bot process is up.
+This matches the ``discord-bot`` standard: an out-of-band announcement from
+another process uses REST/webhooks, not the gateway.
 
 Design contract, relied on by the pipeline:
 
@@ -23,11 +23,14 @@ from __future__ import annotations
 
 import json
 import logging
+import mimetypes
 import socket
 import urllib.error
 import urllib.request
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Callable
 
 from .config import MyloConfig, load_config
@@ -39,11 +42,19 @@ DISCORD_API = "https://discord.com/api/v10"
 
 #: Bound the worst case so a hung request can't stall the daily run.
 _TIMEOUT_SECONDS = 10
+#: An upload needs longer than a text post, but still bounded.
+_UPLOAD_TIMEOUT_SECONDS = 60
 
 # Discord embed hard limits we clamp to (see the discord-bot standard).
 _TITLE_MAX = 256
 _DESC_MAX = 4096
 _FIELD_VALUE_MAX = 1024
+_FIELDS_MAX = 25
+
+#: Discord's per-file ceiling on a non-boosted guild is 10 MiB. Stay under it —
+#: an over-size upload is rejected outright, which would lose the whole message,
+#: not just the file. The report is posted without its attachment instead.
+_ATTACHMENT_MAX_BYTES = 8 * 1024 * 1024
 
 #: A transport takes (url, headers, body) and returns the HTTP status code.
 #: Injectable so tests never touch the network.
@@ -71,13 +82,84 @@ def _clip(text: str, limit: int) -> str:
 
 
 def _http_post(url: str, headers: dict[str, str], body: bytes) -> int:
-    """Default transport: a plain stdlib POST. Returns the HTTP status code."""
+    """Default transport: a plain stdlib POST. Returns the HTTP status code.
+
+    A multipart body (a PDF attachment) is orders of magnitude larger than an
+    embed, so the deadline scales with the payload rather than making every post
+    wait out the upload budget.
+    """
     request = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    timeout = (
+        _UPLOAD_TIMEOUT_SECONDS
+        if headers.get("Content-Type", "").startswith("multipart/")
+        else _TIMEOUT_SECONDS
+    )
     try:
-        with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             return int(response.status)
     except urllib.error.HTTPError as exc:  # 4xx/5xx still carry a status code
         return int(exc.code)
+
+
+def _encode_multipart(
+    payload: dict, filename: str, file_bytes: bytes
+) -> tuple[bytes, str]:
+    """Build a ``multipart/form-data`` body for one attached file.
+
+    Discord's message-create endpoint takes the JSON message as a ``payload_json``
+    part alongside ``files[n]``. Hand-rolled rather than reached for from a
+    library because this module's contract is stdlib-only: it has to run in the
+    bare root runner environment that the nightly timer starts.
+
+    Returns ``(body, content_type)``.
+    """
+    boundary = f"----mylo{uuid.uuid4().hex}"
+    mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    crlf = b"\r\n"
+    parts: list[bytes] = []
+
+    parts.append(f"--{boundary}".encode())
+    parts.append(b'Content-Disposition: form-data; name="payload_json"')
+    parts.append(b"Content-Type: application/json")
+    parts.append(b"")
+    parts.append(json.dumps(payload).encode("utf-8"))
+
+    parts.append(f"--{boundary}".encode())
+    parts.append(
+        f'Content-Disposition: form-data; name="files[0]"; filename="{filename}"'
+        .encode()
+    )
+    parts.append(f"Content-Type: {mime}".encode())
+    parts.append(b"")
+    parts.append(file_bytes)
+
+    parts.append(f"--{boundary}--".encode())
+    parts.append(b"")
+    return crlf.join(parts), f"multipart/form-data; boundary={boundary}"
+
+
+def _read_attachment(path: str | Path) -> tuple[str, bytes] | None:
+    """Read an attachment, or return ``None`` with a warning. Never raises."""
+    file_path = Path(path)
+    try:
+        size = file_path.stat().st_size
+    except OSError as exc:
+        log.warning("Mylo reporting could not stat attachment %s: %s", file_path, exc)
+        return None
+    if size > _ATTACHMENT_MAX_BYTES:
+        log.warning(
+            "Mylo reporting skipped attachment %s: %s bytes exceeds the %s-byte "
+            "limit; posting the message without it.",
+            file_path,
+            size,
+            _ATTACHMENT_MAX_BYTES,
+        )
+        return None
+    try:
+        return file_path.name, file_path.read_bytes()
+    except OSError as exc:
+        log.warning("Mylo reporting could not read attachment %s: %s", file_path, exc)
+        return None
 
 
 def _build_payload(
@@ -104,13 +186,22 @@ def _build_payload(
             }
         )
     for name, value in (fields or {}).items():
+        # A value may be a plain string (full width, the original shape) or a
+        # ``(value, inline)`` pair, which is what lets the run summary sit three
+        # small blocks across a row instead of one stacked column.
+        inline = False
+        if isinstance(value, tuple) and len(value) == 2:
+            value, inline = value[0], bool(value[1])
         embed_fields.append(
             {
                 "name": _clip(str(name), _TITLE_MAX),
                 "value": _clip(str(value), _FIELD_VALUE_MAX),
-                "inline": False,
+                "inline": inline,
             }
         )
+    # Discord rejects an embed with more than 25 fields outright, which would
+    # cost the whole message rather than the overflow.
+    embed_fields = embed_fields[:_FIELDS_MAX]
 
     embed: dict = {
         "title": _clip(f"{severity.emoji} {title}", _TITLE_MAX),
@@ -139,6 +230,7 @@ def report(
     stage: str | None = None,
     action: str | None = None,
     fields: dict[str, str] | None = None,
+    attachment: str | Path | None = None,
     config: MyloConfig | None = None,
     transport: Transport | None = None,
 ) -> bool:
@@ -152,7 +244,11 @@ def report(
         stage: The pipeline stage that produced the event (e.g. ``"scrape"``).
         action: A human next step, shown as a distinct field (e.g. run
             ``uv run pivot.py login``).
-        fields: Extra name/value pairs to attach.
+        fields: Extra name/value pairs to attach. A value may be a plain string
+            or a ``(value, inline)`` pair for a side-by-side block.
+        attachment: A file to post beneath the embed (the nightly analytics PDF).
+            An unreadable or over-size file is dropped with a warning and the
+            message still goes out — the summary matters more than the file.
         config: Injected config (tests); otherwise loaded from ``.env-mylo``.
         transport: Injected sender (tests); otherwise a stdlib HTTP POST.
 
@@ -179,9 +275,20 @@ def report(
         "Content-Type": "application/json",
         "User-Agent": "MyloReporter (Mycelium)",
     }
+
+    body_bytes = json.dumps(payload).encode("utf-8")
+    if attachment is not None:
+        file_part = _read_attachment(attachment)
+        if file_part is not None:
+            filename, file_bytes = file_part
+            body_bytes, content_type = _encode_multipart(
+                payload, filename, file_bytes
+            )
+            headers["Content-Type"] = content_type
+
     send = transport or _http_post
     try:
-        status = send(url, headers, json.dumps(payload).encode("utf-8"))
+        status = send(url, headers, body_bytes)
     except Exception as exc:  # noqa: BLE001 — reporting must never break the run
         log.warning(
             "Mylo reporting failed to reach Discord (%s): %s",
