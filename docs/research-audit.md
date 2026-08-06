@@ -4,6 +4,22 @@
 **Scope:** ~113,400 lines of first-party code (Python, TypeScript, Astro), 426 commits over 9 weeks (31 May – 2 Aug 2026).
 **Inferred inputs:** `PROJECT_NAME` = Mycelium (stated in README). `DOMAIN_HINT` = scholarly information access / research-lab operations (inferred from code; no domain was supplied). `TARGET_HORIZON` = ~12 months, workshop or conference (user-supplied).
 
+> **This document is a dated snapshot, not a live tracker.** It was written on
+> 3 August 2026 and is not updated as work lands — read it for the reasoning,
+> not for current status. The parts of it that must stay current were moved into
+> [`research/`](research/) and are maintained there:
+>
+> | Audit section | Now tracked in |
+> |---|---|
+> | §1.6 implicit claims C1–C7 | [`research/CLAIMS.md`](research/CLAIMS.md) — same IDs, plus evidence and status |
+> | §6.5 workstreams W0–W12 | [`research/OPEN_QUESTIONS.md`](research/OPEN_QUESTIONS.md) — same IDs, plus what is done |
+> | §3 closest prior work, §9 bibliography | [`research/RELATED_WORK.md`](research/RELATED_WORK.md) — the works that bear on a claim, plus a scoop watch |
+> | §7 reshaping paths, §8 venue strategy | [`research/paper/`](research/paper/) |
+>
+> W2 — the audit's "cheapest decisive next action" — has since been run. Its
+> falsifier fired; see
+> [`EXP-2026-08-001`](research/experiments/EXP-2026-08-001-longeval-retrieval-baseline/RESULTS.md).
+
 ---
 
 ## 0. Executive Summary
