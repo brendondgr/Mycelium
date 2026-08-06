@@ -616,7 +616,7 @@ def _already_in(area: str, clusters: list[dict]) -> bool:
 def _default_complete(prompt: str) -> str | None:
     from apps.core.llm import LLMMessage, build_llm_client
 
-    client = build_llm_client()
+    client = build_llm_client(component="intake.clusters")
     response = client.complete(
         [LLMMessage("system", _SYSTEM_PROMPT), LLMMessage("user", prompt)]
     )
@@ -637,7 +637,7 @@ def _compose_complete(prompt: str) -> str | None:
     from apps.core.llm import LLMMessage, ReasoningLevel, build_llm_client
 
     budget = int(getattr(settings, "LLM_THINKING_BUDGET", COMPOSE_THINKING_BUDGET))
-    client = build_llm_client()
+    client = build_llm_client(component="intake.compose_clusters")
     response = client.complete(
         [LLMMessage("user", prompt)],
         reasoning=ReasoningLevel.HIGH,

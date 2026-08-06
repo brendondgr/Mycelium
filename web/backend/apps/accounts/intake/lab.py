@@ -97,7 +97,7 @@ def _lab_complete(prompt: str) -> str | None:
 
     from apps.core.llm import LLMMessage, build_llm_client
 
-    client = build_llm_client()
+    client = build_llm_client(component="intake.lab")
     response = client.complete(
         [
             LLMMessage("system", _LAB_SYSTEM_PROMPT),

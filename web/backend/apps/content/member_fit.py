@@ -239,7 +239,7 @@ def _build_prompt(
 def _settings_complete(prompt: str) -> str | None:
     from apps.core.llm import LLMMessage, build_llm_client
 
-    client = build_llm_client()
+    client = build_llm_client(component="member_fit")
     response = client.complete(
         [LLMMessage("system", _SYSTEM_PROMPT), LLMMessage("user", prompt)]
     )

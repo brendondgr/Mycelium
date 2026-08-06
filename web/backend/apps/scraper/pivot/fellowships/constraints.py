@@ -240,7 +240,7 @@ def _build_prompt(units: Sequence[tuple[str, str]]) -> str:
 def _settings_complete(prompt: str) -> str | None:
     from apps.core.llm import LLMMessage, build_llm_client
 
-    client = build_llm_client()
+    client = build_llm_client(component="fellowship_constraints")
     response = client.complete(
         [LLMMessage("system", _SYSTEM_PROMPT), LLMMessage("user", prompt)]
     )

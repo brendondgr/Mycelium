@@ -599,7 +599,7 @@ def _settings_complete(area: str) -> CompleteFn:
     def _complete(prompt: str) -> str | None:
         from apps.core.llm import LLMMessage, build_llm_client
 
-        client = build_llm_client()
+        client = build_llm_client(component="opportunities")
         response = client.complete(
             [LLMMessage("system", _SYSTEM_PROMPT[area]), LLMMessage("user", prompt)]
         )

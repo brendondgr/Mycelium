@@ -85,7 +85,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.MIGRATE_HEADING("\nPinging the endpoint"))
         try:
-            client = build_llm_client()
+            client = build_llm_client(component="preflight")
             response = client.complete(
                 [
                     LLMMessage("system", "You are a health check. Reply with: ok"),

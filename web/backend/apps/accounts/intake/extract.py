@@ -110,7 +110,7 @@ def _settings_complete(prompt: str) -> str | None:
     # LLM_MAX_TOKENS). A hardcoded small cap here starves reasoning models: the
     # reasoning trace eats the budget and the JSON answer is truncated to
     # nothing, which then looks like the model "only filled skills".
-    client = build_llm_client()
+    client = build_llm_client(component="intake.extract")
     response = client.complete(
         [
             LLMMessage("system", _SYSTEM_PROMPT),

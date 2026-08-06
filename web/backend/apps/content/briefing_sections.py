@@ -588,7 +588,7 @@ def _settings_complete(max_tokens: int) -> CompleteFn:
     def _complete(system: str, user: str) -> str | None:
         from apps.core.llm import LLMMessage, build_llm_client
 
-        client = build_llm_client()
+        client = build_llm_client(component="briefing")
         response = client.complete(
             [LLMMessage("system", system), LLMMessage("user", user)],
             max_tokens=max_tokens,

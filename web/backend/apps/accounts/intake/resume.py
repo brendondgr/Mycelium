@@ -189,7 +189,7 @@ def _settings_complete(prompt: str) -> str | None:
 
     # Honor the configured reasoning level and token budget; a small hardcoded
     # cap starves reasoning models (see apps/accounts/intake/extract.py).
-    client = build_llm_client()
+    client = build_llm_client(component="intake.resume")
     response = client.complete(
         [
             LLMMessage("system", _SYSTEM_PROMPT),

@@ -28,6 +28,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Protocol
 
+from apps.core import llm_usage
+
 
 class LLMConfigurationError(RuntimeError):
     """Raised when the LLM client is asked to run without enough configuration."""
@@ -245,16 +247,25 @@ def _merge_extra_body(
 
 
 class LLMClient:
-    """Query an OpenAI-compatible endpoint with structured reasoning levels."""
+    """Query an OpenAI-compatible endpoint with structured reasoning levels.
+
+    ``component`` names the calling feature (``papers``, ``briefing``,
+    ``intake.clusters``, …). Every completion is counted against it in the daily
+    LLM ledger, which is what the nightly analytics report reads to say how many
+    calls the run made, how many failed, and what they cost in tokens. The label
+    is the only thing a new LLM-backed feature has to supply to appear there.
+    """
 
     def __init__(
         self,
         config: LLMConfig,
         *,
         completions: ChatCompletions | None = None,
+        component: str = "",
     ) -> None:
         self.config = config
         self._completions = completions
+        self.component = component
 
     @classmethod
     def from_settings(
@@ -262,8 +273,13 @@ class LLMClient:
         settings: Any,
         *,
         completions: ChatCompletions | None = None,
+        component: str = "",
     ) -> LLMClient:
-        return cls(LLMConfig.from_settings(settings), completions=completions)
+        return cls(
+            LLMConfig.from_settings(settings),
+            completions=completions,
+            component=component,
+        )
 
     @property
     def completions(self) -> ChatCompletions:
@@ -335,8 +351,17 @@ class LLMClient:
             payload["extra_body"] = body
         payload.update(kwargs)
 
-        raw = self.completions.create(**payload)
-        return self._parse(raw, fallback_model=resolved_model)
+        # Count the call either way. A failure here is exactly the number the
+        # analytics report needs, so the ledger write brackets the request and
+        # re-raises untouched — accounting observes, it never intervenes.
+        try:
+            raw = self.completions.create(**payload)
+            response = self._parse(raw, fallback_model=resolved_model)
+        except Exception:
+            llm_usage.record(self.component, ok=False)
+            raise
+        llm_usage.record(self.component, ok=True, usage=response.usage)
+        return response
 
     @staticmethod
     def _parse(raw: Any, *, fallback_model: str) -> LLMResponse:
@@ -367,11 +392,18 @@ def build_llm_client(
     settings: Any | None = None,
     *,
     completions: ChatCompletions | None = None,
+    component: str = "",
 ) -> LLMClient:
-    """Convenience factory. Defaults to Django settings when none are given."""
+    """Convenience factory. Defaults to Django settings when none are given.
+
+    Pass ``component`` so the calls show up under a meaningful name in the daily
+    LLM ledger; unlabelled clients are counted as ``unlabelled``.
+    """
 
     if settings is None:
         from django.conf import settings as django_settings
 
         settings = django_settings
-    return LLMClient.from_settings(settings, completions=completions)
+    return LLMClient.from_settings(
+        settings, completions=completions, component=component
+    )

@@ -78,7 +78,7 @@ def _settings_complete(prompt: str) -> str | None:
 
     from apps.core.llm import LLMMessage, build_llm_client
 
-    client = build_llm_client()
+    client = build_llm_client(component="intake.statement")
     response = client.complete(
         [
             LLMMessage("system", _SYSTEM_PROMPT),
