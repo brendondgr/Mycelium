@@ -30,12 +30,26 @@ you get will be about the harness, not about Mycelium.
 ### Two families of arm
 
 **Query arms** (`bm25_only`, `dense_only`, `fusion_*`) score one query at a time
-and are what `--all` runs. **Profile arms** (`flat_profile`, `clustered_profile`)
-score a whole *synthetic multi-cluster profile* — six of the collection's queries
-treated as six declared interests, partitioned into three clusters
-(`harness/profiles.py`) — because a LongEval query is a single keyword string and
-the cluster machinery never fires on one. They exist to make C-003 measurable; see
-`EXP-2026-08-003`, which refuted it.
+and are what `--all` runs. **Profile arms** (`flat_profile`, `clustered_profile`,
+`slate_profile`, and the `spread_*` family) score a whole *synthetic
+multi-cluster profile* — six of the collection's queries treated as six declared
+interests, partitioned into three clusters (`harness/profiles.py`) — because a
+LongEval query is a single keyword string and the cluster machinery never fires on
+one. They exist to make C-003 measurable; see `EXP-2026-08-003`, which refuted it,
+and `EXP-2026-08-004`, which tested the lab slate.
+
+The `spread_*` arms (`EXP-2026-08-005`) each forward one
+`apps.content.fusion.SpreadPolicy` to `fuse_clusters_pool` and change nothing
+else, so an arm differs from the `clustered_profile` baseline by exactly one
+production argument. `spread_identity` carries the null policy and must reproduce
+the baseline ordering exactly; it is the falsifier that says whether the plumbing
+is inert.
+
+Every profile arm reports **positional** run scores (`1/(1+i)`) rather than the
+production score. That is not cosmetic: `ir_measures` re-sorts a run by score and
+breaks ties its own way, so an arm whose scores tie would be silently re-ordered
+inside the metric while an arm whose scores are distinct would not. See
+`_profile_ranking` in `harness/arms.py`.
 
 Profile arms are the reason `harness/cluster_metrics.py` exists and is the one
 place this harness hand-rolls a metric. No IR toolkit implements per-cluster

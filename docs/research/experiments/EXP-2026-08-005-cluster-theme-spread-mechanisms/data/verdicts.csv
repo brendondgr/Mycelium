@@ -1,0 +1,15 @@
+arm,family,primary_delta,primary_ci_low,primary_ci_high,guardrail_delta,guardrail_ci_low,guardrail_ci_high,control_delta,control_significant,vs_flat_delta,beats_flat,helps
+flat_profile,reference,0.003239,0.000709,0.006572,0.01284,-0.003094,0.027352,-0.000777,False,,False,True
+spread_identity,null,0.0,0.0,0.0,0.0,0.0,0.0,0.0,False,-0.003239,False,False
+spread_interleave,individual,0.003546,0.000709,0.006383,-0.006739,-0.025614,0.012264,-0.001012,False,0.000307,False,False
+spread_quota,individual,0.003546,0.000709,0.006383,-0.006739,-0.025614,0.012264,-0.001012,False,0.000307,False,False
+spread_cap,individual,0.000709,0.0,0.002128,0.00855,0.000166,0.018667,0.001869,False,-0.00253,False,False
+spread_mmr,individual,0.004255,0.001418,0.007801,0.005455,-0.008465,0.01866,0.00084,False,0.001017,False,True
+spread_rankmerge,individual,0.004739,0.000955,0.008865,0.003936,-0.010414,0.018632,-0.001012,False,0.0015,False,False
+spread_floor,individual,0.0,0.0,0.0,0.0,0.0,0.0,0.0,False,-0.003239,False,False
+spread_rankmerge_interleave,combined,0.003546,0.000709,0.006383,-0.006739,-0.025614,0.012264,-0.001012,False,0.000307,False,False
+spread_rankmerge_quota,combined,0.003546,0.000709,0.006383,-0.006739,-0.025614,0.012264,-0.001012,False,0.000307,False,False
+spread_rankmerge_cap,combined,0.004739,0.000955,0.008865,0.003936,-0.010414,0.018632,-0.001012,False,0.0015,False,False
+spread_rankmerge_mmr,combined,0.004739,0.000955,0.008865,0.003936,-0.010414,0.018632,-0.001012,False,0.0015,False,False
+spread_floor_interleave,combined,0.003546,0.000709,0.006383,-0.006739,-0.025614,0.012264,-0.001012,False,0.000307,False,False
+spread_all,combined,0.003546,0.000709,0.006383,-0.006739,-0.025614,0.012264,-0.001012,False,0.000307,False,False

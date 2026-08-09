@@ -267,6 +267,40 @@ class ProfileRun:
     diagnostics: dict[str, Any]
 
 
+def _profile_ranking(
+    pairs: Sequence[tuple[Any, float]], *, order_is_result: bool
+) -> list[tuple[str, float]]:
+    """A profile arm's surfaced list as a run-file ranking, scored by position.
+
+    Two things this has to get right, and one trap it exists to avoid.
+
+    `order_is_result` says where the ranking comes from. A spread policy returns
+    a list whose **order is the result** — its scores are unchanged and
+    deliberately not monotone in position, because re-sorting a spread ordering by
+    score is exactly the bug `EXP-2026-08-004` measured. Every other arm returns
+    candidates whose score *is* the ranking, and `_sorted_hits` puts them in
+    deterministic `(-score, id)` order first.
+
+    Both then get **positional** scores, `1/(1+i)`. That is not cosmetic:
+    `ir_measures` re-sorts a run by score and breaks ties by its own convention,
+    so an arm with many tied scores (the baseline, whose `final_score` ties often)
+    is silently re-ordered inside the metric while an arm with distinct scores is
+    not. Measured on the first smoke run, that alone moved `nDCG@100` by 0.0016
+    between two arms whose run files were byte-identical. Scoring every arm by
+    position removes the asymmetry: what the arm ordered is what gets scored.
+    """
+    if order_is_result:
+        ranked = [str(item.id) for item, _score in pairs[:DEPTH]]
+    else:
+        ranked = [
+            doc_id
+            for doc_id, _score in _sorted_hits(
+                {str(item.id): score for item, score in pairs}
+            )
+        ]
+    return [(doc_id, 1.0 / (1 + position)) for position, doc_id in enumerate(ranked)]
+
+
 def _cleared_histogram(counts: Sequence[int]) -> dict[str, int]:
     histogram: dict[str, int] = {}
     for count in counts:
@@ -330,9 +364,7 @@ def flat_profile(
             match_threshold=match_threshold,
             index=index,
         )
-        ranking[profile.id] = _sorted_hits(
-            {str(item.id): score for item, score in pairs}
-        )
+        ranking[profile.id] = _profile_ranking(pairs, order_is_result=False)
         cleared.extend(int(extra["n_matched"]) for _item, _score, extra in rows)
         sizes.append(len(pairs))
         pools.append(pool_size)
@@ -357,6 +389,7 @@ def clustered_profile(
     surface_limit: int = PROFILE_SURFACE_LIMIT,
     match_threshold: float | None = None,
     cluster_top_n: int = 0,
+    spread=None,
     log: Callable[[str], None] = print,
     **_: Any,
 ) -> ProfileRun:
@@ -390,10 +423,11 @@ def clustered_profile(
             created_on=None,
             match_threshold=match_threshold,
             cluster_top_n=cluster_top_n,
+            spread=spread,
             index=index,
         )
-        ranking[profile.id] = _sorted_hits(
-            {str(item.id): score for item, score in pairs}
+        ranking[profile.id] = _profile_ranking(
+            pairs, order_is_result=spread is not None
         )
         cleared.extend(len(extra["per_cluster"]) for _item, _score, extra in rows)
         sizes.append(len(pairs))
@@ -434,6 +468,70 @@ def slate_profile(
     )
 
 
+def _spread_policies() -> dict[str, Any]:
+    """The theme-spread arms of `EXP-2026-08-005`, one production policy each.
+
+    Built lazily inside a function because `SpreadPolicy` lives in Django app code
+    that `eval/run.py` only makes importable after `django.setup()`.
+
+    `spread_identity` is the null arm and the experiment's falsifier 4: a policy
+    with every field at its default must reproduce `clustered_profile` exactly. If
+    it does not, the spread plumbing — not a mechanism — is moving the numbers,
+    and nothing else in the experiment can be trusted.
+
+    The parameterized policies use the midpoint of their range. `cap` at
+    `alpha=0.5` lets one theme hold half of any prefix (with three themes, perfect
+    balance would be 0.33 and 1.0 is a no-op); `mmr` at `lam=0.5` forfeits half a
+    score-span for a fully saturated theme. Neither is tuned — tuning a knob on
+    the same profiles used to measure it is how a null result becomes a positive
+    one, so the values are fixed before the runs and left alone.
+    """
+    from apps.content.fusion import SpreadPolicy
+
+    return {
+        "spread_identity": SpreadPolicy(),
+        "spread_interleave": SpreadPolicy(select="interleave"),
+        "spread_quota": SpreadPolicy(select="quota"),
+        "spread_cap": SpreadPolicy(select="cap", alpha=0.5),
+        "spread_mmr": SpreadPolicy(select="mmr", lam=0.5),
+        "spread_rankmerge": SpreadPolicy(merge="rank"),
+        "spread_floor": SpreadPolicy(admit="per_cluster", admit_frac=0.5),
+        # Combinations, phase 4. Each pairs the mechanism that fixes the *scores*
+        # with one that fixes the *selection*, plus the widened admission.
+        "spread_rankmerge_interleave": SpreadPolicy(
+            merge="rank", select="interleave"
+        ),
+        "spread_rankmerge_quota": SpreadPolicy(merge="rank", select="quota"),
+        "spread_rankmerge_cap": SpreadPolicy(merge="rank", select="cap", alpha=0.5),
+        "spread_rankmerge_mmr": SpreadPolicy(merge="rank", select="mmr", lam=0.5),
+        "spread_floor_interleave": SpreadPolicy(
+            select="interleave", admit="per_cluster", admit_frac=0.5
+        ),
+        "spread_all": SpreadPolicy(
+            merge="rank", select="interleave", admit="per_cluster", admit_frac=0.5
+        ),
+    }
+
+
+def _spread_arm(name: str) -> Callable[..., ProfileRun]:
+    """One named policy as an arm — a keyword forward, and nothing else.
+
+    Same discipline as `slate_profile`: an arm differs from the `clustered_profile`
+    baseline by exactly one production argument, so a measured difference can only
+    have come from production code.
+    """
+
+    def arm(profiles, docs, **kwargs) -> ProfileRun:
+        kwargs.pop("cluster_top_n", None)  # the policy is the theme protection
+        return clustered_profile(
+            profiles, docs, spread=_spread_policies()[name], **kwargs
+        )
+
+    arm.__name__ = name
+    arm.__doc__ = f"Cluster-scoped aggregation under the `{name}` spread policy."
+    return arm
+
+
 #: Arms that take synthetic profiles instead of queries. `eval/run.py` routes on
 #: this: same entrypoint, same results contract, different input construction.
 PROFILE_ARMS: dict[str, Callable[..., ProfileRun]] = {
@@ -441,3 +539,23 @@ PROFILE_ARMS: dict[str, Callable[..., ProfileRun]] = {
     "clustered_profile": clustered_profile,
     "slate_profile": slate_profile,
 }
+
+#: Names only — the policies themselves need Django configured, so they are built
+#: on first call rather than at import.
+SPREAD_ARM_NAMES = (
+    "spread_identity",
+    "spread_interleave",
+    "spread_quota",
+    "spread_cap",
+    "spread_mmr",
+    "spread_rankmerge",
+    "spread_floor",
+    "spread_rankmerge_interleave",
+    "spread_rankmerge_quota",
+    "spread_rankmerge_cap",
+    "spread_rankmerge_mmr",
+    "spread_floor_interleave",
+    "spread_all",
+)
+
+PROFILE_ARMS.update({name: _spread_arm(name) for name in SPREAD_ARM_NAMES})

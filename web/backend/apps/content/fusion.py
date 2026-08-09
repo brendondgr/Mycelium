@@ -32,8 +32,9 @@ them. ``β`` and the floor are placeholders pending engagement/relevance data.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .protocols import Retrievable
 
@@ -168,6 +169,8 @@ def combine_clusters(
     items_by_id: Mapping[str, Retrievable],
     *,
     beta: float = DEFAULT_BETA,
+    merge: str = "max",
+    rrf_k: int = DEFAULT_RRF_K,
 ) -> list[ClusteredHit]:
     """Combine per-interest scores **within each cluster**, then merge globally.
 
@@ -183,6 +186,20 @@ def combine_clusters(
 
     Cluster order (the keys of ``cluster_interest_labels``) breaks argmax ties
     deterministically: the earliest-declared cluster wins an exact tie.
+
+    ``merge`` selects how the per-cluster scores become one ranking key:
+
+    - ``"max"`` (default, the deployed behaviour) — ``final_score`` is the largest
+      per-cluster combined score, as described above.
+    - ``"rank"`` — ``final_score`` is the largest ``1 / (rrf_k + rank)`` over the
+      candidate's **rank inside each cluster**, min-max renormalized to [0, 1].
+      The max in ``"max"`` compares raw scores across clusters, but a cluster's
+      combined scores carry how close *that theme's* vocabulary sits to the
+      corpus, so a theme whose absolute scores run low is structurally
+      disadvantaged everywhere. :func:`top_per_cluster` already makes this
+      argument for within-cluster ranking being "scale-free"; ``"rank"`` applies
+      the same reasoning to the global merge. ``per_cluster`` keeps the raw
+      combined scores either way, so attribution and the UI chips are unchanged.
     """
     order = list(cluster_interest_labels.keys())
     cluster_hits: dict[str, dict[str, CombinedHit]] = {}
@@ -196,6 +213,21 @@ def combine_clusters(
             continue
         hits = combine_interests(sub, items_by_id, beta=beta)
         cluster_hits[cluster_id] = {str(hit.item.id): hit for hit in hits}
+
+    if merge not in ("max", "rank"):
+        raise ValueError(f"unknown merge {merge!r}; expected 'max' or 'rank'")
+    # For "rank", each cluster's own ordering becomes the cross-cluster currency.
+    # Ties break on item id so the mapping is reproducible across processes.
+    rank_scores: dict[str, dict[str, float]] = {}
+    if merge == "rank":
+        for cluster_id, hits in cluster_hits.items():
+            ordered = sorted(
+                hits.items(), key=lambda kv: (-kv[1].combined_score, kv[0])
+            )
+            rank_scores[cluster_id] = {
+                item_id: 1.0 / (rrf_k + position)
+                for position, (item_id, _hit) in enumerate(ordered, start=1)
+            }
 
     all_ids: set[str] = set()
     for hits in cluster_hits.values():
@@ -219,8 +251,13 @@ def combine_clusters(
             per_cluster[cluster_id] = hit.combined_score
             per_interest.update(hit.per_interest)
             cleared.append(cluster_id)
-            if hit.combined_score > best_score:  # strict: earliest cluster wins ties
-                best_score = hit.combined_score
+            key_score = (
+                hit.combined_score
+                if merge == "max"
+                else rank_scores[cluster_id][item_id]
+            )
+            if key_score > best_score:  # strict: earliest cluster wins ties
+                best_score = key_score
                 best_cluster = cluster_id
                 best_n = hit.n_matched
         if best_cluster is None:
@@ -241,6 +278,20 @@ def combine_clusters(
                 n_matched=best_n,
             )
         )
+    if merge == "rank" and out:
+        # Renormalize the reciprocal-rank key back to [0, 1] so downstream
+        # consumers that assume a bounded score (logs, the stored
+        # `combined_score` signal) see the same magnitude as the "max" path.
+        keys = [hit.final_score for hit in out]
+        lo, hi = min(keys), max(keys)
+        span = hi - lo
+        out = [
+            replace(
+                hit,
+                final_score=1.0 if span == 0 else (hit.final_score - lo) / span,
+            )
+            for hit in out
+        ]
     out.sort(key=lambda hit: hit.final_score, reverse=True)
     return out
 
@@ -361,3 +412,355 @@ def with_floor_guarantee(
     result = guaranteed + fillers
     result.sort(key=lambda hit: hit.combined_score, reverse=True)
     return result
+
+
+# --------------------------------------------------------------------------- #
+# Theme spread
+#
+# `combine_clusters` ranks by the max over a candidate's cluster scores, and a
+# max concentrates: whichever theme's vocabulary sits closest to the day's
+# literature sweeps the ordering, and the rest of the profile reads as though
+# nothing was found for it. EXP-2026-08-003 measured that directly —
+# `cluster_gini@10` got worse in every cell it tested.
+#
+# `top_per_cluster` was the first attempt at a remedy, but the caller folds its
+# groups into the surfaced set and then re-sorts by `final_score`. A slate member
+# is by definition a candidate the global cut rejected, so it always lands below
+# the cut and no top-k above it can see the rescue. EXP-2026-08-004 measured
+# every `@10` and `@30` delta as exactly 0.0 for that reason.
+#
+# Everything below is opt-in and defaults to off: `SpreadPolicy()` with no
+# arguments reproduces today's behaviour, and `spread=None` in the pipeline never
+# reaches this code at all. Which (if any) of these should be a default is an
+# empirical question, and deliberately not answered here.
+# --------------------------------------------------------------------------- #
+
+#: `select` values understood by :func:`apply_spread`.
+SELECT_MODES = (None, "interleave", "quota", "cap", "mmr")
+
+
+@dataclass(frozen=True)
+class SpreadPolicy:
+    """How, if at all, to spread a cluster-scoped ranking across its themes.
+
+    Every field defaults to the deployed behaviour, so ``SpreadPolicy()`` is a
+    no-op and is used as such: the harness runs it as a null arm that must
+    reproduce the untouched path exactly.
+
+    - ``merge`` — passed straight to :func:`combine_clusters`. ``"rank"`` makes
+      the cross-cluster comparison scale-free.
+    - ``select`` — which selection rule fills the surfaced list.
+      ``None`` keeps :func:`cap_clusters`; ``"interleave"`` and ``"quota"`` are
+      :func:`quota_clusters` under equal and strength-proportional allocation;
+      ``"cap"`` is :func:`cap_cluster_share`; ``"mmr"`` is :func:`mmr_clusters`.
+    - ``alpha`` — for ``"cap"``, the largest share of any prefix one theme may
+      hold. 1.0 disables the cap; 1/n_clusters forces near-perfect balance.
+    - ``lam`` — for ``"mmr"``, how hard to penalize an already-saturated theme,
+      in units of the candidate score span. 0.0 disables the penalty.
+    - ``admit`` — ``"per_cluster"`` admits, beside whatever cleared the global
+      cosine threshold, each theme's own strongest candidates by a *relative*
+      floor, so a theme whose cosines run systematically low is not silently
+      excluded by a global absolute threshold.
+    - ``admit_frac`` — that relative floor, as a fraction of the theme's own best
+      combined score.
+    """
+
+    merge: str = "max"
+    select: str | None = None
+    alpha: float = 0.5
+    lam: float = 0.5
+    admit: str = "global"
+    admit_frac: float = 0.5
+    rrf_k: int = DEFAULT_RRF_K
+
+
+def _global_order(clustered: Sequence[ClusteredHit]) -> list[ClusteredHit]:
+    """The global ranking, with exact ties broken reproducibly on item id.
+
+    :func:`combine_clusters` iterates a ``set`` of ids, so its order among exactly
+    equal scores depends on string hashing and is not stable across processes.
+    Every function here starts from this instead, so a spread ordering is
+    reproducible — which the harness relies on, since it reads position.
+    """
+    return sorted(clustered, key=lambda hit: (-hit.final_score, str(hit.item.id)))
+
+
+def _cluster_rankings(
+    clustered: Sequence[ClusteredHit],
+) -> dict[str, list[ClusteredHit]]:
+    """``cluster_id -> that cluster's candidates, best first by its own score``.
+
+    The same view :func:`top_per_cluster` takes, without the truncation: ranking
+    within a cluster is scale-free, so it is the right currency for any rule that
+    has to compare "this theme's next best" against another theme's.
+    """
+    grouped: dict[str, list[tuple[float, str, ClusteredHit]]] = {}
+    for hit in clustered:
+        for cluster_id, score in hit.per_cluster.items():
+            grouped.setdefault(cluster_id, []).append((score, str(hit.item.id), hit))
+    return {
+        cluster_id: [
+            hit for _score, _key, hit in sorted(rows, key=lambda r: (-r[0], r[1]))
+        ]
+        for cluster_id, rows in grouped.items()
+    }
+
+
+def _allocate(weights: Mapping[str, float], limit: int) -> dict[str, int]:
+    """Largest-remainder apportionment of ``limit`` slots, one guaranteed each.
+
+    Below one slot per cluster there is nothing to apportion, so the earliest
+    cluster ids take the available slots — the same "declaration order breaks
+    ties" rule :func:`combine_clusters` uses.
+    """
+    ids = sorted(weights)
+    n = len(ids)
+    if limit <= 0 or n == 0:
+        return {cluster_id: 0 for cluster_id in ids}
+    if limit <= n:
+        return {cid: (1 if i < limit else 0) for i, cid in enumerate(ids)}
+
+    total = sum(max(0.0, weights[cid]) for cid in ids)
+    spare = limit - n
+    if total <= 0:
+        raw = {cid: spare / n for cid in ids}
+    else:
+        raw = {cid: spare * max(0.0, weights[cid]) / total for cid in ids}
+
+    alloc = {cid: 1 + int(raw[cid]) for cid in ids}
+    remainder = limit - sum(alloc.values())
+    for cid in sorted(ids, key=lambda c: (-(raw[c] - int(raw[c])), c))[:remainder]:
+        alloc[cid] += 1
+    return alloc
+
+
+def quota_clusters(
+    clustered: Sequence[ClusteredHit],
+    *,
+    limit: int,
+    allocation: str = "equal",
+) -> list[ClusteredHit]:
+    """Fill ``limit`` slots by cycling themes, each drawing from its own ranking.
+
+    The returned order **is the result** — callers must not re-sort it, which is
+    the whole difference from the slate. Round-robin means theme *k*'s best
+    candidate lands at roughly position *k*, not at position 250.
+
+    ``allocation`` decides how many slots each theme gets:
+
+    - ``"equal"`` — every theme gets the same share. Maximum spread; it will
+      promote a weak theme's mediocre candidate over a strong theme's good one,
+      which is the cost being measured.
+    - ``"proportional"`` — shares scale with how much score mass a theme actually
+      has in this pool, so a theme with genuinely little to offer today gets
+      fewer slots rather than an equal number of filler.
+
+    A candidate strong in two themes is taken once, by whichever theme reaches it
+    first; the other theme moves down its own list. Any slots left after every
+    theme is exhausted are filled from the global order.
+    """
+    if limit <= 0:
+        return []
+    rankings = _cluster_rankings(clustered)
+    if not rankings:
+        return []
+    if allocation not in ("equal", "proportional"):
+        raise ValueError(f"unknown allocation {allocation!r}")
+
+    if allocation == "equal":
+        weights = {cluster_id: 1.0 for cluster_id in rankings}
+    else:
+        weights = {
+            cluster_id: sum(hit.per_cluster[cluster_id] for hit in hits[:limit])
+            for cluster_id, hits in rankings.items()
+        }
+    quota = _allocate(weights, limit)
+
+    ids = sorted(rankings)
+    cursor = dict.fromkeys(ids, 0)
+    used = dict.fromkeys(ids, 0)
+    taken: list[ClusteredHit] = []
+    seen: set[str] = set()
+
+    progressed = True
+    while len(taken) < limit and progressed:
+        progressed = False
+        for cluster_id in ids:
+            if len(taken) >= limit:
+                break
+            if used[cluster_id] >= quota[cluster_id]:
+                continue
+            hits = rankings[cluster_id]
+            position = cursor[cluster_id]
+            while position < len(hits) and str(hits[position].item.id) in seen:
+                position += 1
+            cursor[cluster_id] = position
+            if position >= len(hits):
+                continue
+            hit = hits[position]
+            cursor[cluster_id] = position + 1
+            seen.add(str(hit.item.id))
+            used[cluster_id] += 1
+            taken.append(hit)
+            progressed = True
+
+    if len(taken) < limit:
+        for hit in _global_order(clustered):
+            if len(taken) >= limit:
+                break
+            key = str(hit.item.id)
+            if key not in seen:
+                seen.add(key)
+                taken.append(hit)
+    return taken
+
+
+def cap_cluster_share(
+    clustered: Sequence[ClusteredHit], *, limit: int, alpha: float = 0.5
+) -> list[ClusteredHit]:
+    """The global order, except no theme may hold more than ``alpha`` of a prefix.
+
+    The least invasive rule here: it keeps the global ranking wherever the
+    ranking is not monopolized, and only defers a candidate when its theme
+    already holds more than its share of everything selected so far. A deferred
+    candidate is not dropped — it is retried as the list grows and its share
+    allowance rises, and anything still deferred at the end fills the tail.
+
+    ``alpha = 1.0`` is a no-op; ``alpha = 1 / n_clusters`` forces strict balance.
+    Every theme is always allowed at least one slot regardless of ``alpha``.
+    """
+    if limit <= 0:
+        return []
+    queue = _global_order(clustered)
+    taken: list[ClusteredHit] = []
+    counts: dict[str, int] = {}
+
+    while queue and len(taken) < limit:
+        deferred: list[ClusteredHit] = []
+        admitted_any = False
+        for hit in queue:
+            if len(taken) >= limit:
+                deferred.append(hit)
+                continue
+            allowed = max(1, math.ceil(alpha * (len(taken) + 1)))
+            if counts.get(hit.cluster_id, 0) < allowed:
+                taken.append(hit)
+                counts[hit.cluster_id] = counts.get(hit.cluster_id, 0) + 1
+                admitted_any = True
+            else:
+                deferred.append(hit)
+        queue = deferred
+        if not admitted_any:
+            break
+
+    for hit in queue:
+        if len(taken) >= limit:
+            break
+        taken.append(hit)
+    return taken
+
+
+def mmr_clusters(
+    clustered: Sequence[ClusteredHit], *, limit: int, lam: float = 0.5
+) -> list[ClusteredHit]:
+    """Greedy selection that discounts a candidate by how saturated its theme is.
+
+    The MMR shape, with "already-represented theme" standing in for the usual
+    redundancy term::
+
+        adjusted = final_score - lam * span * (taken_from_theme / taken_total)
+
+    ``span`` is the score range of the candidate set, so ``lam`` is scale-free and
+    reads as "how many score-spans of relevance a fully-saturated theme forfeits".
+    Unlike :func:`cap_cluster_share` this is soft — a theme that is genuinely much
+    stronger keeps winning slots, it just has to keep earning them.
+    """
+    if limit <= 0:
+        return []
+    pool = _global_order(clustered)
+    if not pool:
+        return []
+    scores = [hit.final_score for hit in pool]
+    span = max(scores) - min(scores)
+    if span <= 0:
+        span = 1.0
+
+    taken: list[ClusteredHit] = []
+    counts: dict[str, int] = {}
+    remaining = list(pool)
+    while remaining and len(taken) < limit:
+        best_index = 0
+        best_key: tuple[float, str] | None = None
+        for i, hit in enumerate(remaining):
+            share = (
+                counts.get(hit.cluster_id, 0) / len(taken) if taken else 0.0
+            )
+            adjusted = hit.final_score - lam * span * share
+            key = (-adjusted, str(hit.item.id))
+            if best_key is None or key < best_key:
+                best_key = key
+                best_index = i
+        hit = remaining.pop(best_index)
+        taken.append(hit)
+        counts[hit.cluster_id] = counts.get(hit.cluster_id, 0) + 1
+    return taken
+
+
+def cluster_relative_pass(
+    clustered: Sequence[ClusteredHit], *, frac: float = 0.5
+) -> set[str]:
+    """Ids clearing a *relative* floor in at least one theme.
+
+    The deployed admission test is one absolute cosine threshold for the whole
+    profile. A theme whose vocabulary sits further from the corpus produces
+    systematically lower cosines, so that single number can exclude a theme
+    entirely while admitting hundreds of items from its neighbour. This is the
+    per-theme counterpart: each theme admits whatever reaches ``frac`` of its own
+    best, so "good for this theme" is judged against that theme.
+
+    Returns ids, not hits, because the caller unions this with the global pass and
+    wants to preserve the original ordering.
+    """
+    if not clustered:
+        return set()
+    best: dict[str, float] = {}
+    for hit in clustered:
+        for cluster_id, score in hit.per_cluster.items():
+            if score > best.get(cluster_id, float("-inf")):
+                best[cluster_id] = score
+    return {
+        str(hit.item.id)
+        for hit in clustered
+        if any(score >= frac * best[cid] for cid, score in hit.per_cluster.items())
+    }
+
+
+def apply_spread(
+    clustered: Sequence[ClusteredHit], *, policy: SpreadPolicy, limit: int
+) -> list[ClusteredHit]:
+    """Dispatch ``policy.select`` and return the surfaced list **in final order**.
+
+    ``select=None`` falls back to :func:`cap_clusters` — the deployed truncation —
+    re-emitted through :func:`_global_order` so its position ordering is
+    reproducible. That combination is the null policy the harness uses to prove
+    the spread path introduces nothing on its own.
+    """
+    if limit <= 0:
+        return []
+    if policy.select is None:
+        # `cap_clusters` fills its remaining slots in *given* order, so it is only
+        # as reproducible as its input. Sorting on both sides makes the null
+        # policy independent of how `combine_clusters` happened to iterate its id
+        # set — which matters because the harness reads position from this list.
+        return _global_order(cap_clusters(_global_order(clustered), limit=limit))
+    if policy.select == "interleave":
+        return quota_clusters(clustered, limit=limit, allocation="equal")
+    if policy.select == "quota":
+        return quota_clusters(clustered, limit=limit, allocation="proportional")
+    if policy.select == "cap":
+        return cap_cluster_share(clustered, limit=limit, alpha=policy.alpha)
+    if policy.select == "mmr":
+        return mmr_clusters(clustered, limit=limit, lam=policy.lam)
+    raise ValueError(
+        f"unknown select {policy.select!r}; expected one of {SELECT_MODES}"
+    )

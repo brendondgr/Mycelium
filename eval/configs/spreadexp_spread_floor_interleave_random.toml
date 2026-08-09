@@ -1,0 +1,32 @@
+# Combination: widened admission (M6) with round-robin selection (M1) — the pairing M6 was predicted to need in order to matter at all.
+#
+# Condition `prod`: the deployed paper-feed surfacing — every candidate whose best
+# transformer cosine clears PAPER_MATCH_THRESHOLD (0.5) is surfaced, capped at
+# PAPER_MATCH_MAX_SURFACE (250) as a backstop. Unlike EXP-2026-08-004's slate,
+# which only added to a *set* and so could not be seen at any depth above the cut,
+# five of these six mechanisms change the *order* of those 250 — which a top-10
+# metric reads directly. So `prod` is the informative condition here.
+#
+# Grouping `random`. beta is fixed at the deployed 0.15: EXP-2026-08-003
+# measured the paired arm delta to be invariant in beta.
+
+arm = "spread_floor_interleave"
+
+[corpus]
+scope = "full"
+
+[embedding]
+parallel = 16
+
+[params]
+grouping = "random"
+beta = 0.15
+pool_per_interest = 100
+surface_limit = 250
+match_threshold = 0.5
+cutoffs = [10, 30, 100]
+k_interests = 6
+n_clusters = 3
+n_profiles = 30
+candidate_pool = 300
+seed = 20260809

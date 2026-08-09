@@ -46,9 +46,13 @@ from .clustering import Cluster, cluster_interests
 from .digest_selection import new_content_ids, renumber, split_by_floor
 from .fusion import (
     DEFAULT_BETA,
+    DEFAULT_RRF_K,
     ClusteredHit,
     CombinedHit,
+    SpreadPolicy,
+    apply_spread,
     cap_clusters,
+    cluster_relative_pass,
     combine_clusters,
     combine_interests,
     fuse_interest,
@@ -1027,6 +1031,7 @@ def fuse_clusters_pool(
     exclude_ids: Sequence | None = None,
     match_threshold: float | None = None,
     cluster_top_n: int = 0,
+    spread: SpreadPolicy | None = None,
     index: VectorIndex | None = None,
 ) -> tuple[list[Hit], list[PersistRow], int, list[list[Hit]]]:
     """Cluster-scoped twin of :func:`fuse_interests_pool` (papers, >= 2 clusters).
@@ -1048,6 +1053,15 @@ def fuse_clusters_pool(
     is that a theme's ten best must survive whatever the global cut does.
     Returns ``[]`` for the slate when ``cluster_top_n`` is 0.
 
+    ``spread`` (default ``None``) replaces the surfacing step with one of the
+    theme-spread policies in :mod:`.fusion`. When it is ``None`` — every deployed
+    caller today — not a line of that code runs and this function behaves exactly
+    as described above. When it is set, the returned ``pairs``/``rows`` are **in
+    the policy's order and must not be re-sorted**: re-sorting by ``final_score``
+    is precisely what makes the slate inert, since a rescued candidate is by
+    definition below the global cut. The slate is not folded in under a spread
+    policy, because the policy is itself the theme protection.
+
     ``index`` overrides the vector channel exactly as in
     :func:`fuse_interests_pool`.
     """
@@ -1064,7 +1078,27 @@ def fuse_clusters_pool(
 
     cluster_areas = {cluster.id: cluster.areas for cluster in clusters}
     labels_by_id = {cluster.id: cluster.label for cluster in clusters}
-    clustered = combine_clusters(per_interest_scores, cluster_areas, pool, beta=beta)
+    clustered = combine_clusters(
+        per_interest_scores,
+        cluster_areas,
+        pool,
+        beta=beta,
+        merge="max" if spread is None else spread.merge,
+        rrf_k=DEFAULT_RRF_K if spread is None else spread.rrf_k,
+    )
+
+    if spread is not None:
+        return _surface_with_spread(
+            clustered,
+            spread=spread,
+            best_cosine=best_cosine,
+            match_threshold=match_threshold,
+            surface_limit=surface_limit,
+            labels_by_id=labels_by_id,
+            n_clusters=len(clusters),
+            pool_size=len(pool),
+            emit=emit,
+        )
 
     if match_threshold is None:
         surfaced = cap_clusters(clustered, limit=surface_limit)
@@ -1117,6 +1151,70 @@ def fuse_clusters_pool(
         [(hit.item, hit.final_score) for hit in hits] for hits in slate.values()
     ]
     return pairs, rows, len(pool), slate_groups
+
+
+def _surface_with_spread(
+    clustered: list[ClusteredHit],
+    *,
+    spread: SpreadPolicy,
+    best_cosine: dict[str, float],
+    match_threshold: float | None,
+    surface_limit: int,
+    labels_by_id: dict[str, str],
+    n_clusters: int,
+    pool_size: int,
+    emit: Callable[[str], None],
+) -> tuple[list[Hit], list[PersistRow], int, list[list[Hit]]]:
+    """The surfacing half of :func:`fuse_clusters_pool` under a spread policy.
+
+    Split out rather than branched inline so the deployed path above stays
+    literally untouched — the whole point of the ``spread=None`` default is that
+    a reader can see today's behaviour is not merely *equivalent* but *identical*.
+
+    Two differences from the deployed path, both deliberate:
+
+    - Admission may be widened per theme (``admit="per_cluster"``), because one
+      absolute cosine threshold across a whole profile silently excludes a theme
+      whose vocabulary sits further from the corpus.
+    - The selected list is returned in the policy's order and never re-sorted.
+
+    No slate: under a spread policy the ordering rule *is* the theme protection,
+    and folding a slate in on top would confound the thing being measured.
+    """
+    if match_threshold is None:
+        passing = list(clustered)
+        note = "threshold-free"
+    else:
+        admitted = {
+            str(hit.item.id)
+            for hit in clustered
+            if best_cosine.get(str(hit.item.id), 0.0) >= match_threshold
+        }
+        global_n = len(admitted)
+        if spread.admit == "per_cluster":
+            admitted |= cluster_relative_pass(clustered, frac=spread.admit_frac)
+        elif spread.admit != "global":
+            raise ValueError(f"unknown admit {spread.admit!r}")
+        passing = [hit for hit in clustered if str(hit.item.id) in admitted]
+        note = f"{global_n} cleared the {round(match_threshold * 100)}% match threshold"
+        if len(passing) > global_n:
+            note += f" (+{len(passing) - global_n} by per-theme relative floor)"
+
+    surfaced = apply_spread(passing, policy=spread, limit=surface_limit)
+    emit(
+        f"fused {n_clusters} cluster(s) over {pool_size} candidates; {note}; "
+        f"spread merge={spread.merge} select={spread.select or 'none'} "
+        f"admit={spread.admit} surfaced {len(surfaced)} of {len(passing)}"
+    )
+
+    def _match_of(hit: ClusteredHit) -> float | None:
+        if match_threshold is None:
+            return None
+        return best_cosine.get(str(hit.item.id))
+
+    pairs = [(hit.item, hit.final_score) for hit in surfaced]
+    rows = [_cluster_row(hit, labels_by_id, match=_match_of(hit)) for hit in surfaced]
+    return pairs, rows, pool_size, []
 
 
 def _cluster_row(

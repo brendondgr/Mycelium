@@ -183,6 +183,21 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   operator, not to cluster semantics**: the `random`-grouping negative control
   showed the largest clustered gains of any mode. That is a statement about the
   aggregation operator, and it is the only positive reading the control permits.
+- That **adding a theme-spread mechanism does not rescue the cluster path**, on
+  this collection. `EXP-2026-08-005` measured six of them — equal round-robin,
+  proportional quota, a per-theme share cap, an MMR-style saturation penalty, a
+  rank-based cross-cluster merge, and a per-theme admission floor — alone and
+  combined, at deployed surfacing. Four beat the cluster baseline on the
+  worst-served theme with intervals excluding zero, and this time the `random`
+  control is null for every one, so the gain **is** theme-attributable. But **no
+  mechanism beats the flat, no-cluster arm** (best +0.0015, CI `[−0.0011,
+  +0.0043]`), round-robin is significantly worse than flat on nDCG@10, and under
+  the realistic `coherent` grouping nothing helps at all. C-011 is refuted. Two
+  narrower facts worth carrying: combinations add nothing because the score fix
+  and the selection fixes act on disjoint inputs, and the per-theme admission
+  floor is **exactly** inert at deployed surfacing for the same reason the slate
+  is. Every mechanism is measured at one untuned parameter value, and at n = 30
+  (Q-013, Q-014).
 
 **You may not claim:**
 

@@ -1,0 +1,110 @@
+id: EXP-2026-08-005
+slug: cluster-theme-spread-mechanisms
+title: Theme-spread mechanisms for cluster-scoped ranking
+status: complete
+date_started: 2026-08-09
+date_completed: 2026-08-09
+authors: [brendondgr]
+
+purpose: >
+  EXP-2026-08-003 measured that cluster-scoped max-pooling concentrates the feed
+  on one theme, and EXP-2026-08-004 measured that the per-theme slate cannot fix
+  it because slate members are re-sorted below the global cut. No diversification
+  machinery exists anywhere in the ranking stack. This experiment implements six
+  candidate mechanisms as opt-in production code and measures each one alone and
+  in combination, against both the deployed cluster-scoped ranking and the flat
+  no-cluster ranking. It tests C-011, the remedy claim C-003's refutation implies
+  but does not itself test.
+
+hypothesis: >
+  Stated before the run. (1) Selection mechanisms move the primary metric and the
+  score mechanism may not, since only the former are guaranteed to reorder the
+  surfaced 250. (2) The per-theme admission floor is inert at production
+  surfacing, because the 250-item backstop binds before admission does — the same
+  arithmetic that made the slate inert. (3) Spread costs relevance, and how much
+  is the interesting question. (4) No prior hypothesis on which mechanism wins or
+  on whether any combination beats the best individual.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: f0dc7e5
+  branch: main
+  entrypoint: >-
+    uv run --project eval eval/run.py --config eval/configs/spreadexp_*.toml
+  dirty: true  # this experiment's own production + harness additions; see ISSUES.md
+config:
+  path: eval/configs/
+  hash: sha256:365413263e9759df57343100ca84c2e2338ffad7990e552488eedc430412ba00
+data:
+  name: LongEval-Sci (CLEF) — synthetic multi-cluster profiles
+  version: "longeval-sci-2026/snapshot-1/train, 869,902 docs"
+  split: train
+  n_examples: "the same 30 synthetic profiles per grouping mode as EXP-2026-08-003/004 (seed 20260809), each 6 interests in 3 clusters"
+  qrels: "dctr, unioned across each profile's constituent queries (max grade)"
+  hash: null
+  access: "pip install ir-datasets-longeval"
+  card: docs/research/datasets/cards/longeval-sci.md
+seeds: [20260809]
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 1.1
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+# The primary value is the paired delta in `min_cluster_recall@10` — the
+# worst-served theme's recall inside the visible feed — under the `imbalanced`
+# grouping, against the deployed `clustered_profile` baseline. `n` is paired
+# profiles; `std` is the per-profile standard deviation of the paired delta,
+# derived in build_metrics.py, never entered by hand.
+#
+# Read the `_vs_flat` rows before the others. Four mechanisms beat the *cluster*
+# baseline with intervals excluding zero, but not one beats the *flat* baseline:
+# every `_vs_flat` interval spans zero. The gains repair damage that clustering
+# the ranking caused rather than creating value over not clustering it — which is
+# why this refutes C-011 as stated.
+#
+# `delta_min_cluster_recall@10_imbalanced_floor` is exactly 0.0 with std exactly
+# 0.0: pre-registered hypothesis 2 held, and the per-theme admission floor is
+# inert at production surfacing.
+#
+# `identity_drift_max` is the falsifier-4 check: the largest absolute per-profile
+# difference between the null spread policy and the untouched baseline, over every
+# measure and every grouping. It is 0.0, so the spread code path adds nothing.
+metrics:
+  primary: delta_min_cluster_recall@10_imbalanced_mmr
+  values:
+    delta_min_cluster_recall@10_imbalanced_mmr: {mean: 0.004255, std: 0.008656, n: 30}
+    delta_min_cluster_recall@10_imbalanced_rankmerge: {mean: 0.004739, std: 0.010998, n: 30}
+    delta_min_cluster_recall@10_imbalanced_interleave: {mean: 0.003546, std: 0.008065, n: 30}
+    delta_min_cluster_recall@10_imbalanced_cap: {mean: 0.000709, std: 0.003885, n: 30}
+    delta_min_cluster_recall@10_imbalanced_floor: {mean: 0.0, std: 0.0, n: 30}
+    delta_min_cluster_recall@10_imbalanced_flat: {mean: 0.003239, std: 0.008619, n: 30}
+    delta_min_cluster_recall@10_imbalanced_mmr_vs_flat: {mean: 0.001017, std: 0.009169, n: 30}
+    delta_min_cluster_recall@10_imbalanced_rankmerge_vs_flat: {mean: 0.0015, std: 0.007531, n: 30}
+    delta_cluster_coverage@10_imbalanced_mmr: {mean: 0.077778, std: 0.143394, n: 30}
+    delta_nDCG@10_imbalanced_mmr: {mean: 0.005455, std: 0.038239, n: 30}
+    delta_nDCG@10_imbalanced_rankmerge: {mean: 0.003936, std: 0.041515, n: 30}
+    delta_min_cluster_recall@10_coherent_mmr: {mean: 0.000392, std: 0.002148, n: 30}
+    delta_min_cluster_recall@10_random_mmr: {mean: 0.00084, std: 0.004603, n: 30}
+    identity_drift_max: {mean: 0.0, std: 0.0, n: 90}
+baselines_compared: [clustered_profile, flat_profile]
+statistical_test: >-
+  paired bootstrap over profiles, 10,000 resamples, seed 20260809,
+  95% percentile interval
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: [C-011]
+figures:
+  - fig-mechanism-primary
+  - fig-spread-vs-relevance
+  - fig-target-vs-control
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-003, EXP-2026-08-004]

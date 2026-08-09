@@ -152,5 +152,12 @@ def test_every_arm_reports_what_it_surfaced(arm, pipeline_spy) -> None:
 
 @pytest.mark.parametrize("arm", ["flat_profile", "clustered_profile", "slate_profile"])
 def test_ranking_is_best_first_and_deterministic(arm, pipeline_spy) -> None:
+    """Best first, and scored by *position* rather than by the production score.
+
+    `ir_measures` re-sorts a run by score and breaks ties its own way, so an arm
+    whose scores tie is silently re-ordered inside the metric while an arm whose
+    scores are distinct is not. Every profile arm therefore reports `1/(1+i)`, and
+    only the ordering carries information — see `_profile_ranking`.
+    """
     result = _run(arm, pipeline_spy)
-    assert result.ranking["p0"] == [("a", 0.9), ("b", 0.4)]
+    assert result.ranking["p0"] == [("a", 1.0), ("b", 0.5)]
