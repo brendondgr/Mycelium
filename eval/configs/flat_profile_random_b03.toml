@@ -1,0 +1,29 @@
+# Flat aggregation over synthetic multi-cluster profiles — the C-003
+# ablation (EXP-2026-08-003). The grid is 2 aggregations x 3 grouping modes x 3
+# beta values; every axis lives in `params` so `config_hash` separates the runs
+# and one cell cannot silently overwrite another.
+#
+# Grouping `random`: the same profiles as `coherent`, repartitioned by a seeded shuffle.
+# The negative control — cluster structure is noise here, so a clustered win
+# of comparable size means the metric is measuring something else.
+#
+# beta = 0.3. Flat scoring rewards the paper that touches everything shallowly most
+# strongly here, so the gap between arms should be widest.
+
+arm = "flat_profile"
+
+[corpus]
+scope = "full"
+
+[embedding]
+parallel = 16
+
+[params]
+grouping = "random"
+beta = 0.3
+pool_per_interest = 100
+k_interests = 6
+n_clusters = 3
+n_profiles = 30
+candidate_pool = 300
+seed = 20260809

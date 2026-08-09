@@ -6,9 +6,17 @@ Re-measuring the ranking stack is one command:
 uv run --project eval eval/run.py --config eval/configs/fusion_dense_pool.toml --collection sci-2026-train
 ```
 
-Run every arm on one collection with `--all`. List what can currently be scored
-with `--list-collections`. Results append to `eval/results/*.json` (committed);
-TREC run files land in `eval/runs/` (gitignored, regenerable).
+Run every query arm on one collection with `--all`. List what can currently be
+scored with `--list-collections`. Results append to `eval/results/*.json`
+(committed); TREC run files land in `eval/runs/` (gitignored, regenerable).
+
+`--config` takes several files, and they run in one process so the corpus and its
+embedding matrix load once for a whole grid:
+
+```bash
+uv run --project eval eval/run.py --collection sci-2026-train \
+  --config eval/configs/flat_profile_*.toml eval/configs/clustered_profile_*.toml
+```
 
 ## The one rule
 
@@ -18,6 +26,22 @@ its own — it imports `apps.content.lexical`, `apps.content.fusion`,
 ranking stack changes, the next run measures the change and nothing in `eval/`
 needs editing. If you find yourself reimplementing scoring here, stop: the number
 you get will be about the harness, not about Mycelium.
+
+### Two families of arm
+
+**Query arms** (`bm25_only`, `dense_only`, `fusion_*`) score one query at a time
+and are what `--all` runs. **Profile arms** (`flat_profile`, `clustered_profile`)
+score a whole *synthetic multi-cluster profile* — six of the collection's queries
+treated as six declared interests, partitioned into three clusters
+(`harness/profiles.py`) — because a LongEval query is a single keyword string and
+the cluster machinery never fires on one. They exist to make C-003 measurable; see
+`EXP-2026-08-003`, which refuted it.
+
+Profile arms are the reason `harness/cluster_metrics.py` exists and is the one
+place this harness hand-rolls a metric. No IR toolkit implements per-cluster
+coverage, because a cluster is a property of the profile, not of the collection.
+That module's docstring states the exception and the obligations it carries; the
+relevance family still goes through `ir_measures` untouched.
 
 The seam that makes this possible is `apps.content.protocols.VectorIndex`.
 `_build_pool` takes an optional `index`; production passes `PgVectorIndex`, the
@@ -101,7 +125,9 @@ eval/
   harness/
     datasets.py       ir_datasets -> Retrievable adapters
     index.py          NumpyIndex + the embedding cache
+    profiles.py       synthetic multi-cluster profiles + union qrels
     arms.py           each arm as a thin call into apps.content.*
+    cluster_metrics.py  per-cluster coverage — the one hand-rolled metric
     scoring.py        ir_measures wrapper + the results contract
     metadata.py       ir_metadata emission (LongEval tracks this)
   cache/              gitignored, and NOT where the caches actually live

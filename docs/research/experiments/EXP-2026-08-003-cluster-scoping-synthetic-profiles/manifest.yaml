@@ -1,0 +1,90 @@
+id: EXP-2026-08-003
+slug: cluster-scoping-synthetic-profiles
+title: Does cluster-scoped ranking protect a starved theme?
+status: complete
+date_started: 2026-08-09
+date_completed: 2026-08-09
+authors: [brendondgr]
+
+purpose: >
+  C-003 is the most distinctive idea in the codebase and the one with the
+  thinnest literature behind it: that combining within research clusters and
+  max-pooling across them stops one vocabulary-dominant theme from monopolising
+  a feed. It is a coverage claim, and no standard IR metric can see it — nDCG
+  over a union of judgments is blind to which theme a relevant document came
+  from. This experiment constructs synthetic multi-cluster profiles from
+  LongEval-Sci queries, so the cluster code path fires at all, and measures the
+  deployed flat and cluster-scoped aggregation paths against per-cluster
+  coverage metrics with the grouping mode as a controlled variable.
+
+hypothesis: >
+  Clustered aggregation raises min_cluster_recall@10 relative to flat, most
+  under the `imbalanced` grouping, not at all under `random`, and the gap widens
+  with beta. None of the three held.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 6ffbd37
+  branch: main
+  entrypoint: >-
+    uv run --project eval eval/run.py --collection sci-2026-train --config
+    eval/configs/flat_profile_*.toml eval/configs/clustered_profile_*.toml
+  dirty: true  # the harness code this experiment adds; see ISSUES.md
+config:
+  path: eval/configs/
+  hash: sha256:c9fb684eaa309b6a6ca5c10e86e7ac15ff7319ca459300b0b0f7c02991cd4e90
+data:
+  name: LongEval-Sci (CLEF) — synthetic multi-cluster profiles
+  version: "longeval-sci-2026/snapshot-1/train, 869,902 docs"
+  split: train
+  n_examples: "30 synthetic profiles per grouping mode, each 6 interests in 3 clusters, drawn from the snapshot's 100 queries"
+  qrels: "dctr, unioned across each profile's constituent queries (max grade)"
+  hash: null
+  access: "pip install ir-datasets-longeval"
+  card: docs/research/datasets/cards/longeval-sci.md
+seeds: [20260809]
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 1.6
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+# The primary value is the paired delta in min_cluster_recall@10, clustered
+# minus flat, under the `imbalanced` grouping at the deployed beta of 0.15 —
+# the condition C-003 names. It is negative and its interval excludes zero, so
+# the claim is refuted in its own target condition. `n` is the number of paired
+# profiles, not the number of runs; `std` is the standard deviation of the
+# per-profile deltas. All 72 rows: data/metrics.csv.
+#
+# The `random` rows are the negative control and are recorded because they are
+# larger than the semantic conditions, not smaller — see RESULTS.md §4.
+metrics:
+  primary: delta_min_cluster_recall@10_imbalanced
+  values:
+    delta_min_cluster_recall@10_imbalanced: {mean: -0.003239, std: 0.008619, n: 30}
+    delta_min_cluster_recall@10_coherent: {mean: 0.000952, std: 0.005216, n: 30}
+    delta_min_cluster_recall@10_random: {mean: 0.000777, std: 0.011903, n: 30}
+    delta_cluster_gini@10_imbalanced: {mean: 0.005556, std: 0.175312, n: 30}
+    delta_cluster_gini@10_coherent: {mean: 0.054444, std: 0.186823, n: 30}
+    delta_cluster_coverage@10_imbalanced: {mean: -0.044444, std: 0.144724, n: 30}
+    delta_nDCG@10_imbalanced: {mean: -0.010136, std: 0.048285, n: 30}
+    delta_nDCG@10_coherent: {mean: -0.009967, std: 0.051593, n: 30}
+    delta_R@100_random: {mean: 0.039507, std: 0.042450, n: 30}
+baselines_compared: [flat_profile]
+statistical_test: >-
+  paired bootstrap over profiles, 10,000 resamples, seed 20260809,
+  95% percentile interval
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: [C-003]
+figures: [fig-cluster-coverage-tradeoff, fig-cluster-beta-sweep]
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-001, EXP-2026-08-002]

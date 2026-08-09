@@ -156,6 +156,18 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   384-dimension model in use — so it is evidence about the task shape, not just a
   reason to swap embedders.
 - Whether effectiveness persists across the 2025 snapshot pair.
+- That **cluster-scoped max-pooling does not do what it was built to do** — on
+  synthetic multi-cluster profiles over this collection. `EXP-2026-08-003`
+  refuted C-003: in the condition the claim names (one theme's vocabulary far
+  closer to the corpus than the others'), cluster-scoping *lowers* the
+  worst-served theme's recall, and the per-cluster evenness measure worsens in
+  every cell. Scope it precisely — the profiles are synthesised from LongEval
+  queries, so this refutes the **mechanism** under controlled conditions and
+  says nothing about whether real declared clusters behave the same way (Q-009).
+- That whatever retrieval gain cluster-scoping produces belongs to the **max
+  operator, not to cluster semantics**: the `random`-grouping negative control
+  showed the largest clustered gains of any mode. That is a statement about the
+  aggregation operator, and it is the only positive reading the control permits.
 
 **You may not claim:**
 
@@ -163,8 +175,13 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   **query → documents**. Mycelium does **declared-interest profile → feed**. The
   granularity mismatch between a three-word interest and a 200-word abstract —
   one of the core difficulties of the real problem — is *not* tested here.
-- Anything about cluster max-pooling, the LLM percent-match, fellowship
-  eligibility, or member routing (audit claims C3–C6). None are exercised.
+- Anything about the LLM percent-match, fellowship eligibility, or member
+  routing (audit claims C4–C6). None are exercised.
+- That the cluster result transfers to the product. `EXP-2026-08-003` measures
+  synthetic profiles built from keyword queries. A researcher's declared clusters
+  are neither keyword queries nor greedy embedding pairs, and the union-of-qrels
+  construction is blind to a document relevant only to a *combination* of
+  interests — which is the case multi-interest scoring exists to reward.
 - Anything about grants, fellowships, or conferences. LongEval is papers only.
 - Certainty proportional to the qrels. These are click-derived pseudo-relevance
   judgments, not human assessment.

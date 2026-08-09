@@ -1,0 +1,27 @@
+# Cluster-scoped aggregation over synthetic multi-cluster profiles — the C-003
+# ablation (EXP-2026-08-003). The grid is 2 aggregations x 3 grouping modes x 3
+# beta values; every axis lives in `params` so `config_hash` separates the runs
+# and one cell cannot silently overwrite another.
+#
+# Grouping `imbalanced`: coherent groups, then the profiles with the largest spread of score
+# mass across their clusters. The condition C-003 actually claims to fix.
+#
+# beta = 0.15. The deployed value.
+
+arm = "clustered_profile"
+
+[corpus]
+scope = "full"
+
+[embedding]
+parallel = 16
+
+[params]
+grouping = "imbalanced"
+beta = 0.15
+pool_per_interest = 100
+k_interests = 6
+n_clusters = 3
+n_profiles = 30
+candidate_pool = 300
+seed = 20260809
