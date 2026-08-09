@@ -324,21 +324,42 @@ def run_profile_arm(
     params = config.get("params", {})
     beta = float(params.get("beta", 0.15))
 
-    log(f"running arm {arm_name} (grouping={mode}, beta={beta}) …")
+    surface_limit = int(
+        params.get("surface_limit", arms_mod.PROFILE_SURFACE_LIMIT)
+    )
+    threshold = params.get("match_threshold")
+    extra: dict = {}
+    if arm_name != "flat_profile":
+        extra["cluster_top_n"] = int(
+            params.get(
+                "cluster_top_n",
+                arms_mod.PROFILE_CLUSTER_TOP_N
+                if arm_name == "slate_profile"
+                else 0,
+            )
+        )
+
+    log(
+        f"running arm {arm_name} (grouping={mode}, beta={beta}, "
+        f"surface_limit={surface_limit}, threshold={threshold}) …"
+    )
     result = arms_mod.PROFILE_ARMS[arm_name](
         profiles,
         docs,
         index=vector_index,
         pool_per_interest=int(params.get("pool_per_interest", 100)),
         beta=beta,
+        surface_limit=surface_limit,
+        match_threshold=None if threshold is None else float(threshold),
         log=log,
+        **extra,
     )
     wall = time.time() - started
 
     sha, dirty = scoring.git_state(REPO_ROOT)
     run_path = scoring.RUNS_DIR / (
         f"{collection.snapshot.replace('/', '_')}__{arm_name}__{mode}"
-        f"__beta{beta}__{scope}__{sha}.txt.gz"
+        f"__beta{beta}__s{surface_limit}__{scope}__{sha}.txt.gz"
     )
     scoring.write_trec_run(result.ranking, run_path, tag=f"mycelium-{arm_name}")
     log(f"run file: {run_path}")
@@ -348,10 +369,15 @@ def run_profile_arm(
         {profile.id: profile.qrels for profile in profiles},
         measures=params.get("measures"),
     )
+    cutoffs = tuple(
+        int(k) for k in params.get("cutoffs", cluster_metrics.DEFAULT_CUTOFFS)
+    )
     for profile in profiles:
         ranked = [doc_id for doc_id, _score in result.ranking.get(profile.id, [])]
         per_topic.setdefault(profile.id, {}).update(
-            cluster_metrics.coverage_metrics(ranked, profile.cluster_relevant)
+            cluster_metrics.coverage_metrics(
+                ranked, profile.cluster_relevant, cutoffs=cutoffs
+            )
         )
     metrics = scoring.aggregate(per_topic)
     for name, value in sorted(metrics.items()):

@@ -1,0 +1,37 @@
+# Flat aggregation, no clusters in the ranking at all — the slate ablation (EXP-2026-08-004, question Q-010).
+#
+# Condition `cut30`: Stress condition, NOT production: a hard 30-item cut with no cosine
+# threshold, so the truncation guarantees are forced to bind. A slate is a
+# mechanism for surviving truncation, so if the production threshold turns out
+# not to bind on this collection, this is where the mechanism can still be
+# observed. Labelled separately and never mixed with `prod` rows.
+#
+# Cut-offs include 1000 — above any possible surfaced size here — because the
+# slate's additions sort to the BOTTOM by final_score, so any top-k with k <= the
+# global cut provably cannot see them. Whole-set coverage is the only depth at
+# which this mechanism is observable. See ISSUES.md: this corrects a flaw in the
+# pre-registered metric set, not a choice made after seeing an outcome.
+#
+# Grouping `random`. beta is fixed at the deployed 0.15: EXP-2026-08-003
+# measured the paired arm delta to be invariant in beta, so sweeping it here would
+# triple the cost for a variable already shown to be inert.
+
+arm = "flat_profile"
+
+[corpus]
+scope = "full"
+
+[embedding]
+parallel = 16
+
+[params]
+grouping = "random"
+beta = 0.15
+pool_per_interest = 100
+surface_limit = 30
+cutoffs = [10, 30, 40, 1000]
+k_interests = 6
+n_clusters = 3
+n_profiles = 30
+candidate_pool = 300
+seed = 20260809

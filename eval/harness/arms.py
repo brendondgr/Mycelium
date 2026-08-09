@@ -233,11 +233,19 @@ LEXICAL_ONLY = {"bm25_only"}
 
 # --- profile arms: the C-003 cluster-scoping ablation -----------------------
 
-#: How deep a profile run goes. Above `k_interests * pool_per_interest`, so the
-#: pool is never truncated and neither truncation guarantee (`with_floor_guarantee`
-#: for flat, `cap_clusters` for clustered) can bind. That is deliberate: it leaves
-#: mean-vs-max aggregation as the *only* difference between the two arms.
+#: Default depth for a profile run. Above `k_interests * pool_per_interest`, so
+#: the pool is never truncated and neither truncation guarantee
+#: (`with_floor_guarantee` for flat, `cap_clusters` for clustered) can bind. That
+#: is deliberate for the aggregation ablation (EXP-2026-08-003): it leaves
+#: mean-vs-max as the *only* difference between those two arms.
+#:
+#: The slate arm needs the opposite — a cut that **does** bind, because a slate is
+#: a mechanism for surviving truncation. Configs override this.
 PROFILE_SURFACE_LIMIT = 5000
+
+#: Papers each theme contributes when the slate is on. Production's
+#: `PAPER_CLUSTER_TOP_N`.
+PROFILE_CLUSTER_TOP_N = 10
 
 
 @dataclass
@@ -267,6 +275,25 @@ def _cleared_histogram(counts: Sequence[int]) -> dict[str, int]:
     return dict(sorted(histogram.items(), key=lambda kv: int(kv[0])))
 
 
+def _surfacing_stats(sizes: list[int], pools: list[int]) -> dict[str, float]:
+    """How much of the pool each arm actually surfaced.
+
+    Essential to reading any slate result honestly: a slate buys theme coverage by
+    surfacing *more* items, so a coverage gain that comes with a larger surfaced
+    set is a different thing from one that comes free. It also says whether the
+    cut binds at all — if the mean surfaced size equals the mean pool size, the
+    threshold never fired and every arm is trivially identical.
+    """
+    if not sizes:
+        return {}
+    return {
+        "mean_surfaced": round(sum(sizes) / len(sizes), 2),
+        "median_surfaced": float(sorted(sizes)[len(sizes) // 2]),
+        "max_surfaced": float(max(sizes)),
+        "mean_pool": round(sum(pools) / len(pools), 2),
+    }
+
+
 def flat_profile(
     profiles: Sequence[Any],
     docs: Sequence[Any],
@@ -274,6 +301,8 @@ def flat_profile(
     index,
     pool_per_interest: int = 100,
     beta: float = 0.15,
+    surface_limit: int = PROFILE_SURFACE_LIMIT,
+    match_threshold: float | None = None,
     log: Callable[[str], None] = print,
     **_: Any,
 ) -> ProfileRun:
@@ -287,27 +316,34 @@ def flat_profile(
 
     ranking: Ranking = {}
     cleared: list[int] = []
+    sizes: list[int] = []
+    pools: list[int] = []
     for i, profile in enumerate(profiles, start=1):
-        pairs, rows, _pool_size = fuse_interests_pool(
+        pairs, rows, pool_size = fuse_interests_pool(
             profile.interests(),
             content_type=None,
-            surface_limit=PROFILE_SURFACE_LIMIT,
+            surface_limit=surface_limit,
             pool_per_interest=pool_per_interest,
             beta=beta,
             emit=lambda _message: None,
             created_on=None,
-            match_threshold=None,
+            match_threshold=match_threshold,
             index=index,
         )
         ranking[profile.id] = _sorted_hits(
             {str(item.id): score for item, score in pairs}
         )
         cleared.extend(int(extra["n_matched"]) for _item, _score, extra in rows)
+        sizes.append(len(pairs))
+        pools.append(pool_size)
         if i % 10 == 0:
             log(f"  scored {i}/{len(profiles)} profiles")
     return ProfileRun(
         ranking=ranking,
-        diagnostics={"interests_cleared_per_candidate": _cleared_histogram(cleared)},
+        diagnostics={
+            "interests_cleared_per_candidate": _cleared_histogram(cleared),
+            "surfacing": _surfacing_stats(sizes, pools),
+        },
     )
 
 
@@ -318,6 +354,9 @@ def clustered_profile(
     index,
     pool_per_interest: int = 100,
     beta: float = 0.15,
+    surface_limit: int = PROFILE_SURFACE_LIMIT,
+    match_threshold: float | None = None,
+    cluster_top_n: int = 0,
     log: Callable[[str], None] = print,
     **_: Any,
 ) -> ProfileRun:
@@ -326,33 +365,72 @@ def clustered_profile(
     The same pool and the same per-interest scores as :func:`flat_profile` — both
     go through `_build_pool` — combined *within* each cluster and then max-pooled
     across them. This is the claim C-003 makes.
+
+    With `cluster_top_n = 0` (the default) this is the **global ranking** an
+    individual's feed uses. With it set, the same call additionally folds in each
+    cluster's own best `cluster_top_n` candidates — the **slate**, which is what
+    an institutional/lab target gets. :func:`slate_profile` is that configuration
+    under its own name, so the two appear as separate arms in the results.
     """
     from apps.content.pipeline import fuse_clusters_pool
 
     ranking: Ranking = {}
     cleared: list[int] = []
+    sizes: list[int] = []
+    pools: list[int] = []
     for i, profile in enumerate(profiles, start=1):
-        pairs, rows, _pool_size, _slate = fuse_clusters_pool(
+        pairs, rows, pool_size, _slate = fuse_clusters_pool(
             profile.interests(),
             profile.clusters(),
             content_type=None,
-            surface_limit=PROFILE_SURFACE_LIMIT,
+            surface_limit=surface_limit,
             pool_per_interest=pool_per_interest,
             beta=beta,
             emit=lambda _message: None,
             created_on=None,
-            match_threshold=None,
+            match_threshold=match_threshold,
+            cluster_top_n=cluster_top_n,
             index=index,
         )
         ranking[profile.id] = _sorted_hits(
             {str(item.id): score for item, score in pairs}
         )
         cleared.extend(len(extra["per_cluster"]) for _item, _score, extra in rows)
+        sizes.append(len(pairs))
+        pools.append(pool_size)
         if i % 10 == 0:
             log(f"  scored {i}/{len(profiles)} profiles")
     return ProfileRun(
         ranking=ranking,
-        diagnostics={"clusters_cleared_per_candidate": _cleared_histogram(cleared)},
+        diagnostics={
+            "clusters_cleared_per_candidate": _cleared_histogram(cleared),
+            "surfacing": _surfacing_stats(sizes, pools),
+        },
+    )
+
+
+def slate_profile(
+    profiles: Sequence[Any],
+    docs: Sequence[Any],
+    *,
+    cluster_top_n: int = PROFILE_CLUSTER_TOP_N,
+    **kwargs: Any,
+) -> ProfileRun:
+    """The **lab** path: cluster-scoped aggregation plus the per-theme slate.
+
+    `fusion.top_per_cluster` gives every cluster its own best `cluster_top_n`
+    candidates *by that cluster's own score*, and `fuse_clusters_pool` folds any
+    slate member the global cut missed back into the surfaced set. Its docstring
+    is explicit about why: a global ranking "is swept by that theme and the rest
+    of the lab reads as though nothing was found for it," which is exactly the
+    failure EXP-2026-08-003 measured in the global ranking.
+
+    So this arm is the untested half of C-003 (Q-010). It is deliberately a thin
+    keyword-forwarding wrapper over :func:`clustered_profile` — the difference
+    between the two arms is one production argument, and nothing else.
+    """
+    return clustered_profile(
+        profiles, docs, cluster_top_n=cluster_top_n, **kwargs
     )
 
 
@@ -361,4 +439,5 @@ def clustered_profile(
 PROFILE_ARMS: dict[str, Callable[..., ProfileRun]] = {
     "flat_profile": flat_profile,
     "clustered_profile": clustered_profile,
+    "slate_profile": slate_profile,
 }

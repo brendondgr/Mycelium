@@ -1,0 +1,31 @@
+# Flat aggregation, no clusters in the ranking at all — the slate ablation (EXP-2026-08-004, question Q-010).
+#
+# Condition `prod`: Production surfacing for the paper feed: every candidate whose best
+# transformer cosine clears PAPER_MATCH_THRESHOLD (0.5) is surfaced, capped at
+# PAPER_MATCH_MAX_SURFACE (250) as a backstop. This is the condition the lab
+# feed actually runs in, so it is the one a product conclusion needs.
+#
+# Grouping `random`. beta is fixed at the deployed 0.15: EXP-2026-08-003
+# measured the paired arm delta to be invariant in beta, so sweeping it here would
+# triple the cost for a variable already shown to be inert.
+
+arm = "flat_profile"
+
+[corpus]
+scope = "full"
+
+[embedding]
+parallel = 16
+
+[params]
+grouping = "random"
+beta = 0.15
+pool_per_interest = 100
+surface_limit = 250
+match_threshold = 0.5
+cutoffs = [10, 30, 100]
+k_interests = 6
+n_clusters = 3
+n_profiles = 30
+candidate_pool = 300
+seed = 20260809

@@ -164,10 +164,21 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   every cell. Scope it precisely — the profiles are synthesised from LongEval
   queries, so this refutes the **mechanism** under controlled conditions and
   says nothing about whether real declared clusters behave the same way (Q-009).
-  Scope it precisely in a second way too: the arms ran `cluster_top_n = 0`, the
-  global max-pooled ranking **an individual's feed** uses. The lab feed adds a
-  per-theme slate (`fusion.top_per_cluster`) built for exactly this failure, and
-  that mechanism is untested (Q-010).
+  Scope it precisely in a second way too: `EXP-2026-08-003`'s arms ran
+  `cluster_top_n = 0`, the global max-pooled ranking **an individual's feed**
+  uses. `EXP-2026-08-004` then tested the lab feed's per-theme slate
+  (`fusion.top_per_cluster`), and it does not restore the claim either — see the
+  next bullet.
+- That the lab feed's **per-theme slate is inert at the deployed surfacing
+  settings**, on this collection. `EXP-2026-08-004`: with
+  `PAPER_MATCH_MAX_SURFACE = 250` over a ~575-candidate pool, the slate and the
+  plain cluster path emit **identical surfaced sets for 100% of synthetic
+  profiles** — every theme's top ten is already inside the cut. Where the cut is
+  forced to bind, the slate's theme-coverage gain halves and its interval opens
+  across zero once the cluster path is given the same number of slots. Read that
+  as "not demonstrated at n = 30", not as "disproved" (Q-011), and note it is a
+  finding about the **configuration**, which should not drive a settings change
+  without Q-009 evidence on real declared profiles.
 - That whatever retrieval gain cluster-scoping produces belongs to the **max
   operator, not to cluster semantics**: the `random`-grouping negative control
   showed the largest clustered gains of any mode. That is a statement about the

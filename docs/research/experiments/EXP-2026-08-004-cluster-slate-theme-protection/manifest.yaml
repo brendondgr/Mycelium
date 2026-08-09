@@ -1,0 +1,97 @@
+id: EXP-2026-08-004
+slug: cluster-slate-theme-protection
+title: Does the per-theme slate protect a starved theme?
+status: complete
+date_started: 2026-08-09
+date_completed: 2026-08-09
+authors: [brendondgr]
+
+purpose: >
+  EXP-2026-08-003 refuted C-003 for the cluster path's *global* max-pooled
+  ranking, but measured only the surfacing an individual's feed uses
+  (cluster_top_n = 0). The lab feed additionally emits a per-theme slate —
+  each cluster's own best n candidates by that cluster's score
+  (fusion.top_per_cluster) — aimed at exactly the failure that experiment
+  demonstrated, and it had never been measured. This experiment adds a third
+  arm for it (Q-010) and tests it under production surfacing, under a cut that
+  binds, and against a size-matched baseline.
+
+hypothesis: >
+  The slate raises per-theme coverage over both the flat and the
+  cluster-scoped-global paths, most under the imbalanced grouping, because it
+  guarantees every theme a fixed allocation regardless of that theme's absolute
+  score. It survives neither the production condition nor the size-matched
+  control.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: a650ebf
+  branch: main
+  entrypoint: >-
+    uv run --project eval eval/run.py --collection sci-2026-train --config
+    eval/configs/slateexp_*.toml
+  dirty: true  # this experiment's own harness additions; see ISSUES.md
+config:
+  path: eval/configs/
+  hash: sha256:8a88d092d5cc87e5fc6c8a95b36e07d8a4bf6da60ca52c356d55f484153dbe6b
+data:
+  name: LongEval-Sci (CLEF) — synthetic multi-cluster profiles
+  version: "longeval-sci-2026/snapshot-1/train, 869,902 docs"
+  split: train
+  n_examples: "the same 30 synthetic profiles per grouping mode as EXP-2026-08-003 (seed 20260809), each 6 interests in 3 clusters"
+  qrels: "dctr, unioned across each profile's constituent queries (max grade)"
+  hash: null
+  access: "pip install ir-datasets-longeval"
+  card: docs/research/datasets/cards/longeval-sci.md
+seeds: [20260809]
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 1.4
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+# The primary value is the paired delta in whole-set theme coverage, slate minus
+# the cluster path, under the `imbalanced` grouping — the condition C-003 names.
+# It is positive and its interval excludes zero at a binding 30-item cut, and
+# falls by half with an interval spanning zero once the cluster path is given the
+# slate's own 34 slots (pre-registered falsifier 3). `n` is paired profiles.
+#
+# Whole-set (`@1000`) is the reported depth because the slate's additions sort
+# below the global cut by construction, so no top-k at or below that cut can
+# observe them at all — every `@10` and `@30` delta here is exactly 0.0. See
+# ISSUES.md; this corrects a flaw in the pre-registered metric set.
+#
+# `identical_surfaced_set_share_prod` is 1.0: at production surfacing the slate
+# and the plain cluster path emit the same set for every profile, so the
+# mechanism is inert there and no metric could separate them.
+metrics:
+  primary: delta_cluster_coverage@1000_imbalanced_cut30
+  values:
+    delta_cluster_coverage@1000_imbalanced_cut30: {mean: 0.066667, std: 0.135613, n: 30}
+    delta_cluster_coverage@1000_imbalanced_matched: {mean: 0.033333, std: 0.101710, n: 30}
+    delta_cluster_coverage@1000_coherent_cut30: {mean: 0.011111, std: 0.060858, n: 30}
+    delta_cluster_coverage@1000_random_cut30: {mean: 0.011111, std: 0.060858, n: 30}
+    delta_min_cluster_recall@1000_imbalanced_cut30: {mean: 0.008792, std: 0.024991, n: 30}
+    delta_min_cluster_recall@1000_imbalanced_matched: {mean: 0.003793, std: 0.026162, n: 30}
+    delta_cluster_gini@1000_imbalanced_cut30: {mean: -0.049997, std: 0.095362, n: 30}
+    delta_cluster_gini@1000_imbalanced_matched: {mean: -0.026550, std: 0.086468, n: 30}
+    identical_surfaced_set_share_prod: {mean: 1.0, std: 0.0, n: 3}
+    mean_surfaced_slate_cut30_imbalanced: {mean: 33.77, std: null, n: 30}
+baselines_compared: [flat_profile, clustered_profile]
+statistical_test: >-
+  paired bootstrap over profiles, 10,000 resamples, seed 20260809,
+  95% percentile interval
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: [C-003]
+figures: [fig-slate-size-matched, fig-slate-surfacing]
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-003]
