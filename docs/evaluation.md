@@ -164,6 +164,10 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   every cell. Scope it precisely — the profiles are synthesised from LongEval
   queries, so this refutes the **mechanism** under controlled conditions and
   says nothing about whether real declared clusters behave the same way (Q-009).
+  Scope it precisely in a second way too: the arms ran `cluster_top_n = 0`, the
+  global max-pooled ranking **an individual's feed** uses. The lab feed adds a
+  per-theme slate (`fusion.top_per_cluster`) built for exactly this failure, and
+  that mechanism is untested (Q-010).
 - That whatever retrieval gain cluster-scoping produces belongs to the **max
   operator, not to cluster semantics**: the `random`-grouping negative control
   showed the largest clustered gains of any mode. That is a statement about the

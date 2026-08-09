@@ -247,4 +247,44 @@ element is the bootstrap, which is seeded.
 
 ## AMENDMENTS
 
-None.
+### 2026-08-09 — the refutation is scoped to the global ranking, not to the lab feed
+
+**What was wrong.** §1 and §4 stated the refutation of C-003 without qualifying
+which of the two deployed cluster paths was measured. C-003 is worded *"For a lab
+or broad-interest user…"*, and the write-up read as though it covered the lab
+feed. It does not.
+
+**The facts.** `fuse_clusters_pool` has two surfacing behaviours, selected by
+`cluster_top_n`:
+
+- `cluster_top_n = 0` — global ranking by `final_score` (the max over a
+  candidate's cluster scores). This is **an individual's own feed**
+  (`pipeline.py`, `recommend_for_user`), and it is what both arms of this
+  experiment ran.
+- `cluster_top_n > 0` — the above **plus a per-theme slate**: each cluster's own
+  best *n* candidates by *that cluster's* score (`fusion.top_per_cluster`),
+  folded into the surfaced set. This is the **institutional/lab** path
+  (`recommend_for_target`), and it was **not measured here**.
+
+`top_per_cluster`'s own docstring anticipates this experiment's result: a global
+ranking "is swept by that theme and the rest of the lab reads as though nothing
+was found for it," which is why the slate ranks within each cluster instead. The
+codebase already treats global max-pooling as insufficient for a lab; this
+experiment measured the part the codebase already supplements.
+
+**What still stands.** The mechanism C-003 names — "ranking within research
+clusters and max-pooling across them" — is `combine_clusters` plus the global
+max, and that is exactly what was tested and what failed. Every number in §2 is
+unaffected. `cluster_gini@10` rising in all nine cells is now better read as
+*direct confirmation of the premise behind the slate*, not merely as a negative
+result.
+
+**What does not stand.** Any reading of this experiment as evidence about the
+**lab feed as deployed**. The slate is an untested mechanism aimed at precisely
+the failure this experiment demonstrated, so a lab conclusion needs a third arm.
+Logged as **Q-010**.
+
+**Why this is an amendment and not an edit.** Completed experiments are
+append-only (`research/AGENT_INSTRUCTIONS.md` principle 7). The sections above
+are left as written; this amendment is the correction of record. `CLAIMS.md` and
+`manifest.yaml` carry the narrowed scope.

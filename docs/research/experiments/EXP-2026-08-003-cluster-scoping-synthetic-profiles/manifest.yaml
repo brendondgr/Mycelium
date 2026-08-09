@@ -16,6 +16,10 @@ purpose: >
   LongEval-Sci queries, so the cluster code path fires at all, and measures the
   deployed flat and cluster-scoped aggregation paths against per-cluster
   coverage metrics with the grouping mode as a controlled variable.
+  Scope, narrowed by amendment: both arms ran `cluster_top_n = 0`, the
+  global max-pooled ranking an individual's feed uses. The lab feed's
+  per-theme slate (`fusion.top_per_cluster`) was not measured — see
+  RESULTS.md AMENDMENTS and Q-010.
 
 hypothesis: >
   Clustered aggregation raises min_cluster_recall@10 relative to flat, most
