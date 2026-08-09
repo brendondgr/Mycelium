@@ -67,9 +67,15 @@ def _find(rows: list[dict], grouping: str, beta: str, measure: str) -> dict | No
     return None
 
 
+#: The two backends spell the timestamp key differently, and nulling the wrong
+#: one leaves a live clock in the file — which makes `make figures-check` fail on
+#: an unchanged figure. Matched to EXP-2026-08-002's generator.
+NO_TIMESTAMP = {".svg": {"Date": None}, ".pdf": {"CreationDate": None}}
+
+
 def _save(fig, slug: str) -> None:
     for suffix in (".svg", ".pdf"):
-        fig.savefig(HERE / f"{slug}{suffix}", metadata={"Date": None, "Creator": None})
+        fig.savefig(HERE / f"{slug}{suffix}", metadata=NO_TIMESTAMP[suffix])
     plt.close(fig)
 
 
