@@ -9,11 +9,18 @@ deliberate two-tier shape (a product requirement):
   has already filtered the pool by the embedding-match threshold, so the surfaced
   count is variable — however many papers cleared it. An explicit ``surface_limit``
   still caps the total when a caller wants a fixed slice.
-- **Only the top ``llm_limit`` papers** (default 10) are sent to the language model
-  for a bespoke reason and percent-match judgement. The percent match is
-  *only* ever the model's — papers ranked below (the cross-embedding tail) carry a
-  templated reason and **no percent** (``match_percent=None``), honest that the
-  model only vetted the top slice and that the fusion score is a ranking, not a %.
+- **Only papers in the slate** (the top :func:`~apps.content.top_feed.top_n`, what
+  the daily report is built from), and at most ``llm_limit`` of them per run, are
+  sent to the language model for a bespoke reason and percent-match judgement. The
+  percent match is *only* ever the model's — papers ranked below carry a templated
+  reason and **no percent** (``match_percent=None``), honest that the model only
+  vetted the slate and that the fusion score is a ranking, not a %.
+
+The digest's **order is the fused retrieval order throughout**. A model verdict
+explains an item; it never promotes one. Sorting the model-scored items above the
+tail (and among themselves by the model's percent) meant the ranking a reader saw
+was really "what did the model get to", which — since the budget went to whatever
+had been ingested most recently — put brand-new, unrelated items at the top.
 
 The language model does the selecting and justifying for the top slice when it is
 reachable; a deterministic fallback (rank by score, template the reason from
@@ -34,8 +41,9 @@ from typing import Any
 
 from django.utils import timezone
 
-from .digest_selection import new_first
+from .digest_selection import priority_first
 from .models import ContentItem
+from .top_feed import top_n
 
 logger = logging.getLogger(__name__)
 
@@ -79,27 +87,37 @@ def generate_suggestions(
     surface_limit: int | None = None,
     complete: CompleteFn | None = None,
     prior: dict[str, dict] | None = None,
-    new_ids: set[str] | None = None,
+    priority_ids: set[str] | None = None,
     cluster_by_id: dict[str, str] | None = None,
     llm_groups: Sequence[Sequence[tuple[ContentItem, float]]] | None = None,
 ) -> list[Suggestion]:
-    """Return the two-tier digest: every candidate surfaced, top ``llm_limit`` ranked.
+    """Return the two-tier digest: every candidate surfaced, the slate explained.
 
     ``hits`` is the fused, ranked candidate list (``(ContentItem, score)``), best
     first — already filtered by the caller (e.g. by an embedding-match threshold), so
-    by default (``surface_limit=None``) *all* of them are surfaced. The top
-    ``llm_limit`` go to the model for bespoke reasons/match scores; the
-    model's picks lead (``source="llm"``). Every remaining surfaced paper is filled
-    in deterministically (``source="fallback"``), preserving score order. Passing an
-    explicit ``surface_limit`` caps the total to a fixed slice. When the model is
-    unavailable, errors, or returns nothing usable, the whole list is the
-    deterministic fallback.
+    by default (``surface_limit=None``) *all* of them are surfaced. Passing an
+    explicit ``surface_limit`` caps the total to a fixed slice.
+
+    **The returned order is the fused order.** Retrieval — BM25 + embedding — decides
+    what ranks where, and a language-model verdict only ever *annotates* the item it
+    is about. The two tiers used to be sorted apart, model-scored items above the
+    deterministic tail and among themselves by the model's percent; combined with
+    spending the model budget on freshly-ingested items, that made "the model looked
+    at this" the real ranking signal, so a bulk import led everyone's feed on the
+    strength of having arrived. Rank is relevance now, and nothing else.
+
+    Only the first :func:`~apps.content.top_feed.top_n` candidates — the slate the
+    daily report is built from — are eligible for the model, and only ``llm_limit``
+    of those per run. A paper further down carries a templated reason and **no
+    percent** (``match_percent=None``), honest that the model never vetted it and
+    that the fusion score is a ranking, not a percentage.
 
     ``prior`` (a prior run's LLM verdicts, keyed by content id — see
     ``apps.content.opportunity_llm.load_prior_llm_verdicts``, the opportunity twin's
-    loader, reused here) carries forward papers already scored by the model instead
-    of re-sending them; the freed ``llm_limit`` slots go to unscored papers, new ones
-    (``new_ids``) first. This mirrors the selection rule in
+    loader, reused here) carries forward papers already written up instead of
+    re-sending them; the freed ``llm_limit`` slots go to slate members still
+    unwritten, ``priority_ids`` (this run's slate entrants) first. This mirrors the
+    selection rule in
     :func:`apps.content.opportunity_llm.generate_opportunity_suggestions` — see
     :mod:`apps.content.digest_selection` for the shared ordering helper.
 
@@ -109,17 +127,20 @@ def generate_suggestions(
     the whole budget to whichever theme happens to score highest today. Each group
     is a separate call: the prompt stays short enough to answer in full, Mylo reads
     one coherent strand of work at a time, and a model failure costs one theme
-    rather than the run. A paper appearing in two groups is scored once. Left
-    ``None``, selection is exactly as before.
+    rather than the run. A paper appearing in two groups is scored once. Groups are
+    intersected with the slate, so per-theme attention is preserved *within* what
+    the report will actually show. Left ``None``, the slate itself is the one group.
     """
     candidates = list(hits)
     if not candidates:
         return []
     prior = prior or {}
-    new_ids = new_ids or set()
+    priority_ids = priority_ids or set()
     cluster_by_id = cluster_by_id or {}
 
     surfaced = candidates if surface_limit is None else candidates[:surface_limit]
+    # The slate: the only part of the feed the model is ever asked about.
+    slate_ids = {str(item.id) for item, _score in surfaced[: top_n()]}
 
     groups = [surfaced] if llm_groups is None else [list(g) for g in llm_groups]
     llm: list[Suggestion] = []
@@ -129,9 +150,13 @@ def generate_suggestions(
         unscored = [
             pair
             for pair in group
-            if str(pair[0].id) not in prior and str(pair[0].id) not in asked
+            if str(pair[0].id) in slate_ids
+            and str(pair[0].id) not in prior
+            and str(pair[0].id) not in asked
         ]
-        subset = new_first(unscored, lambda pair: str(pair[0].id), new_ids)[:llm_limit]
+        subset = priority_first(
+            unscored, lambda pair: str(pair[0].id), priority_ids
+        )[:llm_limit]
         if not subset:
             continue
         asked.update(str(item.id) for item, _score in subset)
@@ -146,50 +171,42 @@ def generate_suggestions(
     now = timezone.now().isoformat()
     for suggestion in llm:
         suggestion["llm_scored_at"] = now
-    fresh_ids = {s["content_id"] for s in llm}
+    fresh_by_id = {s["content_id"]: s for s in llm}
 
-    carried: list[Suggestion] = []
+    # One pass over ``surfaced``, in fused order — each paper is whichever of the
+    # three it qualifies for. The list that comes out *is* the ranking, so a paper's
+    # position never depends on whether the model happened to reach it.
+    out: list[Suggestion] = []
     for item, score in surfaced:
         cid = str(item.id)
-        if cid in fresh_ids:
+        fresh = fresh_by_id.get(cid)
+        if fresh is not None:
+            out.append(fresh)
             continue
         verdict = prior.get(cid)
-        if verdict is None:
+        if verdict is not None:
+            suggestion = _suggestion(
+                item,
+                score,
+                rank=0,
+                # A paper's headline is always its real title — never a model rename
+                # (legacy carried verdicts may still hold one; drop it here).
+                headline=_title(item),
+                reason=verdict.get("reason")
+                or _fallback_reason(interests, item, cluster_by_id.get(cid)),
+                match_percent=verdict.get("match_percent"),
+                source="llm",
+            )
+            suggestion["llm_scored_at"] = verdict.get("llm_scored_at", "")
+            out.append(suggestion)
             continue
-        suggestion = _suggestion(
-            item,
-            score,
-            rank=0,
-            # A paper's headline is always its real title — never a model rename
-            # (legacy carried verdicts may still hold one; drop it here).
-            headline=_title(item),
-            reason=verdict.get("reason")
-            or _fallback_reason(interests, item, cluster_by_id.get(cid)),
-            match_percent=verdict.get("match_percent"),
-            source="llm",
-        )
-        suggestion["llm_scored_at"] = verdict.get("llm_scored_at", "")
-        carried.append(suggestion)
-
-    scored = llm + carried
-    scored_ids = fresh_ids | {s["content_id"] for s in carried}
-
-    # Fill the remaining surfaced slots deterministically, in score order. ``surfaced``
-    # is already the final set (all candidates, or the ``surface_limit`` slice), and
-    # the scored items are a subset of it, so the result is exactly ``surfaced``.
-    fallback: list[Suggestion] = []
-    for item, score in surfaced:
-        if str(item.id) in scored_ids:
-            continue
-        fallback.append(
+        out.append(
             _suggestion(
                 item,
                 score,
                 rank=0,
                 headline=_title(item),
-                reason=_fallback_reason(
-                    interests, item, cluster_by_id.get(str(item.id))
-                ),
+                reason=_fallback_reason(interests, item, cluster_by_id.get(cid)),
                 # Cross-embedding matches carry no percent — the percent is the
                 # language model's meaning judgement, and these papers never went
                 # through it. (The fusion ``score`` is a ranking score, not a
@@ -199,15 +216,6 @@ def generate_suggestions(
             )
         )
 
-    # LLM-scored suggestions (fresh + carried) sort by match percent (ties: fused
-    # order); the fallback tail keeps fused order, always after the scored group.
-    fused_order = {str(item.id): i for i, (item, _score) in enumerate(surfaced)}
-    scored.sort(
-        key=lambda s: (-(s["match_percent"] or 0), fused_order.get(s["content_id"], 0))
-    )
-
-    # Renumber ranks 1..N so the LLM picks and the fallback tail form one sequence.
-    out = scored + fallback
     for rank, suggestion in enumerate(out, start=1):
         suggestion["rank"] = rank
     return out

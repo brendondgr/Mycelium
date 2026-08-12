@@ -54,15 +54,17 @@ def test_llm_ranks_top_slice_then_fallback_fills_the_rest() -> None:
     out = generate_suggestions(INTERESTS, hits, complete=complete)
 
     assert [s["rank"] for s in out] == [1, 2, 3]
-    # The model put paper 2 first; its two picks lead as source="llm".
-    assert out[0]["content_id"] == str(hits[1][0].id)
+    # The order is the fused order the caller passed in, not the model's. The model
+    # ranked paper 2 above paper 1 and gave it a 92; that enriches the paper, it does
+    # not promote it past a better-matching one.
+    assert [s["content_id"] for s in out] == [str(item.id) for item, _ in hits]
     # The headline is always the paper's real title — model renames are ignored.
-    assert out[0]["headline"] == "Biomedical Knowledge Discovery"
-    assert out[0]["source"] == "llm"
-    assert out[0]["similarity"] == 0.78
-    assert out[0]["match_percent"] == 92  # carried through, clamped to 0-100
+    assert out[1]["headline"] == "Biomedical Knowledge Discovery"
     assert out[1]["source"] == "llm"
-    assert out[1]["match_percent"] is None  # model gave no "match" -> no percent
+    assert out[1]["similarity"] == 0.78
+    assert out[1]["match_percent"] == 92  # carried through, clamped to 0-100
+    assert out[0]["source"] == "llm"
+    assert out[0]["match_percent"] is None  # model gave no "match" -> no percent
     # The paper the model did not pick is a cross-embedding match: no percent.
     assert out[2]["content_id"] == str(hits[2][0].id)
     assert out[2]["source"] == "fallback"
@@ -216,11 +218,11 @@ def test_carry_forward_skips_already_scored_paper_and_reuses_its_verdict() -> No
     assert carried["llm_scored_at"] == "2026-07-01T00:00:00+00:00"
 
 
-def test_new_first_paper_gets_llm_slot_priority_over_older_unscored() -> None:
-    """With one free LLM slot, a freshly-seen unscored paper wins it over an older,
-    higher-fused-rank unscored paper."""
+def test_slate_entrant_gets_llm_slot_priority_over_older_unscored() -> None:
+    """With one free LLM slot, a paper that just entered the reader's Top-25 wins it
+    over a higher-ranked one that has been sitting in the slate unwritten."""
     hits = _hits()  # best-first: hits[0] (0.81), hits[1] (0.78), hits[2] (0.40)
-    new_cid = str(hits[2][0].id)  # lowest fused rank, but freshly seen
+    entrant = str(hits[2][0].id)  # lowest fused rank, but new to the slate
 
     seen_prompts: list[str] = []
 
@@ -229,10 +231,43 @@ def test_new_first_paper_gets_llm_slot_priority_over_older_unscored() -> None:
         return json.dumps({"suggestions": []})
 
     generate_suggestions(
-        INTERESTS, hits, llm_limit=1, new_ids={new_cid}, complete=complete
+        INTERESTS, hits, llm_limit=1, priority_ids={entrant}, complete=complete
     )
 
     assert seen_prompts
-    # Only the new item's title ("Unrelated Paper") should be in the one-item prompt.
+    # Only the entrant's title ("Unrelated Paper") is in the one-item prompt.
     assert "Unrelated Paper" in seen_prompts[0]
     assert "Graph Methods" not in seen_prompts[0]
+
+
+def test_only_the_slate_is_ever_sent_to_the_model() -> None:
+    """A paper ranked below the Top-25 is never written up, even with slots free.
+
+    The report only ever shows the slate, so paying the model to explain something
+    below it buys nothing a reader will read.
+    """
+    from apps.content.top_feed import top_n
+
+    hits = _many(top_n() + 5)
+    below = hits[top_n()][0]
+
+    seen_prompts: list[str] = []
+
+    def complete(prompt: str) -> str:
+        seen_prompts.append(prompt)
+        return json.dumps({"suggestions": []})
+
+    out = generate_suggestions(
+        INTERESTS,
+        hits,
+        llm_limit=len(hits),
+        priority_ids={str(below.id)},
+        complete=complete,
+    )
+
+    assert seen_prompts
+    assert below.metadata["title"] not in seen_prompts[0]
+    # It is still surfaced, in its fused position — just not explained.
+    assert len(out) == len(hits)
+    assert out[top_n()]["content_id"] == str(below.id)
+    assert out[top_n()]["source"] == "fallback"

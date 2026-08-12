@@ -173,12 +173,12 @@ def test_carry_forward_skips_already_scored_item_and_reuses_its_verdict():
 
 
 @pytest.mark.django_db
-def test_new_first_gets_llm_slot_priority_over_older_unscored():
-    """A freshly-seen unscored item wins the one free LLM slot over an older,
-    higher-fused-rank unscored item."""
-    old_high_rank = _persisted_grant("g_old", "Old High Rank Grant")
-    new_low_rank = _persisted_grant("g_new", "Freshly Seen Grant")
-    items = [(old_high_rank, 0.9), (new_low_rank, 0.4)]  # fused order: old first
+def test_slate_entrant_gets_llm_slot_priority_over_older_unscored():
+    """An item that just entered the Top-25 wins the one free LLM slot over a
+    higher-ranked one that has been sitting in the slate unwritten."""
+    standing = _persisted_grant("g_old", "Old High Rank Grant")
+    entrant = _persisted_grant("g_new", "Newly Promoted Grant")
+    items = [(standing, 0.9), (entrant, 0.4)]  # fused order: standing first
 
     seen_prompts: list[str] = []
 
@@ -192,13 +192,51 @@ def test_new_first_gets_llm_slot_priority_over_older_unscored():
         {},
         items,
         llm_limit=1,
-        new_ids={str(new_low_rank.id)},
+        priority_ids={str(entrant.id)},
         complete=_complete,
     )
 
     assert seen_prompts
-    assert "Freshly Seen Grant" in seen_prompts[0]
+    assert "Newly Promoted Grant" in seen_prompts[0]
     assert "Old High Rank Grant" not in seen_prompts[0]
+
+
+@pytest.mark.django_db
+def test_model_verdict_does_not_reorder_the_feed():
+    """A grant the model scored 95 does not overtake a better-fused one it skipped.
+
+    This is the whole failure the Top-25 change is about: when the verdict decided
+    the order and the budget went to whatever had just been ingested, an unrelated
+    bulk import led every reader's feed.
+    """
+    best = _persisted_grant("g_best", "Best Fused Grant")
+    weaker = _persisted_grant("g_weak", "Weaker Fused Grant")
+    items = [(best, 0.9), (weaker, 0.4)]
+
+    def _complete(_prompt):
+        return json.dumps(
+            {
+                "suggestions": [
+                    {"item": 1, "match": 95, "headline": "h", "reason": "r"}
+                ]
+            }
+        )
+
+    out = generate_opportunity_suggestions(
+        ContentItem.Type.GRANT,
+        {},
+        {},
+        items,
+        llm_limit=1,
+        priority_ids={str(weaker.id)},  # the weaker one gets the write-up…
+        complete=_complete,
+    )
+
+    # …and stays exactly where retrieval put it.
+    assert [s["content_id"] for s in out] == [str(best.id), str(weaker.id)]
+    assert [s["rank"] for s in out] == [1, 2]
+    assert out[1]["match_percent"] == 95
+    assert out[0]["match_percent"] is None
 
 
 def _persisted_grant(gid, title):

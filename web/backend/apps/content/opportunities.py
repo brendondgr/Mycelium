@@ -26,7 +26,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 from .clustering import cluster_interests
-from .digest_selection import new_content_ids, split_by_floor
+from .digest_selection import split_by_floor
 from .fusion import DEFAULT_BETA
 from .interests_query import SearchInterest, search_interests
 from .models import ContentItem, RelevanceScore
@@ -42,6 +42,7 @@ from .pipeline import (
     fuse_interests_pool,
 )
 from .targets import MatchTarget, target_for_user
+from .top_feed import compute_top, merge_top_signals, prior_top_ids, top_n
 
 logger = logging.getLogger(__name__)
 
@@ -212,9 +213,10 @@ class _MatchJob:
     llm_limit: int
     surface_limit: int | None  # None => surface all (threshold-gated areas)
     prior: dict = field(default_factory=dict)  # carry-forward LLM verdicts
-    new_ids: set = field(default_factory=set)  # freshly-seen cids (LLM-slot priority)
-    # False => whole corpus (sign-up/refit, which *replaces* the feed); True => only
-    # items this target has never been scored on (the daily run, which *accumulates*).
+    # Cids entering the target's Top-25 on this run — where the model budget goes.
+    priority_ids: set = field(default_factory=set)
+    # False => whole corpus (the daily re-rank, and sign-up/refit); True => only
+    # items this target has never been scored on (the legacy append-only mode).
     unscored_only: bool = False
 
 
@@ -242,13 +244,13 @@ class _FellowshipMatchJob:
     max_surface: int = DEFAULT_SURFACE  # backstop cap on surfaced fellowships
     today: str = ""
     prior: dict = None           # carry-forward LLM verdicts
-    new_ids: set = None          # freshly-seen cids (LLM-slot priority)
+    prior_top: set = None        # the Top-25 as of the last run (entrant diff)
     embed_by_id: dict | None = None   # {content_id: cosine}; None => rule-only
     has_interest_signal: bool = False  # user declared interests/watch topics
     embed_threshold: float = 0.0      # min cosine an eligible item must clear
     withhold_unverified: bool = False  # drop scrape-miss records instead of labelling
-    # False => whole corpus (sign-up/refit, *replaces* the feed); True => only
-    # fellowships this user has never been scored on (the daily run, *accumulates*).
+    # False => whole corpus (the daily re-rank, and sign-up/refit); True => only
+    # fellowships this user has never been scored on (the legacy append-only mode).
     unscored_only: bool = False
 
     def __post_init__(self):
@@ -260,8 +262,8 @@ class _FellowshipMatchJob:
             self.profile_meta = {}
         if self.prior is None:
             self.prior = {}
-        if self.new_ids is None:
-            self.new_ids = set()
+        if self.prior_top is None:
+            self.prior_top = set()
 
 
 def _prepare_fellowship_match(
@@ -337,7 +339,9 @@ def _prepare_fellowship_match(
         max_surface=_opportunity_max_surface(),
         today=today_final,
         prior=prior,
-        new_ids=new_content_ids(items, today=today_final),
+        prior_top=prior_top_ids(
+            {"target_user": user}, ContentItem.Type.FELLOWSHIP
+        ),
         embed_by_id=embed_by_id,
         has_interest_signal=has_interest_signal,
         embed_threshold=getattr(settings, "FELLOWSHIP_MATCH_THRESHOLD", 0.4),
@@ -439,6 +443,9 @@ def _score_fellowship_job(
         withhold_unverified=job.withhold_unverified,
     )
     items_by_id = {str(item.id): item for item in job.items}
+    # The slate the rule engine just produced, minus the one it replaces: the model
+    # writes up fellowships the reader is about to see for the first time.
+    entering = {s["content_id"] for s in ranked[: top_n()]} - job.prior_top
     return generate_fellowship_suggestions(
         job.interests,
         job.profile_meta,
@@ -447,7 +454,7 @@ def _score_fellowship_job(
         llm_limit=job.llm_limit,
         complete=complete,
         prior=job.prior,
-        new_ids=job.new_ids,
+        priority_ids=entering,
     )
 
 
@@ -487,7 +494,7 @@ def _finalize_fellowship_match(
             items_by_id,
             pins,
             today=job.today,
-            replace=not job.unscored_only,
+            retire_missing=not job.unscored_only,
         )
 
     return OppRunResult(
@@ -511,7 +518,7 @@ def _persist_fellowships(
     pins: dict,
     *,
     today: str | None,
-    replace: bool = False,
+    retire_missing: bool = False,
 ) -> None:
     """Upsert one RelevanceScore per fellowship under ``persist_kwargs``'s target.
 
@@ -521,17 +528,25 @@ def _persist_fellowships(
     target is polymorphic: ``{"target_user": user}`` for a person's eligible feed,
     ``{"target_project": project}`` for a project's interest-matched feed.
 
-    ``replace`` (a whole-corpus sign-up/refit run) drops the target's prior
-    fellowship scores that this run did not re-evaluate — so a profile edit that
-    changes eligibility (or a project focus edit) clears the ones it no longer
-    matches. A daily new-only run leaves ``replace`` false and accumulates.
+    ``retire_missing`` (a whole-corpus run — the nightly re-rank, sign-up, or a
+    refit) takes the target's prior fellowship scores that this run did not
+    re-evaluate *out of the feed*: they lose ``suggested`` and their slate place, so
+    a profile edit that changes eligibility stops surfacing what it no longer
+    matches. The rows themselves stay, because they hold verdicts the model was paid
+    for; deleting them meant a fellowship that dipped out for a day and came back
+    had to be written up from scratch. An append-only run leaves it false.
     """
     run_at = timezone.now().isoformat()
-    if replace:
-        surfaced_ids = [s["content_id"] for s in suggestions]
-        RelevanceScore.objects.filter(
-            **persist_kwargs, content__type=ContentItem.Type.FELLOWSHIP
-        ).exclude(content_id__in=surfaced_ids).delete()
+    ordered = [s["content_id"] for s in suggestions if s["content_id"] in visible_ids]
+    slate = compute_top(
+        persist_kwargs, ContentItem.Type.FELLOWSHIP, ordered, today=today
+    )
+    if retire_missing:
+        _retire(
+            persist_kwargs,
+            ContentItem.Type.FELLOWSHIP,
+            keep={s["content_id"] for s in suggestions},
+        )
     for s in suggestions:
         cid = s["content_id"]
         item = items_by_id.get(cid)
@@ -561,6 +576,7 @@ def _persist_fellowships(
             "embedding_match": s.get("embedding_match"),
             "llm_scored_at": s.get("llm_scored_at", ""),
         }
+        merge_top_signals(signals, slate, cid)
         if item:
             RelevanceScore.objects.update_or_create(
                 content=item,
@@ -668,7 +684,13 @@ def _prepare_match(
         else {}
     )
     today_iso = today or timezone.now().date().isoformat()
-    new_ids = new_content_ids((item for item, _score in pairs), today=today_iso)
+    # The slate this run establishes, minus the one it replaces. The model's budget
+    # goes to what just entered the reader's Top-25, not to what was ingested most
+    # recently — an item is worth writing up when it is good enough to displace
+    # something the reader was already being shown.
+    entering = {str(item.id) for item, _score in pairs[: top_n()]} - prior_top_ids(
+        target.persist_kwargs, content_type
+    )
 
     job = _MatchJob(
         target=target,
@@ -681,7 +703,7 @@ def _prepare_match(
         llm_limit=llm_limit,
         surface_limit=None if threshold is not None else surface_limit,
         prior=prior,
-        new_ids=new_ids,
+        priority_ids=entering,
         unscored_only=unscored_only,
     )
     return job, None
@@ -700,7 +722,7 @@ def _score_job(
         surface_limit=job.surface_limit,
         complete=complete,
         prior=job.prior,
-        new_ids=job.new_ids,
+        priority_ids=job.priority_ids,
     )
 
 
@@ -742,7 +764,7 @@ def _finalize_match(
             visible_ids,
             pins,
             today=today,
-            replace=not job.unscored_only,
+            retire_missing=not job.unscored_only,
         )
     return OppRunResult(
         job.username,
@@ -979,6 +1001,9 @@ def match_fellowships_for_target(
         if reuse_prior
         else {}
     )
+    entering = {s["content_id"] for s in ranked[: top_n()]} - prior_top_ids(
+        target.persist_kwargs, ContentItem.Type.FELLOWSHIP
+    )
     suggestions = generate_fellowship_suggestions(
         target.interests,
         target.profile_meta,
@@ -987,7 +1012,7 @@ def match_fellowships_for_target(
         llm_limit=llm_limit,
         complete=complete,
         prior=prior,
-        new_ids=new_content_ids(items, today=today_final),
+        priority_ids=entering,
     )
     floor = _opportunity_min_match_percent()
     visible, hidden = split_by_floor(suggestions, floor)
@@ -1007,7 +1032,7 @@ def match_fellowships_for_target(
             items_by_id,
             pins,
             today=today_final,
-            replace=not unscored_only,
+            retire_missing=not unscored_only,
         )
     return OppRunResult(
         key,
@@ -1425,7 +1450,7 @@ def _persist(
     pins: dict[str, dict],
     *,
     today: str | None,
-    replace: bool = False,
+    retire_missing: bool = False,
 ) -> None:
     """Upsert one RelevanceScore per surfaced item, with opportunity signals.
 
@@ -1437,17 +1462,22 @@ def _persist(
     item is persisted (so carry-forward remembers its verdict), but only those in
     ``visible_ids`` (cleared the match-percent floor) are flagged ``suggested``.
 
-    ``replace`` (a whole-corpus sign-up/refit run) drops this target's prior scores
-    for the area that this run did not re-surface — so an interest edit re-establishes
-    the feed from the full corpus rather than leaving stale matches behind. A daily
-    new-only run leaves ``replace`` false and appends.
+    ``retire_missing`` (a whole-corpus run — the nightly re-rank, sign-up, or a
+    refit) takes this target's prior scores for the area that this run did not
+    re-surface *out of the feed*: they lose ``suggested`` and their slate place, so
+    an interest edit re-establishes the feed from the full corpus rather than
+    leaving stale matches behind. The rows stay, because they hold verdicts the
+    model was paid for — an item that dips below the threshold for a day and comes
+    back should not have to be written up again. An append-only run leaves it false.
+
+    Each row also records its Top-25 slate position and whether it entered on this
+    run; that is what the daily report is built from.
     """
     run_at = timezone.now().isoformat()
-    if replace:
-        surfaced_ids = [item.id for item, _score, _extra in rows]
-        RelevanceScore.objects.filter(
-            **persist_kwargs, content__type=area
-        ).exclude(content_id__in=surfaced_ids).delete()
+    ordered = [s["content_id"] for s in suggestions if s["content_id"] in visible_ids]
+    slate = compute_top(persist_kwargs, area, ordered, today=today)
+    if retire_missing:
+        _retire(persist_kwargs, area, keep={str(item.id) for item, _s, _e in rows})
     promoted_by_id = {s["content_id"]: s for s in suggestions}
     for item, score, extra in rows:
         cid = str(item.id)
@@ -1467,6 +1497,7 @@ def _persist(
             "status": meta.get("status", ""),
             "status_summary": meta.get("status_summary", ""),
         }
+        merge_top_signals(signals, slate, cid)
         if promoted is not None:
             signals.update(
                 rank=promoted["rank"],
@@ -1481,3 +1512,30 @@ def _persist(
             **persist_kwargs,
             defaults={"score": round(score, 6), "signals": signals},
         )
+
+
+def _retire(persist_kwargs: dict, area: str, *, keep: set[str]) -> None:
+    """Drop out of the feed every stored row for ``area`` this run did not re-surface.
+
+    Not a delete. A retired row keeps its ``signals`` — above all the language-model
+    verdict, which the carry-forward store reads back — and only loses the two things
+    that mean "the reader is being shown this": ``suggested`` and its slate place.
+
+    Deleting was the previous behaviour and it cost real work: an opportunity that
+    slipped under the match threshold on one run and cleared it again on the next had
+    to be sent back to the model as though it had never been seen, and it re-entered
+    the report announced as new. Retiring makes both correct — re-entry is free, and
+    it is reported as new because it genuinely left the reader's list and returned.
+    """
+    stale = RelevanceScore.objects.filter(
+        **persist_kwargs, content__type=area
+    ).exclude(content_id__in=list(keep))
+    for row in stale:
+        signals = row.signals or {}
+        if not signals.get("suggested") and "top_rank" not in signals:
+            continue
+        signals["suggested"] = False
+        signals.pop("top_rank", None)
+        signals["entered_top_on"] = ""
+        signals["is_new_top"] = False
+        RelevanceScore.objects.filter(pk=row.pk).update(signals=signals)

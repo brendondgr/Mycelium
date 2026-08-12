@@ -649,15 +649,15 @@ def test_fellowship_carry_forward_skips_already_scored_item():
     assert fresh["match_percent"] == 91
 
 
-def test_fellowship_new_first_gets_llm_slot_priority():
-    """A freshly-seen unscored fellowship wins the one free LLM slot over an
-    older, higher-ranked unscored fellowship."""
+def test_fellowship_slate_entrant_gets_llm_slot_priority():
+    """A fellowship that just entered the Top-25 wins the one free LLM slot over a
+    higher-ranked one that has been sitting in the slate unwritten."""
     from apps.content.opportunity_llm import generate_fellowship_suggestions
 
     ranked = [_ranked_stub("old_high_rank"), _ranked_stub("new_low_rank", fit=0.4)]
     items = {
         "old_high_rank": _FakeItem("old_high_rank", {"title": "Old High Rank"}),
-        "new_low_rank": _FakeItem("new_low_rank", {"title": "Freshly Seen"}),
+        "new_low_rank": _FakeItem("new_low_rank", {"title": "Newly Promoted"}),
     }
     seen_prompts: list[str] = []
 
@@ -671,12 +671,12 @@ def test_fellowship_new_first_gets_llm_slot_priority():
         ranked,
         items,
         llm_limit=1,
-        new_ids={"new_low_rank"},
+        priority_ids={"new_low_rank"},
         complete=fake_complete,
     )
 
     assert seen_prompts
-    assert "Freshly Seen" in seen_prompts[0]
+    assert "Newly Promoted" in seen_prompts[0]
     assert "Old High Rank" not in seen_prompts[0]
 
 

@@ -14,11 +14,13 @@ from the ProQuest tool's multi-agent evaluator:
   never re-litigates eligibility; :func:`generate_fellowship_suggestions` overlays
   its report onto the rule engine's eligible, fit-ranked list.
 
-Same contract as the paper digest: a two-tier list (the top ``llm_limit`` get a
-model percent + bespoke reason, ``source="llm"``; the rest are deterministic
-fallback with ``match_percent=None``), an injectable ``complete`` seam, a tolerant
-JSON parser, and a fallback that never raises — so a missing/flaky model degrades
-to a still-useful, honestly-unscored list rather than nothing.
+Same contract as the paper digest: a list held in fused-relevance order, in which
+the slate (the top :func:`~apps.content.top_feed.top_n`, capped at ``llm_limit`` per
+run) carries a model percent + bespoke reason (``source="llm"``) and the rest are
+deterministic fallback with ``match_percent=None``; an injectable ``complete`` seam,
+a tolerant JSON parser, and a fallback that never raises — so a missing/flaky model
+degrades to a still-useful, honestly-unscored list rather than nothing. A verdict
+explains an item's place in the list; it never decides it.
 """
 
 from __future__ import annotations
@@ -30,8 +32,9 @@ from typing import Any
 
 from django.utils import timezone
 
-from .digest_selection import new_first
+from .digest_selection import priority_first
 from .models import ContentItem, RelevanceScore
+from .top_feed import top_n
 
 logger = logging.getLogger(__name__)
 
@@ -128,33 +131,43 @@ def generate_opportunity_suggestions(
     surface_limit: int | None = None,
     complete: CompleteFn | None = None,
     prior: dict[str, dict] | None = None,
-    new_ids: set[str] | None = None,
+    priority_ids: set[str] | None = None,
 ) -> list[Suggestion]:
-    """Two-tier opportunity digest: model-scored top slice + deterministic tail.
+    """Two-tier opportunity digest: an explained slate over a deterministic tail.
 
     ``hits`` is the fused, ranked candidate list — the caller (the matcher) may have
     already filtered it by the area's match threshold, so by default
-    (``surface_limit=None``) every candidate is surfaced and only the top
-    ``llm_limit`` go to the model. An explicit ``surface_limit`` caps the total to a
-    fixed slice (the legacy top-N behaviour).
+    (``surface_limit=None``) every candidate is surfaced. An explicit
+    ``surface_limit`` caps the total to a fixed slice (the legacy top-N behaviour).
+
+    **The returned order is the fused order** — BM25 + embedding relevance, and
+    nothing else. Only the slate (the top :func:`~apps.content.top_feed.top_n`, what
+    the daily report shows) is eligible for the model, ``llm_limit`` of them per run.
 
     ``prior`` (from :func:`load_prior_llm_verdicts`) carries forward verdicts a
     previous run already got from the model — those items are never re-sent; this
-    run's ``llm_limit`` slots go entirely to items still unscored, preferring ones
-    in ``new_ids`` (freshly-seen this week) over older backlog items. LLM-scored
-    suggestions (fresh + carried) are ordered by match percent (ties: fused order);
-    the fallback tail keeps fused order.
+    run's ``llm_limit`` slots go entirely to slate members still unwritten,
+    preferring ``priority_ids`` (the items that entered the slate on this run) over
+    ones that have been sitting in it unwritten.
+
+    The previous shape sorted model-scored items above the tail and among themselves
+    by percent, while the budget went to whatever had been ingested that week. Rank
+    therefore tracked arrival rather than fit, and a bulk grant import led the feed
+    for every reader it had nothing to do with.
     """
     candidates = list(hits)
     if not candidates:
         return []
     prior = prior or {}
-    new_ids = new_ids or set()
+    priority_ids = priority_ids or set()
 
     surfaced = candidates if surface_limit is None else candidates[:surface_limit]
+    slate = surfaced[: top_n()]
 
-    unscored = [pair for pair in surfaced if str(pair[0].id) not in prior]
-    llm_subset = new_first(unscored, lambda pair: str(pair[0].id), new_ids)[:llm_limit]
+    unscored = [pair for pair in slate if str(pair[0].id) not in prior]
+    llm_subset = priority_first(
+        unscored, lambda pair: str(pair[0].id), priority_ids
+    )[:llm_limit]
 
     fresh = _llm_suggestions(
         area, interests, profile_meta, llm_subset, limit=llm_limit, complete=complete
@@ -162,38 +175,33 @@ def generate_opportunity_suggestions(
     now = timezone.now().isoformat()
     for suggestion in fresh:
         suggestion["llm_scored_at"] = now
-    fresh_ids = {s["content_id"] for s in fresh}
+    fresh_by_id = {s["content_id"]: s for s in fresh}
 
-    carried: list[Suggestion] = []
+    # One pass over ``surfaced``, in fused order — the list that comes out *is* the
+    # ranking. Each item is this run's model verdict, a carried-forward one, or the
+    # deterministic fill; which of the three never changes where it sits.
+    out: list[Suggestion] = []
     for item, score in surfaced:
         cid = str(item.id)
-        if cid in fresh_ids:
+        fresh_one = fresh_by_id.get(cid)
+        if fresh_one is not None:
+            out.append(fresh_one)
             continue
         verdict = prior.get(cid)
-        if verdict is None:
+        if verdict is not None:
+            suggestion = _suggestion(
+                item,
+                score,
+                rank=0,
+                headline=verdict.get("headline") or _title(item),
+                reason=verdict.get("reason") or _fallback_reason(interests, item),
+                match_percent=verdict.get("match_percent"),
+                source="llm",
+            )
+            suggestion["llm_scored_at"] = verdict.get("llm_scored_at", "")
+            out.append(suggestion)
             continue
-        suggestion = _suggestion(
-            item,
-            score,
-            rank=0,
-            headline=verdict.get("headline") or _title(item),
-            reason=verdict.get("reason") or _fallback_reason(interests, item),
-            match_percent=verdict.get("match_percent"),
-            source="llm",
-        )
-        suggestion["llm_scored_at"] = verdict.get("llm_scored_at", "")
-        carried.append(suggestion)
-
-    scored = fresh + carried
-    scored_ids = fresh_ids | {s["content_id"] for s in carried}
-
-    # ``surfaced`` is the final set (all candidates, or the ``surface_limit`` slice);
-    # every item is either scored (fresh/carried, above) or falls through here.
-    fallback: list[Suggestion] = []
-    for item, score in surfaced:
-        if str(item.id) in scored_ids:
-            continue
-        fallback.append(
+        out.append(
             _suggestion(
                 item,
                 score,
@@ -205,12 +213,6 @@ def generate_opportunity_suggestions(
             )
         )
 
-    fused_order = {str(item.id): i for i, (item, _score) in enumerate(surfaced)}
-    scored.sort(
-        key=lambda s: (-(s["match_percent"] or 0), fused_order.get(s["content_id"], 0))
-    )
-
-    out = scored + fallback
     for rank, suggestion in enumerate(out, start=1):
         suggestion["rank"] = rank
     return out
@@ -225,30 +227,33 @@ def generate_fellowship_suggestions(
     llm_limit: int = _DEFAULT_LLM_LIMIT,
     complete: CompleteFn | None = None,
     prior: dict[str, dict] | None = None,
-    new_ids: set[str] | None = None,
+    priority_ids: set[str] | None = None,
 ) -> list[Suggestion]:
-    """Overlay a model-written report onto the top slice of the eligible list.
+    """Overlay a model-written report onto the slate of the eligible list.
 
     ``ranked`` is the deterministic rule engine's eligibility-gated, fit-ranked
     output (each dict from :func:`apps.content.fellowships.match_fellowships`, with
     ``source="rules"``). Eligibility is already decided; this only enriches *why
-    it fits the person's research*: the top ``llm_limit`` of the items ``prior``
-    hasn't already scored (new ones first, per ``new_ids``) go to the fellowship
-    model for a bespoke 2-4 sentence reason + percent match. Items ``prior`` already
-    scored keep that verdict without a fresh model call. Either way the overlay
-    (``source`` becomes ``"llm"``) preserves the eligibility fields
-    (``tier``/``gates_failed``/``reasons``/``fit``/status). When the model is
-    unavailable and there is no prior verdict, the rule reason survives unchanged,
-    so nothing regresses. Output order always follows ``ranked`` (the rule engine's
-    tier/fit order) — only which items got a *fresh* model call changes.
+    it fits the person's research*: within the slate (the top
+    :func:`~apps.content.top_feed.top_n`, which is what the report shows), up to
+    ``llm_limit`` items ``prior`` hasn't already written up — slate entrants first,
+    per ``priority_ids`` — go to the fellowship model for a bespoke 2-4 sentence
+    reason + percent match. Items ``prior`` already scored keep that verdict without
+    a fresh model call. Either way the overlay (``source`` becomes ``"llm"``)
+    preserves the eligibility fields (``tier``/``gates_failed``/``reasons``/``fit``/
+    status). When the model is unavailable and there is no prior verdict, the rule
+    reason survives unchanged, so nothing regresses. Output order always follows
+    ``ranked`` (the rule engine's tier/fit order) — only which items got a *fresh*
+    model call changes.
     """
     if not ranked:
         return []
     prior = prior or {}
-    new_ids = new_ids or set()
+    priority_ids = priority_ids or set()
 
-    unscored = [s for s in ranked if s["content_id"] not in prior]
-    top = new_first(unscored, lambda s: s["content_id"], new_ids)[:llm_limit]
+    slate = ranked[: top_n()]
+    unscored = [s for s in slate if s["content_id"] not in prior]
+    top = priority_first(unscored, lambda s: s["content_id"], priority_ids)[:llm_limit]
     pairs = [
         (items_by_id[s["content_id"]], float(s.get("fit", 0.0)))
         for s in top

@@ -1,11 +1,16 @@
 """Shared LLM-slot selection helpers for the paper and opportunity digests.
 
 Both :mod:`.suggest` (papers) and :mod:`.opportunity_llm` (grants / conferences /
-fellowships) run the same two-tier shape each night: only the top ``llm_limit`` of
-the fused/ranked candidates are sent to the language model, and carry-forward means
-an item already scored in a prior run keeps that verdict instead of being re-sent.
-These are the small pure pieces both twins share, so the selection rule (and its
-tests) live in one place instead of two mirrored copies.
+fellowships) run the same two-tier shape each night: of the slate — the top
+:func:`~apps.content.top_feed.top_n` fused/ranked candidates, which is what the
+daily report shows — only ``llm_limit`` items go to the language model per run, and
+carry-forward means an item already written up in a prior run keeps that verdict
+instead of being re-sent. These are the small pure pieces both twins share, so the
+selection rule (and its tests) live in one place instead of two mirrored copies.
+
+The scarce resource here is model attention, so *which* unwritten item gets it is a
+real decision. It goes to items that just entered the slate — the ones the reader is
+about to be shown for the first time — never to items that merely arrived recently.
 """
 
 from __future__ import annotations
@@ -17,18 +22,23 @@ from .models import ContentItem
 from .pinning import DEFAULT_NEW_WINDOW_DAYS, first_seen_date
 
 
-def new_first[T](
-    items: list[T], cid_of: Callable[[T], str], new_ids: set[str]
+def priority_first[T](
+    items: list[T], cid_of: Callable[[T], str], priority_ids: set[str]
 ) -> list[T]:
-    """Stable-partition ``items`` so those in ``new_ids`` come first.
+    """Stable-partition ``items`` so those in ``priority_ids`` come first.
 
     Order within each group is preserved (the caller's existing fused/ranked
-    order), so this only reorders across the new/old boundary — the rule that
-    freshly-seen items get first crack at this run's LLM slots.
+    order), so this only reorders across the boundary — the rule that this run's
+    slate entrants get first crack at its LLM slots, ahead of slate members that
+    are still waiting for a write-up.
+
+    This only chooses who is *explained* first. It has no bearing on the feed's
+    order, which is the fused ranking and stays that way whether or not the model
+    ever reaches an item.
     """
-    new = [it for it in items if cid_of(it) in new_ids]
-    old = [it for it in items if cid_of(it) not in new_ids]
-    return new + old
+    priority = [it for it in items if cid_of(it) in priority_ids]
+    rest = [it for it in items if cid_of(it) not in priority_ids]
+    return priority + rest
 
 
 def new_content_ids(items: Iterable[ContentItem], *, today: str) -> set[str]:

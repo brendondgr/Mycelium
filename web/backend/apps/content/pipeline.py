@@ -43,7 +43,7 @@ from apps.scraper.window import ScanWindow
 
 from . import embeddings
 from .clustering import Cluster, cluster_interests
-from .digest_selection import new_content_ids, renumber, split_by_floor
+from .digest_selection import renumber, split_by_floor
 from .fusion import (
     DEFAULT_BETA,
     DEFAULT_RRF_K,
@@ -74,6 +74,7 @@ from .retrieval import (
 )
 from .suggest import CompleteFn, generate_suggestions
 from .targets import target_for_lab, target_for_project
+from .top_feed import compute_top, merge_top_signals, prior_top_ids, top_n
 
 logger = logging.getLogger(__name__)
 
@@ -442,14 +443,18 @@ def recommend_for_user(
         else {}
     )
     today_iso = timezone.now().date().isoformat()
-    new_ids = new_content_ids((item for item, _score in pairs), today=today_iso)
+    # The slate this run is about to establish, and the one it replaces. The model's
+    # budget goes to papers that just entered — the reader is seeing those for the
+    # first time — not to whatever happened to be ingested most recently.
+    was_top = prior_top_ids({"target_user": user}, ContentItem.Type.PAPER)
+    entering = {str(item.id) for item, _score in pairs[: top_n()]} - was_top
     suggestions = generate_suggestions(
         interests,
         pairs,
         llm_limit=suggestion_limit,
         complete=complete,
         prior=prior,
-        new_ids=new_ids,
+        priority_ids=entering,
         cluster_by_id=_cluster_by_id(rows),
     )
     floor = _paper_min_match_percent()
@@ -466,7 +471,14 @@ def recommend_for_user(
 
     if persist:
         visible_ids = {s["content_id"] for s in visible}
-        _persist({"target_user": user}, rows, suggestions, visible_ids)
+        _persist(
+            {"target_user": user},
+            ContentItem.Type.PAPER,
+            rows,
+            suggestions,
+            visible_ids,
+            today=today_iso,
+        )
 
     return RunResult(
         username,
@@ -614,7 +626,8 @@ def recommend_for_target(
         else {}
     )
     today_iso = timezone.now().date().isoformat()
-    new_ids = new_content_ids((item for item, _score in pairs), today=today_iso)
+    was_top = prior_top_ids(target.persist_kwargs, ContentItem.Type.PAPER)
+    entering = {str(item.id) for item, _score in pairs[: top_n()]} - was_top
     suggestions = generate_suggestions(
         interests,
         pairs,
@@ -622,7 +635,7 @@ def recommend_for_target(
         llm_limit=cluster_top_n if slate_groups else suggestion_limit,
         complete=complete,
         prior=prior,
-        new_ids=new_ids,
+        priority_ids=entering,
         cluster_by_id=_cluster_by_id(rows),
         llm_groups=slate_groups or None,
     )
@@ -646,7 +659,14 @@ def recommend_for_target(
     )
     if persist:
         visible_ids = {s["content_id"] for s in visible}
-        _persist(target.persist_kwargs, rows, suggestions, visible_ids)
+        _persist(
+            target.persist_kwargs,
+            ContentItem.Type.PAPER,
+            rows,
+            suggestions,
+            visible_ids,
+            today=today_iso,
+        )
     return RunResult(
         key,
         "ok",
@@ -1337,9 +1357,12 @@ def _single_vector(
 
 def _persist(
     persist_kwargs: dict,
+    content_type: str,
     rows: list[PersistRow],
     suggestions,
     visible_ids: set[str],
+    *,
+    today: str | None = None,
 ) -> None:
     """Upsert one RelevanceScore per surfaced item; flag the suggested subset.
 
@@ -1361,8 +1384,20 @@ def _persist(
     back to the item's ingest date (``created_at``) as the first-seen date. Pins are
     computed only for the visible (above-floor) items — a hidden paper never shows a
     New badge.
+
+    It also records each row's place in the target's Top-25 slate and whether it
+    entered on this run (:func:`apps.content.top_feed.compute_top`, read against the
+    slate this write is about to replace). That is what the daily report reads: the
+    pin above is the *feed's* week-long New badge, a different question that keeps
+    its own answer.
     """
     run_at = timezone.now().isoformat()
+    slate = compute_top(
+        persist_kwargs,
+        content_type,
+        [s["content_id"] for s in suggestions if s["content_id"] in visible_ids],
+        today=today,
+    )
     suggested = {s["content_id"]: s for s in suggestions}
     items_by_id = {str(item.id): item for item, _score, _extra in rows}
     pins = compute_pins(
@@ -1381,6 +1416,7 @@ def _persist(
             "pinned_until": pin.get("pinned_until"),
             "first_seen": pin.get("first_seen", ""),
         }
+        merge_top_signals(signals, slate, cid)
         if promoted is not None:
             signals.update(
                 rank=promoted["rank"],

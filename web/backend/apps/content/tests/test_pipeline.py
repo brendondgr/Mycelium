@@ -531,6 +531,7 @@ def test_paper_floor_hides_low_score_but_persists_verdict(settings) -> None:
     visible_ids = {s["content_id"] for s in visible}
     _persist(
         {"target_user": user},
+        ContentItem.Type.PAPER,
         [(strong, 0.9, {}), (weak, 0.5, {})],
         suggestions,
         visible_ids,
@@ -597,6 +598,7 @@ def test_surfaced_papers_are_numbered_contiguously(settings) -> None:
 
     _persist(
         {"target_user": user},
+        ContentItem.Type.PAPER,
         [(paper, score, {}) for paper, score in pairs],
         suggestions,
         {s["content_id"] for s in visible},
