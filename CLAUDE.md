@@ -33,7 +33,8 @@ If working inside `web/`, also follow `web/CLAUDE.md`.
 - Failed and abandoned runs are recorded, not deleted.
 - If asked to "just quickly check" a number, still create the experiment folder.
 - Scaffold with `make new-experiment SLUG=<slug>`; check with
-  `make validate-research`. CI runs the validator on every pull request.
+  `make validate-research`. There is no CI enforcement — run it yourself before
+  finishing.
 
 ## Documentation rules
 

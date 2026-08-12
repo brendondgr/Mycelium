@@ -89,8 +89,13 @@ export type Project = {
   name: string;
   scope: ProjectScope;
   scope_name: string;
+  /** The owning lab's slug; null for a personal (or department) project. Lets a
+   * caller tell a lab project from a personal one without consulting the
+   * active workspace. */
+  scope_slug: string | null;
   goals: Record<string, unknown>;
   /** Optional display hints read from `goals`; null when the author set none. */
+  description: string | null;
   status: string | null;
   progress: number | null;
   /** Normalized research focus (areas/keywords/statement/watch topics/clusters). */
@@ -107,8 +112,39 @@ export type Project = {
    * cap — Mylo pauses new recommendations for it until it's archived or the
    * plan is upgraded. Always false once archived. */
   is_over_cap: boolean;
+  /** Whether the signed-in user may edit this project's fundamentals — reported
+   * by the API rather than inferred from the active workspace, which was wrong
+   * whenever a lab project was opened from the personal scope. */
+  can_edit: boolean;
+  /** Whether the signed-in user may add, invite, or remove members. */
+  can_manage_members: boolean;
   members: ProjectMember[];
   updated_at: string;
+};
+
+/** The write shape for a project's fundamentals (`PATCH /api/projects/<id>/`).
+ * Every field is optional; an empty string or `null` clears the stored value. */
+export type ProjectUpdateInput = {
+  name?: string;
+  description?: string | null;
+  status?: string | null;
+  progress?: number | null;
+  watch_categories?: BriefingCategory[];
+  focus?: ProjectFocusInput;
+};
+
+/** An invitation to join a project (from either end of the exchange). */
+export type ProjectInvitation = {
+  id: string;
+  project_id: string;
+  project_name: string;
+  /** Where the project lives — a lab's name, or "Personal". */
+  scope_name: string;
+  invitee: ProjectMember;
+  inviter: ProjectMember | null;
+  message: string;
+  status: "pending" | "accepted" | "rejected" | "ignored" | "cancelled";
+  created_at: string;
 };
 
 /**

@@ -30,10 +30,10 @@ research-index: ## Regenerate docs/research/INDEX.md
 figures: ## Regenerate every experiment figure and re-promote paper figures
 	@$(RESEARCH_RUN) $(SCRIPTS)/build_figures.py
 
-figures-check: ## Regenerate figures and fail if anything drifted (CI)
+figures-check: ## Regenerate figures and fail if anything drifted
 	@$(RESEARCH_RUN) $(SCRIPTS)/build_figures.py --check
 
-research-ci: research-index validate-research figures-check ## What CI runs
+research-ci: research-index validate-research figures-check ## The full research-record check
 	@git diff --quiet -- docs/research || { \
 		echo "docs/research/ is out of date — run 'make research-index figures' and commit."; \
 		git --no-pager diff --stat -- docs/research; \

@@ -45,10 +45,13 @@ import {
   fetchReminders,
   fetchSaves,
   fetchProfile,
+  fetchMyProjectInvitations,
+  fetchProject,
   fetchProjectCollection,
   fetchProjectCollections,
   fetchProjectDigest,
   fetchProjectFeed,
+  fetchProjectInvitations,
   fetchProjectRecommendations,
   fetchProjects,
   fetchSearch,
@@ -68,6 +71,7 @@ import {
   addProjectMember,
   addToCollection,
   archiveProject,
+  cancelProjectInvitation,
   attachLabToDept,
   cancelInvitation,
   createCollection,
@@ -81,6 +85,7 @@ import {
   disconnectDiscord,
   dismissSuggestion,
   ingestProjectLink,
+  inviteToProject,
   issueActivationCode,
   issueLabActivationCode,
   removeDeptMember,
@@ -92,6 +97,8 @@ import {
   inviteToLab,
   joinProject,
   leaveProject,
+  removeProjectMember,
+  respondProjectInvitation,
   removeFromCollection,
   respondToInvitation,
   saveOpportunity,
@@ -104,6 +111,7 @@ import {
   updateCollection,
   updateLabProfile,
   updateLabWatch,
+  updateProject,
   updateProjectCategories,
   updateProjectFocus,
   updateReminder,
@@ -116,6 +124,7 @@ import {
   type AdminUserUpdate,
   type BriefingCategory,
   type InvitationAction,
+  type ProjectUpdateInput,
   type ReminderUpdateInput,
   type SearchSort,
 } from "@/lib/portal/types";
@@ -175,6 +184,20 @@ export function useProjects(labSlug?: string) {
   return useQuery({
     queryKey: ["portal", "projects", scoped ?? "all"],
     queryFn: () => fetchProjects(scoped),
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * One project, read by id. The project page uses this rather than picking its
+ * row out of `useProjects` — that list is scoped to the active workspace, so a
+ * lab project opened from the personal scope simply is not in it.
+ */
+export function useProject(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "project", id ?? "none"],
+    queryFn: () => fetchProject(id as string),
+    enabled: Boolean(id),
     staleTime: 30_000,
   });
 }
@@ -580,6 +603,97 @@ export function useUnarchiveProject() {
   });
 }
 
+/**
+ * Save a project's fundamentals (name, description, status, progress, watch
+ * categories, focus). Refreshes the project itself and both lists; when the
+ * patch changed what Mylo searches on, its recommendations are re-read too —
+ * the backend re-seeds them in the background on exactly those keys.
+ */
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; patch: ProjectUpdateInput }) =>
+      updateProject(input.id, input.patch),
+    onSuccess: (project, variables) => {
+      queryClient.setQueryData(["portal", "project", variables.id], project);
+      queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
+      if ("focus" in variables.patch || "watch_categories" in variables.patch) {
+        queryClient.invalidateQueries({
+          queryKey: ["portal", "project-recommendations", variables.id],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["portal", "project-digest", variables.id],
+        });
+      }
+    },
+  });
+}
+
+/** A project's pending invitations (its editors only). */
+export function useProjectInvitations(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "project-invitations", id ?? "none"],
+    queryFn: () => fetchProjectInvitations(id as string),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
+/** The caller's own pending project invitations (notifications feed). */
+export function useMyProjectInvitations() {
+  return useQuery({
+    queryKey: ["portal", "my-project-invitations"],
+    queryFn: fetchMyProjectInvitations,
+    staleTime: 60_000,
+  });
+}
+
+/** Invite someone to a project, then refresh its invitation list. */
+export function useInviteToProject(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { identifier: string; message?: string }) =>
+      inviteToProject(id, input.identifier, input.message),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-invitations", id],
+      });
+    },
+  });
+}
+
+/** Withdraw a pending invitation, then refresh the list. */
+export function useCancelProjectInvitation(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (invitationId: string) =>
+      cancelProjectInvitation(id, invitationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project-invitations", id],
+      });
+    },
+  });
+}
+
+/** Answer a project invitation; refreshes the feed and the project lists (an
+ * accept adds a project the caller can now see). */
+export function useRespondProjectInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; action: InvitationAction }) =>
+      respondProjectInvitation(input.id, input.action),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "my-project-invitations"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
+    },
+  });
+}
+
 /** One project's matched papers/grants/fellowships/conferences, capped to
  * Mylo's digest slice ("Mylo's picks for this project"). */
 export function useProjectDigest(id?: string) {
@@ -642,10 +756,12 @@ export function useLabProjects(slug?: string) {
   });
 }
 
-/** Join / leave / add-member on a project, refreshing both project lists. */
+/** Join / leave / add / remove members on a project, refreshing the project
+ * itself (its roster is serialized on the row) and both project lists. */
 export function useProjectMembership() {
   const queryClient = useQueryClient();
   const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["portal", "project"] });
     queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
     queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
   };
@@ -662,7 +778,12 @@ export function useProjectMembership() {
       addProjectMember(input.id, input.username),
     onSuccess: invalidate,
   });
-  return { join, leave, addMember };
+  const removeMember = useMutation({
+    mutationFn: (input: { id: string; username: string }) =>
+      removeProjectMember(input.id, input.username),
+    onSuccess: invalidate,
+  });
+  return { join, leave, addMember, removeMember };
 }
 
 /** Save a lab's purpose & goals, updating the cached copy in place. */

@@ -1,8 +1,8 @@
 """Query-first search: lexical FTS, filters, facets, fusion, and the endpoint.
 
 The full-text query (``search_vector`` + trigger) needs PostgreSQL, so the
-DB-backed cases skip on SQLite (CI runs them against the Postgres service, as the
-pgvector suite does). The pure fusion/normalization cases always run.
+DB-backed cases skip on SQLite (point ``DATABASE_URL`` at Postgres to run them,
+as the pgvector suite does). The pure fusion/normalization cases always run.
 """
 
 from __future__ import annotations

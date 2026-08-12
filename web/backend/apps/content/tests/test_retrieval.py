@@ -1,7 +1,7 @@
 """pgvector cosine retrieval over the content store.
 
 The cosine-distance query needs pgvector, so the database-backed cases skip on
-SQLite (CI runs them against the Postgres service). The empty-vector guard is
+SQLite (point ``DATABASE_URL`` at Postgres to run them). The empty-vector guard is
 pure Python and always runs.
 """
 

@@ -81,7 +81,8 @@ experiment records a path plus a hash in `data/POINTERS.md`.
 fails schema validation; `status: complete` with empty `metrics.values`; a
 figure listed but absent or present but unlisted; a figure with no generating
 script; a `data/POINTERS.md` row with no hash; a claim ID absent from
-`CLAIMS.md`; and a stale `INDEX.md`. CI runs it on every pull request.
+`CLAIMS.md`; and a stale `INDEX.md`. Nothing runs it automatically — run it
+yourself before finishing a change to the record.
 
 ## The ledgers
 

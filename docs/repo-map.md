@@ -41,7 +41,8 @@ Paths are relative to the repository root.
 | Saves & reminders | `web/app/src/components/portal/sections/{saves-section,reminders-section}.tsx`, `portal/{reminder-composer,reminder-editor,reminder-offsets-field}.tsx` |
 | Save button & scope menu | `web/app/src/components/portal/sections/opportunity-bits.tsx` |
 | Search UI | `web/app/src/components/portal/global-search.tsx`, `portal/sections/{search-section,search-result-card}.tsx` |
-| Projects UI | `web/app/src/components/portal/sections/{projects-list-section,project-detail-section}.tsx`, `portal/projects/create-project-wizard.tsx` |
+| Projects UI | `web/app/src/components/portal/sections/{projects-list-section,project-detail-section}.tsx` |
+| Project page parts (identity, four-area tabs, editor, team) | `web/app/src/components/portal/projects/{project-identity,project-tabs,project-editor-modal,project-team-card,create-project-wizard}.tsx` |
 | Labs / members / lab settings | `web/app/src/components/portal/sections/{labs-section,members-section,lab-settings-section}.tsx` |
 | Reports page (briefing history) | `web/app/src/components/portal/sections/reports-section.tsx` |
 | Billing page | `web/app/src/components/portal/sections/billing-section.tsx` |
@@ -68,7 +69,7 @@ Paths are relative to the repository root.
 
 | Task | Path |
 |---|---|
-| Projects, membership, visibility, archiving, collaboration endpoints | `web/backend/apps/research/{models,views,serializers,urls}.py` |
+| Projects, membership, invitations, visibility, archiving, collaboration endpoints | `web/backend/apps/research/{models,views,serializers,urls}.py` |
 | Per-scope project caps | `web/backend/apps/research/limits.py` |
 
 ## Backend — matching & delivery (`apps/content`)
@@ -136,7 +137,6 @@ Files below are inside `web/backend/apps/content/`.
 | Retrieval evaluation | `eval/` — `run.py`, `report.py`, `collections.toml`, `configs/`, `harness/`; results in `eval/results/`, guide in [`evaluation.md`](evaluation.md) |
 | Research record (experiments, claims, figures) | `docs/research/` — start at [`research/README.md`](research/README.md) |
 | Research-record tooling | `scripts/research/` — `new_experiment.py`, `validate_research.py`, `generate_index.py`, `build_figures.py`, `manifest.schema.json`; driven by the root `Makefile` |
-| Research-record CI | `.github/workflows/research-record.yml` |
 | Admin bootstrap | `create_admin.py` |
 
 ## Management commands

@@ -5,8 +5,7 @@ in a paper is written here, at the time it happens. A result in a chat log, a
 commit message, or a notebook cell does not exist.
 
 Read [`AGENT_INSTRUCTIONS.md`](AGENT_INSTRUCTIONS.md) before running an
-experiment. It is the contract, and it is enforced by `make validate-research`
-in CI.
+experiment. It is the contract, and `make validate-research` checks it.
 
 ## Where to start
 
@@ -49,7 +48,7 @@ A finished experiment folder is immutable. Corrections are appended to the
 | `make validate-research` | Check every experiment folder and the index |
 | `make research-index` | Regenerate `INDEX.md` from the manifests |
 | `make figures` | Re-run every `make_figures.py` and re-promote paper figures |
-| `make research-ci` | What CI runs on every pull request |
+| `make research-ci` | The full check — validation plus index and figure staleness |
 
 Tooling lives in [`../../scripts/research/`](../../scripts/research/) as its own
 small `uv` project, so validation stays fast enough for a pre-commit hook.
