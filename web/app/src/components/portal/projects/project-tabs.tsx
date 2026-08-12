@@ -769,9 +769,6 @@ export function ProjectAreaPanel({
   return (
     <>
       <div className="mb-5">
-        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
-          {project.name}
-        </p>
         <h2 className="font-serif text-[22px] font-semibold leading-tight text-[var(--text-primary)]">
           {meta?.label}
         </h2>
