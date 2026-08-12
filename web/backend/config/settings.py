@@ -377,6 +377,17 @@ PAPER_MATCH_MAX_SURFACE = env.int("PAPER_MATCH_MAX_SURFACE", default=250)
 # (``suggested=False``) rather than surfaced with a low score.
 PAPER_MIN_MATCH_PERCENT = env.int("PAPER_MIN_MATCH_PERCENT", default=60)
 
+# The daily report's own relevance floor (apps.content.briefing). A feed may hold
+# everything that ever cleared its category's threshold; the report is a once-a-day
+# read and has to stay skimmable, so it shows only what first surfaced *that day*
+# and, of that, only rows whose search relevance clears this bar. Expressed as the
+# raw cosine fraction in [0, 1], the same convention as PAPER_MATCH_THRESHOLD, and
+# read from ``signals.embedding_match`` (falling back to the model's match percent
+# for rows matched without an embedder). It gates the report only — every feed page
+# still shows what it always showed. When nothing clears it the report says so
+# rather than padding itself with weak matches.
+REPORT_RELEVANCE_THRESHOLD = env.float("REPORT_RELEVANCE_THRESHOLD", default=0.65)
+
 # Papers an institutional target (lab / lab project) draws from EACH of its
 # interest clusters (apps.content.pipeline.recommend_for_target). A lab's areas are
 # broad theme names rather than a person's specific keywords, so one theme's

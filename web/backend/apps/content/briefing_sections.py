@@ -1,28 +1,34 @@
 """Sectioned daily-report writer for the Mylo Report.
 
-The single-shot briefing synthesizer (one prompt over per-category counts) is
-replaced here by a fan-out of five prompts — one per research surface, plus one
-that writes the opening paragraph over their output:
+The report is organised the way the reader's work is: a **Personal** part over
+their own matches, then one part per **project** they are on. Each part is broken
+down by category, so a reader looking for funding reads one Grants section rather
+than sifting grants out of a mixed list.
 
-- Four **per-category section prompts** — Paper, Grant, Fellowship, Conference —
-  each receive the researcher's profile and *only their* area's found items (title,
-  match, deadline, and the per-item tailored rationale already written and persisted
-  on the :class:`~apps.content.models.RelevanceScore`) and write a grounded markdown
-  section body explaining, item by item, why it fits *this* researcher and how it
-  maps onto their interests and projects.
-- A **fifth prompt** reads the day's counts and the four section bodies and writes
-  the opening paragraph — how many of each kind surfaced and what stood out — which
-  then *leads* the assembled report.
+- The Personal part is a fan-out of prompts — one per research surface (Paper,
+  Grant, Fellowship, Conference), each receiving the researcher's profile and *only*
+  their area's found items (title, match, deadline, and the per-item tailored
+  rationale already written and persisted on the
+  :class:`~apps.content.models.RelevanceScore`), writing a grounded markdown section
+  explaining, item by item, why it fits *this* researcher — plus one prompt that
+  reads the day's counts and those sections and writes the opening paragraph.
+- **Project parts are written deterministically** from the same persisted
+  rationales. A reader on six projects would otherwise cost six times the model
+  budget for prose that restates rationale the matcher already wrote and that the
+  reader is scanning, not reading. Holding the cost flat is what lets every project
+  be in the report instead of only the top few.
 
 The fan-out is one pass: the prompts are independent, their results are
 concatenated once, and nothing plans, calls a tool, loops, or reflects.
 
-The assembled body is GitHub-flavored markdown: the summary paragraph, then a
-``## Heading`` + body for each non-empty area. Everything is **grounded** (each
-prompt sees only real items) and every stage has a **deterministic markdown
-fallback**, so a missing or flaky model degrades to a still-useful, honest report
-rather than nothing — the same contract as :mod:`apps.content.suggest` /
-:mod:`apps.content.opportunity_llm`.
+The assembled body is GitHub-flavored markdown: the summary paragraph, then
+``## Personal`` and one ``## Project · <name>`` per project, each with a ``###``
+heading per non-empty category. Within a section the items are still grouped by
+the reader's focus themes, which is the level where a theme actually helps.
+Everything is **grounded** (each prompt sees only real items) and every stage has a
+**deterministic markdown fallback**, so a missing or flaky model degrades to a
+still-useful, honest report rather than nothing — the same contract as
+:mod:`apps.content.suggest` / :mod:`apps.content.opportunity_llm`.
 
 The report body is markdown; the frontend renders it (see the Daily section).
 """
@@ -53,9 +59,19 @@ SECTION_NOUN = {
     "conferences": "conference",
 }
 
-#: How many items per area the section prompt writes up (a little more than the
-#: bottom-right UI showcase, which stays at 3).
+#: How many items per area the Personal section prompt writes up (a little more
+#: than the bottom-right UI showcase, which stays at 3).
 REPORT_ITEMS_PER_SECTION = 6
+
+#: How many items per area a project's section lists. Higher than the Personal
+#: prompt's slice because these are written deterministically — there is no token
+#: budget to spend, and a project is a narrow enough surface that ten items still
+#: read as a short list.
+PROJECT_ITEMS_PER_SECTION = 10
+
+#: The heading the reader's own part carries, and the prefix a project's part does.
+PERSONAL_HEADING = "Personal"
+PROJECT_HEADING_PREFIX = "Project · "
 
 #: Generous token budgets — a multi-item markdown section needs headroom beyond the
 #: 1024 client default, or the model is cut off mid-write (finish_reason=length).
@@ -120,13 +136,16 @@ _SECTION_SYSTEM_PROMPT = {
 
 _SUMMARY_SYSTEM_PROMPT = (
     "You are Mylo, the research scout for a lab-intelligence platform, acting as the "
-    "editor of a daily report. You are given the day's per-category counts and the "
-    "already-written detail sections. Write ONLY the opening paragraph of the report "
-    "(2-4 sentences, plain prose, no markdown heading and no lists): say how many "
-    "new items of each kind surfaced today, name a couple of the standouts by title, "
-    "and set up the detail that follows. LEAD with what is NEW; the running totals "
-    "are background. Be warm, calm, and specific. Ground every statement ONLY in the "
-    "counts and sections you are given; never invent a title, number, or deadline."
+    "editor of a daily report. You are given the day's counts — for the reader "
+    "personally and for each project they are on — and the already-written detail "
+    "sections. Write ONLY the opening paragraph of the report (2-4 sentences, plain "
+    "prose, no markdown heading and no lists): say how many new items of each kind "
+    "surfaced today, name which projects picked something up and a couple of the "
+    "standouts by title, and set up the detail that follows. Everything you are "
+    "given is new today and already filtered for relevance, so do not hedge about "
+    "whether it matters. Be warm, calm, and specific. Ground every statement ONLY in "
+    "the counts and sections you are given; never invent a title, number, deadline, "
+    "or project name."
 )
 
 
@@ -136,44 +155,81 @@ _SUMMARY_SYSTEM_PROMPT = (
 
 
 def empty_report_body() -> str:
-    """The honest note for a day with no matched items (no model call needed)."""
+    """The honest note for a day nothing cleared the bar (no model call needed).
+
+    "Nothing today" is a real answer. The alternative — relaxing the relevance floor
+    until *something* fills the page — is how a daily report trains its reader to
+    stop opening it.
+    """
     return (
-        "No new research matched your profile today. Mylo will keep scanning your "
-        "watched topics and surface fresh papers and opportunities here as they "
-        "appear."
+        "Nothing new cleared the relevance bar today, for you or your projects. "
+        "Mylo will keep scanning your watched topics and surface fresh papers and "
+        "opportunities here as they appear — and your feeds and search still hold "
+        "everything matched so far."
     )
 
 
 def generate_report_body(
     profile_text: str,
     categories: list[str],
-    counts: dict[str, int],
-    new_counts: dict[str, int],
-    items_by_category: dict[str, list[dict]],
+    personal,
+    project_parts: list | None = None,
     *,
     complete: CompleteFn | None = None,
 ) -> tuple[str, bool]:
     """Assemble the full markdown report body. Returns ``(body, used_llm)``.
 
-    Runs one section prompt per watched category that actually has items, then the
-    summary prompt over those section bodies. ``used_llm`` is ``True`` when the
-    model wrote any part (so the caller records ``origin=llm``); it is ``False``
-    only when every stage fell back deterministically (writer offline).
-    """
-    by_cluster = group_by_cluster(items_by_category, categories)
-    if by_cluster is not None:
-        return _cluster_first_body(
-            profile_text,
-            categories,
-            counts,
-            new_counts,
-            items_by_category,
-            by_cluster,
-            complete=complete,
-        )
+    ``personal`` and each entry of ``project_parts`` are
+    :class:`apps.content.briefing.ScopePart`\\ s — a label plus that part's found
+    items per category. The Personal part runs one section prompt per category that
+    has items; each project part is rendered deterministically. The summary prompt
+    then writes the opening paragraph over all of it.
 
+    ``used_llm`` is ``True`` when the model wrote any part (so the caller records
+    ``origin=llm``); it is ``False`` only when every stage fell back
+    deterministically (writer offline).
+    """
     used_llm = False
-    sections: list[tuple[str, str]] = []  # (label, body markdown)
+    written: list[tuple[str, str]] = []  # (label shown to the summary prompt, body)
+    blocks: list[str] = []
+
+    personal_block, personal_written, from_llm = _personal_block(
+        profile_text, categories, personal, complete=complete
+    )
+    used_llm = used_llm or from_llm
+    if personal_block:
+        blocks.append(personal_block)
+        written.extend(personal_written)
+
+    for part in project_parts or []:
+        block, part_written = _project_block(categories, part)
+        if block:
+            blocks.append(block)
+            written.extend(part_written)
+
+    summary, summary_from_llm = write_summary(
+        getattr(personal, "counts", {}) or {},
+        categories,
+        project_parts or [],
+        written,
+        complete=complete,
+    )
+    used_llm = used_llm or summary_from_llm
+    return "\n\n".join(b for b in ([summary] + blocks) if b).strip(), used_llm
+
+
+def _personal_block(
+    profile_text: str,
+    categories: list[str],
+    personal,
+    *,
+    complete: CompleteFn | None,
+) -> tuple[str, list[tuple[str, str]], bool]:
+    """``## Personal`` with a ``###`` prose section per category that has items."""
+    items_by_category = getattr(personal, "items", {}) or {}
+    used_llm = False
+    written: list[tuple[str, str]] = []
+    lines: list[str] = []
     for category in categories:
         items = items_by_category.get(category) or []
         if not items:
@@ -182,113 +238,56 @@ def generate_report_body(
             category, profile_text, items, complete=complete
         )
         used_llm = used_llm or from_llm
-        if body:
-            sections.append((SECTION_LABELS.get(category, category.title()), body))
-
-    summary, summary_from_llm = write_summary(
-        counts, new_counts, categories, items_by_category, sections, complete=complete
+        if not body:
+            continue
+        label = SECTION_LABELS.get(category, category.title())
+        lines.append(f"### {label}")
+        lines.append("")
+        lines.append(body)
+        lines.append("")
+        written.append((f"{PERSONAL_HEADING} · {label}", body))
+    if not lines:
+        return "", [], used_llm
+    return (
+        "\n".join([f"## {PERSONAL_HEADING}", "", *lines]).rstrip(),
+        written,
+        used_llm,
     )
-    used_llm = used_llm or summary_from_llm
-
-    blocks: list[str] = [summary] if summary else []
-    for label, body in sections:
-        blocks.append(f"## {label}\n\n{body}")
-    return "\n\n".join(b for b in blocks if b).strip(), used_llm
 
 
-def group_by_cluster(
-    items_by_category: dict[str, list[dict]], categories: list[str]
-) -> dict[str, dict[str, list[dict]]] | None:
-    """Pivot ``{category: items}`` into ``{cluster_label: {category: items}}``.
+def _project_block(categories: list[str], part) -> tuple[str, list[tuple[str, str]]]:
+    """``## Project · <name>`` with a deterministic ``###`` section per category.
 
-    Returns ``None`` when the report should stay category-first: fewer than two
-    themes carry items, or some items have no attribution at all. That second
-    condition is the one that matters — a half-attributed report would put some
-    grants under a theme and silently strand the rest, which reads as a bug to
-    whoever is looking at it. Better the whole report keeps its old shape than
-    that it becomes quietly incomplete.
+    A project with nothing new today gets no section at all — it still holds its row
+    in the summary table, which is where "nothing today" belongs. Padding the body
+    with empty headings is exactly the crowding this report is meant to end.
     """
-    grouped: dict[str, dict[str, list[dict]]] = {}
-    order: list[str] = []
+    items_by_category = getattr(part, "items", {}) or {}
+    label = getattr(part, "label", "") or "Project"
+    written: list[tuple[str, str]] = []
+    lines: list[str] = []
+    tally: list[str] = []
     for category in categories:
-        for item in items_by_category.get(category) or []:
-            label = str(item.get("cluster_label") or "")
-            if not label:
-                return None  # unattributed item — do not half-organise the report
-            if label not in grouped:
-                grouped[label] = {}
-                order.append(label)
-            grouped[label].setdefault(category, []).append(item)
-    if len(order) < 2:
-        return None
-    return {label: grouped[label] for label in order}
-
-
-def _cluster_first_body(
-    profile_text: str,
-    categories: list[str],
-    counts: dict[str, int],
-    new_counts: dict[str, int],
-    items_by_category: dict[str, list[dict]],
-    by_cluster: dict[str, dict[str, list[dict]]],
-    *,
-    complete: CompleteFn | None,
-) -> tuple[str, bool]:
-    """One ``## <Theme>`` section per research cluster, categories inside it.
-
-    A researcher does not think in *paper / grant / conference* — they think in the
-    themes they work on and want to know what each one brought today. With every
-    content type now carrying cluster attribution, the report can finally be
-    organised the way the work is.
-
-    Each category's section prompt still writes its own prose; it is simply handed
-    one theme's slice at a time. That costs one model call per populated
-    (theme, category) pair instead of per category — more calls, but each with a
-    tighter, more coherent set of items to write about, and every one of them keeps
-    its deterministic fallback.
-    """
-    used_llm = False
-    section_bodies: list[tuple[str, str]] = []
-    blocks: list[str] = []
-
-    for label, per_category in by_cluster.items():
-        lines = [f"## {label}", ""]
-        tally = [
-            f"{len(items)} {SECTION_NOUN.get(cat, cat)}{'' if len(items) == 1 else 's'}"
-            for cat, items in per_category.items()
-            if items
-        ]
-        if tally:
-            lines.append(f"_{_join_english(tally)} today._")
-            lines.append("")
-        for category in categories:
-            items = per_category.get(category) or []
-            if not items:
-                continue
-            body, from_llm = write_section(
-                category, profile_text, items, complete=complete
-            )
-            used_llm = used_llm or from_llm
-            if not body:
-                continue
-            heading = SECTION_LABELS.get(category, category.title())
-            lines.append(f"**{heading}**")
-            lines.append("")
-            lines.append(body)
-            lines.append("")
-            section_bodies.append((f"{label} · {heading}", body))
-        blocks.append("\n".join(lines).rstrip())
-
-    summary, summary_from_llm = write_summary(
-        counts,
-        new_counts,
-        categories,
-        items_by_category,
-        section_bodies,
-        complete=complete,
-    )
-    used_llm = used_llm or summary_from_llm
-    return "\n\n".join(b for b in ([summary] + blocks) if b).strip(), used_llm
+        items = items_by_category.get(category) or []
+        if not items:
+            continue
+        count = (getattr(part, "counts", {}) or {}).get(category, len(items))
+        noun = SECTION_NOUN.get(category, category)
+        tally.append(f"{count} {noun}{'' if count == 1 else 's'}")
+        heading = SECTION_LABELS.get(category, category.title())
+        body = _section_fallback(category, items)
+        lines.append(f"### {heading}")
+        lines.append("")
+        lines.append(body)
+        lines.append("")
+        written.append((f"{label} · {heading}", body))
+    if not lines:
+        return "", []
+    head = [f"## {PROJECT_HEADING_PREFIX}{label}", ""]
+    if tally:
+        head.append(f"_{_join_english(tally)} today._")
+        head.append("")
+    return "\n".join([*head, *lines]).rstrip(), written
 
 
 # --------------------------------------------------------------------------- #
@@ -444,17 +443,16 @@ def _section_fallback(category: str, items: list[dict]) -> str:
 
 
 def write_summary(
-    counts: dict[str, int],
-    new_counts: dict[str, int],
+    personal_counts: dict[str, int],
     categories: list[str],
-    items_by_category: dict[str, list[dict]],
+    project_parts: list,
     sections: list[tuple[str, str]],
     *,
     complete: CompleteFn | None = None,
 ) -> tuple[str, bool]:
     """The editor's opening paragraph over the sections. ``(text, from_llm)``."""
     ask = complete if complete is not None else _settings_complete(_SUMMARY_MAX_TOKENS)
-    prompt = _summary_prompt(counts, new_counts, categories, sections)
+    prompt = _summary_prompt(personal_counts, categories, project_parts, sections)
     try:
         raw = ask(_SUMMARY_SYSTEM_PROMPT, prompt)
     except Exception as exc:  # noqa: BLE001 — any LLM failure => deterministic lead
@@ -463,23 +461,33 @@ def write_summary(
     text = _strip_headings(_clean_block(raw))
     if text:
         return text, True
-    return _summary_fallback(counts, new_counts, categories, items_by_category), False
+    return _summary_fallback(personal_counts, categories, project_parts), False
 
 
 def _summary_prompt(
-    counts: dict[str, int],
-    new_counts: dict[str, int],
+    personal_counts: dict[str, int],
     categories: list[str],
+    project_parts: list,
     sections: list[tuple[str, str]],
 ) -> str:
-    lines = ["Today's counts for this researcher:"]
+    lines = ["What is new for this researcher today:"]
     for category in categories:
-        total = counts.get(category, 0)
-        new = new_counts.get(category, 0)
         lines.append(
-            f"- {SECTION_LABELS.get(category, category)}: {new} new, "
-            f"{total} matched in total."
+            f"- {SECTION_LABELS.get(category, category)}: "
+            f"{personal_counts.get(category, 0)} new."
         )
+    active = [p for p in project_parts if getattr(p, "total", 0)]
+    if active:
+        lines.append("")
+        lines.append("On their projects:")
+        for part in active:
+            counts = getattr(part, "counts", {}) or {}
+            tally = ", ".join(
+                f"{counts.get(c, 0)} {SECTION_LABELS.get(c, c).lower()}"
+                for c in categories
+                if counts.get(c, 0)
+            )
+            lines.append(f"- {getattr(part, 'label', 'Project')}: {tally}.")
     lines.append("")
     if sections:
         lines.append("The detail sections that will follow your paragraph:")
@@ -492,44 +500,39 @@ def _summary_prompt(
 
 
 def _summary_fallback(
-    counts: dict[str, int],
-    new_counts: dict[str, int],
+    personal_counts: dict[str, int],
     categories: list[str],
-    items_by_category: dict[str, list[dict]],
+    project_parts: list,
 ) -> str:
     """A deterministic opening paragraph when the model is unavailable."""
-    total = sum(counts.get(c, 0) for c in categories)
-    if total == 0:
+    personal_total = sum(personal_counts.get(c, 0) for c in categories)
+    active = [p for p in project_parts if getattr(p, "total", 0)]
+    if not personal_total and not active:
         return empty_report_body()
 
     def _noun(category: str, n: int) -> str:
         noun = SECTION_NOUN.get(category, category)
         return noun if n == 1 else f"{noun}s"
 
-    parts: list[str] = []
-    for category in categories:
-        count = counts.get(category, 0)
-        if not count:
-            continue
-        new = new_counts.get(category, 0)
-        if new:
-            parts.append(f"{new} new {_noun(category, new)} ({count} matched in total)")
-        else:
-            parts.append(f"{count} {_noun(category, count)}")
-    lead = "Today Mylo surfaced " + _join_english(parts) + " for you."
-
-    highlights: list[str] = []
-    for category in categories:
-        items = items_by_category.get(category) or []
-        if not items:
-            continue
-        top = items[0]
-        match = top.get("match_percent")
-        match_str = f" ({match}% match)" if isinstance(match, int) else ""
-        noun = SECTION_NOUN.get(category, category)
-        highlights.append(f'the {noun} "{top.get("title")}"{match_str}')
-    if highlights:
-        lead += " Standouts include " + _join_english(highlights[:3]) + "."
+    parts = [
+        f"{personal_counts[category]} new {_noun(category, personal_counts[category])}"
+        for category in categories
+        if personal_counts.get(category)
+    ]
+    lead = (
+        "Today Mylo surfaced " + _join_english(parts) + " for you."
+        if parts
+        else "Nothing new cleared the bar for you personally today."
+    )
+    if active:
+        named = _join_english(
+            [
+                f"{getattr(p, 'label', 'a project')} ({p.total})"
+                for p in active[:3]
+            ]
+        )
+        more = f", and {len(active) - 3} more" if len(active) > 3 else ""
+        lead += f" Your projects picked up {named}{more}."
     return lead
 
 

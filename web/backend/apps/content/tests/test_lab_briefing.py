@@ -2,6 +2,7 @@
 
 import pytest
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Lab, LabMembership
@@ -9,6 +10,9 @@ from apps.content.briefing import generate_briefing_for_lab
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 
 RUN = "2026-07-11T06:00:00"
+# The report shows only what first surfaced on the run date and cleared its
+# relevance floor, so a lab row that is meant to reach the prose carries both.
+TODAY = timezone.now().date().isoformat()
 
 
 @pytest.fixture
@@ -47,6 +51,8 @@ def _lab_score(lab: Lab, content: ContentItem, *, rank=1, match=85) -> Relevance
             "headline": f"Headline {content.metadata['title']}",
             "reason": f"Why {content.metadata['title']} fits the lab.",
             "match_percent": match,
+            "first_seen": TODAY,
+            "embedding_match": 0.8,
         },
     )
 
@@ -70,7 +76,7 @@ def test_lab_briefing_is_keyed_to_the_lab_and_covers_its_matches(lab: Lab) -> No
         "conferences": 0,
         "fellowships": 0,
     }
-    assert "## Papers" in briefing.body
+    assert "### Papers" in briefing.body
     assert "lab body" in briefing.body
     assert DailyBriefing.objects.filter(lab=lab).count() == 1
 
@@ -87,7 +93,7 @@ def test_lab_briefing_covers_the_labs_own_fellowships(lab: Lab) -> None:
 
     assert set(briefing.categories) == {"papers", "fellowships"}
     assert briefing.counts["fellowships"] == 1
-    assert "## Fellowships" in briefing.body
+    assert "### Fellowships" in briefing.body
 
 
 @pytest.mark.django_db
@@ -101,7 +107,7 @@ def test_lab_briefing_watch_config_still_narrows_it(lab: Lab) -> None:
     briefing = generate_briefing_for_lab(lab, complete=_llm("body"))
 
     assert set(briefing.categories) == {"papers"}
-    assert "## Fellowships" not in briefing.body
+    assert "### Fellowships" not in briefing.body
 
 
 @pytest.mark.django_db

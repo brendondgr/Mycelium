@@ -45,6 +45,13 @@ def _score(
     match=80,
     **extra_signals,
 ) -> RelevanceScore:
+    """A row the report may show by default: surfaced today, comfortably relevant.
+
+    The report narrows the feed twice (see ``briefing.report_scores``) — first seen
+    on the run date, and search relevance above the floor — so the defaults here are
+    a *typical* fresh row, and a test that cares about either gate overrides
+    ``first_seen`` / ``embedding_match`` explicitly.
+    """
     signals = {
         "suggested": suggested,
         "run_at": run_at,
@@ -52,6 +59,8 @@ def _score(
         "headline": f"Headline {content.metadata['title']}",
         "reason": f"Why {content.metadata['title']} fits you.",
         "match_percent": match,
+        "first_seen": TODAY,
+        "embedding_match": 0.8,
         **extra_signals,
     }
     return RelevanceScore.objects.create(
@@ -103,10 +112,12 @@ def test_llm_report_is_grounded_sectioned_and_counts_are_correct() -> None:
     briefing = generate_briefing_for_user(user, complete=fake_complete)
 
     assert briefing.origin == DailyBriefing.Origin.LLM
-    # Markdown body: the summary paragraph leads, then a section per area.
+    # Markdown body: the summary paragraph leads, then the reader's own part with
+    # one sub-section per area inside it.
     assert briefing.body.startswith("Two papers and a grant landed today.")
-    assert "## Papers" in briefing.body
-    assert "## Grants" in briefing.body
+    assert "## Personal" in briefing.body
+    assert "### Papers" in briefing.body
+    assert "### Grants" in briefing.body
     assert briefing.counts == {"papers": 2, "grants": 1}
     assert briefing.categories == ["papers", "grants"]
     # Showcase (UI grounding) still tracks the top items per area.
@@ -115,9 +126,17 @@ def test_llm_report_is_grounded_sectioned_and_counts_are_correct() -> None:
     # Grounding: the specialists are shown the real items (by title), never invent.
     assert any("Paper A" in u for _s, u in calls)
     assert any("Grant X" in u for _s, u in calls)
-    # The editor is shown the day's counts to summarize over.
+    # The editor is shown what is new to summarize over.
     summary_prompts = [u for s, u in calls if _is_summary(s)]
-    assert summary_prompts and "Papers: 0 new, 2 matched in total" in summary_prompts[0]
+    assert summary_prompts and "Papers: 2 new." in summary_prompts[0]
+    # The summary table's Personal row agrees with the sections above it.
+    assert briefing.project_summary[0] == {
+        "key": "personal",
+        "label": "Personal",
+        "kind": "personal",
+        "scope": "",
+        "counts": {"papers": 2, "grants": 1},
+    }
 
 
 @pytest.mark.django_db
@@ -131,8 +150,8 @@ def test_category_gating_excludes_unwatched_categories() -> None:
 
     assert set(briefing.counts) == {"papers"}
     assert "grants" not in briefing.showcase
-    assert "## Papers" in briefing.body
-    assert "## Grants" not in briefing.body
+    assert "### Papers" in briefing.body
+    assert "### Grants" not in briefing.body
 
 
 @pytest.mark.django_db
@@ -147,7 +166,7 @@ def test_no_watch_row_defaults_to_all_categories() -> None:
     assert briefing.counts["grants"] == 0
     # Model down => deterministic markdown section for the one area with items.
     assert briefing.origin == DailyBriefing.Origin.FALLBACK
-    assert "## Papers" in briefing.body
+    assert "### Papers" in briefing.body
 
 
 @pytest.mark.django_db
@@ -217,7 +236,7 @@ def test_new_counts_gate_on_run_date_and_lead_the_prompt() -> None:
     # The editor is told the new/total split, not just a raw total.
     summary_prompts = [u for s, u in calls if _is_summary(s)]
     assert summary_prompts
-    assert "Conferences: 1 new, 3 matched in total" in summary_prompts[0]
+    assert "Conferences: 1 new." in summary_prompts[0]
 
 
 @pytest.mark.django_db
@@ -248,6 +267,7 @@ def test_accumulated_older_items_are_not_re_announced_as_new() -> None:
         _content(ContentItem.Type.FELLOWSHIP, "No First Seen"),
         rank=2,
         is_new=True,
+        first_seen="",
     )
     _score(
         user,
@@ -296,7 +316,7 @@ def test_fallback_summary_leads_with_new_counts() -> None:
     briefing = generate_briefing_for_user(user, complete=lambda s, u: None)
 
     assert briefing.origin == DailyBriefing.Origin.FALLBACK
-    assert "1 new conference (2 matched in total)" in briefing.body
+    assert "1 new conference" in briefing.body
 
 
 @pytest.mark.django_db
@@ -308,7 +328,7 @@ def test_fallback_when_llm_returns_nothing_still_grounds_items() -> None:
     briefing = generate_briefing_for_user(user, complete=lambda s, u: None)
 
     assert briefing.origin == DailyBriefing.Origin.FALLBACK
-    assert "1 paper" in briefing.body  # summary fallback
+    assert "1 new paper" in briefing.body  # summary fallback
     assert "Solo" in briefing.body  # section fallback names the real item
 
 
@@ -324,7 +344,7 @@ def test_fallback_when_llm_raises() -> None:
     briefing = generate_briefing_for_user(user, complete=raises)
     assert briefing.origin == DailyBriefing.Origin.FALLBACK
     assert briefing.body
-    assert "## Papers" in briefing.body
+    assert "### Papers" in briefing.body
 
 
 @pytest.mark.django_db
@@ -339,7 +359,7 @@ def test_empty_day_writes_honest_fallback_without_calling_model() -> None:
 
     assert briefing.origin == DailyBriefing.Origin.FALLBACK
     assert briefing.counts == {"papers": 0, "grants": 0}
-    assert "No new research" in briefing.body
+    assert "Nothing new cleared the relevance bar" in briefing.body
 
 
 @pytest.mark.django_db
@@ -382,6 +402,7 @@ def test_api_empty_envelope_when_no_briefing(client: APIClient) -> None:
         "counts": {},
         "new_counts": {},
         "showcase": {},
+        "project_summary": [],
         "briefing": None,
     }
 
@@ -400,10 +421,21 @@ def test_api_returns_own_briefing_shape(client: APIClient) -> None:
     assert resp.data["generated_at"] is not None
     assert resp.data["categories"] == ["papers"]
     assert resp.data["counts"] == {"papers": 1}
-    assert resp.data["new_counts"] == {"papers": 0}
+    assert resp.data["new_counts"] == {"papers": 1}
     assert resp.data["briefing"]["origin"] == "llm"
     assert "hello body" in resp.data["briefing"]["body"]
     assert resp.data["showcase"]["papers"][0]["title"] == "Mine"
+    # The report's summary table travels with the envelope (no projects here, so
+    # the Personal row is the whole table).
+    assert resp.data["project_summary"] == [
+        {
+            "key": "personal",
+            "label": "Personal",
+            "kind": "personal",
+            "scope": "",
+            "counts": {"papers": 1},
+        }
+    ]
 
 
 @pytest.mark.django_db

@@ -767,6 +767,15 @@ class DailyBriefing(models.Model):
         blank=True,
         help_text="Top items per category the briefing references (grounding).",
     )
+    project_summary = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "The report's summary table: one row per part (Personal first, then "
+            "each project), each carrying the count of new, above-threshold items "
+            "per category. Empty on briefings written before the table existed."
+        ),
+    )
     generated_on = models.DateField(
         db_index=True,
         default=timezone.localdate,
@@ -814,7 +823,8 @@ class DailyBriefing(models.Model):
         validate_exactly_one(self, "user", "lab")
 
     def __str__(self) -> str:
-        return f"DailyBriefing<{self.user or self.lab}> {self.generated_on} ({self.origin})"
+        owner = self.user or self.lab
+        return f"DailyBriefing<{owner}> {self.generated_on} ({self.origin})"
 
 
 # --------------------------------------------------------------------------- #

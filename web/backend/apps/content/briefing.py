@@ -9,20 +9,39 @@ produces a structured, sectioned **markdown** report. The result is persisted as
 that day's :class:`DailyBriefing` — one row per target per ``generated_on``, so a
 rerun replaces today's report and the previous days stay readable.
 
-The report is a fan-out of five prompts (see :mod:`.briefing_sections`): four
-per-category section prompts — Paper, Grant, Fellowship, and Conference — each
-write a tailored ``## Section`` grounded in that area's found items, reusing the
-per-item rationale already persisted on each :class:`RelevanceScore`, and a fifth
-prompt writes the opening paragraph over those sections. Both the sections and the
-summary have deterministic markdown fallbacks, so a missing or flaky model degrades
-to a still-useful, honest report (``origin`` recorded as ``fallback``) rather than
-nothing.
+The report is organised the way a researcher's work is: a **Personal** part over
+the reader's own matches, then one part per **project** they are on — an individual
+project they own, or a lab project a PI assigned them to. Each part is broken down
+by category (papers, grants, fellowships, conferences), and the report opens with a
+project × category table of what is new today. A lab's report is the same document
+over the lab's aggregate matches and the lab's own projects.
+
+What may appear in the report is deliberately narrower than what the feeds hold
+(:func:`report_scores`): a feed accumulates everything that ever cleared its
+category's threshold, while the report answers "what arrived today, and is it worth
+your attention" — so a row must have *first surfaced today* and its search
+relevance must clear :data:`REPORT_RELEVANCE_FALLBACK` (settings
+``REPORT_RELEVANCE_THRESHOLD``). When nothing clears the bar the report says so
+rather than padding itself out.
+
+The Personal part is a fan-out of prompts (see :mod:`.briefing_sections`): one
+per-category section prompt — Paper, Grant, Fellowship, and Conference — each
+writing a tailored section grounded in that area's found items and reusing the
+per-item rationale already persisted on each :class:`RelevanceScore`, plus one
+prompt for the opening paragraph. Project parts are written deterministically from
+those same persisted rationales, so the daily model cost stays flat no matter how
+many projects a reader is on. Every stage has a deterministic markdown fallback, so
+a missing or flaky model degrades to a still-useful, honest report (``origin``
+recorded as ``fallback``) rather than nothing.
 """
 
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 
+from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.content import briefing_sections
@@ -52,6 +71,34 @@ LAB_BRIEFING_CATEGORIES: tuple[str, ...] = (
 
 #: How many items per category to show in the briefing showcase (bottom-right UI).
 SHOWCASE_PER_CATEGORY = 3
+
+#: Report relevance floor used when ``settings.REPORT_RELEVANCE_THRESHOLD`` is
+#: absent (bare test configs). See that setting for what it gates and why.
+REPORT_RELEVANCE_FALLBACK = 0.65
+
+
+def report_relevance_threshold() -> float:
+    """The report's relevance floor, as a cosine fraction in ``[0, 1]``."""
+    return getattr(settings, "REPORT_RELEVANCE_THRESHOLD", REPORT_RELEVANCE_FALLBACK)
+
+
+def relevance_of(signals: dict) -> float | None:
+    """A row's search relevance in ``[0, 1]``, or ``None`` when it has no signal.
+
+    ``embedding_match`` is the raw cosine the matcher recorded for the row and is
+    the signal the threshold is expressed in. Rows matched without an embedder (a
+    rule-only fellowship, an older row) carry no cosine; their model-assigned
+    ``match_percent`` stands in, on the same 0-1 scale. A row with neither has
+    nothing to judge relevance by, so it returns ``None`` and the report leaves it
+    out rather than assuming it is good.
+    """
+    match = signals.get("embedding_match")
+    if isinstance(match, (int, float)) and not isinstance(match, bool):
+        return float(match)
+    percent = signals.get("match_percent")
+    if isinstance(percent, (int, float)) and not isinstance(percent, bool):
+        return float(percent) / 100.0
+    return None
 
 
 def _watched_categories(watch, allow: tuple[str, ...] | None = None) -> list[str]:
@@ -140,6 +187,78 @@ def _is_new_today(signals: dict, today: str) -> bool:
     return bool(first_seen) and str(first_seen)[:10] == today
 
 
+def report_scores(
+    target_filter: dict,
+    content_type: str,
+    today: str,
+    *,
+    threshold: float | None = None,
+) -> list[RelevanceScore]:
+    """The suggested rows a *report* may show: new today, and relevant enough.
+
+    Two narrowings on top of :func:`_suggested_scores`, and both matter:
+
+    - **New today** (:func:`_is_new_today`). The opportunity feeds accumulate and
+      fellowships are effectively never pruned, so "everything currently matched"
+      is a standing backlog, not a day's news. A report that lists it re-announces
+      the same items every morning.
+    - **Above the relevance floor** (:func:`relevance_of` against
+      :func:`report_relevance_threshold`). A feed page is browsable and can afford
+      the long tail; a once-a-day report cannot. Below the floor an item is left
+      for the reader to find by searching, which is what search is for.
+
+    Returns them in the feed's own order, so the report's "top N" is the same top N
+    the reader would see on the page. An empty list is a real answer — the caller
+    writes "nothing today" rather than relaxing the bar.
+    """
+    return filter_for_report(
+        _suggested_scores(target_filter, content_type), today, threshold=threshold
+    )
+
+
+def filter_for_report(
+    scores: list[RelevanceScore], today: str, *, threshold: float | None = None
+) -> list[RelevanceScore]:
+    """The report narrowing applied to rows already read — see :func:`report_scores`."""
+    floor = report_relevance_threshold() if threshold is None else threshold
+    keep: list[RelevanceScore] = []
+    for score in scores:
+        if not _is_new_today(score.signals, today):
+            continue
+        relevance = relevance_of(score.signals)
+        if relevance is None or relevance < floor:
+            continue
+        keep.append(score)
+    return keep
+
+
+def report_projects_for_user(user) -> list:
+    """The active projects a person's report covers, in display order.
+
+    Both ways a project can be *theirs*: one they own personally (``scope_user``)
+    and one they were added to as a member — which is how a PI or lab admin assigns
+    a lab project to someone in the lab, making it count as both a lab project and
+    one of that person's own. Archived projects are excluded: they keep their
+    stored recommendations but stop getting new ones, so they can only ever
+    contribute an empty row.
+    """
+    from apps.research.models import Project
+
+    return list(
+        Project.objects.active()
+        .filter(Q(scope_user=user) | Q(members=user))
+        .distinct()
+        .order_by("name", "id")
+    )
+
+
+def report_projects_for_lab(lab) -> list:
+    """The active projects a lab's report covers — the lab's own, in display order."""
+    from apps.research.models import Project
+
+    return list(Project.objects.active().filter(scope_lab=lab).order_by("name", "id"))
+
+
 def _showcase_item(
     score: RelevanceScore, today: str, member_names: dict[str, str] | None = None
 ) -> dict:
@@ -185,6 +304,70 @@ def _showcase_item(
     }
 
 
+@dataclass
+class ScopePart:
+    """One part of the report: the Personal part, or one project's part.
+
+    ``counts`` is how many new, above-threshold items that part actually has, per
+    category — the number the summary table's cell shows. ``items`` is the capped
+    slice its section is written from, so a part with 40 qualifying grants counts
+    40 and writes up the top few; the heading names the cap, and the two never
+    disagree about what is on the page.
+    """
+
+    key: str  # "personal" or the project id — stable across a day's reruns
+    label: str  # "Personal" or the project name
+    kind: str  # "personal" | "project"
+    scope: str  # a project's owner discriminator ("user"/"lab"/…); "" for personal
+    counts: dict[str, int] = field(default_factory=dict)
+    items: dict[str, list[dict]] = field(default_factory=dict)
+
+    @property
+    def total(self) -> int:
+        return sum(self.counts.values())
+
+    def as_summary_row(self, categories: list[str]) -> dict:
+        """The JSON row the summary table renders (one row per part)."""
+        return {
+            "key": self.key,
+            "label": self.label,
+            "kind": self.kind,
+            "scope": self.scope,
+            "counts": {c: self.counts.get(c, 0) for c in categories},
+        }
+
+
+def gather_part(
+    target_filter: dict,
+    categories: list[str],
+    today: str,
+    *,
+    key: str,
+    label: str,
+    kind: str,
+    scope: str = "",
+    limit: int,
+    member_names: dict[str, str] | None = None,
+) -> ScopePart:
+    """Read one target's day into a :class:`ScopePart`, report rules applied.
+
+    Each flattened item carries the per-item ``reason``/``headline`` the matcher
+    already wrote, so whatever writes the section — a prompt or the deterministic
+    renderer — enriches real, grounded rationale rather than inventing.
+    """
+    counts: dict[str, int] = {}
+    items: dict[str, list[dict]] = {}
+    for category in categories:
+        scores = report_scores(target_filter, CATEGORY_TYPES[category], today)
+        counts[category] = len(scores)
+        items[category] = [
+            _showcase_item(s, today, member_names) for s in scores[:limit]
+        ]
+    return ScopePart(
+        key=key, label=label, kind=kind, scope=scope, counts=counts, items=items
+    )
+
+
 def _gather(
     target_filter: dict,
     watch,
@@ -195,43 +378,36 @@ def _gather(
     dict[str, int],
     dict[str, int],
     dict[str, list[dict]],
-    dict[str, list[dict]],
 ]:
-    """Return (categories, counts, new_counts, showcase, report_items) per category.
+    """Return (categories, counts, new_counts, showcase) — the feed-level zones.
 
     ``counts`` is everything each category's feed surfaces (papers fresh-only,
     opportunities accumulated); ``new_counts`` is the subset that first surfaced on
-    the run date (:func:`_is_new_today`), the number the briefing leads with, so a
-    day with 3 fresh conferences reads "3 new", not "140" — and an accumulated,
-    never-pruned fellowship feed no longer re-announces the same set as "new" every
-    day of its week-long pin window.
+    the run date (:func:`_is_new_today`), so a day with 3 fresh conferences reads
+    "3 new", not "140" — and an accumulated, never-pruned fellowship feed no longer
+    re-announces the same set as "new" every day of its week-long pin window.
+    ``showcase`` is the small top-``SHOWCASE_PER_CATEGORY`` set the UI card renders.
 
-    ``showcase`` is the small top-``SHOWCASE_PER_CATEGORY`` set the UI card renders;
-    ``report_items`` is a slightly larger top slice (``REPORT_ITEMS_PER_SECTION``,
-    from :mod:`.briefing_sections`) the section prompts write their sections from —
-    each flattened item carries the per-item ``reason``/``headline`` the matcher
-    already wrote, so the prompts enrich real, grounded rationale rather than
-    inventing.
+    These three describe the *feeds*, and the Daily page's summary zone links
+    straight to them, so they stay unfiltered. What the report body may say is the
+    stricter set (:func:`report_scores`), gathered separately per part.
     """
     categories = _watched_categories(watch, allow)
     today = timezone.now().date().isoformat()
-    report_n = briefing_sections.REPORT_ITEMS_PER_SECTION
     counts: dict[str, int] = {}
     new_counts: dict[str, int] = {}
     showcase: dict[str, list[dict]] = {}
-    report_items: dict[str, list[dict]] = {}
     for category in categories:
         scores = _suggested_scores(target_filter, CATEGORY_TYPES[category])
         counts[category] = len(scores)
         new_counts[category] = sum(
             1 for s in scores if _is_new_today(s.signals, today)
         )
-        flattened = [
-            _showcase_item(s, today, member_names) for s in scores[:report_n]
+        showcase[category] = [
+            _showcase_item(s, today, member_names)
+            for s in scores[:SHOWCASE_PER_CATEGORY]
         ]
-        showcase[category] = flattened[:SHOWCASE_PER_CATEGORY]
-        report_items[category] = flattened
-    return categories, counts, new_counts, showcase, report_items
+    return categories, counts, new_counts, showcase
 
 
 def _profile_text(target) -> str:
@@ -298,39 +474,75 @@ def _write_briefing(
     watch,
     allow: tuple[str, ...] | None = None,
     member_names: dict[str, str] | None = None,
+    projects: list | None = None,
     complete: briefing_sections.CompleteFn | None = None,
 ) -> DailyBriefing:
     """Gather a target's day, write the report, and persist it as a ``DailyBriefing``.
 
     ``owner`` is the update-or-create key (``{"user": user}`` or ``{"lab": lab}``);
     ``target`` is the :class:`MatchTarget` the prose is grounded in; ``target_filter``
-    is the ``target_*`` FK the scores are read under. Shared by the user and lab
-    entry points so both apply the same gather + fallback rules.
+    is the ``target_*`` FK the scores are read under; ``projects`` are the projects
+    the report covers after the Personal part. Shared by the user and lab entry
+    points so both apply the same gather + fallback rules — a lab's report is
+    structurally the same document its members receive.
     """
-    categories, counts, new_counts, showcase, report_items = _gather(
+    categories, counts, new_counts, showcase = _gather(
         target_filter, watch, allow, member_names
     )
+    today = timezone.now().date().isoformat()
 
-    if sum(counts.values()) > 0:
+    personal = gather_part(
+        target_filter,
+        categories,
+        today,
+        key="personal",
+        label="Personal",
+        kind="personal",
+        limit=briefing_sections.REPORT_ITEMS_PER_SECTION,
+        member_names=member_names,
+    )
+    project_parts = [
+        gather_part(
+            {"target_project": project},
+            categories,
+            today,
+            key=str(project.id),
+            label=project.name,
+            kind="project",
+            scope=project.scope,
+            limit=briefing_sections.PROJECT_ITEMS_PER_SECTION,
+            member_names=_project_member_names(project),
+        )
+        for project in (projects or [])
+    ]
+
+    if personal.total or any(part.total for part in project_parts):
         body, used_llm = briefing_sections.generate_report_body(
             _profile_text(target),
             categories,
-            counts,
-            new_counts,
-            report_items,
+            personal,
+            project_parts,
             complete=complete,
         )
         origin = (
             DailyBriefing.Origin.LLM if used_llm else DailyBriefing.Origin.FALLBACK
         )
     else:
-        # Empty day: an honest, populated note — no model call needed.
+        # Nothing cleared the report's bar today: an honest, populated note — no
+        # model call needed, and no padding the page with weaker matches.
         body = briefing_sections.empty_report_body()
         origin = DailyBriefing.Origin.FALLBACK
 
     if not body:
         body = briefing_sections.empty_report_body()
         origin = DailyBriefing.Origin.FALLBACK
+
+    # Every part gets a row, including a project with nothing today — "no news for
+    # this project" is itself an answer, and a row that vanishes on a quiet day
+    # reads as the project having been dropped from the report.
+    project_summary = [
+        part.as_summary_row(categories) for part in ([personal] + project_parts)
+    ]
 
     # Keyed on the day, so a same-day rerun replaces today's report while every
     # earlier day stays readable on the Reports page.
@@ -344,6 +556,7 @@ def _write_briefing(
             "counts": counts,
             "new_counts": new_counts,
             "showcase": showcase,
+            "project_summary": project_summary,
         },
     )
     return briefing
@@ -368,6 +581,7 @@ def generate_briefing_for_user(
         target=target_for_user(user),
         target_filter={"target_user": user},
         watch=getattr(user, "watch", None),
+        projects=report_projects_for_user(user),
         complete=complete,
     )
 
@@ -396,17 +610,33 @@ def generate_briefing_for_lab(
         watch=getattr(lab, "watch", None),
         allow=LAB_BRIEFING_CATEGORIES,
         member_names=_lab_member_names(lab),
+        projects=report_projects_for_lab(lab),
         complete=complete,
     )
 
 
 def _lab_member_names(lab) -> dict[str, str]:
     """``{username: display name}`` for a lab's current members."""
+    return _member_names({"target_lab": lab})
+
+
+def _project_member_names(project) -> dict[str, str]:
+    """``{username: display name}`` for the people a project's items can name.
+
+    A lab project resolves to its lab's members (the people who could pick the work
+    up); a personal project to its own members — the same rule the matcher used when
+    it wrote the member-fit layer, so the names the report says are exactly the ones
+    it was given.
+    """
+    return _member_names({"target_project": project})
+
+
+def _member_names(persist_kwargs: dict) -> dict[str, str]:
     from apps.core.people import display_name
 
     from .member_fit import scope_members
 
     return {
         user.get_username(): display_name(user)
-        for user in scope_members({"target_lab": lab})
+        for user in scope_members(persist_kwargs)
     }

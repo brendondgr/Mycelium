@@ -10,6 +10,7 @@ from datetime import date
 
 import pytest
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 from apps.accounts.models import Lab
 from apps.content.lab_digest import (
@@ -29,7 +30,10 @@ from apps.integrations.tests.base import (
     grant_bot_server,
 )
 
-TODAY = date(2026, 7, 16)
+TODAY = date(2026, 7, 16)  # the digest's "on" date — drives filenames and dedupe
+# The *run* date, which the report's freshness gate compares first_seen against.
+# It has to be the real one: nothing here freezes the clock.
+RUN_DATE = timezone.now().date().isoformat()
 
 
 @pytest.fixture(autouse=True)
@@ -71,6 +75,10 @@ def _scored(lab, *, title, cluster="", category=ContentItem.Type.PAPER, percent=
             "cluster_id": cluster.lower().replace(" ", "-") if cluster else "",
             "area": category,
             "run_at": "2026-07-16T00:00:00Z",
+            # The report shows only what surfaced today and cleared the relevance
+            # floor, so a row meant to reach it carries both signals.
+            "first_seen": RUN_DATE,
+            "embedding_match": 0.8,
         },
     )
     return item
@@ -348,7 +356,7 @@ def test_the_report_carries_the_labs_own_matches(db, tmp_path) -> None:
     assert data.display_name == "Lab neuro"
     assert data.counts["papers"] == 1
     assert data.counts["grants"] == 1
-    assert [i.title for i in data.top_papers] == ["A paper"]
+    assert [i.title for i in data.personal.items["papers"]] == ["A paper"]
     assert data.briefing_markdown == "## Papers\n\nToday's reading."
 
 

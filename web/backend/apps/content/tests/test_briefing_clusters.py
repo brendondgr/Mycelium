@@ -1,5 +1,6 @@
 """The paper briefing section groups its write-up by focus cluster."""
 
+from apps.content.briefing import ScopePart
 from apps.content.briefing_sections import _cluster_groups, write_section
 
 
@@ -35,9 +36,12 @@ def test_section_fallback_groups_by_cluster() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Cluster-first report structure (Phase D)
+# Report structure: Personal first, then a part per project. Themes live *inside*
+# a category section (above), which is the level where naming a theme helps —
+# organising the whole report by theme instead put the reader's own matches and
+# their projects' matches in the same bucket, which is what this replaces.
 # --------------------------------------------------------------------------- #
-def _item(title: str, cluster: str) -> dict:
+def _themed(title: str, cluster: str) -> dict:
     return {
         "title": title,
         "cluster_label": cluster,
@@ -47,85 +51,101 @@ def _item(title: str, cluster: str) -> dict:
     }
 
 
-def test_the_report_is_organised_by_research_theme() -> None:
-    """A researcher thinks in themes, not in paper/grant/conference.
+def _part(label: str, kind: str, items: dict) -> ScopePart:
+    return ScopePart(
+        key=label.lower(),
+        label=label,
+        kind=kind,
+        scope="",
+        counts={c: len(v) for c, v in items.items()},
+        items=items,
+    )
 
-    With every content type now carrying attribution, the report leads with one
-    section per theme and puts the categories inside it.
-    """
+
+def test_the_report_leads_with_the_readers_own_part() -> None:
     from apps.content.briefing_sections import generate_report_body
 
-    items = {
-        "papers": [_item("Segmentation nets", "Medical AI")],
-        "grants": [
-            _item("NIH imaging call", "Medical AI"),
-            _item("Soft actuator award", "Robotics"),
-        ],
-    }
+    personal = _part(
+        "Personal",
+        "personal",
+        {
+            "papers": [_themed("Segmentation nets", "Medical AI")],
+            "grants": [_themed("NIH imaging call", "Medical AI")],
+        },
+    )
     body, _used_llm = generate_report_body(
         "A researcher.",
         ["papers", "grants"],
-        {"papers": 1, "grants": 2},
-        {},
-        items,
-        complete=lambda _p: None,  # deterministic path
+        personal,
+        [],
+        complete=lambda _s, _p: None,  # deterministic path
     )
 
-    assert "## Medical AI" in body
-    assert "## Robotics" in body
-    # ...and the categories sit *inside* a theme, not above it.
-    assert "## Papers" not in body
-    # Each item is written under its own theme. (The title also appears in the
-    # opening summary, which sits above every section — so look inside the section.)
-    medical = body[body.index("## Medical AI") : body.index("## Robotics")]
-    assert "Segmentation nets" in medical
-    assert "NIH imaging call" in medical
-    assert "Soft actuator award" not in medical
+    assert "## Personal" in body
+    assert "### Papers" in body
+    assert "### Grants" in body
+    assert "Segmentation nets" in body
 
 
-def test_a_theme_section_tallies_what_it_brought() -> None:
+def test_each_project_gets_its_own_part_after_the_personal_one() -> None:
     from apps.content.briefing_sections import generate_report_body
 
-    items = {
-        "papers": [_item("A", "Medical AI"), _item("B", "Medical AI")],
-        "grants": [_item("C", "Robotics")],
-    }
+    personal = _part("Personal", "personal", {"papers": [_themed("Mine", "Med AI")]})
+    reef = {"grants": [_themed("Reef award", "Sea")]}
+    project = _part("Coral Atlas", "project", reef)
+
     body, _ = generate_report_body(
-        "A researcher.", ["papers", "grants"], {}, {}, items, complete=lambda _p: None
+        "A researcher.",
+        ["papers", "grants"],
+        personal,
+        [project],
+        complete=lambda _s, _p: None,
+    )
+
+    assert body.index("## Personal") < body.index("## Project · Coral Atlas")
+    # A project's items are written under that project, not folded into Personal.
+    personal_block = body[body.index("## Personal") : body.index("## Project ·")]
+    assert "Mine" in personal_block
+    assert "Reef award" not in personal_block
+
+
+def test_a_project_part_tallies_what_it_brought() -> None:
+    from apps.content.briefing_sections import generate_report_body
+
+    project = _part(
+        "Coral Atlas",
+        "project",
+        {
+            "papers": [_themed("A", "Ocean"), _themed("B", "Ocean")],
+            "grants": [_themed("C", "Ocean")],
+        },
+    )
+    body, _ = generate_report_body(
+        "A researcher.",
+        ["papers", "grants"],
+        _part("Personal", "personal", {}),
+        [project],
+        complete=lambda _s, _p: None,
     )
 
     assert "2 papers" in body
     assert "1 grant" in body  # singular, not "1 grants"
 
 
-def test_one_theme_keeps_the_old_category_first_report() -> None:
-    """Nobody's report changes shape just because the capability now exists."""
-    from apps.content.briefing_sections import generate_report_body
+def test_a_quiet_project_gets_no_section_at_all() -> None:
+    """A heading with nothing under it is the crowding this report is ending.
 
-    items = {"papers": [_item("Solo", "Medical AI")]}
-    body, _ = generate_report_body(
-        "A researcher.", ["papers"], {"papers": 1}, {}, items, complete=lambda _p: None
-    )
-
-    assert "## Papers" in body
-    assert "## Medical AI" not in body
-
-
-def test_a_half_attributed_report_stays_category_first() -> None:
-    """Better the whole report keeps its old shape than becomes quietly incomplete.
-
-    If some items carry a theme and others do not, organising by theme would strand
-    the unattributed ones somewhere the reader cannot account for.
+    The project keeps its row in the summary table — that is where "nothing today"
+    belongs — but the body stays about what actually arrived.
     """
     from apps.content.briefing_sections import generate_report_body
 
-    items = {
-        "papers": [_item("Attributed", "Medical AI")],
-        "grants": [{"title": "Unattributed", "match_percent": 70}],
-    }
     body, _ = generate_report_body(
-        "A researcher.", ["papers", "grants"], {}, {}, items, complete=lambda _p: None
+        "A researcher.",
+        ["papers"],
+        _part("Personal", "personal", {"papers": [_themed("Mine", "Medical AI")]}),
+        [_part("Quiet Project", "project", {"papers": []})],
+        complete=lambda _s, _p: None,
     )
 
-    assert "## Medical AI" not in body
-    assert "## Papers" in body
+    assert "Quiet Project" not in body

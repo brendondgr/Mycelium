@@ -4,13 +4,19 @@ A calm, scholarly one-file report in the Mycelium light palette (cream page, for
 green headings, restrained gold for opportunity/deadline signals — see
 ``docs/styles.md``). The document is:
 
-1. a cover with the recipient, date, and a "what Mylo found" summary table,
+1. a cover with the recipient, date, and the **summary table** — one row per part
+   (Personal, then each project) against a column per category, each cell the count
+   of what is new today,
 2. a **table of contents** (real page numbers, resolved by a two-pass build) whose
    first entry points at the written report,
 3. **Your Mylo Report** — the written briefing markdown, the main section,
-4. **Top 25 Articles**,
-5. **Top 25 Grants, Fellowships & Conferences**, and
-6. **Everything Mylo Found** — the full per-category appendix at the bottom.
+4. **Personal** — ``Top 25 Articles`` / ``Top 25 Grants`` / ``Top 25 Fellowships`` /
+   ``Top 25 Conferences``, each capped in its own right, and
+5. one section **per project**, the same categories capped at ten.
+
+There is no "everything Mylo found" appendix. Reprinting the entire feed at the
+bottom of a daily report made a long document longer without answering a question
+anyone had; the feeds and search are where an exhaustive list belongs.
 
 No system fonts or image assets are required: headings use Times (scholarly serif)
 and body uses Helvetica, both bundled with reportlab, so this renders anywhere the
@@ -39,7 +45,13 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.tableofcontents import TableOfContents
 
-from apps.content.daily_report import CATEGORY_LABELS, ReportData, ReportItem
+from apps.content.daily_report import (
+    CATEGORY_LABELS,
+    SECTION_NOUNS,
+    ReportData,
+    ReportItem,
+    ReportPart,
+)
 
 # --- Palette (docs/styles.md, light theme) --------------------------------- #
 BG = HexColor("#F8F4EC")
@@ -92,6 +104,13 @@ def _styles() -> dict[str, ParagraphStyle]:
         "ReportSub", fontName=_SANS_BOLD, fontSize=12, leading=16, textColor=PRIMARY,
         spaceBefore=8, spaceAfter=4,
     )
+    # The written report's own "###" level — the per-category heading inside a
+    # Personal or project part. Distinct from H2 so it never lands in the contents,
+    # which lists the document's structured sections, not the prose's.
+    styles["ReportSubSub"] = ParagraphStyle(
+        "ReportSubSub", fontName=_SANS_BOLD, fontSize=10.5, leading=14,
+        textColor=TEXT_SECONDARY, spaceBefore=6, spaceAfter=3,
+    )
     styles["Body"] = ParagraphStyle(
         "Body", fontName=_SANS, fontSize=10, leading=15, textColor=TEXT,
         spaceAfter=6,
@@ -110,10 +129,6 @@ def _styles() -> dict[str, ParagraphStyle]:
     styles["ItemReason"] = ParagraphStyle(
         "ItemReason", fontName=_SANS, fontSize=9.5, leading=13,
         textColor=TEXT_SECONDARY, spaceAfter=2,
-    )
-    styles["AppendixRow"] = ParagraphStyle(
-        "AppendixRow", fontName=_SANS, fontSize=9, leading=12.5, textColor=TEXT,
-        spaceAfter=1,
     )
     styles["Muted"] = ParagraphStyle(
         "Muted", fontName=_SANS, fontSize=9.5, leading=14, textColor=TEXT_MUTED,
@@ -153,7 +168,10 @@ def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
         if not stripped:
             flush()
             continue
-        if stripped.startswith("## "):
+        if stripped.startswith("### "):
+            flush()
+            flow.append(Paragraph(_inline(stripped[4:]), styles["ReportSubSub"]))
+        elif stripped.startswith("## "):
             flush()
             flow.append(Paragraph(_inline(stripped[3:]), styles["ReportSub"]))
         elif stripped.startswith("# "):
@@ -213,35 +231,54 @@ def _item_flowable(item: ReportItem, styles: dict[str, ParagraphStyle]) -> KeepT
 
 
 def _summary_table(data: ReportData, styles: dict[str, ParagraphStyle]) -> Table:
-    header = ["Category", "Found", "New today"]
-    rows = [header]
-    for category in data.categories:
+    """The report's opening table: a row per part, a column per category.
+
+    Every cell is a count of what is **new today and above the relevance floor** —
+    the same set the sections below list — so the table is a map of the document
+    rather than a second, larger set of numbers to reconcile against it.
+    """
+    label_style = ParagraphStyle(
+        "SummaryLabel", fontName=_SANS, fontSize=9.5, leading=12, textColor=TEXT
+    )
+    header = ["", *[CATEGORY_LABELS.get(c, c.title()) for c in data.categories]]
+    rows: list[list] = [header]
+    for part in data.parts:
         rows.append(
             [
-                CATEGORY_LABELS.get(category, category.title()),
-                str(data.counts.get(category, 0)),
-                str(data.new_counts.get(category, 0)),
+                Paragraph(escape(part.label), label_style),
+                *[str(part.counts.get(c, 0)) for c in data.categories],
             ]
         )
-    table = Table(rows, colWidths=[3.2 * inch, 1.6 * inch, 1.6 * inch])
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
-                ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFDF8")),
-                ("FONTNAME", (0, 0), (-1, 0), _SANS_BOLD),
-                ("FONTNAME", (0, 1), (-1, -1), _SANS),
-                ("FONTSIZE", (0, 0), (-1, -1), 10),
-                ("TEXTCOLOR", (0, 1), (-1, -1), TEXT),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [SURFACE, SURFACE_ALT]),
-                ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
-                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ]
-        )
+    # The label column takes what the category columns leave; the categories are
+    # single digits in the ordinary case, so they need very little.
+    span = 6.7 * inch
+    columns = max(len(data.categories), 1)
+    category_width = min(1.15 * inch, (span - 1.6 * inch) / columns)
+    table = Table(
+        rows,
+        colWidths=[span - category_width * len(data.categories)]
+        + [category_width] * len(data.categories),
     )
+    style = [
+        ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
+        ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFDF8")),
+        ("FONTNAME", (0, 0), (-1, 0), _SANS_BOLD),
+        ("FONTNAME", (0, 1), (-1, -1), _SANS),
+        ("FONTSIZE", (0, 0), (-1, -1), 9.5),
+        ("TEXTCOLOR", (0, 1), (-1, -1), TEXT),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [SURFACE, SURFACE_ALT]),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
+        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+    ]
+    # The Personal row is the reader's own; setting it apart keeps a long project
+    # list from reading as though the first row were just another project.
+    if data.parts and data.parts[0].kind == "personal":
+        style.append(("FONTNAME", (0, 1), (-1, 1), _SANS_BOLD))
+    table.setStyle(TableStyle(style))
     return table
 
 
@@ -319,6 +356,14 @@ def render_report_pdf(data: ReportData) -> bytes:
     story.append(Paragraph(escape(data.summary_line()), styles["Muted"]))
     story.append(Spacer(1, 0.1 * inch))
     story.append(_summary_table(data, styles))
+    story.append(Spacer(1, 0.12 * inch))
+    story.append(
+        Paragraph(
+            "New today, for you and for each project you are on. Items that did not "
+            "clear the relevance bar are left on your feeds and in search.",
+            styles["ItemMeta"],
+        )
+    )
     story.append(PageBreak())
 
     # 2. Table of contents.
@@ -341,72 +386,51 @@ def render_report_pdf(data: ReportData) -> bytes:
         )
     story.append(PageBreak())
 
-    # 4. Top articles.
-    story.append(Paragraph("Top 25 Articles", styles["H1"]))
-    _extend_items(story, data.top_papers, styles, empty="No new articles today.")
-    story.append(PageBreak())
-
-    # 5. Top opportunities.
-    story.append(Paragraph("Top 25 Grants, Fellowships & Conferences", styles["H1"]))
-    _extend_items(
-        story,
-        data.top_opportunities,
-        styles,
-        empty="No matching grants, fellowships, or conferences today.",
-    )
-    story.append(PageBreak())
-
-    # 6. Full appendix.
-    story.append(Paragraph("Everything Mylo Found", styles["H1"]))
-    story.append(
-        Paragraph(
-            "The complete list of items Mylo surfaced for you today, by category.",
-            styles["Muted"],
-        )
-    )
-    any_appendix = False
-    for category in data.categories:
-        items = data.all_items.get(category, [])
-        if not items:
+    # 4. The reader's own part, then one section per project. A project with
+    #    nothing today is skipped here — its zero row is already in the table, and a
+    #    page of empty headings is the crowding this report is meant to end.
+    for index, part in enumerate(data.parts):
+        if part.kind == "project" and not part.total:
             continue
-        any_appendix = True
-        label = CATEGORY_LABELS.get(category, category.title())
-        story.append(Paragraph(f"{label} ({len(items)})", styles["H2"]))
-        for idx, item in enumerate(items, start=1):
-            story.append(_appendix_row(idx, item, styles))
-    if not any_appendix:
-        story.append(Paragraph("Nothing to list today.", styles["Muted"]))
+        if index:
+            story.append(PageBreak())
+        _extend_part(story, part, data.categories, styles)
 
     doc.multiBuild(story, onFirstPage=_decorate, onLaterPages=_decorate)
     return buffer.getvalue()
 
 
-def _extend_items(
+def _extend_part(
     story: list,
-    items: list[ReportItem],
+    part: ReportPart,
+    categories: list[str],
     styles: dict[str, ParagraphStyle],
-    *,
-    empty: str,
 ) -> None:
-    if not items:
-        story.append(Paragraph(empty, styles["Muted"]))
+    """One part: its title, then a capped ``Top N <Category>`` section per area."""
+    story.append(Paragraph(escape(part.label), styles["H1"]))
+    if part.kind == "project":
+        story.append(Paragraph("Project", styles["Muted"]))
+    if not part.total:
+        story.append(
+            Paragraph(
+                "Nothing new cleared the relevance bar here today.", styles["Muted"]
+            )
+        )
         return
-    for item in items:
-        story.append(_item_flowable(item, styles))
-
-
-def _appendix_row(
-    idx: int, item: ReportItem, styles: dict[str, ParagraphStyle]
-) -> Paragraph:
-    title = _inline(item.title)
-    if item.url:
-        title = f'<a href="{escape(item.url)}" color="#4D6733">{title}</a>'
-    tail = []
-    if isinstance(item.match_percent, int):
-        tail.append(f"{item.match_percent}%")
-    if item.deadline_date:
-        tail.append(f"due {escape(item.deadline_date)}")
-    suffix = ""
-    if tail:
-        suffix = f'  <font color="#7F8775" size="8">({" · ".join(tail)})</font>'
-    return Paragraph(f"{idx}. {title}{suffix}", styles["AppendixRow"])
+    for category in categories:
+        items = part.items.get(category) or []
+        if not items:
+            continue
+        noun = SECTION_NOUNS.get(category, CATEGORY_LABELS.get(category, category))
+        story.append(Paragraph(f"Top {part.cap} {noun}", styles["H2"]))
+        found = part.counts.get(category, len(items))
+        if found > len(items):
+            story.append(
+                Paragraph(
+                    f"Showing {len(items)} of {found} — the rest are on your "
+                    f"{noun.lower()} page.",
+                    styles["Muted"],
+                )
+            )
+        for item in items:
+            story.append(_item_flowable(item, styles))

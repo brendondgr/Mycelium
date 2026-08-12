@@ -257,6 +257,7 @@ def _daily_briefing_envelope(briefing) -> dict:
             "counts": {},
             "new_counts": {},
             "showcase": {},
+            "project_summary": [],
             "briefing": None,
         }
     return {
@@ -266,6 +267,10 @@ def _daily_briefing_envelope(briefing) -> dict:
         "counts": briefing.counts,
         "new_counts": briefing.new_counts,
         "showcase": briefing.showcase,
+        # The report's summary table: Personal first, then one row per project.
+        # Empty for a briefing written before the table existed, which the card
+        # reads as "no table" rather than "no projects".
+        "project_summary": briefing.project_summary or [],
         "briefing": {"body": briefing.body, "origin": briefing.origin},
     }
 
