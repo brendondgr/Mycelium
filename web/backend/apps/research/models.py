@@ -174,6 +174,80 @@ class Project(models.Model):
         return self.name
 
 
+class ProjectInvitation(models.Model):
+    """An invitation for someone to join a project.
+
+    Projects gained two different ways onto a roster, deliberately:
+
+    * A lab's owner, admin, or PI **adds** one of that lab's own members to one of
+      the lab's projects directly — no invitation, because that person can already
+      see the lab's work (``ProjectMembersView.post``).
+    * Everyone else is **invited** and has to accept: any collaborator on a
+      personal project, and anyone outside the lab on a lab project.
+
+    Accepting creates a :class:`ProjectMember` and nothing else. It never grants
+    lab membership, so an outside collaborator sees exactly the one project they
+    were invited to — its feed, collections, and recommendations — and no other
+    part of the lab.
+
+    Unlike a lab invitation, this targets an existing account only: a project is a
+    working surface, not a front door, and sign-up stays the lab's invite path.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+        REJECTED = "rejected", "Rejected"
+        IGNORED = "ignored", "Ignored"
+        CANCELLED = "cancelled", "Cancelled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="invitations",
+    )
+    inviter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="sent_project_invitations",
+    )
+    invitee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="project_invitations",
+    )
+    message = models.TextField(
+        blank=True,
+        default="",
+        help_text="Optional note from the inviter, shown with the invitation.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # At most one live invitation per person per project.
+            models.UniqueConstraint(
+                fields=["project", "invitee"],
+                condition=Q(status="pending"),
+                name="research_unique_pending_project_invite",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Invite<{self.invitee} -> {self.project} ({self.status})>"
+
+
 class ProjectMember(models.Model):
     """Join between users and the projects they participate in (briefing §3)."""
 

@@ -16,7 +16,6 @@ from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
-    user_can_manage_lab,
     user_has_department_access,
     user_has_lab_access,
 )
@@ -47,9 +46,10 @@ from .limits import (
     lab_scope_cap,
     personal_scope_cap,
 )
-from .models import Project, ProjectMember
+from .models import Project, ProjectInvitation, ProjectMember
 from .serializers import (
     ProjectCreateSerializer,
+    ProjectInvitationSerializer,
     ProjectSerializer,
     ProjectUpdateSerializer,
 )
@@ -268,16 +268,18 @@ class LabProjectsView(ListAPIView):
 
 
 def _user_can_edit(user, project: Project) -> bool:
-    """Who may edit a project's name / focus.
+    """Who may edit a project's fundamentals, membership, and archive state.
 
-    The personal owner edits their own project; a lab owner/admin edits their lab's
-    projects (mirroring who may create them). Department-scoped projects are not
-    editable through this API yet.
+    The personal owner edits their own project; a lab's owner, admin, or lead PI
+    edits that lab's projects — the same authority that creates them
+    (:func:`user_can_edit_lab_profile`). It used to be owner/admin only here, which
+    left a PI holding edit controls the API then refused. Department-scoped
+    projects are not editable through this API yet.
     """
     if project.scope_user_id is not None:
         return project.scope_user_id == user.id
     if project.scope_lab_id is not None:
-        return user_can_manage_lab(user, project.scope_lab)
+        return user_can_edit_lab_profile(user, project.scope_lab)
     return False
 
 
@@ -304,10 +306,35 @@ class ProjectDetailView(APIView):
             ProjectSerializer(project, context=self._context(request, project)).data
         )
 
+    @staticmethod
+    def _search_surface(project: Project) -> tuple:
+        """What this project searches on — the seed's only real input.
+
+        A whole-corpus re-seed is only warranted when this changes. The editor
+        sends the whole form on every save, so keying off "was `focus` in the
+        body?" would refit the corpus every time someone fixed a typo in the
+        project's name.
+        """
+        from apps.content.targets import (
+            project_interests,
+            project_watch_categories,
+            project_watch_topics,
+        )
+
+        interests = project_interests(project)
+        return (
+            tuple(interests["areas"]),
+            tuple(interests["keywords"]),
+            interests["statement"],
+            tuple(project_watch_topics(project)),
+            tuple(project_watch_categories(project)),
+        )
+
     def patch(self, request: Request, pk) -> Response:
         project = self._get_visible(request, pk)
         if not _user_can_edit(request.user, project):
             raise PermissionDenied("You cannot edit this project.")
+        before = self._search_surface(project)
         serializer = ProjectUpdateSerializer(project, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -320,7 +347,8 @@ class ProjectDetailView(APIView):
         )
         # A focus / category edit changes what the project should match — re-seed
         # over the existing corpus (best-effort) so the feed reflects the change.
-        if {"focus", "watch_categories"} & set(request.data):
+        # A rename or a status change does not, and must not cost a refit.
+        if self._search_surface(project) != before:
             _seed_project(project)
         return Response(
             ProjectSerializer(project, context=self._context(request, project)).data
@@ -486,17 +514,34 @@ class ProjectLeaveView(APIView):
 
 
 class ProjectMembersView(APIView):
-    """A lab manager adds another lab member to one of the lab's projects."""
+    """Read a project's roster, or add a lab member to a lab project directly.
+
+    The direct add is the "no invitation needed" path: a lab's owner, admin, or PI
+    puts one of the lab's own members straight onto one of the lab's projects,
+    because that person can already see the lab's work. Everyone else — anyone
+    outside the lab, and every personal-project collaborator — arrives through
+    :class:`ProjectInvitationsView` and has to accept.
+    """
+
+    def get(self, request: Request, pk) -> Response:
+        """The current roster, readable by anyone who can see the project."""
+        project = _visible_project(request, pk)
+        return Response(
+            {
+                "count": project.members.count(),
+                "items": [_member_brief(u) for u in project.members.all()],
+            }
+        )
 
     def post(self, request: Request, pk) -> Response:
         project = get_object_or_404(
             Project.objects.select_related("scope_lab"), pk=pk
         )
         if project.scope_lab_id is None:
-            raise ValidationError("Members can only be added to lab projects.")
-        if not user_can_manage_lab(request.user, project.scope_lab):
+            raise ValidationError("Members can only be added directly to lab projects.")
+        if not _user_can_edit(request.user, project):
             raise PermissionDenied(
-                "Only a lab owner or admin can add project members."
+                "Only a lab owner, admin, or PI can add project members."
             )
         username = str(request.data.get("username", "")).strip()
         if not username:
@@ -505,16 +550,240 @@ class ProjectMembersView(APIView):
         if not LabMembership.objects.filter(
             user=target, lab=project.scope_lab
         ).exists():
-            raise ValidationError("That person is not a member of this lab.")
+            raise ValidationError(
+                "That person is not a member of this lab — invite them instead."
+            )
         _, created = ProjectMember.objects.get_or_create(
             project=project, user=target
         )
         if created:
+            record_audit_event(
+                actor=request.user,
+                action="project.member_add",
+                target_type="project",
+                target_id=str(project.id),
+                metadata={"username": target.get_username()},
+            )
             _maybe_recompute_team(project)
         return Response(
             ProjectSerializer(project, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class ProjectMemberDetailView(APIView):
+    """Remove one member from a project (its editor only).
+
+    Removing someone drops their `ProjectMember` row, which for a personal-project
+    collaborator also drops their visibility of the project. The scope owner can
+    never be removed — a personal project's owner and a lab's own projects keep
+    their anchor regardless of the roster.
+    """
+
+    def delete(self, request: Request, pk, username) -> Response:
+        project = _visible_project(request, pk)
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot manage this project's members.")
+        target = get_object_or_404(User, username=username)
+        if project.scope_user_id == target.id:
+            raise ValidationError("The project's owner cannot be removed from it.")
+        deleted, _ = ProjectMember.objects.filter(
+            project=project, user=target
+        ).delete()
+        if deleted:
+            record_audit_event(
+                actor=request.user,
+                action="project.member_remove",
+                target_type="project",
+                target_id=str(project.id),
+                metadata={"username": target.get_username()},
+            )
+            _maybe_recompute_team(project)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --------------------------------------------------------------------------- #
+# Project invitations — the "has to accept" half of member management.
+#
+# A lab manager adds a lab member straight onto a lab project (no invite needed);
+# everyone else is invited here and joins only once they accept. Accepting grants
+# a ProjectMember row and nothing more — never lab membership.
+# --------------------------------------------------------------------------- #
+
+
+def _resolve_invitee(identifier: str) -> User:
+    """Find the account an invitation is addressed to (username or email).
+
+    Project invitations target existing accounts only: a project is a working
+    surface, not a front door. Someone without an account is pointed at the lab
+    invitation flow, which does support pending email invites.
+    """
+    identifier = (identifier or "").strip()
+    if not identifier:
+        raise ValidationError({"identifier": ["An email or username is required."]})
+    if "@" in identifier:
+        user = User.objects.filter(email__iexact=identifier).first()
+        if user is None:
+            raise ValidationError(
+                {
+                    "identifier": [
+                        "No Mycelium account uses that email. Invite them to the "
+                        "lab first, or ask them to sign up.",
+                    ]
+                }
+            )
+        return user
+    user = User.objects.filter(username__iexact=identifier).first()
+    if user is None:
+        raise ValidationError(
+            {"identifier": ["No Mycelium user found with that username."]}
+        )
+    return user
+
+
+class ProjectInvitationsView(APIView):
+    """List a project's invitations, or invite someone to it (editors only)."""
+
+    def get(self, request: Request, pk) -> Response:
+        project = _visible_project(request, pk)
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot manage this project's invitations.")
+        invitations = project.invitations.select_related(
+            "project", "project__scope_lab", "project__scope_department",
+            "invitee", "inviter",
+        ).filter(status=ProjectInvitation.Status.PENDING)
+        data = ProjectInvitationSerializer(invitations, many=True).data
+        return Response({"count": len(data), "items": data})
+
+    def post(self, request: Request, pk) -> Response:
+        project = _visible_project(request, pk)
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot invite people to this project.")
+        if project.is_archived:
+            raise ValidationError("Unarchive this project before inviting people.")
+
+        invitee = _resolve_invitee(str(request.data.get("identifier", "")))
+        if ProjectMember.objects.filter(project=project, user=invitee).exists():
+            raise ValidationError(
+                {"identifier": ["That person is already on this project."]}
+            )
+        if project.scope_user_id == invitee.id:
+            raise ValidationError(
+                {"identifier": ["That person already owns this project."]}
+            )
+        if ProjectInvitation.objects.filter(
+            project=project, invitee=invitee, status=ProjectInvitation.Status.PENDING
+        ).exists():
+            raise ValidationError(
+                {"identifier": ["That person already has a pending invitation."]}
+            )
+
+        invitation = ProjectInvitation.objects.create(
+            project=project,
+            inviter=request.user,
+            invitee=invitee,
+            message=str(request.data.get("message", ""))[:2000],
+        )
+        record_audit_event(
+            actor=request.user,
+            action="project.invite",
+            target_type="project",
+            target_id=str(project.id),
+            metadata={"invitation_id": str(invitation.id),
+                      "username": invitee.get_username()},
+        )
+        return Response(
+            ProjectInvitationSerializer(invitation).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ProjectInvitationCancelView(APIView):
+    """An editor withdraws a pending invitation they sent."""
+
+    def post(self, request: Request, pk, iid) -> Response:
+        project = _visible_project(request, pk)
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot manage this project's invitations.")
+        invitation = get_object_or_404(ProjectInvitation, pk=iid, project=project)
+        if invitation.status != ProjectInvitation.Status.PENDING:
+            raise ValidationError("That invitation is no longer pending.")
+        _close_invitation(
+            invitation, ProjectInvitation.Status.CANCELLED, request.user,
+            "project.invitation.cancel",
+        )
+        return Response({"id": str(invitation.id), "status": invitation.status})
+
+
+class MyProjectInvitationsView(APIView):
+    """The caller's pending project invitations — the notifications feed."""
+
+    def get(self, request: Request) -> Response:
+        invitations = (
+            ProjectInvitation.objects.filter(
+                invitee=request.user, status=ProjectInvitation.Status.PENDING
+            )
+            .select_related(
+                "project", "project__scope_lab", "project__scope_department",
+                "invitee", "inviter",
+            )
+        )
+        data = ProjectInvitationSerializer(invitations, many=True).data
+        return Response({"count": len(data), "items": data})
+
+
+class ProjectInvitationRespondView(APIView):
+    """The invitee accepts, rejects, or ignores one of their invitations."""
+
+    _ACTIONS = {
+        "accept": ProjectInvitation.Status.ACCEPTED,
+        "reject": ProjectInvitation.Status.REJECTED,
+        "ignore": ProjectInvitation.Status.IGNORED,
+    }
+
+    def post(self, request: Request, pk) -> Response:
+        invitation = get_object_or_404(
+            ProjectInvitation.objects.select_related("project"), pk=pk
+        )
+        if invitation.invitee_id != request.user.id:
+            raise PermissionDenied("This invitation is not addressed to you.")
+        if invitation.status != ProjectInvitation.Status.PENDING:
+            return Response(
+                {"detail": "This invitation has already been answered."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        action = str(request.data.get("action", "")).strip().lower()
+        if action not in self._ACTIONS:
+            raise ValidationError(
+                {"action": ["Must be one of: accept, reject, ignore."]}
+            )
+
+        if action == "accept":
+            _, created = ProjectMember.objects.get_or_create(
+                project=invitation.project, user=request.user
+            )
+            if created:
+                _maybe_recompute_team(invitation.project)
+        _close_invitation(
+            invitation, self._ACTIONS[action], request.user,
+            f"project.invitation.{action}",
+        )
+        return Response({"id": str(invitation.id), "status": invitation.status})
+
+
+def _close_invitation(
+    invitation: ProjectInvitation, new_status: str, actor, action: str
+) -> None:
+    invitation.status = new_status
+    invitation.responded_at = timezone.now()
+    invitation.save(update_fields=["status", "responded_at"])
+    record_audit_event(
+        actor=actor,
+        action=action,
+        target_type="project_invitation",
+        target_id=str(invitation.id),
+        metadata={"project_id": str(invitation.project_id)},
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -537,7 +806,7 @@ def _user_is_project_participant(user, project: Project) -> bool:
         return True
     if ProjectMember.objects.filter(project=project, user=user).exists():
         return True
-    if project.scope_lab_id is not None and user_can_manage_lab(
+    if project.scope_lab_id is not None and user_can_edit_lab_profile(
         user, project.scope_lab
     ):
         return True

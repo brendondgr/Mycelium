@@ -22,6 +22,8 @@ import type {
   Project,
   ProjectCapErrorBody,
   ProjectFocusInput,
+  ProjectInvitation,
+  ProjectUpdateInput,
   Reminder,
   ReminderInput,
   ReminderUpdateInput,
@@ -360,6 +362,24 @@ export function updateProjectCategories(
   );
 }
 
+/**
+ * Update a project's fundamentals — name, description, status, progress, watch
+ * categories, focus — in one PATCH (its owner or a lab owner/admin/PI only).
+ * Only the keys present are touched; an empty string or `null` clears a display
+ * field rather than storing a blank one.
+ */
+export function updateProject(
+  id: string,
+  patch: ProjectUpdateInput,
+): Promise<Project> {
+  return sendJson<Project>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "projects", id),
+    patch,
+    "Could not save this project.",
+  );
+}
+
 /** Update a project's research focus (owner or lab manager only) — re-seeds
  * Mylo's recommendations for it in the background. */
 export function updateProjectFocus(
@@ -394,16 +414,89 @@ export function leaveProject(id: string): Promise<unknown> {
   );
 }
 
-/** A lab manager adds another lab member to one of the lab's projects. */
+/**
+ * A lab owner/admin/PI puts one of the lab's own members straight onto one of
+ * the lab's projects — the "no invitation needed" path, since that person can
+ * already see the lab's work. Anyone else goes through `inviteToProject`.
+ */
 export function addProjectMember(
   id: string,
   username: string,
-): Promise<unknown> {
-  return sendJson(
+): Promise<Project> {
+  return sendJson<Project>(
     "POST",
     buildApiUrl(getPublicApiBase(), "projects", id, "members"),
     { username },
     "Could not add the member.",
+  );
+}
+
+/** Remove someone from a project (its editor only). */
+export function removeProjectMember(
+  id: string,
+  username: string,
+): Promise<void> {
+  return sendJson<void>(
+    "DELETE",
+    buildApiUrl(getPublicApiBase(), "projects", id, "members", username),
+    undefined,
+    "Could not remove the member.",
+  );
+}
+
+/**
+ * Invite someone to a project by username or email. The invitation grants that
+ * one project on accept and never lab membership, so it is the right path for
+ * an outside collaborator. Targets an existing Mycelium account only.
+ */
+export function inviteToProject(
+  id: string,
+  identifier: string,
+  message?: string,
+): Promise<ProjectInvitation> {
+  return sendJson<ProjectInvitation>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "invitations"),
+    message ? { identifier, message } : { identifier },
+    "Could not send the invitation.",
+  );
+}
+
+/** Withdraw a pending project invitation. */
+export function cancelProjectInvitation(
+  id: string,
+  invitationId: string,
+): Promise<{ id: string; status: string }> {
+  return sendJson(
+    "POST",
+    buildApiUrl(
+      getPublicApiBase(),
+      "projects",
+      id,
+      "invitations",
+      invitationId,
+      "cancel",
+    ),
+    undefined,
+    "Could not cancel the invitation.",
+  );
+}
+
+/** Accept, reject, or ignore a project invitation addressed to the caller. */
+export function respondProjectInvitation(
+  invitationId: string,
+  action: InvitationAction,
+): Promise<{ id: string; status: string }> {
+  return sendJson(
+    "POST",
+    buildApiUrl(
+      getPublicApiBase(),
+      "project-invitations",
+      invitationId,
+      "respond",
+    ),
+    { action },
+    "Could not answer the invitation.",
   );
 }
 

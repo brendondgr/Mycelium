@@ -71,6 +71,59 @@ urlpatterns = [
         views.ProjectMembersView.as_view(),
         name="project-members-no-slash",
     ),
+    path(
+        "projects/<uuid:pk>/members/<str:username>/",
+        views.ProjectMemberDetailView.as_view(),
+        name="project-member-detail",
+    ),
+    path(
+        "projects/<uuid:pk>/members/<str:username>",
+        views.ProjectMemberDetailView.as_view(),
+        name="project-member-detail-no-slash",
+    ),
+    # Project invitations: editors invite + list + cancel; invitees see and answer
+    # their own. The invitee-facing routes sit outside the project namespace
+    # because an invitee cannot read the project until they accept.
+    path(
+        "projects/<uuid:pk>/invitations/",
+        views.ProjectInvitationsView.as_view(),
+        name="project-invitations",
+    ),
+    path(
+        "projects/<uuid:pk>/invitations",
+        views.ProjectInvitationsView.as_view(),
+        name="project-invitations-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/invitations/<uuid:iid>/cancel/",
+        views.ProjectInvitationCancelView.as_view(),
+        name="project-invitation-cancel",
+    ),
+    path(
+        "projects/<uuid:pk>/invitations/<uuid:iid>/cancel",
+        views.ProjectInvitationCancelView.as_view(),
+        name="project-invitation-cancel-no-slash",
+    ),
+    path(
+        "project-invitations/",
+        views.MyProjectInvitationsView.as_view(),
+        name="my-project-invitations",
+    ),
+    path(
+        "project-invitations",
+        views.MyProjectInvitationsView.as_view(),
+        name="my-project-invitations-no-slash",
+    ),
+    path(
+        "project-invitations/<uuid:pk>/respond/",
+        views.ProjectInvitationRespondView.as_view(),
+        name="project-invitation-respond",
+    ),
+    path(
+        "project-invitations/<uuid:pk>/respond",
+        views.ProjectInvitationRespondView.as_view(),
+        name="project-invitation-respond-no-slash",
+    ),
     # Collaboration surface: share into the feed, read the feed, paste-a-link
     # ingest, mark-seen, and engagement events. Slash + no-slash for the proxy.
     path(
