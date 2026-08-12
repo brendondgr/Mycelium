@@ -11,8 +11,12 @@ green headings, restrained gold for opportunity/deadline signals — see
    first entry points at the written report,
 3. **Your Mylo Report** — the written briefing markdown, the main section,
 4. **Personal** — ``Top 25 Articles`` / ``Top 25 Grants`` / ``Top 25 Fellowships`` /
-   ``Top 25 Conferences``, each capped in its own right, and
+   ``Top 25 Conferences``, each its own slate, and
 5. one section **per project**, the same categories capped at ten.
+
+Each list is the reader's whole top slice, every day — not just what arrived. The
+``NEW`` tag marks the items that entered it on this run, which is the only part of
+the page that changes when the day is quiet.
 
 There is no "everything Mylo found" appendix. Reprinting the entire feed at the
 bottom of a daily report made a long document longer without answering a question
@@ -410,11 +414,9 @@ def _extend_part(
     story.append(Paragraph(escape(part.label), styles["H1"]))
     if part.kind == "project":
         story.append(Paragraph("Project", styles["Muted"]))
-    if not part.total:
+    if not part.shown:
         story.append(
-            Paragraph(
-                "Nothing new cleared the relevance bar here today.", styles["Muted"]
-            )
+            Paragraph("Nothing has reached this top list yet.", styles["Muted"])
         )
         return
     for category in categories:
@@ -423,7 +425,7 @@ def _extend_part(
             continue
         noun = SECTION_NOUNS.get(category, CATEGORY_LABELS.get(category, category))
         story.append(Paragraph(f"Top {part.cap} {noun}", styles["H2"]))
-        found = part.counts.get(category, len(items))
+        found = part.slate_sizes.get(category, len(items))
         if found > len(items):
             story.append(
                 Paragraph(

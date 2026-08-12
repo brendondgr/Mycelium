@@ -16,13 +16,20 @@ by category (papers, grants, fellowships, conferences), and the report opens wit
 project × category table of what is new today. A lab's report is the same document
 over the lab's aggregate matches and the lab's own projects.
 
-What may appear in the report is deliberately narrower than what the feeds hold
-(:func:`report_scores`): a feed accumulates everything that ever cleared its
-category's threshold, while the report answers "what arrived today, and is it worth
-your attention" — so a row must have *first surfaced today* and its search
-relevance must clear :data:`REPORT_RELEVANCE_FALLBACK` (settings
-``REPORT_RELEVANCE_THRESHOLD``). When nothing clears the bar the report says so
-rather than padding itself out.
+What the report shows is each category's **slate** — the target's top
+:func:`~apps.content.top_feed.top_n` by relevance (:func:`report_scores`) — and what
+it calls *new* is whatever entered that slate on this run
+(:func:`~apps.content.top_feed.is_entrant`). Those are two different questions and
+the report answers both: the reader always sees their best 25, and only the part
+that changed is written up fresh.
+
+It used to answer neither. A row appeared because it had been *ingested* that day
+and cleared a relevance floor, which meant a bulk import arrived in every reader's
+report as news whether or not it had anything to do with their work, while a strong
+match that had been sitting in their feed for a week was never mentioned at all.
+Anchoring on the slate also makes the report follow the reader: change a focus, a
+cluster, or a search term and the slate re-ranks, so what that change promotes is
+exactly what gets reported.
 
 The Personal part is a fan-out of prompts (see :mod:`.briefing_sections`): one
 per-category section prompt — Paper, Grant, Fellowship, and Conference — each
@@ -47,6 +54,7 @@ from django.utils import timezone
 from apps.content import briefing_sections
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.content.targets import target_for_lab, target_for_user
+from apps.content.top_feed import is_entrant, order_by_slate
 
 logger = logging.getLogger(__name__)
 
@@ -165,19 +173,18 @@ def _suggested_scores(target_filter: dict, content_type: str) -> list[RelevanceS
 
 
 def _is_new_today(signals: dict, today: str) -> bool:
-    """True only when a row was *first seen on the run date* — new since yesterday.
+    """True when a row was *first seen on the run date* — the arrival test.
 
-    The daily report answers "what surfaced today", so an item counts as new only
-    when its immutable ``first_seen`` date equals ``today`` (the run date). This is
-    deliberately stricter than the feed's "New" badge, which pins a fresh item for a
-    week (``is_new`` AND ``pinned_until >= today`` — see
+    This is a fact about the item, not about the reader: it says the store first saw
+    this grant today. The report no longer decides anything by it — being new to the
+    corpus is not a reason to put something in front of someone — but the feed still
+    exposes it, and it is the honest input to that badge.
+
+    Distinct from the feed's own "New" pin, which holds a fresh item for a week
+    (``is_new`` AND ``pinned_until >= today`` — see
     :func:`apps.content.views._build_summary._is_new` and
-    :meth:`apps.content.serializers.…get_is_new`). Using the pin window here made the
-    report re-announce the same set every day for a week: the opportunity feeds
-    accumulate and fellowships are effectively never pruned, so a one-time bulk
-    import of 78 eligible fellowships read "78 new" every day until the pins expired.
-    Anchoring on the first-seen date instead means each item is announced once, the
-    day it actually arrives.
+    :meth:`apps.content.serializers.…get_is_new`), and from the report's news, which
+    is :func:`~apps.content.top_feed.is_entrant`.
 
     ``first_seen`` is stored on every suggested row (opportunities carry the
     immutable ``metadata.first_seen``; papers fall back to the ingest date), as a
@@ -191,45 +198,41 @@ def report_scores(
     target_filter: dict,
     content_type: str,
     today: str,
-    *,
-    threshold: float | None = None,
 ) -> list[RelevanceScore]:
-    """The suggested rows a *report* may show: new today, and relevant enough.
+    """The rows a *report* shows for one category: the target's slate, in rank order.
 
-    Two narrowings on top of :func:`_suggested_scores`, and both matter:
+    The slate is the top :func:`~apps.content.top_feed.top_n` of the category's feed
+    by fused relevance, recorded on each row when the run persisted it. Reading it
+    back — rather than re-deriving a "what's worth showing" rule here — is what keeps
+    the report, the PDF, and the feed page from ever disagreeing about what the
+    reader's best 25 are.
 
-    - **New today** (:func:`_is_new_today`). The opportunity feeds accumulate and
-      fellowships are effectively never pruned, so "everything currently matched"
-      is a standing backlog, not a day's news. A report that lists it re-announces
-      the same items every morning.
-    - **Above the relevance floor** (:func:`relevance_of` against
-      :func:`report_relevance_threshold`). A feed page is browsable and can afford
-      the long tail; a once-a-day report cannot. Below the floor an item is left
-      for the reader to find by searching, which is what search is for.
+    ``today`` is unused for selection and kept in the signature because every caller
+    passes it and uses it moments later for :func:`~apps.content.top_feed.is_entrant`;
+    dropping it would only push the same date-threading into four call sites.
 
-    Returns them in the feed's own order, so the report's "top N" is the same top N
-    the reader would see on the page. An empty list is a real answer — the caller
-    writes "nothing today" rather than relaxing the bar.
+    There is deliberately no extra relevance floor. There was one, and stacked on
+    top of a slate it can only ever mean "show fewer than the top 25" — the feed's
+    own embedding threshold already decides what is good enough to be in the feed at
+    all, and a second opinion about the top of that list just made the report quietly
+    shorter than it claimed to be. An empty list is still a real answer: a target
+    with nothing above its feed threshold gets an honest "nothing yet".
     """
-    return filter_for_report(
-        _suggested_scores(target_filter, content_type), today, threshold=threshold
-    )
+    return filter_for_report(_suggested_scores(target_filter, content_type), today)
 
 
 def filter_for_report(
-    scores: list[RelevanceScore], today: str, *, threshold: float | None = None
+    scores: list[RelevanceScore], today: str
 ) -> list[RelevanceScore]:
-    """The report narrowing applied to rows already read — see :func:`report_scores`."""
-    floor = report_relevance_threshold() if threshold is None else threshold
-    keep: list[RelevanceScore] = []
-    for score in scores:
-        if not _is_new_today(score.signals, today):
-            continue
-        relevance = relevance_of(score.signals)
-        if relevance is None or relevance < floor:
-            continue
-        keep.append(score)
-    return keep
+    """The slate, in rank order, from rows already read — see :func:`report_scores`."""
+    return order_by_slate(scores)
+
+
+def report_new_scores(
+    scores: list[RelevanceScore], today: str
+) -> list[RelevanceScore]:
+    """The slate members that entered on ``today``'s run — the report's news."""
+    return [s for s in scores if is_entrant(s.signals or {}, today)]
 
 
 def report_projects_for_user(user) -> list:
@@ -288,7 +291,13 @@ def _showcase_item(
         "headline": signals.get("headline", ""),
         "reason": signals.get("reason", ""),
         "deadline_date": signals.get("deadline_date") or "",
+        # Two different questions, both answered: ``is_new`` is the *feed's* badge
+        # (first seen today), ``is_entrant`` is the *report's* news (entered the
+        # reader's slate on this run). Conflating them is what had a bulk import
+        # announced to everyone as an opportunity they had not seen.
         "is_new": _is_new_today(signals, today),
+        "is_entrant": is_entrant(signals, today),
+        "top_rank": signals.get("top_rank"),
         # The attributed cluster (papers only; empty elsewhere) so the papers
         # section prompt can group its write-up by the researcher's focus clusters.
         "cluster_label": signals.get("cluster_label", ""),
@@ -349,7 +358,13 @@ def gather_part(
     limit: int,
     member_names: dict[str, str] | None = None,
 ) -> ScopePart:
-    """Read one target's day into a :class:`ScopePart`, report rules applied.
+    """Read one target's slate into a :class:`ScopePart`, and what is new in it.
+
+    ``counts`` is how many *entrants* the part has per category — what the summary
+    table calls new — while ``items`` is the slate itself, which is what the reader
+    is shown. A part with a full Top-25 and one entrant therefore counts 1 and still
+    presents 25: the report is not a list of arrivals, it is the reader's best work
+    with this morning's change called out inside it.
 
     Each flattened item carries the per-item ``reason``/``headline`` the matcher
     already wrote, so whatever writes the section — a prompt or the deterministic
@@ -359,7 +374,7 @@ def gather_part(
     items: dict[str, list[dict]] = {}
     for category in categories:
         scores = report_scores(target_filter, CATEGORY_TYPES[category], today)
-        counts[category] = len(scores)
+        counts[category] = len(report_new_scores(scores, today))
         items[category] = [
             _showcase_item(s, today, member_names) for s in scores[:limit]
         ]
@@ -382,15 +397,11 @@ def _gather(
     """Return (categories, counts, new_counts, showcase) — the feed-level zones.
 
     ``counts`` is everything each category's feed surfaces (papers fresh-only,
-    opportunities accumulated); ``new_counts`` is the subset that first surfaced on
-    the run date (:func:`_is_new_today`), so a day with 3 fresh conferences reads
-    "3 new", not "140" — and an accumulated, never-pruned fellowship feed no longer
-    re-announces the same set as "new" every day of its week-long pin window.
+    opportunities accumulated) — the number the Daily page's summary zone links
+    through to, so it stays unfiltered. ``new_counts`` is how many items *entered the
+    target's slate* on this run, which is the same number the report announces, so
+    the card and the report never disagree about how much is new.
     ``showcase`` is the small top-``SHOWCASE_PER_CATEGORY`` set the UI card renders.
-
-    These three describe the *feeds*, and the Daily page's summary zone links
-    straight to them, so they stay unfiltered. What the report body may say is the
-    stricter set (:func:`report_scores`), gathered separately per part.
     """
     categories = _watched_categories(watch, allow)
     today = timezone.now().date().isoformat()
@@ -401,7 +412,7 @@ def _gather(
         scores = _suggested_scores(target_filter, CATEGORY_TYPES[category])
         counts[category] = len(scores)
         new_counts[category] = sum(
-            1 for s in scores if _is_new_today(s.signals, today)
+            1 for s in scores if is_entrant(s.signals or {}, today)
         )
         showcase[category] = [
             _showcase_item(s, today, member_names)
@@ -528,10 +539,12 @@ def _write_briefing(
             DailyBriefing.Origin.LLM if used_llm else DailyBriefing.Origin.FALLBACK
         )
     else:
-        # Nothing cleared the report's bar today: an honest, populated note — no
-        # model call needed, and no padding the page with weaker matches.
-        body = briefing_sections.empty_report_body()
-        origin = DailyBriefing.Origin.FALLBACK
+        # Nothing entered the reader's Top-25, so there is nothing to say that was
+        # not said yesterday. Carrying the previous body forward verbatim is the
+        # honest answer and the cheap one: re-running the model would spend a call
+        # to re-word the same conclusions, and the reader would have to read the
+        # whole thing again to discover it had not changed.
+        body, origin = _carry_forward(owner)
 
     if not body:
         body = briefing_sections.empty_report_body()
@@ -560,6 +573,24 @@ def _write_briefing(
         },
     )
     return briefing
+
+
+def _carry_forward(owner: dict) -> tuple[str, str]:
+    """Yesterday's body for this target, or an honest empty note when there is none.
+
+    Looks past today's own row: a same-day rerun must carry the *previous day's*
+    report forward, not the one it is in the middle of replacing.
+    """
+    previous = (
+        DailyBriefing.objects.filter(**owner)
+        .exclude(generated_on=timezone.localdate())
+        .order_by("-generated_on")
+        .first()
+    )
+    body = (getattr(previous, "body", "") or "").strip()
+    if not body:
+        return briefing_sections.empty_report_body(), DailyBriefing.Origin.FALLBACK
+    return body, DailyBriefing.Origin.CARRIED
 
 
 def generate_briefing_for_user(

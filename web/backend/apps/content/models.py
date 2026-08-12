@@ -715,6 +715,9 @@ class DailyBriefing(models.Model):
     class Origin(models.TextChoices):
         LLM = "llm", "LLM"
         FALLBACK = "fallback", "Fallback"
+        #: Nothing entered the reader's Top-25, so yesterday's body was carried
+        #: forward verbatim rather than re-worded to say the same thing.
+        CARRIED = "carried", "Carried forward"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # A briefing belongs to exactly one target: a person or a lab (the exactly_one
@@ -742,7 +745,10 @@ class DailyBriefing(models.Model):
         max_length=20,
         choices=Origin.choices,
         default=Origin.FALLBACK,
-        help_text="Whether the LLM or the deterministic fallback wrote the body.",
+        help_text=(
+            "Whether the LLM wrote the body, the deterministic fallback did, or it "
+            "was carried forward from the previous day (nothing new to say)."
+        ),
     )
     categories = models.JSONField(
         default=list,
@@ -758,8 +764,8 @@ class DailyBriefing(models.Model):
         default=dict,
         blank=True,
         help_text=(
-            "Per-category counts of items first seen this week (signals.is_new) — "
-            "what the briefing leads with; counts keeps the total matched."
+            "Per-category counts of items that entered the target's Top-25 on this "
+            "run — what the briefing leads with; counts keeps the total matched."
         ),
     )
     showcase = models.JSONField(
@@ -772,8 +778,9 @@ class DailyBriefing(models.Model):
         blank=True,
         help_text=(
             "The report's summary table: one row per part (Personal first, then "
-            "each project), each carrying the count of new, above-threshold items "
-            "per category. Empty on briefings written before the table existed."
+            "each project), each carrying the count of items that entered that "
+            "part's Top-25 per category. Empty on briefings written before the "
+            "table existed."
         ),
     )
     generated_on = models.DateField(

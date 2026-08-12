@@ -12,11 +12,14 @@ from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 
 RUN = "2026-07-11T06:00:00"
 
-# The daily report counts an item as "new" only when it first surfaced on the run
-# date, so a genuinely-new row carries today's ``first_seen`` and an accumulated one
-# carries an older date. ``today`` is the actual run date (no time is frozen).
+# The report shows a reader's slate and calls new whatever entered it on the run
+# date. ``today`` is the actual run date (no time is frozen), so a row that entered
+# today is news and one that entered earlier is simply still on the page.
 TODAY = timezone.now().date().isoformat()
-OLD_SEEN = "2026-07-01T00:00:00"  # first seen well before any test run
+OLD_SEEN = "2026-07-01T00:00:00"  # first ingested well before any test run
+
+#: Signals for a row the reader was *already* being shown before today's run.
+SETTLED = {"entered_top_on": OLD_SEEN[:10], "is_new_top": False}
 
 
 @pytest.fixture
@@ -45,12 +48,13 @@ def _score(
     match=80,
     **extra_signals,
 ) -> RelevanceScore:
-    """A row the report may show by default: surfaced today, comfortably relevant.
+    """A row the report shows by default: in the reader's slate, and new to it.
 
-    The report narrows the feed twice (see ``briefing.report_scores``) — first seen
-    on the run date, and search relevance above the floor — so the defaults here are
-    a *typical* fresh row, and a test that cares about either gate overrides
-    ``first_seen`` / ``embedding_match`` explicitly.
+    The report shows a target's slate (``briefing.report_scores``) and calls new
+    whatever entered it on the run date, so the defaults here put the row at
+    ``top_rank`` = ``rank`` having entered today. A test about an item that is
+    *already* being shown overrides ``entered_top_on`` / ``is_new_top``; one about an
+    item outside the slate passes ``top_rank=None``.
     """
     signals = {
         "suggested": suggested,
@@ -61,8 +65,15 @@ def _score(
         "match_percent": match,
         "first_seen": TODAY,
         "embedding_match": 0.8,
+        "top_rank": rank,
+        "entered_top_on": TODAY,
+        "is_new_top": True,
         **extra_signals,
     }
+    if signals.get("top_rank") is None:
+        signals.pop("top_rank")
+        signals["entered_top_on"] = ""
+        signals["is_new_top"] = False
     return RelevanceScore.objects.create(
         content=content, target_user=user, score=0.8, signals=signals
     )
@@ -195,32 +206,30 @@ def test_only_latest_run_and_suggested_items_count() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# The freshness gate (the "87 new of 87 matched" bug)
+# What counts as new: entering the slate, not arriving in the corpus
 # --------------------------------------------------------------------------- #
 
 
 @pytest.mark.django_db
-def test_new_counts_gate_on_run_date_and_lead_the_prompt() -> None:
+def test_new_counts_are_slate_entrants_and_lead_the_prompt() -> None:
     user = User.objects.create_user("fresh-first", password="x")
     _watch(user, ["conferences"])
     _score(
         user,
         _content(ContentItem.Type.CONFERENCE, "Fresh Conf"),
         rank=1,
-        is_new=True,
-        first_seen=TODAY,
     )
     _score(
         user,
         _content(ContentItem.Type.CONFERENCE, "Old Conf A"),
         rank=2,
-        first_seen=OLD_SEEN,
+        **SETTLED,
     )
     _score(
         user,
         _content(ContentItem.Type.CONFERENCE, "Old Conf B"),
         rank=3,
-        first_seen=OLD_SEEN,
+        **SETTLED,
     )
 
     calls: list[tuple[str, str]] = []
@@ -240,53 +249,55 @@ def test_new_counts_gate_on_run_date_and_lead_the_prompt() -> None:
 
 
 @pytest.mark.django_db
-def test_accumulated_older_items_are_not_re_announced_as_new() -> None:
-    """Regression: the daily report re-announced the same set as "new" for a week.
+def test_a_standing_slate_member_is_not_re_announced() -> None:
+    """Regression: the report re-announced the same items as new every morning.
 
-    Every fellowship row is stamped ``is_new=True`` at scoring time and (being
-    effectively never pruned) piles up. The old gate counted the whole 7-day pin
-    window, so a one-time bulk import read "78 new" every day until the pins
-    expired. Now only a row first seen *on the run date* counts as new, so an
-    accumulated feed is announced once, the day it arrives — never re-announced.
+    Every fellowship row is stamped ``is_new=True`` at scoring time and, being
+    effectively never pruned, piles up — so any rule keyed on arrival re-announces a
+    one-time bulk import for as long as it lingers. An item is news when it *enters*
+    the reader's slate; after that it is simply still on their page, however recently
+    it happened to reach the store.
     """
     user = User.objects.create_user("stale", password="x")
     _watch(user, ["fellowships"])
-    # Still inside its week-long feed pin window (pinned_until in the future) yet
-    # first seen days ago: the feed still badges it "New", but the daily report
-    # must not re-announce it — this is exactly the case the old gate got wrong.
+    # Ingested today and still inside its week-long feed pin window, but the reader
+    # has been shown it since last week: not news.
     _score(
         user,
-        _content(ContentItem.Type.FELLOWSHIP, "Seen Days Ago"),
+        _content(ContentItem.Type.FELLOWSHIP, "Already Showing"),
         rank=1,
         is_new=True,
-        first_seen=OLD_SEEN,
+        first_seen=TODAY,
         pinned_until="2999-01-01",
+        **SETTLED,
     )
     _score(
         user,
-        _content(ContentItem.Type.FELLOWSHIP, "No First Seen"),
+        _content(ContentItem.Type.FELLOWSHIP, "Also Showing"),
         rank=2,
         is_new=True,
-        first_seen="",
+        first_seen=OLD_SEEN,
+        **SETTLED,
     )
+    # Ingested weeks ago; promoted into the slate only now — that is the news.
     _score(
         user,
-        _content(ContentItem.Type.FELLOWSHIP, "Surfaced Today"),
+        _content(ContentItem.Type.FELLOWSHIP, "Just Promoted"),
         rank=3,
-        is_new=True,
-        first_seen=TODAY,
+        is_new=False,
+        first_seen=OLD_SEEN,
     )
 
     briefing = generate_briefing_for_user(user, complete=_llm("body"))
 
     assert briefing.counts == {"fellowships": 3}
     assert briefing.new_counts == {"fellowships": 1}  # not 3
-    # The showcase's per-item "new" flag is gated the same way.
-    flags = {i["title"]: i["is_new"] for i in briefing.showcase["fellowships"]}
+    # The showcase's per-item entrant flag agrees.
+    flags = {i["title"]: i["is_entrant"] for i in briefing.showcase["fellowships"]}
     assert flags == {
-        "Seen Days Ago": False,
-        "No First Seen": False,
-        "Surfaced Today": True,
+        "Already Showing": False,
+        "Also Showing": False,
+        "Just Promoted": True,
     }
 
 
@@ -299,18 +310,12 @@ def test_accumulated_older_items_are_not_re_announced_as_new() -> None:
 def test_fallback_summary_leads_with_new_counts() -> None:
     user = User.objects.create_user("fb-new", password="x")
     _watch(user, ["conferences"])
-    _score(
-        user,
-        _content(ContentItem.Type.CONFERENCE, "Fresh Conf"),
-        rank=1,
-        is_new=True,
-        first_seen=TODAY,
-    )
+    _score(user, _content(ContentItem.Type.CONFERENCE, "Fresh Conf"), rank=1)
     _score(
         user,
         _content(ContentItem.Type.CONFERENCE, "Old Conf"),
         rank=2,
-        first_seen=OLD_SEEN,
+        **SETTLED,
     )
 
     briefing = generate_briefing_for_user(user, complete=lambda s, u: None)
@@ -359,7 +364,7 @@ def test_empty_day_writes_honest_fallback_without_calling_model() -> None:
 
     assert briefing.origin == DailyBriefing.Origin.FALLBACK
     assert briefing.counts == {"papers": 0, "grants": 0}
-    assert "Nothing new cleared the relevance bar" in briefing.body
+    assert "Nothing has reached your top list yet" in briefing.body
 
 
 @pytest.mark.django_db

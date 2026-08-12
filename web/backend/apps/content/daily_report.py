@@ -5,15 +5,19 @@ This is the *gather* half of the daily "Mylo Report" — as a DM to a person
 lab's channel (``apps.content.lab_digest.queue_lab_report``); the render half is
 :mod:`.daily_report_pdf`, which is target-agnostic. It reads the same suggested
 :class:`RelevanceScore` feeds the portal and the written briefing read — reusing
-:mod:`apps.content.briefing`'s canonical readers, including its report narrowing
-(new today, above the relevance floor), so the PDF can never drift from what the
-written report says — and shapes them into a :class:`ReportData`:
+:mod:`apps.content.briefing`'s canonical readers, including its slate selection, so
+the PDF can never drift from what the written report says — and shapes them into a
+:class:`ReportData`:
 
-* a **Personal** part, each watched category capped at :data:`TOP_PERSONAL`,
+* a **Personal** part: each watched category's slate, capped at :data:`TOP_PERSONAL`,
 * one part **per project** the reader is on, each category capped at
   :data:`TOP_PROJECT`,
-* the day's per-category feed counts (and how many first surfaced today), and
+* the day's per-category feed counts and how many entered the slate, and
 * the freshest written :class:`DailyBriefing` body (the report's main section).
+
+The reader always gets their best 25 per category. What changes day to day is which
+of them are flagged new — the ones that entered the slate on this run — and those
+are the only ones Mylo spends a fresh write-up on.
 
 Every category is capped in its own right. The old report pooled grants,
 fellowships, and conferences into one combined top 25, which meant a heavy grant
@@ -69,6 +73,7 @@ class ReportItem:
     reason: str
     source: str
     deadline_date: str
+    #: This item entered the reader's slate on this run — the report's "new" badge.
     is_new: bool
     cluster_label: str = ""
 
@@ -77,9 +82,10 @@ class ReportItem:
 class ReportPart:
     """One part of the report — Personal, or one project — rendered as a section.
 
-    ``counts`` is how many new, above-threshold items the part has per category
-    (the number its summary-table cell shows, uncapped); ``items`` is the capped
-    slice the PDF lists under the part's headings.
+    ``counts`` is how many items *entered* the part's slate per category — the
+    number its summary-table cell shows. ``items`` is the slate itself, capped at
+    ``cap``, which is what the PDF lists under the part's headings. A part with a
+    settled Top-25 and one entrant therefore counts 1 and still prints 25.
     """
 
     key: str
@@ -88,10 +94,18 @@ class ReportPart:
     cap: int
     counts: dict[str, int] = field(default_factory=dict)
     items: dict[str, list[ReportItem]] = field(default_factory=dict)
+    #: Slate size per category before ``cap`` — what "showing 10 of 25" counts.
+    slate_sizes: dict[str, int] = field(default_factory=dict)
 
     @property
     def total(self) -> int:
+        """How many items entered this part's slate — the part's news."""
         return sum(self.counts.values())
+
+    @property
+    def shown(self) -> int:
+        """How many items this part actually prints, across categories."""
+        return sum(len(items) for items in self.items.values())
 
 
 @dataclass
@@ -126,14 +140,14 @@ class ReportData:
 
     @property
     def report_new(self) -> int:
-        """How many items the report actually shows — the table's grand total."""
+        """How many items the report calls new — the summary table's grand total."""
         return sum(part.total for part in self.parts)
 
     def summary_line(self) -> str:
         """A one-line 'what Mylo found' summary for the DM embed body.
 
-        Counts what the report *shows* (new today and above the relevance floor),
-        not what the feeds hold, so the DM and the attachment never disagree.
+        Counts what *entered* the reader's slate, not what the feeds hold — the DM
+        says what changed, and the attachment shows the whole Top-25 it changed in.
         """
         personal = self.personal.counts if self.personal is not None else {}
         parts = [
@@ -190,7 +204,7 @@ def _item_from_score(score: RelevanceScore, category: str, today: str) -> Report
         reason=flat["reason"],
         source=_source_line(flat["type"], meta),
         deadline_date=flat["deadline_date"],
-        is_new=flat["is_new"],
+        is_new=flat["is_entrant"],
         cluster_label=flat["cluster_label"],
     )
 
@@ -205,19 +219,27 @@ def _compile_part(
     kind: str,
     cap: int,
 ) -> ReportPart:
-    """One part's per-category counts and capped item lists."""
+    """One part's slate per category, plus how much of it is new."""
     counts: dict[str, int] = {}
     items: dict[str, list[ReportItem]] = {}
+    slate_sizes: dict[str, int] = {}
     for category in categories:
         scores = briefing.report_scores(
             target_filter, briefing.CATEGORY_TYPES[category], today
         )
-        counts[category] = len(scores)
+        counts[category] = len(briefing.report_new_scores(scores, today))
+        slate_sizes[category] = len(scores)
         items[category] = [
             _item_from_score(s, category, today) for s in scores[:cap]
         ]
     return ReportPart(
-        key=key, label=label, kind=kind, cap=cap, counts=counts, items=items
+        key=key,
+        label=label,
+        kind=kind,
+        cap=cap,
+        counts=counts,
+        items=items,
+        slate_sizes=slate_sizes,
     )
 
 
@@ -252,8 +274,8 @@ def _compile(
             target_filter, briefing.CATEGORY_TYPES[category]
         )
         counts[category] = len(scores)
-        new_counts[category] = sum(
-            1 for s in scores if briefing._is_new_today(s.signals, today)
+        new_counts[category] = len(
+            briefing.report_new_scores(briefing.filter_for_report(scores, today), today)
         )
 
     personal = _compile_part(

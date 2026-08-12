@@ -75,10 +75,12 @@ def _scored(lab, *, title, cluster="", category=ContentItem.Type.PAPER, percent=
             "cluster_id": cluster.lower().replace(" ", "-") if cluster else "",
             "area": category,
             "run_at": "2026-07-16T00:00:00Z",
-            # The report shows only what surfaced today and cleared the relevance
-            # floor, so a row meant to reach it carries both signals.
             "first_seen": RUN_DATE,
             "embedding_match": 0.8,
+            # The report shows the lab's slate, so a row meant to reach it is in it.
+            "top_rank": 1,
+            "entered_top_on": RUN_DATE,
+            "is_new_top": True,
         },
     )
     return item

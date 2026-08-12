@@ -1,13 +1,14 @@
-"""The report is project-aware, and narrow: new today, and relevant enough.
+"""The report is project-aware, and it is built from each part's Top-25 slate.
 
 Two things are asserted here that the rest of the briefing tests take for granted:
 
 * **Which projects a report covers.** A person's report covers the projects that
   are theirs — one they own outright, and a lab project a PI assigned them to —
   and nobody else's. A lab's report covers the lab's own projects.
-* **What may appear at all.** A feed accumulates; the report does not. A row has to
-  have first surfaced on the run date *and* clear the relevance floor, and when
-  nothing does, the report says so instead of padding itself out.
+* **What may appear at all.** A feed accumulates; the report shows the slate. A row
+  has to be *in* the slate to appear, the summary table counts only what entered it
+  on this run, and a day with no entrants carries yesterday's report forward rather
+  than re-writing it to say the same thing.
 """
 
 import pytest
@@ -38,16 +39,39 @@ def _content(ctype: str, title: str) -> ContentItem:
     )
 
 
-def _score(target: dict, content: ContentItem, *, match=0.8, first_seen=TODAY, **extra):
+def _score(
+    target: dict,
+    content: ContentItem,
+    *,
+    match=0.8,
+    first_seen=TODAY,
+    rank=1,
+    entered_on=TODAY,
+    **extra,
+):
+    """A row in the target's slate at ``rank``, entering on ``entered_on``.
+
+    ``entered_on=None`` puts the row in the feed but outside the slate — the case
+    the report must leave out.
+    """
     signals = {
         "suggested": True,
         "run_at": RUN,
-        "rank": 1,
+        "rank": rank,
         "headline": f"Headline {content.metadata['title']}",
         "reason": f"Why {content.metadata['title']} fits.",
         "match_percent": 85,
         "embedding_match": match,
         "first_seen": first_seen,
+        **(
+            {}
+            if entered_on is None
+            else {
+                "top_rank": rank,
+                "entered_top_on": entered_on,
+                "is_new_top": entered_on == TODAY,
+            }
+        ),
         **extra,
     }
     return RelevanceScore.objects.create(
@@ -139,94 +163,90 @@ def test_a_labs_report_covers_the_labs_projects() -> None:
 
 
 @pytest.mark.django_db
-def test_a_weak_match_never_reaches_the_report(reader: User) -> None:
-    """Below the floor an item is left for search, not pushed into the report."""
+def test_a_row_outside_the_slate_never_reaches_the_report(reader: User) -> None:
+    """The feed can afford a long tail; a once-a-day report cannot."""
+    _score({"target_user": reader}, _content(ContentItem.Type.PAPER, "In The Top"))
     _score(
         {"target_user": reader},
-        _content(ContentItem.Type.PAPER, "Strong"),
-        match=0.71,
-    )
-    _score(
-        {"target_user": reader},
-        _content(ContentItem.Type.PAPER, "Weak"),
-        match=0.51,
+        _content(ContentItem.Type.PAPER, "Down The List"),
+        entered_on=None,
     )
 
     briefing = generate_briefing_for_user(reader, complete=lambda _s, _u: None)
 
     assert _rows(briefing)["Personal"]["counts"]["papers"] == 1
-    assert "Strong" in briefing.body
-    assert "Weak" not in briefing.body
+    assert "In The Top" in briefing.body
+    assert "Down The List" not in briefing.body
     # The feed-level counts are untouched — the Daily page's summary zone links
     # straight to those pages, and both papers really are in the feed.
     assert briefing.counts["papers"] == 2
 
 
 @pytest.mark.django_db
-def test_a_row_with_no_relevance_signal_is_left_out(reader: User) -> None:
-    """Nothing to judge relevance by is not the same as passing the bar."""
-    score = _score({"target_user": reader}, _content(ContentItem.Type.PAPER, "Blind"))
-    score.signals.pop("embedding_match")
-    score.signals.pop("match_percent")
-    score.save(update_fields=["signals"])
+def test_the_whole_slate_is_shown_and_only_entrants_are_counted(reader: User) -> None:
+    """The reader keeps their best matches on the page; the table counts the change.
 
-    briefing = generate_briefing_for_user(reader, complete=lambda _s, _u: None)
-
-    assert _rows(briefing)["Personal"]["counts"]["papers"] == 0
-    assert "Blind" not in briefing.body
-
-
-@pytest.mark.django_db
-def test_a_row_without_an_embedding_falls_back_to_its_match_percent(
-    reader: User,
-) -> None:
-    """A rule-matched fellowship still has a judgement to stand on."""
-    paper = _content(ContentItem.Type.PAPER, "Rule Kept")
-    kept = _score({"target_user": reader}, paper)
-    kept.signals.pop("embedding_match")
-    kept.signals["match_percent"] = 90
-    kept.save(update_fields=["signals"])
-    dropped = _score(
-        {"target_user": reader}, _content(ContentItem.Type.PAPER, "Rule Dropped")
-    )
-    dropped.signals.pop("embedding_match")
-    dropped.signals["match_percent"] = 61
-    dropped.save(update_fields=["signals"])
-
-    briefing = generate_briefing_for_user(reader, complete=lambda _s, _u: None)
-
-    assert "Rule Kept" in briefing.body
-    assert "Rule Dropped" not in briefing.body
-
-
-@pytest.mark.django_db
-def test_yesterdays_backlog_is_not_re_announced(reader: User) -> None:
+    Showing only the day's entrants was the old behaviour and it hid a reader's
+    strongest matches behind whatever happened to have arrived.
+    """
     _score(
         {"target_user": reader},
-        _content(ContentItem.Type.GRANT, "Standing Grant"),
-        first_seen=OLD_SEEN,
+        _content(ContentItem.Type.PAPER, "Standing Best"),
+        rank=1,
+        entered_on=OLD_SEEN[:10],
+    )
+    _score(
+        {"target_user": reader},
+        _content(ContentItem.Type.PAPER, "Just Promoted"),
+        rank=2,
     )
 
     briefing = generate_briefing_for_user(reader, complete=lambda _s, _u: None)
 
-    assert _rows(briefing)["Personal"]["counts"]["grants"] == 0
-    assert "Standing Grant" not in briefing.body
+    assert _rows(briefing)["Personal"]["counts"]["papers"] == 1  # one entrant
+    assert "Standing Best" in briefing.body  # …and both are on the page
+    assert "Just Promoted" in briefing.body
 
 
 @pytest.mark.django_db
-def test_a_day_where_nothing_clears_the_bar_says_so(reader: User) -> None:
-    """The alternative — relaxing the floor until the page fills — trains the
-    reader to stop opening the report."""
+def test_a_quiet_day_carries_yesterdays_report_forward(reader: User) -> None:
+    """Nothing entered the top list, so the report is the same one as yesterday.
+
+    Re-writing it would spend a model call to reach the same conclusions in
+    different words, and cost the reader a full read to discover nothing changed.
+    """
+    from datetime import timedelta
+
+    from apps.content.models import DailyBriefing
+
+    DailyBriefing.objects.create(
+        user=reader,
+        generated_on=timezone.localdate() - timedelta(days=1),
+        body="Yesterday's report, in full.",
+        origin=DailyBriefing.Origin.LLM,
+    )
     _score(
         {"target_user": reader},
-        _content(ContentItem.Type.PAPER, "Marginal"),
-        match=0.4,
+        _content(ContentItem.Type.PAPER, "Standing Best"),
+        entered_on=OLD_SEEN[:10],
     )
+
+    def boom(_system: str, _user: str) -> str:
+        raise AssertionError("the model must not be called when nothing entered")
+
+    briefing = generate_briefing_for_user(reader, complete=boom)
+
+    assert briefing.body == "Yesterday's report, in full."
+    assert briefing.origin == DailyBriefing.Origin.CARRIED
+
+
+@pytest.mark.django_db
+def test_a_reader_with_no_report_yet_gets_an_honest_note(reader: User) -> None:
+    """With nothing in the slate and no earlier report, say so — do not pad."""
 
     def boom(_system: str, _user: str) -> str:
         raise AssertionError("the model must not be called on an empty day")
 
     briefing = generate_briefing_for_user(reader, complete=boom)
 
-    assert "Nothing new cleared the relevance bar" in briefing.body
-    assert "Marginal" not in briefing.body
+    assert "Nothing has reached your top list yet" in briefing.body

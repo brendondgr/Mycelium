@@ -53,6 +53,9 @@ def _lab_score(lab: Lab, content: ContentItem, *, rank=1, match=85) -> Relevance
             "match_percent": match,
             "first_seen": TODAY,
             "embedding_match": 0.8,
+            "top_rank": rank,
+            "entered_top_on": TODAY,
+            "is_new_top": True,
         },
     )
 

@@ -155,17 +155,22 @@ _SUMMARY_SYSTEM_PROMPT = (
 
 
 def empty_report_body() -> str:
-    """The honest note for a day nothing cleared the bar (no model call needed).
+    """The honest note for a target with no report yet (no model call needed).
 
-    "Nothing today" is a real answer. The alternative — relaxing the relevance floor
-    until *something* fills the page — is how a daily report trains its reader to
-    stop opening it.
+    Reached when nothing has entered the reader's top list *and* there is no earlier
+    report to carry forward — a new account, or a profile that has not matched
+    anything yet. On any later quiet day the previous report stands instead, because
+    "the same as yesterday" is more useful than a fresh paragraph saying so.
+
+    "Nothing yet" is a real answer. The alternative — dropping the bar until
+    *something* fills the page — is how a daily report trains its reader to stop
+    opening it.
     """
     return (
-        "Nothing new cleared the relevance bar today, for you or your projects. "
-        "Mylo will keep scanning your watched topics and surface fresh papers and "
-        "opportunities here as they appear — and your feeds and search still hold "
-        "everything matched so far."
+        "Nothing has reached your top list yet, for you or your projects. Mylo will "
+        "keep scanning your watched topics and surface papers and opportunities here "
+        "as they earn a place — and your feeds and search still hold everything "
+        "matched so far."
     )
 
 
@@ -271,9 +276,12 @@ def _project_block(categories: list[str], part) -> tuple[str, list[tuple[str, st
         items = items_by_category.get(category) or []
         if not items:
             continue
-        count = (getattr(part, "counts", {}) or {}).get(category, len(items))
+        new_count = (getattr(part, "counts", {}) or {}).get(category, 0)
         noun = SECTION_NOUN.get(category, category)
-        tally.append(f"{count} {noun}{'' if count == 1 else 's'}")
+        phrase = f"{len(items)} {noun}{'' if len(items) == 1 else 's'}"
+        if new_count:
+            phrase += f" ({new_count} new)"
+        tally.append(phrase)
         heading = SECTION_LABELS.get(category, category.title())
         body = _section_fallback(category, items)
         lines.append(f"### {heading}")
@@ -288,7 +296,7 @@ def _project_block(categories: list[str], part) -> tuple[str, list[tuple[str, st
         # Plain text, not `_italics_`: neither renderer of this markdown (the app's
         # MarkdownProse, the PDF's flowable builder) handles emphasis, so the
         # underscores reached the reader verbatim.
-        head.append(f"{_join_english(tally)} today.")
+        head.append(f"{_join_english(tally)}.")
         head.append("")
     return "\n".join([*head, *lines]).rstrip(), written
 
@@ -359,7 +367,9 @@ def _section_prompt(category: str, profile_text: str, items: list[dict]) -> str:
     lines = [
         f"Researcher profile:\n{profile_text or '(no profile details)'}",
         "",
-        f"Today's new {label} matches — reference ONLY these, by title:",
+        f"The reader's top {label} today — reference ONLY these, by title. "
+        "Items marked NEW have just entered this list; lead with those and give "
+        "them the most space, then place them among the rest:",
     ]
     index = 1
     for cluster_label, group in groups:
@@ -387,8 +397,8 @@ def _item_brief(index: int, item: dict) -> str:
     match = item.get("match_percent")
     if isinstance(match, int):
         tail.append(f"{match}% match")
-    if item.get("is_new"):
-        tail.append("new")
+    if item.get("is_entrant"):
+        tail.append("NEW to your top list")
     if item.get("deadline_date"):
         tail.append(f"deadline {item['deadline_date']}")
     if tail:

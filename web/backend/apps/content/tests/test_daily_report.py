@@ -160,7 +160,7 @@ def test_toc_lists_the_personal_and_project_sections() -> None:
 
 def test_a_capped_section_says_how_many_it_is_hiding() -> None:
     data = _sample_data()
-    data.personal.counts["papers"] = 40  # more found than the 25 the part carries
+    data.personal.slate_sizes["papers"] = 40  # a slate deeper than the part prints
     reader = PdfReader(BytesIO(render_report_pdf(data)))
     text = "\n".join(page.extract_text() for page in reader.pages)
     assert "Showing 3 of 40" in text
@@ -198,7 +198,21 @@ def test_empty_day_still_renders() -> None:
 # --------------------------------------------------------------------------- #
 # Compile (database)
 # --------------------------------------------------------------------------- #
-def _paper(user, i, *, match, rank, run_at="2026-07-19", first_seen="2026-07-19"):
+def _paper(
+    user,
+    i,
+    *,
+    match,
+    rank,
+    run_at="2026-07-19",
+    first_seen="2026-07-19",
+    entered_on="2026-07-19",
+):
+    """A paper in the reader's slate at ``rank``, entering on ``entered_on``.
+
+    ``entered_on`` is what the report reads: pass an earlier date for a row the
+    reader has already been shown.
+    """
     item = ContentItem.objects.create(
         type=ContentItem.Type.PAPER,
         source="openalex",
@@ -217,11 +231,17 @@ def _paper(user, i, *, match, rank, run_at="2026-07-19", first_seen="2026-07-19"
             "run_at": run_at,
             "first_seen": first_seen,
             "reason": f"reason {i}",
+            "top_rank": rank,
+            "entered_top_on": entered_on,
+            "is_new_top": entered_on == "2026-07-19",
         },
     )
 
 
-def _opp(target, kind, i, *, match, first_seen, deadline=""):
+def _opp(
+    target, kind, i, *, match, first_seen, deadline="", rank=1,
+    entered_on="2026-07-19",
+):
     type_map = {
         "grants": ContentItem.Type.GRANT,
         "fellowships": ContentItem.Type.FELLOWSHIP,
@@ -241,6 +261,9 @@ def _opp(target, kind, i, *, match, first_seen, deadline=""):
             "embedding_match": 0.8,
             "first_seen": first_seen,
             "deadline_date": deadline,
+            "top_rank": rank,
+            "entered_top_on": entered_on,
+            "is_new_top": entered_on == "2026-07-19",
         },
         **target,
     )
@@ -283,8 +306,13 @@ def test_compile_caps_each_category_in_its_own_right(monkeypatch) -> None:
 
 
 @pytest.mark.django_db
-def test_compile_holds_back_the_backlog_and_the_weak(monkeypatch) -> None:
-    """The PDF applies the same narrowing the written report does."""
+def test_compile_shows_the_whole_slate_and_flags_only_what_entered(monkeypatch) -> None:
+    """The PDF prints the reader's Top-25 and marks the part of it that is new.
+
+    Both halves matter. Printing only the day's entrants gave a reader a page of
+    whatever had just arrived and hid the strongest matches they had; counting the
+    whole slate as new re-announced the same items every morning.
+    """
     from django.utils import timezone as dj_tz
 
     fixed = dj_tz.now().replace(year=2026, month=7, day=19)
@@ -292,16 +320,41 @@ def test_compile_holds_back_the_backlog_and_the_weak(monkeypatch) -> None:
 
     user = User.objects.create_user("narrow")
     WatchPreference.objects.create(user=user, categories=["papers"])
-    _paper(user, 1, match=90, rank=1)  # new today, relevant
-    _paper(user, 2, match=90, rank=2, first_seen="2026-07-01")  # yesterday's news
-    weak = _paper(user, 3, match=90, rank=3)
-    weak.signals["embedding_match"] = 0.4  # below the floor
-    weak.save(update_fields=["signals"])
+    _paper(user, 1, match=90, rank=1)  # entered the slate today
+    _paper(user, 2, match=90, rank=2, entered_on="2026-07-01")  # already showing
+    _paper(user, 3, match=90, rank=3, entered_on="2026-07-01")  # already showing
 
     data = compile_report_for_user(user)
 
-    assert data.counts["papers"] == 3  # the feed still holds all three
-    assert data.personal.counts["papers"] == 1  # the report shows one
+    assert data.counts["papers"] == 3  # the feed holds all three…
+    assert [i.title for i in data.personal.items["papers"]] == [
+        "Paper 1",
+        "Paper 2",
+        "Paper 3",
+    ]  # …and the report shows all three, in rank order
+    assert data.personal.counts["papers"] == 1  # exactly one of them is news
+    assert [i.is_new for i in data.personal.items["papers"]] == [True, False, False]
+
+
+@pytest.mark.django_db
+def test_compile_leaves_out_what_is_below_the_slate(monkeypatch) -> None:
+    """A row in the feed but outside the Top-25 is not in the report."""
+    from django.utils import timezone as dj_tz
+
+    fixed = dj_tz.now().replace(year=2026, month=7, day=19)
+    monkeypatch.setattr(dj_tz, "now", lambda: fixed)
+
+    user = User.objects.create_user("deep-feed")
+    WatchPreference.objects.create(user=user, categories=["papers"])
+    _paper(user, 1, match=90, rank=1)
+    below = _paper(user, 2, match=90, rank=2)
+    del below.signals["top_rank"]
+    below.signals["is_new_top"] = False
+    below.save(update_fields=["signals"])
+
+    data = compile_report_for_user(user)
+
+    assert data.counts["papers"] == 2  # both are in the feed
     assert [i.title for i in data.personal.items["papers"]] == ["Paper 1"]
 
 
