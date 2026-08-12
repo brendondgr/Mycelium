@@ -14,6 +14,7 @@ import {
   BankIcon,
   ConferenceIcon,
   DocumentIcon,
+  GridIcon,
   SparkleIcon,
   SporeNode,
 } from "@/components/portal/icons";
@@ -599,43 +600,54 @@ function NoMatches({ filtering, noun }: { filtering: boolean; noun: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// The tab shell
+// The page-level tab switch
 // ---------------------------------------------------------------------------
 
+/** Every tab on a project page. Overview first, then the four Mylo areas. */
+export type ProjectTabKey = "overview" | AreaKey;
+
+const TABS: { key: ProjectTabKey; label: string; icon: React.ReactNode }[] = [
+  { key: "overview", label: "Overview", icon: <GridIcon size={15} /> },
+  ...AREAS.map((area) => ({
+    key: area.key as ProjectTabKey,
+    label: area.label,
+    icon: area.icon,
+  })),
+];
+
 /**
- * The project's four recommendation feeds behind one switch: Papers (the
- * default and the project's overview), then Grants, Conferences, and
- * Fellowships. Every panel renders the exact card its own page renders, so a
- * project's matches read the same as the personal and lab feeds — what changes
- * is that they are scored against this project's declared focus.
+ * The switch that drives the whole project page.
  *
- * An area the project has switched off in its watch settings keeps its tab but
- * says so plainly, rather than showing an empty list that looks like a failure.
- * The tablist follows the WAI-ARIA pattern: one tab stop, arrow keys to move,
- * Home / End to jump.
+ * It is deliberately page-level chrome rather than a control inside a card: a
+ * feed tab replaces everything below it and runs the full width of the page, so
+ * papers, grants, conferences, and fellowships get the same room they have on
+ * their own pages instead of being squeezed into a column beside a sidebar.
+ * Overview is the project's own dashboard — the team's shared work, its roster,
+ * its focus.
+ *
+ * Follows the WAI-ARIA tabs pattern: one tab stop, arrow keys to move between
+ * tabs, Home / End to jump to the ends. The row scrolls horizontally on a narrow
+ * screen rather than wrapping into a second line.
  */
-export function ProjectRecommendationTabs({
-  project,
-  data,
-  isLoading,
-  isError,
+export function ProjectTabBar({
+  active,
+  onChange,
+  counts,
+  tracked,
 }: {
-  project: Project;
-  data: ProjectRecommendations | undefined;
-  isLoading: boolean;
-  isError: boolean;
+  active: ProjectTabKey;
+  onChange: (next: ProjectTabKey) => void;
+  /** Per-area totals from the recommendations payload; omitted while loading. */
+  counts?: ProjectRecommendations["counts"];
+  /** Which areas the project actually runs — the rest are marked "off". */
+  tracked: BriefingCategory[];
 }) {
-  const [active, setActive] = React.useState<AreaKey>("papers");
   const tabRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
 
-  const counts = data?.counts;
-  const recommendedFor = data?.recommended_for ?? {};
-  const tracked = project.watch_categories;
-
   const onKeyDown = (event: React.KeyboardEvent) => {
-    const order = AREAS.map((a) => a.key);
+    const order = TABS.map((t) => t.key);
     const index = order.indexOf(active);
-    let next: AreaKey | null = null;
+    let next: ProjectTabKey | null = null;
     if (event.key === "ArrowRight") next = order[(index + 1) % order.length];
     if (event.key === "ArrowLeft")
       next = order[(index - 1 + order.length) % order.length];
@@ -643,50 +655,152 @@ export function ProjectRecommendationTabs({
     if (event.key === "End") next = order[order.length - 1];
     if (next) {
       event.preventDefault();
-      setActive(next);
+      onChange(next);
       tabRefs.current[next]?.focus();
     }
   };
 
-  const panel = (() => {
+  return (
+    <div className="mb-[22px] border-b border-[var(--divider)]">
+      <div
+        role="tablist"
+        aria-label="Project sections"
+        onKeyDown={onKeyDown}
+        className="-mb-px flex gap-1 overflow-x-auto pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {TABS.map((tab) => {
+          const on = tab.key === active;
+          const isArea = tab.key !== "overview";
+          const off = isArea && !tracked.includes(tab.key as BriefingCategory);
+          const count = isArea ? counts?.[tab.key as AreaKey] : undefined;
+          return (
+            <button
+              key={tab.key}
+              ref={(node) => {
+                tabRefs.current[tab.key] = node;
+              }}
+              type="button"
+              role="tab"
+              id={`project-tab-${tab.key}`}
+              aria-selected={on}
+              aria-controls="project-tabpanel"
+              tabIndex={on ? 0 : -1}
+              onClick={() => onChange(tab.key)}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-2 rounded-t-xl border-b-2 px-4 py-3 text-[13.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                on
+                  ? "border-b-primary bg-[color-mix(in_srgb,var(--primary)_7%,transparent)] text-primary"
+                  : "border-b-transparent text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-primary)]",
+              )}
+            >
+              {tab.icon}
+              {tab.label}
+              {off ? (
+                <span className="text-[11px] font-medium text-[var(--text-muted)]">
+                  off
+                </span>
+              ) : typeof count === "number" ? (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-[1px] text-[11px] font-semibold",
+                    on
+                      ? "bg-[color-mix(in_srgb,var(--primary)_15%,transparent)] text-primary"
+                      : "bg-surface-alt text-[var(--text-secondary)]",
+                  )}
+                >
+                  {count}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** "128 papers matched to this project · gathered Aug 11" — the panel's own line. */
+function areaSubtitle(
+  area: AreaKey,
+  total: number,
+  generatedAt: string | null,
+): string {
+  const noun = AREAS.find((a) => a.key === area)?.noun ?? area;
+  const singular = noun.replace(/s$/, "");
+  const head = `${total} ${total === 1 ? singular : noun} matched to this project`;
+  if (!generatedAt) {
+    return `${head}.`;
+  }
+  const when = new Date(generatedAt);
+  if (Number.isNaN(when.getTime())) {
+    return `${head}.`;
+  }
+  return `${head} · gathered ${when.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  })}.`;
+}
+
+/**
+ * One area's whole page: its heading, its controls, and its feed at full width.
+ *
+ * Every card here is the one that area's own page renders, so a project's
+ * matches read exactly like the personal and lab feeds — what differs is only
+ * that they were scored against this project's declared focus. An area the
+ * project has switched off says so instead of showing an empty list that reads
+ * as a failure.
+ */
+export function ProjectAreaPanel({
+  area,
+  project,
+  data,
+  isLoading,
+  isError,
+}: {
+  area: AreaKey;
+  project: Project;
+  data: ProjectRecommendations | undefined;
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  const recommendedFor = data?.recommended_for ?? {};
+  const meta = AREAS.find((a) => a.key === area);
+
+  const body = (() => {
     if (isLoading) return <SkeletonRows />;
     if (isError) {
       return (
         <EmptyState
           icon={<SporeNode size={26} />}
-          title="Couldn't load this project's matches"
+          title={`Couldn't load this project's ${meta?.noun}`}
           description="Something went wrong reading what Mylo found for this project. Try again in a moment."
         />
       );
     }
-    if (!tracked.includes(active)) {
-      const area = AREAS.find((a) => a.key === active);
+    if (!project.watch_categories.includes(area)) {
       return (
-        <p className="py-10 text-center text-sm text-[var(--text-secondary)]">
-          Mylo isn&apos;t tracking {area?.noun} for this project.
-          {project.can_edit
-            ? " Turn them on under Edit project → Mylo settings."
-            : " A project editor can turn them on."}
-        </p>
-      );
-    }
-    if (active === "papers") {
-      return (
-        <PapersPanel
-          papers={data?.papers ?? []}
-          recommendedFor={recommendedFor}
+        <EmptyState
+          icon={meta?.icon}
+          title={`Mylo isn't tracking ${meta?.noun} for this project`}
+          description={
+            project.can_edit
+              ? `Turn ${meta?.noun} on under Edit project → Mylo, and this project will start collecting them on the next daily run.`
+              : `A project editor can turn ${meta?.noun} on for this project.`
+          }
         />
       );
     }
-    if (active === "grants") {
+    if (area === "papers") {
       return (
-        <GrantsPanel
-          grants={data?.grants ?? []}
-          recommendedFor={recommendedFor}
-        />
+        <PapersPanel papers={data?.papers ?? []} recommendedFor={recommendedFor} />
       );
     }
-    if (active === "conferences") {
+    if (area === "grants") {
+      return (
+        <GrantsPanel grants={data?.grants ?? []} recommendedFor={recommendedFor} />
+      );
+    }
+    if (area === "conferences") {
       return (
         <ConferencesPanel
           conferences={data?.conferences ?? []}
@@ -704,78 +818,21 @@ export function ProjectRecommendationTabs({
   })();
 
   return (
-    <Card className="overflow-hidden">
-      <div className="border-b border-[var(--divider)] px-5 pb-0 pt-[18px]">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <SporeNode size={16} className="text-primary" />
-          <h2 className="text-base font-semibold text-[var(--text-primary)]">
-            What Mylo found for this project
-          </h2>
-        </div>
-
-        <div
-          role="tablist"
-          aria-label="Recommendation areas"
-          onKeyDown={onKeyDown}
-          className="-mb-px flex flex-wrap gap-1"
-        >
-          {AREAS.map((area) => {
-            const on = area.key === active;
-            const count = counts?.[area.key];
-            const off = !tracked.includes(area.key);
-            return (
-              <button
-                key={area.key}
-                ref={(node) => {
-                  tabRefs.current[area.key] = node;
-                }}
-                type="button"
-                role="tab"
-                id={`project-tab-${area.key}`}
-                aria-selected={on}
-                aria-controls={`project-panel-${area.key}`}
-                tabIndex={on ? 0 : -1}
-                onClick={() => setActive(area.key)}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-t-xl border-b-2 px-3.5 py-2.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  on
-                    ? "border-b-primary text-primary"
-                    : "border-b-transparent text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-primary)]",
-                )}
-              >
-                {area.icon}
-                {area.label}
-                {off ? (
-                  <span className="text-[11px] font-medium text-[var(--text-muted)]">
-                    off
-                  </span>
-                ) : typeof count === "number" ? (
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 py-[1px] text-[11px] font-semibold",
-                      on
-                        ? "bg-[color-mix(in_srgb,var(--primary)_15%,transparent)] text-primary"
-                        : "bg-surface-alt text-[var(--text-secondary)]",
-                    )}
-                  >
-                    {count}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
+    <>
+      <div className="mb-5">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
+          {project.name}
+        </p>
+        <h2 className="font-serif text-[22px] font-semibold leading-tight text-[var(--text-primary)]">
+          {meta?.label}
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          {isLoading
+            ? `Gathering this project's ${meta?.noun}…`
+            : areaSubtitle(area, data?.counts?.[area] ?? 0, data?.generated_at ?? null)}
+        </p>
       </div>
-
-      <div
-        role="tabpanel"
-        id={`project-panel-${active}`}
-        aria-labelledby={`project-tab-${active}`}
-        tabIndex={0}
-        className="px-5 pb-5 pt-5 focus-visible:outline-none"
-      >
-        {panel}
-      </div>
-    </Card>
+      {body}
+    </>
   );
 }
