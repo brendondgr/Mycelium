@@ -31,9 +31,16 @@ sequenced work breakdowns for Mycelium before coding.
 
 ## Non-negotiables to check in every plan
 
-- **Two recommendation processes.** The daily run scores only that day's new
-  items and **appends**; whole-corpus **replace** passes (refitting) are
-  on-demand only. A plan must never schedule a refit into the daily chain.
+- **Rank nightly, write up sparingly.** The daily run ranks the **whole corpus**
+  for every target against its current profile, so a preference change is visible
+  the next morning. The model is the scarce resource, not retrieval: carry-forward
+  reuses verdicts already written, and only items entering a target's Top-25 are
+  sent for a fresh write-up. A plan that saves cost by narrowing what gets *ranked*
+  is optimising the wrong half. Refitting stays on-demand (sign-up / profile
+  edits) because it re-sends every surfaced item to the model.
+- **New means "entered the Top-25", never "arrived today".** Anything a plan calls
+  new must be a change in what the reader is *shown*, not a fact about ingestion —
+  see `apps/content/top_feed.py`.
 - **Personal / lab / project parity.** A lab or project feed is the personal feed
   with a different `MatchTarget`, through the same serializers. New feed behavior
   goes in the shared path, not a lab-only fork.

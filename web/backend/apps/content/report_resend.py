@@ -90,6 +90,12 @@ def _report_dir(override: str | None = None) -> Path:
     return Path(getattr(settings, "DISCORD_OUTBOX_ATTACHMENT_DIR", "data/outbox"))
 
 
+def _shown_per_category(data) -> dict[str, int]:
+    """How many items the reader's own part of the report actually lists."""
+    part = data.personal
+    return {} if part is None else {c: len(items) for c, items in part.items.items()}
+
+
 def _write_pdf(workdir: Path, filename: str, pdf: bytes) -> Path:
     """Stage the PDF and move it into place.
 
@@ -152,9 +158,7 @@ def resend_user_report(
 
     data = compile_report_for_user(user)
     outcome.briefing_origin = outcome.briefing_origin or data.briefing_origin
-    outcome.counts = {
-        category: len(items) for category, items in (data.personal.items if data.personal else {}).items()
-    }
+    outcome.counts = _shown_per_category(data)
     outcome.new_counts = dict(data.personal.counts) if data.personal else {}
 
     filename = f"mylo-report-{user.get_username()}-{data.generated_on}.pdf"
@@ -236,9 +240,7 @@ def repost_lab_report(
 
     data = compile_report_for_lab(lab)
     outcome.briefing_origin = outcome.briefing_origin or data.briefing_origin
-    outcome.counts = {
-        category: len(items) for category, items in (data.personal.items if data.personal else {}).items()
-    }
+    outcome.counts = _shown_per_category(data)
     outcome.new_counts = dict(data.personal.counts) if data.personal else {}
 
     filename = report_filename(lab, on)

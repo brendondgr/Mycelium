@@ -681,7 +681,6 @@ def _prepare_match(
         if reuse_prior
         else {}
     )
-    today_iso = today or timezone.now().date().isoformat()
     # The slate this run establishes, minus the one it replaces. The model's budget
     # goes to what just entered the reader's Top-25, not to what was ingested most
     # recently — an item is worth writing up when it is good enough to displace

@@ -90,7 +90,9 @@ Files below are inside `web/backend/apps/content/`.
 | Post-onboarding live match | `onboarding_match.py`, `scan_status.py` |
 | Member fit ("who is this for?") | `member_fit.py`, `fanout.py` |
 | Project team signal & sharing | `team_profile.py`, `collaboration.py` |
-| Daily briefing (Personal + per-project parts, relevance floor) | `briefing.py`, `briefing_sections.py` |
+| Daily briefing (Personal + per-project parts, over each Top-25 slate) | `briefing.py`, `briefing_sections.py` |
+| Top-25 slate: membership, entrant diff, "what is new" | `top_feed.py` |
+| Manual re-render + re-send of one report | `report_resend.py` |
 | Briefing history & retention | `models.py` (`DailyBriefing.generated_on`), `views.py` (`BriefingHistoryView`), `management/commands/prune_briefings.py` |
 | Daily PDF report | `daily_report.py`, `daily_report_pdf.py`, `daily_report_send.py` |
 | Lab Discord digest | `lab_digest.py` |
@@ -146,12 +148,14 @@ All under `web/backend/apps/*/management/commands/`. Run with
 
 | Command | Purpose |
 |---|---|
-| `run_daily_suggestions` | Daily paper scan + score for users, labs, projects (append) |
-| `run_daily_opportunities` | Daily grants / conferences / fellowships match for users, labs, projects (append) |
-| `run_refitting` | Whole-corpus re-score for users, labs, and lab projects (replace) |
+| `run_daily_suggestions` | Daily paper scan + rank for users, labs, projects |
+| `run_daily_opportunities` | Nightly whole-corpus rank of grants / conferences / fellowships for users, labs, projects |
+| `run_refitting` | On-demand re-score that also re-sends every item to the model |
 | `generate_daily_briefing` | Write each user's and lab's briefing |
 | `send_daily_discord_reports` | DM the personal PDF report |
 | `send_lab_digests` | Post a lab's summary + report PDF |
+| `resend_user_report` | Re-render one person's report and DM it again (`--user`) |
+| `repost_lab_report` | Re-render one lab's report and re-post it (`--lab`) |
 | `run_reminder_tick`, `prune_opportunities` | Fire due reminders / delete expired listings |
 | `prune_briefings` | Delete briefings past `BRIEFING_RETENTION_DAYS` |
 | `run_analytics_report` | Measure the run: metrics JSON + analytics PDF for the Discord summary |

@@ -422,7 +422,10 @@ daily run, scoped to the categories the caller watches.
 }
 ```
 
-`origin` is `"llm"` or `"fallback"`. The body is markdown organised as a
+`origin` is `"llm"`, `"fallback"`, or `"carried"` — the last meaning nothing
+entered the reader's Top-25 that day, so the previous day's body was carried
+forward verbatim rather than re-worded to reach the same conclusions. The body is
+markdown organised as a
 `## Personal` part with a `###` section per category, then one
 `## Project · <name>` part per project the caller is on (a lab's report breaks out
 the lab's own projects). The Personal sections are written by one prompt per
@@ -434,17 +437,16 @@ score. Before the first run an honest empty envelope is returned
 
 `project_summary` is the report's summary table — the reader's own row first, then
 one per project, **including projects with an all-zero row** (that a project had a
-quiet day is an answer). Its counts are what the report *shows*, which is narrower
-than `counts` and `new_counts` in two ways:
+quiet day is an answer). Its counts are how many items **entered** that part's
+Top-25 on the run, which is what the report announces as new. The report *body*
+still covers the whole Top-25; the table counts the change in it.
 
-- **New today.** An item appears only when its immutable `first_seen` equals the
-  run date, so the report announces each item once. The feed's "New" badge keeps
-  its separate 7-day window — the two numbers are deliberately different.
-- **Above the relevance floor.** `signals.embedding_match` (falling back to
-  `match_percent / 100` for rows matched without an embedder) must be at least
-  `REPORT_RELEVANCE_THRESHOLD`, default `0.65`. A row with neither signal is left
-  out. This gates the report only; every feed endpoint is unchanged, and
-  `counts` / `new_counts` still report what those feeds hold.
+An item enters the Top-25 when it ranks into a target's top `REPORT_TOP_N` (25)
+for its category, having been outside it on the previous run. That is a fact about
+what the reader is being shown, not about ingestion: the feed's "New" badge keeps
+its separate 7-day arrival window, and the two numbers are deliberately different.
+`counts` and `new_counts` at the envelope level still describe the feeds, which
+every feed endpoint serves unchanged.
 
 `generated_on` is the day the report covers — the history key. `generated_at` is
 when it was last written, which a same-day rerun moves and `generated_on` does not.

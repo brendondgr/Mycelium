@@ -47,7 +47,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 
@@ -79,35 +78,6 @@ LAB_BRIEFING_CATEGORIES: tuple[str, ...] = (
 
 #: How many items per category to show in the briefing showcase (bottom-right UI).
 SHOWCASE_PER_CATEGORY = 3
-
-#: Report relevance floor used when ``settings.REPORT_RELEVANCE_THRESHOLD`` is
-#: absent (bare test configs). See that setting for what it gates and why.
-REPORT_RELEVANCE_FALLBACK = 0.65
-
-
-def report_relevance_threshold() -> float:
-    """The report's relevance floor, as a cosine fraction in ``[0, 1]``."""
-    return getattr(settings, "REPORT_RELEVANCE_THRESHOLD", REPORT_RELEVANCE_FALLBACK)
-
-
-def relevance_of(signals: dict) -> float | None:
-    """A row's search relevance in ``[0, 1]``, or ``None`` when it has no signal.
-
-    ``embedding_match`` is the raw cosine the matcher recorded for the row and is
-    the signal the threshold is expressed in. Rows matched without an embedder (a
-    rule-only fellowship, an older row) carry no cosine; their model-assigned
-    ``match_percent`` stands in, on the same 0-1 scale. A row with neither has
-    nothing to judge relevance by, so it returns ``None`` and the report leaves it
-    out rather than assuming it is good.
-    """
-    match = signals.get("embedding_match")
-    if isinstance(match, (int, float)) and not isinstance(match, bool):
-        return float(match)
-    percent = signals.get("match_percent")
-    if isinstance(percent, (int, float)) and not isinstance(percent, bool):
-        return float(percent) / 100.0
-    return None
-
 
 def _watched_categories(watch, allow: tuple[str, ...] | None = None) -> list[str]:
     """The categories a target watches, or all available when none are configured.

@@ -142,29 +142,51 @@ separated `reasoning_content`. It lazily imports the `openai` SDK and accepts an
 injected transport, so tests run fully offline. The optional `llm-tunnel` Compose
 service is an SSH forward to a remote LLM host, run inside the Compose network.
 
-## The two recommendation processes
+## Ranking, the slate, and what counts as new
 
-This split is load-bearing; changing one without the other corrupts feeds.
+The nightly run **ranks the whole corpus** for every target against the profile
+that target has that night, and re-establishes each feed from that ranking. Rank is
+the fused BM25 + embedding order (`fusion.py`) and nothing else: a language-model
+verdict explains an item, it never moves one.
 
-- **Daily append** — the nightly run scores only items created that day
-  (`created_on=run_date`) and **appends** them. It never rewrites or deletes what
-  Mylo already wrote.
-- **On-demand replace** — refitting (`refit_*`, `run_refitting`, `manual_mylo.py`)
-  scores the **whole corpus** and **replaces**. It runs at sign-up and after a
-  profile or focus edit, and must never be scheduled into the daily chain.
+Cost is contained by carry-forward rather than by narrowing the scan. A verdict
+Mylo has already written is reused (`opportunity_llm.load_prior_llm_verdicts`), so
+what re-ranking nightly costs is retrieval. Items that drop out of a ranking are
+**retired, not deleted** (`opportunities._retire`): they lose `signals.suggested`
+and their slate place but keep the verdict, so an item that dips out and returns
+costs no second model call.
 
-Reads accumulate across runs (`views._accumulated_scores`,
-`briefing._suggested_scores`), capped by `OPPORTUNITY_FEED_MAX`. Papers are the
-exception: retrieval is scoped to the latest gather batch, so the Research Papers
-page shows only the current day's search.
+Refitting (`refit_*`, `run_refitting`, `manual_mylo.py`) is still a separate
+on-demand pass, run at sign-up and after a profile or focus edit. What makes it
+different is `reuse_prior=False`: it re-sends every surfaced item to the model,
+which is what a profile edit wants and what a nightly run must never do.
 
-The **daily report** reads through a narrower gate than the feeds do
-(`briefing.report_scores`): an item appears only if it first surfaced on the run
-date and its relevance clears `REPORT_RELEVANCE_THRESHOLD`. A feed is browsable
-and can carry the accumulated tail; a once-a-day report cannot, and a report that
-relaxes its floor to fill the page is a report people stop opening. Both the
-written briefing and the PDF read through that one function, so they can never
-disagree about what the day held.
+Each target keeps a **slate** per category — its top `top_feed.TOP_N` (25) by
+relevance, recorded on the score rows as `top_rank` / `entered_top_on` /
+`is_new_top`. The slate is the unit of the daily report, and **new means entered
+the slate**, not arrived in the corpus. That inverts the test an item has to pass:
+it is worth announcing when it is good enough to displace something the reader was
+already being shown. It also makes the report answer to the reader — change a
+focus, a cluster, or a watch term and the slate re-ranks, so whatever that change
+promotes is reported as new, with no separate machinery.
+
+The **daily report** (`briefing.report_scores`) shows the slate, every day, and
+flags the entrants. Only entrants Mylo has not already written up go to the model;
+the rest keep the write-up they have. When nothing entered, yesterday's body is
+carried forward verbatim (`DailyBriefing.Origin.CARRIED`) rather than re-worded to
+reach the same conclusions. Both the written briefing and the PDF read through that
+one function, so they can never disagree about what the reader is being shown.
+
+Feed reads still accumulate across runs (`views._accumulated_scores`,
+`briefing._suggested_scores`), capped by `OPPORTUNITY_FEED_MAX`; the feed's own
+week-long "New" pin is a separate, unchanged signal about arrival. Papers are the
+exception to accumulation: retrieval is scoped to the latest gather batch, so the
+Research Papers page shows only the current day's search.
+
+`resend_user_report --user` and `repost_lab_report --lab` re-render and re-deliver
+one target's report on demand (`content/report_resend.py`). They take their own
+outbox dedupe key, because the daily key is per-day and made every same-day
+re-send a silent no-op.
 
 ## Nightly run analytics
 
