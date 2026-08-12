@@ -2,8 +2,9 @@
 
 Project direction and working rules live in [`CLAUDE.md`](CLAUDE.md) and
 [`docs/skills/global.md`](docs/skills/global.md). This file covers the two things
-that have their own process: running an experiment, and getting a change through
-CI.
+that have their own process: running an experiment, and the checks a change is
+expected to pass. Nothing runs automatically — the checks below are yours to run
+locally before you commit.
 
 ## Running an experiment
 
@@ -39,7 +40,7 @@ See [`docs/evaluation.md`](docs/evaluation.md).
 | Command | Checks |
 |---|---|
 | `make validate-research` | The research record: manifests, figures, pointers, claims, index |
-| `make research-ci` | What CI runs — validation plus index and figure staleness |
+| `make research-ci` | The full check — validation plus index and figure staleness |
 | `uv run --project web/backend pytest` | Backend tests |
 | `npm run lint` / `npm run build` | Frontend, from the repository root |
 

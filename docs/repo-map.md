@@ -136,7 +136,6 @@ Files below are inside `web/backend/apps/content/`.
 | Retrieval evaluation | `eval/` — `run.py`, `report.py`, `collections.toml`, `configs/`, `harness/`; results in `eval/results/`, guide in [`evaluation.md`](evaluation.md) |
 | Research record (experiments, claims, figures) | `docs/research/` — start at [`research/README.md`](research/README.md) |
 | Research-record tooling | `scripts/research/` — `new_experiment.py`, `validate_research.py`, `generate_index.py`, `build_figures.py`, `manifest.schema.json`; driven by the root `Makefile` |
-| Research-record CI | `.github/workflows/research-record.yml` |
 | Admin bootstrap | `create_admin.py` |
 
 ## Management commands
