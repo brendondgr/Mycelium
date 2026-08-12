@@ -68,6 +68,7 @@ export function MyloReportCard({
 
   const body = (data?.briefing?.body ?? "").trim();
   const isFallback = data?.briefing?.origin === "fallback";
+  const isCarried = data?.briefing?.origin === "carried";
   // The day the report covers, not the moment it was written: a same-day rerun
   // moves `generated_at`, and an archived day must be labelled by its own date.
   const when = data?.generated_on
@@ -109,6 +110,15 @@ export function MyloReportCard({
           <p className="mt-4 text-xs text-[var(--text-secondary)]">
             Written from today&rsquo;s counts — Mylo&rsquo;s writer was offline when
             this ran.
+          </p>
+        ) : null}
+        {/* Nothing new reached the top 25, so yesterday's report still stands.
+            Labelling it is the difference between "quiet day" and "the run
+            broke" — an unlabelled repeat reads as the latter. */}
+        {isCarried ? (
+          <p className="mt-4 text-xs text-[var(--text-secondary)]">
+            Nothing new reached your top lists today, so this is yesterday&rsquo;s
+            report.
           </p>
         ) : null}
       </div>

@@ -99,6 +99,14 @@ function DayButton({
             Written from counts
           </span>
         ) : null}
+        {/* A quiet day: nothing entered the top 25, so this is the previous
+            report standing. Saying so is the point — an unlabelled repeat reads
+            as the run having failed. */}
+        {row.origin === "carried" ? (
+          <span className="mt-1 block text-[11px] text-[var(--text-muted)]">
+            Unchanged from the day before
+          </span>
+        ) : null}
       </button>
     </li>
   );

@@ -262,6 +262,15 @@ export type DailyReport = {
   suggestions: Suggestion[];
 };
 
+/**
+ * Who wrote a day's report body.
+ *
+ * `"carried"` means nothing entered the reader's top 25 that day, so the previous
+ * day's report stands unchanged — a real answer, and a different one from the
+ * deterministic `"fallback"` the model's absence produces.
+ */
+export type BriefingOrigin = "llm" | "fallback" | "carried";
+
 /** A watched category key, as stored in `WatchPreference.categories`. */
 export type BriefingCategory =
   | "papers"
@@ -321,7 +330,7 @@ export type DailyBriefing = {
    * table" rather than "no projects". */
   project_summary?: BriefingProjectRow[];
   /** The written briefing, or null when no run has produced one yet. */
-  briefing: { body: string; origin: "llm" | "fallback" } | null;
+  briefing: { body: string; origin: BriefingOrigin } | null;
 };
 
 /**
@@ -334,7 +343,7 @@ export type DailyBriefingSummary = {
   generated_on: string;
   /** When it was written (a same-day rerun moves this, not `generated_on`). */
   generated_at: string;
-  origin: "llm" | "fallback";
+  origin: BriefingOrigin;
   categories: BriefingCategory[];
   counts: Partial<Record<BriefingCategory, number>>;
   new_counts?: Partial<Record<BriefingCategory, number>>;
