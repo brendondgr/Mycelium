@@ -158,6 +158,14 @@ Reads accumulate across runs (`views._accumulated_scores`,
 exception: retrieval is scoped to the latest gather batch, so the Research Papers
 page shows only the current day's search.
 
+The **daily report** reads through a narrower gate than the feeds do
+(`briefing.report_scores`): an item appears only if it first surfaced on the run
+date and its relevance clears `REPORT_RELEVANCE_THRESHOLD`. A feed is browsable
+and can carry the accumulated tail; a once-a-day report cannot, and a report that
+relaxes its floor to fill the page is a report people stop opening. Both the
+written briefing and the PDF read through that one function, so they can never
+disagree about what the day held.
+
 ## Nightly run analytics
 
 The nightly run measures itself. A final, non-fatal `run_analytics_report` stage

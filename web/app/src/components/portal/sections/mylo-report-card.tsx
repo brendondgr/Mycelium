@@ -3,6 +3,7 @@
 import { MyloGlyph } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
 import { MarkdownProse } from "@/components/portal/primitives/markdown-prose";
+import { ReportSummaryTable } from "@/components/portal/primitives/report-summary-table";
 import type { DailyBriefing } from "@/lib/portal/types";
 
 /** Short "Mon D" label from an ISO timestamp (empty on a bad/absent value). */
@@ -87,6 +88,15 @@ export function MyloReportCard({
       </div>
 
       <div className={scrollable ? "min-h-0 flex-1 overflow-y-auto pr-1" : undefined}>
+        {/* The report opens with its own map: what is new for the reader and for
+            each project they are on. Above the prose, because it is what tells
+            them whether the prose below is worth reading today. */}
+        <ReportSummaryTable
+          rows={data?.project_summary}
+          categories={data?.categories ?? []}
+          className="mb-4"
+        />
+
         {body ? (
           <MarkdownProse text={body} />
         ) : (

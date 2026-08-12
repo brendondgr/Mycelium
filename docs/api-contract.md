@@ -372,6 +372,13 @@ daily run, scoped to the categories the caller watches.
   "generated_on": "2026-07-11",
   "categories": ["papers", "grants", "fellowships"],
   "counts": { "papers": 25, "grants": 25, "fellowships": 40 },
+  "new_counts": { "papers": 4, "grants": 1, "fellowships": 0 },
+  "project_summary": [
+    { "key": "personal", "label": "Personal", "kind": "personal", "scope": "",
+      "counts": { "papers": 3, "grants": 1, "fellowships": 0 } },
+    { "key": "…uuid…", "label": "Coral Atlas", "kind": "project", "scope": "lab",
+      "counts": { "papers": 1, "grants": 0, "fellowships": 0 } }
+  ],
   "showcase": {
     "papers": [{ "content_id": "…", "type": "paper", "title": "…", "url": "…",
                  "match_percent": 91, "headline": "…", "deadline_date": "",
@@ -381,15 +388,29 @@ daily run, scoped to the categories the caller watches.
 }
 ```
 
-`origin` is `"llm"` or `"fallback"`. The body is sectioned markdown written by
-four per-category section prompts plus a fifth summary prompt, each with a
-deterministic fallback. Before the first run an honest empty envelope is returned
-(`generated_at: null`, empty `categories` / `counts` / `showcase`,
-`briefing: null`).
+`origin` is `"llm"` or `"fallback"`. The body is markdown organised as a
+`## Personal` part with a `###` section per category, then one
+`## Project · <name>` part per project the caller is on (a lab's report breaks out
+the lab's own projects). The Personal sections are written by one prompt per
+category plus a summary prompt, each with a deterministic fallback; project
+sections are rendered deterministically from the rationale already stored on each
+score. Before the first run an honest empty envelope is returned
+(`generated_at: null`, empty `categories` / `counts` / `showcase` /
+`project_summary`, `briefing: null`).
 
-A **count is "new"** only when the item's immutable `first_seen` equals the run
-date, so the report announces each item once. The feed's "New" badge keeps its
-separate 7-day window — the two numbers are deliberately different.
+`project_summary` is the report's summary table — the reader's own row first, then
+one per project, **including projects with an all-zero row** (that a project had a
+quiet day is an answer). Its counts are what the report *shows*, which is narrower
+than `counts` and `new_counts` in two ways:
+
+- **New today.** An item appears only when its immutable `first_seen` equals the
+  run date, so the report announces each item once. The feed's "New" badge keeps
+  its separate 7-day window — the two numbers are deliberately different.
+- **Above the relevance floor.** `signals.embedding_match` (falling back to
+  `match_percent / 100` for rows matched without an embedder) must be at least
+  `REPORT_RELEVANCE_THRESHOLD`, default `0.65`. A row with neither signal is left
+  out. This gates the report only; every feed endpoint is unchanged, and
+  `counts` / `new_counts` still report what those feeds hold.
 
 `generated_on` is the day the report covers — the history key. `generated_at` is
 when it was last written, which a same-day rerun moves and `generated_on` does not.

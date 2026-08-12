@@ -285,7 +285,10 @@ def _project_block(categories: list[str], part) -> tuple[str, list[tuple[str, st
         return "", []
     head = [f"## {PROJECT_HEADING_PREFIX}{label}", ""]
     if tally:
-        head.append(f"_{_join_english(tally)} today._")
+        # Plain text, not `_italics_`: neither renderer of this markdown (the app's
+        # MarkdownProse, the PDF's flowable builder) handles emphasis, so the
+        # underscores reached the reader verbatim.
+        head.append(f"{_join_english(tally)} today.")
         head.append("")
     return "\n".join([*head, *lines]).rstrip(), written
 

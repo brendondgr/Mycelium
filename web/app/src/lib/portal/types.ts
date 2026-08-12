@@ -245,6 +245,25 @@ export type BriefingShowcaseItem = {
   is_new: boolean;
 };
 
+/**
+ * One row of the report's summary table: the reader's own part, or one project
+ * they are on. `counts` is what is **new today and above the relevance floor** —
+ * the same set the report's sections list, so the table maps the document rather
+ * than restating the feeds. A project with an all-zero row still appears: "nothing
+ * for this project today" is an answer, and a row that vanished on a quiet day
+ * would read as the project having been dropped from the report.
+ */
+export type BriefingProjectRow = {
+  /** `"personal"`, or the project's id. */
+  key: string;
+  /** `"Personal"`, or the project's name. */
+  label: string;
+  kind: "personal" | "project";
+  /** A project's owner: `"user"` / `"lab"` / `"department"`. Empty for Personal. */
+  scope: string;
+  counts: Partial<Record<BriefingCategory, number>>;
+};
+
 /** The "Mylo Report" (from `/api/daily-briefing/`) — the Daily page's three zones. */
 export type DailyBriefing = {
   /** ISO timestamp of the last briefing generation, or null before the first run. */
@@ -261,6 +280,10 @@ export type DailyBriefing = {
   new_counts?: Partial<Record<BriefingCategory, number>>;
   /** Top items per category the prose is grounded in (the showcase). */
   showcase: Partial<Record<BriefingCategory, BriefingShowcaseItem[]>>;
+  /** The report's summary table — Personal first, then a row per project. Empty
+   * on briefings written before the table existed, which the card reads as "no
+   * table" rather than "no projects". */
+  project_summary?: BriefingProjectRow[];
   /** The written briefing, or null when no run has produced one yet. */
   briefing: { body: string; origin: "llm" | "fallback" } | null;
 };
