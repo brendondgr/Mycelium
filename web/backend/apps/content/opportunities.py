@@ -97,20 +97,18 @@ def _opportunity_min_match_percent() -> int:
 def _scored_content_ids(persist_kwargs: dict, content_type: str) -> list:
     """Ids of the ``content_type`` items this target has already been scored on.
 
-    The backlog gate for the daily *append* run (``unscored_only=True``): the run
-    scores what this target has never been scored on, which on a normal day is
-    just the items ingested that day, and after a missed run (or a bulk import the
-    day the pipeline was down) is the whole leftover backlog too.
+    The gate for an **append-only** run (``unscored_only=True``): score what this
+    target has never been scored on and add it to the feed, leaving everything
+    already there untouched.
 
-    This deliberately replaces the older "items ingested today" gate. That gate
-    tied a target's feed to the *ingest* calendar rather than to the target: a
-    corpus that landed on a day the daily run did not complete was never revisited
-    by any later run, because it was no longer "new today" — the fellowship feed
-    sat empty next to 800-odd perfectly matchable items. Keying on "not yet scored
-    for *this* target" keeps the append-only guarantee (an item scored once is
-    never re-scored or rewritten by the daily run) while making a missed day
-    self-healing, and it is per-target, so a new user or a new project picks up the
-    existing corpus on the next run instead of only ever seeing tomorrow's arrivals.
+    The nightly run no longer works this way. Scoring only the unscored meant a
+    target's ranking was a historical accumulation — whatever each past run happened
+    to see, in the order it then had — so changing a research focus could not change
+    what the reader was shown, and an item's position reflected the day it arrived.
+    The nightly run now re-ranks the whole corpus against the target's *current*
+    profile (``unscored_only=False``); carry-forward means already-written verdicts
+    are reused rather than re-billed, so the cost of doing so is retrieval, not the
+    model. This path is kept for callers that genuinely want a pure append.
     """
     return list(
         RelevanceScore.objects.filter(
@@ -485,8 +483,8 @@ def _finalize_fellowship_match(
 
     if persist:
         visible_ids = {s["content_id"] for s in visible}
-        # Whole-corpus runs (sign-up/refit) replace the feed; daily backlog runs
-        # accumulate.
+        # Whole-corpus runs (the nightly one, sign-up, refit) re-establish the feed;
+        # append-only runs leave what is already there alone.
         _persist_fellowships(
             {"target_user": job.user},
             suggestions,
@@ -603,10 +601,10 @@ def _prepare_match(
     Target-agnostic: the interests / watch topics come off the :class:`MatchTarget`,
     so this prepares a unit for a person, a lab, or a project identically.
 
-    ``unscored_only`` (the daily run) scopes retrieval to opportunities this target
-    has never been scored on — the day's new arrivals plus any backlog a missed run
-    left behind — and appends them; ``False`` (sign-up/refit) scores the whole
-    corpus and replaces the target's feed.
+    ``unscored_only=False`` (the nightly re-rank, sign-up, and refit) ranks the whole
+    corpus against the target's current profile and re-establishes its feed from
+    that; ``True`` scopes retrieval to opportunities this target has never been
+    scored on and appends them, which no scheduled stage does any more.
     """
     if area not in AREAS:
         raise ValueError(f"unknown opportunity area {area!r}")
@@ -754,7 +752,8 @@ def _finalize_match(
     if persist:
         # Store the singular content type as the signal's ``area`` so it lines up
         # with ``content.type`` and the API filter (grant/conference, not plural).
-        # Whole-corpus runs replace the feed; daily backlog runs accumulate.
+        # Whole-corpus runs (including the nightly one) re-establish the feed;
+        # append-only runs leave what is already there alone.
         visible_ids = {s["content_id"] for s in visible}
         _persist(
             job.target.persist_kwargs,
@@ -801,8 +800,9 @@ def match_opportunities_for_target(
     ``reuse_prior=False`` bypasses carry-forward, re-sending every surfaced item to
     the model (used by :mod:`.refitting` after a profile edit). ``unscored_only``
     defaults to ``False`` (whole corpus, so this serial path — sign-up / refit —
-    replaces the target's feed for the area); the daily batch passes ``True`` to
-    score only what the target has not been scored on yet and accumulate.
+    re-establishes the target's feed for the area from the whole corpus) — the same
+    mode the nightly batch runs in. ``True`` scores only what the target has not been
+    scored on yet and appends it, which no scheduled stage does any more.
     """
     job, short = _prepare_match(
         target,
@@ -841,9 +841,9 @@ def match_fellowships_for_user(
 ) -> OppRunResult:
     """Eligibility-gate + LLM-report fellowship matching for one user (serial).
 
-    ``unscored_only`` defaults to ``False`` (whole corpus — this serial sign-up /
-    refit path replaces the user's fellowship feed); the daily batch passes ``True``
-    to evaluate only the fellowships this user has not been scored on and accumulate.
+    ``unscored_only`` defaults to ``False`` (whole corpus — re-establishing the
+    user's fellowship feed), which is also how the nightly batch runs it. ``True``
+    evaluates only the fellowships this user has not been scored on and appends.
     """
     job, short = _prepare_fellowship_match(
         user, today=today, reuse_prior=reuse_prior, unscored_only=unscored_only, log=log
@@ -1139,15 +1139,20 @@ def run_daily_opportunities_batch(
     Phase 1 (ingest, best-effort): try a Playwright refresh of the Pivot corpus —
     a no-op that logs and continues when no saved session exists — then prune
     expired items so the pool stays current even on nights with no fresh scrape.
-    Phase 2 (match): the daily run is the **append** process — each
-    ``(target, area)`` unit is *prepared* (retrieve + fuse, **scoped to the items
-    that target has not been scored on yet** via ``unscored_only``), then all prepared units are
-    **scored by the model concurrently** (up to ``concurrency`` at once — the LLM
-    call is the slow step and shouldn't be issued one at a time), then *finalized*
-    (New/pin + **append**, serial DB writes). The passers are added to each target's
-    accumulating feed; older matches stay until pruned. A failure for one unit is
-    caught so it never sinks the run. (Sign-up / refit take the serial paths above,
-    which score the whole corpus and replace the feed instead.)
+    Phase 2 (match): each ``(target, area)`` unit is *prepared* — retrieve + fuse
+    over the **whole corpus**, against that target's current profile — then all
+    prepared units are **scored by the model concurrently** (up to ``concurrency``
+    at once — the model call is the slow step and shouldn't be issued one at a
+    time), then *finalized* (slate diff + New/pin + serial DB writes). A failure for
+    one unit is caught so it never sinks the run.
+
+    Re-ranking the whole corpus nightly is the point, not an expense to be optimised
+    away. A feed built by appending each day's arrivals can only ever reflect the
+    profile each past run happened to see, so a reader who changed their focus,
+    their clusters, or their search terms kept the old list; and an item's position
+    recorded when it arrived rather than how well it fits. The model is not re-billed
+    for it: carry-forward reuses every verdict already written, and only items that
+    newly entered a target's Top-25 are sent for a write-up.
 
     Every target matches every requested area — a lab's fellowships rank on its
     research interests, not on anyone's citizenship (see
@@ -1166,12 +1171,10 @@ def run_daily_opportunities_batch(
         if log is not None:
             log(message)
 
-    # The daily run is the *append* process: it scores every opportunity this target
-    # has not been scored on yet — normally just today's arrivals, and after a missed
-    # run (or an import the pipeline never got to) the leftover backlog as well — and
-    # appends the passers to each target's accumulating feed. It never re-scores or
-    # rewrites an item already in the feed. Sign-up / refit (the serial paths) leave
-    # ``unscored_only`` False and score/replace the whole corpus instead.
+    # Every unit below runs with ``unscored_only=False``: the whole corpus, ranked
+    # against the target's profile as it stands tonight. Items that fall out of the
+    # ranking are retired from the feed but keep their verdict, so an item that dips
+    # out and returns is neither re-billed nor silently re-announced.
     ingest_summary: dict = {}
     if ingest:
         from apps.scraper.pivot.ingest import ingest_pivot
@@ -1237,7 +1240,7 @@ def run_daily_opportunities_batch(
             if area == "fellowships":
                 try:
                     job, short = _prepare_fellowship_match(
-                        user, today=today, unscored_only=True, log=log
+                        user, today=today, unscored_only=False, log=log
                     )
                 except Exception:
                     logger.exception(
@@ -1263,7 +1266,7 @@ def run_daily_opportunities_batch(
                         llm_limit=DEFAULT_LLM_LIMIT,
                         pool_per_interest=DEFAULT_POOL_PER_INTEREST,
                         beta=DEFAULT_BETA,
-                        unscored_only=True,
+                        unscored_only=False,
                         today=today,
                         log=log,
                     )
@@ -1307,7 +1310,7 @@ def run_daily_opportunities_batch(
                     llm_limit=DEFAULT_LLM_LIMIT,
                     pool_per_interest=DEFAULT_POOL_PER_INTEREST,
                     beta=DEFAULT_BETA,
-                    unscored_only=True,
+                    unscored_only=False,
                     today=today,
                     log=log,
                 )
@@ -1413,7 +1416,7 @@ def run_daily_opportunities_batch(
                         target,
                         complete=complete,
                         persist=persist,
-                        unscored_only=True,
+                        unscored_only=False,
                         today=today,
                         log=log,
                     )

@@ -16,45 +16,60 @@ Stages, in order:
        shell it cannot prompt, so it skips the scrape and *reports to Discord that a
        manual login is needed*, then the later stages match the existing corpus.
     2. Search research papers (backend)    — ``run_daily_suggestions``: scan the
-       literature sources (OpenAlex / PubMed / SemanticScholar), embed, and
-       recommend papers. The paper sources are scraped here, as part of the
+       literature sources (OpenAlex / PubMed / SemanticScholar), embed, and rank
+       papers for every target. The paper sources are scraped here, as part of the
        search — that is why stage 1 only has to add the opportunity sources.
-    3. Match opportunities (backend)       — ``run_daily_opportunities``: score
-       every grant / conference / fellowship each target has not been scored on yet
-       — normally just today's arrivals, plus any backlog an earlier missed run
-       left behind — and append the passers to each accumulating feed.
+    3. Rank opportunities (backend)        — ``run_daily_opportunities``: rank the
+       **whole** grant / conference / fellowship corpus for every target against the
+       profile it has *tonight*, and re-establish each feed from that ranking.
 
-Stages 2 and 3 both run untargeted, so each covers all three target kinds: every
-entitled user, every lab on an active subscription, and their in-cap active
-projects (``apps.content.tasks.select_targets``). That has to match the briefing
-and digest stages below — a lab that is briefed nightly but not *scored* nightly
-has a frozen feed, and its report reads "N papers, 0 new" every day.
+Stages 2 and 3 are the "filter and rank by preference" half of the run, and they
+are deliberately whole-corpus. Ranking only each day's arrivals — which is what
+this used to do — meant a feed was a historical accumulation: it recorded what
+each past run happened to see, in whatever order the profile had at the time, so
+editing a research focus could not change what a reader was shown, and an item's
+position said when it arrived rather than how well it fits. Cost is contained by
+carry-forward rather than by narrowing the scan: a verdict Mylo has already
+written is reused, never re-billed, so what re-ranking nightly costs is retrieval.
+
+Both stages run untargeted, so each covers all three target kinds: every entitled
+user, every lab on an active subscription, and their in-cap active projects
+(``apps.content.tasks.select_targets``). That has to match the briefing and digest
+stages below — a lab that is briefed nightly but not *ranked* nightly has a frozen
+feed, and its report reads "N papers, 0 new" every day.
 
 Between 3 and 4 sit the reminder tick and two sweeps — ``prune_opportunities``
 (expired listings) and ``prune_briefings`` (reports past
 ``BRIEFING_RETENTION_DAYS``). Both are pure deletions of expired rows, so neither
-touches what the scoring stages just appended.
+touches the rankings the stages above just wrote.
     4. Write daily briefings (backend)     — ``generate_daily_briefing``: the
        cross-category "Mylo Report" synthesis for every user **and every entitled
-       lab** (LLM with a deterministic fallback). Like the summary itself, this is
-       a per-*day* replace — a rerun re-describes today's matches and leaves the
-       earlier days' reports standing, and it never rewrites the stored
-       recommendations — so it stays consistent with the append-only rule.
+       lab** (LLM with a deterministic fallback), written over each target's Top-25
+       per category. This is a per-*day* replace — a rerun re-describes today and
+       leaves the earlier days' reports standing. When nothing entered a reader's
+       Top-25, yesterday's report carries forward unchanged rather than being
+       rewritten to say the same thing in new words.
     5. Send daily Discord reports (backend) — ``send_daily_discord_reports``: DM
        each linked, entitled, opted-in user their day as a PDF (the written report
        plus the top-25 papers and top-25 grants/fellowships/conferences and a full
        appendix). Best-effort: an unreachable DM or Discord outage is counted, never
        fatal, so it can safely be the last stage.
 
-Deliberately **no refit stage**: the daily run only scores items each target has
-never been scored on, and appends them. Mylo's already-written recommendations are
-never re-scored, rewritten, or dropped by the daily run — an item stays in the feed
-until its deadline/event date passes and the ingest prune deletes it. Because the
-gate is "not yet scored *for this target*" rather than "ingested today", a corpus
-that landed on a day this run did not complete is picked up by the next run instead
-of being stranded forever, so no refit is needed to recover from a missed day.
-Refitting (``run_refitting`` / ``utils/manual/manual_refitting.py``) is the
-explicit whole-corpus *replace* pass, reserved for sign-up and profile edits.
+**What "new" means.** An item is new when it *enters* a target's Top-25 for its
+category, not when it was ingested. That is the whole point of ranking the corpus
+nightly: the slate re-ranks with the reader, so a changed focus, cluster, or search
+term promotes whatever now fits and that promotion is what gets reported. Only
+entrants Mylo has not already written up are sent to the model; the rest of the
+Top-25 keeps the write-up it already has. Reporting on arrival instead is what
+produced mornings of "a new opportunity you haven't seen yet" for grants that had
+nothing to do with the reader's work.
+
+Items that fall out of a ranking are **retired, not deleted** — they leave the feed
+but keep their verdict, so an item that dips out for a day and returns costs no
+second model call. Refitting (``run_refitting`` /
+``utils/manual/manual_refitting.py``) remains a distinct on-demand pass: it also
+re-sends every surfaced item to the model, which is what a profile edit wants and
+what a nightly run must never do.
 
 A pre-flight ``llm_check --strict`` gates the whole run: the pipeline depends on
 the LLM for paper rankings, opportunity scoring, and briefings, so if the
@@ -95,7 +110,7 @@ stays one predictable command. For a targeted run, call the per-stage scripts in
 utils/manual/ or ``uv run pivot.py`` directly.
 
 Usage:
-    python manual_all.py        # scrape → search → match → briefing
+    python manual_all.py        # scrape → rank → slate → diff → report
     python manual_all.py --help # this message
 
 The stack must be up first (``python run.py up``). Requires Docker Compose, plus
@@ -127,11 +142,10 @@ except Exception:  # noqa: BLE001
 HOST = socket.gethostname()
 ROOT = Path(__file__).resolve().parent
 
-# The backend recommend/briefing stages, in order, run inside the container.
-# The scrape stage (stage 1) is handled separately on the host. There is no
-# refit stage here on purpose — the daily run must never rewrite or drop the
-# recommendations Mylo already wrote (refit is the on-demand replace pass for
-# sign-up / profile edits).
+# The backend rank/briefing stages, in order, run inside the container. The scrape
+# stage (stage 1) is handled separately on the host. The order is the product rule:
+# collect everything, rank it all by preference, take each target's Top-25, diff
+# that against yesterday's, and report only what entered.
 #
 # Ordering matters for reminders (R2): opportunities ingest with ``--no-prune`` so
 # the ContentDeadline projection is rebuilt but nothing is deleted yet, then the
@@ -140,11 +154,11 @@ ROOT = Path(__file__).resolve().parent
 # seen by the tick before its item can be pruned out from under a live reminder.
 # Each entry is (command, passthrough_args, intro).
 CONTAINER_STAGES = [
-    ("run_daily_suggestions", [], "Searching research papers for all users…"),
+    ("run_daily_suggestions", [], "Searching and ranking research papers for all targets…"),
     (
         "run_daily_opportunities",
         ["--no-prune"],
-        "Matching grants/conferences/fellowships for all users…",
+        "Ranking every grant/conference/fellowship for all targets…",
     ),
     ("run_reminder_tick", [], "Firing due deadline reminders…"),
     ("prune_opportunities", [], "Pruning expired opportunities…"),
@@ -223,7 +237,7 @@ def report_run_complete(payload: dict | None, *, scrape_ran: bool) -> None:
         _notify(
             "info",
             "Daily run complete",
-            "scrape → search → match → remind → prune → briefing → report finished "
+            "scrape → rank → remind → prune → briefing → report finished "
             "for all users."
             + (
                 ""
@@ -367,10 +381,10 @@ def preflight_llm(base: list[str]) -> bool:
 
     Runs ``llm_check --strict`` in the backend container before the recommend
     stages. The daily pipeline's paper rankings, opportunity scoring, and
-    briefings are only worth writing when the model is up: the deterministic
-    fallbacks would append lower-quality results to feeds that Mylo never
-    rewrites, so a stale-but-real feed is better than one padded with template
-    output. A non-zero exit therefore aborts the run instead of proceeding on
+    briefings are only worth writing when the model is up: with the model down every
+    Top-25 entrant would be written up by the template instead, and a reader would
+    get a full report of items nobody had actually judged. A day-old but real report
+    is better than a fresh one padded with template output. A non-zero exit therefore aborts the run instead of proceeding on
     fallbacks — nothing is scraped, matched, or briefed until the endpoint is
     back and the next run (or a manual re-run) can do it with the model up.
     """
@@ -479,7 +493,7 @@ def main() -> int:
         stages_run.append(command)
 
     print(
-        "\nAll stages completed: scrape → search → match → remind → prune → briefing "
+        "\nAll stages completed: scrape → rank → remind → prune → briefing "
         "→ report, for all users.",
         flush=True,
     )

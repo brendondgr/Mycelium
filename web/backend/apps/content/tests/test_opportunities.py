@@ -627,38 +627,36 @@ def test_batch_scores_units_concurrently(pgvector):
     assert state["peak"] >= 2  # units ran concurrently, not serially
 
 
-# -- two-process: daily append vs whole-corpus --------------------------------
+# -- the nightly whole-corpus re-rank -----------------------------------------
 
 
 @pytest.mark.django_db
-def test_daily_batch_scores_only_unscored_items_and_accumulates(pgvector):
-    """The daily run scores only grants this user has no score for, and appends them;
-    a grant already in the feed is left untouched (not re-scored)."""
+def test_daily_batch_reranks_what_is_already_in_the_feed(pgvector):
+    """The nightly run ranks a grant it has already scored, instead of skipping it.
+
+    This is what makes the feed answer to the *reader*: a run that only ever looked
+    at items it had never scored could not re-order anything, so editing a research
+    focus left the old list in place. What it must not do is pay the model twice —
+    the verdict already written is carried forward untouched.
+    """
     from datetime import UTC, datetime
 
     embeddings.set_embedder(_fake_embed)
-    user = _profile_user("accum")
+    user = _profile_user("rerank")
     ingest_pivot(
-        [
-            ("grants", _grant("g_old", "Knowledge Graphs for biomedical health")),
-            ("grants", _grant("g_new", "Knowledge Graphs biomedical methods")),
-        ],
+        [("grants", _grant("g_known", "Knowledge Graphs for biomedical health"))],
         embedder=_fake_embed,
         prune=False,
         today="2026-07-05",
     )
-    old = ContentItem.objects.get(external_id="g_old")
-    new = ContentItem.objects.get(external_id="g_new")
-    # g_old was ingested on an earlier day; g_new is today's fresh arrival.
-    ContentItem.objects.filter(pk=old.pk).update(
+    known = ContentItem.objects.get(external_id="g_known")
+    # Ingested days ago and already scored, so the old append-only gate would have
+    # excluded it from retrieval entirely.
+    ContentItem.objects.filter(pk=known.pk).update(
         created_at=datetime(2026, 7, 1, tzinfo=UTC)
     )
-    ContentItem.objects.filter(pk=new.pk).update(
-        created_at=datetime(2026, 7, 5, tzinfo=UTC)
-    )
-    # g_old is already in the user's feed from its own earlier run.
     RelevanceScore.objects.create(
-        content=old,
+        content=known,
         target_user=user,
         score=0.9,
         signals={
@@ -667,7 +665,12 @@ def test_daily_batch_scores_only_unscored_items_and_accumulates(pgvector):
             "suggested": True,
             "rank": 1,
             "match_percent": 80,
+            "headline": "Known Grant",
+            "reason": "A write-up from an earlier run.",
             "source": "llm",
+            "top_rank": 1,
+            "entered_top_on": "2026-07-01",
+            "is_new_top": True,
         },
     )
 
@@ -680,16 +683,16 @@ def test_daily_batch_scores_only_unscored_items_and_accumulates(pgvector):
         today="2026-07-05",
     )
 
-    scores = {
-        s.content_id: s
-        for s in RelevanceScore.objects.filter(
-            target_user=user, content__type="grant"
-        )
-    }
-    # Both grants are in the feed (accumulate); only g_new was scored this run.
-    assert old.id in scores and new.id in scores
-    assert scores[old.id].signals["run_at"] == "2026-07-01T00:00:00"  # untouched
-    assert scores[new.id].signals["run_at"] != "2026-07-01T00:00:00"  # freshly scored
+    signals = RelevanceScore.objects.get(target_user=user, content=known).signals
+    assert signals["run_at"] != "2026-07-01T00:00:00"  # re-ranked tonight
+    assert signals["match_percent"] == 80  # …on the verdict it already had
+    assert signals["reason"] == "A write-up from an earlier run."
+    assert signals["source"] == "llm"
+    # It was already in the reader's slate, so it is not announced a second time,
+    # and the date still says when it first appeared in a report.
+    assert signals["top_rank"] == 1
+    assert signals["is_new_top"] is False
+    assert signals["entered_top_on"] == "2026-07-01"
 
 
 @pytest.mark.django_db
@@ -733,8 +736,8 @@ def test_daily_batch_picks_up_an_unscored_backlog_from_an_earlier_day(pgvector):
 
 @pytest.mark.django_db
 def test_whole_corpus_match_replaces_stale_feed_rows(pgvector, settings):
-    """A whole-corpus run (sign-up/refit, ``unscored_only`` False) replaces the feed: a
-    previously-suggested grant that no longer matches is dropped, not left behind."""
+    """A whole-corpus run re-establishes the feed: a previously-suggested grant that
+    no longer matches stops being surfaced rather than lingering in the list."""
     settings.GRANT_MATCH_THRESHOLD = 0.6
     embeddings.set_embedder(_fake_embed)
     user = _profile_user("replace")
@@ -764,15 +767,20 @@ def test_whole_corpus_match_replaces_stale_feed_rows(pgvector, settings):
         },
     )
 
-    # Serial path: unscored_only defaults to False -> whole corpus -> replace.
+    # Serial path: unscored_only defaults to False -> whole corpus -> re-establish.
     match_opportunities_for_user(
         user, "grants", complete=lambda _p: None, today="2026-07-05"
     )
 
-    ids = set(
-        RelevanceScore.objects.filter(
+    rows = {
+        s.content_id: s
+        for s in RelevanceScore.objects.filter(
             target_user=user, content__type="grant"
-        ).values_list("content_id", flat=True)
-    )
-    assert strong.id in ids  # the current whole-corpus match is kept
-    assert stale.id not in ids  # the stale row is replaced (deleted)
+        )
+    }
+    assert rows[strong.id].signals["suggested"] is True  # the current match is kept
+    # The stale row leaves the feed but is not deleted: it still holds the verdict
+    # the model was paid for, so if the interest swings back it costs nothing.
+    assert rows[stale.id].signals["suggested"] is False
+    assert "top_rank" not in rows[stale.id].signals
+    assert rows[stale.id].signals["match_percent"] == 70
