@@ -2,11 +2,18 @@
 export default function ProjectDetailLoading() {
   return (
     <div className="animate-pulse">
-      <div className="mb-[14px] h-7 w-28 rounded-full bg-surface-alt" />
-      <div className="mb-[22px] h-9 w-64 rounded-lg bg-surface-alt" />
-      <div className="grid items-start gap-[22px] lg:grid-cols-[1.55fr_1fr]">
-        <div className="h-64 rounded-2xl bg-surface-alt" />
-        <div className="h-64 rounded-2xl bg-surface-alt" />
+      {/* Back link, then the header's lab badge + project name. */}
+      <div className="mb-[10px] h-7 w-28 rounded-full bg-surface-alt" />
+      <div className="mb-[18px] flex items-center gap-3">
+        <div className="h-6 w-32 rounded-full bg-surface-alt" />
+        <div className="h-8 w-64 rounded-lg bg-surface-alt" />
+      </div>
+      {/* The page tab bar. */}
+      <div className="mb-[22px] h-10 w-full max-w-[560px] rounded-lg bg-surface-alt" />
+      {/* The About rail beside the workspace panel. */}
+      <div className="flex flex-col gap-[22px] lg:flex-row lg:items-start">
+        <div className="h-64 rounded-2xl bg-surface-alt lg:w-80 lg:shrink-0" />
+        <div className="h-64 min-w-0 flex-1 rounded-2xl bg-surface-alt" />
       </div>
     </div>
   );

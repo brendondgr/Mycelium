@@ -27,7 +27,8 @@ import {
 import { TabBar, type TabItem } from "@/components/portal/primitives/tab-bar";
 import { usePortal } from "@/components/portal/portal-context";
 import {
-  ProjectIdentity,
+  ProjectAboutCard,
+  ProjectPageHeader,
   relativeTime,
 } from "@/components/portal/projects/project-identity";
 import { ProjectEditorModal } from "@/components/portal/projects/project-editor-modal";
@@ -63,7 +64,6 @@ import type {
   BriefingCategory,
   CollectionBrief,
   InterestedMember,
-  MyLab,
   Project,
   ProjectFeedItem,
   Suggestion,
@@ -75,16 +75,16 @@ const INPUT =
   "w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
- * A project's own page: one switch across five tabs, and nothing above it but
- * the way back.
+ * A project's own page: one header, one switch across five tabs.
  *
- * The tab bar is the first thing on the page and owns everything under it.
- * Overview puts the project's identity card alone in a narrow left column and
- * every working surface — what Mylo found, the team's shared papers,
- * collections, the roster, settings — behind a second tab row on the right. Each
- * of the four Mylo areas replaces all of that and runs the full width, so a
- * project's papers, grants, conferences, and fellowships get the same room they
- * have on their own pages.
+ * The header carries the way back, then the owning lab and the project's name on
+ * the line below it — once, above the tabs, so every tab says whose project this
+ * is. Overview then puts an About card alone in a narrow left rail and every
+ * working surface — what Mylo found, the team's shared papers, collections, the
+ * roster, settings — behind a second tab row beside it. Each of the four Mylo
+ * areas replaces all of that and runs the full width, so a project's papers,
+ * grants, conferences, and fellowships get the same room they have on their own
+ * pages.
  *
  * The project is read by id rather than picked out of the workspace-scoped
  * project list, so a lab project opens correctly from any scope — and its own
@@ -123,7 +123,7 @@ export function ProjectDetailSection() {
     <button
       type="button"
       onClick={openProjectsList}
-      className="mb-[14px] inline-flex items-center gap-[6px] rounded-full border-none bg-transparent px-[10px] py-[5px] text-[12.5px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="-ml-[10px] mb-[14px] inline-flex items-center gap-[6px] rounded-full border-none bg-transparent px-[10px] py-[5px] text-[12.5px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <ChevronLeftIcon size={15} />
       All projects
@@ -160,7 +160,12 @@ export function ProjectDetailSection() {
 
   return (
     <div>
-      {backButton}
+      <ProjectPageHeader
+        project={project}
+        lab={lab}
+        onBack={openProjectsList}
+        onEdit={() => setEditorOpen(true)}
+      />
 
       <ProjectTabBar
         active={tab}
@@ -187,7 +192,6 @@ export function ProjectDetailSection() {
         ) : (
           <ProjectOverviewPanel
             project={project}
-            lab={lab}
             recQuery={recQuery}
             feedQuery={feedQuery}
             canCollaborate={canCollaborate}
@@ -230,7 +234,6 @@ const SIDE_TABS: TabItem[] = [
  */
 function ProjectOverviewPanel({
   project,
-  lab,
   recQuery,
   feedQuery,
   canCollaborate,
@@ -238,7 +241,6 @@ function ProjectOverviewPanel({
   onOpenTab,
 }: {
   project: Project;
-  lab: MyLab | null;
   recQuery: ReturnType<typeof useProjectRecommendations>;
   feedQuery: ReturnType<typeof useProjectFeed>;
   canCollaborate: boolean;
@@ -285,13 +287,18 @@ function ProjectOverviewPanel({
     );
   })();
 
+  // A flex rail rather than a grid template: the same shape the feed pages use
+  // for their filter rails, with a fixed-width column that cannot be stretched
+  // by a long word and a `min-w-0` main column that can actually shrink.
   return (
-    <div className="grid items-start gap-[22px] lg:grid-cols-[minmax(260px,320px)_1fr]">
-      {/* LEFT — the project itself, and nothing else. */}
-      <ProjectIdentity project={project} lab={lab} onEdit={onEdit} />
+    <div className="flex flex-col gap-[22px] lg:flex-row lg:items-start">
+      {/* LEFT — what the project is, and nothing else. */}
+      <aside className="lg:w-80 lg:shrink-0">
+        <ProjectAboutCard project={project} />
+      </aside>
 
       {/* RIGHT — everything you do with it, one surface at a time. */}
-      <div>
+      <div className="min-w-0 flex-1">
         <TabBar
           items={SIDE_TABS}
           active={side}
