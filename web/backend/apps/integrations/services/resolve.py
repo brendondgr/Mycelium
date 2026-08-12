@@ -774,6 +774,30 @@ OUTBOX_DM = DiscordOutboxMessage.Target.DM
 OUTBOX_CHANNEL = DiscordOutboxMessage.Target.CHANNEL
 
 
+def next_resend_key(base: str) -> str:
+    """A dedupe key that deliberately misses ``base`` — for a manual re-send.
+
+    ``enqueue_outbox`` is idempotent on ``dedupe_key``, which is what stops a re-run
+    of the daily chain from messaging everyone twice. It also silently swallows every
+    deliberate re-send: an operator asking Mylo to send today's report again re-found
+    the settled row from this morning and queued nothing, with no error to explain it.
+
+    So a re-send takes its own key — ``<base>:resend:<n>``, where ``n`` is the first
+    free number. The daily key is untouched (the chain stays idempotent), each
+    re-send is a distinct row rather than a resurrection of a settled one, and the
+    history reads as what it is: the morning send, then two re-sends.
+    """
+    taken = set(
+        DiscordOutboxMessage.objects.filter(
+            dedupe_key__startswith=f"{base}:resend:"
+        ).values_list("dedupe_key", flat=True)
+    )
+    attempt = 1
+    while f"{base}:resend:{attempt}" in taken:
+        attempt += 1
+    return f"{base}:resend:{attempt}"
+
+
 def enqueue_outbox(
     *,
     dedupe_key: str,
