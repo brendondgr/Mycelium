@@ -7,17 +7,12 @@ import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
 import {
-  BankIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   CloseIcon,
-  ConferenceIcon,
-  DocumentIcon,
-  EditIcon,
   LinkIcon,
   ListIcon,
   PlusIcon,
-  SparkleIcon,
   SporeNode,
   TargetIcon,
   ThumbsDownIcon,
@@ -25,108 +20,62 @@ import {
 } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
 import {
-  displayStatus,
-  statusPillTone,
-} from "@/components/portal/project-status";
-import { ConferenceCard } from "@/components/portal/sections/conferences-section";
-import { FellowshipRow } from "@/components/portal/sections/fellowships-section";
-import { GrantRow } from "@/components/portal/sections/opportunities-section";
-import { SuggestionCard } from "@/components/portal/sections/suggestion-card";
+  ProjectIdentity,
+  relativeTime,
+} from "@/components/portal/projects/project-identity";
+import { ProjectEditorModal } from "@/components/portal/projects/project-editor-modal";
+import { ProjectRecommendationTabs } from "@/components/portal/projects/project-tabs";
+import { ProjectTeamCard } from "@/components/portal/projects/project-team-card";
 import {
   useAddToCollection,
-  useArchiveProject,
   useCreateCollection,
   useIngestProjectLink,
+  useProject,
   useProjectCollection,
   useProjectCollections,
-  useProjectDigest,
   useProjectFeed,
   useProjectRecommendations,
   useRemoveFromCollection,
   useShareToProject,
-  useUnarchiveProject,
   useUpdateCollection,
-  useUpdateProjectCategories,
 } from "@/lib/portal/hooks";
-import {
-  markProjectItemSeen,
-  ProjectCapReachedError,
-  recordProjectEvent,
-} from "@/lib/portal/mutations";
+import { markProjectItemSeen, recordProjectEvent } from "@/lib/portal/mutations";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 import type {
-  BriefingCategory,
   CollectionBrief,
-  ConferenceOpportunity,
-  FellowshipOpportunity,
-  GrantOpportunity,
   InterestedMember,
-  MyLab,
   Project,
   ProjectFeedItem,
-  ProjectMember,
-  ProjectRecommendations,
   Suggestion,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
-
-/** A member with owner/admin/PI rights may edit a lab-scoped project — mirrors
- * the backend's edit-permission check (owner/admin/PI, same as `canManageLab`
- * elsewhere). A personal project's only ever visible to its own owner. */
-function canManageLab(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
 
 /** Shared input style for the small inline forms on this page. */
 const INPUT =
   "w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-/** A compact, area-labelled recommendation row for the sidebar. */
-type MiniRec = { key: string; area: string; title: string; match: number | null; url: string };
-
-/** Top few recommendations across areas for the sidebar "Recommended by Mylo" card. */
-function topRecommendations(rec: ProjectRecommendations): MiniRec[] {
-  const out: MiniRec[] = [];
-  for (const p of rec.papers.slice(0, 3)) {
-    out.push({ key: `p-${p.content_id}`, area: "Paper", title: p.title, match: p.match_percent, url: p.url });
-  }
-  for (const g of rec.grants.slice(0, 3)) {
-    out.push({ key: `g-${g.content_id}`, area: "Grant", title: g.title, match: g.match_percent, url: g.url });
-  }
-  for (const c of rec.conferences.slice(0, 2)) {
-    out.push({ key: `c-${c.content_id}`, area: "Conference", title: c.title, match: c.match_percent, url: c.url });
-  }
-  return out;
-}
-
-/** Returns a relative time string for a given ISO date string. */
-function relativeTime(isoString: string): string {
-  const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "today";
-  if (diffDays === 1) return "yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 14) return "1 week ago";
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 5) return `${diffWeeks} weeks ago`;
-  const diffMonths = Math.floor(diffDays / 30);
-  if (diffMonths < 12) return `${diffMonths} month${diffMonths === 1 ? "" : "s"} ago`;
-  const diffYears = Math.floor(diffDays / 365);
-  return `${diffYears} year${diffYears === 1 ? "" : "s"} ago`;
-}
-
+/**
+ * A project's own page: its identity, the four recommendation feeds Mylo runs
+ * for it, and the team's shared workspace around them.
+ *
+ * The project is read by id rather than picked out of the workspace-scoped
+ * project list, so a lab project opens correctly from any scope — and its own
+ * payload, not the active workspace, decides whether the reader may edit it.
+ */
 export function ProjectDetailSection() {
-  const { projects, activeProjectId, openProjectsList, currentLab } = usePortal();
+  const { projects, activeProjectId, openProjectsList, labs } = usePortal();
 
-  const project = projects.find((p) => p.id === activeProjectId);
-  // Hooks must run every render (before the early return), so each takes the id
-  // optionally and stays disabled until a project is selected.
+  // The list copy paints immediately when it happens to be in scope; the read by
+  // id is the authority and replaces it as soon as it lands.
+  const projectQuery = useProject(activeProjectId ?? undefined);
+  const project =
+    projectQuery.data ?? projects.find((p) => p.id === activeProjectId);
+
   const recQuery = useProjectRecommendations(project?.id);
   const feedQuery = useProjectFeed(project?.id);
-  const digestQuery = useProjectDigest(project?.id);
+
+  const [editorOpen, setEditorOpen] = React.useState(false);
+  const teamRef = React.useRef<HTMLDivElement | null>(null);
 
   const backButton = (
     <button
@@ -143,106 +92,70 @@ export function ProjectDetailSection() {
     return (
       <div>
         {backButton}
-        <p className="text-sm text-[var(--text-secondary)]">Loading project…</p>
+        {projectQuery.isError ? (
+          <p className="text-sm text-[var(--text-secondary)]">
+            This project isn&apos;t available — it may have been archived, or you
+            may no longer have access to it.
+          </p>
+        ) : (
+          <div className="space-y-4" aria-hidden>
+            <div className="h-[150px] animate-pulse rounded-2xl bg-surface-alt" />
+            <div className="h-[320px] animate-pulse rounded-2xl bg-surface-alt" />
+          </div>
+        )}
       </div>
     );
   }
 
-  const goals = project.goals as Record<string, unknown>;
-  const description =
-    (typeof goals.description === "string" && goals.description) ||
-    (typeof goals.goal === "string" && goals.goal) ||
-    null;
-
-  const goalLabel =
-    (typeof goals.goal === "string" && goals.goal) || null;
-
-  const rec = recQuery.data;
-  const recPapers = rec?.papers ?? [];
-  const recTotal = rec
-    ? rec.counts.papers + rec.counts.grants + rec.counts.conferences
-    : 0;
-  const miniRecs = rec ? topRecommendations(rec) : [];
-  const hasFocus = project.focus.areas.length > 0;
   const feedItems = feedQuery.data?.items ?? [];
-  // Sharing/ingesting is backend-gated on participation (a non-member 403s);
-  // the project's own membership flag lets the UI hide those affordances
-  // upfront instead of reimplementing the gate client-side. A personal project
-  // (scope "user") is only ever visible to its owner and carries no member row,
-  // so its owner collaborates too — matching the backend participant gate.
-  const canCollaborate = project.is_member || project.scope === "user";
-  // Editing (focus/watch categories/archive) is narrower than collaborating:
-  // the backend allows only the personal owner, or a lab's owner/admin/PI. A
-  // lab project is normally only opened while that lab is the active
-  // workspace, so its manager rights come from the current lab scope.
-  const canEditProject =
-    project.scope === "user" ||
-    (project.scope === "lab" && currentLab !== null && canManageLab(currentLab));
+  const recPapers = recQuery.data?.papers ?? [];
+  const hasFocus = project.focus.areas.length > 0;
+  // Who may write into the project: its members, a personal project's owner, or
+  // a lab project's owner/admin/PI — the backend's participant gate, mirrored so
+  // the UI hides an action rather than letting it 403.
+  const canCollaborate =
+    project.is_member || project.scope === "user" || project.can_edit;
+  // The owning lab, when the reader belongs to it — only used for the logo mark,
+  // so an outside collaborator simply gets the text badge.
+  const lab = labs.find((l) => l.slug === project.scope_slug) ?? null;
 
   return (
     <div>
       {backButton}
 
-      {/* Project header */}
-      <div className="mb-[6px] flex flex-wrap items-start justify-between gap-[18px]">
-        <div>
-          <h1 className="mb-[7px] font-serif text-[27px] font-semibold leading-tight tracking-[-0.015em] text-[var(--text-primary)]">
-            {project.name}
-          </h1>
-          <div className="flex flex-wrap items-center gap-3">
-            <Pill tone={statusPillTone(project.status)}>
-              {displayStatus(project.status)}
-            </Pill>
-            <span className="text-[12.5px] text-[var(--text-secondary)]">
-              updated {relativeTime(project.updated_at)}
-            </span>
-            {project.progress !== null && (
-              <>
-                <span className="text-[12.5px] text-[var(--text-secondary)]">·</span>
-                <span className="text-[12.5px] text-[var(--text-secondary)]">
-                  {project.progress}% complete
-                </span>
-              </>
-            )}
-          </div>
-        </div>
+      <ProjectIdentity
+        project={project}
+        lab={lab}
+        onEdit={() => setEditorOpen(true)}
+        onManageMembers={() =>
+          teamRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+        }
+      />
 
-        <button
-          type="button"
-          disabled
-          title="Editing — coming soon"
-          className="inline-flex shrink-0 items-center gap-[7px] rounded-full border border-border bg-surface px-[15px] py-[9px] text-[12.5px] font-semibold text-[var(--text-primary)] opacity-50 cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <EditIcon size={14} />
-          Edit project
-        </button>
-      </div>
-
-      {/* Description */}
-      <p className="mb-[22px] max-w-[74ch] text-sm leading-[1.55] text-[var(--text-secondary)]">
-        {description ?? (
-          <span className="text-[var(--text-secondary)]">No description yet.</span>
-        )}
-      </p>
-
-      {/* Responsive two-column grid */}
       <div className="grid items-start gap-[22px] lg:grid-cols-[1.55fr_1fr]">
-        {/* LEFT column */}
+        {/* LEFT — what Mylo found, then what the team has done with it. */}
         <div className="flex flex-col gap-[22px]">
-          {/* Project feed */}
+          <ProjectRecommendationTabs
+            project={project}
+            data={recQuery.data}
+            isLoading={recQuery.isLoading}
+            isError={recQuery.isError}
+          />
+
+          {/* The team's shared feed */}
           <Card className="overflow-hidden">
             <div className="border-b border-[var(--divider)] px-5 pb-[14px] pt-[18px]">
               <h2 className="mb-[3px] text-base font-semibold text-[var(--text-primary)]">
-                Project feed
+                Shared by the team
               </h2>
               <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
-                Papers the team has shared, plus articles you paste in directly.
+                Papers the team has pushed into this project, plus articles you
+                paste in directly.
               </p>
 
               <IngestLinkForm projectId={project.id} canIngest={canCollaborate} />
             </div>
 
-            {/* The team's shared feed — the primary content of this card. */}
             {feedQuery.isLoading ? (
               <div className="py-8 text-center">
                 <p className="text-sm text-[var(--text-secondary)]">
@@ -269,19 +182,20 @@ export function ProjectDetailSection() {
             ) : (
               <div className="py-8 text-center">
                 <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
-                  No shared papers yet — paste a link above or share one of
-                  Mylo&apos;s picks below.
+                  No shared papers yet — paste a link above, or push one of
+                  Mylo&apos;s picks into the feed below.
                 </p>
               </div>
             )}
 
-            {/* Mylo's recommended papers for this project's focus, ready to push into the feed. */}
+            {/* Mylo's top picks, ready to push into the shared feed. */}
             <div className="border-t border-[var(--divider)] px-5 pb-[8px] pt-[16px]">
               <h3 className="mb-[3px] text-[13px] font-semibold text-[var(--text-primary)]">
-                Recommended for this project
+                Share one of Mylo&apos;s picks
               </h3>
               <p className="text-[11.5px] text-[var(--text-secondary)]">
-                Mylo&apos;s picks for this project&apos;s focus.
+                The strongest paper matches for this project, one click from the
+                team&apos;s feed.
               </p>
             </div>
             {recQuery.isLoading ? (
@@ -292,11 +206,11 @@ export function ProjectDetailSection() {
               </div>
             ) : recPapers.length > 0 ? (
               <ul className="divide-y divide-[var(--divider)]">
-                {recPapers.map((paper: Suggestion) => (
+                {recPapers.slice(0, 5).map((paper: Suggestion) => (
                   <PaperFeedRow
                     key={paper.content_id}
                     paper={paper}
-                    interested={rec?.interested?.[paper.content_id] ?? []}
+                    interested={recQuery.data?.interested?.[paper.content_id] ?? []}
                     projectId={project.id}
                     canShare={canCollaborate}
                   />
@@ -313,9 +227,6 @@ export function ProjectDetailSection() {
             )}
           </Card>
 
-          {/* Mylo's picks — the capped digest across all four areas */}
-          <ProjectDigestCard digestQuery={digestQuery} />
-
           {/* Collections — shared reading lists the team curates together */}
           <CollectionsCard
             projectId={project.id}
@@ -323,367 +234,124 @@ export function ProjectDetailSection() {
           />
         </div>
 
-        {/* RIGHT column */}
+        {/* RIGHT — who is on it, and what it is aimed at. */}
         <div className="flex flex-col gap-[22px]">
-          {/* Members card */}
-          <Card className="p-[22px]">
-            <div className="mb-[14px] flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">
-                Members
-              </h2>
-              <span className="text-xs text-[var(--text-secondary)]">
-                {project.member_count}
-              </span>
-            </div>
-
-            {project.members.length === 0 ? (
-              <p className="text-[12.5px] text-[var(--text-secondary)]">
-                No members yet.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-[11px]">
-                {project.members.map((m: ProjectMember) => (
-                  <div key={m.username} className="flex items-center gap-[11px]">
-                    <Avatar
-                      initials={m.initials}
-                      seed={m.username}
-                      size={32}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="m-0 text-[13px] font-medium text-[var(--text-primary)]">
-                        {m.name}
-                      </p>
-                      <p className="m-0 text-[11.5px] text-[var(--text-secondary)]">
-                        @{m.username}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Recommended by Mylo card */}
-          <Card className="p-[22px]">
-            <div className="mb-[10px] flex items-center gap-2">
-              <SporeNode size={16} className="text-primary" />
-              <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">
-                Recommended by Mylo
-              </h2>
-            </div>
-            {recQuery.isLoading ? (
-              <p className="m-0 text-[12.5px] text-[var(--text-secondary)]">
-                Loading recommendations…
-              </p>
-            ) : recTotal === 0 ? (
-              <p className="m-0 text-[12.5px] text-[var(--text-secondary)]">
-                {hasFocus
-                  ? "Recommendations arrive after Mylo's next run."
-                  : "Set this project's focus so Mylo can find matching work."}
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-[13px]">
-                {miniRecs.map((r) => (
-                  <MiniRecRow key={r.key} rec={r} />
-                ))}
-              </ul>
-            )}
-          </Card>
-
-          {/* Status card */}
-          <Card className="p-[22px]">
-            <h2 className="mb-[12px] text-[15px] font-semibold text-[var(--text-primary)]">
-              Status
-            </h2>
-
-            {project.progress !== null ? (
-              <>
-                <div className="mb-[7px] flex justify-between text-xs">
-                  <span className="font-medium text-[var(--text-secondary)]">
-                    Progress
-                  </span>
-                  <span className="font-semibold text-[var(--text-secondary)]">
-                    {project.progress}%
-                  </span>
-                </div>
-                <ProgressBar value={project.progress} className="mb-[14px]" />
-              </>
-            ) : (
-              <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
-                Not tracked yet
-              </p>
-            )}
-
-            <div className="flex items-start gap-[9px] text-[12.5px] leading-[1.5] text-[var(--text-secondary)]">
-              <TargetIcon
-                size={15}
-                className="mt-[1px] shrink-0 text-brand-secondary"
-              />
-              <span>Linked to: {goalLabel ?? "—"}</span>
-            </div>
-          </Card>
-
-          {/* Settings — watch categories + archive, editors only */}
-          {canEditProject ? <ProjectSettingsCard project={project} /> : null}
+          <div ref={teamRef}>
+            <ProjectTeamCard project={project} />
+          </div>
+          <ProjectFocusCard project={project} onEdit={() => setEditorOpen(true)} />
         </div>
       </div>
+
+      {editorOpen ? (
+        <ProjectEditorModal
+          project={project}
+          onClose={() => setEditorOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
 
-/** The four categories Mylo can track for a project, with the icon used for
- * each area elsewhere in the portal (nav, stat cards). */
-const WATCH_CATEGORY_OPTIONS: {
-  key: BriefingCategory;
-  label: string;
-  icon: React.ReactNode;
-}[] = [
-  { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },
-  { key: "grants", label: "Grants", icon: <BankIcon size={15} /> },
-  { key: "fellowships", label: "Fellowships", icon: <SparkleIcon size={15} /> },
-  { key: "conferences", label: "Conferences", icon: <ConferenceIcon size={15} /> },
-];
-
 /**
- * Editor-only settings: which categories Mylo tracks for this project (a
- * toggle per category, saved immediately) and an archive/unarchive control.
- * Only rendered for the project's owner or lab manager — never a plain
- * collaborator, matching the backend's edit gate.
+ * What this project is aimed at — the themes Mylo actually searches on, plus its
+ * progress. A project's recommendations are only as good as this, so the page
+ * shows it rather than leaving the reader guessing why a feed looks the way it
+ * does.
  */
-function ProjectSettingsCard({ project }: { project: Project }) {
-  const updateCategories = useUpdateProjectCategories();
-  const archive = useArchiveProject();
-  const unarchive = useUnarchiveProject();
-  const [archiveError, setArchiveError] = React.useState<string | null>(null);
-
-  const toggleCategory = (key: BriefingCategory) => {
-    if (updateCategories.isPending) {
-      return;
-    }
-    const next = project.watch_categories.includes(key)
-      ? project.watch_categories.filter((c) => c !== key)
-      : [...project.watch_categories, key];
-    updateCategories.mutate({ id: project.id, categories: next });
-  };
-
-  const handleArchiveToggle = () => {
-    setArchiveError(null);
-    if (project.is_archived) {
-      unarchive.mutate(project.id, {
-        onError: (err) => {
-          setArchiveError(
-            err instanceof ProjectCapReachedError
-              ? `Restoring this project would exceed your plan's limit of ${err.cap} projects — archive another first, or upgrade.`
-              : (err as Error).message,
-          );
-        },
-      });
-    } else {
-      archive.mutate(project.id, {
-        onError: (err) => setArchiveError((err as Error).message),
-      });
-    }
-  };
+function ProjectFocusCard({
+  project,
+  onEdit,
+}: {
+  project: Project;
+  onEdit: () => void;
+}) {
+  const { clusters, areas, watch_topics: watchTopics } = project.focus;
 
   return (
     <Card className="p-[22px]">
-      <h2 className="mb-[3px] text-[15px] font-semibold text-[var(--text-primary)]">
-        Mylo settings
-      </h2>
-      <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
-        Choose which areas Mylo tracks for this project.
-      </p>
-
-      <div className="flex flex-col gap-2">
-        {WATCH_CATEGORY_OPTIONS.map((option) => {
-          const on = project.watch_categories.includes(option.key);
-          return (
-            <div
-              key={option.key}
-              className="flex items-center justify-between gap-3 rounded-lg bg-surface-alt px-3 py-2.5"
-            >
-              <span className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-primary)]">
-                {option.icon}
-                {option.label}
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={on}
-                aria-label={option.label}
-                onClick={() => toggleCategory(option.key)}
-                disabled={updateCategories.isPending}
-                className={cn(
-                  "relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60",
-                  on ? "bg-primary" : "bg-border",
-                )}
-              >
-                <span
-                  className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all",
-                    on ? "left-[22px]" : "left-0.5",
-                  )}
-                />
-              </button>
-            </div>
-          );
-        })}
-      </div>
-      {updateCategories.isError ? (
-        <p className="mt-2 text-[11.5px] text-clay" role="alert">
-          Couldn&apos;t update — try again.
-        </p>
-      ) : null}
-
-      <div className="mt-4 border-t border-[var(--divider)] pt-4">
-        <button
-          type="button"
-          onClick={handleArchiveToggle}
-          disabled={archive.isPending || unarchive.isPending}
-          className="w-full rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt disabled:opacity-50"
-        >
-          {project.is_archived
-            ? unarchive.isPending
-              ? "Restoring…"
-              : "Unarchive project"
-            : archive.isPending
-              ? "Archiving…"
-              : "Archive project"}
-        </button>
-        {archiveError ? (
-          <p className="mt-2 text-[11.5px] text-clay" role="alert">
-            {archiveError}
-          </p>
+      <div className="mb-[12px] flex items-start justify-between gap-2">
+        <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">
+          Research focus
+        </h2>
+        {project.can_edit ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="shrink-0 text-[12px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Edit
+          </button>
         ) : null}
       </div>
-    </Card>
-  );
-}
 
-/** One group of digest picks ("Papers", "Grants", …) — hidden when empty. */
-function DigestGroup<T extends { content_id: string }>({
-  title,
-  items,
-  render,
-}: {
-  title: string;
-  items: T[];
-  render: (item: T) => React.ReactNode;
-}) {
-  if (items.length === 0) {
-    return null;
-  }
-  return (
-    <div>
-      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
-        {title} <span className="text-[var(--text-secondary)]">({items.length})</span>
-      </p>
-      <div className="space-y-3">{items.map(render)}</div>
-    </div>
-  );
-}
-
-/**
- * "Mylo's picks for this project" — the capped digest (top 10 papers / 5
- * grants / 5 fellowships / 5 conferences) reusing each area's own feed card so
- * a project's picks read exactly like the personal/lab pages, complete with
- * match percent and Mylo's reason.
- */
-function ProjectDigestCard({
-  digestQuery,
-}: {
-  digestQuery: ReturnType<typeof useProjectDigest>;
-}) {
-  const digest = digestQuery.data;
-  const papers: Suggestion[] = digest?.papers ?? [];
-  const grants: GrantOpportunity[] = digest?.grants ?? [];
-  const fellowships: FellowshipOpportunity[] = digest?.fellowships ?? [];
-  const conferences: ConferenceOpportunity[] = digest?.conferences ?? [];
-  const total = papers.length + grants.length + fellowships.length + conferences.length;
-  // Who each pick is for — the project's lab members (or its own, for a personal
-  // project). Same layer the lab feeds carry, on the same cards.
-  const forItem = digest?.recommended_for;
-
-  return (
-    <Card className="overflow-hidden">
-      <div className="border-b border-[var(--divider)] px-5 pb-[14px] pt-[18px]">
-        <div className="flex items-center gap-2">
-          <SporeNode size={16} className="text-primary" />
-          <h2 className="text-base font-semibold text-[var(--text-primary)]">
-            Mylo&apos;s picks for this project
-          </h2>
-        </div>
-        <p className="mt-[3px] text-[12.5px] text-[var(--text-secondary)]">
-          The best-matching papers, grants, fellowships, and conferences for
-          this project&apos;s focus.
+      {areas.length === 0 ? (
+        <p className="text-[12.5px] leading-[1.5] text-[var(--text-secondary)]">
+          {project.can_edit
+            ? "No focus set yet, so Mylo has nothing to search on for this project. Add one from Edit project → Focus."
+            : "No focus set yet, so Mylo isn't searching for this project."}
         </p>
-      </div>
-
-      {digestQuery.isLoading ? (
-        <div className="space-y-3 p-5">
-          <div className="h-24 animate-pulse rounded-xl bg-surface-alt" />
-          <div className="h-24 animate-pulse rounded-xl bg-surface-alt" />
-        </div>
-      ) : digestQuery.isError ? (
-        <div className="py-8 text-center">
-          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
-            Couldn&apos;t load Mylo&apos;s picks for this project.
-          </p>
-        </div>
-      ) : total === 0 ? (
-        <div className="py-8 text-center">
-          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
-            Mylo is still gathering picks for this project.
-          </p>
-        </div>
+      ) : clusters.length > 0 ? (
+        <ul className="flex flex-col gap-3">
+          {clusters.map((cluster) => (
+            <li key={cluster.id}>
+              <p className="m-0 flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--text-primary)]">
+                <SporeNode size={12} className="text-primary" />
+                {cluster.label}
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {cluster.areas.map((area) => (
+                  <span
+                    key={area}
+                    className="rounded-full bg-surface-alt px-2 py-[2px] text-[11px] text-[var(--text-secondary)]"
+                  >
+                    {area}
+                  </span>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
       ) : (
-        <div className="space-y-6 p-5">
-          <DigestGroup
-            title="Papers"
-            items={papers}
-            render={(paper) => (
-              <SuggestionCard
-                key={paper.content_id}
-                suggestion={paper}
-                recommendedFor={forItem?.[paper.content_id]}
-              />
-            )}
-          />
-          <DigestGroup
-            title="Grants"
-            items={grants}
-            render={(grant) => (
-              <GrantRow
-                key={grant.content_id}
-                grant={grant}
-                recommendedFor={forItem?.[grant.content_id]}
-              />
-            )}
-          />
-          <DigestGroup
-            title="Fellowships"
-            items={fellowships}
-            render={(item) => (
-              <FellowshipRow
-                key={item.content_id}
-                item={item}
-                recommendedFor={forItem?.[item.content_id]}
-              />
-            )}
-          />
-          <DigestGroup
-            title="Conferences"
-            items={conferences}
-            render={(conf) => (
-              <ConferenceCard
-                key={conf.content_id}
-                conf={conf}
-                recommendedFor={forItem?.[conf.content_id]}
-              />
-            )}
-          />
+        <div className="flex flex-wrap gap-1.5">
+          {areas.map((area) => (
+            <span
+              key={area}
+              className="rounded-full bg-surface-alt px-2 py-[2px] text-[11px] text-[var(--text-secondary)]"
+            >
+              {area}
+            </span>
+          ))}
         </div>
       )}
+
+      {watchTopics.length > 0 ? (
+        <div className="mt-4 flex items-start gap-[9px] border-t border-[var(--divider)] pt-3.5 text-[12px] leading-[1.5] text-[var(--text-secondary)]">
+          <TargetIcon
+            size={14}
+            className="mt-[2px] shrink-0 text-brand-secondary"
+            aria-hidden="true"
+          />
+          <span>
+            Searching on {watchTopics.slice(0, 5).join(", ")}
+            {watchTopics.length > 5 ? ` +${watchTopics.length - 5} more` : ""}.
+          </span>
+        </div>
+      ) : null}
+
+      {project.progress !== null ? (
+        <div className="mt-4 border-t border-[var(--divider)] pt-3.5">
+          <div className="mb-[7px] flex justify-between text-xs">
+            <span className="font-medium text-[var(--text-secondary)]">
+              Progress
+            </span>
+            <span className="font-semibold text-[var(--text-secondary)]">
+              {project.progress}%
+            </span>
+          </div>
+          <ProgressBar value={project.progress} />
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -1220,34 +888,6 @@ function FeedItemRow({
           ) : null}
         </div>
       ) : null}
-    </li>
-  );
-}
-
-/** One compact cross-area recommendation in the sidebar card. */
-function MiniRecRow({ rec }: { rec: MiniRec }) {
-  return (
-    <li className="flex flex-col gap-1">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
-          {rec.area}
-        </span>
-        <MatchChip match={rec.match} />
-      </div>
-      {rec.url ? (
-        <a
-          href={rec.url}
-          target="_blank"
-          rel="noreferrer"
-          className="text-[13px] font-medium leading-snug text-[var(--text-primary)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {rec.title}
-        </a>
-      ) : (
-        <span className="text-[13px] font-medium leading-snug text-[var(--text-primary)]">
-          {rec.title}
-        </span>
-      )}
     </li>
   );
 }

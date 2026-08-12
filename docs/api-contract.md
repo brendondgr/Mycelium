@@ -93,10 +93,15 @@ routes clients depend on most.
 |---|---|---|
 | `/` | GET, POST | Visible projects; create (plan-capped) |
 | `lab/<slug>/` | GET | Every project of one lab, to browse and join |
-| `<id>/` | GET, PATCH | Detail; edit name / focus / watch categories |
+| `<id>/` | GET, PATCH | Detail; edit name / description / status / progress / focus / watch categories |
 | `<id>/archive/` | POST, DELETE | Archive / unarchive (never deletes) |
 | `<id>/join/` `<id>/leave/` | POST | Self-join / leave |
-| `<id>/members/` | GET, POST | Roster; add a member |
+| `<id>/members/` | GET, POST | Roster; add a lab member directly |
+| `<id>/members/<username>/` | DELETE | Remove a member |
+| `<id>/invitations/` | GET, POST | Pending invitations; invite by username or email |
+| `<id>/invitations/<iid>/cancel/` | POST | Withdraw a pending invitation |
+| `project-invitations/` | GET | The caller's own pending project invitations |
+| `project-invitations/<id>/respond/` | POST | Accept / reject / ignore one |
 | `<id>/shares/` `<id>/feed/` | POST / GET | Share into, and read, the team feed |
 | `<id>/ingest-link/` | POST | Resolve and ingest a pasted DOI / arXiv / URL |
 | `<id>/items/<content_id>/seen/` | POST | Mark seen |
@@ -323,14 +328,43 @@ Projects the caller may see under the org visibility cascade
 
 ```json
 [{ "id": "uuid", "name": "Drought study", "scope": "lab",
-   "scope_name": "Reyes Lab", "goals": {}, "focus": { "clusters": [] },
+   "scope_name": "Reyes Lab", "scope_slug": "reyes-lab", "goals": {},
+   "description": "…", "status": "Active", "progress": 40,
+   "focus": { "clusters": [] },
    "watch_categories": ["papers"], "is_archived": false, "is_over_cap": false,
+   "can_edit": true, "can_manage_members": true,
    "member_count": 3, "members": [{ "username", "name", "initials" }],
    "updated_at": "…" }]
 ```
 
-`scope` is `user | lab | department`. `is_over_cap` marks a project sitting above
-the plan's allowance after a downgrade.
+`scope` is `user | lab | department`; `scope_slug` is the owning lab's slug and is
+`null` for a personal or department project. `description`, `status`, and
+`progress` are optional display fields read out of `goals` — `description` falls
+back to the composed focus statement — and are `null` when unset. `can_edit` /
+`can_manage_members` report the caller's rights on the row (the personal owner, or
+a lab owner/admin/PI) so a client never has to infer them from the active
+workspace. `is_over_cap` marks a project sitting above the plan's allowance after
+a downgrade.
+
+### `PATCH /api/projects/<id>/`
+
+`{ "name"?, "description"?, "status"?, "progress"?, "focus"?, "watch_categories"? }`
+— editors only. An empty string (or `null` for `progress`) clears a display field
+rather than storing a blank. A whole-corpus re-seed is triggered only when the
+patch actually changes what the project searches on (its focus, watch topics, or
+tracked areas); a rename or a status change does not buy one.
+
+### Project members and invitations
+
+`POST <id>/members/` adds one of the owning **lab's** own members directly — no
+invitation, because that person can already see the lab's work. Everyone else is
+invited: `POST <id>/invitations/` takes `{ "identifier", "message"? }` where the
+identifier is an existing account's username or email (project invitations do not
+create accounts — that stays the lab invite path). Accepting creates a
+`ProjectMember` row and nothing else, so an invited outside collaborator gains
+that one project's feed, collections, and recommendations and no other part of the
+lab. Both halves are gated on the same edit right as `PATCH`, and every write is
+audit-logged.
 
 ### `POST /api/projects/`
 

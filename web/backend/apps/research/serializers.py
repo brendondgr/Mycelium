@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.accounts.interests import validate_interests
+from apps.accounts.permissions import user_can_edit_lab_profile
 from apps.content.targets import (
     project_interests,
     project_watch_categories,
@@ -8,7 +9,7 @@ from apps.content.targets import (
 )
 from apps.core.people import display_name, initials
 
-from .models import Project
+from .models import Project, ProjectInvitation
 
 
 def _clean_list(value) -> list[str]:
@@ -66,6 +67,53 @@ def apply_focus(goals: dict, focus: dict) -> dict:
     return goals
 
 
+class ProjectInvitationSerializer(serializers.ModelSerializer):
+    """One project invitation, for both the sender's roster and the invitee's feed."""
+
+    project_id = serializers.CharField(source="project.id", read_only=True)
+    project_name = serializers.CharField(source="project.name", read_only=True)
+    scope_name = serializers.SerializerMethodField()
+    invitee = serializers.SerializerMethodField()
+    inviter = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProjectInvitation
+        fields = [
+            "id",
+            "project_id",
+            "project_name",
+            "scope_name",
+            "invitee",
+            "inviter",
+            "message",
+            "status",
+            "created_at",
+        ]
+
+    def get_scope_name(self, invitation: ProjectInvitation) -> str:
+        """Where the project lives — the lab's name, or "Personal"."""
+        project = invitation.project
+        if project.scope_lab_id:
+            return project.scope_lab.name
+        if project.scope_department_id:
+            return project.scope_department.name
+        return "Personal"
+
+    def get_invitee(self, invitation: ProjectInvitation) -> dict:
+        return _person(invitation.invitee)
+
+    def get_inviter(self, invitation: ProjectInvitation) -> dict | None:
+        return _person(invitation.inviter) if invitation.inviter_id else None
+
+
+def _person(user) -> dict:
+    return {
+        "username": user.get_username(),
+        "name": display_name(user),
+        "initials": initials(user),
+    }
+
+
 class ProjectMemberSerializer(serializers.Serializer):
     """A user as a project participant — read-only display fields only."""
 
@@ -91,6 +139,8 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     scope = serializers.CharField(read_only=True)
     scope_name = serializers.SerializerMethodField()
+    scope_slug = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
     focus = serializers.SerializerMethodField()
@@ -98,6 +148,8 @@ class ProjectSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
     is_member = serializers.SerializerMethodField()
     is_over_cap = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
+    can_manage_members = serializers.SerializerMethodField()
     members = ProjectMemberSerializer(many=True, read_only=True)
 
     class Meta:
@@ -107,7 +159,9 @@ class ProjectSerializer(serializers.ModelSerializer):
             "name",
             "scope",
             "scope_name",
+            "scope_slug",
             "goals",
+            "description",
             "status",
             "progress",
             "focus",
@@ -116,6 +170,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             "is_member",
             "is_archived",
             "is_over_cap",
+            "can_edit",
+            "can_manage_members",
             "members",
             "updated_at",
         ]
@@ -126,6 +182,32 @@ class ProjectSerializer(serializers.ModelSerializer):
         if project.scope == "department" and project.scope_department_id:
             return project.scope_department.name
         return "Personal"
+
+    def get_scope_slug(self, project: Project) -> str | None:
+        """The owning lab's slug — how the UI links a project back to its lab.
+
+        ``null`` for a personal project and for a department (which is UUID-keyed,
+        not slugged), so a caller can tell "this belongs to a lab" from the payload
+        alone rather than inferring it from the active workspace.
+        """
+        if project.scope == "lab" and project.scope_lab_id:
+            return project.scope_lab.slug
+        return None
+
+    def get_description(self, project: Project):
+        """The project's human description, or ``None`` when it has none.
+
+        Read in the same order the matcher reads a statement: the explicit
+        ``goals.description`` / ``goals.goal``, then the focus statement a
+        Mylo-composed project stores under ``goals.interests.statement`` — so a
+        project created through the wizard reads as described rather than blank.
+        """
+        goals = project.goals if isinstance(project.goals, dict) else {}
+        for value in (goals.get("description"), goals.get("goal")):
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        statement = project_interests(project)["statement"]
+        return statement or None
 
     def get_status(self, project: Project):
         goals = project.goals if isinstance(project.goals, dict) else {}
@@ -179,6 +261,49 @@ class ProjectSerializer(serializers.ModelSerializer):
         over = self.context.get("over_cap_ids")
         return over is not None and project.id in over
 
+    def _caller(self):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return None
+        return user
+
+    def get_can_edit(self, project: Project) -> bool:
+        """Whether the caller may edit this project (mirrors ``_user_can_edit``).
+
+        Reported on the row so the UI shows the Edit affordance from the project
+        itself rather than guessing from whichever workspace happens to be active —
+        the guess was wrong whenever a lab project was opened from personal scope.
+
+        The per-lab answer is memoized on the serializer: a list of a lab's twenty
+        projects asks the same membership question twenty times otherwise.
+        """
+        user = self._caller()
+        if user is None:
+            return False
+        if project.scope_user_id is not None:
+            return project.scope_user_id == user.id
+        if project.scope_lab_id is None:
+            return False
+        cache = getattr(self, "_editable_labs", None)
+        if cache is None:
+            cache = {}
+            self._editable_labs = cache
+        if project.scope_lab_id not in cache:
+            cache[project.scope_lab_id] = user_can_edit_lab_profile(
+                user, project.scope_lab
+            )
+        return cache[project.scope_lab_id]
+
+    def get_can_manage_members(self, project: Project) -> bool:
+        """Whether the caller may add or remove this project's members.
+
+        Same authority as editing: a personal project's owner, or a lab project's
+        owner / admin / PI. A lab manager adds lab members directly; anyone else
+        joins through an invitation.
+        """
+        return self.get_can_edit(project)
+
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
     """Create a project scoped to a lab, a department, or the caller (personal).
@@ -218,15 +343,28 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
 
 
 class ProjectUpdateSerializer(serializers.Serializer):
-    """Edit a project's name and research focus.
+    """Edit a project's fundamentals: name, description, status, progress, focus.
 
     ``focus`` is a purpose-built write field — ``{areas, keywords, statement,
     watch_topics}`` — that is merged into ``goals.interests`` / ``goals.watch_topics``
-    without disturbing other free-form ``goals`` keys (status, progress, …). This is
-    what gives a project the specific topic its daily recommendations run against.
+    without disturbing other free-form ``goals`` keys. This is what gives a project
+    the specific topic its daily recommendations run against.
+
+    ``description`` / ``status`` / ``progress`` are the display fields the project
+    page shows in its header; the model does not carry them as columns, so each is
+    written into the free-form ``goals`` JSON under its own key. Sending ``null``
+    (or an empty string, for the text fields) clears one rather than storing a
+    blank, so the page falls back to "not set" instead of rendering an empty pill.
     """
 
     name = serializers.CharField(required=False)
+    description = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
+    status = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    progress = serializers.IntegerField(
+        required=False, allow_null=True, min_value=0, max_value=100
+    )
     focus = serializers.DictField(required=False)
     watch_categories = serializers.ListField(
         child=serializers.CharField(), required=False
@@ -252,9 +390,23 @@ class ProjectUpdateSerializer(serializers.Serializer):
             instance.name = validated["name"]
         if "focus" in validated:
             instance.goals = apply_focus(instance.goals, validated["focus"] or {})
+
+        goals = dict(instance.goals if isinstance(instance.goals, dict) else {})
+        for field in ("description", "status"):
+            if field in validated:
+                text = (validated[field] or "").strip()
+                if text:
+                    goals[field] = text
+                else:
+                    goals.pop(field, None)
+        if "progress" in validated:
+            if validated["progress"] is None:
+                goals.pop("progress", None)
+            else:
+                goals["progress"] = validated["progress"]
         if "watch_categories" in validated:
-            goals = dict(instance.goals if isinstance(instance.goals, dict) else {})
             goals["watch_categories"] = validated["watch_categories"]
-            instance.goals = goals
+        instance.goals = goals
+
         instance.save()
         return instance

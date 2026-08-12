@@ -14,9 +14,11 @@ import {
   useDismissSuggestion,
   useMemberSuggestions,
   useMyInvitations,
+  useMyProjectInvitations,
   useNotificationAction,
   useNotifications,
   useRespondInvitation,
+  useRespondProjectInvitation,
 } from "@/lib/portal/hooks";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 import type {
@@ -24,27 +26,42 @@ import type {
   MemberSuggestion,
   MyInvitation,
   NotificationItem,
+  ProjectInvitation,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Notifications entry point. The feed combines the caller's pending lab
- * invitations (accept / reject / ignore) with deadline alerts for saved grants
- * and conferences due within a week. Closes on outside click / Escape via the
- * shared popover hook.
+ * Notifications entry point. The feed combines the caller's pending lab and
+ * project invitations (accept / reject / ignore) with deadline alerts for saved
+ * grants and conferences due within a week. Closes on outside click / Escape via
+ * the shared popover hook.
  */
 export function NotificationBell() {
   const { open, setOpen, ref } = useDismissable<HTMLDivElement>();
   const { goToSection } = usePortal();
   const { data, isLoading, isError } = useMyInvitations();
+  const projectInvitesQuery = useMyProjectInvitations();
   const notifications = useNotifications();
   const suggestionsQuery = useMemberSuggestions();
   const invitations = data ?? [];
+  const projectInvitations = projectInvitesQuery.data?.items ?? [];
   const alerts = notifications.data?.items ?? [];
   const suggestions = suggestionsQuery.data?.items ?? [];
-  const count = invitations.length + alerts.length + suggestions.length;
-  const loading = isLoading || notifications.isLoading || suggestionsQuery.isLoading;
-  const errored = isError || notifications.isError || suggestionsQuery.isError;
+  const count =
+    invitations.length +
+    projectInvitations.length +
+    alerts.length +
+    suggestions.length;
+  const loading =
+    isLoading ||
+    projectInvitesQuery.isLoading ||
+    notifications.isLoading ||
+    suggestionsQuery.isLoading;
+  const errored =
+    isError ||
+    projectInvitesQuery.isError ||
+    notifications.isError ||
+    suggestionsQuery.isError;
 
   return (
     <div ref={ref} className="relative">
@@ -98,6 +115,12 @@ export function NotificationBell() {
               ))}
               {invitations.map((invitation) => (
                 <InvitationRow key={invitation.id} invitation={invitation} />
+              ))}
+              {projectInvitations.map((invitation) => (
+                <ProjectInvitationRow
+                  key={invitation.id}
+                  invitation={invitation}
+                />
               ))}
               {suggestions.map((suggestion) => (
                 <SuggestionRow
@@ -190,6 +213,81 @@ function InvitationRow({ invitation }: { invitation: MyInvitation }) {
       {invitation.inviter ? (
         <p className="mt-0.5 text-[12px] text-[var(--text-secondary)]">
           From {invitation.inviter}
+        </p>
+      ) : null}
+
+      <div className="mt-2.5 flex items-center gap-2">
+        <ResponseButton
+          tone="accept"
+          disabled={respond.isPending}
+          onClick={() => act("accept")}
+        >
+          Accept
+        </ResponseButton>
+        <ResponseButton
+          tone="reject"
+          disabled={respond.isPending}
+          onClick={() => act("reject")}
+        >
+          Reject
+        </ResponseButton>
+        <ResponseButton
+          tone="plain"
+          disabled={respond.isPending}
+          onClick={() => act("ignore")}
+        >
+          Ignore
+        </ResponseButton>
+      </div>
+
+      {error ? (
+        <p className="mt-2 text-[12px] text-clay" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </li>
+  );
+}
+
+/**
+ * A pending project invitation. Accepting puts the reader on that one project —
+ * its feed, collections, and recommendations — and nothing else, which the row
+ * says plainly so an invitation from a lab is not mistaken for joining the lab.
+ */
+function ProjectInvitationRow({
+  invitation,
+}: {
+  invitation: ProjectInvitation;
+}) {
+  const respond = useRespondProjectInvitation();
+  const [error, setError] = React.useState<string | null>(null);
+
+  const act = (action: InvitationAction) => {
+    setError(null);
+    respond.mutate(
+      { id: invitation.id, action },
+      { onError: (e) => setError((e as Error).message) },
+    );
+  };
+
+  return (
+    <li className="px-4 py-3">
+      <p className="text-sm text-[var(--text-primary)]">
+        You&apos;ve been invited to the project{" "}
+        <span className="font-semibold">{invitation.project_name}</span>
+        {invitation.scope_name !== "Personal"
+          ? ` in ${invitation.scope_name}`
+          : ""}
+        .
+      </p>
+      {invitation.inviter ? (
+        <p className="mt-0.5 text-[12px] text-[var(--text-secondary)]">
+          From {invitation.inviter.name}
+        </p>
+      ) : null}
+      {invitation.message ? (
+        <p className="mt-1 text-[12.5px] italic text-[var(--text-secondary)]">
+          &ldquo;{invitation.message}&rdquo;
         </p>
       ) : null}
 

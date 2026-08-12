@@ -30,6 +30,7 @@ import type {
   NotificationFeed,
   OpportunityFeed,
   Project,
+  ProjectInvitation,
   ProjectRecommendations,
   LabReminderChannels,
   ProfileData,
@@ -88,11 +89,45 @@ export async function fetchProjects(labSlug?: string): Promise<Project[]> {
   return getJson<Project[]>(url, "Could not load your projects.");
 }
 
+/**
+ * One project by id. The project page reads itself through this rather than
+ * picking its row out of the workspace-scoped list — a lab project opened from
+ * the personal scope isn't in that list at all, and the page used to sit on
+ * "Loading project…" forever.
+ */
+export async function fetchProject(id: string): Promise<Project> {
+  return getJson<Project>(
+    buildApiUrl(getPublicApiBase(), "projects", id),
+    "Could not load this project.",
+  );
+}
+
 /** Every project of a lab (any lab member may browse them to join). */
 export async function fetchLabProjects(slug: string): Promise<Project[]> {
   return getJson<Project[]>(
     buildApiUrl(getPublicApiBase(), "projects", "lab", slug),
     "Could not load the lab's projects.",
+  );
+}
+
+/** A project's pending invitations (its editors only). */
+export async function fetchProjectInvitations(
+  id: string,
+): Promise<{ count: number; items: ProjectInvitation[] }> {
+  return getJson(
+    buildApiUrl(getPublicApiBase(), "projects", id, "invitations"),
+    "Could not load this project's invitations.",
+  );
+}
+
+/** The caller's own pending project invitations (the notifications feed). */
+export async function fetchMyProjectInvitations(): Promise<{
+  count: number;
+  items: ProjectInvitation[];
+}> {
+  return getJson(
+    buildApiUrl(getPublicApiBase(), "project-invitations"),
+    "Could not load your project invitations.",
   );
 }
 
