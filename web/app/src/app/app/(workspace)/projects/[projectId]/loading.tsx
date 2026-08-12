@@ -11,9 +11,9 @@ export default function ProjectDetailLoading() {
       {/* The page tab bar. */}
       <div className="mb-[22px] h-10 w-full max-w-[560px] rounded-lg bg-surface-alt" />
       {/* The About rail beside the workspace panel. */}
-      <div className="flex flex-col gap-[22px] lg:flex-row lg:items-start">
-        <div className="h-64 rounded-2xl bg-surface-alt lg:w-80 lg:shrink-0" />
-        <div className="h-64 min-w-0 flex-1 rounded-2xl bg-surface-alt" />
+      <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-5 lg:items-start">
+        <div className="h-64 min-w-0 rounded-2xl bg-surface-alt lg:col-span-2" />
+        <div className="h-64 min-w-0 rounded-2xl bg-surface-alt lg:col-span-3" />
       </div>
     </div>
   );

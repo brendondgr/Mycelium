@@ -287,18 +287,18 @@ function ProjectOverviewPanel({
     );
   })();
 
-  // A flex rail rather than a grid template: the same shape the feed pages use
-  // for their filter rails, with a fixed-width column that cannot be stretched
-  // by a long word and a `min-w-0` main column that can actually shrink.
+  // A five-column grid split two/three, so each side is a fixed *fraction* of
+  // the page. A flex rail sized itself from its content instead, which let a
+  // long description swell the About column and squeeze the panel beside it.
   return (
-    <div className="flex flex-col gap-[22px] lg:flex-row lg:items-start">
+    <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-5 lg:items-start">
       {/* LEFT — what the project is, and nothing else. */}
-      <aside className="lg:w-80 lg:shrink-0">
+      <aside className="min-w-0 lg:col-span-2">
         <ProjectAboutCard project={project} />
       </aside>
 
       {/* RIGHT — everything you do with it, one surface at a time. */}
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 lg:col-span-3">
         <TabBar
           items={SIDE_TABS}
           active={side}
