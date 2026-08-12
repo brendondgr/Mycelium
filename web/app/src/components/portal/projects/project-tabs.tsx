@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { TabBar } from "@/components/portal/primitives/tab-bar";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
 import {
@@ -642,80 +643,28 @@ export function ProjectTabBar({
   /** Which areas the project actually runs — the rest are marked "off". */
   tracked: BriefingCategory[];
 }) {
-  const tabRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
-
-  const onKeyDown = (event: React.KeyboardEvent) => {
-    const order = TABS.map((t) => t.key);
-    const index = order.indexOf(active);
-    let next: ProjectTabKey | null = null;
-    if (event.key === "ArrowRight") next = order[(index + 1) % order.length];
-    if (event.key === "ArrowLeft")
-      next = order[(index - 1 + order.length) % order.length];
-    if (event.key === "Home") next = order[0];
-    if (event.key === "End") next = order[order.length - 1];
-    if (next) {
-      event.preventDefault();
-      onChange(next);
-      tabRefs.current[next]?.focus();
-    }
-  };
+  const items = TABS.map((tab) => {
+    const isArea = tab.key !== "overview";
+    const off = isArea && !tracked.includes(tab.key as BriefingCategory);
+    const count = isArea ? counts?.[tab.key as AreaKey] : undefined;
+    return {
+      key: tab.key,
+      label: tab.label,
+      icon: tab.icon,
+      badge: off ? "off" : count,
+    };
+  });
 
   return (
-    <div className="mb-[22px] border-b border-[var(--divider)]">
-      <div
-        role="tablist"
-        aria-label="Project sections"
-        onKeyDown={onKeyDown}
-        className="-mb-px flex gap-1 overflow-x-auto pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {TABS.map((tab) => {
-          const on = tab.key === active;
-          const isArea = tab.key !== "overview";
-          const off = isArea && !tracked.includes(tab.key as BriefingCategory);
-          const count = isArea ? counts?.[tab.key as AreaKey] : undefined;
-          return (
-            <button
-              key={tab.key}
-              ref={(node) => {
-                tabRefs.current[tab.key] = node;
-              }}
-              type="button"
-              role="tab"
-              id={`project-tab-${tab.key}`}
-              aria-selected={on}
-              aria-controls="project-tabpanel"
-              tabIndex={on ? 0 : -1}
-              onClick={() => onChange(tab.key)}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-t-xl border-b-2 px-4 py-3 text-[13.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                on
-                  ? "border-b-primary bg-[color-mix(in_srgb,var(--primary)_7%,transparent)] text-primary"
-                  : "border-b-transparent text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-primary)]",
-              )}
-            >
-              {tab.icon}
-              {tab.label}
-              {off ? (
-                <span className="text-[11px] font-medium text-[var(--text-muted)]">
-                  off
-                </span>
-              ) : typeof count === "number" ? (
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-[1px] text-[11px] font-semibold",
-                    on
-                      ? "bg-[color-mix(in_srgb,var(--primary)_15%,transparent)] text-primary"
-                      : "bg-surface-alt text-[var(--text-secondary)]",
-                  )}
-                >
-                  {count}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <TabBar
+      items={items}
+      active={active}
+      onChange={(key) => onChange(key as ProjectTabKey)}
+      ariaLabel="Project sections"
+      panelId="project-tabpanel"
+      idPrefix="project-tab"
+      className="mb-[22px]"
+    />
   );
 }
 

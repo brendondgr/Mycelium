@@ -7,24 +7,14 @@ import {
   EditorField,
   EditorModal,
   EditorSection,
-  EditorToggleRow,
   type EditorTab,
 } from "@/components/portal/primitives/editor-modal";
 import type { ClusterGroup } from "@/lib/auth-types";
-import {
-  useArchiveProject,
-  useUnarchiveProject,
-  useUpdateProject,
-} from "@/lib/portal/hooks";
-import { ProjectCapReachedError } from "@/lib/portal/mutations";
-import type {
-  BriefingCategory,
-  Project,
-  ProjectUpdateInput,
-} from "@/lib/portal/types";
+import { useUpdateProject } from "@/lib/portal/hooks";
+import type { Project, ProjectUpdateInput } from "@/lib/portal/types";
 
 /** Which panel the modal opens on. */
-export type ProjectEditorTab = "details" | "focus" | "mylo";
+export type ProjectEditorTab = "details" | "focus";
 
 const INPUT =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -33,18 +23,11 @@ const INPUT =
  * offering a short list keeps the pill vocabulary consistent across projects. */
 const STATUSES = ["Active", "Planning", "In review", "On hold", "Complete"];
 
-/** The four areas Mylo can track for a project, in report order. */
-const WATCH_AREAS: { key: BriefingCategory; label: string; desc: string }[] = [
-  { key: "papers", label: "Papers", desc: "New literature matching this project." },
-  { key: "grants", label: "Grants", desc: "Funding that fits its focus." },
-  { key: "fellowships", label: "Fellowships", desc: "Awards for the people on it." },
-  { key: "conferences", label: "Conferences", desc: "Venues and calls for papers." },
-];
-
 /**
- * Edit everything that makes a project what it is, in one dialog: its name,
- * description, status and progress (Details); the research focus Mylo searches
- * on (Focus); and which areas it tracks, plus archiving (Mylo).
+ * Edit what a project *is*: its name, description, status and progress
+ * (Details), and the research focus Mylo searches on (Focus). The live
+ * controls — which areas it tracks, archiving — sit on the project page's
+ * Settings tab instead, so each has one home.
  *
  * The Edit button used to be inert, and a project's focus could only be set
  * during creation — so a project that drifted could never be re-aimed. This is
@@ -61,8 +44,6 @@ export function ProjectEditorModal({
   onClose: () => void;
 }) {
   const save = useUpdateProject();
-  const archive = useArchiveProject();
-  const unarchive = useUnarchiveProject();
 
   const [tab, setTab] = React.useState<ProjectEditorTab>(initialTab);
   const [error, setError] = React.useState<string | null>(null);
@@ -86,18 +67,6 @@ export function ProjectEditorModal({
   const [statement, setStatement] = React.useState(project.focus.statement);
   const [focusTouched, setFocusTouched] = React.useState(false);
 
-  // Mylo
-  const [categories, setCategories] = React.useState<BriefingCategory[]>(
-    project.watch_categories,
-  );
-
-  const toggleCategory = (key: BriefingCategory) => {
-    setCategories((current) =>
-      current.includes(key)
-        ? current.filter((c) => c !== key)
-        : [...current, key],
-    );
-  };
 
   const trimmedName = name.trim();
   const parsedProgress = progress.trim() === "" ? null : Number(progress);
@@ -123,7 +92,6 @@ export function ProjectEditorModal({
       description: description.trim(),
       status: status.trim(),
       progress: parsedProgress === null ? null : Math.round(parsedProgress),
-      watch_categories: categories,
     };
     // Only send a focus when the reader actually changed one — an untouched
     // focus should not be rewritten (and re-seeded) just because they opened
@@ -146,25 +114,6 @@ export function ProjectEditorModal({
     );
   };
 
-  const toggleArchive = () => {
-    setError(null);
-    if (project.is_archived) {
-      unarchive.mutate(project.id, {
-        onSuccess: onClose,
-        onError: (err) =>
-          setError(
-            err instanceof ProjectCapReachedError
-              ? `Restoring this project would exceed your plan's limit of ${err.cap} projects — archive another first, or upgrade.`
-              : (err as Error).message,
-          ),
-      });
-    } else {
-      archive.mutate(project.id, {
-        onSuccess: onClose,
-        onError: (err) => setError((err as Error).message),
-      });
-    }
-  };
 
   const tabs: EditorTab[] = [
     {
@@ -285,62 +234,13 @@ export function ProjectEditorModal({
         </EditorSection>
       ),
     },
-    {
-      id: "mylo",
-      label: "Mylo",
-      hint: "Tracked areas, archiving",
-      content: (
-        <>
-          <EditorSection
-            title="What Mylo tracks"
-            description="Turn an area off and this project stops getting new matches for it. Its tab says so rather than sitting empty."
-          >
-            <div>
-              {WATCH_AREAS.map((area) => (
-                <EditorToggleRow
-                  key={area.key}
-                  label={area.label}
-                  description={area.desc}
-                  checked={categories.includes(area.key)}
-                  onChange={() => toggleCategory(area.key)}
-                />
-              ))}
-            </div>
-          </EditorSection>
-
-          <EditorSection
-            title={project.is_archived ? "Restore" : "Archive"}
-            description={
-              project.is_archived
-                ? "Restoring puts this project back into the daily run. It has to fit within your plan's project limit."
-                : "Archiving keeps everything Mylo has already found but stops new search work, and frees a slot against your plan's limit. Nothing is deleted."
-            }
-          >
-            <button
-              type="button"
-              onClick={toggleArchive}
-              disabled={archive.isPending || unarchive.isPending}
-              className="rounded-full border border-border bg-surface px-4 py-2 text-[13px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt disabled:opacity-50"
-            >
-              {project.is_archived
-                ? unarchive.isPending
-                  ? "Restoring…"
-                  : "Restore project"
-                : archive.isPending
-                  ? "Archiving…"
-                  : "Archive project"}
-            </button>
-          </EditorSection>
-        </>
-      ),
-    },
   ];
 
   return (
     <EditorModal
       eyebrow={project.scope === "lab" ? project.scope_name : "Personal project"}
       title={`Edit ${project.name}`}
-      subtitle="Change what this project is, and what Mylo watches for it."
+      subtitle="What this project is called, what it is about, and what Mylo searches on for it."
       tabs={tabs}
       activeTab={tab}
       onTabChange={(id) => setTab(id as ProjectEditorTab)}

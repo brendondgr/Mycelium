@@ -3,12 +3,10 @@
 import * as React from "react";
 
 import { Avatar } from "@/components/portal/primitives/avatar";
+import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
-import {
-  EditIcon,
-  MembersIcon,
-  SporeNode,
-} from "@/components/portal/icons";
+import { ProgressBar } from "@/components/portal/primitives/progress-bar";
+import { EditIcon, FolderIcon, SporeNode } from "@/components/portal/icons";
 import {
   displayStatus,
   statusPillTone,
@@ -38,96 +36,79 @@ export function relativeTime(isoString: string): string {
 }
 
 /**
- * The faint root-network motif behind the project banner — the style guide's
- * "low-opacity connective tissue". Decorative only, and quiet enough that it
- * never competes with the title.
- */
-function MyceliumTrace() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 420 160"
-      preserveAspectRatio="none"
-      className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[420px] text-primary opacity-[0.07] sm:block"
-    >
-      <g fill="none" stroke="currentColor" strokeWidth="1.2">
-        <path d="M420 18 C 330 34, 300 74, 208 84 C 140 92, 96 68, 20 92" />
-        <path d="M420 66 C 340 72, 296 108, 214 116 C 156 122, 110 112, 42 132" />
-        <path d="M420 120 C 350 118, 318 82, 250 60 C 196 42, 150 40, 96 22" />
-        <path d="M300 30 C 288 60, 268 82, 234 96" />
-        <path d="M356 140 C 340 112, 314 96, 276 88" />
-      </g>
-      <g fill="currentColor">
-        {[
-          [208, 84],
-          [214, 116],
-          [250, 60],
-          [96, 22],
-          [42, 132],
-          [276, 88],
-        ].map(([cx, cy]) => (
-          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="3" />
-        ))}
-      </g>
-    </svg>
-  );
-}
-
-/**
- * The lab-or-personal badge — the cue that was missing entirely. A lab project
- * wears its lab's mark (its uploaded logo when the reader is a member of that
- * lab and it has one, else a spore glyph) and its name; a personal project wears
- * a quieter neutral badge. The two never rely on tone alone: each carries its
- * own icon and the words "Lab project" / "Personal project".
+ * The lab-or-personal cue that was missing entirely. A lab project wears its
+ * lab's mark — the uploaded logo when the reader belongs to that lab, else a
+ * spore glyph — and its name; a personal project wears a quieter neutral badge.
+ * Neither leans on colour alone: each carries its own icon and says in words
+ * which kind of project this is.
  */
 function ScopeBadge({ project, lab }: { project: Project; lab: MyLab | null }) {
-  const isLab = project.scope === "lab";
-  const isDept = project.scope === "department";
-  const logo = lab && lab.has_logo ? labLogoUrl(lab.slug, lab.logo_version) : null;
+  const isOrg = project.scope !== "user";
+  const logo = lab?.has_logo ? labLogoUrl(lab.slug, lab.logo_version) : null;
 
-  if (!isLab && !isDept) {
+  if (!isOrg) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-2.5 py-1 text-[11px] font-semibold text-[var(--text-secondary)]">
-        <Avatar initials="" seed={project.id} size={14} />
+      <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface-alt px-2.5 py-1 text-[11px] font-semibold text-[var(--text-secondary)]">
+        <FolderIcon size={12} aria-hidden="true" />
         Personal project
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] py-1 pl-1.5 pr-3 text-[11px] font-semibold text-primary">
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] py-1 pl-1.5 pr-2.5 text-[11px] font-semibold text-primary">
       {logo ? (
         // A user-supplied logo served from our own API; a plain img is right here.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={logo}
           alt=""
-          className="h-[18px] w-[18px] rounded-full object-contain"
+          className="h-[18px] w-[18px] shrink-0 rounded-full object-contain"
         />
       ) : (
-        <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_22%,transparent)]">
+        <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_22%,transparent)]">
           <SporeNode size={11} />
         </span>
       )}
-      <span className="max-w-[26ch] truncate">{project.scope_name}</span>
-      <span aria-hidden className="opacity-45">
-        ·
-      </span>
-      {isDept ? "Department project" : "Lab project"}
+      <span className="truncate">{project.scope_name}</span>
     </span>
   );
 }
 
+/** One label/value line in the identity card's detail list. */
+function DetailRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-baseline gap-3">
+      <dt className="w-[62px] shrink-0 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+        {label}
+      </dt>
+      <dd className="m-0 min-w-0 flex-1 text-[12.5px] text-[var(--text-secondary)]">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
 /** Up to four member faces, then a "+N" counter. */
-function MemberFaces({ members, total }: { members: ProjectMember[]; total: number }) {
+function MemberFaces({
+  members,
+  total,
+}: {
+  members: ProjectMember[];
+  total: number;
+}) {
   if (total === 0) {
-    return (
-      <span className="text-[12.5px] text-[var(--text-secondary)]">No members yet</span>
-    );
+    return <span className="text-[var(--text-muted)]">Nobody yet</span>;
   }
   const shown = members.slice(0, 4);
   return (
-    <span className="flex items-center gap-2">
+    <span className="flex flex-wrap items-center gap-2">
       <span className="flex -space-x-1.5">
         {shown.map((m) => (
           <span
@@ -139,7 +120,7 @@ function MemberFaces({ members, total }: { members: ProjectMember[]; total: numb
           </span>
         ))}
       </span>
-      <span className="text-[12.5px] text-[var(--text-secondary)]">
+      <span>
         {total} member{total === 1 ? "" : "s"}
       </span>
     </span>
@@ -147,102 +128,82 @@ function MemberFaces({ members, total }: { members: ProjectMember[]; total: numb
 }
 
 /**
- * The project banner: who owns it, what it is called, what it is about, and the
- * one action that changes any of that.
+ * The project's identity card — the only thing in the overview's left column.
  *
- * This is the page's identity. Before it, a project read like any other listing —
- * a title, a description, and a disabled Edit button — with nothing to say whether
- * it belonged to a lab or to you. The banner carries a scope badge, an accent rail
- * whose colour follows that scope, and a root-network trace, so a project page is
- * recognisable as one at a glance.
+ * It used to be a full-width banner that crammed the scope badge, status,
+ * member faces, timestamp and two buttons onto one wrapping line, over a
+ * stretched decorative graphic that read as a rendering glitch. This is the
+ * opposite: a single column, a real label/value list that cannot collapse into
+ * an unreadable row however narrow it gets, and one action.
  */
 export function ProjectIdentity({
   project,
   lab,
   onEdit,
-  onManageMembers,
 }: {
   project: Project;
-  /** The owning lab, when the reader is a member of it — for the logo mark. */
+  /** The owning lab, when the reader belongs to it — for the logo mark. */
   lab: MyLab | null;
   onEdit: () => void;
-  onManageMembers: () => void;
 }) {
-  const isLab = project.scope !== "user";
+  const isOrg = project.scope !== "user";
 
   return (
-    <section
+    <Card
       className={cn(
-        "relative mb-[22px] overflow-hidden rounded-2xl border border-border bg-surface px-5 py-[18px] shadow-[var(--shadow)] sm:px-6",
-        "border-l-4",
-        isLab ? "border-l-primary" : "border-l-brand-secondary",
+        "border-l-4 p-5",
+        isOrg ? "border-l-primary" : "border-l-brand-secondary",
       )}
     >
-      <MyceliumTrace />
-
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="mb-2.5 flex flex-wrap items-center gap-2">
-            <ScopeBadge project={project} lab={lab} />
-            {project.is_archived ? <Pill tone="neutral">Archived</Pill> : null}
-            {project.is_over_cap ? <Pill tone="clay">Over plan limit</Pill> : null}
-          </div>
-
-          <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-[-0.015em] text-[var(--text-primary)]">
-            {project.name}
-          </h1>
-
-          <p className="mt-2 max-w-[74ch] text-sm leading-[1.55] text-[var(--text-secondary)]">
-            {project.description ?? (
-              <span className="italic">
-                No description yet — add one from Edit project.
-              </span>
-            )}
-          </p>
-
-          <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <Pill tone={statusPillTone(project.status)}>
-              {displayStatus(project.status)}
-            </Pill>
-            {project.progress !== null ? (
-              <span className="text-[12.5px] text-[var(--text-secondary)]">
-                {project.progress}% complete
-              </span>
-            ) : null}
-            <span aria-hidden className="text-[var(--text-muted)]">
-              ·
-            </span>
-            <MemberFaces members={project.members} total={project.member_count} />
-            <span aria-hidden className="text-[var(--text-muted)]">
-              ·
-            </span>
-            <span className="text-[12.5px] text-[var(--text-secondary)]">
-              updated {relativeTime(project.updated_at)}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onManageMembers}
-            className="inline-flex items-center gap-[7px] rounded-full border border-border bg-surface px-[15px] py-[9px] text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <MembersIcon size={14} aria-hidden="true" />
-            {project.can_manage_members ? "Members" : "Team"}
-          </button>
-          {project.can_edit ? (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="inline-flex items-center gap-[7px] rounded-full bg-primary px-[15px] py-[9px] text-[12.5px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <EditIcon size={14} aria-hidden="true" />
-              Edit project
-            </button>
-          ) : null}
-        </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <ScopeBadge project={project} lab={lab} />
+        {project.is_archived ? <Pill tone="neutral">Archived</Pill> : null}
+        {project.is_over_cap ? <Pill tone="clay">Over plan limit</Pill> : null}
       </div>
-    </section>
+
+      <h1 className="mt-3 font-serif text-[23px] font-semibold leading-tight tracking-[-0.015em] text-[var(--text-primary)]">
+        {project.name}
+      </h1>
+
+      <p className="mt-2 text-[13px] leading-[1.55] text-[var(--text-secondary)]">
+        {project.description ?? (
+          <span className="italic text-[var(--text-muted)]">
+            No description yet.
+          </span>
+        )}
+      </p>
+
+      <dl className="mt-4 space-y-3 border-t border-[var(--divider)] pt-4">
+        <DetailRow label="Status">
+          <Pill tone={statusPillTone(project.status)}>
+            {displayStatus(project.status)}
+          </Pill>
+        </DetailRow>
+
+        {project.progress !== null ? (
+          <DetailRow label="Progress">
+            <span className="block">{project.progress}%</span>
+            <ProgressBar value={project.progress} className="mt-1.5" />
+          </DetailRow>
+        ) : null}
+
+        <DetailRow label="Team">
+          <MemberFaces members={project.members} total={project.member_count} />
+        </DetailRow>
+
+        <DetailRow label="Updated">{relativeTime(project.updated_at)}</DetailRow>
+      </dl>
+
+      {project.can_edit ? (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="mt-4 inline-flex w-full items-center justify-center gap-[7px] rounded-full bg-primary px-[15px] py-[9px] text-[12.5px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <EditIcon size={14} aria-hidden="true" />
+          Edit project
+        </button>
+      ) : null}
+    </Card>
   );
 }

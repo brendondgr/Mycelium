@@ -13,8 +13,10 @@ import {
   CloseIcon,
   ConferenceIcon,
   DocumentIcon,
+  GridIcon,
   LinkIcon,
   ListIcon,
+  MembersIcon,
   PlusIcon,
   SparkleIcon,
   SporeNode,
@@ -22,6 +24,7 @@ import {
   ThumbsDownIcon,
   ThumbsUpIcon,
 } from "@/components/portal/icons";
+import { TabBar, type TabItem } from "@/components/portal/primitives/tab-bar";
 import { usePortal } from "@/components/portal/portal-context";
 import {
   ProjectIdentity,
@@ -36,6 +39,7 @@ import {
 import { ProjectTeamCard } from "@/components/portal/projects/project-team-card";
 import {
   useAddToCollection,
+  useArchiveProject,
   useCreateCollection,
   useIngestProjectLink,
   useProject,
@@ -45,13 +49,21 @@ import {
   useProjectRecommendations,
   useRemoveFromCollection,
   useShareToProject,
+  useUnarchiveProject,
   useUpdateCollection,
+  useUpdateProjectCategories,
 } from "@/lib/portal/hooks";
-import { markProjectItemSeen, recordProjectEvent } from "@/lib/portal/mutations";
+import {
+  markProjectItemSeen,
+  ProjectCapReachedError,
+  recordProjectEvent,
+} from "@/lib/portal/mutations";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 import type {
+  BriefingCategory,
   CollectionBrief,
   InterestedMember,
+  MyLab,
   Project,
   ProjectFeedItem,
   Suggestion,
@@ -63,13 +75,16 @@ const INPUT =
   "w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
- * A project's own page: its identity, then one switch across five tabs.
+ * A project's own page: one switch across five tabs, and nothing above it but
+ * the way back.
  *
- * The tab bar owns the page rather than sitting inside a card. Overview is the
- * project's dashboard — the team's shared work, its roster, its focus — and each
- * of the four Mylo areas replaces it entirely, running the full width so papers,
- * grants, conferences, and fellowships get the same room they have on their own
- * pages instead of being squeezed into a column beside a sidebar.
+ * The tab bar is the first thing on the page and owns everything under it.
+ * Overview puts the project's identity card alone in a narrow left column and
+ * every working surface — what Mylo found, the team's shared papers,
+ * collections, the roster, settings — behind a second tab row on the right. Each
+ * of the four Mylo areas replaces all of that and runs the full width, so a
+ * project's papers, grants, conferences, and fellowships get the same room they
+ * have on their own pages.
  *
  * The project is read by id rather than picked out of the workspace-scoped
  * project list, so a lab project opens correctly from any scope — and its own
@@ -147,13 +162,6 @@ export function ProjectDetailSection() {
     <div>
       {backButton}
 
-      <ProjectIdentity
-        project={project}
-        lab={lab}
-        onEdit={() => setEditorOpen(true)}
-        onManageMembers={() => setTab("overview")}
-      />
-
       <ProjectTabBar
         active={tab}
         onChange={setTab}
@@ -179,6 +187,7 @@ export function ProjectDetailSection() {
         ) : (
           <ProjectOverviewPanel
             project={project}
+            lab={lab}
             recQuery={recQuery}
             feedQuery={feedQuery}
             canCollaborate={canCollaborate}
@@ -198,14 +207,30 @@ export function ProjectDetailSection() {
   );
 }
 
+/** The right column's sub-tabs — the project's working surfaces. */
+const SIDE_TABS: TabItem[] = [
+  { key: "general", label: "General", icon: <GridIcon size={14} /> },
+  { key: "feed", label: "Feed", icon: <DocumentIcon size={14} /> },
+  { key: "collections", label: "Collections", icon: <ListIcon size={14} /> },
+  { key: "team", label: "Team", icon: <MembersIcon size={14} /> },
+  { key: "settings", label: "Settings", icon: <TargetIcon size={14} /> },
+];
+
 /**
- * The Overview tab: the project's own dashboard. What Mylo found (four tiles
- * into the feed tabs), the papers the team has shared and can share, their
- * collections, and — down the rail — who is on the project and what it is
- * aimed at. The four feeds live on their own tabs, at full width.
+ * The Overview tab: the project itself on the left, everything you do with it
+ * on the right.
+ *
+ * The left column holds only the identity card, so a project's name, scope,
+ * status and team never share a line with anything else — the previous version
+ * stacked all of that into one wrapping banner and it read as broken. What was
+ * competing with it — what Mylo found, the team's shared papers, collections,
+ * the roster, the focus, the Mylo settings — now lives in one tabbed panel on
+ * the right, which shows one surface at a time instead of an endless column of
+ * cards.
  */
 function ProjectOverviewPanel({
   project,
+  lab,
   recQuery,
   feedQuery,
   canCollaborate,
@@ -213,19 +238,41 @@ function ProjectOverviewPanel({
   onOpenTab,
 }: {
   project: Project;
+  lab: MyLab | null;
   recQuery: ReturnType<typeof useProjectRecommendations>;
   feedQuery: ReturnType<typeof useProjectFeed>;
   canCollaborate: boolean;
   onEdit: () => void;
   onOpenTab: (tab: ProjectTabKey) => void;
 }) {
-  const feedItems = feedQuery.data?.items ?? [];
-  const recPapers = recQuery.data?.papers ?? [];
-  const hasFocus = project.focus.areas.length > 0;
+  const [side, setSide] = React.useState("general");
 
-  return (
-    <div className="grid items-start gap-[22px] lg:grid-cols-[1.55fr_1fr]">
-      {/* LEFT — the team's shared work on this project. */}
+  const panel = (() => {
+    if (side === "feed") {
+      return (
+        <TeamFeedCard
+          project={project}
+          recQuery={recQuery}
+          feedQuery={feedQuery}
+          canCollaborate={canCollaborate}
+        />
+      );
+    }
+    if (side === "collections") {
+      return (
+        <CollectionsCard
+          projectId={project.id}
+          canCollaborate={canCollaborate}
+        />
+      );
+    }
+    if (side === "team") {
+      return <ProjectTeamCard project={project} />;
+    }
+    if (side === "settings") {
+      return <ProjectSettingsCard project={project} onEdit={onEdit} />;
+    }
+    return (
       <div className="flex flex-col gap-[22px]">
         <WhatMyloFound
           project={project}
@@ -233,104 +280,294 @@ function ProjectOverviewPanel({
           isLoading={recQuery.isLoading}
           onOpen={onOpenTab}
         />
-
-        {/* The team's shared feed */}
-        <Card className="overflow-hidden">
-          <div className="border-b border-[var(--divider)] px-5 pb-[14px] pt-[18px]">
-            <h2 className="mb-[3px] text-base font-semibold text-[var(--text-primary)]">
-              Shared by the team
-            </h2>
-            <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
-              Papers the team has pushed into this project, plus articles you
-              paste in directly.
-            </p>
-
-            <IngestLinkForm projectId={project.id} canIngest={canCollaborate} />
-          </div>
-
-          {feedQuery.isLoading ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-[var(--text-secondary)]">
-                Loading the shared feed…
-              </p>
-            </div>
-          ) : feedQuery.isError ? (
-            <div className="py-8 text-center">
-              <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
-                Couldn&apos;t load the shared feed.
-              </p>
-            </div>
-          ) : feedItems.length > 0 ? (
-            <ul className="divide-y divide-[var(--divider)]">
-              {feedItems.map((item) => (
-                <FeedItemRow
-                  key={item.share_id}
-                  item={item}
-                  projectId={project.id}
-                  canCollaborate={canCollaborate}
-                />
-              ))}
-            </ul>
-          ) : (
-            <div className="py-8 text-center">
-              <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
-                No shared papers yet — paste a link above, or push one of
-                Mylo&apos;s picks into the feed below.
-              </p>
-            </div>
-          )}
-
-          {/* Mylo's top picks, ready to push into the shared feed. */}
-          <div className="border-t border-[var(--divider)] px-5 pb-[8px] pt-[16px]">
-            <h3 className="mb-[3px] text-[13px] font-semibold text-[var(--text-primary)]">
-              Share one of Mylo&apos;s picks
-            </h3>
-            <p className="text-[11.5px] text-[var(--text-secondary)]">
-              The strongest paper matches for this project, one click from the
-              team&apos;s feed.
-            </p>
-          </div>
-          {recQuery.isLoading ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-[var(--text-secondary)]">
-                Loading recommendations…
-              </p>
-            </div>
-          ) : recPapers.length > 0 ? (
-            <ul className="divide-y divide-[var(--divider)]">
-              {recPapers.slice(0, 5).map((paper: Suggestion) => (
-                <PaperFeedRow
-                  key={paper.content_id}
-                  paper={paper}
-                  interested={recQuery.data?.interested?.[paper.content_id] ?? []}
-                  projectId={project.id}
-                  canShare={canCollaborate}
-                />
-              ))}
-            </ul>
-          ) : (
-            <div className="py-8 text-center">
-              <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
-                {hasFocus
-                  ? "No matching papers yet. Mylo will recommend papers for this project on its next run."
-                  : "Set this project's research focus so Mylo can recommend papers for it."}
-              </p>
-            </div>
-          )}
-        </Card>
-
-        {/* Collections — shared reading lists the team curates together */}
-        <CollectionsCard
-          projectId={project.id}
-          canCollaborate={canCollaborate}
-        />
-      </div>
-
-      {/* RIGHT — who is on it, and what it is aimed at. */}
-      <div className="flex flex-col gap-[22px]">
-        <ProjectTeamCard project={project} />
         <ProjectFocusCard project={project} onEdit={onEdit} />
       </div>
+    );
+  })();
+
+  return (
+    <div className="grid items-start gap-[22px] lg:grid-cols-[minmax(260px,320px)_1fr]">
+      {/* LEFT — the project itself, and nothing else. */}
+      <ProjectIdentity project={project} lab={lab} onEdit={onEdit} />
+
+      {/* RIGHT — everything you do with it, one surface at a time. */}
+      <div>
+        <TabBar
+          items={SIDE_TABS}
+          active={side}
+          onChange={setSide}
+          ariaLabel="Project workspace"
+          panelId="project-side-panel"
+          idPrefix="project-side-tab"
+          size="sm"
+          className="mb-[18px]"
+        />
+        <div
+          role="tabpanel"
+          id="project-side-panel"
+          aria-labelledby={`project-side-tab-${side}`}
+          tabIndex={0}
+          className="focus-visible:outline-none"
+        >
+          {panel}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The team's shared papers: what members have pushed into the project, the
+ * paste-a-link ingest, and the handful of Mylo picks that are one click from
+ * joining them.
+ */
+function TeamFeedCard({
+  project,
+  recQuery,
+  feedQuery,
+  canCollaborate,
+}: {
+  project: Project;
+  recQuery: ReturnType<typeof useProjectRecommendations>;
+  feedQuery: ReturnType<typeof useProjectFeed>;
+  canCollaborate: boolean;
+}) {
+  const feedItems = feedQuery.data?.items ?? [];
+  const recPapers = recQuery.data?.papers ?? [];
+  const hasFocus = project.focus.areas.length > 0;
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b border-[var(--divider)] px-5 pb-[14px] pt-[18px]">
+        <h2 className="mb-[3px] text-base font-semibold text-[var(--text-primary)]">
+          Shared by the team
+        </h2>
+        <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
+          Papers the team has pushed into this project, plus articles you paste
+          in directly.
+        </p>
+
+        <IngestLinkForm projectId={project.id} canIngest={canCollaborate} />
+      </div>
+
+      {feedQuery.isLoading ? (
+        <div className="py-8 text-center">
+          <p className="text-sm text-[var(--text-secondary)]">
+            Loading the shared feed…
+          </p>
+        </div>
+      ) : feedQuery.isError ? (
+        <div className="py-8 text-center">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
+            Couldn&apos;t load the shared feed.
+          </p>
+        </div>
+      ) : feedItems.length > 0 ? (
+        <ul className="divide-y divide-[var(--divider)]">
+          {feedItems.map((item) => (
+            <FeedItemRow
+              key={item.share_id}
+              item={item}
+              projectId={project.id}
+              canCollaborate={canCollaborate}
+            />
+          ))}
+        </ul>
+      ) : (
+        <div className="py-8 text-center">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
+            No shared papers yet — paste a link above, or push one of
+            Mylo&apos;s picks into the feed below.
+          </p>
+        </div>
+      )}
+
+      {/* Mylo's top picks, ready to push into the shared feed. */}
+      <div className="border-t border-[var(--divider)] px-5 pb-[8px] pt-[16px]">
+        <h3 className="mb-[3px] text-[13px] font-semibold text-[var(--text-primary)]">
+          Share one of Mylo&apos;s picks
+        </h3>
+        <p className="text-[11.5px] text-[var(--text-secondary)]">
+          The strongest paper matches for this project, one click from the
+          team&apos;s feed.
+        </p>
+      </div>
+      {recQuery.isLoading ? (
+        <div className="py-8 text-center">
+          <p className="text-sm text-[var(--text-secondary)]">
+            Loading recommendations…
+          </p>
+        </div>
+      ) : recPapers.length > 0 ? (
+        <ul className="divide-y divide-[var(--divider)]">
+          {recPapers.slice(0, 5).map((paper: Suggestion) => (
+            <PaperFeedRow
+              key={paper.content_id}
+              paper={paper}
+              interested={recQuery.data?.interested?.[paper.content_id] ?? []}
+              projectId={project.id}
+              canShare={canCollaborate}
+            />
+          ))}
+        </ul>
+      ) : (
+        <div className="py-8 text-center">
+          <p className="mx-auto max-w-[46ch] text-sm text-[var(--text-secondary)]">
+            {hasFocus
+              ? "No matching papers yet. Mylo will recommend papers for this project on its next run."
+              : "Set this project's research focus so Mylo can recommend papers for it."}
+          </p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * The Settings sub-tab: which areas Mylo tracks for this project, saved as you
+ * toggle them, plus archiving. These are the live controls; the fundamentals
+ * that need a form — name, description, focus — sit behind Edit project.
+ *
+ * A reader who cannot edit still sees what is tracked, stated plainly, rather
+ * than a panel of dead switches.
+ */
+function ProjectSettingsCard({
+  project,
+  onEdit,
+}: {
+  project: Project;
+  onEdit: () => void;
+}) {
+  const updateCategories = useUpdateProjectCategories();
+  const archive = useArchiveProject();
+  const unarchive = useUnarchiveProject();
+  const [error, setError] = React.useState<string | null>(null);
+
+  const toggle = (key: BriefingCategory) => {
+    if (updateCategories.isPending) return;
+    const next = project.watch_categories.includes(key)
+      ? project.watch_categories.filter((c) => c !== key)
+      : [...project.watch_categories, key];
+    updateCategories.mutate({ id: project.id, categories: next });
+  };
+
+  const toggleArchive = () => {
+    setError(null);
+    const onError = (err: unknown) =>
+      setError(
+        err instanceof ProjectCapReachedError
+          ? `Restoring this project would exceed your plan's limit of ${err.cap} projects — archive another first, or upgrade.`
+          : (err as Error).message,
+      );
+    if (project.is_archived) {
+      unarchive.mutate(project.id, { onError });
+    } else {
+      archive.mutate(project.id, { onError });
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-[22px]">
+      <Card className="p-[22px]">
+        <h2 className="mb-[3px] text-[15px] font-semibold text-[var(--text-primary)]">
+          What Mylo tracks
+        </h2>
+        <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
+          {project.can_edit
+            ? "Turn an area off and this project stops collecting new matches for it."
+            : "The areas Mylo collects for this project."}
+        </p>
+
+        <div className="flex flex-col gap-2">
+          {AREA_TILES.map((area) => {
+            const on = project.watch_categories.includes(
+              area.key as BriefingCategory,
+            );
+            return (
+              <div
+                key={area.key}
+                className="flex items-center justify-between gap-3 rounded-lg bg-surface-alt px-3 py-2.5"
+              >
+                <span className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-primary)]">
+                  {area.icon}
+                  {area.label}
+                </span>
+                {project.can_edit ? (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={on}
+                    aria-label={area.label}
+                    onClick={() => toggle(area.key as BriefingCategory)}
+                    disabled={updateCategories.isPending}
+                    className={cn(
+                      "relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60",
+                      on ? "bg-primary" : "bg-border",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all",
+                        on ? "left-[22px]" : "left-0.5",
+                      )}
+                    />
+                  </button>
+                ) : (
+                  <span className="text-[12px] font-semibold text-[var(--text-secondary)]">
+                    {on ? "On" : "Off"}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {updateCategories.isError ? (
+          <p className="mt-2 text-[11.5px] text-clay" role="alert">
+            Couldn&apos;t update — try again.
+          </p>
+        ) : null}
+      </Card>
+
+      {project.can_edit ? (
+        <Card className="p-[22px]">
+          <h2 className="mb-[3px] text-[15px] font-semibold text-[var(--text-primary)]">
+            Project settings
+          </h2>
+          <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
+            {project.is_archived
+              ? "Restoring puts this project back into the daily run. It has to fit within your plan's project limit."
+              : "Archiving keeps everything Mylo has already found but stops new search work, and frees a slot against your plan's limit. Nothing is deleted."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Edit name, description &amp; focus
+            </button>
+            <button
+              type="button"
+              onClick={toggleArchive}
+              disabled={archive.isPending || unarchive.isPending}
+              className="rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              {project.is_archived
+                ? unarchive.isPending
+                  ? "Restoring…"
+                  : "Restore project"
+                : archive.isPending
+                  ? "Archiving…"
+                  : "Archive project"}
+            </button>
+          </div>
+          {error ? (
+            <p className="mt-2 text-[11.5px] text-clay" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </Card>
+      ) : null}
     </div>
   );
 }
