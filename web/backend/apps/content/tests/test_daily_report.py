@@ -146,6 +146,38 @@ def test_the_appendix_is_gone() -> None:
     assert "Top 25 Grants, Fellowships & Conferences" not in text
 
 
+def test_the_cover_carries_both_marks() -> None:
+    """Mylo and the Mycelium logo, side by side — the report is from both."""
+    from apps.content.daily_report_pdf import _ASSETS, _cover_marks
+
+    for name in ("mylo-headshot.png", "mycelium-logo.png"):
+        assert (_ASSETS / name).is_file(), f"missing cover art: {name}"
+    marks = _cover_marks()
+    assert marks is not None
+    # Two images with a gap column between them, and both drawn the same height.
+    images = [cell for cell in marks._cellvalues[0] if hasattr(cell, "drawHeight")]
+    assert len(images) == 2
+    assert len({round(image.drawHeight, 3) for image in images}) == 1
+
+
+def test_a_missing_mark_does_not_stop_the_report(monkeypatch) -> None:
+    """Cover art is decoration; a report that cannot find it is still the report."""
+    from apps.content import daily_report_pdf
+
+    monkeypatch.setattr(daily_report_pdf, "_ASSETS", Path("/nonexistent/report-art"))
+    assert daily_report_pdf._cover_marks() is None
+    assert render_report_pdf(_sample_data())[:5] == b"%PDF-"
+
+
+def test_the_cover_counts_one_grant_as_a_grant() -> None:
+    """The summary line is the first full sentence a reader meets."""
+    data = _sample_data()
+    assert "1 grant for you" in data.summary_line()
+    assert "1 grants" not in data.summary_line()
+    data.personal.counts["grants"] = 2
+    assert "2 grants" in data.summary_line()
+
+
 def test_the_summary_table_has_a_row_per_project() -> None:
     reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
     cover = reader.pages[0].extract_text()

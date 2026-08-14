@@ -4,7 +4,8 @@ A calm, scholarly one-file report in the Mycelium light palette (cream page, for
 green headings, restrained gold for opportunity/deadline signals — see
 ``docs/styles.md``). The document is:
 
-1. a cover with the recipient, date, and the **summary table** — one row per part
+1. a cover — centred on the page in both directions, under Mylo and the Mycelium
+   logo — with the recipient, date, and the **summary table**: one row per part
    (the reader's own, then each project) against a column per category, each cell
    the count of what is new today,
 2. a **table of contents** (real page numbers, resolved by a two-pass build) whose
@@ -45,24 +46,31 @@ There is no "everything Mylo found" appendix. Reprinting the entire feed at the
 bottom of a daily report made a long document longer without answering a question
 anyone had; the feeds and search are where an exhaustive list belongs.
 
-No system fonts or image assets are required: headings use Times (scholarly serif)
-and body uses Helvetica, both bundled with reportlab, so this renders anywhere the
-backend runs. :func:`render_report_pdf` returns the PDF as ``bytes``.
+No system fonts are required: headings use Times (scholarly serif) and body uses
+Helvetica, both bundled with reportlab, so this renders anywhere the backend runs.
+The cover's two marks are the only image assets, they live in ``report_assets/``
+beside this module, and a missing one is logged and skipped rather than raised —
+cover art is decoration, and a report that cannot find its logo is still the
+document the reader needs. :func:`render_report_pdf` returns the PDF as ``bytes``.
 """
 
 from __future__ import annotations
 
+import logging
 import re
 from io import BytesIO
+from pathlib import Path
 from xml.sax.saxutils import escape
 
 from reportlab.lib.colors import HexColor
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
+    Flowable,
     HRFlowable,
+    Image,
     KeepTogether,
     PageBreak,
     Paragraph,
@@ -80,6 +88,8 @@ from apps.content.daily_report import (
     ReportItem,
     ReportPart,
 )
+
+logger = logging.getLogger(__name__)
 
 # --- Palette (docs/styles.md, light theme) --------------------------------- #
 BG = HexColor("#F8F4EC")
@@ -126,17 +136,36 @@ _RADIUS = 4
 _PILL_PAD_X = 8
 _PILL_PAD_Y = 3
 
+#: The cover's two marks — Mylo and the Mycelium logo — checked in beside this
+#: module so a container that cannot reach the repo's art pipeline still renders a
+#: cover. Both are 400px tall and drawn at :data:`_MARK_HEIGHT`; a missing or
+#: unreadable file simply drops out (see :func:`_cover_marks`).
+_ASSETS = Path(__file__).with_name("report_assets")
+_MARK_HEIGHT = 0.95 * inch
+#: The gap between the two marks.
+_MARK_GAP = 0.3 * inch
+
 
 def _styles() -> dict[str, ParagraphStyle]:
     base = getSampleStyleSheet()
     styles: dict[str, ParagraphStyle] = {}
+    # The cover is centred on the page in both directions (:class:`_CenteredCover`
+    # handles the vertical), so everything on it is centred type.
     styles["Cover"] = ParagraphStyle(
         "Cover", parent=base["Title"], fontName=_SERIF_BOLD, fontSize=30,
-        leading=34, textColor=PRIMARY_HOVER, spaceAfter=6, alignment=TA_LEFT,
+        leading=34, textColor=PRIMARY_HOVER, spaceAfter=0, alignment=TA_CENTER,
     )
     styles["CoverSub"] = ParagraphStyle(
-        "CoverSub", fontName=_SANS, fontSize=12, leading=16,
-        textColor=TEXT_SECONDARY, spaceAfter=2,
+        "CoverSub", fontName=_SANS, fontSize=12, leading=17,
+        textColor=TEXT_SECONDARY, spaceAfter=0, alignment=TA_CENTER,
+    )
+    styles["CoverNote"] = ParagraphStyle(
+        "CoverNote", fontName=_SANS, fontSize=9.5, leading=14, textColor=TEXT_MUTED,
+        spaceAfter=0, alignment=TA_CENTER,
+    )
+    styles["CoverFoot"] = ParagraphStyle(
+        "CoverFoot", fontName=_SANS, fontSize=8.5, leading=12, textColor=TEXT_MUTED,
+        spaceAfter=0, alignment=TA_CENTER,
     )
     # --- The four heading levels. Each maps to one contents depth (see the module
     # docstring); nothing else in the document is allowed to look like a heading.
@@ -190,6 +219,13 @@ def _styles() -> dict[str, ParagraphStyle]:
     )
     styles["Chip"] = ParagraphStyle(
         "Chip", fontName=_SANS_BOLD, fontSize=11, leading=12, textColor=PRIMARY_HOVER,
+        alignment=TA_CENTER,
+    )
+    # ``NEW`` is a flag, not a headline. At the match chip's 11pt bold it was the
+    # loudest thing in the column while carrying the least information — the
+    # percent is the number the reader is actually comparing entries on.
+    styles["ChipFlag"] = ParagraphStyle(
+        "ChipFlag", fontName=_SANS, fontSize=9, leading=11, textColor=PRIMARY_HOVER,
         alignment=TA_CENTER,
     )
     styles["ChipNote"] = ParagraphStyle(
@@ -253,23 +289,35 @@ class _PillHeading(Paragraph):
     as a section rule, and the point of the shape is that the theme is a label.
     """
 
+    def _text_width(self) -> float:
+        """The widest laid-out line, taken from the wrap reportlab already did.
+
+        Not ``stringWidth`` of the plain text: the paragraph may carry inline runs
+        in other faces and sizes, and measuring it a second way is how the pill ends
+        up a different width from the text sitting in it.
+        """
+        style = self.style
+        available = self.width - style.leftIndent - style.rightIndent
+        widths = [
+            available
+            - (line[0] if isinstance(line, list | tuple) else line.extraSpace)
+            for line in getattr(getattr(self, "blPara", None), "lines", None) or []
+        ]
+        return max(widths) if widths else available
+
     def draw(self) -> None:
         canvas = self.canv
-        style = self.style
-        text = self.getPlainText()
-        width = min(
-            canvas.stringWidth(text, style.fontName, style.fontSize)
-            + 2 * _PILL_PAD_X,
-            self.width + 2 * _PILL_PAD_X,
-        )
         canvas.saveState()
         canvas.setFillColor(SURFACE_ALT)
         canvas.setStrokeColor(BORDER)
         canvas.setLineWidth(0.5)
+        # The text is drawn at ``leftIndent`` (reportlab's own origin for an
+        # indented paragraph), so the pill starts one pad to the left of that and
+        # ends one pad past the text — equal on both sides.
         canvas.roundRect(
-            -_PILL_PAD_X,
+            self.style.leftIndent - _PILL_PAD_X,
             -_PILL_PAD_Y,
-            width,
+            self._text_width() + 2 * _PILL_PAD_X,
             self.height + 2 * _PILL_PAD_Y,
             _RADIUS,
             fill=1,
@@ -383,14 +431,23 @@ def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
 
 
 # --- Item + table rendering ------------------------------------------------ #
-def _chip(text: str, note: str, styles: dict[str, ParagraphStyle], *, bg, fg) -> Table:
+def _chip(
+    text: str,
+    note: str,
+    styles: dict[str, ParagraphStyle],
+    *,
+    bg,
+    fg,
+    base: str = "Chip",
+) -> Table:
     """A small filled chip — the percent match, or ``NEW``.
 
     A chip rather than another run of 8.5pt grey: the match percent is the single
     number a reader uses to decide whether to read the entry at all, and it was
-    losing that argument to the title beside it.
+    losing that argument to the title beside it. ``base`` picks the weight, so the
+    two chips can share a shape without shouting equally loudly.
     """
-    style = ParagraphStyle("ChipInner", parent=styles["Chip"], textColor=fg)
+    style = ParagraphStyle("ChipInner", parent=styles[base], textColor=fg)
     cell: list = [Paragraph(text, style)]
     if note:
         cell.append(Paragraph(note, styles["ChipNote"]))
@@ -435,7 +492,12 @@ def _chip_stack(
             stack.append(Spacer(1, 3))
         stack.append(
             _chip(
-                "NEW", "", styles, bg=HexColor(_NEW_BG_HEX), fg=HexColor(_NEW_HEX)
+                "NEW",
+                "",
+                styles,
+                bg=HexColor(_NEW_BG_HEX),
+                fg=HexColor(_NEW_HEX),
+                base="ChipFlag",
             )
         )
     return stack
@@ -570,6 +632,7 @@ def _summary_table(data: ReportData, styles: dict[str, ParagraphStyle]) -> Table
         rows,
         colWidths=[span - category_width * len(data.categories)]
         + [category_width] * len(data.categories),
+        hAlign="CENTER",
     )
     style = [
         ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
@@ -592,6 +655,109 @@ def _summary_table(data: ReportData, styles: dict[str, ParagraphStyle]) -> Table
         style.append(("FONTNAME", (0, 1), (-1, 1), _SANS_BOLD))
     table.setStyle(TableStyle(style))
     return table
+
+
+# --- Cover ----------------------------------------------------------------- #
+def _mark(name: str) -> Image | None:
+    """One cover mark, scaled to :data:`_MARK_HEIGHT`, or ``None`` if unusable.
+
+    Cover art is decoration: a report that cannot find its logo is still the
+    document the reader needs, so a missing or corrupt file is logged once and
+    dropped rather than raised. The alternative is a backend that stops delivering
+    reports because an image went missing.
+    """
+    path = _ASSETS / name
+    try:
+        # reportlab reads the file lazily, on the first dimension access rather
+        # than at construction, so the measuring has to be inside the guard too.
+        image = Image(str(path))
+        ratio = image.imageWidth / image.imageHeight
+    except Exception as exc:  # noqa: BLE001 — any unreadable asset => no mark
+        logger.warning(
+            "report cover art %s unusable (%s); rendering without it.", path, exc
+        )
+        return None
+    image.drawHeight = _MARK_HEIGHT
+    image.drawWidth = _MARK_HEIGHT * ratio
+    return image
+
+
+def _cover_marks() -> Table | None:
+    """Mylo and the Mycelium logo, side by side and centred, or ``None``.
+
+    They are a pair on purpose: the mascot alone is a character and the logo alone
+    is a company, and the report is from both — Mylo did the reading, Mycelium
+    vouches for it.
+    """
+    marks = [m for m in (_mark("mylo-headshot.png"), _mark("mycelium-logo.png")) if m]
+    if not marks:
+        return None
+    row: list = []
+    widths: list[float] = []
+    for index, mark in enumerate(marks):
+        if index:
+            row.append("")
+            widths.append(_MARK_GAP)
+        row.append(mark)
+        widths.append(mark.drawWidth)
+    table = Table([row], colWidths=widths, hAlign="CENTER")
+    table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
+    return table
+
+
+class _CenteredCover(Flowable):
+    """Holds the cover's flowables and centres them in the page's whole frame.
+
+    Platypus lays a story out from the top, so vertical centring is not something a
+    style can ask for — the block has to measure its own content against the space
+    it is given and place itself. Horizontal centring is left to the content
+    (``TA_CENTER`` on the paragraphs, ``hAlign`` on the tables), which is why the
+    marks row and the summary table both come in already centred.
+
+    If the content is taller than the page — a reader on enough projects that the
+    summary table runs long — it gives up centring and hands its flowables back to
+    the frame to lay out normally, rather than centring them off the page.
+    """
+
+    def __init__(self, content: list) -> None:
+        super().__init__()
+        self.content = list(content)
+        self._available = (0.0, 0.0)
+        self._content_height = 0.0
+
+    def _measure(self, width: float, height: float) -> float:
+        return sum(f.wrapOn(self.canv, width, height)[1] for f in self.content)
+
+    def wrap(self, availWidth: float, availHeight: float) -> tuple[float, float]:
+        self._available = (availWidth, availHeight)
+        self._content_height = self._measure(availWidth, availHeight)
+        if self._content_height > availHeight:
+            return availWidth, self._content_height
+        return availWidth, availHeight
+
+    def split(self, availWidth: float, availHeight: float) -> list:
+        return self.content if self._content_height > availHeight else []
+
+    def draw(self) -> None:
+        width, height = self._available
+        y = height - max((height - self._content_height) / 2, 0)
+        for flowable in self.content:
+            drawn_width, drawn_height = flowable.wrapOn(self.canv, width, height)
+            y -= drawn_height
+            # ``_sW`` is the slack an ``hAlign`` centres within; without it a table
+            # narrower than the frame would sit hard against the left margin.
+            flowable.drawOn(self.canv, 0, y, width - drawn_width)
 
 
 # --- Page decoration ------------------------------------------------------- #
@@ -686,25 +852,31 @@ def render_report_pdf(data: ReportData) -> bytes:
 
     story: list = []
 
-    # 1. Cover.
-    story.append(Spacer(1, 0.6 * inch))
-    story.append(Paragraph("Mylo Daily Research Report", styles["Cover"]))
-    story.append(
+    # 1. Cover — centred on the page, under Mylo and the Mycelium logo.
+    cover: list = []
+    marks = _cover_marks()
+    if marks is not None:
+        cover.append(marks)
+        cover.append(Spacer(1, 0.32 * inch))
+    cover.append(Paragraph("Mylo Daily Research Report", styles["Cover"]))
+    cover.append(Spacer(1, 0.14 * inch))
+    cover.append(
         Paragraph(f"Prepared for {escape(data.display_name)}", styles["CoverSub"])
     )
-    story.append(Paragraph(escape(data.generated_on), styles["CoverSub"]))
-    story.append(Spacer(1, 0.35 * inch))
-    story.append(Paragraph(escape(data.summary_line()), styles["Muted"]))
-    story.append(Spacer(1, 0.1 * inch))
-    story.append(_summary_table(data, styles))
-    story.append(Spacer(1, 0.12 * inch))
-    story.append(
+    cover.append(Paragraph(escape(data.generated_on), styles["CoverSub"]))
+    cover.append(Spacer(1, 0.34 * inch))
+    cover.append(Paragraph(escape(data.summary_line()), styles["CoverNote"]))
+    cover.append(Spacer(1, 0.16 * inch))
+    cover.append(_summary_table(data, styles))
+    cover.append(Spacer(1, 0.14 * inch))
+    cover.append(
         Paragraph(
             "New today, for you and for each project you are on. Items that did not "
             "clear the relevance bar are left on your feeds and in search.",
-            styles["ItemMeta"],
+            styles["CoverFoot"],
         )
     )
+    story.append(_CenteredCover(cover))
     story.append(PageBreak())
 
     # 2. Table of contents — every line links to its heading.

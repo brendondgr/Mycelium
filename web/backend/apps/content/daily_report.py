@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 from django.utils import timezone
 
 from apps.content import briefing
+from apps.content.briefing_sections import SECTION_NOUN
 from apps.content.models import DailyBriefing, RelevanceScore
 
 #: Per-category caps. The reader's own part gets the deeper list; a project is a
@@ -156,8 +157,7 @@ class ReportData:
         """
         personal = self.personal.counts if self.personal is not None else {}
         parts = [
-            f"{personal[category]} "
-            f"{CATEGORY_LABELS.get(category, category.title()).lower()}"
+            f"{personal[category]} {_category_noun(category, personal[category])}"
             for category in self.categories
             if personal.get(category)
         ]
@@ -171,6 +171,16 @@ class ReportData:
             joiner = ", plus " if parts else " "
             lead += f"{joiner}{found} across {len(active)} {noun}"
         return lead + "."
+
+
+def _category_noun(category: str, count: int) -> str:
+    """``"grant"`` / ``"grants"`` — the count's own noun.
+
+    The summary line is the first full sentence on the cover, so "1 grants" is read
+    by everyone who opens the report.
+    """
+    plural = CATEGORY_LABELS.get(category, category.title()).lower()
+    return plural if count != 1 else SECTION_NOUN.get(category, plural)
 
 
 def _source_line(content_type: str, meta: dict) -> str:
