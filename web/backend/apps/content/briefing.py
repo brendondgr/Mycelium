@@ -67,8 +67,7 @@ CATEGORY_TYPES: dict[str, str] = {
 
 #: The categories a lab briefing can cover — all four. A lab is now scored for
 #: fellowships in its own right (ranked on research fit, no eligibility gate), so
-#: its report covers the same ground its feeds do. Who each item suits is named
-#: from the stored member-fit layer, never re-derived in prose.
+#: its report covers the same ground its feeds do.
 LAB_BRIEFING_CATEGORIES: tuple[str, ...] = (
     "papers",
     "grants",
@@ -272,8 +271,8 @@ def _showcase_item(
         # section prompt can group its write-up by the researcher's focus clusters.
         "cluster_label": signals.get("cluster_label", ""),
         # Who this item is for (institutional targets only — see
-        # :mod:`apps.content.member_fit`). Names only; the prompt is told to pass
-        # them through, not to reason about who anyone is.
+        # :mod:`apps.content.member_fit`). Names only, and read by the feed's
+        # "Best suited to" strip; the daily report deliberately does not use it.
         "for_members": [
             (member_names or {}).get(entry["username"], entry["username"])
             for entry in (signals.get("member_fit") or [])
@@ -456,6 +455,7 @@ def _write_briefing(
     allow: tuple[str, ...] | None = None,
     member_names: dict[str, str] | None = None,
     projects: list | None = None,
+    personal_label: str = briefing_sections.PERSONAL_HEADING,
     complete: briefing_sections.CompleteFn | None = None,
 ) -> DailyBriefing:
     """Gather a target's day, write the report, and persist it as a ``DailyBriefing``.
@@ -477,7 +477,7 @@ def _write_briefing(
         categories,
         today,
         key="personal",
-        label="Personal",
+        label=personal_label,
         kind="personal",
         limit=briefing_sections.REPORT_ITEMS_PER_SECTION,
         member_names=member_names,
@@ -598,11 +598,15 @@ def generate_briefing_for_lab(
     profile (:func:`apps.content.targets.target_for_lab`) and its ``target_lab``
     scores, and limited to the categories a lab is scored for
     (:data:`LAB_BRIEFING_CATEGORIES`, now all four). The row is keyed on the lab, so
-    a lab's briefing is distinct from any member's own.
+    a lab's briefing is distinct from any member's own, and its own part is headed
+    with the lab's name rather than "Personal".
 
-    A lab report also names *who* each item suits, carried through from the stored
-    member-fit layer. Only current members are resolvable, so a departed member's
-    stale signal drops out of the prose the same way it drops out of the feed.
+    The report does *not* name who each item suits. The member-fit layer is still
+    computed and still drives the "Best suited to" strip on a lab's feed cards,
+    which is the surface where "who should pick this up" is a question the reader is
+    asking; inside a ranked daily read it broke the one shape every other entry
+    shares. ``member_names`` is still resolved and passed down because
+    :func:`_showcase_item` records it on the stored showcase for those surfaces.
     """
     return _write_briefing(
         owner={"lab": lab},
@@ -612,6 +616,10 @@ def generate_briefing_for_lab(
         allow=LAB_BRIEFING_CATEGORIES,
         member_names=_lab_member_names(lab),
         projects=report_projects_for_lab(lab),
+        # The lab's aggregate part is the lab, so it is named after it. "Personal"
+        # is what a *person's* own matches are called; on a lab's report it named
+        # nobody.
+        personal_label=lab.name,
         complete=complete,
     )
 

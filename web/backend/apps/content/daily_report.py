@@ -78,9 +78,14 @@ class ReportItem:
     cluster_label: str = ""
 
 
+#: What the reader's own (non-project) part is called when the report is a person's.
+#: A lab's report uses the lab's name instead — see :func:`compile_report_for_lab`.
+PERSONAL_LABEL = "Personal"
+
+
 @dataclass
 class ReportPart:
-    """One part of the report — Personal, or one project — rendered as a section.
+    """One part of the report — the reader's own, or one project — as a section.
 
     ``counts`` is how many items *entered* the part's slate per category — the
     number its summary-table cell shows. ``items`` is the slate itself, capped at
@@ -252,6 +257,7 @@ def _compile(
     briefing_filter: dict,
     projects: list,
     allow: tuple[str, ...] | None = None,
+    personal_label: str = PERSONAL_LABEL,
 ) -> ReportData:
     """The shared gather, over whatever target the two public compilers name.
 
@@ -283,7 +289,7 @@ def _compile(
         categories,
         today,
         key="personal",
-        label="Personal",
+        label=personal_label,
         kind="personal",
         cap=TOP_PERSONAL,
     )
@@ -334,6 +340,10 @@ def compile_report_for_lab(lab) -> ReportData:
     Narrowed to ``LAB_BRIEFING_CATEGORIES`` — the categories a lab is actually
     scored for — so its report never advertises a section it cannot fill, and broken
     out over the lab's own projects.
+
+    The aggregate part carries the **lab's name**, not "Personal": a document whose
+    contents page offers a reader "Personal" and then lists the lab's matches has
+    mislabelled its own largest section.
     """
     return _compile(
         key=lab.slug,
@@ -343,4 +353,5 @@ def compile_report_for_lab(lab) -> ReportData:
         briefing_filter={"lab": lab},
         projects=briefing.report_projects_for_lab(lab),
         allow=briefing.LAB_BRIEFING_CATEGORIES,
+        personal_label=lab.name,
     )
