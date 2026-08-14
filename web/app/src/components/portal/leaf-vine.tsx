@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { usePrefersReducedMotion } from "@/components/portal/motion/use-reduced-motion";
+
 /**
  * A decorative "growing vine" that traces a sidebar row's pill and sprouts
  * leaves along its top edge when the row is hovered, focused, or active. Ported
@@ -22,6 +24,12 @@ type LeafVineProps = {
   leafCount?: number;
   /** Animation speed multiplier; < 1 is slower/calmer. */
   speed?: number;
+  /**
+   * Corner radius of the box being traced. Defaults to the sidebar row's 10px;
+   * pass half the height for a `rounded-full` pill such as the search field, or
+   * the vine will cut across its corners.
+   */
+  radius?: number;
 };
 
 /** The single leaf outline, drawn around its stem base at (0,0), pointing up. */
@@ -50,23 +58,8 @@ function useElementSize<T extends Element>(): [React.RefObject<T | null>, { w: n
   return [ref, size];
 }
 
-/** Respect the user's reduced-motion preference (SSR-safe, defaults to false). */
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = React.useState(false);
-  React.useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduced(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-  return reduced;
-}
-
-/** Hand-drawn path tracing the rounded-pill border of a `w`×`h` box. */
-function buildStemPath(w: number, h: number): string {
-  const r = 10;
+/** Hand-drawn path tracing the rounded border of a `w`×`h` box at radius `r`. */
+function buildStemPath(w: number, h: number, r: number): string {
   const ins = 1.5;
   const raw: Array<[number, number]> = [];
   const arc = (cx: number, cy: number, a0: number, a1: number) => {
@@ -90,11 +83,20 @@ function buildStemPath(w: number, h: number): string {
   return `M${pts.join(" L")} Z`;
 }
 
-export function LeafVine({ grown, active, leafCount = 8, speed = 0.5 }: LeafVineProps) {
+export function LeafVine({
+  grown,
+  active,
+  leafCount = 8,
+  speed = 0.5,
+  radius = 10,
+}: LeafVineProps) {
   const [ref, { w, h }] = useElementSize<HTMLDivElement>();
   const reducedMotion = usePrefersReducedMotion();
 
-  const stemD = React.useMemo(() => buildStemPath(w, h), [w, h]);
+  // Never let the radius exceed half the shorter side, or the arcs cross over
+  // each other and the "pill" folds inside out.
+  const r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+  const stemD = React.useMemo(() => buildStemPath(w, h, r), [w, h, r]);
   const n = Math.max(1, leafCount);
   // Perimeter upper bound (rounded corners only shorten it) — a safe dash length
   // so the stroke fully hides at offset=dash and fully draws at offset=0.

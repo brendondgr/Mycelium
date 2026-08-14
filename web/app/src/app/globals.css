@@ -79,6 +79,101 @@ body {
   }
 }
 
+/*
+ * The mycelium motion kit — the decorative layer shared by the growing sidebar
+ * vine, the feed's reaching thread, the empty-state seedling, and the stat-card
+ * root line. Three rules hold across all of them:
+ *
+ *   1. Every element that carries one of these is aria-hidden and
+ *      pointer-events: none. State is never carried by movement alone.
+ *   2. Nothing here runs under prefers-reduced-motion; the class simply does
+ *      not apply, and the element's static form is the real design.
+ *   3. Only transform, opacity, and stroke-dashoffset animate. Nothing here
+ *      may move layout.
+ */
+
+/* A stroke drawing itself on, used by every vine/thread/stem in the kit. The
+   element sets its own dasharray; the keyframe only pulls the offset to 0. */
+@keyframes mycelium-draw {
+  from {
+    stroke-dashoffset: var(--draw-length, 100);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* A leaf, spore, or node popping open at the end of a drawn stem. */
+@keyframes mycelium-sprout {
+  0% {
+    transform: scale(0.1);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* The feed's thread: draws down, holds, then fades so the loop can restart
+   without a visible snap back to the top. */
+@keyframes mycelium-thread {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0.15;
+  }
+  18% {
+    opacity: 1;
+  }
+  68% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+/* A node blooming on the feed thread, on the same 1.9s cycle. */
+@keyframes mycelium-node {
+  0%,
+  38% {
+    transform: scale(0.1);
+    opacity: 0;
+  }
+  58% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/*
+ * The MatchRing sweep. Registering the angle as a real percentage is what makes
+ * the conic gradient interpolable — without @property the browser treats it as
+ * an unanimatable token and the ring simply appears at its final value, which is
+ * the correct fallback.
+ */
+@property --ring-sweep {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+@keyframes mycelium-ring-sweep {
+  from {
+    --ring-sweep: 0%;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .portal-pulse-dot {
     animation: portal-pulse-dot 2.4s ease-in-out infinite;
@@ -88,5 +183,41 @@ body {
   }
   .leaf-vine-breeze {
     animation: leaf-vine-breeze 3.5s ease-in-out infinite alternate;
+  }
+
+  /* Ring: sweeps to the percent the element already carries inline, so the
+     keyframe needs no "to" — the underlying value is the destination. */
+  .mycelium-ring-sweep {
+    animation: mycelium-ring-sweep 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+
+  /* Feed thread — the trunk, its two branches, and the three nodes, all on one
+     1.9s cycle with staggered delays so it reads as growth, not a blink. */
+  .mycelium-thread {
+    animation: mycelium-thread 1.9s cubic-bezier(0.4, 0, 0.5, 1) infinite;
+  }
+  .mycelium-node {
+    animation: mycelium-node 1.9s ease-out infinite;
+  }
+
+  /* Seedling — one unfurl on mount, then it holds. Deliberately not infinite:
+     a looping empty state reads as "still loading" and people wait for data
+     that is never coming. */
+  .mycelium-unfurl-stem {
+    animation: mycelium-draw 0.62s cubic-bezier(0.22, 0.61, 0.36, 1) 0.08s both;
+  }
+  .mycelium-unfurl-leaf {
+    animation: mycelium-sprout 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+
+  /* Stat card — the root line draws on hover/focus and retracts on leave, so
+     the transition lives on the element rather than in a keyframe. */
+  .mycelium-root-line path {
+    transition: stroke-dashoffset 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .mycelium-root-line ellipse {
+    transition:
+      transform 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) 0.5s,
+      opacity 0.34s ease 0.5s;
   }
 }
