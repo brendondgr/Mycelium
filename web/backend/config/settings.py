@@ -748,8 +748,10 @@ DISCORD_INSTALL_PERMISSIONS = env("DISCORD_INSTALL_PERMISSIONS", default="19456"
 # ERROR_CHANNEL the Mylo daily run posts to (mylo/config.py). Treat as public.
 DISCORD_ERROR_CHANNEL_ID = env("ERROR_CHANNEL", default="")
 
-# The hub guild id + the #activation channel id, for the Path B fallback. The
-# activation channel gates where /activate will do a code lookup at all.
+# The hub guild id + the #activation channel id, for the Path B fallback.
+# /activate is usable in any server Mylo is installed in, so no one has to join the
+# hub to link an account; this pair only funnels the command into one channel
+# *inside the hub guild*, and is inert unless both are set.
 DISCORD_HUB_GUILD_ID = env("DISCORD_HUB_GUILD_ID", default="")
 DISCORD_ACTIVATION_CHANNEL_ID = env(
     "ACTIVATION_CHANNEL", default=env("DISCORD_ACTIVATION_CHANNEL_ID", default="")

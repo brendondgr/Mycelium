@@ -649,7 +649,7 @@ function DiscordCard() {
                 <code className="font-mono text-[var(--text-primary)]">
                   /activate code:{issueCode.data.code}
                 </code>{" "}
-                in the activation channel within{" "}
+                in any Discord server Mylo is already in, within{" "}
                 {Math.round(issueCode.data.expires_in / 60)} minutes. Shown once.
               </p>
             </div>

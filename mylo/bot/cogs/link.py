@@ -1,8 +1,9 @@
 """``/activate`` and ``/activate-lab`` — the two linking commands.
 
 * ``/activate code:<XXXX-XXXX>`` → **Path B identity linking** (bind the caller's
-  own Discord account to their Mycelium profile), gated to the hub activation
-  channel.
+  own Discord account to their Mycelium profile). Usable in **any** server Mylo is
+  already in — nobody has to join the Mycelium hub to link an account. Only the hub
+  itself still funnels the command into its ``#activation`` channel.
 * ``/activate-lab code:<XXXXX-XXXXX>`` → **Path C server activation** (connect *this
   server* to the lab that issued the 10-digit code on the website) so Mylo can post
   that lab's reminders/announcements here. No linked identity required — the
@@ -43,10 +44,17 @@ class LinkCog(commands.Cog, name="Link"):
     ) -> None:
         # Ephemeral from the very first response, in every branch.
         await interaction.response.defer(ephemeral=True)
+        guild_id = interaction.guild_id
+        # Presence, not membership lists: the cache is populated by the `guilds`
+        # intent, so a hit means Mylo is installed in the server the command came
+        # from — and a guild command means the caller is in it too.
+        mylo_present = bool(guild_id) and self.bot.get_guild(guild_id) is not None
         _, message = await linking.activate(
             str(interaction.user.id),
             code=code,
             channel_id=str(interaction.channel_id) if interaction.channel_id else "",
+            guild_id=str(guild_id) if guild_id else "",
+            mylo_present=mylo_present,
         )
         await interaction.followup.send(message, ephemeral=True)
 

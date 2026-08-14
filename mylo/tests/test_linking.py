@@ -14,11 +14,11 @@ from unittest import mock
 from mylo import linking
 
 
-def _fake_db_factory(activation_channel: str = ""):
+def _fake_db_factory(activation_channel: str = "", hub_guild: str = ""):
     async def _fake_db(fn, /, *args, **kwargs):
-        # The `/activate` channel gate reads the activation channel first.
-        if fn is linking._activation_channel:
-            return activation_channel
+        # The `/activate` channel gate reads the hub guild + activation channel first.
+        if fn is linking._activation_gate:
+            return (hub_guild, activation_channel)
         return ("routed", fn.__name__)
 
     return _fake_db
@@ -27,20 +27,54 @@ def _fake_db_factory(activation_channel: str = ""):
 class ActivateDispatchTests(unittest.IsolatedAsyncioTestCase):
     async def test_no_code_is_rejected_before_any_db(self) -> None:
         with mock.patch.object(linking.mycelium, "db", side_effect=AssertionError):
-            status, _ = await linking.activate("1", code="", channel_id="9")
+            status, _ = await linking.activate("1", code="", channel_id="9", guild_id="7")
         self.assertEqual(status, "no_code")
+
+    async def test_in_a_dm_needs_a_guild(self) -> None:
+        with mock.patch.object(linking.mycelium, "db", side_effect=AssertionError):
+            status, _ = await linking.activate("1", code="AAAA-BBBB", guild_id="")
+        self.assertEqual(status, "no_guild")
+
+    async def test_server_without_mylo_is_rejected_before_any_db(self) -> None:
+        with mock.patch.object(linking.mycelium, "db", side_effect=AssertionError):
+            status, _ = await linking.activate(
+                "1", code="AAAA-BBBB", channel_id="9", guild_id="7", mylo_present=False
+            )
+        self.assertEqual(status, "not_present")
 
     async def test_code_routes_to_identity_redemption(self) -> None:
         with mock.patch.object(linking.mycelium, "db", _fake_db_factory("")):
             status, name = await linking.activate(
-                "1", code="AAAA-BBBB", channel_id="9"
+                "1", code="AAAA-BBBB", channel_id="9", guild_id="7"
             )
         self.assertEqual((status, name), ("routed", "_activate_code_sync"))
 
-    async def test_code_outside_activation_channel_is_gated(self) -> None:
-        with mock.patch.object(linking.mycelium, "db", _fake_db_factory("123")):
-            status, _ = await linking.activate("1", code="AAAA-BBBB", channel_id="9")
+    async def test_any_channel_of_a_non_hub_server_is_allowed(self) -> None:
+        with mock.patch.object(
+            linking.mycelium, "db", _fake_db_factory("123", hub_guild="42")
+        ):
+            status, name = await linking.activate(
+                "1", code="AAAA-BBBB", channel_id="9", guild_id="7"
+            )
+        self.assertEqual((status, name), ("routed", "_activate_code_sync"))
+
+    async def test_wrong_channel_inside_the_hub_is_gated(self) -> None:
+        with mock.patch.object(
+            linking.mycelium, "db", _fake_db_factory("123", hub_guild="42")
+        ):
+            status, _ = await linking.activate(
+                "1", code="AAAA-BBBB", channel_id="9", guild_id="42"
+            )
         self.assertEqual(status, "wrong_channel")
+
+    async def test_activation_channel_inside_the_hub_is_allowed(self) -> None:
+        with mock.patch.object(
+            linking.mycelium, "db", _fake_db_factory("123", hub_guild="42")
+        ):
+            status, name = await linking.activate(
+                "1", code="AAAA-BBBB", channel_id="123", guild_id="42"
+            )
+        self.assertEqual((status, name), ("routed", "_activate_code_sync"))
 
 
 class ActivateLabDispatchTests(unittest.IsolatedAsyncioTestCase):

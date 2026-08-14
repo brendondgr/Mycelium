@@ -7,7 +7,8 @@ Each public coroutine returns a plain ``(status, message)`` or ``(status, payloa
 Three jobs, three commands:
 
 * ``/activate code:``     → **Path B identity linking** (redeem a one-time code to
-  bind the caller's own Discord account). Gated to the hub activation channel.
+  bind the caller's own Discord account). Runnable from any server Mylo is in; the
+  hub's activation channel is enforced only inside the hub.
 * ``/activate-lab code:`` → **Path C server activation** (redeem a lab's 10-digit
   code, issued on the website, to bind *this guild* to that lab). No linked identity
   required — the manager-issued code carries the authority.
@@ -27,9 +28,21 @@ async def status(discord_user_id: str) -> tuple[str, str]:
 
 
 async def activate(
-    discord_user_id: str, *, code: str | None = None, channel_id: str = ""
+    discord_user_id: str,
+    *,
+    code: str | None = None,
+    channel_id: str = "",
+    guild_id: str = "",
+    mylo_present: bool = True,
 ) -> tuple[str, str]:
-    """``/activate code:`` — Path B identity linking (the caller's own account)."""
+    """``/activate code:`` — Path B identity linking (the caller's own account).
+
+    Runnable from **any** server Mylo is already in: a guild slash command proves
+    both facts at once (Mylo is installed there, and the caller is a member), so
+    joining the Mycelium hub is not a prerequisite for linking an account. The hub's
+    ``#activation`` channel keeps its gate only *inside the hub itself*, so that
+    server stays tidy; everywhere else any channel works.
+    """
     code = (code or "").strip()
     if not code:
         return (
@@ -37,12 +50,28 @@ async def activate(
             "Add your code: `/activate code:<XXXX-XXXX>` (get one from your Mycelium "
             "profile). To connect a *server* to a lab, use `/activate-lab` instead.",
         )
-    # Channel gate first — no code lookup at all outside the activation channel.
-    expected = await mycelium.db(_activation_channel)
-    if expected and str(channel_id) != expected:
+    if not guild_id:
+        return (
+            "no_guild",
+            "Run `/activate code:` in a Discord server I'm in, not in a DM. "
+            "Nothing was looked up.",
+        )
+    if not mylo_present:
+        # Only reachable via a user-install invocation in a server Mylo isn't in.
+        return (
+            "not_present",
+            "I'm not in this server, so I can't link you from here. Run "
+            "`/activate code:` in any server I'm already in. Nothing was looked up.",
+        )
+    # Channel gate — the hub keeps its dedicated activation channel; other servers
+    # accept the command anywhere. No code lookup at all in a gated-off channel.
+    hub_guild, expected = await mycelium.db(_activation_gate)
+    in_hub = bool(hub_guild) and str(guild_id) == hub_guild
+    if in_hub and expected and str(channel_id) != expected:
         return (
             "wrong_channel",
-            f"Run `/activate code:` in <#{expected}>. Nothing was looked up.",
+            f"In this server, run `/activate code:` in <#{expected}> — or run it in "
+            "any other server I'm in. Nothing was looked up.",
         )
     return await mycelium.db(_activate_code_sync, str(discord_user_id), code)
 
@@ -100,8 +129,9 @@ async def bind_setup_channel(
 # --------------------------------------------------------------------------- #
 # Synchronous bodies (run in a worker thread with Django configured)
 # --------------------------------------------------------------------------- #
-def _activation_channel() -> str:
-    return mycelium.activation_channel_id()
+def _activation_gate() -> tuple[str, str]:
+    """``(hub_guild_id, activation_channel_id)`` — one hop, both halves of the gate."""
+    return (mycelium.hub_guild_id(), mycelium.activation_channel_id())
 
 
 def _status_sync(discord_user_id: str) -> tuple[str, str]:

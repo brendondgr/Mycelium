@@ -40,9 +40,15 @@ no Mylo database, schema, or migration history.
   `integration_type=1`) → callback → `DiscordIdentity` → reachability probe.
   `applications.commands` under user-install is what grants DM rights.
 * **Path B (fallback user link):** portal issues a one-time code → user runs
-  `/activate code:CODE` in the hub `#activation` channel → `DiscordIdentity`. Binds
-  the identity but does **not** grant DM rights the way A does — expect a higher
-  `dm_ok=False` rate; the split is instrumented by `link_method`.
+  `/activate code:CODE` in **any Discord server Mylo is already in** →
+  `DiscordIdentity`. Joining the Mycelium hub is *not* a prerequisite: a guild slash
+  command proves in one shot that Mylo is installed there and that the caller is a
+  member of it, which is the whole requirement. The hub's `#activation` channel is
+  still enforced, but only *inside the hub guild* (`DISCORD_HUB_GUILD_ID`), to keep
+  that server tidy; in every other server any channel works. A user-install
+  invocation from a server Mylo is absent from is refused before any code lookup.
+  Binds the identity but does **not** grant DM rights the way A does — expect a
+  higher `dm_ok=False` rate; the split is instrumented by `link_method`.
 * **Path C (lab link):** a two-step, code-based flow a lab admin/PI drives:
   1. **Add Mylo** — the lab's **Lab settings** → Discord card → "Add Mylo to
      Discord" → bot install OAuth (`bot applications.commands`,
@@ -190,9 +196,13 @@ rows deleted → clean re-link.
 **Path B** — valid `/activate code:` → ephemeral confirm, identity bound; reply
 ephemeral in **all** branches; no code → ephemeral usage hint; expired code →
 rejected, **not** consumed; reused code → rejected; 6 bad attempts → lockout,
-survives a bot restart; outside `ACTIVATION_CHANNEL` → ephemeral pointer, no lookup;
+survives a bot restart;
 code for user A redeemed by a Discord account bound to user B → rejected, not
-consumed; plaintext code in zero logs / zero DB columns.
+consumed; plaintext code in zero logs / zero DB columns. **Any-server linking** —
+a valid code redeemed in a *non-hub* server Mylo is in, in an ordinary channel →
+linked, no hub membership needed; the same command in the hub outside
+`ACTIVATION_CHANNEL` → ephemeral pointer, no lookup; in a DM → ephemeral "run it in
+a server", no lookup.
 
 **Path C** — install → `PENDING_SETUP`, `verified_via_code_grant=True`, nudge
 posted; forged `guild_id` on the redirect → ignored. Manager clicks **Activate Lab**
