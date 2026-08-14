@@ -96,6 +96,7 @@ Files below are inside `web/backend/apps/content/`.
 | Manual re-render + re-send of one report | `report_resend.py` |
 | Briefing history & retention | `models.py` (`DailyBriefing.generated_on`), `views.py` (`BriefingHistoryView`), `management/commands/prune_briefings.py` |
 | Daily PDF report | `daily_report.py`, `daily_report_pdf.py`, `daily_report_send.py` |
+| Report formatting sample (no database) | `management/commands/render_sample_report.py` |
 | Lab Discord digest | `lab_digest.py` |
 | Nightly run analytics | `run_analytics.py`, `analytics_report_pdf.py`, `management/commands/run_analytics_report.py` |
 | Reminders | `reminders.py`, `reminders_tick.py`, `reminders_views.py`, `reminders_discord.py`, `reminders_announce.py`, `reminder_access.py` |
@@ -157,6 +158,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `send_lab_digests` | Post a lab's summary + report PDF |
 | `resend_user_report` | Re-render one person's report and DM it again (`--user`) |
 | `repost_lab_report` | Re-render one lab's report and re-post it (`--lab`) |
+| `render_sample_report` | Render a sample report PDF from synthetic data, for reviewing its formatting (`--kind personal\|lab`) |
 | `run_reminder_tick`, `prune_opportunities` | Fire due reminders / delete expired listings |
 | `prune_briefings` | Delete briefings past `BRIEFING_RETENTION_DAYS` |
 | `run_analytics_report` | Measure the run: metrics JSON + analytics PDF for the Discord summary |

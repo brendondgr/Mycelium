@@ -163,8 +163,16 @@ def test_lab_briefing_api_non_member_forbidden(client: APIClient, lab: Lab) -> N
 
 
 @pytest.mark.django_db
-def test_lab_report_names_who_each_item_is_for(lab: Lab, member: User) -> None:
-    """The stored member-fit layer reaches the prose — as names, not usernames."""
+def test_the_report_never_says_who_an_item_is_best_suited_to(
+    lab: Lab, member: User
+) -> None:
+    """"Best suited to" is gone from the report — prompt, prose, and fallback.
+
+    The member-fit layer is still computed and still on the row; what it stopped
+    doing is interrupting a ranked list with a sentence about staffing. It broke the
+    one shape every other part of the report shares, and it is the feeds, not the
+    daily read, where "who should pick this up" belongs.
+    """
     member.first_name = "Jordan"
     member.last_name = "Reyes"
     member.save(update_fields=["first_name", "last_name"])
@@ -183,26 +191,30 @@ def test_lab_report_names_who_each_item_is_for(lab: Lab, member: User) -> None:
 
     generate_briefing_for_lab(lab, complete=capture)
 
-    # The papers specialist is given the display name and told to pass it through.
-    assert any("Best suited to: Jordan Reyes" in user for _system, user in calls)
-    assert any("ONLY the names given" in system for system, _user in calls)
+    assert not any("Best suited to" in user for _system, user in calls)
+    assert not any("ONLY the names given" in system for system, _user in calls)
+
+    # And the deterministic body, which is what a lab gets when the model is down.
+    briefing = generate_briefing_for_lab(lab, complete=lambda system, user: None)
+    assert "Best suited to" not in briefing.body
+    assert "Jordan Reyes" not in briefing.body
 
 
 @pytest.mark.django_db
-def test_lab_report_fallback_names_them_too(lab: Lab, member: User) -> None:
-    """With the model down, the deterministic body still says who it is for."""
-    member.first_name = "Jordan"
-    member.last_name = "Reyes"
-    member.save(update_fields=["first_name", "last_name"])
-    score = _lab_score(lab, _content(ContentItem.Type.PAPER, "Lab Paper"), rank=1)
-    score.signals["member_fit"] = [
-        {"username": "jordan", "fit": 88, "reason": "Squarely theirs.", "source": "llm"}
-    ]
-    score.save(update_fields=["signals"])
+def test_the_labs_own_section_is_named_after_the_lab(lab: Lab, member: User) -> None:
+    """A lab's aggregate part is the lab, so it carries the lab's name.
+
+    It used to be headed "Personal" — on a document addressed to a whole lab, that
+    heading named nobody, and the contents page built from it offered the reader a
+    section that did not exist.
+    """
+    _lab_score(lab, _content(ContentItem.Type.PAPER, "Lab Paper"), rank=1)
 
     briefing = generate_briefing_for_lab(lab, complete=lambda system, user: None)
 
-    assert "Best suited to: Jordan Reyes." in briefing.body
+    assert "## Reyes Lab" in briefing.body
+    assert "## Personal" not in briefing.body
+    assert briefing.project_summary[0]["label"] == "Reyes Lab"
 
 
 @pytest.mark.django_db

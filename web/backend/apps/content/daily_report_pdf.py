@@ -5,17 +5,37 @@ green headings, restrained gold for opportunity/deadline signals — see
 ``docs/styles.md``). The document is:
 
 1. a cover with the recipient, date, and the **summary table** — one row per part
-   (Personal, then each project) against a column per category, each cell the count
-   of what is new today,
+   (the reader's own, then each project) against a column per category, each cell
+   the count of what is new today,
 2. a **table of contents** (real page numbers, resolved by a two-pass build) whose
-   first entry points at the written report,
-3. **Your Mylo Report** — the written briefing markdown, the main section,
-4. **Personal** — ``Top 25 Articles`` / ``Top 25 Grants`` / ``Top 25 Fellowships`` /
-   ``Top 25 Conferences``, each its own slate, and
-5. one section **per project**, the same categories capped at ten.
+   entries are **links**: every heading is bookmarked and every contents line jumps
+   to it,
+3. **Your Mylo Report** — the written briefing, rendered with the same hierarchy the
+   listings use, and
+4. one section per part — the reader's own (``Top 25 Articles`` / ``Top 25 Grants``
+   / …) then one per project, capped at ten.
+
+Every level of the document is one of four heading styles, and each maps to one
+table-of-contents depth, so the contents page is a true map of the hierarchy rather
+than a list of the top two levels:
+
+===== ===================== =============================================
+Level Style                 What carries it
+===== ===================== =============================================
+0     ``H1``                A part: "Your Mylo Report", the reader's own
+                            section, each project
+1     ``H2``                A section within a part: ``Top 25 Articles``,
+                            or the written report's ``## <part>``
+2     ``H3``                A category within the written report
+3     ``H4``                A focus-cluster group
+===== ===================== =============================================
+
+Found items are **numbered** — the list is a ranking and the numbers say so — and
+each one's percent match is a chip rather than a run of small grey text, because
+"how well does this match me" is the question a reader scans the page with.
 
 Each list is the reader's whole top slice, every day — not just what arrived. The
-``NEW`` tag marks the items that entered it on this run, which is the only part of
+``NEW`` chip marks the items that entered it on this run, which is the only part of
 the page that changes when the day is quiet.
 
 There is no "everything Mylo found" appendix. Reprinting the entire feed at the
@@ -34,11 +54,12 @@ from io import BytesIO
 from xml.sax.saxutils import escape
 
 from reportlab.lib.colors import HexColor
-from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
+    HRFlowable,
     KeepTogether,
     PageBreak,
     Paragraph,
@@ -72,12 +93,29 @@ TEXT_MUTED = HexColor("#7F8775")
 BORDER = HexColor("#D9D0BE")
 DIVIDER = HexColor("#E8E0D1")
 
+#: Hex strings for the inline ``<font color=…>`` runs inside paragraphs.
+_LINK_HEX = "#4D6733"
+_TITLE_HEX = "#2E3627"
+_MATCH_HEX = "#3F5429"
+_MATCH_BG_HEX = "#DCE7CC"
+_NEW_HEX = "#7A5A14"
+_NEW_BG_HEX = "#E7D8B8"
+_DEADLINE_HEX = "#B07C1F"
+
 _SERIF = "Times-Roman"
 _SERIF_BOLD = "Times-Bold"
 _SANS = "Helvetica"
 _SANS_BOLD = "Helvetica-Bold"
 
 _MARGIN = 0.9 * inch
+#: The usable text width — the page less both margins. Every table here is laid out
+#: against it, so a column change never has to re-derive the page geometry.
+_CONTENT_WIDTH = LETTER[0] - 2 * _MARGIN
+
+#: The right-hand chip column on a found item (percent match, ``NEW``).
+_CHIP_WIDTH = 0.86 * inch
+#: The hanging rank-number column on a found item.
+_RANK_WIDTH = 0.34 * inch
 
 
 def _styles() -> dict[str, ParagraphStyle]:
@@ -91,36 +129,44 @@ def _styles() -> dict[str, ParagraphStyle]:
         "CoverSub", fontName=_SANS, fontSize=12, leading=16,
         textColor=TEXT_SECONDARY, spaceAfter=2,
     )
+    # --- The four heading levels. Each maps to one contents depth (see the module
+    # docstring); nothing else in the document is allowed to look like a heading.
+    # All four are ``keepWithNext``: a heading stranded at the foot of a page is the
+    # one layout failure that makes a structured document read as an unstructured
+    # one, because the reader meets the list before its title.
     styles["H1"] = ParagraphStyle(
-        "H1", fontName=_SERIF_BOLD, fontSize=19, leading=23, textColor=PRIMARY_HOVER,
-        spaceBefore=8, spaceAfter=10,
+        "H1", fontName=_SERIF_BOLD, fontSize=20, leading=24, textColor=PRIMARY_HOVER,
+        spaceBefore=8, spaceAfter=4, keepWithNext=1,
+    )
+    styles["H2"] = ParagraphStyle(
+        "H2", fontName=_SERIF_BOLD, fontSize=14.5, leading=18, textColor=PRIMARY,
+        spaceBefore=14, spaceAfter=6, keepWithNext=1,
+    )
+    styles["H3"] = ParagraphStyle(
+        "H3", fontName=_SANS_BOLD, fontSize=11.5, leading=15, textColor=TEXT,
+        spaceBefore=11, spaceAfter=4, keepWithNext=1,
+    )
+    styles["H4"] = ParagraphStyle(
+        "H4", fontName=_SANS_BOLD, fontSize=9.5, leading=13, textColor=PRIMARY_HOVER,
+        spaceBefore=10, spaceAfter=3, keepWithNext=1,
     )
     # Same look as H1 but a distinct name, so afterFlowable does NOT list the
     # "Contents" page-title as its own table-of-contents entry.
-    styles["TocTitle"] = ParagraphStyle(
-        "TocTitle", parent=styles["H1"],
-    )
-    styles["H2"] = ParagraphStyle(
-        "H2", fontName=_SERIF_BOLD, fontSize=14, leading=18, textColor=PRIMARY,
-        spaceBefore=10, spaceAfter=6,
-    )
-    styles["ReportSub"] = ParagraphStyle(
-        "ReportSub", fontName=_SANS_BOLD, fontSize=12, leading=16, textColor=PRIMARY,
-        spaceBefore=8, spaceAfter=4,
-    )
-    # The written report's own "###" level — the per-category heading inside a
-    # Personal or project part. Distinct from H2 so it never lands in the contents,
-    # which lists the document's structured sections, not the prose's.
-    styles["ReportSubSub"] = ParagraphStyle(
-        "ReportSubSub", fontName=_SANS_BOLD, fontSize=10.5, leading=14,
-        textColor=TEXT_SECONDARY, spaceBefore=6, spaceAfter=3,
-    )
+    styles["TocTitle"] = ParagraphStyle("TocTitle", parent=styles["H1"])
     styles["Body"] = ParagraphStyle(
         "Body", fontName=_SANS, fontSize=10, leading=15, textColor=TEXT,
         spaceAfter=6,
     )
     styles["Bullet"] = ParagraphStyle(
         "Bullet", parent=styles["Body"], leftIndent=14, bulletIndent=2, spaceAfter=3,
+    )
+    #: A numbered item in the *written* report — the rank hangs in the margin, the
+    #: title and its rationale sit in one block so the two never split across pages
+    #: independently.
+    styles["NumItem"] = ParagraphStyle(
+        "NumItem", fontName=_SANS, fontSize=10, leading=14.5, textColor=TEXT,
+        leftIndent=18, bulletIndent=2, bulletFontName=_SANS_BOLD,
+        bulletFontSize=10, spaceBefore=4, spaceAfter=6,
     )
     styles["ItemTitle"] = ParagraphStyle(
         "ItemTitle", fontName=_SANS_BOLD, fontSize=10.5, leading=14, textColor=TEXT,
@@ -134,6 +180,18 @@ def _styles() -> dict[str, ParagraphStyle]:
         "ItemReason", fontName=_SANS, fontSize=9.5, leading=13,
         textColor=TEXT_SECONDARY, spaceAfter=2,
     )
+    styles["Rank"] = ParagraphStyle(
+        "Rank", fontName=_SERIF_BOLD, fontSize=12, leading=15, textColor=SECONDARY,
+        alignment=TA_RIGHT,
+    )
+    styles["Chip"] = ParagraphStyle(
+        "Chip", fontName=_SANS_BOLD, fontSize=11, leading=12, textColor=PRIMARY_HOVER,
+        alignment=TA_CENTER,
+    )
+    styles["ChipNote"] = ParagraphStyle(
+        "ChipNote", fontName=_SANS, fontSize=6.5, leading=8, textColor=TEXT_SECONDARY,
+        alignment=TA_CENTER,
+    )
     styles["Muted"] = ParagraphStyle(
         "Muted", fontName=_SANS, fontSize=9.5, leading=14, textColor=TEXT_MUTED,
         spaceAfter=6,
@@ -144,76 +202,198 @@ def _styles() -> dict[str, ParagraphStyle]:
 # --- Inline markdown → reportlab mini-HTML --------------------------------- #
 _LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
 _BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
+#: The report's item grammar (see :mod:`apps.content.briefing_sections`): a bolded
+#: ``**NEW**`` marker, ``88% match``, and ``deadline 2026-09-01``. Each is a fact a
+#: reader scans for, so each is lifted out of the run of text and given a colour.
+_NEW_MARKER_RE = re.compile(r"\*\*NEW\*\*")
+_MATCH_RE = re.compile(r"\b(\d{1,3})%\s+match\b", re.IGNORECASE)
+_DEADLINE_RE = re.compile(r"\bdeadline\s+(\d{4}-\d{2}-\d{2})\b", re.IGNORECASE)
+#: A numbered item line — ``1. **[Title](url)** — 88% match``.
+_NUMBERED_RE = re.compile(r"^(\d{1,3})[.)]\s+(.*)$")
 
 
 def _inline(text: str) -> str:
-    """Escape XML, then re-apply markdown links and bold as reportlab tags."""
+    """Escape XML, then re-apply the report's markdown as reportlab tags.
+
+    Emphasis is part of the escape step rather than something a caller opts into:
+    the same match percent has to read the same way in the written report as it does
+    beside a listed item, and the only way to guarantee that is for one function to
+    own it.
+    """
     out = escape(text or "")
     out = _LINK_RE.sub(
-        lambda m: f'<a href="{m.group(2)}" color="#4D6733">{m.group(1)}</a>', out
+        lambda m: f'<a href="{m.group(2)}" color="{_LINK_HEX}">{m.group(1)}</a>', out
+    )
+    out = _NEW_MARKER_RE.sub(
+        f'<font color="{_NEW_HEX}" backcolor="{_NEW_BG_HEX}" size="9">'
+        "<b> NEW </b></font>",
+        out,
+    )
+    out = _MATCH_RE.sub(
+        lambda m: (
+            f'<font color="{_MATCH_HEX}" backcolor="{_MATCH_BG_HEX}" size="11">'
+            f"<b> {m.group(1)}% match </b></font>"
+        ),
+        out,
+    )
+    out = _DEADLINE_RE.sub(
+        lambda m: f'<font color="{_DEADLINE_HEX}"><b>deadline {m.group(1)}</b></font>',
+        out,
     )
     out = _BOLD_RE.sub(r"<b>\1</b>", out)
     return out
 
 
 def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
-    """Convert the briefing markdown into a small set of reportlab flowables."""
+    """Convert the briefing markdown into reportlab flowables.
+
+    Parses exactly the grammar :mod:`apps.content.briefing_sections` emits —
+    ``##``/``###``/``####`` headings, ``N.`` numbered items whose following line is
+    that item's rationale, ``-`` bullets, and blank-line paragraphs. Anything else
+    degrades to a paragraph, so an unexpected construct still reads.
+    """
     flow: list = []
     para: list[str] = []
+    #: The numbered item currently open — its rank and the lines gathered for it.
+    item: tuple[str, list[str]] | None = None
 
-    def flush():
+    def flush_para():
         if para:
             flow.append(Paragraph(_inline(" ".join(para)), styles["Body"]))
             para.clear()
 
+    def flush_item():
+        nonlocal item
+        if item is None:
+            return
+        rank, lines = item
+        head = _inline(lines[0])
+        rest = " ".join(lines[1:]).strip()
+        html = head
+        if rest:
+            html += f'<br/><font color="{_hex(TEXT_SECONDARY)}">{_inline(rest)}</font>'
+        flow.append(
+            Paragraph(html, styles["NumItem"], bulletText=f"{rank}.")
+        )
+        item = None
+
+    def flush():
+        flush_item()
+        flush_para()
+
     for raw in (md or "").splitlines():
-        line = raw.rstrip()
-        stripped = line.strip()
+        stripped = raw.strip()
         if not stripped:
             flush()
             continue
-        if stripped.startswith("### "):
+        if stripped.startswith("#### "):
             flush()
-            flow.append(Paragraph(_inline(stripped[4:]), styles["ReportSubSub"]))
+            flow.append(Paragraph(_inline(stripped[5:]), styles["H4"]))
+        elif stripped.startswith("### "):
+            flush()
+            flow.append(Paragraph(_inline(stripped[4:]), styles["H3"]))
         elif stripped.startswith("## "):
             flush()
-            flow.append(Paragraph(_inline(stripped[3:]), styles["ReportSub"]))
+            flow.append(Paragraph(_inline(stripped[3:]), styles["H2"]))
         elif stripped.startswith("# "):
             flush()
-            flow.append(Paragraph(_inline(stripped[2:]), styles["ReportSub"]))
+            flow.append(Paragraph(_inline(stripped[2:]), styles["H2"]))
+        elif _NUMBERED_RE.match(stripped):
+            flush()
+            match = _NUMBERED_RE.match(stripped)
+            assert match is not None
+            item = (match.group(1), [match.group(2)])
         elif stripped[:2] in ("- ", "* "):
             flush()
             flow.append(
                 Paragraph(_inline(stripped[2:]), styles["Bullet"], bulletText="•")
             )
+        elif item is not None:
+            # The line after a numbered item is that item's rationale, not a new
+            # paragraph — keeping them in one flowable is what stops a page break
+            # from stranding a title above its own explanation.
+            item[1].append(stripped)
         else:
             para.append(stripped)
     flush()
     return flow
 
 
+def _hex(color) -> str:
+    """``HexColor`` → the ``#rrggbb`` string an inline ``<font>`` tag needs."""
+    return f"#{color.hexval()[2:]}"
+
+
 # --- Item + table rendering ------------------------------------------------ #
-def _match_tag(match_percent: int | None) -> str:
-    if isinstance(match_percent, int):
-        return f'<font color="#5E7A3E"><b>{match_percent}% match</b></font>'
-    return ""
+def _chip(text: str, note: str, styles: dict[str, ParagraphStyle], *, bg, fg) -> Table:
+    """A small filled chip — the percent match, or ``NEW``.
+
+    A chip rather than another run of 8.5pt grey: the match percent is the single
+    number a reader uses to decide whether to read the entry at all, and it was
+    losing that argument to the title beside it.
+    """
+    style = ParagraphStyle("ChipInner", parent=styles["Chip"], textColor=fg)
+    cell: list = [Paragraph(text, style)]
+    if note:
+        cell.append(Paragraph(note, styles["ChipNote"]))
+    chip = Table([[cell]], colWidths=[_CHIP_WIDTH])
+    chip.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), bg),
+                ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
+    return chip
 
 
-def _item_flowable(item: ReportItem, styles: dict[str, ParagraphStyle]) -> KeepTogether:
-    """One found item as a compact, self-contained block."""
+def _chip_stack(item: ReportItem, styles: dict[str, ParagraphStyle]) -> list:
+    """The right-hand column of a found item: its match chip, then ``NEW``."""
+    stack: list = []
+    if isinstance(item.match_percent, int):
+        stack.append(
+            _chip(
+                f"{item.match_percent}%",
+                "match",
+                styles,
+                bg=HexColor(_MATCH_BG_HEX),
+                fg=HexColor(_MATCH_HEX),
+            )
+        )
+    if item.is_new:
+        if stack:
+            stack.append(Spacer(1, 3))
+        stack.append(
+            _chip(
+                "NEW", "", styles, bg=HexColor(_NEW_BG_HEX), fg=HexColor(_NEW_HEX)
+            )
+        )
+    return stack
+
+
+def _item_flowables(
+    item: ReportItem, rank: int, styles: dict[str, ParagraphStyle]
+) -> list:
+    """One found item: its rank, the entry itself, and its chips.
+
+    Laid out as a three-column row so the numbers line up down the page and the
+    chips line up down the right edge — which is what makes a Top-25 read as a
+    ranked list rather than as twenty-five paragraphs.
+
+    Returned as a plain list rather than a ``KeepTogether``: a single-row table does
+    not split, so the entry is already atomic, and nesting it in a ``KeepTogether``
+    that a caller then nests again pushed every section onto a page of its own.
+    """
     title = _inline(item.title)
     if item.url:
-        title = f'<a href="{escape(item.url)}" color="#2E3627">{title}</a>'
-    tags = []
-    if item.is_new:
-        tags.append('<font color="#C9A35A"><b>NEW</b></font>')
-    match = _match_tag(item.match_percent)
-    if match:
-        tags.append(match)
-    tag_line = "  ·  ".join(tags)
-    title_html = title + (f'  <font size="8">{tag_line}</font>' if tag_line else "")
-
-    parts: list = [Paragraph(title_html, styles["ItemTitle"])]
+        title = f'<a href="{escape(item.url)}" color="{_TITLE_HEX}">{title}</a>'
+    body: list = [Paragraph(title, styles["ItemTitle"])]
 
     meta_bits = []
     if item.source:
@@ -222,16 +402,43 @@ def _item_flowable(item: ReportItem, styles: dict[str, ParagraphStyle]) -> KeepT
         meta_bits.append(escape(item.cluster_label))
     if item.deadline_date:
         meta_bits.append(
-            f'<font color="#B07C1F">Deadline {escape(item.deadline_date)}</font>'
+            f'<font color="{_DEADLINE_HEX}"><b>Deadline '
+            f"{escape(item.deadline_date)}</b></font>"
         )
     if meta_bits:
-        parts.append(Paragraph("  ·  ".join(meta_bits), styles["ItemMeta"]))
+        body.append(Paragraph("  ·  ".join(meta_bits), styles["ItemMeta"]))
 
     reason = item.reason or item.headline
     if reason:
-        parts.append(Paragraph(_inline(reason), styles["ItemReason"]))
-    parts.append(Spacer(1, 4))
-    return KeepTogether(parts)
+        body.append(Paragraph(_inline(reason), styles["ItemReason"]))
+
+    # An empty cell is "" rather than an empty list — reportlab measures a list cell
+    # by wrapping its flowables, and there are none to wrap.
+    chips = _chip_stack(item, styles) or ""
+    row = Table(
+        [[Paragraph(f"{rank}.", styles["Rank"]), body, chips]],
+        colWidths=[
+            _RANK_WIDTH,
+            _CONTENT_WIDTH - _RANK_WIDTH - _CHIP_WIDTH - 0.18 * inch,
+            _CHIP_WIDTH + 0.18 * inch,
+        ],
+    )
+    row.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (0, 0), 0),
+                ("RIGHTPADDING", (0, 0), (0, 0), 6),
+                ("LEFTPADDING", (1, 0), (1, 0), 0),
+                ("RIGHTPADDING", (2, 0), (2, 0), 0),
+                ("ALIGN", (2, 0), (2, 0), "RIGHT"),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LINEBELOW", (0, 0), (-1, -1), 0.4, DIVIDER),
+            ]
+        )
+    )
+    return [row, Spacer(1, 3)]
 
 
 def _summary_table(data: ReportData, styles: dict[str, ParagraphStyle]) -> Table:
@@ -278,8 +485,8 @@ def _summary_table(data: ReportData, styles: dict[str, ParagraphStyle]) -> Table
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
     ]
-    # The Personal row is the reader's own; setting it apart keeps a long project
-    # list from reading as though the first row were just another project.
+    # The reader's own row is not just another project; setting it apart keeps a
+    # long project list from reading as though the first row were one of them.
     if data.parts and data.parts[0].kind == "personal":
         style.append(("FONTNAME", (0, 1), (-1, 1), _SANS_BOLD))
     table.setStyle(TableStyle(style))
@@ -304,28 +511,57 @@ def _decorate(canvas, doc) -> None:
     canvas.restoreState()
 
 
+#: Heading style name -> its depth in the table of contents.
+_TOC_LEVELS = {"H1": 0, "H2": 1, "H3": 2, "H4": 3}
+
+
 class _ReportDoc(SimpleDocTemplate):
-    """SimpleDocTemplate that feeds H1/H2 headings into the table of contents."""
+    """SimpleDocTemplate that feeds every heading into a *linked* contents page.
+
+    Each heading is bookmarked under a generated key and that key is handed to the
+    contents entry, which is what makes the line clickable — a contents page you
+    cannot navigate from is a list of page numbers, not a table of contents. The key
+    has to be stable between the two passes of ``multiBuild``, so it is derived from
+    a counter that resets whenever the story is rebuilt.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._heading_seq = 0
+
+    def beforeDocument(self) -> None:  # pragma: no cover - reportlab hook
+        self._heading_seq = 0
 
     def afterFlowable(self, flowable) -> None:
         if not isinstance(flowable, Paragraph):
             return
-        name = flowable.style.name
-        if name == "H1":
-            self.notify("TOCEntry", (0, flowable.getPlainText(), self.page))
-        elif name == "H2":
-            self.notify("TOCEntry", (1, flowable.getPlainText(), self.page))
+        level = _TOC_LEVELS.get(flowable.style.name)
+        if level is None:
+            return
+        self._heading_seq += 1
+        key = f"sec{self._heading_seq}"
+        self.canv.bookmarkPage(key)
+        self.notify("TOCEntry", (level, flowable.getPlainText(), self.page, key))
 
 
 def _toc(styles: dict[str, ParagraphStyle]) -> TableOfContents:
     toc = TableOfContents()
     toc.levelStyles = [
         ParagraphStyle(
-            "TOC0", fontName=_SANS_BOLD, fontSize=11, leading=18, textColor=TEXT,
+            "TOC0", fontName=_SERIF_BOLD, fontSize=12, leading=20, textColor=TEXT,
+            spaceBefore=6,
         ),
         ParagraphStyle(
-            "TOC1", fontName=_SANS, fontSize=10, leading=15, leftIndent=16,
+            "TOC1", fontName=_SANS_BOLD, fontSize=10, leading=15, leftIndent=16,
             textColor=TEXT_SECONDARY,
+        ),
+        ParagraphStyle(
+            "TOC2", fontName=_SANS, fontSize=9.5, leading=13.5, leftIndent=32,
+            textColor=TEXT_SECONDARY,
+        ),
+        ParagraphStyle(
+            "TOC3", fontName=_SANS, fontSize=9, leading=12.5, leftIndent=48,
+            textColor=TEXT_MUTED,
         ),
     ]
     return toc
@@ -370,13 +606,16 @@ def render_report_pdf(data: ReportData) -> bytes:
     )
     story.append(PageBreak())
 
-    # 2. Table of contents.
+    # 2. Table of contents — every line links to its heading.
     story.append(Paragraph("Contents", styles["TocTitle"]))
+    story.append(
+        Paragraph("Every entry below jumps to its section.", styles["Muted"])
+    )
     story.append(_toc(styles))
     story.append(PageBreak())
 
     # 3. The written report (main section).
-    story.append(Paragraph("Your Mylo Report", styles["H1"]))
+    _extend_title(story, "Your Mylo Report", styles)
     body = _markdown_flowables(data.briefing_markdown, styles)
     if body:
         story.extend(body)
@@ -404,6 +643,12 @@ def render_report_pdf(data: ReportData) -> bytes:
     return buffer.getvalue()
 
 
+def _extend_title(story: list, text: str, styles: dict[str, ParagraphStyle]) -> None:
+    """A top-level (``H1``) section title, underlined by a hairline rule."""
+    story.append(Paragraph(escape(text), styles["H1"]))
+    story.append(HRFlowable(width="100%", thickness=1, color=SECONDARY, spaceAfter=8))
+
+
 def _extend_part(
     story: list,
     part: ReportPart,
@@ -411,7 +656,7 @@ def _extend_part(
     styles: dict[str, ParagraphStyle],
 ) -> None:
     """One part: its title, then a capped ``Top N <Category>`` section per area."""
-    story.append(Paragraph(escape(part.label), styles["H1"]))
+    _extend_title(story, part.label, styles)
     if part.kind == "project":
         story.append(Paragraph("Project", styles["Muted"]))
     if not part.shown:
@@ -424,15 +669,20 @@ def _extend_part(
         if not items:
             continue
         noun = SECTION_NOUNS.get(category, CATEGORY_LABELS.get(category, category))
-        story.append(Paragraph(f"Top {part.cap} {noun}", styles["H2"]))
+        opening: list = [Paragraph(f"Top {part.cap} {noun}", styles["H2"])]
         found = part.slate_sizes.get(category, len(items))
         if found > len(items):
-            story.append(
+            opening.append(
                 Paragraph(
                     f"Showing {len(items)} of {found} — the rest are on your "
                     f"{noun.lower()} page.",
                     styles["Muted"],
                 )
             )
-        for item in items:
-            story.append(_item_flowable(item, styles))
+        first = _item_flowables(items[0], 1, styles)
+        # The heading travels with its first entry: a "Top 25 Conferences" alone at
+        # the foot of a page is precisely the loss of hierarchy this layout exists
+        # to prevent.
+        story.append(KeepTogether(opening + first))
+        for rank, item in enumerate(items[1:], start=2):
+            story.extend(_item_flowables(item, rank, styles))

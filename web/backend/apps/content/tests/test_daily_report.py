@@ -75,8 +75,17 @@ def _sample_data() -> ReportData:
         display_name="Test Person",
         generated_on="2026-07-19",
         briefing_markdown=(
-            "## Personal\n\n### Papers\nThree strong papers today. **Read the first.**"
-            "\n\n- One\n- Two"
+            "Three strong papers today.\n\n"
+            "## Personal\n\n"
+            "### Papers\n\n"
+            "#### In your Reef Mapping focus\n\n"
+            "1. **[Paper number 0](https://example.org/p0)** — **NEW** · 90% match\n"
+            "Relevant to your work on topic 0.\n\n"
+            "2. **Paper number 1** — 89% match\n"
+            "Relevant to your work on topic 1.\n\n"
+            "### Grants\n\n"
+            "1. **Big Research Grant** — 88% match · deadline 2026-09-01\n"
+            "Matches your funding needs.\n"
         ),
         briefing_origin="llm",
         categories=["papers", "grants"],
@@ -156,6 +165,98 @@ def test_toc_lists_the_personal_and_project_sections() -> None:
     assert any(ch.isdigit() for ch in toc_text)
     # The TOC does not list its own "Contents" title as an entry.
     assert toc_text.count("Your Mylo Report") == 1
+
+
+def test_toc_mirrors_the_whole_hierarchy() -> None:
+    """Every level of the document is on the contents page, not just the top two.
+
+    Including what is *inside* the written report — its parts, its categories, and
+    its focus-cluster groups — which is the half of the document a reader could
+    previously only find by scrolling.
+    """
+    reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
+    toc_text = reader.pages[1].extract_text()
+    for entry in (
+        "Your Mylo Report",
+        "In your Reef Mapping focus",  # #### inside the written report
+        "Top 25 Articles",
+        "Top 25 Grants",
+        "Top 10 Articles",  # a project's capped section
+    ):
+        assert entry in toc_text, f"missing contents entry: {entry}"
+
+
+def test_every_toc_entry_is_a_link() -> None:
+    """A contents page you cannot navigate from is a list of page numbers.
+
+    Each heading is bookmarked and each contents line points at that bookmark, so
+    the page carries one ``/Link`` annotation per entry (title and page number are
+    both live).
+    """
+    reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
+    annotations = reader.pages[1].get("/Annots") or []
+    links = [
+        a.get_object()
+        for a in annotations
+        if a.get_object().get("/Subtype") == "/Link"
+    ]
+    assert links, "the contents page has no link annotations at all"
+    # One entry per H1/H2/H3/H4 in the sample, and every link resolves somewhere.
+    assert len(links) >= 10
+    assert all(link.get("/Dest") or link.get("/A") for link in links)
+
+
+def test_a_lab_report_labels_its_own_section_with_the_lab_name() -> None:
+    """The reader's own part is named for whoever the report is about."""
+    data = _sample_data()
+    data.display_name = "Reyes Lab"
+    data.personal.label = "Reyes Lab"
+    # The written body carries the same label — `briefing._write_briefing` names the
+    # part once and both the prose and the listings are built from it.
+    data.briefing_markdown = data.briefing_markdown.replace(
+        "## Personal", "## Reyes Lab"
+    )
+    reader = PdfReader(BytesIO(render_report_pdf(data)))
+    text = "\n".join(page.extract_text() for page in reader.pages)
+    assert "Reyes Lab" in text
+    # Not the cover, not the summary table, not the contents page.
+    assert "Personal" not in reader.pages[0].extract_text()
+    assert "Personal" not in reader.pages[1].extract_text()
+
+
+def test_listed_items_are_numbered_and_show_their_match() -> None:
+    """A Top-25 is a ranking, and the percent match is why an entry earned its rank."""
+    reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
+    text = "\n".join(page.extract_text() for page in reader.pages)
+    for rank in ("1.", "2.", "3."):
+        assert rank in text
+    assert "90%" in text and "match" in text
+    assert "NEW" in text
+
+
+def test_the_sample_report_renders_the_real_written_body() -> None:
+    """``render_sample_report`` is the formatting review loop, so it must be real.
+
+    Its body comes from the actual writer over synthetic items, not from hand-typed
+    markdown — a sample that drifts from the generator reviews nothing.
+    """
+    from apps.content.management.commands.render_sample_report import build_sample
+
+    for kind in ("personal", "lab"):
+        data = build_sample(kind)
+        assert "#### In your AI for Oceanography focus" in data.briefing_markdown
+        assert "1. **[" in data.briefing_markdown
+        assert render_report_pdf(data)[:5] == b"%PDF-"
+    assert build_sample("lab").personal.label == "Pulse Lab"
+    assert build_sample("personal").personal.label == "Personal"
+
+
+def test_the_report_never_says_who_an_item_is_best_suited_to() -> None:
+    data = _sample_data()
+    data.briefing_markdown += "\n\n1. **Something** — 70% match\nA reason.\n"
+    reader = PdfReader(BytesIO(render_report_pdf(data)))
+    text = "\n".join(page.extract_text() for page in reader.pages)
+    assert "Best suited to" not in text
 
 
 def test_a_capped_section_says_how_many_it_is_hiding() -> None:

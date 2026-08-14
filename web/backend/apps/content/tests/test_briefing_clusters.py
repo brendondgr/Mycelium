@@ -30,9 +30,34 @@ def test_section_fallback_groups_by_cluster() -> None:
         "papers", "profile", items, complete=lambda _s, _p: None
     )
     assert from_llm is False
-    assert "**In your Medical AI focus:**" in body
-    assert "**In your Oceanography focus:**" in body
+    # A theme is a heading, not a bolded sentence: both renderers key off the
+    # `####` level, and bold body text read as prose the reader skimmed past.
+    assert "#### In your Medical AI focus" in body
+    assert "#### In your Oceanography focus" in body
     assert "Paper A" in body and "Paper B" in body
+
+
+def test_section_fallback_numbers_its_items_across_clusters() -> None:
+    """The list is a ranking, so it is numbered — and the ranks do not restart."""
+    items = [
+        _item("Paper A", "Medical AI"),
+        _item("Paper B", "Medical AI"),
+        _item("Paper C", "Oceanography"),
+    ]
+    body, _ = write_section("papers", "profile", items, complete=lambda _s, _p: None)
+    assert "1. **[Paper A]" in body
+    assert "2. **[Paper B]" in body
+    assert "3. **[Paper C]" in body
+
+
+def test_a_new_item_carries_the_marker_and_its_match() -> None:
+    """The two facts a reader scans a ranked list for sit on the title line."""
+    entrant = _item("Fresh", "Medical AI", match=91) | {"is_entrant": True}
+    body, _ = write_section(
+        "papers", "profile", [entrant], complete=lambda _s, _p: None
+    )
+    assert "**NEW**" in body
+    assert "91% match" in body
 
 
 # --------------------------------------------------------------------------- #
@@ -109,7 +134,13 @@ def test_each_project_gets_its_own_part_after_the_personal_one() -> None:
     assert "Reef award" not in personal_block
 
 
-def test_a_project_part_tallies_what_it_brought() -> None:
+def test_a_project_part_is_shaped_like_the_readers_own() -> None:
+    """Same category headings, same numbered items — and no tally sentence.
+
+    The counts are the summary table's whole job. Restating them in prose above a
+    list that already shows them item by item put noise between a heading and the
+    thing it was heading, which is what made project sections read as unstructured.
+    """
     from apps.content.briefing_sections import generate_report_body
 
     project = _part(
@@ -128,8 +159,10 @@ def test_a_project_part_tallies_what_it_brought() -> None:
         complete=lambda _s, _p: None,
     )
 
-    assert "2 papers" in body
-    assert "1 grant" in body  # singular, not "1 grants"
+    assert "## Project · Coral Atlas" in body
+    assert "### Papers" in body and "### Grants" in body
+    assert "1. **[A]" in body and "2. **[B]" in body
+    assert "2 papers" not in body
 
 
 def test_a_quiet_project_gets_no_section_at_all() -> None:

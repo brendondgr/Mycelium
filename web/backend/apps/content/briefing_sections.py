@@ -21,10 +21,26 @@ than sifting grants out of a mixed list.
 The fan-out is one pass: the prompts are independent, their results are
 concatenated once, and nothing plans, calls a tool, loops, or reflects.
 
-The assembled body is GitHub-flavored markdown: the summary paragraph, then
-``## Personal`` and one ``## Project · <name>`` per project, each with a ``###``
-heading per non-empty category. Within a section the items are still grouped by
-the reader's focus themes, which is the level where a theme actually helps.
+The assembled body is GitHub-flavored markdown in a **fixed, narrow grammar** that
+both renderers — the PDF's flowable builder and the app's ``MarkdownProse`` — parse
+exactly, so the written report carries the same visible hierarchy as the Top-25
+listings rather than reading as one undifferentiated block:
+
+``## <part>``
+    The reader's own part (their name for it — ``Personal``, or the lab's name) and
+    one ``## Project · <name>`` per project.
+``### <category>``
+    Papers / Grants / Fellowships / Conferences within a part.
+``#### <focus>``
+    A focus-cluster group inside a category, when the items carry two or more
+    distinct clusters. A theme is a *heading*, not a bolded sentence — it is how a
+    reader sees where one group of papers ends and the next begins.
+``N. **[Title](url)** — **NEW** · 88% match · deadline YYYY-MM-DD``
+    One ranked item, immediately followed on the next line by its 1-3 sentence
+    explanation. The number makes the ranking explicit; the ``NEW`` marker and the
+    match percent are the two facts a reader scans for, so they sit on the title
+    line where both renderers can pick them out and emphasise them.
+
 Everything is **grounded** (each prompt sees only real items) and every stage has a
 **deterministic markdown fallback**, so a missing or flaky model degrades to a
 still-useful, honest report rather than nothing — the same contract as
@@ -79,24 +95,21 @@ _SECTION_MAX_TOKENS = 1200
 _SUMMARY_MAX_TOKENS = 500
 
 _MARKDOWN_RULES = (
-    "Write GitHub-flavored markdown. For each item, start a new paragraph with the "
-    "title in bold — link it as [Title](url) when a URL is given, otherwise just "
-    "**Title** — followed by its match percent and any near-term deadline on the "
-    "same line, then 1-3 sentences of tailored explanation. Do NOT add a section "
-    "heading (the report adds it). Do not use tables or code fences. Ground every "
-    "sentence ONLY in the items and profile provided; never invent a title, number, "
-    "or deadline."
-)
-
-#: Appended to every section prompt for an institutional (lab) report. The
-#: recommendation is already made — the prompt's job is to pass it on in a natural
-#: sentence, not to re-derive who anyone is or to name someone it wasn't given.
-_MEMBER_RULES = (
-    " Some items list who in the lab they are best suited to. When an item does, "
-    "say so plainly in its paragraph (e.g. \"Best suited to Ana Reyes\"), using "
-    "ONLY the names given for that item, spelled exactly as given. Never guess, "
-    "add, or drop a name, and never say anything about a person beyond what the "
-    "item's own note supports. Items with no names listed simply get none."
+    "Write GitHub-flavored markdown as a NUMBERED list, keeping the items in the "
+    "order they are given to you. Write every item you are given — do not skip any, "
+    "and do not merge two into one entry. Each item is exactly two lines:\n"
+    "1. a numbered line — `N. **[Title](url)** — **NEW** · 88% match · deadline "
+    "YYYY-MM-DD` — using the item's own number, its title linked as [Title](url) "
+    "when a URL is given and plain **Title** when it is not, the literal marker "
+    "**NEW** only when the item is marked NEW, its match percent when it has one, "
+    "and its deadline when it has one;\n"
+    "2. the very next line: 1-3 sentences of tailored explanation, no bullet and no "
+    "number.\n"
+    "Separate items with one blank line. Do NOT write a `#`, `##` or `###` heading "
+    "of your own — the report adds those, and the only headings you may write are "
+    "the `#### ` grouping headings you are explicitly asked for. Do not use tables "
+    "or code fences. Ground every sentence ONLY in the items and profile provided; "
+    "never invent a title, number, or deadline."
 )
 
 _SECTION_SYSTEM_PROMPT = {
@@ -230,7 +243,13 @@ def _personal_block(
     *,
     complete: CompleteFn | None,
 ) -> tuple[str, list[tuple[str, str]], bool]:
-    """``## Personal`` with a ``###`` prose section per category that has items."""
+    """The reader's own part: ``## <label>`` and a ``###`` section per category.
+
+    ``label`` is the part's own name — ``Personal`` on a person's report, the lab's
+    name on a lab's — so the heading, and the contents page built from it, name the
+    thing the section actually covers.
+    """
+    heading = getattr(personal, "label", "") or PERSONAL_HEADING
     items_by_category = getattr(personal, "items", {}) or {}
     used_llm = False
     written: list[tuple[str, str]] = []
@@ -250,11 +269,11 @@ def _personal_block(
         lines.append("")
         lines.append(body)
         lines.append("")
-        written.append((f"{PERSONAL_HEADING} · {label}", body))
+        written.append((f"{heading} · {label}", body))
     if not lines:
         return "", [], used_llm
     return (
-        "\n".join([f"## {PERSONAL_HEADING}", "", *lines]).rstrip(),
+        "\n".join([f"## {heading}", "", *lines]).rstrip(),
         written,
         used_llm,
     )
@@ -262,6 +281,13 @@ def _personal_block(
 
 def _project_block(categories: list[str], part) -> tuple[str, list[tuple[str, str]]]:
     """``## Project · <name>`` with a deterministic ``###`` section per category.
+
+    Structurally identical to the reader's own part — the same ``###`` category
+    headings over the same numbered, cluster-grouped items — because a project
+    section that is shaped differently forces the reader to learn the document
+    twice. It carries no per-category tally sentence: the counts are already the
+    summary table's whole job, and restating them in prose above a list that shows
+    them item by item was noise between the heading and the thing being ranked.
 
     A project with nothing new today gets no section at all — it still holds its row
     in the summary table, which is where "nothing today" belongs. Padding the body
@@ -271,17 +297,10 @@ def _project_block(categories: list[str], part) -> tuple[str, list[tuple[str, st
     label = getattr(part, "label", "") or "Project"
     written: list[tuple[str, str]] = []
     lines: list[str] = []
-    tally: list[str] = []
     for category in categories:
         items = items_by_category.get(category) or []
         if not items:
             continue
-        new_count = (getattr(part, "counts", {}) or {}).get(category, 0)
-        noun = SECTION_NOUN.get(category, category)
-        phrase = f"{len(items)} {noun}{'' if len(items) == 1 else 's'}"
-        if new_count:
-            phrase += f" ({new_count} new)"
-        tally.append(phrase)
         heading = SECTION_LABELS.get(category, category.title())
         body = _section_fallback(category, items)
         lines.append(f"### {heading}")
@@ -291,14 +310,8 @@ def _project_block(categories: list[str], part) -> tuple[str, list[tuple[str, st
         written.append((f"{label} · {heading}", body))
     if not lines:
         return "", []
-    head = [f"## {PROJECT_HEADING_PREFIX}{label}", ""]
-    if tally:
-        # Plain text, not `_italics_`: neither renderer of this markdown (the app's
-        # MarkdownProse, the PDF's flowable builder) handles emphasis, so the
-        # underscores reached the reader verbatim.
-        head.append(f"{_join_english(tally)}.")
-        head.append("")
-    return "\n".join([*head, *lines]).rstrip(), written
+    head = f"## {PROJECT_HEADING_PREFIX}{label}"
+    return "\n".join([head, "", *lines]).rstrip(), written
 
 
 # --------------------------------------------------------------------------- #
@@ -319,10 +332,6 @@ def write_section(
     system = _SECTION_SYSTEM_PROMPT.get(category)
     if system is None:
         return _section_fallback(category, items), False
-    # A lab report's items carry who they suit; a personal report's never do, so
-    # the rule is added only where it applies and the personal prompt is unchanged.
-    if any(item.get("for_members") for item in items):
-        system += _MEMBER_RULES
 
     ask = complete if complete is not None else _settings_complete(_SECTION_MAX_TOKENS)
     prompt = _section_prompt(category, profile_text, items)
@@ -374,7 +383,7 @@ def _section_prompt(category: str, profile_text: str, items: list[dict]) -> str:
     index = 1
     for cluster_label, group in groups:
         if grouped and cluster_label:
-            lines.append(f"\nFor the researcher's {cluster_label} focus:")
+            lines.append(f"\n{_cluster_heading(cluster_label)}")
         for item in group:
             lines.append(_item_brief(index, item))
             index += 1
@@ -382,8 +391,10 @@ def _section_prompt(category: str, profile_text: str, items: list[dict]) -> str:
     if grouped:
         lines.append(
             f"Write the {label} section body now, organised BY the focus clusters "
-            "above — a short lead-in per cluster (e.g. \"In your Medical AI Agents "
-            "focus: …\"), then its papers. Keep the cluster names verbatim."
+            "above. Introduce each cluster with its own heading line, written "
+            f'exactly as `{_cluster_heading("Medical AI Agents")}`, then the '
+            "numbered items belonging to it. Keep the cluster names verbatim and "
+            "keep each item's own number."
         )
     else:
         lines.append(f"Write the {label} section body now.")
@@ -409,44 +420,60 @@ def _item_brief(index: int, item: dict) -> str:
     reason = item.get("reason") or item.get("headline")
     if reason:
         head += f"\n    Prior note: {reason}"
-    for_members = item.get("for_members") or []
-    if for_members:
-        head += f"\n    Best suited to: {', '.join(for_members)}"
     return head
+
+
+def _cluster_heading(cluster_label: str) -> str:
+    """The ``####`` heading that opens one focus-cluster group."""
+    return f"#### In your {cluster_label} focus"
+
+
+def _numbered_item(index: int, item: dict) -> str:
+    """One ranked item in the report's two-line item grammar.
+
+    Line one is the rank, the linked title, and the two facts a reader scans a
+    ranked list for — whether it is new, and how well it matches. Line two is the
+    rationale the matcher already wrote. Both renderers key off this shape, so it is
+    also exactly what the section prompt is told to produce.
+    """
+    title = item.get("title") or "(untitled)"
+    url = item.get("url")
+    linked = f"[{title}]({url})" if url else title
+    meta: list[str] = []
+    if item.get("is_entrant"):
+        meta.append("**NEW**")
+    match = item.get("match_percent")
+    if isinstance(match, int):
+        meta.append(f"{match}% match")
+    if item.get("deadline_date"):
+        meta.append(f"deadline {item['deadline_date']}")
+    line = f"{index}. **{linked}**"
+    if meta:
+        line += " — " + " · ".join(meta)
+    reason = item.get("reason") or item.get("headline")
+    if reason:
+        line += f"\n{reason}"
+    return line
 
 
 def _section_fallback(category: str, items: list[dict]) -> str:
     """A deterministic markdown section body when the model is unavailable.
 
     Grouped by focus cluster when the items carry >= 2 distinct clusters (papers),
-    so the fallback mirrors the grouped write-up the model would have produced.
+    so the fallback mirrors the grouped write-up the model would have produced —
+    same ``####`` headings, same numbering, same item grammar. This is also what
+    every project section is built from, which is why the two read alike.
     """
     groups = _cluster_groups(items)
     grouped = len(groups) > 1
     blocks: list[str] = []
+    index = 1
     for cluster_label, group in groups:
         if grouped and cluster_label:
-            blocks.append(f"**In your {cluster_label} focus:**")
+            blocks.append(_cluster_heading(cluster_label))
         for item in group:
-            title = item.get("title") or "(untitled)"
-            url = item.get("url")
-            heading = f"[{title}]({url})" if url else title
-            meta: list[str] = []
-            match = item.get("match_percent")
-            if isinstance(match, int):
-                meta.append(f"{match}% match")
-            if item.get("deadline_date"):
-                meta.append(f"deadline {item['deadline_date']}")
-            line = f"**{heading}**"
-            if meta:
-                line += " — " + " · ".join(meta)
-            reason = item.get("reason") or item.get("headline")
-            if reason:
-                line += f"\n\n{reason}"
-            for_members = item.get("for_members") or []
-            if for_members:
-                line += f"\n\nBest suited to: {_join_english(for_members)}."
-            blocks.append(line)
+            blocks.append(_numbered_item(index, item))
+            index += 1
     return "\n\n".join(blocks)
 
 
@@ -581,19 +608,26 @@ def _clean_block(raw: str | None) -> str:
 
 
 def _strip_headings(text: str) -> str:
-    """Drop any leading markdown ``#`` headings a section/summary prompt added.
+    """Drop any leading ``#``/``##``/``###`` heading a section/summary prompt added.
 
-    The report owns the ``## Label`` headings, so a stray one from a prompt would
-    double up; the summary must be a plain paragraph. Only leading heading lines
-    are removed — headings mid-body are left alone.
+    The report owns those levels, so a stray one from a prompt would double up; the
+    summary must be a plain paragraph. Only *leading* heading lines are removed —
+    headings mid-body are left alone.
+
+    A leading ``####`` is deliberately kept: that level belongs to the prompt, which
+    is asked to open a grouped section with its first focus-cluster heading, and
+    stripping it would silently swallow the first group's title.
     """
     if not text:
         return ""
     lines = text.splitlines()
     start = 0
-    while start < len(lines) and (
-        not lines[start].strip() or lines[start].lstrip().startswith("#")
-    ):
+    while start < len(lines):
+        stripped = lines[start].lstrip()
+        if stripped and not (
+            stripped.startswith("#") and not stripped.startswith("####")
+        ):
+            break
         start += 1
     return "\n".join(lines[start:]).strip()
 
