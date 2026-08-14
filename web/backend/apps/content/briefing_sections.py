@@ -391,10 +391,10 @@ def _section_prompt(category: str, profile_text: str, items: list[dict]) -> str:
     if grouped:
         lines.append(
             f"Write the {label} section body now, organised BY the focus clusters "
-            "above. Introduce each cluster with its own heading line, written "
-            f'exactly as `{_cluster_heading("Medical AI Agents")}`, then the '
-            "numbered items belonging to it. Keep the cluster names verbatim and "
-            "keep each item's own number."
+            "above. Introduce each cluster with its own heading line — the cluster "
+            f'name alone, written exactly as `{_cluster_heading("Medical AI Agents")}` '
+            "with no other words on the line — then the numbered items belonging to "
+            "it. Keep the cluster names verbatim and keep each item's own number."
         )
     else:
         lines.append(f"Write the {label} section body now.")
@@ -424,8 +424,13 @@ def _item_brief(index: int, item: dict) -> str:
 
 
 def _cluster_heading(cluster_label: str) -> str:
-    """The ``####`` heading that opens one focus-cluster group."""
-    return f"#### In your {cluster_label} focus"
+    """The ``####`` heading that opens one focus-cluster group.
+
+    The theme's own name and nothing else. "In your … focus" was a sentence, and a
+    sentence set in heading position reads as body text no matter how it is styled;
+    the renderers give the bare label the weight of a heading instead.
+    """
+    return f"#### {cluster_label}"
 
 
 def _numbered_item(index: int, item: dict) -> str:

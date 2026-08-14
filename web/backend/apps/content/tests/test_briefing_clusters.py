@@ -30,10 +30,12 @@ def test_section_fallback_groups_by_cluster() -> None:
         "papers", "profile", items, complete=lambda _s, _p: None
     )
     assert from_llm is False
-    # A theme is a heading, not a bolded sentence: both renderers key off the
-    # `####` level, and bold body text read as prose the reader skimmed past.
-    assert "#### In your Medical AI focus" in body
-    assert "#### In your Oceanography focus" in body
+    # A theme is a heading carrying the theme's own name — nothing else on the line.
+    # "**In your Medical AI focus:**" was a sentence, and a sentence in heading
+    # position reads as prose the reader skims past however it is styled.
+    assert "#### Medical AI" in body
+    assert "#### Oceanography" in body
+    assert "In your" not in body
     assert "Paper A" in body and "Paper B" in body
 
 

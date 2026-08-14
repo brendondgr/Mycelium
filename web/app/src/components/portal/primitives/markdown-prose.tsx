@@ -23,10 +23,11 @@ import { cn } from "@/lib/utils";
 const LINK_CLASS =
   "text-primary underline underline-offset-2 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm";
 
+// Rounded containers, not highlighter stripes — the same shape the PDF's chips use.
 const MATCH_CHIP_CLASS =
-  "inline-block rounded bg-primary/12 px-1.5 py-px text-[13px] font-semibold text-primary";
+  "inline-block rounded-full bg-primary/12 px-2 py-0.5 text-[13px] font-semibold text-primary";
 const NEW_CHIP_CLASS =
-  "inline-block rounded border border-brand-accent px-1.5 py-px text-[11px] font-semibold uppercase tracking-wide text-brand-accent";
+  "inline-block rounded-full border border-brand-accent px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-accent";
 
 // Matches, in one pass: **bold**, [text](url), or an `88% match` signal. Nested
 // content is rendered recursively so `**[Title](url)**` yields a bold link. A fresh
@@ -177,10 +178,12 @@ function parseBlocks(source: string): Block[] {
   return blocks;
 }
 
+// A focus theme (`####`) is a pill, and it is *larger* than the entries under it —
+// set smaller, a heading reads as a caption on the item that follows it.
 const HEADING_CLASS: Record<2 | 3 | 4, string> = {
   2: "mt-6 mb-2 text-[18px] font-serif font-semibold text-[var(--text-primary)]",
   3: "mt-5 mb-1.5 text-[15px] font-serif font-semibold text-[var(--text-primary)]",
-  4: "mt-4 mb-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-primary",
+  4: "mt-5 mb-2.5 inline-block rounded-full border border-border bg-surface-alt px-3 py-1 text-[15px] font-semibold text-brand-primary-hover",
 };
 
 export function MarkdownProse({

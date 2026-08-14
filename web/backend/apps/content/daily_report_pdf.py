@@ -27,12 +27,15 @@ Level Style                 What carries it
 1     ``H2``                A section within a part: ``Top 25 Articles``,
                             or the written report's ``## <part>``
 2     ``H3``                A category within the written report
-3     ``H4``                A focus-cluster group
+3     ``H4``                A focus theme, drawn as a rounded pill
 ===== ===================== =============================================
 
-Found items are **numbered** — the list is a ranking and the numbers say so — and
-each one's percent match is a chip rather than a run of small grey text, because
-"how well does this match me" is the question a reader scans the page with.
+Every ranked entry in the document — in the written report and in every Top-N
+listing — is the same three-column row (:func:`_entry_row`): its number, its
+content, and its chips. The list is a ranking and the numbers say so; the percent
+match and ``NEW`` are rounded chips down the right edge rather than a run of small
+grey text or an inline highlight, because "is this new and how well does it match
+me" is the question a reader scans the page with.
 
 Each list is the reader's whole top slice, every day — not just what arrived. The
 ``NEW`` chip marks the items that entered it on this run, which is the only part of
@@ -116,6 +119,12 @@ _CONTENT_WIDTH = LETTER[0] - 2 * _MARGIN
 _CHIP_WIDTH = 0.86 * inch
 #: The hanging rank-number column on a found item.
 _RANK_WIDTH = 0.34 * inch
+#: Corner radius shared by every filled container — chips and theme pills. Square
+#: corners read as a highlighter stripe; rounded ones read as a badge.
+_RADIUS = 4
+#: Horizontal breathing room inside a theme pill.
+_PILL_PAD_X = 8
+_PILL_PAD_Y = 3
 
 
 def _styles() -> dict[str, ParagraphStyle]:
@@ -146,9 +155,12 @@ def _styles() -> dict[str, ParagraphStyle]:
         "H3", fontName=_SANS_BOLD, fontSize=11.5, leading=15, textColor=TEXT,
         spaceBefore=11, spaceAfter=4, keepWithNext=1,
     )
+    # A focus theme. Set *larger* than the items beneath it and drawn on a rounded
+    # pill (:class:`_PillHeading`) — at 9.5pt with no ground it was smaller than the
+    # entries it introduced, which is the one thing a heading cannot be.
     styles["H4"] = ParagraphStyle(
-        "H4", fontName=_SANS_BOLD, fontSize=9.5, leading=13, textColor=PRIMARY_HOVER,
-        spaceBefore=10, spaceAfter=3, keepWithNext=1,
+        "H4", fontName=_SANS_BOLD, fontSize=11.5, leading=15, textColor=PRIMARY_HOVER,
+        spaceBefore=13, spaceAfter=7, leftIndent=_PILL_PAD_X, keepWithNext=1,
     )
     # Same look as H1 but a distinct name, so afterFlowable does NOT list the
     # "Contents" page-title as its own table-of-contents entry.
@@ -159,14 +171,6 @@ def _styles() -> dict[str, ParagraphStyle]:
     )
     styles["Bullet"] = ParagraphStyle(
         "Bullet", parent=styles["Body"], leftIndent=14, bulletIndent=2, spaceAfter=3,
-    )
-    #: A numbered item in the *written* report — the rank hangs in the margin, the
-    #: title and its rationale sit in one block so the two never split across pages
-    #: independently.
-    styles["NumItem"] = ParagraphStyle(
-        "NumItem", fontName=_SANS, fontSize=10, leading=14.5, textColor=TEXT,
-        leftIndent=18, bulletIndent=2, bulletFontName=_SANS_BOLD,
-        bulletFontSize=10, spaceBefore=4, spaceAfter=6,
     )
     styles["ItemTitle"] = ParagraphStyle(
         "ItemTitle", fontName=_SANS_BOLD, fontSize=10.5, leading=14, textColor=TEXT,
@@ -215,26 +219,20 @@ _NUMBERED_RE = re.compile(r"^(\d{1,3})[.)]\s+(.*)$")
 def _inline(text: str) -> str:
     """Escape XML, then re-apply the report's markdown as reportlab tags.
 
-    Emphasis is part of the escape step rather than something a caller opts into:
-    the same match percent has to read the same way in the written report as it does
-    beside a listed item, and the only way to guarantee that is for one function to
-    own it.
+    Deliberately draws **no filled background** anywhere. A reportlab inline
+    ``backcolor`` is a square-cornered stripe behind the glyphs — a highlighter mark,
+    not a badge — so the two signals it used to paint that way (``NEW``, the percent
+    match) are lifted out of the text entirely and rendered as rounded chips beside
+    the entry (:func:`_chip`). What is left here is colour and weight, which is all
+    an inline run can carry without looking marked-up.
     """
     out = escape(text or "")
     out = _LINK_RE.sub(
         lambda m: f'<a href="{m.group(2)}" color="{_LINK_HEX}">{m.group(1)}</a>', out
     )
-    out = _NEW_MARKER_RE.sub(
-        f'<font color="{_NEW_HEX}" backcolor="{_NEW_BG_HEX}" size="9">'
-        "<b> NEW </b></font>",
-        out,
-    )
+    out = _NEW_MARKER_RE.sub(f'<font color="{_NEW_HEX}"><b>NEW</b></font>', out)
     out = _MATCH_RE.sub(
-        lambda m: (
-            f'<font color="{_MATCH_HEX}" backcolor="{_MATCH_BG_HEX}" size="11">'
-            f"<b> {m.group(1)}% match </b></font>"
-        ),
-        out,
+        lambda m: f'<font color="{_MATCH_HEX}"><b>{m.group(1)}% match</b></font>', out
     )
     out = _DEADLINE_RE.sub(
         lambda m: f'<font color="{_DEADLINE_HEX}"><b>deadline {m.group(1)}</b></font>',
@@ -242,6 +240,78 @@ def _inline(text: str) -> str:
     )
     out = _BOLD_RE.sub(r"<b>\1</b>", out)
     return out
+
+
+class _PillHeading(Paragraph):
+    """A heading drawn on a rounded, filled pill.
+
+    A ``Paragraph`` subclass rather than a one-cell ``Table`` so it still reaches
+    ``afterFlowable`` as a heading and keeps its place in the contents page — a
+    table would look the same and vanish from the document's map.
+
+    The pill is sized to the text, not to the column: a full-width band would read
+    as a section rule, and the point of the shape is that the theme is a label.
+    """
+
+    def draw(self) -> None:
+        canvas = self.canv
+        style = self.style
+        text = self.getPlainText()
+        width = min(
+            canvas.stringWidth(text, style.fontName, style.fontSize)
+            + 2 * _PILL_PAD_X,
+            self.width + 2 * _PILL_PAD_X,
+        )
+        canvas.saveState()
+        canvas.setFillColor(SURFACE_ALT)
+        canvas.setStrokeColor(BORDER)
+        canvas.setLineWidth(0.5)
+        canvas.roundRect(
+            -_PILL_PAD_X,
+            -_PILL_PAD_Y,
+            width,
+            self.height + 2 * _PILL_PAD_Y,
+            _RADIUS,
+            fill=1,
+            stroke=1,
+        )
+        canvas.restoreState()
+        super().draw()
+
+
+#: The signals a numbered item's title line carries, in the grammar
+#: :mod:`apps.content.briefing_sections` emits. Each is pulled out of the line and
+#: rendered as a chip, leaving the title to be a title.
+_ITEM_NEW_RE = re.compile(r"\*\*NEW\*\*")
+_ITEM_MATCH_RE = re.compile(r"\b(\d{1,3})%\s+match\b", re.IGNORECASE)
+_ITEM_DEADLINE_RE = re.compile(
+    r"\bdeadline\s+(\d{4}-\d{2}-\d{2})\b", re.IGNORECASE
+)
+#: Whatever separators the removed signals leave stranded at the end of the line.
+_TRAILING_SEPARATORS_RE = re.compile(r"[\s··—–-]+$")
+
+
+def _split_item_line(text: str) -> tuple[str, bool, int | None, str]:
+    """Split a written item's title line into ``(title, is_new, match, deadline)``.
+
+    Order-independent, because the line is model-written as often as it is
+    generated: each signal is matched wherever it sits, removed, and the separators
+    it leaves behind are cleaned off the tail.
+    """
+    is_new = bool(_ITEM_NEW_RE.search(text))
+    rest = _ITEM_NEW_RE.sub("", text)
+
+    match = _ITEM_MATCH_RE.search(rest)
+    percent = int(match.group(1)) if match else None
+    rest = _ITEM_MATCH_RE.sub("", rest)
+
+    found = _ITEM_DEADLINE_RE.search(rest)
+    deadline = found.group(1) if found else ""
+    rest = _ITEM_DEADLINE_RE.sub("", rest)
+
+    # Collapse the runs of " · " / " — " the removals opened up mid-line, then trim.
+    rest = re.sub(r"\s*[·]\s*(?=[·—–-]|\s*$)", " ", rest)
+    return _TRAILING_SEPARATORS_RE.sub("", rest).strip(), is_new, percent, deadline
 
 
 def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
@@ -267,14 +337,7 @@ def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
         if item is None:
             return
         rank, lines = item
-        head = _inline(lines[0])
-        rest = " ".join(lines[1:]).strip()
-        html = head
-        if rest:
-            html += f'<br/><font color="{_hex(TEXT_SECONDARY)}">{_inline(rest)}</font>'
-        flow.append(
-            Paragraph(html, styles["NumItem"], bulletText=f"{rank}.")
-        )
+        flow.extend(_written_item_flowables(rank, lines, styles))
         item = None
 
     def flush():
@@ -288,7 +351,7 @@ def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
             continue
         if stripped.startswith("#### "):
             flush()
-            flow.append(Paragraph(_inline(stripped[5:]), styles["H4"]))
+            flow.append(_PillHeading(_inline(stripped[5:]), styles["H4"]))
         elif stripped.startswith("### "):
             flush()
             flow.append(Paragraph(_inline(stripped[4:]), styles["H3"]))
@@ -319,11 +382,6 @@ def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
     return flow
 
 
-def _hex(color) -> str:
-    """``HexColor`` → the ``#rrggbb`` string an inline ``<font>`` tag needs."""
-    return f"#{color.hexval()[2:]}"
-
-
 # --- Item + table rendering ------------------------------------------------ #
 def _chip(text: str, note: str, styles: dict[str, ParagraphStyle], *, bg, fg) -> Table:
     """A small filled chip — the percent match, or ``NEW``.
@@ -340,6 +398,10 @@ def _chip(text: str, note: str, styles: dict[str, ParagraphStyle], *, bg, fg) ->
     chip.setStyle(
         TableStyle(
             [
+                # Rounded, not square: a square filled rectangle behind a number
+                # reads as a highlighter stripe, which is exactly what this chip
+                # replaced in the written report.
+                ("ROUNDEDCORNERS", [_RADIUS, _RADIUS, _RADIUS, _RADIUS]),
                 ("BACKGROUND", (0, 0), (-1, -1), bg),
                 ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -353,20 +415,22 @@ def _chip(text: str, note: str, styles: dict[str, ParagraphStyle], *, bg, fg) ->
     return chip
 
 
-def _chip_stack(item: ReportItem, styles: dict[str, ParagraphStyle]) -> list:
-    """The right-hand column of a found item: its match chip, then ``NEW``."""
+def _chip_stack(
+    match_percent: int | None, is_new: bool, styles: dict[str, ParagraphStyle]
+) -> list:
+    """The right-hand column of an entry: its match chip, then ``NEW``."""
     stack: list = []
-    if isinstance(item.match_percent, int):
+    if isinstance(match_percent, int):
         stack.append(
             _chip(
-                f"{item.match_percent}%",
+                f"{match_percent}%",
                 "match",
                 styles,
                 bg=HexColor(_MATCH_BG_HEX),
                 fg=HexColor(_MATCH_HEX),
             )
         )
-    if item.is_new:
+    if is_new:
         if stack:
             stack.append(Spacer(1, 3))
         stack.append(
@@ -377,44 +441,27 @@ def _chip_stack(item: ReportItem, styles: dict[str, ParagraphStyle]) -> list:
     return stack
 
 
-def _item_flowables(
-    item: ReportItem, rank: int, styles: dict[str, ParagraphStyle]
+def _entry_row(
+    rank: int | str,
+    body: list,
+    match_percent: int | None,
+    is_new: bool,
+    styles: dict[str, ParagraphStyle],
 ) -> list:
-    """One found item: its rank, the entry itself, and its chips.
+    """One ranked entry: its number, its content, and its chips.
 
-    Laid out as a three-column row so the numbers line up down the page and the
-    chips line up down the right edge — which is what makes a Top-25 read as a
-    ranked list rather than as twenty-five paragraphs.
+    The report's single entry shape, used by the written report and by every Top-N
+    listing. Laid out as a three-column row so the numbers line up down the page and
+    the chips line up down the right edge — which is what makes a ranked list read
+    as one rather than as twenty-five paragraphs.
 
     Returned as a plain list rather than a ``KeepTogether``: a single-row table does
     not split, so the entry is already atomic, and nesting it in a ``KeepTogether``
     that a caller then nests again pushed every section onto a page of its own.
     """
-    title = _inline(item.title)
-    if item.url:
-        title = f'<a href="{escape(item.url)}" color="{_TITLE_HEX}">{title}</a>'
-    body: list = [Paragraph(title, styles["ItemTitle"])]
-
-    meta_bits = []
-    if item.source:
-        meta_bits.append(escape(item.source))
-    if item.cluster_label:
-        meta_bits.append(escape(item.cluster_label))
-    if item.deadline_date:
-        meta_bits.append(
-            f'<font color="{_DEADLINE_HEX}"><b>Deadline '
-            f"{escape(item.deadline_date)}</b></font>"
-        )
-    if meta_bits:
-        body.append(Paragraph("  ·  ".join(meta_bits), styles["ItemMeta"]))
-
-    reason = item.reason or item.headline
-    if reason:
-        body.append(Paragraph(_inline(reason), styles["ItemReason"]))
-
     # An empty cell is "" rather than an empty list — reportlab measures a list cell
     # by wrapping its flowables, and there are none to wrap.
-    chips = _chip_stack(item, styles) or ""
+    chips = _chip_stack(match_percent, is_new, styles) or ""
     row = Table(
         [[Paragraph(f"{rank}.", styles["Rank"]), body, chips]],
         colWidths=[
@@ -439,6 +486,60 @@ def _item_flowables(
         )
     )
     return [row, Spacer(1, 3)]
+
+
+def _item_flowables(
+    item: ReportItem, rank: int, styles: dict[str, ParagraphStyle]
+) -> list:
+    """One found item from a Top-N listing, as the report's standard entry row."""
+    title = _inline(item.title)
+    if item.url:
+        title = f'<a href="{escape(item.url)}" color="{_TITLE_HEX}">{title}</a>'
+    body: list = [Paragraph(title, styles["ItemTitle"])]
+
+    meta_bits = []
+    if item.source:
+        meta_bits.append(escape(item.source))
+    if item.cluster_label:
+        meta_bits.append(escape(item.cluster_label))
+    if item.deadline_date:
+        meta_bits.append(
+            f'<font color="{_DEADLINE_HEX}"><b>Deadline '
+            f"{escape(item.deadline_date)}</b></font>"
+        )
+    if meta_bits:
+        body.append(Paragraph("  ·  ".join(meta_bits), styles["ItemMeta"]))
+
+    reason = item.reason or item.headline
+    if reason:
+        body.append(Paragraph(_inline(reason), styles["ItemReason"]))
+
+    return _entry_row(rank, body, item.match_percent, item.is_new, styles)
+
+
+def _written_item_flowables(
+    rank: str, lines: list[str], styles: dict[str, ParagraphStyle]
+) -> list:
+    """One numbered item from the *written* report, as the same entry row.
+
+    The signals are pulled out of the title line and given to the chip column, so a
+    Mylo Report entry and a Top-25 entry are the same object on the page. They were
+    two different shapes for no reason other than one arriving as markdown.
+    """
+    title, is_new, match_percent, deadline = _split_item_line(lines[0])
+    body: list = [Paragraph(_inline(title), styles["ItemTitle"])]
+    if deadline:
+        body.append(
+            Paragraph(
+                f'<font color="{_DEADLINE_HEX}"><b>Deadline '
+                f"{escape(deadline)}</b></font>",
+                styles["ItemMeta"],
+            )
+        )
+    reason = " ".join(lines[1:]).strip()
+    if reason:
+        body.append(Paragraph(_inline(reason), styles["ItemReason"]))
+    return _entry_row(rank, body, match_percent, is_new, styles)
 
 
 def _summary_table(data: ReportData, styles: dict[str, ParagraphStyle]) -> Table:

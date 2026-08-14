@@ -78,7 +78,7 @@ def _sample_data() -> ReportData:
             "Three strong papers today.\n\n"
             "## Personal\n\n"
             "### Papers\n\n"
-            "#### In your Reef Mapping focus\n\n"
+            "#### Reef Mapping\n\n"
             "1. **[Paper number 0](https://example.org/p0)** — **NEW** · 90% match\n"
             "Relevant to your work on topic 0.\n\n"
             "2. **Paper number 1** — 89% match\n"
@@ -178,7 +178,7 @@ def test_toc_mirrors_the_whole_hierarchy() -> None:
     toc_text = reader.pages[1].extract_text()
     for entry in (
         "Your Mylo Report",
-        "In your Reef Mapping focus",  # #### inside the written report
+        "Reef Mapping",  # the #### focus theme inside the written report
         "Top 25 Articles",
         "Top 25 Grants",
         "Top 10 Articles",  # a project's capped section
@@ -234,6 +234,39 @@ def test_listed_items_are_numbered_and_show_their_match() -> None:
     assert "NEW" in text
 
 
+def test_a_written_items_signals_move_out_of_its_title_line() -> None:
+    """The written report's chips come from parsing the item line, so parse it.
+
+    Order-independent on purpose: the line is model-written as often as it is
+    generated, and a signal left in the title would print twice — once as text,
+    once as a chip.
+    """
+    from apps.content.daily_report_pdf import _split_item_line
+
+    title, is_new, match, deadline = _split_item_line(
+        "**[A paper](https://x.org/1)** — **NEW** · 88% match · deadline 2026-09-01"
+    )
+    assert title == "**[A paper](https://x.org/1)**"
+    assert (is_new, match, deadline) == (True, 88, "2026-09-01")
+
+    # A different order, and a missing signal, land the same way.
+    title, is_new, match, deadline = _split_item_line("**Plain** — 40% match")
+    assert title == "**Plain**"
+    assert (is_new, match, deadline) == (False, 40, "")
+
+    # Nothing to strip leaves the title alone.
+    assert _split_item_line("**Bare title**") == ("**Bare title**", False, None, "")
+
+
+def test_the_written_report_renders_its_signals_as_chips_not_highlights() -> None:
+    """No inline filled backgrounds anywhere — a chip is a container, not a stripe."""
+    from apps.content.daily_report_pdf import _inline
+
+    marked = _inline("**NEW** · 88% match · deadline 2026-09-01")
+    assert "backcolor" not in marked
+    assert "88% match" in marked
+
+
 def test_the_sample_report_renders_the_real_written_body() -> None:
     """``render_sample_report`` is the formatting review loop, so it must be real.
 
@@ -244,7 +277,7 @@ def test_the_sample_report_renders_the_real_written_body() -> None:
 
     for kind in ("personal", "lab"):
         data = build_sample(kind)
-        assert "#### In your AI for Oceanography focus" in data.briefing_markdown
+        assert "#### AI for Oceanography" in data.briefing_markdown
         assert "1. **[" in data.briefing_markdown
         assert render_report_pdf(data)[:5] == b"%PDF-"
     assert build_sample("lab").personal.label == "Pulse Lab"
