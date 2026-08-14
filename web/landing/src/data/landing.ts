@@ -44,29 +44,60 @@ export const features = [
   icon: LucideIcon;
 }>;
 
+/**
+ * One preview card. The field names track the workspace card they stand in
+ * for — `SuggestionCard`, `GrantCard`, `FellowshipCard`, `ConferenceCard` in
+ * `web/app/src/components/portal/sections/` — so the two stay comparable when
+ * either side changes.
+ */
 export type FeedItem = {
   title: string;
-  meta: string;
+  /** First meta line: source · venue for papers, the sponsor for grants. */
+  meta?: string;
+  /** Second meta line: the byline, or "Posted <date>" on an opportunity. */
+  submeta?: string;
+  /** The listing's own blurb, above Mylo's reason — the card's `description`. */
+  description?: string;
   /** The "why this matched" line — never omit it; it is the whole point. */
   reason: string;
   /** Percent fit, exactly as the app's match ring shows it. */
   score: number;
+  /** Mylo's own rank, shown in the numbered chip beside a paper's title. */
+  rank?: number;
   /**
    * Eligibility tier, for fellowships only. In the app this is a deterministic
-   * rule-engine verdict shown beside the ring, never folded into the percent.
+   * rule-engine verdict shown in the badge row, never folded into the percent.
    */
-  verdict?: "Qualified" | "Possible fit";
+  verdict?: "Qualified" | "Possible fit" | "Not eligible";
+  /** Fellowships: the award class chip ("Predoctoral", "Postdoctoral", …). */
+  awardClass?: string;
   /** True when Mylo (the language model) wrote the reason. */
   byMylo?: boolean;
+  /** True while the item is a fresh entrant to the reader's Top-25 slate. */
+  isNew?: boolean;
   cluster: string;
   clusterToken: string;
-  flag?: string;
+  /** Papers: the other clusters this one also reaches into. */
+  bridge?: string;
+  /** The actionable deadline, in the card's right-hand column. */
+  due?: string;
+  /** Funding amount, beneath the deadline. */
+  amount?: string;
+  /** Conferences: where the event is held, and when. */
+  where?: string;
+  when?: string;
+  /** Conferences: which submission windows are still open. */
+  open?: readonly string[];
+  /** Conferences: the venue's subject chips. */
+  subjects?: readonly string[];
 };
 
 export type FeedTab = {
   id: string;
   label: string;
   blurb: string;
+  /** The card's footer link, e.g. "Read paper" / "View opportunity". */
+  linkLabel: string;
   items: FeedItem[];
 };
 
@@ -80,37 +111,47 @@ export const feedTabs: readonly FeedTab[] = [
     id: "papers",
     label: "Papers",
     blurb: "Scored against every research cluster in the lab profile, refreshed daily.",
+    linkLabel: "Read paper",
     items: [
       {
         title: "Retrieval-grounded clinical decision support under distribution shift",
-        meta: "Nature Machine Intelligence · 4 days ago",
+        meta: "OpenAlex · Nature Machine Intelligence",
+        submeta: "2026 · Okonkwo et al.",
+        description:
+          "Evaluates retrieval-augmented decision support across four hospital systems, and reports where grounding degrades once the deployment population drifts away from the index corpus.",
         reason:
           "Matches your Retrieval grounding cluster and shares the MIMIC-IV dataset with Clinical CDS safety.",
         score: 92,
+        rank: 1,
         byMylo: true,
+        isNew: true,
         cluster: "Retrieval grounding",
         clusterToken: "1",
-        flag: "New",
       },
       {
         title: "Contrastive pretraining for sparse neural recordings",
-        meta: "bioRxiv preprint · 6 days ago",
+        meta: "bioRxiv · preprint",
+        submeta: "2026 · Halvorsen et al.",
+        description:
+          "A contrastive objective for high-density probe data that holds up when only a few hundred labelled trials are available per animal.",
         reason:
           "Strengthens the readout argument in your Q3 proposal; method overlaps two saved papers.",
         score: 84,
+        rank: 2,
         byMylo: true,
         cluster: "Plasticity mechanisms",
         clusterToken: "2",
       },
       {
         title: "Limits of multi-hop verification in clinical question answering",
-        meta: "JAMIA · 9 days ago",
+        meta: "PubMed · JAMIA",
+        submeta: "2025 · Reyes et al.",
         reason:
           "Bridges two of your clusters — retrieval grounding and clinical CDS safety.",
         score: 78,
         cluster: "Retrieval grounding",
         clusterToken: "1",
-        flag: "Bridges 2 clusters",
+        bridge: "Clinical CDS safety",
       },
     ],
   },
@@ -118,27 +159,35 @@ export const feedTabs: readonly FeedTab[] = [
     id: "grants",
     label: "Grants",
     blurb: "Funding calls matched to project scope, timing, and team composition.",
+    linkLabel: "View opportunity",
     items: [
       {
-        title: "NSF Smart Health and Biomedical Research in the Era of AI",
-        meta: "National Science Foundation · full proposal",
+        title: "Smart Health and Biomedical Research in the Era of AI",
+        meta: "National Science Foundation",
+        submeta: "Posted Mar 4",
+        description:
+          "Full proposals for interdisciplinary work joining computing research with a named clinical partner. No preliminary award history required.",
         reason:
           "Scope fits Clinical CDS safety; your last two awards sit inside the stated budget band.",
         score: 88,
         byMylo: true,
+        isNew: true,
         cluster: "Clinical CDS safety",
         clusterToken: "3",
-        flag: "Due in 18 days",
+        due: "Due Sep 1",
+        amount: "$1.2M / 4 yrs",
       },
       {
-        title: "NIH R21 Exploratory/Developmental Research Award",
-        meta: "National Institutes of Health · standard due date",
+        title: "R21 Exploratory/Developmental Research Award",
+        meta: "National Institutes of Health",
+        submeta: "Posted Feb 16",
         reason:
           "Matches the pilot-scale framing of your plasticity work; no preliminary data required.",
         score: 74,
         cluster: "Plasticity mechanisms",
         clusterToken: "2",
-        flag: "Due in 46 days",
+        due: "Due Oct 16",
+        amount: "$275K / 2 yrs",
       },
     ],
   },
@@ -147,29 +196,39 @@ export const feedTabs: readonly FeedTab[] = [
     label: "Fellowships",
     blurb:
       "Eligibility checked by a deterministic rule engine before anything is ranked.",
+    linkLabel: "View fellowship",
     items: [
       {
         title: "NSF Graduate Research Fellowship Program",
-        meta: "Trainee award · annual cycle",
+        meta: "National Science Foundation",
+        submeta: "Posted Jul 30",
+        description:
+          "Three years of support across a five-year window for graduate students in NSF-supported fields, awarded on the strength of the applicant rather than a project.",
         reason:
           "Citizenship, stage, and field all clear for two members. Research fit checked separately.",
         score: 91,
         verdict: "Qualified",
+        awardClass: "Predoctoral",
         byMylo: true,
+        isNew: true,
         cluster: "Plasticity mechanisms",
         clusterToken: "2",
-        flag: "2 members eligible",
+        due: "Due Oct 20",
+        amount: "$37K / yr",
       },
       {
         title: "Ford Foundation Predoctoral Fellowship",
-        meta: "Trainee award · annual cycle",
+        meta: "National Academies of Sciences",
+        submeta: "Posted Jun 11",
         reason:
           "Field match is strong, but institutional support needs confirming before applying.",
         score: 67,
         verdict: "Possible fit",
+        awardClass: "Predoctoral",
         cluster: "Retrieval grounding",
         clusterToken: "1",
-        flag: "Needs human check",
+        due: "Due Dec 12",
+        amount: "$27K / yr",
       },
     ],
   },
@@ -177,27 +236,37 @@ export const feedTabs: readonly FeedTab[] = [
     id: "conferences",
     label: "Conferences",
     blurb: "Submission windows tracked separately from event dates, with reminders.",
+    linkLabel: "View venue",
     items: [
       {
         title: "NeurIPS — Datasets & Benchmarks Track",
-        meta: "San Diego, USA · December",
+        where: "San Diego, USA · in person",
+        when: "Dec 6 – Dec 12",
+        description:
+          "A peer-reviewed track for datasets, benchmarks, and evaluation methodology, reviewed on documentation and reusability as much as on results.",
         reason:
           "Your benchmark work matches the track scope; abstract deadline lands before your defense.",
         score: 81,
         byMylo: true,
+        isNew: true,
         cluster: "Retrieval grounding",
         clusterToken: "1",
-        flag: "Abstract due in 12 days",
+        due: "Abstract due May 11",
+        open: ["Abstract open", "Full paper open"],
+        subjects: ["Machine learning", "Benchmarks", "Evaluation"],
       },
       {
         title: "AMIA Annual Symposium",
-        meta: "Washington DC, USA · November",
+        where: "Washington DC, USA · hybrid",
+        when: "Nov 14 – Nov 18",
         reason:
           "Clinical informatics venue with a track that fits the CDS safety project directly.",
         score: 76,
         cluster: "Clinical CDS safety",
         clusterToken: "3",
-        flag: "Full paper due in 31 days",
+        due: "Full paper due Mar 11",
+        open: ["Full paper open"],
+        subjects: ["Clinical informatics", "Decision support"],
       },
     ],
   },
