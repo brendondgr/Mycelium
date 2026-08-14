@@ -1,0 +1,253 @@
+---
+/**
+ * The ground a section sits on.
+ *
+ * The site alternated between three creams — `--background` (#F8F4EC),
+ * `--surface` (#FFFDF8) and `--surface-alt` (#EFE7D7) — which differ by a few
+ * percent of luminance. Down a long page that reads as one undifferentiated
+ * beige scroll, sections separated by a hairline border and nothing else.
+ *
+ * This gives a section a real ground: a tinted base and a soft wash of two
+ * brand hues, built with `color-mix` over the theme tokens rather than literal
+ * hex, so the tones follow the palette and invert with the dark forest theme.
+ *
+ * **Use it sparingly — once or twice per page, never on every section.** A
+ * treatment applied to everything stops being a treatment and becomes
+ * wallpaper: the eye normalises it within a screen or two, the page reads as
+ * busy rather than considered, and the sections that genuinely deserve emphasis
+ * no longer have any way to get it. Each page should be recognisable by *which*
+ * grounds it uses and where, not by carrying the same one throughout. The
+ * filament network in particular is off by default and is currently used in
+ * exactly one place site-wide — the About page's forest band, where a glowing
+ * underground network is the literal subject.
+ *
+ * Usage: give the section `relative isolate overflow-hidden`, drop this in as
+ * its first child, and make sure the content wrapper is `relative`.
+ */
+
+interface Props {
+  /**
+   * cream     — the page's own ground, lifted by a sage/gold wash
+   * moss      — a sage-tinted panel; the greenest of the light grounds
+   * parchment — warm mushroom beige, for boundary and status sections
+   * forest    — the deep forest band; pairs with --brand-panel-foreground text
+   */
+  tone?: "cream" | "moss" | "parchment" | "forest";
+  /**
+   * Draw the mycelium filament network. Off by default and meant to stay rare —
+   * see the note above. Reach for it only where the network is the point.
+   */
+  threads?: boolean;
+  /**
+   * Fade the network out at the top, bottom, or both, so a run of adjacent
+   * ground sections does not show a hard seam where one net stops.
+   */
+  fade?: "none" | "top" | "bottom" | "both";
+}
+
+const { tone = "cream", threads = false, fade = "both" } = Astro.props;
+---
+
+<div class:list={["ground", `ground-${tone}`]} aria-hidden="true">
+  <div class="ground-wash"></div>
+
+  {
+    threads ? (
+      <svg
+        class:list={["ground-threads", `ground-threads-fade-${fade}`]}
+        viewBox="0 0 1200 600"
+        preserveAspectRatio="xMidYMid slice"
+        fill="none"
+      >
+        {/* Three filaments running the width of the section, with shorter
+            branches bridging between them and nodes where they meet. Drawn
+            once at low opacity — the motif is connective tissue, and the style
+            guide is explicit that it must not compete with the content. */}
+        <g class="ground-filaments">
+          <path d="M-40 118 C 180 54, 322 200, 520 158 S 860 56, 1240 138" />
+          <path d="M-40 302 C 200 258, 340 382, 560 342 S 900 248, 1240 322" />
+          <path d="M-40 486 C 160 442, 300 566, 540 522 S 880 428, 1240 502" />
+
+          <path d="M222 92 C 262 178, 298 240, 300 302" />
+          <path d="M560 158 C 602 220, 620 282, 600 344" />
+          <path d="M884 88 C 906 178, 942 242, 930 300" />
+          <path d="M380 302 C 402 382, 432 452, 420 508" />
+          <path d="M762 330 C 792 402, 812 462, 800 514" />
+          <path d="M1064 140 C 1092 226, 1108 268, 1096 318" />
+        </g>
+
+        <g class="ground-nodes">
+          <circle class="node-pulse" cx="300" cy="302" r="3.4" />
+          <circle cx="600" cy="344" r="2.6" />
+          <circle class="node-pulse" cx="930" cy="300" r="3" />
+          <circle cx="420" cy="508" r="2.6" />
+          <circle class="node-pulse" cx="800" cy="514" r="3.2" />
+          <circle cx="222" cy="92" r="2.2" />
+          <circle cx="884" cy="88" r="2.2" />
+          <circle class="node-pulse" cx="1096" cy="318" r="2.8" />
+        </g>
+      </svg>
+    ) : null
+  }
+</div>
+
+<style>
+  .ground {
+    position: absolute;
+    inset: 0;
+    z-index: -10;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  /*
+   * Base tints. Every one is a color-mix over a theme token, so the whole
+   * system moves with the palette instead of pinning hex values that then rot.
+   */
+  .ground-cream {
+    background: var(--background);
+  }
+
+  .ground-moss {
+    background: color-mix(in srgb, var(--brand-secondary) 13%, var(--surface));
+  }
+
+  .ground-parchment {
+    background: color-mix(in srgb, var(--brand-accent) 8%, var(--surface-alt));
+  }
+
+  .ground-forest {
+    background: var(--brand-panel);
+  }
+
+  /*
+   * The wash: two soft ellipses of brand color, placed off-centre so the light
+   * appears to come from somewhere rather than sitting flat behind the text.
+   * Sage carries the field, gold answers it — gold stays a minor note, since
+   * the palette reserves it for genuine signals.
+   */
+  .ground-wash {
+    position: absolute;
+    inset: 0;
+  }
+
+  .ground-cream .ground-wash {
+    background-image:
+      radial-gradient(
+        ellipse 62% 58% at 12% -8%,
+        color-mix(in srgb, var(--brand-secondary) 20%, transparent) 0,
+        transparent 62%
+      ),
+      radial-gradient(
+        ellipse 52% 48% at 92% 78%,
+        color-mix(in srgb, var(--brand-accent) 13%, transparent) 0,
+        transparent 60%
+      );
+  }
+
+  .ground-moss .ground-wash {
+    background-image:
+      radial-gradient(
+        ellipse 70% 60% at 88% 0%,
+        color-mix(in srgb, var(--brand-primary) 14%, transparent) 0,
+        transparent 64%
+      ),
+      radial-gradient(
+        ellipse 48% 52% at 4% 92%,
+        color-mix(in srgb, var(--brand-accent) 11%, transparent) 0,
+        transparent 58%
+      );
+  }
+
+  .ground-parchment .ground-wash {
+    background-image:
+      radial-gradient(
+        ellipse 58% 55% at 78% -6%,
+        color-mix(in srgb, var(--brand-accent) 18%, transparent) 0,
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 55% 50% at 6% 100%,
+        color-mix(in srgb, var(--brand-secondary) 16%, transparent) 0,
+        transparent 62%
+      );
+  }
+
+  .ground-forest .ground-wash {
+    background-image:
+      radial-gradient(
+        ellipse 60% 55% at 14% 12%,
+        color-mix(in srgb, var(--focus, #b8d99a) 14%, transparent) 0,
+        transparent 58%
+      ),
+      radial-gradient(
+        ellipse 55% 50% at 86% 88%,
+        color-mix(in srgb, var(--brand-accent) 16%, transparent) 0,
+        transparent 56%
+      );
+  }
+
+  .ground-threads {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Feathered edges so consecutive sections do not show where one net ends. */
+  .ground-threads-fade-both {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 18%,
+      #000 82%,
+      transparent 100%
+    );
+  }
+
+  .ground-threads-fade-top {
+    mask-image: linear-gradient(to bottom, transparent 0, #000 22%);
+  }
+
+  .ground-threads-fade-bottom {
+    mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
+  }
+
+  .ground-filaments path {
+    fill: none;
+    stroke: var(--brand-secondary);
+    stroke-width: 1;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.3;
+  }
+
+  .ground-nodes circle {
+    fill: var(--brand-secondary);
+    opacity: 0.42;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  /* On the dark band the net is the "softly glowing research network", so it
+     reads a little brighter and picks up gold at the junctions. */
+  .ground-forest .ground-filaments path {
+    stroke: var(--brand-panel-foreground);
+    opacity: 0.16;
+  }
+
+  .ground-forest .ground-nodes circle {
+    fill: var(--brand-accent);
+    opacity: 0.5;
+  }
+
+  .ground-parchment .ground-filaments path {
+    stroke: var(--brand-accent);
+    opacity: 0.34;
+  }
+
+  .ground-parchment .ground-nodes circle {
+    fill: var(--brand-accent);
+    opacity: 0.45;
+  }
+</style>

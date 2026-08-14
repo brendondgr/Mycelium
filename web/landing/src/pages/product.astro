@@ -1,22 +1,21 @@
 ---
 import FinalCta from "@/components/landing/FinalCta.astro";
-import LiveFeed from "@/components/landing/LiveFeed.astro";
-import RoleSwitcher from "@/components/landing/RoleSwitcher.astro";
 import PageHero from "@/components/site/PageHero.astro";
-import { beyondFeeds, feeds, limits, matchSteps } from "@/data/product";
+import SectionGround from "@/components/site/SectionGround.astro";
+import { beyondFeeds, feeds, limits } from "@/data/product";
 import { appLoginUrl, primaryCta } from "@/data/site";
 import PublicLayout from "@/layouts/PublicLayout.astro";
 ---
 
 <PublicLayout
   title="Product"
-  description="How Mycelium turns a lab profile into scored papers, grants, fellowships, and conferences — with the reasoning attached to every match."
+  description="What each Mycelium feed gives a research lab — papers, grants, fellowships, and conferences, with the reasoning attached to every match."
 >
   <PageHero
     eyebrow="Product"
     title="Evidence-backed lab intelligence"
-    lede="Mycelium reads the sources every day, scores what it finds against your lab's own research profile, and tells you why each item made the cut."
-    description="Four feeds, one profile, and a written brief each morning. Below: what each feed does, how a match is actually made, and what the system deliberately will not do."
+    lede="Mycelium reads every day, scores what it finds against your lab's own research profile, and tells you why each item made the cut."
+    description="Four feeds, one profile, and a written brief each morning. Below: what each feed is for, what you get once the matching works, and what the system deliberately will not do."
   >
     <div class="mt-8 flex flex-col gap-3 sm:flex-row">
       <a
@@ -34,8 +33,13 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
     </div>
   </PageHero>
 
-  <section class="border-b border-border py-16 sm:py-20" aria-labelledby="feeds-heading">
-    <div class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+  <section
+    class="relative isolate overflow-hidden border-b border-border py-16 sm:py-20"
+    aria-labelledby="feeds-heading"
+  >
+    <SectionGround tone="moss" />
+
+    <div class="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="max-w-2xl reveal">
         <p class="text-sm font-medium uppercase tracking-[0.14em] eyebrow">The four feeds</p>
         <h2
@@ -90,50 +94,8 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
     </div>
   </section>
 
-  <LiveFeed />
-
-  <section
-    class="border-b border-border bg-[var(--surface)] py-16 sm:py-20"
-    aria-labelledby="match-heading"
-  >
-    <div class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-      <div class="max-w-2xl reveal">
-        <p class="text-sm font-medium uppercase tracking-[0.14em] eyebrow">Under the hood</p>
-        <h2
-          id="match-heading"
-          class="font-display mt-3 text-[clamp(1.9rem,4.2vw,2.75rem)] font-medium leading-[1.1] text-[var(--text-primary)]"
-        >
-          How a match is actually made
-        </h2>
-        <p class="mt-4 text-base leading-7 text-[var(--text-secondary)]">
-          No black box. Here is the path an item takes from the corpus to your feed.
-        </p>
-      </div>
-
-      <ol
-        class="match-steps mt-12 grid gap-8 lg:grid-cols-2 lg:gap-x-12 lg:gap-y-10"
-        data-reveal-group
-        data-reveal-step="160"
-      >
-        {
-          matchSteps.map((step) => (
-            <li class="reveal grid grid-cols-[3.5rem_1fr] items-start gap-4">
-              <span class="match-node font-display">{step.step}</span>
-              <div>
-                <h3 class="text-lg font-semibold leading-snug text-[var(--text-primary)]">
-                  {step.title}
-                </h3>
-                <p class="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                  {step.description}
-                </p>
-              </div>
-            </li>
-          ))
-        }
-      </ol>
-    </div>
-  </section>
-
+  {/* Deliberately plain. The two tinted bands on this page only read as
+      emphasis because the sections between them do not compete. */}
   <section class="border-b border-border py-16 sm:py-20" aria-labelledby="beyond-heading">
     <div class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="max-w-2xl reveal">
@@ -151,7 +113,7 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
       <div class="mt-12 grid gap-5 sm:grid-cols-2" data-reveal-group data-reveal-step="110">
         {
           beyondFeeds.map((item) => (
-            <article class="lift reveal rounded-2xl border border-border bg-card p-6 shadow-[0_10px_28px_rgb(52_39_20/5%)] sm:p-7">
+            <article class="lift reveal rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow)] sm:p-7">
               <h3 class="text-lg font-semibold leading-snug text-[var(--text-primary)]">
                 {item.title}
               </h3>
@@ -165,13 +127,13 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
     </div>
   </section>
 
-  <RoleSwitcher />
-
   <section
-    class="border-b border-border bg-[var(--surface-alt)] py-16 sm:py-20"
+    class="relative isolate overflow-hidden border-b border-border py-16 sm:py-20"
     aria-labelledby="limits-heading"
   >
-    <div class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+    <SectionGround tone="parchment" />
+
+    <div class="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="max-w-2xl reveal">
         <p class="text-sm font-medium uppercase tracking-[0.14em] text-[var(--text-secondary)]">
           Boundaries
@@ -188,7 +150,11 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
         </p>
       </div>
 
-      <dl class="mt-12 grid gap-x-12 gap-y-8 sm:grid-cols-2" data-reveal-group data-reveal-step="100">
+      <dl
+        class="mt-12 grid gap-x-12 gap-y-8 sm:grid-cols-2"
+        data-reveal-group
+        data-reveal-step="100"
+      >
         {
           limits.map((limit) => (
             <div class="reveal border-t border-[color-mix(in_srgb,var(--text-primary)_14%,transparent)] pt-5">
@@ -205,22 +171,6 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
 
   <FinalCta
     title="See it read your field"
-    description="Set up a profile, and Mylo scores the existing corpus against it right away — you do not have to wait for the first overnight run to judge whether it works."
+    description="Set up a profile, and Mylo scores what it has already gathered against it right away — you do not have to wait for the first overnight run to judge whether it works."
   />
 </PublicLayout>
-
-<style>
-  .match-node {
-    display: inline-grid;
-    place-items: center;
-    inline-size: 3.5rem;
-    block-size: 3.5rem;
-    border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, var(--brand-primary) 30%, transparent);
-    background: var(--card);
-    box-shadow: 0 6px 18px rgb(52 39 20 / 8%);
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--brand-primary);
-  }
-</style>
