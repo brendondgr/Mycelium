@@ -56,3 +56,10 @@ def activation_channel_id() -> str:
     from django.conf import settings
 
     return str(getattr(settings, "DISCORD_ACTIVATION_CHANNEL_ID", "") or "")
+
+
+def hub_guild_id() -> str:
+    setup_django()
+    from django.conf import settings
+
+    return str(getattr(settings, "DISCORD_HUB_GUILD_ID", "") or "")

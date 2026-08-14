@@ -1,7 +1,7 @@
 """Path B — activation code issue + redemption (the OAuth fallback).
 
 Issue (portal, authenticated): generate plaintext, display once, persist only its
-sha256. Redeem (``/activate`` in the hub server): rate-limited, single-use, TTL-
+sha256. Redeem (``/activate`` in any server Mylo is in): rate-limited, single-use, TTL-
 bound, and it binds *the redeeming Discord account* to *the issuing Mycelium user*.
 
 Code policy: an 8-char code over a 30-symbol ambiguity-free alphabet ≈ 39 bits. 8
