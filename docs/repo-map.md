@@ -21,7 +21,8 @@ Paths are relative to the repository root.
 | A marketing page | `web/landing/src/pages/*.astro` — five pages: `index`, `product`, `pricing`, `about`, `contact` |
 | Landing copy & capability claims | `web/landing/src/data/{landing,product,pricing,pricingComparison,site}.ts` |
 | Landing components | `web/landing/src/components/{landing,site,pricing}/` |
-| Landing styles, scroll reveals | `web/landing/src/styles/global.css` — CSS-only; the site ships no framework JS |
+| Landing feed preview card (mirrors the app's `MatchCard`) | `web/landing/src/components/landing/FeedCard.astro` |
+| Landing styles, scroll reveals | `web/landing/src/styles/global.css` (rules) + the two inline scripts in `web/landing/src/layouts/PublicLayout.astro` (arming flag + IntersectionObserver); no framework JS |
 | Artwork masters & sync | `web/art/`, `web/scripts/sync-art-assets.mjs` (derivatives are git-ignored) |
 
 ## Frontend — authenticated app

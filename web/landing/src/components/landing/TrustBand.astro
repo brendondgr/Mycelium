@@ -51,10 +51,10 @@ const anatomy = [
         <h3 class="text-xs font-semibold uppercase tracking-[0.16em] text-[color-mix(in_srgb,var(--brand-panel-foreground)_76%,transparent)]">
           Anatomy of one match
         </h3>
-        <dl class="mt-6 grid gap-5">
+        <dl class="mt-6 grid gap-5" data-reveal-group data-reveal-step="90">
           {
             anatomy.map((row) => (
-              <div class="border-t border-[color-mix(in_srgb,var(--brand-panel-foreground)_14%,transparent)] pt-5 first:border-0 first:pt-0">
+              <div class="reveal-fade border-t border-[color-mix(in_srgb,var(--brand-panel-foreground)_14%,transparent)] pt-5 first:border-0 first:pt-0">
                 <dt class="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[color-mix(in_srgb,var(--brand-accent)_82%,white)]">
                   {row.label}
                 </dt>
@@ -70,7 +70,7 @@ const anatomy = [
         </dl>
       </div>
 
-      <ul class="grid gap-8 self-center">
+      <ul class="grid gap-8 self-center" data-reveal-group data-reveal-step="110">
         {
           trustTenets.map((tenet) => (
             <li class="reveal">

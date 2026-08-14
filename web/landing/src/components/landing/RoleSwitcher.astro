@@ -3,8 +3,14 @@ import { roles } from "@/data/landing";
 ---
 
 <section class="roles border-b border-border py-16 sm:py-20" aria-labelledby="roles-heading">
-  <div class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-    <div class="max-w-2xl reveal">
+  {/*
+    Centered column. The four roles are peers, so a left rail implied a
+    hierarchy that is not there and pushed the panel off the page's centre
+    line — the only section that did. Tabs now sit above the panel they
+    switch, which is also where the feed switcher further up the page sits.
+  */}
+  <div class="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-2xl text-center reveal">
       <p class="text-sm font-medium uppercase tracking-[0.14em] eyebrow">Who it's for</p>
       <h2
         id="roles-heading"
@@ -18,7 +24,7 @@ import { roles } from "@/data/landing";
       </p>
     </div>
 
-    <div class="mt-10 grid gap-6 lg:grid-cols-[16rem_1fr] lg:gap-10">
+    <div class="mt-10 grid gap-6">
       <fieldset class="reveal">
         <legend class="sr-only">Choose a role</legend>
         <div class="role-options">
@@ -102,14 +108,15 @@ import { roles } from "@/data/landing";
 
 <style>
   /*
-    Wrapped pills on small screens, a vertical rail beside the panel on large
-    ones. Uses `:checked + label` for the same reason as the segmented control
-    in global.css — Tailwind's peer-checked utilities light up every following
+    A centered row of pills above the panel, wrapping on small screens. Uses
+    `:checked + label` for the same reason as the segmented control in
+    global.css — Tailwind's peer-checked utilities light up every following
     label, not just the selected one.
   */
   .role-options {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.5rem;
   }
 
@@ -147,19 +154,6 @@ import { roles } from "@/data/landing";
   .segmented-input:focus-visible + .role-option {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
-  }
-
-  @media (min-width: 1024px) {
-    .role-options {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.4rem;
-    }
-
-    .role-option {
-      justify-content: flex-start;
-      border-radius: 0.6rem;
-    }
   }
 
   .role-panel {

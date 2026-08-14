@@ -13,25 +13,29 @@ const { eyebrow, title, description, lede } = Astro.props;
 <section class="relative overflow-hidden border-b border-border py-16 sm:py-20">
   <div aria-hidden="true" class="hero-wash"></div>
 
-  <div class="relative mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8">
+  <div
+    class="relative mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8"
+    data-reveal-group
+    data-reveal-step="90"
+  >
     {
       eyebrow ? (
-        <p class="text-sm font-medium uppercase tracking-[0.14em] eyebrow">{eyebrow}</p>
+        <p class="reveal text-sm font-medium uppercase tracking-[0.14em] eyebrow">{eyebrow}</p>
       ) : null
     }
     <h1
-      class="font-display mt-3 text-[clamp(2.1rem,5.4vw,3.25rem)] font-medium leading-[1.06] text-[var(--text-primary)]"
+      class="font-display reveal mt-3 text-[clamp(2.1rem,5.4vw,3.25rem)] font-medium leading-[1.06] text-[var(--text-primary)]"
     >
       {title}
     </h1>
     {
       lede ? (
-        <p class="font-display mt-6 text-[clamp(1.15rem,2.4vw,1.5rem)] font-normal leading-[1.5] text-[var(--text-secondary)]">
+        <p class="font-display reveal mt-6 text-[clamp(1.15rem,2.4vw,1.5rem)] font-normal leading-[1.5] text-[var(--text-secondary)]">
           {lede}
         </p>
       ) : null
     }
-    <p class="mt-5 text-base leading-7 text-[var(--text-secondary)]">{description}</p>
+    <p class="reveal mt-5 text-base leading-7 text-[var(--text-secondary)]">{description}</p>
     <slot />
   </div>
 </section>

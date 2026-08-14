@@ -42,7 +42,7 @@ function PlatformBadge({ label, className }: { label: string; className: string 
 export function PricingAddons() {
   return (
     <section className="mt-16 sm:mt-20" aria-labelledby="pricing-addons-heading">
-      <div className="text-center">
+      <div className="reveal text-center">
         <p className="text-[11px] font-medium uppercase tracking-[0.1em] eyebrow">Add-on</p>
         <h2
           id="pricing-addons-heading"
@@ -57,7 +57,7 @@ export function PricingAddons() {
         </p>
       </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
+      <div className="mt-8 grid gap-4 md:grid-cols-2" data-reveal-group data-reveal-step="110">
         {pricingAddons.map((addon) => (
           <article
             key={addon.id}

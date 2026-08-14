@@ -50,10 +50,10 @@ import { myloLines } from "@/data/landing";
         alerts, onboarding, and empty states. Not on every card.
       </p>
 
-      <ul class="mt-8 grid gap-3">
+      <ul class="mt-8 grid gap-3" data-reveal-group data-reveal-step="100">
         {
           myloLines.map((line) => (
-            <li class="lift flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-sm leading-6 text-[var(--text-primary)] shadow-[0_8px_22px_rgb(52_39_20/5%)]">
+            <li class="lift reveal flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-sm leading-6 text-[var(--text-primary)] shadow-[0_8px_22px_rgb(52_39_20/5%)]">
               <span
                 class="mt-1.5 inline-flex size-2 shrink-0 rounded-full bg-primary"
                 aria-hidden="true"

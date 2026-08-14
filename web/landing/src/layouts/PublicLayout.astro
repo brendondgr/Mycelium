@@ -32,6 +32,28 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <script is:inline>
+      /*
+        Arms the scroll reveals, in <head> so the flag lands before the first
+        paint and nothing flickers from visible to hidden.
+
+        This is the only thing that ever hides content, and it refuses to do so
+        unless it can guarantee it can show it again: no IntersectionObserver,
+        no JavaScript at all, or a reader who asked for reduced motion, and the
+        flag never appears — every `.reveal` then renders in its final state
+        (see the motion block in global.css).
+      */
+      try {
+        if (
+          "IntersectionObserver" in window &&
+          !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ) {
+          document.documentElement.setAttribute("data-reveal", "armed");
+        }
+      } catch {
+        /* Anything unexpected leaves the page in its static, visible form. */
+      }
+    </script>
   </head>
   <body class="mycelium-network-bg text-foreground">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -40,5 +62,74 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
       <slot />
     </main>
     <SiteFooter />
+    <script is:inline>
+      /*
+        The reveal observer. Inline and dependency-free on purpose: the public
+        site ships no framework JavaScript, and this is small enough that a
+        separate request would cost more than it saves.
+
+        Fire-once — a page of cards replaying every time the reader scrolls back
+        up would be nausea, not polish. The bottom margin holds an element back
+        until it is genuinely a little way into the viewport rather than
+        clipping the very bottom edge.
+      */
+      (function () {
+        var root = document.documentElement;
+        if (root.getAttribute("data-reveal") !== "armed") return;
+
+        var SELECTOR = ".reveal, .reveal-fade, .thread-path";
+
+        try {
+          /*
+            A group cascades: each descendant waits a little longer than the
+            one before it, so a row of steps arrives in order instead of all at
+            once. Written as a delay rather than sequenced in JS so the browser
+            owns the timing and nothing is scheduled off the main thread.
+          */
+          var groups = document.querySelectorAll("[data-reveal-group]");
+          for (var g = 0; g < groups.length; g++) {
+            var step = parseInt(groups[g].getAttribute("data-reveal-step"), 10);
+            if (!(step > 0)) step = 110;
+            var members = groups[g].querySelectorAll(SELECTOR);
+            for (var m = 0; m < members.length; m++) {
+              members[m].style.setProperty("--reveal-delay", m * step + "ms");
+            }
+          }
+
+          var observer = new IntersectionObserver(
+            function (entries) {
+              for (var i = 0; i < entries.length; i++) {
+                if (!entries[i].isIntersecting) continue;
+                entries[i].target.classList.add("is-revealed");
+                observer.unobserve(entries[i].target);
+              }
+            },
+            { rootMargin: "0px 0px -8% 0px", threshold: 0 },
+          );
+
+          var targets = document.querySelectorAll(SELECTOR);
+          for (var t = 0; t < targets.length; t++) observer.observe(targets[t]);
+
+          /*
+            Last line of defence. Every page opens with a reveal target above
+            the fold, so a short while after load at least one of them must
+            have fired. If none has, the observer is not doing its job in this
+            environment — a zero-height viewport, a rendering mode we have not
+            met — and the honest response is to hand back the static page
+            rather than leave the reader looking at nothing.
+          */
+          addEventListener("load", function () {
+            setTimeout(function () {
+              if (!document.querySelector(".is-revealed")) {
+                root.removeAttribute("data-reveal");
+              }
+            }, 1200);
+          });
+        } catch {
+          /* Disarm rather than strand anything off-screen and invisible. */
+          root.removeAttribute("data-reveal");
+        }
+      })();
+    </script>
   </body>
 </html>

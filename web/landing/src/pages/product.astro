@@ -50,10 +50,14 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
         </p>
       </div>
 
-      <ol class="mt-12 grid gap-px overflow-hidden rounded-2xl border border-border bg-border">
+      <ol
+        class="mt-12 grid gap-px overflow-hidden rounded-2xl border border-border bg-border"
+        data-reveal-group
+        data-reveal-step="120"
+      >
         {
           feeds.map((feed, index) => (
-            <li class="grid gap-5 bg-[var(--surface)] p-6 sm:p-8 lg:grid-cols-[auto_1fr_1.1fr] lg:items-start lg:gap-10">
+            <li class="reveal-fade grid gap-5 bg-[var(--surface)] p-6 sm:p-8 lg:grid-cols-[auto_1fr_1.1fr] lg:items-start lg:gap-10">
               <span
                 class="font-display text-2xl font-medium leading-none text-[color-mix(in_srgb,var(--brand-primary)_55%,transparent)]"
                 aria-hidden="true"
@@ -106,7 +110,11 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
         </p>
       </div>
 
-      <ol class="match-steps mt-12 grid gap-8 lg:grid-cols-2 lg:gap-x-12 lg:gap-y-10">
+      <ol
+        class="match-steps mt-12 grid gap-8 lg:grid-cols-2 lg:gap-x-12 lg:gap-y-10"
+        data-reveal-group
+        data-reveal-step="160"
+      >
         {
           matchSteps.map((step) => (
             <li class="reveal grid grid-cols-[3.5rem_1fr] items-start gap-4">
@@ -140,7 +148,7 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
         </h2>
       </div>
 
-      <div class="mt-12 grid gap-5 sm:grid-cols-2">
+      <div class="mt-12 grid gap-5 sm:grid-cols-2" data-reveal-group data-reveal-step="110">
         {
           beyondFeeds.map((item) => (
             <article class="lift reveal rounded-2xl border border-border bg-card p-6 shadow-[0_10px_28px_rgb(52_39_20/5%)] sm:p-7">
@@ -180,7 +188,7 @@ import PublicLayout from "@/layouts/PublicLayout.astro";
         </p>
       </div>
 
-      <dl class="mt-12 grid gap-x-12 gap-y-8 sm:grid-cols-2">
+      <dl class="mt-12 grid gap-x-12 gap-y-8 sm:grid-cols-2" data-reveal-group data-reveal-step="100">
         {
           limits.map((limit) => (
             <div class="reveal border-t border-[color-mix(in_srgb,var(--text-primary)_14%,transparent)] pt-5">
