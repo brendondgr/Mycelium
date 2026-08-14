@@ -22,7 +22,8 @@ Paths are relative to the repository root.
 | Landing copy & capability claims | `web/landing/src/data/{landing,product,pricing,pricingComparison,site}.ts` |
 | Landing components | `web/landing/src/components/{landing,site,pricing}/` |
 | Landing feed preview card (mirrors the app's `MatchCard`) | `web/landing/src/components/landing/FeedCard.astro` |
-| Section backgrounds (tinted grounds, filament network) | `web/landing/src/components/site/SectionGround.astro` — use once or twice per page, never on every section |
+| Section backgrounds (tinted ground + botanical motif) | `web/landing/src/components/site/SectionGround.astro` — pick a different motif per section; leave plain sections between |
+| The motif artwork (roots, moss overhang, leaf vine, canopy, spores, filaments) | `web/landing/src/components/site/motifs/` |
 | Landing styles, scroll reveals | `web/landing/src/styles/global.css` (rules) + the two inline scripts in `web/landing/src/layouts/PublicLayout.astro` (arming flag + IntersectionObserver); no framework JS |
 | Artwork masters & sync | `web/art/`, `web/scripts/sync-art-assets.mjs` (derivatives are git-ignored) |
 

@@ -1,0 +1,52 @@
+---
+/**
+ * Leaf vine — a stem running down one edge of the section with leaves
+ * alternating off it. Anchored right by default so it frames the content
+ * without ever crossing the text column.
+ */
+
+interface Props {
+  /** Which edge the vine climbs. */
+  side?: "left" | "right";
+}
+
+const { side = "right" } = Astro.props;
+---
+
+<svg
+  class:list={["motif", "motif-vine", `motif-vine-${side}`]}
+  viewBox="0 0 260 900"
+  preserveAspectRatio={side === "right" ? "xMaxYMid meet" : "xMinYMid meet"}
+  fill="none"
+  aria-hidden="true"
+>
+  <defs>
+    {/* One almond leaf, reused at every node with its own rotation. */}
+    <path id="leaf-blade" d="M0 0 C 8 -11, 26 -11, 34 0 C 26 11, 8 11, 0 0 Z" />
+  </defs>
+
+  <path
+    class="motif-stem"
+    d="M186 -40 C 132 110, 214 250, 158 396 C 104 540, 190 682, 150 940"
+  ></path>
+
+  <g class="motif-leaf">
+    <use href="#leaf-blade" transform="translate(172 40) rotate(-32)" />
+    <use href="#leaf-blade" transform="translate(146 118) rotate(196) scale(0.86)" />
+    <use href="#leaf-blade" transform="translate(160 206) rotate(-18) scale(0.94)" />
+    <use href="#leaf-blade" transform="translate(196 288) rotate(206) scale(0.8)" />
+    <use href="#leaf-blade" transform="translate(178 372) rotate(-40)" />
+    <use href="#leaf-blade" transform="translate(132 452) rotate(188) scale(0.9)" />
+    <use href="#leaf-blade" transform="translate(140 546) rotate(-24) scale(0.82)" />
+    <use href="#leaf-blade" transform="translate(184 630) rotate(200)" />
+    <use href="#leaf-blade" transform="translate(170 716) rotate(-34) scale(0.9)" />
+    <use href="#leaf-blade" transform="translate(140 806) rotate(192) scale(0.84)" />
+  </g>
+
+  {/* A few buds where a leaf has not opened yet. */}
+  <g class="motif-node">
+    <circle class="node-pulse" cx="168" cy="164" r="3" />
+    <circle cx="186" cy="500" r="2.4" />
+    <circle class="node-pulse" cx="154" cy="762" r="2.8" />
+  </g>
+</svg>

@@ -1,14 +1,17 @@
 ---
+import SectionGround from "@/components/site/SectionGround.astro";
 import { myloLines } from "@/data/landing";
 ---
 
 <section
   id="meet-mylo"
-  class="border-b border-border bg-[var(--surface)] py-16 sm:py-20"
+  class="relative isolate overflow-hidden border-b border-border py-16 sm:py-20"
   aria-labelledby="meet-mylo-heading"
 >
+  <SectionGround tone="cream" motif="moss-overhang" fade="bottom" />
+
   <div
-    class="mx-auto grid w-full max-w-6xl gap-12 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16 lg:px-8"
+    class="relative mx-auto grid w-full max-w-6xl gap-12 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16 lg:px-8"
   >
     <div class="reveal relative mx-auto w-full max-w-[19rem]">
       <div class="mylo-halo" aria-hidden="true"></div>

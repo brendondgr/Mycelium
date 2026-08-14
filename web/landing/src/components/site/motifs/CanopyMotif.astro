@@ -1,0 +1,51 @@
+---
+/**
+ * Canopy — branches arcing in from the two top corners with small leaf
+ * clusters, so a closing section reads as sheltered rather than empty.
+ */
+---
+
+<svg
+  class="motif motif-canopy"
+  viewBox="0 0 1200 300"
+  preserveAspectRatio="xMidYMin meet"
+  fill="none"
+  aria-hidden="true"
+>
+  <defs>
+    <path id="canopy-leaf" d="M0 0 C 7 -10, 23 -10, 30 0 C 23 10, 7 10, 0 0 Z" />
+  </defs>
+
+  <g class="motif-branch">
+    <path d="M-30 -10 C 110 26, 214 78, 292 162" />
+    <path d="M96 16 C 132 62, 150 92, 158 140" />
+    <path d="M206 70 C 226 106, 232 132, 230 168" />
+
+    <path d="M1230 -10 C 1090 26, 986 78, 908 162" />
+    <path d="M1104 16 C 1068 62, 1050 92, 1042 140" />
+    <path d="M994 70 C 974 106, 968 132, 970 168" />
+  </g>
+
+  <g class="motif-leaf">
+    <use href="#canopy-leaf" transform="translate(58 2) rotate(24) scale(0.9)" />
+    <use href="#canopy-leaf" transform="translate(126 44) rotate(52) scale(0.8)" />
+    <use href="#canopy-leaf" transform="translate(150 118) rotate(84) scale(0.72)" />
+    <use href="#canopy-leaf" transform="translate(196 62) rotate(38)" />
+    <use href="#canopy-leaf" transform="translate(238 132) rotate(78) scale(0.78)" />
+    <use href="#canopy-leaf" transform="translate(268 108) rotate(46) scale(0.86)" />
+
+    <use href="#canopy-leaf" transform="translate(1142 2) rotate(156) scale(0.9)" />
+    <use href="#canopy-leaf" transform="translate(1074 44) rotate(128) scale(0.8)" />
+    <use href="#canopy-leaf" transform="translate(1050 118) rotate(96) scale(0.72)" />
+    <use href="#canopy-leaf" transform="translate(1004 62) rotate(142)" />
+    <use href="#canopy-leaf" transform="translate(962 132) rotate(102) scale(0.78)" />
+    <use href="#canopy-leaf" transform="translate(932 108) rotate(134) scale(0.86)" />
+  </g>
+
+  <g class="motif-node">
+    <circle class="node-pulse" cx="292" cy="164" r="3" />
+    <circle class="node-pulse" cx="908" cy="164" r="3" />
+    <circle cx="230" cy="170" r="2.2" />
+    <circle cx="970" cy="170" r="2.2" />
+  </g>
+</svg>

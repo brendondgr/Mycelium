@@ -1,0 +1,53 @@
+---
+/**
+ * Moss overhang — a mossy ledge growing over the top edge of the section, with
+ * strands hanging off the underside and a spore at the tip of a few of them.
+ *
+ * The lobed lower boundary is what sells it: an even edge reads as a graphic
+ * band, an uneven one reads as something growing.
+ */
+---
+
+<svg
+  class="motif motif-moss"
+  viewBox="0 0 1200 220"
+  preserveAspectRatio="xMidYMin meet"
+  fill="none"
+  aria-hidden="true"
+>
+  <path
+    class="motif-moss-body"
+    d="M0 -10 H1200 V64
+       C 1164 104, 1142 56, 1104 92
+       S 1042 128, 1002 84
+       C 964 44, 932 116, 892 96
+       S 830 138, 790 92
+       C 752 52, 720 122, 680 100
+       S 618 134, 578 88
+       C 540 48, 508 118, 468 96
+       S 406 136, 366 90
+       C 328 50, 296 120, 256 98
+       S 194 130, 154 86
+       C 116 46, 86 112, 46 90
+       S 12 58, 0 74 Z"
+  ></path>
+
+  {/* Strands hanging from the underside, each ending in a spore. */}
+  <g class="motif-strand">
+    <path d="M118 96 C 124 118, 112 132, 118 152" />
+    <path d="M332 100 C 338 126, 326 142, 332 166" />
+    <path d="M544 96 C 550 120, 538 134, 544 156" />
+    <path d="M742 104 C 748 132, 736 148, 742 174" />
+    <path d="M956 92 C 962 114, 950 128, 956 148" />
+    <path d="M1148 98 C 1154 124, 1142 140, 1148 162" />
+  </g>
+
+  <g class="motif-node">
+    <circle class="node-pulse" cx="118" cy="155" r="2.6" />
+    <circle cx="332" cy="169" r="2.2" />
+    <circle cx="544" cy="159" r="2.4" />
+    <circle class="node-pulse" cx="742" cy="177" r="2.8" />
+    <circle cx="956" cy="151" r="2.2" />
+    <circle cx="1148" cy="165" r="2.4" />
+  </g>
+</svg>

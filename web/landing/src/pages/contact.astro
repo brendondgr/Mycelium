@@ -1,5 +1,6 @@
 ---
 import PageHero from "@/components/site/PageHero.astro";
+import SectionGround from "@/components/site/SectionGround.astro";
 import { contactEmail, primaryCta } from "@/data/site";
 import PublicLayout from "@/layouts/PublicLayout.astro";
 
@@ -39,8 +40,13 @@ const routes = [
     description="Three reasons people get in touch, and the fastest route for each."
   />
 
-  <section class="border-b border-border py-16 sm:py-20" aria-labelledby="routes-heading">
-    <div class="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
+  <section
+    class="relative isolate overflow-hidden border-b border-border py-16 sm:py-20"
+    aria-labelledby="routes-heading"
+  >
+    <SectionGround tone="moss" motif="leaves" side="right" />
+
+    <div class="relative mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
       <h2 id="routes-heading" class="sr-only">How to reach us</h2>
 
       <ul class="grid gap-5" data-reveal-group data-reveal-step="120">

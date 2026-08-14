@@ -1,29 +1,38 @@
 ---
 /**
- * The ground a section sits on.
+ * The ground a section sits on: a tinted base, a soft wash of two brand hues,
+ * and — optionally — one botanical motif drawn into it.
  *
- * The site alternated between three creams — `--background` (#F8F4EC),
- * `--surface` (#FFFDF8) and `--surface-alt` (#EFE7D7) — which differ by a few
- * percent of luminance. Down a long page that reads as one undifferentiated
- * beige scroll, sections separated by a hairline border and nothing else.
+ * The site used to alternate between three creams (`--background` #F8F4EC,
+ * `--surface` #FFFDF8, `--surface-alt` #EFE7D7) that differ by a few percent of
+ * luminance, so a long page read as one beige scroll divided by hairlines.
  *
- * This gives a section a real ground: a tinted base and a soft wash of two
- * brand hues, built with `color-mix` over the theme tokens rather than literal
- * hex, so the tones follow the palette and invert with the dark forest theme.
+ * Two things keep this from becoming wallpaper, and both matter:
  *
- * **Use it sparingly — once or twice per page, never on every section.** A
- * treatment applied to everything stops being a treatment and becomes
- * wallpaper: the eye normalises it within a screen or two, the page reads as
- * busy rather than considered, and the sections that genuinely deserve emphasis
- * no longer have any way to get it. Each page should be recognisable by *which*
- * grounds it uses and where, not by carrying the same one throughout. The
- * filament network in particular is off by default and is currently used in
- * exactly one place site-wide — the About page's forest band, where a glowing
- * underground network is the literal subject.
+ *   1. **Vary the motif, not just the tint.** Six motifs ship (roots, moss
+ *      overhang, leaf vine, canopy, spores, filaments) and they are drawn
+ *      differently and anchored differently — moss hangs off the top edge, the
+ *      vine climbs one side, roots descend, spores drift. Reusing one texture
+ *      down a page is what reads as copy-paste; a different growth in each
+ *      place reads as a considered set.
+ *   2. **Leave gaps.** A page wants plain sections between the decorated ones,
+ *      or the decorated ones stop being emphasis. Roughly every other section
+ *      is the right density, and no page should repeat a motif within itself.
+ *
+ * Tones are `color-mix` over the theme tokens, never literal hex, so the whole
+ * system follows the palette and inverts with the dark forest theme. Motif
+ * colour comes from the `--motif-*` custom properties set per tone below, so a
+ * motif never has to know which ground it landed on.
  *
  * Usage: give the section `relative isolate overflow-hidden`, drop this in as
  * its first child, and make sure the content wrapper is `relative`.
  */
+import CanopyMotif from "@/components/site/motifs/CanopyMotif.astro";
+import FilamentMotif from "@/components/site/motifs/FilamentMotif.astro";
+import LeafVineMotif from "@/components/site/motifs/LeafVineMotif.astro";
+import MossOverhangMotif from "@/components/site/motifs/MossOverhangMotif.astro";
+import RootsMotif from "@/components/site/motifs/RootsMotif.astro";
+import SporeMotif from "@/components/site/motifs/SporeMotif.astro";
 
 interface Props {
   /**
@@ -33,63 +42,126 @@ interface Props {
    * forest    — the deep forest band; pairs with --brand-panel-foreground text
    */
   tone?: "cream" | "moss" | "parchment" | "forest";
-  /**
-   * Draw the mycelium filament network. Off by default and meant to stay rare —
-   * see the note above. Reach for it only where the network is the point.
-   */
-  threads?: boolean;
-  /**
-   * Fade the network out at the top, bottom, or both, so a run of adjacent
-   * ground sections does not show a hard seam where one net stops.
-   */
+  /** Which botanical growth to draw into the ground, if any. */
+  motif?:
+    | "none"
+    | "roots"
+    | "moss-overhang"
+    | "leaves"
+    | "canopy"
+    | "spores"
+    | "filaments";
+  /** Which edge the leaf vine climbs. Ignored by every other motif. */
+  side?: "left" | "right";
+  /** Feather the motif out at the top, bottom, or both, so adjacent decorated
+   *  sections do not show a hard seam where one growth stops. */
   fade?: "none" | "top" | "bottom" | "both";
 }
 
-const { tone = "cream", threads = false, fade = "both" } = Astro.props;
+const { tone = "cream", motif = "none", side = "right", fade = "both" } =
+  Astro.props;
 ---
 
 <div class:list={["ground", `ground-${tone}`]} aria-hidden="true">
   <div class="ground-wash"></div>
 
   {
-    threads ? (
-      <svg
-        class:list={["ground-threads", `ground-threads-fade-${fade}`]}
-        viewBox="0 0 1200 600"
-        preserveAspectRatio="xMidYMid slice"
-        fill="none"
-      >
-        {/* Three filaments running the width of the section, with shorter
-            branches bridging between them and nodes where they meet. Drawn
-            once at low opacity — the motif is connective tissue, and the style
-            guide is explicit that it must not compete with the content. */}
-        <g class="ground-filaments">
-          <path d="M-40 118 C 180 54, 322 200, 520 158 S 860 56, 1240 138" />
-          <path d="M-40 302 C 200 258, 340 382, 560 342 S 900 248, 1240 322" />
-          <path d="M-40 486 C 160 442, 300 566, 540 522 S 880 428, 1240 502" />
-
-          <path d="M222 92 C 262 178, 298 240, 300 302" />
-          <path d="M560 158 C 602 220, 620 282, 600 344" />
-          <path d="M884 88 C 906 178, 942 242, 930 300" />
-          <path d="M380 302 C 402 382, 432 452, 420 508" />
-          <path d="M762 330 C 792 402, 812 462, 800 514" />
-          <path d="M1064 140 C 1092 226, 1108 268, 1096 318" />
-        </g>
-
-        <g class="ground-nodes">
-          <circle class="node-pulse" cx="300" cy="302" r="3.4" />
-          <circle cx="600" cy="344" r="2.6" />
-          <circle class="node-pulse" cx="930" cy="300" r="3" />
-          <circle cx="420" cy="508" r="2.6" />
-          <circle class="node-pulse" cx="800" cy="514" r="3.2" />
-          <circle cx="222" cy="92" r="2.2" />
-          <circle cx="884" cy="88" r="2.2" />
-          <circle class="node-pulse" cx="1096" cy="318" r="2.8" />
-        </g>
-      </svg>
-    ) : null
+    motif === "none" ? null : (
+      <div class:list={["ground-motif", `ground-motif-fade-${fade}`]}>
+        {motif === "roots" ? <RootsMotif /> : null}
+        {motif === "moss-overhang" ? <MossOverhangMotif /> : null}
+        {motif === "leaves" ? <LeafVineMotif side={side} /> : null}
+        {motif === "canopy" ? <CanopyMotif /> : null}
+        {motif === "spores" ? <SporeMotif /> : null}
+        {motif === "filaments" ? <FilamentMotif /> : null}
+      </div>
+    )
   }
 </div>
+
+<style is:global>
+  /*
+   * Motif styling lives in a global block because the SVGs are separate
+   * components and Astro's scoping would not reach into them. Everything here
+   * is namespaced under `.ground`, so nothing leaks past a section ground.
+   */
+  .ground .motif {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .ground .motif-trunk path {
+    stroke: var(--motif-line);
+    stroke-width: 2;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+    opacity: var(--motif-line-opacity);
+  }
+
+  .ground .motif-branch path,
+  .ground .motif-stem,
+  .ground .motif-strand path {
+    stroke: var(--motif-line);
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+    opacity: var(--motif-line-opacity);
+  }
+
+  .ground .motif-leaf use {
+    fill: var(--motif-fill);
+    opacity: var(--motif-fill-opacity);
+  }
+
+  .ground .motif-moss-body {
+    fill: var(--motif-fill);
+    opacity: var(--motif-body-opacity);
+  }
+
+  /*
+   * The side-anchored vine only has room in a real margin. Below `lg` the
+   * content column fills the width, the vine would sit directly behind the
+   * text, and the style guide's rule that the motif must not compete with the
+   * content stops being satisfiable — so it simply does not render there.
+   */
+  @media (max-width: 1023px) {
+    .ground .motif-vine {
+      display: none;
+    }
+  }
+
+  /*
+   * The parchment ground darkens its own supporting text.
+   *
+   * `--text-secondary` clears 4.5:1 on cream and on moss with room to spare,
+   * but on parchment by only 0.05 — and a filled motif shape drawn on top
+   * spends exactly that, so a word landing on a leaf falls under AA. Rather
+   * than fading the growth until it is invisible, a section on this ground
+   * shifts its secondary text toward the primary ink. Setting the token means
+   * every `text-[var(--text-secondary)]` inside the section follows
+   * automatically, with no per-element edits.
+   *
+   * Without `:has()` the text simply stays as it was: each ground still passes
+   * on its own, it is only a glyph landing on a stroke or a leaf that is tight.
+   */
+  section:has(> .ground-parchment),
+  div:has(> .ground-parchment) {
+    /* Mixes from `--muted-foreground`, not from `--text-secondary` itself:
+       a token cannot be defined in terms of its own value, and the two carry
+       the same colour in both themes, so this stays theme-correct. */
+    --text-secondary: color-mix(in srgb, var(--text-primary) 45%, var(--muted-foreground));
+  }
+
+  .ground .motif-node circle {
+    fill: var(--motif-node);
+    opacity: var(--motif-node-opacity);
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+</style>
 
 <style>
   .ground {
@@ -98,6 +170,30 @@ const { tone = "cream", threads = false, fade = "both" } = Astro.props;
     z-index: -10;
     pointer-events: none;
     overflow: hidden;
+
+    /* Defaults for the light grounds; `forest` overrides them below. */
+    --motif-line: var(--brand-secondary);
+    --motif-fill: var(--brand-secondary);
+    --motif-node: var(--brand-accent);
+    /*
+     * Two measured limits hold this whole system to AA, and both were arrived
+     * at by compositing the real stack rather than by eye:
+     *
+     *   Filled shapes (leaves, the moss ledge) act as a background wherever a
+     *   word lands on one, so they are capped until the text over them still
+     *   clears 4.5:1.
+     *
+     *   Strokes and nodes are marks, not backgrounds — a hairline or a 3px
+     *   spore is never what a line of text sits on. They are instead held
+     *   quiet against their own ground (about 1.35:1 here), which keeps them
+     *   from mattering wherever they do cross a glyph. The forest band runs
+     *   its nodes brighter on purpose: gold junctions are the glow in "a
+     *   softly glowing research network", and the text there has 7:1 to spare.
+     */
+    --motif-line-opacity: 0.26;
+    --motif-fill-opacity: 0.13;
+    --motif-body-opacity: 0.1;
+    --motif-node-opacity: 0.36;
   }
 
   /*
@@ -118,6 +214,25 @@ const { tone = "cream", threads = false, fade = "both" } = Astro.props;
 
   .ground-forest {
     background: var(--brand-panel);
+    /* On the dark band the growth is the "softly glowing research network":
+       pale filaments, gold at the junctions. */
+    --motif-line: var(--brand-panel-foreground);
+    --motif-fill: var(--brand-panel-foreground);
+    --motif-node: var(--brand-accent);
+    --motif-line-opacity: 0.18;
+    --motif-fill-opacity: 0.12;
+    --motif-body-opacity: 0.1;
+    --motif-node-opacity: 0.45;
+  }
+
+  /* Parchment is already warm, so its growth leans gold rather than sage. */
+  .ground-parchment {
+    --motif-line: var(--brand-accent);
+    --motif-fill: var(--brand-accent);
+    --motif-node: var(--brand-primary);
+    --motif-line-opacity: 0.3;
+    --motif-fill-opacity: 0.11;
+    --motif-body-opacity: 0.08;
   }
 
   /*
@@ -187,67 +302,26 @@ const { tone = "cream", threads = false, fade = "both" } = Astro.props;
       );
   }
 
-  .ground-threads {
+  .ground-motif {
     position: absolute;
     inset: 0;
-    width: 100%;
-    height: 100%;
   }
 
-  /* Feathered edges so consecutive sections do not show where one net ends. */
-  .ground-threads-fade-both {
+  .ground-motif-fade-both {
     mask-image: linear-gradient(
       to bottom,
       transparent 0,
-      #000 18%,
-      #000 82%,
+      #000 16%,
+      #000 84%,
       transparent 100%
     );
   }
 
-  .ground-threads-fade-top {
+  .ground-motif-fade-top {
     mask-image: linear-gradient(to bottom, transparent 0, #000 22%);
   }
 
-  .ground-threads-fade-bottom {
+  .ground-motif-fade-bottom {
     mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
-  }
-
-  .ground-filaments path {
-    fill: none;
-    stroke: var(--brand-secondary);
-    stroke-width: 1;
-    stroke-linecap: round;
-    vector-effect: non-scaling-stroke;
-    opacity: 0.3;
-  }
-
-  .ground-nodes circle {
-    fill: var(--brand-secondary);
-    opacity: 0.42;
-    transform-box: fill-box;
-    transform-origin: center;
-  }
-
-  /* On the dark band the net is the "softly glowing research network", so it
-     reads a little brighter and picks up gold at the junctions. */
-  .ground-forest .ground-filaments path {
-    stroke: var(--brand-panel-foreground);
-    opacity: 0.16;
-  }
-
-  .ground-forest .ground-nodes circle {
-    fill: var(--brand-accent);
-    opacity: 0.5;
-  }
-
-  .ground-parchment .ground-filaments path {
-    stroke: var(--brand-accent);
-    opacity: 0.34;
-  }
-
-  .ground-parchment .ground-nodes circle {
-    fill: var(--brand-accent);
-    opacity: 0.45;
   }
 </style>

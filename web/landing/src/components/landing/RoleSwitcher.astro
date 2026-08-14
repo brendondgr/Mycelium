@@ -1,15 +1,21 @@
 ---
+import SectionGround from "@/components/site/SectionGround.astro";
 import { roles } from "@/data/landing";
 ---
 
-<section class="roles border-b border-border py-16 sm:py-20" aria-labelledby="roles-heading">
+<section
+  class="roles relative isolate overflow-hidden border-b border-border py-16 sm:py-20"
+  aria-labelledby="roles-heading"
+>
+  <SectionGround tone="parchment" motif="leaves" side="right" />
+
   {/*
     Centered column. The four roles are peers, so a left rail implied a
     hierarchy that is not there and pushed the panel off the page's centre
     line — the only section that did. Tabs now sit above the panel they
     switch, which is also where the feed switcher further up the page sits.
   */}
-  <div class="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
+  <div class="relative mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
     <div class="mx-auto max-w-2xl text-center reveal">
       <p class="text-sm font-medium uppercase tracking-[0.14em] eyebrow">Who it's for</p>
       <h2
