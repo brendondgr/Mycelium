@@ -20,7 +20,13 @@ import { pipeline } from "@/data/landing";
       </p>
     </div>
 
-    <div class="relative mt-14">
+    {/*
+      One reveal group: the thread draws first and each numbered step follows
+      it in turn, so the loop is read in the order it actually runs rather than
+      arriving as a block of four. The step is longer than the site default —
+      these are four sentences to read, not a grid of chips.
+    */}
+    <div class="relative mt-14" data-reveal-group data-reveal-step="220">
       <!--
         The connective thread. Stretched with preserveAspectRatio="none" and a
         non-scaling stroke so it stays a hairline at any width, and drawn on as

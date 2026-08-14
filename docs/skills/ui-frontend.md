@@ -64,13 +64,19 @@ focus           #B8D99A
 
 - **Public site:** Astro + Tailwind v4 + MDX. It ships **zero framework
   JavaScript** — React components are server-rendered only. Interactivity is CSS:
-  `:has()` panel selection, `:checked + label` styling, native `<details>` for the
-  mobile menu, and `animation-timeline: view()` reveals behind `@supports` +
-  `prefers-reduced-motion`, with the visible state as the default so an
-  unsupported browser still renders a complete page. Do not add a `client:*`
-  directive without deciding to start shipping React. Do not reach for Tailwind's
-  `peer-checked:` in a radio group — it compiles to a *general* sibling
-  combinator, so every label after the checked one matches.
+  `:has()` panel selection, `:checked + label` styling, and native `<details>`
+  for the mobile menu. The one exception is the scroll-reveal system: two inline
+  vanilla scripts in `PublicLayout.astro` (an `is:inline` head flag and an
+  IntersectionObserver at the end of `<body>`), no bundle and no framework.
+  Reveals used to be `animation-timeline: view()`, which Firefox still does not
+  support, so a large share of readers got the fully static page the motion
+  exists to avoid. Whatever the mechanism, the rule stands: **the visible state
+  is the default**, hiding only ever happens behind a flag the script sets once
+  it has proved it can un-hide, and a failsafe disarms the whole system if
+  nothing reveals shortly after load. Do not add a `client:*` directive without
+  deciding to start shipping React. Do not reach for Tailwind's `peer-checked:`
+  in a radio group — it compiles to a *general* sibling combinator, so every
+  label after the checked one matches.
 - **App:** Next.js App Router + React 19 + Tailwind v4.
 - Shared Tailwind v4 color tokens in `web/packages/config/src/theme.css`.
 - Radix UI primitives, styled locally (shadcn-style, `class-variance-authority` +

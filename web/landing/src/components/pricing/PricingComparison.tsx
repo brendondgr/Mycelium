@@ -38,20 +38,20 @@ const planCellKeys = ["spore", "lab", "canopy"] as const;
 export function PricingComparison() {
   return (
     <section className="py-12 sm:py-14" aria-labelledby="pricing-comparison-heading">
-      <p className="text-xs font-medium uppercase tracking-[0.14em] eyebrow">
+      <p className="reveal text-xs font-medium uppercase tracking-[0.14em] eyebrow">
         {pricingComparison.eyebrow}
       </p>
       <h2
         id="pricing-comparison-heading"
-        className="font-display mt-2 text-[clamp(1.5rem,3.2vw,2rem)] font-medium leading-tight text-[var(--text-primary)]"
+        className="font-display reveal mt-2 text-[clamp(1.5rem,3.2vw,2rem)] font-medium leading-tight text-[var(--text-primary)]"
       >
         {pricingComparison.title}
       </h2>
-      <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+      <p className="reveal mt-2 text-sm leading-6 text-[var(--text-secondary)]">
         {pricingComparison.subtitle}
       </p>
 
-      <div className="mt-8 overflow-x-auto rounded-2xl border border-border bg-card">
+      <div className="reveal mt-8 overflow-x-auto rounded-2xl border border-border bg-card">
         <table className="compare-table w-full min-w-[40rem] border-collapse text-[13px]">
           <caption className="sr-only">
             Feature comparison across Spore, Mycelium Lab, and Canopy

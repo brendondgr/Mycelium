@@ -21,22 +21,34 @@ import { appLoginUrl, primaryCta } from "@/data/site";
   <div
     class="relative z-10 mx-auto flex min-h-[min(92vh,52rem)] w-full max-w-6xl flex-col justify-center px-4 py-16 sm:min-h-[min(88vh,48rem)] sm:px-6 sm:py-20 lg:px-8"
   >
-    <div class="max-w-xl sm:max-w-2xl lg:max-w-[34rem]">
-      <p class="text-sm font-medium uppercase tracking-[0.14em] eyebrow">
+    {/*
+      The hero is above the fold, so this group runs on load rather than on
+      scroll — the page assembles itself line by line instead of arriving
+      pre-formatted. Deliberately the quickest cascade on the site: nobody
+      should wait to read the promise.
+    */}
+    <div
+      class="max-w-xl sm:max-w-2xl lg:max-w-[34rem]"
+      data-reveal-group
+      data-reveal-step="90"
+    >
+      <p class="reveal text-sm font-medium uppercase tracking-[0.14em] eyebrow">
         Lab intelligence platform
       </p>
       <h1
         id="hero-heading"
-        class="font-display mt-4 text-4xl font-semibold leading-[1.08] text-[var(--text-primary)] sm:text-5xl lg:text-[3.35rem]"
+        class="font-display reveal mt-4 text-4xl font-semibold leading-[1.08] text-[var(--text-primary)] sm:text-5xl lg:text-[3.35rem]"
       >
         Living intelligence for research labs
       </h1>
-      <p class="mt-5 text-base leading-7 text-[var(--text-secondary)] sm:text-lg sm:leading-8">
+      <p
+        class="reveal mt-5 text-base leading-7 text-[var(--text-secondary)] sm:text-lg sm:leading-8"
+      >
         Mycelium connects lab goals, literature, evidence, grants, fellowships,
         reports, and next actions—so your team can see what changed, what
         matters, and what to do next.
       </p>
-      <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <div class="reveal mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <a
           class="inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-7 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-brand-primary-hover"
           href={primaryCta.href}
@@ -50,7 +62,7 @@ import { appLoginUrl, primaryCta } from "@/data/site";
           Log in
         </a>
       </div>
-      <p class="mt-4 text-sm text-[var(--text-secondary)]">{primaryCta.note}</p>
+      <p class="reveal mt-4 text-sm text-[var(--text-secondary)]">{primaryCta.note}</p>
     </div>
   </div>
 </section>

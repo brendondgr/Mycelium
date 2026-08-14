@@ -93,51 +93,106 @@ body {
 /*
  * Motion system for the public site.
  *
- * Everything below is scroll-driven CSS — no JavaScript, no observers, no
- * animation library. Two rules keep it safe:
+ * Reveals used to ride `animation-timeline: view()`. That is a lovely
+ * mechanism and it is still missing from Firefox, so more than a tenth of
+ * readers were served a page that snapped into existence fully formed — the
+ * static-document feel this system exists to avoid. Everything below is driven
+ * instead by one IntersectionObserver in `PublicLayout.astro`: ~40 lines of
+ * inline vanilla JS, no framework, no animation library, no hydration.
  *
- *   1. The *default* state of every animated element is its final, visible
- *      state. The animation only ever plays inside the @supports block, so a
- *      browser without scroll-driven timelines renders a perfectly good static
- *      page rather than a blank one.
- *   2. Every animation sits behind `prefers-reduced-motion: no-preference`,
- *      on top of the global reduced-motion clamp further up this file.
+ * Two rules keep it safe:
  *
- * Because each element carries its own `view()` timeline, a grid of cards
- * staggers naturally as it scrolls in — no per-item delay bookkeeping.
+ *   1. Nothing is hidden until the script proves it can show it again. The
+ *      script sets `data-reveal="armed"` on <html> before the first paint, and
+ *      only when the browser has IntersectionObserver *and* the reader has not
+ *      asked for reduced motion. Every rule below is scoped to that flag, so
+ *      no-JS, an old browser, or reduced motion renders the finished page.
+ *   2. Only opacity, transform, and stroke-dashoffset animate. Nothing here
+ *      moves layout.
+ *
+ * `data-reveal-group` on a container cascades its descendants: the script
+ * writes an increasing `--reveal-delay` down them, which is how the pipeline
+ * steps arrive one at a time rather than as a block.
  */
 
-@keyframes reveal-rise {
-  from {
-    opacity: 0;
-    transform: translateY(1.5rem);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
+/*
+ * Registering the sweep angle as a real percentage is what makes the feed
+ * card's conic gradient interpolable. Where @property is unsupported the ring
+ * simply renders at its final value — the number is the message, the sweep is
+ * only the manner. Mirrors `--ring-sweep` in the workspace's globals.css.
+ */
+@property --ring-sweep {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
 }
 
-@keyframes reveal-fade {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+:root {
+  --reveal-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --reveal-duration: 680ms;
 }
 
-/* Draws an SVG path on as it enters. Pair with pathLength="1". */
-@keyframes thread-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
+/* Idle (unarmed) state: the SVG thread is simply drawn. */
+.thread-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
 
-  to {
-    stroke-dashoffset: 0;
-  }
+html[data-reveal="armed"] :is(.reveal, .reveal-fade) {
+  opacity: 0;
+}
+
+html[data-reveal="armed"] .reveal {
+  transform: translate3d(0, 1.25rem, 0);
+}
+
+html[data-reveal="armed"] :is(.reveal, .reveal-fade).is-revealed {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--reveal-duration) var(--reveal-ease) var(--reveal-delay, 0ms),
+    transform var(--reveal-duration) var(--reveal-ease) var(--reveal-delay, 0ms);
+}
+
+/* The connective thread draws itself on rather than fading. */
+html[data-reveal="armed"] .thread-path {
+  stroke-dashoffset: 1;
+}
+
+html[data-reveal="armed"] .thread-path.is-revealed {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1500ms cubic-bezier(0.4, 0, 0.5, 1)
+    var(--reveal-delay, 0ms);
+}
+
+/*
+ * The feed card's match ring sweeps to its percent as the card arrives, the
+ * same gesture `MatchRing` makes in the workspace — the number reads as
+ * measured rather than asserted.
+ */
+html[data-reveal="armed"] .reveal .score-ring {
+  --ring-sweep: 0%;
+}
+
+html[data-reveal="armed"] .reveal.is-revealed .score-ring {
+  --ring-sweep: calc(var(--pct) * 1%);
+  transition: --ring-sweep 900ms var(--reveal-ease)
+    calc(var(--reveal-delay, 0ms) + 120ms);
+}
+
+/*
+ * The pipeline's numbered marker sprouts as its step arrives — the same
+ * gesture as `mycelium-sprout` in the workspace kit, scaled down to a nudge.
+ * Scale only: the parent `.reveal` already owns the fade.
+ */
+html[data-reveal="armed"] .reveal :is(.pipeline-node, .match-node) {
+  transform: scale(0.82);
+}
+
+html[data-reveal="armed"] .reveal.is-revealed :is(.pipeline-node, .match-node) {
+  transform: none;
+  transition: transform 520ms var(--reveal-ease)
+    calc(var(--reveal-delay, 0ms) + 90ms);
 }
 
 @keyframes node-pulse {
@@ -153,32 +208,7 @@ body {
   }
 }
 
-.thread-path {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-}
-
 @media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .reveal {
-      animation: reveal-rise linear both;
-      animation-timeline: view();
-      animation-range: entry 4% cover 24%;
-    }
-
-    .reveal-fade {
-      animation: reveal-fade linear both;
-      animation-timeline: view();
-      animation-range: entry 2% cover 20%;
-    }
-
-    .thread-path {
-      animation: thread-draw linear both;
-      animation-timeline: view();
-      animation-range: entry 12% cover 60%;
-    }
-  }
-
   .node-pulse {
     animation: node-pulse 5.5s ease-in-out infinite;
     transform-box: fill-box;

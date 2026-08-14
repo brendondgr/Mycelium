@@ -12,7 +12,10 @@ export function PricingTierCard({ tier }: PricingTierCardProps) {
   return (
     <article
       className={cn(
-        "tier-card relative flex h-full flex-col rounded-2xl bg-card",
+        // `reveal-fade` rather than `reveal`: the featured tier is already
+        // lifted and scaled by its own utilities, and a reveal that also moved
+        // it would fight them.
+        "tier-card reveal-fade relative flex h-full flex-col rounded-2xl bg-card",
         tier.featured
           ? "tier-card-featured p-7 sm:p-8 lg:p-9 md:-translate-y-2 md:scale-[1.03] motion-reduce:translate-y-0 motion-reduce:scale-100"
           : "border border-border p-6 shadow-[0_10px_30px_rgb(52_39_20/5%)] sm:p-7",
