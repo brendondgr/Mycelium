@@ -1,5 +1,9 @@
+"use client";
+
 import * as React from "react";
 
+import { useInViewOnce } from "@/components/portal/motion/use-in-view-once";
+import { usePrefersReducedMotion } from "@/components/portal/motion/use-reduced-motion";
 import { cn } from "@/lib/utils";
 
 /** Percent-match tiers: strong (green), fair (amber), low (terracotta). */
@@ -62,6 +66,13 @@ export function MatchRing({
   scope?: string;
   className?: string;
 }) {
+  const reducedMotion = usePrefersReducedMotion();
+  // The arc sweeps to its value the first time the ring is genuinely on screen,
+  // so the number reads as measured rather than asserted. Once only: a feed of
+  // twenty-five cards replaying on every scroll back would be nausea, not
+  // polish. Hooks run before the null guard below, as they must.
+  const [ringRef, swept] = useInViewOnce<HTMLDivElement>({ enabled: !reducedMotion });
+
   if (typeof percent !== "number" || !Number.isFinite(percent)) return null;
 
   const pct = Math.max(0, Math.min(100, Math.round(percent)));
@@ -78,12 +89,22 @@ export function MatchRing({
         scope ? `${scope}'s research profile` : "your research profile"
       } — a ${word} match${byMylo ? ", judged by Mylo" : ""}`}
     >
-      <div className={cn("relative", dims.box)}>
+      <div ref={ringRef} className={cn("relative", dims.box)}>
         <div
-          className="h-full w-full rounded-full"
-          style={{
-            background: `conic-gradient(var(${token}) ${pct}%, color-mix(in srgb, var(--border) 70%, transparent) 0)`,
-          }}
+          className={cn(
+            "h-full w-full rounded-full",
+            swept && "mycelium-ring-sweep",
+          )}
+          style={
+            {
+              // The percent lives in a registered custom property so the sweep
+              // can interpolate it. Where @property is unsupported the ring
+              // renders straight at its final value, which is the right
+              // fallback — the number is the message, the sweep is the manner.
+              "--ring-sweep": `${pct}%`,
+              background: `conic-gradient(var(${token}) var(--ring-sweep), color-mix(in srgb, var(--border) 70%, transparent) 0)`,
+            } as React.CSSProperties
+          }
         />
         <div
           className={cn(
