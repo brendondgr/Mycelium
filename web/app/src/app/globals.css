@@ -215,9 +215,11 @@ body {
   .mycelium-root-line path {
     transition: stroke-dashoffset 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
   }
+  /* Tailwind's scale-* utilities compile to the `scale` property, not to
+     `transform`, so the node bloom has to name `scale` here or it snaps. */
   .mycelium-root-line ellipse {
     transition:
-      transform 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) 0.5s,
+      scale 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) 0.5s,
       opacity 0.34s ease 0.5s;
   }
 }

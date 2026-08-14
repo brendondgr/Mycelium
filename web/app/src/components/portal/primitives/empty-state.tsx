@@ -33,8 +33,11 @@ export function EmptyState({
       )}
     >
       {icon ? (
-        <div className="mx-auto mb-4 flex h-[60px] w-[60px] items-center justify-center rounded-2xl bg-surface-alt text-brand-secondary">
-          {icon}
+        <div className="relative mx-auto mb-4 h-[60px] w-[60px]">
+          <Seedling />
+          <div className="relative flex h-full w-full items-center justify-center rounded-2xl bg-surface-alt text-brand-secondary">
+            {icon}
+          </div>
         </div>
       ) : null}
       {badge ? (
@@ -52,5 +55,68 @@ export function EmptyState({
       ) : null}
       {action ? <div className="mt-5">{action}</div> : null}
     </section>
+  );
+}
+
+/** The leaf outline shared with the sidebar vine, drawn around its stem base. */
+const LEAF_D = "M0 0 C5 -9 18 -8 24 0 C18 8 5 9 0 0 Z";
+
+/**
+ * A seedling that unfurls once out of the top of the empty state's icon tile,
+ * then holds.
+ *
+ * One-shot on purpose: a looping animation in an empty state reads as "still
+ * loading", and people sit waiting for data that is never coming. Drawn
+ * statically in the markup and animated only by classes that exist under
+ * `prefers-reduced-motion: no-preference`, so this stays a server component and
+ * degrades to a finished sprout rather than a blank space.
+ */
+function Seedling() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 120 46"
+      width={120}
+      height={46}
+      fill="none"
+      className="pointer-events-none absolute bottom-[calc(100%-6px)] left-1/2 -translate-x-1/2"
+    >
+      <path
+        d="M60 46 C60 34 58 27 60 12"
+        pathLength={100}
+        stroke="var(--primary)"
+        strokeWidth={2}
+        strokeLinecap="round"
+        className="mycelium-unfurl-stem"
+        style={{ strokeDasharray: 100, strokeDashoffset: 0 }}
+      />
+      {[
+        { transform: "translate(59 28) rotate(-42)", opacity: 0.85, delay: "0.38s" },
+        { transform: "translate(59 32) rotate(214)", opacity: 0.62, delay: "0.51s" },
+        { transform: "translate(60 12)", opacity: 1, delay: "0.64s", spore: true },
+      ].map((leaf) => (
+        <g key={leaf.transform} transform={leaf.transform}>
+          <g
+            className="mycelium-unfurl-leaf"
+            style={{
+              transformBox: "fill-box",
+              transformOrigin: leaf.spore ? "center" : "0 50%",
+              animationDelay: leaf.delay,
+            }}
+          >
+            {leaf.spore ? (
+              <circle r={3} fill="var(--accent)" />
+            ) : (
+              <path
+                d={LEAF_D}
+                fill="var(--primary)"
+                opacity={leaf.opacity}
+                transform="scale(0.72)"
+              />
+            )}
+          </g>
+        </g>
+      ))}
+    </svg>
   );
 }
