@@ -12,6 +12,7 @@ import {
   LinkIcon,
 } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
+import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -218,13 +219,9 @@ function Group({
       </div>
       <div className="space-y-3.5">
         {items.map((reminder, index) => (
-          <div
-            key={reminder.id}
-            className="portal-fade-up"
-            style={{ animationDelay: `${index * 45}ms` }}
-          >
+          <RevealOnScroll key={reminder.id} delay={`${index * 45}ms`}>
             <ReminderRow reminder={reminder} onEdit={onEdit} />
-          </div>
+          </RevealOnScroll>
         ))}
       </div>
     </section>

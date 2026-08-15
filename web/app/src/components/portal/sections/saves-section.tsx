@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -382,17 +383,13 @@ function SavesBody({
           ) : (
             <div className="space-y-4">
               {visible.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="portal-fade-up"
-                  style={{ animationDelay: `${index * 45}ms` }}
-                >
+                <RevealOnScroll key={item.id} delay={`${index * 45}ms`}>
                   <SavedRow
                     item={item}
                     labSlug={labSlug}
                     canManage={canManage}
                   />
-                </div>
+                </RevealOnScroll>
               ))}
             </div>
           )}

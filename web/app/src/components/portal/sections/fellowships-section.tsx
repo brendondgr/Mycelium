@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
 import { MatchRing } from "@/components/portal/primitives/match-ring";
 import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
@@ -471,17 +472,16 @@ function FellowshipList({
   return (
     <div className="space-y-3.5">
       {items.map((item, index) => (
-        <div
+        <RevealOnScroll
           key={item.content_id}
-          className="portal-fade-up"
-          style={{ animationDelay: revealDelay(index, FELLOWSHIP_PAGE_SIZE) }}
+          delay={revealDelay(index, FELLOWSHIP_PAGE_SIZE)}
         >
           <FellowshipRow
             item={item}
             recommendedFor={recommendedFor?.[item.content_id]}
             scopeName={labName}
           />
-        </div>
+        </RevealOnScroll>
       ))}
     </div>
   );

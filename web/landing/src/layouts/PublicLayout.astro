@@ -64,20 +64,41 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
     <SiteFooter />
     <script is:inline>
       /*
-        The reveal observer. Inline and dependency-free on purpose: the public
-        site ships no framework JavaScript, and this is small enough that a
-        separate request would cost more than it saves.
+        The reveal observer.
 
-        Fire-once — a page of cards replaying every time the reader scrolls back
-        up would be nausea, not polish. The bottom margin holds an element back
-        until it is genuinely a little way into the viewport rather than
-        clipping the very bottom edge.
+        Inline and dependency-free on purpose: the public site ships no
+        framework JavaScript, and this is small enough that a separate request
+        would cost more than it saves.
+
+        It reveals **ahead of the reader**. Waiting for an element to enter the
+        viewport means the reader arrives at content that is still fading in,
+        which reads as the page struggling to keep up. So the observer's root is
+        extended *past* the bottom of the viewport and an element starts its
+        entrance while it is still below the fold — by the time it is actually
+        on screen the animation is done or nearly so.
+
+        How far ahead depends on how fast the page is moving. A slow reader gets
+        a short lead, so the entrance still plays where they can see it; a fast
+        scroll gets a long one, because the alternative is a wall of half-faded
+        content flying past. `rootMargin` is fixed at construction, so changing
+        the lead means rebuilding the observer — cheap, since it only happens on
+        a transition between the two speeds and only the unrevealed elements are
+        re-observed.
+
+        Fire-once: a page of cards replaying every time the reader scrolls back
+        up would be nausea, not polish.
       */
       (function () {
         var root = document.documentElement;
         if (root.getAttribute("data-reveal") !== "armed") return;
 
         var SELECTOR = ".reveal, .reveal-fade, .thread-path";
+
+        /* How far below the fold to start revealing, as a share of viewport
+           height: a modest lead while browsing, a long one while flinging. */
+        var LEAD = { slow: 25, fast: 90 };
+        /* Above this scroll speed (px/s) the long lead applies. */
+        var FAST_PX_PER_S = 900;
 
         try {
           /*
@@ -96,19 +117,63 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
             }
           }
 
-          var observer = new IntersectionObserver(
-            function (entries) {
-              for (var i = 0; i < entries.length; i++) {
-                if (!entries[i].isIntersecting) continue;
-                entries[i].target.classList.add("is-revealed");
-                observer.unobserve(entries[i].target);
-              }
-            },
-            { rootMargin: "0px 0px -8% 0px", threshold: 0 },
-          );
+          var pending = [].slice.call(document.querySelectorAll(SELECTOR));
+          var observer = null;
+          var speed = "slow";
 
-          var targets = document.querySelectorAll(SELECTOR);
-          for (var t = 0; t < targets.length; t++) observer.observe(targets[t]);
+          function reveal(el) {
+            el.classList.add("is-revealed");
+            var at = pending.indexOf(el);
+            if (at !== -1) pending.splice(at, 1);
+          }
+
+          function observeAt(which) {
+            speed = which;
+            if (observer) observer.disconnect();
+            observer = new IntersectionObserver(
+              function (entries) {
+                for (var i = 0; i < entries.length; i++) {
+                  if (!entries[i].isIntersecting) continue;
+                  reveal(entries[i].target);
+                  observer.unobserve(entries[i].target);
+                }
+              },
+              { rootMargin: "0px 0px " + LEAD[which] + "% 0px", threshold: 0 },
+            );
+            for (var i = 0; i < pending.length; i++) observer.observe(pending[i]);
+          }
+
+          observeAt("slow");
+
+          /*
+            Speed sampling. Reads scrollY on a passive listener and only touches
+            the observer when the reader crosses the threshold, so the common
+            case — steady scrolling — rebuilds nothing.
+          */
+          var lastY = window.scrollY;
+          var lastT = performance.now();
+          var ticking = false;
+
+          addEventListener(
+            "scroll",
+            function () {
+              if (ticking) return;
+              ticking = true;
+              requestAnimationFrame(function () {
+                ticking = false;
+                if (!pending.length) return;
+                var now = performance.now();
+                var dt = now - lastT;
+                if (dt < 60) return;
+                var v = (Math.abs(window.scrollY - lastY) / dt) * 1000;
+                lastY = window.scrollY;
+                lastT = now;
+                var want = v > FAST_PX_PER_S ? "fast" : "slow";
+                if (want !== speed) observeAt(want);
+              });
+            },
+            { passive: true },
+          );
 
           /*
             Last line of defence. Every page opens with a reveal target above

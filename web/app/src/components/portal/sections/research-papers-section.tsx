@@ -12,6 +12,7 @@ import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { DocumentIcon } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
+import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { SuggestionCard } from "@/components/portal/sections/suggestion-card";
 import { useDailyReport, useLabRecommendations } from "@/lib/portal/hooks";
 import {
@@ -303,17 +304,14 @@ function PapersFeed({
             {displayed.map((suggestion, index) => (
               <React.Fragment key={suggestion.content_id}>
                 {index === dividerAt ? <CrossTopicsDivider /> : null}
-                <div
-                  className="portal-fade-up"
-                  style={{
-                    animationDelay: revealDelay(index, PAPER_PAGE_SIZE, 60),
-                  }}
+                <RevealOnScroll
+                  delay={revealDelay(index, PAPER_PAGE_SIZE, 60)}
                 >
                   <SuggestionCard
                     suggestion={suggestion}
                     recommendedFor={recommendedFor?.[suggestion.content_id]}
                   />
-                </div>
+                </RevealOnScroll>
               </React.Fragment>
             ))}
           </div>

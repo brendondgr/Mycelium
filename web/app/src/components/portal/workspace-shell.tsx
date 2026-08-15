@@ -9,6 +9,7 @@ import {
   PortalProvider,
   type PortalUser,
 } from "@/components/portal/portal-context";
+import { PortalGround } from "@/components/portal/motion/section-ground";
 import { SectionStage } from "@/components/portal/section-stage";
 
 /**
@@ -35,9 +36,14 @@ export function WorkspaceShell({
         <PortalMobileNav />
         <div className="flex min-h-0 flex-1">
           <PortalSidebar />
-          <main className="min-w-0 flex-1 overflow-y-auto px-4 py-7 sm:px-6 lg:px-9 lg:py-8">
-            <SectionStage stageKey={pathname}>{children}</SectionStage>
-          </main>
+          {/* The ground lives in a wrapper that does not scroll, so it stays
+              put behind the section instead of sliding up with the feed. */}
+          <div className="relative isolate min-w-0 flex-1">
+            <PortalGround pathname={pathname} />
+            <main className="relative z-10 h-full overflow-y-auto px-4 py-7 sm:px-6 lg:px-9 lg:py-8">
+              <SectionStage stageKey={pathname}>{children}</SectionStage>
+            </main>
+          </div>
         </div>
       </div>
     </PortalProvider>

@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
 import { MatchRing } from "@/components/portal/primitives/match-ring";
 import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
@@ -490,22 +491,15 @@ function ConferencesFeed({
             <>
               <div className="space-y-3.5">
                 {displayed.map((conf, index) => (
-                  <div
+                  <RevealOnScroll
                     key={conf.content_id}
-                    className="portal-fade-up"
-                    style={{
-                      animationDelay: revealDelay(
-                        index,
-                        CONFERENCE_PAGE_SIZE,
-                        45,
-                      ),
-                    }}
+                    delay={revealDelay(index, CONFERENCE_PAGE_SIZE, 45)}
                   >
                     <ConferenceCard
                       conf={conf}
                       recommendedFor={recommendedFor?.[conf.content_id]}
                     />
-                  </div>
+                  </RevealOnScroll>
                 ))}
               </div>
               <FeedSentinel

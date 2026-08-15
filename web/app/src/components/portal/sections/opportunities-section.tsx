@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
 import { MatchRing } from "@/components/portal/primitives/match-ring";
 import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
@@ -225,16 +226,15 @@ function GrantsList({
   return (
     <div className="space-y-3.5">
       {grants.map((grant, index) => (
-        <div
+        <RevealOnScroll
           key={grant.content_id}
-          className="portal-fade-up"
-          style={{ animationDelay: revealDelay(index, GRANT_PAGE_SIZE) }}
+          delay={revealDelay(index, GRANT_PAGE_SIZE)}
         >
           <GrantRow
             grant={grant}
             recommendedFor={recommendedFor?.[grant.content_id]}
           />
-        </div>
+        </RevealOnScroll>
       ))}
     </div>
   );

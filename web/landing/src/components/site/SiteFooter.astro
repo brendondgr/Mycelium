@@ -1,10 +1,18 @@
 ---
+import SectionGround from "@/components/site/SectionGround.astro";
 import { footerNav, primaryCta, siteName, siteTagline } from "@/data/site";
 const year = new Date().getFullYear();
 ---
 
-<footer class="relative overflow-hidden border-t border-border bg-[var(--surface)]">
-  <div aria-hidden="true" class="thread-band"></div>
+{/*
+  The footer's decoration used to be a 6rem strip pinned to the top edge, so on
+  a 386px footer the colour stopped a quarter of the way down and the rest fell
+  back to flat surface — it read as a background that had failed to load. The
+  shared ground covers the whole element instead, and carries the same motif
+  vocabulary as the rest of the site.
+*/}
+<footer class="relative isolate overflow-hidden border-t border-border">
+  <SectionGround tone="moss" motif="spores" fade="none" />
 
   <div class="relative mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
     <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
@@ -81,17 +89,3 @@ const year = new Date().getFullYear();
     </div>
   </div>
 </footer>
-
-<style>
-  /* A single faint mycelium thread running under the footer edge. */
-  .thread-band {
-    position: absolute;
-    inset-inline: 0;
-    top: 0;
-    height: 6rem;
-    background-image:
-      radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--brand-secondary) 22%, transparent) 0, transparent 38%),
-      radial-gradient(circle at 68% 0%, color-mix(in srgb, var(--brand-accent) 16%, transparent) 0, transparent 34%);
-    pointer-events: none;
-  }
-</style>

@@ -38,6 +38,7 @@ import {
   filterAndSortGrants,
   type GrantSort,
 } from "@/components/portal/sections/grant-filters";
+import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import {
   revealDelay,
   useInfiniteReveal,
@@ -206,12 +207,9 @@ function AreaList<T>({
         {visible.map((item, index) => (
           <React.Fragment key={keyOf(item)}>
             {index === dividerAt ? divider : null}
-            <div
-              className="portal-fade-up"
-              style={{ animationDelay: revealDelay(index, PAGE_SIZE, 60) }}
-            >
+            <RevealOnScroll delay={revealDelay(index, PAGE_SIZE, 60)}>
               {renderItem(item)}
-            </div>
+            </RevealOnScroll>
           </React.Fragment>
         ))}
       </div>
