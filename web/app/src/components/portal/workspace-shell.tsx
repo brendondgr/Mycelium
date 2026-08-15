@@ -36,11 +36,25 @@ export function WorkspaceShell({
         <PortalMobileNav />
         <div className="flex min-h-0 flex-1">
           <PortalSidebar />
-          {/* The ground lives in a wrapper that does not scroll, so it stays
-              put behind the section instead of sliding up with the feed. */}
-          <div className="relative isolate min-w-0 flex-1">
+          {/*
+            The ground sits in a wrapper that does not itself scroll, so it
+            stays put behind the section instead of sliding up with the feed.
+
+            Two constraints on this wrapper, both learned the hard way:
+
+            - It must NOT be `isolate`. Every dialog in the workspace is a
+              `fixed inset-0 z-50` element rendered inside `main`; a stacking
+              context here traps them below the sticky header and they open
+              behind the chrome. `main` therefore also carries no `z-index` —
+              the ground and `main` are both positioned with `z-index` auto/0,
+              so plain DOM order puts the content above the ground.
+            - It mirrors the constraint chain `main` used to have directly
+              (`flex min-h-0 min-w-0 flex-1`), so `main` keeps exactly the
+              classes it always had and the row can still shrink to the screen.
+          */}
+          <div className="relative flex min-h-0 min-w-0 flex-1">
             <PortalGround pathname={pathname} />
-            <main className="relative z-10 h-full overflow-y-auto px-4 py-7 sm:px-6 lg:px-9 lg:py-8">
+            <main className="relative min-w-0 flex-1 overflow-y-auto px-4 py-7 sm:px-6 lg:px-9 lg:py-8">
               <SectionStage stageKey={pathname}>{children}</SectionStage>
             </main>
           </div>

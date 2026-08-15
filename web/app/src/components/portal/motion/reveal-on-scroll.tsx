@@ -58,10 +58,12 @@ function scrollParent(el: Element): Element | null {
   let node: Element | null = el.parentElement;
   while (node) {
     const overflowY = getComputedStyle(node).overflowY;
-    if (
-      (overflowY === "auto" || overflowY === "scroll") &&
-      node.scrollHeight > node.clientHeight
-    ) {
+    // Identified by its overflow alone, deliberately: whether it happens to be
+    // overflowing *right now* is not the question. A feed mounts its skeletons
+    // first, so `main` is not yet taller than its box, and a check for that
+    // would send the first batch of cards to a viewport-rooted observer that
+    // can never see past `main`'s clip — leaving them invisible.
+    if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") {
       return node;
     }
     node = node.parentElement;
@@ -140,11 +142,14 @@ function createController(root: Element | null): Ctl {
    * one timer per card.
    */
   let everFired = false;
-  let armed = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
   const armFailsafe = () => {
-    if (armed) return;
-    armed = true;
-    setTimeout(() => {
+    // Re-armed on every batch until something has actually fired. Arming only
+    // once would cover the first slice and then leave every later slice — the
+    // ones the infinite scroll adds — with no protection at all.
+    if (everFired || timer) return;
+    timer = setTimeout(() => {
+      timer = null;
       if (everFired) return;
       for (const el of [...pending]) {
         const fire = seen.get(el);
