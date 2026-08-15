@@ -221,8 +221,10 @@ body {
 }
 
 .portal-ground {
-  --grow: clamp(0, calc(var(--ground-progress) / 0.7), 1);
-  --late: clamp(0, calc((var(--ground-progress) - 0.15) / 0.5), 1);
+  /* Spread across almost the whole feed, so there is always something still
+     growing wherever the reader has stopped, and scrolling back up reverses it. */
+  --grow: clamp(0, calc(var(--ground-progress) / 0.9), 1);
+  --late: clamp(0, calc((var(--ground-progress) - 0.1) / 0.75), 1);
   --drift: calc(var(--ground-progress) * 2 - 1);
 }
 
@@ -277,7 +279,7 @@ body {
 
 /* The spore field has no lines, so its nodes are the drift, not tips. */
 .portal-ground-art:not(:has(.portal-ground-line)) .portal-ground-node circle {
-  --rise: -34px;
+  --rise: -90px;
   opacity: calc(0.26 * clamp(0.4, var(--late), 1));
 }
 

@@ -70,20 +70,13 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
         framework JavaScript, and this is small enough that a separate request
         would cost more than it saves.
 
-        It reveals **ahead of the reader**. Waiting for an element to enter the
-        viewport means the reader arrives at content that is still fading in,
-        which reads as the page struggling to keep up. So the observer's root is
-        extended *past* the bottom of the viewport and an element starts its
-        entrance while it is still below the fold — by the time it is actually
-        on screen the animation is done or nearly so.
-
-        How far ahead depends on how fast the page is moving. A slow reader gets
-        a short lead, so the entrance still plays where they can see it; a fast
-        scroll gets a long one, because the alternative is a wall of half-faded
-        content flying past. `rootMargin` is fixed at construction, so changing
-        the lead means rebuilding the observer — cheap, since it only happens on
-        a transition between the two speeds and only the unrevealed elements are
-        re-observed.
+        It deliberately fires *late* — an element starts its entrance once it is
+        a little way inside the viewport, not before. An earlier version ran
+        ahead of the reader, on the theory that content should be settled by the
+        time you arrive; in practice that means the animation happens where
+        nobody is looking and the page just seems to snap into place. The point
+        of the entrance is to be seen, so it waits until the element is on
+        screen and plays there.
 
         Fire-once: a page of cards replaying every time the reader scrolls back
         up would be nausea, not polish.
@@ -93,12 +86,6 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
         if (root.getAttribute("data-reveal") !== "armed") return;
 
         var SELECTOR = ".reveal, .reveal-fade, .thread-path";
-
-        /* How far below the fold to start revealing, as a share of viewport
-           height: a modest lead while browsing, a long one while flinging. */
-        var LEAD = { slow: 25, fast: 90 };
-        /* Above this scroll speed (px/s) the long lead applies. */
-        var FAST_PX_PER_S = 900;
 
         try {
           /*
@@ -117,63 +104,21 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
             }
           }
 
-          var pending = [].slice.call(document.querySelectorAll(SELECTOR));
-          var observer = null;
-          var speed = "slow";
-
-          function reveal(el) {
-            el.classList.add("is-revealed");
-            var at = pending.indexOf(el);
-            if (at !== -1) pending.splice(at, 1);
-          }
-
-          function observeAt(which) {
-            speed = which;
-            if (observer) observer.disconnect();
-            observer = new IntersectionObserver(
-              function (entries) {
-                for (var i = 0; i < entries.length; i++) {
-                  if (!entries[i].isIntersecting) continue;
-                  reveal(entries[i].target);
-                  observer.unobserve(entries[i].target);
-                }
-              },
-              { rootMargin: "0px 0px " + LEAD[which] + "% 0px", threshold: 0 },
-            );
-            for (var i = 0; i < pending.length; i++) observer.observe(pending[i]);
-          }
-
-          observeAt("slow");
-
-          /*
-            Speed sampling. Reads scrollY on a passive listener and only touches
-            the observer when the reader crosses the threshold, so the common
-            case — steady scrolling — rebuilds nothing.
-          */
-          var lastY = window.scrollY;
-          var lastT = performance.now();
-          var ticking = false;
-
-          addEventListener(
-            "scroll",
-            function () {
-              if (ticking) return;
-              ticking = true;
-              requestAnimationFrame(function () {
-                ticking = false;
-                if (!pending.length) return;
-                var now = performance.now();
-                var dt = now - lastT;
-                if (dt < 60) return;
-                var v = (Math.abs(window.scrollY - lastY) / dt) * 1000;
-                lastY = window.scrollY;
-                lastT = now;
-                var want = v > FAST_PX_PER_S ? "fast" : "slow";
-                if (want !== speed) observeAt(want);
-              });
+          var observer = new IntersectionObserver(
+            function (entries) {
+              for (var i = 0; i < entries.length; i++) {
+                if (!entries[i].isIntersecting) continue;
+                entries[i].target.classList.add("is-revealed");
+                observer.unobserve(entries[i].target);
+              }
             },
-            { passive: true },
+            /* Negative: hold the element back until it is genuinely inside the
+               viewport rather than clipping its bottom edge. */
+            { rootMargin: "0px 0px -8% 0px", threshold: 0 },
           );
+
+          var targets = document.querySelectorAll(SELECTOR);
+          for (var t = 0; t < targets.length; t++) observer.observe(targets[t]);
 
           /*
             Last line of defence. Every page opens with a reveal target above
@@ -198,42 +143,64 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
     </script>
     <script is:inline>
       /*
-        Scroll-linked growth, for browsers without `animation-timeline`.
+        Scroll-linked growth — the safety net under the CSS version.
 
-        Where scroll timelines exist the CSS in global.css does this on its own
-        and this script does nothing at all. Where they do not — Firefox, at
-        time of writing — the same `--ground-progress` is written here instead,
-        so the botanical grounds still grow with the scroll rather than sitting
-        finished from the start.
+        The good path is the scroll-driven animation in global.css: the
+        browser's own machinery tracks the scroll, so nothing lags and no script
+        runs per frame. This exists for the cases where that path is not
+        actually working — Firefox, which has no `animation-timeline`, and any
+        situation where the timeline exists but never activates.
 
-        Only grounds actually on screen are updated, and only once per frame.
-        Everything reads geometry and writes one custom property; no layout is
-        read after a write, so this cannot thrash.
+        That second case is not hypothetical. A `view()` timeline resolves
+        against the nearest ancestor *scroll container*, and an element with
+        `overflow: hidden` counts as one — so a timeline declared inside a
+        cropped section silently binds to something that never scrolls and sits
+        inactive forever. That exact bug shipped. Rather than trusting a
+        capability check to predict it, this waits for the first scroll and
+        *measures* whether the CSS animations are running; if they are, it
+        disconnects and costs nothing further, and if they are not, it drives
+        the same property itself.
       */
       (function () {
         try {
-          if (CSS.supports("animation-timeline", "view()")) return;
           if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
           var grounds = document.querySelectorAll(".ground");
           if (!grounds.length || typeof IntersectionObserver === "undefined") return;
 
           var live = new Set();
+          var driving = false;
+          var decided = false;
+
           var io = new IntersectionObserver(
             function (entries) {
               for (var i = 0; i < entries.length; i++) {
                 if (entries[i].isIntersecting) live.add(entries[i].target);
                 else live.delete(entries[i].target);
               }
-              if (live.size) schedule();
+              if (driving) schedule();
             },
             { rootMargin: "20% 0px" },
           );
-          for (var g = 0; g < grounds.length; g++) {
-            /* Same flag the CSS path sets: displacement is only applied once
-               something is actually driving the progress. */
-            grounds[g].style.setProperty("--ground-driven", "1");
-            io.observe(grounds[g]);
+          for (var g = 0; g < grounds.length; g++) io.observe(grounds[g]);
+
+          /* Is the CSS doing the job? Only answerable once something has
+             scrolled, because an unscrolled timeline has no time either. */
+          function cssIsDriving() {
+            if (!document.getAnimations) return false;
+            var list = document.getAnimations();
+            for (var i = 0; i < list.length; i++) {
+              if (list[i].animationName !== "ground-grow") continue;
+              if (list[i].currentTime !== null) return true;
+            }
+            return false;
+          }
+
+          function takeOver() {
+            driving = true;
+            for (var i = 0; i < grounds.length; i++) {
+              grounds[i].style.setProperty("--ground-driven", "1");
+            }
+            schedule();
           }
 
           var queued = false;
@@ -250,7 +217,7 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
               var box = el.getBoundingClientRect();
               /* The same range the CSS uses: the section's top edge touching
                  the bottom of the viewport through its bottom edge leaving the
-                 top. */
+                 top. Purely positional, so scrolling back up runs it backwards. */
               var span = vh + box.height;
               var p = span > 0 ? (vh - box.top) / span : 1;
               el.style.setProperty(
@@ -260,9 +227,24 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
             });
           }
 
-          addEventListener("scroll", schedule, { passive: true });
-          addEventListener("resize", schedule, { passive: true });
-          schedule();
+          function onScroll() {
+            if (!decided) {
+              decided = true;
+              if (cssIsDriving()) {
+                io.disconnect();
+                removeEventListener("scroll", onScroll);
+                return;
+              }
+              takeOver();
+              return;
+            }
+            if (driving) schedule();
+          }
+
+          addEventListener("scroll", onScroll, { passive: true });
+          addEventListener("resize", function () {
+            if (driving) schedule();
+          }, { passive: true });
         } catch {
           /* A ground left at its initial value renders fully grown, which is
              the correct static state — nothing to undo. */

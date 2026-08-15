@@ -162,7 +162,20 @@ body {
 
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
-    .ground {
+    /*
+     * The animation goes on the *section*, not on the ground inside it.
+     *
+     * `view()` measures the subject against its nearest ancestor scroll
+     * container — and an element with `overflow: hidden` is a scroll container.
+     * Every section carrying a ground is `overflow-hidden` (it has to be, to
+     * crop the growth), so a timeline declared on the ground resolved against
+     * the section, which never scrolls. The timeline was therefore permanently
+     * inactive, `currentTime` was null, and the property sat at its initial
+     * value: fully grown and completely still. Declared on the section, the
+     * search starts at *its* parent and reaches the document, which does
+     * scroll. `--ground-progress` inherits, so it still reaches every motif.
+     */
+    :where(section, div, footer):has(> .ground) {
       animation: ground-grow linear both;
       animation-timeline: view();
       /* Marks the growth as actually being driven. Displacement (parallax,

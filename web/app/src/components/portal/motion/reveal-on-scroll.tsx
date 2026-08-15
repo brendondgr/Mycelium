@@ -15,44 +15,39 @@ import { cn } from "@/lib/utils";
  * scrolled down to it, so past the first screenful the feed simply appeared,
  * fully formed, exactly the static effect the animation was there to avoid.
  *
- * This plays the entrance off the scroll position instead, and starts it
- * *early*. The observer's root runs past the bottom of the viewport, so a card
- * begins its fade while it is still below the fold and is settled by the time
- * it is actually visible — the feed reads as arriving just ahead of the reader
- * rather than catching up behind them.
- *
- * How far ahead scales with scroll speed: a slow reader gets a short lead so the
- * entrance still plays somewhere they can see it, and a fast scroll gets a long
- * one, because otherwise a flick down the page is a wall of half-faded cards.
+ * This plays the entrance off the scroll position instead, and plays it *where
+ * the reader is looking*. An earlier version ran ahead of the scroll, starting
+ * each card's fade while it was still below the fold on the theory that content
+ * should be settled by the time you reach it. That turns out to be the wrong
+ * trade: the animation happens off screen and the feed just seems to snap into
+ * place fully formed — the same complaint the mount-triggered version had. The
+ * margin below is therefore negative, holding a card back until it is genuinely
+ * inside the panel rather than clipping its bottom edge.
  *
  * Fires once per card. A twenty-five card feed replaying every time the reader
  * scrolls back up would be nausea, not polish.
  */
 
-/** Lead distance below the fold, as a share of viewport height. */
-const LEAD_SLOW = 0.3;
-const LEAD_FAST = 1;
-/** Above this scroll speed (px/s) the long lead applies. */
-const FAST_PX_PER_S = 900;
+/**
+ * How far *inside* the scroll port a card must come before it starts, as a
+ * share of the port's height. Negative on purpose — see above.
+ */
+const LEAD = -0.08;
 
 type Ctl = {
   observe: (el: Element, onSeen: () => void) => () => void;
 };
 
 /**
- * The workspace scrolls inside `<main>`, not the window, and that changes two
- * things that are easy to get wrong:
+ * The workspace scrolls inside `<main>`, not the window, so the observer has to
+ * be rooted on that element. `rootMargin` adjusts the *root*'s box, but
+ * clipping by intermediate ancestors is applied without it — left on the
+ * default viewport root, the margin would be measured against the viewport
+ * while `main`'s own box did the real clipping, and cards would trip the
+ * observer at the wrong moment.
  *
- *   - `rootMargin` expands the *root*, but clipping by intermediate ancestors
- *     is applied without it. Left on the default viewport root, the lead would
- *     be clipped away by `main`'s own box and nothing would ever reveal early.
- *     So the scroll container becomes the root.
- *   - `scroll` events do not bubble, so a listener on `window` never hears the
- *     container move and the fast lead would never engage.
- *
- * Hence: find the nearest scrollable ancestor, root the observer on it, and
- * listen to it. Falling back to the viewport keeps this working anywhere the
- * page itself is the scroller.
+ * Falling back to the viewport keeps this working anywhere the page itself is
+ * the scroller.
  */
 function scrollParent(el: Element): Element | null {
   let node: Element | null = el.parentElement;
@@ -80,58 +75,24 @@ function scrollParent(el: Element): Element | null {
 function createController(root: Element | null): Ctl {
   const seen = new WeakMap<Element, () => void>();
   const pending = new Set<Element>();
-  let observer: IntersectionObserver | null = null;
-  let speed: "slow" | "fast" = "slow";
 
-  const build = (next: "slow" | "fast") => {
-    speed = next;
-    observer?.disconnect();
-    const lead = next === "fast" ? LEAD_FAST : LEAD_SLOW;
-    observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const fire = seen.get(entry.target);
-          observer?.unobserve(entry.target);
-          pending.delete(entry.target);
-          fire?.();
-        }
-      },
-      // A percentage in rootMargin resolves against the root's own box, so this
-      // reads as "a third of a screenful further down".
-      {
-        root,
-        rootMargin: `0px 0px ${Math.round(lead * 100)}% 0px`,
-        threshold: 0,
-      },
-    );
-    for (const el of pending) observer.observe(el);
-  };
-
-  build("slow");
-
-  const readY = () => (root ? root.scrollTop : window.scrollY);
-  let lastY = readY();
-  let lastT = performance.now();
-  let ticking = false;
-  const onScroll = () => {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      ticking = false;
-      if (pending.size === 0) return;
-      const now = performance.now();
-      const dt = now - lastT;
-      if (dt < 60) return;
-      const y = readY();
-      const v = (Math.abs(y - lastY) / dt) * 1000;
-      lastY = y;
-      lastT = now;
-      const want = v > FAST_PX_PER_S ? "fast" : "slow";
-      if (want !== speed) build(want);
-    });
-  };
-  (root ?? window).addEventListener("scroll", onScroll, { passive: true });
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const fire = seen.get(entry.target);
+        observer.unobserve(entry.target);
+        pending.delete(entry.target);
+        fire?.();
+      }
+    },
+    // A percentage in rootMargin resolves against the root's own box.
+    {
+      root,
+      rootMargin: `0px 0px ${Math.round(LEAD * 100)}% 0px`,
+      threshold: 0,
+    },
+  );
 
   /*
    * Failsafe, mirroring the public site's. This component is the only thing
@@ -153,7 +114,7 @@ function createController(root: Element | null): Ctl {
       if (everFired) return;
       for (const el of [...pending]) {
         const fire = seen.get(el);
-        observer?.unobserve(el);
+        observer.unobserve(el);
         pending.delete(el);
         fire?.();
       }
@@ -167,10 +128,10 @@ function createController(root: Element | null): Ctl {
         onSeen();
       });
       pending.add(el);
-      observer?.observe(el);
+      observer.observe(el);
       armFailsafe();
       return () => {
-        observer?.unobserve(el);
+        observer.unobserve(el);
         pending.delete(el);
         seen.delete(el);
       };
