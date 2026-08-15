@@ -121,6 +121,62 @@ body {
  * simply renders at its final value — the number is the message, the sweep is
  * only the manner. Mirrors `--ring-sweep` in the workspace's globals.css.
  */
+/*
+ * Scroll-linked growth.
+ *
+ * One inherited number, `--ground-progress`, runs 0 → 1 as a section travels
+ * the viewport, and every botanical motif reacts to it: roots draw themselves
+ * downward, the vine's leaves open one after another, the canopy sweeps in,
+ * spores drift up past the reader. Nothing here loops — the motion belongs to
+ * the scroll, so the page is perfectly still when the reader is.
+ *
+ * The value is registered, so it interpolates and can be read inside `calc()`
+ * by any descendant. It is advanced two ways:
+ *
+ *   - a scroll-driven CSS animation where `animation-timeline` exists, which
+ *     is the good path: the browser's own animation machinery tracks the
+ *     scroll, so nothing lags behind it and no script runs per frame;
+ *   - a small observer-gated script otherwise (Firefox, at time of writing),
+ *     which writes the same property for the few grounds actually on screen.
+ *
+ * **Its initial value is 1, not 0** — the finished, fully-grown state. No
+ * JavaScript, no scroll timelines, or a reader who asked for reduced motion,
+ * and every growth simply renders complete. Nothing is ever hidden waiting for
+ * a mechanism that might not arrive.
+ */
+@property --ground-progress {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+@keyframes ground-grow {
+  from {
+    --ground-progress: 0;
+  }
+
+  to {
+    --ground-progress: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .ground {
+      animation: ground-grow linear both;
+      animation-timeline: view();
+      /* Marks the growth as actually being driven. Displacement (parallax,
+         spore drift) is multiplied by this, so in the static fallback state it
+         is zero and each motif sits exactly where it was composed — only the
+         *grown* state is the default, never a half-finished drift. */
+      --ground-driven: 1;
+      /* The full pass: from the section's top edge touching the bottom of the
+         viewport to its bottom edge leaving the top. */
+      animation-range: cover 0% cover 100%;
+    }
+  }
+}
+
 @property --ring-sweep {
   syntax: "<percentage>";
   inherits: false;

@@ -28,25 +28,26 @@ const { side = "right" } = Astro.props;
   <path
     class="motif-stem"
     d="M186 -40 C 132 110, 214 250, 158 396 C 104 540, 190 682, 150 940"
+    pathLength="1"
   ></path>
 
   <g class="motif-leaf">
-    <use href="#leaf-blade" transform="translate(172 40) rotate(-32)" />
-    <use href="#leaf-blade" transform="translate(146 118) rotate(196) scale(0.86)" />
-    <use href="#leaf-blade" transform="translate(160 206) rotate(-18) scale(0.94)" />
-    <use href="#leaf-blade" transform="translate(196 288) rotate(206) scale(0.8)" />
-    <use href="#leaf-blade" transform="translate(178 372) rotate(-40)" />
-    <use href="#leaf-blade" transform="translate(132 452) rotate(188) scale(0.9)" />
-    <use href="#leaf-blade" transform="translate(140 546) rotate(-24) scale(0.82)" />
-    <use href="#leaf-blade" transform="translate(184 630) rotate(200)" />
-    <use href="#leaf-blade" transform="translate(170 716) rotate(-34) scale(0.9)" />
-    <use href="#leaf-blade" transform="translate(140 806) rotate(192) scale(0.84)" />
+    <use style={`--i: 0`} href="#leaf-blade" transform="translate(172 40) rotate(-32)" />
+    <use style={`--i: 1`} href="#leaf-blade" transform="translate(146 118) rotate(196) scale(0.86)" />
+    <use style={`--i: 2`} href="#leaf-blade" transform="translate(160 206) rotate(-18) scale(0.94)" />
+    <use style={`--i: 3`} href="#leaf-blade" transform="translate(196 288) rotate(206) scale(0.8)" />
+    <use style={`--i: 4`} href="#leaf-blade" transform="translate(178 372) rotate(-40)" />
+    <use style={`--i: 5`} href="#leaf-blade" transform="translate(132 452) rotate(188) scale(0.9)" />
+    <use style={`--i: 6`} href="#leaf-blade" transform="translate(140 546) rotate(-24) scale(0.82)" />
+    <use style={`--i: 7`} href="#leaf-blade" transform="translate(184 630) rotate(200)" />
+    <use style={`--i: 8`} href="#leaf-blade" transform="translate(170 716) rotate(-34) scale(0.9)" />
+    <use style={`--i: 9`} href="#leaf-blade" transform="translate(140 806) rotate(192) scale(0.84)" />
   </g>
 
   {/* A few buds where a leaf has not opened yet. */}
   <g class="motif-node">
-    <circle class="node-pulse" cx="168" cy="164" r="3" />
+    <circle cx="168" cy="164" r="3" />
     <circle cx="186" cy="500" r="2.4" />
-    <circle class="node-pulse" cx="154" cy="762" r="2.8" />
+    <circle cx="154" cy="762" r="2.8" />
   </g>
 </svg>

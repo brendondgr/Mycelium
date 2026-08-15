@@ -196,5 +196,78 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
         }
       })();
     </script>
+    <script is:inline>
+      /*
+        Scroll-linked growth, for browsers without `animation-timeline`.
+
+        Where scroll timelines exist the CSS in global.css does this on its own
+        and this script does nothing at all. Where they do not — Firefox, at
+        time of writing — the same `--ground-progress` is written here instead,
+        so the botanical grounds still grow with the scroll rather than sitting
+        finished from the start.
+
+        Only grounds actually on screen are updated, and only once per frame.
+        Everything reads geometry and writes one custom property; no layout is
+        read after a write, so this cannot thrash.
+      */
+      (function () {
+        try {
+          if (CSS.supports("animation-timeline", "view()")) return;
+          if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+          var grounds = document.querySelectorAll(".ground");
+          if (!grounds.length || typeof IntersectionObserver === "undefined") return;
+
+          var live = new Set();
+          var io = new IntersectionObserver(
+            function (entries) {
+              for (var i = 0; i < entries.length; i++) {
+                if (entries[i].isIntersecting) live.add(entries[i].target);
+                else live.delete(entries[i].target);
+              }
+              if (live.size) schedule();
+            },
+            { rootMargin: "20% 0px" },
+          );
+          for (var g = 0; g < grounds.length; g++) {
+            /* Same flag the CSS path sets: displacement is only applied once
+               something is actually driving the progress. */
+            grounds[g].style.setProperty("--ground-driven", "1");
+            io.observe(grounds[g]);
+          }
+
+          var queued = false;
+          function schedule() {
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(paint);
+          }
+
+          function paint() {
+            queued = false;
+            var vh = window.innerHeight;
+            live.forEach(function (el) {
+              var box = el.getBoundingClientRect();
+              /* The same range the CSS uses: the section's top edge touching
+                 the bottom of the viewport through its bottom edge leaving the
+                 top. */
+              var span = vh + box.height;
+              var p = span > 0 ? (vh - box.top) / span : 1;
+              el.style.setProperty(
+                "--ground-progress",
+                p < 0 ? "0" : p > 1 ? "1" : p.toFixed(4),
+              );
+            });
+          }
+
+          addEventListener("scroll", schedule, { passive: true });
+          addEventListener("resize", schedule, { passive: true });
+          schedule();
+        } catch {
+          /* A ground left at its initial value renders fully grown, which is
+             the correct static state — nothing to undo. */
+        }
+      })();
+    </script>
   </body>
 </html>

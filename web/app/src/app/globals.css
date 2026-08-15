@@ -201,6 +201,40 @@ body {
   );
 }
 
+/*
+ * The workspace ground grows with the feed.
+ *
+ * `--ground-progress` runs 0 → 1 across the whole scroll length of the panel
+ * (written by `PortalGround`), so the growth advances over hundreds of pixels
+ * rather than seconds: roots reaching further down, leaves opening one at a
+ * time, spores drifting slowly up past the reader. Nothing loops — the page is
+ * still whenever the reader is, which is the whole difference between this and
+ * a decoration that fidgets at someone trying to work.
+ *
+ * Initial value 1 — fully grown. Reduced motion, or no script, and the ground
+ * simply renders finished.
+ */
+@property --ground-progress {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+.portal-ground {
+  --grow: clamp(0, calc(var(--ground-progress) / 0.7), 1);
+  --late: clamp(0, calc((var(--ground-progress) - 0.15) / 0.5), 1);
+  --drift: calc(var(--ground-progress) * 2 - 1);
+}
+
+.portal-ground-line path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--grow));
+}
+
+.portal-ground-leaf use {
+  --open: clamp(0, calc((var(--grow) * 9) - var(--i, 0)), 1);
+}
+
 .portal-ground-art {
   position: absolute;
   inset: 0;
@@ -219,12 +253,32 @@ body {
 
 .portal-ground-leaf use {
   fill: var(--brand-secondary);
-  opacity: 0.1;
+  opacity: calc(0.1 * var(--open, 1));
 }
 
 .portal-ground-node circle {
   fill: var(--brand-accent);
-  opacity: 0.26;
+  transform-box: fill-box;
+  transform-origin: center;
+  /* Spore fields drift; a tip at the end of a drawn line swells in behind it.
+     `--i` is the per-spore rate, set in the markup. */
+  opacity: calc(0.26 * var(--late));
+  /* Displacement is gated on `--ground-driven`, which the component sets only
+     when it is actually writing progress. In the static fallback every spore
+     sits exactly where it was composed rather than at one end of its drift. */
+  transform: translateY(
+    calc(var(--drift) * var(--rise, 0px) * var(--i, 1) * var(--ground-driven, 0))
+  );
+}
+
+.portal-ground-line ~ .portal-ground-node circle {
+  transform: scale(var(--late));
+}
+
+/* The spore field has no lines, so its nodes are the drift, not tips. */
+.portal-ground-art:not(:has(.portal-ground-line)) .portal-ground-node circle {
+  --rise: -34px;
+  opacity: calc(0.26 * clamp(0.4, var(--late), 1));
 }
 
 /*

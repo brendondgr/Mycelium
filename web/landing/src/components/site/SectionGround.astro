@@ -92,6 +92,69 @@ const { tone = "cream", motif = "none", side = "right", fade = "both" } =
     height: 100%;
   }
 
+  /*
+   * Ramps derived from `--ground-progress`. Each growth wants to *finish*
+   * somewhere around the middle of the section's pass, not at the very end —
+   * a root system that only completes as the section leaves has done its
+   * growing off-screen. So the draw runs on a compressed early ramp and the
+   * details (tips, buds) follow on a later one.
+   */
+  .ground {
+    --grow: clamp(0, calc(var(--ground-progress) / 0.55), 1);
+    --late: clamp(0, calc((var(--ground-progress) - 0.28) / 0.42), 1);
+    /* -1 at the section's first appearance, +1 as it leaves. */
+    --drift: calc(var(--ground-progress) * 2 - 1);
+  }
+
+  /*
+   * Parallax. The growth travels a little against the page, which is what
+   * makes it read as sitting *behind* the content rather than printed on it.
+   * Deliberately small: this is depth, not a ride.
+   */
+  .ground-motif {
+    transform: translate3d(
+      0,
+      calc(var(--drift) * var(--parallax, 30px) * var(--ground-driven, 0)),
+      0
+    );
+  }
+
+  /* Edge-anchored growths lead from their anchor, so they move less. */
+  .ground:has(.motif-moss) .ground-motif,
+  .ground:has(.motif-canopy) .ground-motif {
+    --parallax: 18px;
+  }
+
+  .ground:has(.motif-spores) .ground-motif {
+    --parallax: 0px;
+  }
+
+  /*
+   * Strokes draw themselves on. Every motif path carries `pathLength="1"`, so
+   * one dash of length 1 covers the whole path whatever its real length, and
+   * the offset is simply the part not yet grown.
+   */
+  .ground .motif-trunk path,
+  .ground .motif-branch path,
+  .ground .motif-stem,
+  .ground .motif-strand path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: calc(1 - var(--grow));
+  }
+
+  /*
+   * Leaves open in sequence down the vine and out along each branch. Opacity
+   * rather than scale, because the placement transform on a `<use>` is an SVG
+   * attribute and a CSS transform would overwrite it.
+   */
+  .ground .motif-leaf use {
+    /* The multiplier must clear the highest `--i` in any motif (the canopy has
+       twelve leaves), or the last few never finish opening. Each leaf gets a
+       1/14th slice of the grow ramp, offset by its index. */
+    --open: clamp(0, calc((var(--grow) * 14) - var(--i, 0)), 1);
+    opacity: calc(var(--motif-fill-opacity) * var(--open));
+  }
+
   .ground .motif-trunk path {
     stroke: var(--motif-line);
     stroke-width: 2;
@@ -113,12 +176,15 @@ const { tone = "cream", motif = "none", side = "right", fade = "both" } =
 
   .ground .motif-leaf use {
     fill: var(--motif-fill);
-    opacity: var(--motif-fill-opacity);
+    /* Opacity is owned by the staggered `--open` rule above — setting it here
+       too would win on source order and freeze every leaf fully open. */
   }
 
   .ground .motif-moss-body {
     fill: var(--motif-fill);
     opacity: var(--motif-body-opacity);
+    /* The ledge creeps a little further over the edge as the section rises. */
+    transform: translateY(calc((var(--grow) * 10px - 10px) * var(--ground-driven, 0)));
   }
 
   /*
@@ -155,11 +221,35 @@ const { tone = "cream", motif = "none", side = "right", fade = "both" } =
     --text-secondary: color-mix(in srgb, var(--text-primary) 45%, var(--muted-foreground));
   }
 
+  /*
+   * Nodes do one of two things. On a drawn growth they are tips, so they swell
+   * in on the late ramp, just behind the stroke that reaches them. In the
+   * spore field there is nothing to reach them from, so they drift upward
+   * instead, each at its own rate — `--i` is set per spore in the markup.
+   */
   .ground .motif-node circle {
     fill: var(--motif-node);
-    opacity: var(--motif-node-opacity);
+    opacity: calc(var(--motif-node-opacity) * var(--late));
     transform-box: fill-box;
     transform-origin: center;
+    transform: translateY(
+        calc(var(--drift) * var(--rise, 0px) * var(--i, 1) * var(--ground-driven, 0))
+      )
+      scale(var(--tip, 1));
+  }
+
+  .ground .motif-trunk ~ .motif-node circle,
+  .ground .motif-branch ~ .motif-node circle,
+  .ground .motif-strand ~ .motif-node circle,
+  .ground .motif-stem ~ .motif-node circle {
+    --tip: var(--late);
+  }
+
+  .ground .motif-spores .motif-node circle {
+    --rise: -26px;
+    /* Spores are already adrift; they should not also pop in. */
+    --tip: 1;
+    opacity: calc(var(--motif-node-opacity) * clamp(0.35, var(--late), 1));
   }
 </style>
 
