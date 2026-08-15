@@ -1,23 +1,32 @@
+"use client";
+
 import * as React from "react";
 
+import { MatchRing } from "@/components/portal/primitives/match-ring";
+import { Pill } from "@/components/portal/primitives/pill";
 import { cn } from "@/lib/utils";
 
 /**
- * A small, dependency-free markdown renderer for the controlled markdown the Mylo
- * Report generator emits: `##` / `###` / `####` headings, `N.` numbered items with
- * their explanation on the following line, `-`/`*` bullet lists, blank-line
- * paragraphs, `**bold**`, and `[text](url)` links. It is deliberately NOT a full
- * CommonMark engine — it renders exactly the constructs the backend produces
- * (see `apps.content.briefing_sections`, which documents the grammar), so we avoid
+ * A small, dependency-free renderer for the controlled markdown the Mylo Report
+ * generator emits: `##` / `###` / `####` headings, `N.` numbered items with their
+ * explanation on the following line, `-`/`*` bullet lists, blank-line paragraphs,
+ * `**bold**`, and `[text](url)` links. It is deliberately NOT a full CommonMark
+ * engine — it renders exactly the constructs the backend produces (see
+ * `apps.content.briefing_sections`, which documents the grammar), so we avoid
  * pulling in a markdown dependency for a single, well-scoped surface.
  *
- * The two facts a reader scans a ranked list for — whether an item is new, and how
- * well it matches — are lifted out of the run of text as chips, the same way the
- * PDF report renders them. The report is one document with two renderers; they are
- * not allowed to disagree about what stands out.
+ * It renders the same **document** the PDF does, in the app's own materials. Both
+ * carry the report's hierarchy — part, category, focus theme — and both present a
+ * ranked item as one entry: its rank, its title, whether it is new, when it is due,
+ * why it matters, and how well it fits. Where they differ is the vocabulary, and
+ * deliberately: the percent is a `MatchRing` here because that is the one element
+ * this app uses everywhere to say "how well does this fit me", and a report that
+ * invented a second way to show a match would read as a different product than the
+ * feed beside it. Print gets a chip because print cannot sweep an arc.
  *
  * Anything it doesn't recognize is rendered as plain text, so an unexpected
- * construct degrades to readable prose rather than breaking.
+ * construct — including a report written before this grammar existed — degrades to
+ * readable prose rather than breaking.
  */
 
 const LINK_CLASS =
@@ -87,7 +96,14 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
   return nodes;
 }
 
-type OrderedItem = { marker: string; text: string; note: string };
+type OrderedItem = {
+  marker: string;
+  text: string;
+  note: string;
+  isNew: boolean;
+  match: number | null;
+  deadline: string;
+};
 
 type Block =
   | { kind: "heading"; level: 2 | 3 | 4; text: string }
@@ -99,6 +115,40 @@ const HEADING = /^(#{2,4})\s+(.*)$/;
 const BULLET = /^[-*]\s+(.*)$/;
 // A ranked item: `1. **[Title](url)** — **NEW** · 88% match`.
 const ORDERED = /^(\d{1,3})[.)]\s+(.*)$/;
+
+// The three signals a ranked item's title line carries. Each is pulled out and
+// given its own element, so the title is a title — left inline they were a run of
+// punctuation between the reader and the thing they were scanning for.
+const NEW_SIGNAL = /\*\*NEW\*\*/i;
+const MATCH_SIGNAL = /\b(\d{1,3})%\s+match\b/i;
+const DEADLINE_SIGNAL = /\bdeadline\s+(\d{4}-\d{2}-\d{2})\b/i;
+// Whatever separators the removed signals leave stranded at the end of the line.
+const TRAILING_SEPARATORS = /[\s·•—–-]+$/;
+
+/**
+ * Split a ranked item's title line into its title and its signals.
+ *
+ * Order-independent, because the line is model-written as often as it is
+ * generated: each signal is matched wherever it sits, removed, and the separators
+ * it leaves behind are cleaned off the tail. Mirrors `_split_item_line` in
+ * `apps/content/daily_report_pdf.py` — the two renderers read one grammar.
+ */
+function splitItemLine(line: string): Omit<OrderedItem, "marker" | "note"> {
+  const isNew = NEW_SIGNAL.test(line);
+  let rest = line.replace(NEW_SIGNAL, "");
+
+  const matched = MATCH_SIGNAL.exec(rest);
+  const match = matched ? Number(matched[1]) : null;
+  rest = rest.replace(MATCH_SIGNAL, "");
+
+  const due = DEADLINE_SIGNAL.exec(rest);
+  const deadline = due ? due[1] : "";
+  rest = rest.replace(DEADLINE_SIGNAL, "");
+
+  // Collapse the separator runs the removals opened up mid-line, then trim.
+  rest = rest.replace(/\s*·\s*(?=[·•—–-]|\s*$)/g, " ");
+  return { text: rest.replace(TRAILING_SEPARATORS, "").trim(), isNew, match, deadline };
+}
 
 function parseBlocks(source: string): Block[] {
   const lines = source.replace(/\r\n/g, "\n").split("\n");
@@ -155,7 +205,11 @@ function parseBlocks(source: string): Block[] {
     if (numbered) {
       flushParagraph();
       flushList();
-      ordered.push({ marker: numbered[1], text: numbered[2].trim(), note: "" });
+      ordered.push({
+        marker: numbered[1],
+        note: "",
+        ...splitItemLine(numbered[2].trim()),
+      });
       continue;
     }
     const bullet = BULLET.exec(line);
@@ -178,13 +232,62 @@ function parseBlocks(source: string): Block[] {
   return blocks;
 }
 
-// A focus theme (`####`) is a pill, and it is *larger* than the entries under it —
-// set smaller, a heading reads as a caption on the item that follows it.
+/**
+ * The report's three heading levels, in the order the document nests them: a part
+ * (the reader's own section, or a project), a category within it, and a focus
+ * theme within that. Each is visibly a step down from the one above, and the theme
+ * is a pill because a theme is a label rather than a sentence.
+ *
+ * A neutral pill rather than `ClusterBadge`: that badge keys its colour on a
+ * cluster **id**, and the report body carries only the label. A badge that looked
+ * like a cluster badge but coloured a cluster differently from the same cluster on
+ * the feed would be worse than no colour at all.
+ */
 const HEADING_CLASS: Record<2 | 3 | 4, string> = {
-  2: "mt-6 mb-2 text-[18px] font-serif font-semibold text-[var(--text-primary)]",
-  3: "mt-5 mb-1.5 text-[15px] font-serif font-semibold text-[var(--text-primary)]",
-  4: "mt-5 mb-2.5 inline-block rounded-full border border-border bg-surface-alt px-3 py-1 text-[15px] font-semibold text-brand-primary-hover",
+  2: "mt-7 mb-3 border-b border-[var(--divider)] pb-1.5 font-serif text-[19px] font-semibold text-[var(--text-primary)]",
+  3: "mt-5 mb-1 font-serif text-[15px] font-semibold text-[var(--text-primary)]",
+  4: "mt-4 mb-1 inline-block rounded-full border border-border bg-surface-alt px-3 py-1 text-[14px] font-semibold text-brand-primary-hover",
 };
+
+/** One ranked entry: its rank, what it is, and how well it fits. */
+function OrderedEntry({ item, keyBase }: { item: OrderedItem; keyBase: string }) {
+  return (
+    <li className="flex items-start gap-3 border-b border-[var(--divider)] py-3 last:border-b-0">
+      {/* The `<ol>` carries the ordering for assistive tech (and is given the
+          right `start`, since a theme group restarts the element but not the
+          ranking), so the visible number is presentation. */}
+      <span
+        aria-hidden="true"
+        className="w-5 shrink-0 pt-0.5 text-right font-serif text-[15px] font-semibold tabular-nums text-[var(--text-muted)]"
+      >
+        {item.marker}.
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[15px] font-semibold leading-snug text-[var(--text-primary)] [text-wrap:pretty]">
+          {renderInline(item.text, `${keyBase}-t`)}
+        </p>
+        {item.isNew || item.deadline ? (
+          <p className="mt-1.5 flex flex-wrap items-center gap-2">
+            {item.isNew ? <Pill tone="accent">New</Pill> : null}
+            {item.deadline ? (
+              <span className="text-xs font-semibold text-clay">
+                Deadline {item.deadline}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+        {item.note ? (
+          <p className="mt-1.5 text-[14px] leading-relaxed [text-wrap:pretty]">
+            {renderInline(item.note, `${keyBase}-n`)}
+          </p>
+        ) : null}
+      </div>
+      {/* Renders nothing when the item carries no percent, which is the honest
+          answer rather than a fabricated ring. */}
+      <MatchRing percent={item.match} size="sm" />
+    </li>
+  );
+}
 
 export function MarkdownProse({
   text,
@@ -210,21 +313,13 @@ export function MarkdownProse({
         }
         if (block.kind === "ordered") {
           return (
-            <ol key={key} className="mt-3 mb-3 list-none space-y-3 first:mt-0">
+            <ol
+              key={key}
+              start={Number(block.items[0].marker) || 1}
+              className="mt-1 mb-2 list-none first:mt-0"
+            >
               {block.items.map((item, i) => (
-                <li key={`${key}-oi${i}`} className="flex gap-2.5">
-                  <span className="shrink-0 pt-px font-serif font-semibold tabular-nums text-[var(--text-muted)]">
-                    {item.marker}.
-                  </span>
-                  <span className="min-w-0 [text-wrap:pretty]">
-                    <span className="block">{renderInline(item.text, `${key}-oi${i}`)}</span>
-                    {item.note ? (
-                      <span className="mt-0.5 block text-[var(--text-secondary)]">
-                        {renderInline(item.note, `${key}-on${i}`)}
-                      </span>
-                    ) : null}
-                  </span>
-                </li>
+                <OrderedEntry key={`${key}-oi${i}`} item={item} keyBase={`${key}-oi${i}`} />
               ))}
             </ol>
           );
