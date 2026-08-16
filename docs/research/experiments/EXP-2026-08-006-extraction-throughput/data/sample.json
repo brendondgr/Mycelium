@@ -1,0 +1,194 @@
+[
+  {
+    "key": "num:NSFPD26369Y",
+    "kind": "grant",
+    "source": "nsf",
+    "prompt_chars": 4406
+  },
+  {
+    "key": "num:NSF26511",
+    "kind": "grant",
+    "source": "nsf",
+    "prompt_chars": 12000
+  },
+  {
+    "key": "num:NSFFLFOUNDATIONSLIFE",
+    "kind": "grant",
+    "source": "nsf",
+    "prompt_chars": 1726
+  },
+  {
+    "key": "num:NSF26512",
+    "kind": "grant",
+    "source": "nsf",
+    "prompt_chars": 12000
+  },
+  {
+    "key": "num:HORIZONCL5202611D306:topic",
+    "kind": "grant",
+    "source": "eu_portal",
+    "prompt_chars": 9017
+  },
+  {
+    "key": "num:HORIZONJUCBE2026IAFLAG03:topic",
+    "kind": "grant",
+    "source": "eu_portal",
+    "prompt_chars": 9139
+  },
+  {
+    "key": "num:HORIZONCL5202704TWOSTAGED207:topic",
+    "kind": "grant",
+    "source": "eu_portal",
+    "prompt_chars": 12000
+  },
+  {
+    "key": "num:HORIZONCL5202703D515:topic",
+    "kind": "grant",
+    "source": "eu_portal",
+    "prompt_chars": 11517
+  },
+  {
+    "key": "num:PAR26128",
+    "kind": "grant",
+    "source": "grants_gov",
+    "prompt_chars": 3038
+  },
+  {
+    "key": "num:FY26PDSUSASEAN02",
+    "kind": "grant",
+    "source": "grants_gov",
+    "prompt_chars": 1603
+  },
+  {
+    "key": "num:CDCRFAJG260130",
+    "kind": "grant",
+    "source": "grants_gov",
+    "prompt_chars": 1799
+  },
+  {
+    "key": "num:CDCRFAPS270011",
+    "kind": "grant",
+    "source": "grants_gov",
+    "prompt_chars": 2664
+  },
+  {
+    "key": "num:PA24182",
+    "kind": "grant",
+    "source": "nih_guide",
+    "prompt_chars": 1696
+  },
+  {
+    "key": "num:PA24178",
+    "kind": "grant",
+    "source": "nih_guide",
+    "prompt_chars": 2054
+  },
+  {
+    "key": "num:PAR25192",
+    "kind": "grant",
+    "source": "nih_guide",
+    "prompt_chars": 1455
+  },
+  {
+    "key": "num:PAR24071",
+    "kind": "grant",
+    "source": "nih_guide",
+    "prompt_chars": 1942
+  },
+  {
+    "key": "conf/icdf2c|2026|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 193
+  },
+  {
+    "key": "conf/iccad|2026|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 190
+  },
+  {
+    "key": "gen:openreview:ijcai.org/IJCAI-ECAI/Workshop/LogiSymb|2026|workshop",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 267
+  },
+  {
+    "key": "conf/www|2022|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 152
+  },
+  {
+    "key": "gen:openreview:music-informatics.kr/KSMI/Conference|2026|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 184
+  },
+  {
+    "key": "gen:openreview:ICML.cc/Workshop/EIML|2026|workshop",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 199
+  },
+  {
+    "key": "gen:openreview:thecvf.com/ECCV/Workshop/MUCG|2026|workshop",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 255
+  },
+  {
+    "key": "conf/usenix|2023|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 155
+  },
+  {
+    "key": "conf/podc|2026|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 177
+  },
+  {
+    "key": "conf/fg|2025|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 203
+  },
+  {
+    "key": "conf/wcre|2024|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 232
+  },
+  {
+    "key": "gen:openreview:iccp-conference.org/ICCP/Conference|2026|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 78
+  },
+  {
+    "key": "gen:openreview:robot-learning.org/CoRL/Workshop/PhysWM|2026|workshop",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 286
+  },
+  {
+    "key": "conf/kr|2023|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 231
+  },
+  {
+    "key": "conf/tabletop|2026|conference",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 198
+  },
+  {
+    "key": "gen:openreview:thecvf.com/CVPR/Workshop/DataMFM_Non-archival|2026|workshop",
+    "kind": "conference",
+    "source": "conferences",
+    "prompt_chars": 266
+  }
+]

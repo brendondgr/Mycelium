@@ -91,7 +91,7 @@ Files below are inside `web/backend/apps/content/`.
 | Theme spread (opt-in, all defaults off) | `fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
 | Grants / conferences / fellowships matching | `opportunities.py`, `fellowships.py`, `opportunity_llm.py`, `pinning.py` |
 | Fellowship eligibility gates (stage ladder, prose constraints) | `fellowships.py` (`STAGE_LADDER`, `_stage_gate`, `_constraint_gates`, `derive_stage`) |
-| Fellowship eligibility extracted from prose | `apps/scraper/pivot/fellowships/constraints.py`, `apps/scraper/pivot/ingest.py` (`extract_fellowship_constraints`) |
+| Fellowship eligibility extracted from prose | `apps/scraper/eligibility/constraints.py`, `apps/scraper/pivot/ingest.py` (`extract_fellowship_constraints`) |
 | On-demand whole-corpus refit | `refitting.py` |
 | Post-onboarding live match | `onboarding_match.py`, `scan_status.py` |
 | Member fit ("who is this for?") | `member_fit.py`, `fanout.py` |

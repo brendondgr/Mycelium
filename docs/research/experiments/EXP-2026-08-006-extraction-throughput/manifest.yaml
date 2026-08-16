@@ -1,0 +1,107 @@
+# The machine-readable half of the record. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-08-006
+slug: extraction-throughput
+title: LLM structured-extraction throughput by reasoning level and concurrency
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-08-16
+date_completed: 2026-08-16
+authors: [brendondgr]
+
+purpose: >
+  How long does the one-time structured-extraction backfill (~4,424 opportunity
+  records, plan D9/D10) actually take against Mycelium's own LLM endpoint, and
+  how does it change with reasoning effort and worker concurrency? The plan
+  carried a 5-6 hour estimate extrapolated from the standalone collector's
+  published throughput table, which measured a different server entirely. This
+  experiment exists so that number traces to evidence about this system.
+
+hypothesis: >
+  Stated before the run: the collector's 25-49s median latency is a property of
+  its endpoint, not a floor. Against this endpoint with reasoning off, median
+  latency will be substantially lower and the backfill will finish well inside
+  an hour at 12 workers. A third directional expectation was also recorded:
+  higher reasoning might still win on wall-clock if it produced schema-valid
+  output more often.
+  OUTCOME: latency confirmed (2.96s median, 1.09-1.70h projected). The third
+  expectation was half right in an unanticipated way: reasoning barely moved
+  first-attempt validity (0.44-0.53 across every arm) but moved the REFUSAL
+  rate enormously (34.4% off versus 6.2% on), so speed and coverage trade
+  directly rather than reinforcing.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 82f7f0b
+  branch: claude/open-source-grants-conferences-fb07a6
+  entrypoint: "DATABASE_URL=postgres://mycelium:mycelium@localhost:11450/mycelium LLM_BASE_URL=http://localhost:4000/v1 uv run --directory web/backend python ../../docs/research/experiments/EXP-2026-08-006-extraction-throughput/code/run.py"
+  dirty: true # Phases 1-2 were uncommitted; not on this experiment's code path (ISSUES.md §4)
+config:
+  path: docs/research/experiments/EXP-2026-08-006-extraction-throughput/code/run.py
+  hash: null
+data:
+  name: mycelium-grants collector stores (opportunities.db + conferences.db)
+  version: "snapshot 2026-08-16, collector HEAD 6fddf55"
+  split: sample
+  n_examples: 32
+  qrels: null
+  hash: null
+  card: null
+seeds: [20260816]
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: null
+compute:
+  hardware: "host CPU; model served remotely through a LiteLLM proxy on localhost:4000"
+  wall_clock_hours: 0.45
+  estimated_cost_usd: null
+
+# --- LLM block ---------------------------------------------------------------
+llm:
+  model: "skynet (via LiteLLM proxy, upstream version not exposed)"
+  temperature: 0.0
+  max_tokens: 8096
+  prompt_files:
+    - docs/research/experiments/EXP-2026-08-006-extraction-throughput/code/run.py
+  prompt_hash: null
+  total_input_tokens: 254513
+  total_output_tokens: 344458
+  nondeterminism_note: >
+    Provider-side nondeterminism remains at temperature 0 and n_runs is 1, so no
+    confidence intervals are claimed. The four Stage B cells did verify 21-22 of
+    32 records with near-identical failure tallies, which suggests run-to-run
+    variance in verification OUTCOME is small; that is an observation, not a
+    measurement.
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: verified_records_per_second
+  values:
+    thinking_none_w12_rec_per_s: 0.7215
+    thinking_none_w12_median_latency_s: 2.96
+    thinking_none_w12_refusal_rate: 0.344
+    thinking_medium_w12_rec_per_s: 0.0992
+    thinking_medium_w12_median_latency_s: 31.16
+    thinking_medium_w12_refusal_rate: 0.062
+    effort_low_w12_rec_per_s: 0.11
+    effort_low_w12_refusal_rate: 0.156
+    effort_medium_w12_rec_per_s: 0.0818
+    effort_medium_w12_refusal_rate: 0.281
+    thinking_none_w12_stageB_rec_per_s: 0.9051
+    thinking_none_w16_rec_per_s: 1.1254
+    projected_backfill_hours_thinking_none_w16: 1.09
+    projected_backfill_hours_thinking_medium_w12: 12.39
+baselines_compared:
+  - "collector published table (pipeline.py:51-63): 0.24 rec/s at 12 workers, 49s median"
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: []

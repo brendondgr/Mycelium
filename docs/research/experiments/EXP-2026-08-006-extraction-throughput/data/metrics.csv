@@ -1,0 +1,9 @@
+stage,arm,style,reasoning,workers,n_records,n_verified,wall_clock_s,verified_records_per_second,median_latency_s,p95_latency_s,total_calls,first_attempt_valid_rate,mean_attempts_per_verified_record,refusal_rate,projected_backfill_hours
+A,thinking-none,thinking,none,12,32,21,29.1,0.7215,2.96,14.67,60,0.5,1.29,0.344,1.7
+A,thinking-medium,thinking,medium,12,32,30,302.44,0.0992,31.16,133.68,53,0.438,1.57,0.062,12.39
+A,effort-low,effort,low,12,32,27,245.38,0.11,31.75,61.78,54,0.531,1.44,0.156,11.17
+A,effort-medium,effort,medium,12,32,23,281.25,0.0818,44.37,91.83,58,0.469,1.35,0.281,15.03
+B,thinking-none,thinking,none,4,32,21,553.46,0.0379,30.91,61.54,60,0.5,1.29,0.344,32.39
+B,thinking-none,thinking,none,8,32,21,81.3,0.2583,2.34,61.4,60,0.5,1.29,0.344,4.76
+B,thinking-none,thinking,none,12,32,21,23.2,0.9051,2.88,9.4,61,0.469,1.33,0.344,1.36
+B,thinking-none,thinking,none,16,32,22,19.55,1.1254,3.35,9.83,63,0.406,1.5,0.312,1.09
