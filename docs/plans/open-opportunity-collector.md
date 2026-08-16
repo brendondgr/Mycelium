@@ -39,6 +39,8 @@ Illinois Fellowship Finder, not Pivot, and survive intact.
 | D6 | **The collector is vendored into the backend** at `web/backend/apps/scraper/collect/`, and runs **in the backend container**. | It is pure HTTP; the host/container split existed only because Pivot needed Playwright + an SSO session. Deps are near-identical. `docs/architecture.md` gives `scraper` ingestion ownership. |
 | D7 | **Conference expiry keys on the last written deadline**, with a parsed event date as fallback. Grants expire at `max(all rounds)`. | The user's directive ("expiration must be driven by the written deadline"), and `event_start` is NULL on 100% of collector rows so the current event-date rule would expire nothing. |
 | D8 | **Fellowships are untouched** apart from relocating their code out of the `pivot/` directory. | The Illinois Fellowship Finder is public and free; only its *location* in the tree is a Pivot artefact. |
+| D9 | **Every record's description is produced by an LLM under a structured-output contract, verified in a bounded agent loop, and that verified text is what gets embedded for search.** Universal — grants and conferences, not just records missing text. Unverified output is never shown. See Phase 8. | User decision. Raw source text is unusable as a uniform embedding basis: `description` averages 11,411 chars for `nsf` versus 894 for `nih_guide`, EU rows carry HTML fragments, and `cfp_text` is empty on all 2,234 conference rows. A schema-checked extraction makes every record's vector comparable. |
+| D10 | **The extraction runs after ingest and before embedding**, as its own stage. The one-time backfill (~4,400 records, ~5–6 h) runs outside the nightly; the nightly extracts **only genuinely new records**. | Ordering follows from D9 — the embedded text is the extraction's output. Cost containment follows the project's existing rule: rank nightly, write up sparingly. |
 
 ## Assumptions
 
@@ -63,10 +65,42 @@ Illinois Fellowship Finder, not Pivot, and survive intact.
 
 **Validation**
 ```bash
-uv run --project web/backend python -m pytest web/backend -q -x --no-header 2>&1 | tail -20
+uv sync --project web/backend --extra scrapers --extra embeddings
+DATABASE_URL=postgres://mycelium:mycelium@localhost:11450/mycelium \
+  uv run --directory web/backend python -m pytest -q --no-header
 ```
-Baseline must be recorded in this document before Phase 1 starts. Known
-pre-existing failures are listed, not fixed.
+
+### Baseline — recorded 2026-08-16 (DONE)
+
+**`1583 passed in 219.24s`. Zero failures.**
+
+Two notes that matter for reading later runs:
+
+- The four failures the recon predicted do **not** occur. Three came from
+  `test_opportunity_clusters.py` calling the real embedder without the
+  `embeddings` extra installed, and one (`test_site_and_resume_merge`) from
+  running on SQLite with no `LLM_MODEL`. Syncing the extra and pointing
+  `DATABASE_URL` at the Compose Postgres removes all four. **Any failure from
+  here is ours.**
+- The recorded memory that `test_high_signal.py` date-flakes past ~2026-07-19 is
+  **stale** — the fix landed; it passes on 2026-08-16.
+
+### Live state — recorded 2026-08-16 (DONE)
+
+| | count |
+|---|---|
+| Active users / labs / projects | **5** / 4 / 1 |
+| `grant` from `pivot` | 2,143 |
+| `conference` from `pivot` | 2,961 |
+| `fellowship` from `illinois-fellowship-finder` | 829 (**survives**) |
+| `paper` (OpenAlex / PubMed / SemanticScholar) | 35,209 (**survives**) |
+| `RelevanceScore` / `ContentDeadline` / saves | 5,586 / 7,208 / 9 |
+
+Collector stores: 2,190 grants; 1,425 series / 2,234 instances / 3,196 deadlines.
+
+**Snapshot:** `/home/bdgr/Agents/mycelium-backups/mycelium-pre-opportunity-migration-20260816.dump`
+(147 MB, `pg_dump -Fc`). Deliberately **outside** the repository —
+`data/backups/` is not in `.gitignore` and would have been committed.
 
 ---
 
@@ -184,9 +218,13 @@ instant, and the AoE conversion.
 
 ---
 
-## Phase 4 — Ingest, dedupe, expiry, embedding
+## Phase 4 — Ingest, dedupe, expiry
 
 New `apps/scraper/collect/ingest.py`, replacing `pivot/ingest.py`.
+
+**Runtime order is `ingest → extract (Phase 8) → embed`** (D10). Embedding is a
+separate step at the end, not part of the upsert, because the text it embeds is
+the extraction's verified output.
 
 1. **Upsert keyed on `(source, external_id)`** — the existing partial unique
    constraint. A record already present is **updated, never re-inserted**. Keep
@@ -197,21 +235,30 @@ New `apps/scraper/collect/ingest.py`, replacing `pivot/ingest.py`.
    `pre_delete` signal path so reminders are marked stale.
    Emit strictly zero-padded ISO — the comparison is lexicographic and
    `"2026-8-1" < "2026-08-16"` is `False`.
-3. **Re-embed everything** with per-instance text. The collector's conference
-   vectors are series-level (1,420 distinct vectors for 2,234 instances), so
-   editions are indistinguishable. Add `year_label` + `event_dates_text` to the
-   embed text.
-4. **Record `metadata["embedding_model"]`** beside every vector. Mycelium stores
-   none today, so a model change would leave the corpus silently in the old space.
-5. Rebuild the `ContentDeadline` projection from structured data (Phase 5).
+3. Rebuild the `ContentDeadline` projection from structured data (Phase 5).
+
+### 4b — The embed step (runs after Phase 8)
+
+4. **Embed from `metadata["search_text"]`**, which Phase 8 composes from the
+   verified extraction (or from raw text for refused records, flagged
+   `search_text_source = "raw"`).
+5. **Re-embed everything** rather than lifting the collector's vectors: its
+   conference vectors are series-level (1,420 distinct vectors for 2,234
+   instances), so editions are indistinguishable.
+6. **Record `metadata["embedding_model"]`** beside every vector. Mycelium stores
+   none today, so a model change would leave the corpus silently in the old space
+   with nothing to trigger a refit — a latent correctness bug, not an optimisation.
+7. Re-embed only on `search_text` change (hash comparison), so a nightly that
+   changes nothing costs no embedding.
 
 **Validation**
 ```bash
 uv run --project web/backend python -m pytest web/backend/apps/scraper/tests/test_collect_ingest.py -q
 ```
-Acceptance: a second ingest over unchanged input reports **0 created, 0 updated**
-(idempotency). This also protects `run_analytics.collect_discovery`, which counts
-`created_at` on the run day and would report a fake spike on re-insert.
+Acceptance: a second ingest over unchanged input reports **0 created, 0 updated,
+0 embedded** (idempotency). This also protects `run_analytics.collect_discovery`,
+which counts `created_at` on the run day and would report a fake spike on
+re-insert.
 
 ---
 
@@ -287,49 +334,150 @@ its record's last written deadline.**
 
 ---
 
-## Phase 8 — AI summary generation with a verification loop
+## Phase 8 — LLM structured extraction, verified in a loop (D9)
 
-For **genuinely new records only** — records that entered the corpus this run.
+**This is the largest phase and the one the retrieval quality depends on.** It
+runs **after ingest and before embedding**, because its verified output *is* the
+embedded text.
 
-Port `enrich.verify()` (a pure function: no network, no model, no I/O) into
-`apps/scraper/collect/verify.py` and drive it from the existing
-`apps/core/llm.py` client. The loop:
+### 8.1 Why every record, not just the ones missing text
+
+The collector's own enrichment is conferences-only and gap-gated. Per D9 it
+becomes universal, for a measurable reason: the raw source text is wildly
+inconsistent and mostly boilerplate. Measured on the live store —
+`description` averages **11,411 chars for `nsf`, 4,975 for `eu_portal`, 1,648 for
+`grants_gov`, 894 for `nih_guide`**, EU rows carry literal `">` HTML fragments,
+and conferences have **`cfp_text = ""` on all 2,234 rows**. Embedding that
+directly means a grant's vector is dominated by whichever agency writes longest,
+not by what it funds. The collector's author already fought half this battle —
+`rank.embedding_text`'s "what NOT to embed" list exists because eligibility and
+applicant-type boilerplate once made a third of the corpus embed 501(c)(3)
+language.
+
+A uniform, model-extracted, schema-checked description makes every record's
+vector comparable.
+
+### 8.2 The structured output contract
+
+One JSON object per record, fixed schema, no free-form additions. The model is
+told the schema and given only the source text; **it never sees another record.**
+
+**Grants**
+```json
+{
+  "summary":        "2-3 sentences: what this funds and why it exists",
+  "purpose":        "one sentence: the funder's stated goal",
+  "audience":       "one sentence: who this is for",
+  "research_areas": ["...", "..."],
+  "eligibility":    "one paragraph, or \"\" if the source does not state it",
+  "award_summary":  "plain-language money line, or \"\"",
+  "confidence":     "high | medium | low"
+}
+```
+
+**Conferences**
+```json
+{
+  "summary":        "2-3 sentences: what this venue is about",
+  "purpose":        "one sentence",
+  "audience":       "one sentence",
+  "topics":         ["...", "..."],
+  "field":          "the discipline in plain words",
+  "confidence":     "high | medium | low"
+}
+```
+
+Enforced by JSON-schema validation on the reply, not by prompt politeness. A
+reply that does not parse, or that omits a required key, is a **failed attempt**,
+not a partial result.
+
+### 8.3 The agent loop
 
 ```
-detect gap → fetch page (robots-aware) → reduce → generate → VERIFY → apply | refuse
+source text ──> EXTRACT ──> VALIDATE ──┬── pass ──> APPLY (store + embed + show)
+     ▲                                 │
+     └──── REPAIR (failures fed back) ─┴── fail ──> retry (bounded)
+                                              │
+                                    exhausted ─┴──> REFUSE (record reason, fall back, do not show)
 ```
 
-Three independent checks, each of which can refuse the whole summary:
+1. **Source text.** Grants: `description` + `eligibility` from the record.
+   Conferences: `cfp_text` where present, else the venue website fetched through
+   the robots-aware `RobotsGate` with per-host locks.
+2. **Extract.** One call, `temperature=0.0`, through `apps/core/llm.py` so every
+   call lands in the `core.LLMUsageDaily` ledger.
+3. **Validate — deterministic, no model.** Every check is code:
 
-| Check | Rule | Refusal |
-|---|---|---|
-| Identity | acronym (≥3 chars) appears on the page, else ≥50% of the title's >4-char content words | `not_the_venue` |
-| Prose | `overlap_ratio(summary + purpose + audience, page) >= 0.45`, checked as **one atomic block** | `ungrounded_prose` |
-| Dates | the date string must be a case-insensitive substring of the page; **then we parse it ourselves**, with a `2000 ≤ year ≤ 2035` gate | `date_not_on_page` / `unparseable` |
+   | Check | Rule | Refusal |
+   |---|---|---|
+   | Schema | parses, every required key present, correct types | `malformed` |
+   | Bounds | each field within its length limits; lists non-empty and de-duplicated | `out_of_bounds` |
+   | Identity (conferences) | acronym (≥3 chars) on the page, else ≥50% of the title's >4-char content words | `not_the_venue` |
+   | Prose grounding | `overlap_ratio(summary + purpose + audience, source) >= 0.45`, checked as **one atomic block** — the collector's docstring records why splitting it let a placeholder page's purpose and audience through unchecked | `ungrounded_prose` |
+   | Topic grounding | every topic/area shares a word with the source | `ungrounded_topic` |
+   | Dates | verbatim case-insensitive substring of the source, then **we** parse it, `2000 ≤ year ≤ 2035` | `date_not_on_page` / `unparseable` |
+   | No-invention | no sentence asserting a number, date, or amount absent from the source | `unsupported_claim` |
 
-Three fixes on port:
-- **Gate on newness.** The collector's `plan_enrichment` filters on gaps and never
-  consults `new_items`. Add that gate — the user asked for new records only.
+4. **Repair.** On failure the specific failed checks are fed back — *"`topics[2]`
+   does not appear in the source; `summary` overlaps the source at 0.31"* — and
+   the model retries. **Bounded at `EXTRACTION_MAX_ATTEMPTS = 3`**, so a record
+   can never spin.
+5. **Apply or refuse.** Verified output is stored and embedded. An exhausted
+   record records its last refusal reason, **falls back to the truncated raw
+   source text so it stays retrievable**, and is **not shown as an AI summary**.
+
+### 8.4 What gets embedded
+
+`metadata["search_text"]` is composed from the **verified extraction**:
+`summary + purpose + audience + research_areas|topics`, plus the identity fields
+that must always be searchable (title, acronym, funder, opportunity number).
+Refused records fall back to the old composition over raw text. The
+distinction is recorded in `metadata["search_text_source"] ∈ {extracted, raw}`,
+so retrieval quality can be measured against it later rather than guessed at.
+
+### 8.5 Cost, and why the nightly does not pay it
+
+**~4,400 records × ~1.3 attempts ≈ 5,700 calls.** At the collector's measured
+0.24 records/s at 12 workers, the **one-time backfill is roughly 5–6 hours**. Run
+it once, deliberately, outside the nightly.
+
+The nightly then extracts **only genuinely new records** — the newness gate the
+collector's `plan_enrichment` never wired up (it filters on gaps and never reads
+`new_items`). At a realistic tens-of-new-records-a-day that is seconds, not hours.
+Verdicts are cached and settled statuses are never re-asked.
+
+### 8.6 Three defects to fix on port
+
 - **Fix the multi-deadline collapse.** `apply_enrichment` dedupes verified
-  deadlines by `(kind, round_label)` and the model always returns `""` for the
-  label, so one record had **8 verified deadlines reduced to 4**. Proven on the
-  live store.
+  deadlines by `(kind, round_label)` and the model returns `""` for the label
+  every time, so one live record had **8 verified deadlines reduced to 4**.
 - **Compare the page hash.** `page_hash` is stored and never read, so a page that
-  changes its deadline after a settled `ok` verdict is never re-read.
+  moves its deadline after a settled `ok` verdict is never re-read.
+- **Wire the newness gate** (§8.5).
 
-**Provenance never blurs.** Generated text goes to `metadata["ai_summary"]` with
-`metadata["summary_source"]`, never into the description. Every recovered deadline
-is `is_estimated=True`, `source="enrichment:<url>"`, basis prefixed `inferred:`.
-The UI renders it under a `summary from website` marker.
+### 8.7 Provenance never blurs
+
+Extracted text goes to `metadata["ai_summary"]` / `["ai_fields"]` with
+`metadata["summary_source"]`, **never** into `description` / `cfp_text`. Every
+recovered deadline is `is_estimated=True`, `source="enrichment:<url>"`, basis
+prefixed `inferred:`. The UI renders it under a `summary from website` marker,
+and `docs/purpose.md`'s trust rule applies: a refused record says so rather than
+showing a confident-looking summary nobody checked.
 
 **Validation**
 ```bash
-uv run --project web/backend python -m pytest web/backend/apps/scraper/tests/test_collect_verify.py -q
+uv run --project web/backend python -m pytest web/backend/apps/scraper/tests/test_collect_extract.py -q
 ```
-Acceptance: a fabricated model reply is refused claim by claim — a hallucinated
-date, an ungrounded topic, a wrong venue, and prose written from priors each
-produce their own recorded refusal reason. **A refusal is a first-class outcome,
-counted and shown, never a silent drop.**
+Acceptance, all with a stubbed model and no network:
+- a reply missing a required key is `malformed` and triggers a repair attempt;
+- a hallucinated date, an ungrounded topic, a wrong venue, and prose written from
+  priors each produce their own recorded refusal;
+- a record that fails 3 attempts falls back to raw text, is marked
+  `search_text_source = "raw"`, and renders **no** AI summary;
+- a repair attempt that fixes the cited failure is accepted;
+- the attempt counter is honoured — no record ever exceeds 3 calls.
+
+**A refusal is a first-class outcome, counted and shown, never a silent drop.**
 
 ---
 
@@ -482,6 +630,10 @@ recommendation counts.
 | `prune_expired` silently skips new sources | Phase 4 drops the `source__in` allow-list |
 | Non-zero-padded dates never expire (lexicographic compare) | Phase 4 emits strict ISO; asserted in tests |
 | Every reader's whole slate reads "new" on the first run | Expected (A4); communicated, not suppressed |
+| **The one-time extraction backfill is ~5–6 h of LLM time** (~4,400 records × ~1.3 attempts at the measured 0.24 rec/s × 12 workers) | Run once, deliberately, outside the nightly (D10). Checkpoint per record so an interrupted run resumes rather than restarts |
+| **A model outage during the backfill silently degrades the corpus to raw-text embeddings** | `metadata["search_text_source"]` records each record's basis, so the damage is queryable and re-runnable rather than invisible. `model_failed` stays **retryable**, never settled — the collector once wrote 321 `model_failed` rows in one over-concurrent run, and treating those as answers would have excluded 321 records permanently |
+| **Extraction changes the embedding basis, so relevance moves** | Not a regression to hide. `search_text_source` keeps the two bases separable, and per `CLAUDE.md` any relevance claim is an experiment under `docs/research/experiments/`, never a number asserted in chat |
+| **A verified-looking summary that nobody checked is worse than none** | Refusal is a first-class outcome: refused records show no AI summary and say so. `docs/purpose.md`'s trust rule — never hide uncertainty |
 | ICML/KDD 2026 store an abstract-registration date as `submission` | `quality_warnings` is the only signal — surfaced in the UI (Phase 10) |
 | `extract_fellowship_constraints` iterates an always-empty queryset (filters `source=PIVOT_SOURCE`, but fellowships are `illinois-fellowship-finder`) | Pre-existing latent bug; fix while relocating in Phase 2 |
 | Compose run from the worktree creates empty volumes | Always `cd /home/bdgr/Agents/Mycelium` or pass `-p mycelium` |
