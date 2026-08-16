@@ -2,7 +2,7 @@ from datetime import date
 
 from rest_framework import serializers
 
-from apps.scraper.pivot.normalize import normalize_amount
+from apps.content.formatting import normalize_amount
 
 from .models import ContentItem, RelevanceScore, SavedOpportunity
 

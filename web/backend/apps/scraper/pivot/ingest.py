@@ -28,14 +28,18 @@ from django.utils import timezone
 
 from apps.content.models import ContentItem
 
-from .records import PIVOT_SOURCE, PivotItem, build_pivot_item
+from .records import FELLOWSHIP_SOURCE, PIVOT_SOURCE, PivotItem, build_pivot_item
 
 # An embedder maps a batch of texts to vectors, or ``None`` when unavailable.
 Embedder = Callable[[Sequence[str]], list[list[float]] | None]
 
+# FELLOWSHIP_SOURCE is defined in .records (alongside PIVOT_SOURCE, which this
+# module already imports from there) rather than here, so the two source ids
+# have exactly one definition each instead of two that can silently drift apart.
+
 # All sources this ingest layer manages. Upsert keys on (source, external_id);
 # prune covers all sources in this set.
-OPPORTUNITY_SOURCES = (PIVOT_SOURCE, "illinois-fellowship-finder")
+OPPORTUNITY_SOURCES = (PIVOT_SOURCE, FELLOWSHIP_SOURCE)
 
 Log = Callable[[str], None]
 
@@ -280,7 +284,7 @@ def extract_fellowship_constraints(
     """
     from django.conf import settings
 
-    from .fellowships.constraints import extract_by_model, is_resolved
+    from apps.scraper.eligibility.constraints import extract_by_model, is_resolved
 
     log = log or _noop
     if not getattr(settings, "FELLOWSHIP_CONSTRAINT_EXTRACTION", True):
@@ -288,8 +292,14 @@ def extract_fellowship_constraints(
 
     pending: list[ContentItem] = []
     units: list[tuple[str, str]] = []
+    # Bug fix (Phase 2): this used to filter source=PIVOT_SOURCE, but fellowships
+    # are ingested under FELLOWSHIP_SOURCE ("illinois-fellowship-finder"), never
+    # "pivot" — so the queryset was always empty and this extraction pass had
+    # never run on a single real fellowship. type=FELLOWSHIP alone would already
+    # be unambiguous (only the Illinois adapter produces that type today), but
+    # the explicit source keeps this query correct even if that stops being true.
     for item in ContentItem.objects.filter(
-        type=ContentItem.Type.FELLOWSHIP, source=PIVOT_SOURCE
+        type=ContentItem.Type.FELLOWSHIP, source=FELLOWSHIP_SOURCE
     ).iterator():
         meta = item.metadata or {}
         if is_resolved(meta.get("constraints") or {}):

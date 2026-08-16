@@ -28,7 +28,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 
-from .parsers import (
+from apps.scraper.eligibility.parsers import (
     bucket_categories,
     classify_award,
     derive_flags,

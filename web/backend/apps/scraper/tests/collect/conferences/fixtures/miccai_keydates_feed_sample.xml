@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	>
+
+<channel>
+	<title>Key Dates Archives - MICCAI Society</title>
+	<atom:link href="https://miccai.org/category/events/key-dates/feed/" rel="self" type="application/rss+xml" />
+	<link>https://miccai.org/category/events/key-dates/</link>
+	<description>The Medical Image Computing and Computer Assisted Intervention Society</description>
+	<lastBuildDate>Tue, 11 Aug 2026 17:34:23 +0000</lastBuildDate>
+	<language>en-US</language>
+	<generator>https://wordpress.org/?v=7.0.4</generator>
+
+	<item>
+		<title>Application deadline: Hamlyn Winter School on Surgical Imaging and Vision (MICCAI-Endorsed Event)</title>
+		<link>https://miccai.org/2026/08/08/application-deadline-hamlyn-winter-school-on-surgical-imaging-and-vision/</link>
+		<dc:creator><![CDATA[diana.cunningham]]></dc:creator>
+		<pubDate>Sat, 08 Aug 2026 16:03:04 +0000</pubDate>
+		<category><![CDATA[Key Dates]]></category>
+		<category><![CDATA[Uncategorized]]></category>
+		<guid isPermaLink="false">https://miccai.org/?p=3602</guid>
+		<description><![CDATA[<p>Key Dates IPMI 2027 &#8211; International Conference on Information Processing in Medical Imaging - June 27, 2027 [&#8230;]</p>]]></description>
+		<content:encoded><![CDATA[<div class="fl-builder-content fl-builder-content-3602" data-post-id="3602">
+	<p><aside class="sidemenu"><ul><li><a href="https://miccai.org/2026/06/22/ipmi-2027/">IPMI 2027 &#8211; International Conference on Information Processing in Medical Imaging - June 27, 2027</a></li><li><a href="https://miccai.org/2026/06/22/submission-deadline-ipmi-2027/">Submission deadline: IPMI 2027 (MICCAI-Endorsed Event) - December 7, 2026</a></li><li><a href="https://miccai.org/2026/08/08/hamlyn-winter-school-in-surgical-imaging-and-vision/">Hamlyn Winter School on Surgical Imaging and Vision - November 30, 2026</a></li><li><a href="https://miccai.org/2026/06/22/sipaim-2026/">SIPAIM 2026 &#8211; 22nd International Symposium on Medical Information Processing and Analysis - November 18, 2026</a></li><li><a href="https://miccai.org/2026/07/29/asdp-2026/">ASDP 2026 &#8211; 3rd Annual Congress of the Asian Society of Digital Pathology (ASDP) - November 1, 2026</a></li><li><a href="https://miccai.org/2026/06/19/miccai-2026-strasbourg-france/">MICCAI 2026 &#8211; Strasbourg, France - September 27, 2026</a></li><li><a href="https://miccai.org/2026/04/21/cinc-2026-53rd-computing-in-cardiology-conference/">CinC 2026 &#8211; 53rd Computing in Cardiology Conference - September 20, 2026</a></li><li><a href="https://miccai.org/2026/08/08/application-deadline-hamlyn-winter-school-on-surgical-imaging-and-vision/" class="active">Application deadline: Hamlyn Winter School on Surgical Imaging and Vision (MICCAI-Endorsed Event) - September 11, 2026</a></li><li><a href="https://miccai.org/2026/06/19/applications-due-wim-oral-presentation-award-2026/">Applications due: WiM Oral Presentation Award 2026 - September 1, 2026</a></li><li><a href="https://miccai.org/2026/08/14/path-to-professorship/">Path to Professorship: Insider Perspectives on Academic Careers - August 26, 2026</a></li></ul></aside></p>
+<h2>Application deadline for Hamlyn Winter School on Surgical Imaging and Vision</h2>
+<p>The Hamlyn Winter School on Surgical Imaging and Vision is a week long course, held this year Nov. 30-Dec. 4, 2026. Participants should have a science or medical degree and typically be at a master, doctoral or postdoctoral level.</p>
+</div>
+]]></content:encoded>
+	</item>
+
+</channel>
+</rss>

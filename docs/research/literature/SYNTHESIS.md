@@ -84,7 +84,7 @@ lives elsewhere:
   The mature analogue is **clinical trial eligibility parsing** (EliIE, JAMIA 2017;
   PMC11251129; arXiv:2307.00381) — chunk → NER/concept map → relation extraction →
   temporal constraints → negation. That pipeline transfers almost directly to
-  `apps/scraper/pivot/fellowships/constraints.py`, which currently does it ad hoc.
+  `apps/scraper/eligibility/constraints.py`, which currently does it ad hoc.
 
 ### Datasets that fix W10
 

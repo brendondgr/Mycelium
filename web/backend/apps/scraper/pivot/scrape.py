@@ -1,10 +1,10 @@
 """Best-effort Pivot-RP + fellowships refresh guard — vendored from the ProQuest tool.
 
 Wraps :func:`~.grants.scrape_grants`, :func:`~.conferences.scrape_conferences`,
-and :func:`~.fellowships.scrape_fellowships` in a single non-fatal, unattended-safe
-call. Areas run **in parallel** — one thread per area via :class:`ThreadPoolExecutor`,
-each owning its own asyncio event loop (``asyncio.run`` inside the thread, safe
-because each loop is private).
+and :func:`apps.scraper.fellowships.scrape_fellowships` in a single non-fatal,
+unattended-safe call. Areas run **in parallel** — one thread per area via
+:class:`ThreadPoolExecutor`, each owning its own asyncio event loop (``asyncio.run``
+inside the thread, safe because each loop is private).
 
 Pre-flight logic:
 - Missing ``storage_state.json`` skips grants + conferences only; fellowships are
@@ -105,7 +105,9 @@ def refresh(
 
     def _scrape_fellowships_area() -> list[tuple[str, dict]]:
         try:
-            from .fellowships import scrape_fellowships  # noqa: PLC0415
+            # Phase 2 lifted the Illinois scraper out of pivot/ (it has no Pivot
+            # coupling — public site, no SSO) into apps.scraper.fellowships.
+            from apps.scraper.fellowships import scrape_fellowships  # noqa: PLC0415
 
             records = scrape_fellowships(log=_log)
             _log(f"pivot.scrape.refresh: fellowships done — {len(records)} records")

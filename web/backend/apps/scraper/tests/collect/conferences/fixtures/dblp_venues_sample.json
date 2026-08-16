@@ -1,0 +1,311 @@
+{
+ "source": "dblp",
+ "license": "CC0-1.0",
+ "venues": [
+  {
+   "key": "conf/aaai",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "AAAI Conference on Artificial Intelligence (AAAI)",
+   "titles": [
+    "AAAI Conference on Artificial Intelligence (AAAI)"
+   ],
+   "former_titles": [
+    "National Conference on Artificial Intelligence"
+   ],
+   "acronyms": [
+    "AAAI"
+   ],
+   "n_years": 41,
+   "first_year": 1980,
+   "last_year": 2026,
+   "webpage": "https://aaai.org/Conferences/AAAI/aaai.php",
+   "wikidata": "http://www.wikidata.org/entity/Q56682083",
+   "different_from": []
+  },
+  {
+   "key": "conf/fse",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "Fast Software Encryption Workshop (FSE)",
+   "titles": [
+    "Fast Software Encryption Workshop (FSE)"
+   ],
+   "former_titles": [],
+   "acronyms": [
+    "FSE"
+   ],
+   "n_years": 21,
+   "first_year": 1994,
+   "last_year": 2016,
+   "webpage": "",
+   "wikidata": "http://www.wikidata.org/entity/Q5436988",
+   "different_from": []
+  },
+  {
+   "key": "conf/innovations",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "Innovations in Theoretical Computer Science (ITCS)",
+   "titles": [
+    "Innovations in Theoretical Computer Science (ITCS)"
+   ],
+   "former_titles": [
+    "Innovations in Computer Science (ICS)"
+   ],
+   "acronyms": [
+    "ITCS",
+    "ICS"
+   ],
+   "n_years": 16,
+   "first_year": 2010,
+   "last_year": 2026,
+   "webpage": "http://itcs-conf.org/",
+   "wikidata": "http://www.wikidata.org/entity/Q110977868",
+   "different_from": []
+  },
+  {
+   "key": "conf/isw",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "Information Security Conference (ISC)",
+   "titles": [
+    "Information Security Conference (ISC)"
+   ],
+   "former_titles": [
+    "Information Security Workshop (ISW)"
+   ],
+   "acronyms": [
+    "ISC",
+    "ISW"
+   ],
+   "n_years": 26,
+   "first_year": 1998,
+   "last_year": 2026,
+   "webpage": "",
+   "wikidata": "http://www.wikidata.org/entity/Q105692975",
+   "different_from": []
+  },
+  {
+   "key": "conf/nips",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "Conference on Neural Information Processing Systems (NeurIPS)",
+   "titles": [
+    "Conference on Neural Information Processing Systems (NeurIPS)"
+   ],
+   "former_titles": [
+    "Conference on Neural Information Processing Systems (NIPS)"
+   ],
+   "acronyms": [
+    "NeurIPS",
+    "NIPS"
+   ],
+   "n_years": 36,
+   "first_year": 1988,
+   "last_year": 2025,
+   "webpage": "https://proceedings.neurips.cc/",
+   "wikidata": "http://www.wikidata.org/entity/Q1961016",
+   "different_from": []
+  },
+  {
+   "key": "conf/pods",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "ACM SIGACT-SIGMOD-SIGART Symposium on Principles of Database Systems (PODS)",
+   "titles": [
+    "ACM SIGACT-SIGMOD-SIGART Symposium on Principles of Database Systems (PODS)"
+   ],
+   "former_titles": [],
+   "acronyms": [
+    "PODS"
+   ],
+   "n_years": 45,
+   "first_year": 1982,
+   "last_year": 2026,
+   "webpage": "https://dl.acm.org/conference/pods",
+   "wikidata": "http://www.wikidata.org/entity/Q7661890",
+   "different_from": []
+  },
+  {
+   "key": "conf/sac",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "ACM Symposium on Applied Computing (SAC)",
+   "titles": [
+    "ACM Symposium on Applied Computing (SAC)"
+   ],
+   "former_titles": [],
+   "acronyms": [
+    "SAC"
+   ],
+   "n_years": 36,
+   "first_year": 1986,
+   "last_year": 2026,
+   "webpage": "https://dl.acm.org/conference/sac/proceedings",
+   "wikidata": "http://www.wikidata.org/entity/Q7661879",
+   "different_from": []
+  },
+  {
+   "key": "conf/sacrypt",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "Selected Areas in Cryptography (SAC)",
+   "titles": [
+    "Selected Areas in Cryptography (SAC)"
+   ],
+   "former_titles": [],
+   "acronyms": [
+    "SAC"
+   ],
+   "n_years": 22,
+   "first_year": 1999,
+   "last_year": 2026,
+   "webpage": "http://sacworkshop.org/",
+   "wikidata": "http://www.wikidata.org/entity/Q3478074",
+   "different_from": []
+  },
+  {
+   "key": "conf/sigmod",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "ACM SIGMOD Conference (SIGMOD)",
+   "titles": [
+    "ACM SIGMOD Conference (SIGMOD)",
+    "International Conference on Management of Data (SIGMOD)"
+   ],
+   "former_titles": [],
+   "acronyms": [
+    "SIGMOD"
+   ],
+   "n_years": 52,
+   "first_year": 1975,
+   "last_year": 2026,
+   "webpage": "https://sigmod.org/conferences/",
+   "wikidata": "http://www.wikidata.org/entity/Q78479250",
+   "different_from": []
+  },
+  {
+   "key": "conf/sigsoft",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "ACM SIGSOFT Conference on the Foundations of Software Engineering (FSE)",
+   "titles": [
+    "ACM SIGSOFT Conference on the Foundations of Software Engineering (FSE)"
+   ],
+   "former_titles": [],
+   "acronyms": [
+    "FSE"
+   ],
+   "n_years": 36,
+   "first_year": 1983,
+   "last_year": 2026,
+   "webpage": "https://dl.acm.org/conference/fse",
+   "wikidata": "http://www.wikidata.org/entity/Q105623477",
+   "different_from": []
+  },
+  {
+   "key": "conf/stoc",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "Symposium on the Theory of Computing (STOC)",
+   "titles": [
+    "Symposium on the Theory of Computing (STOC)"
+   ],
+   "former_titles": [],
+   "acronyms": [
+    "STOC"
+   ],
+   "n_years": 58,
+   "first_year": 1969,
+   "last_year": 2026,
+   "webpage": "http://sigact.acm.org/stoc/",
+   "wikidata": "http://www.wikidata.org/entity/Q7661893",
+   "different_from": []
+  },
+  {
+   "key": "conf/supercomputer",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "ISC High Performance",
+   "titles": [
+    "ISC High Performance"
+   ],
+   "former_titles": [
+    "International Supercomputing Conference (ISC)",
+    "Mannheim Supercomputer Seminar"
+   ],
+   "acronyms": [
+    "ISC"
+   ],
+   "n_years": 19,
+   "first_year": 1989,
+   "last_year": 2026,
+   "webpage": "https://isc-hpc.com/",
+   "wikidata": "http://www.wikidata.org/entity/Q473962",
+   "different_from": []
+  },
+  {
+   "key": "conf/vissym",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "Eurographics Conference on Visualization (EuroVis)",
+   "titles": [
+    "Eurographics Conference on Visualization (EuroVis)"
+   ],
+   "former_titles": [
+    "Eurographics/IEEE Symposium on Visualization (EuroVis)",
+    "Joint Eurographics - IEEE TCVG Symposium on Visualization (VisSym)",
+    "Joint Eurographics - IEEE VGTC Symposium on Visualization (EuroVis)"
+   ],
+   "acronyms": [
+    "EuroVis",
+    "VisSym"
+   ],
+   "n_years": 28,
+   "first_year": 1999,
+   "last_year": 2026,
+   "webpage": "https://www.eurovis.org/",
+   "wikidata": "http://www.wikidata.org/entity/Q105623480",
+   "different_from": []
+  },
+  {
+   "key": "conf/vldb",
+   "kind": "conf",
+   "class": "Conference or Workshop",
+   "primary_title": "Very Large Data Bases Conference (VLDB)",
+   "titles": [
+    "Very Large Data Bases Conference (VLDB)"
+   ],
+   "former_titles": [],
+   "acronyms": [
+    "VLDB"
+   ],
+   "n_years": 52,
+   "first_year": 1975,
+   "last_year": 2026,
+   "webpage": "https://www.vldb.org/conference.html",
+   "wikidata": "http://www.wikidata.org/entity/Q7907150",
+   "different_from": []
+  },
+  {
+   "key": "journals/corr",
+   "kind": "journals",
+   "class": "Journal",
+   "primary_title": "Computing Research Repository (CoRR)",
+   "titles": [
+    "Computing Research Repository (CoRR)"
+   ],
+   "former_titles": [],
+   "acronyms": [
+    "CoRR"
+   ],
+   "n_years": 34,
+   "first_year": 1993,
+   "last_year": 2026,
+   "webpage": "https://arxiv.org/corr",
+   "wikidata": "http://www.wikidata.org/entity/Q118398",
+   "different_from": []
+  }
+ ]
+}

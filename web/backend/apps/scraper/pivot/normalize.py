@@ -3,12 +3,28 @@
 Vendored (pure parts) from the ProQuest tool's ``utils/ProQuest/normalize.py`` —
 the single source of truth for Pivot date parsing. No models / DB / network, so it
 is trivially unit-testable and shared by both the collect and match sides.
+
+``normalize_amount`` used to live here too, but it is not Pivot-shaped — it is
+called at *read* time by the content serializers, not at scrape time — so it now
+lives at :mod:`apps.content.formatting`. It is re-imported below because this
+module's own :func:`~apps.scraper.pivot.records.build_pivot_item` still calls it
+locally; importing it here (rather than editing every internal caller) keeps this
+module's public surface unchanged while the canonical implementation lives with
+its real read-time consumers.
 """
 
 from __future__ import annotations
 
 import re
 from datetime import datetime
+
+# Layering inversion, left deliberately: this points the dependency arrow from
+# `scraper` into `content`, backwards from the rest of the codebase. Not fixed
+# here because `apps/scraper/pivot/` is deleted wholesale in Phase 6 of
+# docs/plans/open-opportunity-collector.md, which removes this import along
+# with the rest of the file — refactoring it now would be churn on a module
+# with days to live. Do not "fix" this without re-reading that plan.
+from apps.content.formatting import normalize_amount  # noqa: F401 - re-exported
 
 ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # A date token in prose, e.g. "01 Apr 2027" or "1 April 2027".
@@ -36,66 +52,6 @@ def normalize_date(s: str) -> str:
 
 def _iso_or_original(token: str) -> str:
     return normalize_date(token) or token
-
-
-# A dollar figure with an optional scale word, e.g. "$450,000", "$1.5 million",
-# "$800k". The scale is bounded by ``\b`` so prose like "$3 basis points" is read
-# as "$3", not "$3 billion".
-_CURRENCY_VALUE_RE = re.compile(
-    r"\$\s?(\d[\d,]*(?:\.\d+)?)(?:\s*(million|billion|thousand|mm|bn|k|m|b)\b)?",
-    re.I,
-)
-_SCALES = {
-    "thousand": 1_000,
-    "k": 1_000,
-    "million": 1_000_000,
-    "mm": 1_000_000,
-    "m": 1_000_000,
-    "billion": 1_000_000_000,
-    "bn": 1_000_000_000,
-    "b": 1_000_000_000,
-}
-# An amount longer than this is treated as prose to distill, not a tidy value.
-_AMOUNT_MAX_LEN = 48
-
-
-def _amount_value(num: str, scale: str | None) -> float | None:
-    try:
-        value = float(num.replace(",", ""))
-    except ValueError:
-        return None
-    if scale:
-        value *= _SCALES.get(scale.lower(), 1)
-    return value
-
-
-def _fmt_amount(value: float) -> str:
-    return f"${int(round(value)):,}"
-
-
-def normalize_amount(text: str) -> str:
-    """Distill a scraped funding 'amount' to a concise value or range.
-
-    Pivot's Amount field is usually a tidy figure ("$450,000"), but some grants
-    drop a whole budget paragraph there (e.g. "...not to exceed $450,000 in
-    direct costs per year for UG3 and $800,000 for UH3 phases..."). A short, tidy
-    value passes through unchanged; a long prose value is reduced to the dollar
-    figures it names — a single amount, or a "$low–$high" range — and dropped
-    when it names none, so the UI and embeddings never carry a paragraph.
-    Idempotent.
-    """
-    text = " ".join((text or "").split())
-    if not text or len(text) <= _AMOUNT_MAX_LEN:
-        return text
-    values = [
-        v
-        for m in _CURRENCY_VALUE_RE.finditer(text)
-        if (v := _amount_value(m.group(1), m.group(2))) is not None
-    ]
-    if not values:
-        return ""
-    lo, hi = min(values), max(values)
-    return _fmt_amount(lo) if lo == hi else f"{_fmt_amount(lo)}–{_fmt_amount(hi)}"
 
 
 def _timeline_line(entry: dict) -> str:

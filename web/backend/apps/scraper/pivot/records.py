@@ -21,6 +21,15 @@ from .status import opportunity_status
 
 PIVOT_SOURCE = "pivot"
 
+# Fellowships are never ingested under PIVOT_SOURCE — Pivot owns grants and
+# conferences only; every fellowship carries the Illinois Fellowship Finder's own
+# source id. Defined here (alongside PIVOT_SOURCE) rather than in ``.ingest`` so
+# both this module and ``.ingest`` — which already imports from here — can share
+# one definition without an import cycle. Drifting the two apart is exactly the
+# failure mode that made ``extract_fellowship_constraints`` iterate an
+# always-empty queryset (see Phase 2 of the migration plan).
+FELLOWSHIP_SOURCE = "illinois-fellowship-finder"
+
 # Area label (plural, as the tool uses it) -> ContentItem.type value.
 AREA_TO_TYPE = {
     "grants": "grant",
@@ -206,9 +215,11 @@ def _build_fellowship_item(rec: dict, external_id: str, today: str) -> PivotItem
     Called exclusively from :func:`build_pivot_item` when ``area == "fellowships"``.
     Grant exclusion is already done by the caller.
     """
-    # Lazy imports keep the package import clean.
-    from .fellowships.constraints import extract_by_pattern
-    from .fellowships.parsers import deadline_status, facets_incomplete
+    # Lazy imports keep the package import clean. Both modules live under
+    # apps.scraper.eligibility (Phase 2 lifted them out of pivot/fellowships/,
+    # which had nothing to do with Pivot).
+    from apps.scraper.eligibility.constraints import extract_by_pattern
+    from apps.scraper.eligibility.parsers import deadline_status, facets_incomplete
 
     title = (rec.get("title") or "").strip()
     award_class = (rec.get("award_class") or "fellowship").strip()
@@ -276,7 +287,7 @@ def _build_fellowship_item(rec: dict, external_id: str, today: str) -> PivotItem
         "prune_after": prune_after,
     }
 
-    rec_source = (rec.get("source") or "illinois-fellowship-finder").strip()
+    rec_source = (rec.get("source") or FELLOWSHIP_SOURCE).strip()
     source_url = (rec.get("source_url") or "").strip()
 
     return PivotItem(

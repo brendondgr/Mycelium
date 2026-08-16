@@ -6,12 +6,12 @@ layer is exercised through its injected ``complete`` seam.
 
 from __future__ import annotations
 
-from apps.scraper.pivot.fellowships.constraints import (
+from apps.scraper.eligibility.constraints import (
     extract_by_model,
     extract_by_pattern,
     is_resolved,
 )
-from apps.scraper.pivot.fellowships.parsers import empty_facets, facets_incomplete
+from apps.scraper.eligibility.parsers import empty_facets, facets_incomplete
 
 # ---- Patterns ----------------------------------------------------------------
 

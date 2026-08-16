@@ -31,8 +31,8 @@ _Kind = SavedOpportunity.DeadlineKind
 _Confidence = ContentDeadline.Confidence
 
 # Fellowship deadline.type -> confidence. All seven values the parser emits
-# (see apps/scraper/pivot/fellowships/parsers.py + records.py) are mapped so an
-# unrecognised type can never silently become a remindable date.
+# (see apps/scraper/eligibility/parsers.py + apps/scraper/pivot/records.py) are
+# mapped so an unrecognised type can never silently become a remindable date.
 _FELLOWSHIP_CONFIDENCE = {
     "true": _Confidence.CONFIRMED,
     "anticipated": _Confidence.ANTICIPATED,

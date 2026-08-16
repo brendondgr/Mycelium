@@ -110,6 +110,7 @@ Files below are inside `web/backend/apps/content/`.
 | Unified search | `search.py`, `search_service.py`, `query_embedding.py` |
 | High-signal alerts | `high_signal.py` |
 | Read surfaces (feeds, saves, notifications) | `views.py`, `serializers.py`, `urls.py` |
+| Display-time formatting shared by serializers (amounts) | `formatting.py` |
 | Celery tasks & target selection | `tasks.py` |
 
 ## Backend — billing, admin, integrations, ingestion
@@ -123,6 +124,9 @@ Files below are inside `web/backend/apps/content/`.
 | Discord OAuth, API calls, outbox | `web/backend/apps/integrations/services/` |
 | Paper source scrapers | `web/backend/apps/scraper/sources/`, `ingest.py`, `window.py` |
 | Pivot-RP (ProQuest) ingest | `web/backend/apps/scraper/pivot/` |
+| Open-source grants/conferences collector (vendored) | `web/backend/apps/scraper/collect/` |
+| Fellowship eligibility rule engine (deterministic, prose → constraints) | `web/backend/apps/scraper/eligibility/` |
+| Illinois Fellowship Finder scraper | `web/backend/apps/scraper/fellowships/` |
 | Embedder (CPU / CUDA) | `web/backend/apps/scraper/embedding.py` |
 | External DOI / arXiv / URL resolver | `web/backend/apps/scraper/resolver.py` |
 | LLM client | `web/backend/apps/core/llm.py` |

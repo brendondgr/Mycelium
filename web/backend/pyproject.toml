@@ -21,6 +21,11 @@ dependencies = [
     # Calendar-correct offset math for reminders (relativedelta clamps 31 Mar −
     # 1 month → 28/29 Feb). Already present transitively; pinned as a direct dep.
     "python-dateutil>=2.9.0,<3.0.0",
+    # Parses the CCF Deadlines aggregate (apps.scraper.collect.conferences.
+    # adapters.ccf_deadlines fetches https://ccfddl.com/conference/allconf.yml,
+    # the single richest source in the open opportunity collector — three
+    # ranking systems and a dblp key on all ~353 venues in one request).
+    "pyyaml>=6.0.0,<7.0.0",
     "rank-bm25>=0.2.2,<1.0.0",
     "redis>=5.2.0,<6.0.0",
     # Server-side PDF generation for the daily Discord "Mylo Report" (pure-Python,
@@ -89,6 +94,16 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/migrations/*.py" = ["E501"]
+# The open-source opportunity collector (plan: docs/plans/open-opportunity-
+# collector.md, Phase 1) and its ported test suite. Both are vendored from an
+# external standalone project rather than authored for Mycelium's own line
+# length; reflowing ~17k lines of source (plus its ~5k-line test port) to fit
+# this repo's 88-column limit would destroy `git diff` against upstream for no
+# behavioural gain. Only E501 is forgiven — every real-defect class (F, B,
+# E7xx, etc.) still applies, since this tree is otherwise held to the same
+# standard as the rest of the backend.
+"apps/scraper/collect/**" = ["E501"]
+"apps/scraper/tests/collect/**" = ["E501"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"

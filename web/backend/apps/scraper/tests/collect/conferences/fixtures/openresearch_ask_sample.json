@@ -1,0 +1,538 @@
+{
+  "query": {
+    "printrequests": [],
+    "results": {
+      "AAAECC 2027": {
+        "printouts": {
+          "Title": [
+            "The 12th International Conference on Applied Algebra, Algebraic Algorithms, and Error-Correcting Codes"
+          ],
+          "Acronym": [
+            "AAAECC 2027"
+          ],
+          "Start date": [
+            {
+              "timestamp": "1811808000",
+              "raw": "1/2027/6/1"
+            }
+          ],
+          "End date": [
+            {
+              "timestamp": "1812067200",
+              "raw": "1/2027/6/4"
+            }
+          ],
+          "Submission deadline": [
+            {
+              "timestamp": "1802649600",
+              "raw": "1/2027/2/15"
+            }
+          ],
+          "Abstract deadline": [],
+          "Notification": [],
+          "Camera ready due": [],
+          "Has location city": [],
+          "Has location country": [],
+          "Homepage": [],
+          "Event type": [
+            "Conference"
+          ],
+          "Event in series": [
+            {
+              "fulltext": "AAAAECC",
+              "fullurl": "https://www.openresearch.org/wiki/AAAAECC",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Modification date": [
+            {
+              "timestamp": "1786515605",
+              "raw": "1/2026/8/12/6/20/5/0"
+            }
+          ]
+        },
+        "fulltext": "AAAECC 2027",
+        "fullurl": "https://www.openresearch.org/wiki/AAAECC_2027",
+        "namespace": 0,
+        "exists": "1"
+      },
+      "ACC 2027": {
+        "printouts": {
+          "Title": [
+            "2027 American Control Conference"
+          ],
+          "Acronym": [
+            "ACC 2027"
+          ],
+          "Start date": [
+            {
+              "timestamp": "1814918400",
+              "raw": "1/2027/7/7"
+            }
+          ],
+          "End date": [
+            {
+              "timestamp": "1815091200",
+              "raw": "1/2027/7/9"
+            }
+          ],
+          "Submission deadline": [
+            {
+              "timestamp": "1790294400",
+              "raw": "1/2026/9/25"
+            }
+          ],
+          "Abstract deadline": [
+            {
+              "timestamp": "1789084800",
+              "raw": "1/2026/9/11"
+            }
+          ],
+          "Notification": [
+            {
+              "timestamp": "1800576000",
+              "raw": "1/2027/1/22"
+            }
+          ],
+          "Camera ready due": [
+            {
+              "timestamp": "1804809600",
+              "raw": "1/2027/3/12"
+            }
+          ],
+          "Has location city": [
+            {
+              "fulltext": "Philadelphia",
+              "fullurl": "https://www.openresearch.org/wiki/Philadelphia",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Has location country": [
+            {
+              "fulltext": "Category:USA",
+              "fullurl": "https://www.openresearch.org/wiki/Category:USA",
+              "namespace": 14,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Homepage": [],
+          "Event type": [
+            "Conference"
+          ],
+          "Event in series": [
+            {
+              "fulltext": "ACC",
+              "fullurl": "https://www.openresearch.org/wiki/ACC",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Modification date": [
+            {
+              "timestamp": "1786532715",
+              "raw": "1/2026/8/12/11/5/15/0"
+            }
+          ]
+        },
+        "fulltext": "ACC 2027",
+        "fullurl": "https://www.openresearch.org/wiki/ACC_2027",
+        "namespace": 0,
+        "exists": "1"
+      },
+      "AAIP 2027": {
+        "printouts": {
+          "Title": [
+            "5th Asia Conference on Advances in Image Processing"
+          ],
+          "Acronym": [
+            "AAIP 2027"
+          ],
+          "Start date": [
+            {
+              "timestamp": "1813881600",
+              "raw": "1/2027/6/25"
+            }
+          ],
+          "End date": [
+            {
+              "timestamp": "1814054400",
+              "raw": "1/2027/6/27"
+            }
+          ],
+          "Submission deadline": [
+            {
+              "timestamp": "1800403200",
+              "raw": "1/2027/1/20"
+            }
+          ],
+          "Abstract deadline": [],
+          "Notification": [],
+          "Camera ready due": [],
+          "Has location city": [
+            {
+              "fulltext": "Shanghai",
+              "fullurl": "https://www.openresearch.org/wiki/Shanghai",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Has location country": [
+            {
+              "fulltext": "Category:China",
+              "fullurl": "https://www.openresearch.org/wiki/Category:China",
+              "namespace": 14,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Homepage": [
+            "http://www.aaip.net/"
+          ],
+          "Event type": [
+            "Conference"
+          ],
+          "Event in series": [
+            {
+              "fulltext": "AAIP",
+              "fullurl": "https://www.openresearch.org/wiki/AAIP",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Modification date": [
+            {
+              "timestamp": "1786687176",
+              "raw": "1/2026/8/14/5/59/36/0"
+            }
+          ]
+        },
+        "fulltext": "AAIP 2027",
+        "fullurl": "https://www.openresearch.org/wiki/AAIP_2027",
+        "namespace": 0,
+        "exists": "1"
+      },
+      "CARDIS 2026": {
+        "printouts": {
+          "Title": [
+            "CASCADE 2026 (merge of COSADE and CARDIS)"
+          ],
+          "Acronym": [
+            "CARDIS 2026"
+          ],
+          "Start date": [
+            {
+              "timestamp": "1774828800",
+              "raw": "1/2026/3/30"
+            }
+          ],
+          "End date": [
+            {
+              "timestamp": "1775001600",
+              "raw": "1/2026/4/1"
+            }
+          ],
+          "Submission deadline": [
+            {
+              "timestamp": "1797033600",
+              "raw": "1/2026/12/12"
+            }
+          ],
+          "Abstract deadline": [],
+          "Notification": [
+            {
+              "timestamp": "1770595200",
+              "raw": "1/2026/2/9"
+            }
+          ],
+          "Camera ready due": [],
+          "Has location city": [
+            {
+              "fulltext": "Regensburg",
+              "fullurl": "https://www.openresearch.org/wiki/Regensburg",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Has location country": [
+            {
+              "fulltext": "Category:Germany",
+              "fullurl": "https://www.openresearch.org/wiki/Category:Germany",
+              "namespace": 14,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Homepage": [
+            "https://cascade-conference.org/"
+          ],
+          "Event type": [
+            "Conference"
+          ],
+          "Event in series": [
+            {
+              "fulltext": "CARDIS",
+              "fullurl": "https://www.openresearch.org/wiki/CARDIS",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Modification date": [
+            {
+              "timestamp": "1786534205",
+              "raw": "1/2026/8/12/11/30/5/0"
+            }
+          ]
+        },
+        "fulltext": "CARDIS 2026",
+        "fullurl": "https://www.openresearch.org/wiki/CARDIS_2026",
+        "namespace": 0,
+        "exists": "1"
+      },
+      "AAIE 2027": {
+        "printouts": {
+          "Title": [
+            "2027 Asia Artificial Intelligence and Education Conference"
+          ],
+          "Acronym": [
+            "AAIE 2027"
+          ],
+          "Start date": [
+            {
+              "timestamp": "1799452800",
+              "raw": "1/2027/1/9"
+            }
+          ],
+          "End date": [
+            {
+              "timestamp": "1799625600",
+              "raw": "1/2027/1/11"
+            }
+          ],
+          "Submission deadline": [
+            {
+              "timestamp": "1787184000",
+              "raw": "1/2026/8/20"
+            }
+          ],
+          "Abstract deadline": [],
+          "Notification": [],
+          "Camera ready due": [],
+          "Has location city": [
+            {
+              "fulltext": "Tokyo",
+              "fullurl": "https://www.openresearch.org/wiki/Tokyo",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Has location country": [
+            {
+              "fulltext": "Category:Japan",
+              "fullurl": "https://www.openresearch.org/wiki/Category:Japan",
+              "namespace": 14,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Homepage": [],
+          "Event type": [
+            "Conference"
+          ],
+          "Event in series": [
+            {
+              "fulltext": "AAIE",
+              "fullurl": "https://www.openresearch.org/wiki/AAIE",
+              "namespace": 0,
+              "exists": "",
+              "displaytitle": ""
+            }
+          ],
+          "Modification date": [
+            {
+              "timestamp": "1786515662",
+              "raw": "1/2026/8/12/6/21/2/0"
+            }
+          ]
+        },
+        "fulltext": "AAIE 2027",
+        "fullurl": "https://www.openresearch.org/wiki/AAIE_2027",
+        "namespace": 0,
+        "exists": "1"
+      },
+      "ICSOFT 2027": {
+        "printouts": {
+          "Title": [
+            "22nd International Conference on Software Technologies"
+          ],
+          "Acronym": [
+            "ICSOFT 2027"
+          ],
+          "Start date": [],
+          "End date": [],
+          "Submission deadline": [
+            {
+              "timestamp": "1804550400",
+              "raw": "1/2027/3/9"
+            }
+          ],
+          "Abstract deadline": [],
+          "Notification": [
+            {
+              "timestamp": "1809043200",
+              "raw": "1/2027/4/30"
+            }
+          ],
+          "Camera ready due": [
+            {
+              "timestamp": "1810339200",
+              "raw": "1/2027/5/15"
+            }
+          ],
+          "Has location city": [
+            {
+              "fulltext": "Porto",
+              "fullurl": "https://www.openresearch.org/wiki/Porto",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Has location country": [
+            {
+              "fulltext": "Category:Portugal",
+              "fullurl": "https://www.openresearch.org/wiki/Category:Portugal",
+              "namespace": 14,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Homepage": [],
+          "Event type": [
+            "Conference"
+          ],
+          "Event in series": [
+            {
+              "fulltext": "ICSOFT",
+              "fullurl": "https://www.openresearch.org/wiki/ICSOFT",
+              "namespace": 0,
+              "exists": "",
+              "displaytitle": ""
+            }
+          ],
+          "Modification date": [
+            {
+              "timestamp": "1786689814",
+              "raw": "1/2026/8/14/6/43/34/0"
+            }
+          ]
+        },
+        "fulltext": "ICSOFT 2027",
+        "fullurl": "https://www.openresearch.org/wiki/ICSOFT_2027",
+        "namespace": 0,
+        "exists": "1"
+      },
+      "ITW 2027": {
+        "printouts": {
+          "Title": [
+            "2027 IEEE Information Theory Workshop"
+          ],
+          "Acronym": [
+            "ITW 2027"
+          ],
+          "Start date": [
+            {
+              "timestamp": "1806883200",
+              "raw": "1/2027/4/5"
+            }
+          ],
+          "End date": [
+            {
+              "timestamp": "1807142400",
+              "raw": "1/2027/4/8"
+            }
+          ],
+          "Submission deadline": [
+            {
+              "timestamp": "1790899200",
+              "raw": "1/2026/10/2"
+            }
+          ],
+          "Abstract deadline": [],
+          "Notification": [
+            {
+              "timestamp": "1797292800",
+              "raw": "1/2026/12/15"
+            }
+          ],
+          "Camera ready due": [
+            {
+              "timestamp": "1799971200",
+              "raw": "1/2027/1/15"
+            }
+          ],
+          "Has location city": [
+            {
+              "fulltext": "Munich",
+              "fullurl": "https://www.openresearch.org/wiki/Munich",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Has location country": [
+            {
+              "fulltext": "Category:Germany",
+              "fullurl": "https://www.openresearch.org/wiki/Category:Germany",
+              "namespace": 14,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Homepage": [],
+          "Event type": [
+            "Workshop"
+          ],
+          "Event in series": [
+            {
+              "fulltext": "ITW",
+              "fullurl": "https://www.openresearch.org/wiki/ITW",
+              "namespace": 0,
+              "exists": "1",
+              "displaytitle": ""
+            }
+          ],
+          "Modification date": [
+            {
+              "timestamp": "1786542910",
+              "raw": "1/2026/8/12/13/55/10/0"
+            }
+          ]
+        },
+        "fulltext": "ITW 2027",
+        "fullurl": "https://www.openresearch.org/wiki/ITW_2027",
+        "namespace": 0,
+        "exists": "1"
+      }
+    },
+    "serializer": "SMW\\Serializers\\QueryResultSerializer",
+    "version": 2,
+    "meta": {
+      "hash": "trimmed-fixture",
+      "count": 7,
+      "offset": 0,
+      "source": "",
+      "time": "0.12"
+    }
+  }
+}

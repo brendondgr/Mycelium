@@ -1,0 +1,223 @@
+- title: SIGMOD
+  description: ACM Conference on Management of Data
+  sub: DB
+  rank:
+    ccf: A
+    core: A*
+    thcpl: A
+  dblp: sigmod
+  confs:
+  - year: 2026
+    id: sigmod26
+    link: https://2026.sigmod.org/
+    timeline:
+    - abstract_deadline: '2025-01-10 23:59:00'
+      deadline: '2025-01-17 23:59:00'
+      comment: round 1
+    - abstract_deadline: '2025-04-10 23:59:00'
+      deadline: '2025-04-17 23:59:00'
+      comment: round 2
+    - abstract_deadline: '2025-07-10 23:59:00'
+      deadline: '2025-07-17 23:59:00'
+      comment: round 3
+    - abstract_deadline: '2025-10-10 23:59:00'
+      deadline: '2025-10-17 23:59:00'
+      comment: round 4
+    timezone: AoE
+    date: May 31-June 5, 2026
+    place: Bangalore, India
+  - year: 2027
+    id: sigmod27
+    link: https://2027.sigmod.org/
+    timeline:
+    - abstract_deadline: '2026-01-10 23:59:00'
+      deadline: '2026-01-17 23:59:00'
+      comment: round 1
+    - abstract_deadline: '2026-04-10 23:59:00'
+      deadline: '2026-04-17 23:59:00'
+      comment: round 2
+    - abstract_deadline: '2026-07-10 23:59:00'
+      deadline: '2026-07-17 23:59:00'
+      comment: round 3
+    - abstract_deadline: '2026-10-10 23:59:00'
+      deadline: '2026-10-17 23:59:00'
+      comment: round 4
+    timezone: AoE
+    date: June 13-19, 2027
+    place: Huntington Beach, CA, USA
+- title: VLDB
+  description: International Conference on Very Large Data Bases
+  sub: DB
+  rank:
+    ccf: A
+    core: A*
+    thcpl: A
+  dblp: vldb
+  confs:
+  - year: 2026
+    id: vldb26
+    link: https://www.vldb.org/2026/
+    timeline:
+    - deadline: '2025-04-01 17:00:00'
+    - deadline: '2025-05-01 17:00:00'
+    - deadline: '2025-06-01 17:00:00'
+    - deadline: '2025-07-01 17:00:00'
+    - deadline: '2025-08-01 17:00:00'
+    - deadline: '2025-09-01 17:00:00'
+    - deadline: '2025-10-01 17:00:00'
+    - deadline: '2025-11-01 17:00:00'
+    - deadline: '2025-12-01 17:00:00'
+    - deadline: '2026-01-01 17:00:00'
+    - deadline: '2026-02-01 17:00:00'
+    - deadline: '2026-03-01 17:00:00'
+    timezone: PT
+    date: August 31 - September 4, 2026
+    place: Boston, MA, USA
+  - year: 2027
+    id: vldb27
+    link: https://www.vldb.org/2027/
+    timeline:
+    - abstract_deadline: '2026-03-25 17:00:00'
+      deadline: '2026-04-01 17:00:00'
+    - abstract_deadline: '2026-04-25 17:00:00'
+      deadline: '2026-05-01 17:00:00'
+    - abstract_deadline: '2026-05-25 17:00:00'
+      deadline: '2026-06-01 17:00:00'
+    - abstract_deadline: '2026-06-25 17:00:00'
+      deadline: '2026-07-01 17:00:00'
+    - abstract_deadline: '2026-07-25 17:00:00'
+      deadline: '2026-08-01 17:00:00'
+    - abstract_deadline: '2026-08-25 17:00:00'
+      deadline: '2026-09-01 17:00:00'
+    - abstract_deadline: '2026-09-25 17:00:00'
+      deadline: '2026-10-01 17:00:00'
+    - abstract_deadline: '2026-10-25 17:00:00'
+      deadline: '2026-11-01 17:00:00'
+    - abstract_deadline: '2026-11-25 17:00:00'
+      deadline: '2026-12-01 17:00:00'
+    - abstract_deadline: '2026-12-25 17:00:00'
+      deadline: '2027-01-01 17:00:00'
+    - abstract_deadline: '2027-01-25 17:00:00'
+      deadline: '2027-02-01 17:00:00'
+    - abstract_deadline: '2027-02-25 17:00:00'
+      deadline: '2027-03-01 17:00:00'
+    timezone: PT
+    date: August 23 - August 27, 2027
+    place: Athens, Greece
+- title: AAAI
+  description: AAAI Conference on Artificial Intelligence
+  sub: AI
+  rank:
+    ccf: A
+    core: A*
+    thcpl: A
+  dblp: aaai
+  confs:
+  - year: 2026
+    id: aaai26
+    link: https://aaai.org/conference/aaai/aaai-26/
+    timeline:
+    - abstract_deadline: '2025-07-25 23:59:59'
+      deadline: '2025-08-01 23:59:59'
+    timezone: UTC-12
+    date: January 20 - 27, 2026
+    place: Singapore EXPO
+  - year: 2027
+    id: aaai27
+    link: https://aaai.org/conference/aaai/aaai-27/
+    timeline:
+    - abstract_deadline: '2026-07-21 23:59:59'
+      deadline: '2026-07-28 23:59:59'
+    timezone: UTC-12
+    date: February 16-23, 2027
+    place: Montréal, Québec, Canada
+- title: EuroVis
+  description: Eurographics Conference on Visualization
+  sub: CG
+  rank:
+    ccf: B
+    core: B
+    thcpl: B
+  dblp: vissym
+  confs:
+  - year: 2025
+    id: eurovis2025
+    link: https://www.eurovis2025.lu/
+    timeline:
+    - abstract_deadline: '2024-11-27 23:59:59'
+      deadline: '2024-12-04 23:59:59'
+    timezone: AoE
+    date: June 2-6, 2025
+    place: Luxembourg City, Luxembourg
+  - year: 2026
+    id: eurovis2026
+    link: https://www.eurovis.org.uk/
+    timeline:
+    - abstract_deadline: '2025-11-26 23:59:59'
+      deadline: '2024-12-03 23:59:59'
+    timezone: AoE
+    date: June 8-12, 2026
+    place: Nottingham, United Kingdom
+- title: PODS
+  description: ACM Symposium on Principles of Database Systems
+  sub: DB
+  rank:
+    ccf: B
+    core: A*
+    thcpl: A
+  dblp: pods
+  confs:
+  - year: 2025
+    id: pods25
+    link: https://2025.sigmod.org/
+    timeline:
+    - abstract_deadline: '2024-05-31 17:00:00'
+      deadline: '2024-06-07 17:00:00'
+      comment: FIRST SUBMISSION CYCLE
+    - abstract_deadline: '2024-12-02 17:00:00'
+      deadline: '2024-12-09 17:00:00'
+      comment: SECOND SUBMISSION CYCLE
+    timezone: UTC-7
+    date: June 22-27, 2025
+    place: Berlin, Germany
+- title: FSE
+  description: Fast Software Encryption
+  sub: SC
+  rank:
+    ccf: B
+    core: B
+    thcpl: B
+  dblp: fse
+  confs:
+  - year: 2026
+    id: fse26
+    link: https://fse.iacr.org/2026/
+    timeline:
+    - deadline: '2025-03-01 23:59:59'
+      comment: ToSC, Volume 2025, Issue 2 Submission deadline
+    - deadline: '2025-06-01 23:59:59'
+      comment: ToSC, Volume 2025, Issue 3 Submission deadline
+    - deadline: '2025-09-01 23:59:59'
+      comment: ToSC, Volume 2025, Issue 4 Submission deadline
+    - deadline: '2025-11-23 23:59:59'
+      comment: ToSC, Volume 2026, Issue 1 Submission deadline
+    timezone: UTC-12
+    date: March 23-27, 2026
+    place: Singapore, Singapore
+- title: FSE
+  description: ACM International Conference on the Foundations of Software Engineering
+  sub: SE
+  rank:
+    ccf: A
+    core: A*
+    thcpl: A
+  dblp: sigsoft
+  confs:
+  - year: 2027
+    id: fse27
+    link: https://conf.researchr.org/home/fse-2027
+    timeline:
+    - deadline: '2026-10-02 23:59:59'
+    timezone: AoE
+    date: July 12-16, 2027
+    place: Shenzhen, China

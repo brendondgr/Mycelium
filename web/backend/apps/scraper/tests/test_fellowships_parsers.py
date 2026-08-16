@@ -7,7 +7,7 @@ ranges/up-to/K-M suffixes/currency), category bucketing (incl. unknown → other
 derive_flags, classify_award, and the deadline_status helper.
 """
 
-from apps.scraper.pivot.fellowships.parsers import (
+from apps.scraper.eligibility.parsers import (
     bucket_categories,
     classify_award,
     deadline_status,

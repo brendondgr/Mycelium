@@ -1,0 +1,448 @@
+[
+  {
+    "group": {
+      "content": {
+        "submission_id": {
+          "value": "AAAI.org/2027/Conference/-/Submission"
+        },
+        "title": {
+          "value": "The Forty-First AAAI Conference on Artificial Intelligence"
+        },
+        "subtitle": {
+          "value": "AAAI 2027"
+        },
+        "website": {
+          "value": "https://aaai.org/conference/aaai/aaai-27/"
+        },
+        "contact": {
+          "value": "workflowchairs@aaai.zendesk.com"
+        },
+        "location": {
+          "value": "Montréal, Canada"
+        },
+        "start_date": {
+          "value": "Feb 16 2027"
+        },
+        "date": {
+          "value": "Submission Start: Jun 30 2026 11:59AM UTC-0, Abstract Registration: Jul 22 2026 11:59AM UTC-0, Submission Deadline: Jul 29 2026 11:59AM UTC-0"
+        },
+        "full_submission_invitation_id": {
+          "value": "AAAI.org/2027/Conference/-/Full_Submission"
+        }
+      },
+      "id": "AAAI.org/2027/Conference",
+      "domain": "AAAI.org/2027/Conference",
+      "host": "AAAI.org",
+      "description": "Set up and customize the peer review process for your venue. As a program chair, you can define key aspects of the reviewing workflow, including reviewer assignment, review forms, conflict policies, deadlines, and decision criteria. You can find more information [here](https://docs.openreview.net/new-venue-ui-beta/overview)."
+    },
+    "invitation": {
+      "id": "AAAI.org/2027/Conference/-/Submission",
+      "type": "note",
+      "cdate": 1782820740000,
+      "expdate": 1784723340000,
+      "duedate": 1784721540000,
+      "domain": "AAAI.org/2027/Conference",
+      "tcdate": 1777567574128,
+      "tmdate": 1785198220202,
+      "mdate": 1785198220202
+    }
+  },
+  {
+    "group": {
+      "content": {
+        "submission_id": {
+          "value": "ICML.cc/2026/Conference/-/Submission"
+        },
+        "title": {
+          "value": "Forty-third International Conference on Machine Learning"
+        },
+        "subtitle": {
+          "value": "ICML 2026"
+        },
+        "website": {
+          "value": "http://icml.cc"
+        },
+        "contact": {
+          "value": "program-chairs@icml.cc"
+        },
+        "location": {
+          "value": "Seoul, South Korea"
+        },
+        "start_date": {
+          "value": "Jul 06 2026"
+        },
+        "date": {
+          "value": "Submission Start: Jan 08 2026 12:00AM UTC-0, Abstract Registration: Jan 24 2026 11:59AM UTC-0, Submission Deadline: Jan 29 2026 11:59AM UTC-0"
+        },
+        "full_submission_invitation_id": {
+          "value": "ICML.cc/2026/Conference/-/Full_Submission"
+        }
+      },
+      "id": "ICML.cc/2026/Conference",
+      "domain": "ICML.cc/2026/Conference",
+      "host": "ICML.cc",
+      "description": "Set up and customize the peer review process for your venue. As a program chair, you can define key aspects of the reviewing workflow, including reviewer assignment, review forms, conflict policies, deadlines, and decision criteria. You can find more information [here](https://docs.openreview.net/new-venue-ui-beta/overview)."
+    },
+    "invitation": {
+      "id": "ICML.cc/2026/Conference/-/Submission",
+      "type": "note",
+      "cdate": 1767830400000,
+      "expdate": 1769257740000,
+      "duedate": 1769255940000,
+      "domain": "ICML.cc/2026/Conference",
+      "tcdate": 1760560025093,
+      "tmdate": 1782335769095,
+      "mdate": 1782335769095
+    }
+  },
+  {
+    "group": {
+      "content": {
+        "submission_id": {
+          "value": "ICML.cc/2026/Position_Paper_Track/-/Submission"
+        },
+        "title": {
+          "value": "Forty-third International Conference on Machine Learning Position Paper Track"
+        },
+        "subtitle": {
+          "value": "ICML 2026 Position Paper Track"
+        },
+        "website": {
+          "value": "http://icml.cc"
+        },
+        "contact": {
+          "value": "position-chairs@icml.cc"
+        },
+        "location": {
+          "value": "Seoul, South Korea"
+        },
+        "start_date": {
+          "value": "Jul 06 2026"
+        },
+        "date": {
+          "value": "Submission Start: Jan 08 2026 12:00AM UTC-0, Abstract Registration: Jan 24 2026 11:59AM UTC-0, Submission Deadline: Jan 29 2026 11:59AM UTC-0"
+        },
+        "full_submission_invitation_id": {
+          "value": "ICML.cc/2026/Position_Paper_Track/-/Full_Submission"
+        }
+      },
+      "id": "ICML.cc/2026/Position_Paper_Track",
+      "domain": "ICML.cc/2026/Position_Paper_Track",
+      "host": "ICML.cc",
+      "description": "Set up and customize the peer review process for your venue. As a program chair, you can define key aspects of the reviewing workflow, including reviewer assignment, review forms, conflict policies, deadlines, and decision criteria. You can find more information [here](https://docs.openreview.net/new-venue-ui-beta/overview)."
+    },
+    "invitation": {
+      "id": "ICML.cc/2026/Position_Paper_Track/-/Submission",
+      "type": "note",
+      "cdate": 1767830400000,
+      "expdate": 1769257740000,
+      "duedate": 1769255940000,
+      "domain": "ICML.cc/2026/Position_Paper_Track",
+      "tcdate": 1760627621532,
+      "tmdate": 1782335526628,
+      "mdate": 1782335526628
+    }
+  },
+  {
+    "group": {
+      "content": {
+        "submission_id": {
+          "value": "GSCL.org/KONVENS/2026/Workshop/Eval4SD/-/Submission"
+        },
+        "title": {
+          "value": "First Workshop on Evaluating LLMs for Specialized Domains"
+        },
+        "subtitle": {
+          "value": "Eval4SD 2026"
+        },
+        "website": {
+          "value": "https://eval4sd.github.io/"
+        },
+        "contact": {
+          "value": "eval4sd-organizers@googlegroups.com"
+        },
+        "location": {
+          "value": "Hamburg, Germany"
+        },
+        "start_date": {
+          "value": 1789336800000
+        },
+        "date": {
+          "value": ""
+        },
+        "full_submission_invitation_id": {
+          "value": "GSCL.org/KONVENS/2026/Workshop/Eval4SD/-/Full_Submission"
+        }
+      },
+      "id": "GSCL.org/KONVENS/2026/Workshop/Eval4SD",
+      "domain": "GSCL.org/KONVENS/2026/Workshop/Eval4SD",
+      "host": "GSCL.org",
+      "description": "Set up and customize the peer review process for your venue. As a program chair, you can define key aspects of the reviewing workflow, including reviewer assignment, review forms, conflict policies, deadlines, and decision criteria. You can find more information [here](https://docs.openreview.net/new-venue-ui-beta/overview)."
+    },
+    "invitation": {
+      "id": "GSCL.org/KONVENS/2026/Workshop/Eval4SD/-/Submission",
+      "type": "note",
+      "cdate": 1777845600000,
+      "expdate": 1783549740000,
+      "duedate": 1783547940000,
+      "domain": "GSCL.org/KONVENS/2026/Workshop/Eval4SD",
+      "tcdate": 1772221514740,
+      "tmdate": 1782737251906,
+      "mdate": 1782737251906
+    }
+  },
+  {
+    "group": {
+      "content": {
+        "submission_id": {
+          "value": "ACM.org/ICMR/2026/Workshop/LSC/-/Submission"
+        },
+        "title": {
+          "value": "The 9th Annual Lifelog Search Challenge"
+        },
+        "subtitle": {
+          "value": "LSC'26"
+        },
+        "website": {
+          "value": "https://lifelogsearch.org/lsc/"
+        },
+        "contact": {
+          "value": "allie.tran@dcu.ie"
+        },
+        "location": {
+          "value": "Amsterdam, The Netherlands"
+        },
+        "start_date": {
+          "value": "Jun 16 2026"
+        },
+        "date": {
+          "value": "Submission Start: Feb 15 2026 12:00AM UTC-0, Submission Deadline: May 06 2026 12:00PM UTC-0"
+        }
+      },
+      "id": "ACM.org/ICMR/2026/Workshop/LSC",
+      "domain": "ACM.org/ICMR/2026/Workshop/LSC",
+      "host": "ACM.org",
+      "description": "Set up and customize the peer review process for your venue. As a program chair, you can define key aspects of the reviewing workflow, including reviewer assignment, review forms, conflict policies, deadlines, and decision criteria. You can find more information [here](https://docs.openreview.net/new-venue-ui-beta/overview)."
+    },
+    "invitation": {
+      "id": "ACM.org/ICMR/2026/Workshop/LSC/-/Submission",
+      "type": "note",
+      "cdate": 1771113600000,
+      "expdate": 1778070600000,
+      "duedate": 1778068800000,
+      "domain": "ACM.org/ICMR/2026/Workshop/LSC",
+      "tcdate": 1771011795664,
+      "tmdate": 1777454880706,
+      "mdate": 1777454880706
+    }
+  },
+  {
+    "group": {
+      "content": {
+        "submission_id": {
+          "value": "ACM.org/CHASE/2026/Workshop/ARMH/-/Submission"
+        },
+        "title": {
+          "value": "IEEE/ACM CHASE 2026 Workshop: AI-Powered Resilient Mobile Health: From AI-RAN to Application"
+        },
+        "subtitle": {
+          "value": "CHASE 2026 Workshop ARMH"
+        },
+        "website": {
+          "value": "https://conferences.computer.org/chase2026/workshop_ai_mobile_health.html"
+        },
+        "contact": {
+          "value": "tian.xie@usu.edu"
+        },
+        "location": {
+          "value": "Pittsburgh, PA, USA"
+        },
+        "start_date": {
+          "value": "Aug 04 2026"
+        },
+        "date": {
+          "value": ""
+        }
+      },
+      "id": "ACM.org/CHASE/2026/Workshop/ARMH",
+      "domain": "ACM.org/CHASE/2026/Workshop/ARMH",
+      "host": "ACM.org",
+      "description": "Set up and customize the peer review process for your venue. As a program chair, you can define key aspects of the reviewing workflow, including reviewer assignment, review forms, conflict policies, deadlines, and decision criteria. You can find more information [here](https://docs.openreview.net/new-venue-ui-beta/overview)."
+    },
+    "invitation": {
+      "id": "ACM.org/CHASE/2026/Workshop/ARMH/-/Submission",
+      "type": "note",
+      "cdate": 1770591600000,
+      "expdate": 1776742200000,
+      "duedate": 1776740400000,
+      "domain": "ACM.org/CHASE/2026/Workshop/ARMH",
+      "tcdate": 1770150611144,
+      "tmdate": 1775615981499,
+      "mdate": 1775615981499
+    }
+  },
+  {
+    "group": {
+      "content": {
+        "submission_id": {
+          "value": "CAISc/2026/Conference/-/Submission"
+        },
+        "title": {
+          "value": "Conference For AI Scientists"
+        },
+        "subtitle": {
+          "value": "CAISc 2026"
+        },
+        "website": {
+          "value": "https://caisc2026.github.io/index.html"
+        },
+        "contact": {
+          "value": "dhruv.kumar@pilani.bits-pilani.ac.in"
+        },
+        "location": {
+          "value": "Online"
+        },
+        "start_date": {
+          "value": 1784863800000
+        },
+        "date": {
+          "value": ""
+        }
+      },
+      "id": "CAISc/2026/Conference",
+      "domain": "CAISc/2026/Conference",
+      "host": "CAISc",
+      "description": "Set up and customize the peer review process for your venue. As a program chair, you can define key aspects of the reviewing workflow, including reviewer assignment, review forms, conflict policies, deadlines, and decision criteria. You can find more information [here](https://docs.openreview.net/new-venue-ui-beta/overview)."
+    },
+    "invitation": {
+      "id": "CAISc/2026/Conference/-/Submission",
+      "type": "note",
+      "cdate": 1776254400000,
+      "expdate": 1780403340000,
+      "duedate": 1780401540000,
+      "domain": "CAISc/2026/Conference",
+      "tcdate": 1771339916934,
+      "tmdate": 1780223031884,
+      "mdate": 1780223031884
+    }
+  },
+  {
+    "group": {
+      "content": {
+        "submission_id": {
+          "value": "BriGap/2026/Workshop/-/Submission"
+        },
+        "title": {
+          "value": "Bridges and Gaps between Formal and Computational Linguistics"
+        },
+        "subtitle": {
+          "value": "BriGap-3"
+        },
+        "website": {
+          "value": "https://brigap-workshop.github.io/2026/"
+        },
+        "contact": {
+          "value": "brigapworkshop@gmail.com"
+        },
+        "location": {
+          "value": "Paris, France"
+        },
+        "start_date": {
+          "value": "Jul 11 2026"
+        },
+        "date": {
+          "value": "Submission Deadline: May 03 2026 11:59PM UTC-0"
+        }
+      },
+      "id": "BriGap/2026/Workshop",
+      "domain": "BriGap/2026/Workshop",
+      "host": "BriGap",
+      "description": "Set up and customize the peer review process for your venue. As a program chair, you can define key aspects of the reviewing workflow, including reviewer assignment, review forms, conflict policies, deadlines, and decision criteria. You can find more information [here](https://docs.openreview.net/new-venue-ui-beta/overview)."
+    },
+    "invitation": null
+  },
+  {
+    "group": {
+      "content": {
+        "submission_id": {
+          "value": "DETEC/2026/Conference/-/Submission"
+        },
+        "title": {
+          "value": "Discourse Expectations: Theoretical, Experimental and Computational Perspectives"
+        },
+        "subtitle": {
+          "value": "DETEC 2026"
+        },
+        "website": {
+          "value": "https://detec2026.sites.uu.nl"
+        },
+        "contact": {
+          "value": "m.c.j.scholman@uu.nl"
+        },
+        "location": {
+          "value": "Utrecht, the Netherlands"
+        },
+        "start_date": {
+          "value": 1789628400000
+        },
+        "date": {
+          "value": ""
+        }
+      },
+      "id": "DETEC/2026/Conference",
+      "domain": "DETEC/2026/Conference",
+      "host": "DETEC",
+      "description": "Set up and customize the peer review process for your venue. As a program chair, you can define key aspects of the reviewing workflow, including reviewer assignment, review forms, conflict policies, deadlines, and decision criteria. You can find more information [here](https://docs.openreview.net/new-venue-ui-beta/overview)."
+    },
+    "invitation": {
+      "id": "DETEC/2026/Conference/-/Submission",
+      "type": "note",
+      "cdate": 1779195600000,
+      "expdate": 1779229740000,
+      "domain": "DETEC/2026/Conference",
+      "tcdate": 1771528261212,
+      "tmdate": 1778923156447,
+      "mdate": 1778923156447
+    }
+  },
+  {
+    "group": {
+      "content": {
+        "title": {
+          "value": "Giornate Italiane di Linguistica Sperimentale"
+        },
+        "subtitle": {
+          "value": "GILS"
+        },
+        "website": {
+          "value": "https://www.unive.it/web/it/17646/home"
+        },
+        "contact": {
+          "value": "gils@unive.it"
+        },
+        "location": {
+          "value": "Venice, Italy"
+        },
+        "start_date": {
+          "value": 1793862000000
+        },
+        "date": {
+          "value": ""
+        }
+      },
+      "id": "GILS/2026/Conference",
+      "domain": "GILS/2026/Conference",
+      "host": "GILS",
+      "description": "Set up and customize the peer review process for your venue. As a program chair, you can define key aspects of the reviewing workflow, including reviewer assignment, review forms, conflict policies, deadlines, and decision criteria. You can find more information [here](https://docs.openreview.net/new-venue-ui-beta/overview)."
+    },
+    "invitation": null
+  },
+  {
+    "group": {
+      "id": "legacy.example/2019/Conference",
+      "host": "legacy.example",
+      "description": ""
+    },
+    "invitation": null
+  }
+]

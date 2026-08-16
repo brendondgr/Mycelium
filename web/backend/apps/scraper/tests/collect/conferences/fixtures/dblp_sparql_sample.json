@@ -1,0 +1,146 @@
+{
+ "results": {
+  "bindings": [
+   {
+    "stream": {
+     "type": "uri",
+     "value": "https://dblp.org/streams/conf/sac"
+    },
+    "class": {
+     "type": "uri",
+     "value": "https://dblp.org/rdf/schema#Conference"
+    },
+    "primary": {
+     "type": "literal",
+     "value": "ACM Symposium on Applied Computing (SAC)"
+    },
+    "title": {
+     "type": "literal",
+     "value": "ACM Symposium on Applied Computing (SAC)"
+    },
+    "titleKind": {
+     "type": "literal",
+     "value": "current"
+    },
+    "nYears": {
+     "type": "literal",
+     "value": "36"
+    },
+    "firstYear": {
+     "type": "literal",
+     "value": "1986"
+    },
+    "lastYear": {
+     "type": "literal",
+     "value": "2026"
+    },
+    "webpage": {
+     "type": "uri",
+     "value": "http://www.acm.org/sigapp/"
+    }
+   },
+   {
+    "stream": {
+     "type": "uri",
+     "value": "https://dblp.org/streams/conf/sacrypt"
+    },
+    "class": {
+     "type": "uri",
+     "value": "https://dblp.org/rdf/schema#Conference"
+    },
+    "primary": {
+     "type": "literal",
+     "value": "Selected Areas in Cryptography (SAC)"
+    },
+    "title": {
+     "type": "literal",
+     "value": "Selected Areas in Cryptography (SAC)"
+    },
+    "titleKind": {
+     "type": "literal",
+     "value": "current"
+    },
+    "nYears": {
+     "type": "literal",
+     "value": "22"
+    },
+    "firstYear": {
+     "type": "literal",
+     "value": "1999"
+    },
+    "lastYear": {
+     "type": "literal",
+     "value": "2026"
+    }
+   },
+   {
+    "stream": {
+     "type": "uri",
+     "value": "https://dblp.org/streams/conf/innovations"
+    },
+    "class": {
+     "type": "uri",
+     "value": "https://dblp.org/rdf/schema#Conference"
+    },
+    "primary": {
+     "type": "literal",
+     "value": "Innovations in Theoretical Computer Science (ITCS)"
+    },
+    "title": {
+     "type": "literal",
+     "value": "Innovations in Computer Science (ICS)"
+    },
+    "titleKind": {
+     "type": "literal",
+     "value": "former"
+    },
+    "nYears": {
+     "type": "literal",
+     "value": "16"
+    },
+    "firstYear": {
+     "type": "literal",
+     "value": "2010"
+    },
+    "lastYear": {
+     "type": "literal",
+     "value": "2026"
+    }
+   },
+   {
+    "stream": {
+     "type": "uri",
+     "value": "https://dblp.org/streams/conf/innovations"
+    },
+    "class": {
+     "type": "uri",
+     "value": "https://dblp.org/rdf/schema#Conference"
+    },
+    "primary": {
+     "type": "literal",
+     "value": "Innovations in Theoretical Computer Science (ITCS)"
+    },
+    "title": {
+     "type": "literal",
+     "value": "Innovations in Theoretical Computer Science (ITCS)"
+    },
+    "titleKind": {
+     "type": "literal",
+     "value": "current"
+    },
+    "nYears": {
+     "type": "literal",
+     "value": "16"
+    },
+    "firstYear": {
+     "type": "literal",
+     "value": "2010"
+    },
+    "lastYear": {
+     "type": "literal",
+     "value": "2026"
+    }
+   }
+  ]
+ }
+}

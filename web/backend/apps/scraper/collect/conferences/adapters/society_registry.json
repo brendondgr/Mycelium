@@ -1,0 +1,43 @@
+[
+  {
+    "society": "Society for Neuroscience",
+    "conference": "Neuroscience 2026",
+    "acronym": "Neuroscience",
+    "year": 2026,
+    "url": "https://www.sfn.org/meetings/neuroscience-2026/general-information/dates-and-deadlines",
+    "discipline": "neuroscience",
+    "country": "US",
+    "event_dates": "November 14-18, 2026",
+    "notes": "Gold standard: 4 tables, ~12 typed rows, multi-round (regular + late-breaking), explicit local timezones ('2 p.m. EDT', '5 p.m. EST'). Verified reachable by plain HTTPS GET, HTTP 200, 158996 bytes. Verified 2026-08-16.",
+    "verified_at": "2026-08-16",
+    "verified_method": "curl GET, HTTP 200"
+  },
+  {
+    "society": "International Society for Magnetic Resonance in Medicine",
+    "conference": "ISMRM & ISMRT Annual Meeting & Exhibition 2026",
+    "acronym": "ISMRM",
+    "year": 2026,
+    "url": "https://ismrm.org/26m/",
+    "discipline": "medical imaging",
+    "country": "US",
+    "event_dates": "",
+    "notes": "Redirects (301) to https://www.ismrm.org/26m/, which answers HTTP 200. Landing page is JS-heavy (React/Vue/Angular bundle markers present); no typed deadline table found in the plain-HTTP payload at recon time, so this row is a candidate for captured or browser mode rather than http mode. Verified reachable 2026-08-16; deadline-table structure not yet confirmed.",
+    "verified_at": "2026-08-16",
+    "verified_method": "curl GET (follow redirects), HTTP 200",
+    "mode": "captured"
+  },
+  {
+    "society": "American Institute of Aeronautics and Astronautics",
+    "conference": "AIAA AVIATION Forum 2027",
+    "acronym": "AVIATION",
+    "year": 2027,
+    "url": "https://www.aiaa.org/aviation",
+    "discipline": "aerospace engineering",
+    "country": "US",
+    "event_dates": "",
+    "notes": "Redirects (301) to https://aviation.aiaa.org/, which answers HTTP 200. Page links out to a separate 'Abstract Submission Process & Requirements' page and an AbstractCentral portal rather than carrying a typed dates table itself, so this row is a candidate for captured mode once a human saves the actual deadlines subpage. Verified reachable 2026-08-16; deadline-table structure not yet confirmed.",
+    "verified_at": "2026-08-16",
+    "verified_method": "curl GET (follow redirects), HTTP 200",
+    "mode": "captured"
+  }
+]
