@@ -294,6 +294,24 @@ class CommandTests(TestCase):
                 Path(payload["pdf_path"]).read_bytes().startswith(b"%PDF")
             )
 
+    def test_metrics_can_be_echoed_without_clobbering_the_output_stream(self):
+        """The echo flag must not be named `--stdout`.
+
+        Django reserves that option for the command's output stream, so a
+        store_true flag of that name hands `True` to `OutputWrapper` and the first
+        write raises "'bool' object has no attribute 'write'".
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            out = StringIO()
+            call_command(
+                "run_analytics_report",
+                json_path=str(Path(tmp) / "analytics.json"),
+                pdf_dir=str(Path(tmp) / "pdf"),
+                print_json=True,
+                stdout=out,
+            )
+            self.assertIn('"coverage"', out.getvalue())
+
     def test_settings_paths_are_used_when_no_override_is_given(self):
         """The nightly run passes no flags, so the settings path is the real path.
 

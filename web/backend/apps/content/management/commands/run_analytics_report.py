@@ -15,7 +15,7 @@ of them, for one reason: a broken chart or an unwritable directory must never
 turn a good night's run into a failed one. The daily orchestrator treats a
 non-zero exit here as a note, not a failure.
 
-    manage.py run_analytics_report [--date YYYY-MM-DD] [--no-pdf] [--stdout]
+    manage.py run_analytics_report [--date YYYY-MM-DD] [--no-pdf] [--print-json]
 
 (prefix with `uv run --project web/backend python web/backend/`.)
 """
@@ -45,9 +45,15 @@ class Command(BaseCommand):
             action="store_true",
             help="Collect and write the JSON, but skip rendering the PDF.",
         )
+        # NOT `--stdout`: Django reserves that option name for the command's
+        # output *stream* (`BaseCommand.execute` does
+        # `self.stdout = OutputWrapper(options["stdout"])`), so a store_true flag
+        # of that name replaces the stream with `True` and the first write dies
+        # with "'bool' object has no attribute 'write'".
         parser.add_argument(
-            "--stdout",
+            "--print-json",
             action="store_true",
+            dest="print_json",
             help="Also print the metrics as JSON.",
         )
         parser.add_argument(
@@ -82,7 +88,7 @@ class Command(BaseCommand):
 
         self._write_json(json_path, payload)
 
-        if options.get("stdout"):
+        if options.get("print_json"):
             self.stdout.write(json.dumps(payload, indent=2))
 
         self.stdout.write(self.style.SUCCESS(data.headline()))
