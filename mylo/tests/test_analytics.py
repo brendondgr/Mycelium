@@ -229,6 +229,58 @@ class ReadAnalyticsTests(unittest.TestCase):
             self.assertIsNone(analytics.read_analytics(path))
 
 
+class ResolvePdfTests(unittest.TestCase):
+    """The host has to find a file the container named by its own root."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        patcher = mock.patch.object(analytics, "REPO_ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        dir_patcher = mock.patch.object(
+            analytics, "ANALYTICS_PDF_DIR", self.root / "data" / "analytics"
+        )
+        dir_patcher.start()
+        self.addCleanup(dir_patcher.stop)
+
+    def _write(self, relative: str) -> Path:
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"%PDF-1.4\n")
+        return path
+
+    def test_relpath_is_reanchored_on_this_checkout(self):
+        expected = self._write("data/analytics/run.pdf")
+        payload = {
+            "pdf_path": "/app/data/analytics/run.pdf",
+            "pdf_relpath": "data/analytics/run.pdf",
+            "pdf_filename": "run.pdf",
+        }
+        self.assertEqual(analytics.resolve_pdf(payload), expected)
+
+    def test_an_older_payload_falls_back_to_the_report_directory(self):
+        expected = self._write("data/analytics/run.pdf")
+        payload = {
+            "pdf_path": "/app/data/analytics/run.pdf",
+            "pdf_filename": "run.pdf",
+        }
+        self.assertEqual(analytics.resolve_pdf(payload), expected)
+
+    def test_a_reachable_absolute_path_is_used_as_written(self):
+        expected = self._write("elsewhere/run.pdf")
+        self.assertEqual(analytics.resolve_pdf({"pdf_path": str(expected)}), expected)
+
+    def test_nothing_readable_is_none_not_an_exception(self):
+        payload = {"pdf_path": "/app/data/analytics/missing.pdf"}
+        self.assertIsNone(analytics.resolve_pdf(payload))
+
+    def test_no_pdf_keys_at_all_is_none(self):
+        self.assertIsNone(analytics.resolve_pdf({}))
+        self.assertIsNone(analytics.resolve_pdf(None))
+
+
 class RunCompleteTests(unittest.TestCase):
     """``manual_all`` posts the rich summary, or the plain one, but always one."""
 
@@ -245,17 +297,36 @@ class RunCompleteTests(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def test_rich_summary_carries_fields_and_the_pdf(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = Path(tmp) / "report.pdf"
+            report.write_bytes(b"%PDF-1.4\n")
+            # The container's own path is unreachable here, exactly as it is on the
+            # host; `pdf_relpath` is what makes the file findable.
+            payload = _payload(
+                pdf_path="/app/data/analytics/report.pdf",
+                pdf_filename="report.pdf",
+                pdf_relpath="report.pdf",
+            )
+            with mock.patch.object(analytics, "REPO_ROOT", Path(tmp)):
+                manual_all.report_run_complete(payload, scrape_ran=True)
+
+            self.assertEqual(len(self.calls), 1)
+            kind, title, body, kwargs = self.calls[0]
+            self.assertEqual(kind, "info")
+            self.assertIn("2026-08-06", title)
+            self.assertIn("New items found today", body)
+            self.assertEqual(kwargs["attachment"], report)
+            self.assertIn("Language model", kwargs["fields"])
+            self.assertLessEqual(len(kwargs["fields"]), 25)
+
+    def test_a_container_only_path_drops_the_attachment_not_the_summary(self):
+        """The regression: `/app/...` does not exist on the host that posts."""
         payload = _payload(pdf_path="/app/data/analytics/report.pdf")
         manual_all.report_run_complete(payload, scrape_ran=True)
 
         self.assertEqual(len(self.calls), 1)
-        kind, title, body, kwargs = self.calls[0]
-        self.assertEqual(kind, "info")
-        self.assertIn("2026-08-06", title)
-        self.assertIn("New items found today", body)
-        self.assertEqual(kwargs["attachment"], "/app/data/analytics/report.pdf")
-        self.assertIn("Language model", kwargs["fields"])
-        self.assertLessEqual(len(kwargs["fields"]), 25)
+        self.assertIsNone(self.calls[0][3]["attachment"])
+        self.assertIn("2026-08-06", self.calls[0][1])
 
     def test_missing_analytics_still_announces_the_run(self):
         manual_all.report_run_complete(None, scrape_ran=True)

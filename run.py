@@ -16,6 +16,8 @@ Usage:
     python run.py restart    # stop then start, detached
     python run.py logs       # follow logs of the running stack (Ctrl-C to exit)
     python run.py status     # show service status
+    python run.py migrate    # apply pending database migrations now
+    python run.py pending    # list migrations not yet applied (changes nothing)
 
 Options:
     --build                  # rebuild images before starting
@@ -80,6 +82,40 @@ def up(base: list[str], build: bool) -> int:
     return run(cmd)
 
 
+#: The backend's own ``manage.py`` invocation, as it runs inside the container.
+MANAGE = [
+    "exec",
+    "-T",
+    "backend",
+    "uv",
+    "run",
+    "--project",
+    "web/backend",
+    "python",
+    "web/backend/manage.py",
+]
+
+
+def migrate(base: list[str]) -> int:
+    """Apply pending migrations against the running stack.
+
+    The backend applies migrations in its *start command*, so a container that is
+    already up keeps serving the schema it started with. Code arrives by bind
+    mount rather than by image, so `git pull` on the host swaps the code under a
+    running backend without restarting it — new code, old schema, and the mismatch
+    only surfaces when something touches the new table.
+
+    This is the explicit form of the fix; ``python run.py restart`` is the other,
+    since restarting re-runs the start command.
+    """
+    return run([*base, *MANAGE, "migrate", "--noinput"])
+
+
+def pending(base: list[str]) -> int:
+    """Show the migrations this database has not applied yet. Read-only."""
+    return run([*base, *MANAGE, "showmigrations", "--plan"])
+
+
 def print_urls(base: list[str]) -> None:
     print("\nStack is starting in the background. Endpoints:")
     for name, url in URLS:
@@ -100,7 +136,7 @@ def main() -> int:
         "action",
         nargs="?",
         default="restart",
-        choices=["restart", "up", "down", "logs", "status"],
+        choices=["restart", "up", "down", "logs", "status", "migrate", "pending"],
         help="What to do (default: restart — stop if running, then start detached).",
     )
     parser.add_argument(
@@ -120,6 +156,12 @@ def main() -> int:
 
     if args.action == "status":
         return run([*base, "ps"])
+
+    if args.action == "migrate":
+        return migrate(base)
+
+    if args.action == "pending":
+        return pending(base)
 
     if args.action == "up":
         code = up(base, args.build)

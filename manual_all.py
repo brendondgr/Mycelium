@@ -261,7 +261,9 @@ def report_run_complete(payload: dict | None, *, scrape_ran: bool) -> None:
         analytics.summary_body(payload, scrape_ran=scrape_ran),
         stage="done",
         fields=fields,
-        attachment=payload.get("pdf_path") or None,
+        # Resolved against this host's checkout: the path in the payload was
+        # written by the container, where the tree is mounted at a different root.
+        attachment=analytics.resolve_pdf(payload),
     )
 
 

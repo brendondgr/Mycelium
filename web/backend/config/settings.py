@@ -291,22 +291,31 @@ OPPORTUNITY_LLM_CONCURRENCY = env.int("OPPORTUNITY_LLM_CONCURRENCY", default=12)
 
 # Where the daily suggestion run writes its verbose, timestamped log (one file
 # per run). Under the repo's data/ dir by default so it is readable on the host.
-DAILY_SUGGESTIONS_LOG_DIR = env(
+#
+# Every data path below reads through `env_str`, not `env`: `.env.example` is an
+# env_file for the backend and worker, so a key listed there with no value arrives
+# as an empty string, and plain `env(...)` takes that over the default. An empty
+# path then becomes `Path("")` — which is `Path(".")`, the process working
+# directory — so the artifact silently lands in the repo root, or the write fails
+# outright with "Is a directory". These are the paths the host runner reads back
+# across the bind mount, so a blank one breaks the seam rather than just moving a
+# file.
+DAILY_SUGGESTIONS_LOG_DIR = env_str(
     "DAILY_SUGGESTIONS_LOG_DIR",
-    default=str(ROOT_DIR.parent / "data" / "logs" / "daily-suggestions"),
+    str(ROOT_DIR.parent / "data" / "logs" / "daily-suggestions"),
 )
 
 # The nightly internal analytics artifacts. Both live under the repo's data/ dir
 # because the *host* runner reads them: `manual_all.py` builds its Discord summary
 # from the JSON and attaches the PDF, and it has neither Django nor a database.
 # Keep these paths in step with `mylo/analytics.py`, the reader on the other side.
-RUN_ANALYTICS_JSON_PATH = env(
+RUN_ANALYTICS_JSON_PATH = env_str(
     "RUN_ANALYTICS_JSON_PATH",
-    default=str(ROOT_DIR.parent / "data" / "logs" / "mylo-run-analytics.json"),
+    str(ROOT_DIR.parent / "data" / "logs" / "mylo-run-analytics.json"),
 )
-RUN_ANALYTICS_PDF_DIR = env(
+RUN_ANALYTICS_PDF_DIR = env_str(
     "RUN_ANALYTICS_PDF_DIR",
-    default=str(ROOT_DIR.parent / "data" / "analytics"),
+    str(ROOT_DIR.parent / "data" / "analytics"),
 )
 # One report a day, kept forever, is a slow disk leak. The command sweeps its own
 # directory rather than adding another prune stage to the nightly chain.
@@ -789,9 +798,9 @@ DISCORD_OUTBOX_BATCH_LIMIT = env.int("DISCORD_OUTBOX_BATCH_LIMIT", default=50)
 DISCORD_OUTBOX_RETENTION_DAYS = env.int("DISCORD_OUTBOX_RETENTION_DAYS", default=30)
 # Where a queued attachment (the daily PDF report) waits for its send. Bytes must
 # outlive the batch that rendered them, so this is a durable path, not a temp dir.
-DISCORD_OUTBOX_ATTACHMENT_DIR = env(
+DISCORD_OUTBOX_ATTACHMENT_DIR = env_str(
     "DISCORD_OUTBOX_ATTACHMENT_DIR",
-    default=str(ROOT_DIR.parent / "data" / "outbox"),
+    str(ROOT_DIR.parent / "data" / "outbox"),
 )
 
 # Per-user, per-bucket slash-command limits as (calls, seconds), enforced by the

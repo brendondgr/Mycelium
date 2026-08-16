@@ -28,11 +28,19 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
+#: The checkout root on *this* host — the same tree the backend container sees
+#: bind-mounted at ``/app``. Every artifact the container leaves for the host
+#: runner is re-anchored here, because the two halves address the same bytes
+#: under different roots.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
 #: Where the backend command leaves the metrics. Mirrors
 #: ``settings.RUN_ANALYTICS_JSON_PATH``; the repo root is one level up from here.
-ANALYTICS_PATH = (
-    Path(__file__).resolve().parent.parent / "data" / "logs" / "mylo-run-analytics.json"
-)
+ANALYTICS_PATH = REPO_ROOT / "data" / "logs" / "mylo-run-analytics.json"
+
+#: Mirrors ``settings.RUN_ANALYTICS_PDF_DIR`` — the last-resort place to look for
+#: a report whose payload named neither a relative nor a reachable path.
+ANALYTICS_PDF_DIR = REPO_ROOT / "data" / "analytics"
 
 #: Discord's embed field ceiling. Every block is clamped to it.
 FIELD_MAX = 1024
@@ -75,6 +83,51 @@ def read_analytics(path: str | Path | None = None) -> dict | None:
         log.warning("Mylo analytics at %s was not an object", target)
         return None
     return payload
+
+
+def resolve_pdf(payload: dict | None) -> Path | None:
+    """The analytics PDF as a path *this host* can open, or ``None``.
+
+    The metrics file is written inside the backend container, so its ``pdf_path``
+    is a container path (``/app/data/analytics/…``) that does not exist out here.
+    Handing that straight to the reporter is not a loud failure — the attachment
+    reader logs a warning and posts the summary without the file — so the run
+    quietly loses the PDF it just rendered.
+
+    Preference order: ``pdf_relpath`` re-anchored on this checkout (the portable
+    key), then ``pdf_path`` as written (correct when the writer and the runner
+    share a filesystem, and the only key older payloads carry), then the default
+    report directory by filename.
+    """
+    if not isinstance(payload, dict):
+        return None
+
+    candidates: list[Path] = []
+    relative = str(payload.get("pdf_relpath") or "").strip()
+    if relative:
+        candidates.append(REPO_ROOT / relative)
+    raw = str(payload.get("pdf_path") or "").strip()
+    if raw:
+        candidates.append(Path(raw))
+        if not Path(raw).is_absolute():
+            candidates.append(REPO_ROOT / raw)
+    name = str(payload.get("pdf_filename") or "").strip()
+    if name:
+        candidates.append(ANALYTICS_PDF_DIR / name)
+
+    for candidate in candidates:
+        try:
+            if candidate.is_file():
+                return candidate
+        except OSError:  # an unreadable mount is a miss, not a crash
+            continue
+
+    if candidates:
+        log.warning(
+            "Mylo analytics PDF not readable on this host; tried %s",
+            ", ".join(str(c) for c in candidates),
+        )
+    return None
 
 
 # --- primitives ------------------------------------------------------------- #

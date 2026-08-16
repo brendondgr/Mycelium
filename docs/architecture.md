@@ -204,6 +204,20 @@ runner that already reports a failed stage. The JSON file under the shared
 `data/` bind mount is the seam; `mylo/analytics.py` reads it back and formats the
 tables and bar charts, and `mylo/reporting.py` posts them with the PDF attached.
 
+Both halves see the same bytes under **different roots** — `/app` inside the
+container, the checkout path on the host — so the metrics file records the PDF's
+location twice: `pdf_path` (the writer's own absolute path) and `pdf_relpath`
+(relative to the shared root). The host resolves the attachment through
+`analytics.resolve_pdf`, which re-anchors the relative form on its own checkout;
+handing the container path straight to the reporter cost the attachment silently,
+because an unreadable file is logged and the summary posts without it.
+
+Both paths must also be left **unset** rather than set-and-blank. `.env.example`
+is an env_file for the backend and worker, so a bare `KEY=` arrives as an empty
+string and beats the setting's default; the empty path became `Path(".")`, which
+put the PDF in the working directory and failed the JSON write outright. The data
+paths therefore read through `env_str`, which treats blank as unset.
+
 Measurement is deliberately outside `CONTAINER_STAGES`: a failure there means
 users did not get their day, whereas a failure here only costs the summary its
 detail. The run still announces itself either way.

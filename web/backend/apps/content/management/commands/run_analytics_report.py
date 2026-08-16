@@ -76,6 +76,9 @@ class Command(BaseCommand):
             if pdf_path is not None:
                 payload["pdf_path"] = str(pdf_path)
                 payload["pdf_filename"] = pdf_path.name
+                relative = self._shared_relpath(pdf_path)
+                if relative:
+                    payload["pdf_relpath"] = relative
 
         self._write_json(json_path, payload)
 
@@ -114,6 +117,26 @@ class Command(BaseCommand):
         self.stdout.write(f"analytics PDF: {path}")
         self._sweep(pdf_dir, keep=path)
         return path
+
+    def _shared_relpath(self, path: Path) -> str:
+        """``path`` relative to the shared bind-mount root, when it sits under it.
+
+        ``pdf_path`` is this process's own absolute path, and this process runs in
+        the backend container — so it reads ``/app/data/analytics/…``, a path that
+        does not exist on the host that reads this file back and posts the PDF to
+        Discord. Both halves see the same bytes under different roots, so the
+        portable statement of where the file is is its location *relative* to that
+        shared root; the host re-anchors it against its own checkout.
+
+        Empty when the PDF was written outside the tree (a test's tmpdir, or an
+        operator's ``--pdf-dir``), which just means the host falls back to
+        ``pdf_path``.
+        """
+        shared_root = Path(settings.ROOT_DIR).parent
+        try:
+            return str(Path(path).resolve().relative_to(shared_root.resolve()))
+        except (ValueError, OSError):
+            return ""
 
     def _sweep(self, pdf_dir: Path, *, keep: Path) -> None:
         """Delete reports past the retention window. Best-effort, never fatal.

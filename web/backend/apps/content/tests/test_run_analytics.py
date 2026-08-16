@@ -8,6 +8,7 @@ from datetime import timedelta
 from io import StringIO
 from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase, override_settings
@@ -292,6 +293,57 @@ class CommandTests(TestCase):
             self.assertTrue(
                 Path(payload["pdf_path"]).read_bytes().startswith(b"%PDF")
             )
+
+    def test_settings_paths_are_used_when_no_override_is_given(self):
+        """The nightly run passes no flags, so the settings path is the real path.
+
+        Every other case here overrides both paths, which is how a blank
+        ``RUN_ANALYTICS_JSON_PATH`` in the environment went unnoticed: the setting
+        resolved to ``""`` → ``Path(".")``, the PDF landed in the working directory
+        and the JSON write failed with "Is a directory", failing the stage nightly.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            json_path = Path(tmp) / "logs" / "analytics.json"
+            pdf_dir = Path(tmp) / "analytics"
+            with override_settings(
+                RUN_ANALYTICS_JSON_PATH=str(json_path),
+                RUN_ANALYTICS_PDF_DIR=str(pdf_dir),
+            ):
+                call_command("run_analytics_report", stdout=StringIO())
+
+            payload = json.loads(json_path.read_text())
+            self.assertEqual(Path(payload["pdf_path"]).parent, pdf_dir)
+            self.assertTrue(Path(payload["pdf_path"]).is_file())
+
+    def test_pdf_is_also_recorded_relative_to_the_shared_root(self):
+        """The host reads this file back and cannot open a container path."""
+        root = Path(settings.ROOT_DIR).parent
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            json_path = Path(tmp) / "analytics.json"
+            pdf_dir = Path(tmp) / "pdf"
+            call_command(
+                "run_analytics_report",
+                json_path=str(json_path),
+                pdf_dir=str(pdf_dir),
+                stdout=StringIO(),
+            )
+            payload = json.loads(json_path.read_text())
+            relative = payload["pdf_relpath"]
+            self.assertFalse(Path(relative).is_absolute())
+            self.assertEqual(
+                (root / relative).resolve(), Path(payload["pdf_path"]).resolve()
+            )
+
+    def test_a_pdf_outside_the_tree_records_no_relative_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            json_path = Path(tmp) / "analytics.json"
+            call_command(
+                "run_analytics_report",
+                json_path=str(json_path),
+                pdf_dir=str(Path(tmp) / "pdf"),
+                stdout=StringIO(),
+            )
+            self.assertNotIn("pdf_relpath", json.loads(json_path.read_text()))
 
     def test_no_pdf_flag_still_writes_metrics(self):
         with tempfile.TemporaryDirectory() as tmp:
