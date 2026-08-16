@@ -12,8 +12,8 @@
 ## Objective
 
 Retire Pivot-RP (ProQuest) as the source of grants and conferences and replace it
-with the open collector at `/home/bdgr/Tools/Grant` — 6 grant adapters, 7
-conference adapters, all public. Preserve every field the new data carries that
+with the open collector at `/home/bdgr/Tools/Grant` — 6 grant adapters and 6 of
+its 7 conference adapters (see D5), all public. Preserve every field the new data carries that
 Pivot never had: CCF / CORE / THCPL ranks, trust tiers, **multiple deadlines per
 record**, per-source links, and licence/attribution. Drive expiry from the
 **written deadline**, never the posted date. Feed the result into the existing
@@ -33,8 +33,9 @@ Illinois Fellowship Finder, not Pivot, and survive intact.
 | D2 | **Rankings are visual only.** CCF / CORE / THCPL badges render on the card, in filters, and in reports. They never affect relevance order, thresholds, or the LLM verdict. **Each badge has a hover explaining what that rank means.** | User decision. 75% of series carry no rank, so ranking on it would systematically bury non-CS venues. Also avoids re-deriving thresholds and re-running the eval harness. |
 | D3 | **Trust tier is the always-present signal.** Every series has one (A: 334, B: 1,091). It renders on every conference card with a hover explaining what the tier means and, explicitly, that tier B is *not* a demotion — it is where every non-CS venue lives. | User decision. Correct: rankings cover 25% of series, trust tier covers 100%. |
 | D4 | **All 5 active users are scored** by the migration re-scrape, bypassing the `SCHEDULED_REPORTS` entitlement gate for that one run. The nightly keeps its normal gating afterwards. | User decision. |
-| D5 | **Five conference adapters + all six grant adapters are enabled**: `ccf_deadlines`, `openreview`, `miccai`, `ams_mathcal`, `society_pages`. **`wikicfp` and `openresearch` are dropped.** Per-record source + licence attribution is displayed regardless. | User decision. `resolve.py:53-55` puts both dropped sources in `COMMUNITY_SOURCES`, so a series appearing only there is assigned **trust tier C — quarantined from default output**. They would have collected ~2,811 records that never surface, at the cost of a 3.9 h seed pull and the CC-BY-SA share-alike question. The non-CS coverage gap is filled by the `SOCIETY_SOURCES` trio instead, which land in tier B and do surface. |
+| D5 | **Six conference adapters + all six grant adapters are enabled**: `ccf_deadlines`, `openreview`, `miccai`, `ams_mathcal`, `society_pages`, `openresearch`. **Only `wikicfp` is dropped.** Per-record source + licence attribution is displayed regardless. | User decision. `wikicfp` costs ~2,811 requests against the site's published `Crawl-delay: 5` (~3.9 h), is user-submitted with a large predatory-spam share, and lands in `COMMUNITY_SOURCES` → **trust tier C, quarantined from default output** — so it would collect thousands of records that never surface. `openresearch` shares only that last property, and the dblp registry (D5a) resolves it for any venue dblp knows: it is **one request, 342 future-deadline records, 409 KB, 2.6 s, no auth**. Non-CS coverage comes from the `SOCIETY_SOURCES` trio, which land in tier B and do surface. |
 | D5a | **Wire the dblp registry refresh** (`utils/conferences/collect/registry/dblp.py`) as a scheduled stage. | User decision. It is **one SPARQL POST, ~8 MB, ~5 s**, returning all 9,325 venues with indexed-proceedings-year counts, under **CC0**. Today `dblp_found = 0` on all 1,425 series, so no venue can reach tier A except via a CCF rank. The registry promotes venues on evidence (`indexed_years >= 3`) and fills `first_year` / `last_year` / `dblp_key`. Note `dblp.org/robots.txt` disallows `/search`, `/search/venue` and `/*.json` — SPARQL is the compliant route, not a preference. **CORE's registry adapter stays disabled**; its ranks already arrive via `ccf_deadlines`. |
+| D5b | **`openresearch` is a secondary source, never authoritative on descriptive fields.** Its `venue_native = False`, so organiser-native text wins at merge. It contributes a deadline-and-location spine: no descriptions, no timezone (bare calendar dates, basis recorded honestly), no quality signals on future records. | The adapter's own recon. Its geographic skew (166 of 342 from China + Japan) is a signal for the trust layer to weigh, not grounds for the adapter to pre-judge. |
 | D6 | **The collector is vendored into the backend** at `web/backend/apps/scraper/collect/`, and runs **in the backend container**. | It is pure HTTP; the host/container split existed only because Pivot needed Playwright + an SSO session. Deps are near-identical. `docs/architecture.md` gives `scraper` ingestion ownership. |
 | D7 | **Conference expiry keys on the last written deadline**, with a parsed event date as fallback. Grants expire at `max(all rounds)`. | The user's directive ("expiration must be driven by the written deadline"), and `event_start` is NULL on 100% of collector rows so the current event-date rule would expire nothing. |
 | D8 | **Fellowships are untouched** apart from relocating their code out of the `pivot/` directory. | The Illinois Fellowship Finder is public and free; only its *location* in the tree is a Pivot artefact. |
@@ -460,9 +461,9 @@ recommendation counts.
 - **No widening of `ContentDeadline`'s unique key** (D1). Reminders on a specific
   non-next round remain unavailable; the hover shows every round.
 - **No fellowship source change.**
-- **No WikiCFP, no OpenResearch** (D5). Both are `COMMUNITY_SOURCES` → tier C →
-  quarantined from default output. Revisit only if the dblp registry promotes
-  enough of their venues to justify the pull cost and the share-alike question.
+- **No WikiCFP** (D5) — ~3.9 h per pull against the site's published crawl delay,
+  for records that land in tier C and do not surface. Revisit if the dblp
+  registry promotes enough of its venues to justify the pull cost.
 - **No CORE registry adapter.** Its ranks already arrive via `ccf_deadlines`, and
   its `robots.txt` names AI crawlers by hostname.
 - **No billing/entitlement model change.** D4's override is scoped to the
