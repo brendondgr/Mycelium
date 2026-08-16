@@ -1,0 +1,96 @@
+# The machine-readable half of the record. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-08-007
+slug: extraction-grounding-floor
+title: Source-length-aware grounding floor and its effect on extraction refusal
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-08-16
+date_completed: 2026-08-16
+authors: [brendondgr]
+
+purpose: >
+  EXP-2026-08-006 measured a 34.4% refusal rate for the fast extraction arm and
+  read it as a model limitation. This tests whether it was instead an artefact
+  of an inherited word-overlap floor that is arithmetically unsatisfiable for a
+  conference record, and re-measures refusal split by domain.
+
+hypothesis: >
+  Stated before the run: (1) conference refusals were near-total and drove the
+  headline number while grant refusals were much lower; (2) a source-length-aware
+  test collapses refusal, and collapses it most for the fast arm, which was being
+  punished hardest by a test it could not pass; (3) the apparent speed/coverage
+  trade-off therefore narrows or vanishes.
+  OUTCOME: all three confirmed. Grant refusal is 0.0% in every arm after the fix;
+  ungrounded_prose fell from 37 occurrences to zero while grants kept the identical
+  0.45 floor; fast-arm refusal fell 34.4% -> 3.1%.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: e06926b
+  branch: claude/open-source-grants-conferences-fb07a6
+  entrypoint: "DATABASE_URL=postgres://mycelium:mycelium@localhost:11450/mycelium LLM_BASE_URL=http://localhost:4000/v1 uv run --directory web/backend python ../../docs/research/experiments/EXP-2026-08-007-extraction-grounding-floor/code/run.py"
+  dirty: true # the experiment folder itself was untracked while running; not on its own code path (ISSUES.md 5)
+config:
+  path: docs/research/experiments/EXP-2026-08-007-extraction-grounding-floor/code/run.py
+  hash: null
+data:
+  name: mycelium-grants collector stores (opportunities.db + conferences.db)
+  version: "snapshot 2026-08-16, collector HEAD 6fddf55"
+  split: sample
+  n_examples: 32
+  qrels: null
+  hash: null
+  card: null
+seeds: [20260816]
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: null
+compute:
+  hardware: "host CPU; model served remotely through a LiteLLM proxy on localhost:4000"
+  wall_clock_hours: 0.06
+  estimated_cost_usd: null
+
+llm:
+  model: "skynet (via LiteLLM proxy, upstream version not exposed)"
+  temperature: 0.0
+  max_tokens: 8096
+  prompt_files:
+    - docs/research/experiments/EXP-2026-08-007-extraction-grounding-floor/code/run.py
+  prompt_hash: null
+  total_input_tokens: 103783
+  total_output_tokens: 103448
+  nondeterminism_note: >
+    Provider-side nondeterminism remains at temperature 0 and n_runs is 1. The
+    drift control (cell 4 repeats cell 1) returned 1.798 vs 1.733 rec/s with
+    identical refusal, so the endpoint was stable during this run. That is a
+    stability check, not a variance estimate.
+
+metrics:
+  primary: refusal_rate
+  values:
+    thinking_none_refusal_all: 0.031
+    thinking_none_refusal_grants: 0.0
+    thinking_none_refusal_conferences: 0.062
+    thinking_none_rec_per_s: 1.7975
+    thinking_none_median_latency_s: 3.45
+    thinking_medium_refusal_all: 0.0
+    thinking_medium_rec_per_s: 0.3592
+    effort_low_refusal_all: 0.0
+    effort_low_rec_per_s: 0.8356
+    drift_control_rec_per_s_first: 1.7975
+    drift_control_rec_per_s_last: 1.7329
+    projected_backfill_hours_thinking_none_w16: 0.68
+baselines_compared:
+  - "EXP-2026-08-006: same arms, same records, flat 0.45 floor -- thinking-none refusal 0.344"
+statistical_test: null
+
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-006]

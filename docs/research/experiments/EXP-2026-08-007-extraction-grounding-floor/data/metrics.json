@@ -1,0 +1,183 @@
+{
+  "experiment": "EXP-2026-08-007",
+  "backfill_records": 4424,
+  "max_attempts": 3,
+  "prose_floor": 0.45,
+  "seed": 20260816,
+  "cells": [
+    {
+      "arm": "thinking-none",
+      "style": "thinking",
+      "reasoning": "none",
+      "workers": 16,
+      "n_records": 32,
+      "n_verified": 31,
+      "wall_clock_s": 17.25,
+      "verified_records_per_second": 1.7975,
+      "median_latency_s": 3.45,
+      "p95_latency_s": 11.24,
+      "total_calls": 41,
+      "first_attempt_valid_rate": 0.75,
+      "mean_attempts_per_verified_record": 1.23,
+      "refusal_rate": 0.031,
+      "projected_backfill_hours": 0.68,
+      "failure_reasons": {
+        "out_of_bounds": 8,
+        "ungrounded_topic": 1,
+        "malformed": 1
+      },
+      "by_kind": {
+        "grant": {
+          "n": 16,
+          "verified": 16,
+          "refusal_rate": 0.0,
+          "failures": {
+            "ungrounded_topic": 1
+          }
+        },
+        "conference": {
+          "n": 16,
+          "verified": 15,
+          "refusal_rate": 0.062,
+          "failures": {
+            "out_of_bounds": 8,
+            "malformed": 1
+          }
+        }
+      },
+      "input_chars_total": 111866,
+      "output_chars_total": 40722,
+      "input_tokens_total": 26336,
+      "output_tokens_total": 8697,
+      "stage": "A"
+    },
+    {
+      "arm": "thinking-medium",
+      "style": "thinking",
+      "reasoning": "medium",
+      "workers": 16,
+      "n_records": 32,
+      "n_verified": 32,
+      "wall_clock_s": 89.08,
+      "verified_records_per_second": 0.3592,
+      "median_latency_s": 26.06,
+      "p95_latency_s": 67.68,
+      "total_calls": 33,
+      "first_attempt_valid_rate": 0.969,
+      "mean_attempts_per_verified_record": 1.03,
+      "refusal_rate": 0.0,
+      "projected_backfill_hours": 3.42,
+      "failure_reasons": {
+        "out_of_bounds": 1
+      },
+      "by_kind": {
+        "grant": {
+          "n": 16,
+          "verified": 16,
+          "refusal_rate": 0.0,
+          "failures": {}
+        },
+        "conference": {
+          "n": 16,
+          "verified": 16,
+          "refusal_rate": 0.0,
+          "failures": {
+            "out_of_bounds": 1
+          }
+        }
+      },
+      "input_chars_total": 111866,
+      "output_chars_total": 37572,
+      "input_tokens_total": 25429,
+      "output_tokens_total": 59072,
+      "stage": "A"
+    },
+    {
+      "arm": "effort-low",
+      "style": "effort",
+      "reasoning": "low",
+      "workers": 16,
+      "n_records": 32,
+      "n_verified": 32,
+      "wall_clock_s": 38.29,
+      "verified_records_per_second": 0.8356,
+      "median_latency_s": 12.39,
+      "p95_latency_s": 24.58,
+      "total_calls": 37,
+      "first_attempt_valid_rate": 0.844,
+      "mean_attempts_per_verified_record": 1.16,
+      "refusal_rate": 0.0,
+      "projected_backfill_hours": 1.47,
+      "failure_reasons": {
+        "out_of_bounds": 4,
+        "ungrounded_topic": 3
+      },
+      "by_kind": {
+        "grant": {
+          "n": 16,
+          "verified": 16,
+          "refusal_rate": 0.0,
+          "failures": {
+            "ungrounded_topic": 3
+          }
+        },
+        "conference": {
+          "n": 16,
+          "verified": 16,
+          "refusal_rate": 0.0,
+          "failures": {
+            "out_of_bounds": 4
+          }
+        }
+      },
+      "input_chars_total": 111866,
+      "output_chars_total": 40050,
+      "input_tokens_total": 26470,
+      "output_tokens_total": 27327,
+      "stage": "A"
+    },
+    {
+      "arm": "thinking-none",
+      "style": "thinking",
+      "reasoning": "none",
+      "workers": 16,
+      "n_records": 32,
+      "n_verified": 31,
+      "wall_clock_s": 17.89,
+      "verified_records_per_second": 1.7329,
+      "median_latency_s": 3.16,
+      "p95_latency_s": 13.11,
+      "total_calls": 39,
+      "first_attempt_valid_rate": 0.812,
+      "mean_attempts_per_verified_record": 1.16,
+      "refusal_rate": 0.031,
+      "projected_backfill_hours": 0.71,
+      "failure_reasons": {
+        "out_of_bounds": 7,
+        "malformed": 1
+      },
+      "by_kind": {
+        "grant": {
+          "n": 16,
+          "verified": 16,
+          "refusal_rate": 0.0,
+          "failures": {}
+        },
+        "conference": {
+          "n": 16,
+          "verified": 15,
+          "refusal_rate": 0.062,
+          "failures": {
+            "out_of_bounds": 7,
+            "malformed": 1
+          }
+        }
+      },
+      "input_chars_total": 111866,
+      "output_chars_total": 39077,
+      "input_tokens_total": 25548,
+      "output_tokens_total": 8352,
+      "stage": "A"
+    }
+  ]
+}

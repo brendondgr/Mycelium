@@ -40,7 +40,7 @@ Illinois Fellowship Finder, not Pivot, and survive intact.
 | D7 | **Conference expiry keys on the last written deadline**, with a parsed event date as fallback. Grants expire at `max(all rounds)`. | The user's directive ("expiration must be driven by the written deadline"), and `event_start` is NULL on 100% of collector rows so the current event-date rule would expire nothing. |
 | D8 | **Fellowships are untouched** apart from relocating their code out of the `pivot/` directory. | The Illinois Fellowship Finder is public and free; only its *location* in the tree is a Pivot artefact. |
 | D9 | **Every record's description is produced by an LLM under a structured-output contract, verified in a bounded agent loop, and that verified text is what gets embedded for search.** Universal — grants and conferences, not just records missing text. Unverified output is never shown. See Phase 8. | User decision. Raw source text is unusable as a uniform embedding basis: `description` averages 11,411 chars for `nsf` versus 894 for `nih_guide`, EU rows carry HTML fragments, and `cfp_text` is empty on all 2,234 conference rows. A schema-checked extraction makes every record's vector comparable. |
-| D10 | **The extraction runs after ingest and before embedding**, as its own stage. The one-time backfill (~4,400 records, ~5–6 h) runs outside the nightly; the nightly extracts **only genuinely new records**. | Ordering follows from D9 — the embedded text is the extraction's output. Cost containment follows the project's existing rule: rank nightly, write up sparingly. |
+| D10 | **The extraction runs after ingest and before embedding**, as its own stage, at **16 workers with reasoning off**. The one-time backfill is **~41 minutes measured** (`EXP-2026-08-007`) and runs outside the nightly; the nightly extracts **only genuinely new records**. | Ordering follows from D9 — the embedded text is the extraction's output. The settings are measured, not assumed: an earlier 5–6 h estimate came from the collector's published table for a different endpoint and was out by an order of magnitude. |
 
 ## Assumptions
 
@@ -435,16 +435,63 @@ Refused records fall back to the old composition over raw text. The
 distinction is recorded in `metadata["search_text_source"] ∈ {extracted, raw}`,
 so retrieval quality can be measured against it later rather than guessed at.
 
-### 8.5 Cost, and why the nightly does not pay it
+### 8.5 Cost — measured, not estimated
 
-**~4,400 records × ~1.3 attempts ≈ 5,700 calls.** At the collector's measured
-0.24 records/s at 12 workers, the **one-time backfill is roughly 5–6 hours**. Run
-it once, deliberately, outside the nightly.
+**MEASURED: the backfill is ~41 minutes.** `EXP-2026-08-007`, 16 workers,
+reasoning off: **1.798 records/s, 3.45 s median latency, 3.1 % refusal**
+(0.0 % grants, 6.2 % conferences).
+
+An earlier draft of this plan said 5–6 hours. That figure was extrapolated from
+the standalone collector's published table (0.24 rec/s, 25–49 s median), which
+measured a **different endpoint** — its own `localhost:9090` — not Mycelium's
+LiteLLM proxy. It was wrong by roughly an order of magnitude. See
+`EXP-2026-08-006` for the correction and `EXP-2026-08-007` for the final numbers.
+
+**Settings that follow from the measurement:**
+
+| Setting | Value | Why |
+|---|---|---|
+| Workers | **16** | No plateau at 12 (0.905 → 1.125 rec/s). The collector's table plateaued at 12; that describes its endpoint, not this one. |
+| Reasoning | **off** (`LLM_REASONING=none`, already the `.env` default) | 5× faster than `thinking-medium` for one extra refusal in 32 records. |
+| `MAX_ATTEMPTS` | 3 | Mean attempts per verified record is 1.16–1.23, so the cap is a backstop, not a budget. |
+
+`effort-medium` is **strictly dominated** — slower than `thinking-medium`
+(44.4 s vs 31.2 s median) *and* refusing far more. Never select it.
 
 The nightly then extracts **only genuinely new records** — the newness gate the
 collector's `plan_enrichment` never wired up (it filters on gaps and never reads
-`new_items`). At a realistic tens-of-new-records-a-day that is seconds, not hours.
-Verdicts are cached and settled statuses are never re-asked.
+`new_items`). At a realistic tens-of-new-records-a-day that is seconds. Verdicts
+are cached and settled statuses are never re-asked.
+
+### 8.5b The grounding floor is source-length-aware (do not flatten it)
+
+`EXP-2026-08-007` established that a single overlap floor cannot serve both
+domains. Measured distinct content words in the source:
+
+| domain | min / median / max |
+|---|---|
+| conference | 6 / **9** / 14 |
+| grant | 12 / **484** / 1142 |
+
+A 2–3 sentence summary carries ~35 content words, so overlap against a 9-word
+conference stub tops out at ≈0.26. **The inherited 0.45 floor refused every
+conference by construction** — it was measuring arithmetic, not honesty, and it
+produced the fake 34 % refusal rate that nearly cost this plan a 5× slower
+reasoning arm.
+
+Two regimes, both verified to fire (RESULTS.md table):
+
+- **≥ 80 source content words** → the 0.45 overlap floor, unchanged. Every grant.
+- **< 80** → overlap is not tested; the prose must instead **invent no
+  specifics**: every year, ordinal, integer and money token in the summary must
+  appear in the source.
+
+⚠️ **This is a loosening, and loosening a validator is how a check gets quietly
+gutted.** The guard is the `unsupported_claim` counter: if the stub regime were
+inert, invented specifics would sail through uncounted. It fired zero times on
+live data, so it was exercised directly with hand-built cases — an invented year
+and an invented attendance figure are both refused, a year present in the source
+passes. Keep that test when porting.
 
 ### 8.6 Three defects to fix on port
 
@@ -630,7 +677,7 @@ recommendation counts.
 | `prune_expired` silently skips new sources | Phase 4 drops the `source__in` allow-list |
 | Non-zero-padded dates never expire (lexicographic compare) | Phase 4 emits strict ISO; asserted in tests |
 | Every reader's whole slate reads "new" on the first run | Expected (A4); communicated, not suppressed |
-| **The one-time extraction backfill is ~5–6 h of LLM time** (~4,400 records × ~1.3 attempts at the measured 0.24 rec/s × 12 workers) | Run once, deliberately, outside the nightly (D10). Checkpoint per record so an interrupted run resumes rather than restarts |
+| ~~The backfill is ~5–6 h~~ **RESOLVED: it is ~41 minutes** (`EXP-2026-08-007`: 1.798 rec/s at 16 workers, 3.1 % refusal) | The old figure came from the collector's table for a *different* endpoint. Still run once, outside the nightly, with per-record checkpointing so an interrupted run resumes |
 | **A model outage during the backfill silently degrades the corpus to raw-text embeddings** | `metadata["search_text_source"]` records each record's basis, so the damage is queryable and re-runnable rather than invisible. `model_failed` stays **retryable**, never settled — the collector once wrote 321 `model_failed` rows in one over-concurrent run, and treating those as answers would have excluded 321 records permanently |
 | **Extraction changes the embedding basis, so relevance moves** | Not a regression to hide. `search_text_source` keeps the two bases separable, and per `CLAUDE.md` any relevance claim is an experiment under `docs/research/experiments/`, never a number asserted in chat |
 | **A verified-looking summary that nobody checked is worse than none** | Refusal is a first-class outcome: refused records show no AI summary and say so. `docs/purpose.md`'s trust rule — never hide uncertainty |

@@ -15,10 +15,11 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-004` | 2026-08-09 | Does the per-theme slate protect a starved theme? | complete | delta_cluster_coverage@1000_imbalanced_cut30 0.0667 ± 0.1356 (n=30) | — (refutes C-003) | [folder](experiments/EXP-2026-08-004-cluster-slate-theme-protection/RESULTS.md) |
 | `EXP-2026-08-005` | 2026-08-09 | Theme-spread mechanisms for cluster-scoped ranking | complete | delta_min_cluster_recall@10_imbalanced_mmr 0.0043 ± 0.0087 (n=30) | — (refutes C-011) | [folder](experiments/EXP-2026-08-005-cluster-theme-spread-mechanisms/RESULTS.md) |
 | `EXP-2026-08-006` | 2026-08-16 | LLM structured-extraction throughput by reasoning level and concurrency | complete | — | — | [folder](experiments/EXP-2026-08-006-extraction-throughput/RESULTS.md) |
+| `EXP-2026-08-007` | 2026-08-16 | Source-length-aware grounding floor and its effect on extraction refusal | complete | — | — | [folder](experiments/EXP-2026-08-007-extraction-grounding-floor/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 6 |
-| **total** | **6** |
+| complete | 7 |
+| **total** | **7** |
