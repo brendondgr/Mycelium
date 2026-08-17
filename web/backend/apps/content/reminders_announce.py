@@ -52,9 +52,13 @@ def announce_deadline_changes(today=None, *, now=None) -> AnnounceResult:
         .order_by("changed_at")
     )
     for row in changed:
+        # Matched on the round as well as the kind: a conference now carries a
+        # row per round, and a move on round 2 must not announce itself to the
+        # person who asked to be reminded about round 1.
         subs = ReminderSubscription.objects.filter(
             content_id=row.content_id,
             deadline_kind=row.kind,
+            deadline_round_key=row.round_key,
             state=ReminderSubscription.State.ACTIVE,
         ).select_related("target_lab")
         for sub in subs:
@@ -106,7 +110,11 @@ def _announce_one(sub, row, today, now) -> bool:
 
 
 def _change_copy(sub, row, days: int):
+    # Names the round, same as the reminder itself does: "the Manuscript
+    # deadline moved" is ambiguous on a venue with three of them.
     kind_label = _KIND_LABEL.get(sub.deadline_kind, "Deadline")
+    if row.round_label:
+        kind_label = f"{kind_label} ({row.round_label})"
     when = f"{row.due_date:%b %d}"
     if days <= 0:
         left = "due today"

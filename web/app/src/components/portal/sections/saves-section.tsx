@@ -39,11 +39,17 @@ import type { DeadlineOption, SavedArea, SavedItem } from "@/lib/portal/types";
 function reminderDeadlines(item: SavedItem): DeadlineOption[] {
   if (item.area === "paper") return [];
   if (item.card) return item.card.addressable_deadlines ?? [];
-  // Pruned listing: fall back to the save's own snapshot deadline.
+  // Pruned listing: fall back to the save's own snapshot deadline. The snapshot
+  // predates the per-round projection and holds exactly one date, so it is the
+  // single-round case — `round_key: ""`, which is also what the backend stores
+  // for any deadline that has no rounds.
   if (item.deadline_date) {
     return [
       {
         kind: item.deadline_kind || "other",
+        round_key: "",
+        round_label: "",
+        is_next: true,
         due_date: item.deadline_date,
         confidence: "confirmed",
         label: "",

@@ -46,7 +46,7 @@ _KIND_LABEL = {
     SavedOpportunity.DeadlineKind.APPLICATION: "Application",
     SavedOpportunity.DeadlineKind.ABSTRACT: "Abstract",
     SavedOpportunity.DeadlineKind.MANUSCRIPT: "Manuscript",
-    SavedOpportunity.DeadlineKind.EVENT: "Event",
+    SavedOpportunity.DeadlineKind.EVENT: "Conference",
     SavedOpportunity.DeadlineKind.OTHER: "Deadline",
 }
 
@@ -81,14 +81,29 @@ def offset_fire_date(due: date, amount: int, unit: str) -> date:
 
 def idempotency_key(subscription_id, due: date, amount: int, unit: str) -> str:
     """The fired-ledger key. Embedding ``due`` is the whole trick — a moved
-    deadline changes the key and re-opens the offset; a stable one keeps the seal."""
+    deadline changes the key and re-opens the offset; a stable one keeps the seal.
+
+    The round needs no place here: the subscription id already identifies one
+    round of one kind on one item, so two reminders on two rounds of the same
+    conference have different ids and therefore different keys, even when both
+    rounds happen to fall on the same date.
+    """
     return f"{subscription_id}:{due:%Y-%m-%d}:{amount}{unit}"
 
 
 def reminder_copy(subscription: ReminderSubscription, due: date, days_remaining: int):
     """(title, body) for a fire. The body always states **actual** days remaining —
-    never the offset that triggered it ("14 days left", not "your 2-month reminder")."""
+    never the offset that triggered it ("14 days left", not "your 2-month reminder").
+
+    It also always names **which** deadline fired. Once an item can carry several
+    remindable rounds, "Deadline due Mar 03 — 14 days left" is ambiguous in the
+    exact situation the per-round work exists to serve, so the round label is
+    carried in the snapshot and printed here: "Manuscript (round 2) due Mar 03".
+    An EVENT reminder reads as the conference itself, not a submission.
+    """
     kind_label = _KIND_LABEL.get(subscription.deadline_kind, "Deadline")
+    if subscription.round_label:
+        kind_label = f"{kind_label} ({subscription.round_label})"
     when = f"{due:%b %d}"
     if days_remaining <= 0:
         left = "due today"
@@ -120,7 +135,9 @@ def resync_snapshot(subscription: ReminderSubscription) -> None:
     if not subscription.content_id:
         return
     row = ContentDeadline.objects.filter(
-        content_id=subscription.content_id, kind=subscription.deadline_kind
+        content_id=subscription.content_id,
+        kind=subscription.deadline_kind,
+        round_key=subscription.deadline_round_key,
     ).first()
     fields: list[str] = []
     if row is None:
@@ -171,22 +188,31 @@ def find_subscription(
     target_lab=None,
     content: ContentItem | None,
     deadline_kind: str,
+    deadline_round_key: str = "",
 ) -> ReminderSubscription | None:
     """The existing subscription for this (target, item, kind), if there is one.
 
     The single expression of the uniqueness tuple the two partial unique constraints
-    on :class:`ReminderSubscription` enforce. A pruned reminder (``content`` NULL) is
-    outside those constraints and is never matched here — it lives on its snapshot and
-    a fresh item would legitimately get its own row.
+    on :class:`ReminderSubscription` enforce — including the round, so setting a
+    reminder on a conference's second paper deadline creates a new subscription
+    rather than reconfiguring the one on its first. A pruned reminder (``content``
+    NULL) is outside those constraints and is never matched here — it lives on its
+    snapshot and a fresh item would legitimately get its own row.
     """
     if content is None:
         return None
     if target_user is not None:
         return ReminderSubscription.objects.filter(
-            target_user=target_user, content=content, deadline_kind=deadline_kind
+            target_user=target_user,
+            content=content,
+            deadline_kind=deadline_kind,
+            deadline_round_key=deadline_round_key,
         ).first()
     return ReminderSubscription.objects.filter(
-        target_lab=target_lab, content=content, deadline_kind=deadline_kind
+        target_lab=target_lab,
+        content=content,
+        deadline_kind=deadline_kind,
+        deadline_round_key=deadline_round_key,
     ).first()
 
 
@@ -283,6 +309,8 @@ def _validated_offsets(offsets: list[tuple[int, str]]) -> list[tuple[int, str]]:
 def create_subscription(
     *,
     deadline_kind: str,
+    deadline_round_key: str = "",
+    round_label: str = "",
     area: str,
     title: str,
     due_date: date | None,
@@ -314,6 +342,8 @@ def create_subscription(
     """
     subscription, _ = create_or_update_subscription(
         deadline_kind=deadline_kind,
+        deadline_round_key=deadline_round_key,
+        round_label=round_label,
         area=area,
         title=title,
         due_date=due_date,
@@ -335,6 +365,8 @@ def create_subscription(
 def create_or_update_subscription(
     *,
     deadline_kind: str,
+    deadline_round_key: str = "",
+    round_label: str = "",
     area: str,
     title: str,
     due_date: date | None,
@@ -353,11 +385,13 @@ def create_or_update_subscription(
 
     Returns ``(subscription, created)``.
 
-    Setting a reminder on an item + kind that already has one is an ordinary thing to
-    do — "actually, warn me a month out too", or re-arming one you cancelled. The two
-    partial unique constraints on ``(target, content, deadline_kind)`` mean there is
-    no second row to create, so the honest reading of a repeat request is an update of
-    the existing reminder rather than an ``IntegrityError``. Doing it in the service
+    Setting a reminder on an item + kind + round that already has one is an ordinary
+    thing to do — "actually, warn me a month out too", or re-arming one you
+    cancelled. The two partial unique constraints on ``(target, content,
+    deadline_kind, deadline_round_key)`` mean there is no second row to create, so
+    the honest reading of a repeat request is an update of the existing reminder
+    rather than an ``IntegrityError``. A *different* round of the same kind is not
+    a repeat request and does get its own row. Doing it in the service
     (not the view) keeps every caller — API, ``/mylo``, backfills — on one rule.
     """
     if (target_user is None) == (target_lab is None):
@@ -390,6 +424,7 @@ def create_or_update_subscription(
         target_lab=target_lab,
         content=content,
         deadline_kind=deadline_kind,
+        deadline_round_key=deadline_round_key,
     )
     if existing is not None:
         # Refresh the snapshot too: the deadline may have moved since the reminder was
@@ -397,6 +432,7 @@ def create_or_update_subscription(
         for field, value in (
             ("area", area),
             ("title", title),
+            ("round_label", round_label),
             ("url", url),
             ("due_date", due_date),
             ("confidence", confidence),
@@ -406,6 +442,7 @@ def create_or_update_subscription(
             update_fields=[
                 "area",
                 "title",
+                "round_label",
                 "url",
                 "due_date",
                 "confidence",
@@ -428,8 +465,10 @@ def create_or_update_subscription(
         target_lab=target_lab,
         content=content,
         deadline_kind=deadline_kind,
+        deadline_round_key=deadline_round_key,
         area=area,
         title=title,
+        round_label=round_label,
         url=url,
         due_date=due_date,
         confidence=confidence,

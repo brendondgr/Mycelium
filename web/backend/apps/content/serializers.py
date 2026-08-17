@@ -462,7 +462,13 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
         return ""
 
     def get_addressable_deadlines(self, score: RelevanceScore) -> list[dict]:
-        """The addressable per-kind deadlines (ContentDeadline projection, R0).
+        """Every addressable deadline (the ContentDeadline projection, R0).
+
+        One entry per **round**, not per kind: a conference routinely carries a
+        workshop deadline, more than one full-paper round, a camera-ready and its
+        event date, and each of those is separately remindable. Chronological, so
+        a client can render the list without re-sorting; ``is_next`` marks the
+        one a card's headline reads.
 
         Additive to the scalar ``deadline_date``/``deadline_kind`` (which existing
         cards still read). Reads a prefetched ``deadlines_by_content`` context map
@@ -478,11 +484,19 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
         return [
             {
                 "kind": row.kind,
+                # Which round of that kind, for an item carrying several. A
+                # client sends this back verbatim to set a reminder on *that*
+                # round; "" is the single-round case.
+                "round_key": row.round_key,
+                "round_label": row.round_label,
+                "is_next": row.is_next,
                 "due_date": row.due_date.isoformat() if row.due_date else None,
                 "confidence": row.confidence,
                 "label": row.label,
             }
-            for row in rows
+            for row in sorted(
+                rows, key=lambda r: (r.due_date is None, r.due_date, r.kind)
+            )
         ]
 
     def get_status_summary(self, score: RelevanceScore) -> str:

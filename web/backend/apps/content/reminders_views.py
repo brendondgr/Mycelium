@@ -78,6 +78,11 @@ class ReminderSerializer(serializers.Serializer):
     lab_name = serializers.SerializerMethodField()
     content_id = serializers.SerializerMethodField()
     deadline_kind = serializers.CharField()
+    # Which round of that kind — "" for a single-round deadline. ``round_label``
+    # is the source's own wording, so a client can say "round 2" without owning
+    # a vocabulary for something 287 distinct free-text values appear in.
+    deadline_round_key = serializers.CharField()
+    round_label = serializers.CharField()
     area = serializers.CharField()
     title = serializers.CharField()
     url = serializers.CharField()
@@ -258,8 +263,14 @@ class ReminderListCreateView(APIView):
         ).first()
         if item is None:
             return _bad("No such grant, conference, or fellowship.", 404)
+        # ``deadline_round_key`` selects *which* round of that kind, for an item
+        # carrying several (a conference's second paper deadline, a workshop
+        # track). Absent, it means "" — the single-round key every grant,
+        # fellowship, and conference event row carries — so an older client that
+        # never sends it keeps working unchanged.
+        round_key = str(data.get("deadline_round_key") or "")
         deadline = ContentDeadline.objects.filter(
-            content=item, kind=deadline_kind
+            content=item, kind=deadline_kind, round_key=round_key
         ).first()
         if deadline is None:
             return _bad("That item has no such deadline.", 404)
@@ -294,8 +305,10 @@ class ReminderListCreateView(APIView):
                 target_lab=target_lab,
                 content=item,
                 deadline_kind=deadline_kind,
+                deadline_round_key=deadline.round_key,
                 area=area,
                 title=title,
+                round_label=deadline.round_label,
                 url=url,
                 due_date=deadline.due_date,
                 confidence=deadline.confidence,

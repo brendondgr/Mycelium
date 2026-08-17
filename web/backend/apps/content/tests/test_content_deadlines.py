@@ -256,6 +256,9 @@ def test_serializer_exposes_deadlines_array() -> None:
     assert data["addressable_deadlines"] == [
         {
             "kind": "application",
+            "round_key": "",
+            "round_label": "",
+            "is_next": True,
             "due_date": "2026-10-01",
             "confidence": "confirmed",
             "label": "Application deadline",
@@ -282,23 +285,29 @@ def test_pure_derivation_ignores_papers() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_structured_conference_picks_next_future_per_kind() -> None:
-    # A VLDB-shaped conference: several rounds under both submission-gating
-    # kinds, plus a scattering of the six kinds that all fold into OTHER, so
-    # the "at most one row per kind, and it's the next future one" rule has to
-    # actually discriminate rather than pass by having only one candidate.
+def test_every_future_round_is_addressable_not_just_the_next_one() -> None:
+    """The per-round rewrite. This used to assert the opposite.
+
+    A VLDB-shaped conference: several rounds under both submission-gating kinds,
+    plus a scattering of the six kinds that fold into OTHER. The old rule kept
+    one row per kind — its next future date — which meant "remind me about the
+    second paper deadline" had nothing to point at, and the several OTHER kinds
+    contended for a single row so a camera-ready date could be displaced by a
+    notification. Every future round now gets its own row, and ``is_next`` says
+    which one a card's headline reads.
+    """
     entries = [
         _structured_deadline("abstract", "2026-01-01T23:59:00Z"),  # past
-        _structured_deadline("abstract", "2026-09-01T23:59:00Z"),  # wins ABSTRACT
+        _structured_deadline("abstract", "2026-09-01T23:59:00Z"),  # next ABSTRACT
         _structured_deadline("abstract", "2026-11-01T23:59:00Z"),  # future, later
         _structured_deadline("submission", "2026-06-01T23:59:00Z"),  # past
         _structured_deadline(
             "submission", "2026-10-15T23:59:00Z", round_label="round 2"
-        ),  # wins MANUSCRIPT
+        ),  # next MANUSCRIPT
         _structured_deadline("submission", "2027-01-15T23:59:00Z"),  # future, later
-        _structured_deadline("rebuttal_open", "2026-12-01T00:00:00Z"),  # OTHER cand.
-        _structured_deadline("camera_ready", "2026-12-20T00:00:00Z"),  # OTHER cand.
-        _structured_deadline("notification", "2026-11-20T00:00:00.500Z"),  # wins OTHER
+        _structured_deadline("rebuttal_open", "2026-12-01T00:00:00Z"),
+        _structured_deadline("camera_ready", "2026-12-20T00:00:00Z"),
+        _structured_deadline("notification", "2026-11-20T00:00:00.500Z"),
         _structured_deadline("registration", "2025-01-01T00:00:00Z"),  # past
         _structured_deadline("unknown", None),  # unparseable
     ]
@@ -306,16 +315,97 @@ def test_structured_conference_picks_next_future_per_kind() -> None:
         type=ContentItem.Type.CONFERENCE,
         metadata={"deadlines_structured": entries},
     )
+    specs = deadline_specs_for(item, TODAY)
+
+    # Seven future entries survive; the three past ones and the undated one do not.
+    assert len(specs) == 7
+    dates = sorted(s.due_date.isoformat() for s in specs)
+    assert dates == [
+        "2026-09-01",
+        "2026-10-15",
+        "2026-11-01",
+        "2026-11-20",
+        "2026-12-01",
+        "2026-12-20",
+        "2027-01-15",
+    ]
+
+    # Every round is separately addressable, including both later ones.
+    by_key = {s.round_key: s for s in specs}
+    assert len(by_key) == 7  # no round silently displaces another
+    assert by_key["submission:round 2"].due_date.isoformat() == "2026-10-15"
+
+    # The several collector kinds that all map to OTHER each keep their own row
+    # and their own label, rather than one winning and the rest vanishing.
+    other = {s.round_key: s.label for s in specs if s.kind == "other"}
+    assert other == {
+        "rebuttal_open:": "Rebuttal window opens",
+        "camera_ready:": "Camera-ready deadline",
+        "notification:": "Notification date",
+    }
+
+    # is_next marks exactly one row per kind — the earliest future one.
+    next_by_kind = {s.kind: s.due_date.isoformat() for s in specs if s.is_next}
+    assert next_by_kind == {
+        "abstract": "2026-09-01",
+        "manuscript": "2026-10-15",
+        "other": "2026-11-20",
+    }
+    assert all(
+        s.confidence == ContentDeadline.Confidence.CONFIRMED for s in specs
+    )
+
+
+def test_two_unlabelled_rounds_of_one_kind_both_survive() -> None:
+    """The degenerate case the collector's own merge normally prevents.
+
+    ``round_key`` is the collector's ``(kind, round_label)`` identity, so two
+    unlabelled rounds of one kind would collide. Dropping one would hide a real
+    paper deadline, so the date breaks the tie instead.
+    """
+    item = ContentItem(
+        type=ContentItem.Type.CONFERENCE,
+        metadata={
+            "deadlines_structured": [
+                _structured_deadline("submission", "2026-09-01T23:59:00Z"),
+                _structured_deadline("submission", "2026-12-01T23:59:00Z"),
+            ]
+        },
+    )
+    specs = deadline_specs_for(item, TODAY)
+    assert len({s.round_key for s in specs}) == 2
+    assert sum(1 for s in specs if s.is_next) == 1
+
+
+def test_the_conference_itself_is_remindable() -> None:
+    """An alert may concern the event rather than any submission.
+
+    The collector's deadline array never carries an event entry — event dates
+    live in ``event_start``/``event_end`` — so before this there was simply
+    nothing for "remind me the conference is coming up" to point at.
+    """
+    item = ContentItem(
+        type=ContentItem.Type.CONFERENCE,
+        metadata={
+            "deadlines_structured": [
+                _structured_deadline("submission", "2026-09-01T23:59:00Z")
+            ],
+            "event_start": "2027-03-14",
+        },
+    )
     specs = {s.kind: s for s in deadline_specs_for(item, TODAY)}
 
-    assert set(specs) == {"abstract", "manuscript", "other"}
-    assert specs["abstract"].due_date.isoformat() == "2026-09-01"
-    assert specs["manuscript"].due_date.isoformat() == "2026-10-15"
-    assert specs["other"].due_date.isoformat() == "2026-11-20"
-    assert specs["other"].label == "Notification date"
-    assert all(
-        s.confidence == ContentDeadline.Confidence.CONFIRMED for s in specs.values()
+    assert specs["event"].due_date.isoformat() == "2027-03-14"
+    assert specs["event"].label == "Conference starts"
+    assert specs["event"].round_key == ""  # exactly one event per conference
+
+
+def test_an_event_that_has_already_happened_is_not_remindable() -> None:
+    item = ContentItem(
+        type=ContentItem.Type.CONFERENCE,
+        metadata={"deadlines_structured": [], "event_start": "2020-01-01"},
     )
+    assert deadline_specs_for(item, TODAY) == []
 
 
 def test_structured_conference_only_future_date_is_other_and_not_open() -> None:

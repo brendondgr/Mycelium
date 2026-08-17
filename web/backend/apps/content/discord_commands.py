@@ -262,6 +262,7 @@ def snooze(
     sub.save(update_fields=["snoozed_until", "updated_at"])
     return "ok", {
         "title": sub.title,
+        "deadline": _deadline_label(sub),
         "snoozed_until": until.isoformat(),
         "clamped": clamped,
         "due_date": sub.due_date.isoformat() if sub.due_date else "",
@@ -286,7 +287,11 @@ def cancel(discord_user_id: str, *, reminder_id: str) -> tuple[str, dict]:
     if not already:
         sub.state = ReminderSubscription.State.CANCELLED
         sub.save(update_fields=["state", "updated_at"])
-    return "ok", {"title": sub.title, "already": already}
+    return "ok", {
+        "title": sub.title,
+        "deadline": _deadline_label(sub),
+        "already": already,
+    }
 
 
 def list_manageable(discord_user_id: str, prefix: str = "") -> tuple[str, dict]:
@@ -307,12 +312,25 @@ def list_manageable(discord_user_id: str, prefix: str = "") -> tuple[str, dict]:
         rows = rows.filter(title__icontains=prefix)
     return "ok", {
         "items": [
-            {"id": str(r.id), "title": r.title, "due_date": (
-                r.due_date.isoformat() if r.due_date else ""
-            )}
+            {
+                "id": str(r.id),
+                "title": r.title,
+                # Which deadline, for an item carrying several. Two reminders on
+                # one conference share a title, so without this the dropdown
+                # offers the reader two identical-looking rows and cancelling
+                # the wrong one is a coin flip.
+                "deadline": _deadline_label(r),
+                "due_date": r.due_date.isoformat() if r.due_date else "",
+            }
             for r in rows.order_by("due_date")[:25]  # Discord's autocomplete ceiling
         ]
     }
+
+
+def _deadline_label(sub: ReminderSubscription) -> str:
+    """"Manuscript (round 2)" — the kind, plus the round when there is one."""
+    kind = sub.get_deadline_kind_display()
+    return f"{kind} ({sub.round_label})" if sub.round_label else kind
 
 
 def _manageable_queryset(user):

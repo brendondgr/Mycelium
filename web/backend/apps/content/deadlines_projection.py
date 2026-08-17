@@ -49,7 +49,7 @@ was gone, not a bug.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 
 from django.utils import timezone
@@ -118,6 +118,34 @@ class DeadlineSpec:
     due_date: date | None
     label: str
     confidence: str
+    #: Stable identity of this round within its item — see ``ContentDeadline``.
+    #: Empty for a single-round deadline (grant, fellowship, conference event).
+    round_key: str = ""
+    #: The source's own round wording, verbatim, for display and message copy.
+    round_label: str = ""
+    #: Earliest future row of its kind: the one a card's headline reads.
+    is_next: bool = True
+
+
+def round_key_for(collector_kind: str, round_label: str) -> str:
+    """The collector's own deadline identity, as a projection key.
+
+    ``apps.scraper.collect.conferences.record.Deadline.identity`` is
+    ``(kind, round_label.strip().lower())`` — deliberately *not* the date, so
+    an extension updates an entry in place instead of appending a duplicate.
+    Reusing it here is what makes ``round_key`` stable across re-scrapes: the
+    row a reminder points at survives its own deadline moving, which is the
+    entire premise of ``changed_at`` and the DEADLINE_MOVED announcement.
+
+    Measured over the live corpus (2026-08-17): 1,120 dated entries, zero
+    collisions. The collector's merge step is *why* — two entries that would
+    collide here are the same entry to it and were merged before this ever
+    ran. Nothing in the schema *guarantees* that, though, so
+    :func:`_conference_specs` disambiguates a repeat by appending the date; see
+    the note there on why that is the right degenerate case rather than
+    something to prevent up front.
+    """
+    return f"{collector_kind}:{(round_label or '').strip().lower()}"
 
 
 @dataclass(frozen=True)
@@ -133,6 +161,8 @@ class DeadlineChange:
     new: date | None
     confidence: str
     previous_confidence: str = ""
+    #: Which round moved — the announcement must name it when there are several.
+    round_key: str = ""
 
 
 def _to_date(value: str | None) -> date | None:
@@ -226,65 +256,127 @@ def _fellowship_specs(meta: dict) -> list[DeadlineSpec]:
 
 
 def _conference_specs(meta: dict, today: str) -> list[DeadlineSpec]:
-    """Project ``metadata["deadlines_structured"]`` (plan Phase 5, the only path
-    since Phase 6 deleted the legacy Pivot free-text parser this used to fall
-    back to for a record missing that key).
+    """One row per **future dated round**, plus the event itself.
 
-    Kind mapping (plan Phase 5): collector ``abstract`` → ABSTRACT; collector
-    ``submission`` → MANUSCRIPT — semantically the full-paper deadline, despite
-    the name change, which is why the label table above still calls it
-    "Manuscript deadline"; every other collector kind (``notification``,
-    ``registration``, both ``rebuttal_*``, ``camera_ready``, ``supplementary``,
-    ``unknown``, and anything future) → OTHER. There is deliberately **no EVENT
-    row** here — unlike the legacy Pivot path, the collector's deadline array
-    never contains an event-date entry (event dates live in
-    ``metadata["event_start"]``/``["event_end"]`` instead, outside this array),
-    so there is nothing to map to it.
+    This is the per-round rewrite. The previous version kept only the single
+    next future occurrence per mapped kind, at most three rows, and the module
+    said outright that "a specific non-next round is never individually
+    remindable". That is precisely the thing conferences need: 150 of 912 live
+    conferences carry more than one dated deadline, and a venue with a workshop
+    deadline plus two full-paper rounds cannot be served by one row per kind.
 
-    Per plan D1, each of the (at most three) rows holds the **next future**
-    occurrence of its mapped kind — past-dated and unparseable (``instant`` is
-    ``None``, TBD) entries are never candidates, and a mapped kind with no future
-    entry at all simply gets no row (a conference may again yield 0–3 rows, same
-    as the legacy path, just a different three). **OTHER must never be read as
-    "still open for submission"** — that gate is computed once, independently,
-    over ``abstract``/``submission`` alone, in
-    ``apps.scraper.collect.mapping._conference_deadlines`` /
-    ``SUBMISSION_TYPES``; this function does not compute openness at all, and a
-    conference whose only future date is a ``notification`` correctly yields an
-    OTHER row here while ``metadata["open"]`` stays ``False``.
+    Kind mapping is unchanged: collector ``abstract`` -> ABSTRACT, collector
+    ``submission`` -> MANUSCRIPT (semantically the full-paper deadline, which is
+    why its label still reads "Manuscript deadline"), everything else — and
+    anything an adapter invents later — -> OTHER via ``dict.get``'s default, so
+    a new kind degrades to "shown, remindable, labelled by its own name" rather
+    than being dropped.
 
-    Confidence: the winning entry's own ``is_estimated`` (plan Phase 5) → is a
-    projected, not sourced, date → ANTICIPATED; otherwise CONFIRMED. A "rolling"
-    reading does not apply to conferences the way it does to grants — a null
-    ``instant`` here means TBD/unparseable, not "genuinely dateless by design",
-    so such entries are excluded rather than kept as a dateless row.
+    What each row now carries is its **own** date rather than its kind's next
+    one, identified by :func:`round_key_for`. Because that key includes the
+    collector kind, the several collector kinds that share the OTHER row
+    (notification, camera-ready, registration, both rebuttal ends, …) no longer
+    contend for one row — each keeps its own, labelled as what it is.
+
+    ``is_next`` marks the earliest future row per mapped kind, so a card can
+    render its headline deadline without re-deriving the selection here.
+
+    **The event row is new.** The collector's deadline array never contains an
+    event entry (event dates live in ``metadata["event_start"]``/``["event_end"]``
+    instead), so before this there was nothing an "remind me about the
+    conference itself" alert could point at — the requirement that an alert be
+    able to concern the event rather than a submission. It is derived from
+    ``event_start`` and is deliberately **not** part of the openness
+    computation, which stays over ``abstract``/``submission`` alone in
+    ``apps.scraper.collect.mapping._conference_deadlines``.
+
+    Past-dated and unparseable (``instant is None``, TBD) entries are never
+    candidates, so a conference may yield zero rows. Confidence follows the
+    entry's own ``is_estimated``: a projected date is ANTICIPATED, a sourced one
+    CONFIRMED. "Rolling" does not apply to a conference the way it does to a
+    grant — a null ``instant`` here means TBD, not "dateless by design".
     """
     entries = meta.get("deadlines_structured") or []
     today_date = date.fromisoformat(today)
 
-    # mapped kind -> (due_date, is_estimated, collector kind) of the earliest
-    # future occurrence seen so far for that mapped kind.
-    winners: dict[str, tuple[date, bool, str]] = {}
+    specs: list[DeadlineSpec] = []
+    seen: set[str] = set()
     for entry in entries:
         due = _parse_structured_instant(entry.get("instant"))
         if due is None or due < today_date:
-            continue  # TBD/unparseable, or already passed — never "the next one"
+            continue  # TBD/unparseable, or already passed
         collector_kind = entry.get("kind") or "unknown"
-        mapped = _STRUCTURED_KIND_MAP.get(collector_kind, _Kind.OTHER)
-        current = winners.get(mapped)
-        if current is None or due < current[0]:
-            winners[mapped] = (due, bool(entry.get("is_estimated")), collector_kind)
+        round_label = (entry.get("round_label") or "").strip()
+        base_label = _STRUCTURED_LABELS.get(collector_kind, "Other deadline")
 
+        # Two entries of one kind, both unlabelled, are the degenerate case:
+        # the collector treats them as *one* entry (``Deadline.identity``) and
+        # merges them, so this never fires on real data. When it does, the date
+        # is the only thing left that distinguishes them, so it becomes the
+        # tie-break. That trades away key stability for the second row — a
+        # reminder on it would not survive its date moving — which is the
+        # correct trade: the alternative is silently dropping the round
+        # entirely, and a reader who can see only one of two paper deadlines is
+        # worse off than one whose reminder needs re-setting after a change.
+        key = round_key_for(collector_kind, round_label)
+        if key in seen:
+            key = f"{key}:{due.isoformat()}"
+        seen.add(key)
+
+        specs.append(
+            DeadlineSpec(
+                kind=_STRUCTURED_KIND_MAP.get(collector_kind, _Kind.OTHER),
+                due_date=due,
+                label=f"{base_label} — {round_label}" if round_label else base_label,
+                confidence=(
+                    _Confidence.ANTICIPATED
+                    if entry.get("is_estimated")
+                    else _Confidence.CONFIRMED
+                ),
+                round_key=key,
+                round_label=round_label,
+            )
+        )
+
+    event = _to_date(meta.get("event_start"))
+    if event is not None and event >= today_date:
+        specs.append(
+            DeadlineSpec(
+                kind=_Kind.EVENT,
+                due_date=event,
+                label="Conference starts",
+                confidence=_Confidence.CONFIRMED,
+            )
+        )
+
+    return _mark_next(specs)
+
+
+def _mark_next(specs: list[DeadlineSpec]) -> list[DeadlineSpec]:
+    """Set ``is_next`` on the earliest dated spec of each kind, clear the rest.
+
+    Computed over the derived specs rather than read off any one entry, because
+    "next" is a fact about the *set* and only becomes true once every sibling is
+    known. Ties (two rounds of one kind on the same day) resolve on ``round_key``
+    so the choice is deterministic rather than dependent on source order.
+    """
+    winners: dict[str, tuple[date, str]] = {}
+    for spec in specs:
+        if spec.due_date is None:
+            continue
+        current = winners.get(spec.kind)
+        candidate = (spec.due_date, spec.round_key)
+        if current is None or candidate < current:
+            winners[spec.kind] = candidate
     return [
-        DeadlineSpec(
-            kind=mapped,
-            due_date=due,
-            label=_STRUCTURED_LABELS.get(collector_kind, "Other deadline"),
-            confidence=(
-                _Confidence.ANTICIPATED if is_estimated else _Confidence.CONFIRMED
+        replace(
+            spec,
+            is_next=(
+                spec.due_date is None
+                or winners.get(spec.kind) == (spec.due_date, spec.round_key)
             ),
         )
-        for mapped, (due, is_estimated, collector_kind) in winners.items()
+        for spec in specs
     ]
 
 
@@ -319,22 +411,30 @@ def rebuild_deadlines_for(
     / ``AuditEvent`` bookkeeping so a rebuild over historical data does not manufacture
     a wave of phantom "moved" signals.
     """
-    specs_by_kind = {s.kind: s for s in deadline_specs_for(item, today)}
-    existing = {row.kind: row for row in item.deadline_rows.all()}
+    # Keyed on (kind, round_key), matching the unique constraint: a conference
+    # now yields one row per dated round, so keying on kind alone would collapse
+    # every round of a kind onto one another and delete the rest on every
+    # rebuild.
+    specs_by_key = {(s.kind, s.round_key): s for s in deadline_specs_for(item, today)}
+    existing = {(row.kind, row.round_key): row for row in item.deadline_rows.all()}
     now = timezone.now()
     changes: list[DeadlineChange] = []
 
-    # Drop rows for kinds a re-scrape no longer produces.
-    for kind, row in existing.items():
-        if kind not in specs_by_kind:
+    # Drop rows for rounds a re-scrape no longer produces — including a round
+    # that has simply passed, since specs only ever cover future dates.
+    for key, row in existing.items():
+        if key not in specs_by_key:
             row.delete()
 
-    for kind, spec in specs_by_kind.items():
-        row = existing.get(kind)
+    for (kind, _round_key), spec in specs_by_key.items():
+        row = existing.get((kind, spec.round_key))
         if row is None:
             ContentDeadline.objects.create(
                 content=item,
                 kind=spec.kind,
+                round_key=spec.round_key,
+                round_label=spec.round_label,
+                is_next=spec.is_next,
                 due_date=spec.due_date,
                 label=spec.label,
                 confidence=spec.confidence,
@@ -345,6 +445,12 @@ def rebuild_deadlines_for(
         if row.label != spec.label:
             row.label = spec.label
             fields.append("label")
+        if row.round_label != spec.round_label:
+            row.round_label = spec.round_label
+            fields.append("round_label")
+        if row.is_next != spec.is_next:
+            row.is_next = spec.is_next
+            fields.append("is_next")
 
         old_confidence = row.confidence
         old_due = row.due_date
@@ -372,6 +478,7 @@ def rebuild_deadlines_for(
                 DeadlineChange(
                     content_id=str(item.id),
                     kind=kind,
+                    round_key=spec.round_key,
                     old=old_due,
                     new=spec.due_date,
                     confidence=spec.confidence,
@@ -408,6 +515,7 @@ def _audit_changes(item: ContentItem, changes: list[DeadlineChange]) -> None:
             target_id=str(item.id),
             metadata={
                 "kind": change.kind,
+                "round_key": change.round_key,
                 "old_due_date": change.old.isoformat() if change.old else None,
                 "new_due_date": change.new.isoformat() if change.new else None,
                 "confidence": change.confidence,

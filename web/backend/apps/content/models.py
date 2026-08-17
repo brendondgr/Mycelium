@@ -296,17 +296,40 @@ class ContentDeadline(models.Model):
 
     A **projection**, not a new source of truth: rebuilt on every opportunity
     upsert from the same status functions the feed already uses
-    (:mod:`apps.content.deadlines_projection`). A conference yields up to three
-    rows (abstract / manuscript / event); a grant or fellowship yields one
-    APPLICATION row. Rolling / continuous fellowships get a row with a null
-    ``due_date`` so the UI can explain "no date — can't remind" instead of
-    silently omitting them.
+    (:mod:`apps.content.deadlines_projection`). A conference yields **one row per
+    dated round** plus an event row; a grant or fellowship yields one APPLICATION
+    row. Rolling / continuous fellowships get a row with a null ``due_date`` so
+    the UI can explain "no date — can't remind" instead of silently omitting
+    them.
 
-    The row is updated **in place** when a date moves — hence the unique key is
-    ``(content, kind)``, not ``(content, kind, due_date)`` — so ``changed_at`` is
-    meaningful and a reminder keeps pointing at a stable row. ``previous_due_date``
-    + ``changed_at`` are the signal the DEADLINE_MOVED announcement (R6) reads;
-    nothing here re-fires reminders, which compute their own dates on read.
+    Per-round, not per-kind
+    ------------------------------------------------------------------------
+    The original design keyed on ``(content, kind)`` and each row held only its
+    kind's *next* future date, so a specific non-next round was never
+    individually remindable. That is wrong for the thing conferences actually
+    do: a venue routinely carries a workshop deadline, two full-paper rounds, a
+    camera-ready and a notification, and "remind me about the second paper
+    round" is the ordinary request. The key is therefore ``(content, kind,
+    round_key)``.
+
+    ``round_key`` is the collector's own deadline identity — ``"<collector
+    kind>:<normalized round label>"`` — mirroring
+    ``apps.scraper.collect.conferences.record.Deadline.identity``, which is
+    deliberately *type plus label and never the date*, so an extension updates
+    an entry in place rather than appending a duplicate. Borrowing it is what
+    makes the key stable across re-scrapes: a moved deadline keeps its row, so
+    ``changed_at`` stays meaningful and a reminder keeps pointing at the round
+    the reader chose. Measured over the live corpus (2026-08-17): 1,120 dated
+    entries across 912 conferences, **zero** ``(kind, label)`` collisions.
+    ``""`` for the single-round cases (grant, fellowship, and a conference's
+    event row).
+
+    ``is_next`` marks the earliest future row of each kind — what a card's
+    headline deadline reads, so the display never has to re-derive it.
+
+    ``previous_due_date`` + ``changed_at`` are the signal the DEADLINE_MOVED
+    announcement (R6) reads; nothing here re-fires reminders, which compute
+    their own dates on read.
     """
 
     class Confidence(models.TextChoices):
@@ -324,6 +347,25 @@ class ContentDeadline(models.Model):
     kind = models.CharField(
         max_length=20,
         choices=SavedOpportunity.DeadlineKind.choices,
+    )
+    round_key = models.CharField(
+        max_length=160,
+        blank=True,
+        default="",
+        help_text=(
+            "Stable identity of this round within its item — the collector's "
+            "'<kind>:<normalized label>'. Empty for a single-round deadline."
+        ),
+    )
+    round_label = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="The source's own round wording ('round 2'), verbatim.",
+    )
+    is_next = models.BooleanField(
+        default=True,
+        help_text="This is the earliest future row of its kind (the headline one).",
     )
     due_date = models.DateField(
         null=True,
@@ -352,18 +394,19 @@ class ContentDeadline(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["due_date", "kind"]
+        ordering = ["due_date", "kind", "round_key"]
         constraints = [
             models.UniqueConstraint(
-                fields=["content", "kind"],
-                name="content_deadline_unique_content_kind",
+                fields=["content", "kind", "round_key"],
+                name="content_deadline_unique_content_kind_round",
             ),
         ]
         indexes = [models.Index(fields=["due_date", "kind"])]
 
     def __str__(self) -> str:
+        round_part = f" ({self.round_label})" if self.round_label else ""
         return (
-            f"{self.get_kind_display()} deadline "
+            f"{self.get_kind_display()} deadline{round_part} "
             f"{self.due_date or '—'} ({self.confidence})"
         )
 
@@ -895,9 +938,24 @@ class ReminderSubscription(models.Model):
         max_length=20,
         choices=SavedOpportunity.DeadlineKind.choices,
     )
+    deadline_round_key = models.CharField(
+        max_length=160,
+        blank=True,
+        default="",
+        help_text=(
+            "Which round of that kind this reminder is for — the matching "
+            "ContentDeadline.round_key. Empty for a single-round deadline."
+        ),
+    )
     # --- Snapshot: survives prune; due_date/confidence resynced each tick. ---
     area = models.CharField(max_length=20, choices=SavedOpportunity.Area.choices)
     title = models.CharField(max_length=500)
+    round_label = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Snapshot of the round's wording, so a fired message can name it.",
+    )
     url = models.URLField(max_length=500, blank=True, default="")
     due_date = models.DateField(null=True, blank=True)
     confidence = models.CharField(
@@ -943,15 +1001,29 @@ class ReminderSubscription(models.Model):
                 name="content_reminder_one_target",
                 condition=exactly_one(*REMINDER_TARGET_FIELDS),
             ),
+            # Widened by the round: two reminders on the *same* conference and
+            # the *same* kind are legitimate when they point at different
+            # rounds ("warn me about both paper deadlines"), which is the whole
+            # point of the per-round projection.
             models.UniqueConstraint(
-                fields=["target_user", "content", "deadline_kind"],
+                fields=[
+                    "target_user",
+                    "content",
+                    "deadline_kind",
+                    "deadline_round_key",
+                ],
                 condition=Q(content__isnull=False, target_user__isnull=False),
-                name="content_reminder_unique_user_content_kind",
+                name="content_reminder_unique_user_content_round",
             ),
             models.UniqueConstraint(
-                fields=["target_lab", "content", "deadline_kind"],
+                fields=[
+                    "target_lab",
+                    "content",
+                    "deadline_kind",
+                    "deadline_round_key",
+                ],
                 condition=Q(content__isnull=False, target_lab__isnull=False),
-                name="content_reminder_unique_lab_content_kind",
+                name="content_reminder_unique_lab_content_round",
             ),
         ]
         indexes = [models.Index(fields=["state", "due_date"])]

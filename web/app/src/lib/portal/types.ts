@@ -444,6 +444,18 @@ type OpportunityBase = {
 /** One addressable deadline on an item (the ContentDeadline projection, R0). */
 export type DeadlineOption = {
   kind: string;
+  /** Which round of that kind, for an item carrying several — a conference's
+   * second paper deadline, a workshop track. Send it back verbatim to set a
+   * reminder on *that* round. `""` is the single-round case (every grant and
+   * fellowship, and a conference's event row). */
+  round_key: string;
+  /** The source's own wording for the round ("round 2", "workshop track"), or
+   * `""`. Free text: 287 distinct values appear in the corpus, so treat it as
+   * a label to print, never a value to switch on. */
+  round_label: string;
+  /** This is the earliest future deadline of its kind — the one a card's
+   * headline reads. */
+  is_next: boolean;
   /** ISO date, or null for a rolling/unknown deadline (not remindable). */
   due_date: string | null;
   confidence: "confirmed" | "anticipated" | "rolling" | "unknown";
@@ -830,6 +842,10 @@ export type Reminder = {
   lab_name: string | null;
   content_id: string | null;
   deadline_kind: string;
+  /** Which round of that kind this reminder is for; `""` when single-round. */
+  deadline_round_key: string;
+  /** The round's own wording, snapshotted so the row can name it. */
+  round_label: string;
   area: string;
   title: string;
   url: string;
@@ -896,6 +912,9 @@ export type ReminderAccess = {
 export type ReminderInput = {
   content_id: string;
   deadline_kind: string;
+  /** Which round of that kind (`DeadlineOption.round_key`). Omitted means `""`
+   * — the single-round deadline every grant and fellowship carries. */
+  deadline_round_key?: string;
   scope?: "personal" | "lab";
   lab_slug?: string;
   offsets?: ReminderOffset[];

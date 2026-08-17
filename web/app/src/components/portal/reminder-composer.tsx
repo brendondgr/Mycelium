@@ -25,10 +25,25 @@ import { cn } from "@/lib/utils";
 const KIND_LABELS: Record<string, string> = {
   application: "Application",
   abstract: "Abstract",
-  manuscript: "Manuscript",
-  event: "Event",
+  manuscript: "Full paper",
+  event: "The conference itself",
   other: "Deadline",
 };
+
+/** How one deadline reads in the picker: the kind, then the source's own round
+ * wording when it has one ("Full paper · round 2"). A conference routinely
+ * carries several rounds of one kind, so the kind alone would offer the reader
+ * two identical-looking chips. */
+export function deadlineOptionLabel(d: DeadlineOption): string {
+  const kind = KIND_LABELS[d.kind] ?? d.label ?? d.kind;
+  return d.round_label ? `${kind} · ${d.round_label}` : kind;
+}
+
+/** A stable identity for one deadline option — kind plus round, matching the
+ * backend's own uniqueness tuple. `kind` alone is no longer unique. */
+export function deadlineOptionId(d: DeadlineOption): string {
+  return `${d.kind}::${d.round_key}`;
+}
 
 function formatDue(iso: string | null): string {
   if (!iso) return "no date";
@@ -53,11 +68,16 @@ export function ReminderComposer({
   onClose,
   lockedScope,
   lockedLabSlug,
+  initialDeadlineId,
 }: {
   contentId: string;
   title: string;
   deadlines: DeadlineOption[];
   onClose: () => void;
+  /** Pre-select one deadline — set when the composer is opened from a specific
+   * row of the card's deadline list, so "set an alert for *this* round" is one
+   * gesture rather than open-then-hunt. */
+  initialDeadlineId?: string;
   /** When set, the composer is fixed to a lab reminder for `lockedLabSlug` and
    * the scope/lab pickers are hidden — used from a lab's saved area. */
   lockedScope?: "lab";
@@ -65,7 +85,18 @@ export function ReminderComposer({
 }) {
   const locked = lockedScope === "lab" && Boolean(lockedLabSlug);
   const datedDeadlines = deadlines.filter((d) => d.due_date);
-  const [kind, setKind] = React.useState(datedDeadlines[0]?.kind ?? "");
+  // Identity is (kind, round), not kind: a conference can carry three full-paper
+  // deadlines and each is a separate alert.
+  const [selectedId, setSelectedId] = React.useState(() => {
+    const preset = initialDeadlineId
+      ? datedDeadlines.find((d) => deadlineOptionId(d) === initialDeadlineId)
+      : undefined;
+    const first = preset ?? datedDeadlines[0];
+    return first ? deadlineOptionId(first) : "";
+  });
+  const selected = datedDeadlines.find(
+    (d) => deadlineOptionId(d) === selectedId,
+  );
   const [scope, setScope] = React.useState<"personal" | "lab">(
     locked ? "lab" : "personal",
   );
@@ -112,10 +143,15 @@ export function ReminderComposer({
       setError("Add at least one reminder time.");
       return;
     }
+    if (!selected) {
+      setError("Choose which deadline to be reminded about.");
+      return;
+    }
     create.mutate(
       {
         content_id: contentId,
-        deadline_kind: kind,
+        deadline_kind: selected.kind,
+        deadline_round_key: selected.round_key,
         scope,
         lab_slug: scope === "lab" ? effectiveLabSlug : undefined,
         channel_id_override:
@@ -130,7 +166,7 @@ export function ReminderComposer({
   };
 
   const canSubmit =
-    kind !== "" &&
+    selected !== undefined &&
     offsets.length > 0 &&
     !create.isPending &&
     (scope === "personal" || effectiveLabSlug !== "");
@@ -176,17 +212,32 @@ export function ReminderComposer({
             <>
               {datedDeadlines.length > 1 && !blocked ? (
                 <Field label="Which deadline">
+                  {/* One chip per *round*, not per kind. A venue with a
+                      workshop deadline and two paper rounds shows all four
+                      alongside its event date, each separately alertable. */}
                   <div className="flex flex-wrap gap-1.5">
-                    {datedDeadlines.map((d) => (
-                      <Chip
-                        key={d.kind}
-                        active={kind === d.kind}
-                        onClick={() => setKind(d.kind)}
-                      >
-                        {KIND_LABELS[d.kind] ?? d.kind} · {formatDue(d.due_date)}
-                      </Chip>
-                    ))}
+                    {datedDeadlines.map((d) => {
+                      const id = deadlineOptionId(d);
+                      return (
+                        <Chip
+                          key={id}
+                          active={selectedId === id}
+                          onClick={() => setSelectedId(id)}
+                        >
+                          {deadlineOptionLabel(d)} · {formatDue(d.due_date)}
+                        </Chip>
+                      );
+                    })}
                   </div>
+                </Field>
+              ) : datedDeadlines.length === 1 && !blocked ? (
+                <Field label="Which deadline">
+                  <p className="text-[13px] text-[var(--text-secondary)]">
+                    <span className="font-semibold text-[var(--text-primary)]">
+                      {deadlineOptionLabel(datedDeadlines[0])}
+                    </span>{" "}
+                    — {formatDue(datedDeadlines[0].due_date)}
+                  </p>
                 </Field>
               ) : null}
 

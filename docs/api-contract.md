@@ -577,7 +577,8 @@ high-fit grant floats to the top for its first week).
     "status_summary": "Application due 2026-11-12",
     "saved": false, "saved_labs": ["reyes-lab"],
     "addressable_deadlines": [
-      { "kind": "application", "due_date": "2026-11-12",
+      { "kind": "application", "round_key": "", "round_label": "",
+        "is_next": true, "due_date": "2026-11-12",
         "confidence": "confirmed", "label": "" }
     ],
     "cluster": { "id": "…", "label": "…" }, "bridge_clusters": [],
@@ -596,11 +597,27 @@ high-fit grant floats to the top for its first week).
 
 `match_percent` is the model's 0–100 judgement (`null` on the deterministic
 tail). `saved_labs` lists managed labs already holding the item.
-`addressable_deadlines` drives the reminder composer's kind picker — each entry
-is `{ kind, due_date, confidence, label }`: `due_date` is ISO or `null` for a
-rolling/unknown deadline, and `confidence` is
-`"confirmed" | "anticipated" | "rolling" | "unknown"`. `generated_at` is `null`
-before the first run.
+`addressable_deadlines` is **every** deadline the item can be alerted on, in
+date order — one entry per *round*, not per kind. A conference routinely carries
+a workshop deadline, more than one full-paper round, a camera-ready, and its own
+event date, and each is separately remindable. Each entry is
+`{ kind, round_key, round_label, is_next, due_date, confidence, label }`:
+
+- `round_key` identifies the round within its item and is what a client sends
+  back as `deadline_round_key` to set a reminder on that specific round. `""` is
+  the single-round case — every grant and fellowship, and a conference's event
+  row.
+- `round_label` is the source's own free-text wording ("round 2", "workshop
+  track"). 287 distinct values appear in the corpus, so print it, never switch
+  on it.
+- `is_next` marks the earliest future entry of its kind — what a card's headline
+  deadline shows.
+- `due_date` is ISO or `null` for a rolling/unknown deadline, and `confidence`
+  is `"confirmed" | "anticipated" | "rolling" | "unknown"`.
+
+A conference's `kind: "event"` entry is the conference itself rather than a
+submission, so "remind me the week before it starts" has something to point at.
+`generated_at` is `null` before the first run.
 
 `published_on` is the funder's own publication date
 (`metadata["published_on"]`, `""` when the source published none), distinct
@@ -853,13 +870,20 @@ Deadline reminders are a **paid, Discord-delivered** capability.
 `GET` lists the caller's reminders, narrowed by `?state=` and `?lab=`.
 
 `POST` creates a personal or lab reminder from a content item:
-`{ "content_id", "deadline_kind", "offsets": [{ "amount", "unit" }],
-"lab_slug"?, "channel_id_override"?, "mentions"? }`. Dateless deadlines are
-rejected; a lab reminder needs manage rights.
+`{ "content_id", "deadline_kind", "deadline_round_key"?, "offsets": [{ "amount",
+"unit" }], "lab_slug"?, "channel_id_override"?, "mentions"? }`. Dateless
+deadlines are rejected; a lab reminder needs manage rights.
 
-**POST upserts.** A repeat request for a (target, content, deadline_kind) that
-already has a row reconfigures it and answers **200**; `201` is only for a
-genuinely new one. This is also how a cancelled reminder is re-armed.
+`deadline_round_key` selects **which** round of that kind, taken verbatim from
+the matching `addressable_deadlines` entry. Omitting it means `""` — the
+single-round key every grant, fellowship, and conference event row carries — so
+a client that never sends it keeps working unchanged.
+
+**POST upserts.** A repeat request for a (target, content, deadline_kind,
+deadline_round_key) that already has a row reconfigures it and answers **200**;
+`201` is only for a genuinely new one. This is also how a cancelled reminder is
+re-armed. A *different round of the same kind* is not a repeat — "warn me about
+both paper deadlines" creates two reminders.
 
 `403` with a `reason` slug when the gate is not satisfied.
 
@@ -876,7 +900,7 @@ locking someone out of stopping their own reminders would only trap them.
 ### Read shape
 
 Each reminder carries `scope`, `lab_slug`, `lab_name`, `content_id`,
-`deadline_kind`, `area`, `title`, `url`, `due_date`, `confidence`, `state`,
+`deadline_kind`, `deadline_round_key`, `round_label`, `area`, `title`, `url`, `due_date`, `confidence`, `state`,
 `snoozed_until`, `channel_id_override`, `has_unlinked_targets`, `mentions`,
 `can_manage`, and timestamps — plus, per offset, the `fire_date` it resolves to,
 the overall `next_fire_date`, and `send_hour_local` / `timezone`. The hour is a
