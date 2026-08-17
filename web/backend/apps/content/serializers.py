@@ -199,6 +199,14 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     status_summary = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
     saved_labs = serializers.SerializerMethodField()
+    # Provenance, universal since the open-collector migration (plan Phase 9):
+    # every area now carries which adapter produced the row, what it may be
+    # reused under, and who to credit. Pivot never carried any of this — a
+    # matched item's origin was invisible past its outbound link.
+    source = serializers.SerializerMethodField()
+    license = serializers.SerializerMethodField()
+    license_url = serializers.SerializerMethodField()
+    source_links = serializers.SerializerMethodField()
 
     def _meta(self, score: RelevanceScore) -> dict:
         return (score.content.metadata or {}) if score.content_id else {}
@@ -213,6 +221,53 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
         return self._meta(score).get("website") or (
             score.content.source_url if score.content_id else ""
         )
+
+    def get_source(self, score: RelevanceScore) -> str:
+        # e.g. "grants:nsf", "conf:ccf_deadlines", "illinois-fellowship-finder" —
+        # which adapter/provider produced this row. Namespaced by area (plan D6)
+        # so a card can always tell a Pivot-era leftover from an open-collector
+        # one mid-migration, and the frontend can credit the right source.
+        return score.content.source if score.content_id else ""
+
+    def get_license(self, score: RelevanceScore) -> str:
+        # A short label ("MIT", "CC0-1.0", "US Government Work — …"), not a URL.
+        # ``mapping.py`` carries this for grants (a per-source constant table)
+        # and conferences (copied off the adapter); a fellowship carries none.
+        return self._meta(score).get("license") or ""
+
+    def get_license_url(self, score: RelevanceScore) -> str:
+        # DISCREPANCY (see phase report): no source in the vendored collector
+        # publishes a machine-readable licence URL onto any record the mapper can
+        # read — ``openresearch``'s ``LICENSE_URL`` lives on the raw fetch bundle
+        # (adapters/openresearch.py), a provenance record ``mapping.py`` never
+        # sees, not on ``ConferenceSeries``/``ConferenceInstance``. Reading the
+        # key here rather than hand-writing a lookup table keeps this field
+        # honest — "" today, and it starts working the day a mapped field exists,
+        # with no serializer change required.
+        return self._meta(score).get("license_url") or ""
+
+    def get_source_links(self, score: RelevanceScore) -> list[dict]:
+        """Per-source attribution footer: one ``{source, url}`` per contributor.
+
+        Conferences carry this ready-built — ``mapping.py::_source_links``
+        already flattens ``contributing_sources`` onto ``metadata["source_links"]``
+        because the collector's own dedupe stage can merge several adapters'
+        records into one instance. Grants carry no such key (every federal/EU
+        source publishes one record per opportunity number, so ``mapping.py``
+        never needed the helper) but do carry the same ``contributing_sources``
+        bookkeeping, so it is built here on the fly instead of leaving grants
+        with no attribution at all. A fellowship has neither key and correctly
+        renders an empty list — a single-source area with nothing to attribute.
+        """
+        meta = self._meta(score)
+        links = meta.get("source_links")
+        if links:
+            return links
+        sources = meta.get("contributing_sources") or []
+        if not sources:
+            return []
+        url = self.get_url(score)
+        return [{"source": src, "url": url} for src in sources]
 
     def get_match_percent(self, score: RelevanceScore):
         return score.signals.get("match_percent")
@@ -293,6 +348,16 @@ class GrantSerializer(_OpportunitySerializer):
     matched_topics = serializers.SerializerMethodField()
     posted = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
+    # The open-collector fields (plan Phase 3/9) that Pivot never carried: the
+    # funder's own identifiers and dates, and the full multi-round array behind
+    # the single ``deadline_date`` the base class already exposes.
+    opportunity_number = serializers.SerializerMethodField()
+    due_dates = serializers.SerializerMethodField()
+    deadline_text = serializers.SerializerMethodField()
+    dates_inferred = serializers.SerializerMethodField()
+    original_deadline = serializers.SerializerMethodField()
+    loi_date = serializers.SerializerMethodField()
+    published_on = serializers.SerializerMethodField()
 
     def get_title(self, score: RelevanceScore) -> str:
         return self._meta(score).get("title") or "Untitled grant"
@@ -308,14 +373,178 @@ class GrantSerializer(_OpportunitySerializer):
     def get_matched_topics(self, score: RelevanceScore) -> str:
         return self._meta(score).get("matched_topics") or ""
 
+    def get_published_on(self, score: RelevanceScore) -> str:
+        # The funder's own publication date (``mapping.py``'s ``posted_date``),
+        # not when Mylo first ingested the row. Exposed separately from
+        # ``posted`` (below) because the two questions genuinely differ once the
+        # feed carries pre-migration Pivot leftovers with no such key.
+        return self._meta(score).get("published_on") or ""
+
     def get_posted(self, score: RelevanceScore) -> str:
-        # When Mylo first surfaced this grant (ISO); drives the "Posted" line.
+        # Repointed (plan Phase 9 — this was the bug): a grant genuinely posted
+        # by its funder in 2015 used to show the day *Mycelium* ingested it,
+        # because this read ``signals["first_seen"]`` unconditionally. Prefer
+        # the funder's own ``metadata["published_on"]`` and fall back to the old
+        # behaviour only for a row that carries no such key — a pre-migration
+        # Pivot leftover still living in the corpus, not a genuine "unknown".
+        published_on = self._meta(score).get("published_on")
+        if published_on:
+            return published_on
         return score.signals.get("first_seen") or ""
 
     def get_description(self, score: RelevanceScore) -> str:
         # A human-readable blurb: the AI summary if present, else the abstract.
         meta = self._meta(score)
         return meta.get("ai_summary") or meta.get("abstract") or ""
+
+    def get_opportunity_number(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("opportunity_number") or ""
+
+    def get_due_dates(self, score: RelevanceScore) -> list[str]:
+        # The complete application-round array behind the single next-due
+        # ``deadline_date`` — what the multi-deadline hover (plan D1) renders.
+        return self._meta(score).get("due_dates") or []
+
+    def get_deadline_text(self, score: RelevanceScore) -> str:
+        # The funder's own free-text deadline line, kept verbatim alongside the
+        # parsed ``deadline_date`` for a reader who wants the source wording.
+        return self._meta(score).get("deadline_text") or ""
+
+    def get_dates_inferred(self, score: RelevanceScore) -> bool:
+        # True when the collector estimated this record's dates rather than
+        # reading them verbatim — the grant-side twin of a conference's
+        # ``confidence: "anticipated"`` (see deadlines_projection.py).
+        return bool(self._meta(score).get("dates_inferred"))
+
+    def get_original_deadline(self, score: RelevanceScore) -> str:
+        # The first-ever recorded close date, kept even after a funder moves it
+        # — lets a reader see that a deadline shifted, not just what it is now.
+        return self._meta(score).get("original_deadline") or ""
+
+    def get_loi_date(self, score: RelevanceScore) -> str:
+        # Letter-of-intent date, when the funder requires one ahead of the
+        # full application — absent for the large majority of grants.
+        return self._meta(score).get("loi_date") or ""
+
+
+#: A short "what this system is" line per ranking system, keyed the same
+#: lowercase way the collector itself does (``adapters/ccf_deadlines.py``'s
+#: ``RANK_SYSTEMS = ("ccf", "core", "thcpl")`` — verified against the vendored
+#: source, not guessed). No explanation of any of these three exists as data
+#: anywhere in the open collector (grepped the vendored tree for "rank" prose;
+#: zero hits), so this is authored copy, not a port of anything.
+RANK_SYSTEM_INFO: dict[str, dict[str, str]] = {
+    "ccf": {
+        "label": "CCF",
+        "about": (
+            "The China Computer Federation's recommended venue list — the most "
+            "widely cited computer-science ranking outside China. Roughly a "
+            "third of ranked venues sit in each of its three bands; most "
+            "computing venues carry no CCF rank at all."
+        ),
+    },
+    "core": {
+        "label": "CORE",
+        "about": (
+            "The Computing Research and Education Association of Australasia's "
+            "conference ranking, historically used across Australia and New "
+            "Zealand and referenced informally worldwide. Its top band splits "
+            "further into A*, one level above plain A."
+        ),
+    },
+    "thcpl": {
+        "label": "THCPL",
+        "about": (
+            "Tsinghua University's Computer Science Conference and Journal "
+            "Recommendation List — internal guidance on which venues count "
+            "toward a strong publication record, since referenced by several "
+            "other institutions' own lists."
+        ),
+    },
+}
+
+#: Per-rank hover prose, keyed ``{system: {rank: text}}``. Only the ranks the
+#: live corpus actually carries are covered (plan Phase 9: CCF A/B/C, CORE
+#: A*/A/B/C, THCPL A/B) — "N" ("not ranked by this system") is deliberately
+#: excluded here because ``mapping.py::_rank_badges`` already drops it before a
+#: badge is ever built, so a client resolving a badge against this map will
+#: never look up "N".
+#:
+#: Every entry is careful to say nothing about *when* a rank was assigned.
+#: ``edition`` is "" on every ranking in this dataset (mapping.py denormalises
+#: ``ConferenceSeries.rankings`` verbatim, and the source never populates the
+#: field) — so this copy states what a rank means, never what year it was
+#: decided, and a client must not print a year next to it either.
+RANK_EXPLANATIONS: dict[str, dict[str, str]] = {
+    "ccf": {
+        "A": (
+            "CCF's top band: the flagship venues of their subfield, the ones a "
+            "hiring or tenure committee will recognise by name alone."
+        ),
+        "B": (
+            "CCF's second band: well-established, competitive venues — a solid "
+            "target, one step below the handful that define a subfield."
+        ),
+        "C": (
+            "CCF's entry band: recognised and reviewed, but not yet judged to "
+            "carry the weight of an A or B venue on its own."
+        ),
+    },
+    "core": {
+        "A*": (
+            "CORE's highest band, reserved for a small set of exceptional "
+            "flagship venues — a level above plain A, not a variant of it."
+        ),
+        "A": "CORE's top general band: excellent, competitive venues widely "
+        "regarded within their field.",
+        "B": (
+            "CORE's second band: good, respected venues — a legitimate target, "
+            "one step below the top rank."
+        ),
+        "C": "CORE's entry band: known and reviewed, sitting below A and B.",
+    },
+    "thcpl": {
+        "A": (
+            "THCPL's top band — venues the list treats as carrying full weight "
+            "for a strong publication record."
+        ),
+        "B": (
+            "THCPL's second band — respected and countable, one step below the "
+            "list's top tier."
+        ),
+    },
+}
+
+#: Trust tier is the always-present signal underneath the (25%-coverage) rank
+#: badges above (plan D3): every resolved series gets one. Only A and B occur
+#: in the live corpus — the community-aggregator source that would produce a C
+#: (WikiCFP) is not enabled (plan D5) — so those are the two this covers.
+#: The B copy states plainly, as the plan requires, that B is *not* a
+#: demotion: it is where every non-CS venue and every new/thinly-indexed CS
+#: venue lives, because the registry evidence layer behind tier A is CS-only.
+TRUST_TIER_EXPLANATIONS: dict[str, str] = {
+    "A": (
+        "A formal ranking body has classified this venue, or it has several "
+        "years of indexed proceedings on record — independent evidence this "
+        "is a real, ongoing venue."
+    ),
+    "B": (
+        "Not a demotion. This is where every non-CS venue lives, alongside new "
+        "or thinly-indexed CS venues no formal ranking body has assessed yet — "
+        "a legitimate listing that the evidence layer simply cannot yet "
+        "independently confirm, because that layer only covers computing."
+    ),
+}
+
+#: Exposed once at ``GET /api/opportunities/ranking-reference/``
+#: (``views.RankingReferenceView``) rather than repeated on every conference
+#: row: the prose above is identical for every card sharing a rank/tier, and a
+#: single feed page can carry dozens of conferences — duplicating it per row
+#: would multiply payload size for zero new information per item. A card only
+#: needs to carry *which* rank/tier it has (``rank_badges`` / ``trust_tier``,
+#: both small); the client resolves the hover text from this table once and
+#: caches it, the same pattern the frontend already uses for the static
+#: ``FEATURE`` entitlement-slug table.
 
 
 class ConferenceSerializer(_OpportunitySerializer):
@@ -334,13 +563,69 @@ class ConferenceSerializer(_OpportunitySerializer):
     status = serializers.SerializerMethodField()
     scope = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
+    # Quality signals the open collector carries that Pivot never did (plan D2/
+    # D3): rankings are visual-only badges, trust tier is the always-present
+    # signal underneath them. See RANK_EXPLANATIONS / TRUST_TIER_EXPLANATIONS
+    # below for the hover copy a client resolves each of these against.
+    acronym = serializers.SerializerMethodField()
+    year_label = serializers.SerializerMethodField()
+    rankings = serializers.SerializerMethodField()
+    rank_badges = serializers.SerializerMethodField()
+    trust_tier = serializers.SerializerMethodField()
+    red_flags = serializers.SerializerMethodField()
+    quality_warnings = serializers.SerializerMethodField()
+    deadlines_structured = serializers.SerializerMethodField()
 
     def get_title(self, score: RelevanceScore) -> str:
         return self._meta(score).get("name") or "Untitled conference"
 
+    def get_acronym(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("acronym") or ""
+
+    def get_year_label(self, score: RelevanceScore) -> str:
+        return self._meta(score).get("year_label") or ""
+
+    def get_rankings(self, score: RelevanceScore) -> dict:
+        # The raw ``{system: {rank, edition}}`` map verbatim, "N" entries
+        # included — a real "not ranked by this system" statement (plan D2),
+        # distinct from the field being absent. ``rank_badges`` below is the
+        # display-ready flattening that drops "N", for a client that only
+        # wants to render claimed ranks.
+        return self._meta(score).get("rankings") or {}
+
+    def get_rank_badges(self, score: RelevanceScore) -> list[dict]:
+        # ``[{system, rank, edition}]``, "N" already excluded by
+        # ``mapping.py::_rank_badges`` — what the card's badge row renders.
+        # ``edition`` is always "" in this data (see RANK_EXPLANATIONS' note);
+        # a client must not read a year into it.
+        return self._meta(score).get("rank_badges") or []
+
+    def get_trust_tier(self, score: RelevanceScore) -> str:
+        # "A" | "B" (plan D3) — always present once a series has resolved.
+        # "unassigned" only for an instance whose resolve stage never matched
+        # it to a series at all (mapping.py's documented "nothing known yet"
+        # default), which the card should render as "no signal", not "poor".
+        return self._meta(score).get("trust_tier") or "unassigned"
+
+    def get_red_flags(self, score: RelevanceScore) -> list[str]:
+        return self._meta(score).get("red_flags") or []
+
+    def get_quality_warnings(self, score: RelevanceScore) -> list[str]:
+        return self._meta(score).get("quality_warnings") or []
+
+    def get_deadlines_structured(self, score: RelevanceScore) -> list[dict]:
+        # The full multi-round deadline array (plan D1) — what the hover on the
+        # scalar ``deadline_date``/``deadlines`` shows in full, every kind and
+        # every round, not just the one the base class gates openness on.
+        return self._meta(score).get("deadlines_structured") or []
+
     def get_location(self, score: RelevanceScore) -> str:
         meta = self._meta(score)
-        return ", ".join(p for p in (meta.get("location"), meta.get("country")) if p)
+        # Chained: the collector writes ``place_text``, Pivot wrote ``location``,
+        # and both shapes coexist during the migration. Swapping rather than
+        # chaining would blank the venue for every record already in the table.
+        place = meta.get("place_text") or meta.get("location")
+        return ", ".join(p for p in (place, meta.get("country")) if p)
 
     def get_country(self, score: RelevanceScore) -> str:
         return self._meta(score).get("country") or ""
@@ -631,7 +916,11 @@ class SearchResultSerializer(serializers.Serializer):
 
     def get_location(self, item: ContentItem) -> str:
         meta = self._meta(item)
-        return ", ".join(p for p in (meta.get("location"), meta.get("country")) if p)
+        # Chained: the collector writes ``place_text``, Pivot wrote ``location``,
+        # and both shapes coexist during the migration. Swapping rather than
+        # chaining would blank the venue for every record already in the table.
+        place = meta.get("place_text") or meta.get("location")
+        return ", ".join(p for p in (place, meta.get("country")) if p)
 
     def get_event_dates(self, item: ContentItem) -> str:
         return self._meta(item).get("event_dates") or ""

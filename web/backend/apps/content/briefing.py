@@ -231,6 +231,44 @@ def report_projects_for_lab(lab) -> list:
     return list(Project.objects.active().filter(scope_lab=lab).order_by("name", "id"))
 
 
+def _deadline_rounds(meta: dict) -> list[dict]:
+    """Every dated round on a grant or conference, normalised to one shape.
+
+    The mapper (:mod:`apps.scraper.collect.mapping`, plan Phase 3) stores a
+    grant's full round history and a conference's full deadline history under
+    different keys and in different shapes — the two record schemas were never
+    going to agree, and forcing them to at the source would have meant lying
+    about one of them. A grant's ``due_dates`` is a flat list of ISO round
+    dates; a conference's ``deadlines_structured`` is the full 8-key
+    ``Deadline`` array (kind, instant, label, basis, and four more). This is
+    the one place that difference gets resolved, into ``{date, kind, label}``
+    — so the showcase widget and the PDF's multi-deadline table (plan D1 —
+    "display all, remind on next") read one shape regardless of category,
+    instead of re-deriving the type distinction at every call site downstream.
+
+    Neither key exists on a paper or a fellowship, so both come back empty and
+    the field is simply absent there — no dated-round concept applies to
+    either.
+
+    Sorted chronologically, with an undated ("TBD") round last, so a reader —
+    or the PDF table — never has to re-sort what is meant to already read as a
+    timeline.
+    """
+    due_dates = meta.get("due_dates")
+    if due_dates:
+        rounds = [{"date": d, "kind": "application", "label": ""} for d in due_dates]
+    else:
+        rounds = [
+            {
+                "date": (entry.get("instant") or "")[:10],
+                "kind": entry.get("kind", ""),
+                "label": entry.get("round_label", ""),
+            }
+            for entry in meta.get("deadlines_structured") or []
+        ]
+    return sorted(rounds, key=lambda r: (r["date"] == "", r["date"]))
+
+
 def _showcase_item(
     score: RelevanceScore, today: str, member_names: dict[str, str] | None = None
 ) -> dict:
@@ -239,6 +277,13 @@ def _showcase_item(
     ``member_names`` maps a username to a display name; it is what turns the stored
     member-fit layer (usernames only, so a rename never needs a re-score) into the
     names the report actually says.
+
+    This dict is the vocabulary every downstream renderer has — the Daily page's
+    showcase widget, the written report's per-item rationale, and the PDF's Top-N
+    listings (via :func:`apps.content.daily_report._item_from_score`). A field
+    left out here is invisible everywhere those read from, which is why the open
+    collector's signals — rankings, trust tier, licence, the full deadline array
+    (plan Phase 11) — are added *here*, once, rather than at each consumer.
     """
     content = score.content
     meta = content.metadata or {}
@@ -260,6 +305,33 @@ def _showcase_item(
         "headline": signals.get("headline", ""),
         "reason": signals.get("reason", ""),
         "deadline_date": signals.get("deadline_date") or "",
+        # The full round array behind that one date (plan D1) — a conference's
+        # complete deadline history or a grant's complete round history,
+        # normalised to one shape. Read from ``metadata`` directly rather than
+        # ``signals``: unlike ``deadline_date``, nothing snapshots this onto the
+        # score at persist time, and it is a property of the item itself, not
+        # of the match.
+        "deadlines": _deadline_rounds(meta),
+        # CCF / CORE / THCPL, visual only (plan D2 — never a relevance signal) —
+        # conferences only; a grant, paper, or fellowship carries neither key
+        # and both default empty.
+        "rankings": meta.get("rankings") or {},
+        "rank_badges": meta.get("rank_badges") or [],
+        # "A" / "B" / "C" / "unassigned" for a conference; "" where the concept
+        # does not apply at all. B is not a demotion (plan D3) — it is where
+        # every non-CS venue lives — so an empty string here means "not
+        # applicable", never "worse than B".
+        "trust_tier": meta.get("trust_tier", ""),
+        # Per-record attribution (plan D5 / D9): US federal grants are public
+        # domain by statute, the EU portal carries its own reuse decision, and
+        # every conference source states its own licence on the record itself.
+        "license": meta.get("license", ""),
+        # The item's raw provenance id (``"grants:nsf"``, ``"conf:ccf_deadlines"``
+        # — set at Phase 3 mapping), not a display label: no source-to-friendly-
+        # name registry exists anywhere in the collector or this codebase, so
+        # this is exactly what ``content.source`` holds rather than an invented
+        # one.
+        "source_name": content.source,
         # Two different questions, both answered: ``is_new`` is the *feed's* badge
         # (first seen today), ``is_entrant`` is the *report's* news (entered the
         # reader's slate on this run). Conflating them is what had a bulk import

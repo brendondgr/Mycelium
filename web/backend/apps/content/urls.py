@@ -70,6 +70,18 @@ urlpatterns = [
         name="opportunities-conferences",
     ),
     path("opportunities/conferences", views.ConferencesView.as_view()),
+    # Static hover copy for conference rank badges + trust tiers (plan Phase 9).
+    # Not a feed: one small, cacheable table, fetched once rather than repeated
+    # on every conference row.
+    path(
+        "opportunities/ranking-reference/",
+        views.RankingReferenceView.as_view(),
+        name="ranking-reference",
+    ),
+    path(
+        "opportunities/ranking-reference",
+        views.RankingReferenceView.as_view(),
+    ),
     path(
         "opportunities/fellowships/",
         views.FellowshipsView.as_view(),

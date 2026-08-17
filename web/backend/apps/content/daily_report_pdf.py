@@ -114,6 +114,14 @@ _MATCH_BG_HEX = "#DCE7CC"
 _NEW_HEX = "#7A5A14"
 _NEW_BG_HEX = "#E7D8B8"
 _DEADLINE_HEX = "#B07C1F"
+#: CCF / CORE / THCPL rank chip. Deliberately *not* a gold/accent tint — per
+#: ``docs/styles.md`` gold is reserved for grants, fellowships, deadlines, and
+#: opportunity alerts, and a rank is none of those (plan D2: visual only, never
+#: a relevance signal). Reuses the neutral surface/text-secondary pairing rather
+#: than a fresh one-off tint, so a rank badge reads as an informational label,
+#: not a second opportunity flag competing with the match chip beside it.
+_RANK_HEX = "#5F6853"
+_RANK_BG_HEX = "#EFE7D7"
 
 _SERIF = "Times-Roman"
 _SERIF_BOLD = "Times-Bold"
@@ -473,9 +481,21 @@ def _chip(
 
 
 def _chip_stack(
-    match_percent: int | None, is_new: bool, styles: dict[str, ParagraphStyle]
+    match_percent: int | None,
+    is_new: bool,
+    styles: dict[str, ParagraphStyle],
+    rank_badges: list[dict] | None = None,
 ) -> list:
-    """The right-hand column of an entry: its match chip, then ``NEW``."""
+    """The right-hand column of an entry: its match chip, rank chips, then ``NEW``.
+
+    Rank chips (plan Phase 11 point 3) sit *after* the match chip, never before
+    it: a rank is visual only (plan D2 — CCF / CORE / THCPL never affect order,
+    thresholds, or the verdict), so the fused relevance score stays the first
+    number a reader's eye meets in the column. Only :func:`_item_flowables`
+    passes ``rank_badges`` — the written report's items are parsed back out of
+    markdown text (:func:`_split_item_line`) and never carried structured rank
+    data to begin with, so they simply get none.
+    """
     stack: list = []
     if isinstance(match_percent, int):
         stack.append(
@@ -485,6 +505,22 @@ def _chip_stack(
                 styles,
                 bg=HexColor(_MATCH_BG_HEX),
                 fg=HexColor(_MATCH_HEX),
+            )
+        )
+    for badge in rank_badges or []:
+        rank = (badge.get("rank") or "").strip()
+        if not rank:
+            continue
+        if stack:
+            stack.append(Spacer(1, 3))
+        stack.append(
+            _chip(
+                rank,
+                (badge.get("system") or "").upper(),
+                styles,
+                bg=HexColor(_RANK_BG_HEX),
+                fg=HexColor(_RANK_HEX),
+                base="ChipFlag",
             )
         )
     if is_new:
@@ -509,6 +545,7 @@ def _entry_row(
     match_percent: int | None,
     is_new: bool,
     styles: dict[str, ParagraphStyle],
+    rank_badges: list[dict] | None = None,
 ) -> list:
     """One ranked entry: its number, its content, and its chips.
 
@@ -523,7 +560,7 @@ def _entry_row(
     """
     # An empty cell is "" rather than an empty list — reportlab measures a list cell
     # by wrapping its flowables, and there are none to wrap.
-    chips = _chip_stack(match_percent, is_new, styles) or ""
+    chips = _chip_stack(match_percent, is_new, styles, rank_badges) or ""
     row = Table(
         [[Paragraph(f"{rank}.", styles["Rank"]), body, chips]],
         colWidths=[
@@ -548,6 +585,30 @@ def _entry_row(
         )
     )
     return [row, Spacer(1, 3)]
+
+
+def _deadline_lines(
+    deadlines: list[dict], styles: dict[str, ParagraphStyle]
+) -> Paragraph:
+    """Every dated round on one item (plan D1's full array), one per line.
+
+    Only called for an item with more than one round — a single-round item
+    already shows its one date in the ``Deadline`` meta bit above, and repeating
+    it here would say the same thing twice. This is the "structured PDF
+    listings" surface the multi-deadline detail is reserved for (plan Phase 11
+    point 4): it reads :class:`ReportItem` directly, so it carries the whole
+    array without needing the written markdown report's one-deadline-per-line
+    grammar to widen.
+    """
+    lines = []
+    for entry in deadlines:
+        date = escape(entry.get("date") or "TBD")
+        kind = escape((entry.get("kind") or "").replace("_", " ").strip())
+        label = escape(entry.get("label") or "")
+        lines.append(" · ".join(bit for bit in (date, kind, label) if bit))
+    return Paragraph(
+        "<b>All rounds</b><br/>" + "<br/>".join(lines), styles["ItemMeta"]
+    )
 
 
 def _item_flowables(
@@ -576,7 +637,14 @@ def _item_flowables(
     if reason:
         body.append(Paragraph(_inline(reason), styles["ItemReason"]))
 
-    return _entry_row(rank, body, item.match_percent, item.is_new, styles)
+    # The full round array, only when it says more than ``deadline_date`` already
+    # did above — see :func:`_deadline_lines`.
+    if len(item.deadlines) > 1:
+        body.append(_deadline_lines(item.deadlines, styles))
+
+    return _entry_row(
+        rank, body, item.match_percent, item.is_new, styles, item.rank_badges
+    )
 
 
 def _written_item_flowables(

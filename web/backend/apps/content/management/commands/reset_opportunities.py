@@ -93,7 +93,9 @@ class Command(BaseCommand):
 
         self.stdout.write(f"About to delete {total} item(s):")
         for row in breakdown:
-            self.stdout.write(f"    {row['type']:<12} {row['source']:<28} {row['n']:>6}")
+            self.stdout.write(
+                f"    {row['type']:<12} {row['source']:<28} {row['n']:>6}"
+            )
         self.stdout.write(
             f"{orphaned} save(s) point at these and will fall back to their "
             "snapshot (SET_NULL). They will not re-attach to the new records."
@@ -109,5 +111,7 @@ class Command(BaseCommand):
         # stale. Django batches the SQL; the signal cost is the point, not waste.
         deleted, _ = qs.delete()
         self.stdout.write(
-            self.style.SUCCESS(f"Deleted {total} item(s) ({deleted} rows incl. cascades).")
+            self.style.SUCCESS(
+                f"Deleted {total} item(s) ({deleted} rows incl. cascades)."
+            )
         )

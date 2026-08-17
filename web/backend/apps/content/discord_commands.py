@@ -87,7 +87,19 @@ def _search_row(item, context) -> dict:
     matched = getattr(item, "_search_matched_on", []) or []
     return {
         "title": meta.get("title") or meta.get("name") or "Untitled",
-        "url": meta.get("pdf_url") or item.source_url or "",
+        # Same fallback chain as ``briefing._showcase_item`` — ``source_url``
+        # first, then whatever the record's own metadata carries. The previous
+        # chain here was ``pdf_url or source_url`` and never consulted
+        # ``website`` at all, so a conference record whose only link is a
+        # website (never a PDF) rendered as unlinked plain text in a search
+        # result — a gap ``_showcase_item`` never had.
+        "url": (
+            item.source_url
+            or meta.get("website")
+            or meta.get("external_url")
+            or meta.get("pdf_url")
+            or ""
+        ),
         "type": item.type,
         "cluster": (cluster or {}).get("label", ""),
         # Why it surfaced, in words. The honest substitute for a match percentage:

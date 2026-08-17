@@ -51,6 +51,27 @@ def _conference(**over):
     return ("conferences", rec)
 
 
+def _structured_deadline(kind, instant, *, is_estimated=False, round_label=""):
+    """A dict shaped like ``Deadline.to_json()`` (open collector, plan Phase 3).
+
+    Built by hand rather than importing
+    ``apps.scraper.collect.conferences.record.Deadline`` — these tests exercise
+    ``deadlines_projection`` as a consumer of the *documented dict shape*, the
+    same contract ``apps.scraper.collect.mapping.map_conference`` writes, not as
+    a consumer of that dataclass.
+    """
+    return {
+        "kind": kind,
+        "raw": instant or "TBD",
+        "instant": instant,
+        "basis": "UTC",
+        "round_label": round_label,
+        "source": "test",
+        "is_estimated": is_estimated,
+        "extension_count": 0,
+    }
+
+
 def _fellowship(deadline, **over):
     rec = {
         "id": "f1",
@@ -209,3 +230,145 @@ def test_serializer_exposes_deadlines_array() -> None:
 def test_pure_derivation_ignores_papers() -> None:
     paper = ContentItem(type=ContentItem.Type.PAPER, metadata={"title": "x"})
     assert deadline_specs_for(paper, TODAY) == []
+
+
+# --------------------------------------------------------------------------- #
+# Plan Phase 5 — the structured conference path
+#
+# These are pure (no ``@pytest.mark.django_db``, matching
+# ``test_pure_derivation_ignores_papers`` above): the presence of
+# ``metadata["deadlines_structured"]`` alone routes ``_conference_specs`` to
+# ``_structured_conference_specs`` instead of the legacy Pivot parser, so an
+# in-memory ``ContentItem`` with hand-built metadata is enough — no ingest path
+# needed to exercise it.
+# --------------------------------------------------------------------------- #
+
+
+def test_structured_conference_picks_next_future_per_kind() -> None:
+    # A VLDB-shaped conference: several rounds under both submission-gating
+    # kinds, plus a scattering of the six kinds that all fold into OTHER, so
+    # the "at most one row per kind, and it's the next future one" rule has to
+    # actually discriminate rather than pass by having only one candidate.
+    entries = [
+        _structured_deadline("abstract", "2026-01-01T23:59:00Z"),  # past
+        _structured_deadline("abstract", "2026-09-01T23:59:00Z"),  # wins ABSTRACT
+        _structured_deadline("abstract", "2026-11-01T23:59:00Z"),  # future, later
+        _structured_deadline("submission", "2026-06-01T23:59:00Z"),  # past
+        _structured_deadline(
+            "submission", "2026-10-15T23:59:00Z", round_label="round 2"
+        ),  # wins MANUSCRIPT
+        _structured_deadline("submission", "2027-01-15T23:59:00Z"),  # future, later
+        _structured_deadline("rebuttal_open", "2026-12-01T00:00:00Z"),  # OTHER cand.
+        _structured_deadline("camera_ready", "2026-12-20T00:00:00Z"),  # OTHER cand.
+        _structured_deadline("notification", "2026-11-20T00:00:00.500Z"),  # wins OTHER
+        _structured_deadline("registration", "2025-01-01T00:00:00Z"),  # past
+        _structured_deadline("unknown", None),  # unparseable
+    ]
+    item = ContentItem(
+        type=ContentItem.Type.CONFERENCE,
+        metadata={"deadlines_structured": entries},
+    )
+    specs = {s.kind: s for s in deadline_specs_for(item, TODAY)}
+
+    assert set(specs) == {"abstract", "manuscript", "other"}
+    assert specs["abstract"].due_date.isoformat() == "2026-09-01"
+    assert specs["manuscript"].due_date.isoformat() == "2026-10-15"
+    assert specs["other"].due_date.isoformat() == "2026-11-20"
+    assert specs["other"].label == "Notification date"
+    assert all(
+        s.confidence == ContentDeadline.Confidence.CONFIRMED for s in specs.values()
+    )
+
+
+def test_structured_conference_only_future_date_is_other_and_not_open() -> None:
+    entries = [
+        _structured_deadline("abstract", "2026-01-01T00:00:00Z"),  # past
+        _structured_deadline("submission", "2026-02-01T00:00:00Z"),  # past
+        _structured_deadline("notification", "2026-09-01T00:00:00Z"),  # only future
+    ]
+    item = ContentItem(
+        type=ContentItem.Type.CONFERENCE,
+        metadata={"deadlines_structured": entries},
+    )
+    specs = deadline_specs_for(item, TODAY)
+
+    # ABSTRACT/MANUSCRIPT never resurrect a past round, so only OTHER survives.
+    # That the venue is CLOSED follows from the same fact this asserts (only a
+    # non-submission kind has a future date) — the openness gate itself lives in
+    # apps.scraper.collect.mapping._conference_deadlines / SUBMISSION_TYPES,
+    # which this module deliberately never recomputes.
+    assert {s.kind for s in specs} == {"other"}
+    assert specs[0].label == "Notification date"
+
+
+def test_structured_conference_empty_list_yields_no_rows() -> None:
+    # An empty *list* (the collector genuinely found no dated deadlines) is a
+    # different fact from the key being absent (a Pivot-era record) — it must
+    # still route to the structured path and yield zero rows, not fall back to
+    # the legacy free-text parser.
+    item = ContentItem(
+        type=ContentItem.Type.CONFERENCE,
+        metadata={"deadlines_structured": []},
+    )
+    assert deadline_specs_for(item, TODAY) == []
+
+
+def test_structured_conference_is_estimated_is_anticipated() -> None:
+    entries = [
+        _structured_deadline("abstract", "2026-09-01T00:00:00Z", is_estimated=True)
+    ]
+    item = ContentItem(
+        type=ContentItem.Type.CONFERENCE,
+        metadata={"deadlines_structured": entries},
+    )
+    spec = deadline_specs_for(item, TODAY)[0]
+    assert spec.confidence == ContentDeadline.Confidence.ANTICIPATED
+
+
+# --------------------------------------------------------------------------- #
+# Plan Phase 5 — the grant path: ``deadline_date`` now means "next future round"
+# --------------------------------------------------------------------------- #
+
+
+def test_structured_grant_projects_next_round_not_last() -> None:
+    # apps.scraper.collect.mapping._grant_deadlines already resolved which round
+    # is "next" and wrote it to deadline_date; this guards _grant_specs against
+    # a regression that reads metadata["due_dates"][-1] (the *last* round)
+    # instead of trusting that resolved value.
+    item = ContentItem(
+        type=ContentItem.Type.GRANT,
+        metadata={
+            "deadline_date": "2026-09-01",
+            "due_dates": ["2026-01-01", "2026-05-01", "2026-09-01", "2027-01-01"],
+        },
+    )
+    specs = deadline_specs_for(item, TODAY)
+    assert len(specs) == 1
+    assert specs[0].kind == "application"
+    assert specs[0].due_date.isoformat() == "2026-09-01"
+    assert specs[0].confidence == ContentDeadline.Confidence.CONFIRMED
+
+
+def test_structured_grant_with_no_rounds_is_rolling() -> None:
+    # mapping.py's own contract: "" deadline_date == a genuinely rolling grant,
+    # not a parsing gap — ROLLING with a null due_date, not UNKNOWN.
+    item = ContentItem(
+        type=ContentItem.Type.GRANT,
+        metadata={"deadline_date": "", "due_dates": []},
+    )
+    spec = deadline_specs_for(item, TODAY)[0]
+    assert spec.due_date is None
+    assert spec.confidence == ContentDeadline.Confidence.ROLLING
+
+
+def test_structured_grant_inferred_dates_is_anticipated() -> None:
+    item = ContentItem(
+        type=ContentItem.Type.GRANT,
+        metadata={
+            "deadline_date": "2026-09-01",
+            "due_dates": ["2026-09-01"],
+            "dates_inferred": True,
+        },
+    )
+    spec = deadline_specs_for(item, TODAY)[0]
+    assert spec.confidence == ContentDeadline.Confidence.ANTICIPATED

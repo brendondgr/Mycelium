@@ -77,6 +77,28 @@ class ReportItem:
     #: This item entered the reader's slate on this run — the report's "new" badge.
     is_new: bool
     cluster_label: str = ""
+    #: Every dated round, normalised across grants and conferences (see
+    #: ``briefing._deadline_rounds``) — the multi-deadline detail ``deadline_date``
+    #: alone cannot carry. Rendered as a small table only in the structured PDF
+    #: listings (plan Phase 11 point 3); the written markdown report keeps its one
+    #: ``deadline YYYY-MM-DD`` marker per item, because widening that grammar would
+    #: mean changing three independent parsers in lockstep (see
+    #: ``daily_report_pdf._split_item_line``).
+    deadlines: list[dict] = field(default_factory=list)
+    #: ``{system: {rank, edition}}`` verbatim, and its frontend-friendly flattening
+    #: — conferences only; empty for papers, grants, and fellowships (plan D2:
+    #: rankings are visual only, never a relevance signal).
+    rankings: dict = field(default_factory=dict)
+    rank_badges: list[dict] = field(default_factory=list)
+    #: "A" / "B" / "C" / "unassigned" for a conference; "" where the concept does
+    #: not apply (papers, grants, fellowships) — plan D3.
+    trust_tier: str = ""
+    #: Per-source attribution string (plan D9's licence/attribution requirement).
+    license: str = ""
+    #: The item's raw provenance id (``"grants:nsf"``, ``"conf:ccf_deadlines"``),
+    #: not a display label — none exists anywhere in this codebase, so this is
+    #: exactly what ``content.source`` holds rather than an invented friendly name.
+    source_name: str = ""
 
 
 #: What the reader's own (non-project) part is called when the report is a person's.
@@ -195,9 +217,20 @@ def _source_line(content_type: str, meta: dict) -> str:
             return f"{first} et al." if len(authors) > 1 else first
         return ""
     if content_type == "conference":
-        return ", ".join(
-            p for p in (_clean(meta.get("location")), _clean(meta.get("country"))) if p
-        )
+        # ``place_text`` (not ``location``) since plan Phase 3: the open collector's
+        # mapper (``apps.scraper.collect.mapping.map_conference``) never writes a
+        # "location" key — that was Pivot's field name, carried in ``pivot/records.py``
+        # off "Conference Location". The collector's equivalent free-text venue
+        # string is ``place_text``; reading the old key here silently dropped the
+        # venue half of this line down to country-only for every migrated record.
+        # Chained, not swapped. The collector writes ``place_text``; Pivot wrote
+        # ``location``. During the migration window both shapes are in the table
+        # at once — measured 2,958 of 2,962 conferences still on ``location`` and
+        # none yet on ``place_text`` — so replacing the key outright would drop
+        # every existing conference to country-only. The fallback costs one
+        # ``or`` and can be deleted once no ``location`` row survives.
+        place = _clean(meta.get("place_text")) or _clean(meta.get("location"))
+        return ", ".join(p for p in (place, _clean(meta.get("country"))) if p)
     # grants + fellowships
     return _clean(meta.get("sponsor")) or _clean(meta.get("funder"))
 
@@ -221,6 +254,12 @@ def _item_from_score(score: RelevanceScore, category: str, today: str) -> Report
         deadline_date=flat["deadline_date"],
         is_new=flat["is_entrant"],
         cluster_label=flat["cluster_label"],
+        deadlines=flat["deadlines"],
+        rankings=flat["rankings"],
+        rank_badges=flat["rank_badges"],
+        trust_tier=flat["trust_tier"],
+        license=flat["license"],
+        source_name=flat["source_name"],
     )
 
 

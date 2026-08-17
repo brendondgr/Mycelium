@@ -67,6 +67,7 @@ routes clients depend on most.
 | `labs/<slug>/briefings/<YYYY-MM-DD>/` | GET | One archived lab report |
 | `opportunities/grants/` | GET | Ranked grants |
 | `opportunities/conferences/` | GET | Ranked conferences |
+| `opportunities/ranking-reference/` | GET | Static hover copy for rank badges + trust tiers |
 | `opportunities/fellowships/` | GET | Eligibility-gated, ranked fellowships |
 | `labs/<slug>/recommendations/` | GET | A lab's four feeds + counts + window counts |
 | `projects/<id>/recommendations/[?digest=1]` | GET | A project's four feeds, or its short list |
@@ -518,6 +519,30 @@ of grants / fellowships / conferences, passed-deadline conferences dropped) whil
 `GET /api/recommendations/window-counts/` is the personal equivalent of
 `window_counts` alone.
 
+### Provenance fields shared by every opportunity area
+
+Since the open-collector migration (plan `open-opportunity-collector.md`,
+Phase 9), a matched grant, conference, or fellowship carries the same four
+provenance fields — Pivot never exposed any of them, so a matched item's
+origin used to be invisible past its outbound link:
+
+- `source` — which adapter produced the row, namespaced by area:
+  `"grants:nsf"`, `"conf:ccf_deadlines"`, `"illinois-fellowship-finder"`. Lets
+  a client tell a pre-migration Pivot leftover (`"pivot"`) from an
+  open-collector row.
+- `license` — a short label (`"MIT"`, `"CC0-1.0"`, `"US Government Work — no
+  copyright (17 U.S.C. § 105); public domain"`), never a URL. `""` when the
+  source carries none.
+- `license_url` — a machine-readable licence link. **Currently always `""`**:
+  no adapter in the vendored collector attaches a licence URL to a field the
+  mapper reads (the one adapter that fetches one — `openresearch` — stamps it
+  on the raw fetch bundle, a provenance record the mapper never sees). Wired
+  for the day a source publishes one; no serializer change will be needed then.
+- `source_links` — `[{ "source": "nsf", "url": "https://…" }, …]`, one entry
+  per contributing adapter (several adapters can merge into one record at
+  dedupe time). `[]` for a fellowship, which has a single source and nothing
+  to attribute.
+
 ### `GET /api/opportunities/grants/`
 
 Ranked funding opportunities from the accumulated feed, pinned-first (a brand-new
@@ -535,26 +560,144 @@ high-fit grant floats to the top for its first week).
     "deadline_date": "2026-11-12", "deadline_kind": "application",
     "status_summary": "Application due 2026-11-12",
     "saved": false, "saved_labs": ["reyes-lab"],
-    "addressable_deadlines": [{ "kind": "application", "date": "2026-11-12" }],
-    "cluster": { "id": "…", "label": "…" }, "bridge_clusters": []
+    "addressable_deadlines": [
+      { "kind": "application", "due_date": "2026-11-12",
+        "confidence": "confirmed", "label": "" }
+    ],
+    "cluster": { "id": "…", "label": "…" }, "bridge_clusters": [],
+    "source": "grants:nsf",
+    "license": "US Government Work — no copyright (17 U.S.C. § 105); public domain",
+    "license_url": "",
+    "source_links": [{ "source": "nsf", "url": "https://www.nsf.gov/…" }],
+    "posted": "2015-03-02", "published_on": "2015-03-02",
+    "opportunity_number": "PAR-25-144",
+    "due_dates": ["2026-02-05", "2026-06-05", "2026-10-05"],
+    "deadline_text": "Standard NIH cycle — see full announcement for details.",
+    "dates_inferred": false, "original_deadline": "2026-02-05", "loi_date": ""
   }]
 }
 ```
 
 `match_percent` is the model's 0–100 judgement (`null` on the deterministic
 tail). `saved_labs` lists managed labs already holding the item.
-`addressable_deadlines` drives the reminder composer's kind picker.
-`generated_at` is `null` before the first run.
+`addressable_deadlines` drives the reminder composer's kind picker — each entry
+is `{ kind, due_date, confidence, label }`: `due_date` is ISO or `null` for a
+rolling/unknown deadline, and `confidence` is
+`"confirmed" | "anticipated" | "rolling" | "unknown"`. `generated_at` is `null`
+before the first run.
+
+`published_on` is the funder's own publication date
+(`metadata["published_on"]`, `""` when unknown), distinct from `posted`.
+**`posted` was repointed in the open-collector migration**: it used to be
+`signals["first_seen"]` unconditionally — Mylo's own ingest date — so a grant
+the funder posted in 2015 showed the day Mycelium happened to scrape it. It now
+prefers `published_on` and falls back to the old `first_seen` behaviour only
+for a row that carries no `published_on` at all (a pre-migration Pivot
+leftover still in the corpus, not a genuine "we don't know").
+
+`opportunity_number` is the funder's own identifier (`"PAR-25-144"`), `""` when
+none was published. `due_dates` is the complete application-round array behind
+the single next-due `deadline_date` — every round, oldest first, ISO dates —
+what the multi-deadline hover renders in full (plan D1); it can differ from
+`deadline_date` on a multi-round grant where every round but the last has
+already passed. `deadline_text` is the funder's own free-text deadline line,
+kept verbatim alongside the parsed date. `dates_inferred` is `true` when the
+collector estimated rather than read the dates verbatim. `original_deadline`
+is the first-ever recorded close date, kept even after the funder moves it, so
+a reader can see that a deadline shifted rather than only what it is now.
+`loi_date` is the letter-of-intent date some funders require ahead of the full
+application; `""` for the large majority that don't.
 
 ### `GET /api/opportunities/conferences/`
 
 The same base shape with `location`, `country`, `event_dates`, `deadlines`,
 `keywords`, `matched_subjects`, and a venue `description` where the listing has
 one. Filter-rail fields computed at ingest: `event_date` (ISO, or `""`),
-`abstract_open` / `manuscript_open`, `status` (`open|closed|unknown`), and
-Pivot's `scope` label. `deadline_kind` is the next actionable kind
+`abstract_open` / `manuscript_open`, `status` (`open|closed|unknown`), and a
+`scope` label. `deadline_kind` is the next actionable kind
 (`abstract` / `manuscript` / `event`). Continent is derived client-side from
 `country`.
+
+Plus, since the open-collector migration, the quality-signal fields (plan D2/
+D3 — **visual only**: rankings and trust tier never affect match order,
+thresholds, or the LLM verdict):
+
+```json
+{
+  "acronym": "SIGMOD", "year_label": "2026",
+  "rankings": {
+    "ccf": { "rank": "A", "edition": "" },
+    "core": { "rank": "A*", "edition": "" },
+    "thcpl": { "rank": "A", "edition": "" }
+  },
+  "rank_badges": [
+    { "system": "ccf", "rank": "A", "edition": "" },
+    { "system": "core", "rank": "A*", "edition": "" },
+    { "system": "thcpl", "rank": "A", "edition": "" }
+  ],
+  "trust_tier": "A", "red_flags": [], "quality_warnings": [],
+  "deadlines_structured": [
+    { "kind": "abstract", "raw": "2025-01-10 23:59:00 AoE",
+      "instant": "2025-01-10T23:59:00+00:00", "basis": "AoE",
+      "round_label": "round 1", "source": "conf:ccf_deadlines",
+      "is_estimated": false, "extension_count": 0 }
+  ],
+  "source": "conf:ccf_deadlines", "license": "MIT", "license_url": "",
+  "source_links": [{ "source": "ccf_deadlines", "url": "https://ccfddl.com/…" }]
+}
+```
+
+`acronym` and `year_label` are de-duplicated from each other at ingest (a
+source that embeds the year in its acronym, e.g. `"NOVAS 2026"`, does not also
+render `"NOVAS 2026 2026"`). `rankings` is the raw `{system: {rank, edition}}`
+map, `"N"` ("not ranked by this system" — a real statement, not an absence)
+included; `rank_badges` is the display-ready flattening with `"N"` already
+dropped, for a client that only wants to render claimed ranks. **`edition` is
+always `""`** — no ranking in this dataset is dated to a specific year, so a
+client must not print one next to a badge. `trust_tier` is `"A" | "B"` (**B is
+not a demotion** — it is where every non-CS venue lives, plus every new or
+thinly-indexed CS venue no formal ranking body has assessed yet) or
+`"unassigned"` for an instance whose resolve stage never matched it to a
+series. `red_flags` and `quality_warnings` are free-text arrays (e.g. a venue
+whose only future date is a `notification`, not a submission deadline).
+`deadlines_structured` is the complete 8-key round array — every kind, not
+just the submission-type ones that gate `abstract_open`/`manuscript_open` — the
+multi-deadline hover's data source (plan D1).
+
+Hover copy for `rank_badges` and `trust_tier` is not repeated on every card —
+see `GET /api/opportunities/ranking-reference/` below.
+
+### `GET /api/opportunities/ranking-reference/`
+
+Static, cacheable reference copy explaining what a conference rank badge or
+trust tier means — authored text, since no such explanation exists as data
+anywhere in the open collector. Not a feed and not personalized: fetch once,
+cache, and resolve each card's `rank_badges[].system` / `.rank` and
+`trust_tier` against it, rather than re-fetching per card or per page.
+
+```json
+{
+  "rank_systems": {
+    "ccf": { "label": "CCF", "about": "The China Computer Federation's…" },
+    "core": { "label": "CORE", "about": "The Computing Research and…" },
+    "thcpl": { "label": "THCPL", "about": "Tsinghua University's…" }
+  },
+  "rank_explanations": {
+    "ccf": { "A": "CCF's top band: …", "B": "…", "C": "…" },
+    "core": { "A*": "CORE's highest band…", "A": "…", "B": "…", "C": "…" },
+    "thcpl": { "A": "…", "B": "…" }
+  },
+  "trust_tiers": {
+    "A": "A formal ranking body has classified this venue, or …",
+    "B": "Not a demotion. This is where every non-CS venue lives, …"
+  }
+}
+```
+
+`rank_explanations` covers every rank a badge can carry (CCF A/B/C, CORE
+A*/A/B/C, THCPL A/B) — `"N"` is excluded because `rank_badges` never carries
+it. `trust_tiers` covers `"A"` and `"B"`, the only tiers the live corpus
+produces (the one source that could produce `"C"` is not enabled — plan D5).
 
 ### `GET /api/opportunities/fellowships/`
 

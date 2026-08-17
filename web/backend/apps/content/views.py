@@ -30,6 +30,9 @@ from .onboarding_match import UnknownArea, onboarding_match_area
 from .scan_status import is_paper_scan_inflight
 from .search import SearchFilters
 from .serializers import (
+    RANK_EXPLANATIONS,
+    RANK_SYSTEM_INFO,
+    TRUST_TIER_EXPLANATIONS,
     ConferenceSerializer,
     FellowshipSerializer,
     GrantSerializer,
@@ -538,6 +541,30 @@ class ConferencesView(_OpportunityFeedView):
 
     content_type = ContentItem.Type.CONFERENCE
     serializer_class = ConferenceSerializer
+
+
+class RankingReferenceView(APIView):
+    """Static hover copy for conference rank badges and trust tiers (plan Phase 9).
+
+    A conference card carries only which rank/tier it has (``rank_badges`` /
+    ``trust_tier`` on :class:`~apps.content.serializers.ConferenceSerializer`) —
+    small, per-item facts. What that rank or tier *means* is identical prose for
+    every card that shares it, so it lives here instead of being repeated on
+    every row of a feed that can carry dozens of conferences. Authenticated (like
+    the rest of ``/api/``) but otherwise static: no target, no personalization,
+    safe to fetch once and cache.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(
+            {
+                "rank_systems": RANK_SYSTEM_INFO,
+                "rank_explanations": RANK_EXPLANATIONS,
+                "trust_tiers": TRUST_TIER_EXPLANATIONS,
+            }
+        )
 
 
 class FellowshipsView(_OpportunityFeedView):

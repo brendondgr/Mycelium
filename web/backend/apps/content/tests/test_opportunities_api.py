@@ -40,6 +40,51 @@ def _grant(gid, title, *, deadline="2026-12-01", first_seen=None):
     )
 
 
+def _conference(cid, title, *, deadline="2026-12-01"):
+    """A minimal open-collector-shaped conference row (plan Phase 9 fields)."""
+    return ContentItem.objects.create(
+        type=ContentItem.Type.CONFERENCE,
+        source="conf:ccf_deadlines",
+        external_id=cid,
+        source_url="https://sigmod.org/2026",
+        metadata={
+            "name": title,
+            "acronym": "SIGMOD",
+            "year_label": "2026",
+            "website": "https://sigmod.org/2026",
+            "deadline_date": deadline,
+            "next_kind": "abstract",
+            "rankings": {
+                "ccf": {"rank": "A", "edition": ""},
+                "core": {"rank": "A*", "edition": ""},
+            },
+            "rank_badges": [
+                {"system": "ccf", "rank": "A", "edition": ""},
+                {"system": "core", "rank": "A*", "edition": ""},
+            ],
+            "trust_tier": "A",
+            "red_flags": [],
+            "quality_warnings": ["only a notification date is on record"],
+            "deadlines_structured": [
+                {
+                    "kind": "abstract",
+                    "raw": "2026-01-10 23:59:00 AoE",
+                    "instant": "2026-01-10T23:59:00+00:00",
+                    "basis": "AoE",
+                    "round_label": "round 1",
+                    "source": "conf:ccf_deadlines",
+                    "is_estimated": False,
+                    "extension_count": 0,
+                }
+            ],
+            "license": "MIT",
+            "source_links": [
+                {"source": "ccf_deadlines", "url": "https://sigmod.org/2026"}
+            ],
+        },
+    )
+
+
 def _score(
     user, item, *, rank, run_at, match, pinned_until=None, is_new=False, suggested=True
 ):
@@ -230,3 +275,157 @@ def test_save_rejects_unknown_item(client: APIClient):
         "/api/opportunities/save/", {"content_id": str(uuid.uuid4())}, format="json"
     )
     assert resp.status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# Open-collector provenance + quality fields (plan Phase 9)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.django_db
+def test_grants_feed_exposes_open_collector_provenance(client: APIClient):
+    """Every field the open collector adds that Pivot never carried round-trips
+    through the feed, and ``posted`` prefers the funder's own
+    ``metadata["published_on"]`` over Mylo's ingest date."""
+    user = User.objects.create_user("prov", password="x")
+    client.force_authenticate(user)
+    item = ContentItem.objects.create(
+        type=ContentItem.Type.GRANT,
+        source="grants:nsf",
+        external_id="g-prov",
+        source_url="https://www.nsf.gov/funding/x",
+        metadata={
+            "title": "Coastal Ecosystems",
+            "sponsor": "NSF",
+            "amount": "$50,000",
+            "website": "https://www.nsf.gov/funding/x",
+            "deadline_date": "2026-12-01",
+            "next_kind": "application",
+            "opportunity_number": "PAR-25-144",
+            "due_dates": ["2026-02-01", "2026-06-01", "2026-12-01"],
+            "deadline_text": "Standard NSF cycle",
+            "dates_inferred": False,
+            "original_deadline": "2026-02-01",
+            "loi_date": "2026-01-01",
+            "published_on": "2015-03-02",
+            "license": (
+                "US Government Work — no copyright (17 U.S.C. § 105); "
+                "public domain"
+            ),
+            "contributing_sources": ["nsf"],
+        },
+    )
+    _score(user, item, rank=1, run_at="2026-07-05T00:00:00+00:00", match=88)
+
+    data = client.get("/api/opportunities/grants/").data["items"][0]
+    assert data["source"] == "grants:nsf"
+    assert data["license"].startswith("US Government Work")
+    assert data["license_url"] == ""
+    assert data["source_links"] == [
+        {"source": "nsf", "url": "https://www.nsf.gov/funding/x"}
+    ]
+    assert data["opportunity_number"] == "PAR-25-144"
+    assert data["due_dates"] == ["2026-02-01", "2026-06-01", "2026-12-01"]
+    assert data["deadline_text"] == "Standard NSF cycle"
+    assert data["dates_inferred"] is False
+    assert data["original_deadline"] == "2026-02-01"
+    assert data["loi_date"] == "2026-01-01"
+    assert data["published_on"] == "2015-03-02"
+    assert data["posted"] == "2015-03-02"
+
+
+@pytest.mark.django_db
+def test_grants_feed_posted_falls_back_without_published_on(client: APIClient):
+    """A pre-migration row that carries no ``metadata["published_on"]`` keeps
+    reading Mylo's own ingest date from ``signals["first_seen"]`` — the exact
+    behaviour ``get_posted`` had before the Phase 9 repoint, preserved as the
+    fallback rather than dropped."""
+    user = User.objects.create_user("legacy", password="x")
+    client.force_authenticate(user)
+    item = _grant("legacy", "Legacy Pivot Grant")  # no metadata["published_on"]
+    RelevanceScore.objects.create(
+        content=item,
+        target_user=user,
+        score=1.0,
+        signals={
+            "run_at": "2026-07-05T00:00:00+00:00",
+            "rank": 1,
+            "suggested": True,
+            "match_percent": 70,
+            "first_seen": "2026-01-02T00:00:00+00:00",
+        },
+    )
+
+    data = client.get("/api/opportunities/grants/").data["items"][0]
+    assert data["published_on"] == ""
+    assert data["posted"] == "2026-01-02T00:00:00+00:00"
+
+
+@pytest.mark.django_db
+def test_conferences_feed_exposes_ranking_and_trust_fields(client: APIClient):
+    user = User.objects.create_user("conf_prov", password="x")
+    client.force_authenticate(user)
+    item = _conference("c-prov", "ACM Conference on Management of Data")
+    _score(user, item, rank=1, run_at="2026-07-05T00:00:00+00:00", match=90)
+
+    data = client.get("/api/opportunities/conferences/").data["items"][0]
+    assert data["acronym"] == "SIGMOD"
+    assert data["year_label"] == "2026"
+    assert data["trust_tier"] == "A"
+    assert data["rank_badges"] == [
+        {"system": "ccf", "rank": "A", "edition": ""},
+        {"system": "core", "rank": "A*", "edition": ""},
+    ]
+    assert data["rankings"]["ccf"]["rank"] == "A"
+    assert data["quality_warnings"] == ["only a notification date is on record"]
+    assert data["deadlines_structured"][0]["kind"] == "abstract"
+    assert data["source"] == "conf:ccf_deadlines"
+    assert data["license"] == "MIT"
+    assert data["source_links"] == [
+        {"source": "ccf_deadlines", "url": "https://sigmod.org/2026"}
+    ]
+
+
+@pytest.mark.django_db
+def test_conferences_feed_defaults_trust_tier_when_unresolved(client: APIClient):
+    """A series the resolve stage never matched carries no trust tier and no
+    rank badges — the card must read "no signal", never a silently-invented
+    "B", and attribution degrades to an empty list rather than guessing."""
+    user = User.objects.create_user("conf_unres", password="x")
+    client.force_authenticate(user)
+    item = ContentItem.objects.create(
+        type=ContentItem.Type.CONFERENCE,
+        source="conf:society_pages",
+        external_id="c-unres",
+        source_url="https://example.org",
+        metadata={"name": "An Unresolved Venue"},
+    )
+    _score(user, item, rank=1, run_at="2026-07-05T00:00:00+00:00", match=60)
+
+    data = client.get("/api/opportunities/conferences/").data["items"][0]
+    assert data["trust_tier"] == "unassigned"
+    assert data["rank_badges"] == []
+    assert data["source_links"] == []
+
+
+@pytest.mark.django_db
+def test_ranking_reference_endpoint_covers_every_system_and_tier(client: APIClient):
+    """The static hover-copy table (plan Phase 9): every rank the live corpus
+    can carry has an explanation, and the B tier states plainly it is not a
+    demotion."""
+    user = User.objects.create_user("ref", password="x")
+    client.force_authenticate(user)
+
+    resp = client.get("/api/opportunities/ranking-reference/")
+    assert resp.status_code == 200
+    assert set(resp.data["rank_systems"]) == {"ccf", "core", "thcpl"}
+    assert set(resp.data["rank_explanations"]["ccf"]) == {"A", "B", "C"}
+    assert set(resp.data["rank_explanations"]["core"]) == {"A*", "A", "B", "C"}
+    assert set(resp.data["rank_explanations"]["thcpl"]) == {"A", "B"}
+    assert set(resp.data["trust_tiers"]) == {"A", "B"}
+    assert "not a demotion" in resp.data["trust_tiers"]["B"].lower()
+
+
+@pytest.mark.django_db
+def test_ranking_reference_requires_auth(client: APIClient):
+    assert client.get("/api/opportunities/ranking-reference/").status_code in (401, 403)
