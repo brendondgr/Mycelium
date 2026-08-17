@@ -493,3 +493,78 @@ def test_ingest_collected_chains_upsert_embed_prune():
     assert not ContentItem.objects.filter(
         source="grants:sam_gov", external_id="src:sam_gov:expired"
     ).exists()
+
+
+# --------------------------------------------------------------------------- #
+# Updated source pages
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.django_db
+def test_a_new_round_on_the_source_page_marks_the_record_refreshed():
+    """Conferences are extracted from pages hosting many events, and the old
+    entries stay when such a page gains a new one. A round appearing is exactly
+    the reason to look at a listing again."""
+    upsert_items([_conference_item("c1")], today=TODAY_ISO)
+
+    instance = ConferenceInstance(
+        source="ccf_deadlines",
+        source_record_id="c1",
+        series_key="conf/c1",
+        title="Test Systems Conference",
+        acronym="TSC",
+        year_label="2026",
+        deadlines=[
+            Deadline(
+                kind="submission",
+                raw="2026-11-01T00:00:00Z",
+                instant="2026-11-01T00:00:00Z",
+                source="ccf_deadlines",
+            ),
+            Deadline(
+                kind="submission",
+                raw="2027-02-01T00:00:00Z",
+                instant="2027-02-01T00:00:00Z",
+                round_label="round 2",
+                source="ccf_deadlines",
+            ),
+        ],
+    )
+    summary = upsert_items([map_conference(instance, series=None, now=NOW)], today=TODAY_ISO)
+
+    assert summary.updated == 1
+    assert summary.refreshed == 1
+    item = ContentItem.objects.get(source="conf:ccf_deadlines")
+    assert item.metadata["refreshed_at"]
+    assert item.metadata["refresh_reason"] == "deadlines_structured"
+
+
+@pytest.mark.django_db
+def test_a_reworded_title_is_not_an_update_worth_resurfacing():
+    """Otherwise every listing is "updated" every night and the tag means
+    nothing. Cosmetic drift is still persisted — it just isn't announced."""
+    upsert_items([_grant_item(title="Original Title")], today=TODAY_ISO)
+
+    summary = upsert_items([_grant_item(title="Revised Title")], today=TODAY_ISO)
+
+    assert summary.updated == 1
+    assert summary.refreshed == 0
+    item = ContentItem.objects.get(external_id="src:nsf:g1")
+    assert "refreshed_at" not in item.metadata
+    assert item.metadata["title"] == "Revised Title"
+
+
+@pytest.mark.django_db
+def test_a_refresh_stamp_is_not_renewed_by_later_cosmetic_drift():
+    """The "Updated" pin has to run out on its own clock. Re-stamping it every
+    time a title moves would keep a months-old change pinned forever."""
+    upsert_items([_grant_item(close_date="2026-11-12")], today=TODAY_ISO)
+    upsert_items([_grant_item(close_date="2026-12-20")], today=TODAY_ISO)
+    stamped = ContentItem.objects.get(external_id="src:nsf:g1").metadata["refreshed_at"]
+
+    upsert_items(
+        [_grant_item(close_date="2026-12-20", title="Reworded")], today=TODAY_ISO
+    )
+
+    item = ContentItem.objects.get(external_id="src:nsf:g1")
+    assert item.metadata["refreshed_at"] == stamped

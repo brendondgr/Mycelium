@@ -297,6 +297,7 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     reason = serializers.SerializerMethodField()
     origin = serializers.SerializerMethodField()
     is_new = serializers.SerializerMethodField()
+    is_updated = serializers.SerializerMethodField()
     pinned = serializers.SerializerMethodField()
     deadline_date = serializers.SerializerMethodField()
     deadline_kind = serializers.SerializerMethodField()
@@ -428,6 +429,17 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
 
     def get_is_new(self, score: RelevanceScore) -> bool:
         return bool(score.signals.get("is_new")) and self.get_pinned(score)
+
+    def get_is_updated(self, score: RelevanceScore) -> bool:
+        """The listing's *source page* moved something actionable, recently.
+
+        Distinct from ``is_new``, and never both: a conference extracted from a
+        page hosting many events stays on that page when the page gains a new
+        one, so "the deadline moved" and "this arrived" are different facts and
+        the card says which. Mutually exclusive by construction — see
+        :func:`apps.content.pinning.compute_pins`.
+        """
+        return bool(score.signals.get("is_updated")) and self.get_pinned(score)
 
     def get_deadline_date(self, score: RelevanceScore) -> str:
         return score.signals.get("deadline_date") or ""

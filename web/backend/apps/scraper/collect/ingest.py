@@ -100,16 +100,56 @@ _DERIVED_KEYS: tuple[str, ...] = (
     "summary_source",
 )
 
+#: Metadata a *material* re-scrape change is judged on — the fields that change
+#: what a reader could act on. A source page that gains a new event, or moves an
+#: existing one's dates, changes one of these; a re-worded title or a moved URL
+#: does not. See :func:`_material_change`.
+_MATERIAL_KEYS: tuple[str, ...] = (
+    "deadlines_structured",
+    "due_dates",
+    "deadline_date",
+    "event_start",
+    "event_end",
+    "open",
+)
+
 #: Bookkeeping keys this module itself stamps on every upsert. Excluded from
 #: the "did anything actually change" comparison in ``_content_unchanged`` —
 #: ``last_seen`` in particular is a fresh timestamp on every call by
 #: construction, so comparing it directly would mean *nothing* ever compares
 #: equal and the idempotent-reingest guarantee above could never hold.
-_BOOKKEEPING_KEYS: tuple[str, ...] = ("first_seen", "last_seen")
+_BOOKKEEPING_KEYS: tuple[str, ...] = (
+    "first_seen",
+    "last_seen",
+    "refreshed_at",
+    "refresh_reason",
+)
 
 
 def _without(meta: dict[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
     return {k: v for k, v in meta.items() if k not in keys}
+
+
+def _material_change(old: dict[str, Any], new: dict[str, Any]) -> str:
+    """Which actionable field a re-scrape moved, or ``""`` for cosmetic drift.
+
+    Conferences and grants are routinely extracted from pages that host many
+    events at once, and when such a page is updated the old entries stay put —
+    so "this record changed" is a weak signal and fires on a re-worded title
+    every night. What the reader actually wants to hear about is a page that
+    gained a deadline, moved one, or reopened: the reason to look at a listing
+    again.
+
+    Returns the first key that moved, so the stamped ``refresh_reason`` says
+    *what* changed rather than only that something did. Order follows
+    ``_MATERIAL_KEYS``, deadlines first, because that is the most informative
+    answer when several moved together.
+    """
+    for key in _MATERIAL_KEYS:
+        if key in old or key in new:
+            if old.get(key) != new.get(key):
+                return key
+    return ""
 
 
 # --------------------------------------------------------------------------- #
@@ -143,6 +183,9 @@ class IngestSummary:
     pruned: int = 0
     skipped: int = 0
     refused: int = 0
+    #: Of the updated rows, how many moved something a reader can act on — a
+    #: deadline added, moved, or reopened — rather than drifting cosmetically.
+    refreshed: int = 0
     by_type: dict[str, int] = field(default_factory=dict)
 
     def as_dict(self) -> dict:
@@ -154,6 +197,7 @@ class IngestSummary:
             "pruned": self.pruned,
             "skipped": self.skipped,
             "refused": self.refused,
+            "refreshed": self.refreshed,
             "by_type": dict(self.by_type),
         }
 
@@ -274,6 +318,19 @@ def upsert_items(
 
             meta["first_seen"] = old.get("first_seen") or now_iso  # immutable
             meta["last_seen"] = now_iso
+            # A source page whose actionable content moved is worth re-surfacing;
+            # one whose title was re-worded is not. Carry the previous stamp
+            # forward when nothing material moved, so an "Updated" pin runs out
+            # on its own clock rather than being refreshed by cosmetic drift.
+            reason = _material_change(old, meta)
+            if reason:
+                meta["refreshed_at"] = now_iso
+                meta["refresh_reason"] = reason
+                summary.refreshed += 1
+            else:
+                for key in ("refreshed_at", "refresh_reason"):
+                    if key in old:
+                        meta[key] = old[key]
             existing.type = item["type"]
             existing.source_url = item["source_url"]
             existing.metadata = meta
@@ -296,8 +353,8 @@ def upsert_items(
     _rebuild_deadline_projection(touched, today, log)
 
     log(
-        f"upsert: {summary.created} new, {summary.updated} updated, "
-        f"{summary.skipped} skipped"
+        f"upsert: {summary.created} new, {summary.updated} updated "
+        f"({summary.refreshed} with a moved deadline), {summary.skipped} skipped"
     )
     return summary
 

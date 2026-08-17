@@ -597,6 +597,14 @@ high-fit grant floats to the top for its first week).
 
 `match_percent` is the model's 0–100 judgement (`null` on the deterministic
 tail). `saved_labs` lists managed labs already holding the item.
+
+`is_updated` marks a listing whose **source page** moved something actionable —
+a deadline added, moved, or the call reopened — within the pin window. It is
+never true at the same time as `is_new`: conferences and grants are largely
+extracted from pages that host many events, and such a page gaining an event
+leaves the old entries in place, so "the page changed" and "this arrived" are
+different facts. Cosmetic drift (a re-worded title, a moved URL) does not
+qualify, or every listing would be "updated" every night.
 `addressable_deadlines` is **every** deadline the item can be alerted on, in
 date order — one entry per *round*, not per kind. A conference routinely carries
 a workshop deadline, more than one full-paper round, a camera-ready, and its own

@@ -18,6 +18,7 @@ import { ArrowRightIcon, BankIcon } from "@/components/portal/icons";
 import {
   MyloReason,
   NewTag,
+  UpdatedTag,
   RemindButton,
   SaveButton,
   formatIsoDate,
@@ -175,6 +176,7 @@ export function GrantRow({
               {grant.is_new || grant.cluster ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   {grant.is_new ? <NewTag /> : null}
+                  {grant.is_updated ? <UpdatedTag /> : null}
                   {grant.cluster ? (
                     <ClusterBadge cluster={grant.cluster} />
                   ) : null}

@@ -409,6 +409,10 @@ type OpportunityBase = {
   origin: "llm" | "fallback" | "rules";
   /** New + pinned to the top for its first week (a fresh, high-fit item). */
   is_new: boolean;
+  /** The listing's *source page* moved something actionable — a deadline added,
+   * moved, or reopened — inside the pin window. Never true at the same time as
+   * `is_new`: an item that just arrived is new, not updated. */
+  is_updated: boolean;
   pinned: boolean;
   /** The actionable date (application/abstract/manuscript/event), ISO or "". */
   deadline_date: string;

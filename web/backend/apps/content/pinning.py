@@ -19,6 +19,16 @@ seen. The read layer pins (and shows the tag) while ``pinned_until`` is still in
 the future — because the first-seen date never moves, the pin window is stable
 across nightly re-runs and the item naturally drops back into plain
 percent-match order once it is more than a week old.
+
+**Updated is not New.** Conferences and grants are commonly extracted from pages
+hosting many events, and such a page gaining a deadline (or moving one) is a
+reason to look at a listing again — but the listing is not new, and calling it
+new would be a lie about what changed. ``apps.scraper.collect.ingest`` stamps
+``metadata["refreshed_at"]`` only when something *actionable* moved, and an item
+inside that window is pinned exactly like a new one but reported as
+``is_updated`` so the card can say which it is. This does not touch what "new"
+means to the report: that is slate entry (``apps.content.top_feed``), decided by
+the nightly whole-corpus re-rank, and nothing here changes it.
 """
 
 from __future__ import annotations
@@ -84,13 +94,18 @@ def compute_pins(
     new_window_days: int = DEFAULT_NEW_WINDOW_DAYS,
     pin_days: int = DEFAULT_PIN_DAYS,
 ) -> dict[str, dict]:
-    """Map ``content_id -> {"is_new", "pinned_until", "first_seen"}`` for a run.
+    """Map ``content_id -> {is_new, is_updated, pinned_until, first_seen}``.
 
     ``suggestions`` are this target's surfaced items for the area (each with a
     ``content_id``); ``items_by_id`` resolves the ``ContentItem`` for its
     first-seen date. Every item first seen within ``new_window_days`` is flagged
     new and pinned for a week — no fit gate, since the feed is already
     interest-thresholded, so "new in the feed" is exactly what we highlight.
+
+    An item that is not new but whose *source page* moved something actionable
+    inside the same window is pinned on the same terms and flagged
+    ``is_updated``. New wins when both hold: an item first seen three days ago
+    whose deadline then moved is still, to the reader, new.
     """
     today_d = date.fromisoformat(today) if today else timezone.now().date()
     window_start = today_d - timedelta(days=new_window_days)
@@ -98,15 +113,27 @@ def compute_pins(
     out: dict[str, dict] = {}
     for suggestion in suggestions:
         cid = suggestion["content_id"]
-        first_seen_date, first_seen = _first_seen(items_by_id.get(cid))
+        item = items_by_id.get(cid)
+        first_seen_date, first_seen = _first_seen(item)
 
         is_new = first_seen_date is not None and first_seen_date >= window_start
+        refreshed = (
+            _parse_iso_date((item.metadata or {}).get("refreshed_at"))
+            if item
+            else None
+        )
+        is_updated = (
+            not is_new and refreshed is not None and refreshed >= window_start
+        )
+
         pinned_until = None
-        if is_new and first_seen_date is not None:
-            pinned_until = (first_seen_date + timedelta(days=pin_days)).isoformat()
+        anchor = first_seen_date if is_new else refreshed if is_updated else None
+        if anchor is not None:
+            pinned_until = (anchor + timedelta(days=pin_days)).isoformat()
 
         out[cid] = {
             "is_new": is_new,
+            "is_updated": is_updated,
             "pinned_until": pinned_until,
             "first_seen": first_seen,
         }

@@ -74,6 +74,60 @@ export function NewTag() {
 }
 
 /**
+ * The "Updated" tag: this listing was already here, but its source page moved
+ * something a reader can act on — a deadline added, moved, or the call
+ * reopened.
+ *
+ * Deliberately not the "New" tag. Conferences and grants are largely extracted
+ * from pages that host many events at once, and when such a page is updated the
+ * old entries stay on it, so "the page changed" is not "this arrived". Calling
+ * it new would misstate what happened, and the two are mutually exclusive by
+ * construction on the backend. Quieter than New — an outlined amber pill rather
+ * than a solid green one — because it is a nudge to re-read something, not an
+ * arrival.
+ */
+export function UpdatedTag({ reason }: { reason?: string }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold"
+      style={{
+        borderColor: "color-mix(in srgb, var(--warning) 50%, var(--border))",
+        backgroundColor:
+          "color-mix(in srgb, var(--warning) 12%, var(--surface))",
+        color: "var(--text-primary)",
+      }}
+      title={
+        reason
+          ? `The source listing changed: ${reason.replace(/_/g, " ")}`
+          : "The source listing changed since Mylo last read it"
+      }
+    >
+      <RefreshGlyph />
+      Updated
+    </span>
+  );
+}
+
+/** Inline so the tag needs no new entry in the shared icon set. */
+function RefreshGlyph() {
+  return (
+    <svg
+      width={11}
+      height={11}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />
+    </svg>
+  );
+}
+
+/**
  * Format a date-only `YYYY-MM-DD` string as "Nov 12, 2026", in local time.
  *
  * `new Date("2026-09-10")` is **not** what you want here. ECMAScript reads the

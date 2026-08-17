@@ -24,6 +24,7 @@ import {
 import {
   MyloReason,
   NewTag,
+  UpdatedTag,
   RemindButton,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
@@ -522,6 +523,7 @@ export function ConferenceCard({
                   nothing at all when it does not. */}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {conf.is_new ? <NewTag /> : null}
+                {conf.is_updated ? <UpdatedTag /> : null}
                 {conf.cluster ? <ClusterBadge cluster={conf.cluster} /> : null}
                 <RankBadgeRow badges={conf.rank_badges} />
                 <RedFlagsBadge flags={conf.red_flags} />
