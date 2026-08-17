@@ -693,12 +693,28 @@ class ConferenceSerializer(_OpportunitySerializer):
         return self._meta(score).get("scope") or ""
 
     def get_description(self, score: RelevanceScore) -> str:
-        # The conference's own blurb. Pivot files it under "Scope" — a theme line
-        # ("Cultural Connections in Conservation") or a full call-for-papers
-        # paragraph. Whitespace-collapsed; "" when the listing carries none, which
-        # is common enough that the card must render without it.
-        text = self._meta(score).get("scope") or ""
-        return " ".join(str(text).split())
+        """The conference blurb, preferring the verified extraction.
+
+        This override exists because Pivot filed a conference's blurb under
+        ``scope`` rather than ``abstract``, so the base implementation's
+        fallback was wrong for this one type. That reason expired with Pivot:
+        the open collector writes no ``scope`` at all, and the description a
+        reader should see is the LLM extraction that ``extract.py`` verified
+        and that the record was embedded on.
+
+        Reading ``scope`` alone made this silently return "" for every one of
+        912 conferences while 776 of them held a verified ``ai_summary`` --
+        the same shape as the ``location``/``place_text`` regression, a
+        Pivot-era key outliving Pivot inside an override. ``scope`` stays last
+        in the chain for as long as any Pivot-era row survives; drop it, and
+        this whole override, once none do.
+
+        Whitespace-collapsed; "" when nothing carries a blurb, which the card
+        must still render without.
+        """
+        meta = self._meta(score)
+        text = meta.get("ai_summary") or meta.get("description") or meta.get("scope")
+        return " ".join(str(text or "").split())
 
 
 class FellowshipSerializer(_OpportunitySerializer):

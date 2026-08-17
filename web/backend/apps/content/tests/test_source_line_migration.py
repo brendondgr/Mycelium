@@ -92,3 +92,52 @@ def test_serializer_location_chains_the_same_way():
         serializer = ConferenceSerializer.__new__(ConferenceSerializer)
         serializer._meta = meta_of(payload).__get__(serializer)
         assert get(serializer, _Score()) == expected, payload
+
+
+class TestConferenceDescription:
+    """The conference card's blurb must be the verified extraction.
+
+    ``ConferenceSerializer`` overrode the base ``get_description`` to read
+    Pivot's ``scope`` key. The open collector writes no ``scope``, so the
+    override returned "" for all 912 conferences in the rebuilt corpus while
+    776 of them held a verified ``ai_summary``. Nothing failed: the field was
+    simply, silently empty everywhere -- the same shape as the
+    ``location``/``place_text`` regression above, and equally invisible to a
+    green test suite because the override had no test of its own.
+    """
+
+    @staticmethod
+    def _describe(payload):
+        from apps.content.serializers import ConferenceSerializer
+
+        serializer = ConferenceSerializer.__new__(ConferenceSerializer)
+        serializer._meta = (lambda self, score: payload).__get__(serializer)
+        return ConferenceSerializer.get_description(serializer, object())
+
+    def test_prefers_the_verified_extraction(self):
+        assert self._describe({"ai_summary": "A workshop on graphs."}) == (
+            "A workshop on graphs."
+        )
+
+    def test_extraction_wins_over_the_pivot_key(self):
+        """Both present: the verified text is the one the record was embedded
+        on, so showing anything else would describe a row by text that is not
+        what matched it."""
+        payload = {"ai_summary": "Verified blurb.", "scope": "Pivot blurb."}
+        assert self._describe(payload) == "Verified blurb."
+
+    def test_falls_back_to_the_collector_key(self):
+        assert self._describe({"description": "Collector blurb."}) == (
+            "Collector blurb."
+        )
+
+    def test_still_reads_pivot_scope_for_rows_that_predate_the_migration(self):
+        assert self._describe({"scope": "Cultural Connections"}) == (
+            "Cultural Connections"
+        )
+
+    def test_whitespace_is_collapsed(self):
+        assert self._describe({"ai_summary": "a\n\n  b   c"}) == "a b c"
+
+    def test_nothing_at_all_is_empty_not_none(self):
+        assert self._describe({}) == ""
