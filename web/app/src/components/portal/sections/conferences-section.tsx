@@ -11,14 +11,13 @@ import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { InfoPopover } from "@/components/portal/primitives/info-popover";
 import {
-  DeadlineRoundsButton,
-  type DeadlineRound,
-} from "@/components/portal/primitives/deadline-rounds";
+  DeadlineList,
+  type ExtraDeadline,
+} from "@/components/portal/primitives/deadline-list";
 import { SourceFooter } from "@/components/portal/primitives/source-footer";
 import {
   AlertTriangleIcon,
   ArrowRightIcon,
-  CalendarIcon,
   CheckIcon,
   ConferenceIcon,
 } from "@/components/portal/icons";
@@ -27,9 +26,8 @@ import {
   NewTag,
   RemindButton,
   SaveButton,
-  deadlineLabel,
-  formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
+import { shortRoundLabel } from "@/components/portal/reminder-composer";
 import {
   ConferenceFilters,
   DEFAULT_CONFERENCE_FILTERS,
@@ -289,9 +287,9 @@ function RedFlagsBadge({ flags }: { flags: string[] }) {
         Quality flags
       </p>
       <p className="mt-1.5">
-        None of these are conclusive on their own, and none of them remove
-        this listing from your feed — they&rsquo;re just what Mylo noticed
-        while reading it.
+        None of these are conclusive on their own, and none of them remove this
+        listing from your feed — they&rsquo;re just what Mylo noticed while
+        reading it.
       </p>
       <ul className="mt-1.5 space-y-1.5">
         {flags.map((flag) => {
@@ -344,33 +342,40 @@ function formatDeadlineInstant(instant: string): string {
   });
 }
 
-/** Every round of a conference's deadline list, sorted chronologically
- * (dated entries first, undated/unparseable ones — `instant === null` — last,
- * in their original order) and formatted for the hover. */
-function conferenceDeadlineRounds(
+/** The rounds that have already gone by, for the deadline list's muted tail.
+ *
+ * Only the past ones: every future round now arrives as an entry of
+ * `addressable_deadlines` — one per round since the per-round projection — and
+ * the list renders those itself with an alert control on each. Reading the
+ * future rounds out of `deadlines_structured` as well would show each of them
+ * twice, once alertable and once not.
+ *
+ * Undated entries (`instant === null`, a TBD the source published without a
+ * date) come last and count as "not upcoming": there is nothing to alert on and
+ * nothing to compare against today, but dropping them would hide a deadline the
+ * venue has actually announced.
+ */
+function passedConferenceRounds(
   deadlines: StructuredDeadline[],
-): DeadlineRound[] {
-  const sorted = [...deadlines].sort((a, b) => {
-    if (a.instant && b.instant) return a.instant.localeCompare(b.instant);
-    if (a.instant) return -1;
-    if (b.instant) return 1;
-    return 0;
-  });
-  return sorted.map((deadline, index) => {
-    const kindLabel =
-      CONFERENCE_DEADLINE_KIND_LABELS[deadline.kind] ?? "Deadline";
-    const label = deadline.round_label
-      ? `${kindLabel} — ${deadline.round_label}`
-      : kindLabel;
-    return {
-      key: `${deadline.kind}-${deadline.round_label}-${index}`,
-      label,
-      dateLabel: deadline.instant
-        ? formatDeadlineInstant(deadline.instant)
-        : deadline.raw || "Date TBD",
-      estimated: deadline.is_estimated,
-    };
-  });
+  today: string,
+): ExtraDeadline[] {
+  return deadlines
+    .filter((d) => !d.instant || d.instant.slice(0, 10) < today)
+    .sort((a, b) => (a.instant ?? "").localeCompare(b.instant ?? ""))
+    .map((deadline, index) => {
+      const kindLabel =
+        CONFERENCE_DEADLINE_KIND_LABELS[deadline.kind] ?? "Deadline";
+      const round = shortRoundLabel(deadline.round_label);
+      return {
+        key: `${deadline.kind}-${deadline.round_label}-${index}`,
+        label: round ? `${kindLabel} · ${round}` : kindLabel,
+        dateLabel: deadline.instant
+          ? formatDeadlineInstant(deadline.instant)
+          : deadline.raw || "Date TBD",
+        estimated: deadline.is_estimated,
+        passed: true,
+      };
+    });
 }
 
 // --------------------------------------------------------------------------- //
@@ -410,7 +415,8 @@ function QualityWarningNote({ warnings }: { warnings: string[] }) {
         triggerClassName="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1"
         triggerStyle={{
           borderColor: "color-mix(in srgb, var(--warning) 45%, var(--border))",
-          backgroundColor: "color-mix(in srgb, var(--warning) 14%, var(--surface))",
+          backgroundColor:
+            "color-mix(in srgb, var(--warning) 14%, var(--surface))",
         }}
         trigger={
           <>
@@ -456,6 +462,13 @@ export function ConferenceCard({
   /** Lab-only: who Mylo judges this most applicable to. Personal feeds omit it. */
   recommendedFor?: RecommendedMember[];
 }) {
+  // Local calendar date, for splitting rounds into "still ahead" and "gone by".
+  // Not `toISOString()`, which is UTC and would call a deadline passed a few
+  // hours early for anyone east of it.
+  const today = React.useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  }, []);
   const where = conf.location || conf.country;
   // Use the semicolon-delimited subject categories, not the space-joined
   // `keywords` blob, so the tags render as real, separate chips.
@@ -532,40 +545,19 @@ export function ConferenceCard({
         </>
       }
     >
-      {conf.deadline_date ? (
-        <DeadlineRoundsButton
-          triggerClassName="mt-2.5 inline-flex"
-          triggerLabel={`${deadlineLabel(conf.deadline_kind, conf.deadline_date)} — see every submission round`}
-          trigger={
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--destructive)]">
-              <CalendarIcon size={15} aria-hidden="true" />
-              {deadlineLabel(conf.deadline_kind, conf.deadline_date)}
-              {conf.deadlines_structured.length > 1 ? (
-                <span className="text-xs font-medium text-[var(--text-secondary)]">
-                  · {conf.deadlines_structured.length} rounds
-                </span>
-              ) : null}
-            </span>
-          }
-          rounds={
-            conf.deadlines_structured.length > 0
-              ? conferenceDeadlineRounds(conf.deadlines_structured)
-              : [
-                  {
-                    key: "next",
-                    label:
-                      CONFERENCE_DEADLINE_KIND_LABELS[conf.deadline_kind] ??
-                      "Deadline",
-                    // `deadline_date` is a calendar date, not an instant, so it
-                    // needs the date-only formatter — `formatDeadlineInstant`
-                    // above is for `deadlines_structured[].instant` and would
-                    // render this one a day early west of UTC.
-                    dateLabel: formatIsoDate(conf.deadline_date),
-                  },
-                ]
-          }
-        />
-      ) : null}
+      {/* Every deadline, listed, each with its own alert control — rather than
+          one headline date plus a hover behind a separate button. See
+          `DeadlineList` for why the two were merged. */}
+      <DeadlineList
+        contentId={conf.content_id}
+        title={conf.title}
+        deadlines={conf.addressable_deadlines}
+        extraDeadlines={passedConferenceRounds(
+          conf.deadlines_structured,
+          today,
+        )}
+        lockedLabSlug={remindLabSlug}
+      />
 
       {/* Directly beneath the deadline it qualifies — see `QualityWarningNote`
           above for why this can't sit anywhere quieter than that. */}
@@ -790,8 +782,13 @@ function ConferencesFeed({
     () => ({ filters, query, selectedCluster }),
     [filters, query, selectedCluster],
   );
-  const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
-    useInfiniteReveal(visible, CONFERENCE_PAGE_SIZE, resetKey);
+  const {
+    visible: displayed,
+    hasMore,
+    remaining,
+    sentinelRef,
+    revealMore,
+  } = useInfiniteReveal(visible, CONFERENCE_PAGE_SIZE, resetKey);
 
   const showRail = !isLoading && !isError && conferences.length > 0;
 

@@ -10,15 +10,11 @@ import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import {
-  DeadlineRoundsButton,
-  type DeadlineRound,
-} from "@/components/portal/primitives/deadline-rounds";
+  DeadlineList,
+  type ExtraDeadline,
+} from "@/components/portal/primitives/deadline-list";
 import { SourceFooter } from "@/components/portal/primitives/source-footer";
-import {
-  ArrowRightIcon,
-  BankIcon,
-  CalendarIcon,
-} from "@/components/portal/icons";
+import { ArrowRightIcon, BankIcon } from "@/components/portal/icons";
 import {
   MyloReason,
   NewTag,
@@ -68,14 +64,29 @@ function formatDate(iso: string): string {
  * `mapping.py::_grant_deadlines`) — so rounds are numbered in chronological
  * order rather than named. A single-round grant still gets one row: "Application".
  */
-function grantDeadlineRounds(grant: GrantOpportunity): DeadlineRound[] {
+/** The rounds the list shows but cannot alert on.
+ *
+ * A grant keeps a single addressable application deadline — its *next* round —
+ * because its round identity is only ever a date, and a date-keyed round could
+ * not survive the funder moving it, which is exactly what the deadline-moved
+ * signal is built on. So the other rounds are real dates worth seeing and are
+ * rendered read-only: earlier ones struck through, later ones plain.
+ */
+function grantExtraRounds(
+  grant: GrantOpportunity,
+  today: string,
+): ExtraDeadline[] {
   const dates = [...grant.due_dates].sort();
-  return dates.map((iso, index) => ({
-    key: `${iso}-${index}`,
-    label: dates.length > 1 ? `Round ${index + 1}` : "Application",
-    dateLabel: formatDate(iso) || iso,
-    estimated: grant.dates_inferred,
-  }));
+  return dates
+    .filter((iso) => iso !== grant.deadline_date)
+    .map((iso, index) => ({
+      key: `${iso}-${index}`,
+      label:
+        dates.length > 1 ? `Round ${dates.indexOf(iso) + 1}` : "Application",
+      dateLabel: formatDate(iso) || iso,
+      estimated: grant.dates_inferred,
+      passed: iso < today,
+    }));
 }
 
 /** Extra context below the round list: a letter-of-intent date ahead of the
@@ -85,13 +96,19 @@ function grantDeadlineFootnote(grant: GrantOpportunity): React.ReactNode {
   const lines: React.ReactNode[] = [];
   if (grant.loi_date) {
     lines.push(
-      <p key="loi">Letter of intent due {formatDate(grant.loi_date) || grant.loi_date}</p>,
+      <p key="loi">
+        Letter of intent due {formatDate(grant.loi_date) || grant.loi_date}
+      </p>,
     );
   }
-  if (grant.original_deadline && grant.original_deadline !== grant.deadline_date) {
+  if (
+    grant.original_deadline &&
+    grant.original_deadline !== grant.deadline_date
+  ) {
     lines.push(
       <p key="orig">
-        First posted deadline: {formatDate(grant.original_deadline) || grant.original_deadline}
+        First posted deadline:{" "}
+        {formatDate(grant.original_deadline) || grant.original_deadline}
       </p>,
     );
   }
@@ -110,7 +127,13 @@ export function GrantRow({
   /** Lab-only: who Mylo judges this most applicable to. Personal feeds omit it. */
   recommendedFor?: RecommendedMember[];
 }) {
-  const due = formatDate(grant.deadline_date);
+  // Local calendar date, for splitting rounds into gone-by and still-ahead.
+  // Not `toISOString()`, which is UTC and would call a round passed a few hours
+  // early for anyone east of it.
+  const today = React.useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  }, []);
   const posted = formatDate(grant.posted);
   const topics = grant.matched_topics
     .split(";")
@@ -175,28 +198,6 @@ export function GrantRow({
                   variant="icon"
                 />
               </div>
-              {due ? (
-                <DeadlineRoundsButton
-                  triggerLabel={`Deadline ${due} — see every application round`}
-                  trigger={
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--destructive)]">
-                      <CalendarIcon size={13} aria-hidden="true" />
-                      {due}
-                      {grant.due_dates.length > 1 ? (
-                        <span className="font-medium text-[var(--text-secondary)]">
-                          · {grant.due_dates.length}
-                        </span>
-                      ) : null}
-                    </span>
-                  }
-                  rounds={
-                    grant.due_dates.length > 0
-                      ? grantDeadlineRounds(grant)
-                      : [{ key: "due", label: "Application", dateLabel: due }]
-                  }
-                  footnote={grantDeadlineFootnote(grant)}
-                />
-              ) : null}
               {grant.amount ? (
                 <span
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
@@ -211,6 +212,17 @@ export function GrantRow({
         </>
       }
     >
+      {/* Every round, listed with Save and Set an alert rather than behind a
+          separate hover — see `DeadlineList`. */}
+      <DeadlineList
+        contentId={grant.content_id}
+        title={grant.title}
+        deadlines={grant.addressable_deadlines}
+        extraDeadlines={grantExtraRounds(grant, today)}
+        footnote={grantDeadlineFootnote(grant)}
+        lockedLabSlug={remindLabSlug}
+      />
+
       {grant.description ? (
         <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
           {grant.description}
@@ -407,8 +419,13 @@ function GrantsFeed({
     () => ({ filters, query, selectedCluster }),
     [filters, query, selectedCluster],
   );
-  const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
-    useInfiniteReveal(visible, GRANT_PAGE_SIZE, resetKey);
+  const {
+    visible: displayed,
+    hasMore,
+    remaining,
+    sentinelRef,
+    revealMore,
+  } = useInfiniteReveal(visible, GRANT_PAGE_SIZE, resetKey);
 
   const showRail = !isLoading && !isError && grants.length > 0;
 
