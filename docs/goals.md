@@ -62,8 +62,8 @@ registry with rate limiting, retry/backoff, a publication-date scan window, and
 cross-source plus against-store deduplication. Grants and conferences come from
 an open collector of public HTTP sources needing no login or licence — five live
 grant adapters and six conference adapters — carrying per-record source links and
-licence, a trust tier on every conference series, CCF / CORE / THCPL rankings
-where a series has them, and every deadline round rather than one. Expiry is
+licence, CCF / CORE / THCPL rankings where a series has them, and every
+deadline round rather than one. Expiry is
 driven by the written deadline, never the posted date: a multi-round grant
 survives to its last round while the reader is shown the next one, and a
 conference is surfaced on its next submission deadline, never its event date.

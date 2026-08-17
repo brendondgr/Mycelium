@@ -4,7 +4,7 @@ Three levels, and keeping them apart is the design decision everything else rest
 on:
 
 * **Series** — the recurring venue. Persistent across years. Carries acronym,
-  full name, discipline, rankings, registry identity, and trust tier.
+  full name, discipline, rankings, and registry identity.
 * **Instance** — one year's edition. Carries all dates, location, website, and
   the CFP text.
 * **Track / workshop** — a sub-event with its own deadline, usually earlier than
@@ -62,14 +62,6 @@ DEADLINE_TYPES: tuple[DeadlineType, ...] = (
 #: Missing one of these disqualifies a submission even if the paper is ready, so
 #: both count as "the venue is still open to me".
 SUBMISSION_TYPES: frozenset[str] = frozenset({"abstract", "submission"})
-
-#: A — matched to a formal ranking, or registry presence with several indexed
-#: proceedings years. B — official society/publisher calendar, no ranking, thin
-#: registry; where new legitimate venues and every non-CS venue live, so it must
-#: stay genuinely surfaceable. C — community aggregator only, no registry match:
-#: quarantined from default output, but counted rather than silently dropped.
-TrustTier = Literal["A", "B", "C", "unassigned"]
-TRUST_TIERS: tuple[TrustTier, ...] = ("A", "B", "C", "unassigned")
 
 #: None of these is conclusive alone. Stored per record so the threshold can be
 #: tuned later instead of hard-coded now.
@@ -153,7 +145,7 @@ class ConferenceSeries:
     #: never overwrite each other.
     rankings: dict[str, dict[str, str]] = field(default_factory=dict)
 
-    #: Registry presence, the longevity half of the trust signal.
+    #: Registry presence — how many proceedings years the venue is indexed for.
     dblp_key: str = ""
     dblp_found: bool = False
     indexed_years: int = 0
@@ -163,22 +155,9 @@ class ConferenceSeries:
     #: resolver refuses to pick; these are recorded for a human instead.
     dblp_candidates: list[str] = field(default_factory=list)
 
-    trust_tier: TrustTier = "unassigned"
     red_flags: list[str] = field(default_factory=list)
     contributing_sources: list[str] = field(default_factory=list)
     license: str = ""
-
-    def __post_init__(self) -> None:
-        if self.trust_tier not in TRUST_TIERS:
-            raise ValueError(f"unknown trust tier: {self.trust_tier!r}")
-
-    @property
-    def is_surfaceable(self) -> bool:
-        """Tier C is quarantined from default output; unassigned never surfaces.
-
-        No record reaches the surfacing layer without a tier.
-        """
-        return self.trust_tier in {"A", "B"}
 
     def to_row(self) -> dict[str, Any]:
         return {
@@ -195,7 +174,6 @@ class ConferenceSeries:
             "first_year": self.first_year,
             "last_year": self.last_year,
             "dblp_candidates": json.dumps(sorted(set(self.dblp_candidates))),
-            "trust_tier": self.trust_tier,
             "red_flags": json.dumps(sorted(set(self.red_flags))),
             "contributing_sources": json.dumps(sorted(set(self.contributing_sources))),
             "license": self.license,
@@ -217,7 +195,6 @@ class ConferenceSeries:
             first_year=row["first_year"],
             last_year=row["last_year"],
             dblp_candidates=json.loads(row["dblp_candidates"] or "[]"),
-            trust_tier=row["trust_tier"],
             red_flags=json.loads(row["red_flags"] or "[]"),
             contributing_sources=json.loads(row["contributing_sources"] or "[]"),
             license=row["license"] or "",

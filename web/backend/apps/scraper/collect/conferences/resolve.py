@@ -1,4 +1,4 @@
-"""Stage 4: canonical series keys, trust tiers, and predatory red flags.
+"""Stage 4: canonical series keys and predatory red flags.
 
 This stage does not exist in the funding pipeline, and it is the one that makes
 the output safe to show anyone. Every grant source is a government agency, so a
@@ -7,8 +7,8 @@ large volume of predatory pay-to-present events is indistinguishable from real
 venues by format alone, and a pipeline that ingests them without a quality layer
 actively harms users by recommending venues that damage their publication record.
 
-**It must run with no network access.** Trust thresholds get tuned constantly and
-re-fetching seven sources to try a new threshold is not acceptable, so the
+**It must run with no network access.** Red-flag thresholds get tuned constantly
+and re-fetching seven sources to try a new threshold is not acceptable, so the
 registry (dblp identity, CORE rankings) is read from a local cache that a
 separate slow-schedule job populates.
 
@@ -24,39 +24,18 @@ records the candidates for a human.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from apps.scraper.collect.conferences.record import (
     ConferenceInstance,
     ConferenceSeries,
-    TrustTier,
 )
 from apps.scraper.collect.core.text import (
     clean_text,
     dedupe_preserving_order,
     normalize_title,
 )
-
-#: A venue with at least this many indexed proceedings years is almost certainly
-#: real. Below it, absence is not proof of anything — a new legitimate venue has
-#: no history — so this promotes to tier A and never demotes.
-LONGEVITY_YEARS_FOR_TIER_A = 3
-
-#: Ranks that count as a formal quality assessment. `Unranked` deliberately does
-#: *not*: it means assessed-with-no-decision, which the ranking body describes as
-#: an assurance the venue is legitimate, so it lands in tier B rather than A.
-RANKED_VALUES = frozenset({"A*", "A", "B", "C", "AUSTRALASIAN B", "AUSTRALASIAN C"})
-
-#: Sources that gate membership behind a professional society or publisher, so a
-#: listing carries institutional vetting even with no ranking and no registry
-#: entry. This is what makes tier B genuinely usable rather than a euphemism for
-#: rejection — every non-CS venue in this system lands here.
-SOCIETY_SOURCES = frozenset({"miccai", "ams_mathcal", "openreview"})
-
-#: Community aggregators with open submission. Anything appearing *only* here,
-#: with no registry match, is quarantined.
-COMMUNITY_SOURCES = frozenset({"wikicfp", "openresearch"})
 
 _ORDINAL_PREFIX = re.compile(
     r"^\s*(?:the\s+)?\d+\s*(?:st|nd|rd|th)?\s+(?=[A-Za-z])", re.IGNORECASE
@@ -71,15 +50,13 @@ class ResolveReport:
     resolved: int = 0
     ambiguous: int = 0
     unresolved: int = 0
-    tiers: dict[str, int] = field(default_factory=dict)
     flagged: int = 0
 
     def summary(self) -> str:
-        tiers = " ".join(f"{k}={v}" for k, v in sorted(self.tiers.items()))
         return (
             f"series={self.series_in} resolved={self.resolved} "
             f"ambiguous={self.ambiguous} unresolved={self.unresolved} | "
-            f"tiers {tiers} | red-flagged={self.flagged}"
+            f"red-flagged={self.flagged}"
         )
 
 
@@ -123,7 +100,7 @@ def resolve_all(
     registry_dir: Path | None = None,
     now=None,
 ) -> tuple[list[ConferenceSeries], list[ConferenceInstance], ResolveReport]:
-    """Join to the registry, assign keys and tiers, compute red flags.
+    """Join to the registry, assign series keys, compute red flags.
 
     Reads only from the local registry cache. Never opens a socket.
     """
@@ -146,8 +123,6 @@ def resolve_all(
         )
         if record.red_flags:
             report.flagged += 1
-        record.trust_tier = assign_trust_tier(record)
-        report.tiers[record.trust_tier] = report.tiers.get(record.trust_tier, 0) + 1
 
     return series, instances, report
 
@@ -233,52 +208,6 @@ def _apply_rankings(record: ConferenceSeries, cache) -> None:
                 record.field_codes = dedupe_preserving_order(
                     [*record.field_codes, code.strip()]
                 )
-
-
-# --- trust tiers ---------------------------------------------------------
-
-
-def assign_trust_tier(record: ConferenceSeries) -> TrustTier:
-    """A, B or C. Never unassigned once this stage has run.
-
-    A — a formal ranking decision, or registry presence across several indexed
-    proceedings years. Safe to surface.
-
-    B — an official society or publisher listing, or registry presence that is
-    real but thin. Safe to surface, flagged as unranked. **New legitimate venues
-    and every non-CS venue live here**, and the registry layer is CS-only, so
-    treating B as a soft rejection would discard exactly the records that matter
-    most outside computing.
-
-    C — a community aggregator only, with no registry match at all. Quarantined
-    from default output, counted rather than silently dropped.
-    """
-    if _has_formal_rank(record):
-        return "A"
-    if record.dblp_found and record.indexed_years >= LONGEVITY_YEARS_FOR_TIER_A:
-        return "A"
-    if record.dblp_found:
-        # In the registry but young or thinly indexed. Real, unproven.
-        return "B"
-    if set(record.contributing_sources) & SOCIETY_SOURCES:
-        return "B"
-    if record.rankings:
-        # A ranking system knows it exists even if the decision was "unranked",
-        # which the ranking body describes as an assurance of legitimacy.
-        return "B"
-    if set(record.contributing_sources) & COMMUNITY_SOURCES:
-        return "C"
-    return "B"
-
-
-def _has_formal_rank(record: ConferenceSeries) -> bool:
-    for _system, payload in record.rankings.items():
-        rank = str(payload.get("rank", "")).strip().upper()
-        # "N" is ccf-deadlines' "not ranked by this system" — a real statement,
-        # but not a quality endorsement.
-        if rank and rank != "N" and rank in RANKED_VALUES:
-            return True
-    return False
 
 
 # --- predatory red flags -------------------------------------------------

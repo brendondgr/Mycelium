@@ -245,43 +245,12 @@ def test_series_round_trip_preserves_rankings_from_several_systems(store):
         dblp_key="conf/sigmod",
         dblp_found=True,
         indexed_years=44,
-        trust_tier="A",
     )
     store.upsert_series([series])
     stored = store.all_series()[0]
     assert stored.rankings["core"] == {"rank": "A*", "edition": "ICORE2026"}
     assert stored.rankings["ccf"]["rank"] == "A"
     assert stored.indexed_years == 44
-
-
-def test_tier_c_is_counted_not_dropped(store):
-    """Quarantined records must be visibly withheld, never invisibly missing."""
-    store.upsert_series(
-        [
-            ConferenceSeries(series_key="conf/real", trust_tier="A"),
-            ConferenceSeries(series_key="gen:spam", trust_tier="C"),
-        ]
-    )
-    store.upsert_instances(
-        [
-            instance(series_key="conf/real", source_record_id="a", year_label="2027"),
-            instance(series_key="gen:spam", source_record_id="b", year_label="2027"),
-        ]
-    )
-    assert store.count_by_tier() == {"A": 1, "C": 1}
-    assert store.quarantined_count() == 1
-
-
-def test_an_unknown_trust_tier_is_rejected():
-    with pytest.raises(ValueError, match="unknown trust tier"):
-        ConferenceSeries(series_key="x", trust_tier="Gold")
-
-
-def test_a_series_is_only_surfaceable_with_a_tier():
-    assert ConferenceSeries(series_key="x", trust_tier="A").is_surfaceable is True
-    assert ConferenceSeries(series_key="x", trust_tier="B").is_surfaceable is True
-    assert ConferenceSeries(series_key="x", trust_tier="C").is_surfaceable is False
-    assert ConferenceSeries(series_key="x").is_surfaceable is False
 
 
 def test_deadlines_are_ordered_on_insert_not_only_on_merge(store):

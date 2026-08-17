@@ -3,8 +3,8 @@
 One SPARQL POST to ``sparql.dblp.org``, ~8 MB, ~5 s, CC0-licensed — the whole
 9,325-venue registry with indexed-proceedings-year counts already aggregated.
 The conference collector's resolve stage joins against this cache to assign
-``dblp_found`` / ``indexed_years``, which ``assign_trust_tier`` reads to decide
-whether a venue can reach tier A on evidence rather than a CCF rank alone.
+``dblp_found`` / ``indexed_years`` and to attach the CORE / CCF rank badges a
+conference card displays.
 
     uv run --project web/backend python web/backend/manage.py refresh_dblp_registry
 

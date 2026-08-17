@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from apps.scraper.collect.conferences.record import ConferenceSeries, Deadline
+from apps.scraper.collect.conferences.record import Deadline
 from apps.scraper.collect.conferences.smoke import (
     FAIL,
     PASS,
@@ -80,15 +80,6 @@ def test_the_basis_check_fails_when_a_basis_is_missing(populated):
     assert checks_by_prefix(checks, "Every deadline carries").status == FAIL
 
 
-def test_the_tier_check_fails_when_a_series_is_unassigned(populated):
-    """No record may reach the surfacing layer without a tier."""
-    with ConferenceStore(populated.config.db_path) as store:
-        store.upsert_series([ConferenceSeries(series_key="gen:nowhere", acronym="X")])
-
-    checks = run_checklist(populated.config, now=NOW, check_idempotency=False)
-    assert checks_by_prefix(checks, "Every series has a trust tier").status == FAIL
-
-
 def test_multi_round_ordering_is_verified_against_the_real_corpus(populated):
     checks = run_checklist(populated.config, now=NOW, check_idempotency=False)
     multi = checks_by_prefix(checks, "A multi-round venue")
@@ -117,7 +108,6 @@ def test_a_property_the_corpus_cannot_exercise_is_skipped_not_passed(populated):
 def test_an_empty_store_skips_rather_than_passing(config):
     checks = run_checklist(config, now=NOW, check_idempotency=False)
     assert checks_by_prefix(checks, "Every deadline carries").status == SKIP
-    assert checks_by_prefix(checks, "Every series has a trust tier").status == SKIP
 
 
 def test_the_report_counts_skips_separately(populated):

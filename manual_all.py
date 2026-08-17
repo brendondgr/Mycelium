@@ -424,11 +424,11 @@ def _collect_grants_and_conferences(base: list[str]) -> bool:
 def refresh_conference_registry(base: list[str]) -> None:
     """Refresh the dblp venue registry cache on a weekly cadence (plan D5a).
 
-    Must run before the collector's conference resolve stage —
-    ``assign_trust_tier`` reads ``dblp_found`` / ``indexed_years`` straight
-    off this cache. The resolve stage is deliberately offline-only (see
-    ``RegistryCache``'s own docstring), so a stale-or-missing cache is not an
-    error there, only a ceiling on how many venues can reach tier A — which is
+    Must run before the collector's conference resolve stage — the registry
+    join reads venue identity and rankings straight off this cache. The resolve
+    stage is deliberately offline-only (see ``RegistryCache``'s own docstring),
+    so a stale-or-missing cache is not an error there, only a ceiling on how
+    many venues can carry a rank badge — which is
     exactly why this can self-throttle with a plain file-mtime check rather
     than needing its own systemd timer: venue longevity does not move night to
     night, so paying for a fresh 8 MB SPARQL POST on six nights out of seven

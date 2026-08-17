@@ -67,7 +67,7 @@ routes clients depend on most.
 | `labs/<slug>/briefings/<YYYY-MM-DD>/` | GET | One archived lab report |
 | `opportunities/grants/` | GET | Ranked grants |
 | `opportunities/conferences/` | GET | Ranked conferences |
-| `opportunities/ranking-reference/` | GET | Static hover copy for rank badges + trust tiers |
+| `opportunities/ranking-reference/` | GET | Static hover copy for conference rank badges |
 | `opportunities/fellowships/` | GET | Eligibility-gated, ranked fellowships |
 | `labs/<slug>/recommendations/` | GET | A lab's four feeds + counts + window counts |
 | `projects/<id>/recommendations/[?digest=1]` | GET | A project's four feeds, or its short list |
@@ -652,7 +652,7 @@ carry any rank at all.
     { "system": "core", "rank": "A*", "edition": "" },
     { "system": "thcpl", "rank": "A", "edition": "" }
   ],
-  "trust_tier": "A", "red_flags": [], "quality_warnings": [],
+  "red_flags": [], "quality_warnings": [],
   "deadlines_structured": [
     { "kind": "abstract", "raw": "2025-01-10 23:59:00 AoE",
       "instant": "2025-01-10T23:59:00+00:00", "basis": "AoE",
@@ -671,11 +671,10 @@ map, `"N"` ("not ranked by this system" — a real statement, not an absence)
 included; `rank_badges` is the display-ready flattening with `"N"` already
 dropped, for a client that only wants to render claimed ranks. **`edition` is
 always `""`** — no ranking in this dataset is dated to a specific year, so a
-client must not print one next to a badge. `trust_tier` is `"A" | "B"` (**B is
-not a demotion** — it is where every non-CS venue lives, plus every new or
-thinly-indexed CS venue no formal ranking body has assessed yet) or
-`"unassigned"` for an instance whose resolve stage never matched it to a
-series. `red_flags` and `quality_warnings` are free-text arrays (e.g. a venue
+client must not print one next to a badge. Roughly three-quarters of series
+carry no rank at all; an empty `rank_badges` means no ranking body has
+assessed the venue, which is the common case and not a judgement about it.
+`red_flags` and `quality_warnings` are free-text arrays (e.g. a venue
 whose only future date is a `notification`, not a submission deadline).
 `deadlines_structured` is the complete 8-key round array — every kind, not
 just the submission-type ones that gate `abstract_open`/`manuscript_open` — the
@@ -684,16 +683,16 @@ carries the **next** actionable submission deadline, while expiry keys on the
 **last** written deadline, so a venue with several rounds neither disappears
 early nor lingers past its final one. The event date never gates either.
 
-Hover copy for `rank_badges` and `trust_tier` is not repeated on every card —
-see `GET /api/opportunities/ranking-reference/` below.
+Hover copy for `rank_badges` is not repeated on every card — see
+`GET /api/opportunities/ranking-reference/` below.
 
 ### `GET /api/opportunities/ranking-reference/`
 
-Static, cacheable reference copy explaining what a conference rank badge or
-trust tier means — authored text, since no such explanation exists as data
-anywhere in the open collector. Not a feed and not personalized: fetch once,
-cache, and resolve each card's `rank_badges[].system` / `.rank` and
-`trust_tier` against it, rather than re-fetching per card or per page.
+Static, cacheable reference copy explaining what a conference rank badge
+means — authored text, since no such explanation exists as data anywhere in
+the open collector. Not a feed and not personalized: fetch once, cache, and
+resolve each card's `rank_badges[].system` / `.rank` against it, rather than
+re-fetching per card or per page.
 
 ```json
 {
@@ -706,20 +705,13 @@ cache, and resolve each card's `rank_badges[].system` / `.rank` and
     "ccf": { "A": "CCF's top band: …", "B": "…", "C": "…" },
     "core": { "A*": "CORE's highest band…", "A": "…", "B": "…", "C": "…" },
     "thcpl": { "A": "…", "B": "…" }
-  },
-  "trust_tiers": {
-    "A": "A formal ranking body has classified this venue, or …",
-    "B": "Not a demotion. This is where every non-CS venue lives, …"
   }
 }
 ```
 
 `rank_explanations` covers every rank a badge can carry (CCF A/B/C, CORE
 A*/A/B/C, THCPL A/B) — `"N"` is excluded because `rank_badges` never carries
-it. `trust_tiers` covers `"A"` and `"B"`, the only tiers the live corpus
-produces. No enabled adapter can produce a `"C"` tier: the community-submitted
-sources that land there are deliberately not registered, so a client need not
-render a tier it will never receive.
+it.
 
 ### `GET /api/opportunities/fellowships/`
 

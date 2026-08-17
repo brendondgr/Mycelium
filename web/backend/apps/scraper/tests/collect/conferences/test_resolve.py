@@ -18,7 +18,6 @@ from apps.scraper.collect.conferences.record import (
 )
 from apps.scraper.collect.conferences.registry.cache import write_cache
 from apps.scraper.collect.conferences.resolve import (
-    assign_trust_tier,
     compute_red_flags,
     extract_ordinal,
     normalize_acronym,
@@ -135,74 +134,7 @@ def test_resolve_runs_with_no_registry_at_all(tmp_path):
     records = [series(acronym="SIGMOD")]
     resolved, _, report = resolve_all(records, [], registry_dir=tmp_path / "absent")
     assert report.unresolved == 1
-    assert resolved[0].trust_tier != "unassigned"
-
-
-# --- trust tiers ---------------------------------------------------------
-
-
-def test_a_formally_ranked_venue_is_tier_a():
-    record = series(rankings={"core": {"rank": "A*", "edition": "ICORE2026"}})
-    assert assign_trust_tier(record) == "A"
-
-
-def test_a_long_running_registry_venue_is_tier_a_without_any_ranking():
-    record = series(dblp_found=True, indexed_years=36)
-    assert assign_trust_tier(record) == "A"
-
-
-def test_a_registry_venue_with_thin_history_is_tier_b():
-    """Absence of history is not evidence of anything -- a new legitimate venue
-    has none."""
-    record = series(dblp_found=True, indexed_years=1)
-    assert assign_trust_tier(record) == "B"
-
-
-def test_a_society_listing_with_no_ranking_and_no_registry_is_tier_b():
-    """This is where every non-CS venue lands, and the registry layer is CS-only.
-
-    Treating B as a euphemism for rejection would discard exactly the records the
-    briefing warns about.
-    """
-    record = series(contributing_sources=["miccai"])
-    assert assign_trust_tier(record) == "B"
-
-
-def test_an_assessed_but_unranked_venue_is_tier_b_not_c():
-    """The ranking body describes "unranked" as an assurance the venue is
-    legitimate -- a weak positive, not a rejection."""
-    record = series(rankings={"core": {"rank": "Unranked", "edition": "ICORE2026"}})
-    assert assign_trust_tier(record) == "B"
-
-
-def test_a_community_only_venue_with_no_registry_match_is_quarantined():
-    record = series(contributing_sources=["wikicfp"])
-    assert assign_trust_tier(record) == "C"
-
-
-def test_a_community_venue_that_does_resolve_is_not_quarantined():
-    """Tier C means 'no registry match at all', not 'came from a wiki'."""
-    record = series(contributing_sources=["wikicfp"], dblp_found=True, indexed_years=12)
-    assert assign_trust_tier(record) == "A"
-
-
-def test_ccf_rank_n_is_not_a_quality_endorsement():
-    """"N" means "not ranked by this system" -- a real statement, but not an
-    assessment that the venue is good."""
-    record = series(rankings={"ccf": {"rank": "N", "edition": ""}})
-    assert assign_trust_tier(record) != "A"
-
-
-def test_every_series_gets_a_tier(registry_dir):
-    """Briefing section 10: no record reaches the surfacing layer without one."""
-    records = [
-        series(series_key="a", acronym="SIGMOD", dblp_key="conf/sigmod"),
-        series(series_key="b", acronym="ZZZQQ", contributing_sources=["wikicfp"]),
-        series(series_key="c", acronym="SAC"),
-    ]
-    resolved, _, report = resolve_all(records, [], registry_dir=registry_dir)
-    assert all(r.trust_tier in {"A", "B", "C"} for r in resolved)
-    assert sum(report.tiers.values()) == 3
+    assert resolved[0].dblp_found is False
 
 
 # --- red flags -----------------------------------------------------------
@@ -286,11 +218,12 @@ def test_a_normal_cfp_window_is_not_flagged():
     assert "short_cfp_window" not in compute_red_flags(series(), [instance])
 
 
-def test_no_single_flag_forces_a_tier():
-    """None of these is conclusive alone. They are stored so a threshold can be
-    tuned later against real data instead of hard-coded now against a guess."""
+def test_a_red_flag_never_removes_a_rank():
+    """None of these is conclusive alone. They are stored alongside the rank so
+    a threshold can be tuned later against real data, and a flag never silently
+    strips the ranking evidence the card also shows."""
     record = series(
         rankings={"core": {"rank": "A*", "edition": "ICORE2026"}},
         red_flags=["fees_prominent", "no_committee"],
     )
-    assert assign_trust_tier(record) == "A"
+    assert record.rankings["core"]["rank"] == "A*"

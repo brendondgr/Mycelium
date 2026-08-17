@@ -76,7 +76,6 @@ class RunReport:
     stats: UpsertStats | None = None
     series_stats: UpsertStats | None = None
     deactivated: int = 0
-    quarantined: int = 0
 
     def as_lines(self) -> list[str]:
         lines = [f"run {self.run_id}"]
@@ -101,8 +100,6 @@ class RunReport:
                 f"unchanged={self.stats.unchanged} extensions={self.stats.extensions}"
             )
         lines.append(f"  inactive {self.deactivated} instances marked (retained, not deleted)")
-        if self.quarantined:
-            lines.append(f"  tier C   {self.quarantined} instances quarantined from default output")
         return lines
 
 
@@ -238,14 +235,13 @@ class ConferencePipeline:
         instances: list[ConferenceInstance],
         *,
         now: datetime | None = None,
-    ) -> tuple[UpsertStats, UpsertStats, int, int]:
+    ) -> tuple[UpsertStats, UpsertStats, int]:
         now = now or datetime.now(UTC)
         with ConferenceStore(self.config.db_path) as store:
             series_stats = store.upsert_series(series)
             stats = store.upsert_instances(instances)
             deactivated = store.mark_inactive(now)
-            quarantined = store.quarantined_count()
-        return series_stats, stats, deactivated, quarantined
+        return series_stats, stats, deactivated
 
     # -- the whole thing --------------------------------------------------
 
@@ -283,11 +279,10 @@ class ConferencePipeline:
         report.series_count = len(series)
         report.instance_count = len(instances)
 
-        series_stats, stats, deactivated, quarantined = self.persist(series, instances, now=now)
+        series_stats, stats, deactivated = self.persist(series, instances, now=now)
         report.series_stats = series_stats
         report.stats = stats
         report.deactivated = deactivated
-        report.quarantined = quarantined
 
         with ConferenceStore(self.config.db_path) as store:
             store.record_run(

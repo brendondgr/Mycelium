@@ -9,12 +9,10 @@ is already correct, so the multi-round and timezone models get proven against
 clean data.
 
 **WikiCFP is deliberately not registered here** (plan decision D5). Its
-``Crawl-delay: 5`` makes a full pull ~3.9h, it is user-submitted with a large
-predatory-spam share, and it lands in ``resolve.COMMUNITY_SOURCES`` — trust
-tier C, quarantined from default output — so the records it would add never
-surface. ``resolve.py``'s ``COMMUNITY_SOURCES`` still names ``"wikicfp"``
-because ``openresearch`` alone still needs that tier-C branch; only the
-adapter (the thing that would make 2,811 requests) is gone.
+``Crawl-delay: 5`` makes a full pull ~3.9h, and it is user-submitted with a
+large predatory-spam share, so the cost of collecting it is high and the
+quality of what it adds is low. Only the adapter — the thing that would make
+2,811 requests — is gone; nothing else references it.
 """
 
 from __future__ import annotations

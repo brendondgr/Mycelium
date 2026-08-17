@@ -125,7 +125,7 @@ Files below are inside `web/backend/apps/content/`.
 | Paper source scrapers | `web/backend/apps/scraper/sources/`, `ingest.py`, `window.py` |
 | Open-source grants/conferences collector (vendored) | `web/backend/apps/scraper/collect/` — `runner.py` stages, `grants/`, `conferences/`, `core/` |
 | Collector adapters (5 live grant, 6 conference) | `web/backend/apps/scraper/collect/{grants,conferences}/adapters/` |
-| dblp venue registry (trust tiers, CORE ranks) | `web/backend/apps/scraper/collect/conferences/registry/` |
+| dblp venue registry (venue identity, CORE ranks) | `web/backend/apps/scraper/collect/conferences/registry/` |
 | Collector record → `ContentItem` mapping, deadline/expiry rules | `web/backend/apps/scraper/collect/mapping.py` |
 | Collector upsert, prune, embed | `web/backend/apps/scraper/collect/ingest.py` |
 | Verified LLM description extraction (schema, validators, repair loop) | `web/backend/apps/scraper/collect/extract.py` |

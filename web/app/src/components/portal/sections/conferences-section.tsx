@@ -21,7 +21,6 @@ import {
   CalendarIcon,
   CheckIcon,
   ConferenceIcon,
-  ShieldIcon,
 } from "@/components/portal/icons";
 import {
   MyloReason,
@@ -62,7 +61,6 @@ import type {
   RankingReference,
   RecommendedMember,
   StructuredDeadline,
-  TrustTier,
 } from "@/lib/portal/types";
 
 /** How many conferences each infinite-scroll slice reveals. */
@@ -90,7 +88,7 @@ function OpenChip({ label }: { label: string }) {
 }
 
 // --------------------------------------------------------------------------- //
-// Rank badges + trust tier (plan D2/D3) — the quality signals Pivot never had
+// Rank badges (plan D2) — the quality signal Pivot never had
 // --------------------------------------------------------------------------- //
 
 /** Every rank badge shares this one neutral token, regardless of the letter it
@@ -173,8 +171,8 @@ function RankBadge({
 
 /** The rank-badge row — nothing rendered when a series carries none, which is
  * true of roughly three-quarters of live series (plan D2/D5). Its absence is
- * itself a designed state: `TrustTierBadge` beside it is the signal that is
- * always present, so a card with no rank badges never reads as "no data". */
+ * itself a designed state: no badge simply means no ranking body has assessed
+ * the venue, which is the common case and not a judgement about it. */
 function RankBadgeRow({ badges }: { badges: ConferenceRanking[] }) {
   const referenceQuery = useRankingReference();
   if (badges.length === 0) return null;
@@ -203,10 +201,9 @@ function RankBadgeRow({ badges }: { badges: ConferenceRanking[] }) {
 
 /** Human copy for the backend's `red_flags` slug vocabulary
  * (`compute_red_flags` in `apps/scraper/collect/conferences/resolve.py`), in
- * the same "authored on the client, backend only ships the fact" idiom
- * `TrustTierBadge`'s "unassigned" copy uses — these slugs have no reference-
- * table entry because they are heuristics, not a taxonomy the backend
- * maintains prose for. */
+ * the "authored on the client, backend only ships the fact" idiom — these
+ * slugs have no reference-table entry because they are heuristics, not a
+ * taxonomy the backend maintains prose for. */
 const RED_FLAG_COPY: Record<string, { label: string; explanation: string }> = {
   fees_prominent: {
     label: "Mentions a fee",
@@ -309,85 +306,6 @@ function RedFlagsBadge({ flags }: { flags: string[] }) {
           );
         })}
       </ul>
-    </InfoPopover>
-  );
-}
-
-/** Both real tiers render with the identical token, weight, and shape — only
- * the letter differs — so the badge itself can never be read as "B is worse
- * than A". The hover copy (from the backend's reference table) is what
- * carries the actual meaning, and it says plainly that B is not a demotion:
- * it is where every non-CS venue lives, because the registry evidence layer
- * behind tier A only covers computing (plan D3). */
-const TRUST_TIER_TOKEN = "--secondary";
-
-/**
- * The always-present quality signal (plan D3): every resolved conference
- * series carries a trust tier, unlike the rank badges above which only ~25%
- * of series have — so this is the one quality badge every conference card
- * shows. "unassigned" — an instance whose resolve stage never matched it to a
- * series at all — gets a visually quieter, dashed treatment reading as
- * "no signal yet", not "poor": the backend's reference table doesn't cover it
- * (it isn't a real tier, just an absence), so its copy is authored here.
- */
-function TrustTierBadge({ tier }: { tier: TrustTier }) {
-  const referenceQuery = useRankingReference();
-
-  if (tier === "unassigned") {
-    return (
-      <InfoPopover
-        // Same WCAG 2.5.3 rule as `RankBadge` below: the visible pill reads
-        // "No signal yet", so the accessible name must start with that exact
-        // phrase, not bury it after "Trust tier not yet available".
-        triggerLabel="No signal yet — trust tier not yet available"
-        triggerClassName="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-[var(--border)] px-2.5 py-1"
-        trigger={
-          <span className="text-xs font-semibold text-[var(--text-secondary)]">
-            No signal yet
-          </span>
-        }
-      >
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-primary)]">
-          Trust tier
-        </p>
-        <p className="mt-1.5">
-          Mylo hasn&rsquo;t linked this listing to a known venue yet, so no
-          independent evidence signal is available. This isn&rsquo;t a
-          quality judgement — just nothing to report yet.
-        </p>
-      </InfoPopover>
-    );
-  }
-
-  const label = tier === "A" ? "Tier A" : "Tier B";
-  const explanation = referenceQuery.data?.trust_tiers[tier];
-
-  return (
-    <InfoPopover
-      triggerLabel={`${label} — what this trust tier means`}
-      triggerClassName="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1"
-      triggerStyle={{
-        borderColor: `color-mix(in srgb, var(${TRUST_TIER_TOKEN}) 55%, var(--border))`,
-        backgroundColor: `color-mix(in srgb, var(${TRUST_TIER_TOKEN}) 30%, var(--surface))`,
-      }}
-      trigger={
-        <>
-          <ShieldIcon size={12} aria-hidden="true" />
-          <span className="text-xs font-bold leading-none text-[var(--text-primary)]">
-            {label}
-          </span>
-        </>
-      }
-    >
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-primary)]">
-        Trust tier {tier}
-      </p>
-      <p className="mt-1.5">
-        {explanation ??
-          (referenceQuery.isError
-            ? "Couldn't load this tier's explanation right now."
-            : "Loading…")}
-      </p>
     </InfoPopover>
   );
 }
@@ -587,13 +505,11 @@ export function ConferenceCard({
                 ) : null}
               </dl>
 
-              {/* Trust tier renders unconditionally (plan D3: every resolved
-                  series has one — it is the always-present quality signal).
-                  Rank badges follow it, when the series has any (~25%). */}
+              {/* Rank badges when the series carries any (~25% of them do);
+                  nothing at all when it does not. */}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {conf.is_new ? <NewTag /> : null}
                 {conf.cluster ? <ClusterBadge cluster={conf.cluster} /> : null}
-                <TrustTierBadge tier={conf.trust_tier} />
                 <RankBadgeRow badges={conf.rank_badges} />
                 <RedFlagsBadge flags={conf.red_flags} />
               </div>

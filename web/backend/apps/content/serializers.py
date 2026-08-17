@@ -738,36 +738,15 @@ RANK_EXPLANATIONS: dict[str, dict[str, str]] = {
     },
 }
 
-#: Trust tier is the always-present signal underneath the (25%-coverage) rank
-#: badges above (plan D3): every resolved series gets one. Only A and B occur
-#: in the live corpus — the community-aggregator source that would produce a C
-#: (WikiCFP) is not enabled (plan D5) — so those are the two this covers.
-#: The B copy states plainly, as the plan requires, that B is *not* a
-#: demotion: it is where every non-CS venue and every new/thinly-indexed CS
-#: venue lives, because the registry evidence layer behind tier A is CS-only.
-TRUST_TIER_EXPLANATIONS: dict[str, str] = {
-    "A": (
-        "A formal ranking body has classified this venue, or it has several "
-        "years of indexed proceedings on record — independent evidence this "
-        "is a real, ongoing venue."
-    ),
-    "B": (
-        "Not a demotion. This is where every non-CS venue lives, alongside new "
-        "or thinly-indexed CS venues no formal ranking body has assessed yet — "
-        "a legitimate listing that the evidence layer simply cannot yet "
-        "independently confirm, because that layer only covers computing."
-    ),
-}
-
 #: Exposed once at ``GET /api/opportunities/ranking-reference/``
 #: (``views.RankingReferenceView``) rather than repeated on every conference
-#: row: the prose above is identical for every card sharing a rank/tier, and a
+#: row: the prose above is identical for every card sharing a rank, and a
 #: single feed page can carry dozens of conferences — duplicating it per row
 #: would multiply payload size for zero new information per item. A card only
-#: needs to carry *which* rank/tier it has (``rank_badges`` / ``trust_tier``,
-#: both small); the client resolves the hover text from this table once and
-#: caches it, the same pattern the frontend already uses for the static
-#: ``FEATURE`` entitlement-slug table.
+#: needs to carry *which* rank it has (``rank_badges``, small); the client
+#: resolves the hover text from this table once and caches it, the same
+#: pattern the frontend already uses for the static ``FEATURE``
+#: entitlement-slug table.
 
 
 class ConferenceSerializer(_OpportunitySerializer):
@@ -786,15 +765,13 @@ class ConferenceSerializer(_OpportunitySerializer):
     status = serializers.SerializerMethodField()
     scope = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
-    # Quality signals the open collector carries that Pivot never did (plan D2/
-    # D3): rankings are visual-only badges, trust tier is the always-present
-    # signal underneath them. See RANK_EXPLANATIONS / TRUST_TIER_EXPLANATIONS
-    # below for the hover copy a client resolves each of these against.
+    # Quality signals the open collector carries that Pivot never did (plan
+    # D2): rankings are visual-only badges. See RANK_EXPLANATIONS above for the
+    # hover copy a client resolves them against.
     acronym = serializers.SerializerMethodField()
     year_label = serializers.SerializerMethodField()
     rankings = serializers.SerializerMethodField()
     rank_badges = serializers.SerializerMethodField()
-    trust_tier = serializers.SerializerMethodField()
     red_flags = serializers.SerializerMethodField()
     quality_warnings = serializers.SerializerMethodField()
     deadlines_structured = serializers.SerializerMethodField()
@@ -822,13 +799,6 @@ class ConferenceSerializer(_OpportunitySerializer):
         # ``edition`` is always "" in this data (see RANK_EXPLANATIONS' note);
         # a client must not read a year into it.
         return self._meta(score).get("rank_badges") or []
-
-    def get_trust_tier(self, score: RelevanceScore) -> str:
-        # "A" | "B" (plan D3) — always present once a series has resolved.
-        # "unassigned" only for an instance whose resolve stage never matched
-        # it to a series at all (mapping.py's documented "nothing known yet"
-        # default), which the card should render as "no signal", not "poor".
-        return self._meta(score).get("trust_tier") or "unassigned"
 
     def get_red_flags(self, score: RelevanceScore) -> list[str]:
         return self._meta(score).get("red_flags") or []

@@ -16,10 +16,6 @@ export type ConferenceSort = "fit" | "deadline" | "event";
 export type ConferenceStatus = "any" | "open" | "closed";
 export type ConferenceDeadlineWindow = "any" | "30d" | "90d" | "has-date";
 export type ConferenceEventWindow = "any" | "3m" | "6m" | "upcoming";
-/** Trust tier facet (plan D3) — "any" leaves the whole set unfiltered;
- * "unassigned" is a real, selectable state ("only listings Mylo hasn't yet
- * linked to a known venue"), not just a display fallback on the card. */
-export type ConferenceTrustTierFilter = "any" | "A" | "B" | "unassigned";
 
 export type ConferenceFilterState = {
   sort: ConferenceSort;
@@ -43,10 +39,8 @@ export type ConferenceFilterState = {
   newOnly: boolean;
   /** Only items the user has saved. */
   savedOnly: boolean;
-  /** Trust tier facet (plan D3) — the always-present quality signal. */
-  trustTier: ConferenceTrustTierFilter;
   /** Only venues carrying at least one CCF/CORE/THCPL rank badge (~25% of
-   * live series, plan D2) — separate from `trustTier`, which every series has. */
+   * live series, plan D2). */
   rankedOnly: boolean;
   /** Selected rank systems (empty = any); OR within the group — a venue
    * ranked by any one of the selected systems matches. */
@@ -65,7 +59,6 @@ export const DEFAULT_CONFERENCE_FILTERS: ConferenceFilterState = {
   subjects: [],
   newOnly: false,
   savedOnly: false,
-  trustTier: "any",
   rankedOnly: false,
   rankSystems: [],
 };
@@ -592,9 +585,8 @@ export function filterAndSortConferences(
     )
       return false;
 
-    // Ranking facet (plan D2/D3): trust tier is a straight equality match;
-    // "ranked only" and the rank-system multi-select both key off rank_badges.
-    if (f.trustTier !== "any" && conf.trust_tier !== f.trustTier) return false;
+    // Ranking facet (plan D2): "ranked only" and the rank-system
+    // multi-select both key off rank_badges.
     if (f.rankedOnly && conf.rank_badges.length === 0) return false;
     if (
       f.rankSystems.length > 0 &&
@@ -633,7 +625,6 @@ export function hasActiveConferenceFilters(f: ConferenceFilterState): boolean {
     f.subjects.length > 0 ||
     f.newOnly ||
     f.savedOnly ||
-    f.trustTier !== "any" ||
     f.rankedOnly ||
     f.rankSystems.length > 0
   );
@@ -805,7 +796,6 @@ export function ConferenceFilters({
     filters.subjects.length > 0,
     filters.newOnly,
     filters.savedOnly,
-    filters.trustTier !== "any",
     filters.rankedOnly,
     filters.rankSystems.length > 0,
   ].filter(Boolean).length;
@@ -919,29 +909,15 @@ export function ConferenceFilters({
             />
           </FilterGroup>
 
-          {/* Trust tier is the always-present signal (plan D3: every series
-              has one); rank badges only cover ~25% of series (plan D2), so
-              "ranked only" and the per-system picks are their own controls
-              underneath rather than folded into the tier segmented control. */}
+          {/* Rank badges only cover ~25% of series (plan D2), so "ranked
+              only" and the per-system picks sit together as their own
+              group rather than being implied by a always-present control. */}
           <FilterGroup label="Ranking">
-            <Segmented
-              ariaLabel="Filter by trust tier"
-              value={filters.trustTier}
-              onChange={(trustTier) => patch({ trustTier })}
-              options={[
-                { value: "any", label: "Any" },
-                { value: "A", label: "Tier A" },
-                { value: "B", label: "Tier B" },
-                { value: "unassigned", label: "Not yet placed" },
-              ]}
+            <CheckRow
+              label="Has a rank badge (CCF / CORE / THCPL)"
+              checked={filters.rankedOnly}
+              onChange={() => patch({ rankedOnly: !filters.rankedOnly })}
             />
-            <div className="mt-1.5">
-              <CheckRow
-                label="Has a rank badge (CCF / CORE / THCPL)"
-                checked={filters.rankedOnly}
-                onChange={() => patch({ rankedOnly: !filters.rankedOnly })}
-              />
-            </div>
             {options.rankSystems.length > 0 ? (
               <div className="mt-1.5">
                 {options.rankSystems.map((system) => (

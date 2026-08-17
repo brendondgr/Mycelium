@@ -539,7 +539,6 @@ def test_rank_badges_flatten_and_exclude_unranked():
     series = ConferenceSeries(
         series_key="conf/aaai",
         acronym="AAAI",
-        trust_tier="A",
         rankings={
             "ccf": {"rank": "A", "edition": ""},
             "core": {"rank": "A*", "edition": ""},
@@ -565,7 +564,6 @@ def test_n_is_excluded_from_badges_but_kept_in_raw_rankings():
     series = ConferenceSeries(
         series_key="conf/accv",
         acronym="ACCV",
-        trust_tier="A",
         rankings={
             "ccf": {"rank": "C", "edition": ""},
             "core": {"rank": "B", "edition": ""},
@@ -587,7 +585,7 @@ def test_unresolved_series_gets_safe_defaults_not_a_crash():
 
     item = map_conference(instance, series=None, now=NOW)
 
-    assert item["metadata"]["trust_tier"] == "unassigned"
+    assert "trust_tier" not in item["metadata"]
     assert item["metadata"]["rank_badges"] == []
     assert item["metadata"]["indexed_years"] == 0
     assert item["metadata"]["dblp_found"] is False

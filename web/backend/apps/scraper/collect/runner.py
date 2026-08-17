@@ -626,7 +626,7 @@ def _normalize_domain(context: RunContext, data: DomainData) -> None:
 
 
 def _resolve_domain(context: RunContext, data: DomainData) -> None:
-    """Stage 1.4, conferences only: registry join, series keys, trust tiers.
+    """Stage 1.4, conferences only: registry join, series keys, red flags.
 
     Not one of the five named stages, and deliberately not silent either. Dedupe
     keys on ``series_key``, which does not exist until this runs, so skipping it
@@ -639,10 +639,10 @@ def _resolve_domain(context: RunContext, data: DomainData) -> None:
 
     if not RegistryCache(data.pipeline.config.registry_dir).available:
         # Without the cache every series resolves to nothing, which is not an
-        # error but does silently cost the whole tier-A signal. Say so.
+        # error but does silently cost every rank badge. Say so.
         console.warn(
             f"no registry cache under {data.pipeline.config.registry_dir} — every series "
-            "will be unresolved and no venue can reach tier A. Build it with: "
+            "will be unresolved and no venue can carry a rank badge. Build it with: "
             "python -m apps.scraper.collect.conferences registry"
         )
 
@@ -945,14 +945,11 @@ def _persist_conferences(context: RunContext, data: DomainData) -> dict[str, Any
         )
 
         # Nothing is ever deleted here. Past instances are the longevity signal
-        # the trust tier reads, and next year's deadline is predicted from them.
+        # the registry join reads, and next year's deadline is predicted from them.
         deactivated = store.mark_inactive(now)
-        quarantined = store.quarantined_count()
         console.info(
             f"inactive  {deactivated:,} instances flipped to inactive — retained, never deleted"
         )
-        if quarantined:
-            console.info(f"tier C    {quarantined:,} instances withheld from default output, counted")
 
         after = _existing_keys(store.conn, "instances", "instance_key")
         new_keys = after - before
@@ -972,7 +969,7 @@ def _persist_conferences(context: RunContext, data: DomainData) -> dict[str, Any
     return {
         "series_inserted": series_stats.inserted, "series_updated": series_stats.updated,
         "inserted": stats.inserted, "updated": stats.updated, "unchanged": stats.unchanged,
-        "extensions": stats.extensions, "deactivated": deactivated, "quarantined": quarantined,
+        "extensions": stats.extensions, "deactivated": deactivated,
         "new_items": len(new_keys), "store_size": len(after),
     }
 

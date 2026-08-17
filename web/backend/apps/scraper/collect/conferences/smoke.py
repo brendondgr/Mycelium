@@ -61,8 +61,6 @@ def run_checklist(
         instances = store.all_instances(with_raw=False)
         series = {s.series_key: s for s in store.all_series()}
         by_source = store.count_by_source()
-        by_tier = store.count_by_tier()
-        quarantined = store.quarantined_count()
         last = store.last_run()
         outages = (
             {row["source"]: row["message"] for row in store.errors_for(last["run_id"])}
@@ -78,8 +76,6 @@ def run_checklist(
         _tracks_have_a_parent(instances),
         _cross_source_record_merged(instances),
         _acronym_collisions_stay_separate(series),
-        _every_series_has_a_tier(series, by_tier),
-        _tier_c_counted_not_dropped(by_tier, quarantined),
         _past_instances_inactive_but_retrievable(instances, now),
         _extensions_update_in_place(instances),
         _estimated_deadlines_distinguishable(instances),
@@ -195,25 +191,6 @@ def _acronym_collisions_stay_separate(series) -> Check:
     )
 
 
-def _every_series_has_a_tier(series, by_tier) -> Check:
-    name = "Every series has a trust tier; none reaches the surface without one"
-    if not series:
-        return Check(name, SKIP, "no series stored")
-    unassigned = [s.series_key for s in series.values() if s.trust_tier == "unassigned"]
-    if unassigned:
-        return Check(name, FAIL, f"{len(unassigned)} unassigned, e.g. {unassigned[0]}")
-    return Check(name, PASS, " ".join(f"{k}={v}" for k, v in sorted(by_tier.items())))
-
-
-def _tier_c_counted_not_dropped(by_tier, quarantined) -> Check:
-    name = "Tier C records are excluded from default output and counted, not dropped"
-    if not by_tier.get("C"):
-        return Check(name, SKIP, "no tier C series in the corpus")
-    return Check(
-        name, PASS, f"{by_tier['C']} quarantined series, {quarantined} instances withheld"
-    )
-
-
 def _past_instances_inactive_but_retrievable(instances, now) -> Check:
     name = "A past instance is inactive and not surfaced, but still retrievable"
     past = [i for i in instances if not i.active]
@@ -305,7 +282,7 @@ def _idempotent(pipeline: ConferencePipeline, now: datetime) -> Check:
     series, instances = pipeline.normalize(series, instances)
     series, instances, _ = pipeline.resolve(series, instances)
     series, instances, _ = pipeline.deduplicate(series, instances)
-    series_stats, stats, _, _ = pipeline.persist(series, instances, now=now)
+    series_stats, stats, _ = pipeline.persist(series, instances, now=now)
 
     if stats.inserted or stats.updated or series_stats.inserted or series_stats.updated:
         return Check(

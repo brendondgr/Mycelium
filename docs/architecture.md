@@ -85,7 +85,7 @@ Playwright the container does not carry. The grants/conferences collector is pur
 HTTP and runs in-container like everything else. A third stage, the weekly dblp
 venue-registry refresh (`refresh_dblp_registry`), is also in-container but sits on
 its own slower cadence and **must precede** the conference collection, because the
-collector's resolve stage joins against that cache and derives trust tiers from it.
+collector's resolve stage joins against that cache for venue identity and ranks.
 
 ## Backend app boundaries
 
@@ -180,8 +180,8 @@ bounded attempt is **refused** — it falls back to truncated raw text so it sta
 retrievable, shows no AI summary, and records the fact in
 `metadata["search_text_source"]` (`extracted` | `raw`), so a degraded run is
 queryable and re-runnable rather than invisible. Ordering logic itself is
-untouched, and the conference rank badges (CCF / CORE / THCPL) and trust tiers are
-**display only** — they never enter relevance, thresholds, or the verdict. The
+untouched, and the conference rank badges (CCF / CORE / THCPL) are **display
+only** — they never enter relevance, thresholds, or the verdict. The
 embedding basis moving is nonetheless a relevance change, and per
 `docs/skills/global.md` any claim about its effect is an experiment under
 `docs/research/experiments/`, not an assertion here.

@@ -32,7 +32,6 @@ from .search import SearchFilters
 from .serializers import (
     RANK_EXPLANATIONS,
     RANK_SYSTEM_INFO,
-    TRUST_TIER_EXPLANATIONS,
     ConferenceSerializer,
     FellowshipSerializer,
     GrantSerializer,
@@ -544,15 +543,15 @@ class ConferencesView(_OpportunityFeedView):
 
 
 class RankingReferenceView(APIView):
-    """Static hover copy for conference rank badges and trust tiers (plan Phase 9).
+    """Static hover copy for conference rank badges (plan Phase 9).
 
-    A conference card carries only which rank/tier it has (``rank_badges`` /
-    ``trust_tier`` on :class:`~apps.content.serializers.ConferenceSerializer`) —
-    small, per-item facts. What that rank or tier *means* is identical prose for
-    every card that shares it, so it lives here instead of being repeated on
-    every row of a feed that can carry dozens of conferences. Authenticated (like
-    the rest of ``/api/``) but otherwise static: no target, no personalization,
-    safe to fetch once and cache.
+    A conference card carries only which rank it has (``rank_badges`` on
+    :class:`~apps.content.serializers.ConferenceSerializer`) — small, per-item
+    facts. What that rank *means* is identical prose for every card that shares
+    it, so it lives here instead of being repeated on every row of a feed that
+    can carry dozens of conferences. Authenticated (like the rest of ``/api/``)
+    but otherwise static: no target, no personalization, safe to fetch once and
+    cache.
     """
 
     permission_classes = [IsAuthenticated]
@@ -562,7 +561,6 @@ class RankingReferenceView(APIView):
             {
                 "rank_systems": RANK_SYSTEM_INFO,
                 "rank_explanations": RANK_EXPLANATIONS,
-                "trust_tiers": TRUST_TIER_EXPLANATIONS,
             }
         )
 

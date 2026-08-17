@@ -317,11 +317,6 @@ def _showcase_item(
         # and both default empty.
         "rankings": meta.get("rankings") or {},
         "rank_badges": meta.get("rank_badges") or [],
-        # "A" / "B" / "C" / "unassigned" for a conference; "" where the concept
-        # does not apply at all. B is not a demotion (plan D3) — it is where
-        # every non-CS venue lives — so an empty string here means "not
-        # applicable", never "worse than B".
-        "trust_tier": meta.get("trust_tier", ""),
         # Per-record attribution (plan D5 / D9): US federal grants are public
         # domain by statute, the EU portal carries its own reuse decision, and
         # every conference source states its own licence on the record itself.

@@ -90,9 +90,6 @@ class ReportItem:
     #: rankings are visual only, never a relevance signal).
     rankings: dict = field(default_factory=dict)
     rank_badges: list[dict] = field(default_factory=list)
-    #: "A" / "B" / "C" / "unassigned" for a conference; "" where the concept does
-    #: not apply (papers, grants, fellowships) — plan D3.
-    trust_tier: str = ""
     #: Per-source attribution string (plan D9's licence/attribution requirement).
     license: str = ""
     #: The item's raw provenance id (``"grants:nsf"``, ``"conf:ccf_deadlines"``),
@@ -257,7 +254,6 @@ def _item_from_score(score: RelevanceScore, category: str, today: str) -> Report
         deadlines=flat["deadlines"],
         rankings=flat["rankings"],
         rank_badges=flat["rank_badges"],
-        trust_tier=flat["trust_tier"],
         license=flat["license"],
         source_name=flat["source_name"],
     )

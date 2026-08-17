@@ -51,13 +51,11 @@ CREATE TABLE IF NOT EXISTS series (
     first_year           INTEGER,
     last_year            INTEGER,
     dblp_candidates      TEXT,
-    trust_tier           TEXT NOT NULL DEFAULT 'unassigned',
     red_flags            TEXT,
     contributing_sources TEXT,
     license              TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_series_acronym ON series(acronym);
-CREATE INDEX IF NOT EXISTS idx_series_tier    ON series(trust_tier);
 CREATE INDEX IF NOT EXISTS idx_series_dblp    ON series(dblp_key);
 
 CREATE TABLE IF NOT EXISTS instances (
@@ -437,25 +435,6 @@ class ConferenceStore:
             "SELECT source, COUNT(*) AS n FROM instances GROUP BY source"
         ).fetchall()
         return {row["source"]: row["n"] for row in rows}
-
-    def count_by_tier(self) -> dict[str, int]:
-        rows = self.conn.execute(
-            "SELECT trust_tier, COUNT(*) AS n FROM series GROUP BY trust_tier"
-        ).fetchall()
-        return {row["trust_tier"]: row["n"] for row in rows}
-
-    def quarantined_count(self) -> int:
-        """Tier C instances withheld from default output.
-
-        Reported rather than silently dropped — a user is entitled to know that
-        records were withheld and how many.
-        """
-        return int(
-            self.conn.execute(
-                "SELECT COUNT(*) FROM instances i JOIN series s USING (series_key)"
-                " WHERE s.trust_tier = 'C'"
-            ).fetchone()[0]
-        )
 
     # -- enrichment -------------------------------------------------------
 

@@ -360,15 +360,6 @@ export type DailyBriefingSummary = {
  */
 export type ConferenceRanking = { system: string; rank: string; edition: string };
 
-/**
- * Trust tier — the always-present quality signal underneath the (~25%-
- * coverage) rank badges above (plan D3). "unassigned" is the documented
- * "nothing known yet" default for an instance whose resolve stage never
- * matched it to a series — a display state ("no signal yet"), never rendered
- * as a poor tier.
- */
-export type TrustTier = "A" | "B" | "unassigned";
-
 /** Per-source attribution: who produced this record, and where to read it there. */
 export type SourceLink = { source: string; url: string };
 
@@ -530,9 +521,6 @@ export type ConferenceOpportunity = OpportunityBase & {
    * card's badge row renders (plan D2). `edition` is always "" — see
    * `ConferenceRanking`. */
   rank_badges: ConferenceRanking[];
-  /** "A" | "B" | "unassigned" (plan D3) — always present once a series has
-   * resolved; the card's always-on trust badge reads this directly. */
-  trust_tier: TrustTier;
   /** Predatory/quality flags on the series (e.g. "fees_prominent"). */
   red_flags: string[];
   /** Per-instance quality caveats (e.g. a date that looks like an abstract
@@ -550,23 +538,19 @@ export type OpportunityFeed<T> = {
 };
 
 /**
- * Static hover copy for conference rank badges and trust tiers (from
+ * Static hover copy for conference rank badges (from
  * `GET /api/opportunities/ranking-reference/`). A conference card carries
- * only which rank/tier it has (`rank_badges` / `trust_tier`); what that rank
- * or tier *means* is identical prose for every card that shares it, so it is
- * fetched once here rather than duplicated per row of a feed that can carry
- * dozens of conferences. Authenticated but otherwise static — no target, no
- * personalization — safe to cache indefinitely on the client.
+ * only which rank it has (`rank_badges`); what that rank *means* is identical
+ * prose for every card that shares it, so it is fetched once here rather than
+ * duplicated per row of a feed that can carry dozens of conferences.
+ * Authenticated but otherwise static — no target, no personalization — safe
+ * to cache indefinitely on the client.
  */
 export type RankingReference = {
   rank_systems: Record<string, { label: string; about: string }>;
   /** `{system: {rank: explanation}}` — "N" is never a key here: a badge is a
    * claim of rank, and "not ranked" is not one. */
   rank_explanations: Record<string, Record<string, string>>;
-  /** `{"A": explanation, "B": explanation}` — only the tiers the live corpus
-   * carries. "unassigned" is a frontend display state, not a real tier, and
-   * is never a key here — its copy is authored on the client. */
-  trust_tiers: Record<string, string>;
 };
 
 /** A member who personally matched a shared item (the "who's interested" layer). */

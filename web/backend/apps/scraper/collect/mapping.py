@@ -573,7 +573,6 @@ def map_conference(
         "deadlines_structured": [d.to_json() for d in instance.deadlines],
         "rankings": rankings,
         "rank_badges": _rank_badges(rankings),
-        "trust_tier": series.trust_tier if series else "unassigned",
         "red_flags": list(series.red_flags) if series else [],
         "quality_warnings": list(instance.quality_warnings),
         "series_key": instance.series_key,

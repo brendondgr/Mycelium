@@ -62,7 +62,6 @@ def _conference(cid, title, *, deadline="2026-12-01"):
                 {"system": "ccf", "rank": "A", "edition": ""},
                 {"system": "core", "rank": "A*", "edition": ""},
             ],
-            "trust_tier": "A",
             "red_flags": [],
             "quality_warnings": ["only a notification date is on record"],
             "deadlines_structured": [
@@ -362,7 +361,7 @@ def test_grants_feed_posted_falls_back_without_published_on(client: APIClient):
 
 
 @pytest.mark.django_db
-def test_conferences_feed_exposes_ranking_and_trust_fields(client: APIClient):
+def test_conferences_feed_exposes_ranking_fields(client: APIClient):
     user = User.objects.create_user("conf_prov", password="x")
     client.force_authenticate(user)
     item = _conference("c-prov", "ACM Conference on Management of Data")
@@ -371,7 +370,7 @@ def test_conferences_feed_exposes_ranking_and_trust_fields(client: APIClient):
     data = client.get("/api/opportunities/conferences/").data["items"][0]
     assert data["acronym"] == "SIGMOD"
     assert data["year_label"] == "2026"
-    assert data["trust_tier"] == "A"
+    assert "trust_tier" not in data
     assert data["rank_badges"] == [
         {"system": "ccf", "rank": "A", "edition": ""},
         {"system": "core", "rank": "A*", "edition": ""},
@@ -387,10 +386,10 @@ def test_conferences_feed_exposes_ranking_and_trust_fields(client: APIClient):
 
 
 @pytest.mark.django_db
-def test_conferences_feed_defaults_trust_tier_when_unresolved(client: APIClient):
-    """A series the resolve stage never matched carries no trust tier and no
-    rank badges — the card must read "no signal", never a silently-invented
-    "B", and attribution degrades to an empty list rather than guessing."""
+def test_conferences_feed_degrades_safely_when_series_unresolved(client: APIClient):
+    """A series the resolve stage never matched carries no rank badges — the
+    card must simply show none, and attribution degrades to an empty list
+    rather than guessing."""
     user = User.objects.create_user("conf_unres", password="x")
     client.force_authenticate(user)
     item = ContentItem.objects.create(
@@ -403,16 +402,14 @@ def test_conferences_feed_defaults_trust_tier_when_unresolved(client: APIClient)
     _score(user, item, rank=1, run_at="2026-07-05T00:00:00+00:00", match=60)
 
     data = client.get("/api/opportunities/conferences/").data["items"][0]
-    assert data["trust_tier"] == "unassigned"
     assert data["rank_badges"] == []
     assert data["source_links"] == []
 
 
 @pytest.mark.django_db
-def test_ranking_reference_endpoint_covers_every_system_and_tier(client: APIClient):
+def test_ranking_reference_endpoint_covers_every_system(client: APIClient):
     """The static hover-copy table (plan Phase 9): every rank the live corpus
-    can carry has an explanation, and the B tier states plainly it is not a
-    demotion."""
+    can carry has an explanation."""
     user = User.objects.create_user("ref", password="x")
     client.force_authenticate(user)
 
@@ -422,8 +419,7 @@ def test_ranking_reference_endpoint_covers_every_system_and_tier(client: APIClie
     assert set(resp.data["rank_explanations"]["ccf"]) == {"A", "B", "C"}
     assert set(resp.data["rank_explanations"]["core"]) == {"A*", "A", "B", "C"}
     assert set(resp.data["rank_explanations"]["thcpl"]) == {"A", "B"}
-    assert set(resp.data["trust_tiers"]) == {"A", "B"}
-    assert "not a demotion" in resp.data["trust_tiers"]["B"].lower()
+    assert "trust_tiers" not in resp.data
 
 
 @pytest.mark.django_db
