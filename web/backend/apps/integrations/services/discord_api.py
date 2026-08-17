@@ -116,6 +116,36 @@ def get_guild_channels(guild_id: str) -> list[dict]:
     return resp.json.get("_list", [])
 
 
+def get_guild_roles(guild_id: str) -> list[dict]:
+    """The guild's roles, for the alert mention picker."""
+    resp = _request("GET", f"/guilds/{guild_id}/roles", auth=("Bot", _bot_token()))
+    if resp.status != 200:
+        raise DiscordHTTPError(resp.status, _err_code(resp.json))
+    return resp.json.get("_list", [])
+
+
+def get_guild_members(guild_id: str, *, limit: int = 200) -> list[dict]:
+    """The guild's members, for the alert mention picker.
+
+    Needs the **Server Members** privileged intent to be enabled for the
+    application; without it Discord answers 403 and the caller degrades to an
+    empty list with a reason rather than pretending the server has no members.
+
+    ``limit`` is Discord's own page size (max 1000). A single page is taken
+    deliberately: this feeds a picker a human scrolls, and paginating a whole
+    large guild into one API response would trade a lot of latency for names
+    nobody is going to scroll to.
+    """
+    resp = _request(
+        "GET",
+        f"/guilds/{guild_id}/members?limit={int(limit)}",
+        auth=("Bot", _bot_token()),
+    )
+    if resp.status != 200:
+        raise DiscordHTTPError(resp.status, _err_code(resp.json))
+    return resp.json.get("_list", [])
+
+
 def open_dm_raw(recipient_id: str) -> RawResponse:
     return _request(
         "POST",
@@ -154,13 +184,26 @@ def create_message(
     allowed_mentions: dict | None = None,
     nonce: str = "",
 ):
-    """Post a message. ``allowed_mentions.parse`` is **always forced to ``[]``**.
+    """Post a message. ``parse`` is ``[]`` unless a human explicitly asked otherwise.
 
-    ``parse: []`` is non-negotiable and structural: reminder bodies interpolate
-    *scraped third-party text*, and a title containing ``@everyone`` must never ping
-    the server from a trusted bot. Callers may pass explicit ``users`` / ``roles`` id
-    lists to ping specific members (``<@id>`` in the body then resolves), but the
-    parse categories stay empty regardless of what is passed.
+    ``parse: []`` is the default and it is structural, not stylistic: reminder
+    bodies interpolate *scraped third-party text*, and a conference title
+    containing ``@everyone`` must never ping a server from a trusted bot.
+    Callers pass explicit ``users`` / ``roles`` id lists to ping specific
+    members (``<@id>`` in the body then resolves); ids cannot be forged out of
+    scraped text, so those never widen what a scrape can do.
+
+    ``@everyone`` is the one thing that has no id, so it can only be expressed
+    as a parse category. It is therefore gated on an explicit
+    ``allowed_mentions["everyone"]`` from the caller, which
+    :mod:`apps.content.reminders_discord` sets only when a lab manager chose it
+    for that alert. Scraped text stays escaped either way
+    (``escape_mentions``), so even with the category enabled the ping can only
+    come from the operator's own choice and never from ingested content.
+
+    The bot additionally needs the **Mention Everyone** permission in the guild;
+    without it Discord accepts the message and simply does not ping, which is
+    the right failure — the reminder still arrives.
 
     ``nonce`` opts into Discord-side deduplication — see :func:`_nonce_fields`.
     """
@@ -170,6 +213,8 @@ def create_message(
             mentions["users"] = [str(u) for u in allowed_mentions["users"]]
         if allowed_mentions.get("roles"):
             mentions["roles"] = [str(r) for r in allowed_mentions["roles"]]
+        if allowed_mentions.get("everyone"):
+            mentions["parse"] = ["everyone"]
     body: dict = {"allowed_mentions": mentions, **_nonce_fields(nonce)}
     if content:
         body["content"] = content
@@ -196,8 +241,11 @@ def create_message_with_attachment(
 ):
     """Post a message with a single file attachment (``multipart/form-data``).
 
-    Same ``allowed_mentions.parse == []`` guarantee as :func:`create_message`: the
-    message body may interpolate scraped titles, so the mention parse categories stay
+    ``parse`` is **unconditionally** ``[]`` here, unlike :func:`create_message`,
+    which now takes an explicit ``everyone`` opt-in. This variant carries the
+    daily report and lab digest PDFs — scheduled, unattended posts nobody chose
+    per-send — and there is no product reason for one to ping a whole server.
+    The body may interpolate scraped titles, so the mention parse categories stay
     empty regardless of what is passed. The file is sent as ``files[0]`` and declared
     in ``attachments[0]`` (id 0), the pairing Discord requires. Used for the daily
     "Mylo Report" PDF DM.

@@ -37,6 +37,7 @@ import {
   fetchLabRecommendations,
   fetchLabWatch,
   fetchMemberSuggestions,
+  fetchLabMentionTargets,
   fetchLabReminderChannels,
   fetchMyInvitations,
   fetchMyLabs,
@@ -447,6 +448,16 @@ export function useLabReminderChannels(slug?: string) {
   return useQuery({
     queryKey: ["portal", "lab-reminder-channels", slug],
     queryFn: () => fetchLabReminderChannels(slug!),
+    enabled: Boolean(slug),
+    staleTime: 60_000,
+  });
+}
+
+/** Who a lab alert may tag. Only fetched in lab scope, for a managed lab. */
+export function useLabMentionTargets(slug?: string) {
+  return useQuery({
+    queryKey: ["portal", "lab-mention-targets", slug],
+    queryFn: () => fetchLabMentionTargets(slug!),
     enabled: Boolean(slug),
     staleTime: 60_000,
   });

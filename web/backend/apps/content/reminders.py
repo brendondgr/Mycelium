@@ -251,12 +251,7 @@ def update_subscription(
         )
 
     if mentions is not None:
-        keep = {member.id for member in mentions}
-        subscription.mentions.exclude(member_id__in=keep).delete()
-        for member in mentions:
-            ReminderMention.objects.get_or_create(
-                subscription=subscription, member=member
-            )
+        _set_mentions(subscription, mentions)
 
     if channel_id_override is not None:
         subscription.channel_id_override = channel_id_override
@@ -291,6 +286,42 @@ def set_state(subscription: ReminderSubscription, state: str) -> bool:
     subscription.state = state
     subscription.save(update_fields=["state", "updated_at"])
     return True
+
+
+def _as_mention_specs(mentions) -> list[dict]:
+    """Normalize the two accepted mention shapes to one.
+
+    Callers predating the role/@everyone work pass ``User`` objects directly
+    (``/mylo``, backfills, a good few tests); the API passes dicts describing a
+    user, a role, or @everyone. Accepting both here rather than rewriting every
+    caller keeps the change to what it is about.
+    """
+    specs: list[dict] = []
+    for entry in mentions or ():
+        if isinstance(entry, dict):
+            specs.append(entry)
+        else:
+            specs.append({"kind": ReminderMention.Kind.USER, "member": entry})
+    return specs
+
+
+def _set_mentions(subscription: ReminderSubscription, mentions) -> None:
+    """Replace a subscription's mention targets with exactly the ones given.
+
+    A full replace rather than a merge: the composer always sends the complete
+    set, and "remove this person from the alert" has to be expressible.
+    """
+    specs = _as_mention_specs(mentions)
+    subscription.mentions.all().delete()
+    for spec in specs:
+        kind = spec.get("kind") or ReminderMention.Kind.USER
+        ReminderMention.objects.get_or_create(
+            subscription=subscription,
+            kind=kind,
+            member=spec.get("member"),
+            discord_id=str(spec.get("discord_id") or ""),
+            defaults={"display_name": str(spec.get("display_name") or "")},
+        )
 
 
 def _validated_offsets(offsets: list[tuple[int, str]]) -> list[tuple[int, str]]:
@@ -406,8 +437,13 @@ def create_or_update_subscription(
             created_by, target_lab
         ):
             raise ReminderError("only a lab PI or admin can create a lab reminder")
-        for member in mentions:
-            if not user_has_lab_access(member, target_lab):
+        for spec in _as_mention_specs(mentions):
+            # A Mycelium-user target still has to be a member of this lab. A
+            # raw-snowflake target was already checked against the lab's own
+            # guild at the API boundary, which is the equivalent guard for
+            # someone who has no Mycelium account to check membership of.
+            member = spec.get("member")
+            if member is not None and not user_has_lab_access(member, target_lab):
                 raise ReminderError("mention target must be a lab member")
     if created_by is not None:
         access = (
@@ -479,8 +515,7 @@ def create_or_update_subscription(
         ReminderOffset(subscription=subscription, amount=amount, unit=unit)
         for amount, unit in unique_offsets
     )
-    for member in mentions:
-        ReminderMention.objects.get_or_create(subscription=subscription, member=member)
+    _set_mentions(subscription, mentions)
 
     seal_backdated_offsets(subscription, today or timezone.now().date())
     return subscription, True

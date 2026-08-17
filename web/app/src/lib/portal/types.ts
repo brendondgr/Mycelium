@@ -868,7 +868,7 @@ export type Reminder = {
   timezone: string;
   /** Whether the caller may edit this one — owner, or a lab PI/admin. */
   can_manage: boolean;
-  mentions: { username: string; name: string }[];
+  mentions: { kind: string; id: string; username: string; name: string }[];
   created_at: string;
   updated_at: string;
 };
@@ -912,6 +912,28 @@ export type ReminderAccess = {
   detail: string;
 };
 
+/** One thing a lab alert can @-mention in the lab's Discord server. */
+export type MentionTarget =
+  | { kind: "everyone" }
+  | { kind: "role"; id: string; name: string }
+  /** A guild member with no Mycelium account — identified by snowflake. */
+  | { kind: "user"; id: string; name: string }
+  /** A Mycelium user who is a member of this lab. */
+  | { kind: "user"; username: string; name: string };
+
+/** Who a lab alert may tag (`GET /api/reminders/lab-mention-targets/`).
+ *
+ * `detail` explains an empty roster — an unlinked server, or the Server Members
+ * intent not being enabled — so the picker can say why rather than looking
+ * broken. Always HTTP 200: a Discord hiccup must not stop someone setting an
+ * alert that tags nobody. */
+export type LabMentionTargets = {
+  roles: { id: string; name: string }[];
+  members: { id: string; name: string }[];
+  everyone_allowed: boolean;
+  detail: string;
+};
+
 /** The body for creating a reminder (POST `/api/reminders/`). */
 export type ReminderInput = {
   content_id: string;
@@ -922,7 +944,7 @@ export type ReminderInput = {
   scope?: "personal" | "lab";
   lab_slug?: string;
   offsets?: ReminderOffset[];
-  mentions?: string[];
+  mentions?: MentionTarget[];
   channel_id_override?: string;
 };
 

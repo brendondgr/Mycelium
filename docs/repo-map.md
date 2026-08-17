@@ -44,7 +44,7 @@ Paths are relative to the repository root.
 | Overview (personal + lab) | `web/app/src/components/portal/sections/{overview-panels,mylo-report-card,mylo-found-card,lab-overview-section,lab-onboarding}.tsx`, `portal/primitives/report-summary-table.tsx` |
 | Feeds: papers / grants / fellowships / conferences | `web/app/src/components/portal/sections/{research-papers-section,opportunities-section,fellowships-section,conferences-section}.tsx` |
 | Feed filter rails | `web/app/src/components/portal/sections/{grant-filters,fellowship-filters,conference-filters,saves-filters}.tsx` |
-| Saves & reminders | `web/app/src/components/portal/sections/{saves-section,reminders-section}.tsx`, `portal/{reminder-composer,reminder-editor,reminder-offsets-field}.tsx` |
+| Saves & reminders | `web/app/src/components/portal/sections/{saves-section,reminders-section}.tsx`, `portal/{reminder-composer,reminder-editor,reminder-offsets-field,mention-picker}.tsx` |
 | Save button & scope menu | `web/app/src/components/portal/sections/opportunity-bits.tsx` |
 | Search UI | `web/app/src/components/portal/global-search.tsx`, `portal/sections/{search-section,search-result-card}.tsx` |
 | Projects UI | `web/app/src/components/portal/sections/{projects-list-section,project-detail-section}.tsx` |

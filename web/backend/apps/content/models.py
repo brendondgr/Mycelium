@@ -1081,7 +1081,30 @@ class ReminderOffset(models.Model):
 
 
 class ReminderMention(models.Model):
-    """A lab member to @-mention when a lab reminder fires (user mentions only)."""
+    """Someone (or everyone) to @-mention when a lab reminder fires.
+
+    Originally this was strictly "a Mycelium user who is a member of this lab",
+    which is the right guard against Mylo being used to ping arbitrary people —
+    but too narrow for the actual job. A lab's Discord contains collaborators,
+    students and staff who have no Mycelium account, and the deadline that
+    matters to them is the one the alert is about.
+
+    So a mention is now one of three kinds, and the guard moves rather than
+    disappearing: a ``USER`` or ``ROLE`` mention carries a raw ``discord_id``
+    which must belong to **that lab's own guild**, checked before it is stored
+    (:mod:`apps.content.reminders_views`), so the blast radius is still the one
+    server the alert already posts to. ``EVERYONE`` carries no id at all.
+
+    ``member`` stays, nullable, for a target that *is* a linked Mycelium user:
+    that is the only case where the display name can be resolved from Mycelium
+    itself and where "this person hasn't linked Discord yet" is answerable, which
+    is what ``has_unlinked_targets`` reports.
+    """
+
+    class Kind(models.TextChoices):
+        USER = "user", "User"
+        ROLE = "role", "Role"
+        EVERYONE = "everyone", "Everyone"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     subscription = models.ForeignKey(
@@ -1089,22 +1112,63 @@ class ReminderMention(models.Model):
         on_delete=models.CASCADE,
         related_name="mentions",
     )
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.USER)
     member = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name="reminder_mentions",
+        help_text="Set only when the target is a linked Mycelium user.",
+    )
+    discord_id = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Guild member or role snowflake; empty for an @everyone mention.",
+    )
+    display_name = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="What to show in the portal for a target with no Mycelium user.",
     )
 
     class Meta:
         constraints = [
+            # Unchanged for the Mycelium-user case, and still partial so the two
+            # id-less EVERYONE rows a subscription could otherwise collect are
+            # not what this key is about.
             models.UniqueConstraint(
                 fields=["subscription", "member"],
+                condition=Q(member__isnull=False),
                 name="content_reminder_mention_unique",
+            ),
+            models.UniqueConstraint(
+                fields=["subscription", "kind", "discord_id"],
+                condition=~Q(discord_id=""),
+                name="content_reminder_mention_unique_discord",
+            ),
+            # At most one @everyone per subscription — a second would simply
+            # double the ping.
+            models.UniqueConstraint(
+                fields=["subscription"],
+                condition=Q(kind="everyone"),
+                name="content_reminder_mention_single_everyone",
             ),
         ]
 
+    @property
+    def label(self) -> str:
+        """What a human calls this target, whichever kind it is."""
+        if self.kind == self.Kind.EVERYONE:
+            return "@everyone"
+        if self.member_id is not None:
+            return self.member.get_full_name() or self.member.get_username()
+        return self.display_name or self.discord_id
+
     def __str__(self) -> str:
-        return f"mention {self.member} on {self.subscription_id}"
+        return f"mention {self.label} on {self.subscription_id}"
 
 
 class ReminderFire(models.Model):

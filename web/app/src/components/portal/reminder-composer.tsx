@@ -4,6 +4,7 @@ import * as React from "react";
 
 import Link from "next/link";
 
+import { MentionPicker } from "@/components/portal/mention-picker";
 import { Modal, ModalHeader } from "@/components/portal/primitives/modal";
 import {
   DEFAULT_OFFSETS,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/portal/hooks";
 import type {
   DeadlineOption,
+  MentionTarget,
   ReminderAccess,
   ReminderOffset,
 } from "@/lib/portal/types";
@@ -124,6 +126,8 @@ export function ReminderComposer({
     React.useState<ReminderOffset[]>(DEFAULT_OFFSETS);
   // "" = the lab default channel (whatever /setup bound). Lab scope only.
   const [channelId, setChannelId] = React.useState("");
+  // Who the lab post @-mentions. Lab scope only: a DM has nobody to tag.
+  const [mentions, setMentions] = React.useState<MentionTarget[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   const labs = useMyLabs();
@@ -170,6 +174,7 @@ export function ReminderComposer({
         lab_slug: scope === "lab" ? effectiveLabSlug : undefined,
         channel_id_override:
           scope === "lab" && channelId ? channelId : undefined,
+        mentions: scope === "lab" && mentions.length > 0 ? mentions : undefined,
         offsets,
       },
       {
@@ -283,6 +288,16 @@ export function ReminderComposer({
               <ReminderGate access={access.data} onClose={onClose} />
             ) : (
               <>
+                {scope === "lab" && effectiveLabSlug ? (
+                  <Field label="Tag">
+                    <MentionPicker
+                      labSlug={effectiveLabSlug}
+                      value={mentions}
+                      onChange={setMentions}
+                    />
+                  </Field>
+                ) : null}
+
                 {scope === "lab" ? (
                   <ChannelField
                     channels={channels.data?.channels ?? []}

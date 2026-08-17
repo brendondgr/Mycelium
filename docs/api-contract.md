@@ -887,6 +887,32 @@ the matching `addressable_deadlines` entry. Omitting it means `""` — the
 single-round key every grant, fellowship, and conference event row carries — so
 a client that never sends it keeps working unchanged.
 
+`mentions` (lab scope only) is who the post @-mentions:
+`[{ "kind": "user" | "role" | "everyone", "id"?, "username"?, "name"? }]`. A
+bare list of Mycelium usernames is still accepted and still means "these lab
+members". Every raw `id` is validated against **that lab's own guild** before it
+is stored — a role against the guild's roles, a person against its members — so
+an alert can tag a collaborator who has no Mycelium account without Mylo
+becoming a way to ping an unrelated server. An id that isn't in the guild is a
+`400`, never a silent drop: an alert that reaches fewer people than the person
+who set it believes is worse than an error.
+
+`@everyone` is the one target with no id, so it is the one that reopens
+`allowed_mentions.parse`. That happens only when a manager explicitly chose it
+for that alert; scraped title text stays escaped either way, so a conference
+called "@everyone submit now!" can never ping a server.
+
+### `GET /api/reminders/lab-mention-targets/?lab=<slug>`
+
+Who a lab alert may tag: `{ roles, members, everyone_allowed, detail }`.
+Manager-only (PI / owner / admin) — a mention reaches a whole server, so the
+roster is itself a management view. Always `200`: an unlinked guild, a Discord
+hiccup, or the **Server Members** privileged intent not being enabled all return
+empty lists with `detail` explaining which, so the picker can say why instead of
+looking broken. Bots and Discord-managed roles are excluded (pinging either
+reaches nobody), as is the `@everyone` pseudo-role, which is offered as its own
+explicit choice.
+
 **POST upserts.** A repeat request for a (target, content, deadline_kind,
 deadline_round_key) that already has a row reconfigures it and answers **200**;
 `201` is only for a genuinely new one. This is also how a cancelled reminder is

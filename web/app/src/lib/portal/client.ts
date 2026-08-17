@@ -33,6 +33,7 @@ import type {
   Project,
   ProjectInvitation,
   ProjectRecommendations,
+  LabMentionTargets,
   LabReminderChannels,
   ProfileData,
   ProjectFeed,
@@ -331,6 +332,18 @@ export async function fetchLabReminderChannels(
   return getJson<LabReminderChannels>(
     `${base}?lab=${encodeURIComponent(slug)}`,
     "Could not load the lab's channels.",
+  );
+}
+
+/** Who a lab alert may tag: the guild's roles, its members, and @everyone
+ * (manager-only). Degrades to empty lists with a reason server-side. */
+export async function fetchLabMentionTargets(
+  slug: string,
+): Promise<LabMentionTargets> {
+  const base = buildApiUrl(getPublicApiBase(), "reminders", "lab-mention-targets");
+  return getJson<LabMentionTargets>(
+    `${base}?lab=${encodeURIComponent(slug)}`,
+    "Could not load who this lab can tag.",
   );
 }
 

@@ -33,6 +33,7 @@ from .models import (
     ContentDeadline,
     ContentItem,
     LabReminderPolicy,
+    ReminderMention,
     ReminderOffset,
     ReminderSubscription,
     SavedOpportunity,
@@ -151,8 +152,23 @@ class ReminderSerializer(serializers.Serializer):
         return bool(request) and _can_manage(request.user, sub)
 
     def get_mentions(self, sub: ReminderSubscription) -> list[dict]:
+        """Every ping target, whichever of the three kinds it is.
+
+        ``username`` stays for a Mycelium-user target (an existing client reads
+        it) and is ``""`` for a role, an @everyone, or a guild member with no
+        Mycelium account — none of which has one.
+        """
         return [
-            {"username": m.member.get_username(), "name": display_name(m.member)}
+            {
+                "kind": m.kind,
+                "id": m.discord_id,
+                "username": (
+                    m.member.get_username() if m.member_id is not None else ""
+                ),
+                "name": (
+                    display_name(m.member) if m.member_id is not None else m.label
+                ),
+            }
             for m in sub.mentions.select_related("member").all()
         ]
 
@@ -211,11 +227,92 @@ def _default_offsets(lab: Lab | None) -> list[tuple[int, str]]:
     return [(o["amount"], o["unit"]) for o in raw]
 
 
-def _resolve_mentions(usernames) -> list:
-    if not usernames:
+def _resolve_mentions(raw, lab) -> list[dict]:
+    """Validate requested mention targets against the lab's own guild.
+
+    Accepts the wire shape ``[{"kind": "user"|"role"|"everyone", "id"?,
+    "name"?}]``, and — for compatibility with the original contract — a bare
+    list of Mycelium usernames, which still means "these lab members".
+
+    The guard that matters is the guild check. Mentioning by raw snowflake is
+    what makes tagging a collaborator who has no Mycelium account possible at
+    all, and it is also exactly how Mylo could be pointed at an unrelated
+    server. So every id is checked for membership of *this lab's* guild before
+    it is stored: roles against the guild's role list, users against its member
+    list. An id that is not in either is refused rather than quietly dropped —
+    silently ignoring a requested ping produces an alert that reaches fewer
+    people than the person who set it believes.
+
+    Returns plain dicts; the service turns them into ``ReminderMention`` rows.
+    """
+    if not raw:
         return []
-    users = list(User.objects.filter(username__in=[str(u) for u in usernames]))
-    return users
+
+    # The original shape: a list of Mycelium usernames meaning lab members.
+    if all(isinstance(entry, str) for entry in raw):
+        users = list(User.objects.filter(username__in=[str(u) for u in raw]))
+        return [{"kind": ReminderMention.Kind.USER, "member": u} for u in users]
+
+    kinds = ReminderMention.Kind
+    wanted = [entry for entry in raw if isinstance(entry, dict)]
+    needs_roles = any(entry.get("kind") == kinds.ROLE for entry in wanted)
+    needs_members = any(
+        entry.get("kind") == kinds.USER and entry.get("id") for entry in wanted
+    )
+
+    role_ids: set[str] = set()
+    member_names: dict[str, str] = {}
+    if (needs_roles or needs_members) and lab is not None:
+        link = discord_resolve.get_guild_link_for_lab(lab)
+        if not (link and link.guild_id):
+            raise ReminderError("This lab has no Discord server linked.")
+        if needs_roles:
+            role_ids = {
+                r["id"] for r in reminders_discord.list_guild_roles(link.guild_id)
+            }
+        if needs_members:
+            member_names = {
+                m["id"]: m["name"]
+                for m in reminders_discord.list_guild_members(link.guild_id)
+            }
+
+    out: list[dict] = []
+    for entry in wanted:
+        kind = entry.get("kind") or kinds.USER
+        if kind == kinds.EVERYONE:
+            out.append({"kind": kinds.EVERYONE})
+            continue
+        target_id = str(entry.get("id") or "")
+        if kind == kinds.ROLE:
+            if target_id not in role_ids:
+                raise ReminderError("That role isn't in this lab's Discord server.")
+            out.append(
+                {
+                    "kind": kinds.ROLE,
+                    "discord_id": target_id,
+                    "display_name": str(entry.get("name") or ""),
+                }
+            )
+            continue
+        # A user target is either a Mycelium member (by username) or a guild
+        # member (by snowflake).
+        username = entry.get("username")
+        if username:
+            member = User.objects.filter(username=str(username)).first()
+            if member is None:
+                raise ReminderError("No such member.")
+            out.append({"kind": kinds.USER, "member": member})
+            continue
+        if target_id not in member_names:
+            raise ReminderError("That person isn't in this lab's Discord server.")
+        out.append(
+            {
+                "kind": kinds.USER,
+                "discord_id": target_id,
+                "display_name": str(entry.get("name") or member_names[target_id]),
+            }
+        )
+    return out
 
 
 class ReminderListCreateView(APIView):
@@ -292,7 +389,7 @@ class ReminderListCreateView(APIView):
                 if not user_has_lab_access(request.user, lab):
                     return _bad("You don't have access to that lab.", 403)
                 target_lab = lab
-                mentions = _resolve_mentions(data.get("mentions"))
+                mentions = _resolve_mentions(data.get("mentions"), lab)
                 channel_override = str(data.get("channel_id_override") or "")
                 offsets = offsets or _default_offsets(lab)
             else:
@@ -373,15 +470,13 @@ class ReminderDetailView(APIView):
             )
             if offsets is not None and not offsets:
                 raise ReminderError("at least one reminder time is required")
-            mentions = (
-                _resolve_mentions(data["mentions"]) if "mentions" in data else None
-            )
-            if mentions is not None:
+            mentions = None
+            if "mentions" in data:
                 if sub.target_lab_id is None:
                     raise ReminderError("a personal reminder cannot mention anyone")
-                for member in mentions:
-                    if not user_has_lab_access(member, sub.target_lab):
-                        raise ReminderError("mention target must be a lab member")
+                # Validated against *this* reminder's lab, so a PATCH can never
+                # widen the blast radius past the guild the alert posts to.
+                mentions = _resolve_mentions(data["mentions"], sub.target_lab)
             snoozed_until, clear_snooze = _parse_snooze(data, sub)
 
             channel = data.get("channel_id_override")
@@ -466,6 +561,68 @@ class ReminderAccessView(APIView):
                 }
             )
         return Response(lab_reminder_access(lab).as_dict())
+
+
+class LabMentionTargetsView(APIView):
+    """Who a lab alert may @-mention: the guild's roles, its members, @everyone.
+
+    Manager-gated on the same authority as creating a lab reminder — a mention
+    reaches a whole server, so offering the roster is itself a management view.
+
+    Degrades the way the channel picker does: an unlinked guild, a missing
+    privileged intent, or a Discord hiccup answers HTTP 200 with empty lists and
+    a ``detail`` saying so, rather than a 500 that leaves the composer with no
+    explanation. ``everyone_allowed`` is always true for a manager — whether the
+    bot actually holds Mention Everyone in that guild is only knowable by trying,
+    and Discord's failure mode is a message that arrives without the ping, which
+    is a far better outcome than refusing to offer the option.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        lab = Lab.objects.filter(slug=request.GET.get("lab", "")).first()
+        if lab is None:
+            return _bad("No such lab.", 404)
+        if not user_can_edit_lab_profile(request.user, lab):
+            return _bad("Only a lab PI or admin can view mention targets.", 403)
+
+        link = discord_resolve.get_guild_link_for_lab(lab)
+        if not (link and link.guild_id):
+            return Response(
+                {
+                    "roles": [],
+                    "members": [],
+                    "everyone_allowed": True,
+                    "detail": (
+                        "This lab has no Discord server linked yet, so there is "
+                        "nobody to tag."
+                    ),
+                }
+            )
+
+        roles: list[dict] = []
+        members: list[dict] = []
+        detail = ""
+        try:
+            roles = reminders_discord.list_guild_roles(link.guild_id)
+        except Exception:  # noqa: BLE001 — a live Discord call; never 500 a picker
+            detail = "Couldn't read this server's roles right now."
+        try:
+            members = reminders_discord.list_guild_members(link.guild_id)
+        except Exception:  # noqa: BLE001 — usually the Server Members intent
+            detail = (
+                "Couldn't read this server's member list. Mylo needs the Server "
+                "Members intent enabled to tag individual people."
+            )
+        return Response(
+            {
+                "roles": roles,
+                "members": members,
+                "everyone_allowed": True,
+                "detail": detail,
+            }
+        )
 
 
 class LabReminderChannelsView(APIView):

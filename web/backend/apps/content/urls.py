@@ -207,6 +207,16 @@ urlpatterns = [
         "reminders/lab-channels",
         reminders_views.LabReminderChannelsView.as_view(),
     ),
+    # Who a lab alert may tag: roles, members, @everyone (manager-only).
+    path(
+        "reminders/lab-mention-targets/",
+        reminders_views.LabMentionTargetsView.as_view(),
+        name="reminder-lab-mention-targets",
+    ),
+    path(
+        "reminders/lab-mention-targets",
+        reminders_views.LabMentionTargetsView.as_view(),
+    ),
     path(
         "reminders/<uuid:pk>/",
         reminders_views.ReminderDetailView.as_view(),

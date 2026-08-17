@@ -19,7 +19,7 @@ add ``send_channel`` here, reusing the same guarantees and building the explicit
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from django.conf import settings
 
@@ -181,8 +181,8 @@ def send_lab_channel(
     part of what this reminder said, and should not silently change because someone
     linked their account in the twenty minutes a retry took.
     """
-    user_ids, plain_names = _resolve_mentions(subscription)
-    has_unlinked = bool(plain_names)
+    targets = _resolve_mentions(subscription)
+    has_unlinked = bool(targets.plain_names)
 
     if not _bot_configured():
         return SendOutcome(
@@ -210,9 +210,9 @@ def send_lab_channel(
         kind="reminder",
         channel_id=channel_id,
         lab=subscription.target_lab,
-        content=_mention_line(user_ids, plain_names),
+        content=targets.line(),
         embed=reminder_embed(title, body, subscription.url),
-        allowed_mentions={"users": user_ids},
+        allowed_mentions=targets.allowed_mentions(),
         subject_type="reminder_subscription",
         subject_id=str(subscription.id),
     )
@@ -225,25 +225,75 @@ def _lab_default_channel(subscription) -> str:
     return resolve.get_announcement_channel_for_lab(subscription.target_lab)
 
 
-def _resolve_mentions(subscription) -> tuple[list[str], list[str]]:
-    """(active discord ids, plain display names) for the subscription's mentions."""
-    members = [m.member for m in subscription.mentions.select_related("member").all()]
-    active = resolve.active_discord_ids_for_users(members)
-    user_ids: list[str] = []
-    plain: list[str] = []
-    for member in members:
-        discord_id = active.get(member.id)
-        if discord_id:
-            user_ids.append(discord_id)
-        else:
-            plain.append(member.get_full_name() or member.get_username())
-    return user_ids, plain
+@dataclass
+class MentionTargets:
+    """Who one lab alert pings, resolved to what Discord actually needs.
+
+    ``plain_names`` are targets that could not be turned into a ping — a
+    Mycelium member who has not linked Discord. They are still *named* in the
+    message rather than dropped: the person meant to be told is part of what the
+    alert said, and silently omitting them would make the message quietly wrong.
+    """
+
+    user_ids: list[str] = field(default_factory=list)
+    role_ids: list[str] = field(default_factory=list)
+    everyone: bool = False
+    plain_names: list[str] = field(default_factory=list)
+
+    def allowed_mentions(self) -> dict:
+        return {
+            "users": self.user_ids,
+            "roles": self.role_ids,
+            "everyone": self.everyone,
+        }
+
+    def line(self) -> str:
+        parts: list[str] = []
+        if self.everyone:
+            # Written by this module, never interpolated from scraped text, and
+            # it only resolves because ``allowed_mentions`` says so above.
+            parts.append("@everyone")
+        parts += [f"<@&{rid}>" for rid in self.role_ids]
+        parts += [f"<@{uid}>" for uid in self.user_ids]
+        parts += [escape_mentions(name) for name in self.plain_names]
+        return " ".join(parts)
 
 
-def _mention_line(user_ids: list[str], plain_names: list[str]) -> str:
-    parts = [f"<@{uid}>" for uid in user_ids]
-    parts += [escape_mentions(name) for name in plain_names]
-    return " ".join(parts)
+def _resolve_mentions(subscription) -> MentionTargets:
+    """Turn the subscription's mention rows into ping targets.
+
+    Three kinds, resolved differently. A **role** or a raw-id **user** target is
+    already a snowflake in the lab's own guild (validated when it was stored) and
+    needs no lookup. A **Mycelium member** target needs their linked Discord
+    identity, which may not exist — that is the ``plain_names`` case and the
+    thing ``has_unlinked_targets`` reports to the portal. **@everyone** has no id
+    by nature and is carried as a flag.
+    """
+    targets = MentionTargets()
+    rows = list(subscription.mentions.select_related("member").all())
+    members = [row.member for row in rows if row.member_id is not None]
+    active = resolve.active_discord_ids_for_users(members) if members else {}
+
+    for row in rows:
+        # Compared as plain strings, not against ``ReminderMention.Kind``: this
+        # module is on the Discord path, which the import-graph test holds to
+        # reaching the ORM only through ``resolve.py``. The values are a stable
+        # part of the model's public shape, so naming them here costs nothing
+        # and importing the model to spell them would break a real boundary.
+        if row.kind == "everyone":
+            targets.everyone = True
+        elif row.kind == "role":
+            if row.discord_id:
+                targets.role_ids.append(str(row.discord_id))
+        elif row.member_id is not None:
+            discord_id = active.get(row.member_id)
+            if discord_id:
+                targets.user_ids.append(str(discord_id))
+            else:
+                targets.plain_names.append(row.label)
+        elif row.discord_id:
+            targets.user_ids.append(str(row.discord_id))
+    return targets
 
 
 # Postable guild channel types: GUILD_TEXT (0) and GUILD_ANNOUNCEMENT (5).
@@ -264,6 +314,50 @@ def list_postable_channels(guild_id: str) -> list[dict]:
         for c in channels
         if c.get("type") in _POSTABLE_CHANNEL_TYPES
     ]
+
+
+def list_guild_roles(guild_id: str) -> list[dict]:
+    """Mentionable roles in a guild, for the alert mention picker.
+
+    ``@everyone`` is excluded: Discord models it as a role whose id equals the
+    guild id, but it is not pingable as a role mention — it is a parse category
+    — and the picker offers it as its own explicit choice instead. Managed roles
+    (the ones bots and integrations own, ``managed: true``) are excluded too:
+    they cannot be assigned to people, so pinging one reaches nobody.
+    """
+    roles = discord_api.get_guild_roles(guild_id)
+    return sorted(
+        (
+            {"id": str(r.get("id")), "name": r.get("name") or ""}
+            for r in roles
+            if str(r.get("id")) != str(guild_id) and not r.get("managed")
+        ),
+        key=lambda r: r["name"].lower(),
+    )
+
+
+def list_guild_members(guild_id: str) -> list[dict]:
+    """Members of a guild, for the alert mention picker.
+
+    Bots are excluded — pinging one does nothing a human would notice. The
+    display name prefers the server nickname, because that is who the lab knows
+    the person as, and falls back to the account's global or user name.
+    """
+    members = discord_api.get_guild_members(guild_id)
+    out = []
+    for entry in members:
+        user = entry.get("user") or {}
+        if user.get("bot"):
+            continue
+        name = (
+            entry.get("nick")
+            or user.get("global_name")
+            or user.get("username")
+            or ""
+        )
+        if user.get("id"):
+            out.append({"id": str(user["id"]), "name": name})
+    return sorted(out, key=lambda m: m["name"].lower())
 
 
 def preflight_channel(
