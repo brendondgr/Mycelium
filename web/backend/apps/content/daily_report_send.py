@@ -161,7 +161,15 @@ def run_daily_report_send(
         else:
             # Not reachable, so nothing was queued — drop the file now rather
             # than leave it for a sweep that only knows about outbox rows.
-            path.unlink(missing_ok=True)
+            #
+            # Unless the caller named the directory itself: an explicit
+            # ``report_dir`` (``--save-dir``) means "keep these, I want to look
+            # at them", and every unreachable recipient is precisely the case
+            # worth looking at. Deleting them here made ``--save-dir`` delete
+            # exactly the files it promises to keep, which is how it behaved
+            # with ``--dry-run`` — whose stub sender is never "ok" by design.
+            if not report_dir:
+                path.unlink(missing_ok=True)
             summary.unreachable += 1
 
     log(

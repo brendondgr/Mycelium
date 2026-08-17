@@ -50,10 +50,18 @@ class Command(BaseCommand):
 
         send_fn = None
         if dry_run:
-            def send_fn(user, data, pdf_bytes, filename):  # noqa: ARG001
+            # The third argument is the rendered PDF's *path*, not its bytes --
+            # `daily_report_send` writes the file to a workdir first and hands
+            # the sender a path so the file survives until the outbox row
+            # settles. This stub previously named it `pdf_bytes` and called
+            # `len()` on it, which raised for every recipient: --dry-run, the
+            # one flag whose whole job is checking a send before making it,
+            # could not complete a single one.
+            def send_fn(user, data, path, filename):  # noqa: ARG001
+                size = path.stat().st_size if path.exists() else 0
                 self.stdout.write(
                     f"  [dry-run] would DM {user.get_username()}: "
-                    f'"{REPORT_TITLE}" + {filename} ({len(pdf_bytes)} bytes)'
+                    f'"{REPORT_TITLE}" + {filename} ({size:,} bytes)'
                 )
                 return type("_Skipped", (), {"ok": False})()
 
