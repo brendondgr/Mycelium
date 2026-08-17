@@ -20,6 +20,7 @@ import {
   NewTag,
   RemindButton,
   SaveButton,
+  formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
 import {
   DEFAULT_FELLOWSHIP_FILTERS,
@@ -64,14 +65,10 @@ function fellowshipDeadlineLabel(item: FellowshipOpportunity): string {
     return "Rolling deadline";
   }
   if (deadline_date) {
-    const date = new Date(deadline_date);
-    const formatted = Number.isNaN(date.getTime())
-      ? deadline_date
-      : date.toLocaleDateString(undefined, {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        });
+    // `formatIsoDate`, not `new Date(deadline_date)`: this is a date-only
+    // string, which the naive constructor reads as UTC midnight and renders a
+    // day early everywhere west of UTC.
+    const formatted = formatIsoDate(deadline_date) || deadline_date;
     if (deadline_type === "anticipated") return `Anticipated ${formatted}`;
     return formatted;
   }

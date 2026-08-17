@@ -29,6 +29,7 @@ import {
   RemindButton,
   SaveButton,
   deadlineLabel,
+  formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
 import {
   ConferenceFilters,
@@ -639,7 +640,11 @@ export function ConferenceCard({
                     label:
                       CONFERENCE_DEADLINE_KIND_LABELS[conf.deadline_kind] ??
                       "Deadline",
-                    dateLabel: formatDeadlineInstant(conf.deadline_date),
+                    // `deadline_date` is a calendar date, not an instant, so it
+                    // needs the date-only formatter — `formatDeadlineInstant`
+                    // above is for `deadlines_structured[].instant` and would
+                    // render this one a day early west of UTC.
+                    dateLabel: formatIsoDate(conf.deadline_date),
                   },
                 ]
           }

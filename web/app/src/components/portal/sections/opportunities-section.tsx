@@ -24,6 +24,7 @@ import {
   NewTag,
   RemindButton,
   SaveButton,
+  formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
 import {
   DEFAULT_GRANT_FILTERS,
@@ -51,16 +52,13 @@ import type {
   RecommendedMember,
 } from "@/lib/portal/types";
 
-/** Format an ISO date as "Jul 6, 2026" (used for Posted and the deadline). */
+/** Format an ISO date as "Jul 6, 2026" (used for Posted and the deadline).
+ *
+ * Both of those are date-only `YYYY-MM-DD` strings, so this delegates to
+ * `formatIsoDate` rather than `new Date(iso)` — see that function for why the
+ * naive form renders every date a day early west of UTC. */
 function formatDate(iso: string): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatIsoDate(iso);
 }
 
 /**
