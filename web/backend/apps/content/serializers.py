@@ -1,4 +1,5 @@
-from datetime import date
+import re
+from datetime import UTC, date, datetime
 
 from rest_framework import serializers
 
@@ -163,6 +164,113 @@ class SuggestionSerializer(ClusterAttributionMixin, serializers.Serializer):
         return self.context.get("saved_labs", {}).get(str(score.content_id), [])
 
 
+#: A date the client may parse: exactly ``YYYY-MM-DD``, nothing else. Used to
+#: refuse — rather than reshape — anything else that turns up in a field the
+#: frontend documents as ISO (``ConferenceOpportunity["event_date"]`` drives a
+#: date-window filter and sort, so a half-date or a free-text month there is
+#: worse than an empty string).
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+#: Collector deadline kind -> the ``SavedOpportunity.DeadlineKind`` name it is
+#: reported under. Two vocabularies meet here and neither is imported:
+#:
+#: * ``apps.scraper.collect.conferences.record.SUBMISSION_TYPES`` is
+#:   ``{"abstract", "submission"}`` — the only two kinds that mean "I can still
+#:   act on this venue", which is why ``mapping.py::_conference_deadlines``
+#:   gates ``deadline_date`` on exactly those and never on the event date.
+#: * ``deadlines_projection._STRUCTURED_KIND_MAP`` renames the collector's
+#:   ``submission`` to MANUSCRIPT, because it is the full-paper deadline
+#:   despite the name.
+#:
+#: ``"manuscript"`` is accepted as an input key too, so an array already
+#: written in the projection's own vocabulary is read rather than silently
+#: dropped. Copied rather than imported for the reason
+#: :mod:`apps.content.deadlines_projection` gives for copying the same table:
+#: the content app does not depend on the collector's package at read time.
+#: Every other collector kind (notification, camera_ready, registration, the
+#: rebuttal pair, supplementary, unknown, and anything a future adapter
+#: invents) is deliberately absent — none of them is something a submitter can
+#: still act on, so none may ever read as "open".
+_SUBMISSION_KIND_NAMES: dict[str, str] = {
+    "abstract": SavedOpportunity.DeadlineKind.ABSTRACT.value,
+    "submission": SavedOpportunity.DeadlineKind.MANUSCRIPT.value,
+    "manuscript": SavedOpportunity.DeadlineKind.MANUSCRIPT.value,
+}
+
+
+def _instant(value) -> datetime | None:
+    """Parse a collector deadline ``instant`` (``2026-09-15T11:59:00Z``), or None.
+
+    Same tolerant handling as ``mapping.py::_parse_instant`` and
+    ``deadlines_projection._parse_structured_instant``: swap the trailing ``Z``
+    for an explicit offset before ``fromisoformat``, which also accepts the
+    microsecond-precision instants a minority of live rows carry, and assume UTC
+    for a naive value so two parsed moments are always comparable.
+    """
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+def _iso_today(today: str) -> date | None:
+    """The serializer context's ``today`` as a date, or None if it carries none.
+
+    Every feed view passes ``today`` (one clock read per request, so a page of
+    cards cannot disagree with itself about what day it is). None here means a
+    caller built this serializer without it — a question about "still upcoming"
+    that genuinely has no answer, not a licence to read the clock here.
+    """
+    if not today:
+        return None
+    try:
+        return date.fromisoformat(str(today)[:10])
+    except ValueError:
+        return None
+
+
+def _event_dates_line(meta: dict) -> str:
+    """A conference's human "when is it" line, as its source wrote it.
+
+    Chained the same way as the venue line: the collector writes
+    ``event_dates_text`` (deliberately verbatim — one source alone produces 131
+    distinct date-format skeletons, so the string as written is the truth),
+    Pivot wrote ``event_dates``. Both shapes coexist during the migration, so
+    every reader chains rather than choosing.
+
+    A bare run of digits is refused rather than shown: the ``openreview``
+    adapter passes its source's ``start_date`` through untouched and that value
+    is a millisecond epoch, so 261 of the 893 conferences carrying this key hold
+    something like ``"1797552000000"``. That is not a date a reader can read,
+    and a serializer is the wrong place to learn to parse one — the fix belongs
+    in the adapter. Refusing it leaves those rows exactly as empty as they
+    already were, instead of making them confidently wrong.
+    """
+    text = " ".join(str(meta.get("event_dates_text") or "").split())
+    return (text if not text.isdigit() else "") or meta.get("event_dates") or ""
+
+
+def _topic_list(meta: dict, ai_key: str, *collector_keys: str) -> list[str]:
+    """The best available topic list for an item, in preference order.
+
+    ``metadata["ai_fields"][ai_key]`` first: those are the topics ``extract.py``
+    pulled from the venue's or funder's own page and then *verified* against it
+    (grounding check, 2-6 entries, no duplicates), so they are both the richest
+    and the only ones that were checked. The collector's own keys follow, in the
+    order the caller lists them. Returns ``[]`` — never a string, never None —
+    so a caller only has to decide the delimiter.
+    """
+    ai_fields = meta.get("ai_fields") or {}
+    for candidate in (ai_fields.get(ai_key), *(meta.get(k) for k in collector_keys)):
+        if isinstance(candidate, list) and candidate:
+            cleaned = [" ".join(str(t).split()) for t in candidate]
+            return [t for t in cleaned if t]
+    return []
+
+
 class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     """Shared read shape for a matched grant/conference (a :class:`RelevanceScore`).
 
@@ -325,7 +433,33 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
         return score.signals.get("deadline_date") or ""
 
     def get_deadline_kind(self, score: RelevanceScore) -> str:
-        return score.signals.get("next_kind") or ""
+        """What kind of deadline ``deadline_date`` is — never a different one.
+
+        ``signals["next_kind"]`` is written at match time from
+        ``metadata["next_kind"]``, and only the fellowship ingest
+        (``apps.scraper.fellowships.records``) ever writes that key. The open
+        collector's mapper writes none, so every grant and conference in the
+        rebuilt corpus serialized "" here while its ``deadline_date`` sat right
+        next to it — the field the grant page's "kind" facet is built from was
+        empty for 100% of rows, and nothing failed.
+
+        The fallback is delegated to :meth:`_derive_deadline_kind` per area
+        rather than guessed generically: the one rule that matters is that the
+        kind must name *the same deadline* ``deadline_date`` points at. A kind
+        that names a different round is worse than none at all — it would tell a
+        reader the abstract closes on the manuscript's date — so an area that
+        cannot prove the correspondence returns "" and this stays empty.
+        """
+        return score.signals.get("next_kind") or self._derive_deadline_kind(score)
+
+    def _derive_deadline_kind(self, score: RelevanceScore) -> str:
+        """Name ``deadline_date``'s kind from metadata; "" unless it is provable.
+
+        The base answer is "" — a fellowship reaches this only when its ingest
+        wrote no ``next_kind``, which it does exactly when the record carries no
+        date either, so there is nothing to name.
+        """
+        return ""
 
     def get_addressable_deadlines(self, score: RelevanceScore) -> list[dict]:
         """The addressable per-kind deadlines (ContentDeadline projection, R0).
@@ -385,7 +519,24 @@ class GrantSerializer(_OpportunitySerializer):
         return self._meta(score).get("title") or "Untitled grant"
 
     def get_sponsor(self, score: RelevanceScore) -> str:
-        return self._meta(score).get("sponsor") or ""
+        # Chained, not swapped, and in the same order ``daily_report._source_line``
+        # already reads a grant's provenance line: Pivot wrote ``sponsor``, the
+        # open collector writes ``funder``. Reading only the Pivot key blanked
+        # the sponsor on all 2,171 rebuilt grants — the funder is the single
+        # most identifying thing on a funding card, and it was missing from the
+        # card, the sponsor facet and the search extra alike.
+        # ``funder_canonical`` is last and is *not* preferred over ``funder``:
+        # keeping the raw name first is what makes a card and its report line
+        # say the same thing. It differs on 208 of 2,171 rows (a normalised
+        # parent-agency name), so it is worth having as a last resort rather
+        # than rendering nothing for a row that somehow carries only it.
+        meta = self._meta(score)
+        return (
+            meta.get("sponsor")
+            or meta.get("funder")
+            or meta.get("funder_canonical")
+            or ""
+        )
 
     def get_amount(self, score: RelevanceScore) -> str:
         # Distil at read time too: rows ingested before the normalizer existed
@@ -393,7 +544,32 @@ class GrantSerializer(_OpportunitySerializer):
         return normalize_amount(self._meta(score).get("amount") or "")
 
     def get_matched_topics(self, score: RelevanceScore) -> str:
-        return self._meta(score).get("matched_topics") or ""
+        """The grant's topic tags, semicolon-delimited (the shape the page splits).
+
+        Same Pivot-key-outlives-Pivot failure as ``sponsor`` above:
+        ``matched_topics`` is Pivot's key and no rebuilt grant carries it, so
+        the Opportunities page's whole topic facet was derived from an empty
+        string on every row. The delimiter is load-bearing —
+        ``grant-filters.tsx::splitTopics`` splits on ``";"`` — so the type and
+        the separator are preserved exactly; only where the values come from
+        changed.
+
+        ``ai_fields["research_areas"]`` (2,150 of 2,171 rows) is preferred over
+        the source's own ``categories`` (1,833) because it is verified against
+        the funder's page and reads like a research area rather than a funding
+        bucket ("Artificial Intelligence" vs "Science and Technology and other
+        Research and Development").
+
+        ``topic_keywords`` is deliberately **not** in this chain, despite being
+        the collector's most topic-sounding key. All 579 rows that carry it are
+        ``grants:eu_portal``, and every value is a call identifier
+        (``HORIZON-JU-EUROHPC-2026-QTI-13-01``), not a topic; feeding those into
+        a facet list would fill the sidebar with machine codes. Exactly one live
+        grant would gain a value from it, and that value would be a code.
+        """
+        meta = self._meta(score)
+        topics = _topic_list(meta, "research_areas", "categories")
+        return "; ".join(topics) or meta.get("matched_topics") or ""
 
     def get_published_on(self, score: RelevanceScore) -> str:
         # The funder's own publication date (``mapping.py``'s ``posted_date``),
@@ -449,6 +625,29 @@ class GrantSerializer(_OpportunitySerializer):
         # Letter-of-intent date, when the funder requires one ahead of the
         # full application — absent for the large majority of grants.
         return self._meta(score).get("loi_date") or ""
+
+    def _derive_deadline_kind(self, score: RelevanceScore) -> str:
+        """A dated grant's deadline is always its application deadline.
+
+        The correspondence the base class insists on holds by construction here
+        rather than by matching: a grant's ``deadline_date`` is
+        ``select_next_due(rounds, today)`` over ``close_date`` plus
+        ``additional_due_dates`` (``mapping.py::_grant_deadlines``), and every
+        one of those rounds is a round of the *same* application. That is why
+        ``deadlines_projection._grant_specs`` also projects exactly one
+        APPLICATION row per grant, whichever round is next. Naming the round
+        (round 3 of 10) is not something this field can carry — the unique key
+        on the projection is ``(content, kind)`` precisely so a single round is
+        never separately addressable — and ``due_dates`` already exposes the
+        full array for the hover.
+
+        No date means no deadline to name: a grant with an empty
+        ``deadline_date`` is rolling (mapping.py's ``"" = rolling, never
+        expires``), and calling that an application deadline would invent one.
+        """
+        if not self.get_deadline_date(score):
+            return ""
+        return SavedOpportunity.DeadlineKind.APPLICATION.value
 
 
 #: A short "what this system is" line per ranking system, keyed the same
@@ -655,31 +854,153 @@ class ConferenceSerializer(_OpportunitySerializer):
         return self._meta(score).get("country") or ""
 
     def get_event_dates(self, score: RelevanceScore) -> str:
-        return self._meta(score).get("event_dates") or ""
+        # Chained (see :func:`_event_dates_line`): the collector writes
+        # ``event_dates_text``, Pivot wrote ``event_dates``, and reading only
+        # the Pivot key left every rebuilt conference card with no date line.
+        return _event_dates_line(self._meta(score))
 
     def get_deadlines(self, score: RelevanceScore) -> str:
         return self._meta(score).get("deadlines") or ""
 
     def get_keywords(self, score: RelevanceScore) -> str:
-        return self._meta(score).get("keywords") or ""
+        """Pivot's space-joined keyword blob — same shape, new source.
+
+        ``keywords`` is Pivot's key and no rebuilt conference carries it. The
+        collector's equivalent is ``topics``, and the verified extraction's
+        ``ai_fields["topics"]`` is better still (see :func:`_topic_list`): it
+        covers 776 of 912 conferences against ``topics``' 70, and it carries
+        real subject words rather than the CCF area names the code table
+        expands to.
+
+        Space-joined, not semicolon-joined, on purpose — this field's whole
+        contract is that it is the loose blob and ``matched_subjects`` is the
+        chippable one. Anything that splits this on a delimiter is already
+        wrong; changing the join here would only hide that.
+        """
+        meta = self._meta(score)
+        return " ".join(_topic_list(meta, "topics", "topics")) or (
+            meta.get("keywords") or ""
+        )
 
     def get_matched_subjects(self, score: RelevanceScore) -> str:
         # Semicolon-delimited subject categories — clean, chippable topic tags
-        # (unlike ``keywords``, which Pivot returns space-joined).
-        return self._meta(score).get("matched_subjects") or ""
+        # (unlike ``keywords``, which Pivot returns space-joined). Same source
+        # chain and same silent-emptiness fix as ``keywords`` above; the
+        # delimiter is load-bearing (``conference-filters.tsx::subjectTags`` and
+        # the card both split on ";"), so only the source of the values changed.
+        meta = self._meta(score)
+        return "; ".join(_topic_list(meta, "topics", "topics")) or (
+            meta.get("matched_subjects") or ""
+        )
 
     def get_event_date(self, score: RelevanceScore) -> str:
-        # The (first) event date as ISO YYYY-MM-DD, or "" — drives the event-date
-        # window filter/sort. ``event_dates`` remains the human display string.
-        return self._meta(score).get("event_date") or ""
+        """The (first) event date as ISO ``YYYY-MM-DD``, or "".
+
+        Drives the event-date window filter and sort; ``event_dates`` above
+        remains the human display string. Chained: the collector writes
+        ``event_start``, Pivot wrote ``event_date``.
+
+        Only an already-ISO value is passed through. The collector's own
+        ``event_start`` is ISO on all 347 live rows that carry one, so the
+        guard costs nothing today; what it buys is the guarantee that no
+        free-text date ever reaches a client that will parse this and sort by
+        it. ``event_dates_text`` is deliberately not a fallback here — turning
+        "February 22 - March 1, 2022" into a date needs a parser, and a
+        mis-parsed date silently reorders the feed, which is a worse failure
+        than an absent one.
+        """
+        meta = self._meta(score)
+        value = str(meta.get("event_start") or meta.get("event_date") or "").strip()
+        return value if _ISO_DATE.fullmatch(value) else ""
 
     def get_abstract_open(self, score: RelevanceScore) -> bool:
         # True while an abstract-submission deadline is still upcoming.
-        return bool(self._meta(score).get("abstract_open"))
+        return self._submission_open(
+            score, SavedOpportunity.DeadlineKind.ABSTRACT.value
+        )
 
     def get_manuscript_open(self, score: RelevanceScore) -> bool:
         # True while a full-paper (manuscript) submission deadline is still upcoming.
-        return bool(self._meta(score).get("manuscript_open"))
+        return self._submission_open(
+            score, SavedOpportunity.DeadlineKind.MANUSCRIPT.value
+        )
+
+    def _submission_open(self, score: RelevanceScore, family: str) -> bool:
+        """Is a still-future deadline of ``family`` on this record?
+
+        ``metadata["abstract_open"]`` / ``["manuscript_open"]`` are Pivot keys
+        that the open collector never writes, so both flags read False for the
+        whole rebuilt corpus while the dates that decide them sat in
+        ``metadata["deadlines_structured"]`` — 174 abstract and 750 submission
+        entries across the live conferences. Derived here rather than added to
+        the mapper because openness is a function of *when it is read*: a flag
+        frozen at ingest is wrong the morning after the deadline passes, and
+        this serializer already gets the request's ``today`` in its context for
+        exactly that reason (the same one ``pinned`` uses).
+
+        Only ``abstract`` and ``submission`` count — the domain rule the whole
+        deadline stack is built on (``SUBMISSION_TYPES``; see
+        :data:`_SUBMISSION_KIND_NAMES`). A notification or camera-ready date is
+        something the venue does *to* a submitter, and the event date is not a
+        deadline at all, so neither can make a venue read as open.
+
+        Deadline day itself counts as open, matching
+        ``deadlines_projection._conference_specs``' ``due < today_date`` cut. A
+        context with no usable ``today`` cannot answer the question at all and
+        returns the Pivot flag alone rather than a guess.
+        """
+        meta = self._meta(score)
+        legacy = bool(
+            meta.get(
+                "abstract_open"
+                if family == SavedOpportunity.DeadlineKind.ABSTRACT.value
+                else "manuscript_open"
+            )
+        )
+        today = _iso_today(self._today())
+        if today is None:
+            return legacy
+        for entry in meta.get("deadlines_structured") or []:
+            if not isinstance(entry, dict):
+                continue
+            if _SUBMISSION_KIND_NAMES.get(entry.get("kind") or "") != family:
+                continue
+            moment = _instant(entry.get("instant"))
+            if moment is not None and moment.date() >= today:
+                return True
+        return legacy
+
+    def _derive_deadline_kind(self, score: RelevanceScore) -> str:
+        """Name the deadline ``deadline_date`` points at — or nothing.
+
+        ``deadline_date`` is the date part of the earliest *future*
+        submission-family instant on the record, chosen by
+        ``mapping.py::_conference_deadlines`` over exactly the kinds
+        :data:`_SUBMISSION_KIND_NAMES` covers. This re-reads that same array and
+        names the entry that produced it: the earliest submission-family instant
+        whose own date equals the date being shown.
+
+        Matching on the date rather than recomputing "next future" is what makes
+        the answer correspond to the deadline the card actually displays. The
+        two can differ — ``deadline_date`` was snapshotted into ``signals`` at
+        match time and today is a later day — and in that case the honest
+        result is "": no entry matches, nothing is named, and the reader is
+        never told the abstract closes on the manuscript's date.
+        """
+        due = self.get_deadline_date(score)
+        if not due:
+            return ""
+        winner: tuple[datetime, str] | None = None
+        for entry in self._meta(score).get("deadlines_structured") or []:
+            if not isinstance(entry, dict):
+                continue
+            named = _SUBMISSION_KIND_NAMES.get(entry.get("kind") or "")
+            moment = _instant(entry.get("instant")) if named else None
+            if moment is None or moment.date().isoformat() != due:
+                continue
+            if winner is None or moment < winner[0]:
+                winner = (moment, named)
+        return winner[1] if winner else ""
 
     def get_status(self, score: RelevanceScore) -> str:
         # Submission status: "open" | "closed" | "unknown". Persisted in signals at
@@ -946,7 +1267,16 @@ class SearchResultSerializer(serializers.Serializer):
         return self._meta(item).get("year")
 
     def get_sponsor(self, item: ContentItem) -> str:
-        return self._meta(item).get("sponsor") or ""
+        # The same chain, and the same reason for it, as
+        # ``GrantSerializer.get_sponsor``: Pivot's ``sponsor`` outlived Pivot in
+        # this reader too, so a grant hit in unified search carried no funder.
+        meta = self._meta(item)
+        return (
+            meta.get("sponsor")
+            or meta.get("funder")
+            or meta.get("funder_canonical")
+            or ""
+        )
 
     def get_amount(self, item: ContentItem) -> str:
         meta = self._meta(item)
@@ -963,7 +1293,10 @@ class SearchResultSerializer(serializers.Serializer):
         return ", ".join(p for p in (place, meta.get("country")) if p)
 
     def get_event_dates(self, item: ContentItem) -> str:
-        return self._meta(item).get("event_dates") or ""
+        # Chained exactly as the conference card's own field is; see
+        # :func:`_event_dates_line`. A search hit and a feed card showing
+        # different dates for one venue is the drift this shared helper avoids.
+        return _event_dates_line(self._meta(item))
 
     def get_award_class(self, item: ContentItem) -> str:
         if item.type != ContentItem.Type.FELLOWSHIP:

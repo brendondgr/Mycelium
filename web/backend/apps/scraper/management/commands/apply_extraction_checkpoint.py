@@ -117,8 +117,9 @@ class Command(BaseCommand):
                 # an error: the mapper filters overlays before ingest.
                 unmatched += 1
                 continue
+            fields = ExtractionOutcome.__annotations__
             outcome = ExtractionOutcome(
-                **{k: v for k, v in record.items() if k in ExtractionOutcome.__annotations__}
+                **{k: v for k, v in record.items() if k in fields}
             )
             item.metadata = apply_to_metadata(dict(item.metadata or {}), outcome)
             to_write.append(item)
