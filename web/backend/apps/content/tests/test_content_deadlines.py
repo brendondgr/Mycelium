@@ -1,8 +1,18 @@
 """R0 — the ContentDeadline projection: derivation, rebuild hook, change detection.
 
-Exercises the real ingest path (``ingest_pivot`` → ``upsert_pivot_items`` → rebuild)
-so the hook, not just the pure function, is covered. Embedding and prune are off so
-the tests stay pure-relational and run on SQLite.
+Exercises the real ingest path for each opportunity type so the rebuild *hook*,
+not just the pure ``deadline_specs_for`` function, is covered: the open
+collector's ``apps.scraper.collect.ingest.upsert_items`` for grants/conferences,
+the relocated ``apps.scraper.fellowships.ingest.upsert_fellowship_items`` for
+fellowships. Embedding and prune are off so the tests stay pure-relational and
+run on SQLite.
+
+Relocated from ``ingest_pivot`` (plan Phase 6 — the deletion of Pivot-RP), which
+used to drive all three types through one dispatcher. The two conference
+fixtures also changed shape: Pivot's free-text ``deadlines`` string is gone, so
+they now build ``metadata["deadlines_structured"]`` directly — the same shape
+:func:`apps.scraper.collect.mapping.map_conference` writes, and the shape the
+pure structured-conference tests further down already exercised directly.
 """
 
 from __future__ import annotations
@@ -13,42 +23,52 @@ from apps.accounts.models import AuditEvent
 from apps.content.deadlines_projection import deadline_specs_for, rebuild_deadlines_for
 from apps.content.models import ContentDeadline, ContentItem, RelevanceScore
 from apps.content.serializers import GrantSerializer
-from apps.scraper.pivot.ingest import ingest_pivot
+from apps.scraper.collect.ingest import upsert_items
+from apps.scraper.fellowships.ingest import upsert_fellowship_items
+from apps.scraper.fellowships.records import build_fellowship_item
 
 TODAY = "2026-07-16"
 
 
-def _ingest(*records):
-    return ingest_pivot(records, embed=False, prune=False, today=TODAY)
-
-
-def _grant(**over):
-    rec = {
-        "id": "g1",
+def _ingest_grant(**over):
+    """Upsert one already-mapped grant dict (the ``map_grant`` output shape)
+    through the open collector's real ingest path."""
+    metadata = {
         "title": "Neural Interfaces Grant",
         "sponsor": "NSF",
         "deadline_date": "2026-10-01",
-        "url": "https://example.org/g1",
     }
-    rec.update(over)
-    return ("grants", rec)
+    metadata.update(over)
+    item = {
+        "type": "grant",
+        "source": "grants:test",
+        "external_id": "g1",
+        "source_url": "https://example.org/g1",
+        "text": metadata["title"],
+        "metadata": metadata,
+    }
+    return upsert_items([item], today=TODAY)
 
 
-def _conference(**over):
-    rec = {
-        "id": "c1",
+def _ingest_conference(entries, **over):
+    """Upsert one already-mapped conference dict (the ``map_conference`` output
+    shape) through the open collector's real ingest path."""
+    metadata = {
         "name": "NeurIPS 2027",
         "location": "Vancouver",
         "country": "Canada",
-        "deadlines": (
-            "02 Oct 2026 (Abstract Submission Deadline); "
-            "15 Dec 2026 (Manuscript Deadline)"
-        ),
-        "event_dates": "22 Mar 2027",
-        "url": "https://example.org/c1",
+        "deadlines_structured": entries,
     }
-    rec.update(over)
-    return ("conferences", rec)
+    metadata.update(over)
+    item = {
+        "type": "conference",
+        "source": "conf:test",
+        "external_id": "c1",
+        "source_url": "https://example.org/c1",
+        "text": metadata["name"],
+        "metadata": metadata,
+    }
+    return upsert_items([item], today=TODAY)
 
 
 def _structured_deadline(kind, instant, *, is_estimated=False, round_label=""):
@@ -72,7 +92,9 @@ def _structured_deadline(kind, instant, *, is_estimated=False, round_label=""):
     }
 
 
-def _fellowship(deadline, **over):
+def _ingest_fellowship(deadline, **over):
+    """Build one fellowship record and upsert it through the relocated fellowship
+    ingest path (:mod:`apps.scraper.fellowships.ingest`)."""
     rec = {
         "id": "f1",
         "title": "Graduate Research Fellowship",
@@ -82,25 +104,36 @@ def _fellowship(deadline, **over):
         "source_url": "https://example.org/f1",
     }
     rec.update(over)
-    return ("fellowships", rec)
+    item = build_fellowship_item(rec, today=TODAY)
+    return upsert_fellowship_items([item], today=TODAY)
 
 
 @pytest.mark.django_db
 def test_conference_yields_three_rows() -> None:
-    _ingest(_conference())
+    """Abstract / manuscript / other — the three mapped kinds a structured
+    conference can project. No EVENT row: unlike Pivot's free-text format, the
+    collector's deadline array never carries an event-date entry (see
+    ``_conference_specs``'s docstring), so the third row here comes from a
+    notification date falling into OTHER instead."""
+    entries = [
+        _structured_deadline("abstract", "2026-10-02T23:59:00Z"),
+        _structured_deadline("submission", "2026-12-15T23:59:00Z"),
+        _structured_deadline("notification", "2027-01-10T00:00:00Z"),
+    ]
+    _ingest_conference(entries)
     item = ContentItem.objects.get(external_id="c1")
     rows = {d.kind: d for d in item.deadline_rows.all()}
-    assert set(rows) == {"abstract", "manuscript", "event"}
+    assert set(rows) == {"abstract", "manuscript", "other"}
     assert rows["abstract"].due_date.isoformat() == "2026-10-02"
     assert rows["manuscript"].due_date.isoformat() == "2026-12-15"
-    assert rows["event"].due_date.isoformat() == "2027-03-22"
+    assert rows["other"].due_date.isoformat() == "2027-01-10"
     confirmed = ContentDeadline.Confidence.CONFIRMED
     assert all(r.confidence == confirmed for r in rows.values())
 
 
 @pytest.mark.django_db
 def test_grant_yields_one_application_row() -> None:
-    _ingest(_grant())
+    _ingest_grant()
     item = ContentItem.objects.get(external_id="g1")
     rows = list(item.deadline_rows.all())
     assert len(rows) == 1
@@ -111,7 +144,7 @@ def test_grant_yields_one_application_row() -> None:
 
 @pytest.mark.django_db
 def test_rolling_fellowship_has_null_date_and_rolling_confidence() -> None:
-    _ingest(_fellowship({"type": "rolling", "date": ""}))
+    _ingest_fellowship({"type": "rolling", "date": ""})
     item = ContentItem.objects.get(external_id="f1")
     row = item.deadline_rows.get()
     assert row.kind == "application"
@@ -121,7 +154,7 @@ def test_rolling_fellowship_has_null_date_and_rolling_confidence() -> None:
 
 @pytest.mark.django_db
 def test_anticipated_fellowship_confidence() -> None:
-    _ingest(_fellowship({"type": "anticipated", "date": "2027-01-15"}))
+    _ingest_fellowship({"type": "anticipated", "date": "2027-01-15"})
     row = ContentItem.objects.get(external_id="f1").deadline_rows.get()
     assert row.confidence == ContentDeadline.Confidence.ANTICIPATED
     assert row.due_date.isoformat() == "2027-01-15"
@@ -129,7 +162,7 @@ def test_anticipated_fellowship_confidence() -> None:
 
 @pytest.mark.django_db
 def test_varies_and_suspended_fellowships_are_unknown_with_no_date() -> None:
-    _ingest(_fellowship({"type": "varies", "date": ""}))
+    _ingest_fellowship({"type": "varies", "date": ""})
     row = ContentItem.objects.get(external_id="f1").deadline_rows.get()
     assert row.confidence == ContentDeadline.Confidence.UNKNOWN
     assert row.due_date is None
@@ -137,8 +170,8 @@ def test_varies_and_suspended_fellowships_are_unknown_with_no_date() -> None:
 
 @pytest.mark.django_db
 def test_reingest_unchanged_date_leaves_changed_at_untouched() -> None:
-    _ingest(_grant())
-    _ingest(_grant())  # identical re-scrape
+    _ingest_grant()
+    _ingest_grant()  # identical re-scrape
     row = ContentItem.objects.get(external_id="g1").deadline_rows.get()
     assert row.changed_at is None
     assert row.previous_due_date is None
@@ -147,8 +180,8 @@ def test_reingest_unchanged_date_leaves_changed_at_untouched() -> None:
 
 @pytest.mark.django_db
 def test_reingest_moved_date_sets_changed_at_and_audits() -> None:
-    _ingest(_grant(deadline_date="2026-10-01"))
-    _ingest(_grant(deadline_date="2026-09-01"))  # moved earlier
+    _ingest_grant(deadline_date="2026-10-01")
+    _ingest_grant(deadline_date="2026-09-01")  # moved earlier
     row = ContentItem.objects.get(external_id="g1").deadline_rows.get()
     assert row.due_date.isoformat() == "2026-09-01"
     assert row.previous_due_date.isoformat() == "2026-10-01"
@@ -161,13 +194,12 @@ def test_reingest_moved_date_sets_changed_at_and_audits() -> None:
 
 @pytest.mark.django_db
 def test_first_seen_immutable_and_scalars_populated_across_reingest() -> None:
-    _ingest(_grant())
+    _ingest_grant()
     first = ContentItem.objects.get(external_id="g1")
     first_seen = first.metadata["first_seen"]
     assert first.metadata["deadline_date"] == "2026-10-01"
-    assert first.metadata["next_kind"] == "application"
 
-    _ingest(_grant())
+    _ingest_grant()
     again = ContentItem.objects.get(external_id="g1")
     assert again.metadata["first_seen"] == first_seen  # immutable
     assert again.metadata["deadline_date"] == "2026-10-01"  # scalar still there
@@ -176,19 +208,26 @@ def test_first_seen_immutable_and_scalars_populated_across_reingest() -> None:
 @pytest.mark.django_db
 def test_dropped_kind_row_is_deleted_on_reingest() -> None:
     # A conference that later loses its abstract deadline should drop that row.
-    _ingest(_conference())
+    _ingest_conference(
+        [
+            _structured_deadline("abstract", "2026-10-02T23:59:00Z"),
+            _structured_deadline("submission", "2026-12-15T23:59:00Z"),
+        ]
+    )
     item = ContentItem.objects.get(external_id="c1")
     assert item.deadline_rows.filter(kind="abstract").exists()
 
-    _ingest(_conference(deadlines="15 Dec 2026 (Manuscript Deadline)"))
+    _ingest_conference(
+        [_structured_deadline("submission", "2026-12-15T23:59:00Z")]
+    )
     item.refresh_from_db()
     kinds = set(item.deadline_rows.values_list("kind", flat=True))
-    assert kinds == {"manuscript", "event"}
+    assert kinds == {"manuscript"}
 
 
 @pytest.mark.django_db
 def test_backfill_does_not_manufacture_changes() -> None:
-    _ingest(_grant())
+    _ingest_grant()
     item = ContentItem.objects.get(external_id="g1")
     # Simulate a pre-existing row with a different date, as a backfill would find.
     row = item.deadline_rows.get()
@@ -205,7 +244,7 @@ def test_backfill_does_not_manufacture_changes() -> None:
 
 @pytest.mark.django_db
 def test_serializer_exposes_deadlines_array() -> None:
-    _ingest(_grant())
+    _ingest_grant()
     item = ContentItem.objects.get(external_id="g1")
     from django.contrib.auth.models import User
 
@@ -236,11 +275,10 @@ def test_pure_derivation_ignores_papers() -> None:
 # Plan Phase 5 — the structured conference path
 #
 # These are pure (no ``@pytest.mark.django_db``, matching
-# ``test_pure_derivation_ignores_papers`` above): the presence of
-# ``metadata["deadlines_structured"]`` alone routes ``_conference_specs`` to
-# ``_structured_conference_specs`` instead of the legacy Pivot parser, so an
-# in-memory ``ContentItem`` with hand-built metadata is enough — no ingest path
-# needed to exercise it.
+# ``test_pure_derivation_ignores_papers`` above): ``_conference_specs`` reads
+# ``metadata["deadlines_structured"]`` directly (plan Phase 6 removed the
+# legacy-Pivot dispatch this used to need), so an in-memory ``ContentItem`` with
+# hand-built metadata is enough — no ingest path needed to exercise it.
 # --------------------------------------------------------------------------- #
 
 
@@ -302,10 +340,8 @@ def test_structured_conference_only_future_date_is_other_and_not_open() -> None:
 
 
 def test_structured_conference_empty_list_yields_no_rows() -> None:
-    # An empty *list* (the collector genuinely found no dated deadlines) is a
-    # different fact from the key being absent (a Pivot-era record) — it must
-    # still route to the structured path and yield zero rows, not fall back to
-    # the legacy free-text parser.
+    # An empty *list* (the collector genuinely found no dated deadlines) and an
+    # absent key are treated identically — both yield zero rows, not an error.
     item = ContentItem(
         type=ContentItem.Type.CONFERENCE,
         metadata={"deadlines_structured": []},

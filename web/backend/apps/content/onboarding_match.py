@@ -7,7 +7,7 @@ conferences fit. Each area is one call to :func:`onboarding_match_area`.
 
 This is a thin wrapper over :func:`apps.content.refitting.refit_user` scoped to a
 single area: it reuses the exact daily-pipeline code path (retrieve → fuse → LLM
-score over the existing store — **no** literature scan and **no** Pivot re-scrape),
+score over the existing store — **no** literature scan and **no** re-scrape),
 persists the per-user :class:`RelevanceScore` rows the workspace pages then read,
 and returns a small JSON-able summary (counts + a short sample) for the UI.
 

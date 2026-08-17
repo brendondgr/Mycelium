@@ -26,7 +26,7 @@ top-level areas move. For the *why* behind the boundaries, see
 ```text
 mycelium/
 ├── CLAUDE.md, README.md, package.json, compose.yaml, compose.gpu.yaml, .env.example
-├── run.py, manual_all.py, manual_mylo.py, pivot.py, create_admin.py, loadtest.py
+├── run.py, manual_all.py, manual_mylo.py, scrape_fellowships.py, create_admin.py, loadtest.py
 ├── mycelium*.service, mylo-daily.{service,timer}, mylo-bot.service
 ├── mylo/                      # host Discord bot + daily-run observability
 ├── utils/                     # per-stage manual runners, vendored grants prototype

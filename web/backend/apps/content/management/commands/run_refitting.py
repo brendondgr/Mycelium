@@ -14,7 +14,7 @@
 "Refitting" re-runs only the personalization half of the daily pipelines: it takes
 the top results already stored for each area (research papers, grants, conferences,
 fellowships) and re-scores them through the language model — with **no** literature
-scan and **no** Pivot re-scrape. ``--max`` caps how many users are refit (a number
+scan and **no** opportunity re-scrape. ``--max`` caps how many users are refit (a number
 or ``all``) so a manual run can be bounded to avoid overwhelming the model host.
 """
 

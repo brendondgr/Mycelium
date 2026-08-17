@@ -1,16 +1,25 @@
 """Tests for fellowship ingest: upsert, first_seen immutability, prune.
 
-Uses the same pattern as ``test_pivot_ingest.py`` — injected embedder (no
-fastembed), in-memory Django DB (pytest-django @django_db), no network.
+Injected embedder (no fastembed), in-memory Django DB (pytest-django @django_db),
+no network.
 
-Verifies the generalized source field: fellowships use
-``source="illinois-fellowship-finder"`` while grants still use ``source="pivot"``.
+Relocated from ``test_pivot_ingest.py``'s ``ingest_pivot`` fellowship coverage
+(plan Phase 6 — the deletion of Pivot-RP): ``ingest_pivot`` used to handle both
+Pivot's grant/conference upserts and the Illinois Fellowship Finder's, keyed on
+the same ``(source, external_id)`` upsert and the same type-scoped
+``prune_expired``. Now that grants/conferences ingest through the open
+collector's own ``apps.scraper.collect.ingest`` (plan Phase 4), this module
+exercises the fellowship-only slice — :func:`apps.scraper.fellowships.ingest
+.ingest_fellowships` — and the cross-type prune coverage through
+``apps.scraper.collect.ingest.prune_expired``, the one ``prune_expired`` every
+opportunity type converges on regardless of which module upserted it.
 """
 
 import pytest
 
 from apps.content.models import ContentItem
-from apps.scraper.pivot.ingest import ingest_pivot, prune_expired
+from apps.scraper.collect.ingest import prune_expired
+from apps.scraper.fellowships.ingest import ingest_fellowships
 
 TODAY = "2026-07-06"
 
@@ -70,21 +79,16 @@ def _fellowship(fid="f1", deadline_type="true", deadline_date="2026-12-01", **ov
     return rec
 
 
-def _grant(gid="g1", deadline_date="2026-11-12"):
-    """A minimal Pivot grant record (source="pivot")."""
-    return {
-        "id": gid,
-        "title": "Test Grant",
-        "sponsor": "Test Sponsor",
-        "amount": "$50,000",
-        "website": "https://example.com",
-        "deadline": "12 Nov 2026",
-        "deadline_date": deadline_date,
-        "matched_topics": "AI",
-        "ai_summary": "",
-        "abstract": "",
-        "url": f"https://pivot.proquest.com/funding_opps/{gid}",
-    }
+def _grant_item(gid="g1", source="grants:test", *, prune_after="2027-01-01"):
+    """A ``ContentItem`` grant row, built directly — this file only exercises the
+    fellowship ingest path; grants are seeded straight through the ORM to test
+    cross-type prune coverage without pulling in the collector's own mapper."""
+    return ContentItem.objects.create(
+        type=ContentItem.Type.GRANT,
+        source=source,
+        external_id=gid,
+        metadata={"title": f"Test Grant {gid}", "prune_after": prune_after},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -94,10 +98,9 @@ def _grant(gid="g1", deadline_date="2026-11-12"):
 
 @pytest.mark.django_db
 def test_fellowship_ingest_creates_with_illinois_source():
-    summary = ingest_pivot(
-        [("fellowships", _fellowship())],
+    summary = ingest_fellowships(
+        [_fellowship()],
         embedder=_fake_embedder,
-        prune=False,
         today=TODAY,
     )
     assert summary.created == 1
@@ -111,35 +114,6 @@ def test_fellowship_ingest_creates_with_illinois_source():
     assert obj.embedding is not None
 
 
-@pytest.mark.django_db
-def test_grant_uses_pivot_source():
-    summary = ingest_pivot(
-        [("grants", _grant())],
-        embedder=_fake_embedder,
-        prune=False,
-        today=TODAY,
-    )
-    assert summary.created == 1
-    obj = ContentItem.objects.get(external_id="g1")
-    assert obj.source == "pivot"
-
-
-@pytest.mark.django_db
-def test_mixed_ingest_different_sources():
-    summary = ingest_pivot(
-        [
-            ("grants", _grant()),
-            ("fellowships", _fellowship()),
-        ],
-        embedder=_fake_embedder,
-        prune=False,
-        today=TODAY,
-    )
-    assert summary.created == 2
-    assert ContentItem.objects.filter(source="pivot").count() == 1
-    assert ContentItem.objects.filter(source=ILLINOIS_SOURCE).count() == 1
-
-
 # ---------------------------------------------------------------------------
 # first_seen immutability
 # ---------------------------------------------------------------------------
@@ -147,20 +121,12 @@ def test_mixed_ingest_different_sources():
 
 @pytest.mark.django_db
 def test_first_seen_immutable_across_fellowship_reingest():
-    ingest_pivot(
-        [("fellowships", _fellowship())],
-        embedder=_fake_embedder,
-        prune=False,
-        today=TODAY,
-    )
+    ingest_fellowships([_fellowship()], embedder=_fake_embedder, today=TODAY)
     first = ContentItem.objects.get(external_id="f1").metadata["first_seen"]
 
     # Re-ingest same id with a changed field.
-    ingest_pivot(
-        [("fellowships", _fellowship(title="Changed Title"))],
-        embedder=_fake_embedder,
-        prune=False,
-        today=TODAY,
+    ingest_fellowships(
+        [_fellowship(title="Changed Title")], embedder=_fake_embedder, today=TODAY
     )
     obj = ContentItem.objects.get(external_id="f1")
     assert obj.metadata["first_seen"] == first  # immutable
@@ -175,19 +141,14 @@ def test_first_seen_immutable_across_fellowship_reingest():
 
 @pytest.mark.django_db
 def test_prune_removes_expired_true_fellowship():
-    ingest_pivot(
+    ingest_fellowships(
         [
-            ("fellowships", _fellowship("future", deadline_date="2026-12-01")),
-            ("fellowships", _fellowship("past", deadline_date="2025-01-01")),
-            ("fellowships", _fellowship(
-                "rolling", deadline_type="rolling", deadline_date=""
-            )),
-            ("fellowships", _fellowship(
-                "continuous", deadline_type="continuous", deadline_date=""
-            )),
+            _fellowship("future", deadline_date="2026-12-01"),
+            _fellowship("past", deadline_date="2025-01-01"),
+            _fellowship("rolling", deadline_type="rolling", deadline_date=""),
+            _fellowship("continuous", deadline_type="continuous", deadline_date=""),
         ],
         embedder=_fake_embedder,
-        prune=False,
         today=TODAY,
     )
     removed = prune_expired(today=TODAY)
@@ -205,16 +166,19 @@ def test_prune_removes_expired_true_fellowship():
 
 
 @pytest.mark.django_db
-def test_prune_covers_both_sources():
-    ingest_pivot(
+def test_prune_covers_both_grants_and_fellowships():
+    """``apps.scraper.collect.ingest.prune_expired`` is type-scoped, so a grant
+    row (upserted by an entirely different module) and a fellowship row (upserted
+    here) are both covered by the one call — the convergence plan Phase 4/6 exist
+    to guarantee."""
+    _grant_item("gpast", prune_after="2025-01-01")
+    _grant_item("gfuture", prune_after="2027-01-01")
+    ingest_fellowships(
         [
-            ("grants", _grant("gpast", deadline_date="2025-01-01")),
-            ("fellowships", _fellowship("fpast", deadline_date="2025-01-01")),
-            ("grants", _grant("gfuture", deadline_date="2027-01-01")),
-            ("fellowships", _fellowship("ffuture", deadline_date="2027-01-01")),
+            _fellowship("fpast", deadline_date="2025-01-01"),
+            _fellowship("ffuture", deadline_date="2027-01-01"),
         ],
         embedder=_fake_embedder,
-        prune=False,
         today=TODAY,
     )
     removed = prune_expired(today=TODAY)
@@ -237,12 +201,7 @@ def test_grant_class_fellowships_excluded_at_ingest():
     grant_rec = _fellowship("gfellowship")
     grant_rec["award_class"] = "grant"
 
-    summary = ingest_pivot(
-        [("fellowships", grant_rec)],
-        embedder=_fake_embedder,
-        prune=False,
-        today=TODAY,
-    )
+    summary = ingest_fellowships([grant_rec], embedder=_fake_embedder, today=TODAY)
     assert summary.created == 0
     assert summary.skipped == 1
     assert ContentItem.objects.filter(external_id="gfellowship").count() == 0

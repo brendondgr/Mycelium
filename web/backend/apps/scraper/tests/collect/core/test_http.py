@@ -15,6 +15,7 @@ from apps.scraper.collect.core.http import (
     HOST_MIN_INTERVAL,
     FetchError,
     PoliteClient,
+    _resolve_contact,
 )
 
 
@@ -30,6 +31,39 @@ class _Recorder:
 
 def _http_error(url: str, code: int, headers: dict[str, str] | None = None):
     return urllib.error.HTTPError(url, code, f"HTTP {code}", headers or {}, io.BytesIO(b""))
+
+
+# --- COLLECT_CONTACT: blank must fall back, not through -------------------
+#
+# `.env.example` is an `env_file` for the backend and worker containers, so a
+# bare `COLLECT_CONTACT=` line there arrives as an empty string rather than
+# an absent variable. Plain `os.environ.get(name, default)` takes that empty
+# string *over* the default, which would ship every outbound request with
+# `mycelium-collector/0.1 (+)` — no contact at all, defeating the header's
+# entire purpose. `_resolve_contact` is pulled out of the module-level
+# assignment specifically so this can be pinned directly, without needing to
+# reload the module (which would rebind classes other test files already
+# imported by name).
+
+
+def test_a_blank_collect_contact_falls_back_to_the_default(monkeypatch):
+    monkeypatch.setenv("COLLECT_CONTACT", "")
+    assert _resolve_contact() == "research-collector@example.org"
+
+
+def test_a_whitespace_only_collect_contact_also_falls_back(monkeypatch):
+    monkeypatch.setenv("COLLECT_CONTACT", "   ")
+    assert _resolve_contact() == "research-collector@example.org"
+
+
+def test_an_unset_collect_contact_falls_back_to_the_default(monkeypatch):
+    monkeypatch.delenv("COLLECT_CONTACT", raising=False)
+    assert _resolve_contact() == "research-collector@example.org"
+
+
+def test_a_real_collect_contact_value_passes_through_unchanged(monkeypatch):
+    monkeypatch.setenv("COLLECT_CONTACT", "ops@mycelium.example")
+    assert _resolve_contact() == "ops@mycelium.example"
 
 
 # --- per-host pacing -----------------------------------------------------

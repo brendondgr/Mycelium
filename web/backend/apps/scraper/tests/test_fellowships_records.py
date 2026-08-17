@@ -1,15 +1,20 @@
-"""Tests for :func:`apps.scraper.pivot.records.build_pivot_item` — fellowships.
+"""Tests for :func:`apps.scraper.fellowships.records.build_fellowship_item`.
 
 Covers: field mapping from real records, grant exclusion, YYYY-MM coercion,
-prune_after only for true hard-dated deadlines, and unknown area rejection.
+prune_after only for true hard-dated deadlines, and missing-id rejection.
 
 Records are inline dicts taken from the real fellowships.json output (3 records
 representing true, anticipated, and continuous deadline types).
+
+Relocated from ``test_pivot_records.py``'s fellowship coverage (plan Phase 6 —
+the deletion of Pivot-RP): ``build_pivot_item`` used to dispatch on an ``area``
+string across three unrelated record shapes; ``build_fellowship_item`` is the
+fellowship branch alone, with no area parameter at all, so the old
+``test_unknown_area_raises`` case has no equivalent here — every record this
+function sees is a fellowship, always.
 """
 
-import pytest
-
-from apps.scraper.pivot.records import build_pivot_item
+from apps.scraper.fellowships.records import build_fellowship_item
 
 TODAY = "2026-07-06"
 
@@ -201,12 +206,12 @@ _GRANT_RECORD = {
 
 
 # ---------------------------------------------------------------------------
-# build_pivot_item — field mapping
+# build_fellowship_item — field mapping
 # ---------------------------------------------------------------------------
 
 
 def test_scholarship_item_maps_fields():
-    item = build_pivot_item("fellowships", _SCHOLARSHIP, today=TODAY)
+    item = build_fellowship_item(_SCHOLARSHIP, today=TODAY)
     assert item is not None
     assert item.type == "fellowship"
     assert item.external_id == "4137"
@@ -232,13 +237,13 @@ def test_scholarship_item_maps_fields():
 
 
 def test_scholarship_true_deadline_sets_prune_after():
-    item = build_pivot_item("fellowships", _SCHOLARSHIP, today=TODAY)
+    item = build_fellowship_item(_SCHOLARSHIP, today=TODAY)
     # True hard deadline with YYYY-MM-DD → prune_after is set.
     assert item.metadata["prune_after"] == "2026-07-31"
 
 
 def test_anticipated_fellowship_coerces_yyyy_mm():
-    item = build_pivot_item("fellowships", _FELLOWSHIP_ANTICIPATED, today=TODAY)
+    item = build_fellowship_item(_FELLOWSHIP_ANTICIPATED, today=TODAY)
     assert item is not None
     # YYYY-MM coerced to first-of-month for deadline_date.
     assert item.metadata["deadline_date"] == "2026-09-01"
@@ -246,14 +251,14 @@ def test_anticipated_fellowship_coerces_yyyy_mm():
 
 
 def test_anticipated_fellowship_no_prune_after():
-    item = build_pivot_item("fellowships", _FELLOWSHIP_ANTICIPATED, today=TODAY)
+    item = build_fellowship_item(_FELLOWSHIP_ANTICIPATED, today=TODAY)
     # Anticipated deadline → prune_after is "" (rolling/anticipated are kept).
     assert item.metadata["prune_after"] == ""
     assert item.metadata["next_kind"] == "application"
 
 
 def test_continuous_deadline_no_deadline_date_no_prune_after():
-    item = build_pivot_item("fellowships", _CONTINUOUS, today=TODAY)
+    item = build_fellowship_item(_CONTINUOUS, today=TODAY)
     assert item is not None
     assert item.metadata["deadline_date"] == ""
     assert item.metadata["prune_after"] == ""
@@ -262,23 +267,18 @@ def test_continuous_deadline_no_deadline_date_no_prune_after():
 
 
 def test_grant_exclusion_returns_none():
-    item = build_pivot_item("fellowships", _GRANT_RECORD, today=TODAY)
+    item = build_fellowship_item(_GRANT_RECORD, today=TODAY)
     assert item is None, "grant records on the fellowship site must be excluded"
 
 
 def test_missing_id_returns_none():
     rec = dict(_SCHOLARSHIP, id="")
-    assert build_pivot_item("fellowships", rec, today=TODAY) is None
+    assert build_fellowship_item(rec, today=TODAY) is None
 
 
 def test_record_text_includes_key_fields():
-    item = build_pivot_item("fellowships", _SCHOLARSHIP, today=TODAY)
+    item = build_fellowship_item(_SCHOLARSHIP, today=TODAY)
     text = item.text.lower()
     assert "heraldry" in text or "scholarship" in text.lower()
     # Facet strings in the text.
     assert "social sciences" in text or "humanities" in text
-
-
-def test_unknown_area_raises():
-    with pytest.raises(ValueError, match="unknown Pivot area"):
-        build_pivot_item("bogus_area", _SCHOLARSHIP, today=TODAY)

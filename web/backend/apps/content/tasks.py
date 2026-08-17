@@ -162,18 +162,20 @@ def run_daily_suggestions(
 def run_daily_opportunities(
     usernames: list[str] | None = None,
     *,
-    ingest: bool = True,
     prune: bool = True,
-    embed: bool = True,
 ) -> dict:
-    """Refresh + prune the Pivot corpus, then match opportunities per user.
+    """Prune the opportunity corpus, then match grants/conferences/fellowships per user.
 
     Covers grants, conferences, and fellowships.  Fellowships are matched via the
     deterministic rule engine (no LLM call) and are always included.
 
-    The opportunity twin of :func:`run_daily_suggestions`, wired to its own 1am
-    Beat schedule. Ingest is best-effort (a no-op without a saved Pivot session),
-    so the job reliably re-matches and prunes the existing corpus every night.
+    The opportunity twin of :func:`run_daily_suggestions`. This task never
+    scrapes: collection is its own scheduled stage (``apps.scraper.collect``,
+    plan Phase 12), invoked ahead of this one by ``manual_all.py``. It used to
+    accept ``ingest``/``embed`` flags mirroring that scrape stage, but neither
+    ever reached :func:`run_daily_opportunities_batch`'s prune branch or
+    anything else in that function — they were dropped rather than kept as
+    parameters with no effect.
     """
     users = select_users(usernames)
     labs, projects = select_targets(usernames)
@@ -189,9 +191,7 @@ def run_daily_opportunities(
             labs=labs,
             projects=projects,
             areas=("grants", "conferences", "fellowships"),
-            ingest=ingest,
             prune=prune,
-            embed=embed,
             log=runlog.line,
         )
         for result in batch.results:

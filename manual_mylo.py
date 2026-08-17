@@ -7,8 +7,8 @@ briefing, scoring only that day's brand-new items), this is the on-demand
 in every area (research papers, grants, conferences, fellowships) and re-scores
 them through the language model, refreshing each user's Mylo recommendations —
 the percent match and the tailored "why it fits you" write-up — with **no**
-literature scan and **no** Pivot re-scrape. Then it rewrites each user's Mylo
-Report so the daily briefing reflects the freshly-scored recommendations.
+literature scan and **no** opportunity re-scrape. Then it rewrites each user's
+Mylo Report so the daily briefing reflects the freshly-scored recommendations.
 
 Use it when you want Mylo to re-think its recommendations for everyone over the
 corpus already in the store — e.g. after tuning the prompts/matcher, after an LLM

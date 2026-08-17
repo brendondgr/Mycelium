@@ -23,13 +23,38 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+#: The fallback used whenever ``COLLECT_CONTACT`` is absent, or present but
+#: blank. Fine for tests and offline replay; a real, monitored address must be
+#: set before the first live run against a public source, since it is the
+#: only way a host operator can reach us about our traffic.
+_FALLBACK_CONTACT = "research-collector@example.org"
+
+
+def _resolve_contact() -> str:
+    """Read ``COLLECT_CONTACT``, treating a blank value the same as unset.
+
+    ``.env.example`` is loaded as an ``env_file`` for the backend and worker
+    containers, so a bare ``COLLECT_CONTACT=`` line there arrives as an empty
+    string, not an absent variable — and plain ``os.environ.get(name,
+    default)`` takes that empty string *over* the default. The blank would
+    then flow straight into ``USER_AGENT`` below as
+    ``mycelium-collector/0.1 (+)``, silently dropping the one thing the
+    header exists to carry. Treat blank the same as unset, the way
+    ``config.settings.env_str`` does for the analytics data paths (see
+    ``docs/architecture.md``) — ``.strip() or fallback`` falls through to the
+    real default instead of past it.
+
+    Pulled out as its own function (rather than inlined into the module-level
+    assignment below) purely so a test can exercise the blank-vs-unset
+    behaviour directly, without reloading the module.
+    """
+    return os.environ.get("COLLECT_CONTACT", "").strip() or _FALLBACK_CONTACT
+
+
 #: Read at IMPORT TIME, so setting ``COLLECT_CONTACT`` after this module has
 #: loaded has no effect — it must be in the process environment before Django
-#: (or anything else) first imports ``apps.scraper.collect``. The placeholder
-#: default below is fine for tests and offline replay; it must be set to a
-#: real, monitored address before the first live run against a public source,
-#: since it is the only way a host operator can reach us about our traffic.
-DEFAULT_CONTACT = os.environ.get("COLLECT_CONTACT", "research-collector@example.org")
+#: (or anything else) first imports ``apps.scraper.collect``.
+DEFAULT_CONTACT = _resolve_contact()
 USER_AGENT = f"mycelium-collector/0.1 (+{DEFAULT_CONTACT})"
 
 #: Minimum seconds between requests to the same host.

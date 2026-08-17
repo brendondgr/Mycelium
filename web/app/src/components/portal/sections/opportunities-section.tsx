@@ -10,6 +10,11 @@ import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import {
+  DeadlineRoundsButton,
+  type DeadlineRound,
+} from "@/components/portal/primitives/deadline-rounds";
+import { SourceFooter } from "@/components/portal/primitives/source-footer";
+import {
   ArrowRightIcon,
   BankIcon,
   CalendarIcon,
@@ -56,6 +61,43 @@ function formatDate(iso: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+/**
+ * Every known application round for the multi-deadline hover (plan D1).
+ * Unlike a conference round, a grant round carries no kind/label of its own —
+ * `due_dates` is a bare, ascending-sortable array of ISO dates (`rounds` in
+ * `mapping.py::_grant_deadlines`) — so rounds are numbered in chronological
+ * order rather than named. A single-round grant still gets one row: "Application".
+ */
+function grantDeadlineRounds(grant: GrantOpportunity): DeadlineRound[] {
+  const dates = [...grant.due_dates].sort();
+  return dates.map((iso, index) => ({
+    key: `${iso}-${index}`,
+    label: dates.length > 1 ? `Round ${index + 1}` : "Application",
+    dateLabel: formatDate(iso) || iso,
+    estimated: grant.dates_inferred,
+  }));
+}
+
+/** Extra context below the round list: a letter-of-intent date ahead of the
+ * full application, and the first-ever posted deadline when a funder has
+ * since moved it — both real signals `due_dates` alone doesn't carry. */
+function grantDeadlineFootnote(grant: GrantOpportunity): React.ReactNode {
+  const lines: React.ReactNode[] = [];
+  if (grant.loi_date) {
+    lines.push(
+      <p key="loi">Letter of intent due {formatDate(grant.loi_date) || grant.loi_date}</p>,
+    );
+  }
+  if (grant.original_deadline && grant.original_deadline !== grant.deadline_date) {
+    lines.push(
+      <p key="orig">
+        First posted deadline: {formatDate(grant.original_deadline) || grant.original_deadline}
+      </p>,
+    );
+  }
+  return lines.length > 0 ? lines : null;
 }
 
 /** One matched grant, exactly as the Grants page renders it (reused by Saves). */
@@ -136,13 +178,26 @@ export function GrantRow({
                 />
               </div>
               {due ? (
-                <span
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--destructive)]"
-                  title={`Deadline ${due}`}
-                >
-                  <CalendarIcon size={13} aria-hidden="true" />
-                  {due}
-                </span>
+                <DeadlineRoundsButton
+                  triggerLabel={`Deadline ${due} — see every application round`}
+                  trigger={
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--destructive)]">
+                      <CalendarIcon size={13} aria-hidden="true" />
+                      {due}
+                      {grant.due_dates.length > 1 ? (
+                        <span className="font-medium text-[var(--text-secondary)]">
+                          · {grant.due_dates.length}
+                        </span>
+                      ) : null}
+                    </span>
+                  }
+                  rounds={
+                    grant.due_dates.length > 0
+                      ? grantDeadlineRounds(grant)
+                      : [{ key: "due", label: "Application", dateLabel: due }]
+                  }
+                  footnote={grantDeadlineFootnote(grant)}
+                />
               ) : null}
               {grant.amount ? (
                 <span
@@ -182,6 +237,13 @@ export function GrantRow({
       ) : null}
 
       <RecommendedFor members={recommendedFor} />
+
+      <SourceFooter
+        license={grant.license}
+        licenseUrl={grant.license_url}
+        sourceLinks={grant.source_links}
+        source={grant.source}
+      />
 
       {grant.url ? (
         <a

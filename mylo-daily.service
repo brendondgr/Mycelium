@@ -1,8 +1,9 @@
 [Unit]
 Description=Mycelium — daily research run (scrape → search → match → briefing)
 Documentation=https://github.com/brendondgr/mycelium
-# The daily run drives the Docker stack (backend container) and the host Pivot
-# scrape, so the stack should be up first. `Wants` (not `Requires`) on purpose:
+# The daily run drives the Docker stack (backend container) and the host
+# fellowship scrape, so the stack should be up first. `Wants` (not `Requires`)
+# on purpose:
 # if the stack unit failed, we still let manual_all.py run so it can REPORT the
 # stack-down condition to Discord rather than silently not running.
 After=mycelium.service network-online.target
@@ -24,8 +25,7 @@ ExecStart=__MYCELIUM_ROOT__/.venv/bin/python __MYCELIUM_ROOT__/manual_all.py
 # next day recovers, without cutting a healthy run short.
 TimeoutStartSec=14400
 
-# Run as the user who owns the repo, the Docker socket auth, the .venv, and the
-# saved Pivot session.
+# Run as the user who owns the repo, the Docker socket auth, and the .venv.
 User=__MYCELIUM_USER__
 Group=__MYCELIUM_USER__
 

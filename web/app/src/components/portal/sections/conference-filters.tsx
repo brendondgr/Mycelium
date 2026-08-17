@@ -16,6 +16,10 @@ export type ConferenceSort = "fit" | "deadline" | "event";
 export type ConferenceStatus = "any" | "open" | "closed";
 export type ConferenceDeadlineWindow = "any" | "30d" | "90d" | "has-date";
 export type ConferenceEventWindow = "any" | "3m" | "6m" | "upcoming";
+/** Trust tier facet (plan D3) — "any" leaves the whole set unfiltered;
+ * "unassigned" is a real, selectable state ("only listings Mylo hasn't yet
+ * linked to a known venue"), not just a display fallback on the card. */
+export type ConferenceTrustTierFilter = "any" | "A" | "B" | "unassigned";
 
 export type ConferenceFilterState = {
   sort: ConferenceSort;
@@ -39,6 +43,14 @@ export type ConferenceFilterState = {
   newOnly: boolean;
   /** Only items the user has saved. */
   savedOnly: boolean;
+  /** Trust tier facet (plan D3) — the always-present quality signal. */
+  trustTier: ConferenceTrustTierFilter;
+  /** Only venues carrying at least one CCF/CORE/THCPL rank badge (~25% of
+   * live series, plan D2) — separate from `trustTier`, which every series has. */
+  rankedOnly: boolean;
+  /** Selected rank systems (empty = any); OR within the group — a venue
+   * ranked by any one of the selected systems matches. */
+  rankSystems: string[];
 };
 
 export const DEFAULT_CONFERENCE_FILTERS: ConferenceFilterState = {
@@ -53,6 +65,9 @@ export const DEFAULT_CONFERENCE_FILTERS: ConferenceFilterState = {
   subjects: [],
   newOnly: false,
   savedOnly: false,
+  trustTier: "any",
+  rankedOnly: false,
+  rankSystems: [],
 };
 
 type Option = { value: string; count: number };
@@ -61,6 +76,9 @@ export type ConferenceFilterOptions = {
   continents: Option[];
   countries: Option[];
   subjects: Option[];
+  /** Rank systems present in the scoped set (e.g. "ccf", "core", "thcpl"),
+   * with how many conferences carry a badge from each. */
+  rankSystems: Option[];
 };
 
 // --------------------------------------------------------------------------- //
@@ -192,11 +210,247 @@ const COUNTRY_TO_CONTINENT: Record<string, string> = {
   uganda: "Africa",
 };
 
-/** Continent for a country string, or "Other" when unknown/blank. */
+/**
+ * ISO 3166-1 alpha-2 → continent. **Why this exists, not just the name map
+ * above**: the plan for this phase says the backend "now emits both `country`
+ * (full name) and `country_code` (ISO alpha-2)" — checked against the live
+ * code and that is not what `ConferenceSerializer` does. It exposes one
+ * field, `country`, and `mapping.py::_country_name` resolves it from
+ * `instance.country_code` through a **52-country curated table**
+ * (`COUNTRY_NAMES`); anything outside that table falls through to the raw
+ * uppercase ISO code unchanged (`COUNTRY_NAMES.get(upper, upper)`). So
+ * `country` is *sometimes* a full name and *sometimes* a bare 2-letter code
+ * today, on the exact same field, depending only on whether the mapper's
+ * table happens to cover that country — a real conference in, say, Pakistan,
+ * Bangladesh, Iran, or Kazakhstan arrives as `"PK"` / `"BD"` / `"IR"` /
+ * `"KZ"`, which the name map above has never bucketed and which used to fall
+ * straight through to "Other". This table is `continentOf`'s fix for that:
+ * a reasonably complete alpha-2 map so a raw code resolves correctly too,
+ * with no backend change required. (Adding a proper `country_code` field to
+ * `ConferenceSerializer` would still be worth doing — flagged in the phase
+ * report — but this frontend-only fix covers the data the API actually
+ * returns today.)
+ */
+const COUNTRY_CODE_TO_CONTINENT: Record<string, string> = {
+  // North America
+  US: "North America",
+  CA: "North America",
+  MX: "North America",
+  GT: "North America",
+  BZ: "North America",
+  SV: "North America",
+  HN: "North America",
+  NI: "North America",
+  CR: "North America",
+  PA: "North America",
+  CU: "North America",
+  JM: "North America",
+  HT: "North America",
+  DO: "North America",
+  BS: "North America",
+  TT: "North America",
+  BB: "North America",
+  PR: "North America",
+  // Europe
+  GB: "Europe",
+  IE: "Europe",
+  FR: "Europe",
+  DE: "Europe",
+  ES: "Europe",
+  PT: "Europe",
+  IT: "Europe",
+  NL: "Europe",
+  BE: "Europe",
+  LU: "Europe",
+  CH: "Europe",
+  AT: "Europe",
+  SE: "Europe",
+  NO: "Europe",
+  DK: "Europe",
+  FI: "Europe",
+  IS: "Europe",
+  PL: "Europe",
+  CZ: "Europe",
+  SK: "Europe",
+  HU: "Europe",
+  GR: "Europe",
+  RO: "Europe",
+  BG: "Europe",
+  HR: "Europe",
+  RS: "Europe",
+  SI: "Europe",
+  EE: "Europe",
+  LV: "Europe",
+  LT: "Europe",
+  UA: "Europe",
+  RU: "Europe",
+  TR: "Europe",
+  CY: "Europe",
+  MT: "Europe",
+  MC: "Europe",
+  LI: "Europe",
+  SM: "Europe",
+  VA: "Europe",
+  AD: "Europe",
+  AL: "Europe",
+  BA: "Europe",
+  ME: "Europe",
+  MK: "Europe",
+  MD: "Europe",
+  BY: "Europe",
+  // Asia
+  CN: "Asia",
+  JP: "Asia",
+  KR: "Asia",
+  KP: "Asia",
+  IN: "Asia",
+  PK: "Asia",
+  BD: "Asia",
+  LK: "Asia",
+  NP: "Asia",
+  BT: "Asia",
+  MM: "Asia",
+  TH: "Asia",
+  VN: "Asia",
+  KH: "Asia",
+  LA: "Asia",
+  MY: "Asia",
+  SG: "Asia",
+  ID: "Asia",
+  PH: "Asia",
+  TW: "Asia",
+  HK: "Asia",
+  MO: "Asia",
+  MN: "Asia",
+  KZ: "Asia",
+  UZ: "Asia",
+  TM: "Asia",
+  TJ: "Asia",
+  KG: "Asia",
+  AF: "Asia",
+  IR: "Asia",
+  IQ: "Asia",
+  SY: "Asia",
+  LB: "Asia",
+  JO: "Asia",
+  IL: "Asia",
+  PS: "Asia",
+  SA: "Asia",
+  AE: "Asia",
+  QA: "Asia",
+  KW: "Asia",
+  BH: "Asia",
+  OM: "Asia",
+  YE: "Asia",
+  AM: "Asia",
+  AZ: "Asia",
+  GE: "Asia",
+  // Oceania
+  AU: "Oceania",
+  NZ: "Oceania",
+  FJ: "Oceania",
+  PG: "Oceania",
+  SB: "Oceania",
+  VU: "Oceania",
+  NC: "Oceania",
+  PF: "Oceania",
+  WS: "Oceania",
+  TO: "Oceania",
+  KI: "Oceania",
+  FM: "Oceania",
+  MH: "Oceania",
+  PW: "Oceania",
+  NR: "Oceania",
+  TV: "Oceania",
+  GU: "Oceania",
+  AS: "Oceania",
+  // South America
+  BR: "South America",
+  AR: "South America",
+  CL: "South America",
+  CO: "South America",
+  PE: "South America",
+  EC: "South America",
+  UY: "South America",
+  VE: "South America",
+  BO: "South America",
+  PY: "South America",
+  GY: "South America",
+  SR: "South America",
+  // Africa
+  ZA: "Africa",
+  EG: "Africa",
+  NG: "Africa",
+  KE: "Africa",
+  GH: "Africa",
+  ET: "Africa",
+  TZ: "Africa",
+  UG: "Africa",
+  MA: "Africa",
+  TN: "Africa",
+  DZ: "Africa",
+  LY: "Africa",
+  SD: "Africa",
+  SS: "Africa",
+  CD: "Africa",
+  CG: "Africa",
+  CM: "Africa",
+  CI: "Africa",
+  SN: "Africa",
+  ML: "Africa",
+  NE: "Africa",
+  TD: "Africa",
+  MZ: "Africa",
+  ZW: "Africa",
+  ZM: "Africa",
+  AO: "Africa",
+  NA: "Africa",
+  BW: "Africa",
+  RW: "Africa",
+  BI: "Africa",
+  SO: "Africa",
+  DJ: "Africa",
+  GA: "Africa",
+  GQ: "Africa",
+  GM: "Africa",
+  GN: "Africa",
+  GW: "Africa",
+  LR: "Africa",
+  SL: "Africa",
+  BF: "Africa",
+  TG: "Africa",
+  BJ: "Africa",
+  MW: "Africa",
+  LS: "Africa",
+  SZ: "Africa",
+  MG: "Africa",
+  MU: "Africa",
+  SC: "Africa",
+  CV: "Africa",
+  KM: "Africa",
+  ST: "Africa",
+  EH: "Africa",
+};
+
+/** True for a bare 2-letter ISO code ("PK"), case-insensitively — the shape
+ * `country` takes whenever the backend's 52-country name table doesn't cover
+ * it (see the block comment above `COUNTRY_CODE_TO_CONTINENT`). */
+const ISO_CODE_RE = /^[a-z]{2}$/i;
+
+/**
+ * Continent for a country string, or "Other" when unknown/blank. Handles both
+ * shapes `ConferenceOpportunity["country"]` actually takes today: a full
+ * name (looked up lower-cased against `COUNTRY_TO_CONTINENT`) and a bare
+ * ISO alpha-2 code (looked up upper-cased against
+ * `COUNTRY_CODE_TO_CONTINENT`) — see that map's comment for why both exist.
+ */
 export function continentOf(country: string): string {
-  const key = (country || "").trim().toLowerCase();
-  if (!key) return "Other";
-  return COUNTRY_TO_CONTINENT[key] ?? "Other";
+  const trimmed = (country || "").trim();
+  if (!trimmed) return "Other";
+  if (ISO_CODE_RE.test(trimmed)) {
+    return COUNTRY_CODE_TO_CONTINENT[trimmed.toUpperCase()] ?? "Other";
+  }
+  return COUNTRY_TO_CONTINENT[trimmed.toLowerCase()] ?? "Other";
 }
 
 /** Split the semicolon-delimited matched_subjects blob into clean tags. */
@@ -218,6 +472,7 @@ export function deriveConferenceFilterOptions(
   const continentMap = new Map<string, number>();
   const countryMap = new Map<string, number>();
   const subjectMap = new Map<string, number>();
+  const rankSystemMap = new Map<string, number>();
 
   for (const conf of items) {
     const country = (conf.country || "").trim();
@@ -229,6 +484,11 @@ export function deriveConferenceFilterOptions(
     continentMap.set(continent, (continentMap.get(continent) ?? 0) + 1);
     for (const subject of subjectTags(conf)) {
       subjectMap.set(subject, (subjectMap.get(subject) ?? 0) + 1);
+    }
+    // One count per distinct system per conference, even if (hypothetically)
+    // a series carried two ranks from the same system — a `Set` de-dupes.
+    for (const system of new Set(conf.rank_badges.map((b) => b.system))) {
+      rankSystemMap.set(system, (rankSystemMap.get(system) ?? 0) + 1);
     }
   }
 
@@ -248,7 +508,11 @@ export function deriveConferenceFilterOptions(
     .map(([value, count]) => ({ value, count }))
     .sort(byCountThenName);
 
-  return { continents, countries, subjects };
+  const rankSystems = [...rankSystemMap.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort(byCountThenName);
+
+  return { continents, countries, subjects, rankSystems };
 }
 
 // --------------------------------------------------------------------------- //
@@ -328,6 +592,16 @@ export function filterAndSortConferences(
     )
       return false;
 
+    // Ranking facet (plan D2/D3): trust tier is a straight equality match;
+    // "ranked only" and the rank-system multi-select both key off rank_badges.
+    if (f.trustTier !== "any" && conf.trust_tier !== f.trustTier) return false;
+    if (f.rankedOnly && conf.rank_badges.length === 0) return false;
+    if (
+      f.rankSystems.length > 0 &&
+      !conf.rank_badges.some((b) => f.rankSystems.includes(b.system))
+    )
+      return false;
+
     if (f.newOnly && !conf.is_new) return false;
     if (f.savedOnly && !conf.saved) return false;
 
@@ -358,7 +632,10 @@ export function hasActiveConferenceFilters(f: ConferenceFilterState): boolean {
     f.countries.length > 0 ||
     f.subjects.length > 0 ||
     f.newOnly ||
-    f.savedOnly
+    f.savedOnly ||
+    f.trustTier !== "any" ||
+    f.rankedOnly ||
+    f.rankSystems.length > 0
   );
 }
 
@@ -528,6 +805,9 @@ export function ConferenceFilters({
     filters.subjects.length > 0,
     filters.newOnly,
     filters.savedOnly,
+    filters.trustTier !== "any",
+    filters.rankedOnly,
+    filters.rankSystems.length > 0,
   ].filter(Boolean).length;
 
   return (
@@ -637,6 +917,48 @@ export function ConferenceFilters({
                 { value: "upcoming", label: "Upcoming" },
               ]}
             />
+          </FilterGroup>
+
+          {/* Trust tier is the always-present signal (plan D3: every series
+              has one); rank badges only cover ~25% of series (plan D2), so
+              "ranked only" and the per-system picks are their own controls
+              underneath rather than folded into the tier segmented control. */}
+          <FilterGroup label="Ranking">
+            <Segmented
+              ariaLabel="Filter by trust tier"
+              value={filters.trustTier}
+              onChange={(trustTier) => patch({ trustTier })}
+              options={[
+                { value: "any", label: "Any" },
+                { value: "A", label: "Tier A" },
+                { value: "B", label: "Tier B" },
+                { value: "unassigned", label: "Not yet placed" },
+              ]}
+            />
+            <div className="mt-1.5">
+              <CheckRow
+                label="Has a rank badge (CCF / CORE / THCPL)"
+                checked={filters.rankedOnly}
+                onChange={() => patch({ rankedOnly: !filters.rankedOnly })}
+              />
+            </div>
+            {options.rankSystems.length > 0 ? (
+              <div className="mt-1.5">
+                {options.rankSystems.map((system) => (
+                  <CheckRow
+                    key={system.value}
+                    label={system.value.toUpperCase()}
+                    count={system.count}
+                    checked={filters.rankSystems.includes(system.value)}
+                    onChange={() =>
+                      patch({
+                        rankSystems: toggle(filters.rankSystems, system.value),
+                      })
+                    }
+                  />
+                ))}
+              </div>
+            ) : null}
           </FilterGroup>
 
           <FilterGroup label="Show only">

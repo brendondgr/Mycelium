@@ -17,8 +17,8 @@ Two layers, cheapest first:
    model is unavailable the pattern result stands on its own.
 
 Extraction happens once per record at ingest and is carried forward on re-ingest
-(:mod:`apps.scraper.pivot.records`), so neither layer runs nightly over a corpus
-that has not changed.
+(:mod:`apps.scraper.fellowships.ingest`), so neither layer runs nightly over a
+corpus that has not changed.
 
 The output block, stored at ``metadata["constraints"]``:
 

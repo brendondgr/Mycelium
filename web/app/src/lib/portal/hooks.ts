@@ -54,6 +54,7 @@ import {
   fetchProjectInvitations,
   fetchProjectRecommendations,
   fetchProjects,
+  fetchRankingReference,
   fetchSearch,
   fetchWatch,
   fetchWindowCounts,
@@ -341,6 +342,21 @@ export function useConferences() {
     queryKey: ["portal", "conferences"],
     queryFn: fetchConferences,
     staleTime: 60_000,
+  });
+}
+
+/**
+ * Static hover copy for conference rank badges and trust tiers (Phase 10).
+ * `staleTime: Infinity` because the reference table only changes when the
+ * collector's own rank/tier vocabulary changes — never per request, and
+ * never per user — so one fetch serves every badge on every card for the
+ * whole session (react-query dedupes every card's subscription to it).
+ */
+export function useRankingReference() {
+  return useQuery({
+    queryKey: ["portal", "ranking-reference"],
+    queryFn: fetchRankingReference,
+    staleTime: Infinity,
   });
 }
 

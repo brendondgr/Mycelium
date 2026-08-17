@@ -6,15 +6,18 @@ prune → reminder-stale signal (``apps.content.signals``) as a backstop:
 
     uv run --project web/backend python web/backend/manage.py prune_opportunities
 
-Standalone host imports (``pivot.py import``) still prune inline via ``ingest_pivot``;
-this command is the daily run's separate prune stage.
+Uses :func:`apps.scraper.collect.ingest.prune_expired` — the one ``prune_expired``
+the whole opportunity surface converges on (plan Phase 4/6): it is type-scoped
+(``type__in=[GRANT, CONFERENCE, FELLOWSHIP]``), not source-scoped, so it covers
+every source id, including the ones the open collector introduces, without
+needing to know their names.
 """
 
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 
-from apps.scraper.pivot.ingest import prune_expired
+from apps.scraper.collect.ingest import prune_expired
 
 
 class Command(BaseCommand):

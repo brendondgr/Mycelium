@@ -87,9 +87,10 @@ def have_uv() -> bool:
 def run_host(command: list[str], intro: str | None = None) -> int:
     """Run a command on the host, from the repo root — NOT inside a container.
 
-    Used for the Pivot scrape, whose Playwright/Chromium browser and saved SSO
-    session live on the host rather than in the backend container. Returns the
-    command's exit code; the caller decides whether a non-zero result is fatal.
+    Used for the Illinois fellowship scrape (``scrape_fellowships.py``), whose
+    Playwright/Chromium browser lives on the host rather than in the backend
+    container. Returns the command's exit code; the caller decides whether a
+    non-zero result is fatal.
     """
     if intro:
         print(intro, flush=True)

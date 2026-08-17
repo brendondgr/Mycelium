@@ -1,10 +1,11 @@
 """Post Mycelium daily-run errors and status to Mylo's Discord error channel.
 
 This is the out-of-process delivery seam the daily run (``manual_all.py``) calls
-when something needs a human's attention — a Pivot re-login, an unreachable LLM,
-a stage that failed — plus the nightly run summary, which carries the analytics
-PDF as an attachment. It posts straight to the channel over Discord's REST API
-with the bot token, so it works whether or not the gateway bot process is up.
+when something needs a human's attention — a failed fellowship scrape, an
+unreachable LLM, a stage that failed — plus the nightly run summary, which
+carries the analytics PDF as an attachment. It posts straight to the channel
+over Discord's REST API with the bot token, so it works whether or not the
+gateway bot process is up.
 This matches the ``discord-bot`` standard: an out-of-band announcement from
 another process uses REST/webhooks, not the gateway.
 
@@ -242,8 +243,8 @@ def report(
         body: Optional longer description.
         severity: :class:`Severity` — controls colour/icon; defaults to ERROR.
         stage: The pipeline stage that produced the event (e.g. ``"scrape"``).
-        action: A human next step, shown as a distinct field (e.g. run
-            ``uv run pivot.py login``).
+        action: A human next step, shown as a distinct field (e.g. "Check the
+            Playwright/Chromium install on <host>.").
         fields: Extra name/value pairs to attach. A value may be a plain string
             or a ``(value, inline)`` pair for a side-by-side block.
         attachment: A file to post beneath the embed (the nightly analytics PDF).

@@ -1105,39 +1105,36 @@ class OppBatchResult:
         return {"ingest": self.ingest, "users": [r.as_dict() for r in self.results]}
 
 
-def _union_watch_topics(users) -> list[str]:
-    seen: set[str] = set()
-    out: list[str] = []
-    for user in users:
-        for topic in _watch_topics(user):
-            text = " ".join(topic.split())
-            fold = text.casefold()
-            if text and fold not in seen:
-                seen.add(fold)
-                out.append(text)
-    return out
-
-
 def run_daily_opportunities_batch(
     users,
     *,
     labs=(),
     projects=(),
     areas: tuple[str, ...] = ("grants", "conferences", "fellowships"),
-    ingest: bool = True,
     prune: bool = True,
-    embed: bool = True,
     persist: bool = True,
     concurrency: int | None = None,
     complete: Callable[[str], str | None] | None = None,
     today: str | None = None,
     log: Callable[[str], None] | None = None,
 ) -> OppBatchResult:
-    """Best-effort ingest + prune once, then match every area for every target.
+    """Best-effort prune once, then match every area for every target.
 
-    Phase 1 (ingest, best-effort): try a Playwright refresh of the Pivot corpus —
-    a no-op that logs and continues when no saved session exists — then prune
-    expired items so the pool stays current even on nights with no fresh scrape.
+    Phase 1 (prune): delete expired grants/conferences/fellowships so the pool
+    stays current. **No live scrape happens here.** Before plan Phase 6 this
+    function also accepted ``ingest``/``embed`` flags and tried a Playwright
+    refresh of the Pivot corpus when ``ingest`` was true; that source is
+    retired. The open collector that replaces it (D6) is a scheduled,
+    full-corpus crawl across a dozen HTTP adapters plus a SPARQL registry
+    lookup (``apps.scraper.collect``, wired into the nightly chain as its own
+    stage — plan Phase 12, ``manual_all.py``'s ``collect_opportunities``
+    stage) — the right shape for a scheduled crawl, not for a per-request call
+    this function also serves (a Celery task dispatch, a ``--user`` CLI run, a
+    dry run). Once Phase 12 landed, this function had nothing left for
+    ``ingest``/``embed`` to gate — they never triggered a scrape or an embed
+    call here even before removal, only the docstring implied they might — so
+    they were dropped rather than kept as flags that do nothing. Matching
+    always runs over whatever the corpus's own scheduled stage last wrote.
     Phase 2 (match): each ``(target, area)`` unit is *prepared* — retrieve + fuse
     over the **whole corpus**, against that target's current profile — then all
     prepared units are **scored by the model concurrently** (up to ``concurrency``
@@ -1174,25 +1171,14 @@ def run_daily_opportunities_batch(
     # against the target's profile as it stands tonight. Items that fall out of the
     # ranking are retired from the feed but keep their verdict, so an item that dips
     # out and returns is neither re-billed nor silently re-announced.
+    #
+    # This function never scrapes or embeds (see the docstring for where that now
+    # lives) — ``prune`` is the only toggle left here, via the collector's
+    # ``prune_expired``, which is type-scoped and already covers every opportunity
+    # type (grant/conference/fellowship) regardless of source.
     ingest_summary: dict = {}
-    if ingest:
-        from apps.scraper.pivot.ingest import ingest_pivot
-
-        topics = _union_watch_topics(users)
-        try:
-            from apps.scraper.pivot.scrape import refresh
-
-            pairs = list(refresh(topics=topics, log=log))
-        except Exception:
-            logger.exception("Pivot refresh failed; matching existing corpus")
-            emit("ingest: refresh failed (see log); matching existing corpus")
-            pairs = []
-        summary = ingest_pivot(
-            pairs, embed=embed, prune=prune, today=today, log=log
-        )
-        ingest_summary = summary.as_dict()
-    elif prune:
-        from apps.scraper.pivot.ingest import prune_expired
+    if prune:
+        from apps.scraper.collect.ingest import prune_expired
 
         ingest_summary = {"pruned": prune_expired(today=today, log=log)}
 

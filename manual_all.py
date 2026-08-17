@@ -5,16 +5,23 @@ Scrape every source, then recommend, then write each user's daily briefing —
 one stage after another, synchronously, for *all* active users, against the
 running Docker stack. This is what the host ``mylo-daily.timer`` runs once a
 day (it replaced the in-container Celery Beat daily schedules, which could not
-run the host-only Pivot scrape).
+run the host-only Illinois fellowship scrape).
 
 Stages, in order:
-    1. Scrape opportunity sources (host)   — ``uv run pivot.py`` login + scrape +
-       import: pull fresh grants, conferences, and fellowships from Pivot-RP / the
-       Illinois fellowship site into the shared content store and embed them. When
-       there is no saved Pivot session, this stage first opens the interactive
-       login window (SSO/MFA) to establish one, then scrapes. In a non-interactive
-       shell it cannot prompt, so it skips the scrape and *reports to Discord that a
-       manual login is needed*, then the later stages match the existing corpus.
+    1. Collect opportunity sources          — two independent, non-fatal
+       halves. Grants and conferences run **in the backend container**
+       through the open collector (``collect_opportunities``: collect -> map
+       -> ingest -> extract -> embed, pure HTTP against public registries —
+       no login, no session, no SSO). The Illinois Graduate College Fellowship
+       Finder still scrapes **on the host** (``uv run scrape_fellowships.py
+       scrape``), because it is the one opportunity source that still
+       needs a real browser. Neither half can block the other or the rest of
+       the night: a failed collector run warns, reports to Discord, and
+       leaves the existing grant/conference corpus in place; a failed
+       fellowship scrape does the same for fellowships. The dblp venue
+       registry (plan D5a) also refreshes here, but on its own weekly
+       cadence — see ``refresh_conference_registry`` — since venue longevity
+       does not move night to night.
     2. Search research papers (backend)    — ``run_daily_suggestions``: scan the
        literature sources (OpenAlex / PubMed / SemanticScholar), embed, and rank
        papers for every target. The paper sources are scraped here, as part of the
@@ -79,9 +86,10 @@ on the next scheduled run.
 
 Observability: every notable condition is posted to Mylo's Discord error channel
 via :mod:`mylo.reporting` (a stdlib-only REST poster that never raises) — a
-needed Pivot re-login, an unreachable LLM (the run is skipped), a stage that
-exited non-zero, and the "run complete" summary. The run also writes its outcome
-to ``data/logs/mylo-last-run.json`` for the bot's ``/mylo lastrun``.
+failed grant/conference collection or fellowship scrape, an unreachable LLM
+(the run is skipped), a stage that exited non-zero, and the "run complete"
+summary. The run also writes its outcome to ``data/logs/mylo-last-run.json``
+for the bot's ``/mylo lastrun``.
 
 That summary used to be one line ("all stages finished"), which proved the
 pipeline had not crashed and said nothing about whether the night was worth
@@ -95,33 +103,40 @@ tables and bar charts, and attaches the PDF beneath the message. The step sits
 outside ``CONTAINER_STAGES`` on purpose: measurement failing must not fail a run
 that succeeded, so its exit code degrades the summary rather than the run.
 
-The scrape stage runs on the host because Playwright/Chromium and the saved Pivot
-session live there, not in the backend container (the container has no Playwright,
-which is why its own opportunity ingest silently skips the scrape). Host and
-container share the same Postgres, so a host-side import is visible to the
-backend stages that follow. Every part of the scrape stage — login, scrape,
-import — is non-fatal: a declined login, an expired session, or no ``uv`` just
-warns (and reports) and lets the run continue, recommending over whatever corpus
-already exists.
+Grants and conferences move into the backend container because the open
+collector is pure HTTP — the host/container split Pivot-RP needed existed only
+for its Playwright browser and saved SSO session (plan D6). The Illinois
+fellowship scrape stays on the host for exactly the reason Pivot did:
+Playwright. Host and container share the same Postgres, so a host-side
+fellowship import is visible to the backend stages that follow. Every part of
+stage 1 — the container collection, the host fellowship scrape, and the weekly
+registry refresh — is non-fatal: a failed run warns, reports to Discord, and
+lets the rest of the night proceed over whatever corpus already exists. Neither
+half needs a login: the collector's sources are public HTTP, and the Illinois
+Fellowship Finder's listing page needs no session either — only the retired
+Pivot-RP scrape ever did.
 
 Each stage runs for all users with default settings; this script takes no
-pass-through flags on purpose, so "scrape and recommend everything for everyone"
-stays one predictable command. For a targeted run, call the per-stage scripts in
-utils/manual/ or ``uv run pivot.py`` directly.
+pass-through flags on purpose, so "collect and recommend everything for
+everyone" stays one predictable command. For a targeted run, call the
+per-stage scripts in utils/manual/, run
+``uv run --project web/backend python web/backend/manage.py
+collect_opportunities`` directly, or ``uv run scrape_fellowships.py`` for
+fellowships.
 
 Usage:
-    python manual_all.py        # scrape → rank → slate → diff → report
+    python manual_all.py        # collect → rank → slate → diff → report
     python manual_all.py --help # this message
 
 The stack must be up first (``python run.py up``). Requires Docker Compose, plus
-``uv`` on PATH; the scrape stage will log in for you when no Pivot session exists,
-as long as it is run from an interactive terminal with a display for SSO/MFA.
+``uv`` on PATH for the host-side fellowship scrape.
 """
 
 from __future__ import annotations
 
 import socket
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "utils" / "manual"))
@@ -141,6 +156,28 @@ except Exception:  # noqa: BLE001
 
 HOST = socket.gethostname()
 ROOT = Path(__file__).resolve().parent
+
+#: Where ``scrape_fellowships.py scrape`` writes its JSON (still named after
+#: Pivot-RP's own layout — see that script's module docstring). Grants and
+#: conferences never write here anymore (they collect straight into the
+#: container's Postgres via ``collect_opportunities``), but a JSON file from
+#: before this migration can still be sitting on disk on a host nobody has
+#: cleaned up — see ``_purge_stale_pivot_json``.
+PIVOT_DIR = ROOT / "data" / "pivot"
+
+#: The dblp venue registry cache (plan D5a) — read by the conference
+#: collector's resolve stage, written by the ``refresh_dblp_registry``
+#: management command. Both sides resolve to the same path: ``data/collect``
+#: is this repo's collector root (``apps.scraper.collect.runner.DEFAULT_ROOT``)
+#: and ``registry`` is where every registry adapter's cache lands under it.
+REGISTRY_CACHE_PATH = ROOT / "data" / "collect" / "registry" / "dblp_venues.json"
+
+#: How often the dblp registry actually needs refreshing. Venue longevity —
+#: has this stream published in the last few years — does not move night to
+#: night, so refreshing on the same 24h cadence as everything else would spend
+#: the same ~8 MB SPARQL request six nights out of seven for an unchanged
+#: answer (plan D5a: "weekly is ample").
+REGISTRY_REFRESH_INTERVAL_DAYS = 7
 
 # The backend rank/briefing stages, in order, run inside the container. The scrape
 # stage (stage 1) is handled separately on the host. The order is the product rule:
@@ -274,108 +311,170 @@ def _write_run_state(**kwargs) -> None:
     write_run_state(**kwargs)
 
 
-def pivot_session_exists() -> bool:
-    """True if a saved Pivot SSO session is present on the host.
+def _purge_stale_pivot_json() -> None:
+    """Delete any leftover grants/conferences JSON from before this migration.
 
-    Reuses the scraper's own ``state_exists()`` (which honors ``PIVOT_STORAGE_STATE``)
-    so this check can never drift from where the scraper actually looks. That module
-    is pure-stdlib, so importing it needs no Django setup. If it can't be imported for
-    any reason we report "no session" — the caller then tries to log in, which is the
-    safe direction.
+    ``scrape_fellowships.py`` (which replaced Pivot-RP's own ``pivot.py`` —
+    plan Phase 6) only ever reads/writes ``pivot_fellowships.json`` by exact
+    path, never a glob, so it can no longer accidentally re-ingest a stale
+    ``pivot_grants.json`` / ``pivot_conferences.json`` left over from a run
+    before this migration the way Pivot-RP's own ``pivot.py import`` could
+    (it globbed every ``pivot_*.json`` file under ``PIVOT_DIR`` with no way to
+    scope to one area). Those two files are nonetheless pure clutter now that
+    grants/conferences collect straight into the container's Postgres — this
+    is housekeeping, not a correctness guard the way it once was, and cheap
+    enough to keep doing right before the one area that still writes here.
     """
-    backend = str(ROOT / "web" / "backend")
-    if backend not in sys.path:
-        sys.path.insert(0, backend)
-    try:
-        from apps.scraper.pivot.common import state_exists
-    except Exception:
-        return False
-    return state_exists()
+    for stale_name in ("pivot_grants.json", "pivot_conferences.json"):
+        stale_path = PIVOT_DIR / stale_name
+        if stale_path.exists():
+            print(
+                f"note: removing stale {stale_path} (grants/conferences no "
+                "longer scrape via Pivot)",
+                flush=True,
+            )
+            stale_path.unlink()
 
 
-def scrape_opportunities() -> bool:
-    """Log in if needed, then scrape grants/conferences/fellowships (host, non-fatal).
+def _scrape_fellowships() -> bool:
+    """Host-side Illinois Fellowship Finder scrape + import (Playwright), non-fatal.
 
-    Runs the host Pivot pipeline: ``uv run pivot.py login`` first when no session is
-    saved, then ``uv run pivot.py scrape`` (browser scrape to ``data/pivot/*.json``)
-    and ``uv run pivot.py import`` (dedup + prune + embed into the shared store).
-    Every step is logged, reported to Discord when it needs a human, and swallowed
-    on failure: the daily run should still recommend over the existing corpus, not
-    abort, when the scrape can't run. Returns ``True`` when the import stage ran.
+    The one opportunity source that still needs a real browser — see the
+    module docstring. Unlike the retired Pivot-RP grant/conference scrape,
+    this needs no saved session at all: ``scrape_fellowships.py scrape``
+    reads a public listing page, so there is nothing here that needs to know
+    about SSO or a login window. Every step is logged, reported to Discord
+    when it needs a human, and swallowed on failure, matching stage 1's
+    overall non-fatal contract: a failed fellowship refresh must never stop
+    the run from recommending over the existing corpus.
     """
     if not have_uv():
         message = (
-            "`uv` is not on PATH — skipping the opportunity scrape; the later "
-            "stages will match the corpus already in the store."
+            "`uv` is not on PATH — skipping the Illinois fellowship scrape; "
+            "the later stages will match the fellowships already in the store."
         )
         print(f"note: {message}", flush=True)
-        _notify("warn", "Opportunity scrape skipped", message, stage="scrape")
+        _notify("warn", "Fellowship scrape skipped", message, stage="scrape")
         return False
 
-    # No saved session → log in first so the scrape can actually reach the grant /
-    # conference sources. Login is interactive (SSO/MFA in a browser); in a
-    # non-interactive shell we cannot prompt, so we skip and match the existing corpus.
-    if not pivot_session_exists():
-        if not sys.stdin.isatty():
-            message = (
-                "No saved Pivot session and this is an unattended run, so Mylo "
-                "cannot log in. Fresh grants/conferences/fellowships were NOT "
-                "scraped today; the later stages matched the existing corpus."
-            )
-            print(f"note: {message}", flush=True)
-            _notify(
-                "error",
-                "Pivot login needed — no fresh opportunities today",
-                message,
-                stage="scrape",
-                action=f"Run `uv run pivot.py login` on {HOST} to refresh the session.",
-            )
-            return False
-        print(
-            "No saved Pivot session — opening the login window; complete SSO/MFA to "
-            "continue…",
-            flush=True,
-        )
-        if run_host(["uv", "run", "pivot.py", "login"]) != 0 or not pivot_session_exists():
-            message = (
-                "Pivot login did not complete; skipping the scrape. The later "
-                "stages will match the existing corpus."
-            )
-            print(f"\nnote: {message}", flush=True)
-            _notify(
-                "error",
-                "Pivot login did not complete",
-                message,
-                stage="scrape",
-                action=f"Run `uv run pivot.py login` on {HOST}.",
-            )
-            return False
-
-    if run_host(["uv", "run", "pivot.py", "scrape"]) != 0:
+    if run_host(["uv", "run", "scrape_fellowships.py", "scrape"]) != 0:
         message = (
-            "The Pivot scrape did not complete — the session may have expired. "
-            "Skipping import; the later stages will match the existing corpus."
+            "The Illinois fellowship scrape did not complete. The later "
+            "stages will match the fellowships already in the store."
+        )
+        print(f"\nnote: {message}", flush=True)
+        _notify(
+            "warn",
+            "Fellowship scrape failed",
+            message,
+            stage="scrape",
+            action=f"Check the Playwright/Chromium install on {HOST}.",
+        )
+        return False
+
+    _purge_stale_pivot_json()
+
+    if run_host(["uv", "run", "scrape_fellowships.py", "import"]) != 0:
+        message = (
+            "Importing the scraped fellowship listing failed; the later "
+            "stages will match whatever is already in the store."
+        )
+        print(f"\nnote: {message}", flush=True)
+        _notify("warn", "Fellowship import failed", message, stage="scrape")
+        return False
+
+    return True
+
+
+def _collect_grants_and_conferences(base: list[str]) -> bool:
+    """In-container grants + conferences collection (pure HTTP), non-fatal.
+
+    Runs ``collect_opportunities`` — the open collector's four stages, mapped
+    into ``ContentItem``, ingested, extracted (new records only; see
+    ``--new-only`` on the command itself) and embedded, entirely inside the
+    backend container. No login, no saved session: every source it touches is
+    public HTTP. A failure here (a source outage, a database hiccup) is
+    exactly the kind of thing stage 1 exists to survive: it warns, reports to
+    Discord, and the rest of the run matches whatever grant/conference corpus
+    already exists.
+    """
+    code = run_manage(
+        "collect_opportunities",
+        ["--new-only", "--no-prune"],
+        intro=None,
+        base=base,
+    )
+    if code != 0:
+        message = (
+            f"The grant/conference collector exited with code {code}; the "
+            "later stages will match whatever is already in the store."
         )
         print(f"\nnote: {message}", flush=True)
         _notify(
             "error",
-            "Pivot scrape failed (session likely expired)",
+            "Grant/conference collection failed",
             message,
             stage="scrape",
-            action=f"Re-run `uv run pivot.py login` on {HOST}.",
+            action=f"Check the backend logs on {HOST} (`python run.py logs`).",
         )
         return False
-
-    if run_host(["uv", "run", "pivot.py", "import"]) != 0:
-        message = (
-            "Importing the scraped opportunities failed; the later stages will "
-            "match whatever is already in the store."
-        )
-        print(f"\nnote: {message}", flush=True)
-        _notify("warn", "Opportunity import failed", message, stage="scrape")
-        return False
-
     return True
+
+
+def refresh_conference_registry(base: list[str]) -> None:
+    """Refresh the dblp venue registry cache on a weekly cadence (plan D5a).
+
+    Must run before the collector's conference resolve stage —
+    ``assign_trust_tier`` reads ``dblp_found`` / ``indexed_years`` straight
+    off this cache. The resolve stage is deliberately offline-only (see
+    ``RegistryCache``'s own docstring), so a stale-or-missing cache is not an
+    error there, only a ceiling on how many venues can reach tier A — which is
+    exactly why this can self-throttle with a plain file-mtime check rather
+    than needing its own systemd timer: venue longevity does not move night to
+    night, so paying for a fresh 8 MB SPARQL POST on six nights out of seven
+    would buy nothing a week-old answer didn't already have. Never fatal to
+    the run either way.
+    """
+    try:
+        age_days = (time.time() - REGISTRY_CACHE_PATH.stat().st_mtime) / 86400
+    except OSError:
+        age_days = None  # never fetched, or unreadable — refresh below
+
+    if age_days is not None and age_days < REGISTRY_REFRESH_INTERVAL_DAYS:
+        print(
+            f"note: dblp registry cache is {age_days:.1f}d old "
+            f"(< {REGISTRY_REFRESH_INTERVAL_DAYS}d) — skipping this week's refresh.",
+            flush=True,
+        )
+        return
+
+    print("\n=== Registry · Refreshing the dblp venue registry (weekly)… ===", flush=True)
+    code = run_manage("refresh_dblp_registry", [], intro=None, base=base)
+    if code != 0:
+        message = (
+            "The dblp registry refresh failed; conference trust tiers keep "
+            "using whatever cache already exists (possibly none). This never "
+            "blocks the run — it only caps how many venues can reach tier A "
+            "until the next successful refresh."
+        )
+        print(f"note: {message}", flush=True)
+        _notify("warn", "dblp registry refresh failed", message, stage="registry")
+
+
+def scrape_opportunities(base: list[str]) -> bool:
+    """Collect grants/conferences (container) and fellowships (host), non-fatal.
+
+    The single entry point stage 1 has always exposed: same ``-> bool``
+    contract, same "every failure is non-fatal, the run always recommends
+    over whatever corpus exists" guarantee (see the module docstring). What
+    changed is the *mechanism*, not the promise this function makes to
+    ``main()``. ``True`` means at least one of the two halves actually
+    refreshed something; ``False`` means neither did — and each already
+    reported its own reason to Discord before returning.
+    """
+    collector_ok = _collect_grants_and_conferences(base)
+    fellowships_ok = _scrape_fellowships()
+    return collector_ok or fellowships_ok
 
 
 def preflight_llm(base: list[str]) -> bool:
@@ -416,9 +515,10 @@ def main() -> int:
 
     if sys.argv[1:]:
         sys.exit(
-            "manual_all.py takes no arguments; it always scrapes every source and runs "
-            "every stage for all users.\nFor a targeted run, call the per-stage scripts "
-            "in utils/manual/ or `uv run pivot.py` directly."
+            "manual_all.py takes no arguments; it always collects every source and "
+            "runs every stage for all users.\nFor a targeted run, call the per-stage "
+            "scripts in utils/manual/, `manage.py collect_opportunities` directly, "
+            "or `uv run scrape_fellowships.py` for fellowships."
         )
 
     # Resolve Compose and confirm the stack is up once, up front, so we don't get
@@ -455,12 +555,19 @@ def main() -> int:
         )
         return 1
 
-    # Stage 1 — scrape the opportunity sources on the host (non-fatal).
+    # Weekly housekeeping, ahead of stage 1: the conference resolve stage
+    # inside collect_opportunities reads whatever registry cache already
+    # exists, so refreshing it first (when due) is what lets tonight's run
+    # actually benefit from it rather than resolving against a stale cache.
+    refresh_conference_registry(base)
+
+    # Stage 1 — collect opportunity sources: grants/conferences in the
+    # container, fellowships on the host (non-fatal; see scrape_opportunities).
     print(
-        f"\n=== 1/{total} · Scraping opportunity sources (grants, conferences, fellowships)… ===",
+        f"\n=== 1/{total} · Collecting opportunity sources (grants, conferences, fellowships)… ===",
         flush=True,
     )
-    scrape_ran = scrape_opportunities()
+    scrape_ran = scrape_opportunities(base)
 
     # Stages 2..N — recommend, remind, prune, and brief inside the backend container.
     stages_run: list[str] = []

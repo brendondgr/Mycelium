@@ -83,7 +83,7 @@ def test_daily_opportunities_command_matches_labs_and_projects(
         scored,
         OppBatchResult(ingest={}, results=[]),
     )
-    call_command("run_daily_opportunities", "--no-ingest", "--no-prune", "--no-llm")
+    call_command("run_daily_opportunities", "--no-prune", "--no-llm")
 
     assert user in scored["users"]
     assert lab in scored["labs"]

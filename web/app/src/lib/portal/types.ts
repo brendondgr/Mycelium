@@ -351,6 +351,55 @@ export type DailyBriefingSummary = {
 
 /* -- Opportunities: grants, conferences, deadlines -------------------------- */
 
+/**
+ * One quality-ranking system's verdict for a conference series (plan D2:
+ * rankings are visual only, never relevance). `edition` is always "" in the
+ * live corpus — no vendored adapter records a per-year rank, only a
+ * point-in-time one — so a client must never read a year into it; kept only
+ * because the API contract carries the field verbatim off the collector.
+ */
+export type ConferenceRanking = { system: string; rank: string; edition: string };
+
+/**
+ * Trust tier — the always-present quality signal underneath the (~25%-
+ * coverage) rank badges above (plan D3). "unassigned" is the documented
+ * "nothing known yet" default for an instance whose resolve stage never
+ * matched it to a series — a display state ("no signal yet"), never rendered
+ * as a poor tier.
+ */
+export type TrustTier = "A" | "B" | "unassigned";
+
+/** Per-source attribution: who produced this record, and where to read it there. */
+export type SourceLink = { source: string; url: string };
+
+/**
+ * One dated entry in a conference's ordered deadline list, verbatim off the
+ * collector's own `Deadline` record (`metadata["deadlines_structured"]`) —
+ * the full multi-round detail behind a card's single actionable
+ * `deadline_date` (plan D1). `instant` is an ISO 8601 UTC datetime, or null
+ * for an entry the source stated in words the collector could not parse
+ * (`raw` is then the only display text available).
+ */
+export type StructuredDeadline = {
+  kind: string;
+  /** Verbatim as the source wrote it — the fallback display when `instant` is null. */
+  raw: string;
+  instant: string | null;
+  /** How `instant` was resolved from `raw` ("AoE", "UTC-8"), or an
+   * "inferred:…" marker where the source published no zone at all. */
+  basis: string;
+  /** Free-text round label from the source ("round 2"), or "" when the
+   * source gave none — there is no typed round vocabulary anywhere upstream. */
+  round_label: string;
+  source: string;
+  /** True only for a date this system projected rather than read verbatim —
+   * never let a projection be indistinguishable from a confirmed date. */
+  is_estimated: boolean;
+  /** Incremented when an upsert moves this same entry later — repeated
+   * extensions are one of the collector's predatory red flags. */
+  extension_count: number;
+};
+
 /** Fields shared by a matched grant and a matched conference. */
 type OpportunityBase = {
   content_id: string;
@@ -384,6 +433,21 @@ type OpportunityBase = {
    * matched under. Null/omitted (a single- or no-cluster profile) renders no
    * badge and leaves the cluster chip row on the feed empty. */
   cluster?: { id: string; label: string } | null;
+  /** Which adapter/provider produced this row (e.g. "grants:nsf",
+   * "conf:ccf_deadlines"), or "" for a snapshot row that predates the
+   * open-collector migration. Provenance every area now carries (plan Phase 9). */
+  source: string;
+  /** A short reuse label ("CC0-1.0", "US Government Work — …"), or "" when the
+   * source publishes none. Never a URL — see `license_url`. */
+  license: string;
+  /** A machine-readable licence URL, or "" — as of this migration no vendored
+   * source publishes one the mapper can read yet (see the backend serializer's
+   * documented gap); starts working the day one does, no frontend change needed. */
+  license_url: string;
+  /** Per-source attribution footer entries — one `{source, url}` per
+   * contributor (a merged record can have several). Empty for a fellowship,
+   * a single-source area with nothing to attribute. */
+  source_links: SourceLink[];
 };
 
 /** One addressable deadline on an item (the ContentDeadline projection, R0). */
@@ -404,6 +468,31 @@ export type GrantOpportunity = OpportunityBase & {
   posted: string;
   /** A human-readable blurb (AI summary or abstract), or "". */
   description: string;
+  /** The funder's own opportunity identifier (an NOFO/FOA/solicitation
+   * number), or "" when the source publishes none. */
+  opportunity_number: string;
+  /** Every known application round (`close_date` + `additional_due_dates`),
+   * as ISO dates — the full detail behind the single next-due `deadline_date`
+   * (plan D1). Non-empty whenever `deadline_date` is (mapping.py derives one
+   * from the other). Drives the deadline hover. */
+  due_dates: string[];
+  /** The funder's own free-text deadline line, kept verbatim alongside the
+   * parsed `deadline_date` for a reader who wants the source wording. */
+  deadline_text: string;
+  /** True when the collector estimated this record's dates rather than
+   * reading them verbatim off the source — the grant-side twin of a
+   * conference's `confidence: "anticipated"` (see deadlines_projection.py). */
+  dates_inferred: boolean;
+  /** The first-ever recorded close date, kept even after a funder moves it —
+   * lets a reader see a deadline shifted, not just what it is now. */
+  original_deadline: string;
+  /** Letter-of-intent date, when the funder requires one ahead of the full
+   * application — "" for the large majority of grants. */
+  loi_date: string;
+  /** The funder's own publication date (repointed off `posted`, plan Phase 9
+   * — `posted` now prefers this and falls back to Mylo's ingest date only for
+   * a pre-migration row that carries no such key). */
+  published_on: string;
 };
 
 /** A matched conference (from `/api/opportunities/conferences/`). */
@@ -427,12 +516,57 @@ export type ConferenceOpportunity = OpportunityBase & {
   scope: string;
   /** The venue's own blurb (Pivot files it under "Scope"), collapsed, or "". */
   description: string;
+  /** The venue's short acronym (e.g. "NOVAS"), with the edition year already
+   * stripped out — see `year_label`. */
+  acronym: string;
+  /** The edition year, deduplicated from `acronym` at ingest (OpenReview
+   * emits "NOVAS 2026", split into acronym "NOVAS" + this field "2026"). */
+  year_label: string;
+  /** The raw `{system: {rank, edition}}` map, "N" entries included — a real
+   * "not ranked by this system" statement, distinct from the key being
+   * absent. Prefer `rank_badges` for display; this is the verbatim source. */
+  rankings: Record<string, { rank: string; edition: string }>;
+  /** Display-ready claimed ranks only ("N" already excluded) — what the
+   * card's badge row renders (plan D2). `edition` is always "" — see
+   * `ConferenceRanking`. */
+  rank_badges: ConferenceRanking[];
+  /** "A" | "B" | "unassigned" (plan D3) — always present once a series has
+   * resolved; the card's always-on trust badge reads this directly. */
+  trust_tier: TrustTier;
+  /** Predatory/quality flags on the series (e.g. "fees_prominent"). */
+  red_flags: string[];
+  /** Per-instance quality caveats (e.g. a date that looks like an abstract
+   * registration recorded as a submission deadline). */
+  quality_warnings: string[];
+  /** The full multi-round deadline array (plan D1) — every kind and round,
+   * not just the one `deadline_date` gates openness on. The hover's data. */
+  deadlines_structured: StructuredDeadline[];
 };
 
 /** A ranked opportunity feed for one area. */
 export type OpportunityFeed<T> = {
   generated_at: string | null;
   items: T[];
+};
+
+/**
+ * Static hover copy for conference rank badges and trust tiers (from
+ * `GET /api/opportunities/ranking-reference/`). A conference card carries
+ * only which rank/tier it has (`rank_badges` / `trust_tier`); what that rank
+ * or tier *means* is identical prose for every card that shares it, so it is
+ * fetched once here rather than duplicated per row of a feed that can carry
+ * dozens of conferences. Authenticated but otherwise static — no target, no
+ * personalization — safe to cache indefinitely on the client.
+ */
+export type RankingReference = {
+  rank_systems: Record<string, { label: string; about: string }>;
+  /** `{system: {rank: explanation}}` — "N" is never a key here: a badge is a
+   * claim of rank, and "not ranked" is not one. */
+  rank_explanations: Record<string, Record<string, string>>;
+  /** `{"A": explanation, "B": explanation}` — only the tiers the live corpus
+   * carries. "unassigned" is a frontend display state, not a real tier, and
+   * is never a key here — its copy is authored on the client. */
+  trust_tiers: Record<string, string>;
 };
 
 /** A member who personally matched a shared item (the "who's interested" layer). */

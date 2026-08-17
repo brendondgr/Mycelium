@@ -59,8 +59,9 @@ the profile, lab, department, project, and reminder surfaces.
 
 **Ingestion.** OpenAlex / PubMed / Semantic Scholar paper scrapers behind a
 registry with rate limiting, retry/backoff, a publication-date scan window, and
-cross-source plus against-store deduplication. Pivot-RP (ProQuest) ingest for
-grants, conferences, and fellowships, plus the Illinois Fellowship Finder source.
+cross-source plus against-store deduplication. An open-source collector for
+grants and conferences (public HTTP sources, no login; replaced the commercial
+Pivot-RP/ProQuest ingest), plus the Illinois Fellowship Finder for fellowships.
 An external DOI / arXiv / URL resolver for pasted links.
 
 **Profiles.** Author import from four sources plus optional résumé parsing (read

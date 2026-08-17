@@ -29,6 +29,7 @@ import type {
   MyLab,
   NotificationFeed,
   OpportunityFeed,
+  RankingReference,
   Project,
   ProjectInvitation,
   ProjectRecommendations,
@@ -234,6 +235,19 @@ export async function fetchConferences(): Promise<
   return getJson<OpportunityFeed<ConferenceOpportunity>>(
     buildApiUrl(getPublicApiBase(), "opportunities", "conferences"),
     "Could not load your conferences.",
+  );
+}
+
+/**
+ * Static hover copy for conference rank badges and trust tiers (Phase 10) —
+ * authored/curated on the backend (`RankingReferenceView`) so it lives in one
+ * place rather than being duplicated as frontend prose. Authenticated but
+ * otherwise static: safe to fetch once and cache for the session.
+ */
+export async function fetchRankingReference(): Promise<RankingReference> {
+  return getJson<RankingReference>(
+    buildApiUrl(getPublicApiBase(), "opportunities", "ranking-reference"),
+    "Could not load ranking explanations.",
   );
 }
 

@@ -1,11 +1,13 @@
 """Upsert open-collector grants/conferences into ``ContentItem``, and prune expired.
 
-The collector's twin of :mod:`apps.scraper.pivot.ingest` (plan Phase 4), which
-this module replaces for the ``grants:<adapter>`` / ``conf:<adapter>`` sources
-:mod:`apps.scraper.collect.mapping` produces. Read the Pivot original first —
-the mechanics below are deliberately the same shape, minus everything that was
-Pivot-specific (fellowships, the ``PivotItem`` dataclass, the constraint
-extraction pass, which stays where it is until Pivot itself is deleted).
+The collector's twin of Pivot-RP's own ``apps.scraper.pivot.ingest`` (plan
+Phase 4), which this module replaces for the ``grants:<adapter>`` /
+``conf:<adapter>`` sources :mod:`apps.scraper.collect.mapping` produces — the
+mechanics below are deliberately the same shape, minus everything that was
+Pivot-specific: fellowships, the ``PivotItem`` dataclass, and the constraint
+extraction pass, none of which this module ever touches. Pivot-RP itself was
+deleted in plan Phase 6; fellowship ingest and constraint extraction now live
+permanently in :mod:`apps.scraper.fellowships.ingest`, not here.
 
 **Runtime order is ingest -> extract (Phase 8) -> embed** (plan D10), and that
 ordering is why this module's embedding step is a separate function rather
@@ -119,14 +121,16 @@ def _without(meta: dict[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
 class IngestSummary:
     """What one ingest pass did.
 
-    Shaped after :class:`apps.scraper.pivot.ingest.PivotIngestSummary` so the
-    analytics stage that reads it (``run_analytics``) keeps working, with one
-    deliberate substitution: Pivot's ``constrained`` (how many fellowships had
-    their eligibility prose read by the model) has no equivalent here — this
-    module never touches fellowships, which stay on the Pivot ingest path
-    until Phase 6 deletes it — so it is replaced with ``refused``: how many of
-    the records this pass touched currently carry a settled Phase 8
-    ``extraction_status == "refused"``. Purely observational (this module
+    Shaped after Pivot-RP's own ``PivotIngestSummary`` so the analytics stage
+    that reads it (``run_analytics``) keeps working, with one deliberate
+    substitution: Pivot's ``constrained`` (how many fellowships had their
+    eligibility prose read by the model) has no equivalent here — this module
+    never touches fellowships, which have their own permanent ingest path at
+    :mod:`apps.scraper.fellowships.ingest` (and its own
+    ``FellowshipIngestSummary.constrained``) — so it is replaced with
+    ``refused``: how many of the records this pass touched currently carry a
+    settled Phase 8 ``extraction_status == "refused"``. Purely observational
+    (this module
     never runs extraction itself), but it is exactly the plan's "a refusal is
     a first-class outcome, counted and shown, never a silent drop" (§8)
     applied to the one place that already summarises every ingest.
@@ -347,10 +351,10 @@ def prune_expired(*, today: str | None = None, log: Log | None = None) -> int:
     correctly.
 
     Fellowships are included in ``type__in`` even though this module never
-    *upserts* them (that stays on the Pivot path until Phase 6) — this is
-    now the one ``prune_expired`` the plan converges the whole opportunity
-    surface on, and a fellowship's ``prune_after`` means exactly the same
-    thing a grant's does.
+    *upserts* them (that is :mod:`apps.scraper.fellowships.ingest`'s job) —
+    this is now the one ``prune_expired`` the plan converges the whole
+    opportunity surface on, and a fellowship's ``prune_after`` means exactly
+    the same thing a grant's does.
 
     Keeps the ORM ``.delete()`` (not a bulk queryset delete under the hood —
     Django's queryset ``.delete()`` still fires ``pre_delete`` per row) so

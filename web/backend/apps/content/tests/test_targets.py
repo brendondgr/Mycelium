@@ -38,6 +38,41 @@ def _fake_embed(texts):
     return out
 
 
+def _seed_grants(records, *, embedder, today):
+    """Stand-in for the retired ``ingest_pivot`` test fixture (plan Phase 6
+    deleted Pivot's grant ingest) — see ``test_opportunities.py``'s twin helper
+    for the full rationale. These tests only ever seed one grant apiece to
+    exercise lab/project target matching, not ingest.
+    """
+    created: list[ContentItem] = []
+    texts: list[str] = []
+    for area, rec in records:
+        assert area == "grants", f"only grants are seeded here, got {area!r}"
+        parts = (rec.get("title"), rec.get("sponsor"), rec.get("matched_topics"))
+        text = " ".join(str(part) for part in parts if part)
+        obj = ContentItem.objects.create(
+            type=ContentItem.Type.GRANT,
+            source="grants:test",
+            external_id=rec["id"],
+            source_url=rec.get("url", ""),
+            metadata={
+                "title": rec.get("title", ""),
+                "sponsor": rec.get("sponsor", ""),
+                "deadline_date": rec.get("deadline_date", ""),
+                "matched_topics": rec.get("matched_topics", ""),
+                "search_text": text,
+                "first_seen": f"{today}T00:00:00+00:00",
+            },
+        )
+        created.append(obj)
+        texts.append(text)
+    vectors = embedder(texts)
+    for obj, vector in zip(created, vectors, strict=False):
+        obj.embedding = vector
+        obj.save(update_fields=["embedding"])
+    return created
+
+
 @pytest.fixture(autouse=True)
 def _reset_embedder():
     embeddings.reset_embedder()
@@ -263,14 +298,12 @@ def test_recommend_for_target_no_interests_short_circuits():
 @pytest.mark.django_db
 def test_match_grants_for_lab_target(pgvector):
     """Grants match against a lab target and persist under target_lab."""
-    from apps.scraper.pivot.ingest import ingest_pivot
-
     embeddings.set_embedder(_fake_embed)
     lab = Lab.objects.create(name="Graph Lab", slug="graph-lab")
     lab.profile.areas = ["graph"]
     lab.profile.save()
 
-    ingest_pivot(
+    _seed_grants(
         [
             (
                 "grants",
@@ -279,13 +312,12 @@ def test_match_grants_for_lab_target(pgvector):
                     "title": "graph theory research award",
                     "sponsor": "NSF",
                     "deadline_date": "2026-12-01",
-                    "url": "https://pivot.proquest.com/funding_opps/g_match",
+                    "url": "https://example.org/funding_opps/g_match",
                     "matched_topics": "graph",
                 },
             )
         ],
         embedder=_fake_embed,
-        prune=False,
         today="2026-07-05",
     )
 
@@ -338,13 +370,12 @@ def test_daily_batch_matches_labs_and_projects(pgvector):
 @pytest.mark.django_db
 def test_daily_opportunities_batch_matches_lab(pgvector):
     from apps.content.opportunities import run_daily_opportunities_batch
-    from apps.scraper.pivot.ingest import ingest_pivot
 
     embeddings.set_embedder(_fake_embed)
     lab = Lab.objects.create(name="Graph Lab", slug="graph-lab")
     lab.profile.areas = ["graph"]
     lab.profile.save()
-    ingest_pivot(
+    _seed_grants(
         [
             (
                 "grants",
@@ -353,13 +384,12 @@ def test_daily_opportunities_batch_matches_lab(pgvector):
                     "title": "graph theory award",
                     "sponsor": "NSF",
                     "deadline_date": "2026-12-01",
-                    "url": "https://pivot.proquest.com/funding_opps/g",
+                    "url": "https://example.org/funding_opps/g",
                     "matched_topics": "graph",
                 },
             )
         ],
         embedder=_fake_embed,
-        prune=False,
         today="2026-07-05",
     )
     # The daily run scores only items ingested on the run day; stamp created_at to
@@ -371,7 +401,7 @@ def test_daily_opportunities_batch_matches_lab(pgvector):
     )
 
     batch = run_daily_opportunities_batch(
-        [], labs=[lab], areas=("grants",), ingest=False, prune=False,
+        [], labs=[lab], areas=("grants",), prune=False,
         complete=lambda _p: None, today="2026-07-05",
     )
 

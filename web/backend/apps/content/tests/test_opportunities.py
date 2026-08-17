@@ -22,7 +22,6 @@ from apps.content.opportunities import (
 )
 from apps.content.opportunity_llm import generate_opportunity_suggestions
 from apps.content.pinning import compute_pins
-from apps.scraper.pivot.ingest import ingest_pivot
 
 _TOKENS = ["graph", "health", "biomedical", "other"]
 
@@ -340,9 +339,48 @@ def _grant(gid, title, deadline_date="2026-12-01"):
         "sponsor": "NSF",
         "amount": "$100,000",
         "deadline_date": deadline_date,
-        "url": f"https://pivot.proquest.com/funding_opps/{gid}",
+        "url": f"https://example.org/funding_opps/{gid}",
         "matched_topics": title,
     }
+
+
+def _seed_grants(pairs, *, embedder, today, prune=False):
+    """Stand-in for the retired ``ingest_pivot`` test fixture (plan Phase 6
+    deleted Pivot's grant ingest). These tests only ever seeded grants — never
+    conferences/fellowships — to exercise the *matching* pipeline, not ingest,
+    so this builds ``ContentItem`` grant rows directly and embeds them with the
+    injected embedder, mirroring ``_persisted_grant`` / ``_embedded_conf`` above
+    rather than routing through any production ingest module.
+    """
+    assert not prune, "this test fixture never prunes"
+    created: list[ContentItem] = []
+    texts: list[str] = []
+    for area, rec in pairs:
+        assert area == "grants", f"only grants are seeded here, got {area!r}"
+        parts = (rec.get("title"), rec.get("sponsor"), rec.get("matched_topics"))
+        text = " ".join(str(part) for part in parts if part)
+        obj = ContentItem.objects.create(
+            type=ContentItem.Type.GRANT,
+            source="grants:test",
+            external_id=rec["id"],
+            source_url=rec.get("url", ""),
+            metadata={
+                "title": rec.get("title", ""),
+                "sponsor": rec.get("sponsor", ""),
+                "amount": rec.get("amount", ""),
+                "deadline_date": rec.get("deadline_date", ""),
+                "matched_topics": rec.get("matched_topics", ""),
+                "search_text": text,
+                "first_seen": f"{today}T00:00:00+00:00",
+            },
+        )
+        created.append(obj)
+        texts.append(text)
+    vectors = embedder(texts)
+    for obj, vector in zip(created, vectors, strict=False):
+        obj.embedding = vector
+        obj.save(update_fields=["embedding"])
+    return created
 
 
 def _profile_user(username):
@@ -365,7 +403,7 @@ def _profile_user(username):
 def test_match_grants_end_to_end(pgvector):
     embeddings.set_embedder(_fake_embed)
     user = _profile_user("brendon")
-    ingest_pivot(
+    _seed_grants(
         [
             ("grants", _grant("g_match", "Knowledge Graphs for biomedical health")),
             ("grants", _grant("g_other", "Marine biology other funding")),
@@ -470,7 +508,7 @@ def test_refit_bypasses_carry_forward_for_grants(pgvector):
 
     embeddings.set_embedder(_fake_embed)
     user = _profile_user("refitbypass")
-    ingest_pivot(
+    _seed_grants(
         [("grants", _grant("g1", "Knowledge Graphs for biomedical health"))],
         embedder=_fake_embed,
         prune=False,
@@ -508,7 +546,7 @@ def test_grant_match_threshold_surfaces_only_related(pgvector, settings):
     settings.GRANT_MATCH_THRESHOLD = 0.6
     embeddings.set_embedder(_fake_embed)
     user = _profile_user("gthresh")
-    ingest_pivot(
+    _seed_grants(
         [
             ("grants", _grant("g_strong", "Knowledge Graphs for biomedical health")),
             ("grants", _grant("g_weak", "Marine biology other funding")),
@@ -585,7 +623,7 @@ def test_batch_scores_units_concurrently(pgvector):
     embeddings.set_embedder(_fake_embed)
     for name in ("u1", "u2", "u3"):
         _profile_user(name)
-    ingest_pivot(
+    _seed_grants(
         [("grants", _grant("g1", "Knowledge Graphs for biomedical health"))],
         embedder=_fake_embed,
         prune=False,
@@ -615,7 +653,6 @@ def test_batch_scores_units_concurrently(pgvector):
     batch = run_daily_opportunities_batch(
         [u for u in User.objects.filter(username__in=("u1", "u2", "u3"))],
         areas=("grants",),
-        ingest=False,
         prune=False,
         concurrency=12,
         complete=slow_complete,
@@ -643,7 +680,7 @@ def test_daily_batch_reranks_what_is_already_in_the_feed(pgvector):
 
     embeddings.set_embedder(_fake_embed)
     user = _profile_user("rerank")
-    ingest_pivot(
+    _seed_grants(
         [("grants", _grant("g_known", "Knowledge Graphs for biomedical health"))],
         embedder=_fake_embed,
         prune=False,
@@ -677,7 +714,6 @@ def test_daily_batch_reranks_what_is_already_in_the_feed(pgvector):
     run_daily_opportunities_batch(
         [user],
         areas=("grants",),
-        ingest=False,
         prune=False,
         complete=lambda _p: None,
         today="2026-07-05",
@@ -708,7 +744,7 @@ def test_daily_batch_picks_up_an_unscored_backlog_from_an_earlier_day(pgvector):
 
     embeddings.set_embedder(_fake_embed)
     user = _profile_user("backlog")
-    ingest_pivot(
+    _seed_grants(
         [("grants", _grant("g_backlog", "Knowledge Graphs for biomedical health"))],
         embedder=_fake_embed,
         prune=False,
@@ -723,7 +759,6 @@ def test_daily_batch_picks_up_an_unscored_backlog_from_an_earlier_day(pgvector):
     run_daily_opportunities_batch(
         [user],
         areas=("grants",),
-        ingest=False,
         prune=False,
         complete=lambda _p: None,
         today="2026-07-05",
@@ -741,7 +776,7 @@ def test_whole_corpus_match_replaces_stale_feed_rows(pgvector, settings):
     settings.GRANT_MATCH_THRESHOLD = 0.6
     embeddings.set_embedder(_fake_embed)
     user = _profile_user("replace")
-    ingest_pivot(
+    _seed_grants(
         [
             ("grants", _grant("g_strong", "Knowledge Graphs for biomedical health")),
             ("grants", _grant("g_stale", "Marine biology other funding")),

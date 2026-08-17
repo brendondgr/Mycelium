@@ -37,7 +37,7 @@ graph phase and object-storage phase are not built. `cytoscape` is an unused
 ```text
 mycelium/
 ├── CLAUDE.md, README.md, package.json, compose.yaml, .env.example   # root orchestration
-├── run.py, manual_all.py, manual_mylo.py, pivot.py                  # host runners
+├── run.py, manual_all.py, manual_mylo.py, scrape_fellowships.py     # host runners
 ├── mycelium*.service, mylo-daily.{service,timer}, mylo-bot.service  # systemd units
 ├── mylo/                          # host Discord bot package + daily-run observability
 ├── utils/                         # per-stage manual runners, vendored grants prototype
@@ -88,7 +88,7 @@ Single-origin routing through Nginx at `http://localhost:11050`:
 | `billing` | Subscriptions, per-seat billing, add-ons, and tier-based entitlement resolution. `entitlements.py` is the single read path; an expired plan reverts to Free at read time with no cleanup job |
 | `integrations` | Discord identity and lab linking: OAuth, activation codes, guild install, the durable outbox, and the single ORM boundary in `services/resolve.py` |
 | `adminpanel` | Platform-admin API (staff/superuser only): user and lab rosters, subscription assignment, watch quotas. Every write records an `accounts.AuditEvent`. Mounted at `/api/admin/` |
-| `scraper` | Ingestion: OpenAlex / PubMed / Semantic Scholar paper sources with a scan window and cross-source dedup, the Pivot-RP (ProQuest) grants / conferences / fellowships importer, the device-aware embedder, and the external DOI/arXiv/URL resolver |
+| `scraper` | Ingestion: OpenAlex / PubMed / Semantic Scholar paper sources with a scan window and cross-source dedup, the open-source grants/conferences collector (`collect/`, pure HTTP, in-container), the Illinois Fellowship Finder scraper + ingest (`fellowships/`, host-side Playwright), the fellowship eligibility rule engine (`eligibility/`), the device-aware embedder, and the external DOI/arXiv/URL resolver |
 
 There is no `graph`, `reports`, or `planner` app. Reporting lives in `content`;
 query-planning logic lives in `accounts/intake/agent.py` and `core/llm.py`; the

@@ -4,9 +4,9 @@
 "Refitting" re-runs only the *personalization* half of the daily pipelines: it
 takes the top results already stored for each area (research papers, grants,
 conferences, fellowships) and re-scores them through the LLM to refresh each user's
-personalized layer — with **no** literature scan and **no** Pivot re-scrape. Use it
-after a profile edit, or to re-personalize on demand without paying the full ingest
-cost.
+personalized layer — with **no** literature scan and **no** opportunity re-scrape.
+Use it after a profile edit, or to re-personalize on demand without paying the full
+ingest cost.
 
 This is a thin wrapper around the backend's ``run_refitting`` management command
 (the one code path this script and any future scheduler share), executed inside the
@@ -33,8 +33,8 @@ Usage:
     python utils/manual/manual_refitting.py --help                       # full flag list
 
 The stack must be up first (``python run.py up``). Requires Docker Compose. Refitting
-matches the *existing* corpus, so seed papers/opportunities first (``scan_literature``
-/ ``ingest_pivot`` and the daily jobs) if the store is empty.
+matches the *existing* corpus, so seed papers/opportunities first (``scan_literature``,
+the open-source opportunity collector, and the daily jobs) if the store is empty.
 
 Refitting is **on-demand only**: the root ``manual_all.py`` daily orchestrator
 deliberately does not refit, because a refit is the whole-corpus *replace* pass —

@@ -3,8 +3,8 @@
 "Refitting" re-runs only the **personalization** half of the daily pipelines: for
 each area (research papers, grants, conferences, fellowships) it takes the top
 results already stored and re-scores them through the language model to refresh the
-per-user layer — with **no** literature scan and **no** Pivot re-scrape. It is the
-cheap, on-demand counterpart to the nightly jobs, used after a profile edit or to
+per-user layer — with **no** literature scan and **no** opportunity re-scrape. It is
+the cheap, on-demand counterpart to the nightly jobs, used after a profile edit or to
 re-personalize without paying the full ingest cost.
 
 The two halves reuse the existing no-side-effect paths, so refitting shares the one
@@ -14,8 +14,8 @@ code path the daily jobs use:
   LLM suggest, against the already-populated store — no scanning of its own).
 - **Grants / conferences / fellowships** →
   :func:`apps.content.opportunities.run_opportunities_for_user` (retrieve → fuse →
-  LLM score over the existing Pivot corpus — no ingest). Fellowships score via the
-  deterministic rule engine, so they refit without an LLM call.
+  LLM score over the existing opportunity corpus — no ingest). Fellowships score
+  via the deterministic rule engine, so they refit without an LLM call.
 
 Every seam (the language model in particular) is injectable via ``complete`` so the
 suite runs offline, and a failure for one user is caught so it never sinks a batch.

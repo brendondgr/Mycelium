@@ -1,13 +1,14 @@
-# Root runner environment for the repo-level entry scripts (pivot.py,
-# manual_*.py). It mirrors web/backend's runtime dependencies plus the
-# `embeddings` (fastembed) and `pivot` (playwright, beautifulsoup4) extras so a
-# single `uv run pivot.py all` can scrape, de-duplicate, and recommend in one
-# process. web/backend/pyproject.toml remains the source of truth for the app's
-# own deps — keep this list in sync when those change.
+# Root runner environment for the repo-level entry scripts
+# (scrape_fellowships.py, manual_*.py). It mirrors web/backend's runtime
+# dependencies plus its `embeddings` (fastembed) and `fellowships` (playwright,
+# beautifulsoup4) extras — folded in here as plain dependencies rather than
+# extras of their own, so a single `uv run scrape_fellowships.py scrape` needs
+# no separate `uv sync --extra`. web/backend/pyproject.toml remains the source
+# of truth for the app's own deps — keep this list in sync when those change.
 [project]
 name = "mycelium"
 version = "0.1.0"
-description = "Root runner env for Mycelium entry scripts (pivot.py, manual_*.py)."
+description = "Root runner env for Mycelium entry scripts (scrape_fellowships.py, manual_*.py)."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [

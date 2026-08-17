@@ -38,11 +38,11 @@ class ReportPayloadTests(unittest.TestCase):
     def test_posts_to_the_configured_channel_with_bot_auth(self) -> None:
         transport = RecordingTransport()
         ok = report(
-            "Pivot login needed",
-            "No saved session on this host.",
+            "Fellowship scrape failed",
+            "The Illinois fellowship scrape did not complete on this host.",
             severity=Severity.ERROR,
             stage="scrape",
-            action="Run `uv run pivot.py login`.",
+            action="Check the Playwright/Chromium install.",
             config=_enabled_config(),
             transport=transport,
         )
@@ -53,8 +53,11 @@ class ReportPayloadTests(unittest.TestCase):
         self.assertEqual(headers["Authorization"], "Bot tok_123")
 
         embed = payload["embeds"][0]
-        self.assertIn("Pivot login needed", embed["title"])
-        self.assertEqual(embed["description"], "No saved session on this host.")
+        self.assertIn("Fellowship scrape failed", embed["title"])
+        self.assertEqual(
+            embed["description"],
+            "The Illinois fellowship scrape did not complete on this host.",
+        )
         self.assertEqual(embed["color"], Severity.ERROR.color)
         # Never allowed to ping the server from a status post.
         self.assertEqual(payload["allowed_mentions"], {"parse": []})

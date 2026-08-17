@@ -1,4 +1,5 @@
-"""Regression tests for ``extract_fellowship_constraints`` (apps.scraper.pivot.ingest).
+"""Regression tests for ``extract_fellowship_constraints``
+(apps.scraper.fellowships.ingest).
 
 This is the ingest-level *selection* pass: which stored fellowships get sent to
 the model for eligibility-prose extraction, and how many. The pure pattern/model
@@ -16,6 +17,11 @@ the bug survived a full test suite. These tests exercise the selection logic
 directly against the ORM so a source-filter regression like this one fails loudly
 instead of quietly doing nothing.
 
+Phase 6 relocated ``extract_fellowship_constraints`` out of
+``apps.scraper.pivot.ingest`` (deleted alongside the rest of Pivot-RP) into
+``apps.scraper.fellowships.ingest`` — the module's own name never changed, only
+its address, since the function was already fellowship-only.
+
 All model calls are stubbed — ``extract_fellowship_constraints`` takes ``complete``
 for injection precisely so tests never need the network or a model server, and
 none of these do.
@@ -28,7 +34,7 @@ from django.test import override_settings
 
 from apps.content.models import ContentItem
 from apps.scraper.eligibility.constraints import empty_constraints
-from apps.scraper.pivot.ingest import (
+from apps.scraper.fellowships.ingest import (
     CONSTRAINT_EXTRACTION_BATCH,
     FELLOWSHIP_SOURCE,
     extract_fellowship_constraints,
@@ -116,7 +122,7 @@ def test_wrong_source_is_never_selected():
     ``PIVOT_SOURCE``) must never be sent to the model — no fellowship is ever
     ingested under any source but the Illinois Fellowship Finder's own id.
     """
-    _fellowship("wrong", source="pivot")
+    _fellowship("wrong", source="grants:nsf")
     calls: list[str] = []
 
     changed = extract_fellowship_constraints(complete=_resolving_complete(calls))

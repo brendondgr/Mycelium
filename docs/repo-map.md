@@ -34,7 +34,7 @@ Paths are relative to the repository root.
 | An app route | `web/app/src/app/app/(workspace)/<name>/page.tsx` |
 | Login / signup routes | `web/app/src/app/{login,signup}/` + `web/app/src/components/auth/` |
 | Portal shell, sidebar, nav, lab switcher | `web/app/src/components/portal/{portal-sidebar,portal-mobile-nav,lab-switcher,portal-context}.tsx` |
-| Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `match-ring`, `match-card`, `cluster-badge`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `editor-modal`, `recommended-for` |
+| Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `match-ring`, `match-card`, `cluster-badge`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-rounds`, `source-footer` |
 | Decorative motion (vines, threads, seedlings, ring sweep) | `web/app/src/components/portal/motion/` (reduced-motion + in-view-once hooks), `portal/leaf-vine.tsx`, keyframes in `web/app/src/app/globals.css` |
 | Feed card scroll entrance (predictive, fires ahead of the reader) | `web/app/src/components/portal/motion/reveal-on-scroll.tsx` |
 | Workspace background growth, per section | `web/app/src/components/portal/motion/section-ground.tsx`, mounted in `portal/workspace-shell.tsx` |
@@ -91,7 +91,7 @@ Files below are inside `web/backend/apps/content/`.
 | Theme spread (opt-in, all defaults off) | `fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
 | Grants / conferences / fellowships matching | `opportunities.py`, `fellowships.py`, `opportunity_llm.py`, `pinning.py` |
 | Fellowship eligibility gates (stage ladder, prose constraints) | `fellowships.py` (`STAGE_LADDER`, `_stage_gate`, `_constraint_gates`, `derive_stage`) |
-| Fellowship eligibility extracted from prose | `apps/scraper/eligibility/constraints.py`, `apps/scraper/pivot/ingest.py` (`extract_fellowship_constraints`) |
+| Fellowship eligibility extracted from prose | `apps/scraper/eligibility/constraints.py`, `apps/scraper/fellowships/ingest.py` (`extract_fellowship_constraints`) |
 | On-demand whole-corpus refit | `refitting.py` |
 | Post-onboarding live match | `onboarding_match.py`, `scan_status.py` |
 | Member fit ("who is this for?") | `member_fit.py`, `fanout.py` |
@@ -123,10 +123,9 @@ Files below are inside `web/backend/apps/content/`.
 | Discord identity & lab linking | `web/backend/apps/integrations/models.py`, `services/resolve.py` (the single ORM boundary) |
 | Discord OAuth, API calls, outbox | `web/backend/apps/integrations/services/` |
 | Paper source scrapers | `web/backend/apps/scraper/sources/`, `ingest.py`, `window.py` |
-| Pivot-RP (ProQuest) ingest | `web/backend/apps/scraper/pivot/` |
 | Open-source grants/conferences collector (vendored) | `web/backend/apps/scraper/collect/` |
 | Fellowship eligibility rule engine (deterministic, prose → constraints) | `web/backend/apps/scraper/eligibility/` |
-| Illinois Fellowship Finder scraper | `web/backend/apps/scraper/fellowships/` |
+| Illinois Fellowship Finder scraper + ingest | `web/backend/apps/scraper/fellowships/` (`illinois.py` scrapes, `records.py`/`ingest.py` upsert) |
 | Embedder (CPU / CUDA) | `web/backend/apps/scraper/embedding.py` |
 | External DOI / arXiv / URL resolver | `web/backend/apps/scraper/resolver.py` |
 | LLM client | `web/backend/apps/core/llm.py` |
@@ -141,7 +140,7 @@ Files below are inside `web/backend/apps/content/`.
 | Full-stack start/stop | `run.py`, `compose.yaml`, `compose.gpu.yaml` |
 | Nightly research run | `manual_all.py` (fired by `mylo-daily.timer`) |
 | On-demand re-score everyone | `manual_mylo.py` |
-| Pivot login → scrape → import | `pivot.py` |
+| Illinois fellowship scrape → import (host, Playwright) | `scrape_fellowships.py` |
 | Per-stage manual runners | `utils/manual/` |
 | Mylo Discord bot & run observability | `mylo/` — `bot/`, `config.py`, `reporting.py`, `analytics.py`, `runstate.py`, `linking.py` |
 | systemd units | `mycelium.service`, `mycelium-update.service`, `mylo-daily.{service,timer}`, `mylo-bot.service` |
@@ -174,7 +173,8 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `run_analytics_report` | Measure the run: metrics JSON + analytics PDF for the Discord summary |
 | `drain_discord_outbox`, `reconcile_discord` | Deliver queued Discord messages / reconcile guild state |
 | `scan_literature` | Paper ingestion only |
-| `pivot_login`, `scrape_pivot`, `ingest_pivot` | Pivot-RP ingest chain |
+| `collect_opportunities` | Open collector end to end (collect → map → ingest → extract → embed) for grants/conferences, in-container; nightly invocation is `--new-only --no-prune` |
+| `refresh_dblp_registry` | Refresh the dblp venue registry cache the conference resolve stage joins against (plan D5a; weekly cadence, self-throttled from `manual_all.py`) |
 | `annotate_member_fit` | Backfill the "who is this for?" layer |
 | `recompute_project_profiles` | Rebuild project team vectors |
 | `rebuild_content_deadlines`, `backfill_project_seen`, `dedupe_content_papers` | Backfills |

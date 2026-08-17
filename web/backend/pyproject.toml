@@ -60,12 +60,15 @@ embeddings-gpu = [
     "onnxruntime-gpu>=1.20.0,<2.0.0",
     "numpy>=2.0.0",
 ]
-# Pivot-RP (ProQuest) grants/conferences scraping (apps.scraper.pivot). Kept
-# optional and lazily imported because Playwright pulls a browser runtime
-# (needs `playwright install chromium`) and only the best-effort refresh path
-# uses it — importing snapshots and matching need neither. Install with:
-# uv sync --extra pivot && uv run playwright install chromium
-pivot = [
+# Illinois Fellowship Finder scraping (apps.scraper.fellowships). Kept optional
+# and lazily imported because Playwright pulls a browser runtime (needs
+# `playwright install chromium`) and only the scrape path uses it — matching
+# and API serving need neither. Formerly named "pivot" (this extra also carried
+# Pivot-RP's own grants/conferences scrape before that source was retired —
+# plan Phase 6 of docs/plans/open-opportunity-collector.md); renamed once
+# fellowships were the only consumer left. Install with:
+# uv sync --extra fellowships && uv run playwright install chromium
+fellowships = [
     "playwright>=1.55.0,<2.0.0",
     "beautifulsoup4>=4.12.0,<5.0.0",
 ]

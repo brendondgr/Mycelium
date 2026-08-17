@@ -23,39 +23,28 @@ Derivation, per type:
   phase** — plan Phase 5 is a conference/grant change only.
 * **Conference** → up to three rows, one per *mapped* kind
   (ABSTRACT / MANUSCRIPT / OTHER — no EVENT; see the kind-mapping note on
-  ``_structured_conference_specs``), each holding the **next future occurrence**
+  ``_conference_specs``), each holding the **next future occurrence**
   of that kind. The full ordered array — every round, past and future — stays in
   ``metadata["deadlines_structured"]`` and drives the hover; this module only
   ever picks the single date a reminder can point at.
 
-Two conference code paths, and why both exist (read before touching either)
+The conference path, post-Phase-6
 ------------------------------------------------------------------------------
-``_conference_specs`` dispatches on whether ``metadata["deadlines_structured"]``
-is present:
+``_conference_specs`` reads ``metadata["deadlines_structured"]`` unconditionally
+— the array :func:`apps.scraper.collect.mapping.map_conference` always sets, even
+to ``[]`` for a conference the collector found genuinely no dated deadlines for.
+An empty list and an absent key are treated identically (both yield zero rows):
+there is no longer a second, Pivot-era shape to fall back to.
 
-* **present** (any :func:`apps.scraper.collect.mapping.map_conference` output,
-  even with an empty list) → :func:`_structured_conference_specs`, the plan
-  Phase 5 path, reading the open collector's typed deadline array directly.
-* **absent** (every live Pivot-sourced conference today, and every fixture in
-  ``apps/content/tests/test_content_deadlines.py`` that drives ingestion through
-  ``ingest_pivot``) → :func:`_legacy_conference_specs`, byte-for-byte the
-  pre-Phase-5 behaviour: it lazily imports
-  :mod:`apps.scraper.pivot.deadlines` and re-parses the free-text ``deadlines``
-  string Pivot's own :mod:`apps.scraper.pivot.records` still writes.
-
-**This is a discrepancy against the plan as written, not a silent deviation from
-it.** The plan's Phase 5 section says to read ``deadlines_structured`` "instead
-of" the lazy pivot import, full stop. That is achievable only once Pivot's own
-conference ingest stops writing the free-text ``deadlines``/``event_date``
-metadata shape — which is Phase 6 (Pivot deletion), not this phase, and Phase 6
-already lists this exact file (`deadlines_projection.py:141` in the plan, before
-this rewrite) as one of the sites it edits when Pivot goes. Removing the legacy
-branch now, ahead of that, would zero out three ``ContentDeadline`` rows for
-every one of the 2,961 live Pivot conferences and fail
-``test_conference_yields_three_rows`` / ``test_dropped_kind_row_is_deleted_on_
-reingest`` — which this phase's own acceptance criterion requires to keep
-passing unchanged. Phase 6 can delete ``_legacy_conference_specs`` and its
-import in one pass, alongside the rest of Pivot.
+Before Phase 6 (Pivot-RP's deletion) this function dispatched on whether that key
+was present at all, falling back to a lazy import of
+:mod:`apps.scraper.pivot.deadlines` to re-parse Pivot's free-text ``deadlines``
+string for every Pivot-sourced conference still in the table. That branch —
+``_legacy_conference_specs`` — and its import were deleted in Phase 6, once
+Pivot's own conference ingest (the only writer of that free-text shape) stopped
+running. Its two-line rationale here, for anyone diffing against an older
+version of this file: keeping both paths was deliberate *until* Pivot's ingest
+was gone, not a bug.
 """
 
 from __future__ import annotations
@@ -71,8 +60,8 @@ _Kind = SavedOpportunity.DeadlineKind
 _Confidence = ContentDeadline.Confidence
 
 # Fellowship deadline.type -> confidence. All seven values the parser emits
-# (see apps/scraper/eligibility/parsers.py + apps/scraper/pivot/records.py) are
-# mapped so an unrecognised type can never silently become a remindable date.
+# (see apps/scraper/eligibility/parsers.py + apps/scraper/fellowships/records.py)
+# are mapped so an unrecognised type can never silently become a remindable date.
 _FELLOWSHIP_CONFIDENCE = {
     "true": _Confidence.CONFIRMED,
     "anticipated": _Confidence.ANTICIPATED,
@@ -237,25 +226,9 @@ def _fellowship_specs(meta: dict) -> list[DeadlineSpec]:
 
 
 def _conference_specs(meta: dict, today: str) -> list[DeadlineSpec]:
-    """Dispatch on which shape ``meta`` is: open-collector or legacy Pivot.
-
-    See the module docstring ("Two conference code paths") for why both exist —
-    this is a documented, temporary discrepancy against the plan's literal
-    wording, not a silent one. ``is not None`` (rather than truthiness) is the
-    test on purpose: ``apps.scraper.collect.mapping.map_conference`` always sets
-    ``deadlines_structured`` on every record it emits, even to ``[]`` for a
-    conference the collector found genuinely no dated deadlines for — an empty
-    *list* correctly means "known, and there are none" (zero rows), which is a
-    different fact from the key being absent entirely, which means "this is a
-    Pivot-era record; ask the legacy parser."
-    """
-    if meta.get("deadlines_structured") is not None:
-        return _structured_conference_specs(meta, today)
-    return _legacy_conference_specs(meta, today)
-
-
-def _structured_conference_specs(meta: dict, today: str) -> list[DeadlineSpec]:
-    """The plan Phase 5 path: project ``metadata["deadlines_structured"]``.
+    """Project ``metadata["deadlines_structured"]`` (plan Phase 5, the only path
+    since Phase 6 deleted the legacy Pivot free-text parser this used to fall
+    back to for a record missing that key).
 
     Kind mapping (plan Phase 5): collector ``abstract`` → ABSTRACT; collector
     ``submission`` → MANUSCRIPT — semantically the full-paper deadline, despite
@@ -332,42 +305,6 @@ def _parse_structured_instant(value: str | None) -> date | None:
         return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
     except ValueError:
         return None
-
-
-def _legacy_conference_specs(meta: dict, today: str) -> list[DeadlineSpec]:
-    """Pre-Phase-5 behaviour, unchanged: parse Pivot's free-text ``deadlines``.
-
-    Kept only for Pivot-sourced metadata — see the module docstring. Phase 6
-    (Pivot deletion) removes this function and its import together.
-    """
-    # Lazy import: keeps the scraper package out of the module import graph until
-    # a legacy conference is actually projected (mirrors the codebase's
-    # lazy-import style), and confines the coupling Phase 6 removes to exactly
-    # this function.
-    from apps.scraper.pivot.deadlines import parse_deadlines, submission_status
-
-    deadlines = parse_deadlines(meta.get("deadlines") or "")
-    event_date = meta.get("event_date") or ""
-    status = submission_status(deadlines, event_date, today)
-    candidates = (
-        (_Kind.ABSTRACT, status.get("abstract_deadline"), "Abstract deadline"),
-        (_Kind.MANUSCRIPT, status.get("manuscript_deadline"), "Manuscript deadline"),
-        (_Kind.EVENT, event_date, "Event date"),
-    )
-    specs: list[DeadlineSpec] = []
-    for kind, raw, label in candidates:
-        due = _to_date(raw)
-        if due is None:
-            continue  # no date for this kind → no row (a conference has 0–3 rows)
-        specs.append(
-            DeadlineSpec(
-                kind=kind,
-                due_date=due,
-                label=label,
-                confidence=_Confidence.CONFIRMED,
-            )
-        )
-    return specs
 
 
 def rebuild_deadlines_for(

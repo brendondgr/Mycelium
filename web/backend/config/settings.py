@@ -243,11 +243,13 @@ CELERY_RESULT_BACKEND = env(
 #
 # NOTE: the daily research + opportunity run is NOT scheduled here. It now runs on
 # the host via `manual_all.py` (the `mylo-daily.timer` systemd unit), because that
-# flow includes the Pivot opportunity scrape, which needs host-only Playwright and
-# the saved SSO session the backend container does not have. The
-# `run_daily_suggestions` / `run_daily_opportunities` tasks and management commands
-# still exist and are invoked by `manual_all.py`; only their in-container schedule
-# moved. Keep team-profile recompute on Beat — it has no host dependency.
+# flow includes the Illinois Fellowship Finder scrape, which needs host-only
+# Playwright the backend container does not have (the open-source grant/conference
+# collector itself is pure HTTP and runs in-container — see
+# docs/plans/open-opportunity-collector.md D6). The `run_daily_suggestions` /
+# `run_daily_opportunities` tasks and management commands still exist and are
+# invoked by `manual_all.py`; only their in-container schedule moved. Keep
+# team-profile recompute on Beat — it has no host dependency.
 CELERY_BEAT_SCHEDULE = {
     # Feature D: recompute every project's team-relevance signal nightly, so
     # engagement that accrued during the day shapes the next day's recommendations.

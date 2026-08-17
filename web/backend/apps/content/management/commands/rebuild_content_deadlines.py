@@ -1,6 +1,6 @@
 """Rebuild the ``ContentDeadline`` projection for every opportunity (backfill).
 
-The projection is normally rebuilt inline on each Pivot upsert; this command
+The projection is normally rebuilt inline on each opportunity upsert; this command
 backfills existing items (e.g. right after the R0 migration lands) or repairs the
 projection after a manual edit. It runs with change-detection **off** so a bulk
 rebuild over historical data never manufactures a wave of phantom "moved" signals:

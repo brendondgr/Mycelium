@@ -1,17 +1,28 @@
-"""Match Pivot grants, conferences, and fellowships to every target (the 1am job).
+"""Match grants, conferences, and fellowships to every target (the 1am job).
 
 An untargeted run covers every entitled user, every lab on an active subscription,
 and their in-cap active projects — the same target set as the Celery task.
 
     uv run --project web/backend python web/backend/manage.py run_daily_opportunities
     uv run --project web/backend python web/backend/manage.py run_daily_opportunities \
-        --user brendondgr --no-llm --no-ingest
+        --user brendondgr --no-llm --no-prune
 
 Runs inline by default (best for a smoke test); ``--async`` dispatches the Celery
-task. ``--no-ingest`` skips the best-effort scrape (match the existing corpus);
-``--no-prune`` keeps expired items; ``--no-llm`` uses the deterministic fallback
-scoring for grants/conferences (fellowships always use the rule engine);
-``--dry-run`` computes but persists nothing.
+task. This command never scrapes — collection is its own scheduled stage
+(``apps.scraper.collect``, run by ``manual_all.py`` before this command, plan
+Phase 12); matching always runs over whatever that stage last wrote.
+``--no-prune`` keeps expired grants/conferences instead of deleting them,
+via :func:`apps.content.opportunities.run_daily_opportunities_batch`.
+``--no-llm`` uses the deterministic fallback scoring for grants/conferences
+(fellowships always use the rule engine); ``--dry-run`` computes but
+persists nothing.
+
+There used to be a matching ``--no-ingest`` flag here, plumbed through to an
+``ingest`` parameter on ``run_daily_opportunities_batch`` that never actually
+gated anything once the open collector moved ingestion into its own Phase 12
+stage — a no-op flag documented as toggling the prune step, which it did not.
+Removed rather than left lying, since a flag whose help text describes
+behaviour the code does not have is worse than no flag.
 """
 
 from __future__ import annotations
@@ -25,7 +36,7 @@ from apps.content.tasks import select_targets, select_users
 
 
 class Command(BaseCommand):
-    help = "Match Pivot grants/conferences to users (retrieve, score, pin, persist)."
+    help = "Match grants/conferences/fellowships to users (retrieve, score, pin)."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -34,11 +45,6 @@ class Command(BaseCommand):
             action="append",
             dest="usernames",
             help="Limit to this user. Repeat for several. Default: all active users.",
-        )
-        parser.add_argument(
-            "--no-ingest",
-            action="store_true",
-            help="Skip the best-effort Pivot refresh; match the existing corpus.",
         )
         parser.add_argument(
             "--no-prune",
@@ -70,7 +76,6 @@ class Command(BaseCommand):
 
             result = run_daily_opportunities.delay(
                 usernames,
-                ingest=not options["no_ingest"],
                 prune=not options["no_prune"],
             )
             self.stdout.write(self.style.SUCCESS(f"Dispatched task {result.id}"))
@@ -94,7 +99,6 @@ class Command(BaseCommand):
             labs=labs,
             projects=projects,
             areas=("grants", "conferences", "fellowships"),
-            ingest=not options["no_ingest"],
             prune=not options["no_prune"],
             persist=not options["dry_run"],
             complete=complete,

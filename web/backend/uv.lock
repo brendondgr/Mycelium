@@ -1006,7 +1006,7 @@ embeddings-gpu = [
     { name = "numpy" },
     { name = "onnxruntime-gpu" },
 ]
-pivot = [
+fellowships = [
     { name = "beautifulsoup4" },
     { name = "playwright" },
 ]
@@ -1025,7 +1025,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.10.0,<4.0.0" },
-    { name = "beautifulsoup4", marker = "extra == 'pivot'", specifier = ">=4.12.0,<5.0.0" },
+    { name = "beautifulsoup4", marker = "extra == 'fellowships'", specifier = ">=4.12.0,<5.0.0" },
     { name = "celery", specifier = ">=5.5.0,<6.0.0" },
     { name = "cryptography", specifier = ">=44,<47" },
     { name = "django", specifier = ">=5.2.0,<6.0.0" },
@@ -1041,7 +1041,7 @@ requires-dist = [
     { name = "onnxruntime-gpu", marker = "extra == 'embeddings-gpu'", specifier = ">=1.20.0,<2.0.0" },
     { name = "openai", specifier = ">=1.50.0,<2.0.0" },
     { name = "pgvector", specifier = ">=0.3.0,<1.0.0" },
-    { name = "playwright", marker = "extra == 'pivot'", specifier = ">=1.55.0,<2.0.0" },
+    { name = "playwright", marker = "extra == 'fellowships'", specifier = ">=1.55.0,<2.0.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.0,<4.0.0" },
     { name = "pypdf", specifier = ">=5.0.0,<7.0.0" },
     { name = "python-dateutil", specifier = ">=2.9.0,<3.0.0" },
@@ -1051,7 +1051,7 @@ requires-dist = [
     { name = "reportlab", specifier = ">=4.2.0,<5.0.0" },
     { name = "scholarly", marker = "extra == 'scrapers'", specifier = ">=1.7.0,<2.0.0" },
 ]
-provides-extras = ["scrapers", "embeddings", "embeddings-gpu", "pivot"]
+provides-extras = ["scrapers", "embeddings", "embeddings-gpu", "fellowships"]
 
 [package.metadata.requires-dev]
 dev = [

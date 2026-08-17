@@ -1,45 +1,48 @@
-"""Upsert Pivot grants/conferences into ``ContentItem`` (+embed) and prune expired.
+"""Upsert Illinois Fellowship Finder records into ``ContentItem`` (+embed).
 
-The opportunity twin of :func:`apps.scraper.ingest.scan`: it turns normalized Pivot
-records into ``ContentItem`` rows the ``content`` app matches per user. Three
-guarantees the daily job relies on:
+Relocated from :mod:`apps.scraper.pivot.ingest` (plan Phase 6 — the deletion of
+Pivot-RP). That module's ``ingest_pivot``/``upsert_pivot_items`` handled three
+areas generically; fellowships were always the one area with nothing to do with
+Pivot itself (D8), so this module keeps exactly that slice, under its own name.
 
-* **Idempotent upsert** keyed by ``(source="pivot", external_id)`` — a re-scrape
-  updates in place, never duplicates.
+Pruning is **not** duplicated here. Plan Phase 4 already converged expiry onto
+one function — :func:`apps.scraper.collect.ingest.prune_expired` — which is
+type-scoped (``type__in=[GRANT, CONFERENCE, FELLOWSHIP]``), not source-scoped,
+specifically so it covers every opportunity type including fellowships without
+this module needing a second copy of the same delete-expired logic. Call that
+function after this module's :func:`ingest_fellowships`, or independently on
+its own schedule; both are safe to call any number of times.
+
+Three guarantees the daily job relies on, same as Pivot's:
+
+* **Idempotent upsert** keyed by ``(source="illinois-fellowship-finder",
+  external_id)`` — a re-scrape updates in place, never duplicates.
 * **``first_seen`` is immutable** — written once on first ingest and preserved on
-  every later upsert, so a nightly refresh never resets a user's "New" items
-  (the pin logic reads ``first_seen``).
-* **Prune of expired items** — grants past their application deadline and
-  conferences past their event date are deleted, freeing the embedding/retrieval
-  pool. A user's *saved* deadline survives because ``SavedOpportunity.content`` is
-  ``SET_NULL`` with a snapshot.
+  every later upsert, so a nightly refresh never resets a user's "New" items.
+* **The ``ContentDeadline`` projection is rebuilt** after every upsert so the
+  daily reminder tick always reads live deadlines. Unlike
+  :mod:`apps.scraper.collect.ingest`'s own rebuild hook (grants/conferences
+  only — see its docstring), this module's hook covers ``FELLOWSHIP`` rows,
+  because nothing else does.
 
 Embedding reuses the shared fastembed model (:mod:`apps.content.embeddings`), so
-Pivot vectors and the profile query share a space. Only new or changed documents
-are embedded.
+fellowship vectors and the profile query share a space with every other
+opportunity type. Only new or changed documents are embedded.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from django.utils import timezone
 
 from apps.content.models import ContentItem
 
-from .records import FELLOWSHIP_SOURCE, PIVOT_SOURCE, PivotItem, build_pivot_item
+from .records import FELLOWSHIP_SOURCE, FellowshipItem, build_fellowship_item
 
 # An embedder maps a batch of texts to vectors, or ``None`` when unavailable.
 Embedder = Callable[[Sequence[str]], list[list[float]] | None]
-
-# FELLOWSHIP_SOURCE is defined in .records (alongside PIVOT_SOURCE, which this
-# module already imports from there) rather than here, so the two source ids
-# have exactly one definition each instead of two that can silently drift apart.
-
-# All sources this ingest layer manages. Upsert keys on (source, external_id);
-# prune covers all sources in this set.
-OPPORTUNITY_SOURCES = (PIVOT_SOURCE, FELLOWSHIP_SOURCE)
 
 Log = Callable[[str], None]
 
@@ -49,17 +52,15 @@ def _noop(_msg: str) -> None:
 
 
 @dataclass
-class PivotIngestSummary:
-    """What one ingest pass did."""
+class FellowshipIngestSummary:
+    """What one fellowship ingest pass did."""
 
     seen: int = 0
     created: int = 0
     updated: int = 0
     embedded: int = 0
-    pruned: int = 0
     skipped: int = 0
-    constrained: int = 0   # fellowships whose eligibility prose the model read
-    by_type: dict[str, int] = field(default_factory=dict)
+    constrained: int = 0  # fellowships whose eligibility prose the model read
 
     def as_dict(self) -> dict:
         return {
@@ -67,10 +68,8 @@ class PivotIngestSummary:
             "created": self.created,
             "updated": self.updated,
             "embedded": self.embedded,
-            "pruned": self.pruned,
             "skipped": self.skipped,
             "constrained": self.constrained,
-            "by_type": dict(self.by_type),
         }
 
 
@@ -84,29 +83,28 @@ def _today_iso(today: str | None) -> str:
     return today or timezone.now().date().isoformat()
 
 
-def upsert_pivot_items(
-    items: Iterable[PivotItem],
+def upsert_fellowship_items(
+    items: Iterable[FellowshipItem],
     *,
     embed: bool = True,
     embedder: Embedder | None = None,
     today: str | None = None,
     log: Log | None = None,
-) -> PivotIngestSummary:
-    """Upsert :class:`PivotItem`s, preserving ``first_seen``; embed new/changed.
+) -> FellowshipIngestSummary:
+    """Upsert :class:`FellowshipItem`\\ s, preserving ``first_seen``; embed new/changed.
 
-    After the upsert (and before any caller prunes), the ``ContentDeadline``
-    projection is rebuilt for every upserted opportunity so the daily reminder tick
-    always reads live deadlines, and a moved date leaves a ``changed_at`` signal.
+    After the upsert, the ``ContentDeadline`` projection is rebuilt for every
+    upserted fellowship so the daily reminder tick always reads live deadlines,
+    and a moved date leaves a ``changed_at`` signal.
     """
     log = log or _noop
-    summary = PivotIngestSummary()
+    summary = FellowshipIngestSummary()
     now_iso = timezone.now().isoformat()
     to_embed: list[tuple[ContentItem, str]] = []
     touched: list[ContentItem] = []
 
     for item in items:
         summary.seen += 1
-        summary.by_type[item.type] = summary.by_type.get(item.type, 0) + 1
         meta = dict(item.metadata)
         meta["search_text"] = item.text
 
@@ -164,7 +162,7 @@ def upsert_pivot_items(
     _rebuild_deadline_projection(touched, today, log)
 
     log(
-        f"upsert: {summary.created} new, {summary.updated} updated, "
+        f"fellowships upsert: {summary.created} new, {summary.updated} updated, "
         f"{summary.embedded} embedded"
     )
     return summary
@@ -173,90 +171,52 @@ def upsert_pivot_items(
 def _rebuild_deadline_projection(
     items: list[ContentItem], today: str | None, log: Log
 ) -> None:
-    """Rebuild the ``ContentDeadline`` rows for the upserted opportunities (R0).
+    """Rebuild the ``ContentDeadline`` rows for the upserted fellowships (R0).
 
-    Papers carry no deadlines and are skipped. Import is lazy so a bare
-    ``scraper`` import never pulls the content projection at module load.
+    Import is lazy so a bare ``scraper`` import never pulls the content
+    projection at module load.
     """
     from apps.content.deadlines_projection import rebuild_deadlines_for
 
     today = _today_iso(today)
-    opportunity_types = {
-        ContentItem.Type.GRANT,
-        ContentItem.Type.CONFERENCE,
-        ContentItem.Type.FELLOWSHIP,
-    }
     moved = 0
     for obj in items:
-        if obj.type in opportunity_types:
+        if obj.type == ContentItem.Type.FELLOWSHIP:
             moved += len(rebuild_deadlines_for(obj, today))
     if moved:
         log(f"deadlines: {moved} due date(s) moved")
 
 
-def prune_expired(*, today: str | None = None, log: Log | None = None) -> int:
-    """Delete Pivot grants/conferences/fellowships whose actionable date has passed.
-
-    Grants expire at their application deadline; conferences at their event date;
-    fellowships at their ``prune_after`` (set only for "true" hard deadlines —
-    rolling/anticipated/continuous entries are never pruned).
-    Unknown dates are kept (can't prove they're past) — the same rule as
-    :func:`apps.scraper.pivot.status.is_visible`.
-    """
-    log = log or _noop
-    today = _today_iso(today)
-    qs = ContentItem.objects.filter(
-        source__in=OPPORTUNITY_SOURCES,
-        type__in=[
-            ContentItem.Type.GRANT,
-            ContentItem.Type.CONFERENCE,
-            ContentItem.Type.FELLOWSHIP,
-        ],
-    ).only("id", "metadata")
-    expired_ids = [
-        c.id
-        for c in qs
-        if (pa := (c.metadata or {}).get("prune_after")) and pa < today
-    ]
-    if not expired_ids:
-        log("prune: nothing expired")
-        return 0
-    ContentItem.objects.filter(id__in=expired_ids).delete()
-    log(f"prune: removed {len(expired_ids)} expired item(s)")
-    return len(expired_ids)
-
-
-def ingest_pivot(
-    records_by_area: Iterable[tuple[str, dict]],
+def ingest_fellowships(
+    records: Iterable[dict],
     *,
     embed: bool = True,
-    prune: bool = True,
     embedder: Embedder | None = None,
     today: str | None = None,
     log: Log | None = None,
-) -> PivotIngestSummary:
-    """Ingest ``(area, raw_record)`` pairs: build → upsert → embed → prune.
+) -> FellowshipIngestSummary:
+    """Ingest raw Illinois Fellowship Finder records: build -> upsert -> embed.
 
-    ``area`` is the tool's plural label ("grants" / "conferences" / "fellowships").
+    Pruning is deliberately not this function's job — call
+    :func:`apps.scraper.collect.ingest.prune_expired` after (it is type-scoped
+    and already covers ``FELLOWSHIP`` rows; see the module docstring).
     """
     log = log or _noop
     today = _today_iso(today)
-    items: list[PivotItem] = []
+    items: list[FellowshipItem] = []
     skipped = 0
-    for area, rec in records_by_area:
-        item = build_pivot_item(area, rec, today=today)
+    for rec in records:
+        item = build_fellowship_item(rec, today=today)
         if item is None:
             skipped += 1
             continue
         items.append(item)
 
-    summary = upsert_pivot_items(
+    summary = upsert_fellowship_items(
         items, embed=embed, embedder=embedder, today=today, log=log
     )
     summary.skipped += skipped
     summary.constrained = extract_fellowship_constraints(log=log)
-    if prune:
-        summary.pruned = prune_expired(today=today, log=log)
     return summary
 
 
@@ -292,12 +252,10 @@ def extract_fellowship_constraints(
 
     pending: list[ContentItem] = []
     units: list[tuple[str, str]] = []
-    # Bug fix (Phase 2): this used to filter source=PIVOT_SOURCE, but fellowships
-    # are ingested under FELLOWSHIP_SOURCE ("illinois-fellowship-finder"), never
-    # "pivot" — so the queryset was always empty and this extraction pass had
-    # never run on a single real fellowship. type=FELLOWSHIP alone would already
-    # be unambiguous (only the Illinois adapter produces that type today), but
-    # the explicit source keeps this query correct even if that stops being true.
+    # This filters on both type AND source (rather than type alone) so the
+    # queryset stays correct even if a non-Illinois fellowship source is ever
+    # added — see the Phase 2 bug this guarded against (a stale
+    # ``source=PIVOT_SOURCE`` filter left this pass permanently no-op).
     for item in ContentItem.objects.filter(
         type=ContentItem.Type.FELLOWSHIP, source=FELLOWSHIP_SOURCE
     ).iterator():
