@@ -17,6 +17,7 @@ from apps.core.people import display_name, initials
 from apps.research.models import Project
 
 from .collaboration import record_event
+from .liveness import is_live
 from .models import (
     ContentItem,
     DailyBriefing,
@@ -473,7 +474,17 @@ def _accumulated_scores(
     ``suggested=False`` (below the match-percent floor) are excluded. Capped by
     ``OPPORTUNITY_FEED_MAX`` as a payload backstop, since an accumulating feed can
     otherwise grow unbounded between prunes.
+
+    Dead listings are dropped **here**, not only by the nightly prune
+    (:func:`apps.content.liveness.is_live`). The prune is the removal guarantee
+    and it runs once a night; this is the hiding guarantee and it runs on every
+    request. Without it a conference whose last date passed this morning stays
+    on the feed until tonight, and a *dateless* conference — which the prune
+    cannot delete until the collector has stopped re-seeing it — would stay
+    there indefinitely. Shared by personal, lab, and project feeds because they
+    all read through this one function.
     """
+    today = timezone.now().date().isoformat()
     scores = [
         s
         for s in RelevanceScore.objects.filter(
@@ -482,10 +493,10 @@ def _accumulated_scores(
         .select_related("content")
         .prefetch_related("content__deadline_rows")
         if s.signals.get("suggested")
+        and is_live(content_type, s.content.metadata, today)
     ]
     if not scores:
         return []
-    today = timezone.now().date().isoformat()
 
     def sort_key(s: RelevanceScore):
         pinned_until = s.signals.get("pinned_until")
@@ -985,20 +996,6 @@ def _attach_search_clusters(items, user) -> None:
 DIGEST_CAPS = {"papers": 10, "grants": 5, "fellowships": 5, "conferences": 5}
 
 
-def _drop_passed_conferences(scores: list[RelevanceScore], today: str) -> list:
-    """Conferences whose next deadline has not already passed (empty = keep).
-
-    A conference with a stored ``deadline_date`` strictly before today is no longer
-    actionable, so the digest drops it; an unknown/blank deadline is kept (we don't
-    hide something we can't date)."""
-    out = []
-    for s in scores:
-        deadline = s.signals.get("deadline_date") or ""
-        if not deadline or deadline >= today:
-            out.append(s)
-    return out
-
-
 def _recommendations_payload(
     target_filter: dict,
     *,
@@ -1019,9 +1016,13 @@ def _recommendations_payload(
     strongly, and ``recommended_for`` is Mylo's read on which members it best suits
     (see :func:`_recommended_for`).
 
-    ``digest`` returns the condensed short list — top ``DIGEST_CAPS`` per area, with
-    passed-deadline conferences dropped — for the per-project "Mylo's picks" block.
-    ``counts`` stays the full totals so the UI can say "top 5 of N". Saves remain
+    ``digest`` returns the condensed short list — top ``DIGEST_CAPS`` per area —
+    for the per-project "Mylo's picks" block. It no longer drops passed
+    conferences itself: :func:`_accumulated_scores` now applies
+    :func:`apps.content.liveness.is_live` to every opportunity read, so a
+    conference that is over never reaches this function on any surface, digest
+    or not. ``counts`` stays the full totals so the UI can say "top 5 of N".
+    Saves remain
     personal, so ``saved`` reflects the signed-in user regardless of scope.
     """
     today = timezone.now().date().isoformat()
@@ -1035,8 +1036,6 @@ def _recommendations_payload(
     grants = _accumulated_scores(target_filter, ContentItem.Type.GRANT)
     conferences = _accumulated_scores(target_filter, ContentItem.Type.CONFERENCE)
     fellowships = _accumulated_scores(target_filter, ContentItem.Type.FELLOWSHIP)
-    if digest:
-        conferences = _drop_passed_conferences(conferences, today)
 
     # Full counts (before any digest slice) so the UI can show "top N of total".
     counts = {

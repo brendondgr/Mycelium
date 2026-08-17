@@ -334,8 +334,30 @@ def _rebuild_deadline_projection(
 # --------------------------------------------------------------------------- #
 
 
-def prune_expired(*, today: str | None = None, log: Log | None = None) -> int:
-    """Delete grant/conference/fellowship items whose ``prune_after`` has passed.
+def prune_expired(
+    *,
+    today: str | None = None,
+    log: Log | None = None,
+    stale_only: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """Delete grant/conference/fellowship items that are past, or dead and stale.
+
+    Two independent rules, counted and logged separately because they answer
+    different questions and one of them is much newer:
+
+    1. **Expired** — ``prune_after`` is set and has passed. The original rule.
+    2. **Stale and dateless** — a *conference* carrying no date at all (no
+       deadline, no event date) that the collector has not re-seen for
+       ``settings.OPPORTUNITY_STALE_DAYS``. Rule 1 can never reach these: an
+       empty ``prune_after`` cannot be proven past, so before this they
+       accumulated in the corpus permanently — 156 of 912 live conferences on
+       2026-08-17, mostly journal listings and undated stubs. See
+       :mod:`apps.content.liveness` for why "dateless" is fatal for a
+       conference and correct for a grant.
+
+    ``stale_only`` runs rule 2 alone (the one-off purge of what has already
+    accumulated); ``dry_run`` reports what would go without deleting anything.
 
     **Type-scoped, not source-scoped** (plan Phase 4, point 2 — the fix this
     function exists to make). Pivot's version filtered on a hard-coded
@@ -361,30 +383,50 @@ def prune_expired(*, today: str | None = None, log: Log | None = None) -> int:
     reminders are marked stale, and keeps "unknown dates are kept" — an empty
     ``prune_after`` can never be proven past, so it is never pruned.
     """
+    from apps.content.liveness import OPPORTUNITY_TYPES, is_expired, is_stale
+
     log = log or _noop
     today = _today_iso(today)
-    qs = ContentItem.objects.filter(
-        type__in=[
-            ContentItem.Type.GRANT,
-            ContentItem.Type.CONFERENCE,
-            ContentItem.Type.FELLOWSHIP,
-        ],
-    ).only("id", "metadata")
+    qs = ContentItem.objects.filter(type__in=sorted(OPPORTUNITY_TYPES)).only(
+        "id", "type", "metadata"
+    )
     # Zero-padded ISO throughout (``map_grant`` / ``map_conference`` both emit
-    # ``date.isoformat()`` results) is what makes this plain string compare
-    # correct: "2026-08-16" < "2026-10-01" holds character-by-character only
-    # because both sides pad the month to two digits.
-    expired_ids = [
-        c.id
-        for c in qs
-        if (pa := (c.metadata or {}).get("prune_after")) and pa < today
-    ]
-    if not expired_ids:
+    # ``date.isoformat()`` results) is what makes ``is_expired``'s plain string
+    # compare correct: "2026-08-16" < "2026-10-01" holds character-by-character
+    # only because both sides pad the month to two digits.
+    expired_ids: list = []
+    stale_ids: list = []
+    for c in qs:
+        if not stale_only and is_expired(c.type, c.metadata, today):
+            expired_ids.append(c.id)
+        elif is_stale(c.type, c.metadata, today):
+            stale_ids.append(c.id)
+
+    doomed = [*expired_ids, *stale_ids]
+    if not doomed:
         log("prune: nothing expired")
         return 0
-    ContentItem.objects.filter(id__in=expired_ids).delete()
-    log(f"prune: removed {len(expired_ids)} expired item(s)")
-    return len(expired_ids)
+
+    if expired_ids:
+        log(f"prune: {len(expired_ids)} item(s) past their last written date")
+    if stale_ids:
+        log(
+            f"prune: {len(stale_ids)} dateless conference(s) unseen for over "
+            f"{_stale_days()} days"
+        )
+    if dry_run:
+        log(f"prune: dry run — {len(doomed)} item(s) left in place")
+        return len(doomed)
+
+    ContentItem.objects.filter(id__in=doomed).delete()
+    log(f"prune: removed {len(doomed)} item(s)")
+    return len(doomed)
+
+
+def _stale_days() -> int:
+    from apps.content.liveness import stale_days
+
+    return stale_days()
 
 
 # --------------------------------------------------------------------------- #

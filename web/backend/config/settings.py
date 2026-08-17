@@ -471,6 +471,16 @@ FELLOWSHIP_CONSTRAINT_EXTRACTION = env.bool(
 # grows between prunes. Items still leave the feed when pruned at their deadline.
 OPPORTUNITY_FEED_MAX = env.int("OPPORTUNITY_FEED_MAX", default=250)
 
+# How long a *dateless* conference may go unseen by the collector before the
+# nightly prune deletes it. A conference with no deadline and no event date is
+# nothing a reader can act on, so it is hidden from feeds immediately
+# (apps.content.liveness), but deleting it needs evidence the source has
+# actually dropped it — otherwise a genuinely rolling call the source still
+# lists every night would be deleted and re-created on the next run, losing its
+# first_seen. `last_seen` is that evidence. Grants are unaffected: a dateless
+# grant is a rolling call by design and never expires.
+OPPORTUNITY_STALE_DAYS = env.int("OPPORTUNITY_STALE_DAYS", default=60)
+
 # Same carry-forward + floor behaviour as papers (above), for grants / conferences /
 # fellowships: an item the model scored below this stays in the carry-forward store
 # (never re-sent to the model) but off the feed until it improves or ages out.

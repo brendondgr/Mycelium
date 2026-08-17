@@ -634,10 +634,18 @@ one. Filter-rail fields computed at ingest: `event_date` (ISO, or `""`),
 (`abstract` / `manuscript` / `event`). Continent is derived client-side from
 `country`.
 
-Plus the quality-signal fields. These are **visual only**: rankings and trust
-tier never affect match order, thresholds, or the LLM verdict. Ranking on them
-would systematically bury non-CS venues, since only about a quarter of series
-carry any rank at all.
+**A conference that is over is never returned.** Every opportunity feed —
+personal, lab, and project — drops a row whose last written date has passed,
+on every request rather than waiting for the nightly prune. For a conference
+that also covers a listing with **no date at all** (no deadline, no event
+date): there is nothing a reader could act on, and expiry can never reach it,
+so it is hidden. A *grant* or *fellowship* with no date is the opposite case —
+a rolling call — and is still returned. See `apps/content/liveness.py`.
+
+Plus the quality-signal fields. These are **visual only**: rankings never
+affect match order, thresholds, or the LLM verdict. Ranking on them would
+systematically bury non-CS venues, since only about a quarter of series carry
+any rank at all.
 
 ```json
 {

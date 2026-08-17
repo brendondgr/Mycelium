@@ -30,7 +30,28 @@ class Command(BaseCommand):
             metavar="YYYY-MM-DD",
             help="Reference date for expiry. Default: today.",
         )
+        parser.add_argument(
+            "--stale-only",
+            action="store_true",
+            help=(
+                "Only remove dateless conferences the collector has stopped "
+                "re-seeing (skip the ordinary past-deadline sweep). This is the "
+                "one-off purge of listings that accumulated while nothing could "
+                "expire them."
+            ),
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Report what would be removed without deleting anything.",
+        )
 
     def handle(self, *args, **options) -> None:
-        pruned = prune_expired(today=options.get("today"), log=self.stdout.write)
-        self.stdout.write(self.style.SUCCESS(f"Pruned {pruned} expired item(s)."))
+        pruned = prune_expired(
+            today=options.get("today"),
+            log=self.stdout.write,
+            stale_only=options.get("stale_only", False),
+            dry_run=options.get("dry_run", False),
+        )
+        verb = "Would prune" if options.get("dry_run") else "Pruned"
+        self.stdout.write(self.style.SUCCESS(f"{verb} {pruned} item(s)."))

@@ -107,6 +107,7 @@ Files below are inside `web/backend/apps/content/`.
 | Nightly run analytics | `run_analytics.py`, `analytics_report_pdf.py`, `management/commands/run_analytics_report.py` |
 | Reminders | `reminders.py`, `reminders_tick.py`, `reminders_views.py`, `reminders_discord.py`, `reminders_announce.py`, `reminder_access.py` |
 | Deadline projection | `deadlines_projection.py` |
+| Is an opportunity still worth showing (feeds + prune share it) | `liveness.py` |
 | Unified search | `search.py`, `search_service.py`, `query_embedding.py` |
 | High-signal alerts | `high_signal.py` |
 | Read surfaces (feeds, saves, notifications) | `views.py`, `serializers.py`, `urls.py` |
@@ -174,7 +175,8 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `resend_user_report` | Re-render one person's report and DM it again (`--user`) |
 | `repost_lab_report` | Re-render one lab's report and re-post it (`--lab`) |
 | `render_sample_report` | Render a sample report PDF from synthetic data, for reviewing its formatting (`--kind personal\|lab`) |
-| `run_reminder_tick`, `prune_opportunities` | Fire due reminders / delete expired listings |
+| `run_reminder_tick` | Fire due reminders |
+| `prune_opportunities` | Delete expired listings; `--stale-only` also removes dateless conferences the collector has stopped listing, `--dry-run` reports without deleting |
 | `prune_briefings` | Delete briefings past `BRIEFING_RETENTION_DAYS` |
 | `run_analytics_report` | Measure the run: metrics JSON + analytics PDF for the Discord summary |
 | `drain_discord_outbox`, `reconcile_discord` | Deliver queued Discord messages / reconcile guild state |

@@ -58,6 +58,11 @@ def _grant_item(sid="g1", *, source="nsf", close_date="2026-11-12", **over):
 def _conference_item(
     sid="c1", *, source="ccf_deadlines", instant="2026-11-01T00:00:00Z"
 ):
+    deadlines = (
+        [Deadline(kind="submission", raw=instant, instant=instant, source=source)]
+        if instant
+        else []
+    )
     instance = ConferenceInstance(
         source=source,
         source_record_id=sid,
@@ -65,11 +70,19 @@ def _conference_item(
         title="Test Systems Conference",
         acronym="TSC",
         year_label="2026",
-        deadlines=[
-            Deadline(kind="submission", raw=instant, instant=instant, source=source),
-        ],
+        deadlines=deadlines,
     )
     return map_conference(instance, series=None, now=NOW)
+
+
+def _dateless_conference(sid="journal", *, source="openreview"):
+    """A conference row with no deadline and no event date — the 156-row case.
+
+    ``prune_expired``'s original rule can never reach one of these: an empty
+    ``prune_after`` cannot be proven past. Mostly journal listings the
+    OpenReview adapter emits alongside real calls for papers.
+    """
+    return _conference_item(sid, source=source, instant="")
 
 
 # --------------------------------------------------------------------------- #
@@ -264,6 +277,69 @@ def test_prune_after_empty_is_never_pruned():
     removed = prune_expired(today="2099-01-01")
     assert removed == 0
     assert ContentItem.objects.filter(external_id="src:nsf:rolling").exists()
+
+
+@pytest.mark.django_db
+def test_a_dateless_conference_is_pruned_once_the_source_stops_listing_it():
+    """The gap the old rule could never close.
+
+    A conference with no deadline and no event date carries ``prune_after ==
+    ""``, so the past-date sweep can never touch it — 156 of 912 live
+    conferences on 2026-08-17, shown to readers forever. It is now deleted, but
+    only on the evidence that the collector has stopped seeing it: ``last_seen``
+    older than ``OPPORTUNITY_STALE_DAYS``.
+    """
+    upsert_items([_dateless_conference()], today=TODAY_ISO)
+    item = ContentItem.objects.get(source="conf:openreview")
+    assert item.metadata["prune_after"] == ""
+
+    # Seen today: the source still lists it, so it survives.
+    assert prune_expired(today=TODAY_ISO) == 0
+    assert ContentItem.objects.filter(id=item.id).exists()
+
+    # Unseen for longer than the window: gone.
+    assert prune_expired(today="2027-01-01") == 1
+    assert not ContentItem.objects.filter(id=item.id).exists()
+
+
+@pytest.mark.django_db
+def test_a_dateless_grant_is_never_stale_however_long_it_sits():
+    """A rolling grant means the opposite of a dateless conference.
+
+    ``mapping._grant_deadlines`` writes ``prune_after == ""`` to say "no round
+    at all, never expires". The staleness rule must not read that as death, or
+    every continuously-open funding call disappears two months after ingest.
+    """
+    upsert_items([_grant_item("rolling", close_date=None)], today=TODAY_ISO)
+
+    assert prune_expired(today="2099-01-01") == 0
+    assert ContentItem.objects.filter(external_id="src:nsf:rolling").exists()
+
+
+@pytest.mark.django_db
+def test_stale_only_skips_the_ordinary_expiry_sweep():
+    """``--stale-only`` is the one-off purge, not a second full prune."""
+    upsert_items(
+        [
+            _grant_item("expired", close_date="2025-01-01"),
+            _dateless_conference(),
+        ],
+        today=TODAY_ISO,
+    )
+
+    removed = prune_expired(today="2027-01-01", stale_only=True)
+    assert removed == 1
+    assert not ContentItem.objects.filter(source="conf:openreview").exists()
+    # The past-dated grant is untouched: this sweep was not asked about it.
+    assert ContentItem.objects.filter(external_id="src:nsf:expired").exists()
+
+
+@pytest.mark.django_db
+def test_dry_run_reports_without_deleting():
+    upsert_items([_grant_item("expired", close_date="2025-01-01")], today=TODAY_ISO)
+
+    assert prune_expired(today=TODAY_ISO, dry_run=True) == 1
+    assert ContentItem.objects.filter(external_id="src:nsf:expired").exists()
 
 
 @pytest.mark.django_db

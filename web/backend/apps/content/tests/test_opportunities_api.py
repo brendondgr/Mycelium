@@ -40,8 +40,14 @@ def _grant(gid, title, *, deadline="2026-12-01", first_seen=None):
     )
 
 
-def _conference(cid, title, *, deadline="2026-12-01"):
-    """A minimal open-collector-shaped conference row (plan Phase 9 fields)."""
+def _conference(cid, title, *, deadline="2026-12-01", prune_after=None):
+    """A minimal open-collector-shaped conference row (plan Phase 9 fields).
+
+    ``prune_after`` defaults to the deadline because ``map_conference`` always
+    writes the key — a conference with none at all is the dateless case
+    :mod:`apps.content.liveness` deliberately hides, so a fixture omitting it
+    would silently test the wrong thing.
+    """
     return ContentItem.objects.create(
         type=ContentItem.Type.CONFERENCE,
         source="conf:ccf_deadlines",
@@ -53,6 +59,7 @@ def _conference(cid, title, *, deadline="2026-12-01"):
             "year_label": "2026",
             "website": "https://sigmod.org/2026",
             "deadline_date": deadline,
+            "prune_after": deadline if prune_after is None else prune_after,
             "next_kind": "abstract",
             "rankings": {
                 "ccf": {"rank": "A", "edition": ""},
@@ -397,7 +404,7 @@ def test_conferences_feed_degrades_safely_when_series_unresolved(client: APIClie
         source="conf:society_pages",
         external_id="c-unres",
         source_url="https://example.org",
-        metadata={"name": "An Unresolved Venue"},
+        metadata={"name": "An Unresolved Venue", "prune_after": "2026-12-01"},
     )
     _score(user, item, rank=1, run_at="2026-07-05T00:00:00+00:00", match=60)
 

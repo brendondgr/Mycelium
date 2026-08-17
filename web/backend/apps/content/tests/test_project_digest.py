@@ -99,15 +99,41 @@ def test_digest_caps_each_area(project):
 
 
 @pytest.mark.django_db
-def test_digest_drops_passed_conference_deadlines(project):
-    _score(project, _item(ContentItem.Type.CONFERENCE, "future", deadline_date=FUTURE), deadline=FUTURE)
-    _score(project, _item(ContentItem.Type.CONFERENCE, "past", deadline_date=PAST), deadline=PAST)
-    _score(project, _item(ContentItem.Type.CONFERENCE, "undated"), deadline="")
+def test_a_conference_that_is_over_is_hidden_from_every_read_not_just_the_digest(
+    project,
+):
+    """The headline rule: a passed conference is shown to nobody.
 
-    digest = _recommendations_payload(
-        {"target_project": project}, user=None, digest=True
-    )
-    titles = {c["content_id"] for c in digest["conferences"]}
-    # The past-deadline conference is dropped; future + undated stay.
-    assert len(digest["conferences"]) == 2
-    assert all("past" not in t for t in titles) or len(titles) == 2
+    This used to be a digest-only filter that additionally *kept* undated rows
+    ("we don't hide what we can't date"). Both halves were wrong for a
+    conference: the full feed showed passed venues until the nightly prune
+    caught up, and an undated conference — no deadline, no event date — is not
+    something a reader can act on at all, and could never be pruned either. See
+    :mod:`apps.content.liveness`.
+    """
+    live = _item(ContentItem.Type.CONFERENCE, "future", prune_after=FUTURE)
+    over = _item(ContentItem.Type.CONFERENCE, "past", prune_after=PAST)
+    undated = _item(ContentItem.Type.CONFERENCE, "undated")
+    for item in (live, over, undated):
+        _score(project, item)
+
+    for digest in (True, False):
+        payload = _recommendations_payload(
+            {"target_project": project}, user=None, digest=digest
+        )
+        shown = {c["content_id"] for c in payload["conferences"]}
+        assert shown == {str(live.id)}
+        # The count is the honest total of what is shown, not of what is stored.
+        assert payload["counts"]["conferences"] == 1
+
+
+@pytest.mark.django_db
+def test_a_rolling_grant_with_no_date_is_still_shown(project):
+    """A dateless *grant* means "rolling, never expires" — the opposite of a
+    dateless conference. Hiding it would delete every continuously-open funding
+    call from the product."""
+    rolling = _item(ContentItem.Type.GRANT, "rolling")
+    _score(project, rolling)
+
+    payload = _recommendations_payload({"target_project": project}, user=None)
+    assert [g["content_id"] for g in payload["grants"]] == [str(rolling.id)]
