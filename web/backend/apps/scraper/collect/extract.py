@@ -72,7 +72,12 @@ DEFAULT_WORKERS = 16
 
 #: A record may never spin. Mean attempts per verified record measured at
 #: 1.16-1.23, so this is a backstop, not a budget.
-EXTRACTION_MAX_ATTEMPTS = 3
+#: How many times the loop will ask before giving up on model-written prose.
+#: Raised from 3 after the first full backfill: 38 conferences and 3 grants had
+#: real source text and still ended with no description at all, and the repair
+#: prompt demonstrably works — 81 records passed on attempt 2 and 12 more on
+#: attempt 3, so the curve had not flattened where the old ceiling sat.
+EXTRACTION_MAX_ATTEMPTS = 5
 
 #: How much source text a prompt carries. Matches the reference harness and
 #: ``enrich.MAX_PAGE_CHARS`` — the same figure, arrived at independently for
@@ -99,8 +104,12 @@ RAW_FALLBACK_CHARS = 1_500
 # those as settled would have excluded 321 records from ever being retried.
 
 RETRYABLE_STATUSES = frozenset({"pending", "model_failed", "fetch_failed", "thin_page"})
+#: ``attributes`` is settled: the loop asked five times, the answers were
+#: rejected, and the record now carries a description composed from fields we
+#: already hold (:func:`attribute_summary`). Re-running would re-spend five
+#: attempts to reach the same floor.
 SETTLED_STATUSES = frozenset(
-    {"ok", "robots_denied", "not_the_venue", "refused", "no_url"}
+    {"ok", "robots_denied", "not_the_venue", "refused", "no_url", "attributes"}
 )
 STATUSES = tuple(sorted(RETRYABLE_STATUSES | SETTLED_STATUSES))
 
@@ -521,6 +530,17 @@ def apply_to_metadata(
         metadata["ai_fields"] = scrub(outcome.ai_fields)
         metadata["summary_source"] = outcome.summary_source
         metadata.pop("extraction_refusal", None)
+    elif outcome.status == "attributes":
+        # The floor under a refusal: five attempts failed, so this text was
+        # composed from fields rather than extracted. It IS written -- the
+        # whole point is that a reader stops seeing a blank card -- but it
+        # keeps its own ``summary_source`` and, unlike an "ok" record, it also
+        # keeps the refusal reason, because why the model's attempts failed is
+        # still true and still worth knowing.
+        metadata["ai_summary"] = scrub(outcome.ai_summary)
+        metadata["ai_fields"] = scrub(outcome.ai_fields)
+        metadata["summary_source"] = outcome.summary_source
+        metadata["extraction_refusal"] = scrub(outcome.refusal_reason)
     else:
         metadata.pop("ai_summary", None)
         metadata.pop("ai_fields", None)
@@ -739,6 +759,104 @@ def _verified_outcome(
     )
 
 
+def attribute_summary(rec: ExtractionInput) -> str:
+    """A description assembled only from attributes already known correct.
+
+    The floor under the agent loop. When five attempts have failed to produce
+    prose that survives validation, the choice is between showing a reader
+    nothing and showing them the facts we already hold and have not doubted:
+    the venue's own name, its series, the year, the subject areas it filed
+    itself under; a grant's funder, its number, its categories. Every one of
+    those came from the source record, not from a model, so this text cannot
+    contain an invention — there is no generation step in which one could
+    occur.
+
+    That is the whole design constraint. It is deliberately *not* a model call
+    with a stricter prompt: a stricter prompt is still a prompt, and the reason
+    we are here is that five of them failed. Composition from fields is the one
+    construction whose output is bounded by its input by construction.
+
+    Returns "" when there are no attributes worth a sentence — a record with
+    nothing but an internal key has nothing true to say about itself, and an
+    empty description is the honest rendering of that.
+    """
+    if rec.kind == "grant":
+        name = rec.title.strip()
+        if not name:
+            return ""
+        parts = [f"{name} is a funding opportunity"]
+        if rec.funder.strip():
+            parts.append(f" offered by {rec.funder.strip()}")
+        if rec.opportunity_number.strip():
+            parts.append(f" (opportunity number {rec.opportunity_number.strip()})")
+        parts.append(".")
+        cats = [c.strip() for c in rec.categories if str(c).strip()]
+        if cats:
+            joined = ", ".join(cats[:6])
+            parts.append(f" The funder files it under {joined}.")
+        body = "".join(parts)
+    else:
+        # A conference is identified by its name or, failing that, its acronym;
+        # "TMLR 2026" is a poor description but it is a true one, and it is what
+        # the record actually asserts about itself.
+        name = rec.title.strip() or rec.acronym.strip()
+        if not name:
+            return ""
+        label = name
+        if rec.acronym.strip() and rec.acronym.strip() != name:
+            label = f"{name} ({rec.acronym.strip()})"
+        year = rec.year_label.strip()
+        parts = [f"{label} is a conference"]
+        if year:
+            parts.append(f" held in {year}")
+        series = rec.series_name.strip()
+        if series and series != name:
+            parts.append(f", part of the {series} series")
+        parts.append(".")
+        topics = [t.strip() for t in rec.topics if str(t).strip()]
+        if topics:
+            joined = ", ".join(topics[:6])
+            parts.append(f" It lists its subject areas as {joined}.")
+        body = "".join(parts)
+
+    # Said plainly rather than hidden, because a reader deciding whether to
+    # spend a week on a submission deserves to know this line was assembled
+    # from a listing's own fields and not read off the venue's site.
+    return (
+        f"{body} No usable description could be verified from the source, "
+        "so this summary is assembled from the listing's own recorded details."
+    )
+
+
+def _attribute_outcome(
+    rec: ExtractionInput, *, attempts: int, page_hash: str, failures: list[str]
+) -> ExtractionOutcome | None:
+    """Wrap :func:`attribute_summary` as a settled, clearly-labelled verdict.
+
+    ``summary_source`` is ``"attributes"``, never ``"extracted"``: this text
+    was not extracted from anything and must not be mistaken downstream for
+    prose that passed validation. The refusal reason is kept alongside it, so
+    why the model's own attempts failed stays on the record.
+    """
+    summary = attribute_summary(rec)
+    if not summary:
+        return None
+    return ExtractionOutcome(
+        key=rec.key,
+        status="attributes",
+        attempts=attempts,
+        ai_summary=summary,
+        ai_fields={"summary": summary, "basis": "attributes"},
+        summary_source="attributes",
+        search_text=" ".join(
+            part for part in (_identity_text(rec), summary) if part
+        ),
+        search_text_source="attributes",
+        refusal_reason="; ".join(failures),
+        page_hash=page_hash,
+    )
+
+
 def _short_circuit_outcome(
     rec: ExtractionInput, resolution: SourceResolution
 ) -> ExtractionOutcome:
@@ -825,6 +943,26 @@ def extract_one(
         status = "model_failed"
     else:
         status = "refused"
+
+    # Five rejected attempts is not a reason to show a reader nothing. Fall
+    # back to the attributes we already hold as correct (:func:`attribute_summary`).
+    #
+    # Two statuses are deliberately excluded. ``not_the_venue`` means the page
+    # we read belongs to a *different* conference, so this record's own
+    # attributes were never the thing in doubt — but neither were they
+    # confirmed, and dressing up a listing we could not locate as a described
+    # one would be the same overreach in a quieter voice. ``model_failed``
+    # means we never got an answer at all: that is retryable, and settling it
+    # here would stop the retry from ever happening.
+    if status == "refused":
+        fallback = _attribute_outcome(
+            rec,
+            attempts=max_attempts,
+            page_hash=page_hash,
+            failures=last_failures,
+        )
+        if fallback is not None:
+            return fallback
 
     return ExtractionOutcome(
         key=rec.key,

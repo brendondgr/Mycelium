@@ -254,16 +254,21 @@ def test_three_malformed_attempts_fall_back_to_raw_with_no_ai_summary():
     always_missing_a_key = json.dumps(
         {k: v for k, v in GOOD_GRANT_PAYLOAD.items() if k != "award_summary"}
     )
-    stub = StubLLM([always_missing_a_key] * 3)
+    stub = StubLLM([always_missing_a_key] * extract.EXTRACTION_MAX_ATTEMPTS)
 
     outcome = extract.extract_one(stub, grant_input(), grant_source_text())
 
-    assert stub.calls == 3
-    assert outcome.attempts == 3
-    assert outcome.status == "refused"
-    assert outcome.search_text_source == "raw"
-    assert outcome.ai_summary == ""
-    assert outcome.ai_fields is None
+    assert stub.calls == extract.EXTRACTION_MAX_ATTEMPTS
+    assert outcome.attempts == extract.EXTRACTION_MAX_ATTEMPTS
+    # Five malformed replies no longer leave a reader with a blank card: the
+    # record is described from attributes already known correct. What must
+    # never happen is the rejected prose being passed off as verified, so the
+    # provenance says exactly where this sentence came from.
+    assert outcome.status == "attributes"
+    assert outcome.summary_source == "attributes"
+    assert outcome.search_text_source == "attributes"
+    assert outcome.ai_fields == {"summary": outcome.ai_summary, "basis": "attributes"}
+    # And the reason the model's own attempts failed stays on the record.
     assert "malformed" in outcome.refusal_reason
 
 
@@ -289,18 +294,19 @@ def test_hallucinated_date_is_refused_as_unsupported_claim():
         "The symposium was first convened in 1998 and focuses on applied "
         "robotics."
     )
-    stub = StubLLM([json.dumps(invented_year)] * 3)
+    stub = StubLLM([json.dumps(invented_year)] * extract.EXTRACTION_MAX_ATTEMPTS)
 
     outcome = extract.extract_one(
         stub, stub_conference_input(), STUB_SOURCE, identity_text=STUB_SOURCE
     )
 
-    assert stub.calls == 3
-    assert outcome.status == "refused"
+    assert stub.calls == extract.EXTRACTION_MAX_ATTEMPTS
     assert "unsupported_claim" in outcome.refusal_reason
     assert "1998" in outcome.refusal_reason
-    assert outcome.search_text_source == "raw"
-    assert outcome.ai_summary == ""
+    # The point of the test: the invented year never reaches a reader. The
+    # record still gets a description, but one composed from its own fields.
+    assert outcome.summary_source != "extracted"
+    assert "1998" not in outcome.ai_summary
 
 
 def test_year_present_in_the_source_is_not_a_hallucination():
@@ -316,13 +322,15 @@ def test_year_present_in_the_source_is_not_a_hallucination():
 def test_ungrounded_topic_is_its_own_refusal():
     payload = dict(GOOD_GRANT_PAYLOAD)
     payload["research_areas"] = ["coastal conservation", "orbital telemetry systems"]
-    stub = StubLLM([json.dumps(payload)] * 3)
+    stub = StubLLM([json.dumps(payload)] * extract.EXTRACTION_MAX_ATTEMPTS)
 
     outcome = extract.extract_one(stub, grant_input(), grant_source_text())
 
-    assert outcome.status == "refused"
     assert "ungrounded_topic" in outcome.refusal_reason
     assert "orbital telemetry systems" in outcome.refusal_reason
+    # Rejected either way: the invented topic never becomes a searchable one.
+    assert outcome.summary_source != "extracted"
+    assert "orbital telemetry" not in outcome.search_text
     # The grounded item must NOT have been the one flagged.
     assert "'coastal conservation'" not in outcome.refusal_reason
 
@@ -345,13 +353,17 @@ def test_wrong_venue_is_its_own_refusal():
         acronym="MBIO",
         cfp_text="",  # irrelevant here: source_text is passed explicitly below
     )
-    stub = StubLLM([json.dumps(payload)] * 3)
+    stub = StubLLM([json.dumps(payload)] * extract.EXTRACTION_MAX_ATTEMPTS)
 
     outcome = extract.extract_one(
         stub, rec, header_claims_mbio, identity_text=RICH_BODY
     )
 
+    # Deliberately NOT given the attribute fallback: we never located this
+    # record's own page, so composing a confident summary for it would be the
+    # same overreach in a quieter voice.
     assert outcome.status == "not_the_venue"
+    assert outcome.ai_summary == ""
     assert "not_the_venue" in outcome.refusal_reason
 
 
@@ -359,18 +371,18 @@ def test_prose_written_from_priors_is_refused_as_ungrounded():
     payload = stub_payload(
         HALF_GROUNDED_CONFERENCE_PROSE, topics=GROUNDED_TOPICS, confidence="high"
     )
-    stub = StubLLM([json.dumps(payload)] * 3)
+    stub = StubLLM([json.dumps(payload)] * extract.EXTRACTION_MAX_ATTEMPTS)
 
     outcome = extract.extract_one(
         stub, conference_input(), RICH_BODY, identity_text=RICH_BODY
     )
 
-    assert stub.calls == 3
-    assert outcome.status == "refused"
+    assert stub.calls == extract.EXTRACTION_MAX_ATTEMPTS
     assert "ungrounded_prose" in outcome.refusal_reason
     assert "0.22" in outcome.refusal_reason
-    assert outcome.search_text_source == "raw"
-    assert outcome.ai_summary == ""
+    # The model's own prose is discarded; only composed attributes survive.
+    assert outcome.summary_source != "extracted"
+    assert HALF_GROUNDED_CONFERENCE_PROSE not in outcome.ai_summary
 
 
 # --------------------------------------------------------------------------- #
@@ -453,16 +465,18 @@ def test_apply_to_metadata_verified():
 
 def test_apply_to_metadata_refused_shows_no_ai_summary():
     bad = json.dumps({k: v for k, v in GOOD_GRANT_PAYLOAD.items() if k != "summary"})
-    stub = StubLLM([bad] * 3)
+    stub = StubLLM([bad] * extract.EXTRACTION_MAX_ATTEMPTS)
     outcome = extract.extract_one(stub, grant_input(), grant_source_text())
 
     metadata: dict = {"ai_summary": "a previous, now-stale summary"}
     extract.apply_to_metadata(metadata, outcome)
 
-    assert "ai_summary" not in metadata
-    assert "ai_fields" not in metadata
-    assert "summary_source" not in metadata
-    assert metadata["search_text_source"] == "raw"
+    # The stale summary is replaced, never left standing.
+    assert metadata["ai_summary"] != "a previous, now-stale summary"
+    # It is replaced by the attribute floor, labelled as such, so nothing
+    # downstream can mistake it for prose that passed validation.
+    assert metadata["summary_source"] == "attributes"
+    assert metadata["search_text_source"] == "attributes"
     assert "malformed" in metadata["extraction_refusal"]
 
 

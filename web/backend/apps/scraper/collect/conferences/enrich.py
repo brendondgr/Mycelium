@@ -155,11 +155,38 @@ class EnrichmentTask:
         reaches urllib as a control character and raises ``InvalidURL`` from
         inside the worker. Screening here keeps every one of those out of the
         fetch path instead of turning each into a crash to be caught.
+
+        A bare hostname is fetchable, though, and organizers type those
+        constantly: ``jmlr.org/tmlr``, ``slads.scichina.com``. Requiring a
+        scheme reported 17 conferences as having "no fetchable URL" while
+        holding a working address for each, so none of them was ever described.
+        :attr:`fetch_url` supplies the scheme; this only decides whether there
+        is an address at all. ``TBD``, ``internal (private)`` and an email
+        address are still correctly refused — none has a dotted host.
         """
-        url = self.url
-        if not url.lower().startswith(("http://", "https://")):
-            return False
-        return not any(char.isspace() or ord(char) < 32 for char in url)
+        return bool(self.fetch_url)
+
+    @property
+    def fetch_url(self) -> str:
+        """The address to actually request, or "" if there isn't one.
+
+        Mirrors ``mapping._normalize_url``, which already does this for the
+        link a reader clicks. The two had drifted: the website shown on a card
+        was reachable while the crawler considered the same record unfetchable.
+        """
+        url = (self.url or "").strip()
+        if not url or any(c.isspace() or ord(c) < 32 for c in url):
+            return ""
+        if url.lower().startswith(("http://", "https://")):
+            return url
+        # Anything else must look like a host before we prepend a scheme:
+        # a dotted label, no "@" (an email), and a plausible TLD.
+        host = url.split("/", 1)[0]
+        if "@" in url or "." not in host:
+            return ""
+        if not _BARE_HOST_RE.match(host):
+            return ""
+        return f"https://{url}"
 
 
 @dataclass
@@ -286,6 +313,11 @@ CFP_MARKERS = re.compile(
 
 #: How much page text the model is given. Enough for a full call for papers,
 #: bounded so a wiki-sized page cannot blow the context window.
+#: A dotted hostname with a plausible TLD, for deciding whether a bare
+#: (scheme-less) website field is an address or a note to self. Rejects
+#: "TBD" and "internal (private)" because neither has a dotted label.
+_BARE_HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}$")
+
 MAX_PAGE_CHARS = 12000
 
 #: Under this, the fetch found navigation and nothing else.
@@ -353,6 +385,38 @@ def page_text(html_body: str, *, max_chars: int = MAX_PAGE_CHARS) -> str:
     return text[start : start + max_chars]
 
 
+def _encode_url(url: str) -> str:
+    """Make a URL scraped out of a page safe to hand to http.client.
+
+    Venue sites write hrefs by hand, so spaces and stray control characters
+    reach us verbatim. `quote` the path and query (leaving already-encoded
+    sequences alone via `safe`) rather than rejecting the link: the page is
+    pointing at something real, it is simply written the way a person types.
+    Returns "" for anything still unusable.
+    """
+    from urllib.parse import quote, urlsplit, urlunsplit
+
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return ""
+    if any(ord(c) < 32 or ord(c) == 127 for c in url):
+        url = "".join(c for c in url if ord(c) >= 32 and ord(c) != 127)
+        try:
+            parts = urlsplit(url)
+        except ValueError:
+            return ""
+    if not parts.netloc:
+        return ""
+    return urlunsplit((
+        parts.scheme,
+        parts.netloc,
+        quote(parts.path, safe="/%:@&=+$,~"),
+        quote(parts.query, safe="/%:@&=+$,~?"),
+        quote(parts.fragment, safe="/%:@&=+$,~?"),
+    ))
+
+
 def cfp_links(html_body: str, base_url: str) -> list[str]:
     """Same-site links whose text promises dates or a call for papers."""
     from urllib.parse import urljoin, urlparse
@@ -365,6 +429,14 @@ def cfp_links(html_body: str, base_url: str) -> list[str]:
             continue
         target = urljoin(base_url, href.strip())
         if not target.startswith(("http://", "https://")):
+            continue
+        # Percent-encode what the page actually wrote. A real href on a live
+        # venue site is `/tiki-index.php?page=Call for Sponsors` -- spaces and
+        # all -- and handing that to http.client raises InvalidURL from inside
+        # the worker, which is not a FetchError and so killed an entire
+        # extraction run rather than skipping one link.
+        target = _encode_url(target)
+        if not target:
             continue
         if urlparse(target).netloc != base_host:
             continue  # off-site: a publisher or a social link, not the CFP
@@ -386,15 +458,18 @@ def fetch_page(
     """
     from apps.scraper.collect.core.http import FetchError
 
-    record = EnrichmentRecord(instance_key=task.instance_key, url=task.url)
+    # `fetch_url`, not `url`: organizers type bare hostnames, and both the
+    # robots check and the request itself need the scheme the raw field lacks.
+    target = task.fetch_url
+    record = EnrichmentRecord(instance_key=task.instance_key, url=target)
 
-    permitted, reason = gate.allowed(task.url)
+    permitted, reason = gate.allowed(target)
     if not permitted:
         record.status, record.detail = "robots_denied", reason
         return record, ""
 
     try:
-        response = client.get(task.url, min_bytes=0)
+        response = client.get(target, min_bytes=0)
     except FetchError as exc:
         record.status, record.detail = "fetch_failed", exc.reason
         return record, ""
@@ -407,13 +482,18 @@ def fetch_page(
     # came for. A homepage that already lists its dates costs one request.
     wants_dates = "deadlines" in task.gaps
     if follow_links and wants_dates and not states_dates(text):
-        for link in cfp_links(body, task.url)[:1]:
+        # `target`, not `task.url`: joining a relative href onto a
+        # scheme-less base produces a nonsense address.
+        for link in cfp_links(body, target)[:1]:
             allowed_link, _ = gate.allowed(link)
             if not allowed_link:
                 continue
             try:
                 extra = client.get(link, min_bytes=0)
-            except FetchError:
+            # Broad on purpose. This is an optional second page: no failure
+            # reading it is worth losing the first page we already have, let
+            # alone the rest of the batch.
+            except Exception:  # noqa: BLE001
                 continue
             text = f"{text}\n\n--- {link} ---\n\n{page_text(extra.text())}"
             record.detail = f"followed {link}"
