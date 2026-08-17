@@ -60,7 +60,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from apps.content.models import ContentItem
@@ -312,12 +312,26 @@ class Command(BaseCommand):
                 )
 
         if not mapped:
-            self.stdout.write(
-                self.style.WARNING(
-                    "Nothing collected -- skipping ingest/extract/embed."
-                )
+            # Not a warning-and-carry-on. A collection that mapped nothing has
+            # failed, and saying so quietly is how it stays failed.
+            #
+            # This repository has already lost a feature to exactly this shape:
+            # `extract_fellowship_constraints` filtered on the wrong source
+            # string, matched zero rows on every run, reported success each
+            # time, and was documented in the repo map as working for months.
+            #
+            # The blast radius here is wider. The nightly does not stop when
+            # collection returns nothing -- it goes on to rank, slate and report
+            # over whatever corpus already exists, so a dead collector produces
+            # a perfectly ordinary-looking daily report for as long as it takes
+            # somebody to notice the listings have stopped moving.
+            raise CommandError(
+                "no records were collected at all -- nothing was mapped, so "
+                "ingest, extraction and embedding were all skipped. That is a "
+                "failed run, not an empty one: check that the sources are "
+                "reachable, that at least one adapter is enabled, and that the "
+                "collector's own stores under --root are writable."
             )
-            return
 
         # -- ingest: upsert into ContentItem, deadlines project as a side
         # effect. Embedding waits for extraction (D10); pruning waits for
@@ -403,10 +417,30 @@ class Command(BaseCommand):
         if not options["no_prune"]:
             pruned = prune_expired(today=today_iso, log=self.stdout.write)
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"collect_opportunities: {summary.created:,} created, "
-                f"{summary.updated:,} updated, {extracted:,} extracted, "
-                f"{embedded:,} embedded, {pruned:,} pruned."
-            )
+        line = (
+            f"collect_opportunities: {summary.created:,} created, "
+            f"{summary.updated:,} updated, {extracted:,} extracted, "
+            f"{embedded:,} embedded, {pruned:,} pruned."
         )
+
+        # A run that saw nothing at all is a failure wearing a success message.
+        #
+        # This is the shape that hid the fellowship eligibility engine never
+        # running: a queryset filtered on the wrong source matched zero rows,
+        # every pass reported success, and nobody noticed for months. The same
+        # trap is live here — a killed fetch, a renamed adapter, or a key that
+        # drifts between the collector and the mapper all end in "0 created,
+        # 0 updated" and exit 0, and the nightly would go on recommending over
+        # a corpus that quietly stopped being refreshed.
+        #
+        # ``seen`` rather than ``created`` is the right test: a healthy re-run
+        # over an unchanged corpus legitimately creates and updates nothing
+        # (that is the idempotency contract), but it can never *see* nothing.
+        if not summary.seen:
+            raise CommandError(
+                f"{line} — no records were collected at all. That is a failed "
+                "run, not an empty one: check that the sources are reachable "
+                "and that at least one adapter is enabled."
+            )
+
+        self.stdout.write(self.style.SUCCESS(line))

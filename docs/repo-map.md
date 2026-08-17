@@ -91,7 +91,7 @@ Files below are inside `web/backend/apps/content/`.
 | Theme spread (opt-in, all defaults off) | `fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
 | Grants / conferences / fellowships matching | `opportunities.py`, `fellowships.py`, `opportunity_llm.py`, `pinning.py` |
 | Fellowship eligibility gates (stage ladder, prose constraints) | `fellowships.py` (`STAGE_LADDER`, `_stage_gate`, `_constraint_gates`, `derive_stage`) |
-| Fellowship eligibility extracted from prose | `apps/scraper/eligibility/constraints.py`, `apps/scraper/fellowships/ingest.py` (`extract_fellowship_constraints`) |
+| Fellowship eligibility extracted from prose | `web/backend/apps/scraper/eligibility/constraints.py`, `web/backend/apps/scraper/fellowships/ingest.py` (`extract_fellowship_constraints`) |
 | On-demand whole-corpus refit | `refitting.py` |
 | Post-onboarding live match | `onboarding_match.py`, `scan_status.py` |
 | Member fit ("who is this for?") | `member_fit.py`, `fanout.py` |
@@ -123,7 +123,12 @@ Files below are inside `web/backend/apps/content/`.
 | Discord identity & lab linking | `web/backend/apps/integrations/models.py`, `services/resolve.py` (the single ORM boundary) |
 | Discord OAuth, API calls, outbox | `web/backend/apps/integrations/services/` |
 | Paper source scrapers | `web/backend/apps/scraper/sources/`, `ingest.py`, `window.py` |
-| Open-source grants/conferences collector (vendored) | `web/backend/apps/scraper/collect/` |
+| Open-source grants/conferences collector (vendored) | `web/backend/apps/scraper/collect/` — `runner.py` stages, `grants/`, `conferences/`, `core/` |
+| Collector adapters (5 live grant, 6 conference) | `web/backend/apps/scraper/collect/{grants,conferences}/adapters/` |
+| dblp venue registry (trust tiers, CORE ranks) | `web/backend/apps/scraper/collect/conferences/registry/` |
+| Collector record → `ContentItem` mapping, deadline/expiry rules | `web/backend/apps/scraper/collect/mapping.py` |
+| Collector upsert, prune, embed | `web/backend/apps/scraper/collect/ingest.py` |
+| Verified LLM description extraction (schema, validators, repair loop) | `web/backend/apps/scraper/collect/extract.py` |
 | Fellowship eligibility rule engine (deterministic, prose → constraints) | `web/backend/apps/scraper/eligibility/` |
 | Illinois Fellowship Finder scraper + ingest | `web/backend/apps/scraper/fellowships/` (`illinois.py` scrapes, `records.py`/`ingest.py` upsert) |
 | Embedder (CPU / CUDA) | `web/backend/apps/scraper/embedding.py` |
@@ -174,7 +179,8 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `drain_discord_outbox`, `reconcile_discord` | Deliver queued Discord messages / reconcile guild state |
 | `scan_literature` | Paper ingestion only |
 | `collect_opportunities` | Open collector end to end (collect → map → ingest → extract → embed) for grants/conferences, in-container; nightly invocation is `--new-only --no-prune` |
-| `refresh_dblp_registry` | Refresh the dblp venue registry cache the conference resolve stage joins against (plan D5a; weekly cadence, self-throttled from `manual_all.py`) |
+| `refresh_dblp_registry` | Refresh the dblp venue registry cache the conference resolve stage joins against (weekly cadence, self-throttled from `manual_all.py`; must run before collection) |
+| `reset_opportunities` | ORM-level wipe of grant / conference items before a re-populate (`--types`); leaves fellowships, papers, users, and saves alone |
 | `annotate_member_fit` | Backfill the "who is this for?" layer |
 | `recompute_project_profiles` | Rebuild project team vectors |
 | `rebuild_content_deadlines`, `backfill_project_seen`, `dedupe_content_papers` | Backfills |

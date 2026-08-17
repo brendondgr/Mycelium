@@ -21,9 +21,63 @@ follow-ups raised by experiments in this record.
 | W7 | Award-linkage ground truth from NIH RePORTER + NSF + CORDIS; profile each PI strictly *before* the award date | C-005 | 4 | — (parallel) | not started. ⚠️ Temporal leakage is the killer; won ≠ applied, so positives carry selection bias |
 | W8 | Member-fit evaluation on the RAP gold-standard protocol: self-reported expertise, misranking rate, TF-IDF baseline, workload balance | C-006 | 4 | W3; recruit ≥15 members across ≥3 labs | not started — recruitment is the bottleneck, not the code |
 | W9 | IRB submission for a user study | — | 4–8 elapsed | — | not started; **elapsed time is the constraint, so start now** |
-| W10 | Rebuild the opportunity corpus from open sources (CORDIS, RePORTER, NSF, public listings) to make it releasable | data legitimacy | 3 | — | not started. Loses Pivot conference CFPs, which have no open equivalent |
-| W11 | Structured-output enforcement + retries + order-robustness test for the LLM scorer | C-004 | 1 | — | not started |
+| W10 | Rebuild the opportunity corpus from open sources (CORDIS, RePORTER, NSF, public listings) to make it releasable | data legitimacy | 3 | — | **done for grants and conferences** — the corpus is now collected entirely from public sources. The audit's cost estimate ("loses Pivot conference CFPs, which have no open equivalent") **did not hold**; see the amendment below |
+| W11 | Structured-output enforcement + retries + order-robustness test for the LLM scorer | C-004 | 1 | — | not started **for the scorer**, which is the component C-004 is about. A working reference implementation of the first two thirds now exists for a *different* component — the opportunity description extractor (`apps/scraper/collect/extract.py`): fixed JSON schema, deterministic validators, bounded repair loop, refusal as a first-class outcome. Order-robustness is not addressed there, since the extractor sees one record at a time |
 | W12 | Post-cutoff contamination holdout + pre/post match-% distribution comparison | C-004 | 1 | W1 | not started |
+
+### Amendment to W10 — 2026-08-16
+
+**What was believed.** `research-audit.md` §6.5 costed W10 at three weeks and
+scored its risk "Medium", on one specific ground: rebuilding from open sources
+would *lose the Pivot conference CFPs, which have no open equivalent*. The open
+sources the audit named — CORDIS, NIH RePORTER, NSF, public university listings —
+are all **funding** sources. The audit found no open substitute for the
+call-for-papers half and treated that loss as the price of releasability. Risk
+row #4 in the same document says the same thing about the corpus overall.
+
+**What was found.** The premise was wrong. Six conference sources were
+implemented, all public and all requiring no login or licence:
+`ccf_deadlines`, `openreview`, `openresearch`, `miccai`, `ams_mathcal`, and
+`society_pages` (`web/backend/apps/scraper/collect/conferences/adapters/`).
+They resolve into a series/instance model that carries strictly **more** than
+the commercial source did: a trust tier on every series, CCF / CORE / THCPL
+rankings where a series has them, per-source links and licence strings, and
+**every** deadline round rather than one. Grants come from five live public
+adapters (`grants_gov`, `sbir`, `nih_guide`, `nsf`, `eu_portal`; a sixth,
+`sam_gov`, needs a free self-service API key and ships disabled). Nothing in the
+grant or conference path now requires institutional SSO or a commercial licence.
+Fellowships were never a Pivot dependency and are unchanged.
+
+**Evidence.** The adapters above, and the collector store snapshot the extraction
+experiments were sampled from — recorded as `mycelium-grants collector stores
+(opportunities.db + conferences.db), snapshot 2026-08-16, collector HEAD
+6fddf55` in the `data:` block of both
+[`EXP-2026-08-006`](experiments/EXP-2026-08-006-extraction-throughput/manifest.yaml)
+and
+[`EXP-2026-08-007`](experiments/EXP-2026-08-007-extraction-grounding-floor/manifest.yaml).
+Of the 1,425 conference series in that snapshot, 334 carry a rank from any of
+the three systems and 334 sit in trust tier A, the rest in tier B.
+
+**What the amendment does not settle.** Three things, and they should not be read
+as closed:
+
+1. **No coverage comparison was run.** Nobody measured what fraction of the
+   commercial corpus's venues the six adapters reproduce, and the old corpus has
+   since been deleted, so the comparison is no longer available to run. "There is
+   an open equivalent" is demonstrated; "the open equivalent is as complete" is
+   not, and cannot now be tested here.
+2. **Coverage is skewed by construction.** Four of the six conference sources are
+   computer-science-centric; non-CS venues arrive through the society-pages trio
+   and land in trust tier B. `openresearch` is geographically skewed and is
+   treated as a deadline-and-location spine only, never authoritative on
+   descriptive text.
+3. **Releasability is not the same as redistributability.** Each row now carries
+   a licence string, and they differ per source. A released corpus has to honour
+   them row by row; it is not one blanket licence.
+
+**Consequences elsewhere in the record.** The audit's risk row #4 and its W10
+critical-path note both rest on the superseded premise; they are historical and
+are left as written. This amendment is the correction.
 
 ## Follow-ups raised by experiments
 
@@ -59,10 +113,20 @@ follow-ups raised by experiments in this record.
 - **Nondeterministic scoring layer.** `LLM_TEMPERATURE` defaults to 0.2, so the
   scoring layer varies run to run even once the model is pinned. Pinning is
   necessary but not sufficient (W1).
-- **Opportunity corpus is not redistributable.** Pivot-RP is Clarivate
-  proprietary behind institutional SSO; the Illinois Fellowship Finder is one
-  university's site. The paper corpus (OpenAlex, CC0) is fine. W10 is the route
-  out.
+- **Opportunity corpus licensing is now per-row, not blocked.** The commercial,
+  SSO-gated source is gone (W10): grants and conferences come from public
+  sources and each row carries its own licence string, which a release has to
+  honour individually rather than under one blanket. The Illinois Fellowship
+  Finder is still one university's public site. The paper corpus (OpenAlex, CC0)
+  is fine.
+- **Opportunity descriptions are model-written.** Every grant and conference
+  description in the corpus is an LLM extraction, verified by deterministic
+  checks and refused when it fails them, and the verified text is what gets
+  embedded. This is a property of the corpus a released dataset must state, and
+  it means the opportunity retrieval basis is not raw source text. Its effect on
+  retrieval quality is **unmeasured** — `metadata["search_text_source"]`
+  (`extracted` | `raw`) is recorded per row precisely so that the comparison
+  stays available.
 - **Nothing above the retrieval layer is measured.** Cluster max-pooling, the
   LLM percent-match, fellowship eligibility, and member routing (C-003 to C-006)
   have no evidence at all.

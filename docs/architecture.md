@@ -77,6 +77,16 @@ Single-origin routing through Nginx at `http://localhost:11050`:
 | `/login`, `/signup`, `/app/*`, `/_next/*` | Next.js app |
 | `/api/*`, `/admin/*` | Django |
 
+**Why the nightly run is split across host and container.** `manual_all.py` runs
+on the host but executes almost every stage *inside* the backend container, where
+the database and the PDF renderer are. Exactly one stage is genuinely host-bound:
+the Illinois Fellowship Finder scrape (`scrape_fellowships.py`), which drives
+Playwright the container does not carry. The grants/conferences collector is pure
+HTTP and runs in-container like everything else. A third stage, the weekly dblp
+venue-registry refresh (`refresh_dblp_registry`), is also in-container but sits on
+its own slower cadence and **must precede** the conference collection, because the
+collector's resolve stage joins against that cache and derives trust tiers from it.
+
 ## Backend app boundaries
 
 | App | Responsibility |
@@ -129,7 +139,17 @@ graph phase has not started.
 | Sign-up gate | `SIGNUP_ACCESS_CODE`, `SIGNUP_CODE_MAX_FAILURES`, `SIGNUP_CODE_FAILURE_WINDOW_SECONDS`, `SIGNUP_CODE_LOCKOUT_SECONDS` |
 | Discord (`.env-mylo`) | `DISCORD_API_KEY`, `ERROR_CHANNEL`, `ACTIVATION_CHANNEL`, `SUMMARY_CHANNEL` |
 | Run analytics | `RUN_ANALYTICS_JSON_PATH`, `RUN_ANALYTICS_PDF_DIR`, `RUN_ANALYTICS_RETENTION_DAYS` |
+| Opportunity collector | `COLLECT_CONTACT` |
 | Reserved (unused) | `NEO4J_*`, `S3_*` |
+
+`COLLECT_CONTACT` is the one variable that does **not** go through django-environ:
+`apps/scraper/collect/core/http.py` reads it from `os.environ` **at import time**,
+because it names the address in the outbound `User-Agent` every public source sees.
+Setting it after Django has loaded has no effect, and — like the run-analytics
+paths — a bare `KEY=` in an env_file arrives as an empty string and beats the
+default, so `.env.example` ships it commented out rather than blank. The
+extraction stage adds no variables of its own; it calls the same `LLM_*` client
+every other model caller routes through.
 
 `PUBLIC_HOSTNAME` backs every absolute URL Mycelium emits. Leaving it blank once
 published `localhost` links into a lab's Discord channel; links that leave the
@@ -148,6 +168,23 @@ The nightly run **ranks the whole corpus** for every target against the profile
 that target has that night, and re-establishes each feed from that ranking. Rank is
 the fused BM25 + embedding order (`fusion.py`) and nothing else: a language-model
 verdict explains an item, it never moves one.
+
+**What a grant or conference ranks *on* did change.** Since the open-collector
+migration, an opportunity's embedded text is not its raw source description — it
+is a schema-checked, model-written extraction, verified by deterministic code
+(bounds, venue identity, prose grounding, topic grounding, no invented specifics)
+before it is stored, shown, or embedded. That was the point: raw source text is
+not a uniform basis, since one funder writes ten times longer than another and
+conference rows carry no CFP text at all. A record whose extraction fails every
+bounded attempt is **refused** — it falls back to truncated raw text so it stays
+retrievable, shows no AI summary, and records the fact in
+`metadata["search_text_source"]` (`extracted` | `raw`), so a degraded run is
+queryable and re-runnable rather than invisible. Ordering logic itself is
+untouched, and the conference rank badges (CCF / CORE / THCPL) and trust tiers are
+**display only** — they never enter relevance, thresholds, or the verdict. The
+embedding basis moving is nonetheless a relevance change, and per
+`docs/skills/global.md` any claim about its effect is an experiment under
+`docs/research/experiments/`, not an assertion here.
 
 Cost is contained by carry-forward rather than by narrowing the scan. A verdict
 Mylo has already written is reused (`opportunity_llm.load_prior_llm_verdicts`), so

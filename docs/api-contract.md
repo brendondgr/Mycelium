@@ -521,15 +521,15 @@ of grants / fellowships / conferences, passed-deadline conferences dropped) whil
 
 ### Provenance fields shared by every opportunity area
 
-Since the open-collector migration (plan `open-opportunity-collector.md`,
-Phase 9), a matched grant, conference, or fellowship carries the same four
-provenance fields — Pivot never exposed any of them, so a matched item's
-origin used to be invisible past its outbound link:
+A matched grant, conference, or fellowship carries the same four provenance
+fields. Every opportunity now comes from a public source that can be named and
+attributed, so a client can always say where a row came from and under what
+terms:
 
 - `source` — which adapter produced the row, namespaced by area:
-  `"grants:nsf"`, `"conf:ccf_deadlines"`, `"illinois-fellowship-finder"`. Lets
-  a client tell a pre-migration Pivot leftover (`"pivot"`) from an
-  open-collector row.
+  `"grants:nsf"`, `"conf:ccf_deadlines"`, `"illinois-fellowship-finder"`. It is
+  the adapter id, not a vendor: several adapters can contribute to one merged
+  record, and `source_links` below is the full list.
 - `license` — a short label (`"MIT"`, `"CC0-1.0"`, `"US Government Work — no
   copyright (17 U.S.C. § 105); public domain"`), never a URL. `""` when the
   source carries none.
@@ -542,6 +542,22 @@ origin used to be invisible past its outbound link:
   per contributing adapter (several adapters can merge into one record at
   dedupe time). `[]` for a fellowship, which has a single source and nothing
   to attribute.
+
+### What a grant's or conference's `description` is
+
+For grants and conferences (not fellowships), `description` is the **verified
+model-written extraction** where one exists, and the raw source text otherwise.
+Every extraction is produced under a fixed JSON schema and then checked by
+deterministic code — schema and field bounds, venue identity, prose grounding
+against the source, topic grounding, and a no-invented-specifics rule — with a
+bounded repair loop. Output that never passes is **refused**: the record keeps
+no `ai_summary`, falls back to truncated raw text so it stays retrievable and
+searchable, and records why it was refused. A client therefore never receives a
+confident-looking summary that no check passed — but it also cannot currently
+tell the two apart from the payload, because the basis flag
+(`metadata["search_text_source"]`, `"extracted"` | `"raw"`) is stored and **not
+serialized**. Do not present `description` as an AI summary until that flag is
+exposed.
 
 ### `GET /api/opportunities/grants/`
 
@@ -587,18 +603,18 @@ rolling/unknown deadline, and `confidence` is
 before the first run.
 
 `published_on` is the funder's own publication date
-(`metadata["published_on"]`, `""` when unknown), distinct from `posted`.
-**`posted` was repointed in the open-collector migration**: it used to be
-`signals["first_seen"]` unconditionally — Mylo's own ingest date — so a grant
-the funder posted in 2015 showed the day Mycelium happened to scrape it. It now
-prefers `published_on` and falls back to the old `first_seen` behaviour only
-for a row that carries no `published_on` at all (a pre-migration Pivot
-leftover still in the corpus, not a genuine "we don't know").
+(`metadata["published_on"]`, `""` when the source published none), distinct
+from `posted`. `posted` **prefers `published_on`** and falls back to
+`signals["first_seen"]` — Mycelium's own ingest date — only for a row whose
+source gave no publication date. Reading `first_seen` unconditionally was the
+old behaviour and it was wrong: a grant the funder posted in 2015 showed the day
+Mycelium happened to collect it. Treat `posted` as "best available date", and
+`published_on` as the only one that is the funder's.
 
 `opportunity_number` is the funder's own identifier (`"PAR-25-144"`), `""` when
 none was published. `due_dates` is the complete application-round array behind
 the single next-due `deadline_date` — every round, oldest first, ISO dates —
-what the multi-deadline hover renders in full (plan D1); it can differ from
+what the multi-deadline hover renders in full; it can differ from
 `deadline_date` on a multi-round grant where every round but the last has
 already passed. `deadline_text` is the funder's own free-text deadline line,
 kept verbatim alongside the parsed date. `dates_inferred` is `true` when the
@@ -618,9 +634,10 @@ one. Filter-rail fields computed at ingest: `event_date` (ISO, or `""`),
 (`abstract` / `manuscript` / `event`). Continent is derived client-side from
 `country`.
 
-Plus, since the open-collector migration, the quality-signal fields (plan D2/
-D3 — **visual only**: rankings and trust tier never affect match order,
-thresholds, or the LLM verdict):
+Plus the quality-signal fields. These are **visual only**: rankings and trust
+tier never affect match order, thresholds, or the LLM verdict. Ranking on them
+would systematically bury non-CS venues, since only about a quarter of series
+carry any rank at all.
 
 ```json
 {
@@ -662,7 +679,10 @@ series. `red_flags` and `quality_warnings` are free-text arrays (e.g. a venue
 whose only future date is a `notification`, not a submission deadline).
 `deadlines_structured` is the complete 8-key round array — every kind, not
 just the submission-type ones that gate `abstract_open`/`manuscript_open` — the
-multi-deadline hover's data source (plan D1).
+multi-deadline hover's data source. Note the split of duties: `deadline_date`
+carries the **next** actionable submission deadline, while expiry keys on the
+**last** written deadline, so a venue with several rounds neither disappears
+early nor lingers past its final one. The event date never gates either.
 
 Hover copy for `rank_badges` and `trust_tier` is not repeated on every card —
 see `GET /api/opportunities/ranking-reference/` below.
@@ -697,7 +717,9 @@ cache, and resolve each card's `rank_badges[].system` / `.rank` and
 `rank_explanations` covers every rank a badge can carry (CCF A/B/C, CORE
 A*/A/B/C, THCPL A/B) — `"N"` is excluded because `rank_badges` never carries
 it. `trust_tiers` covers `"A"` and `"B"`, the only tiers the live corpus
-produces (the one source that could produce `"C"` is not enabled — plan D5).
+produces. No enabled adapter can produce a `"C"` tier: the community-submitted
+sources that land there are deliberately not registered, so a client need not
+render a tier it will never receive.
 
 ### `GET /api/opportunities/fellowships/`
 

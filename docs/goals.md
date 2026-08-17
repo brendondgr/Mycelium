@@ -59,10 +59,19 @@ the profile, lab, department, project, and reminder surfaces.
 
 **Ingestion.** OpenAlex / PubMed / Semantic Scholar paper scrapers behind a
 registry with rate limiting, retry/backoff, a publication-date scan window, and
-cross-source plus against-store deduplication. An open-source collector for
-grants and conferences (public HTTP sources, no login; replaced the commercial
-Pivot-RP/ProQuest ingest), plus the Illinois Fellowship Finder for fellowships.
-An external DOI / arXiv / URL resolver for pasted links.
+cross-source plus against-store deduplication. Grants and conferences come from
+an open collector of public HTTP sources needing no login or licence — five live
+grant adapters and six conference adapters — carrying per-record source links and
+licence, a trust tier on every conference series, CCF / CORE / THCPL rankings
+where a series has them, and every deadline round rather than one. Expiry is
+driven by the written deadline, never the posted date: a multi-round grant
+survives to its last round while the reader is shown the next one, and a
+conference is surfaced on its next submission deadline, never its event date.
+Fellowships come from the Illinois Fellowship Finder. Every grant and conference
+description is a model-written extraction under a fixed schema, verified by
+deterministic checks before it is shown or embedded; a record that fails them is
+refused, falls back to raw text, and shows no summary. An external DOI / arXiv /
+URL resolver handles pasted links.
 
 **Profiles.** Author import from four sources plus optional résumé parsing (read
 and discarded, never stored), LLM synthesis of the full interest profile with a

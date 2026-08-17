@@ -33,6 +33,24 @@ questions.
 | C-011 | A theme-aware *selection* rule over the cluster-scoped ranking — allocating slots per theme rather than filling them by a global score — raises the worst-served theme's representation in the visible feed, at a relevance cost inside a stated budget. | `EXP-2026-08-005` | **refuted** | The remedy C-003's refutation implies. Six mechanisms measured individually and combined, on the same synthetic profiles, at deployed surfacing. Against the *cluster* baseline the claim looks true: on `imbalanced` profiles four mechanisms raise `min_cluster_recall@10` with intervals excluding zero (rank-merge +0.0047 `[+0.0010, +0.0089]`, MMR +0.0043 `[+0.0014, +0.0078]`), MMR and rank-merge raise `cluster_coverage@10` by +0.0778, and — unlike `EXP-2026-08-003` — the `random` control is null for every mechanism, so the gain **is** theme-attributable. Against the *flat* baseline it collapses: no mechanism's advantage over no-clusters-at-all has an interval excluding zero (best +0.0015 `[−0.0011, +0.0043]`), round-robin is significantly worse than flat on nDCG@10 (−0.0196), and under the realistic `coherent` grouping nothing helps and most point estimates are negative. There is also no synergy — every combination collapses onto one of its parts on ≥27/30 profiles, because the score fix and the selection fix act on disjoint inputs. So the mechanisms repair damage clustering the ranking caused rather than creating value over not clustering it. Scoped to synthetic profiles, click-derived qrels, one parameter setting per mechanism, and n = 30 (see Q-013). No production default was changed; every policy ships off. |
 | C-010 | The deployed hybrid fusion ranker outperforms a strong lexical baseline on scholarly retrieval. | `EXP-2026-08-001` | **refuted** | BM25 alone beats every fusion arm on nDCG@10 on all three snapshots. The organizers' own 4B-parameter dense baseline also loses to BM25. This is a property of short keyword queries over titles + abstracts, so it is evidence about the task shape — not only a reason to swap embedders. Any paper draft must state it. |
 
+## Experiments that move no claim
+
+Recorded so the check is not silently repeated. `EXP-2026-08-006` (extraction
+throughput by reasoning level and concurrency) and `EXP-2026-08-007`
+(source-length-aware grounding floor and its effect on refusal) are **engineering
+measurements**, not evidence for or against anything in the table above. Both
+declare `supports_claims: []` and `refutes_claims: []`, and both are about the
+cost and reliability of producing opportunity descriptions — not about whether
+any ranking, gating, or scoring mechanism works. No claim's status changed.
+
+They do change one thing worth stating here: since the open-collector migration,
+an opportunity's embedded text is a verified model-written extraction rather than
+raw source text. No claim in this ledger is scoped to the opportunity corpus —
+every measured claim is scoped to LongEval-Sci, which is papers only — so nothing
+above is invalidated. But any future opportunity-retrieval claim must state which
+basis it was measured on, and `metadata["search_text_source"]` (`extracted` |
+`raw`) is recorded per row so that it can.
+
 ## Rules
 
 - Write a claim here **before** it is supported, marked `unsupported`. The

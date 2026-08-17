@@ -153,6 +153,14 @@ eval/.venv/
 # worktree being deleted (tens of GB of LongEval snapshots + extracted JSONL).
 data/eval-cache/
 
+# The vendored collector's working directory. `uv run --directory web/backend`
+# makes this the CWD, so the collector's default --root lands here: two SQLite
+# stores, the HTTP cache, and one raw-payload directory per run (~68 MB a run,
+# ~25 GB a year unpruned). All of it is regenerable by re-running the collector
+# and none of it is source. The raw payloads are what `--skip-fetch` replays,
+# so they are worth keeping on disk and worth keeping out of history.
+web/backend/data/
+
 # Research record (docs/research/). SVG, PDF figures, and small JSON/CSV metrics
 # ARE committed — they are the record, and they must stay diffable. Nothing above
 # ~10 MB belongs here; `make validate-research` fails on anything larger. Large

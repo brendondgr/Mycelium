@@ -207,6 +207,8 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     license = serializers.SerializerMethodField()
     license_url = serializers.SerializerMethodField()
     source_links = serializers.SerializerMethodField()
+    summary_source = serializers.SerializerMethodField()
+    search_text_source = serializers.SerializerMethodField()
 
     def _meta(self, score: RelevanceScore) -> dict:
         return (score.content.metadata or {}) if score.content_id else {}
@@ -221,6 +223,26 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
         return self._meta(score).get("website") or (
             score.content.source_url if score.content_id else ""
         )
+
+    def get_summary_source(self, score: RelevanceScore) -> str:
+        """Where ``description`` came from: ``""`` (the source) or a URL.
+
+        Provenance must never blur. A model-written summary and a funder's own
+        prose read identically once they are both a paragraph of text, so the
+        client cannot be left to guess — it renders the "summarised from" marker
+        off this field. An extraction that failed verification is refused and
+        falls back to source text, and this field stays empty for it, which is
+        the honest answer rather than a confident-looking one nobody checked.
+        """
+        return self._meta(score).get("summary_source") or ""
+
+    def get_search_text_source(self, score: RelevanceScore) -> str:
+        """``"extracted"`` or ``"raw"`` — which basis this row was embedded on.
+
+        Exposed because a corpus mid-backfill contains both, and a relevance
+        comparison that does not separate them is measuring two things at once.
+        """
+        return self._meta(score).get("search_text_source") or "raw"
 
     def get_source(self, score: RelevanceScore) -> str:
         # e.g. "grants:nsf", "conf:ccf_deadlines", "illinois-fellowship-finder" —
@@ -393,7 +415,9 @@ class GrantSerializer(_OpportunitySerializer):
         return score.signals.get("first_seen") or ""
 
     def get_description(self, score: RelevanceScore) -> str:
-        # A human-readable blurb: the AI summary if present, else the abstract.
+        # A human-readable blurb: the verified extraction if one survived, else
+        # the source's own text. ``summary_source`` below is what tells the two
+        # apart — never infer it from this string.
         meta = self._meta(score)
         return meta.get("ai_summary") or meta.get("abstract") or ""
 

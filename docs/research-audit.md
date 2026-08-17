@@ -19,6 +19,14 @@
 > W2 — the audit's "cheapest decisive next action" — has since been run. Its
 > falsifier fired; see
 > [`EXP-2026-08-001`](research/experiments/EXP-2026-08-001-longeval-retrieval-baseline/RESULTS.md).
+>
+> W10 has since been done for grants and conferences, and **this document's
+> stated cost for it was wrong**: the corpus was rebuilt from public sources
+> without losing conference CFPs, which the audit believed had no open
+> equivalent (§6.5, risk row #4, §1.5). Six public conference sources now feed
+> it. The reasoning below is left as written; the correction is the W10
+> amendment in
+> [`research/OPEN_QUESTIONS.md`](research/OPEN_QUESTIONS.md).
 
 ---
 
