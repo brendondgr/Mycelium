@@ -393,6 +393,10 @@ class Command(BaseCommand):
                 max_workers=options["workers"],
                 checkpoint=checkpoint,
                 only_keys=only_keys,
+                # The collector's own cache directory, shared with both
+                # pipelines' clients, so a venue page fetched during
+                # enrichment is not fetched again here.
+                cache_dir=context.root / "cache",
             )
             for key, outcome in outcomes.items():
                 source = key_to_source.get(key)

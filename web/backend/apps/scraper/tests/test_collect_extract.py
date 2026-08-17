@@ -530,3 +530,37 @@ def test_checkpoint_skips_a_settled_record_until_its_source_changes():
     assert third.calls == 1
     award = outcomes[changed.key].ai_fields["award_summary"]
     assert award == "Up to $50,000 per award."
+
+
+def test_conference_fetches_go_through_the_shared_http_cache(tmp_path, monkeypatch):
+    """The venue crawl must be cached, or a re-run re-hits every host.
+
+    A conference with no usable ``cfp_text`` is enriched by fetching the
+    venue's own website. Across a full backfill that is thousands of pages
+    over ~1,500 third-party hosts, so an uncached client turns every
+    interrupted or repeated run into a second full crawl of the open web.
+
+    The checkpoint does not cover this: it is consulted *after*
+    ``_resolve_source`` has already fetched, precisely so a changed page can
+    invalidate a settled verdict. Re-extraction and re-fetching are two
+    different economies, and only ``cache_dir`` governs the second one.
+
+    Both collector pipelines already pass ``<root>/cache``; this pins that
+    ``run_extraction`` builds its default client the same way rather than a
+    bare ``PoliteClient()``.
+    """
+    captured: dict = {}
+
+    class _Client:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    import apps.scraper.collect.core.http as http_mod
+
+    monkeypatch.setattr(http_mod, "PoliteClient", _Client)
+    monkeypatch.setattr(http_mod, "RobotsGate", lambda client: object())
+    # No records: the selection loop returns early, but the client is built
+    # before that -- which is exactly and only what this test is about.
+    extract.run_extraction([], llm_client=StubLLM([]), cache_dir=tmp_path / "cache")
+
+    assert captured.get("cache_dir") == tmp_path / "cache"

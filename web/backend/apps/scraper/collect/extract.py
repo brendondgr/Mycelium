@@ -844,6 +844,7 @@ def run_extraction(
     http_client: Any = None,
     robots_gate: Any = None,
     host_locks: Any = None,
+    cache_dir: Path | None = None,
     max_workers: int = DEFAULT_WORKERS,
     max_attempts: int = EXTRACTION_MAX_ATTEMPTS,
     checkpoint: Checkpoint | None = None,
@@ -862,6 +863,15 @@ def run_extraction(
     Concurrency is a plain ``ThreadPoolExecutor``; the per-host lock lives
     inside :func:`_resolve_source` around the fetch call only, so parallel
     workers never serialise on the model call, just on hitting one host.
+
+    ``cache_dir`` is the collector's shared HTTP cache (``<root>/cache``, the
+    same directory both collector pipelines pass their own client). Passing it
+    matters more here than anywhere else in the codebase: conference records
+    without usable ``cfp_text`` are enriched by fetching the venue's own site,
+    which for a full backfill is thousands of pages spread over ~1,500
+    third-party hosts. Without a cache every interrupted or repeated run
+    re-hits all of them -- rude to those hosts and slow for us. The checkpoint
+    prevents re-*extraction*; only this prevents re-*fetching*.
     """
     if llm_client is None:
         from apps.core.llm import build_llm_client
@@ -870,7 +880,7 @@ def run_extraction(
     if http_client is None or robots_gate is None:
         from apps.scraper.collect.core.http import PoliteClient, RobotsGate
 
-        http_client = http_client or PoliteClient()
+        http_client = http_client or PoliteClient(cache_dir=cache_dir)
         robots_gate = robots_gate or RobotsGate(http_client)
     if host_locks is None:
         from apps.scraper.collect.runner import _HostLocks

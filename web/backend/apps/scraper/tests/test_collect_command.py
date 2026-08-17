@@ -483,9 +483,15 @@ def test_limit_and_sources_narrow_the_run_context(monkeypatch, tmp_path):
     (``apps/scraper/tests/collect/test_runner.py::
     test_domain_and_source_filters_narrow_the_run``); this test does not
     re-derive that.
+
+    The single item is load-bearing despite nothing asserting on it: a run
+    that collects *nothing* is a failed run and raises (see
+    ``test_collect_empty_run_guard.py``). Narrowing a run is not the same
+    thing as emptying it, so the fixture has to look like a narrowed run
+    that still found something.
     """
     captured: dict = {}
-    data = {GRANTS: DomainData(domain=GRANTS, items=[])}
+    data = {GRANTS: DomainData(domain=GRANTS, items=[_opportunity()])}
     _patch_stages(monkeypatch, data, captured=captured)
     monkeypatch.setattr(cmd, "run_extraction", _fake_run_extraction([]))
 
