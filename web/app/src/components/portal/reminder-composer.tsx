@@ -4,7 +4,7 @@ import * as React from "react";
 
 import Link from "next/link";
 
-import { CloseIcon } from "@/components/portal/icons";
+import { Modal, ModalHeader } from "@/components/portal/primitives/modal";
 import {
   DEFAULT_OFFSETS,
   ReminderOffsetsField,
@@ -30,13 +30,32 @@ const KIND_LABELS: Record<string, string> = {
   other: "Deadline",
 };
 
+/**
+ * `round_label` is free text straight from the source and is not always a round
+ * *name*. Alongside the "round 2" and "workshop track" it is meant to carry, the
+ * live corpus holds collector provenance notes such as "paper deadline, from
+ * content.date free text (Full_Submission is not publicly readable)" — a whole
+ * sentence, in a chip the reader is supposed to choose between at a glance.
+ *
+ * So it is trimmed for display rather than shown raw: everything from the first
+ * comma or bracket is dropped (that is reliably where the provenance starts),
+ * then capped. The full text stays in the API and in the deadline's own `label`,
+ * so nothing is lost — this only decides what fits on a chip.
+ */
+export function shortRoundLabel(roundLabel: string): string {
+  const head = (roundLabel || "").split(/[,(\[]/)[0].trim();
+  if (!head) return "";
+  return head.length > 36 ? `${head.slice(0, 35).trimEnd()}…` : head;
+}
+
 /** How one deadline reads in the picker: the kind, then the source's own round
  * wording when it has one ("Full paper · round 2"). A conference routinely
  * carries several rounds of one kind, so the kind alone would offer the reader
  * two identical-looking chips. */
 export function deadlineOptionLabel(d: DeadlineOption): string {
   const kind = KIND_LABELS[d.kind] ?? d.label ?? d.kind;
-  return d.round_label ? `${kind} · ${d.round_label}` : kind;
+  const round = shortRoundLabel(d.round_label);
+  return round ? `${kind} · ${round}` : kind;
 }
 
 /** A stable identity for one deadline option — kind plus round, matching the
@@ -53,8 +72,8 @@ function formatDue(iso: string | null): string {
 }
 
 /**
- * A modal to set a deadline reminder from a saved item. The user picks which
- * deadline (a conference has several), whether it's personal or a lab reminder,
+ * A full-page modal to set a deadline alert. The user picks which deadline (a
+ * conference has several rounds), whether it's personal or a lab reminder,
  * and — variably — how far ahead to be nudged (any whole number of days / weeks /
  * months, one or more). A lab reminder may also target a specific channel; left
  * on "Lab default" it posts to whatever channel the manager bound in `/setup`.
@@ -101,7 +120,8 @@ export function ReminderComposer({
     locked ? "lab" : "personal",
   );
   const [labSlug, setLabSlug] = React.useState(locked ? lockedLabSlug! : "");
-  const [offsets, setOffsets] = React.useState<ReminderOffset[]>(DEFAULT_OFFSETS);
+  const [offsets, setOffsets] =
+    React.useState<ReminderOffset[]>(DEFAULT_OFFSETS);
   // "" = the lab default channel (whatever /setup bound). Lab scope only.
   const [channelId, setChannelId] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -130,12 +150,6 @@ export function ReminderComposer({
   const channels = useLabReminderChannels(
     scope === "lab" ? effectiveLabSlug : undefined,
   );
-
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const submit = () => {
     setError(null);
@@ -172,131 +186,103 @@ export function ReminderComposer({
     (scope === "personal" || effectiveLabSlug !== "");
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Set a reminder for ${title}`}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--shadow)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between border-b border-[var(--divider)] px-5 py-3.5">
-          <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
-              Set a reminder
-            </p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-[var(--text-primary)]">
-              {title}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="shrink-0 rounded-full p-1 text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-secondary)]"
-          >
-            <CloseIcon size={15} />
-          </button>
-        </div>
-
-        <div className="space-y-4 px-5 py-4">
-          {datedDeadlines.length === 0 ? (
-            <p className="text-sm text-[var(--text-secondary)]">
-              This item has no fixed deadline, so it can&apos;t be reminded (a
-              rolling or continuous deadline has no date to count down to).
-            </p>
-          ) : (
-            <>
-              {datedDeadlines.length > 1 && !blocked ? (
-                <Field label="Which deadline">
-                  {/* One chip per *round*, not per kind. A venue with a
+    <Modal onClose={onClose} label={`Set an alert for ${title}`}>
+      <ModalHeader eyebrow="Set an alert" title={title} onClose={onClose} />
+      <div className="space-y-4 px-5 py-4">
+        {datedDeadlines.length === 0 ? (
+          <p className="text-sm text-[var(--text-secondary)]">
+            This item has no fixed deadline, so it can&apos;t be reminded (a
+            rolling or continuous deadline has no date to count down to).
+          </p>
+        ) : (
+          <>
+            {datedDeadlines.length > 1 && !blocked ? (
+              <Field label="Which deadline">
+                {/* One chip per *round*, not per kind. A venue with a
                       workshop deadline and two paper rounds shows all four
                       alongside its event date, each separately alertable. */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {datedDeadlines.map((d) => {
-                      const id = deadlineOptionId(d);
-                      return (
-                        <Chip
-                          key={id}
-                          active={selectedId === id}
-                          onClick={() => setSelectedId(id)}
-                        >
-                          {deadlineOptionLabel(d)} · {formatDue(d.due_date)}
-                        </Chip>
-                      );
-                    })}
+                <div className="flex flex-wrap gap-1.5">
+                  {datedDeadlines.map((d) => {
+                    const id = deadlineOptionId(d);
+                    return (
+                      <Chip
+                        key={id}
+                        active={selectedId === id}
+                        onClick={() => setSelectedId(id)}
+                      >
+                        {deadlineOptionLabel(d)} · {formatDue(d.due_date)}
+                      </Chip>
+                    );
+                  })}
+                </div>
+              </Field>
+            ) : datedDeadlines.length === 1 && !blocked ? (
+              <Field label="Which deadline">
+                <p className="text-[13px] text-[var(--text-secondary)]">
+                  <span className="font-semibold text-[var(--text-primary)]">
+                    {deadlineOptionLabel(datedDeadlines[0])}
+                  </span>{" "}
+                  — {formatDue(datedDeadlines[0].due_date)}
+                </p>
+              </Field>
+            ) : null}
+
+            {locked ? (
+              <Field label="Remind">
+                <p className="text-[13px] text-[var(--text-secondary)]">
+                  Posts to{" "}
+                  <span className="font-semibold text-[var(--text-primary)]">
+                    {labOptions.find((l) => l.slug === effectiveLabSlug)
+                      ?.name ?? "this lab"}
+                  </span>
+                  &apos;s Discord channel.
+                </p>
+              </Field>
+            ) : (
+              <>
+                <Field label="Remind">
+                  <div className="flex gap-1.5">
+                    <Chip
+                      active={scope === "personal"}
+                      onClick={() => setScope("personal")}
+                    >
+                      Just me (DM)
+                    </Chip>
+                    <Chip
+                      active={scope === "lab"}
+                      onClick={() => setScope("lab")}
+                      disabled={labOptions.length === 0}
+                    >
+                      My lab (channel)
+                    </Chip>
                   </div>
                 </Field>
-              ) : datedDeadlines.length === 1 && !blocked ? (
-                <Field label="Which deadline">
-                  <p className="text-[13px] text-[var(--text-secondary)]">
-                    <span className="font-semibold text-[var(--text-primary)]">
-                      {deadlineOptionLabel(datedDeadlines[0])}
-                    </span>{" "}
-                    — {formatDue(datedDeadlines[0].due_date)}
-                  </p>
-                </Field>
-              ) : null}
 
-              {locked ? (
-                <Field label="Remind">
-                  <p className="text-[13px] text-[var(--text-secondary)]">
-                    Posts to{" "}
-                    <span className="font-semibold text-[var(--text-primary)]">
-                      {labOptions.find((l) => l.slug === effectiveLabSlug)?.name ??
-                        "this lab"}
-                    </span>
-                    &apos;s Discord channel.
-                  </p>
-                </Field>
-              ) : (
-                <>
-                  <Field label="Remind">
-                    <div className="flex gap-1.5">
-                      <Chip
-                        active={scope === "personal"}
-                        onClick={() => setScope("personal")}
-                      >
-                        Just me (DM)
-                      </Chip>
-                      <Chip
-                        active={scope === "lab"}
-                        onClick={() => setScope("lab")}
-                        disabled={labOptions.length === 0}
-                      >
-                        My lab (channel)
-                      </Chip>
-                    </div>
+                {scope === "lab" && labOptions.length > 0 ? (
+                  <Field label="Lab">
+                    <select
+                      value={effectiveLabSlug}
+                      onChange={(e) => {
+                        setLabSlug(e.target.value);
+                        setChannelId(""); // reset to the new lab's default
+                      }}
+                      className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {labOptions.map((lab) => (
+                        <option key={lab.slug} value={lab.slug}>
+                          {lab.name}
+                        </option>
+                      ))}
+                    </select>
                   </Field>
+                ) : null}
+              </>
+            )}
 
-                  {scope === "lab" && labOptions.length > 0 ? (
-                    <Field label="Lab">
-                      <select
-                        value={effectiveLabSlug}
-                        onChange={(e) => {
-                          setLabSlug(e.target.value);
-                          setChannelId(""); // reset to the new lab's default
-                        }}
-                        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {labOptions.map((lab) => (
-                          <option key={lab.slug} value={lab.slug}>
-                            {lab.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  ) : null}
-                </>
-              )}
-
-              {blocked && access.data ? (
-                <ReminderGate access={access.data} onClose={onClose} />
-              ) : (
-                <>
+            {blocked && access.data ? (
+              <ReminderGate access={access.data} onClose={onClose} />
+            ) : (
+              <>
                 {scope === "lab" ? (
                   <ChannelField
                     channels={channels.data?.channels ?? []}
@@ -339,13 +325,12 @@ export function ReminderComposer({
                     {create.isPending ? "Setting…" : "Set reminder"}
                   </button>
                 </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -447,7 +432,9 @@ function ChannelField({
   if (loading) {
     return (
       <Field label="Channel">
-        <p className="text-[13px] text-[var(--text-secondary)]">Loading channels…</p>
+        <p className="text-[13px] text-[var(--text-secondary)]">
+          Loading channels…
+        </p>
       </Field>
     );
   }

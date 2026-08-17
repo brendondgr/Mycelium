@@ -2,9 +2,12 @@
 
 import * as React from "react";
 
-import { CloseIcon } from "@/components/portal/icons";
+import { Modal, ModalHeader } from "@/components/portal/primitives/modal";
 import { ReminderOffsetsField } from "@/components/portal/reminder-offsets-field";
-import { useLabReminderChannels, useReminderMutations } from "@/lib/portal/hooks";
+import {
+  useLabReminderChannels,
+  useReminderMutations,
+} from "@/lib/portal/hooks";
 import type { Reminder, ReminderOffset } from "@/lib/portal/types";
 
 /** Today as `YYYY-MM-DD`, local — the floor for the snooze date input. */
@@ -33,7 +36,9 @@ export function ReminderEditor({
   const [offsets, setOffsets] = React.useState<ReminderOffset[]>(
     reminder.offsets.map((o) => ({ amount: o.amount, unit: o.unit })),
   );
-  const [channelId, setChannelId] = React.useState(reminder.channel_id_override);
+  const [channelId, setChannelId] = React.useState(
+    reminder.channel_id_override,
+  );
   const [snooze, setSnooze] = React.useState(reminder.snoozed_until ?? "");
   const [error, setError] = React.useState<string | null>(null);
 
@@ -42,12 +47,6 @@ export function ReminderEditor({
   const channels = useLabReminderChannels(
     isLab ? (reminder.lab_slug ?? undefined) : undefined,
   );
-
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const submit = () => {
     setError(null);
@@ -77,121 +76,100 @@ export function ReminderEditor({
   const defaultName = channels.data?.default_channel_name ?? "";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Edit the reminder for ${reminder.title}`}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--shadow)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between border-b border-[var(--divider)] px-5 py-3.5">
-          <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
-              Edit reminder
-            </p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-[var(--text-primary)]">
-              {reminder.title}
-            </p>
-          </div>
+    <Modal onClose={onClose} label={`Edit the alert for ${reminder.title}`}>
+      <ModalHeader
+        eyebrow={
+          reminder.round_label
+            ? `Edit alert · ${reminder.round_label}`
+            : "Edit alert"
+        }
+        title={reminder.title}
+        onClose={onClose}
+      />
+      <div className="space-y-4 px-5 py-4">
+        <Field label="Remind me before">
+          <ReminderOffsetsField
+            offsets={offsets}
+            onChange={setOffsets}
+            onError={setError}
+          />
+        </Field>
+
+        {isLab ? (
+          <Field label="Channel">
+            {channelOptions.length === 0 ? (
+              <p className="text-[13px] text-[var(--text-secondary)]">
+                Posts to the lab&apos;s{" "}
+                <span className="font-semibold text-[var(--text-primary)]">
+                  {defaultName ? `#${defaultName}` : "default"}
+                </span>{" "}
+                channel.
+              </p>
+            ) : (
+              <select
+                value={channelId}
+                onChange={(e) => setChannelId(e.target.value)}
+                className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">
+                  {defaultName
+                    ? `Lab default (#${defaultName})`
+                    : "Lab default channel"}
+                </option>
+                {channelOptions
+                  .filter((c) => c.id !== channels.data?.default_channel_id)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      #{c.name}
+                    </option>
+                  ))}
+              </select>
+            )}
+          </Field>
+        ) : null}
+
+        <Field label="Pause until">
+          <input
+            type="date"
+            value={snooze}
+            min={todayIso()}
+            max={reminder.due_date ?? undefined}
+            onChange={(e) => setSnooze(e.target.value)}
+            aria-label="Pause reminders until"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <p className="mt-1.5 text-[12px] text-[var(--text-secondary)]">
+            Nothing sends before this date; any lead time it passes still
+            arrives afterwards, with the real days remaining. Clear the field to
+            resume now.
+          </p>
+        </Field>
+
+        {error ? (
+          <p className="text-[12.5px] text-clay" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="flex items-center justify-end gap-2 pt-1">
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
-            className="shrink-0 rounded-full p-1 text-[var(--text-secondary)] hover:bg-surface-alt"
+            className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt"
           >
-            <CloseIcon size={15} />
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={update.isPending || offsets.length === 0}
+            className="rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-[#fffdf8] hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+          >
+            {update.isPending ? "Saving…" : "Save changes"}
           </button>
         </div>
-
-        <div className="space-y-4 px-5 py-4">
-          <Field label="Remind me before">
-            <ReminderOffsetsField
-              offsets={offsets}
-              onChange={setOffsets}
-              onError={setError}
-            />
-          </Field>
-
-          {isLab ? (
-            <Field label="Channel">
-              {channelOptions.length === 0 ? (
-                <p className="text-[13px] text-[var(--text-secondary)]">
-                  Posts to the lab&apos;s{" "}
-                  <span className="font-semibold text-[var(--text-primary)]">
-                    {defaultName ? `#${defaultName}` : "default"}
-                  </span>{" "}
-                  channel.
-                </p>
-              ) : (
-                <select
-                  value={channelId}
-                  onChange={(e) => setChannelId(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">
-                    {defaultName
-                      ? `Lab default (#${defaultName})`
-                      : "Lab default channel"}
-                  </option>
-                  {channelOptions
-                    .filter((c) => c.id !== channels.data?.default_channel_id)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        #{c.name}
-                      </option>
-                    ))}
-                </select>
-              )}
-            </Field>
-          ) : null}
-
-          <Field label="Pause until">
-            <input
-              type="date"
-              value={snooze}
-              min={todayIso()}
-              max={reminder.due_date ?? undefined}
-              onChange={(e) => setSnooze(e.target.value)}
-              aria-label="Pause reminders until"
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <p className="mt-1.5 text-[12px] text-[var(--text-secondary)]">
-              Nothing sends before this date; any lead time it passes still arrives
-              afterwards, with the real days remaining. Clear the field to resume
-              now.
-            </p>
-          </Field>
-
-          {error ? (
-            <p className="text-[12.5px] text-clay" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={update.isPending || offsets.length === 0}
-              className="rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-[#fffdf8] hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
-            >
-              {update.isPending ? "Saving…" : "Save changes"}
-            </button>
-          </div>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

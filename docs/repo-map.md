@@ -34,7 +34,7 @@ Paths are relative to the repository root.
 | An app route | `web/app/src/app/app/(workspace)/<name>/page.tsx` |
 | Login / signup routes | `web/app/src/app/{login,signup}/` + `web/app/src/components/auth/` |
 | Portal shell, sidebar, nav, lab switcher | `web/app/src/components/portal/{portal-sidebar,portal-mobile-nav,lab-switcher,portal-context}.tsx` |
-| Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `match-ring`, `match-card`, `cluster-badge`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-rounds`, `source-footer` |
+| Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `match-ring`, `match-card`, `cluster-badge`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `modal`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-rounds`, `source-footer` |
 | Decorative motion (vines, threads, seedlings, ring sweep) | `web/app/src/components/portal/motion/` (reduced-motion + in-view-once hooks), `portal/leaf-vine.tsx`, keyframes in `web/app/src/app/globals.css` |
 | Feed card scroll entrance (predictive, fires ahead of the reader) | `web/app/src/components/portal/motion/reveal-on-scroll.tsx` |
 | Workspace background growth, per section | `web/app/src/components/portal/motion/section-ground.tsx`, mounted in `portal/workspace-shell.tsx` |
