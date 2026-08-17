@@ -564,3 +564,57 @@ def test_conference_fetches_go_through_the_shared_http_cache(tmp_path, monkeypat
     extract.run_extraction([], llm_client=StubLLM([]), cache_dir=tmp_path / "cache")
 
     assert captured.get("cache_dir") == tmp_path / "cache"
+
+
+def test_a_nul_byte_from_a_fetched_page_never_reaches_metadata():
+    """PostgreSQL jsonb cannot store \\u0000, and the crawl can produce it.
+
+    The venue crawl fetches arbitrary third-party URLs. A host that answers
+    with a binary body under a text content-type decodes to a string with NUL
+    code points in it, which travel from the fetched page into ``search_text``
+    unnoticed. Writing that raises ``unsupported Unicode escape sequence`` --
+    and because the write is batched, one such page fails the whole batch. That
+    is what happened on the backfill: a single mis-served page blocked a
+    4,660-record update.
+
+    Every string-bearing field is checked, not just the one that failed, and
+    the nested ``ai_fields`` dict with it -- the model's own reply can quote
+    the source verbatim.
+    """
+    outcome = extract.ExtractionOutcome(
+        key="conf/x",
+        status="ok",
+        ai_summary="A summary\x00with a NUL",
+        ai_fields={"topics": ["clean", "dir\x00ty"], "summary": "also\x00bad"},
+        summary_source="extracted",
+        search_text="Conference\x00�\x08 body",
+        search_text_source="extracted",
+    )
+
+    metadata = extract.apply_to_metadata({}, outcome)
+
+    assert "\x00" not in metadata["search_text"]
+    assert "\x00" not in metadata["ai_summary"]
+    assert "\x00" not in metadata["ai_fields"]["summary"]
+    assert not any("\x00" in t for t in metadata["ai_fields"]["topics"])
+    # Scrubbing removes the NUL and nothing else -- the surrounding text, and
+    # the replacement character a mis-decode leaves behind, are evidence worth
+    # keeping for whoever reads the row later.
+    assert metadata["search_text"] == "Conference�\x08 body"
+    assert metadata["ai_fields"]["topics"] == ["clean", "dirty"]
+
+
+def test_a_refusal_reason_is_scrubbed_too():
+    """The refusal path carries source text as well, via the failure list."""
+    outcome = extract.ExtractionOutcome(
+        key="conf/y",
+        status="refused",
+        refusal_reason="not_the_venue: page said 'x\x00y'",
+        search_text="raw\x00text",
+        search_text_source="raw",
+    )
+
+    metadata = extract.apply_to_metadata({}, outcome)
+
+    assert "\x00" not in metadata["extraction_refusal"]
+    assert "\x00" not in metadata["search_text"]

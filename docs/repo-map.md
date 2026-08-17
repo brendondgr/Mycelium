@@ -129,6 +129,7 @@ Files below are inside `web/backend/apps/content/`.
 | Collector record → `ContentItem` mapping, deadline/expiry rules | `web/backend/apps/scraper/collect/mapping.py` |
 | Collector upsert, prune, embed | `web/backend/apps/scraper/collect/ingest.py` |
 | Verified LLM description extraction (schema, validators, repair loop) | `web/backend/apps/scraper/collect/extract.py` |
+| Collector data root (SQLite stores, HTTP cache, raw payloads, extraction checkpoint) | `web/backend/apps/scraper/collect/paths.py` defines it; the data lives in gitignored `data/collect/` at the repo root. Anchored to the checkout, never to the CWD — the container runs at `/app` and a host shell may not |
 | Fellowship eligibility rule engine (deterministic, prose → constraints) | `web/backend/apps/scraper/eligibility/` |
 | Illinois Fellowship Finder scraper + ingest | `web/backend/apps/scraper/fellowships/` (`illinois.py` scrapes, `records.py`/`ingest.py` upsert) |
 | Embedder (CPU / CUDA) | `web/backend/apps/scraper/embedding.py` |

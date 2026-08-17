@@ -473,6 +473,32 @@ class ExtractionOutcome:
     page_hash: str = ""
 
 
+def scrub(value: Any) -> Any:
+    """Strip NUL code points from anything on its way into ``metadata``.
+
+    PostgreSQL ``jsonb`` cannot represent ``\\u0000`` -- it raises
+    ``unsupported Unicode escape sequence`` and takes the whole batch down with
+    it. That is not hypothetical: the venue crawl fetches arbitrary URLs, and a
+    host that answers a page request with a binary body (a mis-served archive,
+    a content-type lie) yields decoded text containing NULs, which then travel
+    all the way from ``page_text`` into ``search_text`` before anything
+    notices. One such page failed a 4,660-record write.
+
+    Scrubbing here rather than at the fetch is deliberate: this is the single
+    boundary every extraction verdict crosses on its way to the database, so
+    one guard covers the collector, this module's own callers, and any future
+    one. NUL carries no meaning in any of these fields, so removing it loses
+    nothing a reader would want.
+    """
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, dict):
+        return {k: scrub(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [scrub(v) for v in value]
+    return value
+
+
 def apply_to_metadata(
     metadata: dict[str, Any], outcome: ExtractionOutcome
 ) -> dict[str, Any]:
@@ -483,7 +509,7 @@ def apply_to_metadata(
     Returns the same dict, mutated, so a caller can chain this into an
     ``item.metadata = apply_to_metadata(item.metadata, outcome)`` update.
     """
-    metadata["search_text"] = outcome.search_text
+    metadata["search_text"] = scrub(outcome.search_text)
     metadata["search_text_source"] = outcome.search_text_source
     metadata["extraction_status"] = outcome.status
     metadata["extraction_attempts"] = outcome.attempts
@@ -491,15 +517,15 @@ def apply_to_metadata(
         metadata["extraction_page_hash"] = outcome.page_hash
 
     if outcome.status == "ok":
-        metadata["ai_summary"] = outcome.ai_summary
-        metadata["ai_fields"] = outcome.ai_fields
+        metadata["ai_summary"] = scrub(outcome.ai_summary)
+        metadata["ai_fields"] = scrub(outcome.ai_fields)
         metadata["summary_source"] = outcome.summary_source
         metadata.pop("extraction_refusal", None)
     else:
         metadata.pop("ai_summary", None)
         metadata.pop("ai_fields", None)
         metadata.pop("summary_source", None)
-        metadata["extraction_refusal"] = outcome.refusal_reason
+        metadata["extraction_refusal"] = scrub(outcome.refusal_reason)
     return metadata
 
 
