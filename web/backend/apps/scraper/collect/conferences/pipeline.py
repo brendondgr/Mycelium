@@ -25,8 +25,12 @@ from apps.scraper.collect.conferences.store import ConferenceStore, UpsertStats
 from apps.scraper.collect.core.http import PoliteClient
 from apps.scraper.collect.core.rawstore import RawStore, new_run_id, utc_now
 from apps.scraper.collect.core.text import clean_text, dedupe_preserving_order
+from apps.scraper.collect.paths import DEFAULT_ROOT as _DEFAULT_ROOT
 
-DEFAULT_ROOT = Path("data/collect")
+#: See :mod:`apps.scraper.collect.paths` -- anchored to the checkout, not
+#: to the caller's working directory. The runner overrides this with
+#: ``--root`` on the normal path; it is the default for direct construction.
+DEFAULT_ROOT = _DEFAULT_ROOT
 
 
 @dataclass

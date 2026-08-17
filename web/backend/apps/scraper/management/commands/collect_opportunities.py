@@ -102,7 +102,13 @@ DEFAULT_KEEP_RUNS = 7
 #: ``--new-only`` scope never touches an already-settled record at all, so this
 #: mostly matters for the one-time backfill, but there is no reason a nightly
 #: run should be the *one* extraction pass with no resumption story either.
-DEFAULT_CHECKPOINT = Path("data/collect/extraction-checkpoint.jsonl")
+#:
+#: Anchored to ``DEFAULT_ROOT`` rather than to the caller's CWD for the reason
+#: spelled out there: a checkpoint the run cannot find is not an error, it is an
+#: empty checkpoint, and an empty checkpoint means re-extracting records that
+#: were already settled. The file whose whole job is preventing repeated work
+#: must not itself depend on which directory you happened to start from.
+DEFAULT_CHECKPOINT = DEFAULT_ROOT / "extraction-checkpoint.jsonl"
 
 
 class Command(BaseCommand):

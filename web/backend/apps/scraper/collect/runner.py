@@ -75,25 +75,13 @@ from apps.scraper.collect.conferences.adapters import (
     build_registry as conference_registry,
 )
 from apps.scraper.collect.grants.adapters import build_registry as grants_registry
+from apps.scraper.collect.paths import DEFAULT_ROOT as _DEFAULT_ROOT
 
-#: The collector's data root, anchored to the repository rather than to the
-#: caller's working directory.
-#:
-#: This was ``Path("data/collect")`` when the collector was a standalone CLI,
-#: where cwd-relative was the right default. Inside Django it is a trap: the
-#: nightly runs in the backend container at ``/app`` (compose ``working_dir``),
-#: a host operator may run ``manage.py`` from the repository root or from
-#: ``web/backend``, and each of those resolves to a *different* store. The
-#: failure is silent and expensive rather than loud -- a missing store is
-#: created empty, so every record reads as never-before-seen, and the run
-#: re-fetches every venue page and re-bills the model for the entire corpus
-#: while reporting a perfectly normal-looking success.
-#:
-#: ``parents[5]`` walks ``collect/ -> scraper/ -> apps/ -> backend/ -> web/``
-#: up to the repository root, the same technique ``config.settings`` uses for
-#: ``BASE_DIR``. Callers that genuinely want another location still pass
-#: ``--root``.
-DEFAULT_ROOT = Path(__file__).resolve().parents[5] / "data" / "collect"
+#: Re-exported so the many existing ``from ...runner import DEFAULT_ROOT``
+#: imports keep working. See :mod:`apps.scraper.collect.paths` for why it is
+#: anchored to the checkout rather than to the caller's working directory.
+#: Callers that genuinely want another location still pass ``--root``.
+DEFAULT_ROOT = _DEFAULT_ROOT
 
 GRANTS, CONFERENCES = "grants", "conferences"
 DOMAINS = (GRANTS, CONFERENCES)

@@ -38,8 +38,12 @@ from apps.scraper.collect.grants.normalize import (
 )
 from apps.scraper.collect.grants.record import Opportunity
 from apps.scraper.collect.grants.store import Store, UpsertStats
+from apps.scraper.collect.paths import DEFAULT_ROOT as _DEFAULT_ROOT
 
-DEFAULT_ROOT = Path("data/collect")
+#: See :mod:`apps.scraper.collect.paths` -- anchored to the checkout, not
+#: to the caller's working directory. The runner overrides this with
+#: ``--root`` on the normal path; it is the default for direct construction.
+DEFAULT_ROOT = _DEFAULT_ROOT
 
 
 @dataclass

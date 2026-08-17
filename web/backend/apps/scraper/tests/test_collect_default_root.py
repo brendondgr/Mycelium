@@ -61,3 +61,25 @@ def test_the_default_root_sits_at_the_repository_root():
     # The sibling that proves we walked far enough up: web/ is a directory of
     # the repository root, not of web/backend.
     assert (repo_root / "web" / "backend" / "manage.py").exists()
+
+
+def test_every_collector_path_agrees_on_one_root():
+    """Four modules default to this location; they must not drift apart.
+
+    ``runner`` and both domain pipelines each carried their own
+    ``Path("data/collect")`` literal, and the command's extraction checkpoint
+    a fourth. Anchoring one and leaving the others relative would be worse
+    than leaving all four alone -- the stores and the checkpoint that guards
+    them would then live in *different* directories depending on where you
+    started, and the checkpoint is precisely what stops a run from
+    re-extracting records it has already settled.
+    """
+    from apps.scraper.collect.conferences.pipeline import DEFAULT_ROOT as conferences
+    from apps.scraper.collect.grants.pipeline import DEFAULT_ROOT as grants
+    from apps.scraper.management.commands.collect_opportunities import (
+        DEFAULT_CHECKPOINT,
+    )
+
+    assert grants == DEFAULT_ROOT
+    assert conferences == DEFAULT_ROOT
+    assert DEFAULT_CHECKPOINT.parent == DEFAULT_ROOT
