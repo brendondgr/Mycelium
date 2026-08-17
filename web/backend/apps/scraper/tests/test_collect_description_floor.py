@@ -194,3 +194,56 @@ def test_attributes_is_settled_so_it_is_not_re_billed():
     """Five attempts already bought this floor; a re-run must not buy it again."""
     assert "attributes" in extract.SETTLED_STATUSES
     assert "attributes" not in extract.RETRYABLE_STATUSES
+
+
+class TestTopicCountBound:
+    """One topic is an answer, not a defect.
+
+    The bound was 2-6, carried over from the prompt's own wording and never
+    examined. On the live corpus it was the single largest cause of a good
+    description being discarded: 27 records had grounded prose thrown away
+    purely because a narrow listing honestly has one subject -- "Riemann 200
+    Göttingen topic days", NSF's "Foundations of Life".
+
+    It also pushed the wrong way. A model told to produce two topics for a
+    one-topic listing invents the second, and ``ungrounded_topic`` then rejects
+    the record for the invention the bound just demanded.
+    """
+
+    @staticmethod
+    def _payload(topics):
+        return {
+            "summary": "s" * 60, "purpose": "p", "audience": "a",
+            "topics": topics, "field": "CS", "confidence": "high",
+        }
+
+    def test_one_topic_is_accepted(self):
+        fails = extract.validate(
+            self._payload(["graph theory"]), "graph theory " * 40, "conference",
+            acronym="", title="", page_text="graph theory " * 40,
+        )
+        assert not [f for f in fails if f.startswith("out_of_bounds")]
+
+    def test_zero_topics_is_still_rejected(self):
+        fails = extract.validate(
+            self._payload([]), "graph theory " * 40, "conference",
+            acronym="", title="", page_text="graph theory " * 40,
+        )
+        assert any("has 0 entries" in f for f in fails)
+
+    def test_seven_topics_is_still_rejected(self):
+        """The upper bound stays: seven is topic spam, not detail."""
+        fails = extract.validate(
+            self._payload([f"topic {i}" for i in range(7)]),
+            "topic " * 40, "conference",
+            acronym="", title="", page_text="topic " * 40,
+        )
+        assert any("has 7 entries" in f for f in fails)
+
+    def test_the_prompt_asks_for_what_the_validator_accepts(self):
+        """A prompt demanding more than the checker requires is how the model
+        was talked into inventing a topic in the first place."""
+        assert "1-6 short topic strings" in extract.GRANT_PROMPT
+        assert "1-6 short topic strings" in extract.CONFERENCE_PROMPT
+        assert "2-6" not in extract.GRANT_PROMPT
+        assert "2-6" not in extract.CONFERENCE_PROMPT

@@ -144,7 +144,7 @@ Return ONLY a JSON object with exactly these keys:
   "summary"        2-3 sentences: what this funds and why it exists
   "purpose"        one sentence: the funder's stated goal
   "audience"       one sentence: who this is for
-  "research_areas" array of 2-6 short topic strings
+  "research_areas" array of 1-6 short topic strings (only what the source supports)
   "eligibility"    one paragraph, or "" if the source does not state it
   "award_summary"  plain-language money line, or ""
   "confidence"     "high", "medium" or "low"
@@ -164,7 +164,7 @@ Return ONLY a JSON object with exactly these keys:
   "summary"    2-3 sentences: what this venue is about
   "purpose"    one sentence
   "audience"   one sentence
-  "topics"     array of 2-6 short topic strings
+  "topics"     array of 1-6 short topic strings (only what the source supports)
   "field"      the discipline in plain words
   "confidence" "high", "medium" or "low"
 
@@ -336,8 +336,19 @@ def validate(
 
     listkey = "research_areas" if kind == "grant" else "topics"
     items = payload[listkey]
-    if not 2 <= len(items) <= 6:
-        fails.append(f"out_of_bounds: {listkey} has {len(items)} entries, want 2-6")
+    # One topic is a legitimate answer, not a defective one. The floor was 2,
+    # carried over unexamined from the prompt's own wording, and it was the
+    # single largest cause of an otherwise-good description being discarded:
+    # 27 records had grounded prose thrown away purely because a narrow venue
+    # -- "Riemann 200 Göttingen topic days", NSF's "Foundations of Life" --
+    # honestly has one subject.
+    #
+    # Worse than wasteful, it pushed the wrong way. A model told to produce two
+    # topics for a single-topic listing will invent the second, and
+    # ``ungrounded_topic`` below then rejects the record for the invention the
+    # bound just demanded. The upper bound stays: six is topic spam.
+    if not 1 <= len(items) <= 6:
+        fails.append(f"out_of_bounds: {listkey} has {len(items)} entries, want 1-6")
     if len({str(i).strip().lower() for i in items}) != len(items):
         fails.append(f"out_of_bounds: {listkey} contains duplicates")
 
