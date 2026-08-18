@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from apps.content.formatting import normalize_amount
 
-from .models import ContentItem, RelevanceScore, SavedOpportunity
+from .models import ContentItem, IgnoredItem, RelevanceScore, SavedOpportunity
 
 
 class ClusterAttributionMixin:
@@ -1180,7 +1180,7 @@ class SearchResultSerializer(serializers.Serializer):
     which ``matched_on`` channels) plus the compact type-specific extras the
     result card renders. ``score``/``matched_on`` come from transient attributes
     the search module tags onto each item; ``saved`` reads ``saved_ids`` from the
-    serializer context.
+    serializer context, and ``ignored`` reads ``ignored_ids``.
     """
 
     content_id = serializers.SerializerMethodField()
@@ -1194,6 +1194,7 @@ class SearchResultSerializer(serializers.Serializer):
     cluster = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
     saved_labs = serializers.SerializerMethodField()
+    ignored = serializers.SerializerMethodField()
     # Compact type-specific extras (mostly null off-type; the card branches).
     authors = serializers.SerializerMethodField()
     venue = serializers.SerializerMethodField()
@@ -1251,6 +1252,11 @@ class SearchResultSerializer(serializers.Serializer):
 
     def get_saved_labs(self, item: ContentItem) -> list[str]:
         return self.context.get("saved_labs", {}).get(str(item.id), [])
+
+    def get_ignored(self, item: ContentItem) -> bool:
+        # Search deliberately still returns ignored hits (see SearchContext); the
+        # flag is what lets the card show the state and offer the way back.
+        return str(item.id) in self.context.get("ignored_ids", set())
 
     def get_authors(self, item: ContentItem) -> list:
         authors = self._meta(item).get("authors")
@@ -1379,6 +1385,38 @@ class SavedItemSerializer(SavedDeadlineSerializer):
             # real card from the live item with a neutral (unscored) placeholder;
             # this is NOT the pruned case, so it must not read as "listing closed".
             score = RelevanceScore(content=saved.content, score=0.0, signals={})
+        return serializer_class(score, context=self.context).data
+
+
+class IgnoredItemSerializer(serializers.Serializer):
+    """One ignored entry for the Ignored view, with a feed-parity card.
+
+    The mirror of :class:`SavedItemSerializer`, minus the snapshot. An ignore row
+    cascades with its :class:`~apps.content.models.ContentItem`, so there is no
+    "the listing is gone but the row remains" case to render around — ``card`` is
+    always the real card the item's own feed page would show, which is what makes
+    the Ignored view a place you can recognise something and put it back.
+    """
+
+    id = serializers.UUIDField(read_only=True)
+    content_id = serializers.SerializerMethodField()
+    area = serializers.CharField()
+    ignored_at = serializers.DateTimeField(source="created_at", read_only=True)
+    card = serializers.SerializerMethodField()
+
+    def get_content_id(self, ignored: IgnoredItem) -> str:
+        return str(ignored.content_id)
+
+    def get_card(self, ignored: IgnoredItem):
+        serializer_class = _SAVED_CARD_SERIALIZERS.get(ignored.area)
+        if serializer_class is None:
+            return None
+        score = (self.context.get("scores_by_content") or {}).get(ignored.content_id)
+        if score is None:
+            # Never scored for this reader (or scored under a different target):
+            # render the live item through a neutral placeholder score, exactly as
+            # the saves view does, so the card is still complete.
+            score = RelevanceScore(content=ignored.content, score=0.0, signals={})
         return serializer_class(score, context=self.context).data
 
 

@@ -21,6 +21,7 @@ from .liveness import is_live
 from .models import (
     ContentItem,
     DailyBriefing,
+    IgnoredItem,
     MemberSuggestion,
     Notification,
     RelevanceEvent,
@@ -36,6 +37,7 @@ from .serializers import (
     ConferenceSerializer,
     FellowshipSerializer,
     GrantSerializer,
+    IgnoredItemSerializer,
     SavedDeadlineSerializer,
     SavedItemSerializer,
     SearchResultSerializer,
@@ -97,6 +99,8 @@ class DailyReportView(APIView):
     ``generated_at: null``) is the honest "no run yet" state. ``scanning`` is true
     while a sign-up background scan is filling this user's feed (see
     :mod:`.scan_status`), so the page can say "scanning new articles for you".
+    Papers the reader manually ignored are dropped, here and in the summary built
+    from the same list.
     """
 
     permission_classes = [IsAuthenticated]
@@ -109,13 +113,14 @@ class DailyReportView(APIView):
         # Papers only: grants/conferences also persist suggested RelevanceScore
         # rows for this user, and they have their own pages (Opportunities /
         # Conferences). Filtering by content type keeps this feed to papers.
+        ignored = _ignored_content_ids(request.user)
         scores = [
             score
             for score in RelevanceScore.objects.filter(
                 target_user=request.user,
                 content__type=ContentItem.Type.PAPER,
             ).select_related("content")
-            if score.signals.get("suggested")
+            if score.signals.get("suggested") and score.content_id not in ignored
         ]
         if not scores:
             return Response(
@@ -381,6 +386,16 @@ class LabDailyBriefingView(APIView):
 #: A saved deadline this many days out (or fewer) triggers a notification alert.
 DEADLINE_ALERT_DAYS = 7
 
+#: The content types a reader can bookmark or ignore — the four feed areas.
+#: :class:`~apps.content.models.SavedOpportunity.Area` uses the same strings, so a
+#: type doubles as its area, but the pair is asserted rather than assumed.
+BOOKMARKABLE_TYPES = [
+    ContentItem.Type.GRANT,
+    ContentItem.Type.CONFERENCE,
+    ContentItem.Type.FELLOWSHIP,
+    ContentItem.Type.PAPER,
+]
+
 
 def _saved_content_ids(user) -> set[str]:
     """The content ids the user saved **personally** (the ``saved`` flag per item).
@@ -423,7 +438,24 @@ def _saved_lab_slugs_by_content(user) -> dict[str, list[str]]:
     return out
 
 
-def _latest_scores(target_filter: dict, content_type: str) -> list[RelevanceScore]:
+def _ignored_content_ids(viewer) -> set:
+    """The content ids ``viewer`` has manually ignored (empty for an anonymous read).
+
+    An ignore belongs to the reader, not to the feed, so this is applied to the
+    personal, lab, and project reads alike: the same shared item stays on a
+    colleague's lab feed and leaves this reader's. Returns raw ids (not strings)
+    so callers can compare against ``score.content_id`` directly.
+    """
+    if viewer is None:
+        return set()
+    return set(
+        IgnoredItem.objects.filter(user=viewer).values_list("content_id", flat=True)
+    )
+
+
+def _latest_scores(
+    target_filter: dict, content_type: str, *, viewer=None
+) -> list[RelevanceScore]:
     """A target's matched items for the area, from the latest run, pinned-first.
 
     The **fresh-only** read, used for **papers**: the paper feed shows only the
@@ -433,14 +465,17 @@ def _latest_scores(target_filter: dict, content_type: str) -> list[RelevanceScor
     ``{"target_lab": lab}`` / ``{"target_project": project}`` for the institutional
     feeds. Rows the matcher persisted but marked ``suggested=False`` (below the
     match-percent floor) are excluded — mirroring ``DailyReportView``'s own filter —
-    so a hidden verdict never surfaces just because it is the latest run.
+    so a hidden verdict never surfaces just because it is the latest run. ``viewer``
+    is the signed-in reader; anything they manually ignored is dropped, on this
+    target's feed as on their own (see :func:`_ignored_content_ids`).
     """
+    ignored = _ignored_content_ids(viewer)
     scores = [
         s
         for s in RelevanceScore.objects.filter(
             **target_filter, content__type=content_type
         ).select_related("content")
-        if s.signals.get("suggested")
+        if s.signals.get("suggested") and s.content_id not in ignored
     ]
     if not scores:
         return []
@@ -458,7 +493,7 @@ def _latest_scores(target_filter: dict, content_type: str) -> list[RelevanceScor
 
 
 def _accumulated_scores(
-    target_filter: dict, content_type: str, *, cap: int | None = None
+    target_filter: dict, content_type: str, *, cap: int | None = None, viewer=None
 ) -> list[RelevanceScore]:
     """A target's matched **opportunities**, accumulated across every run.
 
@@ -482,9 +517,11 @@ def _accumulated_scores(
     on the feed until tonight, and a *dateless* conference — which the prune
     cannot delete until the collector has stopped re-seeing it — would stay
     there indefinitely. Shared by personal, lab, and project feeds because they
-    all read through this one function.
+    all read through this one function — which is also why ``viewer``'s manual
+    ignores are applied here rather than per surface.
     """
     today = timezone.now().date().isoformat()
+    ignored = _ignored_content_ids(viewer)
     scores = [
         s
         for s in RelevanceScore.objects.filter(
@@ -493,6 +530,7 @@ def _accumulated_scores(
         .select_related("content")
         .prefetch_related("content__deadline_rows")
         if s.signals.get("suggested")
+        and s.content_id not in ignored
         and is_live(content_type, s.content.metadata, today)
     ]
     if not scores:
@@ -525,7 +563,9 @@ class _OpportunityFeedView(APIView):
     serializer_class = None
 
     def get(self, request):
-        scores = _accumulated_scores({"target_user": request.user}, self.content_type)
+        scores = _accumulated_scores(
+            {"target_user": request.user}, self.content_type, viewer=request.user
+        )
         context = {
             "today": timezone.now().date().isoformat(),
             "saved_ids": _saved_content_ids(request.user),
@@ -875,15 +915,18 @@ def _count_windows(stamps, now) -> dict[str, int]:
     return counts
 
 
-def _window_counts(target_filter: dict) -> dict[str, dict[str, int]]:
+def _window_counts(target_filter: dict, *, viewer=None) -> dict[str, dict[str, int]]:
     """Per-area today/week/month/year counts for a target's matched items.
 
     All four areas count the target's own suggested ``RelevanceScore`` rows by their
     insert time (``created_at`` — when Mylo scored/appended it for the target), the
     same reckoning :func:`_personal_window_counts` uses, so a lab's recency matrix
     means exactly what a person's does. Empty windows are still reported as zeroes.
+    Items ``viewer`` ignored are left out, so the matrix cannot claim more than the
+    feed beneath it shows.
     """
     now = timezone.now()
+    ignored = _ignored_content_ids(viewer)
     counts: dict[str, dict[str, int]] = {}
     for key, ctype in (
         ("papers", ContentItem.Type.PAPER),
@@ -893,8 +936,12 @@ def _window_counts(target_filter: dict) -> dict[str, dict[str, int]]:
     ):
         rows = RelevanceScore.objects.filter(
             **target_filter, content__type=ctype
-        ).values_list("created_at", "signals")
-        stamps = [ca for ca, sig in rows if (sig or {}).get("suggested")]
+        ).values_list("created_at", "signals", "content_id")
+        stamps = [
+            ca
+            for ca, sig, cid in rows
+            if (sig or {}).get("suggested") and cid not in ignored
+        ]
         counts[key] = _count_windows(stamps, now)
     return counts
 
@@ -904,9 +951,11 @@ def _personal_window_counts(user) -> dict[str, dict[str, int]]:
 
     Unlike a lab, fellowships are already scored directly to ``target_user``
     (fellowships stay user-only), so all four areas read the same
-    ``target_user`` filter — no member-union step needed.
+    ``target_user`` filter — no member-union step needed. Manually ignored items are
+    excluded, matching the feeds the matrix summarises.
     """
     now = timezone.now()
+    ignored = _ignored_content_ids(user)
     counts: dict[str, dict[str, int]] = {}
     for key, ctype in (
         ("papers", ContentItem.Type.PAPER),
@@ -916,8 +965,12 @@ def _personal_window_counts(user) -> dict[str, dict[str, int]]:
     ):
         rows = RelevanceScore.objects.filter(
             target_user=user, content__type=ctype
-        ).values_list("created_at", "signals")
-        stamps = [ca for ca, sig in rows if (sig or {}).get("suggested")]
+        ).values_list("created_at", "signals", "content_id")
+        stamps = [
+            ca
+            for ca, sig, cid in rows
+            if (sig or {}).get("suggested") and cid not in ignored
+        ]
         counts[key] = _count_windows(stamps, now)
     return counts
 
@@ -1032,10 +1085,14 @@ def _recommendations_payload(
         "saved_labs": _saved_lab_slugs_by_content(user),
     }
     # Papers are fresh-only (latest gather batch); opportunities accumulate.
-    papers = _latest_scores(target_filter, ContentItem.Type.PAPER)
-    grants = _accumulated_scores(target_filter, ContentItem.Type.GRANT)
-    conferences = _accumulated_scores(target_filter, ContentItem.Type.CONFERENCE)
-    fellowships = _accumulated_scores(target_filter, ContentItem.Type.FELLOWSHIP)
+    papers = _latest_scores(target_filter, ContentItem.Type.PAPER, viewer=user)
+    grants = _accumulated_scores(target_filter, ContentItem.Type.GRANT, viewer=user)
+    conferences = _accumulated_scores(
+        target_filter, ContentItem.Type.CONFERENCE, viewer=user
+    )
+    fellowships = _accumulated_scores(
+        target_filter, ContentItem.Type.FELLOWSHIP, viewer=user
+    )
 
     # Full counts (before any digest slice) so the UI can show "top N of total".
     counts = {
@@ -1058,7 +1115,7 @@ def _recommendations_payload(
         "generated_at": _generated_at(scores),
         "counts": counts,
         # Per-area today/week/month/year totals for the overview stats block.
-        "window_counts": _window_counts(target_filter),
+        "window_counts": _window_counts(target_filter, viewer=user),
         "papers": SuggestionSerializer(
             papers,
             many=True,
@@ -1139,12 +1196,7 @@ class SaveOpportunityView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    _SAVEABLE_TYPES = [
-        ContentItem.Type.GRANT,
-        ContentItem.Type.CONFERENCE,
-        ContentItem.Type.FELLOWSHIP,
-        ContentItem.Type.PAPER,
-    ]
+    _SAVEABLE_TYPES = BOOKMARKABLE_TYPES
 
     def post(self, request):
         content_id = request.data.get("content_id")
@@ -1277,10 +1329,117 @@ def _save_from_item(
             target_lab__isnull=True,
             defaults={**defaults, "target_lab": None},
         )
+        # Saving is the opposite intent to ignoring, so it clears any ignore on
+        # the same item (see :class:`IgnoreItemView`). Only for a personal save:
+        # a lab save is not this reader speaking about their own feed.
+        IgnoredItem.objects.filter(user=user, content=item).delete()
     # Round-trip so date/enum fields are proper types (not the raw strings just
     # written) before the row is serialized back in the response.
     saved.refresh_from_db()
     return saved
+
+
+class IgnoreItemView(APIView):
+    """Ignore (POST) or stop ignoring (DELETE) an item, for the signed-in user.
+
+    The counterpart of :class:`SaveOpportunityView`. Ignoring hides an entry from
+    every feed *this reader* looks at — papers, grants, fellowships, conferences,
+    and the lab and project feeds they read — without touching the item, its
+    scores, or what anyone else is shown. Nothing here is a lab-scoped action: an
+    ignore is a fact about the reader, so there is no ``lab_slug`` and no manager
+    check to make.
+
+    Ignoring an item also drops its **personal** save. The two controls sit next
+    to each other and mean opposite things, so letting an item be both saved and
+    ignored would only produce a Saves page that contradicts the feeds. A **lab**
+    save is left alone — it belongs to the lab, not to whoever ignored the item.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        content_id = request.data.get("content_id")
+        if not content_id:
+            return Response(
+                {"detail": "content_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        item = ContentItem.objects.filter(
+            id=content_id, type__in=BOOKMARKABLE_TYPES
+        ).first()
+        if item is None:
+            return Response(
+                {"detail": "No such paper, grant, conference, or fellowship."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        _, created = IgnoredItem.objects.get_or_create(
+            user=request.user,
+            content=item,
+            defaults={"area": item.type},
+        )
+        SavedOpportunity.objects.filter(
+            user=request.user, target_lab__isnull=True, content=item
+        ).delete()
+        if created:
+            # A weak relevance label only. Nothing reads this stream back into
+            # ranking today; it exists so the choice is on the record if it ever
+            # should. Logged once per ignore, not on a repeat call.
+            record_event(request.user, item, RelevanceEvent.Action.DISMISS)
+        return Response(
+            {"content_id": str(item.id), "ignored": True},
+            status=(
+                status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            ),
+        )
+
+    def delete(self, request, content_id):
+        deleted, _ = IgnoredItem.objects.filter(
+            user=request.user, content_id=content_id
+        ).delete()
+        if not deleted:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class IgnoredItemsView(APIView):
+    """Everything the signed-in user has ignored, newest first (the Ignored view).
+
+    Reversibility is the point: an ignore that cannot be found again is
+    indistinguishable from a deletion. Each row carries the same feed-parity
+    ``card`` the Saves page renders, so the reader recognises what they dismissed
+    rather than reading a bare title.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        rows = list(
+            IgnoredItem.objects.filter(user=request.user)
+            .select_related("content")
+            .prefetch_related("content__deadline_rows")
+            .order_by("-created_at")
+        )
+        content_ids = [r.content_id for r in rows]
+        scores_by_content = {
+            score.content_id: score
+            for score in RelevanceScore.objects.filter(
+                target_user=request.user, content_id__in=content_ids
+            )
+            .select_related("content")
+            .prefetch_related("content__deadline_rows")
+        }
+        today = timezone.now().date()
+        context = {
+            "today": today.isoformat(),
+            "today_date": today,
+            "saved_ids": set(),
+            "saved_labs": _saved_lab_slugs_by_content(request.user),
+            "scores_by_content": scores_by_content,
+            "cluster_labels": _user_cluster_labels(request.user),
+        }
+        return Response(
+            {"items": IgnoredItemSerializer(rows, many=True, context=context).data}
+        )
 
 
 class DeadlinesView(APIView):
@@ -1548,6 +1707,7 @@ class SearchView(APIView):
             context={
                 "saved_ids": context.saved_ids,
                 "saved_labs": context.saved_labs,
+                "ignored_ids": context.ignored_ids,
             },
         )
         return Response(

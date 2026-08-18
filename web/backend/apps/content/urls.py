@@ -103,6 +103,28 @@ urlpatterns = [
         "opportunities/save/<uuid:content_id>",
         views.SaveOpportunityView.as_view(),
     ),
+    # Manual ignore: hide one item from this reader's own feeds (and undo).
+    path(
+        "opportunities/ignore/",
+        views.IgnoreItemView.as_view(),
+        name="opportunity-ignore",
+    ),
+    path("opportunities/ignore", views.IgnoreItemView.as_view()),
+    path(
+        "opportunities/ignore/<uuid:content_id>/",
+        views.IgnoreItemView.as_view(),
+        name="opportunity-unignore",
+    ),
+    path(
+        "opportunities/ignore/<uuid:content_id>",
+        views.IgnoreItemView.as_view(),
+    ),
+    path(
+        "opportunities/ignored/",
+        views.IgnoredItemsView.as_view(),
+        name="opportunities-ignored",
+    ),
+    path("opportunities/ignored", views.IgnoredItemsView.as_view()),
     # Institutional recommendation feeds: a lab's aggregate matches and one
     # project's focus matches (papers + grants + conferences, fellowships excluded).
     path(

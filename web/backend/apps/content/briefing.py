@@ -51,7 +51,12 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.content import briefing_sections
-from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
+from apps.content.models import (
+    ContentItem,
+    DailyBriefing,
+    IgnoredItem,
+    RelevanceScore,
+)
 from apps.content.targets import target_for_lab, target_for_user
 from apps.content.top_feed import is_entrant, order_by_slate
 
@@ -93,7 +98,18 @@ def _watched_categories(watch, allow: tuple[str, ...] | None = None) -> list[str
     return configured or universe
 
 
-def _suggested_scores(target_filter: dict, content_type: str) -> list[RelevanceScore]:
+def _reader_ignored_ids(reader) -> set:
+    """Content ids ``reader`` manually ignored — empty when a report has no reader."""
+    if reader is None:
+        return set()
+    return set(
+        IgnoredItem.objects.filter(user=reader).values_list("content_id", flat=True)
+    )
+
+
+def _suggested_scores(
+    target_filter: dict, content_type: str, *, reader=None
+) -> list[RelevanceScore]:
     """A target's suggested items of one type, read the way its feed reads them.
 
     ``target_filter`` is the single ``target_*`` FK to read under —
@@ -106,13 +122,19 @@ def _suggested_scores(target_filter: dict, content_type: str) -> list[RelevanceS
       every run's suggested rows, pinned-first then strongest match.
 
     Either way, rows computed but not promoted (``suggested`` false) are dropped.
+
+    ``reader`` is the one person a report is written *for*, when there is one: their
+    manually ignored items are left out, so a report cannot re-deliver tomorrow what
+    they dismissed today. A lab's report passes no reader — it belongs to the lab,
+    and one member's ignore is not the lab's opinion.
     """
+    ignored = _reader_ignored_ids(reader)
     scores = [
         s
         for s in RelevanceScore.objects.filter(
             **target_filter, content__type=content_type
         ).select_related("content")
-        if s.signals.get("suggested")
+        if s.signals.get("suggested") and s.content_id not in ignored
     ]
     if not scores:
         return []
@@ -167,6 +189,8 @@ def report_scores(
     target_filter: dict,
     content_type: str,
     today: str,
+    *,
+    reader=None,
 ) -> list[RelevanceScore]:
     """The rows a *report* shows for one category: the target's slate, in rank order.
 
@@ -187,7 +211,9 @@ def report_scores(
     shorter than it claimed to be. An empty list is still a real answer: a target
     with nothing above its feed threshold gets an honest "nothing yet".
     """
-    return filter_for_report(_suggested_scores(target_filter, content_type), today)
+    return filter_for_report(
+        _suggested_scores(target_filter, content_type, reader=reader), today
+    )
 
 
 def filter_for_report(
@@ -393,6 +419,7 @@ def gather_part(
     scope: str = "",
     limit: int,
     member_names: dict[str, str] | None = None,
+    reader=None,
 ) -> ScopePart:
     """Read one target's slate into a :class:`ScopePart`, and what is new in it.
 
@@ -409,7 +436,9 @@ def gather_part(
     counts: dict[str, int] = {}
     items: dict[str, list[dict]] = {}
     for category in categories:
-        scores = report_scores(target_filter, CATEGORY_TYPES[category], today)
+        scores = report_scores(
+            target_filter, CATEGORY_TYPES[category], today, reader=reader
+        )
         counts[category] = len(report_new_scores(scores, today))
         items[category] = [
             _showcase_item(s, today, member_names) for s in scores[:limit]
@@ -424,6 +453,7 @@ def _gather(
     watch,
     allow: tuple[str, ...] | None = None,
     member_names: dict[str, str] | None = None,
+    reader=None,
 ) -> tuple[
     list[str],
     dict[str, int],
@@ -445,7 +475,9 @@ def _gather(
     new_counts: dict[str, int] = {}
     showcase: dict[str, list[dict]] = {}
     for category in categories:
-        scores = _suggested_scores(target_filter, CATEGORY_TYPES[category])
+        scores = _suggested_scores(
+            target_filter, CATEGORY_TYPES[category], reader=reader
+        )
         counts[category] = len(scores)
         new_counts[category] = sum(
             1 for s in scores if is_entrant(s.signals or {}, today)
@@ -524,6 +556,7 @@ def _write_briefing(
     projects: list | None = None,
     personal_label: str = briefing_sections.PERSONAL_HEADING,
     complete: briefing_sections.CompleteFn | None = None,
+    reader=None,
 ) -> DailyBriefing:
     """Gather a target's day, write the report, and persist it as a ``DailyBriefing``.
 
@@ -535,7 +568,7 @@ def _write_briefing(
     structurally the same document its members receive.
     """
     categories, counts, new_counts, showcase = _gather(
-        target_filter, watch, allow, member_names
+        target_filter, watch, allow, member_names, reader=reader
     )
     today = timezone.now().date().isoformat()
 
@@ -548,6 +581,7 @@ def _write_briefing(
         kind="personal",
         limit=briefing_sections.REPORT_ITEMS_PER_SECTION,
         member_names=member_names,
+        reader=reader,
     )
     project_parts = [
         gather_part(
@@ -560,6 +594,7 @@ def _write_briefing(
             scope=project.scope,
             limit=briefing_sections.PROJECT_ITEMS_PER_SECTION,
             member_names=_project_member_names(project),
+            reader=reader,
         )
         for project in (projects or [])
     ]
@@ -651,6 +686,8 @@ def generate_briefing_for_user(
         watch=getattr(user, "watch", None),
         projects=report_projects_for_user(user),
         complete=complete,
+        # A personal report has exactly one reader, so it honours their ignores.
+        reader=user,
     )
 
 

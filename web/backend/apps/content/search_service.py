@@ -27,6 +27,11 @@ class SearchContext:
     result: SearchResult
     saved_ids: set
     saved_labs: dict
+    #: Content ids this reader manually ignored. Search results are **not**
+    #: filtered by it — if you typed the query, suppressing the hit would be
+    #: dishonest — but the card shows the state, so search doubles as the way to
+    #: find something you dismissed and put it back.
+    ignored_ids: set
 
     @property
     def items(self) -> list:
@@ -49,6 +54,7 @@ def search_for_user(
     """
     from apps.content.views import (
         _attach_search_clusters,
+        _ignored_content_ids,
         _saved_content_ids,
         _saved_lab_slugs_by_content,
     )
@@ -67,9 +73,17 @@ def search_for_user(
 
     saved_ids = _saved_content_ids(user) if result.items else set()
     saved_labs = _saved_lab_slugs_by_content(user) if result.items else {}
+    ignored_ids = (
+        {str(cid) for cid in _ignored_content_ids(user)} if result.items else set()
+    )
     if result.items:
         # Cluster attribution is a per-reader view of a shared corpus row: which of
         # *this* researcher's focus areas the hit belongs to. It is attached after the
         # search, not during it, and only when they have more than one cluster.
         _attach_search_clusters(result.items, user)
-    return SearchContext(result=result, saved_ids=saved_ids, saved_labs=saved_labs)
+    return SearchContext(
+        result=result,
+        saved_ids=saved_ids,
+        saved_labs=saved_labs,
+        ignored_ids=ignored_ids,
+    )

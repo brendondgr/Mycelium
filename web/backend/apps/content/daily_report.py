@@ -268,14 +268,19 @@ def _compile_part(
     label: str,
     kind: str,
     cap: int,
+    reader=None,
 ) -> ReportPart:
-    """One part's slate per category, plus how much of it is new."""
+    """One part's slate per category, plus how much of it is new.
+
+    ``reader`` is the person the PDF is addressed to, when there is one; their
+    manually ignored items are dropped so the document matches the pages they read.
+    """
     counts: dict[str, int] = {}
     items: dict[str, list[ReportItem]] = {}
     slate_sizes: dict[str, int] = {}
     for category in categories:
         scores = briefing.report_scores(
-            target_filter, briefing.CATEGORY_TYPES[category], today
+            target_filter, briefing.CATEGORY_TYPES[category], today, reader=reader
         )
         counts[category] = len(briefing.report_new_scores(scores, today))
         slate_sizes[category] = len(scores)
@@ -303,6 +308,7 @@ def _compile(
     projects: list,
     allow: tuple[str, ...] | None = None,
     personal_label: str = PERSONAL_LABEL,
+    reader=None,
 ) -> ReportData:
     """The shared gather, over whatever target the two public compilers name.
 
@@ -322,7 +328,7 @@ def _compile(
     new_counts: dict[str, int] = {}
     for category in categories:
         scores = briefing._suggested_scores(
-            target_filter, briefing.CATEGORY_TYPES[category]
+            target_filter, briefing.CATEGORY_TYPES[category], reader=reader
         )
         counts[category] = len(scores)
         new_counts[category] = len(
@@ -337,6 +343,7 @@ def _compile(
         label=personal_label,
         kind="personal",
         cap=TOP_PERSONAL,
+        reader=reader,
     )
     project_parts = [
         _compile_part(
@@ -347,6 +354,7 @@ def _compile(
             label=project.name,
             kind="project",
             cap=TOP_PROJECT,
+            reader=reader,
         )
         for project in projects
     ]
@@ -376,6 +384,8 @@ def compile_report_for_user(user) -> ReportData:
         target_filter={"target_user": user},
         briefing_filter={"user": user},
         projects=briefing.report_projects_for_user(user),
+        # One reader, so the PDF honours their manual ignores.
+        reader=user,
     )
 
 
