@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import (
     ContentDeadline,
     ContentItem,
+    IgnoredItem,
     LabReminderPolicy,
     Notification,
     RelevanceScore,
@@ -64,3 +65,11 @@ class LabReminderPolicyAdmin(admin.ModelAdmin):
     list_display = ("lab", "created_at", "updated_at")
     search_fields = ("lab__slug", "lab__name")
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(IgnoredItem)
+class IgnoredItemAdmin(admin.ModelAdmin):
+    list_display = ("user", "area", "content", "created_at")
+    list_filter = ("area", "created_at")
+    search_fields = ("user__username", "content__source", "content__external_id")
+    readonly_fields = ("created_at",)

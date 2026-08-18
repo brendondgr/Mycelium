@@ -291,6 +291,59 @@ class SavedOpportunity(models.Model):
         return f"{self.user} saved {self.area}: {self.title[:40]}"
 
 
+class IgnoredItem(models.Model):
+    """One item a reader has chosen not to be shown again (manual ignore).
+
+    The mirror image of :class:`SavedOpportunity`: where a save says "keep this
+    in front of me", an ignore says "stop surfacing this". It is a **per-reader
+    display filter**, not a deletion and not a ranking signal — the
+    :class:`ContentItem` and its :class:`RelevanceScore` rows are untouched, so
+    the item stays in the corpus, stays rankable, and stays visible to everyone
+    else. Nothing here feeds back into any profile; the engagement label lives
+    in :class:`RelevanceEvent` (action ``dismiss``), which nothing reads yet.
+
+    Deliberately **no snapshot**. A save must survive the nightly prune because
+    the reader asked to keep it; an ignore is meaningless once the item is gone,
+    so ``content`` cascades and the row disappears with it.
+
+    An ignore and a *personal* save are mutually exclusive (enforced in the
+    view): ignoring drops the personal save, saving clears the ignore, so the
+    Saves page and the feeds can never disagree about one item. Lab saves belong
+    to the lab, not to this reader, and are left alone.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ignored_items",
+    )
+    content = models.ForeignKey(
+        ContentItem,
+        on_delete=models.CASCADE,
+        related_name="ignores",
+    )
+    area = models.CharField(
+        max_length=20,
+        choices=SavedOpportunity.Area.choices,
+        help_text="Which feed the item was ignored from (mirrors the save areas).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["user", "content"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content"],
+                name="content_ignored_item_unique_user_content",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} ignored {self.area}: {self.content_id}"
+
+
 class ContentDeadline(models.Model):
     """One addressable deadline on a :class:`ContentItem` (Discord reminders R0).
 
