@@ -531,38 +531,50 @@ export function useSaveOpportunity() {
   return { save, unsave };
 }
 
+/** The queries an item's presence or absence can change. */
+const IGNORE_AFFECTED = [
+  "grants",
+  "conferences",
+  "fellowships",
+  "daily-report",
+  "deadlines",
+  "saves",
+  "lab-saves",
+  "search",
+  "lab-recommendations",
+  "window-counts",
+] as const;
+
 /**
- * Ignore or restore an item. Refreshes every surface the item could appear on —
- * an ignore removes it from the feeds and adds it to the Ignored view, so the
- * two must not be allowed to disagree.
+ * Ignore or restore an item.
+ *
+ * The two directions invalidate **different** sets, on purpose.
+ *
+ * Ignoring refreshes only the Ignored view and search (which still lists ignored
+ * hits and needs the flag). It deliberately leaves the feeds alone: refetching
+ * them drops the row from the list, which unmounts the card *and the undo strip
+ * that replaced it* — the reader's way back would vanish in the same instant it
+ * appeared. The feed is momentarily stale by one row the card has already
+ * collapsed in place, and it corrects itself on the next natural fetch.
+ *
+ * Restoring has no such strip to protect and must put the item back everywhere,
+ * so it invalidates the lot.
  */
 export function useIgnoreItem() {
   const queryClient = useQueryClient();
-  const invalidate = () => {
-    for (const key of [
-      "grants",
-      "conferences",
-      "fellowships",
-      "daily-report",
-      "deadlines",
-      "saves",
-      "ignored",
-      "lab-saves",
-      "search",
-      "lab-recommendations",
-      "window-counts",
-    ]) {
+  const invalidate = (keys: readonly string[]) => {
+    for (const key of keys) {
       queryClient.invalidateQueries({ queryKey: ["portal", key] });
     }
   };
   const ignore = useMutation({
     mutationFn: ({ contentId }: { contentId: string }) => ignoreItem(contentId),
-    onSuccess: invalidate,
+    onSuccess: () => invalidate(["ignored", "search"]),
   });
   const restore = useMutation({
     mutationFn: ({ contentId }: { contentId: string }) =>
       unignoreItem(contentId),
-    onSuccess: invalidate,
+    onSuccess: () => invalidate(["ignored", ...IGNORE_AFFECTED]),
   });
   return { ignore, restore };
 }

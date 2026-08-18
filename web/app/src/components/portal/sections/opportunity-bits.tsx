@@ -381,7 +381,9 @@ export function RemindButton({
  * the reminder bell is blue, so ignore rests as a bare outline at reduced opacity
  * and only takes a destructive tint on hover or focus. It is always mounted and
  * always in the tab order: a control that appears on hover is unreachable by
- * touch and invisible to a screen reader.
+ * touch and invisible to a screen reader. The resting opacity is 80% and not
+ * lower: below roughly that, the glyph drops under the 3:1 contrast WCAG 1.4.11
+ * requires of a UI graphic, and "quiet" would have become "unreadable".
  *
  * `onIgnored` lets the card collapse itself into an undo strip rather than
  * vanishing — see `IgnoredStrip`. Without it the card simply disappears on the
@@ -433,7 +435,7 @@ export function IgnoreButton({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         ignored
           ? "border-[color-mix(in_srgb,var(--destructive)_45%,transparent)] bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] text-[var(--destructive)]"
-          : "border-transparent text-[var(--text-secondary)] opacity-55 hover:border-[color-mix(in_srgb,var(--destructive)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--destructive)_8%,transparent)] hover:text-[var(--destructive)] hover:opacity-100 focus-visible:opacity-100",
+          : "border-transparent text-[var(--text-secondary)] opacity-80 hover:border-[color-mix(in_srgb,var(--destructive)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--destructive)_8%,transparent)] hover:text-[var(--destructive)] hover:opacity-100 focus-visible:opacity-100",
       )}
     >
       <EyeOffIcon size={14} aria-hidden="true" />

@@ -19,6 +19,7 @@ import {
   RemindButton,
   deadlineLabel,
 } from "@/components/portal/sections/opportunity-bits";
+import { EyeOffIcon } from "@/components/portal/icons";
 import { GrantRow } from "@/components/portal/sections/opportunities-section";
 import { FellowshipRow } from "@/components/portal/sections/fellowships-section";
 import { ConferenceCard } from "@/components/portal/sections/conferences-section";
@@ -32,8 +33,13 @@ import {
   type SavesFilterState,
 } from "@/components/portal/sections/saves-filters";
 import { usePortal } from "@/components/portal/portal-context";
-import { useLabSaves, useSaves } from "@/lib/portal/hooks";
-import type { DeadlineOption, SavedArea, SavedItem } from "@/lib/portal/types";
+import { useIgnored, useIgnoreItem, useLabSaves, useSaves } from "@/lib/portal/hooks";
+import type {
+  DeadlineOption,
+  IgnoredItem,
+  SavedArea,
+  SavedItem,
+} from "@/lib/portal/types";
 
 /** The addressable, *dated* deadlines a save can be reminded on ([] for papers). */
 function reminderDeadlines(item: SavedItem): DeadlineOption[] {
@@ -250,20 +256,196 @@ export function SavesSection() {
   return <PersonalSavesView />;
 }
 
-/** The caller's personal bookmarks. */
+/**
+ * The caller's personal bookmarks, and — behind a second tab — everything they
+ * have ignored.
+ *
+ * The two belong on one page because they are the same question asked twice:
+ * which items has this reader made a decision about? Keeping the ignored list
+ * reachable is also what makes ignoring safe. An ignore that could not be found
+ * again would be indistinguishable from a deletion, and the inline Undo only
+ * covers the seconds after the click.
+ *
+ * Personal scope only. An ignore belongs to a reader, so a lab workspace has
+ * nothing to show here.
+ */
 function PersonalSavesView() {
-  const { data, isLoading, isError } = useSaves();
-  const items = React.useMemo(() => data?.items ?? [], [data]);
+  const [view, setView] = React.useState<"saved" | "ignored">("saved");
+  const saves = useSaves();
+  const ignored = useIgnored();
+  const savedItems = React.useMemo(() => saves.data?.items ?? [], [saves.data]);
+  const ignoredItems = React.useMemo(
+    () => ignored.data?.items ?? [],
+    [ignored.data],
+  );
+
+  const tabs = (
+    <ViewTabs
+      view={view}
+      onChange={setView}
+      savedCount={savedItems.length}
+      ignoredCount={ignoredItems.length}
+    />
+  );
+
+  if (view === "ignored") {
+    return (
+      <IgnoredBody
+        items={ignoredItems}
+        isLoading={ignored.isLoading}
+        isError={ignored.isError}
+        tabs={tabs}
+      />
+    );
+  }
   return (
     <SavesBody
       title="Saves"
-      items={items}
-      isLoading={isLoading}
-      isError={isError}
+      items={savedItems}
+      isLoading={saves.isLoading}
+      isError={saves.isError}
       loadingLabel="Gathering your saves…"
       emptyTitle="Nothing saved yet"
       emptyDescription="Tap the bookmark on any research paper, grant, fellowship, or conference and it will be kept here for you to come back to — deadlines raise a warning in the notification bell once they're under a week away."
+      tabs={tabs}
     />
+  );
+}
+
+/** The Saved / Ignored switch. Counts are shown so neither tab hides a surprise. */
+function ViewTabs({
+  view,
+  onChange,
+  savedCount,
+  ignoredCount,
+}: {
+  view: "saved" | "ignored";
+  onChange: (view: "saved" | "ignored") => void;
+  savedCount: number;
+  ignoredCount: number;
+}) {
+  const tab = (key: "saved" | "ignored", label: string, count: number) => (
+    <button
+      key={key}
+      type="button"
+      onClick={() => onChange(key)}
+      aria-pressed={view === key}
+      className={
+        "rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+        (view === key
+          ? "bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-accent"
+          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")
+      }
+    >
+      {label}
+      {count > 0 ? (
+        <span className="ml-1.5 text-xs font-medium opacity-70">{count}</span>
+      ) : null}
+    </button>
+  );
+  return (
+    <div className="mb-5 inline-flex items-center gap-1 rounded-full border border-border bg-surface p-1">
+      {tab("saved", "Saved", savedCount)}
+      {tab("ignored", "Ignored", ignoredCount)}
+    </div>
+  );
+}
+
+/**
+ * The Ignored view: every entry this reader dismissed, with the way back on each
+ * one. Cards render exactly as they do on their own feeds, so the reader
+ * recognises what they hid rather than reading a bare title.
+ */
+function IgnoredBody({
+  items,
+  isLoading,
+  isError,
+  tabs,
+}: {
+  items: IgnoredItem[];
+  isLoading: boolean;
+  isError: boolean;
+  tabs: React.ReactNode;
+}) {
+  const subtitle = isLoading
+    ? "Gathering what you've ignored…"
+    : items.length > 0
+      ? `${items.length} ignored item${items.length === 1 ? "" : "s"}, hidden from your feeds.`
+      : "Anything you ignore is hidden from your feeds and collected here.";
+
+  return (
+    <div>
+      <SectionHeader eyebrow="Workspace" title="Saves" subtitle={subtitle} />
+      {tabs}
+      {isLoading ? (
+        <div className="space-y-3.5">
+          <SaveSkeleton />
+          <SaveSkeleton />
+        </div>
+      ) : isError ? (
+        <EmptyState
+          icon={<EyeOffIcon size={26} className="text-accent" />}
+          title="Couldn't load your ignored items"
+          description="Something went wrong fetching them. Please try again in a moment."
+        />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={<EyeOffIcon size={26} className="text-accent" />}
+          title="Nothing ignored"
+          description="Use the ignore control on any card — beside the bookmark — to stop an entry appearing in your feeds. Whatever you ignore collects here, and you can put it back at any time."
+        />
+      ) : (
+        <div className="space-y-4">
+          {items.map((item, index) => (
+            <RevealOnScroll key={item.id} delay={`${index * 45}ms`}>
+              <IgnoredRow item={item} />
+            </RevealOnScroll>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One ignored entry: a meta strip carrying the way back, then its feed card. */
+function IgnoredRow({ item }: { item: IgnoredItem }) {
+  const { restore } = useIgnoreItem();
+  const AreaIcon = AREA_ICONS[item.area];
+  const on = formatDate(item.ignored_at);
+
+  return (
+    <div>
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
+            <AreaIcon size={13} aria-hidden="true" />
+            {AREA_LABELS[item.area].replace(/s$/, "")}
+          </span>
+          {on ? (
+            <span className="text-xs text-[var(--text-secondary)]">
+              Ignored {on}
+            </span>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          disabled={restore.isPending}
+          onClick={() => restore.mutate({ contentId: item.content_id })}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-semibold text-[var(--text-primary)] transition-colors hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+        >
+          Stop ignoring
+        </button>
+      </div>
+      {item.area === "grant" ? (
+        <GrantRow grant={item.card} />
+      ) : item.area === "fellowship" ? (
+        <FellowshipRow item={item.card} />
+      ) : item.area === "conference" ? (
+        <ConferenceCard conf={item.card} />
+      ) : (
+        <SuggestionCard suggestion={item.card} />
+      )}
+    </div>
   );
 }
 
@@ -308,6 +490,7 @@ function SavesBody({
   emptyDescription,
   labSlug,
   canManage = true,
+  tabs,
 }: {
   title: string;
   items: SavedItem[];
@@ -318,6 +501,8 @@ function SavesBody({
   emptyDescription: string;
   labSlug?: string;
   canManage?: boolean;
+  /** The Saved / Ignored switch. Personal scope only; a lab has no ignores. */
+  tabs?: React.ReactNode;
 }) {
   const [filters, setFilters] = React.useState<SavesFilterState>(
     DEFAULT_SAVES_FILTERS,
@@ -342,6 +527,7 @@ function SavesBody({
   return (
     <div>
       <SectionHeader eyebrow="Workspace" title={title} subtitle={subtitle} />
+      {tabs}
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {showRail ? (
           <SavesFilters
