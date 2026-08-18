@@ -19,6 +19,8 @@ import {
   MyloReason,
   NewTag,
   RemindButton,
+  IgnoreButton,
+  IgnoredStrip,
   SaveButton,
   formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
@@ -193,6 +195,7 @@ export function FellowshipRow({
   remindLabSlug,
   recommendedFor,
   scopeName,
+  ignorable = false,
 }: {
   item: FellowshipOpportunity;
   /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
@@ -206,7 +209,14 @@ export function FellowshipRow({
    * member's own-feed number in its note — so the ring has to say which is which.
    */
   scopeName?: string;
+  /**
+   * Show the ignore control. Feeds pass it; the Saves page does not — a save is
+   * this reader asking to keep the item, so offering to hide it there would be
+   * two controls arguing about the same row.
+   */
+  ignorable?: boolean;
 }) {
+  const [ignored, setIgnored] = React.useState(false);
   const deadlineLabel = fellowshipDeadlineLabel(item);
   const softDl = isSoftDeadline(item);
   const isMylo = item.origin === "llm";
@@ -220,6 +230,17 @@ export function FellowshipRow({
   const eligibilityBullets = item.eligibility;
   const SHORT_CUTOFF = 3;
   const eligibilityLong = eligibilityBullets.length > SHORT_CUTOFF;
+
+  // Ignored: collapse in place, with the way back, until the next refetch drops it.
+  if (ignored) {
+    return (
+      <IgnoredStrip
+        contentId={item.content_id}
+        title={item.title}
+        onRestored={() => setIgnored(false)}
+      />
+    );
+  }
 
   return (
     <MatchCard
@@ -264,6 +285,13 @@ export function FellowshipRow({
                   savedLabs={item.saved_labs}
                   variant="icon"
                 />
+                {ignorable ? (
+                  <IgnoreButton
+                    contentId={item.content_id}
+                    title={item.title}
+                    onIgnored={() => setIgnored(true)}
+                  />
+                ) : null}
               </div>
               {deadlineLabel ? (
                 <span
@@ -477,6 +505,7 @@ function FellowshipList({
             item={item}
             recommendedFor={recommendedFor?.[item.content_id]}
             scopeName={labName}
+            ignorable
           />
         </RevealOnScroll>
       ))}

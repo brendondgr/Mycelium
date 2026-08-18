@@ -799,6 +799,23 @@ export type SavedItem = SavedDeadline & {
   );
 
 /**
+ * One entry this reader has ignored (from `/api/opportunities/ignored/`). The
+ * mirror of `SavedItem`, minus the snapshot: an ignore row is deleted with its
+ * source listing, so `card` is always the real card the item's own feed renders.
+ */
+export type IgnoredItem = {
+  id: string;
+  content_id: string;
+  /** ISO timestamp the reader ignored this item. */
+  ignored_at: string;
+} & (
+  | { area: "grant"; card: GrantOpportunity }
+  | { area: "conference"; card: ConferenceOpportunity }
+  | { area: "fellowship"; card: FellowshipOpportunity }
+  | { area: "paper"; card: Suggestion }
+);
+
+/**
  * A lab's shared saved items (from `/api/labs/<slug>/saves/`). `can_manage` gates
  * the save/remind/remove affordances to lab managers; every member may read.
  */
@@ -1045,6 +1062,11 @@ export type SearchResultItem = {
   saved: boolean;
   /** Slugs of the caller's *managed* labs that have already saved this item. */
   saved_labs: string[];
+  /**
+   * Whether the reader has ignored this item. Search still returns ignored hits
+   * — you typed the query — so the card shows the state and offers the way back.
+   */
+  ignored: boolean;
   // (No `source` — the search path deliberately omits it.)
   // Paper
   authors: string[];

@@ -31,6 +31,7 @@ import {
   fetchDeadlines,
   fetchFellowships,
   fetchGrants,
+  fetchIgnored,
   fetchLabMembers,
   fetchLabProfile,
   fetchLabProjects,
@@ -103,10 +104,12 @@ import {
   respondProjectInvitation,
   removeFromCollection,
   respondToInvitation,
+  ignoreItem,
   saveOpportunity,
   shareToProject,
   synthesizeLabProfile,
   unarchiveProject,
+  unignoreItem,
   unsaveOpportunity,
   updateAdminLab,
   updateAdminUser,
@@ -526,6 +529,51 @@ export function useSaveOpportunity() {
     onSuccess: invalidate,
   });
   return { save, unsave };
+}
+
+/**
+ * Ignore or restore an item. Refreshes every surface the item could appear on —
+ * an ignore removes it from the feeds and adds it to the Ignored view, so the
+ * two must not be allowed to disagree.
+ */
+export function useIgnoreItem() {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    for (const key of [
+      "grants",
+      "conferences",
+      "fellowships",
+      "daily-report",
+      "deadlines",
+      "saves",
+      "ignored",
+      "lab-saves",
+      "search",
+      "lab-recommendations",
+      "window-counts",
+    ]) {
+      queryClient.invalidateQueries({ queryKey: ["portal", key] });
+    }
+  };
+  const ignore = useMutation({
+    mutationFn: ({ contentId }: { contentId: string }) => ignoreItem(contentId),
+    onSuccess: invalidate,
+  });
+  const restore = useMutation({
+    mutationFn: ({ contentId }: { contentId: string }) =>
+      unignoreItem(contentId),
+    onSuccess: invalidate,
+  });
+  return { ignore, restore };
+}
+
+/** Everything this reader has ignored, with feed-parity cards (Ignored view). */
+export function useIgnored() {
+  return useQuery({
+    queryKey: ["portal", "ignored"],
+    queryFn: fetchIgnored,
+    staleTime: 30_000,
+  });
 }
 
 /** A lab's shared saves (lab Saves area). Disabled for the personal scope. */

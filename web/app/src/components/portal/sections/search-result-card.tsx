@@ -11,6 +11,7 @@ import {
 import { Card } from "@/components/portal/primitives/card";
 import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { Pill, type PillTone } from "@/components/portal/primitives/pill";
+import { IgnoreButton } from "@/components/portal/sections/opportunity-bits";
 import type {
   SearchContentType,
   SearchResultItem,
@@ -65,19 +66,29 @@ export function SearchResultCard({ item }: { item: SearchResultItem }) {
   const detail = detailLine(item);
   return (
     <Card className="p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-      <div className="flex flex-wrap items-center gap-2">
-        <Pill tone={meta.tone} className="capitalize">
-          {meta.icon}
-          {meta.label}
-        </Pill>
-        {item.cluster ? <ClusterBadge cluster={item.cluster} /> : null}
-        {item.deadline ? (
-          <Pill tone="clay">
-            <CalendarIcon size={12} />
-            {item.deadline}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Pill tone={meta.tone} className="capitalize">
+            {meta.icon}
+            {meta.label}
           </Pill>
-        ) : null}
-        {item.saved ? <Pill tone="primary">Saved</Pill> : null}
+          {item.cluster ? <ClusterBadge cluster={item.cluster} /> : null}
+          {item.deadline ? (
+            <Pill tone="clay">
+              <CalendarIcon size={12} />
+              {item.deadline}
+            </Pill>
+          ) : null}
+          {item.saved ? <Pill tone="primary">Saved</Pill> : null}
+          {item.ignored ? <Pill tone="neutral">Ignored</Pill> : null}
+        </div>
+        {/* Search deliberately still returns ignored hits — you typed the query
+            — so this is both the way to dismiss a result and the way back. */}
+        <IgnoreButton
+          contentId={item.content_id}
+          title={item.title}
+          ignored={item.ignored}
+        />
       </div>
 
       <h3 className="mt-2.5 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">

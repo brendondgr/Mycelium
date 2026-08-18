@@ -856,6 +856,37 @@ export async function unsaveOpportunity(
   }
 }
 
+/**
+ * Ignore an item: stop surfacing it on this reader's feeds. Personal only —
+ * there is no lab scope, because an ignore is a fact about the reader.
+ */
+export function ignoreItem(contentId: string): Promise<void> {
+  return sendJson<void>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "opportunities", "ignore"),
+    { content_id: contentId },
+    "Could not ignore this item.",
+  );
+}
+
+/** Undo an ignore, putting the item back on the reader's feeds. */
+export async function unignoreItem(contentId: string): Promise<void> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "opportunities", "ignore", contentId),
+    {
+      method: "DELETE",
+      credentials: "include",
+      headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
+    },
+  );
+  // A 404 means it is already not ignored, which is the state the caller wanted.
+  if (!response.ok && response.status !== 404) {
+    throw new Error("Could not restore this item.");
+  }
+}
+
 /** Create a deadline reminder (personal or lab) from a saved/opportunity item. */
 export function createReminder(input: ReminderInput): Promise<Reminder> {
   return sendJson<Reminder>(

@@ -7,10 +7,12 @@ import {
   BookmarkIcon,
   CheckIcon,
   ChevronDownIcon,
+  EyeOffIcon,
   SparkleIcon,
 } from "@/components/portal/icons";
 import { ReminderComposer } from "@/components/portal/reminder-composer";
 import {
+  useIgnoreItem,
   useMyLabs,
   useReminderAccess,
   useSaveOpportunity,
@@ -369,6 +371,146 @@ export function RemindButton({
       ) : null}
     </>
   );
+}
+
+/**
+ * The manual **ignore** control: "I've looked at this, stop showing it to me."
+ *
+ * Sits immediately to the right of the save bookmark, the same round 32px shape,
+ * and is deliberately the quietest control in the row — save is accent green and
+ * the reminder bell is blue, so ignore rests as a bare outline at reduced opacity
+ * and only takes a destructive tint on hover or focus. It is always mounted and
+ * always in the tab order: a control that appears on hover is unreachable by
+ * touch and invisible to a screen reader.
+ *
+ * `onIgnored` lets the card collapse itself into an undo strip rather than
+ * vanishing — see `IgnoredStrip`. Without it the card simply disappears on the
+ * next refetch, which is the right behaviour on surfaces (like search) that keep
+ * showing the item anyway.
+ *
+ * `ignored` renders the control as a toggle that puts the item **back**. Feeds
+ * never pass it — an ignored item is not in a feed — but search does, since a
+ * search deliberately still returns what you dismissed.
+ */
+export function IgnoreButton({
+  contentId,
+  title,
+  ignored = false,
+  onIgnored,
+}: {
+  contentId: string;
+  title: string;
+  ignored?: boolean;
+  onIgnored?: () => void;
+}) {
+  const { ignore, restore } = useIgnoreItem();
+  const pending = ignore.isPending || restore.isPending;
+  const label = ignored ? `Stop ignoring ${title}` : `Ignore ${title}`;
+
+  const onClick = () => {
+    if (ignored) {
+      restore.mutate({ contentId });
+      return;
+    }
+    ignore.mutate({ contentId });
+    onIgnored?.();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={pending}
+      aria-label={label}
+      aria-pressed={ignored}
+      title={
+        ignored
+          ? "Show this again"
+          : "Ignore — stop showing this to me"
+      }
+      className={cn(
+        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors disabled:opacity-50",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        ignored
+          ? "border-[color-mix(in_srgb,var(--destructive)_45%,transparent)] bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] text-[var(--destructive)]"
+          : "border-transparent text-[var(--text-secondary)] opacity-55 hover:border-[color-mix(in_srgb,var(--destructive)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--destructive)_8%,transparent)] hover:text-[var(--destructive)] hover:opacity-100 focus-visible:opacity-100",
+      )}
+    >
+      <EyeOffIcon size={14} aria-hidden="true" />
+    </button>
+  );
+}
+
+/**
+ * What a card collapses to the moment it is ignored: one line saying so, with
+ * the way back. A card that silently vanished would leave the reader unsure
+ * whether they hit the right control, and no way to correct a misfire until the
+ * Ignored view. The strip lives until the next refetch drops the item.
+ *
+ * `role="status"` so the change is announced rather than only seen.
+ */
+export function IgnoredStrip({
+  contentId,
+  title,
+  onRestored,
+}: {
+  contentId: string;
+  title: string;
+  onRestored: () => void;
+}) {
+  const { restore } = useIgnoreItem();
+  return (
+    <div
+      role="status"
+      className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border bg-[var(--surface)] px-4 py-3"
+    >
+      <p className="min-w-0 truncate text-sm text-[var(--text-secondary)]">
+        Ignored <span className="font-medium">{title}</span>. You won&apos;t see
+        it again.
+      </p>
+      <button
+        type="button"
+        disabled={restore.isPending}
+        onClick={() => {
+          restore.mutate({ contentId });
+          onRestored();
+        }}
+        className="shrink-0 rounded-full border border-border px-3 py-1 text-xs font-semibold text-[var(--text-primary)] transition-colors hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+      >
+        Undo
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Wraps one feed card so ignoring it collapses the card in place into
+ * {@link IgnoredStrip} instead of leaving a gap. Every feed uses this rather
+ * than each card owning the state, so all four areas behave identically.
+ *
+ * State is local and deliberately not reset by a refetch: once the server drops
+ * the item from the feed, the whole wrapper unmounts with it.
+ */
+export function IgnorableCard({
+  contentId,
+  title,
+  children,
+}: {
+  contentId: string;
+  title: string;
+  children: (props: { onIgnored: () => void }) => React.ReactNode;
+}) {
+  const [ignored, setIgnored] = React.useState(false);
+  if (ignored) {
+    return (
+      <IgnoredStrip
+        contentId={contentId}
+        title={title}
+        onRestored={() => setIgnored(false)}
+      />
+    );
+  }
+  return <>{children({ onIgnored: () => setIgnored(true) })}</>;
 }
 
 /** The button that opens the save menu (or toggles a personal save directly). */

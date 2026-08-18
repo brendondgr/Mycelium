@@ -26,6 +26,8 @@ import {
   NewTag,
   UpdatedTag,
   RemindButton,
+  IgnoreButton,
+  IgnoredStrip,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
 import { shortRoundLabel } from "@/components/portal/reminder-composer";
@@ -456,13 +458,21 @@ export function ConferenceCard({
   conf,
   remindLabSlug,
   recommendedFor,
+  ignorable = false,
 }: {
   conf: ConferenceOpportunity;
   /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
   remindLabSlug?: string;
   /** Lab-only: who Mylo judges this most applicable to. Personal feeds omit it. */
   recommendedFor?: RecommendedMember[];
+  /**
+   * Show the ignore control. Feeds pass it; the Saves page does not — a save is
+   * this reader asking to keep the item, so offering to hide it there would be
+   * two controls arguing about the same row.
+   */
+  ignorable?: boolean;
 }) {
+  const [ignored, setIgnored] = React.useState(false);
   // Local calendar date, for splitting rounds into "still ahead" and "gone by".
   // Not `toISOString()`, which is UTC and would call a deadline passed a few
   // hours early for anyone east of it.
@@ -479,6 +489,17 @@ export function ConferenceCard({
     .filter(Boolean);
   const shownSubjects = subjects.slice(0, 4);
   const moreSubjects = subjects.length - shownSubjects.length;
+
+  // Ignored: collapse in place, with the way back, until the next refetch drops it.
+  if (ignored) {
+    return (
+      <IgnoredStrip
+        contentId={conf.content_id}
+        title={conf.title}
+        onRestored={() => setIgnored(false)}
+      />
+    );
+  }
 
   return (
     <MatchCard
@@ -542,6 +563,13 @@ export function ConferenceCard({
                 saved={conf.saved}
                 savedLabs={conf.saved_labs}
               />
+              {ignorable ? (
+                <IgnoreButton
+                  contentId={conf.content_id}
+                  title={conf.title}
+                  onIgnored={() => setIgnored(true)}
+                />
+              ) : null}
             </div>
           </div>
         </>
@@ -908,6 +936,7 @@ function ConferencesFeed({
                     <ConferenceCard
                       conf={conf}
                       recommendedFor={recommendedFor?.[conf.content_id]}
+                      ignorable
                     />
                   </RevealOnScroll>
                 ))}

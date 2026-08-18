@@ -20,6 +20,8 @@ import {
   NewTag,
   UpdatedTag,
   RemindButton,
+  IgnoreButton,
+  IgnoredStrip,
   SaveButton,
   formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
@@ -121,13 +123,21 @@ export function GrantRow({
   grant,
   remindLabSlug,
   recommendedFor,
+  ignorable = false,
 }: {
   grant: GrantOpportunity;
   /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
   remindLabSlug?: string;
   /** Lab-only: who Mylo judges this most applicable to. Personal feeds omit it. */
   recommendedFor?: RecommendedMember[];
+  /**
+   * Show the ignore control. Feeds pass it; the Saves page does not — a save is
+   * this reader asking to keep the item, so offering to hide it there would be
+   * two controls arguing about the same row.
+   */
+  ignorable?: boolean;
 }) {
+  const [ignored, setIgnored] = React.useState(false);
   // Local calendar date, for splitting rounds into gone-by and still-ahead.
   // Not `toISOString()`, which is UTC and would call a round passed a few hours
   // early for anyone east of it.
@@ -142,6 +152,17 @@ export function GrantRow({
     .filter(Boolean)
     .slice(0, 5);
   const isMylo = grant.origin === "llm";
+
+  // Ignored: collapse in place, with the way back, until the next refetch drops it.
+  if (ignored) {
+    return (
+      <IgnoredStrip
+        contentId={grant.content_id}
+        title={grant.title}
+        onRestored={() => setIgnored(false)}
+      />
+    );
+  }
 
   return (
     <MatchCard
@@ -199,6 +220,13 @@ export function GrantRow({
                   savedLabs={grant.saved_labs}
                   variant="icon"
                 />
+                {ignorable ? (
+                  <IgnoreButton
+                    contentId={grant.content_id}
+                    title={grant.title}
+                    onIgnored={() => setIgnored(true)}
+                  />
+                ) : null}
               </div>
               {grant.amount ? (
                 <span
@@ -307,6 +335,7 @@ function GrantsList({
           <GrantRow
             grant={grant}
             recommendedFor={recommendedFor?.[grant.content_id]}
+            ignorable
           />
         </RevealOnScroll>
       ))}

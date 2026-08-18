@@ -287,6 +287,7 @@ function PapersPanel({
             <SuggestionCard
               suggestion={paper}
               recommendedFor={recommendedFor[paper.content_id]}
+              ignorable
             />
           )}
         />
@@ -392,6 +393,7 @@ function GrantsPanel({
             <GrantRow
               grant={grant}
               recommendedFor={recommendedFor[grant.content_id]}
+              ignorable
             />
           )}
         />
@@ -484,6 +486,7 @@ function ConferencesPanel({
             <ConferenceCard
               conf={conf}
               recommendedFor={recommendedFor[conf.content_id]}
+              ignorable
             />
           )}
         />
@@ -579,6 +582,7 @@ function FellowshipsPanel({
               item={item}
               recommendedFor={recommendedFor[item.content_id]}
               scopeName={scopeName}
+              ignorable
             />
           )}
         />

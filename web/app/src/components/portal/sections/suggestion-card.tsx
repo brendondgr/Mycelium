@@ -13,6 +13,8 @@ import { ArrowRightIcon, SparkleIcon } from "@/components/portal/icons";
 import {
   MyloReason,
   NewTag,
+  IgnoreButton,
+  IgnoredStrip,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
@@ -58,14 +60,34 @@ function bylineLine(suggestion: Suggestion): string {
 export function SuggestionCard({
   suggestion,
   recommendedFor,
+  ignorable = false,
 }: {
   suggestion: Suggestion;
   recommendedFor?: RecommendedMember[];
+  /**
+   * Show the ignore control. Feeds pass it; the Saves page does not — a save is
+   * this reader asking to keep the item, so offering to hide it there would be
+   * two controls arguing about the same row.
+   */
+  ignorable?: boolean;
 }) {
+  const [ignored, setIgnored] = React.useState(false);
   const isMylo = suggestion.origin === "llm";
   const percent = suggestion.match_percent ?? suggestion.embedding_match;
   const provenance = provenanceLine(suggestion);
   const byline = bylineLine(suggestion);
+
+  // Ignored: collapse in place rather than leaving a gap, so the reader can see
+  // what happened and undo a misfire before the next refetch drops the row.
+  if (ignored) {
+    return (
+      <IgnoredStrip
+        contentId={suggestion.content_id}
+        title={suggestion.title}
+        onRestored={() => setIgnored(false)}
+      />
+    );
+  }
 
   return (
     <MatchCard
@@ -135,6 +157,13 @@ export function SuggestionCard({
               savedLabs={suggestion.saved_labs}
               variant="icon"
             />
+            {ignorable ? (
+              <IgnoreButton
+                contentId={suggestion.content_id}
+                title={suggestion.title}
+                onIgnored={() => setIgnored(true)}
+              />
+            ) : null}
           </div>
         </div>
       }

@@ -310,6 +310,7 @@ function PapersFeed({
                   <SuggestionCard
                     suggestion={suggestion}
                     recommendedFor={recommendedFor?.[suggestion.content_id]}
+                    ignorable
                   />
                 </RevealOnScroll>
               </React.Fragment>

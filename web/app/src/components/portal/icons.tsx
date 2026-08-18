@@ -303,6 +303,21 @@ export function BookmarkIcon(props: IconProps) {
   );
 }
 
+/**
+ * Eye with a slash — the manual "ignore" control. Deliberately not an `X`
+ * (which reads as "close this card") and not a trash can (which overstates a
+ * reversible, per-reader hide as destruction).
+ */
+export function EyeOffIcon(props: IconProps) {
+  return (
+    <Svg strokeWidth={1.7} {...props}>
+      <path d="M3 3l18 18" />
+      <path d="M10.6 5.2A9.6 9.6 0 0112 5c5 0 9 4.5 9 7a11 11 0 01-2.4 3.3M6.5 6.8C4.2 8.3 3 10.5 3 12c0 2.5 4 7 9 7a9.3 9.3 0 004.2-1" />
+      <path d="M9.9 9.9a3 3 0 004.2 4.2" />
+    </Svg>
+  );
+}
+
 export function LinkIcon(props: IconProps) {
   return (
     <Svg strokeWidth={1.8} {...props}>

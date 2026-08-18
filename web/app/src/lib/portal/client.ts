@@ -41,6 +41,7 @@ import type {
   ReminderAccess,
   SavedDeadline,
   LabSavesResponse,
+  IgnoredItem,
   SavedItem,
   SearchParams,
   SearchResponse,
@@ -281,6 +282,14 @@ export async function fetchSaves(): Promise<{ items: SavedItem[] }> {
   return getJson<{ items: SavedItem[] }>(
     buildApiUrl(getPublicApiBase(), "saves"),
     "Could not load your saves.",
+  );
+}
+
+/** Everything this reader has ignored, with the same feed-parity cards. */
+export async function fetchIgnored(): Promise<{ items: IgnoredItem[] }> {
+  return getJson<{ items: IgnoredItem[] }>(
+    buildApiUrl(getPublicApiBase(), "opportunities", "ignored"),
+    "Could not load your ignored items.",
   );
 }
 
