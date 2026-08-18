@@ -136,9 +136,14 @@ sources on the host, then runs each backend stage in order inside the container:
 `run_reminder_tick` → `prune_opportunities` → `generate_daily_briefing` →
 `send_daily_discord_reports` → `send_lab_digests`
 
-The daily run only ever **appends** the day's new items. Re-scoring the whole
-corpus is the on-demand refit pass (`manual_mylo.py` / `run_refitting`), run at
-sign-up and after profile edits — never on a schedule.
+The daily run re-ranks the **whole** corpus for every target, then reports what
+entered each Top-25. An item is "new" when it enters a slate, not when it was
+ingested — so a changed research focus promotes whatever now fits. Cost is
+contained by carry-forward, not by narrowing the scan: a verdict Mylo has already
+written is reused, never re-billed. Refitting (`manual_mylo.py` / `run_refitting`)
+stays a separate on-demand pass at sign-up and after profile edits, because it
+deliberately re-sends every surfaced item to the model — which a nightly run must
+never do.
 
 Other host units: `mycelium.service` (stack up at boot), `mycelium-update.service`
 (image pull + rolling restart), `mylo-bot.service` (the persistent Discord
