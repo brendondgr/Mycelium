@@ -155,7 +155,7 @@ Files below are inside `web/backend/apps/content/`.
 
 | Task | Path |
 |---|---|
-| Full-stack start/stop | `run.py`, `compose.yaml`, `compose.gpu.yaml` |
+| Full-stack start/stop | `scripts/mycelium` (start/stop/restart/status/migrate — wipes frontend caches, waits for the API, applies migrations, restarts Mylo), `run.py`, `compose.yaml`, `compose.gpu.yaml` |
 | Nightly research run | `manual_all.py` (fired by `mylo-daily.timer`) |
 | On-demand re-score everyone | `manual_mylo.py` |
 | Illinois fellowship scrape → import (host, Playwright) | `scrape_fellowships.py` |

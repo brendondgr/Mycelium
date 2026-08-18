@@ -8,7 +8,12 @@ Usage:
     mycelium status          show container state, Mylo state, and live endpoint health
     mycelium logs            follow combined compose logs (Ctrl-C to exit)
     mycelium build           rebuild images then start
+    mycelium migrate         apply database migrations against the running stack
     mycelium install-service copy .service files to /etc/systemd/system/ and enable boot startup
+
+Flags:
+    --keep-cache   skip the frontend cache wipe on start/restart/build
+    --no-migrate   bring the stack up without waiting for or applying migrations
 
 start/stop/restart drive systemd once the units are installed — mycelium.service
 for the stack and mylo-bot.service for the bot — so `mycelium restart` and
@@ -16,6 +21,12 @@ for the stack and mylo-bot.service for the bot — so `mycelium restart` and
 for your sudo password. Before `install-service` has been run they fall back to
 driving Docker Compose directly, and `build` always does (the unit has no
 rebuild step of its own).
+
+start/restart/build bring the whole environment up, not just the containers:
+the frontend build caches are wiped while the stack is down, `web-deps`
+reinstalls node modules and re-syncs the art assets as the stack comes up,
+migrations are confirmed applied once the API answers, and Mylo is restarted
+last so the bot only ever attaches to a migrated database.
 """
 
 from __future__ import annotations
@@ -75,6 +86,134 @@ def _run(cmd: list[str]) -> int:
 def _run_capture(cmd: list[str]) -> str:
     result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     return result.stdout
+
+
+# ── Frontend caches ───────────────────────────────────────────────────────────
+
+# Next and Astro both keep compiled output and a module graph on disk. After a
+# schema change, an API-contract change, or a dependency bump, a dev server that
+# reuses one of these serves modules compiled against the old shape — the symptom
+# is a page that renders stale data or fails on a field that no longer exists,
+# with nothing in the logs to explain it. Wiping them costs one slow first
+# compile and removes the whole class of problem from a restart.
+#
+# Delete, never rename: leftover `.next-stale-*` copies once poisoned Tailwind's
+# class scanner, which walked them and emitted corrupted CSS (changelog
+# 20260705-tailwind-source-scope). A stale copy left in the tree is not inert.
+WEB_CACHE_PATHS = [
+    "web/app/.next",
+    "web/landing/.astro",
+    "web/landing/dist",
+    "web/node_modules/.vite",
+    "web/node_modules/.cache",
+]
+
+
+def _clear_web_caches() -> None:
+    """Remove the frontend build caches. Safe when the stack is down."""
+    print(bold("Frontend: clearing build caches..."))
+    removed = 0
+    for rel in WEB_CACHE_PATHS:
+        target = ROOT / rel
+        if not target.exists():
+            continue
+        shutil.rmtree(target, ignore_errors=True)
+        if target.exists():
+            print(red(f"  ✗ could not remove {rel}"))
+            continue
+        print(dim(f"  ✓ removed {rel}"))
+        removed += 1
+    if removed == 0:
+        print(dim("  nothing to clear"))
+    print(dim("  node_modules and art assets are re-synced by web-deps on start"))
+
+
+# ── Database migrations ───────────────────────────────────────────────────────
+
+BACKEND_SERVICE = "backend"
+HEALTH_URL = "http://localhost:11350/api/health/"
+MANAGE = "uv run --project web/backend python web/backend/manage.py"
+
+
+def _wait_for_backend(base: list[str], timeout: int = 240) -> bool:
+    """Block until the Django API answers, or give up after `timeout` seconds.
+
+    This is also what keeps the migrate below from racing: the backend service
+    runs `migrate` itself before `runserver`, so the health endpoint answering
+    is the signal that its migrate has already finished. Two `migrate` processes
+    against one database can deadlock on the same DDL lock, so we never start
+    ours until that one is provably done.
+    """
+    import time
+
+    print(bold("Backend: waiting for the API..."))
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if _check(HEALTH_URL, timeout=3):
+            print(green("  ✓ API is answering"))
+            return True
+        time.sleep(3)
+    print(red(f"  ✗ API did not answer within {timeout}s"))
+    print(dim(f"    check it with:  {' '.join(base)} logs {BACKEND_SERVICE}"))
+    return False
+
+
+def _backend_exec(base: list[str], manage_args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [*base, "exec", "-T", BACKEND_SERVICE, "sh", "-c", f"{MANAGE} {manage_args}"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _pending_migrations(base: list[str]) -> list[str] | None:
+    """Names of unapplied migrations, or None if the check itself failed."""
+    r = _backend_exec(base, "showmigrations --plan")
+    if r.returncode != 0:
+        return None
+    # `--plan` marks applied migrations "[X]" and unapplied ones "[ ]".
+    return [
+        line.split("]", 1)[1].strip()
+        for line in r.stdout.splitlines()
+        if line.strip().startswith("[ ]")
+    ]
+
+
+def cmd_migrate(base: list[str], *, wait: bool = True) -> int:
+    """Apply migrations against the running stack and report what changed."""
+    if wait and not _wait_for_backend(base):
+        return 1
+
+    print(bold("Database: applying migrations..."))
+    pending = _pending_migrations(base)
+    if pending is None:
+        print(red("  ✗ could not read the migration state — is the backend running?"))
+        return 1
+    if pending:
+        print(dim(f"  {len(pending)} pending:"))
+        for name in pending:
+            print(dim(f"    · {name}"))
+
+    r = _backend_exec(base, "migrate --noinput")
+    if r.returncode != 0:
+        print(red("  ✗ migrate failed"))
+        sys.stderr.write(r.stdout)
+        sys.stderr.write(r.stderr)
+        return r.returncode
+
+    if pending:
+        print(green(f"  ✓ applied {len(pending)} migration(s)"))
+    else:
+        print(green("  ✓ database already up to date"))
+
+    # Trust the database, not our own exit code: re-read the state so a
+    # migration that reported success but left work behind is still caught.
+    left = _pending_migrations(base)
+    if left:
+        print(red(f"  ✗ {len(left)} migration(s) still unapplied: {', '.join(left)}"))
+        return 1
+    return 0
 
 
 # ── Mylo (Discord bot) helpers ────────────────────────────────────────────────
@@ -174,16 +313,56 @@ def _compose_stop(base: list[str]) -> int:
     return _run([*base, "down", "--remove-orphans"])
 
 
-def cmd_start(base: list[str], build: bool = False) -> int:
+def _bring_up(base: list[str], build: bool) -> int:
     # `build` has no systemd equivalent (the unit runs a plain `up -d`), so an
     # explicit rebuild always goes through compose.
     if _stack_unit_installed() and not build:
-        code = _stack_systemctl("start")
-    else:
-        code = _compose_start(base, build)
+        return _stack_systemctl("start")
+    return _compose_start(base, build)
+
+
+def _finish_start(base: list[str], code: int, mylo_action: str, migrate: bool) -> int:
+    """Everything that has to happen after the containers exist.
+
+    Order matters. Migrations run before Mylo is restarted so the bot never
+    attaches to a database it is newer than, and the endpoint summary runs last
+    so what it reports is the settled state rather than a half-booted one.
+    """
+    if code != 0:
+        print(red("  ✗ the stack did not come up — skipping migrations and Mylo"))
+        return code
+
+    if migrate:
+        print()
+        code = cmd_migrate(base) or code
+
     print()
-    _mylo_systemctl("start")
+    _mylo_systemctl(mylo_action)
+
+    print()
+    print(bold("Environment:"))
+    health = _check_all()
+    for name, url in ENDPOINTS:
+        badge = green("● UP  ") if health.get(name) else red("● DOWN")
+        print(f"  {badge} {name}")
+    if not health.get("Next.js app") or not health.get("Astro landing"):
+        print(dim("  the dev servers recompile from scratch after a cache wipe —"))
+        print(dim("  give them a minute, then: mycelium status"))
     return code
+
+
+def cmd_start(
+    base: list[str],
+    build: bool = False,
+    *,
+    clear_cache: bool = True,
+    migrate: bool = True,
+) -> int:
+    if clear_cache:
+        _clear_web_caches()
+        print()
+    code = _bring_up(base, build)
+    return _finish_start(base, code, "start", migrate)
 
 
 def cmd_stop(base: list[str]) -> int:
@@ -196,15 +375,31 @@ def cmd_stop(base: list[str]) -> int:
     return code
 
 
-def cmd_restart(base: list[str], build: bool = False) -> int:
-    if _stack_unit_installed() and not build:
+def cmd_restart(
+    base: list[str],
+    build: bool = False,
+    *,
+    clear_cache: bool = True,
+    migrate: bool = True,
+) -> int:
+    # Caches are wiped between down and up: a running dev server holds its own
+    # cache open and rebuilds it immediately, so clearing under a live stack
+    # accomplishes nothing.
+    if clear_cache:
+        if _stack_unit_installed() and not build:
+            _stack_systemctl("stop")
+        else:
+            _compose_stop(base)
+        print()
+        _clear_web_caches()
+        print()
+        code = _bring_up(base, build)
+    elif _stack_unit_installed() and not build:
         code = _stack_systemctl("restart")
     else:
         _compose_stop(base)
         code = _compose_start(base, build)
-    print()
-    _mylo_systemctl("restart")
-    return code
+    return _finish_start(base, code, "restart", migrate)
 
 
 def cmd_logs(base: list[str]) -> int:
@@ -476,10 +671,21 @@ def main() -> int:
     if not COMPOSE_FILE.exists():
         sys.exit(f"compose.yaml not found at {COMPOSE_FILE}. Run from the repo root.")
 
-    action = sys.argv[1] if len(sys.argv) > 1 else "restart"
-    build  = "--build" in sys.argv or "-b" in sys.argv
+    args = sys.argv[1:]
+    # A leading flag means the default action with options, not a typo'd command
+    # ("mycelium --keep-cache" is a restart that keeps the cache).
+    first = args[0] if args else ""
+    if first in ("-h", "--help", "help"):
+        action = "help"
+    elif not first or first.startswith("-"):
+        action = "restart"
+    else:
+        action = first
+    build  = "--build" in args or "-b" in args
+    clear_cache = "--keep-cache" not in args
+    migrate = "--no-migrate" not in args
 
-    if action in ("-h", "--help", "help"):
+    if action == "help":
         print(__doc__)
         return 0
 
@@ -488,23 +694,26 @@ def main() -> int:
 
     base = _compose()
 
-    base = _compose()
-
+    opts = {"clear_cache": clear_cache, "migrate": migrate}
     dispatch = {
-        "start":   lambda: cmd_start(base, build),
-        "up":      lambda: cmd_start(base, build),
+        "start":   lambda: cmd_start(base, build, **opts),
+        "up":      lambda: cmd_start(base, build, **opts),
         "stop":    lambda: cmd_stop(base),
         "down":    lambda: cmd_stop(base),
-        "restart": lambda: cmd_restart(base, build),
+        "restart": lambda: cmd_restart(base, build, **opts),
         "status":  lambda: cmd_status(base),
         "logs":    lambda: cmd_logs(base),
-        "build":   lambda: cmd_start(base, build=True),
+        "build":   lambda: cmd_start(base, build=True, **opts),
+        "migrate": lambda: cmd_migrate(base),
     }
 
     fn = dispatch.get(action)
     if fn is None:
         print(f"Unknown command: {action!r}", file=sys.stderr)
-        print("Valid commands: start, stop, restart, status, logs, build, install-service", file=sys.stderr)
+        print(
+            "Valid commands: start, stop, restart, status, logs, build, migrate, install-service",
+            file=sys.stderr,
+        )
         return 1
 
     return fn()

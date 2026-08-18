@@ -89,6 +89,33 @@ Root commands:
 | `npm run test` | Backend pytest |
 | `npm run compose:up` / `compose:down` | Full Compose stack |
 
+## Running the stack
+
+`scripts/mycelium` is the one entry point for the whole environment — it drives
+the systemd units when they are installed and Docker Compose when they are not.
+
+| Command | What it does |
+|---|---|
+| `mycelium restart` | The full cycle: stop, wipe the frontend build caches, start, wait for the API, apply migrations, restart Mylo, report endpoint health |
+| `mycelium start` / `stop` | Same steps, one direction only |
+| `mycelium build` | Rebuild images, then the full start cycle |
+| `mycelium migrate` | Apply migrations against an already-running stack |
+| `mycelium status` | Container state, Mylo state, live endpoint health |
+| `mycelium logs` | Follow combined Compose logs |
+| `mycelium install-service` | Install and enable the host systemd units (needs `sudo`) |
+
+A restart is a full environment reset, not just a container bounce. Node modules
+and art assets are re-synced by the `web-deps` service on every start; the Next
+and Astro caches are deleted while the stack is down, so the dev servers never
+serve modules compiled against an older schema. Migrations are applied only
+after the API answers — the backend container migrates itself before serving, so
+waiting for health is what keeps two `migrate` processes off the same DDL lock.
+Mylo restarts last, so the bot never attaches to a database it is newer than.
+
+Pass `--keep-cache` to skip the cache wipe (a faster restart when nothing
+frontend-facing changed) or `--no-migrate` to bring the stack up without
+touching the database.
+
 Backend management commands run through `uv`:
 
 ```bash
