@@ -530,7 +530,9 @@ def test_a_new_round_on_the_source_page_marks_the_record_refreshed():
             ),
         ],
     )
-    summary = upsert_items([map_conference(instance, series=None, now=NOW)], today=TODAY_ISO)
+    summary = upsert_items(
+        [map_conference(instance, series=None, now=NOW)], today=TODAY_ISO
+    )
 
     assert summary.updated == 1
     assert summary.refreshed == 1

@@ -215,9 +215,13 @@ class MyloCog(commands.Cog, name="Mylo"):
         )
         if status != "ok":
             return []
+        # Title, then *which* deadline, then the date. An item can carry
+        # several reminders — a workshop deadline and two paper rounds — and
+        # they all share a title, so the deadline is what tells them apart.
         return [
             app_commands.Choice(
-                name=f"{row['title'][:80]}"
+                name=f"{row['title'][:60]}"
+                + (f" · {row['deadline']}" if row.get("deadline") else "")
                 + (f" · due {row['due_date']}" if row["due_date"] else ""),
                 value=row["id"],
             )
@@ -259,7 +263,8 @@ class MyloCog(commands.Cog, name="Mylo"):
             return
 
         lines = [
-            f"⏾ **{payload['title']}** is snoozed until **{payload['snoozed_until']}**."
+            f"⏾ **{payload['title']}** ({payload['deadline']}) is snoozed "
+            f"until **{payload['snoozed_until']}**."
         ]
         if payload["clamped"]:
             # Snoozing past the deadline would have silently cancelled it; say what
@@ -291,9 +296,10 @@ class MyloCog(commands.Cog, name="Mylo"):
         # Idempotent by design: cancelling something already cancelled is a
         # confirmation, not an error.
         note = (
-            f"**{payload['title']}** was already cancelled."
+            f"**{payload['title']}** ({payload['deadline']}) was already cancelled."
             if payload["already"]
-            else f"🔕 **{payload['title']}** is cancelled — no more reminders for it."
+            else f"🔕 **{payload['title']}** ({payload['deadline']}) is cancelled "
+            "— no more reminders for it."
         )
         await interaction.followup.send(note, ephemeral=True)
 
