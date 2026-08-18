@@ -1,5 +1,5 @@
 {
-  "finished_at": "2026-08-04T07:14:17.778817-04:00",
+  "finished_at": "2026-08-17T07:20:29.685119-04:00",
   "host": "sc-zeus",
   "ok": true,
   "scrape_ran": true,
@@ -8,6 +8,7 @@
     "run_daily_opportunities",
     "run_reminder_tick",
     "prune_opportunities",
+    "prune_briefings",
     "generate_daily_briefing",
     "send_daily_discord_reports",
     "send_lab_digests"
