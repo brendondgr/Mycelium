@@ -76,6 +76,9 @@ routes clients depend on most.
 | `onboarding/match/` | POST | Live match for one area during onboarding |
 | `opportunities/save/` | POST | Bookmark an item (personal or to a managed lab) |
 | `opportunities/save/<content_id>/` | DELETE | Remove a bookmark |
+| `opportunities/ignore/` | POST | Ignore an item — hide it from this reader's feeds |
+| `opportunities/ignore/<content_id>/` | DELETE | Stop ignoring it |
+| `opportunities/ignored/` | GET | Everything this reader ignored, with feed-parity cards |
 | `saves/` | GET | Personal bookmarks with feed-parity cards |
 | `labs/<slug>/saves/` | GET | A lab's shared saves |
 | `deadlines/` | GET | Saved deadlines, soonest first |
@@ -800,6 +803,7 @@ the top semantic match is weak — a display cue, never an empty page.
     "content_id": "uuid", "type": "paper", "title": "…", "summary": "…",
     "url": "https://…", "created_at": "…", "score": 0.021,
     "matched_on": ["lexical", "semantic", "fuzzy"], "saved": false,
+    "ignored": false,
     "authors": ["…"], "venue": "Nature", "year": 2026,
     "sponsor": "", "amount": "", "location": "", "event_dates": "",
     "award_class": "", "deadline": ""
@@ -811,9 +815,10 @@ the top semantic match is weak — a display cue, never an empty page.
 per-type facet appears **only when exactly one `type` is selected**, is capped to
 its top values, and ignores its own selection. `pool_truncated` is true when
 matches exist beyond the bounded relevance pool. `score` is the fused rank weight
-— for ordering, not display.
+— for ordering, not display. `ignored` reports whether the caller has manually
+ignored the item; search still returns it either way (see below).
 
-## Saves, deadlines, notifications
+## Saves, ignores, deadlines, notifications
 
 ### `POST /api/opportunities/save/`
 
@@ -825,6 +830,49 @@ without `content_id`; `404` for an unknown item.
 
 `DELETE /api/opportunities/save/<content_id>/[?lab=<slug>]` removes it. `204`, or
 `404` if not saved.
+
+A personal save also clears any **ignore** on the same item — see below.
+
+### `POST /api/opportunities/ignore/`
+
+Manually ignore a paper, grant, conference, or fellowship: stop surfacing it to
+this reader. Body `{ "content_id" }`. Personal only — there is no `lab_slug`,
+because an ignore is a fact about the reader, not about a lab.
+
+Ignoring hides the item from **every feed this reader looks at** — their papers,
+grants, fellowships and conferences pages, the lab and project feeds they read,
+their window counts, and their next briefing and PDF report. It hides it from
+nobody else. Nothing is deleted: the `ContentItem` and its `RelevanceScore` rows
+are untouched, the item stays rankable, and the Top-25 slate is computed exactly
+as before — the filtering is a per-reader read, not a change to the ranking.
+
+Search is the deliberate exception: `GET /api/search/` still returns ignored
+hits, flagged `ignored: true`, because suppressing a result the reader explicitly
+queried for would be dishonest — and it is how they find one again.
+
+Ignoring also drops any **personal** save of the item (the two controls mean
+opposite things), and saving an ignored item clears the ignore. A **lab** save is
+left alone; it belongs to the lab.
+
+`201` on the first call, `200` on a repeat (idempotent, and only the first logs a
+`dismiss` relevance event); `400` without `content_id`; `404` for an unknown item.
+
+`DELETE /api/opportunities/ignore/<content_id>/` undoes it. `204`, or `404` if
+not ignored. Scoped to the caller — it can never clear anyone else's row.
+
+### `GET /api/opportunities/ignored/`
+
+Everything this reader has ignored, newest first, with the same feed-parity
+`card` the Saves page renders. Unlike a save there is no snapshot: an ignore row
+cascades with its item, so `card` is never `null`.
+
+```json
+{ "items": [{
+  "id": "uuid", "content_id": "uuid", "area": "grant",
+  "ignored_at": "2026-08-17T21:40:00Z",
+  "card": { "content_id": "uuid", "title": "…", "match_percent": 88 }
+}] }
+```
 
 ### `GET /api/saves/` · `GET /api/labs/<slug>/saves/`
 

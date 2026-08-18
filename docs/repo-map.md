@@ -46,6 +46,8 @@ Paths are relative to the repository root.
 | Feed filter rails | `web/app/src/components/portal/sections/{grant-filters,fellowship-filters,conference-filters,saves-filters}.tsx` |
 | Saves & reminders | `web/app/src/components/portal/sections/{saves-section,reminders-section}.tsx`, `portal/{reminder-composer,reminder-editor,reminder-offsets-field,mention-picker}.tsx` |
 | Save button & scope menu | `web/app/src/components/portal/sections/opportunity-bits.tsx` |
+| Manual ignore control + undo strip | `web/app/src/components/portal/sections/opportunity-bits.tsx` (`IgnoreButton`, `IgnoredStrip`); mounted by each feed card's `ignorable` prop |
+| Ignored review view (a tab on Saves) | `web/app/src/components/portal/sections/saves-section.tsx` (`IgnoredBody`, `IgnoredRow`) |
 | Search UI | `web/app/src/components/portal/global-search.tsx`, `portal/sections/{search-section,search-result-card}.tsx` |
 | Projects UI | `web/app/src/components/portal/sections/{projects-list-section,project-detail-section}.tsx` |
 | Project page parts (identity, four-area tabs, editor, team) | `web/app/src/components/portal/projects/{project-identity,project-tabs,project-editor-modal,project-team-card,create-project-wizard}.tsx` |
@@ -84,7 +86,8 @@ Files below are inside `web/backend/apps/content/`.
 
 | Task | File |
 |---|---|
-| Content items, scores, saves, reminders, notifications | `models.py` |
+| Content items, scores, saves, ignores, reminders, notifications | `models.py` |
+| Manual ignore (per reader): model, endpoints, feed filtering | `models.py` (`IgnoredItem`), `views.py` (`IgnoreItemView`, `IgnoredItemsView`, `_ignored_content_ids`) |
 | Scoring target (user / lab / project) | `targets.py` |
 | Paper pipeline | `pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`, `clustering.py` |
 | Ranking-stack seams (ORM-free ranking, swappable vector index) | `protocols.py` (`Retrievable`, `VectorIndex`), `retrieval.py` (`PgVectorIndex`) |
