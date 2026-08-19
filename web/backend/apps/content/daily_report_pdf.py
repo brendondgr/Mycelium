@@ -32,11 +32,25 @@ Level Style                 What carries it
 ===== ===================== =============================================
 
 Every ranked entry in the document — in the written report and in every Top-N
-listing — is the same three-column row (:func:`_entry_row`): its number, its
-content, and its chips. The list is a ranking and the numbers say so; the percent
-match and ``NEW`` are rounded chips down the right edge rather than a run of small
-grey text or an inline highlight, because "is this new and how well does it match
-me" is the question a reader scans the page with.
+listing — is the same three-column row (:func:`_entry_row`), and it is the print
+half of the shape the app draws in ``portal/primitives/report-entry.tsx``. Four
+zones, in this order:
+
+1. **Rank + title** — the list is a ranking and the number says so, but the number
+   is not what the reader is scanning for, so it recedes into the gutter.
+2. **The insight** — the rationale's first sentence, set against a left rule. It
+   answers "why am I looking at this", which is the only question the entry exists
+   to answer.
+3. **The note** — the rest of the rationale: the caveat, the qualification, what
+   actually transfers.
+4. **The meta rail** — the match percent set large over a tier-coloured bar with a
+   caption naming it, then ``NEW`` and any venue rank as flags beneath.
+
+Under the content column runs the **reference strip**: the entry's next deadline
+(named by round, with the later rounds counted rather than listed), its source, and
+its focus theme. Those three used to be competing lines between the title and the
+reason for it, the deadline in red — an alarm attached to every dated entry, worst
+on conferences, where it never even said which of the venue's rounds it meant.
 
 Each list is the reader's whole top slice, every day — not just what arrived. The
 ``NEW`` chip marks the items that entered it on this run, which is the only part of
@@ -123,6 +137,15 @@ _DEADLINE_HEX = "#B07C1F"
 _RANK_HEX = "#5F6853"
 _RANK_BG_HEX = "#EFE7D7"
 
+#: The match bar's three tiers. Mirrors ``matchTier`` in the app's
+#: ``primitives/match-ring.tsx`` — same thresholds, same three colours — so the
+#: report and the app can never disagree about what a 95 means.
+_TIER_STRONG = HexColor("#6F8F4E")
+_TIER_FAIR = HexColor("#B88A3B")
+_TIER_LOW = HexColor("#A85A3C")
+_STRONG_MATCH = 85
+_FAIR_MATCH = 60
+
 _SERIF = "Times-Roman"
 _SERIF_BOLD = "Times-Bold"
 _SANS = "Helvetica"
@@ -133,10 +156,20 @@ _MARGIN = 0.9 * inch
 #: against it, so a column change never has to re-derive the page geometry.
 _CONTENT_WIDTH = LETTER[0] - 2 * _MARGIN
 
-#: The right-hand chip column on a found item (percent match, ``NEW``).
-_CHIP_WIDTH = 0.86 * inch
+#: The right-hand meta rail on an entry: the match score, its bar and caption, then
+#: the flags. Wider than the chip column it replaced because the caption naming the
+#: number ("MATCH SCORE") has to fit on one line — an unlabelled large number in the
+#: margin is the one thing this rail must not be.
+_RAIL_WIDTH = 1.16 * inch
 #: The hanging rank-number column on a found item.
 _RANK_WIDTH = 0.34 * inch
+#: The gap reportlab leaves to the right of the content cell (its ``RIGHTPADDING``).
+_CELL_PAD = 6
+#: The content column's usable width — what the insight's rule and the reference
+#: strip are laid out against. Derived once here so a column change never has to be
+#: re-derived at three call sites, which is how they drift a few points apart and
+#: the rules stop lining up down the page.
+_BODY_WIDTH = _CONTENT_WIDTH - _RANK_WIDTH - _RAIL_WIDTH - _CELL_PAD
 #: Corner radius shared by every filled container — chips and theme pills. Square
 #: corners read as a highlighter stripe; rounded ones read as a badge.
 _RADIUS = 4
@@ -220,6 +253,31 @@ def _styles() -> dict[str, ParagraphStyle]:
     styles["ItemReason"] = ParagraphStyle(
         "ItemReason", fontName=_SANS, fontSize=9.5, leading=13,
         textColor=TEXT_SECONDARY, spaceAfter=2,
+    )
+    # The insight: the first sentence of the rationale, which is the one line that
+    # says why this entry is in front of the reader. Set at body weight in the
+    # primary text colour and drawn against a rule (:func:`_insight_flowable`), so
+    # it separates from the qualifying sentences that follow it without shouting.
+    styles["ItemInsight"] = ParagraphStyle(
+        "ItemInsight", fontName=_SANS_BOLD, fontSize=9.5, leading=13.5,
+        textColor=TEXT, spaceAfter=0,
+    )
+    #: The reference strip beneath an entry — its dates, its source, its theme.
+    styles["ItemMetaStrip"] = ParagraphStyle(
+        "ItemMetaStrip", fontName=_SANS, fontSize=8, leading=11,
+        textColor=TEXT_SECONDARY, spaceAfter=0,
+    )
+    #: The match number itself. The largest thing in the rail by a wide margin —
+    #: it is the number the reader compares entries on.
+    styles["Score"] = ParagraphStyle(
+        "Score", fontName=_SERIF_BOLD, fontSize=21, leading=22, textColor=TEXT,
+        alignment=TA_RIGHT, spaceAfter=0,
+    )
+    #: What the number above it is. Without this the rail is a bare integer in the
+    #: margin, which every reader has to decode once and some decode wrongly.
+    styles["ScoreCaption"] = ParagraphStyle(
+        "ScoreCaption", fontName=_SANS_BOLD, fontSize=6, leading=8,
+        textColor=TEXT_MUTED, alignment=TA_RIGHT, spaceAfter=0,
     )
     styles["Rank"] = ParagraphStyle(
         "Rank", fontName=_SERIF_BOLD, fontSize=12, leading=15, textColor=SECONDARY,
@@ -438,40 +496,206 @@ def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
     return flow
 
 
-# --- Item + table rendering ------------------------------------------------ #
-def _chip(
+# --- The entry's four zones ------------------------------------------------ #
+def _tier_color(percent: int):
+    """The match bar's colour for a percent — strong, fair, or low.
+
+    Same three thresholds as the app's ``matchTier``. Colour is never the only
+    signal here either: the number sits directly above the bar it colours.
+    """
+    if percent >= _STRONG_MATCH:
+        return _TIER_STRONG
+    if percent >= _FAIR_MATCH:
+        return _TIER_FAIR
+    return _TIER_LOW
+
+
+class _ScoreBar(Flowable):
+    """The match percent restated as a length, under the number itself.
+
+    A rounded track filled to the percent — the print counterpart of the app's
+    swept ring. A number alone gives the reader nothing to compare against without
+    reading every other number on the page; a bar is comparable at a glance, which
+    is the whole job of a ranked list's right-hand margin.
+    """
+
+    def __init__(self, percent: int, width: float, height: float = 3.0):
+        super().__init__()
+        self.percent = max(0, min(100, percent))
+        self.width = width
+        self.height = height
+
+    def wrap(self, availWidth, availHeight):  # noqa: N803 — reportlab's signature
+        return (self.width, self.height)
+
+    def draw(self) -> None:
+        canvas = self.canv
+        radius = self.height / 2
+        canvas.saveState()
+        canvas.setFillColor(DIVIDER)
+        canvas.roundRect(0, 0, self.width, self.height, radius, fill=1, stroke=0)
+        if self.percent:
+            # Never narrower than the cap radius, or a low percent draws as a
+            # malformed sliver rather than a short bar.
+            filled = max(self.height, self.width * self.percent / 100)
+            canvas.setFillColor(_tier_color(self.percent))
+            canvas.roundRect(0, 0, filled, self.height, radius, fill=1, stroke=0)
+        canvas.restoreState()
+
+
+def _insight_flowable(text: str, styles: dict[str, ParagraphStyle]) -> Table:
+    """The rationale's first sentence, set against a left rule.
+
+    The rule is a real ``LINEBEFORE`` rather than a drawn glyph, so it grows with
+    the sentence when it wraps to two lines. This is the entry's claim; everything
+    under it qualifies the claim.
+    """
+    quote = Table(
+        [[Paragraph(text, styles["ItemInsight"])]], colWidths=[_BODY_WIDTH]
+    )
+    quote.setStyle(
+        TableStyle(
+            [
+                ("LINEBEFORE", (0, 0), (0, 0), 1.4, SECONDARY),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+    return quote
+
+
+#: The collector's deadline-kind vocabulary, as the words a reader uses. Mirrors
+#: ``DEADLINE_KIND_LABEL`` in the app's ``primitives/report-entry.tsx``.
+_DEADLINE_KIND_LABELS = {
+    "abstract": "Abstract",
+    "manuscript": "Full paper",
+    "submission": "Submission",
+    "application": "Application",
+    "camera_ready": "Camera ready",
+    "notification": "Notification",
+    "registration": "Registration",
+    "event": "Event",
+    "rebuttal": "Rebuttal",
+    "review": "Review",
+    "withdrawal": "Withdrawal",
+}
+
+_MONTHS = (
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+)
+
+
+def _format_date(iso: str) -> str:
+    """``2026-09-15`` -> ``Sep 15, 2026``; anything else back verbatim.
+
+    Deliberately string surgery rather than ``datetime`` parsing: the value is a
+    calendar date the source wrote down, and putting it through a datetime is how a
+    deadline ends up rendered a day early in some timezone. Nothing here needs to
+    know what instant that day begins at.
+    """
+    parts = (iso or "")[:10].split("-")
+    if len(parts) != 3 or not all(part.isdigit() for part in parts):
+        return iso or ""
+    year, month, day = (int(part) for part in parts)
+    if not 1 <= month <= 12:
+        return iso
+    return f"{_MONTHS[month - 1]} {day}, {year}"
+
+
+def _meta_strip(
+    bits: list[str], styles: dict[str, ParagraphStyle], *, width: float
+) -> Table:
+    """The entry's reference row: its dates, its source, its theme.
+
+    One quiet ruled line under the entry's content, rather than a red date wedged
+    between the title and the rationale. A deadline is reference material — the
+    reader looks it up once they have decided the entry matters — and it was
+    reading as an alarm attached to every conference in the report.
+    """
+    strip = Table(
+        [[Paragraph("  ·  ".join(bits), styles["ItemMetaStrip"])]], colWidths=[width]
+    )
+    strip.setStyle(
+        TableStyle(
+            [
+                ("LINEABOVE", (0, 0), (-1, -1), 0.4, DIVIDER),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+    return strip
+
+
+def _deadline_bits(deadline_date: str, deadlines: list[dict] | None) -> list[str]:
+    """The strip's date bits: the nearest round, named, plus a count of the rest.
+
+    Only the nearest round is spelled out. A conference can carry six of them, and
+    six dated lines under a two-sentence rationale is a table nobody asked for — the
+    feed card is where the full round list and its per-round alert controls live.
+    What the report owes the reader is *when the next thing is due* and *how many
+    more there are*, which is exactly this.
+
+    Rounds that have already passed are dropped first. ``deadlines`` is the item's
+    whole history (``briefing._deadline_rounds``, chronological), while
+    ``deadline_date`` is the one round still ahead — so taking the array's first
+    entry would print a date that went by months ago as though it were due.
+    """
+    rounds = [entry for entry in (deadlines or []) if entry.get("date")]
+    if deadline_date:
+        ahead = [entry for entry in rounds if entry["date"] >= deadline_date]
+        # Only trust the filter when it kept something; a round array that
+        # disagrees with the snapshot date is not a reason to print no date.
+        rounds = ahead or []
+    if rounds:
+        nearest = rounds[0]
+        kind = _DEADLINE_KIND_LABELS.get(
+            (nearest.get("kind") or "").strip(), ""
+        ) or (nearest.get("label") or "").strip()
+        bits = [f"<b>Due {escape(_format_date(nearest['date']))}</b>"]
+        if kind:
+            bits.append(escape(kind))
+        if len(rounds) > 1:
+            extra = len(rounds) - 1
+            bits.append(f"+{extra} more round{'' if extra == 1 else 's'}")
+        return bits
+    if deadline_date:
+        return [f"<b>Due {escape(_format_date(deadline_date))}</b>"]
+    return []
+
+
+def _flag(
     text: str,
-    note: str,
     styles: dict[str, ParagraphStyle],
     *,
     bg,
     fg,
-    base: str = "Chip",
 ) -> Table:
-    """A small filled chip — the percent match, or ``NEW``.
+    """One rounded flag in the rail — ``NEW``, or a venue's CORE/CCF rank.
 
-    A chip rather than another run of 8.5pt grey: the match percent is the single
-    number a reader uses to decide whether to read the entry at all, and it was
-    losing that argument to the title beside it. ``base`` picks the weight, so the
-    two chips can share a shape without shouting equally loudly.
+    Rounded, not square: a square filled rectangle behind a word reads as a
+    highlighter stripe. Sized to the rail rather than to the word so the flags stack
+    into a column with one right edge instead of a ragged one.
     """
-    style = ParagraphStyle("ChipInner", parent=styles[base], textColor=fg)
-    cell: list = [Paragraph(text, style)]
-    if note:
-        cell.append(Paragraph(note, styles["ChipNote"]))
-    chip = Table([[cell]], colWidths=[_CHIP_WIDTH])
+    style = ParagraphStyle("FlagInner", parent=styles["ChipFlag"], textColor=fg)
+    chip = Table([[Paragraph(text, style)]], colWidths=[_RAIL_WIDTH])
     chip.setStyle(
         TableStyle(
             [
-                # Rounded, not square: a square filled rectangle behind a number
-                # reads as a highlighter stripe, which is exactly what this chip
-                # replaced in the written report.
                 ("ROUNDEDCORNERS", [_RADIUS, _RADIUS, _RADIUS, _RADIUS]),
                 ("BACKGROUND", (0, 0), (-1, -1), bg),
                 ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
                 ("LEFTPADDING", (0, 0), (-1, -1), 2),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 2),
             ]
@@ -480,63 +704,55 @@ def _chip(
     return chip
 
 
-def _chip_stack(
+def _match_rail(
     match_percent: int | None,
     is_new: bool,
     styles: dict[str, ParagraphStyle],
     rank_badges: list[dict] | None = None,
 ) -> list:
-    """The right-hand column of an entry: its match chip, rank chips, then ``NEW``.
+    """The entry's right-hand rail: the match score, then its flags.
 
-    Rank chips (plan Phase 11 point 3) sit *after* the match chip, never before
-    it: a rank is visual only (plan D2 — CCF / CORE / THCPL never affect order,
-    thresholds, or the verdict), so the fused relevance score stays the first
-    number a reader's eye meets in the column. Only :func:`_item_flowables`
-    passes ``rank_badges`` — the written report's items are parsed back out of
-    markdown text (:func:`_split_item_line`) and never carried structured rank
-    data to begin with, so they simply get none.
+    The score is the number set large over a tier-coloured bar with a caption
+    naming it — the same three zones the app's report entry uses, in print's own
+    materials. It comes first because it is what a reader ranks entries by.
+
+    Flags follow. ``NEW`` carries the report's gold, which ``docs/styles.md``
+    reserves for exactly this kind of signal; a CCF / CORE / THCPL rank stays on the
+    neutral surface pairing, because a rank is an informational label and never a
+    relevance signal (plan D2) — giving it gold would put a second alert beside the
+    one that means something. Only :func:`_item_flowables` has structured rank data
+    to pass; the written report's entries are parsed back out of markdown and carry
+    none.
     """
-    stack: list = []
+    rail: list = []
     if isinstance(match_percent, int):
-        stack.append(
-            _chip(
-                f"{match_percent}%",
-                "match",
-                styles,
-                bg=HexColor(_MATCH_BG_HEX),
-                fg=HexColor(_MATCH_HEX),
-            )
+        rail.append(Paragraph(str(match_percent), styles["Score"]))
+        rail.append(Spacer(1, 2))
+        rail.append(_ScoreBar(match_percent, _RAIL_WIDTH))
+        rail.append(Spacer(1, 2))
+        rail.append(Paragraph("MATCH SCORE", styles["ScoreCaption"]))
+    if is_new:
+        if rail:
+            rail.append(Spacer(1, 6))
+        rail.append(
+            _flag("NEW", styles, bg=HexColor(_NEW_BG_HEX), fg=HexColor(_NEW_HEX))
         )
     for badge in rank_badges or []:
         rank = (badge.get("rank") or "").strip()
         if not rank:
             continue
-        if stack:
-            stack.append(Spacer(1, 3))
-        stack.append(
-            _chip(
-                rank,
-                (badge.get("system") or "").upper(),
+        system = (badge.get("system") or "").upper()
+        if rail:
+            rail.append(Spacer(1, 3))
+        rail.append(
+            _flag(
+                f"{system} {rank}".strip(),
                 styles,
                 bg=HexColor(_RANK_BG_HEX),
                 fg=HexColor(_RANK_HEX),
-                base="ChipFlag",
             )
         )
-    if is_new:
-        if stack:
-            stack.append(Spacer(1, 3))
-        stack.append(
-            _chip(
-                "NEW",
-                "",
-                styles,
-                bg=HexColor(_NEW_BG_HEX),
-                fg=HexColor(_NEW_HEX),
-                base="ChipFlag",
-            )
-        )
-    return stack
+    return rail
 
 
 def _entry_row(
@@ -547,12 +763,17 @@ def _entry_row(
     styles: dict[str, ParagraphStyle],
     rank_badges: list[dict] | None = None,
 ) -> list:
-    """One ranked entry: its number, its content, and its chips.
+    """One ranked entry: its number, its content, and its meta rail.
 
     The report's single entry shape, used by the written report and by every Top-N
-    listing. Laid out as a three-column row so the numbers line up down the page and
-    the chips line up down the right edge — which is what makes a ranked list read
-    as one rather than as twenty-five paragraphs.
+    listing, and the print half of the shape the app draws in
+    ``primitives/report-entry.tsx``. Laid out as a three-column row so the numbers
+    line up down the page and the rail lines up down the right edge — which is what
+    makes a ranked list read as one rather than as twenty-five paragraphs.
+
+    The content column carries the entry's four zones in order: title, the insight,
+    the note, and the reference strip. The strip is part of ``body`` rather than a
+    fourth column, so it spans exactly the content column and no further.
 
     Returned as a plain list rather than a ``KeepTogether``: a single-row table does
     not split, so the entry is already atomic, and nesting it in a ``KeepTogether``
@@ -560,14 +781,10 @@ def _entry_row(
     """
     # An empty cell is "" rather than an empty list — reportlab measures a list cell
     # by wrapping its flowables, and there are none to wrap.
-    chips = _chip_stack(match_percent, is_new, styles, rank_badges) or ""
+    rail = _match_rail(match_percent, is_new, styles, rank_badges) or ""
     row = Table(
-        [[Paragraph(f"{rank}.", styles["Rank"]), body, chips]],
-        colWidths=[
-            _RANK_WIDTH,
-            _CONTENT_WIDTH - _RANK_WIDTH - _CHIP_WIDTH - 0.18 * inch,
-            _CHIP_WIDTH + 0.18 * inch,
-        ],
+        [[Paragraph(f"{rank}.", styles["Rank"]), body, rail]],
+        colWidths=[_RANK_WIDTH, _BODY_WIDTH + _CELL_PAD, _RAIL_WIDTH],
     )
     row.setStyle(
         TableStyle(
@@ -576,10 +793,12 @@ def _entry_row(
                 ("LEFTPADDING", (0, 0), (0, 0), 0),
                 ("RIGHTPADDING", (0, 0), (0, 0), 6),
                 ("LEFTPADDING", (1, 0), (1, 0), 0),
+                ("RIGHTPADDING", (1, 0), (1, 0), _CELL_PAD),
+                ("LEFTPADDING", (2, 0), (2, 0), 0),
                 ("RIGHTPADDING", (2, 0), (2, 0), 0),
                 ("ALIGN", (2, 0), (2, 0), "RIGHT"),
-                ("TOPPADDING", (0, 0), (-1, -1), 2),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
                 ("LINEBELOW", (0, 0), (-1, -1), 0.4, DIVIDER),
             ]
         )
@@ -587,28 +806,51 @@ def _entry_row(
     return [row, Spacer(1, 3)]
 
 
-def _deadline_lines(
-    deadlines: list[dict], styles: dict[str, ParagraphStyle]
-) -> Paragraph:
-    """Every dated round on one item (plan D1's full array), one per line.
+def _split_reason(text: str) -> tuple[str, str]:
+    """Split a rationale into its insight (first sentence) and its note (the rest).
 
-    Only called for an item with more than one round — a single-round item
-    already shows its one date in the ``Deadline`` meta bit above, and repeating
-    it here would say the same thing twice. This is the "structured PDF
-    listings" surface the multi-deadline detail is reserved for (plan Phase 11
-    point 4): it reads :class:`ReportItem` directly, so it carries the whole
-    array without needing the written markdown report's one-deadline-per-line
-    grammar to widen.
+    The rationale is one to three model-written sentences and they are not equal:
+    the first says why the item is here, and the rest qualify it. Setting all three
+    at one weight is what made the old entry a paragraph a reader had to parse
+    rather than a claim they could accept or skip.
+
+    The 25-character floor is what keeps "et al." and "Fig. 2" from being read as
+    the end of the sentence they sit inside. A single-sentence rationale returns an
+    empty note, and the caller renders no second block rather than an empty one.
     """
-    lines = []
-    for entry in deadlines:
-        date = escape(entry.get("date") or "TBD")
-        kind = escape((entry.get("kind") or "").replace("_", " ").strip())
-        label = escape(entry.get("label") or "")
-        lines.append(" · ".join(bit for bit in (date, kind, label) if bit))
-    return Paragraph(
-        "<b>All rounds</b><br/>" + "<br/>".join(lines), styles["ItemMeta"]
-    )
+    trimmed = (text or "").strip()
+    if not trimmed:
+        return "", ""
+    for found in re.finditer(r"[.!?](?=\s+[\"'(“]?[A-Z0-9])", trimmed):
+        cut = found.end()
+        if cut < 25:
+            continue
+        return trimmed[:cut].strip(), trimmed[cut:].strip()
+    return trimmed, ""
+
+
+def _content_flowables(
+    title_html: str,
+    reason: str,
+    strip_bits: list[str],
+    styles: dict[str, ParagraphStyle],
+) -> list:
+    """An entry's content column: title, insight, note, reference strip.
+
+    The one place the four zones are assembled, so the written report's entries and
+    the Top-N listings' entries cannot drift into two different documents.
+    """
+    body: list = [Paragraph(title_html, styles["ItemTitle"])]
+    insight, note = _split_reason(reason)
+    if insight:
+        body.append(Spacer(1, 3))
+        body.append(_insight_flowable(_inline(insight), styles))
+    if note:
+        body.append(Spacer(1, 3))
+        body.append(Paragraph(_inline(note), styles["ItemReason"]))
+    if strip_bits:
+        body.append(_meta_strip(strip_bits, styles, width=_BODY_WIDTH))
+    return body
 
 
 def _item_flowables(
@@ -618,32 +860,25 @@ def _item_flowables(
     title = _inline(item.title)
     if item.url:
         title = f'<a href="{escape(item.url)}" color="{_TITLE_HEX}">{title}</a>'
-    body: list = [Paragraph(title, styles["ItemTitle"])]
 
-    meta_bits = []
+    # Everything that identifies rather than argues — when it is due, where it came
+    # from, which of the reader's themes it landed in — goes to the strip. Above it
+    # these were three competing lines between the title and the reason for it.
+    strip_bits = _deadline_bits(item.deadline_date, item.deadlines)
     if item.source:
-        meta_bits.append(escape(item.source))
+        strip_bits.append(escape(item.source))
     if item.cluster_label:
-        meta_bits.append(escape(item.cluster_label))
-    if item.deadline_date:
-        meta_bits.append(
-            f'<font color="{_DEADLINE_HEX}"><b>Deadline '
-            f"{escape(item.deadline_date)}</b></font>"
-        )
-    if meta_bits:
-        body.append(Paragraph("  ·  ".join(meta_bits), styles["ItemMeta"]))
-
-    reason = item.reason or item.headline
-    if reason:
-        body.append(Paragraph(_inline(reason), styles["ItemReason"]))
-
-    # The full round array, only when it says more than ``deadline_date`` already
-    # did above — see :func:`_deadline_lines`.
-    if len(item.deadlines) > 1:
-        body.append(_deadline_lines(item.deadlines, styles))
+        strip_bits.append(escape(item.cluster_label))
 
     return _entry_row(
-        rank, body, item.match_percent, item.is_new, styles, item.rank_badges
+        rank,
+        _content_flowables(
+            title, item.reason or item.headline, strip_bits, styles
+        ),
+        item.match_percent,
+        item.is_new,
+        styles,
+        item.rank_badges,
     )
 
 
@@ -652,24 +887,24 @@ def _written_item_flowables(
 ) -> list:
     """One numbered item from the *written* report, as the same entry row.
 
-    The signals are pulled out of the title line and given to the chip column, so a
-    Mylo Report entry and a Top-25 entry are the same object on the page. They were
-    two different shapes for no reason other than one arriving as markdown.
+    The signals are pulled out of the title line and given to the rail and the
+    strip, so a Mylo Report entry and a Top-25 entry are the same object on the
+    page. They were two different shapes for no reason other than one arriving as
+    markdown.
     """
     title, is_new, match_percent, deadline = _split_item_line(lines[0])
-    body: list = [Paragraph(_inline(title), styles["ItemTitle"])]
-    if deadline:
-        body.append(
-            Paragraph(
-                f'<font color="{_DEADLINE_HEX}"><b>Deadline '
-                f"{escape(deadline)}</b></font>",
-                styles["ItemMeta"],
-            )
-        )
-    reason = " ".join(lines[1:]).strip()
-    if reason:
-        body.append(Paragraph(_inline(reason), styles["ItemReason"]))
-    return _entry_row(rank, body, match_percent, is_new, styles)
+    return _entry_row(
+        rank,
+        _content_flowables(
+            _inline(title),
+            " ".join(lines[1:]).strip(),
+            _deadline_bits(deadline, None),
+            styles,
+        ),
+        match_percent,
+        is_new,
+        styles,
+    )
 
 
 def _summary_table(data: ReportData, styles: dict[str, ParagraphStyle]) -> Table:

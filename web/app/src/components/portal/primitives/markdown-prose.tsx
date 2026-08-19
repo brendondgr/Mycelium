@@ -2,8 +2,14 @@
 
 import * as React from "react";
 
-import { MatchRing } from "@/components/portal/primitives/match-ring";
-import { Pill } from "@/components/portal/primitives/pill";
+import { ArrowRightIcon } from "@/components/portal/icons";
+import {
+  MatchScore,
+  ReportEntry,
+  ReportFlag,
+  splitRationale,
+} from "@/components/portal/primitives/report-entry";
+import { formatIsoDate } from "@/components/portal/sections/opportunity-bits";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,12 +23,11 @@ import { cn } from "@/lib/utils";
  *
  * It renders the same **document** the PDF does, in the app's own materials. Both
  * carry the report's hierarchy — part, category, focus theme — and both present a
- * ranked item as one entry: its rank, its title, whether it is new, when it is due,
- * why it matters, and how well it fits. Where they differ is the vocabulary, and
- * deliberately: the percent is a `MatchRing` here because that is the one element
- * this app uses everywhere to say "how well does this fit me", and a report that
- * invented a second way to show a match would read as a different product than the
- * feed beside it. Print gets a chip because print cannot sweep an arc.
+ * ranked item through the one entry shape described in `report-entry.tsx`: rank and
+ * title, the insight, the note, and a meta rail carrying the match score, the
+ * flags, and the link out, with the item's dates in a strip beneath. The PDF's
+ * `_entry_row` draws the same four zones in the same order — the two renderers
+ * differ in materials, not in document.
  *
  * Anything it doesn't recognize is rendered as plain text, so an unexpected
  * construct — including a report written before this grammar existed — degrades to
@@ -108,7 +113,10 @@ type OrderedItem = {
 type Block =
   | { kind: "heading"; level: 2 | 3 | 4; text: string }
   | { kind: "list"; items: string[] }
-  | { kind: "ordered"; items: OrderedItem[] }
+  /** `noun` is the category heading this ranking sits under, singularised — it is
+   * what the rail's link says ("Open grant"), and it is the only thing in the
+   * entry that knows what kind of item it is describing. */
+  | { kind: "ordered"; items: OrderedItem[]; noun: string }
   | { kind: "paragraph"; text: string };
 
 const HEADING = /^(#{2,4})\s+(.*)$/;
@@ -150,12 +158,22 @@ function splitItemLine(line: string): Omit<OrderedItem, "marker" | "note"> {
   return { text: rest.replace(TRAILING_SEPARATORS, "").trim(), isNew, match, deadline };
 }
 
+/** "Papers" -> "paper". The report's four category headings are all plain plurals. */
+function sectionNoun(heading: string): string {
+  const label = heading.trim().toLowerCase();
+  return label.endsWith("s") ? label.slice(0, -1) : label;
+}
+
 function parseBlocks(source: string): Block[] {
   const lines = source.replace(/\r\n/g, "\n").split("\n");
   const blocks: Block[] = [];
   let paragraph: string[] = [];
   let list: string[] = [];
   let ordered: OrderedItem[] = [];
+  // The `###` category currently open — Papers / Grants / Fellowships /
+  // Conferences. A ranking inherits it so its link can say "Open grant" rather
+  // than a generic "Open". A `####` focus theme does not change it.
+  let noun = "item";
 
   const flushParagraph = () => {
     if (paragraph.length) {
@@ -171,7 +189,7 @@ function parseBlocks(source: string): Block[] {
   };
   const flushOrdered = () => {
     if (ordered.length) {
-      blocks.push({ kind: "ordered", items: ordered });
+      blocks.push({ kind: "ordered", items: ordered, noun });
       ordered = [];
     }
   };
@@ -194,11 +212,10 @@ function parseBlocks(source: string): Block[] {
     const heading = HEADING.exec(line);
     if (heading) {
       flushAll();
-      blocks.push({
-        kind: "heading",
-        level: heading[1].length as 2 | 3 | 4,
-        text: heading[2].trim(),
-      });
+      const level = heading[1].length as 2 | 3 | 4;
+      const text = heading[2].trim();
+      if (level === 3) noun = sectionNoun(text);
+      blocks.push({ kind: "heading", level, text });
       continue;
     }
     const numbered = ORDERED.exec(line);
@@ -249,42 +266,97 @@ const HEADING_CLASS: Record<2 | 3 | 4, string> = {
   4: "mt-4 mb-1 inline-block rounded-full border border-border bg-surface-alt px-3 py-1 text-[14px] font-semibold text-brand-primary-hover",
 };
 
-/** One ranked entry: its rank, what it is, and how well it fits. */
-function OrderedEntry({ item, keyBase }: { item: OrderedItem; keyBase: string }) {
+/**
+ * The item's own URL, when its whole title is one link (`**[Title](url)**`).
+ *
+ * Only that shape. A title with a link buried inside it is not a title that
+ * *is* a link, and following it from a "Open paper" control at the other end of
+ * the entry would take the reader somewhere the title never offered.
+ */
+const WHOLE_TITLE_LINK = /^\*{0,2}\[([^\]]+)\]\(([^)\s]+)\)\*{0,2}$/;
+
+/** `[label, url]` when the whole title is one link; `["", ""]` otherwise. */
+function titleLink(text: string): [string, string] {
+  const found = WHOLE_TITLE_LINK.exec(text.trim());
+  return found ? [found[1], found[2]] : ["", ""];
+}
+
+/**
+ * One ranked entry, in the report's shared four-zone shape (`report-entry.tsx`).
+ *
+ * The rationale is split: its first sentence becomes the insight — the ruled quote
+ * that says why this is in front of the reader — and the rest becomes the note.
+ * The date leaves the title line entirely for the strip beneath the entry, where a
+ * deadline is reference rather than an alarm. That line was at its worst on
+ * conferences, where a red `Deadline 2026-09-15` sat directly under a venue title
+ * without ever saying which of the venue's rounds it meant.
+ */
+function OrderedEntry({
+  item,
+  keyBase,
+  noun,
+}: {
+  item: OrderedItem;
+  keyBase: string;
+  /** The category's singular noun, for the rail's link ("Open conference"). */
+  noun: string;
+}) {
+  const [label, url] = titleLink(item.text);
+  const { insight, note } = splitRationale(item.note);
+
+  // A linked title, set as a title. The old entry rendered it in link green with
+  // an underline, which made the loudest thing in every row the fact that it was
+  // clickable rather than what it said — and the rail already carries an explicit
+  // way out. Here the title reads as a title and stays clickable, underlining only
+  // on hover.
+  const title = url ? (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="rounded-sm text-[var(--text-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {label}
+    </a>
+  ) : (
+    renderInline(item.text, `${keyBase}-t`)
+  );
+
   return (
-    <li className="flex items-start gap-3 border-b border-[var(--divider)] py-3 last:border-b-0">
-      {/* The `<ol>` carries the ordering for assistive tech (and is given the
-          right `start`, since a theme group restarts the element but not the
-          ranking), so the visible number is presentation. */}
-      <span
-        aria-hidden="true"
-        className="w-5 shrink-0 pt-0.5 text-right font-serif text-[15px] font-semibold tabular-nums text-[var(--text-muted)]"
-      >
-        {item.marker}.
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-semibold leading-snug text-[var(--text-primary)] [text-wrap:pretty]">
-          {renderInline(item.text, `${keyBase}-t`)}
-        </p>
-        {item.isNew || item.deadline ? (
-          <p className="mt-1.5 flex flex-wrap items-center gap-2">
-            {item.isNew ? <Pill tone="accent">New</Pill> : null}
-            {item.deadline ? (
-              <span className="text-xs font-semibold text-clay">
-                Deadline {item.deadline}
-              </span>
-            ) : null}
-          </p>
-        ) : null}
-        {item.note ? (
-          <p className="mt-1.5 text-[14px] leading-relaxed [text-wrap:pretty]">
-            {renderInline(item.note, `${keyBase}-n`)}
-          </p>
-        ) : null}
-      </div>
-      {/* Renders nothing when the item carries no percent, which is the honest
-          answer rather than a fabricated ring. */}
-      <MatchRing percent={item.match} size="sm" />
+    <li>
+      <ReportEntry
+        /* The `<ol>` carries the ordering for assistive tech (and is given the
+           right `start`, since a theme group restarts the element but not the
+           ranking), so the visible number is presentation. */
+        rank={`${item.marker}.`}
+        title={title}
+        insight={insight ? renderInline(insight, `${keyBase}-i`) : null}
+        note={note ? renderInline(note, `${keyBase}-n`) : null}
+        /* Renders nothing when the item carries no percent, which is the honest
+           answer rather than a fabricated score. */
+        rail={<MatchScore percent={item.match} />}
+        flags={item.isNew ? <ReportFlag tone="new">New</ReportFlag> : null}
+        link={
+          url ? (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+            >
+              Open {noun}
+              <ArrowRightIcon
+                size={12}
+                aria-hidden="true"
+                className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+              />
+            </a>
+          ) : null
+        }
+        deadlines={
+          item.deadline ? [{ date: formatIsoDate(item.deadline) }] : []
+        }
+      />
     </li>
   );
 }
@@ -319,7 +391,12 @@ export function MarkdownProse({
               className="mt-1 mb-2 list-none first:mt-0"
             >
               {block.items.map((item, i) => (
-                <OrderedEntry key={`${key}-oi${i}`} item={item} keyBase={`${key}-oi${i}`} />
+                <OrderedEntry
+                  key={`${key}-oi${i}`}
+                  item={item}
+                  keyBase={`${key}-oi${i}`}
+                  noun={block.noun}
+                />
               ))}
             </ol>
           );

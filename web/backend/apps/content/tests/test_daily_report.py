@@ -25,7 +25,7 @@ from apps.content.daily_report import (
     ReportPart,
     compile_report_for_user,
 )
-from apps.content.daily_report_pdf import render_report_pdf
+from apps.content.daily_report_pdf import _split_reason, render_report_pdf
 from apps.content.daily_report_send import run_daily_report_send
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.research.models import Project
@@ -262,8 +262,75 @@ def test_listed_items_are_numbered_and_show_their_match() -> None:
     text = "\n".join(page.extract_text() for page in reader.pages)
     for rank in ("1.", "2.", "3."):
         assert rank in text
-    assert "90%" in text and "match" in text
+    # The rail sets the number large over its bar and names it beneath. The
+    # caption is not decoration: an unlabelled integer in the margin is a number
+    # every reader has to decode once and some decode wrongly.
+    assert "90" in text and "MATCH SCORE" in text
     assert "NEW" in text
+
+
+def test_a_deadline_is_reference_material_under_the_entry() -> None:
+    """Dates live in the strip below an entry, formatted, never under its title.
+
+    A red ``Deadline 2026-09-01`` between a title and the reason for it was at its
+    worst on conferences — an alarm attached to every venue in the report, which
+    never said which of the venue's rounds it meant.
+    """
+    reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
+    text = "\n".join(page.extract_text() for page in reader.pages)
+    assert "Due Sep 1, 2026" in text
+    assert "Deadline 2026-09-01" not in text
+    assert "2026-09-01" not in text
+
+
+def test_a_multi_round_item_names_the_next_and_counts_the_rest() -> None:
+    """Six dated lines under a two-sentence rationale is a table nobody asked for."""
+    data = _sample_data()
+    item = data.personal.items["grants"][0]
+    item.deadline_date = "2026-11-20"
+    item.deadlines = [
+        {"date": "2026-11-20", "kind": "abstract", "label": ""},
+        {"date": "2027-01-08", "kind": "manuscript", "label": ""},
+        {"date": "2027-06-14", "kind": "event", "label": ""},
+    ]
+    reader = PdfReader(BytesIO(render_report_pdf(data)))
+    text = "\n".join(page.extract_text() for page in reader.pages)
+    assert "Due Nov 20, 2026" in text
+    assert "Abstract" in text
+    assert "+2 more rounds" in text
+    # The later rounds are counted, not listed — that is the feed card's job.
+    assert "2027-01-08" not in text
+
+
+@pytest.mark.parametrize(
+    ("reason", "insight", "note"),
+    [
+        # Two sentences: the first is the claim, the rest qualifies it.
+        (
+            "It closes the scale-drift gap in your surveys. The weights are "
+            "released, so this is a fine-tune rather than a retrain.",
+            "It closes the scale-drift gap in your surveys.",
+            "The weights are released, so this is a fine-tune rather than a retrain.",
+        ),
+        # One sentence: no empty second block.
+        (
+            "A public benchmark you can report against.",
+            "A public benchmark you can report against.",
+            "",
+        ),
+        # An abbreviation is not a sentence end.
+        (
+            "Follows Reyes et al. and reuses the same transect protocol you do.",
+            "Follows Reyes et al. and reuses the same transect protocol you do.",
+            "",
+        ),
+        ("", "", ""),
+    ],
+)
+def test_a_rationale_splits_into_its_claim_and_its_qualifications(
+    reason: str, insight: str, note: str
+) -> None:
+    assert _split_reason(reason) == (insight, note)
 
 
 def test_a_written_items_signals_move_out_of_its_title_line() -> None:

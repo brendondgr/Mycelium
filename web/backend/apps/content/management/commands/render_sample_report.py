@@ -135,6 +135,9 @@ _GRANTS: list[dict] = [
     },
 ]
 
+#: Conferences are the shape that most needed the entry redesign: several dated
+#: rounds of different kinds, and a venue rank that must read as a label rather than
+#: as a second opportunity signal. Both are here so the sample shows them.
 _CONFERENCES: list[dict] = [
     {
         "title": "OCEANS 2027 — Sensing and Autonomy track",
@@ -142,9 +145,34 @@ _CONFERENCES: list[dict] = [
         "match_percent": 84,
         "reason": (
             "The autonomy track has run a reef-mapping session for three years; your "
-            "transect results would land in scope without reframing."
+            "transect results would land in scope without reframing. Note the "
+            "abstract round closes six weeks before the full paper."
         ),
         "deadline_date": "2026-11-20",
+        "deadlines": [
+            {"date": "2026-11-20", "kind": "abstract", "label": ""},
+            {"date": "2027-01-08", "kind": "manuscript", "label": ""},
+            {"date": "2027-06-14", "kind": "event", "label": ""},
+        ],
+        "rank_badges": [{"system": "core", "rank": "B"}],
+        "is_entrant": True,
+        "cluster_label": "",
+    },
+    {
+        "title": (
+            "NORA: The Third Workshop on Knowledge Graphs & Agentic Systems "
+            "Interplay"
+        ),
+        "url": "https://example.org/conf/nora-2027",
+        "match_percent": 90,
+        "reason": (
+            "Your work on agentic querying and tool-calling design fits the technical "
+            "scope squarely. The venue takes ARR commitments, so a paper already "
+            "under review elsewhere can be committed rather than rewritten."
+        ),
+        "deadline_date": "2026-09-15",
+        "deadlines": [{"date": "2026-09-15", "kind": "submission", "label": ""}],
+        "rank_badges": [],
         "is_entrant": True,
         "cluster_label": "",
     },
@@ -221,6 +249,8 @@ def _report_items(category: str, rows: list[dict]) -> list[ReportItem]:
             deadline_date=row["deadline_date"],
             is_new=row["is_entrant"],
             cluster_label=row["cluster_label"],
+            deadlines=row.get("deadlines", []),
+            rank_badges=row.get("rank_badges", []),
         )
         for row in rows
     ]
