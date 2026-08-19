@@ -43,8 +43,9 @@ zones, in this order:
    to answer.
 3. **The note** — the rest of the rationale: the caveat, the qualification, what
    actually transfers.
-4. **The meta rail** — the match percent set large over a tier-coloured bar with a
-   caption naming it, then ``NEW`` and any venue rank as flags beneath.
+4. **The meta rail** — the match percent as a filled ring (:class:`_MatchRing`,
+   the print counterpart of the app's own), its tier in words beneath, then
+   ``NEW`` and any venue rank as pills sized to their own text.
 
 Under the content column runs the **reference strip**: the entry's next deadline
 (named by round, with the later rounds counted rather than listed), its source, and
@@ -81,6 +82,7 @@ from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import (
     Flowable,
     HRFlowable,
@@ -156,11 +158,11 @@ _MARGIN = 0.9 * inch
 #: against it, so a column change never has to re-derive the page geometry.
 _CONTENT_WIDTH = LETTER[0] - 2 * _MARGIN
 
-#: The right-hand meta rail on an entry: the match score, its bar and caption, then
-#: the flags. Wider than the chip column it replaced because the caption naming the
-#: number ("MATCH SCORE") has to fit on one line — an unlabelled large number in the
-#: margin is the one thing this rail must not be.
-_RAIL_WIDTH = 1.16 * inch
+#: The right-hand meta rail on an entry: the match ring, then the flags. Sized to
+#: the ring — the flags are pills measured from their own text and painted at the
+#: rail's right edge, so nothing here needs the rail to be any wider than its
+#: widest fixed element.
+_RAIL_WIDTH = 0.72 * inch
 #: The hanging rank-number column on a found item.
 _RANK_WIDTH = 0.34 * inch
 #: The gap reportlab leaves to the right of the content cell (its ``RIGHTPADDING``).
@@ -267,36 +269,9 @@ def _styles() -> dict[str, ParagraphStyle]:
         "ItemMetaStrip", fontName=_SANS, fontSize=8, leading=11,
         textColor=TEXT_SECONDARY, spaceAfter=0,
     )
-    #: The match number itself. The largest thing in the rail by a wide margin —
-    #: it is the number the reader compares entries on.
-    styles["Score"] = ParagraphStyle(
-        "Score", fontName=_SERIF_BOLD, fontSize=21, leading=22, textColor=TEXT,
-        alignment=TA_RIGHT, spaceAfter=0,
-    )
-    #: What the number above it is. Without this the rail is a bare integer in the
-    #: margin, which every reader has to decode once and some decode wrongly.
-    styles["ScoreCaption"] = ParagraphStyle(
-        "ScoreCaption", fontName=_SANS_BOLD, fontSize=6, leading=8,
-        textColor=TEXT_MUTED, alignment=TA_RIGHT, spaceAfter=0,
-    )
     styles["Rank"] = ParagraphStyle(
         "Rank", fontName=_SERIF_BOLD, fontSize=12, leading=15, textColor=SECONDARY,
         alignment=TA_RIGHT,
-    )
-    styles["Chip"] = ParagraphStyle(
-        "Chip", fontName=_SANS_BOLD, fontSize=11, leading=12, textColor=PRIMARY_HOVER,
-        alignment=TA_CENTER,
-    )
-    # ``NEW`` is a flag, not a headline. At the match chip's 11pt bold it was the
-    # loudest thing in the column while carrying the least information — the
-    # percent is the number the reader is actually comparing entries on.
-    styles["ChipFlag"] = ParagraphStyle(
-        "ChipFlag", fontName=_SANS, fontSize=9, leading=11, textColor=PRIMARY_HOVER,
-        alignment=TA_CENTER,
-    )
-    styles["ChipNote"] = ParagraphStyle(
-        "ChipNote", fontName=_SANS, fontSize=6.5, leading=8, textColor=TEXT_SECONDARY,
-        alignment=TA_CENTER,
     )
     styles["Muted"] = ParagraphStyle(
         "Muted", fontName=_SANS, fontSize=9.5, leading=14, textColor=TEXT_MUTED,
@@ -498,10 +473,9 @@ def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
 
 # --- The entry's four zones ------------------------------------------------ #
 def _tier_color(percent: int):
-    """The match bar's colour for a percent — strong, fair, or low.
+    """The ring's arc colour for a percent — strong, fair, or low.
 
-    Same three thresholds as the app's ``matchTier``. Colour is never the only
-    signal here either: the number sits directly above the bar it colours.
+    Same three thresholds as the app's ``matchTier``.
     """
     if percent >= _STRONG_MATCH:
         return _TIER_STRONG
@@ -510,36 +484,142 @@ def _tier_color(percent: int):
     return _TIER_LOW
 
 
-class _ScoreBar(Flowable):
-    """The match percent restated as a length, under the number itself.
+def _tier_word(percent: int) -> str:
+    """The tier in words, printed under the ring so colour is never the only cue."""
+    if percent >= _STRONG_MATCH:
+        return "strong"
+    if percent >= _FAIR_MATCH:
+        return "fair"
+    return "low"
 
-    A rounded track filled to the percent — the print counterpart of the app's
-    swept ring. A number alone gives the reader nothing to compare against without
-    reading every other number on the page; a bar is comparable at a glance, which
-    is the whole job of a ranked list's right-hand margin.
+
+class _MatchRing(Flowable):
+    """The percent match, drawn as a filled arc around the number.
+
+    The print counterpart of the app's ``MatchRing`` — the one element this product
+    has for "how well does this fit me". A track ring in the divider colour, an arc
+    swept clockwise from twelve o'clock to the percent and coloured by tier, and the
+    number inside it. Beneath sits the tier word, so fit is never carried by colour
+    alone (in the app the word is in the ring's accessible name; on paper it has to
+    be visible).
+
+    Painted at the *right* edge of whatever width it is given, so it lines up with
+    the flags under it however wide the rail is. Reportlab does not honour a custom
+    flowable's ``hAlign`` inside a table cell, and a ring that drifts a few points
+    left of the pills below it is the kind of thing a reader sees without being able
+    to name.
     """
 
-    def __init__(self, percent: int, width: float, height: float = 3.0):
+    #: Ring diameter and stroke weight. Sized so "100%" still sits inside it.
+    _SIZE = 38.0
+    _THICKNESS = 4.0
+    _CAPTION_GAP = 2.0
+    _CAPTION_SIZE = 6.0
+
+    def __init__(self, percent: int, width: float):
         super().__init__()
         self.percent = max(0, min(100, percent))
         self.width = width
-        self.height = height
+        self.height = self._SIZE + self._CAPTION_GAP + self._CAPTION_SIZE
 
     def wrap(self, availWidth, availHeight):  # noqa: N803 — reportlab's signature
         return (self.width, self.height)
 
     def draw(self) -> None:
         canvas = self.canv
-        radius = self.height / 2
+        size = self._SIZE
+        radius = (size - self._THICKNESS) / 2
+        # Right-aligned within the rail; the caption line sits below the ring.
+        cx = self.width - size / 2
+        cy = self.height - size / 2
+        box = (cx - radius, cy - radius, cx + radius, cy + radius)
+
         canvas.saveState()
-        canvas.setFillColor(DIVIDER)
-        canvas.roundRect(0, 0, self.width, self.height, radius, fill=1, stroke=0)
+        canvas.setLineWidth(self._THICKNESS)
+        canvas.setLineCap(1)
+
+        canvas.setStrokeColor(DIVIDER)
+        canvas.circle(cx, cy, radius, stroke=1, fill=0)
+
         if self.percent:
-            # Never narrower than the cap radius, or a low percent draws as a
-            # malformed sliver rather than a short bar.
-            filled = max(self.height, self.width * self.percent / 100)
-            canvas.setFillColor(_tier_color(self.percent))
-            canvas.roundRect(0, 0, filled, self.height, radius, fill=1, stroke=0)
+            # From twelve o'clock, clockwise. reportlab measures from three
+            # o'clock and counts counter-clockwise, hence 90 and a negative sweep.
+            arc = canvas.beginPath()
+            arc.arc(*box, 90, -3.6 * self.percent)
+            canvas.setStrokeColor(_tier_color(self.percent))
+            canvas.drawPath(arc, stroke=1, fill=0)
+
+        canvas.setFillColor(TEXT)
+        canvas.setFont(_SANS_BOLD, 9.5)
+        canvas.drawCentredString(cx, cy - 3.4, f"{self.percent}%")
+
+        canvas.setFillColor(TEXT_MUTED)
+        canvas.setFont(_SANS_BOLD, self._CAPTION_SIZE)
+        canvas.drawRightString(self.width, 0.5, _tier_word(self.percent).upper())
+        canvas.restoreState()
+
+
+class _Pill(Flowable):
+    """A flag sized to its own word, painted at the right edge of the rail.
+
+    A ``Table`` with a fixed column width stretched every flag to the full rail,
+    which stops it reading as a tag and starts it reading as a table row. Here the
+    box is measured from the text, and the flowable simply reserves the rail's width
+    so the pill can be right-aligned inside it without depending on reportlab's cell
+    alignment for custom flowables.
+    """
+
+    _PAD_X = 6.0
+    _PAD_Y = 3.0
+
+    def __init__(
+        self,
+        text: str,
+        width: float,
+        *,
+        font_size: float = 6.5,
+        fg,
+        bg=None,
+        border=None,
+    ):
+        super().__init__()
+        self.text = text
+        self.width = width
+        self.font_size = font_size
+        self.fg = fg
+        self.bg = bg
+        self.border = border
+        self.pill_width = (
+            stringWidth(text, _SANS_BOLD, font_size) + 2 * self._PAD_X
+        )
+        self.height = font_size + 2 * self._PAD_Y
+
+    def wrap(self, availWidth, availHeight):  # noqa: N803 — reportlab's signature
+        return (self.width, self.height)
+
+    def draw(self) -> None:
+        canvas = self.canv
+        left = self.width - self.pill_width
+        canvas.saveState()
+        if self.bg is not None:
+            canvas.setFillColor(self.bg)
+        if self.border is not None:
+            canvas.setStrokeColor(self.border)
+            canvas.setLineWidth(0.6)
+        canvas.roundRect(
+            left,
+            0,
+            self.pill_width,
+            self.height,
+            self.height / 2,
+            fill=1 if self.bg is not None else 0,
+            stroke=1 if self.border is not None else 0,
+        )
+        canvas.setFillColor(self.fg)
+        canvas.setFont(_SANS_BOLD, self.font_size)
+        canvas.drawCentredString(
+            left + self.pill_width / 2, self._PAD_Y + 1.2, self.text
+        )
         canvas.restoreState()
 
 
@@ -672,70 +752,38 @@ def _deadline_bits(deadline_date: str, deadlines: list[dict] | None) -> list[str
     return []
 
 
-def _flag(
-    text: str,
-    styles: dict[str, ParagraphStyle],
-    *,
-    bg,
-    fg,
-) -> Table:
-    """One rounded flag in the rail — ``NEW``, or a venue's CORE/CCF rank.
-
-    Rounded, not square: a square filled rectangle behind a word reads as a
-    highlighter stripe. Sized to the rail rather than to the word so the flags stack
-    into a column with one right edge instead of a ragged one.
-    """
-    style = ParagraphStyle("FlagInner", parent=styles["ChipFlag"], textColor=fg)
-    chip = Table([[Paragraph(text, style)]], colWidths=[_RAIL_WIDTH])
-    chip.setStyle(
-        TableStyle(
-            [
-                ("ROUNDEDCORNERS", [_RADIUS, _RADIUS, _RADIUS, _RADIUS]),
-                ("BACKGROUND", (0, 0), (-1, -1), bg),
-                ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 2.5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
-                ("LEFTPADDING", (0, 0), (-1, -1), 2),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-            ]
-        )
-    )
-    return chip
-
-
 def _match_rail(
     match_percent: int | None,
     is_new: bool,
     styles: dict[str, ParagraphStyle],
     rank_badges: list[dict] | None = None,
 ) -> list:
-    """The entry's right-hand rail: the match score, then its flags.
+    """The entry's right-hand rail: the match ring, then its flags.
 
-    The score is the number set large over a tier-coloured bar with a caption
-    naming it — the same three zones the app's report entry uses, in print's own
-    materials. It comes first because it is what a reader ranks entries by.
+    The ring comes first because it is what a reader ranks entries by. Flags follow,
+    each a pill sized to its own word rather than a band across the rail.
 
-    Flags follow. ``NEW`` carries the report's gold, which ``docs/styles.md``
-    reserves for exactly this kind of signal; a CCF / CORE / THCPL rank stays on the
-    neutral surface pairing, because a rank is an informational label and never a
-    relevance signal (plan D2) — giving it gold would put a second alert beside the
-    one that means something. Only :func:`_item_flowables` has structured rank data
-    to pass; the written report's entries are parsed back out of markdown and carry
+    ``NEW`` is filled gold, which ``docs/styles.md`` reserves for exactly this kind
+    of signal. A CCF / CORE / THCPL rank is drawn as an outline on the page's own
+    ground instead — a rank is an informational label and never a relevance signal
+    (plan D2), so a second filled badge beside ``NEW`` would compete with the one
+    that means something. Only :func:`_item_flowables` has structured rank data to
+    pass; the written report's entries are parsed back out of markdown and carry
     none.
     """
     rail: list = []
     if isinstance(match_percent, int):
-        rail.append(Paragraph(str(match_percent), styles["Score"]))
-        rail.append(Spacer(1, 2))
-        rail.append(_ScoreBar(match_percent, _RAIL_WIDTH))
-        rail.append(Spacer(1, 2))
-        rail.append(Paragraph("MATCH SCORE", styles["ScoreCaption"]))
+        rail.append(_MatchRing(match_percent, _RAIL_WIDTH))
     if is_new:
         if rail:
-            rail.append(Spacer(1, 6))
+            rail.append(Spacer(1, 5))
         rail.append(
-            _flag("NEW", styles, bg=HexColor(_NEW_BG_HEX), fg=HexColor(_NEW_HEX))
+            _Pill(
+                "NEW",
+                _RAIL_WIDTH,
+                fg=HexColor(_NEW_HEX),
+                bg=HexColor(_NEW_BG_HEX),
+            )
         )
     for badge in rank_badges or []:
         rank = (badge.get("rank") or "").strip()
@@ -745,11 +793,11 @@ def _match_rail(
         if rail:
             rail.append(Spacer(1, 3))
         rail.append(
-            _flag(
+            _Pill(
                 f"{system} {rank}".strip(),
-                styles,
-                bg=HexColor(_RANK_BG_HEX),
+                _RAIL_WIDTH,
                 fg=HexColor(_RANK_HEX),
+                border=BORDER,
             )
         )
     return rail

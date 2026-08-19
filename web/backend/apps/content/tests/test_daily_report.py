@@ -262,10 +262,9 @@ def test_listed_items_are_numbered_and_show_their_match() -> None:
     text = "\n".join(page.extract_text() for page in reader.pages)
     for rank in ("1.", "2.", "3."):
         assert rank in text
-    # The rail sets the number large over its bar and names it beneath. The
-    # caption is not decoration: an unlabelled integer in the margin is a number
-    # every reader has to decode once and some decode wrongly.
-    assert "90" in text and "MATCH SCORE" in text
+    # The ring carries the percent inside it and its tier in words beneath, so
+    # fit is never left to colour alone on a page nobody can hover.
+    assert "90%" in text and "STRONG" in text
     assert "NEW" in text
 
 

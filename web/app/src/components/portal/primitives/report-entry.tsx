@@ -3,7 +3,6 @@
 import * as React from "react";
 
 import { CalendarIcon } from "@/components/portal/icons";
-import { matchTier } from "@/components/portal/primitives/match-ring";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,66 +25,31 @@ import { cn } from "@/lib/utils";
  *    the content column.
  * 3. **The note** — the rest of the rationale, quieter: the caveat, the
  *    qualification, what actually transfers.
- * 4. **The meta rail** — the match number set large over a tier-coloured bar, its
- *    `MATCH SCORE` caption, then the flags (`NEW`, a venue rank), then the link
- *    out.
+ * 4. **The meta rail** — the `MatchRing`, then the flags (`NEW`, a venue rank),
+ *    then the link out.
  *
  * Beneath the content column sits the **deadline strip**: a thin ruled row
  * carrying the item's dates. Dates used to be a red `Deadline 2026-09-15` wedged
  * under the title, where they competed with the title and still never said *which*
  * round they meant. Here a date is reference material, set as reference material.
  *
- * The percent is a number-and-bar rather than the feed's `MatchRing` because this
- * is a document, not a feed — an arc that sweeps on scroll belongs to a card the
- * reader meets one at a time, and twenty-five of them down a report reads as
- * instrumentation. Both take their tier from the same `matchTier`, so the two
- * surfaces can never disagree about what 95 means.
+ * The percent is the same swept `MatchRing` the feeds use — the one element this
+ * app has for "how well does this fit me". A report that invented a second way to
+ * show a match would read as a different product than the feed beside it, and the
+ * PDF draws that same ring in print's own materials.
  */
-
-/** The match number, its tier bar, and the caption naming what the number is. */
-export function MatchScore({ percent }: { percent: number | null | undefined }) {
-  if (typeof percent !== "number" || !Number.isFinite(percent)) return null;
-  const pct = Math.max(0, Math.min(100, Math.round(percent)));
-  const { token, word } = matchTier(pct);
-
-  return (
-    <div
-      /* Full-width so the bar spans the rail rather than shrinking to the width
-         of its own caption — the bar is a length the reader compares down the
-         page, and a bar whose track changes width entry to entry is not one. */
-      className="flex w-full flex-col items-end gap-1"
-      role="img"
-      aria-label={`${pct} percent match — a ${word} match`}
-    >
-      <span className="font-serif text-[26px] font-semibold leading-none tabular-nums text-[var(--text-primary)]">
-        {pct}
-      </span>
-      {/* The bar restates the number as a length. Tier colour is never the only
-          signal — the number is right above it and the tier word is in the
-          accessible name. */}
-      <span
-        aria-hidden="true"
-        className="h-1 w-full overflow-hidden rounded-full bg-[var(--divider)]"
-      >
-        <span
-          className="block h-full rounded-full"
-          style={{ width: `${pct}%`, backgroundColor: `var(${token})` }}
-        />
-      </span>
-      <span className="text-[9px] font-semibold uppercase leading-none tracking-[0.09em] text-[var(--text-muted)]">
-        Match score
-      </span>
-    </div>
-  );
-}
 
 /**
  * One flag in the rail — `NEW`, or a venue rank.
  *
- * `tone="new"` is the entrant marker and carries the report's gold, which
- * `docs/styles.md` reserves for exactly this kind of signal. `tone="neutral"` is
- * everything informational: a CORE/CCF rank is a label, not an opportunity, and
- * giving it gold would put a second alert beside the one that means something.
+ * The two are drawn as different *kinds* of pill, not two tints of one: `new` is
+ * filled gold, which `docs/styles.md` reserves for signals like this one, and
+ * `neutral` is an outline on the page's own ground. A CORE/CCF rank is an
+ * informational label rather than an opportunity, and a rank rendered as a second
+ * filled badge would compete with the flag that actually means something.
+ *
+ * `w-fit` is the point of it: a flag is sized to its word. Stretched to the rail
+ * it stops reading as a tag and starts reading as a table row.
  */
 export function ReportFlag({
   tone = "neutral",
@@ -97,10 +61,10 @@ export function ReportFlag({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em]",
+        "inline-flex w-fit items-center gap-1 rounded-full px-2 py-[3px] text-[10px] font-bold uppercase leading-none tracking-[0.06em]",
         tone === "new"
-          ? "border-[color-mix(in_srgb,var(--accent)_55%,var(--border))] bg-brand-accent-soft text-[color-mix(in_srgb,var(--accent)_78%,var(--text-primary))]"
-          : "border-border bg-surface-alt text-[var(--text-secondary)]",
+          ? "bg-brand-accent-soft text-[color-mix(in_srgb,var(--accent)_80%,var(--text-primary))]"
+          : "border border-border text-[var(--text-muted)]",
       )}
     >
       {children}
@@ -229,7 +193,7 @@ export function ReportEntry({
   title: React.ReactNode;
   insight?: React.ReactNode;
   note?: React.ReactNode;
-  /** The `MatchScore`, or nothing when the item carries no percent. */
+  /** The `MatchRing`, or nothing when the item carries no percent. */
   rail?: React.ReactNode;
   flags?: React.ReactNode;
   link?: React.ReactNode;
@@ -243,7 +207,7 @@ export function ReportEntry({
     <div
       className={cn(
         "grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 border-b border-[var(--divider)] py-4 last:border-b-0 sm:gap-x-4",
-        hasRail && "sm:grid-cols-[auto_minmax(0,1fr)_7.5rem]",
+        hasRail && "sm:grid-cols-[auto_minmax(0,1fr)_5.5rem]",
         className,
       )}
     >

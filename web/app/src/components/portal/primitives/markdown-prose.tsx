@@ -3,8 +3,8 @@
 import * as React from "react";
 
 import { ArrowRightIcon } from "@/components/portal/icons";
+import { MatchRing } from "@/components/portal/primitives/match-ring";
 import {
-  MatchScore,
   ReportEntry,
   ReportFlag,
   splitRationale,
@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
  * It renders the same **document** the PDF does, in the app's own materials. Both
  * carry the report's hierarchy — part, category, focus theme — and both present a
  * ranked item through the one entry shape described in `report-entry.tsx`: rank and
- * title, the insight, the note, and a meta rail carrying the match score, the
+ * title, the insight, the note, and a meta rail carrying the `MatchRing`, the
  * flags, and the link out, with the item's dates in a strip beneath. The PDF's
  * `_entry_row` draws the same four zones in the same order — the two renderers
  * differ in materials, not in document.
@@ -334,7 +334,7 @@ function OrderedEntry({
         note={note ? renderInline(note, `${keyBase}-n`) : null}
         /* Renders nothing when the item carries no percent, which is the honest
            answer rather than a fabricated score. */
-        rail={<MatchScore percent={item.match} />}
+        rail={<MatchRing percent={item.match} />}
         flags={item.isNew ? <ReportFlag tone="new">New</ReportFlag> : null}
         link={
           url ? (
