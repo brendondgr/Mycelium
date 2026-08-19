@@ -25,8 +25,15 @@ import { cn } from "@/lib/utils";
  *    the content column.
  * 3. **The note** — the rest of the rationale, quieter: the caveat, the
  *    qualification, what actually transfers.
- * 4. **The meta rail** — the `MatchRing`, then the flags (`NEW`, a venue rank),
- *    then the link out.
+ * 4. **The meta rail** — the `MatchRing` and the flags (`NEW`, a venue rank), all
+ *    centred on one axis. A circle right-aligned against pills of differing widths
+ *    reads as misaligned: the eye takes the circle's centre as the anchor, and the
+ *    pills' centres then wander left of it. So the rail is sized to the ring and
+ *    everything in it centres, rather than everything sharing a right edge.
+ *
+ * The link out sits at the foot of the content column, the way it does on a feed
+ * card — a rail narrow enough to hold a ring cannot hold "Open conference" without
+ * breaking it across three lines.
  *
  * Beneath the content column sits the **deadline strip**: a thin ruled row
  * carrying the item's dates. Dates used to be a red `Deadline 2026-09-15` wedged
@@ -201,13 +208,13 @@ export function ReportEntry({
   extraDeadlineCount?: number;
   className?: string;
 }) {
-  const hasRail = Boolean(rail || flags || link);
+  const hasRail = Boolean(rail || flags);
 
   return (
     <div
       className={cn(
         "grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 border-b border-[var(--divider)] py-4 last:border-b-0 sm:gap-x-4",
-        hasRail && "sm:grid-cols-[auto_minmax(0,1fr)_5.5rem]",
+        hasRail && "sm:grid-cols-[auto_minmax(0,1fr)_3.75rem]",
         className,
       )}
     >
@@ -237,6 +244,8 @@ export function ReportEntry({
           </p>
         ) : null}
 
+        {link ? <div className="mt-2.5">{link}</div> : null}
+
         <DeadlineStrip
           deadlines={deadlines ?? []}
           extraCount={extraDeadlineCount}
@@ -245,17 +254,16 @@ export function ReportEntry({
 
       {hasRail ? (
         /* On a narrow screen the rail drops under the content column rather than
-           squeezing a 7.5rem gutter out of a 320px viewport — it becomes a row,
+           squeezing a fixed gutter out of a 320px viewport — it becomes a row,
            reading left to right, which is the only arrangement that still works
            at that width. */
-        <div className="col-start-2 mt-3 flex flex-row flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-1 sm:mt-0 sm:flex-col sm:items-end sm:gap-2">
+        <div className="col-start-2 mt-3 flex flex-row flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-1 sm:mt-0 sm:flex-col sm:items-center sm:gap-2">
           {rail}
           {flags ? (
-            <div className="flex flex-wrap items-center justify-end gap-1.5">
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
               {flags}
             </div>
           ) : null}
-          {link}
         </div>
       ) : null}
     </div>

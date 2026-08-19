@@ -158,11 +158,13 @@ _MARGIN = 0.9 * inch
 #: against it, so a column change never has to re-derive the page geometry.
 _CONTENT_WIDTH = LETTER[0] - 2 * _MARGIN
 
-#: The right-hand meta rail on an entry: the match ring, then the flags. Sized to
-#: the ring — the flags are pills measured from their own text and painted at the
-#: rail's right edge, so nothing here needs the rail to be any wider than its
-#: widest fixed element.
-_RAIL_WIDTH = 0.72 * inch
+#: The right-hand meta rail on an entry: the match ring, then the flags. Sized so
+#: the ring (38pt) and the widest rank pill a source has produced (~40pt) both sit
+#: inside it with a point or two to spare. Everything in the rail is centred on the
+#: rail's own axis rather than flush to the margin — a circle right-aligned against
+#: pills of differing widths reads as misaligned, because the eye takes the circle's
+#: centre as the anchor and the pills' centres then wander left of it.
+_RAIL_WIDTH = 0.583 * inch
 #: The hanging rank-number column on a found item.
 _RANK_WIDTH = 0.34 * inch
 #: The gap reportlab leaves to the right of the content cell (its ``RIGHTPADDING``).
@@ -503,11 +505,10 @@ class _MatchRing(Flowable):
     alone (in the app the word is in the ring's accessible name; on paper it has to
     be visible).
 
-    Painted at the *right* edge of whatever width it is given, so it lines up with
-    the flags under it however wide the rail is. Reportlab does not honour a custom
-    flowable's ``hAlign`` inside a table cell, and a ring that drifts a few points
-    left of the pills below it is the kind of thing a reader sees without being able
-    to name.
+    Painted on the centre of whatever width it is given, as the flags beneath it
+    are, so the ring and every pill share one vertical axis. Reportlab does not
+    honour a custom flowable's ``hAlign`` inside a table cell, so each of these
+    positions itself rather than asking the cell to do it.
     """
 
     #: Ring diameter and stroke weight. Sized so "100%" still sits inside it.
@@ -529,8 +530,9 @@ class _MatchRing(Flowable):
         canvas = self.canv
         size = self._SIZE
         radius = (size - self._THICKNESS) / 2
-        # Right-aligned within the rail; the caption line sits below the ring.
-        cx = self.width - size / 2
+        # Centred in the rail; the caption line sits below the ring, on the same
+        # axis, as do the pills under that.
+        cx = self.width / 2
         cy = self.height - size / 2
         box = (cx - radius, cy - radius, cx + radius, cy + radius)
 
@@ -555,18 +557,18 @@ class _MatchRing(Flowable):
 
         canvas.setFillColor(TEXT_MUTED)
         canvas.setFont(_SANS_BOLD, self._CAPTION_SIZE)
-        canvas.drawRightString(self.width, 0.5, _tier_word(self.percent).upper())
+        canvas.drawCentredString(cx, 0.5, _tier_word(self.percent).upper())
         canvas.restoreState()
 
 
 class _Pill(Flowable):
-    """A flag sized to its own word, painted at the right edge of the rail.
+    """A flag sized to its own word, centred on the rail's axis.
 
     A ``Table`` with a fixed column width stretched every flag to the full rail,
     which stops it reading as a tag and starts it reading as a table row. Here the
-    box is measured from the text, and the flowable simply reserves the rail's width
-    so the pill can be right-aligned inside it without depending on reportlab's cell
-    alignment for custom flowables.
+    box is measured from the text, and the flowable reserves the rail's width so the
+    pill can centre itself inside it — on the same axis as the ring above — without
+    depending on reportlab's cell alignment for custom flowables.
     """
 
     _PAD_X = 6.0
@@ -599,7 +601,7 @@ class _Pill(Flowable):
 
     def draw(self) -> None:
         canvas = self.canv
-        left = self.width - self.pill_width
+        left = (self.width - self.pill_width) / 2
         canvas.saveState()
         if self.bg is not None:
             canvas.setFillColor(self.bg)
