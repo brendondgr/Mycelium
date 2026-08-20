@@ -217,19 +217,20 @@ export function useCardUndo() {
     return () => window.clearTimeout(timer);
   }, [action]);
 
+  // The mutation fires from the callback, never from inside a state updater:
+  // React may invoke an updater more than once (it does in development's
+  // StrictMode), and an undo that ran twice would re-save what it just removed.
   const raise = React.useCallback((next: UndoAction) => setAction(next), []);
   const undo = React.useCallback(() => {
-    setAction((current) => {
-      current?.undo();
-      return null;
-    });
-  }, []);
+    if (!action) return;
+    setAction(null);
+    action.undo();
+  }, [action]);
   const dismiss = React.useCallback(() => {
-    setAction((current) => {
-      current?.onExpire?.();
-      return null;
-    });
-  }, []);
+    if (!action) return;
+    setAction(null);
+    action.onExpire?.();
+  }, [action]);
 
   return { action, raise, undo, dismiss };
 }
