@@ -428,6 +428,11 @@ type OpportunityBase = {
    * matched under. Null/omitted (a single- or no-cluster profile) renders no
    * badge and leaves the cluster chip row on the feed empty. */
   cluster?: { id: string; label: string } | null;
+  /** The other themes this opportunity also cleared. The card's match rail
+   * names the attributed cluster first and then these, up to three in all. */
+  bridge_clusters?: { id: string; label: string }[];
+  /** cluster_id -> [0,1] fit score across every cluster the item cleared. */
+  per_cluster?: Record<string, number>;
   /** Which adapter/provider produced this row (e.g. "grants:nsf",
    * "conf:ccf_deadlines"), or "" for a snapshot row that predates the
    * open-collector migration. Provenance every area now carries (plan Phase 9). */

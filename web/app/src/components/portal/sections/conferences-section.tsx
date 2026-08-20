@@ -5,30 +5,24 @@ import * as React from "react";
 import { Card } from "@/components/portal/primitives/card";
 import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
-import { MatchRing } from "@/components/portal/primitives/match-ring";
-import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
+import { MatchRail } from "@/components/portal/primitives/match-rail";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { InfoPopover } from "@/components/portal/primitives/info-popover";
+import { type ExtraDeadline } from "@/components/portal/primitives/deadline-list";
 import {
-  DeadlineList,
-  type ExtraDeadline,
-} from "@/components/portal/primitives/deadline-list";
-import { SourceFooter } from "@/components/portal/primitives/source-footer";
+  SourceRow,
+  ViewLink,
+} from "@/components/portal/primitives/source-footer";
 import {
   AlertTriangleIcon,
-  ArrowRightIcon,
   CheckIcon,
   ConferenceIcon,
 } from "@/components/portal/icons";
 import {
+  CardActionBar,
   MyloReason,
-  NewTag,
-  UpdatedTag,
-  RemindButton,
-  IgnoreButton,
   IgnoredStrip,
-  SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
 import { shortRoundLabel } from "@/components/portal/reminder-composer";
 import {
@@ -481,14 +475,9 @@ export function ConferenceCard({
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   }, []);
   const where = conf.location || conf.country;
-  // Use the semicolon-delimited subject categories, not the space-joined
-  // `keywords` blob, so the tags render as real, separate chips.
-  const subjects = conf.matched_subjects
-    .split(";")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const shownSubjects = subjects.slice(0, 4);
-  const moreSubjects = subjects.length - shownSubjects.length;
+  // "Vancouver, Canada; Jul 14–18, 2026" — the conference's answer to a
+  // grant's "sponsor; posted" identity line: where the event is, and when.
+  const identity = [where, conf.event_dates].filter(Boolean).join("; ");
 
   // Ignored: collapse in place, with the way back, until the next refetch drops it.
   if (ignored) {
@@ -504,108 +493,71 @@ export function ConferenceCard({
   return (
     <MatchCard
       ring={
-        <MatchRing
+        <MatchRail
           percent={conf.match_percent ?? conf.embedding_match}
           origin={conf.origin}
+          isNew={conf.is_new}
+          isUpdated={conf.is_updated}
+          cluster={conf.cluster}
+          bridgeClusters={conf.bridge_clusters}
         />
       }
       head={
-        <>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              {/* Title always first, so it lines up with the top of the ring
-                  whether or not this conference has a cluster or a New tag. */}
-              <h3 className="font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
-                {conf.title}
-              </h3>
+        /* Wraps rather than squeezing: once the title column would fall below
+           12rem — a narrow phone, beside the match rail — the tools drop to
+           their own line instead of crushing the title to two words a row. */
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 basis-48">
+            <h3 className="font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+              {conf.title}
+            </h3>
+            {identity ? (
+              <p
+                className="mt-1.5 text-xs font-medium text-[var(--text-secondary)]"
+                title={identity}
+              >
+                {identity}
+              </p>
+            ) : null}
 
-              {/* Where and when sit with the title beside the ring — they
-                  identify the event, the way a grant's sponsor line does. */}
-              <dl className="mt-2 space-y-1 text-sm text-[var(--text-secondary)]">
-                {where ? (
-                  <div className="flex gap-2">
-                    <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
-                      Where
-                    </dt>
-                    <dd className="min-w-0">{where}</dd>
-                  </div>
-                ) : null}
-                {conf.event_dates ? (
-                  <div className="flex gap-2">
-                    <dt className="w-12 shrink-0 font-bold text-[var(--text-secondary)]">
-                      When
-                    </dt>
-                    <dd>{conf.event_dates}</dd>
-                  </div>
-                ) : null}
-              </dl>
-
-              {/* Rank badges when the series carries any (~25% of them do);
-                  nothing at all when it does not. */}
+            {/* Claims about the venue itself: its rank when the series carries
+                one (~25% do), and any predatory-practice flags. Neither is a
+                statement about the reader's fit, so neither belongs on the
+                match rail. */}
+            {conf.rank_badges.length > 0 || conf.red_flags.length > 0 ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                {conf.is_new ? <NewTag /> : null}
-                {conf.is_updated ? <UpdatedTag /> : null}
-                {conf.cluster ? <ClusterBadge cluster={conf.cluster} /> : null}
                 <RankBadgeRow badges={conf.rank_badges} />
                 <RedFlagsBadge flags={conf.red_flags} />
               </div>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-1.5">
-              <RemindButton
-                contentId={conf.content_id}
-                title={conf.title}
-                deadlines={conf.addressable_deadlines}
-                lockedLabSlug={remindLabSlug}
-              />
-              <SaveButton
-                contentId={conf.content_id}
-                saved={conf.saved}
-                savedLabs={conf.saved_labs}
-              />
-              {ignorable ? (
-                <IgnoreButton
-                  contentId={conf.content_id}
-                  title={conf.title}
-                  onIgnored={() => setIgnored(true)}
-                />
-              ) : null}
-            </div>
+            ) : null}
           </div>
-        </>
+
+          <CardActionBar
+            contentId={conf.content_id}
+            title={conf.title}
+            deadlines={conf.addressable_deadlines}
+            extraDeadlines={passedConferenceRounds(
+              conf.deadlines_structured,
+              today,
+            )}
+            saved={conf.saved}
+            savedLabs={conf.saved_labs}
+            remindLabSlug={remindLabSlug}
+            ignorable={ignorable}
+            onIgnored={() => setIgnored(true)}
+          />
+        </div>
       }
     >
-      {/* Every deadline, listed, each with its own alert control — rather than
-          one headline date plus a hover behind a separate button. See
-          `DeadlineList` for why the two were merged. */}
-      <DeadlineList
-        contentId={conf.content_id}
-        title={conf.title}
-        deadlines={conf.addressable_deadlines}
-        extraDeadlines={passedConferenceRounds(
-          conf.deadlines_structured,
-          today,
-        )}
-        lockedLabSlug={remindLabSlug}
-      />
-
-      {/* Directly beneath the deadline it qualifies — see `QualityWarningNote`
-          above for why this can't sit anywhere quieter than that. */}
+      {/* Directly beneath the head that carries the date it qualifies — see
+          `QualityWarningNote` above for why this can't sit anywhere quieter. */}
       <QualityWarningNote warnings={conf.quality_warnings} />
 
       {/* The venue's own blurb, when the listing carries one (many don't). */}
       {conf.description ? (
-        <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
           {conf.description}
         </p>
-      ) : null}
-
-      {/* What's still accepting — the open submission windows for this venue. */}
-      {conf.abstract_open || conf.manuscript_open ? (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {conf.abstract_open ? <OpenChip label="Abstract open" /> : null}
-          {conf.manuscript_open ? <OpenChip label="Full paper open" /> : null}
-        </div>
       ) : null}
 
       {/* Mylo's read on why this venue fits — the AI note when the model wrote it. */}
@@ -619,48 +571,27 @@ export function ConferenceCard({
         )
       ) : null}
 
-      {shownSubjects.length > 0 ? (
+      {/* What's still accepting — the open submission windows for this venue. */}
+      {conf.abstract_open || conf.manuscript_open ? (
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {shownSubjects.map((subject) => (
-            <span
-              key={subject}
-              className="rounded-full border border-[var(--border)] bg-[var(--surface-alt)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]"
-            >
-              {subject}
-            </span>
-          ))}
-          {moreSubjects > 0 ? (
-            <span className="px-1 text-xs font-medium text-[var(--text-secondary)]">
-              +{moreSubjects} more
-            </span>
-          ) : null}
+          {conf.abstract_open ? <OpenChip label="Abstract open" /> : null}
+          {conf.manuscript_open ? <OpenChip label="Full paper open" /> : null}
         </div>
       ) : null}
 
       <RecommendedFor members={recommendedFor} />
 
-      <SourceFooter
+      <SourceRow
         license={conf.license}
         licenseUrl={conf.license_url}
         sourceLinks={conf.source_links}
         source={conf.source}
+        action={
+          conf.url ? (
+            <ViewLink href={conf.url} label="View conference" />
+          ) : null
+        }
       />
-
-      {conf.url ? (
-        <a
-          href={conf.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-        >
-          View conference
-          <ArrowRightIcon
-            size={14}
-            aria-hidden="true"
-            className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-          />
-        </a>
-      ) : null}
     </MatchCard>
   );
 }

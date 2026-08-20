@@ -9,7 +9,6 @@ import {
   BridgeBadge,
   ClusterBadge,
 } from "@/components/portal/primitives/cluster-badge";
-import { ArrowRightIcon, SparkleIcon } from "@/components/portal/icons";
 import {
   MyloReason,
   NewTag,
@@ -17,6 +16,7 @@ import {
   IgnoredStrip,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
+import { ArrowRightIcon } from "@/components/portal/icons";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
 import type { RecommendedMember, Suggestion } from "@/lib/portal/types";
 
@@ -42,10 +42,10 @@ function bylineLine(suggestion: Suggestion): string {
 
 /**
  * One research-article suggestion: fit, headline, why-it-matters reason, and a
- * link to the source. The gold "Mylo pick" chip marks a language-model reason;
- * a neutral chip marks a templated topical match — color is never the only
- * signal, the chip always carries text. Lifts gently on hover (reduced-motion
- * aware via the global transition).
+ * link to the source. Only the cross-topics tail carries a chip — the rest of
+ * the feed is Mylo's own ranking, which the ring already attributes with his
+ * portrait, so labelling it again on every row said nothing. Lifts gently on
+ * hover (reduced-motion aware via the global transition).
  *
  * Laid out by `MatchCard`: the ring sits in a notch at the top-left beside the
  * badges, title and meta line, and the abstract, reason and link run the card's
@@ -141,16 +141,15 @@ export function SuggestionCard({
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {suggestion.is_new ? <NewTag /> : null}
-            <Pill tone={isMylo ? "accent" : "neutral"} className="shrink-0">
-              {isMylo ? (
-                <>
-                  <SparkleIcon size={12} aria-hidden="true" />
-                  Mylo pick
-                </>
-              ) : (
-                "Cross-topics match"
-              )}
-            </Pill>
+            {/* Only the cross-topics tail is labelled. Every other row in this
+                feed is a Mylo pick, and a chip that appears on nearly all of
+                them distinguishes nothing — the ring already carries his
+                portrait when he made the judgement. */}
+            {isMylo ? null : (
+              <Pill tone="neutral" className="shrink-0">
+                Cross-topics match
+              </Pill>
+            )}
             <SaveButton
               contentId={suggestion.content_id}
               saved={suggestion.saved}

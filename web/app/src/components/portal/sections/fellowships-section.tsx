@@ -5,23 +5,19 @@ import * as React from "react";
 import { Card } from "@/components/portal/primitives/card";
 import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
-import { MatchRing } from "@/components/portal/primitives/match-ring";
-import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
+import { MatchRail } from "@/components/portal/primitives/match-rail";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
+import { type ExtraDeadline } from "@/components/portal/primitives/deadline-list";
 import {
-  ArrowRightIcon,
-  BankIcon,
-  CalendarIcon,
-  SparkleIcon,
-} from "@/components/portal/icons";
+  SourceRow,
+  ViewLink,
+} from "@/components/portal/primitives/source-footer";
+import { BankIcon, SparkleIcon } from "@/components/portal/icons";
 import {
+  CardActionBar,
   MyloReason,
-  NewTag,
-  RemindButton,
-  IgnoreButton,
   IgnoredStrip,
-  SaveButton,
   formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
 import {
@@ -79,17 +75,19 @@ function fellowshipDeadlineLabel(item: FellowshipOpportunity): string {
 }
 
 /**
- * True when the deadline is rolling or has no hard date — used to style the
- * deadline display in a softer, non-urgent color.
+ * The read-only row a soft deadline gets in the Deadlines control.
+ *
+ * A rolling or "varies" call has no date to alert on, so it projects no
+ * addressable deadline and the control would otherwise render nothing at all —
+ * which reads as "no deadline recorded" rather than "you can apply any time".
+ * The source's own wording is kept verbatim.
  */
-function isSoftDeadline(item: FellowshipOpportunity): boolean {
-  return (
-    item.deadline_type === "rolling" ||
-    item.deadline_type === "continuous" ||
-    item.deadline_type === "varies" ||
-    item.deadline_type === "unknown" ||
-    !item.deadline_date
-  );
+function fellowshipSoftRounds(item: FellowshipOpportunity): ExtraDeadline[] {
+  const hasDated = item.addressable_deadlines.some((d) => d.due_date);
+  if (hasDated) return [];
+  const label = fellowshipDeadlineLabel(item);
+  if (!label) return [];
+  return [{ key: "soft", label: "Application", dateLabel: label }];
 }
 
 // --------------------------------------------------------------------------- //
@@ -165,7 +163,7 @@ function EligibilityBadge({ item }: { item: FellowshipOpportunity }) {
 }
 
 // --------------------------------------------------------------------------- //
-// Award class chip
+// Award class labels — the identity line's stand-in for a grant's sponsor
 // --------------------------------------------------------------------------- //
 
 const AWARD_CLASS_LABELS: Record<string, string> = {
@@ -175,15 +173,6 @@ const AWARD_CLASS_LABELS: Record<string, string> = {
   award: "Award",
   prize: "Prize",
 };
-
-function AwardClassChip({ awardClass }: { awardClass: string }) {
-  const label = AWARD_CLASS_LABELS[awardClass] ?? awardClass;
-  return (
-    <span className="rounded-full border border-[var(--border)] bg-[var(--surface-alt)] px-2.5 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
-      {label}
-    </span>
-  );
-}
 
 // --------------------------------------------------------------------------- //
 // Individual fellowship row card
@@ -217,9 +206,17 @@ export function FellowshipRow({
   ignorable?: boolean;
 }) {
   const [ignored, setIgnored] = React.useState(false);
-  const deadlineLabel = fellowshipDeadlineLabel(item);
-  const softDl = isSoftDeadline(item);
   const isMylo = item.origin === "llm";
+  // "Fellowship; Original Posted Jul 16, 2024" — the grant card's identity line,
+  // with the award class standing in for a sponsor a fellowship listing rarely
+  // names.
+  const posted = formatIsoDate(item.posted);
+  const identity = [
+    AWARD_CLASS_LABELS[item.award_class] ?? item.award_class,
+    posted ? `Original Posted ${posted}` : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
 
   // Compact facet chips: fields + stages, capped at 4 combined
   const facetChips = [...item.fields, ...item.stages].slice(0, 4);
@@ -244,97 +241,83 @@ export function FellowshipRow({
 
   return (
     <MatchCard
-      /* The ring is research fit; eligibility is a separate rule-engine claim
-         and keeps its own badge in the head row. */
+      /* The rail is research fit; eligibility is a separate rule-engine claim
+         and keeps its own badge beside the award's identity line. */
       ring={
-        <MatchRing
+        <MatchRail
           percent={item.match_percent}
           origin={item.origin}
           scope={scopeName}
+          isNew={item.is_new}
+          cluster={item.cluster}
+          bridgeClusters={item.bridge_clusters}
         />
       }
       head={
-        <>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              {/* Title always first, so it lines up with the top of the ring
-                  whether or not this fellowship has a cluster or a New tag. */}
-              <h3 className="font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
-                {item.title}
-              </h3>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <EligibilityBadge item={item} />
-                <AwardClassChip awardClass={item.award_class} />
-                {item.is_new ? <NewTag /> : null}
-                {item.cluster ? <ClusterBadge cluster={item.cluster} /> : null}
-              </div>
-            </div>
+        /* Wraps rather than squeezing: once the title column would fall below
+           12rem — a narrow phone, beside the match rail — the tools drop to
+           their own line instead of crushing the title to two words a row. */
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 basis-48">
+            <h3 className="font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+              {item.title}
+            </h3>
+            {identity ? (
+              <p
+                className="mt-1.5 text-xs font-medium text-[var(--text-secondary)]"
+                title={identity}
+              >
+                {identity}
+              </p>
+            ) : null}
 
-            {/* Right: save bookmark + deadline + amount */}
-            <div className="flex shrink-0 flex-col items-end gap-2 text-right">
-              <div className="flex items-center gap-1.5">
-                <RemindButton
-                  contentId={item.content_id}
-                  title={item.title}
-                  deadlines={item.addressable_deadlines}
-                  lockedLabSlug={remindLabSlug}
-                />
-                <SaveButton
-                  contentId={item.content_id}
-                  saved={item.saved}
-                  savedLabs={item.saved_labs}
-                  variant="icon"
-                />
-                {ignorable ? (
-                  <IgnoreButton
-                    contentId={item.content_id}
-                    title={item.title}
-                    onIgnored={() => setIgnored(true)}
-                  />
+            {/* What the award actually covers, in two parts: the figure, and
+                the source's own qualifier on it ("per year", "plus travel").
+                A fellowship's money is the reason to read the card, and the
+                two say different things — a bare "$34,000" that turns out to
+                be a one-off is a different award from one that repeats. */}
+            {item.amount || item.amount_note ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                {item.amount ? (
+                  <span
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
+                    title={`Award ${item.amount}`}
+                  >
+                    <BankIcon size={13} aria-hidden="true" />
+                    {item.amount}
+                  </span>
+                ) : null}
+                {item.amount_note ? (
+                  <span className="rounded-full border border-[var(--border)] bg-[var(--surface-alt)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
+                    {item.amount_note}
+                  </span>
                 ) : null}
               </div>
-              {deadlineLabel ? (
-                <span
-                  className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
-                    softDl
-                      ? "text-[var(--text-secondary)]"
-                      : "text-[var(--destructive)]"
-                  }`}
-                  title={deadlineLabel}
-                >
-                  <CalendarIcon size={13} aria-hidden="true" />
-                  {deadlineLabel}
-                </span>
-              ) : null}
-              {item.amount ? (
-                <span
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
-                  title={
-                    item.amount_note
-                      ? `${item.amount} — ${item.amount_note}`
-                      : item.amount
-                  }
-                >
-                  <BankIcon size={13} aria-hidden="true" />
-                  {item.amount}
-                </span>
-              ) : null}
+            ) : null}
+
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <EligibilityBadge item={item} />
             </div>
           </div>
-        </>
+
+          <CardActionBar
+            contentId={item.content_id}
+            title={item.title}
+            deadlines={item.addressable_deadlines}
+            extraDeadlines={fellowshipSoftRounds(item)}
+            saved={item.saved}
+            savedLabs={item.saved_labs}
+            remindLabSlug={remindLabSlug}
+            ignorable={ignorable}
+            onIgnored={() => setIgnored(true)}
+          />
+        </div>
       }
     >
-      {/* Amount note as subtext when it's a short phrase */}
-      {item.amount_note && item.amount_note.length <= 40 ? (
-        <p className="mt-1 text-xs text-[var(--text-secondary)]">
-          {item.amount_note}
-        </p>
-      ) : null}
-
       {/* The fellowship's own blurb from the source listing (matches the
           description line on grant cards). */}
       {item.description ? (
-        <p className="mt-2 line-clamp-5 text-sm leading-relaxed text-[var(--text-secondary)]">
+        <p className="mt-3 line-clamp-5 text-sm leading-relaxed text-[var(--text-secondary)]">
           {item.description}
         </p>
       ) : null}
@@ -404,22 +387,17 @@ export function FellowshipRow({
 
       <RecommendedFor members={recommendedFor} />
 
-      {/* External link */}
-      {item.url ? (
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-        >
-          View fellowship
-          <ArrowRightIcon
-            size={14}
-            aria-hidden="true"
-            className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-          />
-        </a>
-      ) : null}
+      <SourceRow
+        license={item.license}
+        licenseUrl={item.license_url}
+        sourceLinks={item.source_links}
+        source={item.source}
+        action={
+          item.url ? (
+            <ViewLink href={item.url} label="View fellowship" />
+          ) : null
+        }
+      />
     </MatchCard>
   );
 }

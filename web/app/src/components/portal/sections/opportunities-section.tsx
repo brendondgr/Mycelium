@@ -5,24 +5,19 @@ import * as React from "react";
 import { Card } from "@/components/portal/primitives/card";
 import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
-import { MatchRing } from "@/components/portal/primitives/match-ring";
-import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
+import { MatchRail } from "@/components/portal/primitives/match-rail";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
+import { type ExtraDeadline } from "@/components/portal/primitives/deadline-list";
 import {
-  DeadlineList,
-  type ExtraDeadline,
-} from "@/components/portal/primitives/deadline-list";
-import { SourceFooter } from "@/components/portal/primitives/source-footer";
-import { ArrowRightIcon, BankIcon } from "@/components/portal/icons";
+  SourceRow,
+  ViewLink,
+} from "@/components/portal/primitives/source-footer";
+import { BankIcon } from "@/components/portal/icons";
 import {
+  CardActionBar,
   MyloReason,
-  NewTag,
-  UpdatedTag,
-  RemindButton,
-  IgnoreButton,
   IgnoredStrip,
-  SaveButton,
   formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
 import {
@@ -146,11 +141,15 @@ export function GrantRow({
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   }, []);
   const posted = formatDate(grant.posted);
-  const topics = grant.matched_topics
-    .split(";")
-    .map((t) => t.trim())
+  // "National Institutes of Health; Original Posted Jul 16, 2024" — one line
+  // that says who is behind the call and how long it has been open, with
+  // either half dropping out cleanly when the source publishes neither.
+  const identity = [
+    grant.sponsor,
+    posted ? `Original Posted ${posted}` : "",
+  ]
     .filter(Boolean)
-    .slice(0, 5);
+    .join("; ");
   const isMylo = grant.origin === "llm";
 
   // Ignored: collapse in place, with the way back, until the next refetch drops it.
@@ -167,94 +166,66 @@ export function GrantRow({
   return (
     <MatchCard
       ring={
-        <MatchRing
+        <MatchRail
           percent={grant.match_percent ?? grant.embedding_match}
           origin={grant.origin}
+          isNew={grant.is_new}
+          isUpdated={grant.is_updated}
+          cluster={grant.cluster}
+          bridgeClusters={grant.bridge_clusters}
         />
       }
       head={
-        <>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              {/* Title always first, so it lines up with the top of the ring
-                  whether or not this grant has a cluster or a New tag. */}
-              <h3 className="font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
-                {grant.title}
-              </h3>
-              {grant.sponsor ? (
-                <p
-                  className="mt-1.5 line-clamp-1 text-xs font-medium text-[var(--text-secondary)]"
-                  title={grant.sponsor}
-                >
-                  {grant.sponsor}
-                </p>
-              ) : null}
-              {posted ? (
-                <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                  Posted {posted}
-                </p>
-              ) : null}
-              {grant.is_new || grant.cluster ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {grant.is_new ? <NewTag /> : null}
-                  {grant.is_updated ? <UpdatedTag /> : null}
-                  {grant.cluster ? (
-                    <ClusterBadge cluster={grant.cluster} />
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-
-            {/* Right: save bookmark, then the application due date and funding amount. */}
-            <div className="flex shrink-0 flex-col items-end gap-2 text-right">
-              <div className="flex items-center gap-1.5">
-                <RemindButton
-                  contentId={grant.content_id}
-                  title={grant.title}
-                  deadlines={grant.addressable_deadlines}
-                  lockedLabSlug={remindLabSlug}
-                />
-                <SaveButton
-                  contentId={grant.content_id}
-                  saved={grant.saved}
-                  savedLabs={grant.saved_labs}
-                  variant="icon"
-                />
-                {ignorable ? (
-                  <IgnoreButton
-                    contentId={grant.content_id}
-                    title={grant.title}
-                    onIgnored={() => setIgnored(true)}
-                  />
-                ) : null}
-              </div>
-              {grant.amount ? (
-                <span
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
-                  title={`Funding ${grant.amount}`}
-                >
-                  <BankIcon size={13} aria-hidden="true" />
-                  {grant.amount}
-                </span>
-              ) : null}
-            </div>
+        /* Wraps rather than squeezing: once the title column would fall below
+           12rem — a narrow phone, beside the match rail — the tools drop to
+           their own line instead of crushing the title to two words a row. */
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 basis-48">
+            {/* Title first, then one identity line: who is funding it, and
+                when they first posted it. Everything that qualifies the match
+                (New, the themes) lives on the rail beside the ring, so this
+                column is only ever about the grant itself. */}
+            <h3 className="font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
+              {grant.title}
+            </h3>
+            {identity ? (
+              <p
+                className="mt-1.5 text-xs font-medium text-[var(--text-secondary)]"
+                title={identity}
+              >
+                {identity}
+              </p>
+            ) : null}
+            {grant.amount ? (
+              <span
+                className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
+                title={`Funding ${grant.amount}`}
+              >
+                <BankIcon size={13} aria-hidden="true" />
+                {grant.amount}
+              </span>
+            ) : null}
           </div>
-        </>
+
+          {/* Ignore, reminder, bookmark — and the Deadlines control beneath
+              them, spanning their width. */}
+          <CardActionBar
+            contentId={grant.content_id}
+            title={grant.title}
+            deadlines={grant.addressable_deadlines}
+            extraDeadlines={grantExtraRounds(grant, today)}
+            deadlineFootnote={grantDeadlineFootnote(grant)}
+            saved={grant.saved}
+            savedLabs={grant.saved_labs}
+            remindLabSlug={remindLabSlug}
+            ignorable={ignorable}
+            onIgnored={() => setIgnored(true)}
+          />
+        </div>
       }
     >
-      {/* Every round, listed with Save and Set an alert rather than behind a
-          separate hover — see `DeadlineList`. */}
-      <DeadlineList
-        contentId={grant.content_id}
-        title={grant.title}
-        deadlines={grant.addressable_deadlines}
-        extraDeadlines={grantExtraRounds(grant, today)}
-        footnote={grantDeadlineFootnote(grant)}
-        lockedLabSlug={remindLabSlug}
-      />
-
       {grant.description ? (
-        <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
           {grant.description}
         </p>
       ) : null}
@@ -270,36 +241,19 @@ export function GrantRow({
         )
       ) : null}
 
-      {topics.length > 0 ? (
-        <p className="mt-2.5 text-xs text-[var(--text-secondary)]">
-          Matched: {topics.join(" · ")}
-        </p>
-      ) : null}
-
       <RecommendedFor members={recommendedFor} />
 
-      <SourceFooter
+      <SourceRow
         license={grant.license}
         licenseUrl={grant.license_url}
         sourceLinks={grant.source_links}
         source={grant.source}
+        action={
+          grant.url ? (
+            <ViewLink href={grant.url} label="View opportunity" />
+          ) : null
+        }
       />
-
-      {grant.url ? (
-        <a
-          href={grant.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-        >
-          View opportunity
-          <ArrowRightIcon
-            size={14}
-            aria-hidden="true"
-            className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-          />
-        </a>
-      ) : null}
     </MatchCard>
   );
 }

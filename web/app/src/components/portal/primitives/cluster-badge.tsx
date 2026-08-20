@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import { cn } from "@/lib/utils";
+
 /** The categorical cluster accent palette defined in `theme.css` (`--cluster-1`
  * … `--cluster-8`). */
 const CLUSTER_TOKEN_COUNT = 8;
@@ -38,11 +40,21 @@ export type ClusterRef = { id: string; label: string };
  * instead of a semantic fit color. Renders in the badge row at the top of a
  * card whenever the item carries an attributed `cluster`.
  */
-export function ClusterBadge({ cluster }: { cluster: ClusterRef }) {
+export function ClusterBadge({
+  cluster,
+  className,
+}: {
+  cluster: ClusterRef;
+  className?: string;
+}) {
   const token = clusterAccentVar(cluster.id);
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1"
+      className={cn(
+        "inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1",
+        className,
+      )}
+      title={cluster.label}
       style={{
         borderColor: `color-mix(in srgb, var(${token}) 35%, var(--border))`,
         backgroundColor: `color-mix(in srgb, var(${token}) 10%, var(--surface))`,
@@ -53,7 +65,7 @@ export function ClusterBadge({ cluster }: { cluster: ClusterRef }) {
         className="h-2 w-2 shrink-0 rounded-full"
         style={{ backgroundColor: `var(${token})` }}
       />
-      <span className="text-xs font-semibold leading-none text-[var(--text-primary)]">
+      <span className="min-w-0 truncate text-xs font-semibold leading-none text-[var(--text-primary)]">
         {cluster.label}
       </span>
     </span>

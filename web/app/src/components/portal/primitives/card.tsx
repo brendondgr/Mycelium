@@ -16,7 +16,10 @@ export function Card({ className, accent, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border bg-surface shadow-[var(--shadow)]",
+        // `relative` so a card-scoped overlay (the undo popup a feed card
+        // raises after Ignore / Reminder / Bookmark) centres on the card
+        // itself, wherever inside it the control that raised it happens to sit.
+        "relative rounded-2xl border border-border bg-surface shadow-[var(--shadow)]",
         accent === "primary-rule" && "border-l-4 border-l-primary",
         accent === "gold" && "border-accent",
         className,

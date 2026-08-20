@@ -34,7 +34,10 @@ Paths are relative to the repository root.
 | An app route | `web/app/src/app/app/(workspace)/<name>/page.tsx` |
 | Login / signup routes | `web/app/src/app/{login,signup}/` + `web/app/src/components/auth/` |
 | Portal shell, sidebar, nav, lab switcher | `web/app/src/components/portal/{portal-sidebar,portal-mobile-nav,lab-switcher,portal-context}.tsx` |
-| Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `match-ring`, `match-card`, `cluster-badge`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `modal`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-list`, `source-footer` |
+| Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `match-ring`, `match-rail`, `match-card`, `cluster-badge`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `modal`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-list`, `source-footer` |
+| A feed card's match panel (ring, "New", up to 3 matching clusters) | `web/app/src/components/portal/primitives/match-rail.tsx` |
+| A feed card's Deadlines button + dropdown (alerts per round) | `web/app/src/components/portal/primitives/deadline-list.tsx` (`DeadlineMenu`) |
+| A feed card's source row + "View …" button | `web/app/src/components/portal/primitives/source-footer.tsx` (`SourceRow`, `ViewLink`) |
 | The report's ranked entry (title, insight, note, match rail, deadline strip) | `web/app/src/components/portal/primitives/report-entry.tsx`; its print half is `_entry_row` in `web/backend/apps/content/daily_report_pdf.py` |
 | Decorative motion (vines, threads, seedlings, ring sweep) | `web/app/src/components/portal/motion/` (reduced-motion + in-view-once hooks), `portal/leaf-vine.tsx`, keyframes in `web/app/src/app/globals.css` |
 | Feed card scroll entrance (predictive, fires ahead of the reader) | `web/app/src/components/portal/motion/reveal-on-scroll.tsx` |
@@ -46,7 +49,9 @@ Paths are relative to the repository root.
 | Feeds: papers / grants / fellowships / conferences | `web/app/src/components/portal/sections/{research-papers-section,opportunities-section,fellowships-section,conferences-section}.tsx` |
 | Feed filter rails | `web/app/src/components/portal/sections/{grant-filters,fellowship-filters,conference-filters,saves-filters}.tsx` |
 | Saves & reminders | `web/app/src/components/portal/sections/{saves-section,reminders-section}.tsx`, `portal/{reminder-composer,reminder-editor,reminder-offsets-field,mention-picker}.tsx` |
+| A feed card's tool block (ignore, reminder, bookmark + Deadlines) | `web/app/src/components/portal/sections/opportunity-bits.tsx` (`CardActionBar`) |
 | Save button & scope menu | `web/app/src/components/portal/sections/opportunity-bits.tsx` |
+| Undo popup shared by every card tool | `web/app/src/components/portal/sections/opportunity-bits.tsx` (`useCardUndo`, `UndoPopup`) |
 | Manual ignore control + undo strip | `web/app/src/components/portal/sections/opportunity-bits.tsx` (`IgnoreButton`, `IgnoredStrip`); mounted by each feed card's `ignorable` prop |
 | Ignored review view (a tab on Saves) | `web/app/src/components/portal/sections/saves-section.tsx` (`IgnoredBody`, `IgnoredRow`) |
 | Search UI | `web/app/src/components/portal/global-search.tsx`, `portal/sections/{search-section,search-result-card}.tsx` |
@@ -59,6 +64,7 @@ Paths are relative to the repository root.
 | Notification bell | `web/app/src/components/portal/notification-bell.tsx` |
 | API client, hooks, types | `web/app/src/lib/` and `web/app/src/lib/portal/{client,hooks,mutations,types}.ts` |
 | Infinite reveal | `web/app/src/lib/portal/use-infinite-reveal.ts` |
+| Calendar-date formatting for cards | `web/app/src/lib/portal/dates.ts` (`formatIsoDate`) |
 | Design tokens / theme | `web/packages/config/src/theme.css` |
 
 ## Backend — identity & organization (`apps/accounts`)

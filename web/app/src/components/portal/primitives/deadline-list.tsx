@@ -2,13 +2,19 @@
 
 import * as React from "react";
 
-import { BellIcon, CalendarIcon, CheckIcon } from "@/components/portal/icons";
+import {
+  BellIcon,
+  CalendarIcon,
+  CheckIcon,
+  ChevronDownIcon,
+} from "@/components/portal/icons";
 import {
   ReminderComposer,
   deadlineOptionId,
   deadlineOptionLabel,
 } from "@/components/portal/reminder-composer";
-import { formatIsoDate } from "@/components/portal/sections/opportunity-bits";
+import { formatIsoDate } from "@/lib/portal/dates";
+import { useDismissable } from "@/lib/portal/use-dismissable";
 import { useReminderAccess } from "@/lib/portal/hooks";
 import type { DeadlineOption } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
@@ -34,25 +40,27 @@ export type ExtraDeadline = {
 };
 
 /**
- * Every deadline an item carries, as a list, sitting with Save and Set an alert.
+ * The card's **Deadlines** control: a button carrying the next upcoming
+ * deadline, which opens onto every other round — each future one with its own
+ * alert control.
  *
- * This replaces a hover popover behind a separate button. Two things were wrong
- * with that. Seeing what deadlines a conference actually has — the thing the
- * reader is on this page for — took a deliberate click into a transient
- * disclosure; and the alert control lived somewhere else entirely, so choosing
- * *which* deadline to be alerted about meant opening one surface to read the
- * rounds and a different one to act on them.
+ * It sits directly beneath the card's three tools and spans their combined
+ * width, so the head reads as one block of actions rather than a row of icons
+ * with a date list orbiting it. The full list used to run the card's whole
+ * width below the head, which gave every dated item a permanent three-to-six
+ * row table above its description; only the next date is needed at a glance,
+ * and everything else is one click away.
  *
- * Here each round is a row, and each row that is still ahead carries its own
- * alert control which opens the composer already pointed at that round. Rounds
- * that have passed stay visible, struck through and unalertable, because "I
- * missed round 1, when is round 2" is a real question and hiding the answer
- * makes the list look wrong rather than complete.
+ * The trigger is uncoloured at rest and takes the gold deadline tint on hover
+ * or focus, matching the tools above it (`docs/styles.md` reserves gold for
+ * opportunity signals, which a deadline is). It opens on click and stays open
+ * until an outside click or Escape — not on hover, which would be unreachable
+ * by touch and would flicker the panel shut as the pointer crossed the gap.
  *
  * Nothing renders at all when an item has no deadlines — a rolling call, a
- * paper — rather than an empty box explaining its own emptiness.
+ * paper — rather than an empty control explaining its own emptiness.
  */
-export function DeadlineList({
+export function DeadlineMenu({
   contentId,
   title,
   deadlines,
@@ -71,29 +79,131 @@ export function DeadlineList({
   /** Set from a lab's Saves area so the alert posts to that lab's channel. */
   lockedLabSlug?: string;
 }) {
+  const { open, setOpen, ref } = useDismissable<HTMLDivElement>();
   const [composingFor, setComposingFor] = React.useState<string | null>(null);
+
+  const dated = React.useMemo(
+    () =>
+      deadlines
+        .filter((d) => d.due_date)
+        .slice()
+        .sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1)),
+    [deadlines],
+  );
+
+  if (dated.length === 0 && extraDeadlines.length === 0) return null;
+
+  // The next upcoming deadline is what the button says. `is_next` is the
+  // backend's own mark, but a card can carry one per kind (abstract *and*
+  // paper), so the earliest of them is what "next" means to a reader.
+  const next = dated[0];
+  const upcomingExtra = extraDeadlines.find((round) => !round.passed);
+  const triggerText = next
+    ? formatIsoDate(next.due_date!)
+    : upcomingExtra
+      ? upcomingExtra.dateLabel
+      : "All passed";
+  const triggerDescription = next
+    ? `${deadlineOptionLabel(next)} — ${triggerText}`
+    : upcomingExtra
+      ? `${upcomingExtra.label} — ${triggerText}`
+      : "Every deadline on record has passed";
+  const rowCount = dated.length + extraDeadlines.length;
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <p className="text-right text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+        {rowCount > 1 ? "Deadlines" : "Deadline"}
+      </p>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Deadlines for ${title} — next, ${triggerDescription}`}
+        title={triggerDescription}
+        className={cn(
+          "mt-1 inline-flex w-full items-center justify-between gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold tabular-nums transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          open
+            ? "border-[color-mix(in_srgb,var(--accent)_55%,transparent)] bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--text-primary)]"
+            : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[color-mix(in_srgb,var(--accent)_50%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] hover:text-[var(--text-primary)]",
+        )}
+      >
+        <CalendarIcon size={11} aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate text-left">{triggerText}</span>
+        <ChevronDownIcon
+          size={11}
+          aria-hidden="true"
+          className={cn(
+            "shrink-0 transition-transform duration-150 motion-reduce:transition-none",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+6px)] z-40 w-[min(20rem,78vw)] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 text-left shadow-[var(--shadow)]"
+        >
+          <DeadlineRows
+            title={title}
+            dated={dated}
+            extraDeadlines={extraDeadlines}
+            footnote={footnote}
+            lockedLabSlug={lockedLabSlug}
+            onCompose={setComposingFor}
+          />
+        </div>
+      ) : null}
+
+      {/* Rendered outside the panel so dismissing the dropdown (an outside
+          click lands in the modal) cannot unmount the composer under itself. */}
+      {composingFor ? (
+        <ReminderComposer
+          contentId={contentId}
+          title={title}
+          deadlines={dated}
+          initialDeadlineId={composingFor}
+          onClose={() => setComposingFor(null)}
+          lockedScope={lockedLabSlug ? "lab" : undefined}
+          lockedLabSlug={lockedLabSlug}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Every round the item carries, one per row: the alertable ones first, each
+ * with its own alert control pointed at that round, then the display-only
+ * rows (passed rounds struck through, later grant rounds plain).
+ */
+function DeadlineRows({
+  title,
+  dated,
+  extraDeadlines,
+  footnote,
+  lockedLabSlug,
+  onCompose,
+}: {
+  title: string;
+  dated: DeadlineOption[];
+  extraDeadlines: ExtraDeadline[];
+  footnote?: React.ReactNode;
+  lockedLabSlug?: string;
+  onCompose: (id: string) => void;
+}) {
   // One shared query for the whole card: the alert controls stay visible and
   // clickable when the plan doesn't cover them, because a missing button
   // teaches nothing — the composer names which condition is unmet.
   const access = useReminderAccess(lockedLabSlug);
   const blocked = access.data ? !access.data.allowed : false;
 
-  const dated = deadlines.filter((d) => d.due_date);
-  if (dated.length === 0 && extraDeadlines.length === 0) return null;
-
-  const heading =
-    dated.length + extraDeadlines.length > 1 ? "Deadlines" : "Deadline";
-
   return (
-    <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface-alt)] p-3">
-      <div className="flex items-center gap-1.5">
-        <CalendarIcon size={13} aria-hidden="true" />
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
-          {heading}
-        </p>
-      </div>
-
-      <ul className="mt-2 space-y-1">
+    <>
+      <ul className="space-y-1">
         {dated.map((deadline) => {
           const id = deadlineOptionId(deadline);
           return (
@@ -118,7 +228,7 @@ export function DeadlineList({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setComposingFor(id)}
+                  onClick={() => onCompose(id)}
                   // Names the deadline, not just the item: several of these sit
                   // in one list and "Set an alert" alone is the same accessible
                   // name repeated, which is unusable by voice or screen reader.
@@ -184,19 +294,7 @@ export function DeadlineList({
           about.
         </p>
       ) : null}
-
-      {composingFor ? (
-        <ReminderComposer
-          contentId={contentId}
-          title={title}
-          deadlines={dated}
-          initialDeadlineId={composingFor}
-          onClose={() => setComposingFor(null)}
-          lockedScope={lockedLabSlug ? "lab" : undefined}
-          lockedLabSlug={lockedLabSlug}
-        />
-      ) : null}
-    </div>
+    </>
   );
 }
 

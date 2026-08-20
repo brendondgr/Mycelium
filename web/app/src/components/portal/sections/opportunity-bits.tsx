@@ -7,16 +7,23 @@ import {
   BookmarkIcon,
   CheckIcon,
   ChevronDownIcon,
+  CloseIcon,
   EyeOffIcon,
   SparkleIcon,
 } from "@/components/portal/icons";
+import {
+  DeadlineMenu,
+  type ExtraDeadline,
+} from "@/components/portal/primitives/deadline-list";
 import { ReminderComposer } from "@/components/portal/reminder-composer";
 import {
   useIgnoreItem,
   useMyLabs,
   useReminderAccess,
+  useReminderMutations,
   useSaveOpportunity,
 } from "@/lib/portal/hooks";
+import { formatIsoDate } from "@/lib/portal/dates";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 import type { DeadlineOption, MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
@@ -130,37 +137,10 @@ function RefreshGlyph() {
 }
 
 /**
- * Format a date-only `YYYY-MM-DD` string as "Nov 12, 2026", in local time.
- *
- * `new Date("2026-09-10")` is **not** what you want here. ECMAScript reads the
- * date-only form as UTC midnight, so every timezone behind UTC renders the day
- * before: in America/New_York that exact string prints "Sep 9, 2026". A
- * deadline shown a day early is the worst direction for this product to be
- * wrong in — the whole corpus is deadlines, and a reader who trusts the card
- * submits late.
- *
- * Splitting the parts and going through the local-time `Date(y, m, d)`
- * constructor keeps the calendar date the backend sent. The backend sends a
- * plain calendar date on purpose: a funder's "due Nov 12" is a calendar day in
- * the funder's own world, not an instant, and re-projecting it through the
- * reader's timezone invents precision nobody wrote down.
- *
- * Use this for `deadline_date`, `posted`, `due_dates[]` and friends. For a real
- * instant (`2026-09-10T11:59:00Z`, e.g. a conference round's `instant`), plain
- * `new Date(...)` is correct and this would throw the time away.
+ * Re-exported so the cards keep one import for their formatting helpers. The
+ * implementation lives in `lib/portal/dates` — see that module for why.
  */
-export function formatIsoDate(dateIso: string): string {
-  if (!dateIso) return "";
-  const [y, m, d] = dateIso.slice(0, 10).split("-").map(Number);
-  if (!y || !m || !d) return dateIso;
-  const date = new Date(y, m - 1, d);
-  if (Number.isNaN(date.getTime())) return dateIso;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
+export { formatIsoDate };
 
 /** Human label for the actionable deadline, e.g. "Application due Nov 12, 2026". */
 export function deadlineLabel(kind: string, dateIso: string): string {
@@ -195,6 +175,212 @@ export function deadlineKindLabel(kind: string, area: string): string {
   }
 }
 
+/* ----------------------------------------------------------------------- */
+/* The card's tools: ignore, remind, bookmark — and the way back             */
+/* ----------------------------------------------------------------------- */
+
+/** How long the undo popup stays up before the card moves on without it. */
+const UNDO_TIMEOUT_MS = 7000;
+
+/**
+ * One completed action a card is offering to reverse.
+ *
+ * Every tool reports its own, because only the tool knows what it did: the
+ * bookmark knows *which* scope it saved to, the bell knows which reminder row
+ * the server created, ignore knows the item it hid.
+ */
+export type UndoAction = {
+  /** Past tense, one short sentence: "Saved to your saves." */
+  message: string;
+  undo: () => void;
+  /** Run when the popup goes away *without* being undone (ignore collapses). */
+  onExpire?: () => void;
+};
+
+/**
+ * Holds the card's single pending undo offer, and expires it on a timer.
+ *
+ * One at a time by design: a card is one row in a feed, and stacking two
+ * popups in the middle of it would cover the thing they are talking about.
+ * A newly raised action replaces the previous one and the earlier one's
+ * `onExpire` is deliberately *not* run — it was superseded, not ignored.
+ */
+export function useCardUndo() {
+  const [action, setAction] = React.useState<UndoAction | null>(null);
+
+  React.useEffect(() => {
+    if (!action) return;
+    const timer = window.setTimeout(() => {
+      setAction(null);
+      action.onExpire?.();
+    }, UNDO_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [action]);
+
+  const raise = React.useCallback((next: UndoAction) => setAction(next), []);
+  const undo = React.useCallback(() => {
+    setAction((current) => {
+      current?.undo();
+      return null;
+    });
+  }, []);
+  const dismiss = React.useCallback(() => {
+    setAction((current) => {
+      current?.onExpire?.();
+      return null;
+    });
+  }, []);
+
+  return { action, raise, undo, dismiss };
+}
+
+/**
+ * The undo popup: what just happened, and the way back, floated in the centre
+ * of the card the action was taken on.
+ *
+ * Centred rather than anchored to the control, because the three tools sit in
+ * a 32px row in the card's corner and a popup hanging off any one of them
+ * would leave the reader hunting for which. `role="status"` so the change is
+ * announced, not only seen — and the whole thing is keyboard reachable, since
+ * an undo that only a mouse can reach is not an undo.
+ *
+ * It expires on its own (see {@link UNDO_TIMEOUT_MS}); the card stays put.
+ */
+export function UndoPopup({
+  action,
+  onUndo,
+  onDismiss,
+}: {
+  action: UndoAction | null;
+  onUndo: () => void;
+  onDismiss: () => void;
+}) {
+  if (!action) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center p-4">
+      <div
+        role="status"
+        className="pointer-events-auto flex max-w-full items-center gap-2.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 shadow-[var(--shadow)]"
+      >
+        <span className="min-w-0 truncate text-[13px] font-medium text-[var(--text-primary)]">
+          {action.message}
+        </span>
+        <button
+          type="button"
+          onClick={onUndo}
+          className="shrink-0 rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold text-[var(--text-primary)] transition-colors hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Undo
+        </button>
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="shrink-0 rounded-full p-1 text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <CloseIcon size={12} aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The block in a matched card's top-right corner: the three tools in one row —
+ * **ignore, reminder, bookmark**, in that order — with the card's **Deadlines**
+ * control directly beneath them, spanning their combined width.
+ *
+ * Each tool carries its own colour (ignore terracotta, reminder blue, bookmark
+ * gold) but wears none of it at rest. A row of three saturated icons on every
+ * card in a feed of twenty-five reads as an alarm; the colour is there to
+ * confirm what you are about to press, so it arrives on hover and focus. The
+ * one exception is a bookmark already holding a save, which stays gold: that is
+ * state, not decoration, and hiding it would lose the answer to "did I save
+ * this?".
+ *
+ * The bar owns the card's undo popup and hands `onUndo` to all three tools, so
+ * every action taken here can be taken back from one place. Ignoring is the
+ * only one that changes the card: it waits for the popup to expire and then
+ * calls `onIgnored`, which collapses the row into {@link IgnoredStrip}.
+ *
+ * `deadlines` may be empty (a rolling call, an undated listing) — the bell and
+ * the Deadlines control both render nothing rather than an inert stub.
+ */
+export function CardActionBar({
+  contentId,
+  title,
+  deadlines,
+  extraDeadlines,
+  deadlineFootnote,
+  saved,
+  savedLabs,
+  remindLabSlug,
+  ignorable = false,
+  onIgnored,
+}: {
+  contentId: string;
+  title: string;
+  deadlines: DeadlineOption[];
+  /** Display-only deadline rows (passed rounds, later grant rounds). */
+  extraDeadlines?: ExtraDeadline[];
+  /** Extra context under the deadline list (a letter of intent, a moved date). */
+  deadlineFootnote?: React.ReactNode;
+  saved: boolean;
+  savedLabs?: string[];
+  /** Set from a lab's Saves area so reminders post to that lab's channel. */
+  remindLabSlug?: string;
+  ignorable?: boolean;
+  onIgnored?: () => void;
+}) {
+  const undo = useCardUndo();
+  return (
+    <>
+      {/* 6.75rem is exactly the three 2rem tools plus their two 0.375rem gaps,
+          so the Deadlines control beneath them lines up with the row rather
+          than widening the column to fit whatever date it happens to carry. */}
+      <div className="flex w-[6.75rem] shrink-0 flex-col items-end">
+        <div className="flex items-center justify-end gap-1.5">
+          {ignorable ? (
+            <IgnoreButton
+              contentId={contentId}
+              title={title}
+              onIgnored={onIgnored}
+              onUndo={undo.raise}
+            />
+          ) : null}
+          <RemindButton
+            contentId={contentId}
+            title={title}
+            deadlines={deadlines}
+            lockedLabSlug={remindLabSlug}
+            onUndo={undo.raise}
+          />
+          <SaveButton
+            contentId={contentId}
+            saved={saved}
+            savedLabs={savedLabs}
+            variant="icon"
+            onUndo={undo.raise}
+          />
+        </div>
+        <DeadlineMenu
+          contentId={contentId}
+          title={title}
+          deadlines={deadlines}
+          extraDeadlines={extraDeadlines}
+          footnote={deadlineFootnote}
+          lockedLabSlug={remindLabSlug}
+        />
+      </div>
+      <UndoPopup
+        action={undo.action}
+        onUndo={undo.undo}
+        onDismiss={undo.dismiss}
+      />
+    </>
+  );
+}
+
 /**
  * A bookmark control that saves an item (paper, grant, conference, or
  * fellowship) to the caller's **personal** workspace, or — for a lab manager —
@@ -207,18 +393,25 @@ export function deadlineKindLabel(kind: string, area: string): string {
  * holding the item (from the feed's `saved_labs`).
  *
  * `variant="icon"` renders a compact round trigger (used where space is tight);
- * the default renders the labelled pill used on the Saves page.
+ * the default renders the labelled pill used on the Saves page. Either way the
+ * control is uncoloured until it is hovered, focused, or actually holding a
+ * save — see `CardActionBar` for why the card's three tools rest neutral.
+ *
+ * `onUndo` is how the card offers the way back: every completed toggle reports
+ * what it did and how to reverse it, and the card raises that as a popup.
  */
 export function SaveButton({
   contentId,
   saved,
   savedLabs = [],
   variant = "full",
+  onUndo,
 }: {
   contentId: string;
   saved: boolean;
   savedLabs?: string[];
   variant?: "full" | "icon";
+  onUndo?: (action: UndoAction) => void;
 }) {
   const { save, unsave } = useSaveOpportunity();
   const labsQuery = useMyLabs();
@@ -232,13 +425,37 @@ export function SaveButton({
   const savedLabSet = React.useMemo(() => new Set(savedLabs), [savedLabs]);
   const anySaved = saved || savedLabs.length > 0;
 
+  const scopeName = (labSlug?: string) =>
+    labSlug
+      ? managedLabs.find((lab) => lab.slug === labSlug)?.name || "the lab"
+      : "your saves";
+
   const toggleScope = (labSlug?: string) => {
     const already = labSlug ? savedLabSet.has(labSlug) : saved;
+    const where = scopeName(labSlug);
     if (already) {
-      unsave.mutate({ contentId, labSlug });
+      unsave.mutate(
+        { contentId, labSlug },
+        {
+          onSuccess: () =>
+            onUndo?.({
+              message: `Removed from ${where}.`,
+              undo: () => save.mutate({ contentId, labSlug }),
+            }),
+        },
+      );
       return;
     }
-    save.mutate({ contentId, labSlug });
+    save.mutate(
+      { contentId, labSlug },
+      {
+        onSuccess: () =>
+          onUndo?.({
+            message: `Saved to ${where}.`,
+            undo: () => unsave.mutate({ contentId, labSlug }),
+          }),
+      },
+    );
     if (labSlug) setOpen(false);
   };
 
@@ -311,13 +528,20 @@ export function RemindButton({
   title,
   deadlines,
   lockedLabSlug,
+  onUndo,
 }: {
   contentId: string;
   title: string;
   deadlines: DeadlineOption[];
   lockedLabSlug?: string;
+  /** Report a created reminder so the card can offer to take it back. */
+  onUndo?: (action: UndoAction) => void;
 }) {
   const [composing, setComposing] = React.useState(false);
+  // Undo purges rather than cancels: the reader is saying "I didn't mean to
+  // make this", and a soft-cancelled row would leave a reminder they never
+  // wanted sitting on the reminders page explaining itself.
+  const { remove } = useReminderMutations();
   // Reminders need a paid plan and a synced Discord account (the lab's server, in
   // lab scope). One shared query answers for every bell on the page. The control
   // stays visible and clickable when locked — a missing button teaches nothing,
@@ -354,7 +578,7 @@ export function RemindButton({
           "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           locked
             ? "border-border bg-surface text-[var(--text-secondary)] opacity-70 hover:opacity-100"
-            : "border-transparent bg-[#3f6fa3] text-white hover:bg-[#345c85]",
+            : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[#3f6fa3] hover:bg-[#3f6fa3] hover:text-white focus-visible:border-[#3f6fa3] focus-visible:bg-[#3f6fa3] focus-visible:text-white",
         )}
       >
         <BellIcon size={14} aria-hidden="true" />
@@ -365,6 +589,12 @@ export function RemindButton({
           title={title}
           deadlines={datedDeadlines}
           onClose={() => setComposing(false)}
+          onCreated={(reminder) =>
+            onUndo?.({
+              message: "Reminder set.",
+              undo: () => remove.mutate({ id: reminder.id, purge: true }),
+            })
+          }
           lockedScope={lockedLabSlug ? "lab" : undefined}
           lockedLabSlug={lockedLabSlug}
         />
@@ -376,14 +606,12 @@ export function RemindButton({
 /**
  * The manual **ignore** control: "I've looked at this, stop showing it to me."
  *
- * Sits immediately to the right of the save bookmark, the same round 32px shape,
- * and is deliberately the quietest control in the row — save is accent green and
- * the reminder bell is blue, so ignore rests as a bare outline at reduced opacity
- * and only takes a destructive tint on hover or focus. It is always mounted and
+ * It leads the card's three tools — ignore, reminder, bookmark — sharing their
+ * round 32px shape and their resting tone: a plain surface pill that only takes
+ * its own colour (here a destructive terracotta) on hover or focus, so a feed of
+ * twenty-five cards does not read as a wall of alarms. It is always mounted and
  * always in the tab order: a control that appears on hover is unreachable by
- * touch and invisible to a screen reader. The resting opacity is 80% and not
- * lower: below roughly that, the glyph drops under the 3:1 contrast WCAG 1.4.11
- * requires of a UI graphic, and "quiet" would have become "unreadable".
+ * touch and invisible to a screen reader.
  *
  * `onIgnored` lets the card collapse itself into an undo strip rather than
  * vanishing — see `IgnoredStrip`. Without it the card simply disappears on the
@@ -399,11 +627,18 @@ export function IgnoreButton({
   title,
   ignored = false,
   onIgnored,
+  onUndo,
 }: {
   contentId: string;
   title: string;
   ignored?: boolean;
   onIgnored?: () => void;
+  /**
+   * Raise the card's undo popup. When it is wired, the collapse waits for the
+   * popup to go away — the card stays readable while the offer to take it back
+   * is on screen, and only then folds into {@link IgnoredStrip}.
+   */
+  onUndo?: (action: UndoAction) => void;
 }) {
   const { ignore, restore } = useIgnoreItem();
   const pending = ignore.isPending || restore.isPending;
@@ -415,6 +650,14 @@ export function IgnoreButton({
       return;
     }
     ignore.mutate({ contentId });
+    if (onUndo) {
+      onUndo({
+        message: "Ignored — you won't see this again.",
+        undo: () => restore.mutate({ contentId }),
+        onExpire: onIgnored,
+      });
+      return;
+    }
     onIgnored?.();
   };
 
@@ -435,7 +678,7 @@ export function IgnoreButton({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         ignored
           ? "border-[color-mix(in_srgb,var(--destructive)_45%,transparent)] bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] text-[var(--destructive)]"
-          : "border-transparent text-[var(--text-secondary)] opacity-80 hover:border-[color-mix(in_srgb,var(--destructive)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--destructive)_8%,transparent)] hover:text-[var(--destructive)] hover:opacity-100 focus-visible:opacity-100",
+          : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[color-mix(in_srgb,var(--destructive)_50%,transparent)] hover:bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] hover:text-[var(--destructive)] focus-visible:border-[color-mix(in_srgb,var(--destructive)_50%,transparent)] focus-visible:text-[var(--destructive)]",
       )}
     >
       <EyeOffIcon size={14} aria-hidden="true" />

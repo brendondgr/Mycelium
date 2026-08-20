@@ -19,6 +19,7 @@ import {
 import type {
   DeadlineOption,
   MentionTarget,
+  Reminder,
   ReminderAccess,
   ReminderOffset,
 } from "@/lib/portal/types";
@@ -87,6 +88,7 @@ export function ReminderComposer({
   title,
   deadlines,
   onClose,
+  onCreated,
   lockedScope,
   lockedLabSlug,
   initialDeadlineId,
@@ -95,6 +97,9 @@ export function ReminderComposer({
   title: string;
   deadlines: DeadlineOption[];
   onClose: () => void;
+  /** Fired with the reminder the server just created, before the modal closes.
+   * The card uses it to offer an immediate undo — see `CardActionBar`. */
+  onCreated?: (reminder: Reminder) => void;
   /** Pre-select one deadline — set when the composer is opened from a specific
    * row of the card's deadline list, so "set an alert for *this* round" is one
    * gesture rather than open-then-hunt. */
@@ -178,7 +183,10 @@ export function ReminderComposer({
         offsets,
       },
       {
-        onSuccess: onClose,
+        onSuccess: (reminder) => {
+          onCreated?.(reminder);
+          onClose();
+        },
         onError: (e) => setError((e as Error).message),
       },
     );

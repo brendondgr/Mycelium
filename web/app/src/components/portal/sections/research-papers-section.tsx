@@ -328,8 +328,7 @@ function PapersFeed({
 
           {!filtering ? (
             <p className="mt-5 text-xs text-[var(--text-secondary)]">
-              The top papers marked “Mylo pick” were ranked and
-              percent-matched by
+              The papers above the divider were ranked and percent-matched by
               the language model — the percent reflects how well it judges each
               paper fits your research. The cross-topics matches are the rest of
               the papers that cleared your match threshold, each showing its

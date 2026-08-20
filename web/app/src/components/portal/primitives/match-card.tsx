@@ -4,7 +4,11 @@ import { Card } from "@/components/portal/primitives/card";
 import { cn } from "@/lib/utils";
 
 type MatchCardProps = {
-  /** The `MatchRing` for this item, or null when there is no percent to show. */
+  /**
+   * The item's left-hand panel: a bare `MatchRing` on a paper card, or the
+   * fuller `MatchRail` (ring, "New", matching clusters) that the opportunity
+   * cards pass. Null when there is no percent and no tag to show.
+   */
   ring?: React.ReactNode;
   /** Badges, title and the item's own meta line — the block beside the ring. */
   head: React.ReactNode;
@@ -14,16 +18,17 @@ type MatchCardProps = {
 };
 
 /**
- * The shape every scored feed card shares: the match ring in a notch at the
- * top-left, the head beside it, and the body reclaiming the full width beneath.
+ * The shape every scored feed card shares: Mylo's recommendation in a panel at
+ * the top-left, the head beside it, and the body reclaiming the full width
+ * beneath.
  *
- * The ring used to sit in a flex column running the whole height of the card,
+ * The panel used to sit in a flex column running the whole height of the card,
  * which left a tall empty margin down the left of anything with a real abstract
  * — the taller the card, the worse it looked. Here the gutter is one grid row
- * tall: only the head is indented past the ring, and the description, reason
- * and link start back at the card's left edge.
+ * tall: only the head is indented past it, and the description, reason and
+ * source row start back at the card's left edge.
  *
- * With no ring (the cross-embedding tail has no percent) the gutter is not
+ * With no panel (the cross-embedding tail has no percent) the gutter is not
  * rendered at all, so nothing is indented past empty space.
  */
 export function MatchCard({ ring, head, children, className }: MatchCardProps) {
