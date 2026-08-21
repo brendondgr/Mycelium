@@ -35,7 +35,7 @@ import django  # noqa: E402
 django.setup()
 
 from harness import arms as arms_mod  # noqa: E402
-from harness import datasets, metadata, scoring  # noqa: E402
+from harness import datasets, metadata, scoring, subset  # noqa: E402
 from harness import index as index_mod  # noqa: E402
 
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
@@ -70,7 +70,9 @@ def read_run_file(path: Path) -> dict[str, list[tuple[str, float]]]:
     return ranking
 
 
-def build_corpus(dataset, config, all_docs, queries, pool_from: Path | None):
+def build_corpus(
+    dataset, config, all_docs, queries, pool_from: Path | None, collection_id: str
+):
     """The document set an arm scores over, honouring the corpus scope.
 
     `full` is every document. `pooled` is the plan's documented fallback: the
@@ -88,6 +90,18 @@ def build_corpus(dataset, config, all_docs, queries, pool_from: Path | None):
         return all_docs, scope
 
     depth = int(config.get("corpus", {}).get("pool_depth", 1000))
+
+    # A frozen subset, if one has been built, is authoritative. It is the same
+    # set this function would compute — but computing it costs a corpus-wide BM25
+    # pass every time, and a day of ladder comparisons needs the document set to
+    # be provably identical across arms rather than merely deterministic. Build it
+    # with `freeze_subset.py`; see `harness/subset.py`.
+    frozen = subset.load_frozen(subset.subset_path(collection_id, depth=depth))
+    if frozen is not None:
+        pooled, _ = subset.select(all_docs, set(frozen))
+        log(f"frozen pooled subset: {len(pooled)} docs (depth {depth})")
+        return pooled, scope
+
     judged = datasets.judged_doc_ids(dataset)
     keep = set(judged)
 
@@ -134,7 +148,9 @@ def load_corpus(collection, dataset, config, queries, pool_from, *, needs_vector
     all_docs = list(datasets.docs(dataset, limit=limit))
     log(f"{len(all_docs)} documents loaded")
 
-    docs, scope = build_corpus(dataset, config, all_docs, queries, pool_from)
+    docs, scope = build_corpus(
+        dataset, config, all_docs, queries, pool_from, collection.id
+    )
     if docs is not all_docs:
         del all_docs
 
@@ -201,11 +217,14 @@ def run_arm(
 
     arm = arms_mod.ARMS[arm_name]
     log(f"running arm {arm_name} …")
+    params = config.get("params", {})
     ranking = arm(
         queries,
         docs,
         index=vector_index,
-        pool_per_interest=int(config.get("params", {}).get("pool_per_interest", 100)),
+        pool_per_interest=int(params.get("pool_per_interest", 100)),
+        params=params,
+        collection=collection,
         log=log,
     )
     wall = time.time() - started

@@ -1,0 +1,158 @@
+"""Build this experiment's tables from `eval/results/*.json`. Never by hand.
+
+    uv run --project eval python docs/research/experiments/EXP-2026-08-008-*/code/collect.py
+
+The research rules forbid hand-editing a figure or hardcoding a number into a
+plotting script, and the reason is exactly this experiment's failure mode: a
+ladder with twenty arms is twenty chances to transcribe a digit wrong. Every
+number below is read out of the run record that produced it, keyed by the arm and
+config hash the harness stamped at run time.
+
+Writes `tables/ladder.md` and `data/ladder.json` in the experiment folder.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+EXP_DIR = Path(__file__).resolve().parent.parent
+REPO_ROOT = EXP_DIR.parents[3]
+RESULTS = REPO_ROOT / "eval" / "results"
+CONFIGS = REPO_ROOT / "eval" / "configs"
+
+SNAPSHOT = "longeval-sci-2026/snapshot-1/train"
+SCOPE = "pooled"
+QRELS = "dctr"
+
+METRICS = ["nDCG@10", "nDCG@100", "AP", "R@100", "RR", "P@10"]
+
+#: The ladder, in the order it should be read: baselines, then each rung.
+#: `(label, arm, {param: value})` — params disambiguate arms run at several
+#: settings, since the arm name alone does not identify a row.
+LADDER = [
+    ("— baselines —", None, {}),
+    ("bm25_only", "bm25_only", {}),
+    ("dense_only", "dense_only", {}),
+    ("fusion_dense_pool (production)", "fusion_dense_pool", {"pool_per_interest": 100}),
+    ("fusion_union_pool", "fusion_union_pool", {"pool_per_interest": 100}),
+    ("fusion_full", "fusion_full", {"pool_per_interest": 100}),
+    ("— rung 1: learned sparse retrieval —", None, {}),
+    ("splade_only", "splade_only", {}),
+    ("fusion_bm25_dense_splade", "fusion_bm25_dense_splade", {"pool_per_interest": 100}),
+    ("— rung 2: late interaction —", None, {}),
+    ("colbert_rerank d50", "colbert_rerank", {"rerank_depth": 50, "pool_per_interest": 100, "base": "fusion_union_pool"}),
+    ("colbert_rerank d100", "colbert_rerank", {"rerank_depth": 100, "pool_per_interest": 100, "base": "fusion_union_pool"}),
+    ("— rung 3: cross-encoder —", None, {}),
+    ("xenc_rerank d50", "xenc_rerank", {"rerank_depth": 50, "pool_per_interest": 100, "base": "fusion_union_pool"}),
+    ("xenc_rerank d100", "xenc_rerank", {"rerank_depth": 100, "pool_per_interest": 100, "base": "fusion_union_pool"}),
+    ("xenc_rerank d250", "xenc_rerank", {"rerank_depth": 250, "pool_per_interest": 100, "base": "fusion_union_pool"}),
+    ("cascade colbert250 -> xenc50", "cascade_colbert_xenc", {}),
+    ("xenc on splade base d100", "xenc_rerank", {"base": "fusion_bm25_dense_splade", "rerank_depth": 100}),
+    ("— rung 3b: deep pool (pool_per_interest = 500) —", None, {}),
+    ("fusion_union_pool p500", "fusion_union_pool", {"pool_per_interest": 500}),
+    ("xenc_rerank p500 d100", "xenc_rerank", {"rerank_depth": 100, "pool_per_interest": 500, "base": "fusion_union_pool"}),
+    ("xenc_rerank p500 d250", "xenc_rerank", {"rerank_depth": 250, "pool_per_interest": 500, "base": "fusion_union_pool"}),
+    ("xenc_rerank p500 d1000", "xenc_rerank", {"rerank_depth": 1000, "pool_per_interest": 500, "base": "fusion_union_pool"}),
+    ("colbert_rerank p500 d250", "colbert_rerank", {"rerank_depth": 250, "pool_per_interest": 500}),
+    ("colbert_rerank p500 d1000", "colbert_rerank", {"rerank_depth": 1000, "pool_per_interest": 500}),
+    ("— rung 4: LLM —", None, {}),
+    ("llm_rerank (listwise)", "llm_rerank", {}),
+    ("llm_rerank_reversed", "llm_rerank_reversed", {}),
+    ("llm_rubric (pointwise)", "llm_rubric", {}),
+]
+
+
+def config_params() -> dict[str, dict]:
+    """`{config_hash: params}` for every config file, so a row can be identified.
+
+    The result records a `config_hash` but not the params behind it, and several
+    ladder arms differ only in params. Re-deriving the hash from the config files
+    is what lets a row be attributed to the exact setting that produced it.
+    """
+    import hashlib
+    import tomllib
+
+    out: dict[str, dict] = {}
+    for path in sorted(CONFIGS.glob("*.toml")):
+        config = tomllib.loads(path.read_text())
+        digest = hashlib.sha256(
+            json.dumps(config, sort_keys=True).encode()
+        ).hexdigest()[:16]
+        out[digest] = {"path": path.name, **config.get("params", {})}
+    return out
+
+
+def load_rows() -> list[dict]:
+    by_hash = config_params()
+    rows = []
+    for path in sorted(RESULTS.glob("*.json")):
+        row = json.loads(path.read_text())
+        if row.get("snapshot") != SNAPSHOT or row.get("corpus_scope") != SCOPE:
+            continue
+        if row.get("qrels") != QRELS:
+            continue
+        row["params"] = by_hash.get(row.get("config_hash"), {})
+        rows.append(row)
+    # Newest run per (arm, config_hash) wins; earlier ones are superseded.
+    latest: dict[tuple, dict] = {}
+    for row in sorted(rows, key=lambda r: r.get("timestamp", "")):
+        latest[(row["arm"], row.get("config_hash"))] = row
+    return list(latest.values())
+
+
+def match(row: dict, arm: str, want: dict) -> bool:
+    if row["arm"] != arm:
+        return False
+    params = row.get("params", {})
+    return all(params.get(key) == value for key, value in want.items())
+
+
+def main() -> int:
+    rows = load_rows()
+    (EXP_DIR / "data").mkdir(exist_ok=True)
+    (EXP_DIR / "tables").mkdir(exist_ok=True)
+
+    lines = [
+        f"| Arm | {' | '.join(METRICS)} | wall s |",
+        f"|---|{'---:|' * (len(METRICS) + 1)}",
+    ]
+    collected = []
+    missing = []
+    for label, arm, want in LADDER:
+        if arm is None:
+            lines.append(f"| **{label}** |{' |' * (len(METRICS) + 1)}")
+            continue
+        found = [r for r in rows if match(r, arm, want)]
+        if not found:
+            missing.append(label)
+            lines.append(
+                f"| {label} | {' | '.join(['—'] * len(METRICS))} | — |"
+            )
+            continue
+        hashes = {r.get("config_hash") for r in found}
+        if len(hashes) > 1:
+            raise SystemExit(
+                f"ambiguous row {label!r}: matches {len(hashes)} configs "
+                f"({sorted(r['params'].get('path', '?') for r in found)}). "
+                "Add a discriminating param to LADDER."
+            )
+        row = max(found, key=lambda r: r.get("timestamp", ""))
+        cells = [f"{row['metrics'].get(m, float('nan')):.4f}" for m in METRICS]
+        lines.append(
+            f"| {label} | {' | '.join(cells)} | {row.get('wall_clock_s', '—')} |"
+        )
+        collected.append({"label": label, **row})
+
+    (EXP_DIR / "tables" / "ladder.md").write_text("\n".join(lines) + "\n")
+    (EXP_DIR / "data" / "ladder.json").write_text(
+        json.dumps(collected, indent=2, sort_keys=True) + "\n"
+    )
+    print("\n".join(lines))
+    if missing:
+        print(f"\nNOT YET RUN ({len(missing)}): {', '.join(missing)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

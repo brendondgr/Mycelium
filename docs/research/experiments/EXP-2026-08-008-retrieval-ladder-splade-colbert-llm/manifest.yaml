@@ -1,0 +1,122 @@
+# The machine-readable half of the record. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-08-008
+slug: retrieval-ladder-splade-colbert-llm
+title: Does a learned-sparse channel, a late-interaction reranker, a cross-encoder, or an LLM reranker beat BM25 on LongEval-Sci?
+status: complete
+date_started: 2026-08-21
+date_completed: 2026-08-21
+authors: [brendondgr]
+
+purpose: >
+  EXP-2026-08-001 established that nothing in the deployed stack beats BM25 alone
+  on nDCG@10 on this collection, refuting C-010, and EXP-2026-08-002 measured that
+  the dense-restricted pool costs recall a union pool recovers (C-008). Neither
+  says whether the plateau is a property of the task or of the components. This
+  experiment adds the four stages the field's 2026 default would add — SPLADE as a
+  third retrieval channel, ColBERT as a late-interaction reranker, a cross-encoder
+  reranker, and an LLM reranker — to the same code on the same frozen document set,
+  and measures each rung against the one below it. It also produces the first
+  measurement of position bias in LLM reranking on this stack, which W11 has
+  carried as unaddressed.
+
+hypothesis: >
+  Stated before the SPLADE and ColBERT arms ran, and partially after the
+  cross-encoder and LLM arms did — every prediction is individually labelled
+  [PRE] or [POST] in PROTOCOL.md, and ISSUES.md §1 says which is which.
+  [PRE] SPLADE beats BM25, because it performs the automatic corpus-aware query
+  expansion the hand-authored keyword clusters do manually; the stated falsifier
+  was SPLADE scoring below BM25, with the off-distribution risk (MS MARCO training
+  vs scientific abstracts) written down in advance.
+  [PRE] ColBERT reranking beats the fusion base it reranks.
+  [PRE] Effectiveness rises with rerank depth and saturates somewhere.
+  OUTCOME: the SPLADE hypothesis was falsified as written — splade_only scores
+  0.2617 nDCG@10 against BM25's 0.3212. But as a third RRF channel it produced the
+  highest recall on the ladder (R@100 0.7141), and a cross-encoder over that
+  wider pool is the best arm measured, so the falsification is of "SPLADE is a
+  better retriever here", not of "SPLADE is useless here".
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 917ec38
+  branch: main
+  entrypoint: "uv run --project eval python eval/run.py --collection sci-2026-train --config eval/configs/{bm25_only_pooled,dense_only,fusion_dense_pool,fusion_union_pool,fusion_full,splade_only,fusion_bm25_dense_splade,colbert_rerank_d*,xenc_rerank_d*,cascade_colbert_xenc,xenc_rerank_splade_base,fusion_union_pool_p500,xenc_rerank_p500_d*,llm_rerank,llm_rerank_reversed,llm_rubric}.toml"
+  dirty: true # the ladder harness itself was uncommitted; apps.content unchanged. ISSUES.md §2
+config:
+  path: eval/configs/
+  hash: null
+data:
+  name: LongEval-Sci (CLEF)
+  version: "longeval-sci-2026/snapshot-1/train, 869,902 docs"
+  split: train
+  n_examples: 100
+  qrels: dctr
+  hash: null
+  card: null
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.14"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device (every neural model runs as ONNX on CPU)"
+  wall_clock_hours: 4.5
+  estimated_cost_usd: null
+
+# --- LLM block ---------------------------------------------------------------
+llm:
+  model: "skynet (local relay, OpenAI-compatible; upstream identity not pinned)"
+  temperature: 0.0
+  max_tokens: 1024
+  prompt_files: [eval/harness/llm_rerank.py]
+  prompt_hash: null
+  total_input_tokens: 0
+  total_output_tokens: 0
+  nondeterminism_note: >
+    Provider-side nondeterminism remains at temperature 0, and n_runs is 1, so no
+    variance is reported. The upstream model behind the `skynet` relay alias is
+    not pinned — a re-run may reach a different model. This is exactly the gap
+    audit item W1 is about, and it is unresolved here. Production defaults to
+    temperature 0.2, so even the counterfactual is measured off production's
+    setting (ISSUES.md §6).
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: nDCG@10
+  values:
+    bm25_only: 0.3212
+    dense_only: 0.2401
+    fusion_dense_pool_production: 0.2937
+    fusion_union_pool: 0.3056
+    fusion_full: 0.2963
+    splade_only: 0.2617
+    fusion_bm25_dense_splade: 0.3184
+    colbert_rerank_d50: 0.2951
+    colbert_rerank_d100: 0.2903
+    xenc_rerank_d50: 0.3299
+    xenc_rerank_d100: 0.3304
+    xenc_rerank_d250: 0.3304
+    cascade_colbert250_to_xenc50: 0.3248
+    xenc_on_splade_base_d100: 0.3305
+    fusion_union_pool_p500: 0.3015
+    xenc_rerank_p500_d100: 0.3267
+    xenc_rerank_p500_d250: 0.3307
+    xenc_rerank_p500_d1000: 0.3306
+    colbert_rerank_p500_d250: 0.2919
+    colbert_rerank_p500_d1000: 0.2919
+    llm_rerank_listwise: 0.3133
+    llm_rerank_reversed: 0.2563
+    llm_rubric_pointwise: 0.3099
+baselines_compared: [bm25_only, fusion_union_pool, fusion_dense_pool]
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-008, C-013, C-014, C-015]
+refutes_claims: [C-012]
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-001, EXP-2026-08-002]

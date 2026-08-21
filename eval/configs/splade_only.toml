@@ -1,0 +1,11 @@
+# Learned sparse retrieval alone. The comparison that matters is against
+# bm25_only: same inverted-index shape, learned weights, expanded queries.
+arm = "splade_only"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[embedding]
+parallel = 16
+batch_size = 64

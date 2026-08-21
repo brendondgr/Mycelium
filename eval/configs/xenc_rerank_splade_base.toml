@@ -1,0 +1,16 @@
+# Cross-encoder rerank, but fed by the three-channel SPLADE fusion instead of
+# the two-channel union pool. Isolates whether recall gains survive reranking.
+arm = "xenc_rerank"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[embedding]
+parallel = 16
+batch_size = 64
+[params]
+pool_per_interest = 100
+base = "fusion_bm25_dense_splade"
+rerank_depth = 100
+xenc_model = "Xenova/ms-marco-MiniLM-L-6-v2"

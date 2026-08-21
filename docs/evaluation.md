@@ -35,14 +35,138 @@ produced it is worse than no number.
 | `fusion_dense_pool` (pool 100) | full | 869,902 | 100 | 0.2852 | 0.3549 | 0.2190 | 0.5419 | 0.4505 | 0.1980 | `5b66bc2` |
 | `fusion_full` (pool 100) | full | 869,902 | 100 | 0.2849 | 0.3563 | 0.2233 | 0.5419 | 0.4545 | 0.1960 | `5b66bc2` |
 | `fusion_union_pool` (pool 100) | full | 869,902 | 100 | 0.2993 | 0.4031 | 0.2519 | 0.6299 | 0.4734 | 0.1960 | `5b66bc2` |
+| `bm25_only` | pooled | 84,489 | 100 | 0.3212 | 0.4314 | 0.2760 | 0.6903 | 0.4788 | 0.2100 | `917ec38` ⚠️dirty |
 | `bm25_only` | pooled | 84,489 | 100 | 0.3212 | 0.4314 | 0.2760 | 0.6903 | 0.4788 | 0.2100 | `de31887` |
+| `cascade_colbert_xenc` (pool 100) | pooled | 84,489 | 100 | 0.3248 | 0.4300 | 0.2682 | 0.6511 | 0.4980 | 0.2090 | `917ec38` ⚠️dirty |
+| `colbert_rerank` (pool 500) | pooled | 84,489 | 100 | 0.2919 | 0.4275 | 0.2584 | 0.7121 | 0.4940 | 0.1940 | `917ec38` ⚠️dirty |
+| `colbert_rerank` (pool 100) | pooled | 84,489 | 100 | 0.2903 | 0.4082 | 0.2483 | 0.6511 | 0.4876 | 0.1900 | `917ec38` ⚠️dirty |
+| `colbert_rerank` (pool 500) | pooled | 84,489 | 100 | 0.2919 | 0.4275 | 0.2584 | 0.7121 | 0.4940 | 0.1940 | `917ec38` ⚠️dirty |
+| `colbert_rerank` (pool 100) | pooled | 84,489 | 100 | 0.2951 | 0.4121 | 0.2517 | 0.6511 | 0.4847 | 0.1920 | `917ec38` ⚠️dirty |
+| `dense_only` | pooled | 84,489 | 100 | 0.2401 | 0.3498 | 0.1965 | 0.6120 | 0.4067 | 0.1700 | `917ec38` ⚠️dirty |
 | `dense_only` | pooled | 84,489 | 100 | 0.2401 | 0.3498 | 0.1965 | 0.6120 | 0.4067 | 0.1700 | `de31887` |
+| `fusion_bm25_dense_splade` (pool 100) | pooled | 84,489 | 100 | 0.3184 | 0.4356 | 0.2676 | 0.7141 | 0.4875 | 0.2140 | `917ec38` ⚠️dirty |
+| `fusion_dense_pool` (pool 100) | pooled | 84,489 | 100 | 0.2937 | 0.3829 | 0.2360 | 0.5988 | 0.4589 | 0.2010 | `917ec38` ⚠️dirty |
 | `fusion_dense_pool` (pool 100) | pooled | 84,489 | 100 | 0.2937 | 0.3829 | 0.2360 | 0.5988 | 0.4589 | 0.2010 | `de31887` |
 | `fusion_dense_pool` (pool 1000) | pooled | 84,489 | 100 | 0.2915 | 0.4191 | 0.2577 | 0.7021 | 0.4607 | 0.1910 | `de31887` |
+| `fusion_full` (pool 100) | pooled | 84,489 | 100 | 0.2963 | 0.3859 | 0.2415 | 0.5988 | 0.4684 | 0.2020 | `917ec38` ⚠️dirty |
 | `fusion_full` (pool 100) | pooled | 84,489 | 100 | 0.2963 | 0.3859 | 0.2415 | 0.5988 | 0.4684 | 0.2020 | `de31887` |
 | `fusion_full` (pool 1000) | pooled | 84,489 | 100 | 0.2968 | 0.4221 | 0.2614 | 0.6996 | 0.4753 | 0.1930 | `de31887` |
+| `fusion_union_pool` (pool 500) | pooled | 84,489 | 100 | 0.3015 | 0.4313 | 0.2684 | 0.7098 | 0.4696 | 0.2000 | `917ec38` ⚠️dirty |
 | `fusion_union_pool` (pool 1000) | pooled | 84,489 | 100 | 0.3001 | 0.4292 | 0.2665 | 0.7065 | 0.4645 | 0.2000 | `de31887` |
+| `fusion_union_pool` (pool 100) | pooled | 84,489 | 100 | 0.3056 | 0.4129 | 0.2562 | 0.6511 | 0.4686 | 0.2020 | `917ec38` ⚠️dirty |
 | `fusion_union_pool` (pool 100) | pooled | 84,489 | 100 | 0.3056 | 0.4129 | 0.2562 | 0.6511 | 0.4686 | 0.2020 | `de31887` |
+| `llm_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3133 | 0.4304 | 0.2640 | 0.6511 | 0.5320 | 0.1900 | `917ec38` ⚠️dirty |
+| `llm_rerank_reversed` (pool 100) | pooled | 84,489 | 100 | 0.2563 | 0.3734 | 0.2066 | 0.6511 | 0.3837 | 0.1970 | `917ec38` ⚠️dirty |
+| `llm_rubric` (pool 100) | pooled | 84,489 | 100 | 0.3099 | 0.4175 | 0.2606 | 0.6511 | 0.4794 | 0.2030 | `917ec38` ⚠️dirty |
+| `splade_only` | pooled | 84,489 | 100 | 0.2617 | 0.3683 | 0.2177 | 0.6173 | 0.4058 | 0.1760 | `917ec38` ⚠️dirty |
+| `xenc_rerank` (pool 500) | pooled | 84,489 | 100 | 0.3307 | 0.4504 | 0.2780 | 0.7199 | 0.4936 | 0.2150 | `917ec38` ⚠️dirty |
+| `xenc_rerank` (pool 500) | pooled | 84,489 | 100 | 0.3267 | 0.4468 | 0.2782 | 0.7098 | 0.4898 | 0.2110 | `917ec38` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3299 | 0.4330 | 0.2711 | 0.6511 | 0.5051 | 0.2110 | `917ec38` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3305 | 0.4492 | 0.2780 | 0.7141 | 0.4948 | 0.2140 | `917ec38` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3304 | 0.4320 | 0.2702 | 0.6511 | 0.4989 | 0.2130 | `917ec38` ⚠️dirty |
+| `xenc_rerank` (pool 500) | pooled | 84,489 | 100 | 0.3306 | 0.4503 | 0.2779 | 0.7199 | 0.4936 | 0.2150 | `917ec38` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3304 | 0.4320 | 0.2702 | 0.6511 | 0.4989 | 0.2130 | `917ec38` ⚠️dirty |
+
+### `longeval-sci-2026/snapshot-1/train` — qrels `dctr-union-profiles`
+
+| Arm | Corpus | Docs | Queries | nDCG@10 | nDCG@100 | AP | R@100 | RR | P@10 | Run |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1810 | 0.2409 | 0.0972 | 0.2750 | 0.4384 | 0.2600 | `6ffbd37` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1544 | 0.1374 | 0.0414 | 0.1224 | 0.3854 | 0.2133 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1892 | 0.2426 | 0.0982 | 0.2738 | 0.4558 | 0.2633 | `6ffbd37` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1892 | 0.2426 | 0.0937 | 0.2738 | 0.4558 | 0.2633 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.2078 | 0.2492 | 0.0991 | 0.2738 | 0.6106 | 0.2633 | `f0dc7e5` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1896 | 0.1985 | 0.0735 | 0.2158 | 0.5202 | 0.2500 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1901 | 0.1969 | 0.0720 | 0.2158 | 0.4835 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1673 | 0.1907 | 0.0729 | 0.2170 | 0.4744 | 0.2367 | `6ffbd37` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1351 | 0.2162 | 0.0822 | 0.2612 | 0.3509 | 0.1967 | `6ffbd37` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.2227 | 0.2034 | 0.0804 | 0.2116 | 0.5425 | 0.2833 | `6ffbd37` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1896 | 0.1985 | 0.0774 | 0.2158 | 0.5202 | 0.2500 | `6ffbd37` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1544 | 0.1374 | 0.0414 | 0.1224 | 0.3854 | 0.2133 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1896 | 0.1272 | 0.0381 | 0.1062 | 0.5202 | 0.2500 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1544 | 0.1435 | 0.0433 | 0.1316 | 0.3854 | 0.2133 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1544 | 0.2177 | 0.0800 | 0.2521 | 0.3854 | 0.2133 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1752 | 0.2257 | 0.0841 | 0.2521 | 0.5132 | 0.2133 | `f0dc7e5` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1892 | 0.1682 | 0.0568 | 0.1519 | 0.4558 | 0.2633 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1896 | 0.1187 | 0.0359 | 0.0950 | 0.5202 | 0.2500 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1544 | 0.2177 | 0.0841 | 0.2521 | 0.3854 | 0.2133 | `6ffbd37` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1892 | 0.1620 | 0.0536 | 0.1413 | 0.4558 | 0.2633 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1896 | 0.1187 | 0.0359 | 0.0950 | 0.5202 | 0.2500 | `e356280` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1633 | 0.2209 | 0.0854 | 0.2480 | 0.4236 | 0.2200 | `6ffbd37` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1942 | 0.2450 | 0.0988 | 0.2724 | 0.4781 | 0.2633 | `6ffbd37` ⚠️dirty |
+| `clustered_profile` (pool 100) | full | 869,902 | 30 | 0.1892 | 0.1620 | 0.0536 | 0.1413 | 0.4558 | 0.2633 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1643 | 0.2093 | 0.0818 | 0.2343 | 0.4045 | 0.2167 | `6ffbd37` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.2262 | 0.1988 | 0.0783 | 0.2085 | 0.5308 | 0.2967 | `6ffbd37` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1997 | 0.1219 | 0.0371 | 0.0985 | 0.5196 | 0.2667 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1684 | 0.2098 | 0.0808 | 0.2303 | 0.4301 | 0.2200 | `6ffbd37` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1643 | 0.1396 | 0.0427 | 0.1230 | 0.4045 | 0.2167 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1643 | 0.2093 | 0.0818 | 0.2343 | 0.4045 | 0.2167 | `6ffbd37` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1442 | 0.2138 | 0.0813 | 0.2530 | 0.3681 | 0.1967 | `6ffbd37` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1643 | 0.2093 | 0.0773 | 0.2343 | 0.4045 | 0.2167 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1787 | 0.2141 | 0.0799 | 0.2343 | 0.5073 | 0.2167 | `f0dc7e5` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1684 | 0.2098 | 0.0808 | 0.2303 | 0.4301 | 0.2200 | `6ffbd37` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1997 | 0.1949 | 0.0767 | 0.2105 | 0.5196 | 0.2667 | `6ffbd37` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1643 | 0.1396 | 0.0427 | 0.1230 | 0.4045 | 0.2167 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1643 | 0.1396 | 0.0427 | 0.1230 | 0.4045 | 0.2167 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1643 | 0.1396 | 0.0427 | 0.1230 | 0.4045 | 0.2167 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1643 | 0.1463 | 0.0446 | 0.1331 | 0.4045 | 0.2167 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1442 | 0.2138 | 0.0813 | 0.2530 | 0.3681 | 0.1967 | `6ffbd37` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1741 | 0.1864 | 0.0722 | 0.2090 | 0.4723 | 0.2500 | `6ffbd37` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1997 | 0.1310 | 0.0393 | 0.1096 | 0.5196 | 0.2667 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1643 | 0.2093 | 0.0773 | 0.2343 | 0.4045 | 0.2167 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1787 | 0.2141 | 0.0799 | 0.2343 | 0.5073 | 0.2167 | `f0dc7e5` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1643 | 0.1463 | 0.0446 | 0.1331 | 0.4045 | 0.2167 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1997 | 0.1219 | 0.0371 | 0.0985 | 0.5196 | 0.2667 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.1997 | 0.1949 | 0.0724 | 0.2105 | 0.5196 | 0.2667 | `e356280` ⚠️dirty |
+| `flat_profile` (pool 100) | full | 869,902 | 30 | 0.2030 | 0.1942 | 0.0709 | 0.2105 | 0.5024 | 0.2667 | `f0dc7e5` ⚠️dirty |
+| `slate_profile` (pool 100) | full | 869,902 | 30 | 0.1896 | 0.1287 | 0.0382 | 0.1077 | 0.5202 | 0.2500 | `e356280` ⚠️dirty |
+| `slate_profile` (pool 100) | full | 869,902 | 30 | 0.1544 | 0.2177 | 0.0800 | 0.2521 | 0.3854 | 0.2133 | `e356280` ⚠️dirty |
+| `slate_profile` (pool 100) | full | 869,902 | 30 | 0.1896 | 0.1985 | 0.0735 | 0.2158 | 0.5202 | 0.2500 | `e356280` ⚠️dirty |
+| `slate_profile` (pool 100) | full | 869,902 | 30 | 0.1892 | 0.1699 | 0.0553 | 0.1518 | 0.4558 | 0.2633 | `e356280` ⚠️dirty |
+| `slate_profile` (pool 100) | full | 869,902 | 30 | 0.1544 | 0.1418 | 0.0425 | 0.1289 | 0.3854 | 0.2133 | `e356280` ⚠️dirty |
+| `slate_profile` (pool 100) | full | 869,902 | 30 | 0.1892 | 0.1699 | 0.0553 | 0.1518 | 0.4558 | 0.2633 | `e356280` ⚠️dirty |
+| `slate_profile` (pool 100) | full | 869,902 | 30 | 0.1544 | 0.1418 | 0.0425 | 0.1289 | 0.3854 | 0.2133 | `e356280` ⚠️dirty |
+| `slate_profile` (pool 100) | full | 869,902 | 30 | 0.1896 | 0.1287 | 0.0382 | 0.1077 | 0.5202 | 0.2500 | `e356280` ⚠️dirty |
+| `slate_profile` (pool 100) | full | 869,902 | 30 | 0.1892 | 0.2426 | 0.0937 | 0.2738 | 0.4558 | 0.2633 | `e356280` ⚠️dirty |
+| `spread_all` (pool 100) | full | 869,902 | 30 | 0.1834 | 0.1921 | 0.0704 | 0.2116 | 0.4013 | 0.2433 | `f0dc7e5` ⚠️dirty |
+| `spread_all` (pool 100) | full | 869,902 | 30 | 0.1536 | 0.2097 | 0.0780 | 0.2387 | 0.4086 | 0.2100 | `f0dc7e5` ⚠️dirty |
+| `spread_all` (pool 100) | full | 869,902 | 30 | 0.1885 | 0.2361 | 0.0905 | 0.2619 | 0.4881 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `spread_cap` (pool 100) | full | 869,902 | 30 | 0.2045 | 0.2469 | 0.0964 | 0.2709 | 0.6039 | 0.2633 | `f0dc7e5` ⚠️dirty |
+| `spread_cap` (pool 100) | full | 869,902 | 30 | 0.1675 | 0.2178 | 0.0801 | 0.2470 | 0.5068 | 0.2100 | `f0dc7e5` ⚠️dirty |
+| `spread_cap` (pool 100) | full | 869,902 | 30 | 0.1987 | 0.2000 | 0.0737 | 0.2189 | 0.4946 | 0.2600 | `f0dc7e5` ⚠️dirty |
+| `spread_floor` (pool 100) | full | 869,902 | 30 | 0.2078 | 0.2492 | 0.0991 | 0.2738 | 0.6106 | 0.2633 | `f0dc7e5` ⚠️dirty |
+| `spread_floor` (pool 100) | full | 869,902 | 30 | 0.1901 | 0.1969 | 0.0720 | 0.2158 | 0.4835 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `spread_floor` (pool 100) | full | 869,902 | 30 | 0.1752 | 0.2257 | 0.0841 | 0.2521 | 0.5132 | 0.2133 | `f0dc7e5` ⚠️dirty |
+| `spread_floor_interleave` (pool 100) | full | 869,902 | 30 | 0.1885 | 0.2361 | 0.0905 | 0.2619 | 0.4881 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `spread_floor_interleave` (pool 100) | full | 869,902 | 30 | 0.1536 | 0.2097 | 0.0780 | 0.2387 | 0.4086 | 0.2100 | `f0dc7e5` ⚠️dirty |
+| `spread_floor_interleave` (pool 100) | full | 869,902 | 30 | 0.1834 | 0.1921 | 0.0704 | 0.2116 | 0.4013 | 0.2433 | `f0dc7e5` ⚠️dirty |
+| `spread_identity` (pool 100) | full | 869,902 | 30 | 0.1901 | 0.1969 | 0.0720 | 0.2158 | 0.4835 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `spread_identity` (pool 100) | full | 869,902 | 30 | 0.1752 | 0.2257 | 0.0841 | 0.2521 | 0.5132 | 0.2133 | `f0dc7e5` ⚠️dirty |
+| `spread_identity` (pool 100) | full | 869,902 | 30 | 0.2078 | 0.2492 | 0.0991 | 0.2738 | 0.6106 | 0.2633 | `f0dc7e5` ⚠️dirty |
+| `spread_interleave` (pool 100) | full | 869,902 | 30 | 0.1834 | 0.1921 | 0.0704 | 0.2116 | 0.4013 | 0.2433 | `f0dc7e5` ⚠️dirty |
+| `spread_interleave` (pool 100) | full | 869,902 | 30 | 0.1885 | 0.2361 | 0.0905 | 0.2619 | 0.4881 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `spread_interleave` (pool 100) | full | 869,902 | 30 | 0.1536 | 0.2097 | 0.0780 | 0.2387 | 0.4086 | 0.2100 | `f0dc7e5` ⚠️dirty |
+| `spread_mmr` (pool 100) | full | 869,902 | 30 | 0.1706 | 0.2191 | 0.0819 | 0.2443 | 0.5017 | 0.2133 | `f0dc7e5` ⚠️dirty |
+| `spread_mmr` (pool 100) | full | 869,902 | 30 | 0.2056 | 0.2456 | 0.0964 | 0.2679 | 0.6020 | 0.2633 | `f0dc7e5` ⚠️dirty |
+| `spread_mmr` (pool 100) | full | 869,902 | 30 | 0.1956 | 0.1946 | 0.0712 | 0.2146 | 0.4833 | 0.2600 | `f0dc7e5` ⚠️dirty |
+| `spread_quota` (pool 100) | full | 869,902 | 30 | 0.1834 | 0.1921 | 0.0697 | 0.2116 | 0.4013 | 0.2433 | `f0dc7e5` ⚠️dirty |
+| `spread_quota` (pool 100) | full | 869,902 | 30 | 0.1885 | 0.2361 | 0.0906 | 0.2619 | 0.4881 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `spread_quota` (pool 100) | full | 869,902 | 30 | 0.1536 | 0.2097 | 0.0778 | 0.2387 | 0.4086 | 0.2100 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge` (pool 100) | full | 869,902 | 30 | 0.1713 | 0.2180 | 0.0810 | 0.2395 | 0.5272 | 0.2133 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge` (pool 100) | full | 869,902 | 30 | 0.1941 | 0.1936 | 0.0710 | 0.2120 | 0.4815 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge` (pool 100) | full | 869,902 | 30 | 0.2066 | 0.2429 | 0.0940 | 0.2615 | 0.6037 | 0.2600 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_cap` (pool 100) | full | 869,902 | 30 | 0.1941 | 0.1936 | 0.0710 | 0.2120 | 0.4815 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_cap` (pool 100) | full | 869,902 | 30 | 0.2066 | 0.2429 | 0.0940 | 0.2615 | 0.6037 | 0.2600 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_cap` (pool 100) | full | 869,902 | 30 | 0.1713 | 0.2180 | 0.0810 | 0.2395 | 0.5272 | 0.2133 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_interleave` (pool 100) | full | 869,902 | 30 | 0.1536 | 0.2097 | 0.0780 | 0.2387 | 0.4086 | 0.2100 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_interleave` (pool 100) | full | 869,902 | 30 | 0.1834 | 0.1921 | 0.0704 | 0.2116 | 0.4013 | 0.2433 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_interleave` (pool 100) | full | 869,902 | 30 | 0.1885 | 0.2361 | 0.0905 | 0.2619 | 0.4881 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_mmr` (pool 100) | full | 869,902 | 30 | 0.2065 | 0.2430 | 0.0941 | 0.2615 | 0.6037 | 0.2600 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_mmr` (pool 100) | full | 869,902 | 30 | 0.1941 | 0.1936 | 0.0710 | 0.2120 | 0.4815 | 0.2500 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_mmr` (pool 100) | full | 869,902 | 30 | 0.1713 | 0.2180 | 0.0810 | 0.2395 | 0.5272 | 0.2133 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_quota` (pool 100) | full | 869,902 | 30 | 0.1536 | 0.2097 | 0.0778 | 0.2387 | 0.4086 | 0.2100 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_quota` (pool 100) | full | 869,902 | 30 | 0.1834 | 0.1921 | 0.0697 | 0.2116 | 0.4013 | 0.2433 | `f0dc7e5` ⚠️dirty |
+| `spread_rankmerge_quota` (pool 100) | full | 869,902 | 30 | 0.1885 | 0.2361 | 0.0906 | 0.2619 | 0.4881 | 0.2500 | `f0dc7e5` ⚠️dirty |
 
 ### `longeval-sci/2024-11` — qrels `test`
 
@@ -80,6 +204,13 @@ Scored by this harness with the same `ir_measures` call used above, from the Lon
 |---|---|---|---:|---:|---:|---:|---:|---:|
 | BM25 (PyTerrier, organizers) | `longeval-sci-2026/snapshot-1/train` | dctr | 0.2922 | 0.4123 | 0.2573 | 0.6836 | 0.4717 | 0.1950 |
 | Qwen3-Embedding-4B (organizers) | `longeval-sci-2026/snapshot-1/train` | dctr | 0.2820 | 0.3919 | 0.2378 | 0.6390 | 0.4389 | 0.1880 |
+
+> **Reading the ladder rows.** The generated table labels an arm by its pool
+> width only, so the several `xenc_rerank` / `colbert_rerank` rows at different
+> rerank depths are not distinguishable here. The full breakdown, one row per
+> `(arm, depth, base)`, is
+> [`EXP-2026-08-008/tables/ladder.md`](research/experiments/EXP-2026-08-008-retrieval-ladder-splade-colbert-llm/tables/ladder.md),
+> generated from the same run files.
 
 > **Do not compare across corpus scopes.** A `pooled` row is a re-ranking result over the judged set plus a lexical pool; a `full` row ranks the entire snapshot. Reordering metrics (nDCG@10) are broadly comparable, recall metrics are not.
 
@@ -155,6 +286,27 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   is a property of short keyword queries over titles+abstracts, not solely of the
   384-dimension model in use — so it is evidence about the task shape, not just a
   reason to swap embedders.
+- That **a cross-encoder reranker is the first stage measured here that beats
+  BM25** — nDCG@10 0.3307 against 0.3212, and simultaneously ahead on nDCG@100,
+  AP, R@100 and P@10 (`EXP-2026-08-008`, C-013). Quote it with its margin: +0.0095
+  at n = 100 with no interval computed (Q-016). The gap against the *deployed*
+  `fusion_dense_pool` is four times larger (+12.6% relative) and safer to state.
+- That **SPLADE is a poor retriever on this collection and a good recall
+  contributor to a fusion over it** — alone it loses to BM25 (0.2617 vs 0.3212),
+  but as a third RRF channel it gives the highest recall on the ladder
+  (R@100 0.7141 vs 0.6903). Those are two different claims; C-014 is only the
+  second (`EXP-2026-08-008`).
+- That **late-interaction reranking as implemented here makes the ranking worse**
+  — C-012 refuted at every depth and on both pool widths, and it degrades a
+  cross-encoder placed after it. The implementation was never checked against a
+  published ColBERT number, so the refutation is of this implementation, not of
+  late interaction as such (Q-017).
+- That **an LLM listwise reranker's output is substantially determined by
+  presentation order.** Reversing the candidate order, with the set held
+  identical, costs 0.0570 nDCG@10 — 18.2% relative — and lands below the fusion
+  ranking the model was asked to improve (C-015). A pointwise rubric, which has
+  no order to inherit, reaches almost the same quality with none of the
+  fragility.
 - Whether effectiveness persists across the 2025 snapshot pair.
 - That **cluster-scoped max-pooling does not do what it was built to do** — on
   synthetic multi-cluster profiles over this collection. `EXP-2026-08-003`
@@ -206,7 +358,16 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   granularity mismatch between a three-word interest and a 200-word abstract —
   one of the core difficulties of the real problem — is *not* tested here.
 - Anything about the LLM percent-match, fellowship eligibility, or member
-  routing (audit claims C4–C6). None are exercised.
+  routing (audit claims C4–C6). None are exercised. `EXP-2026-08-008`'s LLM arms
+  are the nearest thing, and they measure a **counterfactual**: production does
+  not reorder — `apps.content.suggest` annotates a fused ordering — so those arms
+  describe a design option, not shipped behaviour. They also ran at temperature 0
+  while production defaults to 0.2 (audit item W1, open).
+- That any ladder stage should ship. SPLADE, ColBERT, the cross-encoder and the
+  LLM rerankers live in `eval/harness/{ladder,llm_rerank}.py` and are **candidate
+  code that is not in production**. A number from `harness/arms.py` describes
+  Mycelium; a number from those two modules describes something Mycelium could
+  become. Nothing in `apps.content` changed.
 - That the cluster result transfers to the product. `EXP-2026-08-003` measures
   synthetic profiles built from keyword queries. A researcher's declared clusters
   are neither keyword queries nor greedy embedding pairs, and the union-of-qrels

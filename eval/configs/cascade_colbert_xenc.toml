@@ -1,0 +1,15 @@
+# Retrieve wide, ColBERT narrows to 250, cross-encoder finishes the top 50.
+arm = "cascade_colbert_xenc"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[embedding]
+parallel = 16
+batch_size = 64
+[params]
+pool_per_interest = 100
+base = "fusion_union_pool"
+colbert_depth = 250
+rerank_depth = 50

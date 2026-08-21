@@ -165,6 +165,8 @@ Files below are inside `web/backend/apps/content/`.
 | Env contract | `.env.example`, `.env-mylo.example` |
 | Onboarding load test | `loadtest.py`, `loadtest_interests.py`; guide in [`loadtest.md`](loadtest.md) |
 | Retrieval evaluation | `eval/` — `run.py`, `report.py`, `collections.toml`, `configs/`, `harness/`; results in `eval/results/`, guide in [`evaluation.md`](evaluation.md) |
+| Frozen eval subset + embedding-matrix slicing | `eval/freeze_subset.py`, `eval/harness/subset.py`; the id list is `eval/subsets/*.txt` (committed) |
+| Candidate ladder stages (SPLADE, ColBERT, cross-encoder, LLM rerank) — **not production** | `eval/harness/{ladder,neural,llm_rerank}.py`, encoded by `eval/encode_ladder.py`; measured in `EXP-2026-08-008` |
 | Research record (experiments, claims, figures) | `docs/research/` — start at [`research/README.md`](research/README.md) |
 | Research-record tooling | `scripts/research/` — `new_experiment.py`, `validate_research.py`, `generate_index.py`, `build_figures.py`, `manifest.schema.json`; driven by the root `Makefile` |
 | Admin bootstrap | `create_admin.py` |

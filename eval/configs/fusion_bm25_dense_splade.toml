@@ -1,0 +1,12 @@
+# The recall rung: BM25 + dense + SPLADE fused by RRF over a true union pool.
+arm = "fusion_bm25_dense_splade"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[embedding]
+parallel = 16
+batch_size = 64
+[params]
+pool_per_interest = 100

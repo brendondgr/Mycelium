@@ -559,3 +559,18 @@ SPREAD_ARM_NAMES = (
 )
 
 PROFILE_ARMS.update({name: _spread_arm(name) for name in SPREAD_ARM_NAMES})
+
+
+# --- ladder arms: candidate stages, measured before deployment --------------
+
+# SPLADE, ColBERT, and the cross-encoder are not production code, so they cannot
+# obey this module's "thin call into apps.content" rule — there is nothing to call
+# into yet. They live in `ladder.py`, which states that boundary, and are
+# registered here so `run.py` dispatches them like any other arm.
+from .ladder import LADDER_ARMS  # noqa: E402
+
+ARMS.update(LADDER_ARMS)
+
+from .llm_rerank import LLM_ARMS  # noqa: E402
+
+ARMS.update(LLM_ARMS)

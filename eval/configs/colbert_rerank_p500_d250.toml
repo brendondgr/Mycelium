@@ -1,0 +1,16 @@
+# ColBERT rerank over the DEEP union-pool base, depth 250. The shallow base emits
+# only 59-97 candidates, so a depth sweep above 100 there is vacuous; this base
+# emits 151-290 and makes the curve measurable.
+arm = "colbert_rerank"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[embedding]
+parallel = 16
+batch_size = 64
+[params]
+pool_per_interest = 500
+base = "fusion_union_pool"
+rerank_depth = 250

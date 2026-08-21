@@ -1,0 +1,31 @@
+{
+  "arm": "colbert_rerank",
+  "collection": "sci-2026-train",
+  "config_hash": "98a16b151632fa93",
+  "corpus_docs": 84489,
+  "corpus_scope": "pooled",
+  "diagnostics": {},
+  "dirty": true,
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "git_sha": "917ec38",
+  "metrics": {
+    "AP": 0.251725331868062,
+    "P@10": 0.192,
+    "R@100": 0.6511026182608461,
+    "RR": 0.48471166030998136,
+    "nDCG@10": 0.29509163227346624,
+    "nDCG@100": 0.4121361320289919
+  },
+  "n_queries": 100,
+  "notes": "",
+  "params": {
+    "base": "fusion_union_pool",
+    "pool_per_interest": 100,
+    "rerank_depth": 50
+  },
+  "per_query": {},
+  "qrels": "dctr",
+  "snapshot": "longeval-sci-2026/snapshot-1/train",
+  "timestamp": "2026-08-21T19:53:55Z",
+  "wall_clock_s": 59.0
+}
