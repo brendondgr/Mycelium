@@ -108,6 +108,89 @@ def match(row: dict, arm: str, want: dict) -> bool:
     return all(params.get(key) == value for key, value in want.items())
 
 
+#: The stack, as a sequence of single changes. Each row adds exactly one stage to
+#: the row above it, so its delta is that stage's marginal contribution rather
+#: than a comparison against an unrelated arm.
+CHAIN = [
+    ("fusion_dense_pool (production)", "production — BM25 restricted to the dense pool"),
+    ("fusion_union_pool", "+ union pool, so the lexical channel can *add* a document"),
+    ("fusion_bm25_dense_splade", "+ SPLADE as a third RRF channel"),
+    ("xenc on splade base d100", "+ cross-encoder rerank (depth 100)"),
+]
+
+
+def _marginal_table(by_label: dict) -> None:
+    """What each stage contributes on top of the one below it, and what it costs.
+
+    The ladder table compares every arm to the same baselines, which answers "is
+    this arm good". It does not answer "should we add this stage", because arms
+    differ by more than one thing. This one is a chain: each row is the row above
+    plus exactly one stage.
+    """
+    keep = [(label, desc) for label, desc in CHAIN if label in by_label]
+    rows = [
+        "### What each stage adds, one change at a time",
+        "",
+        "| Stack | nDCG@10 | nDCG@100 | R@100 | Δ nDCG@10 | Δ nDCG@100 | Δ R@100 |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    prev = None
+    for label, desc in keep:
+        m = by_label[label]["metrics"]
+        a, h, r = m["nDCG@10"], m["nDCG@100"], m["R@100"]
+        deltas = ("—", "—", "—") if prev is None else (
+            f"{a - prev[0]:+.4f}", f"{h - prev[1]:+.4f}", f"{r - prev[2]:+.4f}"
+        )
+        rows.append(f"| {desc} | {a:.4f} | {h:.4f} | {r:.4f} | " + " | ".join(deltas) + " |")
+        prev = (a, h, r)
+
+    rows += [
+        "",
+        "### Does reranking deeper pay?",
+        "",
+        "| Cross-encoder arm | nDCG@10 | wall clock |",
+        "|---|---:|---:|",
+    ]
+    for label in ("xenc_rerank d50", "xenc_rerank d100",
+                  "xenc_rerank p500 d250", "xenc_rerank p500 d1000"):
+        if label in by_label:
+            row = by_label[label]
+            rows.append(f"| {label} | {row['metrics']['nDCG@10']:.4f} | {row['wall_clock_s']:.0f} s |")
+
+    rows += [
+        "",
+        "### Stages that cost and do not pay",
+        "",
+        "| Arm | nDCG@10 | vs `fusion_union_pool` | one-time encode |",
+        "|---|---:|---:|---|",
+    ]
+    base = by_label.get("fusion_union_pool", {}).get("metrics", {}).get("nDCG@10")
+    costs = {
+        "colbert_rerank d50": "3,640 s + 22.4M token vectors",
+        "colbert_rerank d100": "(same store)",
+        "cascade colbert250 -> xenc50": "(same store)",
+        "llm_rerank (listwise)": "none — 1 model call per query",
+        "llm_rubric (pointwise)": "none — 20 model calls per query",
+    }
+    for label, cost in costs.items():
+        if label in by_label and base:
+            v = by_label[label]["metrics"]["nDCG@10"]
+            rows.append(f"| {label} | {v:.4f} | {v - base:+.4f} | {cost} |")
+
+    rows += [
+        "",
+        (
+            "One-time corpus encoding over the 84,489-document subset, CPU, no "
+            "GPU: dense **0 s** (row-sliced from the cached full-corpus matrix), "
+            "SPLADE **3,451 s** (24.5 docs/s), ColBERT **3,640 s** (23.2 docs/s), "
+            "cross-encoder **0 s** — it never encodes a corpus, which is why it "
+            "is the cheapest stage on the ladder as well as the only one that "
+            "beats BM25."
+        ),
+    ]
+    (EXP_DIR / "tables" / "marginal.md").write_text("\n".join(rows) + "\n")
+
+
 def main() -> int:
     rows = load_rows()
     (EXP_DIR / "data").mkdir(exist_ok=True)
@@ -145,6 +228,7 @@ def main() -> int:
         collected.append({"label": label, **row})
 
     (EXP_DIR / "tables" / "ladder.md").write_text("\n".join(lines) + "\n")
+    _marginal_table({r["label"]: r for r in collected})
     (EXP_DIR / "data" / "ladder.json").write_text(
         json.dumps(collected, indent=2, sort_keys=True) + "\n"
     )

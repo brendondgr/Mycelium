@@ -282,7 +282,44 @@ usable for this at all.
    ColBERT, and depth hypotheses are genuine pre-registrations; the cross-encoder
    and LLM ones are not.
 
-## 7. What to do next, in order
+## 7. Which stages are worth their cost
+
+The ladder table asks "is this arm good". That is not the same question as "should
+this stage be added", because arms differ from each other by more than one thing.
+[`tables/marginal.md`](tables/marginal.md) is a **chain** — each row is the row
+above plus exactly one stage — so a delta there is that stage's own contribution.
+
+Three stages each contribute about the same, and they **stack almost additively**:
++0.0119, +0.0128, +0.0121 on nDCG@10, taking the production shape from 0.2937 to
+0.3305. None is redundant with the others.
+
+**The cheapest two get almost all of it.** Union pool plus a cross-encoder at
+depth 50 reaches 0.3299 — **98% of the total measured gain** — with *no corpus
+encoding of any kind*. A cross-encoder never builds an index; it scores query and
+document together at query time, so its only cost is per-query latency.
+
+**Depth 50 is the operating point, not 250.** 0.3299 at depth 50 against 0.3306 at
+depth 1000 is +0.0007 for 3.7× the wall clock, and 0.0007 is far inside the noise
+this design can resolve. The earlier framing of "best arm = p500 d250" is
+technically true and operationally misleading: that arm buys nothing over depth 50
+that this experiment can measure.
+
+**SPLADE's contribution changes character once a reranker is present.** Before
+reranking it is worth +0.0128 nDCG@10. *After* — comparing the two depth-100
+cross-encoder arms, which differ only in whether SPLADE fed the pool — nDCG@10 is
+identical (0.3304 vs 0.3305) while nDCG@100 rises +0.0172 and R@100 +0.0630. So
+once a cross-encoder is sorting the head, SPLADE stops buying top-10 precision and
+buys **depth and recall** instead. Whether that is worth 58 minutes of encoding per
+84k documents plus a second index to maintain depends entirely on whether the
+deliverable is a handful of items or a longer slate — for a 25-item slate,
+nDCG@100 is nearer the right metric than nDCG@10, and the case is stronger.
+
+**Two stages cost and do not pay.** ColBERT is negative at every depth and costs
+3,640 s of encoding plus 22.4M token vectors. The LLM as a ranker is inside its own
+rerun noise with a 29/31/40 per-query record (§2), and costs a model call per query
+listwise or twenty per query pointwise.
+
+## 8. What to do next, in order
 
 1. **Q-001 on the production corpus.** Every result here is on LongEval. The
    cross-encoder gain and the interest-floor finding both need checking against

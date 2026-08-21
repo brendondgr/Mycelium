@@ -99,7 +99,7 @@
     "diagnostics": {},
     "dirty": true,
     "embedding_model": "BAAI/bge-small-en-v1.5",
-    "git_sha": "917ec38",
+    "git_sha": "16749f1",
     "label": "fusion_union_pool",
     "metrics": {
       "AP": 0.25622117008065853,
@@ -118,8 +118,8 @@
     "per_query": {},
     "qrels": "dctr",
     "snapshot": "longeval-sci-2026/snapshot-1/train",
-    "timestamp": "2026-08-21T17:47:37Z",
-    "wall_clock_s": 117.7
+    "timestamp": "2026-08-21T21:18:31Z",
+    "wall_clock_s": 52.8
   },
   {
     "arm": "fusion_full",
@@ -288,7 +288,7 @@
     "diagnostics": {},
     "dirty": true,
     "embedding_model": "BAAI/bge-small-en-v1.5",
-    "git_sha": "917ec38",
+    "git_sha": "2e05dc8",
     "label": "xenc_rerank d50",
     "metrics": {
       "AP": 0.2710570521545979,
@@ -310,8 +310,8 @@
     "per_query": {},
     "qrels": "dctr",
     "snapshot": "longeval-sci-2026/snapshot-1/train",
-    "timestamp": "2026-08-21T18:07:08Z",
-    "wall_clock_s": 335.6
+    "timestamp": "2026-08-21T20:50:28Z",
+    "wall_clock_s": 281.7
   },
   {
     "arm": "xenc_rerank",
@@ -657,15 +657,15 @@
     "diagnostics": {},
     "dirty": true,
     "embedding_model": "BAAI/bge-small-en-v1.5",
-    "git_sha": "917ec38",
+    "git_sha": "16749f1",
     "label": "llm_rerank (listwise)",
     "metrics": {
-      "AP": 0.26397955517911986,
-      "P@10": 0.1899999999999999,
+      "AP": 0.26761517316155625,
+      "P@10": 0.19299999999999995,
       "R@100": 0.6511026182608461,
-      "RR": 0.5319979791173381,
-      "nDCG@10": 0.31331571757553695,
-      "nDCG@100": 0.43043193357820747
+      "RR": 0.5305868532634879,
+      "nDCG@10": 0.3176817603486258,
+      "nDCG@100": 0.43284429265482144
     },
     "n_queries": 100,
     "notes": "",
@@ -678,8 +678,8 @@
     "per_query": {},
     "qrels": "dctr",
     "snapshot": "longeval-sci-2026/snapshot-1/train",
-    "timestamp": "2026-08-21T17:52:21Z",
-    "wall_clock_s": 187.7
+    "timestamp": "2026-08-21T21:19:39Z",
+    "wall_clock_s": 68.2
   },
   {
     "arm": "llm_rerank_reversed",
@@ -690,15 +690,15 @@
     "diagnostics": {},
     "dirty": true,
     "embedding_model": "BAAI/bge-small-en-v1.5",
-    "git_sha": "917ec38",
+    "git_sha": "16749f1",
     "label": "llm_rerank_reversed",
     "metrics": {
-      "AP": 0.20663477810080016,
-      "P@10": 0.19699999999999998,
+      "AP": 0.21194188774275957,
+      "P@10": 0.19500000000000003,
       "R@100": 0.6511026182608461,
-      "RR": 0.3836588923355269,
-      "nDCG@10": 0.25629415473268313,
-      "nDCG@100": 0.37335142467014565
+      "RR": 0.39086973193452446,
+      "nDCG@10": 0.25609609338433403,
+      "nDCG@100": 0.3767991565709085
     },
     "n_queries": 100,
     "notes": "",
@@ -711,8 +711,8 @@
     "per_query": {},
     "qrels": "dctr",
     "snapshot": "longeval-sci-2026/snapshot-1/train",
-    "timestamp": "2026-08-21T17:54:45Z",
-    "wall_clock_s": 109.2
+    "timestamp": "2026-08-21T21:20:04Z",
+    "wall_clock_s": 24.9
   },
   {
     "arm": "llm_rubric",
@@ -723,15 +723,15 @@
     "diagnostics": {},
     "dirty": true,
     "embedding_model": "BAAI/bge-small-en-v1.5",
-    "git_sha": "917ec38",
+    "git_sha": "16749f1",
     "label": "llm_rubric (pointwise)",
     "metrics": {
-      "AP": 0.2606315762138797,
-      "P@10": 0.20299999999999996,
+      "AP": 0.2606935156614145,
+      "P@10": 0.204,
       "R@100": 0.6511026182608461,
-      "RR": 0.47936192541356015,
-      "nDCG@10": 0.30990658458243175,
-      "nDCG@100": 0.41752846423523027
+      "RR": 0.47862727629075313,
+      "nDCG@10": 0.30953382124109674,
+      "nDCG@100": 0.41749355757391376
     },
     "n_queries": 100,
     "notes": "",
@@ -744,7 +744,7 @@
     "per_query": {},
     "qrels": "dctr",
     "snapshot": "longeval-sci-2026/snapshot-1/train",
-    "timestamp": "2026-08-21T17:55:40Z",
-    "wall_clock_s": 55.3
+    "timestamp": "2026-08-21T21:20:58Z",
+    "wall_clock_s": 53.4
   }
 ]
