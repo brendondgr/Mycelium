@@ -91,7 +91,10 @@ def slice_matrix(
         if existing.shape[0] == len(positions):
             log(f"matrix slice already present: {out_path.name} {existing.shape}")
             return existing
-        log(f"matrix slice {out_path.name} has stale shape {existing.shape}; rebuilding")
+        log(
+            f"matrix slice {out_path.name} has stale shape "
+            f"{existing.shape}; rebuilding"
+        )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     log(f"slicing {len(positions)} rows out of {full_matrix.shape[0]} …")

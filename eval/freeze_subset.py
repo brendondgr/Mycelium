@@ -114,7 +114,10 @@ def main() -> int:
     )
     full_path = index_mod.DEFAULT_CACHE_DIR / f"{full_key}.npy"
     if not full_path.exists():
-        log(f"ERROR: no cached full-corpus matrix at {full_path.name}; nothing to slice")
+        log(
+            f"ERROR: no cached full-corpus matrix at {full_path.name}; "
+            "nothing to slice"
+        )
         return 1
 
     full_matrix = np.load(full_path, mmap_mode="r")

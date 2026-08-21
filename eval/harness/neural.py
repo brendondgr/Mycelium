@@ -71,7 +71,11 @@ def _encode_shards(
     shards = _shard_dir(cache_dir, key)
     shards.mkdir(parents=True, exist_ok=True)
     plan = _plan(len(docs))
-    todo = [(i, span) for i, span in enumerate(plan) if not (shards / f"{i:05d}.npz").exists()]
+    todo = [
+        (i, span)
+        for i, span in enumerate(plan)
+        if not (shards / f"{i:05d}.npz").exists()
+    ]
     if not todo:
         log(f"all {len(plan)} shards already encoded")
         return shards
@@ -118,7 +122,8 @@ def splade_encode(
 
     def encode_chunk(texts: list[str]):
         rows, cols, vals = [], [], []
-        for r, emb in enumerate(embedder.embed(texts, batch_size=16, parallel=PARALLEL)):
+        stream = embedder.embed(texts, batch_size=16, parallel=PARALLEL)
+        for r, emb in enumerate(stream):
             idx = np.asarray(emb.indices, dtype=np.int32)
             rows.append(np.full(idx.shape, r, dtype=np.int32))
             cols.append(idx)
@@ -235,8 +240,9 @@ def colbert_encode(
             for m in embedder.embed(texts, batch_size=16, parallel=PARALLEL)
         ]
         lengths = np.asarray([m.shape[0] for m in mats], dtype=np.int64)
+        empty = np.empty((0, 96), np.float16)
         return {
-            "flat": np.concatenate(mats, axis=0) if mats else np.empty((0, 96), np.float16),
+            "flat": np.concatenate(mats, axis=0) if mats else empty,
             "lengths": lengths,
         }
 

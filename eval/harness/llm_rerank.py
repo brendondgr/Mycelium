@@ -201,7 +201,10 @@ def _listwise(
                 model=model,
             )
         except Exception as exc:  # noqa: BLE001 - a failed call must not kill the run
-            log(f"  query {query_id}: LLM call failed ({type(exc).__name__}); base order kept")
+            log(
+                f"  query {query_id}: LLM call failed "
+                f"({type(exc).__name__}); base order kept"
+            )
             return query_id, head + tail, False
         order = _parse_ranking(response.content, len(present))
         if order is None:
@@ -212,7 +215,8 @@ def _listwise(
     ranking: dict[str, list[tuple[str, float]]] = {}
     ok = 0
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
-        for n, (query_id, ordering, parsed) in enumerate(pool.map(one, queries), start=1):
+        results = enumerate(pool.map(one, queries), start=1)
+        for n, (query_id, ordering, parsed) in results:
             ranking[query_id] = _positional(ordering, DEPTH)
             ok += int(parsed)
             if n % 25 == 0:
@@ -295,9 +299,11 @@ def llm_rubric(
     scored: dict[str, list[tuple[str, float, int]]] = {}
     parsed = 0
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
-        for n, (query_id, doc_id, rank, score) in enumerate(pool.map(one, pairs), start=1):
+        results = enumerate(pool.map(one, pairs), start=1)
+        for n, (query_id, doc_id, rank, score) in results:
             parsed += int(score is not None)
-            scored.setdefault(query_id, []).append((doc_id, score if score is not None else -1.0, rank))
+            usable = score if score is not None else -1.0
+            scored.setdefault(query_id, []).append((doc_id, usable, rank))
             if n % 250 == 0:
                 log(f"  scored {n}/{len(pairs)} pairs")
     log(f"LLM rubric: {parsed}/{len(pairs)} pairs returned a usable score")

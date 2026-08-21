@@ -59,7 +59,8 @@ def rrf_fuse(channels: Sequence[Sequence[str]], *, k: int = RRF_K) -> list[str]:
     for channel in channels:
         for rank, doc_id in enumerate(channel, start=1):
             scores[doc_id] = scores.get(doc_id, 0.0) + 1.0 / (k + rank)
-    return [doc_id for doc_id, _ in sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))]
+    ordered = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [doc_id for doc_id, _ in ordered]
 
 
 # -- shared state -------------------------------------------------------------
@@ -209,7 +210,8 @@ def fusion_bm25_dense_splade(
         vector = embeddings.embed_text(query_text)
         dense = [str(d.id) for d, _ in index.search(vector, limit=pool_per_interest)]
         lexical = [
-            str(d.id) for d, _ in rank_bm25_over(query_text, corpus_index)[:pool_per_interest]
+            str(d.id)
+            for d, _ in rank_bm25_over(query_text, corpus_index)[:pool_per_interest]
         ]
         qvec = neural.splade_query_vector(embedder, query_text, width)
         scores = np.asarray((matrix @ qvec.T).todense()).ravel()
@@ -344,7 +346,10 @@ def xenc_rerank(
         present = [doc_id for doc_id in head if doc_id in by_id]
         if texts:
             scores = list(encoder.rerank(query_text, texts, batch_size=32))
-            order = sorted(zip(present, scores), key=lambda kv: (-kv[1], kv[0]))
+            # strict=True: a length mismatch here would silently mis-pair a
+            # document with another document's score.
+            paired = zip(present, scores, strict=True)
+            order = sorted(paired, key=lambda kv: (-kv[1], kv[0]))
             head = [doc_id for doc_id, _ in order]
         ranking[query_id] = _positional(head + tail)
         if i % 10 == 0:
