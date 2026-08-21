@@ -123,25 +123,84 @@ drop — with the candidate set held identical.** This is the cleanest result in
 experiment: there is no confound, because nothing changed except the order the
 model read the list in.
 
-Three consequences follow, and the second is the uncomfortable one.
+**Correction to a first reading.** The obvious interpretation — "the model just
+copies the order it was given" — is **wrong**, and `code/llm_diagnosis.py` was
+written to test it. The full diagnosis is
+[`tables/llm_diagnosis.md`](tables/llm_diagnosis.md); the load-bearing numbers:
 
-1. The reversed arm scores **below the fusion ranking it was asked to improve**
-   (0.2563 vs 0.3056). Handed a bad order, the model does not repair it — it
-   follows it, and destroys a good ranking's worth of signal.
-2. Therefore `llm_rerank`'s apparent +0.0077 gain over its base is **not
-   trustworthy as evidence of judgment**. The arm is fed the base ranking in base
-   order, so a model that largely preserves input order will score close to a
-   base that is already good. Most of that +0.0077 could be inheritance rather
-   than insight, and this experiment cannot separate the two.
-3. `llm_rubric` scores each candidate alone, so it has no order to inherit or be
-   biased by — and it lands at 0.3099, within 0.0034 of the listwise arm. **The
-   order-free method gets essentially the same quality with none of the fragility**,
-   and it parsed 2,000 of 2,000 pairs where the listwise arm lost 5 of 100 queries
-   to unparseable verdicts.
+| Measurement | Value |
+|---|---:|
+| Kendall tau, forward arm's output vs the order it was shown | +0.380 |
+| Kendall tau, reversed arm's output vs the order it was shown | **−0.072** |
+| Positions changed inside the 20-item window, forward arm | **15.97 / 20** |
+| Top-10 overlap, forward vs reversed | 0.72 |
+| nDCG@10 if the window were copied verbatim from the reversed input | **0.1064** |
+
+The model reorders almost everything it is shown — 16 of 20 positions — and the
+reversed arm's output is essentially **uncorrelated with its own input**
+(τ = −0.072), not aligned with it. Had it copied, it would have scored 0.1064; it
+scored 0.2561. So it is not an order-copier.
+
+What it is, is **unstable**. The same candidate set produces a top-10 that is only
+72% the same depending on presentation order, so **28% of what reaches the top ten
+is decided by the order the model happened to read the list in.** And re-running
+the forward arm at temperature 0 moved it from 0.3133 to 0.3177 — a ±0.004 wobble
+against a claimed gain over the base of +0.008 to +0.013, while the reversed arm
+reproduced to 0.0002 and the rubric to 0.0004. The instability is specific to
+listwise reranking.
+
+Three consequences follow.
+
+1. **The listwise arm is not adding signal.** Its per-query record against the
+   base is **29 better, 31 worse, 40 tied** — a coin flip. The positive aggregate
+   comes from the size of a few wins, not from being right more often. Combined
+   with the run-to-run wobble, there is no basis here for saying it improves the
+   ranking.
+2. **Its apparent gain is anchoring, not judgment.** Handed a good order it lands
+   near a good answer; handed a bad one it lands well below the base it was asked
+   to improve. A method whose output quality tracks its input's quality that
+   strongly is inheriting, not evaluating — even though, mechanically, it is not
+   copying.
+3. **The rubric looks better than it is.** `llm_rubric` scores 0.3095 with a
+   17/7/76 win/loss/tie record — but τ = +0.820 against the base order, because
+   it uses on average **1.99 distinct values out of 4** across a 20-candidate
+   window. Nearly everything ties, and ties fall back to the fusion rank. The
+   rubric arm is mostly the base ranking showing through.
+
+### Can the model judge relevance at all?
+
+This is the question the deployed percent-match rests on, and the rubric's raw
+verdicts answer it directly:
+
+| Judged grade | mean rubric score (0–3) | n |
+|---|---:|---:|
+| 0 (unjudged or irrelevant) | 2.423 | 1,689 |
+| 1 | 2.818 | 137 |
+| 2 | 2.759 | 174 |
+
+**The scale is not monotonic in relevance**: grade 2 — the most relevant documents
+in the collection — scores *below* grade 1. And almost everything lands in a
+narrow band near the top of the scale.
+
+Read the grade-0 row carefully: in a pooled collection an unjudged document near
+the top of a strong ranking is frequently relevant-but-never-assessed, so that
+bucket understates the model and the 2.42-vs-2.8 gap is a **lower bound** on
+discrimination. The grade-1-versus-grade-2 comparison is the clean one, because
+both are judged — and it shows no ordering at all.
+
+Two caveats that must travel with this. The rubric is **0–3 by this arm's design**,
+while production emits **0–100**; a finer scale might discriminate where a
+four-point one collapses (Q-020). And `dctr` grades are click-derived, so the
+1-versus-2 distinction is itself noisy.
+
+What survives both caveats is the part that needs no qrels at all: **the model
+used two distinct values to describe twenty candidates.** That is a property of
+its output alone, and it is the reason the rubric cannot order a feed.
 
 This is the first evidence in the record on audit item W11 (order-robustness for
-the LLM scorer). It does not close W11 — that item is about the *deployed* scorer,
-and production does not rank at all (ISSUES.md §6) — but it removes the excuse
+the LLM scorer) and the first real evidence bearing on C-004's calibration half.
+It does not close W11 — that item is about the *deployed* scorer, and production
+does not rank at all (ISSUES.md §6) — but it removes the excuse
 that the question is untestable.
 
 ## 3. An incidental finding about production

@@ -32,6 +32,7 @@ import json
 import re
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any
 
 from .ladder import DEPTH, _docs_by_id, _positional, base_ranking
@@ -47,6 +48,9 @@ ABSTRACT_CHARS = 600
 
 #: Parallel LLM calls. Mirrors `OPPORTUNITY_LLM_CONCURRENCY`.
 CONCURRENCY = 12
+
+#: Where the rubric's raw per-pair verdicts land, next to the TREC run files.
+RUBRIC_DUMP_DIR = Path(__file__).resolve().parent.parent / "runs"
 
 
 def _client(component: str):
@@ -307,6 +311,29 @@ def llm_rubric(
             if n % 250 == 0:
                 log(f"  scored {n}/{len(pairs)} pairs")
     log(f"LLM rubric: {parsed}/{len(pairs)} pairs returned a usable score")
+
+    # Persist the raw verdicts. The ranking alone cannot answer the question the
+    # rubric exists to answer — whether the model can separate relevant from
+    # irrelevant at all — because a 0-3 scale over a 20-item window produces heavy
+    # ties that the base rank then breaks. Without the scores, an arm that ties
+    # everything and an arm that judges perfectly are indistinguishable from their
+    # run file. Written next to the run files; regenerable, gitignored.
+    dump = RUBRIC_DUMP_DIR / "llm_rubric_scores.json"
+    dump.parent.mkdir(parents=True, exist_ok=True)
+    dump.write_text(
+        json.dumps(
+            {
+                qid: [
+                    {"doc_id": doc_id, "score": score, "base_rank": rank}
+                    for doc_id, score, rank in rows
+                ]
+                for qid, rows in scored.items()
+            },
+            indent=1,
+            sort_keys=True,
+        )
+    )
+    log(f"rubric verdicts written: {dump}")
 
     ranking: dict[str, list[tuple[str, float]]] = {}
     for query_id, _query_text in queries:

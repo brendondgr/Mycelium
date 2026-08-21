@@ -301,12 +301,18 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   cross-encoder placed after it. The implementation was never checked against a
   published ColBERT number, so the refutation is of this implementation, not of
   late interaction as such (Q-017).
-- That **an LLM listwise reranker's output is substantially determined by
-  presentation order.** Reversing the candidate order, with the set held
-  identical, costs 0.0570 nDCG@10 — 18.2% relative — and lands below the fusion
-  ranking the model was asked to improve (C-015). A pointwise rubric, which has
-  no order to inherit, reaches almost the same quality with none of the
-  fragility.
+- That **an LLM reranker adds no ranking signal here, and is unstable.**
+  Reversing the candidate order with the set held identical costs 0.0570 nDCG@10
+  (−18.2%) and lands below the ranking the model was asked to improve; only 72%
+  of the top ten survives that reordering; the per-query record against the base
+  is 29 better / 31 worse / 40 tied; and re-running at temperature 0 moves the
+  arm as much as its whole apparent gain (C-015). The mechanism is *not*
+  order-copying — that reading was tested and refuted.
+- That **the model's pointwise relevance verdict does not discriminate relevance**
+  (C-016, refuted): 1.99 distinct values used across 20 candidates, and grade 2
+  scoring *below* grade 1. This is the first direct evidence against C-004's
+  calibration half — the deployed percent-match — though it was measured on a 0-3
+  scale where production uses 0-100 (Q-020).
 - Whether effectiveness persists across the 2025 snapshot pair.
 - That **cluster-scoped max-pooling does not do what it was built to do** — on
   synthetic multi-cluster profiles over this collection. `EXP-2026-08-003`

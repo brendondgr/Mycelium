@@ -230,8 +230,13 @@ def run_arm(
     wall = time.time() - started
 
     sha, dirty = scoring.git_state(REPO_ROOT)
+    # The config hash belongs in the filename: an arm run at two settings — two
+    # rerank depths, two pool widths — is two different rankings, and without it
+    # the second silently overwrites the first. The results JSON has always been
+    # keyed this way; the run files were not, which cost a diagnostic once.
     run_path = scoring.RUNS_DIR / (
-        f"{collection.snapshot.replace('/', '_')}__{arm_name}__{scope}__{sha}.txt.gz"
+        f"{collection.snapshot.replace('/', '_')}__{arm_name}__{scope}"
+        f"__{config_hash(config)}__{sha}.txt.gz"
     )
     scoring.write_trec_run(ranking, run_path, tag=f"mycelium-{arm_name}")
     log(f"run file: {run_path}")

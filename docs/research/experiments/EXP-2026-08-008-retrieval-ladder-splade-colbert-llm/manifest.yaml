@@ -55,7 +55,7 @@ data:
   hash: null
   card: null
 seeds: []
-n_runs: 1
+n_runs: 1 # except the three LLM arms, run twice; see the llm block
 
 environment:
   python: "3.14"
@@ -81,7 +81,10 @@ llm:
     not pinned — a re-run may reach a different model. This is exactly the gap
     audit item W1 is about, and it is unresolved here. Production defaults to
     temperature 0.2, so even the counterfactual is measured off production's
-    setting (ISSUES.md §6).
+    setting (ISSUES.md §6). The three LLM arms were run twice; the listwise arm
+    moved 0.0044 between runs while the reversed and pointwise arms reproduced to
+    0.0002 and 0.0004, so the instability is specific to listwise reranking and is
+    the same size as the gain that arm appears to deliver.
 
 # --- Results block -----------------------------------------------------------
 metrics:
@@ -115,7 +118,7 @@ statistical_test: null
 
 # --- Linkage -----------------------------------------------------------------
 supports_claims: [C-008, C-013, C-014, C-015]
-refutes_claims: [C-012]
+refutes_claims: [C-012, C-016]
 figures: []
 supersedes: null
 superseded_by: null

@@ -1,0 +1,40 @@
+{
+  "kendall_tau_output_vs_shown": {
+    "llm_rerank (shown best-first)": 0.3796842105263158,
+    "llm_rerank_reversed (shown worst-first)": -0.07168421052631578,
+    "llm_rubric (vs base order)": 0.8195789473684211
+  },
+  "mean_positions_changed_in_window_forward": 15.97,
+  "n_queries": 100,
+  "ndcg10": {
+    "base": 0.30511678815492693,
+    "copy control: window reversed": 0.10636935015626453,
+    "copy control: window untouched": 0.30511678815492693,
+    "llm_rerank": 0.31768176034862583,
+    "llm_rerank_reversed": 0.25609609338433403,
+    "llm_rubric": 0.30953382124109674
+  },
+  "per_query_vs_base": {
+    "llm_rerank better": 29,
+    "llm_rerank tied": 40,
+    "llm_rerank worse": 31,
+    "llm_rubric better": 17,
+    "llm_rubric tied": 76,
+    "llm_rubric worse": 7
+  },
+  "rubric_discrimination": {
+    "judged_pairs_seen": 1017,
+    "mean_distinct_scores_per_20_item_window": 1.99,
+    "mean_rubric_score_by_qrel_grade": {
+      "0": 2.423,
+      "1": 2.818,
+      "2": 2.759
+    },
+    "n_scored_by_grade": {
+      "0": 1689,
+      "1": 137,
+      "2": 174
+    }
+  },
+  "top10_overlap_forward_vs_reversed": 0.72
+}
