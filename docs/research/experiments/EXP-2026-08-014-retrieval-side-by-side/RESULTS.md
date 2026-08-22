@@ -141,3 +141,75 @@ freshness gate. No LLM was called anywhere.
   retrieval it reranks, on a stage refuted twice on effectiveness.
 - **`Q-029` opened** — the preference elicitation itself, pending the user's
   scorecard.
+
+---
+
+## AMENDMENTS
+
+### 2026-08-22 — `Q-029` answered: the preference came back, and it inverts the benchmark
+
+The booklet was read blind and judged by the user. This is **one person's
+preference over three queries in one topic area**. It is the right basis for a
+decision about this product and it is **not W5**: it carries no interval, is not
+aggregated, and must never be cited as a relevance judgment.
+
+| Arm | What it is | Verdict |
+|:--:|---|---|
+| A | RRF, true union pool (dense ∪ corpus-wide BM25) | very good |
+| B | BM25 alone **+ cross-encoder** | very good |
+| C | **production as deployed** — RRF, BM25 restricted to the dense pool | very good |
+| **D** | **embedding similarity alone** (pgvector cosine) | **very good — singled out, "really nice", unique finds** |
+| E | three channels (BM25 ∪ dense ∪ SPLADE) **+ cross-encoder** | very good |
+| **F** | **BM25 alone**, whole corpus | **bad** — "a lot in the list that has zero correlation to what I'm looking for… a lot of really obscure stuff"; one or two acceptable hits |
+| G | production as deployed **+ cross-encoder** | very good |
+| H | three channels (BM25 ∪ dense ∪ SPLADE) | **not rated** |
+| I | embedding similarity alone **+ cross-encoder** | bad — "weird results" |
+| J | union pool **+ cross-encoder** | bad — "weird results" |
+
+**1. The two extremes are ranked in reverse of every measurement in this record.**
+`dense_only` was the reader's standout and `bm25_only` their rejection. On
+`sci-2025-01` those same two arms score 0.0931 and 0.2486 nDCG@10 and 0.3348 and
+0.5972 R@100 — BM25 ahead by ~2.7× on ranking. Thirteen experiments concluded
+"BM25 is the ceiling and the dense channel is the weak link."
+
+This is not the benchmark being noisy for our task. It is the benchmark **ordering
+the two extreme methods backwards** for it. The mechanism is not mysterious:
+LongEval assessors judge *does this document match these query terms*; a
+researcher judges *is this in my area*. Those reward different retrievers, and the
+lexical channel's precision on the literal query string is worth much less when
+the query is a standing research interest rather than a search box entry.
+
+Recorded as **C-022**, `unsupported` — a claim worth testing, on the strength of
+one blinded read.
+
+**2. The cross-encoder helped the worst arm and hurt the two best.** Four pairs
+differ only by the reranker:
+
+| pair | base | + cross-encoder | direction |
+|---|---|---|---|
+| dense only | D good | I **bad** | hurts |
+| union pool | A good | J **bad** | hurts |
+| production | C good | G good | no change |
+| BM25 only | F **bad** | B good | helps |
+
+Coherent as a mechanism — reranking pulls any ordering toward surface term
+overlap, which rescues a bad base and erodes what made a good one good — and
+therefore "should we add a cross-encoder" has no answer independent of what it
+reranks. **Four pairs, one judge.** A hypothesis, not a finding, and it does not
+disturb C-013, which is about aggregate ranking quality on LongEval.
+
+**3. Six of ten arms landed in one undifferentiated bucket.** The reader's own
+summary was "I'm not really able to tell what is what". Those six share only about
+a third of their documents (§1), so they are returning genuinely different things
+that are *equally acceptable*. Large disagreement in composition, small
+disagreement in quality. That is an argument against further retrieval tuning and
+it is not something an aggregate metric could have produced.
+
+**4. `H` — the three-channel stack the eval programme has been recommending — was
+never rated.** It is the one arm with no read at all, which makes it the obvious
+target for a follow-up.
+
+**Follow-up:** `EXP-2026-08-015` re-runs A, C, G and H alone, on one query, in a
+format built for reading rather than for completeness. The booklet's 42 pages were
+too long to navigate for a preference call — recorded here because the
+presentation was part of the instrument and it got in the way.
