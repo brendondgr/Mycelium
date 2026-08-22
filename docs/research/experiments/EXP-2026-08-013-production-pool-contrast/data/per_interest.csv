@@ -1,0 +1,799 @@
+regime,scope_size,target,real_target,interest,interest_words,bm25_hits,bm25_reachability,fts_hits,fts_reachability,fts_or_hits,fts_or_reachability,emitted_after_floor,emitted_after_floor_union
+R1:papers:2026-06-30,3219,lab:PULSE Lab,True,scientific machine learning,3,100,0.26,0,,100,0.2,125,169
+R1:papers:2026-06-30,3219,lab:PULSE Lab,True,healthcare,1,100,0.23,0,,100,0.15,120,162
+R1:papers:2026-06-30,3219,lab:PULSE Lab,True,oceanography,1,100,0.23,0,,100,0.13,122,161
+R1:papers:2026-06-30,3219,lab:Test Lab,False,Medical Technology,2,100,0.31,0,,100,0.36,94,124
+R1:papers:2026-06-30,3219,user:bdgr,True,bovine,1,11,0.8181818181818182,11,0.8181818181818182,11,0.8181818181818182,40,42
+R1:papers:2026-06-30,3219,user:bdgr,True,ovine health management,3,100,0.21,0,,100,0.18,92,144
+R1:papers:2026-06-30,3219,user:bdgr,True,dairy herd health,3,100,0.31,0,,100,0.3,78,121
+R1:papers:2026-06-30,3219,user:bdgr,True,veterinary medicine,2,100,0.36,21,0.7619047619047619,100,0.33,62,77
+R1:papers:2026-06-30,3219,user:bdgr,True,immunology,1,3,0.6666666666666666,65,0.38461538461538464,65,0.38461538461538464,37,38
+R1:papers:2026-06-30,3219,user:bdgr2,True,Computational Science,2,100,0.35,0,,100,0.39,122,159
+R1:papers:2026-06-30,3219,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.46,0,,100,0.45,126,152
+R1:papers:2026-06-30,3219,user:bdgr2,True,Bioinformatics Data Science,3,100,0.41,0,,100,0.41,114,151
+R1:papers:2026-06-30,3219,user:bdgr2,True,Computer Science & Engineering,4,100,0.32,0,,100,0.43,119,161
+R1:papers:2026-06-30,3219,user:bdgr2,True,Biomathematics,1,100,0.37,0,,100,0.4,119,156
+R1:papers:2026-06-30,3219,user:brendondgr,True,multi-agent orchestration,2,100,0.62,0,,100,0.53,123,149
+R1:papers:2026-06-30,3219,user:brendondgr,True,human-in-the-loop workflows,2,100,0.56,0,,100,0.6,133,156
+R1:papers:2026-06-30,3219,user:brendondgr,True,agentic querying,2,100,0.58,0,,100,0.54,122,153
+R1:papers:2026-06-30,3219,user:brendondgr,True,tool-calling design,2,100,0.55,0,,100,0.53,128,155
+R1:papers:2026-06-30,3219,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.56,0,,100,0.49,127,154
+R1:papers:2026-06-30,3219,user:brendondgr,True,knowledge graph construction,3,100,0.58,0,,100,0.52,119,147
+R1:papers:2026-06-30,3219,user:brendondgr,True,entity resolution,2,100,0.52,0,,100,0.53,123,153
+R1:papers:2026-06-30,3219,user:brendondgr,True,hybrid retrieval systems,3,100,0.55,0,,100,0.55,125,153
+R1:papers:2026-06-30,3219,user:brendondgr,True,agentic knowledge graph building,4,100,0.61,0,,100,0.52,116,143
+R1:papers:2026-06-30,3219,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.59,0,,100,0.54,130,155
+R1:papers:2026-06-30,3219,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.53,0,,100,0.53,125,154
+R1:papers:2026-06-30,3219,user:brendondgr,True,agentic healthcare systems,3,100,0.6,0,,100,0.56,131,153
+R1:papers:2026-06-30,3219,user:brendondgr,True,biomedical knowledge graphs,3,100,0.57,0,,100,0.53,124,152
+R1:papers:2026-06-30,3219,user:brendondgr,True,clinical data extraction,3,100,0.55,0,,100,0.46,128,154
+R1:papers:2026-06-30,3219,user:brendondgr,True,AI for medical devices,4,100,0.59,0,,100,0.55,131,154
+R1:papers:2026-06-30,3219,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.55,0,,100,0.53,140,161
+R1:papers:2026-06-30,3219,user:brendondgr,True,computer vision for healthcare,4,100,0.58,0,,100,0.52,138,160
+R1:papers:2026-06-30,3219,user:brendondgr,True,computer vision and graphics,4,100,0.56,0,,100,0.51,131,153
+R1:papers:2026-06-30,3219,user:brendondgr,True,robotic surgery,2,100,0.57,0,,100,0.51,125,151
+R1:papers:2026-06-30,3219,user:brendondgr,True,robotics expansion and usage,4,100,0.55,0,,100,0.5,130,154
+R1:papers:2026-06-30,3219,user:brendondgr,True,nanotechnology,1,100,0.57,0,,100,0.53,125,151
+R1:papers:2026-06-30,3219,user:brendondgr,True,quantum computing in various fields,5,100,0.57,0,,100,0.51,133,157
+R1:papers:2026-06-30,3219,user:uitest,False,Coral reef ecology,3,100,0.23,0,,100,0.34,48,66
+R1:papers:2026-06-30,3219,user:uitest,False,Machine learning,2,100,0.22,0,,100,0.21,77,126
+R1:papers:2026-07-01,3574,lab:PULSE Lab,True,scientific machine learning,3,100,0.3,0,,100,0.14,134,174
+R1:papers:2026-07-01,3574,lab:PULSE Lab,True,healthcare,1,100,0.26,0,,100,0.09,110,156
+R1:papers:2026-07-01,3574,lab:PULSE Lab,True,oceanography,1,100,0.27,0,,100,0.09,114,157
+R1:papers:2026-07-01,3574,lab:Test Lab,False,Medical Technology,2,100,0.36,0,,100,0.39,97,119
+R1:papers:2026-07-01,3574,user:bdgr,True,bovine,1,10,0.8,10,0.8,10,0.8,40,42
+R1:papers:2026-07-01,3574,user:bdgr,True,ovine health management,3,100,0.3,0,,100,0.33,101,159
+R1:papers:2026-07-01,3574,user:bdgr,True,dairy herd health,3,100,0.37,0,,100,0.35,81,119
+R1:papers:2026-07-01,3574,user:bdgr,True,veterinary medicine,2,100,0.39,8,0.875,100,0.39,62,71
+R1:papers:2026-07-01,3574,user:bdgr,True,immunology,1,2,1.0,37,0.40540540540540543,37,0.40540540540540543,43,43
+R1:papers:2026-07-01,3574,user:bdgr2,True,Computational Science,2,100,0.44,0,,100,0.37,116,152
+R1:papers:2026-07-01,3574,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.5,0,,100,0.41,123,152
+R1:papers:2026-07-01,3574,user:bdgr2,True,Bioinformatics Data Science,3,100,0.46,0,,100,0.39,115,156
+R1:papers:2026-07-01,3574,user:bdgr2,True,Computer Science & Engineering,4,100,0.41,0,,100,0.39,109,151
+R1:papers:2026-07-01,3574,user:bdgr2,True,Biomathematics,1,100,0.43,0,,100,0.32,114,149
+R1:papers:2026-07-01,3574,user:brendondgr,True,multi-agent orchestration,2,100,0.69,0,,100,0.55,125,149
+R1:papers:2026-07-01,3574,user:brendondgr,True,human-in-the-loop workflows,2,100,0.67,0,,100,0.61,130,150
+R1:papers:2026-07-01,3574,user:brendondgr,True,agentic querying,2,100,0.72,0,,100,0.54,123,146
+R1:papers:2026-07-01,3574,user:brendondgr,True,tool-calling design,2,100,0.66,0,,100,0.6,125,153
+R1:papers:2026-07-01,3574,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.66,0,,100,0.57,123,151
+R1:papers:2026-07-01,3574,user:brendondgr,True,knowledge graph construction,3,100,0.62,0,,100,0.52,124,150
+R1:papers:2026-07-01,3574,user:brendondgr,True,entity resolution,2,100,0.63,0,,100,0.55,126,154
+R1:papers:2026-07-01,3574,user:brendondgr,True,hybrid retrieval systems,3,100,0.6,0,,100,0.56,118,149
+R1:papers:2026-07-01,3574,user:brendondgr,True,agentic knowledge graph building,4,100,0.68,0,,100,0.53,125,149
+R1:papers:2026-07-01,3574,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.71,0,,100,0.54,129,154
+R1:papers:2026-07-01,3574,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.61,0,,100,0.55,119,145
+R1:papers:2026-07-01,3574,user:brendondgr,True,agentic healthcare systems,3,100,0.73,0,,100,0.56,128,145
+R1:papers:2026-07-01,3574,user:brendondgr,True,biomedical knowledge graphs,3,100,0.64,0,,100,0.53,124,147
+R1:papers:2026-07-01,3574,user:brendondgr,True,clinical data extraction,3,100,0.66,0,,100,0.51,124,152
+R1:papers:2026-07-01,3574,user:brendondgr,True,AI for medical devices,4,100,0.71,0,,100,0.54,127,147
+R1:papers:2026-07-01,3574,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.69,0,,100,0.56,136,163
+R1:papers:2026-07-01,3574,user:brendondgr,True,computer vision for healthcare,4,100,0.65,0,,100,0.56,131,155
+R1:papers:2026-07-01,3574,user:brendondgr,True,computer vision and graphics,4,100,0.64,0,,100,0.54,130,154
+R1:papers:2026-07-01,3574,user:brendondgr,True,robotic surgery,2,100,0.68,0,,100,0.55,125,153
+R1:papers:2026-07-01,3574,user:brendondgr,True,robotics expansion and usage,4,100,0.66,0,,100,0.57,128,154
+R1:papers:2026-07-01,3574,user:brendondgr,True,nanotechnology,1,100,0.7,0,,100,0.54,125,149
+R1:papers:2026-07-01,3574,user:brendondgr,True,quantum computing in various fields,5,100,0.64,0,,100,0.55,134,158
+R1:papers:2026-07-01,3574,user:uitest,False,Coral reef ecology,3,100,0.29,0,,100,0.33,53,70
+R1:papers:2026-07-01,3574,user:uitest,False,Machine learning,2,100,0.25,0,,100,0.19,105,142
+R1:papers:2026-07-03,3913,lab:PULSE Lab,True,scientific machine learning,3,100,0.28,0,,100,0.18,116,157
+R1:papers:2026-07-03,3913,lab:PULSE Lab,True,healthcare,1,100,0.26,0,,100,0.13,118,157
+R1:papers:2026-07-03,3913,lab:PULSE Lab,True,oceanography,1,100,0.26,0,,100,0.14,119,160
+R1:papers:2026-07-03,3913,lab:Test Lab,False,Medical Technology,2,100,0.29,0,,100,0.37,94,127
+R1:papers:2026-07-03,3913,user:bdgr,True,bovine,1,7,0.42857142857142855,7,0.42857142857142855,7,0.42857142857142855,38,42
+R1:papers:2026-07-03,3913,user:bdgr,True,ovine health management,3,100,0.4,0,,100,0.34,99,144
+R1:papers:2026-07-03,3913,user:bdgr,True,dairy herd health,3,100,0.46,0,,100,0.44,75,120
+R1:papers:2026-07-03,3913,user:bdgr,True,veterinary medicine,2,90,0.37777777777777777,4,1.0,100,0.33,55,65
+R1:papers:2026-07-03,3913,user:bdgr,True,immunology,1,2,1.0,29,0.5172413793103449,29,0.5172413793103449,45,45
+R1:papers:2026-07-03,3913,user:bdgr2,True,Computational Science,2,100,0.41,0,,100,0.44,111,147
+R1:papers:2026-07-03,3913,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.58,0,,100,0.49,113,136
+R1:papers:2026-07-03,3913,user:bdgr2,True,Bioinformatics Data Science,3,100,0.41,0,,100,0.43,112,146
+R1:papers:2026-07-03,3913,user:bdgr2,True,Computer Science & Engineering,4,100,0.39,0,,100,0.41,113,149
+R1:papers:2026-07-03,3913,user:bdgr2,True,Biomathematics,1,100,0.44,0,,100,0.44,113,148
+R1:papers:2026-07-03,3913,user:brendondgr,True,multi-agent orchestration,2,100,0.62,0,,100,0.42,126,156
+R1:papers:2026-07-03,3913,user:brendondgr,True,human-in-the-loop workflows,2,100,0.56,0,,100,0.45,133,161
+R1:papers:2026-07-03,3913,user:brendondgr,True,agentic querying,2,100,0.65,0,,100,0.43,120,153
+R1:papers:2026-07-03,3913,user:brendondgr,True,tool-calling design,2,100,0.57,0,,100,0.41,132,168
+R1:papers:2026-07-03,3913,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.56,0,,100,0.43,123,156
+R1:papers:2026-07-03,3913,user:brendondgr,True,knowledge graph construction,3,100,0.61,0,,100,0.44,122,153
+R1:papers:2026-07-03,3913,user:brendondgr,True,entity resolution,2,100,0.53,0,,100,0.42,122,150
+R1:papers:2026-07-03,3913,user:brendondgr,True,hybrid retrieval systems,3,100,0.56,0,,100,0.47,124,166
+R1:papers:2026-07-03,3913,user:brendondgr,True,agentic knowledge graph building,4,100,0.65,0,,100,0.45,122,153
+R1:papers:2026-07-03,3913,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.61,0,,100,0.43,133,169
+R1:papers:2026-07-03,3913,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.53,0,,100,0.42,123,155
+R1:papers:2026-07-03,3913,user:brendondgr,True,agentic healthcare systems,3,100,0.67,0,,100,0.48,127,154
+R1:papers:2026-07-03,3913,user:brendondgr,True,biomedical knowledge graphs,3,100,0.56,0,,100,0.43,124,156
+R1:papers:2026-07-03,3913,user:brendondgr,True,clinical data extraction,3,100,0.58,0,,100,0.31,129,161
+R1:papers:2026-07-03,3913,user:brendondgr,True,AI for medical devices,4,100,0.65,0,,100,0.41,134,169
+R1:papers:2026-07-03,3913,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.57,0,,100,0.43,135,169
+R1:papers:2026-07-03,3913,user:brendondgr,True,computer vision for healthcare,4,100,0.57,0,,100,0.39,132,166
+R1:papers:2026-07-03,3913,user:brendondgr,True,computer vision and graphics,4,100,0.53,0,,100,0.37,130,174
+R1:papers:2026-07-03,3913,user:brendondgr,True,robotic surgery,2,100,0.6,0,,100,0.43,131,173
+R1:papers:2026-07-03,3913,user:brendondgr,True,robotics expansion and usage,4,100,0.59,0,,100,0.4,133,173
+R1:papers:2026-07-03,3913,user:brendondgr,True,nanotechnology,1,100,0.61,0,,100,0.42,134,172
+R1:papers:2026-07-03,3913,user:brendondgr,True,quantum computing in various fields,5,100,0.58,0,,100,0.39,140,178
+R1:papers:2026-07-03,3913,user:uitest,False,Coral reef ecology,3,100,0.4,0,,100,0.39,51,70
+R1:papers:2026-07-03,3913,user:uitest,False,Machine learning,2,100,0.27,0,,100,0.15,115,149
+R1:papers:2026-07-05,4475,lab:PULSE Lab,True,scientific machine learning,3,100,0.3,0,,100,0.17,131,183
+R1:papers:2026-07-05,4475,lab:PULSE Lab,True,healthcare,1,100,0.24,0,,100,0.1,115,178
+R1:papers:2026-07-05,4475,lab:PULSE Lab,True,oceanography,1,100,0.3,0,,100,0.11,119,177
+R1:papers:2026-07-05,4475,lab:Test Lab,False,Medical Technology,2,100,0.33,0,,100,0.43,97,122
+R1:papers:2026-07-05,4475,user:bdgr,True,bovine,1,2,0.5,2,0.5,2,0.5,40,41
+R1:papers:2026-07-05,4475,user:bdgr,True,ovine health management,3,100,0.24,0,,100,0.19,97,158
+R1:papers:2026-07-05,4475,user:bdgr,True,dairy herd health,3,100,0.32,0,,100,0.25,84,130
+R1:papers:2026-07-05,4475,user:bdgr,True,veterinary medicine,2,100,0.34,2,0.5,100,0.33,63,70
+R1:papers:2026-07-05,4475,user:bdgr,True,immunology,1,7,0.8571428571428571,46,0.6086956521739131,46,0.6086956521739131,42,43
+R1:papers:2026-07-05,4475,user:bdgr2,True,Computational Science,2,100,0.41,0,,100,0.4,112,148
+R1:papers:2026-07-05,4475,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.56,0,,100,0.48,117,144
+R1:papers:2026-07-05,4475,user:bdgr2,True,Bioinformatics Data Science,3,100,0.43,0,,100,0.39,114,148
+R1:papers:2026-07-05,4475,user:bdgr2,True,Computer Science & Engineering,4,100,0.39,0,,100,0.41,115,151
+R1:papers:2026-07-05,4475,user:bdgr2,True,Biomathematics,1,100,0.43,0,,100,0.39,122,151
+R1:papers:2026-07-05,4475,user:brendondgr,True,multi-agent orchestration,2,100,0.58,0,,100,0.46,121,155
+R1:papers:2026-07-05,4475,user:brendondgr,True,human-in-the-loop workflows,2,100,0.52,0,,100,0.54,121,161
+R1:papers:2026-07-05,4475,user:brendondgr,True,agentic querying,2,100,0.54,0,,100,0.47,123,161
+R1:papers:2026-07-05,4475,user:brendondgr,True,tool-calling design,2,100,0.53,0,,100,0.43,126,165
+R1:papers:2026-07-05,4475,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.53,0,,100,0.4,126,156
+R1:papers:2026-07-05,4475,user:brendondgr,True,knowledge graph construction,3,100,0.51,0,,100,0.49,125,161
+R1:papers:2026-07-05,4475,user:brendondgr,True,entity resolution,2,100,0.51,0,,100,0.46,125,163
+R1:papers:2026-07-05,4475,user:brendondgr,True,hybrid retrieval systems,3,100,0.5,0,,100,0.46,128,165
+R1:papers:2026-07-05,4475,user:brendondgr,True,agentic knowledge graph building,4,100,0.55,0,,100,0.47,124,157
+R1:papers:2026-07-05,4475,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.52,0,,100,0.47,125,161
+R1:papers:2026-07-05,4475,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.52,0,,100,0.46,126,159
+R1:papers:2026-07-05,4475,user:brendondgr,True,agentic healthcare systems,3,100,0.6,0,,100,0.49,126,153
+R1:papers:2026-07-05,4475,user:brendondgr,True,biomedical knowledge graphs,3,100,0.5,0,,100,0.46,126,157
+R1:papers:2026-07-05,4475,user:brendondgr,True,clinical data extraction,3,100,0.53,0,,100,0.37,122,155
+R1:papers:2026-07-05,4475,user:brendondgr,True,AI for medical devices,4,100,0.58,0,,100,0.49,131,159
+R1:papers:2026-07-05,4475,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.51,0,,100,0.48,137,166
+R1:papers:2026-07-05,4475,user:brendondgr,True,computer vision for healthcare,4,100,0.52,0,,100,0.51,131,163
+R1:papers:2026-07-05,4475,user:brendondgr,True,computer vision and graphics,4,100,0.49,0,,100,0.46,133,169
+R1:papers:2026-07-05,4475,user:brendondgr,True,robotic surgery,2,100,0.54,0,,100,0.47,127,163
+R1:papers:2026-07-05,4475,user:brendondgr,True,robotics expansion and usage,4,100,0.52,0,,100,0.47,130,165
+R1:papers:2026-07-05,4475,user:brendondgr,True,nanotechnology,1,100,0.54,0,,100,0.46,128,162
+R1:papers:2026-07-05,4475,user:brendondgr,True,quantum computing in various fields,5,100,0.51,0,,100,0.44,127,157
+R1:papers:2026-07-05,4475,user:uitest,False,Coral reef ecology,3,100,0.31,0,,100,0.32,57,88
+R1:papers:2026-07-05,4475,user:uitest,False,Machine learning,2,100,0.24,0,,100,0.16,99,135
+R1:papers:2026-07-06,303,lab:PULSE Lab,True,scientific machine learning,3,100,0.62,0,,100,0.62,109,125
+R1:papers:2026-07-06,303,lab:PULSE Lab,True,healthcare,1,100,0.6,0,,100,0.6,111,129
+R1:papers:2026-07-06,303,lab:PULSE Lab,True,oceanography,1,100,0.58,0,,100,0.61,110,129
+R1:papers:2026-07-06,303,lab:Test Lab,False,Medical Technology,2,100,0.36,0,,49,0.5102040816326531,98,117
+R1:papers:2026-07-06,303,user:bdgr,True,bovine,1,22,0.8181818181818182,22,0.8181818181818182,22,0.8181818181818182,45,49
+R1:papers:2026-07-06,303,user:bdgr,True,ovine health management,3,64,0.8125,0,,69,0.7681159420289855,71,77
+R1:papers:2026-07-06,303,user:bdgr,True,dairy herd health,3,57,0.8947368421052632,1,1.0,59,0.8813559322033898,63,66
+R1:papers:2026-07-06,303,user:bdgr,True,veterinary medicine,2,15,0.9333333333333333,4,1.0,42,0.8809523809523809,42,43
+R1:papers:2026-07-06,303,user:bdgr,True,immunology,1,6,0.8333333333333334,31,0.8709677419354839,31,0.8709677419354839,43,44
+R1:papers:2026-07-06,303,user:bdgr2,True,Computational Science,2,100,0.66,0,,100,0.59,92,108
+R1:papers:2026-07-06,303,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.64,0,,100,0.6,106,122
+R1:papers:2026-07-06,303,user:bdgr2,True,Bioinformatics Data Science,3,100,0.64,0,,100,0.6,98,111
+R1:papers:2026-07-06,303,user:bdgr2,True,Computer Science & Engineering,4,100,0.64,0,,100,0.6,93,109
+R1:papers:2026-07-06,303,user:bdgr2,True,Biomathematics,1,100,0.63,0,,100,0.59,93,107
+R1:papers:2026-07-06,303,user:brendondgr,True,multi-agent orchestration,2,100,0.85,0,,100,0.76,100,112
+R1:papers:2026-07-06,303,user:brendondgr,True,human-in-the-loop workflows,2,100,0.77,0,,100,0.77,114,125
+R1:papers:2026-07-06,303,user:brendondgr,True,agentic querying,2,100,0.85,0,,100,0.76,96,108
+R1:papers:2026-07-06,303,user:brendondgr,True,tool-calling design,2,100,0.79,0,,100,0.78,97,106
+R1:papers:2026-07-06,303,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.81,0,,100,0.75,103,114
+R1:papers:2026-07-06,303,user:brendondgr,True,knowledge graph construction,3,100,0.84,0,,100,0.77,100,114
+R1:papers:2026-07-06,303,user:brendondgr,True,entity resolution,2,100,0.85,0,,100,0.76,98,108
+R1:papers:2026-07-06,303,user:brendondgr,True,hybrid retrieval systems,3,100,0.79,0,,100,0.77,99,109
+R1:papers:2026-07-06,303,user:brendondgr,True,agentic knowledge graph building,4,100,0.85,0,,100,0.76,102,112
+R1:papers:2026-07-06,303,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.85,0,,100,0.76,110,122
+R1:papers:2026-07-06,303,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.85,0,,100,0.76,98,111
+R1:papers:2026-07-06,303,user:brendondgr,True,agentic healthcare systems,3,100,0.79,0,,100,0.78,104,114
+R1:papers:2026-07-06,303,user:brendondgr,True,biomedical knowledge graphs,3,100,0.85,0,,100,0.76,101,113
+R1:papers:2026-07-06,303,user:brendondgr,True,clinical data extraction,3,100,0.77,0,,100,0.71,108,119
+R1:papers:2026-07-06,303,user:brendondgr,True,AI for medical devices,4,100,0.78,0,,100,0.74,110,120
+R1:papers:2026-07-06,303,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.82,0,,100,0.78,114,126
+R1:papers:2026-07-06,303,user:brendondgr,True,computer vision for healthcare,4,100,0.81,0,,100,0.78,111,119
+R1:papers:2026-07-06,303,user:brendondgr,True,computer vision and graphics,4,100,0.85,0,,100,0.77,111,122
+R1:papers:2026-07-06,303,user:brendondgr,True,robotic surgery,2,100,0.81,0,,100,0.77,98,113
+R1:papers:2026-07-06,303,user:brendondgr,True,robotics expansion and usage,4,100,0.83,0,,100,0.78,108,120
+R1:papers:2026-07-06,303,user:brendondgr,True,nanotechnology,1,100,0.85,0,,100,0.76,96,109
+R1:papers:2026-07-06,303,user:brendondgr,True,quantum computing in various fields,5,100,0.79,0,,100,0.75,110,123
+R1:papers:2026-07-06,303,user:uitest,False,Coral reef ecology,3,7,0.5714285714285714,0,,9,0.5555555555555556,38,41
+R1:papers:2026-07-06,303,user:uitest,False,Machine learning,2,29,0.8275862068965517,0,,30,0.8,43,48
+R1:papers:2026-07-07,1311,lab:PULSE Lab,True,scientific machine learning,3,100,0.35,0,,100,0.32,127,167
+R1:papers:2026-07-07,1311,lab:PULSE Lab,True,healthcare,1,100,0.31,0,,100,0.24,126,167
+R1:papers:2026-07-07,1311,lab:PULSE Lab,True,oceanography,1,100,0.3,0,,100,0.25,126,164
+R1:papers:2026-07-07,1311,lab:Test Lab,False,Medical Technology,2,100,0.27,0,,100,0.3,94,117
+R1:papers:2026-07-07,1311,user:bdgr,True,bovine,1,23,0.7391304347826086,24,0.75,24,0.75,42,48
+R1:papers:2026-07-07,1311,user:bdgr,True,ovine health management,3,100,0.4,0,,100,0.35,86,145
+R1:papers:2026-07-07,1311,user:bdgr,True,dairy herd health,3,100,0.58,1,1.0,100,0.52,73,88
+R1:papers:2026-07-07,1311,user:bdgr,True,veterinary medicine,2,42,0.5952380952380952,9,0.6666666666666666,100,0.49,52,64
+R1:papers:2026-07-07,1311,user:bdgr,True,immunology,1,10,0.7,68,0.4264705882352941,68,0.4264705882352941,39,42
+R1:papers:2026-07-07,1311,user:bdgr2,True,Computational Science,2,100,0.58,0,,100,0.53,105,130
+R1:papers:2026-07-07,1311,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.66,0,,100,0.56,110,133
+R1:papers:2026-07-07,1311,user:bdgr2,True,Bioinformatics Data Science,3,100,0.6,0,,100,0.55,112,136
+R1:papers:2026-07-07,1311,user:bdgr2,True,Computer Science & Engineering,4,100,0.58,0,,100,0.56,107,134
+R1:papers:2026-07-07,1311,user:bdgr2,True,Biomathematics,1,100,0.55,0,,100,0.56,107,137
+R1:papers:2026-07-07,1311,user:brendondgr,True,multi-agent orchestration,2,100,0.73,0,,100,0.66,106,129
+R1:papers:2026-07-07,1311,user:brendondgr,True,human-in-the-loop workflows,2,100,0.73,0,,100,0.68,117,140
+R1:papers:2026-07-07,1311,user:brendondgr,True,agentic querying,2,100,0.75,0,,100,0.67,108,129
+R1:papers:2026-07-07,1311,user:brendondgr,True,tool-calling design,2,100,0.73,0,,100,0.65,106,134
+R1:papers:2026-07-07,1311,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.73,0,,100,0.62,109,129
+R1:papers:2026-07-07,1311,user:brendondgr,True,knowledge graph construction,3,100,0.73,0,,100,0.64,110,138
+R1:papers:2026-07-07,1311,user:brendondgr,True,entity resolution,2,100,0.67,0,,100,0.66,107,135
+R1:papers:2026-07-07,1311,user:brendondgr,True,hybrid retrieval systems,3,100,0.75,0,,100,0.68,109,135
+R1:papers:2026-07-07,1311,user:brendondgr,True,agentic knowledge graph building,4,100,0.71,0,,100,0.66,107,133
+R1:papers:2026-07-07,1311,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.73,0,,100,0.67,114,133
+R1:papers:2026-07-07,1311,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.66,0,,100,0.66,110,136
+R1:papers:2026-07-07,1311,user:brendondgr,True,agentic healthcare systems,3,100,0.79,0,,100,0.69,110,133
+R1:papers:2026-07-07,1311,user:brendondgr,True,biomedical knowledge graphs,3,100,0.72,0,,100,0.65,109,135
+R1:papers:2026-07-07,1311,user:brendondgr,True,clinical data extraction,3,100,0.73,0,,100,0.55,112,137
+R1:papers:2026-07-07,1311,user:brendondgr,True,AI for medical devices,4,100,0.78,0,,100,0.68,116,142
+R1:papers:2026-07-07,1311,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.72,0,,100,0.71,120,142
+R1:papers:2026-07-07,1311,user:brendondgr,True,computer vision for healthcare,4,100,0.73,0,,100,0.67,116,139
+R1:papers:2026-07-07,1311,user:brendondgr,True,computer vision and graphics,4,100,0.75,0,,100,0.65,116,135
+R1:papers:2026-07-07,1311,user:brendondgr,True,robotic surgery,2,100,0.74,0,,100,0.64,111,133
+R1:papers:2026-07-07,1311,user:brendondgr,True,robotics expansion and usage,4,100,0.72,0,,100,0.66,115,136
+R1:papers:2026-07-07,1311,user:brendondgr,True,nanotechnology,1,100,0.74,0,,100,0.65,112,133
+R1:papers:2026-07-07,1311,user:brendondgr,True,quantum computing in various fields,5,100,0.72,0,,100,0.66,114,137
+R1:papers:2026-07-07,1311,user:uitest,False,Coral reef ecology,3,39,0.41025641025641024,0,,80,0.3375,43,65
+R1:papers:2026-07-07,1311,user:uitest,False,Machine learning,2,100,0.32,0,,100,0.29,84,126
+R1:papers:2026-07-08,2065,lab:PULSE Lab,True,scientific machine learning,3,100,0.32,0,,100,0.23,116,157
+R1:papers:2026-07-08,2065,lab:PULSE Lab,True,healthcare,1,100,0.29,0,,100,0.15,115,154
+R1:papers:2026-07-08,2065,lab:PULSE Lab,True,oceanography,1,100,0.3,0,,100,0.14,117,155
+R1:papers:2026-07-08,2065,lab:Test Lab,False,Medical Technology,2,100,0.27,0,,100,0.26,97,120
+R1:papers:2026-07-08,2065,user:bdgr,True,bovine,1,23,0.6521739130434783,23,0.6521739130434783,23,0.6521739130434783,43,51
+R1:papers:2026-07-08,2065,user:bdgr,True,ovine health management,3,100,0.36,0,,100,0.39,93,143
+R1:papers:2026-07-08,2065,user:bdgr,True,dairy herd health,3,100,0.45,2,1.0,100,0.48,71,98
+R1:papers:2026-07-08,2065,user:bdgr,True,veterinary medicine,2,60,0.4666666666666667,13,0.9230769230769231,100,0.36,55,67
+R1:papers:2026-07-08,2065,user:bdgr,True,immunology,1,9,0.7777777777777778,51,0.5686274509803921,51,0.5686274509803921,42,44
+R1:papers:2026-07-08,2065,user:bdgr2,True,Computational Science,2,100,0.59,0,,100,0.53,109,133
+R1:papers:2026-07-08,2065,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.58,0,,100,0.54,112,136
+R1:papers:2026-07-08,2065,user:bdgr2,True,Bioinformatics Data Science,3,100,0.57,0,,100,0.47,106,132
+R1:papers:2026-07-08,2065,user:bdgr2,True,Computer Science & Engineering,4,100,0.54,0,,100,0.51,109,140
+R1:papers:2026-07-08,2065,user:bdgr2,True,Biomathematics,1,100,0.55,0,,100,0.52,108,136
+R1:papers:2026-07-08,2065,user:brendondgr,True,multi-agent orchestration,2,100,0.77,0,,100,0.6,117,137
+R1:papers:2026-07-08,2065,user:brendondgr,True,human-in-the-loop workflows,2,100,0.73,0,,100,0.61,118,140
+R1:papers:2026-07-08,2065,user:brendondgr,True,agentic querying,2,100,0.78,0,,100,0.6,114,134
+R1:papers:2026-07-08,2065,user:brendondgr,True,tool-calling design,2,100,0.73,0,,100,0.59,119,141
+R1:papers:2026-07-08,2065,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.69,0,,100,0.56,119,144
+R1:papers:2026-07-08,2065,user:brendondgr,True,knowledge graph construction,3,100,0.66,0,,100,0.59,116,141
+R1:papers:2026-07-08,2065,user:brendondgr,True,entity resolution,2,100,0.68,0,,100,0.6,116,143
+R1:papers:2026-07-08,2065,user:brendondgr,True,hybrid retrieval systems,3,100,0.67,0,,100,0.6,114,140
+R1:papers:2026-07-08,2065,user:brendondgr,True,agentic knowledge graph building,4,100,0.72,0,,100,0.6,113,137
+R1:papers:2026-07-08,2065,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.74,0,,100,0.6,119,141
+R1:papers:2026-07-08,2065,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.69,0,,100,0.6,116,142
+R1:papers:2026-07-08,2065,user:brendondgr,True,agentic healthcare systems,3,100,0.77,0,,100,0.63,114,136
+R1:papers:2026-07-08,2065,user:brendondgr,True,biomedical knowledge graphs,3,100,0.68,0,,100,0.61,113,137
+R1:papers:2026-07-08,2065,user:brendondgr,True,clinical data extraction,3,100,0.7,0,,100,0.44,113,145
+R1:papers:2026-07-08,2065,user:brendondgr,True,AI for medical devices,4,100,0.73,0,,100,0.55,115,144
+R1:papers:2026-07-08,2065,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.73,0,,100,0.57,120,144
+R1:papers:2026-07-08,2065,user:brendondgr,True,computer vision for healthcare,4,100,0.71,0,,100,0.54,116,142
+R1:papers:2026-07-08,2065,user:brendondgr,True,computer vision and graphics,4,100,0.71,0,,100,0.54,120,145
+R1:papers:2026-07-08,2065,user:brendondgr,True,robotic surgery,2,100,0.69,0,,100,0.6,117,142
+R1:papers:2026-07-08,2065,user:brendondgr,True,robotics expansion and usage,4,100,0.72,0,,100,0.61,120,145
+R1:papers:2026-07-08,2065,user:brendondgr,True,nanotechnology,1,100,0.71,0,,100,0.6,121,145
+R1:papers:2026-07-08,2065,user:brendondgr,True,quantum computing in various fields,5,100,0.74,0,,100,0.55,124,144
+R1:papers:2026-07-08,2065,user:uitest,False,Coral reef ecology,3,65,0.27692307692307694,0,,100,0.32,46,73
+R1:papers:2026-07-08,2065,user:uitest,False,Machine learning,2,100,0.26,0,,100,0.23,93,140
+R1:papers:2026-07-10,2810,lab:PULSE Lab,True,scientific machine learning,3,100,0.31,0,,100,0.25,125,165
+R1:papers:2026-07-10,2810,lab:PULSE Lab,True,healthcare,1,100,0.28,0,,100,0.23,124,165
+R1:papers:2026-07-10,2810,lab:PULSE Lab,True,oceanography,1,100,0.27,0,,100,0.3,130,164
+R1:papers:2026-07-10,2810,lab:Test Lab,False,Medical Technology,2,100,0.42,0,,100,0.42,96,115
+R1:papers:2026-07-10,2810,user:bdgr,True,bovine,1,73,0.547945205479452,74,0.5540540540540541,74,0.5540540540540541,61,76
+R1:papers:2026-07-10,2810,user:bdgr,True,ovine health management,3,100,0.13,0,,100,0.2,88,159
+R1:papers:2026-07-10,2810,user:bdgr,True,dairy herd health,3,100,0.43,5,1.0,100,0.35,79,122
+R1:papers:2026-07-10,2810,user:bdgr,True,veterinary medicine,2,100,0.5,39,0.717948717948718,100,0.44,62,75
+R1:papers:2026-07-10,2810,user:bdgr,True,immunology,1,31,0.45161290322580644,100,0.35,100,0.35,43,60
+R1:papers:2026-07-10,2810,user:bdgr2,True,Computational Science,2,100,0.45,0,,100,0.43,116,144
+R1:papers:2026-07-10,2810,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.52,0,,100,0.47,119,143
+R1:papers:2026-07-10,2810,user:bdgr2,True,Bioinformatics Data Science,3,100,0.45,0,,100,0.4,112,141
+R1:papers:2026-07-10,2810,user:bdgr2,True,Computer Science & Engineering,4,100,0.39,0,,100,0.43,118,152
+R1:papers:2026-07-10,2810,user:bdgr2,True,Biomathematics,1,100,0.45,0,,100,0.43,113,144
+R1:papers:2026-07-10,2810,user:brendondgr,True,multi-agent orchestration,2,100,0.78,0,,100,0.68,127,144
+R1:papers:2026-07-10,2810,user:brendondgr,True,human-in-the-loop workflows,2,100,0.7,0,,100,0.71,127,146
+R1:papers:2026-07-10,2810,user:brendondgr,True,agentic querying,2,100,0.78,0,,100,0.66,124,141
+R1:papers:2026-07-10,2810,user:brendondgr,True,tool-calling design,2,100,0.71,0,,100,0.66,129,151
+R1:papers:2026-07-10,2810,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.74,0,,100,0.63,120,145
+R1:papers:2026-07-10,2810,user:brendondgr,True,knowledge graph construction,3,100,0.72,0,,100,0.68,119,141
+R1:papers:2026-07-10,2810,user:brendondgr,True,entity resolution,2,100,0.69,0,,100,0.68,128,150
+R1:papers:2026-07-10,2810,user:brendondgr,True,hybrid retrieval systems,3,100,0.67,0,,100,0.67,124,144
+R1:papers:2026-07-10,2810,user:brendondgr,True,agentic knowledge graph building,4,100,0.74,0,,100,0.67,122,143
+R1:papers:2026-07-10,2810,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.71,0,,100,0.66,125,147
+R1:papers:2026-07-10,2810,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.68,0,,100,0.68,125,146
+R1:papers:2026-07-10,2810,user:brendondgr,True,agentic healthcare systems,3,100,0.75,0,,100,0.65,130,149
+R1:papers:2026-07-10,2810,user:brendondgr,True,biomedical knowledge graphs,3,100,0.74,0,,100,0.66,119,142
+R1:papers:2026-07-10,2810,user:brendondgr,True,clinical data extraction,3,100,0.73,0,,100,0.65,125,146
+R1:papers:2026-07-10,2810,user:brendondgr,True,AI for medical devices,4,100,0.72,0,,100,0.66,128,150
+R1:papers:2026-07-10,2810,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.65,0,,100,0.66,133,157
+R1:papers:2026-07-10,2810,user:brendondgr,True,computer vision for healthcare,4,100,0.65,0,,100,0.66,130,159
+R1:papers:2026-07-10,2810,user:brendondgr,True,computer vision and graphics,4,100,0.66,0,,100,0.64,125,153
+R1:papers:2026-07-10,2810,user:brendondgr,True,robotic surgery,2,100,0.71,0,,100,0.67,127,148
+R1:papers:2026-07-10,2810,user:brendondgr,True,robotics expansion and usage,4,100,0.7,0,,100,0.68,130,154
+R1:papers:2026-07-10,2810,user:brendondgr,True,nanotechnology,1,100,0.72,0,,100,0.67,126,147
+R1:papers:2026-07-10,2810,user:brendondgr,True,quantum computing in various fields,5,100,0.73,0,,100,0.66,132,152
+R1:papers:2026-07-10,2810,user:uitest,False,Coral reef ecology,3,80,0.1875,0,,100,0.27,45,69
+R1:papers:2026-07-10,2810,user:uitest,False,Machine learning,2,100,0.23,0,,100,0.2,76,130
+R1:papers:2026-07-11,1504,lab:PULSE Lab,True,scientific machine learning,3,100,0.59,0,,100,0.46,112,136
+R1:papers:2026-07-11,1504,lab:PULSE Lab,True,healthcare,1,100,0.56,0,,100,0.28,115,139
+R1:papers:2026-07-11,1504,lab:PULSE Lab,True,oceanography,1,100,0.57,0,,100,0.41,116,139
+R1:papers:2026-07-11,1504,lab:Test Lab,False,Medical Technology,2,100,0.41,0,,100,0.34,95,114
+R1:papers:2026-07-11,1504,user:bdgr,True,bovine,1,2,0.5,2,0.5,2,0.5,40,41
+R1:papers:2026-07-11,1504,user:bdgr,True,ovine health management,3,100,0.31,0,,100,0.38,125,172
+R1:papers:2026-07-11,1504,user:bdgr,True,dairy herd health,3,100,0.36,0,,100,0.34,112,152
+R1:papers:2026-07-11,1504,user:bdgr,True,veterinary medicine,2,71,0.4225352112676056,2,1.0,100,0.38,53,68
+R1:papers:2026-07-11,1504,user:bdgr,True,immunology,1,1,1.0,16,0.6875,16,0.6875,38,38
+R1:papers:2026-07-11,1504,user:bdgr2,True,Computational Science,2,100,0.53,0,,100,0.58,102,122
+R1:papers:2026-07-11,1504,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.59,0,,100,0.58,107,127
+R1:papers:2026-07-11,1504,user:bdgr2,True,Bioinformatics Data Science,3,100,0.53,0,,100,0.6,99,121
+R1:papers:2026-07-11,1504,user:bdgr2,True,Computer Science & Engineering,4,100,0.52,0,,100,0.58,99,129
+R1:papers:2026-07-11,1504,user:bdgr2,True,Biomathematics,1,100,0.51,0,,100,0.57,98,122
+R1:papers:2026-07-11,1504,user:brendondgr,True,multi-agent orchestration,2,100,0.57,0,,100,0.63,114,146
+R1:papers:2026-07-11,1504,user:brendondgr,True,human-in-the-loop workflows,2,100,0.63,0,,100,0.6,119,146
+R1:papers:2026-07-11,1504,user:brendondgr,True,agentic querying,2,100,0.65,0,,100,0.64,117,145
+R1:papers:2026-07-11,1504,user:brendondgr,True,tool-calling design,2,100,0.58,0,,100,0.54,118,149
+R1:papers:2026-07-11,1504,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.64,0,,100,0.58,114,143
+R1:papers:2026-07-11,1504,user:brendondgr,True,knowledge graph construction,3,100,0.56,0,,100,0.62,113,144
+R1:papers:2026-07-11,1504,user:brendondgr,True,entity resolution,2,100,0.6,0,,100,0.63,117,146
+R1:papers:2026-07-11,1504,user:brendondgr,True,hybrid retrieval systems,3,100,0.64,0,,100,0.6,114,140
+R1:papers:2026-07-11,1504,user:brendondgr,True,agentic knowledge graph building,4,100,0.56,0,,100,0.63,114,147
+R1:papers:2026-07-11,1504,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.65,0,,100,0.64,122,149
+R1:papers:2026-07-11,1504,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.56,0,,100,0.63,113,143
+R1:papers:2026-07-11,1504,user:brendondgr,True,agentic healthcare systems,3,100,0.65,0,,100,0.53,119,142
+R1:papers:2026-07-11,1504,user:brendondgr,True,biomedical knowledge graphs,3,100,0.54,0,,100,0.62,111,146
+R1:papers:2026-07-11,1504,user:brendondgr,True,clinical data extraction,3,100,0.64,0,,100,0.49,112,145
+R1:papers:2026-07-11,1504,user:brendondgr,True,AI for medical devices,4,100,0.72,0,,100,0.58,114,134
+R1:papers:2026-07-11,1504,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.63,0,,100,0.59,123,150
+R1:papers:2026-07-11,1504,user:brendondgr,True,computer vision for healthcare,4,100,0.66,0,,100,0.59,119,145
+R1:papers:2026-07-11,1504,user:brendondgr,True,computer vision and graphics,4,100,0.66,0,,100,0.63,118,146
+R1:papers:2026-07-11,1504,user:brendondgr,True,robotic surgery,2,100,0.63,0,,100,0.61,114,145
+R1:papers:2026-07-11,1504,user:brendondgr,True,robotics expansion and usage,4,100,0.66,0,,100,0.64,119,146
+R1:papers:2026-07-11,1504,user:brendondgr,True,nanotechnology,1,100,0.63,0,,100,0.63,115,144
+R1:papers:2026-07-11,1504,user:brendondgr,True,quantum computing in various fields,5,100,0.61,0,,100,0.61,117,144
+R1:papers:2026-07-11,1504,user:uitest,False,Coral reef ecology,3,42,0.35714285714285715,0,,85,0.4117647058823529,43,67
+R1:papers:2026-07-11,1504,user:uitest,False,Machine learning,2,100,0.35,0,,100,0.45,88,116
+R1:papers:2026-07-12,3079,lab:PULSE Lab,True,scientific machine learning,3,100,0.44,0,,100,0.26,123,159
+R1:papers:2026-07-12,3079,lab:PULSE Lab,True,healthcare,1,100,0.37,0,,100,0.17,113,150
+R1:papers:2026-07-12,3079,lab:PULSE Lab,True,oceanography,1,100,0.42,0,,100,0.19,118,150
+R1:papers:2026-07-12,3079,lab:Test Lab,False,Medical Technology,2,100,0.31,0,,100,0.4,92,119
+R1:papers:2026-07-12,3079,user:bdgr,True,bovine,1,39,0.5897435897435898,39,0.5897435897435898,39,0.5897435897435898,46,62
+R1:papers:2026-07-12,3079,user:bdgr,True,ovine health management,3,100,0.18,0,,100,0.23,94,178
+R1:papers:2026-07-12,3079,user:bdgr,True,dairy herd health,3,100,0.44,4,1.0,100,0.32,87,125
+R1:papers:2026-07-12,3079,user:bdgr,True,veterinary medicine,2,100,0.44,25,0.92,100,0.42,63,73
+R1:papers:2026-07-12,3079,user:bdgr,True,immunology,1,21,0.5714285714285714,100,0.36,100,0.36,43,52
+R1:papers:2026-07-12,3079,user:bdgr2,True,Computational Science,2,100,0.49,0,,100,0.51,116,147
+R1:papers:2026-07-12,3079,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.57,0,,100,0.47,114,142
+R1:papers:2026-07-12,3079,user:bdgr2,True,Bioinformatics Data Science,3,100,0.47,0,,100,0.47,113,143
+R1:papers:2026-07-12,3079,user:bdgr2,True,Computer Science & Engineering,4,100,0.49,0,,100,0.48,112,145
+R1:papers:2026-07-12,3079,user:bdgr2,True,Biomathematics,1,100,0.47,0,,100,0.46,114,145
+R1:papers:2026-07-12,3079,user:brendondgr,True,multi-agent orchestration,2,100,0.68,0,,100,0.67,123,141
+R1:papers:2026-07-12,3079,user:brendondgr,True,human-in-the-loop workflows,2,100,0.62,0,,100,0.75,123,145
+R1:papers:2026-07-12,3079,user:brendondgr,True,agentic querying,2,100,0.67,0,,100,0.68,123,138
+R1:papers:2026-07-12,3079,user:brendondgr,True,tool-calling design,2,100,0.69,0,,100,0.68,124,142
+R1:papers:2026-07-12,3079,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.69,0,,100,0.67,121,140
+R1:papers:2026-07-12,3079,user:brendondgr,True,knowledge graph construction,3,100,0.68,0,,100,0.68,118,136
+R1:papers:2026-07-12,3079,user:brendondgr,True,entity resolution,2,100,0.66,0,,100,0.67,121,140
+R1:papers:2026-07-12,3079,user:brendondgr,True,hybrid retrieval systems,3,100,0.66,0,,100,0.68,121,141
+R1:papers:2026-07-12,3079,user:brendondgr,True,agentic knowledge graph building,4,100,0.73,0,,100,0.68,123,140
+R1:papers:2026-07-12,3079,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.68,0,,100,0.68,124,145
+R1:papers:2026-07-12,3079,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.66,0,,100,0.67,116,137
+R1:papers:2026-07-12,3079,user:brendondgr,True,agentic healthcare systems,3,100,0.71,0,,100,0.66,127,143
+R1:papers:2026-07-12,3079,user:brendondgr,True,biomedical knowledge graphs,3,100,0.66,0,,100,0.66,121,138
+R1:papers:2026-07-12,3079,user:brendondgr,True,clinical data extraction,3,100,0.69,0,,100,0.65,123,144
+R1:papers:2026-07-12,3079,user:brendondgr,True,AI for medical devices,4,100,0.68,0,,100,0.66,125,147
+R1:papers:2026-07-12,3079,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.66,0,,100,0.65,133,156
+R1:papers:2026-07-12,3079,user:brendondgr,True,computer vision for healthcare,4,100,0.69,0,,100,0.67,127,150
+R1:papers:2026-07-12,3079,user:brendondgr,True,computer vision and graphics,4,100,0.67,0,,100,0.65,127,151
+R1:papers:2026-07-12,3079,user:brendondgr,True,robotic surgery,2,100,0.7,0,,100,0.68,126,145
+R1:papers:2026-07-12,3079,user:brendondgr,True,robotics expansion and usage,4,100,0.69,0,,100,0.68,125,146
+R1:papers:2026-07-12,3079,user:brendondgr,True,nanotechnology,1,100,0.71,0,,100,0.67,125,143
+R1:papers:2026-07-12,3079,user:brendondgr,True,quantum computing in various fields,5,100,0.68,0,,100,0.66,130,150
+R1:papers:2026-07-12,3079,user:uitest,False,Coral reef ecology,3,89,0.16853932584269662,0,,100,0.23,48,73
+R1:papers:2026-07-12,3079,user:uitest,False,Machine learning,2,100,0.23,0,,100,0.22,77,133
+R1:papers:2026-07-13,485,lab:PULSE Lab,True,scientific machine learning,3,100,0.59,0,,100,0.61,115,137
+R1:papers:2026-07-13,485,lab:PULSE Lab,True,healthcare,1,100,0.57,0,,100,0.61,118,135
+R1:papers:2026-07-13,485,lab:PULSE Lab,True,oceanography,1,100,0.54,0,,100,0.59,121,144
+R1:papers:2026-07-13,485,lab:Test Lab,False,Medical Technology,2,100,0.36,0,,100,0.44,98,113
+R1:papers:2026-07-13,485,user:bdgr,True,bovine,1,19,0.8947368421052632,19,0.8947368421052632,19,0.8947368421052632,40,42
+R1:papers:2026-07-13,485,user:bdgr,True,ovine health management,3,100,0.63,0,,100,0.58,78,90
+R1:papers:2026-07-13,485,user:bdgr,True,dairy herd health,3,66,0.7727272727272727,2,1.0,70,0.7714285714285715,67,70
+R1:papers:2026-07-13,485,user:bdgr,True,veterinary medicine,2,23,0.782608695652174,4,0.75,60,0.8333333333333334,46,51
+R1:papers:2026-07-13,485,user:bdgr,True,immunology,1,3,1.0,19,0.7894736842105263,19,0.7894736842105263,37,37
+R1:papers:2026-07-13,485,user:bdgr2,True,Computational Science,2,100,0.68,0,,100,0.69,98,111
+R1:papers:2026-07-13,485,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.7,0,,100,0.7,100,109
+R1:papers:2026-07-13,485,user:bdgr2,True,Bioinformatics Data Science,3,100,0.69,0,,100,0.66,93,108
+R1:papers:2026-07-13,485,user:bdgr2,True,Computer Science & Engineering,4,100,0.68,0,,100,0.69,98,109
+R1:papers:2026-07-13,485,user:bdgr2,True,Biomathematics,1,100,0.69,0,,100,0.69,96,109
+R1:papers:2026-07-13,485,user:brendondgr,True,multi-agent orchestration,2,100,0.75,0,,100,0.79,99,114
+R1:papers:2026-07-13,485,user:brendondgr,True,human-in-the-loop workflows,2,100,0.69,0,,100,0.79,102,120
+R1:papers:2026-07-13,485,user:brendondgr,True,agentic querying,2,100,0.76,0,,100,0.79,102,116
+R1:papers:2026-07-13,485,user:brendondgr,True,tool-calling design,2,100,0.71,0,,100,0.8,104,118
+R1:papers:2026-07-13,485,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.7,0,,100,0.77,100,121
+R1:papers:2026-07-13,485,user:brendondgr,True,knowledge graph construction,3,100,0.73,0,,100,0.8,101,117
+R1:papers:2026-07-13,485,user:brendondgr,True,entity resolution,2,100,0.73,0,,100,0.79,100,122
+R1:papers:2026-07-13,485,user:brendondgr,True,hybrid retrieval systems,3,100,0.76,0,,100,0.8,99,116
+R1:papers:2026-07-13,485,user:brendondgr,True,agentic knowledge graph building,4,100,0.75,0,,100,0.81,103,115
+R1:papers:2026-07-13,485,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.73,0,,100,0.79,105,124
+R1:papers:2026-07-13,485,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.74,0,,100,0.79,102,120
+R1:papers:2026-07-13,485,user:brendondgr,True,agentic healthcare systems,3,100,0.77,0,,100,0.81,103,114
+R1:papers:2026-07-13,485,user:brendondgr,True,biomedical knowledge graphs,3,100,0.75,0,,100,0.79,103,119
+R1:papers:2026-07-13,485,user:brendondgr,True,clinical data extraction,3,100,0.75,0,,100,0.77,106,121
+R1:papers:2026-07-13,485,user:brendondgr,True,AI for medical devices,4,100,0.83,0,,100,0.81,105,123
+R1:papers:2026-07-13,485,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.68,0,,100,0.81,108,127
+R1:papers:2026-07-13,485,user:brendondgr,True,computer vision for healthcare,4,100,0.74,0,,100,0.81,106,124
+R1:papers:2026-07-13,485,user:brendondgr,True,computer vision and graphics,4,100,0.75,0,,100,0.81,104,125
+R1:papers:2026-07-13,485,user:brendondgr,True,robotic surgery,2,100,0.73,0,,100,0.79,103,125
+R1:papers:2026-07-13,485,user:brendondgr,True,robotics expansion and usage,4,100,0.71,0,,100,0.79,106,128
+R1:papers:2026-07-13,485,user:brendondgr,True,nanotechnology,1,100,0.75,0,,100,0.79,102,122
+R1:papers:2026-07-13,485,user:brendondgr,True,quantum computing in various fields,5,100,0.69,0,,100,0.79,107,125
+R1:papers:2026-07-13,485,user:uitest,False,Coral reef ecology,3,10,0.3,0,,24,0.5,45,53
+R1:papers:2026-07-13,485,user:uitest,False,Machine learning,2,61,0.4426229508196721,0,,69,0.463768115942029,59,84
+R1:papers:2026-07-14,782,lab:PULSE Lab,True,scientific machine learning,3,100,0.52,0,,100,0.5,119,148
+R1:papers:2026-07-14,782,lab:PULSE Lab,True,healthcare,1,100,0.49,0,,100,0.49,124,153
+R1:papers:2026-07-14,782,lab:PULSE Lab,True,oceanography,1,100,0.45,0,,100,0.45,121,147
+R1:papers:2026-07-14,782,lab:Test Lab,False,Medical Technology,2,100,0.4,0,,100,0.49,94,110
+R1:papers:2026-07-14,782,user:bdgr,True,bovine,1,19,0.6842105263157895,19,0.6842105263157895,19,0.6842105263157895,41,47
+R1:papers:2026-07-14,782,user:bdgr,True,ovine health management,3,100,0.56,0,,100,0.54,84,115
+R1:papers:2026-07-14,782,user:bdgr,True,dairy herd health,3,100,0.62,1,1.0,100,0.57,77,93
+R1:papers:2026-07-14,782,user:bdgr,True,veterinary medicine,2,41,0.7073170731707317,8,0.875,100,0.67,58,67
+R1:papers:2026-07-14,782,user:bdgr,True,immunology,1,10,1.0,56,0.625,56,0.625,39,39
+R1:papers:2026-07-14,782,user:bdgr2,True,Computational Science,2,100,0.68,0,,100,0.69,104,126
+R1:papers:2026-07-14,782,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.66,0,,100,0.73,106,131
+R1:papers:2026-07-14,782,user:bdgr2,True,Bioinformatics Data Science,3,100,0.68,0,,100,0.7,100,122
+R1:papers:2026-07-14,782,user:bdgr2,True,Computer Science & Engineering,4,100,0.71,0,,100,0.7,105,125
+R1:papers:2026-07-14,782,user:bdgr2,True,Biomathematics,1,100,0.66,0,,100,0.69,103,125
+R1:papers:2026-07-14,782,user:brendondgr,True,multi-agent orchestration,2,100,0.73,0,,100,0.68,111,127
+R1:papers:2026-07-14,782,user:brendondgr,True,human-in-the-loop workflows,2,100,0.7,0,,100,0.71,112,131
+R1:papers:2026-07-14,782,user:brendondgr,True,agentic querying,2,100,0.73,0,,100,0.67,107,126
+R1:papers:2026-07-14,782,user:brendondgr,True,tool-calling design,2,100,0.74,0,,100,0.72,109,128
+R1:papers:2026-07-14,782,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.74,0,,100,0.67,110,128
+R1:papers:2026-07-14,782,user:brendondgr,True,knowledge graph construction,3,100,0.68,0,,100,0.67,105,121
+R1:papers:2026-07-14,782,user:brendondgr,True,entity resolution,2,100,0.67,0,,100,0.68,106,124
+R1:papers:2026-07-14,782,user:brendondgr,True,hybrid retrieval systems,3,100,0.71,0,,100,0.71,109,125
+R1:papers:2026-07-14,782,user:brendondgr,True,agentic knowledge graph building,4,100,0.72,0,,100,0.69,108,125
+R1:papers:2026-07-14,782,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.73,0,,100,0.67,110,130
+R1:papers:2026-07-14,782,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.71,0,,100,0.68,108,122
+R1:papers:2026-07-14,782,user:brendondgr,True,agentic healthcare systems,3,100,0.71,0,,100,0.7,113,130
+R1:papers:2026-07-14,782,user:brendondgr,True,biomedical knowledge graphs,3,100,0.65,0,,100,0.68,110,127
+R1:papers:2026-07-14,782,user:brendondgr,True,clinical data extraction,3,100,0.71,0,,100,0.66,114,130
+R1:papers:2026-07-14,782,user:brendondgr,True,AI for medical devices,4,100,0.76,0,,100,0.68,115,131
+R1:papers:2026-07-14,782,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.66,0,,100,0.66,118,140
+R1:papers:2026-07-14,782,user:brendondgr,True,computer vision for healthcare,4,100,0.75,0,,100,0.7,115,131
+R1:papers:2026-07-14,782,user:brendondgr,True,computer vision and graphics,4,100,0.76,0,,100,0.68,110,128
+R1:papers:2026-07-14,782,user:brendondgr,True,robotic surgery,2,100,0.73,0,,100,0.68,111,129
+R1:papers:2026-07-14,782,user:brendondgr,True,robotics expansion and usage,4,100,0.7,0,,100,0.67,109,130
+R1:papers:2026-07-14,782,user:brendondgr,True,nanotechnology,1,100,0.72,0,,100,0.68,112,132
+R1:papers:2026-07-14,782,user:brendondgr,True,quantum computing in various fields,5,100,0.7,0,,100,0.67,111,129
+R1:papers:2026-07-14,782,user:uitest,False,Coral reef ecology,3,17,0.29411764705882354,0,,38,0.47368421052631576,41,53
+R1:papers:2026-07-14,782,user:uitest,False,Machine learning,2,100,0.48,0,,100,0.5,72,90
+R1:papers:2026-07-16,3033,lab:PULSE Lab,True,scientific machine learning,3,100,0.32,0,,100,0.32,122,158
+R1:papers:2026-07-16,3033,lab:PULSE Lab,True,healthcare,1,100,0.24,0,,100,0.21,125,167
+R1:papers:2026-07-16,3033,lab:PULSE Lab,True,oceanography,1,100,0.26,0,,100,0.23,127,165
+R1:papers:2026-07-16,3033,lab:Test Lab,False,Medical Technology,2,100,0.33,0,,100,0.35,79,125
+R1:papers:2026-07-16,3033,user:bdgr,True,bovine,1,94,0.5106382978723404,95,0.5052631578947369,95,0.5052631578947369,60,70
+R1:papers:2026-07-16,3033,user:bdgr,True,ovine health management,3,100,0.23,0,,100,0.19,81,145
+R1:papers:2026-07-16,3033,user:bdgr,True,dairy herd health,3,100,0.47,2,1.0,100,0.33,79,119
+R1:papers:2026-07-16,3033,user:bdgr,True,veterinary medicine,2,100,0.52,44,0.7045454545454546,100,0.44,58,74
+R1:papers:2026-07-16,3033,user:bdgr,True,immunology,1,46,0.391304347826087,100,0.3,100,0.3,47,68
+R1:papers:2026-07-16,3033,user:bdgr2,True,Computational Science,2,100,0.46,0,,100,0.42,121,147
+R1:papers:2026-07-16,3033,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.55,0,,100,0.44,120,145
+R1:papers:2026-07-16,3033,user:bdgr2,True,Bioinformatics Data Science,3,100,0.47,0,,100,0.42,115,148
+R1:papers:2026-07-16,3033,user:bdgr2,True,Computer Science & Engineering,4,100,0.42,0,,100,0.38,116,152
+R1:papers:2026-07-16,3033,user:bdgr2,True,Biomathematics,1,100,0.52,0,,100,0.42,121,145
+R1:papers:2026-07-16,3033,user:brendondgr,True,multi-agent orchestration,2,100,0.7,0,,100,0.57,128,144
+R1:papers:2026-07-16,3033,user:brendondgr,True,human-in-the-loop workflows,2,100,0.71,0,,100,0.6,125,145
+R1:papers:2026-07-16,3033,user:brendondgr,True,agentic querying,2,100,0.74,0,,100,0.57,126,145
+R1:papers:2026-07-16,3033,user:brendondgr,True,tool-calling design,2,100,0.69,0,,100,0.53,125,146
+R1:papers:2026-07-16,3033,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.71,0,,100,0.55,121,143
+R1:papers:2026-07-16,3033,user:brendondgr,True,knowledge graph construction,3,100,0.63,0,,100,0.58,123,145
+R1:papers:2026-07-16,3033,user:brendondgr,True,entity resolution,2,100,0.7,0,,100,0.57,122,142
+R1:papers:2026-07-16,3033,user:brendondgr,True,hybrid retrieval systems,3,100,0.67,0,,100,0.55,120,141
+R1:papers:2026-07-16,3033,user:brendondgr,True,agentic knowledge graph building,4,100,0.72,0,,100,0.57,125,147
+R1:papers:2026-07-16,3033,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.69,0,,100,0.57,124,144
+R1:papers:2026-07-16,3033,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.65,0,,100,0.57,114,136
+R1:papers:2026-07-16,3033,user:brendondgr,True,agentic healthcare systems,3,100,0.76,0,,100,0.56,134,151
+R1:papers:2026-07-16,3033,user:brendondgr,True,biomedical knowledge graphs,3,100,0.66,0,,100,0.57,123,146
+R1:papers:2026-07-16,3033,user:brendondgr,True,clinical data extraction,3,100,0.68,0,,100,0.5,132,155
+R1:papers:2026-07-16,3033,user:brendondgr,True,AI for medical devices,4,100,0.7,0,,100,0.56,128,148
+R1:papers:2026-07-16,3033,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.66,0,,100,0.56,135,157
+R1:papers:2026-07-16,3033,user:brendondgr,True,computer vision for healthcare,4,100,0.64,0,,100,0.52,136,164
+R1:papers:2026-07-16,3033,user:brendondgr,True,computer vision and graphics,4,100,0.66,0,,100,0.52,126,154
+R1:papers:2026-07-16,3033,user:brendondgr,True,robotic surgery,2,100,0.7,0,,100,0.57,126,147
+R1:papers:2026-07-16,3033,user:brendondgr,True,robotics expansion and usage,4,100,0.69,0,,100,0.57,124,148
+R1:papers:2026-07-16,3033,user:brendondgr,True,nanotechnology,1,100,0.69,0,,100,0.57,127,147
+R1:papers:2026-07-16,3033,user:brendondgr,True,quantum computing in various fields,5,100,0.65,0,,100,0.52,135,157
+R1:papers:2026-07-16,3033,user:uitest,False,Coral reef ecology,3,84,0.17857142857142858,0,,100,0.19,48,73
+R1:papers:2026-07-16,3033,user:uitest,False,Machine learning,2,100,0.24,0,,100,0.21,78,129
+R1:papers:2026-07-17,1737,lab:PULSE Lab,True,scientific machine learning,3,100,0.33,0,,100,0.3,120,156
+R1:papers:2026-07-17,1737,lab:PULSE Lab,True,healthcare,1,100,0.34,0,,100,0.32,125,154
+R1:papers:2026-07-17,1737,lab:PULSE Lab,True,oceanography,1,100,0.33,0,,100,0.34,120,157
+R1:papers:2026-07-17,1737,lab:Test Lab,False,Medical Technology,2,100,0.33,0,,100,0.38,96,117
+R1:papers:2026-07-17,1737,user:bdgr,True,bovine,1,40,0.525,40,0.525,40,0.525,45,63
+R1:papers:2026-07-17,1737,user:bdgr,True,ovine health management,3,100,0.28,0,,100,0.33,96,146
+R1:papers:2026-07-17,1737,user:bdgr,True,dairy herd health,3,100,0.5,3,1.0,100,0.48,82,112
+R1:papers:2026-07-17,1737,user:bdgr,True,veterinary medicine,2,93,0.4946236559139785,15,0.6666666666666666,100,0.47,63,68
+R1:papers:2026-07-17,1737,user:bdgr,True,immunology,1,19,0.631578947368421,100,0.38,100,0.38,44,51
+R1:papers:2026-07-17,1737,user:bdgr2,True,Computational Science,2,100,0.44,0,,100,0.51,110,141
+R1:papers:2026-07-17,1737,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.58,0,,100,0.55,107,130
+R1:papers:2026-07-17,1737,user:bdgr2,True,Bioinformatics Data Science,3,100,0.48,0,,100,0.51,109,143
+R1:papers:2026-07-17,1737,user:bdgr2,True,Computer Science & Engineering,4,100,0.46,0,,100,0.48,110,142
+R1:papers:2026-07-17,1737,user:bdgr2,True,Biomathematics,1,100,0.46,0,,100,0.51,112,139
+R1:papers:2026-07-17,1737,user:brendondgr,True,multi-agent orchestration,2,100,0.82,0,,100,0.75,120,137
+R1:papers:2026-07-17,1737,user:brendondgr,True,human-in-the-loop workflows,2,100,0.78,0,,100,0.76,124,137
+R1:papers:2026-07-17,1737,user:brendondgr,True,agentic querying,2,100,0.8,0,,100,0.75,115,131
+R1:papers:2026-07-17,1737,user:brendondgr,True,tool-calling design,2,100,0.76,0,,100,0.7,119,136
+R1:papers:2026-07-17,1737,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.76,0,,100,0.69,115,134
+R1:papers:2026-07-17,1737,user:brendondgr,True,knowledge graph construction,3,100,0.71,0,,100,0.73,115,134
+R1:papers:2026-07-17,1737,user:brendondgr,True,entity resolution,2,100,0.74,0,,100,0.75,117,139
+R1:papers:2026-07-17,1737,user:brendondgr,True,hybrid retrieval systems,3,100,0.75,0,,100,0.75,124,139
+R1:papers:2026-07-17,1737,user:brendondgr,True,agentic knowledge graph building,4,100,0.75,0,,100,0.74,120,134
+R1:papers:2026-07-17,1737,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.76,0,,100,0.75,118,139
+R1:papers:2026-07-17,1737,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.77,0,,100,0.75,115,131
+R1:papers:2026-07-17,1737,user:brendondgr,True,agentic healthcare systems,3,100,0.81,0,,100,0.73,127,143
+R1:papers:2026-07-17,1737,user:brendondgr,True,biomedical knowledge graphs,3,100,0.72,0,,100,0.75,119,140
+R1:papers:2026-07-17,1737,user:brendondgr,True,clinical data extraction,3,100,0.79,0,,100,0.69,123,141
+R1:papers:2026-07-17,1737,user:brendondgr,True,AI for medical devices,4,100,0.82,0,,100,0.73,126,142
+R1:papers:2026-07-17,1737,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.74,0,,100,0.75,130,148
+R1:papers:2026-07-17,1737,user:brendondgr,True,computer vision for healthcare,4,100,0.79,0,,100,0.76,131,149
+R1:papers:2026-07-17,1737,user:brendondgr,True,computer vision and graphics,4,100,0.74,0,,100,0.74,125,145
+R1:papers:2026-07-17,1737,user:brendondgr,True,robotic surgery,2,100,0.77,0,,100,0.75,125,143
+R1:papers:2026-07-17,1737,user:brendondgr,True,robotics expansion and usage,4,100,0.74,0,,100,0.76,123,142
+R1:papers:2026-07-17,1737,user:brendondgr,True,nanotechnology,1,100,0.76,0,,100,0.75,121,138
+R1:papers:2026-07-17,1737,user:brendondgr,True,quantum computing in various fields,5,100,0.78,0,,100,0.74,125,140
+R1:papers:2026-07-17,1737,user:uitest,False,Coral reef ecology,3,54,0.2962962962962963,0,,99,0.30303030303030304,45,69
+R1:papers:2026-07-17,1737,user:uitest,False,Machine learning,2,100,0.29,0,,100,0.26,77,118
+R1:papers:2026-07-18,1348,lab:PULSE Lab,True,scientific machine learning,3,100,0.44,0,,100,0.38,118,155
+R1:papers:2026-07-18,1348,lab:PULSE Lab,True,healthcare,1,100,0.4,0,,100,0.38,116,152
+R1:papers:2026-07-18,1348,lab:PULSE Lab,True,oceanography,1,100,0.38,0,,100,0.35,118,152
+R1:papers:2026-07-18,1348,lab:Test Lab,False,Medical Technology,2,100,0.4,0,,100,0.39,92,104
+R1:papers:2026-07-18,1348,user:bdgr,True,bovine,1,34,0.7647058823529411,34,0.7647058823529411,34,0.7647058823529411,47,55
+R1:papers:2026-07-18,1348,user:bdgr,True,ovine health management,3,100,0.39,0,,100,0.42,80,121
+R1:papers:2026-07-18,1348,user:bdgr,True,dairy herd health,3,100,0.5,0,,100,0.51,76,96
+R1:papers:2026-07-18,1348,user:bdgr,True,veterinary medicine,2,51,0.47058823529411764,4,0.75,100,0.42,51,65
+R1:papers:2026-07-18,1348,user:bdgr,True,immunology,1,5,1.0,59,0.576271186440678,59,0.576271186440678,40,40
+R1:papers:2026-07-18,1348,user:bdgr2,True,Computational Science,2,100,0.48,0,,100,0.49,105,136
+R1:papers:2026-07-18,1348,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.6,0,,100,0.5,112,134
+R1:papers:2026-07-18,1348,user:bdgr2,True,Bioinformatics Data Science,3,100,0.52,0,,100,0.46,107,136
+R1:papers:2026-07-18,1348,user:bdgr2,True,Computer Science & Engineering,4,100,0.51,0,,100,0.48,101,135
+R1:papers:2026-07-18,1348,user:bdgr2,True,Biomathematics,1,100,0.5,0,,100,0.46,108,136
+R1:papers:2026-07-18,1348,user:brendondgr,True,multi-agent orchestration,2,100,0.75,0,,100,0.67,108,128
+R1:papers:2026-07-18,1348,user:brendondgr,True,human-in-the-loop workflows,2,100,0.76,0,,100,0.68,112,131
+R1:papers:2026-07-18,1348,user:brendondgr,True,agentic querying,2,100,0.73,0,,100,0.67,107,127
+R1:papers:2026-07-18,1348,user:brendondgr,True,tool-calling design,2,100,0.68,0,,100,0.62,109,131
+R1:papers:2026-07-18,1348,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.66,0,,100,0.61,105,126
+R1:papers:2026-07-18,1348,user:brendondgr,True,knowledge graph construction,3,100,0.65,0,,100,0.64,108,127
+R1:papers:2026-07-18,1348,user:brendondgr,True,entity resolution,2,100,0.67,0,,100,0.67,108,132
+R1:papers:2026-07-18,1348,user:brendondgr,True,hybrid retrieval systems,3,100,0.65,0,,100,0.66,106,125
+R1:papers:2026-07-18,1348,user:brendondgr,True,agentic knowledge graph building,4,100,0.67,0,,100,0.65,107,128
+R1:papers:2026-07-18,1348,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.71,0,,100,0.67,111,126
+R1:papers:2026-07-18,1348,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.64,0,,100,0.67,108,130
+R1:papers:2026-07-18,1348,user:brendondgr,True,agentic healthcare systems,3,100,0.7,0,,100,0.67,109,132
+R1:papers:2026-07-18,1348,user:brendondgr,True,biomedical knowledge graphs,3,100,0.66,0,,100,0.65,106,128
+R1:papers:2026-07-18,1348,user:brendondgr,True,clinical data extraction,3,100,0.68,0,,100,0.52,110,132
+R1:papers:2026-07-18,1348,user:brendondgr,True,AI for medical devices,4,100,0.68,0,,100,0.64,116,135
+R1:papers:2026-07-18,1348,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.69,0,,100,0.65,122,142
+R1:papers:2026-07-18,1348,user:brendondgr,True,computer vision for healthcare,4,100,0.68,0,,100,0.64,111,137
+R1:papers:2026-07-18,1348,user:brendondgr,True,computer vision and graphics,4,100,0.71,0,,100,0.62,115,135
+R1:papers:2026-07-18,1348,user:brendondgr,True,robotic surgery,2,100,0.71,0,,100,0.66,109,130
+R1:papers:2026-07-18,1348,user:brendondgr,True,robotics expansion and usage,4,100,0.69,0,,100,0.66,113,137
+R1:papers:2026-07-18,1348,user:brendondgr,True,nanotechnology,1,100,0.71,0,,100,0.67,110,128
+R1:papers:2026-07-18,1348,user:brendondgr,True,quantum computing in various fields,5,100,0.7,0,,100,0.64,113,135
+R1:papers:2026-07-18,1348,user:uitest,False,Coral reef ecology,3,39,0.3076923076923077,0,,85,0.36470588235294116,46,75
+R1:papers:2026-07-18,1348,user:uitest,False,Machine learning,2,100,0.33,0,,100,0.3,78,117
+R1:papers:2026-07-19,1254,lab:PULSE Lab,True,scientific machine learning,3,100,0.36,0,,100,0.33,119,154
+R1:papers:2026-07-19,1254,lab:PULSE Lab,True,healthcare,1,100,0.3,0,,100,0.24,121,157
+R1:papers:2026-07-19,1254,lab:PULSE Lab,True,oceanography,1,100,0.34,0,,100,0.27,121,156
+R1:papers:2026-07-19,1254,lab:Test Lab,False,Medical Technology,2,100,0.39,0,,100,0.41,92,109
+R1:papers:2026-07-19,1254,user:bdgr,True,bovine,1,16,0.6875,16,0.6875,16,0.6875,39,44
+R1:papers:2026-07-19,1254,user:bdgr,True,ovine health management,3,100,0.39,0,,100,0.42,83,127
+R1:papers:2026-07-19,1254,user:bdgr,True,dairy herd health,3,100,0.43,0,,100,0.46,73,90
+R1:papers:2026-07-19,1254,user:bdgr,True,veterinary medicine,2,63,0.5555555555555556,8,0.75,100,0.54,58,65
+R1:papers:2026-07-19,1254,user:bdgr,True,immunology,1,7,0.5714285714285714,18,0.5555555555555556,18,0.5555555555555556,40,43
+R1:papers:2026-07-19,1254,user:bdgr2,True,Computational Science,2,100,0.49,0,,100,0.49,102,135
+R1:papers:2026-07-19,1254,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.63,0,,100,0.53,112,147
+R1:papers:2026-07-19,1254,user:bdgr2,True,Bioinformatics Data Science,3,100,0.52,0,,100,0.46,101,134
+R1:papers:2026-07-19,1254,user:bdgr2,True,Computer Science & Engineering,4,100,0.46,0,,100,0.48,104,141
+R1:papers:2026-07-19,1254,user:bdgr2,True,Biomathematics,1,100,0.54,0,,100,0.47,102,139
+R1:papers:2026-07-19,1254,user:brendondgr,True,multi-agent orchestration,2,100,0.66,0,,100,0.54,113,139
+R1:papers:2026-07-19,1254,user:brendondgr,True,human-in-the-loop workflows,2,100,0.55,0,,100,0.57,116,145
+R1:papers:2026-07-19,1254,user:brendondgr,True,agentic querying,2,100,0.62,0,,100,0.54,115,142
+R1:papers:2026-07-19,1254,user:brendondgr,True,tool-calling design,2,100,0.63,0,,100,0.55,117,147
+R1:papers:2026-07-19,1254,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.59,0,,100,0.52,117,145
+R1:papers:2026-07-19,1254,user:brendondgr,True,knowledge graph construction,3,100,0.67,0,,100,0.52,109,135
+R1:papers:2026-07-19,1254,user:brendondgr,True,entity resolution,2,100,0.57,0,,100,0.54,115,144
+R1:papers:2026-07-19,1254,user:brendondgr,True,hybrid retrieval systems,3,100,0.57,0,,100,0.6,114,144
+R1:papers:2026-07-19,1254,user:brendondgr,True,agentic knowledge graph building,4,100,0.66,0,,100,0.52,111,133
+R1:papers:2026-07-19,1254,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.6,0,,100,0.54,120,144
+R1:papers:2026-07-19,1254,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.57,0,,100,0.54,117,147
+R1:papers:2026-07-19,1254,user:brendondgr,True,agentic healthcare systems,3,100,0.62,0,,100,0.65,114,141
+R1:papers:2026-07-19,1254,user:brendondgr,True,biomedical knowledge graphs,3,100,0.62,0,,100,0.53,118,143
+R1:papers:2026-07-19,1254,user:brendondgr,True,clinical data extraction,3,100,0.63,0,,100,0.53,113,142
+R1:papers:2026-07-19,1254,user:brendondgr,True,AI for medical devices,4,100,0.67,0,,100,0.54,115,147
+R1:papers:2026-07-19,1254,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.59,0,,100,0.59,120,152
+R1:papers:2026-07-19,1254,user:brendondgr,True,computer vision for healthcare,4,100,0.67,0,,100,0.58,116,145
+R1:papers:2026-07-19,1254,user:brendondgr,True,computer vision and graphics,4,100,0.61,0,,100,0.56,120,147
+R1:papers:2026-07-19,1254,user:brendondgr,True,robotic surgery,2,100,0.62,0,,100,0.55,114,143
+R1:papers:2026-07-19,1254,user:brendondgr,True,robotics expansion and usage,4,100,0.59,0,,100,0.54,120,147
+R1:papers:2026-07-19,1254,user:brendondgr,True,nanotechnology,1,100,0.62,0,,100,0.54,117,143
+R1:papers:2026-07-19,1254,user:brendondgr,True,quantum computing in various fields,5,100,0.59,0,,100,0.52,117,148
+R1:papers:2026-07-19,1254,user:uitest,False,Coral reef ecology,3,42,0.30952380952380953,0,,75,0.32,45,74
+R1:papers:2026-07-19,1254,user:uitest,False,Machine learning,2,100,0.27,0,,100,0.31,75,113
+R1:papers:2026-07-20,313,lab:PULSE Lab,True,scientific machine learning,3,100,0.67,0,,100,0.73,109,123
+R1:papers:2026-07-20,313,lab:PULSE Lab,True,healthcare,1,100,0.63,0,,100,0.71,115,130
+R1:papers:2026-07-20,313,lab:PULSE Lab,True,oceanography,1,100,0.64,0,,100,0.71,116,131
+R1:papers:2026-07-20,313,lab:Test Lab,False,Medical Technology,2,100,0.36,0,,57,0.5964912280701754,95,108
+R1:papers:2026-07-20,313,user:bdgr,True,bovine,1,14,0.7857142857142857,14,0.7857142857142857,14,0.7857142857142857,45,48
+R1:papers:2026-07-20,313,user:bdgr,True,ovine health management,3,68,0.7794117647058824,0,,86,0.7790697674418605,70,77
+R1:papers:2026-07-20,313,user:bdgr,True,dairy herd health,3,47,0.9361702127659575,2,1.0,59,0.9322033898305084,60,62
+R1:papers:2026-07-20,313,user:bdgr,True,veterinary medicine,2,12,0.8333333333333334,3,0.6666666666666666,29,0.8620689655172413,42,44
+R1:papers:2026-07-20,313,user:bdgr,True,immunology,1,6,1.0,13,1.0,13,1.0,40,40
+R1:papers:2026-07-20,313,user:bdgr2,True,Computational Science,2,100,0.63,0,,100,0.66,90,106
+R1:papers:2026-07-20,313,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.61,0,,100,0.65,94,110
+R1:papers:2026-07-20,313,user:bdgr2,True,Bioinformatics Data Science,3,100,0.63,0,,100,0.68,88,105
+R1:papers:2026-07-20,313,user:bdgr2,True,Computer Science & Engineering,4,100,0.61,0,,100,0.66,90,108
+R1:papers:2026-07-20,313,user:bdgr2,True,Biomathematics,1,100,0.64,0,,100,0.65,91,106
+R1:papers:2026-07-20,313,user:brendondgr,True,multi-agent orchestration,2,100,0.78,0,,100,0.82,93,93
+R1:papers:2026-07-20,313,user:brendondgr,True,human-in-the-loop workflows,2,100,0.74,0,,100,0.82,95,97
+R1:papers:2026-07-20,313,user:brendondgr,True,agentic querying,2,100,0.8,0,,100,0.82,93,93
+R1:papers:2026-07-20,313,user:brendondgr,True,tool-calling design,2,100,0.8,0,,100,0.84,94,95
+R1:papers:2026-07-20,313,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.78,0,,100,0.81,93,95
+R1:papers:2026-07-20,313,user:brendondgr,True,knowledge graph construction,3,100,0.8,0,,100,0.82,93,93
+R1:papers:2026-07-20,313,user:brendondgr,True,entity resolution,2,100,0.8,0,,100,0.82,94,96
+R1:papers:2026-07-20,313,user:brendondgr,True,hybrid retrieval systems,3,100,0.79,0,,100,0.81,93,93
+R1:papers:2026-07-20,313,user:brendondgr,True,agentic knowledge graph building,4,100,0.8,0,,100,0.82,93,93
+R1:papers:2026-07-20,313,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.78,0,,100,0.82,97,97
+R1:papers:2026-07-20,313,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.78,0,,100,0.82,93,93
+R1:papers:2026-07-20,313,user:brendondgr,True,agentic healthcare systems,3,100,0.78,0,,100,0.81,93,93
+R1:papers:2026-07-20,313,user:brendondgr,True,biomedical knowledge graphs,3,100,0.79,0,,100,0.82,92,92
+R1:papers:2026-07-20,313,user:brendondgr,True,clinical data extraction,3,100,0.79,0,,100,0.82,95,97
+R1:papers:2026-07-20,313,user:brendondgr,True,AI for medical devices,4,100,0.82,0,,100,0.83,96,98
+R1:papers:2026-07-20,313,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.78,0,,100,0.83,98,99
+R1:papers:2026-07-20,313,user:brendondgr,True,computer vision for healthcare,4,100,0.78,0,,100,0.85,98,100
+R1:papers:2026-07-20,313,user:brendondgr,True,computer vision and graphics,4,100,0.78,0,,100,0.85,98,100
+R1:papers:2026-07-20,313,user:brendondgr,True,robotic surgery,2,100,0.77,0,,100,0.81,94,95
+R1:papers:2026-07-20,313,user:brendondgr,True,robotics expansion and usage,4,100,0.77,0,,100,0.82,97,99
+R1:papers:2026-07-20,313,user:brendondgr,True,nanotechnology,1,100,0.8,0,,100,0.82,93,94
+R1:papers:2026-07-20,313,user:brendondgr,True,quantum computing in various fields,5,100,0.75,0,,100,0.81,97,98
+R1:papers:2026-07-20,313,user:uitest,False,Coral reef ecology,3,6,0.8333333333333334,0,,15,0.6666666666666666,43,44
+R1:papers:2026-07-20,313,user:uitest,False,Machine learning,2,41,0.7560975609756098,0,,45,0.7555555555555555,59,70
+R2:papers:corpus,35205,lab:PULSE Lab,True,scientific machine learning,3,100,0.36,0,,100,0.12,133,167
+R2:papers:corpus,35205,lab:PULSE Lab,True,healthcare,1,100,0.34,0,,100,0.08,115,157
+R2:papers:corpus,35205,lab:PULSE Lab,True,oceanography,1,100,0.37,0,,100,0.09,117,161
+R2:papers:corpus,35205,lab:Test Lab,False,Medical Technology,2,100,0.22,0,,100,0.32,98,128
+R2:papers:corpus,35205,user:bdgr,True,bovine,1,100,0.24,100,0.32,100,0.32,82,145
+R2:papers:corpus,35205,user:bdgr,True,ovine health management,3,100,0.08,0,,100,0.04,101,188
+R2:papers:corpus,35205,user:bdgr,True,dairy herd health,3,100,0.52,23,0.8260869565217391,100,0.4,99,136
+R2:papers:corpus,35205,user:bdgr,True,veterinary medicine,2,100,0.54,100,0.37,100,0.44,90,117
+R2:papers:corpus,35205,user:bdgr,True,immunology,1,100,0.23,100,0.18,100,0.18,50,71
+R2:papers:corpus,35205,user:bdgr2,True,Computational Science,2,100,0.29,0,,100,0.22,128,175
+R2:papers:corpus,35205,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.35,0,,100,0.25,130,166
+R2:papers:corpus,35205,user:bdgr2,True,Bioinformatics Data Science,3,100,0.3,0,,100,0.19,120,164
+R2:papers:corpus,35205,user:bdgr2,True,Computer Science & Engineering,4,100,0.27,0,,100,0.19,128,191
+R2:papers:corpus,35205,user:bdgr2,True,Biomathematics,1,100,0.31,0,,100,0.21,126,175
+R2:papers:corpus,35205,user:brendondgr,True,multi-agent orchestration,2,100,0.46,0,,100,0.44,174,204
+R2:papers:corpus,35205,user:brendondgr,True,human-in-the-loop workflows,2,100,0.49,0,,100,0.4,169,198
+R2:papers:corpus,35205,user:brendondgr,True,agentic querying,2,100,0.51,0,,100,0.46,168,200
+R2:papers:corpus,35205,user:brendondgr,True,tool-calling design,2,100,0.52,0,,100,0.43,164,203
+R2:papers:corpus,35205,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.4,0,,100,0.43,167,207
+R2:papers:corpus,35205,user:brendondgr,True,knowledge graph construction,3,100,0.52,0,,100,0.45,145,177
+R2:papers:corpus,35205,user:brendondgr,True,entity resolution,2,100,0.49,0,,100,0.44,153,185
+R2:papers:corpus,35205,user:brendondgr,True,hybrid retrieval systems,3,100,0.51,0,,100,0.43,151,191
+R2:papers:corpus,35205,user:brendondgr,True,agentic knowledge graph building,4,100,0.53,0,,100,0.44,159,189
+R2:papers:corpus,35205,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.5,0,,100,0.46,163,202
+R2:papers:corpus,35205,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.5,0,,100,0.44,131,173
+R2:papers:corpus,35205,user:brendondgr,True,agentic healthcare systems,3,100,0.52,0,,100,0.44,178,201
+R2:papers:corpus,35205,user:brendondgr,True,biomedical knowledge graphs,3,100,0.5,0,,100,0.45,149,176
+R2:papers:corpus,35205,user:brendondgr,True,clinical data extraction,3,100,0.47,0,,100,0.42,159,186
+R2:papers:corpus,35205,user:brendondgr,True,AI for medical devices,4,100,0.49,0,,100,0.46,186,211
+R2:papers:corpus,35205,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.49,0,,100,0.46,167,184
+R2:papers:corpus,35205,user:brendondgr,True,computer vision for healthcare,4,100,0.49,0,,100,0.43,171,189
+R2:papers:corpus,35205,user:brendondgr,True,computer vision and graphics,4,100,0.49,0,,100,0.46,166,191
+R2:papers:corpus,35205,user:brendondgr,True,robotic surgery,2,100,0.48,0,,100,0.44,173,208
+R2:papers:corpus,35205,user:brendondgr,True,robotics expansion and usage,4,100,0.5,0,,100,0.44,171,209
+R2:papers:corpus,35205,user:brendondgr,True,nanotechnology,1,100,0.48,0,,100,0.44,161,197
+R2:papers:corpus,35205,user:brendondgr,True,quantum computing in various fields,5,100,0.53,0,,100,0.4,162,178
+R2:papers:corpus,35205,user:uitest,False,Coral reef ecology,3,100,0.53,0,,100,0.52,72,98
+R2:papers:corpus,35205,user:uitest,False,Machine learning,2,100,0.42,0,,100,0.29,113,139
+R3:grant:corpus,2171,lab:PULSE Lab,True,scientific machine learning,3,100,0.45,0,,100,0.45,111,145
+R3:grant:corpus,2171,lab:PULSE Lab,True,healthcare,1,100,0.38,0,,100,0.36,118,151
+R3:grant:corpus,2171,lab:PULSE Lab,True,oceanography,1,100,0.39,0,,100,0.39,121,148
+R3:grant:corpus,2171,lab:Test Lab,False,Medical Technology,2,100,0.35,0,,100,0.35,77,126
+R3:grant:corpus,2171,user:bdgr,True,bovine,1,0,,0,,0,,68,68
+R3:grant:corpus,2171,user:bdgr,True,ovine health management,3,100,0.2,0,,100,0.31,130,180
+R3:grant:corpus,2171,user:bdgr,True,dairy herd health,3,100,0.3,0,,100,0.34,118,171
+R3:grant:corpus,2171,user:bdgr,True,veterinary medicine,2,47,0.46808510638297873,2,1.0,30,0.5333333333333333,43,61
+R3:grant:corpus,2171,user:bdgr,True,immunology,1,1,1.0,0,,0,,40,40
+R3:grant:corpus,2171,user:bdgr2,True,Computational Science,2,100,0.49,0,,100,0.37,108,148
+R3:grant:corpus,2171,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.49,0,,100,0.39,113,144
+R3:grant:corpus,2171,user:bdgr2,True,Bioinformatics Data Science,3,100,0.52,0,,100,0.44,114,146
+R3:grant:corpus,2171,user:bdgr2,True,Computer Science & Engineering,4,100,0.4,0,,100,0.38,107,154
+R3:grant:corpus,2171,user:bdgr2,True,Biomathematics,1,100,0.44,0,,100,0.41,106,148
+R3:grant:corpus,2171,user:brendondgr,True,multi-agent orchestration,2,100,0.28,0,,100,0.51,109,170
+R3:grant:corpus,2171,user:brendondgr,True,human-in-the-loop workflows,2,100,0.47,0,,100,0.5,120,166
+R3:grant:corpus,2171,user:brendondgr,True,agentic querying,2,100,0.45,0,,100,0.51,111,163
+R3:grant:corpus,2171,user:brendondgr,True,tool-calling design,2,100,0.41,0,,100,0.56,112,161
+R3:grant:corpus,2171,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.39,0,,100,0.49,114,166
+R3:grant:corpus,2171,user:brendondgr,True,knowledge graph construction,3,100,0.4,0,,100,0.5,114,162
+R3:grant:corpus,2171,user:brendondgr,True,entity resolution,2,100,0.42,0,,100,0.51,114,166
+R3:grant:corpus,2171,user:brendondgr,True,hybrid retrieval systems,3,100,0.46,0,,100,0.54,114,163
+R3:grant:corpus,2171,user:brendondgr,True,agentic knowledge graph building,4,100,0.37,0,,100,0.47,116,165
+R3:grant:corpus,2171,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.44,0,,100,0.51,113,167
+R3:grant:corpus,2171,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.42,0,,100,0.51,113,162
+R3:grant:corpus,2171,user:brendondgr,True,agentic healthcare systems,3,100,0.42,0,,100,0.52,114,164
+R3:grant:corpus,2171,user:brendondgr,True,biomedical knowledge graphs,3,100,0.41,0,,100,0.51,106,155
+R3:grant:corpus,2171,user:brendondgr,True,clinical data extraction,3,100,0.45,0,,100,0.32,113,160
+R3:grant:corpus,2171,user:brendondgr,True,AI for medical devices,4,100,0.58,0,,100,0.48,117,160
+R3:grant:corpus,2171,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.46,0,,100,0.51,117,165
+R3:grant:corpus,2171,user:brendondgr,True,computer vision for healthcare,4,100,0.43,0,,100,0.56,117,167
+R3:grant:corpus,2171,user:brendondgr,True,computer vision and graphics,4,100,0.43,0,,100,0.55,115,167
+R3:grant:corpus,2171,user:brendondgr,True,robotic surgery,2,100,0.45,0,,100,0.52,112,165
+R3:grant:corpus,2171,user:brendondgr,True,robotics expansion and usage,4,100,0.44,0,,100,0.52,115,164
+R3:grant:corpus,2171,user:brendondgr,True,nanotechnology,1,100,0.45,0,,100,0.52,107,163
+R3:grant:corpus,2171,user:brendondgr,True,quantum computing in various fields,5,100,0.47,0,,100,0.58,115,165
+R3:grant:corpus,2171,user:uitest,False,Coral reef ecology,3,27,0.4074074074074074,0,,23,0.34782608695652173,43,59
+R3:grant:corpus,2171,user:uitest,False,Machine learning,2,86,0.22093023255813954,0,,46,0.21739130434782608,45,70
+R3:conference:corpus,912,lab:PULSE Lab,True,scientific machine learning,3,100,0.44,0,,100,0.48,109,154
+R3:conference:corpus,912,lab:PULSE Lab,True,healthcare,1,100,0.35,0,,100,0.37,117,151
+R3:conference:corpus,912,lab:PULSE Lab,True,oceanography,1,100,0.33,0,,100,0.35,115,158
+R3:conference:corpus,912,lab:Test Lab,False,Medical Technology,2,100,0.26,0,,100,0.3,84,109
+R3:conference:corpus,912,user:bdgr,True,bovine,1,0,,0,,0,,68,68
+R3:conference:corpus,912,user:bdgr,True,ovine health management,3,60,0.48333333333333334,0,,33,0.6060606060606061,54,66
+R3:conference:corpus,912,user:bdgr,True,dairy herd health,3,18,0.8888888888888888,0,,11,1.0,42,44
+R3:conference:corpus,912,user:bdgr,True,veterinary medicine,2,11,0.9090909090909091,0,,6,1.0,44,45
+R3:conference:corpus,912,user:bdgr,True,immunology,1,0,,0,,0,,68,68
+R3:conference:corpus,912,user:bdgr2,True,Computational Science,2,100,0.47,0,,100,0.36,100,133
+R3:conference:corpus,912,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.33,0,,100,0.41,101,140
+R3:conference:corpus,912,user:bdgr2,True,Bioinformatics Data Science,3,100,0.43,0,,100,0.35,100,132
+R3:conference:corpus,912,user:bdgr2,True,Computer Science & Engineering,4,100,0.41,0,,100,0.33,103,141
+R3:conference:corpus,912,user:bdgr2,True,Biomathematics,1,100,0.51,0,,100,0.4,93,131
+R3:conference:corpus,912,user:brendondgr,True,multi-agent orchestration,2,100,0.64,0,,100,0.71,109,132
+R3:conference:corpus,912,user:brendondgr,True,human-in-the-loop workflows,2,100,0.62,0,,100,0.68,110,140
+R3:conference:corpus,912,user:brendondgr,True,agentic querying,2,100,0.68,0,,100,0.71,108,131
+R3:conference:corpus,912,user:brendondgr,True,tool-calling design,2,100,0.62,0,,100,0.66,111,135
+R3:conference:corpus,912,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.63,0,,100,0.67,107,130
+R3:conference:corpus,912,user:brendondgr,True,knowledge graph construction,3,100,0.55,0,,100,0.7,109,138
+R3:conference:corpus,912,user:brendondgr,True,entity resolution,2,100,0.65,0,,100,0.71,108,133
+R3:conference:corpus,912,user:brendondgr,True,hybrid retrieval systems,3,100,0.61,0,,100,0.75,106,134
+R3:conference:corpus,912,user:brendondgr,True,agentic knowledge graph building,4,100,0.64,0,,100,0.71,109,132
+R3:conference:corpus,912,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.65,0,,100,0.71,114,140
+R3:conference:corpus,912,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.58,0,,100,0.71,110,138
+R3:conference:corpus,912,user:brendondgr,True,agentic healthcare systems,3,100,0.69,0,,100,0.76,108,133
+R3:conference:corpus,912,user:brendondgr,True,biomedical knowledge graphs,3,100,0.58,0,,100,0.69,111,137
+R3:conference:corpus,912,user:brendondgr,True,clinical data extraction,3,100,0.62,0,,100,0.67,116,143
+R3:conference:corpus,912,user:brendondgr,True,AI for medical devices,4,100,0.67,0,,100,0.69,117,146
+R3:conference:corpus,912,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.62,0,,100,0.71,117,147
+R3:conference:corpus,912,user:brendondgr,True,computer vision for healthcare,4,100,0.6,0,,100,0.68,116,146
+R3:conference:corpus,912,user:brendondgr,True,computer vision and graphics,4,100,0.55,0,,100,0.66,115,147
+R3:conference:corpus,912,user:brendondgr,True,robotic surgery,2,100,0.62,0,,100,0.74,109,139
+R3:conference:corpus,912,user:brendondgr,True,robotics expansion and usage,4,100,0.61,0,,100,0.74,112,138
+R3:conference:corpus,912,user:brendondgr,True,nanotechnology,1,100,0.65,0,,100,0.71,110,139
+R3:conference:corpus,912,user:brendondgr,True,quantum computing in various fields,5,100,0.56,0,,100,0.58,117,147
+R3:conference:corpus,912,user:uitest,False,Coral reef ecology,3,22,0.36363636363636365,0,,10,0.3,41,57
+R3:conference:corpus,912,user:uitest,False,Machine learning,2,100,0.4,0,,100,0.38,84,132
+R3:fellowship:corpus,818,lab:PULSE Lab,True,scientific machine learning,3,100,0.39,0,,100,0.41,114,145
+R3:fellowship:corpus,818,lab:PULSE Lab,True,healthcare,1,100,0.37,0,,100,0.35,117,154
+R3:fellowship:corpus,818,lab:PULSE Lab,True,oceanography,1,100,0.43,0,,100,0.37,118,150
+R3:fellowship:corpus,818,lab:Test Lab,False,Medical Technology,2,100,0.42,0,,100,0.47,80,120
+R3:fellowship:corpus,818,user:bdgr,True,bovine,1,1,1.0,1,1.0,1,1.0,39,39
+R3:fellowship:corpus,818,user:bdgr,True,ovine health management,3,100,0.68,0,,100,0.71,86,109
+R3:fellowship:corpus,818,user:bdgr,True,dairy herd health,3,93,0.7526881720430108,1,1.0,92,0.75,66,68
+R3:fellowship:corpus,818,user:bdgr,True,veterinary medicine,2,54,0.5925925925925926,5,0.8,56,0.6071428571428571,51,60
+R3:fellowship:corpus,818,user:bdgr,True,immunology,1,1,1.0,1,1.0,1,1.0,37,37
+R3:fellowship:corpus,818,user:bdgr2,True,Computational Science,2,100,0.48,0,,100,0.48,77,117
+R3:fellowship:corpus,818,user:bdgr2,True,Artificial Intelligence in Healthcare,4,100,0.43,0,,100,0.49,107,135
+R3:fellowship:corpus,818,user:bdgr2,True,Bioinformatics Data Science,3,100,0.52,0,,100,0.49,78,114
+R3:fellowship:corpus,818,user:bdgr2,True,Computer Science & Engineering,4,100,0.53,0,,100,0.47,103,128
+R3:fellowship:corpus,818,user:bdgr2,True,Biomathematics,1,100,0.43,0,,100,0.49,81,107
+R3:fellowship:corpus,818,user:brendondgr,True,multi-agent orchestration,2,100,0.37,0,,100,0.37,92,139
+R3:fellowship:corpus,818,user:brendondgr,True,human-in-the-loop workflows,2,100,0.37,0,,100,0.27,129,162
+R3:fellowship:corpus,818,user:brendondgr,True,agentic querying,2,100,0.37,0,,100,0.37,94,139
+R3:fellowship:corpus,818,user:brendondgr,True,tool-calling design,2,100,0.37,0,,100,0.37,99,139
+R3:fellowship:corpus,818,user:brendondgr,True,LLM-as-judge evaluation,2,100,0.38,0,,100,0.36,95,136
+R3:fellowship:corpus,818,user:brendondgr,True,knowledge graph construction,3,100,0.4,0,,100,0.36,98,139
+R3:fellowship:corpus,818,user:brendondgr,True,entity resolution,2,100,0.37,0,,100,0.37,98,144
+R3:fellowship:corpus,818,user:brendondgr,True,hybrid retrieval systems,3,100,0.43,0,,100,0.41,97,136
+R3:fellowship:corpus,818,user:brendondgr,True,agentic knowledge graph building,4,100,0.42,0,,100,0.34,99,141
+R3:fellowship:corpus,818,user:brendondgr,True,Cypher and Gremlin querying,4,100,0.34,0,,100,0.37,126,164
+R3:fellowship:corpus,818,user:brendondgr,True,Retrieval Augmented Generation,3,100,0.38,0,,100,0.37,92,137
+R3:fellowship:corpus,818,user:brendondgr,True,agentic healthcare systems,3,100,0.42,0,,100,0.4,99,138
+R3:fellowship:corpus,818,user:brendondgr,True,biomedical knowledge graphs,3,100,0.44,0,,100,0.37,101,142
+R3:fellowship:corpus,818,user:brendondgr,True,clinical data extraction,3,100,0.47,0,,100,0.42,96,131
+R3:fellowship:corpus,818,user:brendondgr,True,AI for medical devices,4,100,0.41,0,,100,0.37,128,159
+R3:fellowship:corpus,818,user:brendondgr,True,wearables and IoT in healthcare,5,100,0.34,0,,100,0.36,130,167
+R3:fellowship:corpus,818,user:brendondgr,True,computer vision for healthcare,4,100,0.41,0,,100,0.47,128,157
+R3:fellowship:corpus,818,user:brendondgr,True,computer vision and graphics,4,100,0.45,0,,100,0.47,126,159
+R3:fellowship:corpus,818,user:brendondgr,True,robotic surgery,2,100,0.39,0,,100,0.37,94,140
+R3:fellowship:corpus,818,user:brendondgr,True,robotics expansion and usage,4,100,0.35,0,,100,0.36,130,164
+R3:fellowship:corpus,818,user:brendondgr,True,nanotechnology,1,100,0.37,0,,100,0.37,97,140
+R3:fellowship:corpus,818,user:brendondgr,True,quantum computing in various fields,5,100,0.42,0,,100,0.48,122,159
+R3:fellowship:corpus,818,user:uitest,False,Coral reef ecology,3,22,0.45454545454545453,0,,31,0.41935483870967744,50,65
+R3:fellowship:corpus,818,user:uitest,False,Machine learning,2,36,0.1388888888888889,0,,50,0.16,40,71

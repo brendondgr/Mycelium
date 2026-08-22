@@ -367,6 +367,35 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   scoring *below* grade 1. This is the first direct evidence against C-004's
   calibration half — the deployed percent-match — though it was measured on a 0-3
   scale where production uses 0-100 (Q-020).
+- That **on the production corpus itself, the dense-restricted pool leaves a lot
+  unreached** (C-020, `EXP-2026-08-013`). This is the one measurement in the
+  record taken on Mycelium's own store, against the real declared interests of
+  the real targets, through the deployed functions. A median **0.610** of the
+  corpus-wide BM25 top-100 is already inside the dense pool across the deployed
+  regimes — so ~40% is not — and it falls with corpus scope: 0.81 on a
+  303-document gather day, 0.49 over the whole 35,205-paper store, and **0.44 on
+  the deployed opportunity feeds**, which are corpus-scoped and are the worst
+  regime measured. The pre-registered "inert" threshold (≥ 0.90) was not
+  approached anywhere.
+- That **the pool fix alone cannot change the deployed feed at all** (C-019,
+  `EXP-2026-08-013`) — and this is the one finding here that is about shipped
+  behaviour rather than a candidate. `fuse_interests_pool` surfaces a candidate
+  only when `best_cosine[id] >= match_threshold`, and `_build_pool` populates
+  `best_cosine` solely from the dense channel, so a lexically-retrieved candidate
+  is compared at `0.0`. Across 126 (regime, target) pairs and four union arms,
+  **union-only documents reaching the surfaced feed: 0**. Complete the gate over
+  the whole pool and 7,440 surface. **C-008's fix is two edits; the pool edit on
+  its own is a no-op.**
+- That **`PAPER_MATCH_THRESHOLD`, not `PAPER_MATCH_MAX_SURFACE` and not the 0.15
+  interest floor, is the cut that binds in production** (`EXP-2026-08-013`,
+  answering `Q-012` and `Q-018`). The 250 backstop fires in 1 of 102 deployed
+  paper pairs; 61% of a target's pool survives one interest's floor, against ≈37%
+  on LongEval.
+- That **real declared interests are short** — median 3 words, **95% at four or
+  fewer** (`EXP-2026-08-013`). That is inside both LongEval query sets' ranges,
+  and it is inside the band where the cross-encoder was measured harmful, which
+  is why C-013's refutation now rests on production-shaped queries and not only
+  on an external collection.
 - Whether effectiveness persists across the 2025 snapshot pair.
 - That **cluster-scoped max-pooling does not do what it was built to do** — on
   synthetic multi-cluster profiles over this collection. `EXP-2026-08-003`
@@ -414,9 +443,17 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
 **You may not claim:**
 
 - That this validates Mycelium's actual task. LongEval evaluates
-  **query → documents**. Mycelium does **declared-interest profile → feed**. The
-  granularity mismatch between a three-word interest and a 200-word abstract —
-  one of the core difficulties of the real problem — is *not* tested here.
+  **query → documents**. Mycelium does **declared-interest profile → feed**, and
+  no measurement anywhere in this record scores that task, because the production
+  corpus has no relevance judgments (W5). What *has* changed is the size of the
+  gap: `EXP-2026-08-013` measured both halves of the assumed mismatch and found
+  them small. A real declared interest is 3 words at the median — inside
+  LongEval's own range, not a different query shape — and production papers run
+  239 tokens against LongEval's 161–185, with grants (116) and conferences (86)
+  *shorter*. So the granularity mismatch between a three-word interest and a
+  200-word abstract is **the same mismatch LongEval already contains**. What
+  genuinely remains untested is fusing several interests into one ranked list and
+  judging the result.
 - Anything about the LLM percent-match, fellowship eligibility, or member
   routing (audit claims C4–C6). None are exercised. `EXP-2026-08-008`'s LLM arms
   are the nearest thing, and they measure a **counterfactual**: production does
@@ -433,7 +470,11 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   are neither keyword queries nor greedy embedding pairs, and the union-of-qrels
   construction is blind to a document relevant only to a *combination* of
   interests — which is the case multi-interest scoring exists to reward.
-- Anything about grants, fellowships, or conferences. LongEval is papers only.
+- Anything about **effectiveness** on grants, fellowships, or conferences.
+  LongEval is papers only. `EXP-2026-08-013` measures *reachability* on those
+  three corpora — and finds them the worst-served regime in the store, 0.42–0.61
+  — but reachability is not relevance, and no judgment of any kind exists for
+  them.
 - Certainty proportional to the qrels. These are click-derived pseudo-relevance
   judgments, not human assessment.
 

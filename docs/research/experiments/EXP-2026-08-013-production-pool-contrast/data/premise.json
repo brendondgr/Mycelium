@@ -1,0 +1,97 @@
+{
+  "documents": {
+    "longeval:sci-2025-01": {
+      "mean": 208.8,
+      "median": 185.0,
+      "n": 20000,
+      "p10": 15,
+      "p90": 374
+    },
+    "longeval:sci-2026-train": {
+      "mean": 186.1,
+      "median": 161.0,
+      "n": 20000,
+      "p10": 57,
+      "p90": 331
+    },
+    "production:conference": {
+      "mean": 85.7,
+      "median": 86.0,
+      "n": 912,
+      "p10": 59,
+      "p90": 115
+    },
+    "production:fellowship": {
+      "mean": 206.8,
+      "median": 186.5,
+      "n": 818,
+      "p10": 120,
+      "p90": 304
+    },
+    "production:grant": {
+      "mean": 115.0,
+      "median": 116,
+      "n": 2171,
+      "p10": 89,
+      "p90": 138
+    },
+    "production:paper": {
+      "mean": 239.3,
+      "median": 239,
+      "n": 35205,
+      "p10": 21,
+      "p90": 361
+    }
+  },
+  "longeval_doc_sample": 20000,
+  "queries": {
+    "longeval:sci-2025-01": {
+      "mean": 2.1,
+      "median": 2.0,
+      "n": 492,
+      "p10": 1,
+      "p90": 3
+    },
+    "longeval:sci-2026-train": {
+      "mean": 3.9,
+      "median": 3.0,
+      "n": 100,
+      "p10": 2,
+      "p90": 7
+    },
+    "production:declared_interests": {
+      "mean": 2.7,
+      "median": 3.0,
+      "n": 38,
+      "p10": 1,
+      "p90": 4
+    },
+    "production:interest_examples": [
+      "AI for medical devices",
+      "Artificial Intelligence in Healthcare",
+      "Bioinformatics Data Science",
+      "Biomathematics",
+      "Computational Science",
+      "Computer Science & Engineering",
+      "Coral reef ecology",
+      "Cypher and Gremlin querying"
+    ]
+  },
+  "query_length_buckets": {
+    "longeval:sci-2025-01": {
+      "1-2": 0.837,
+      "3-4": 0.098,
+      "5-5+": 0.065
+    },
+    "longeval:sci-2026-train": {
+      "1-2": 0.32,
+      "3-4": 0.33,
+      "5-5+": 0.35
+    },
+    "production:declared_interests": {
+      "1-2": 0.447,
+      "3-4": 0.5,
+      "5-5+": 0.053
+    }
+  }
+}

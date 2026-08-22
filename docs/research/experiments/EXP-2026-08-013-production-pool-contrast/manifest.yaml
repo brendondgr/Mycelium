@@ -1,0 +1,106 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-08-013
+slug: production-pool-contrast
+title: "Q-001: does the union pool's advantage survive on the production corpus?"
+status: complete
+date_started: 2026-08-22
+date_completed: 2026-08-22
+authors: [brendondgr]
+
+purpose: >
+  Q-001, open since EXP-2026-08-002 and the last gate between the eval programme
+  and a production change. Twelve experiments measured the pool contrast on
+  LongEval-Sci, which is query -> documents; Mycelium is declared-interest
+  profile -> feed. This runs the contrast on the real ContentItem store against
+  the real declared interests of the real targets, through the deployed
+  functions. There are no relevance judgments for this corpus (W5 not started),
+  so it answers the mechanism half of Q-001 -- is there anything for a wider pool
+  to reach, and does it survive the deployed surfacing gates -- and leaves the
+  value half explicitly open. That asymmetry is pre-registered as the design.
+
+hypothesis: >
+  Pre-registered with a two-branch decision rule and a deliberate gap between the
+  branches. INERT (do not ship, Q-001 closes negative): median
+  bm25_reachability@100 >= 0.90 in the deployed regimes AND no surfaced entrants.
+  LIVE (mechanism confirmed, value still blocked on W5): median reachability
+  <= 0.50 AND entrants for a majority of pairs. Anything between: report the
+  curve, change no recommendation. OUTCOME: the inert branch did not fire
+  anywhere. Deployed opportunity feeds are LIVE (median 0.440); the deployed
+  paper feed lands BETWEEN (0.610) and is reported as between, not rounded up.
+  UNPREDICTED and decisive for the engineering: zero union-only documents reach
+  the surfaced feed under the deployed gate, in all four union arms and all 126
+  (regime, target) pairs, because fuse_interests_pool gates on a best_cosine that
+  _build_pool populates only from the dense channel. Also unpredicted: half of
+  Q-001's own premise is false -- declared interests are not longer than LongEval
+  queries (median 3 words, 95% <= 4) and production documents are not
+  categorically longer (papers 239 tokens vs 161-185; grants 116, conferences 86).
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: b40a6a3
+  branch: main
+  entrypoint: "uv run --project eval python docs/research/experiments/EXP-2026-08-013-production-pool-contrast/code/run.py && uv run --project eval python docs/research/experiments/EXP-2026-08-013-production-pool-contrast/code/analyse.py && uv run --project eval python docs/research/experiments/EXP-2026-08-013-production-pool-contrast/code/premise.py"
+  dirty: true  # this experiment's own folder; no file under web/backend was touched. ISSUES.md 9
+config:
+  # No config files: the arms are parameterised in the runner itself
+  # (POOL_PER_INTEREST=100, BETA=0.15) and every threshold is read from Django
+  # settings, so the deployed values are the ones measured.
+  path: docs/research/experiments/EXP-2026-08-013-production-pool-contrast/code/run.py
+  hash: null
+data:
+  name: Mycelium production ContentItem store (development deployment)
+  version: "compose postgres (pgvector/pgvector:pg17) at localhost:11450; 35,205 embedded papers, 2,171 grants, 912 conferences, 818 fellowships; freshest gather day 2026-07-20"
+  split: test
+  n_examples: 38 # declared interests across 6 targets; 798 (interest, regime) rows, 126 (target, regime) pairs
+  qrels: "none -- there are no relevance judgments for this corpus (W5 not started). See PROTOCOL.md 2 and ISSUES.md 8."
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: [20260821] # harness.stats bootstrap; the pipeline itself is deterministic (ISSUES.md 10)
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: "pgvector/pgvector:pg17 for the store; the arms run on the host"
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 0.1
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: bm25_reachability@100 (share of the corpus-wide BM25 top-100 already inside the dense pool)
+  values:
+    reachability__deployed_regimes__median: 0.610 # n=757 interest queries; mean 0.583 CI [0.571, 0.595]; pre-registered verdict "between"
+    reachability__deployed_regimes__real_targets_median: 0.630 # n=697; mean 0.603 CI [0.592, 0.615]
+    reachability__R1_papers_day_scoped__median: 0.640 # n=646; mean 0.600 CI [0.587, 0.613]; "between"
+    reachability__R3_opportunities__median: 0.440 # n=111; mean 0.482 CI [0.455, 0.511]; "live"
+    reachability__R2_papers_corpus_wide__median: 0.490 # n=38; mean 0.427 CI [0.389, 0.461]; not a deployed regime
+    union_only_entrants__deployed_gate: 0 # summed over 126 (regime, target) pairs, all four union arms
+    union_only_entrants__completed_gate__a2p: 7440 # same pairs, cosine gate computed over the whole pool
+    reordered_in_entrants__deployed_gate__a2p: 419 # documents already in the dense pool, re-ranked into the surfaced set
+    pool_growth__union_over_dense__median: 1.54
+    novel_share__union_pool__median: 0.35
+    q018__emitted_per_interest_after_0_15_floor__median: 113 # p10 61, p90 128; 61% of the target's pool survives
+    q018__surfaced_per_target_after_cosine_threshold__median: 150 # R1 median 148; 250 backstop binds in 1 of 102 R1 pairs
+    fts_websearch__interest_queries_returning_nothing: 728 # of 798 (91%); OR semantics: 4 of 798, median reachability 0.540
+    premise__declared_interest_words__median: 3 # 45% are 1-2 words, 95% are <= 4
+    premise__production_paper_tokens__median: 239 # LongEval 161 (2026) / 185 (2025-01); grants 116, conferences 86
+baselines_compared: [a1_dense_pool]
+statistical_test: "percentile bootstrap (harness.stats), 10,000 resamples, seed 20260821 -- applied to a LEVEL, not a paired contrast; there is no baseline arm to pair against without relevance labels (ISSUES.md 6)"
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-019, C-020]
+refutes_claims: []
+figures: [fig-reachability-vs-corpus, fig-entrants-by-gate]
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-002, EXP-2026-08-008, EXP-2026-08-011, EXP-2026-08-012]

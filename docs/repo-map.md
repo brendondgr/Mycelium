@@ -169,6 +169,7 @@ Files below are inside `web/backend/apps/content/`.
 | Candidate ladder stages (SPLADE, ColBERT, cross-encoder, LLM rerank) — **not production** | `eval/harness/{ladder,neural,llm_rerank}.py`, encoded by `eval/encode_ladder.py`; measured in `EXP-2026-08-008` |
 | Paired significance testing (bootstrap intervals, sign test, query-length strata) | `eval/harness/stats.py` — shared by `EXP-2026-08-009` and `EXP-2026-08-010`; never re-implement it per experiment |
 | LLM query expansion for the reranker (candidate, refuted) | `eval/expand_queries.py`; cached at `data/eval-cache/expansions/`, measured in `EXP-2026-08-010` |
+| Pool contrast against the **production** store (not LongEval) | `docs/research/experiments/EXP-2026-08-013-production-pool-contrast/code/` — `production_pool.py` builds the union-pool variants on top of the deployed `_build_pool`/`fuse_interest`; `run.py` scores them against the real `ContentItem` rows over a compose `postgres`. Nothing under `apps/content` is modified |
 | Research record (experiments, claims, figures) | `docs/research/` — start at [`research/README.md`](research/README.md) |
 | Research-record tooling | `scripts/research/` — `new_experiment.py`, `validate_research.py`, `generate_index.py`, `build_figures.py`, `manifest.schema.json`; driven by the root `Makefile` |
 | Admin bootstrap | `create_admin.py` |

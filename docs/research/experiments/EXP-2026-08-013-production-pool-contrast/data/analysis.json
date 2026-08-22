@@ -1,0 +1,230 @@
+{
+  "curve": [
+    {
+      "bm25_reachability": 0.81,
+      "corpus": 303,
+      "regime": "R1:papers:2026-07-06"
+    },
+    {
+      "bm25_reachability": 0.78,
+      "corpus": 313,
+      "regime": "R1:papers:2026-07-20"
+    },
+    {
+      "bm25_reachability": 0.73,
+      "corpus": 485,
+      "regime": "R1:papers:2026-07-13"
+    },
+    {
+      "bm25_reachability": 0.7,
+      "corpus": 782,
+      "regime": "R1:papers:2026-07-14"
+    },
+    {
+      "bm25_reachability": 0.42,
+      "corpus": 818,
+      "regime": "R3:fellowship:corpus"
+    },
+    {
+      "bm25_reachability": 0.605,
+      "corpus": 912,
+      "regime": "R3:conference:corpus"
+    },
+    {
+      "bm25_reachability": 0.59,
+      "corpus": 1254,
+      "regime": "R1:papers:2026-07-19"
+    },
+    {
+      "bm25_reachability": 0.72,
+      "corpus": 1311,
+      "regime": "R1:papers:2026-07-07"
+    },
+    {
+      "bm25_reachability": 0.665,
+      "corpus": 1348,
+      "regime": "R1:papers:2026-07-18"
+    },
+    {
+      "bm25_reachability": 0.585,
+      "corpus": 1504,
+      "regime": "R1:papers:2026-07-11"
+    },
+    {
+      "bm25_reachability": 0.74,
+      "corpus": 1737,
+      "regime": "R1:papers:2026-07-17"
+    },
+    {
+      "bm25_reachability": 0.685,
+      "corpus": 2065,
+      "regime": "R1:papers:2026-07-08"
+    },
+    {
+      "bm25_reachability": 0.43,
+      "corpus": 2171,
+      "regime": "R3:grant:corpus"
+    },
+    {
+      "bm25_reachability": 0.665,
+      "corpus": 2810,
+      "regime": "R1:papers:2026-07-10"
+    },
+    {
+      "bm25_reachability": 0.65,
+      "corpus": 3033,
+      "regime": "R1:papers:2026-07-16"
+    },
+    {
+      "bm25_reachability": 0.66,
+      "corpus": 3079,
+      "regime": "R1:papers:2026-07-12"
+    },
+    {
+      "bm25_reachability": 0.55,
+      "corpus": 3219,
+      "regime": "R1:papers:2026-06-30"
+    },
+    {
+      "bm25_reachability": 0.64,
+      "corpus": 3574,
+      "regime": "R1:papers:2026-07-01"
+    },
+    {
+      "bm25_reachability": 0.56,
+      "corpus": 3913,
+      "regime": "R1:papers:2026-07-03"
+    },
+    {
+      "bm25_reachability": 0.51,
+      "corpus": 4475,
+      "regime": "R1:papers:2026-07-05"
+    },
+    {
+      "bm25_reachability": 0.49,
+      "corpus": 35205,
+      "regime": "R2:papers:corpus"
+    }
+  ],
+  "entrants": {
+    "a2_union_harness": {
+      "completed_gate": 3912,
+      "completed_gate_union_only": 3885,
+      "deployed_gate": 22,
+      "deployed_gate_union_only": 0,
+      "pairs": 126,
+      "pairs_with_union_only": 126
+    },
+    "a2p_union_prod": {
+      "completed_gate": 7866,
+      "completed_gate_union_only": 7440,
+      "deployed_gate": 419,
+      "deployed_gate_union_only": 0,
+      "pairs": 126,
+      "pairs_with_union_only": 126
+    },
+    "a3_union_fts": {
+      "completed_gate": 358,
+      "completed_gate_union_only": 328,
+      "deployed_gate": 23,
+      "deployed_gate_union_only": 0,
+      "pairs": 126,
+      "pairs_with_union_only": 19
+    },
+    "a4_union_fts_or": {
+      "completed_gate": 6100,
+      "completed_gate_union_only": 5686,
+      "deployed_gate": 407,
+      "deployed_gate_union_only": 0,
+      "pairs": 126,
+      "pairs_with_union_only": 126
+    }
+  },
+  "fts": {
+    "interest_queries": 798,
+    "or_returning_nothing": 4,
+    "websearch_empty_share": 0.9122807017543859,
+    "websearch_returning_nothing": 728
+  },
+  "q018": {
+    "dense_pool_max": 403.0,
+    "dense_pool_median": 169.5,
+    "dense_pool_min": 100.0,
+    "emitted_after_floor_median": 113.0,
+    "emitted_after_floor_p10": 61.0,
+    "emitted_after_floor_p90": 128.0,
+    "emitted_after_floor_union_median": 140.0,
+    "floor_survival_of_pool_median": 0.6062176165803109,
+    "novel_share_median": 0.3496412436885463,
+    "pairs": 126,
+    "pairs_hitting_max_surface": 3,
+    "pool_growth_median": 1.537635084192008,
+    "r1_pairs": 102,
+    "r1_pairs_hitting_max_surface": 1,
+    "r1_surfaced_median": 148.5,
+    "surfaced_max": 382.0,
+    "surfaced_median": 149.5
+  },
+  "reachability": {
+    "R1 papers (day-scoped, deployed)": {
+      "ci": [
+        0.5868745211794205,
+        0.6128445493551496
+      ],
+      "mean": 0.600033225273703,
+      "median": 0.64,
+      "n": 646,
+      "verdict": "between"
+    },
+    "R2 papers corpus-wide (not deployed)": {
+      "ci": [
+        0.38921052631578945,
+        0.4610526315789474
+      ],
+      "mean": 0.42736842105263156,
+      "median": 0.49,
+      "n": 38,
+      "verdict": "live"
+    },
+    "R3 opportunities (corpus-scoped, deployed)": {
+      "ci": [
+        0.45493762951622085,
+        0.5110647936804475
+      ],
+      "mean": 0.482072859003315,
+      "median": 0.44,
+      "n": 111,
+      "verdict": "live"
+    },
+    "all regimes, all targets": {
+      "ci": [
+        0.5632814760043134,
+        0.5872848628075081
+      ],
+      "mean": 0.5753101268882768,
+      "median": 0.5952380952380952,
+      "n": 795,
+      "verdict": "between"
+    },
+    "deployed regimes (R1+R3), all targets": {
+      "ci": [
+        0.5706229851991075,
+        0.5948670893187802
+      ],
+      "mean": 0.5827365269170146,
+      "median": 0.61,
+      "n": 757,
+      "verdict": "between"
+    },
+    "deployed regimes, real targets only": {
+      "ci": [
+        0.5918271774382903,
+        0.6148335427915639
+      ],
+      "mean": 0.6032833726633893,
+      "median": 0.63,
+      "n": 697,
+      "verdict": "between"
+    }
+  }
+}
