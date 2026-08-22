@@ -1,0 +1,87 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-08-015
+slug: four-arm-title-matrix
+title: "Four arms, one query: title-by-arm rank matrix for human preference"
+status: complete
+date_started: 2026-08-22
+date_completed: 2026-08-22
+authors: [brendondgr]
+
+purpose: >
+  EXP-2026-08-014 failed as an instrument before it succeeded as a question: 42
+  pages, ten arms, three queries, and the reader could not tell which arm ranked
+  what. This is the same elicitation cut to the four arms and the one query the
+  reader named, in a format built for one job -- read a title, see where each arm
+  put it. Rows are document titles in full and nothing else, columns are the four
+  blinded arms, cells are rank. The fourth arm is fusion_union_splade, the
+  three-channel stack this programme has spent four experiments recommending and
+  the only arm EXP-2026-08-014 left with no human read.
+
+hypothesis: >
+  None, deliberately, on which arm wins: the corpus has no relevance judgments,
+  an LLM judge is the component EXP-2026-08-008 measured as non-monotonic in
+  relevance, and the author's opinion is not evidence. OUTCOME on the answerable
+  half: the four arms -- all of which passed a human read, or were never read --
+  still disagree substantially. On papers, 21 distinct documents across the four
+  top-tens at a mean pairwise Jaccard@10 of 0.31, so two arms typically share
+  three of their ten papers. Conferences agree most (0.59), papers least,
+  matching EXP-2026-08-014 on a different query. Cost: the cross-encoder arm
+  costs 1.866 s/query end to end against 0.094-0.186 s for the three
+  single-stage arms -- 18x the arm it reranks.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 5f78a15
+  branch: main
+  entrypoint: "uv run --project eval python .../code/run.py && uv run --project eval python .../code/build_pdf.py"
+  dirty: true  # this experiment's own folder; nothing under web/backend was touched. ISSUES.md 8
+config:
+  # No config files: arms, query and the blinding permutation are constants in
+  # the runner (POOL_PER_INTEREST=100, RERANK_DEPTH=50, TOP_N=10, BLIND_ORDER).
+  path: docs/research/experiments/EXP-2026-08-015-four-arm-title-matrix/code/run.py
+  hash: null
+data:
+  name: Mycelium production ContentItem store (development deployment)
+  version: "compose postgres (pgvector/pgvector:pg17) at localhost:11450; papers 35,205, grants 2,171, conferences 912, fellowships 818"
+  split: test
+  n_examples: 16 # ranked lists = 4 arms x 1 query x 4 content types
+  qrels: "none -- no relevance judgments exist for this corpus (W5). The instrument is a blinded human preference booklet; see PROTOCOL.md."
+  hash: null
+  card: null
+seeds: []  # every arm is deterministic; ties broken by document id in `sorted_ids`
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: "pgvector/pgvector:pg17 for the store; the arms run on the host"
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 0.01 # 20 s for all arms; the SPLADE matrices were already cached by EXP-2026-08-014
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: mean pairwise Jaccard@10 between arms (agreement, not quality)
+  values:
+    agreement__mean_pairwise_jaccard10__papers: 0.309 # 21 distinct docs across the four top-10s
+    agreement__mean_pairwise_jaccard10__grants: 0.489 # 17 distinct
+    agreement__mean_pairwise_jaccard10__fellowships: 0.527 # 16 distinct
+    agreement__mean_pairwise_jaccard10__conferences: 0.585 # 16 distinct
+    latency__fusion_union_pool__seconds_per_query: 0.094
+    latency__fusion_dense_pool__seconds_per_query: 0.103 # production as deployed
+    latency__fusion_union_splade__seconds_per_query: 0.186 # + a one-time 23 min encode and a second index
+    latency__fusion_dense_pool_xenc__seconds_per_query: 1.866 # end to end; 18x the arm it reranks
+baselines_compared: [fusion_dense_pool]
+statistical_test: null # by design -- this experiment reports composition and cost, and elicits a preference
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-021]
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-014, EXP-2026-08-013]

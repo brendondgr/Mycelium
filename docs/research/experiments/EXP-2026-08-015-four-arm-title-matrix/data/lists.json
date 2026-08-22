@@ -1,0 +1,785 @@
+{
+ "query": "Agentic AI in healthcare",
+ "types": [
+  "paper",
+  "grant",
+  "conference",
+  "fellowship"
+ ],
+ "blind_labels": {
+  "W": "fusion_dense_pool+xenc",
+  "X": "fusion_union_splade",
+  "Y": "fusion_union_pool",
+  "Z": "fusion_dense_pool"
+ },
+ "cells": {
+  "paper": {
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "b89133f3-7fe4-4b1b-a880-a709597a5d07",
+     "title": "AI agents in clinical practice: an evidence map."
+    },
+    {
+     "id": "fe068ad3-a9e2-4ca0-b3aa-bac94318a743",
+     "title": "DeepER-Med: Advancing Deep Evidence-Based Research in Medicine Through Agentic AI."
+    },
+    {
+     "id": "8f162d73-597f-4800-bc0d-78b74480abfd",
+     "title": "A Graded Autonomy Framework for Governing Agentic AI in Health Care"
+    },
+    {
+     "id": "f3e09337-3a4e-4b56-9a27-07610c8f8ee4",
+     "title": "Human-in-the-Loop Safety, Explainability, and Governance Blueprint for Agentic Salesforce Healthcare CRMs in Regulated Care Operations"
+    },
+    {
+     "id": "930d85ff-c825-462c-b810-d38c70a94925",
+     "title": "Agentic artificial intelligence in inflammatory bowel disease: toward autonomous and adaptive care."
+    },
+    {
+     "id": "e142b35e-e3be-4dda-b7c5-78dd11eadcfe",
+     "title": "From chat to act: large language model agents and agentic AI as the next frontier of AI in rheumatology."
+    },
+    {
+     "id": "b33ad643-7b82-41d2-8942-6cdaf08832be",
+     "title": "Enhancing patient care with AI agents: integrating advanced chatbot technologies for improved healthcare delivery."
+    },
+    {
+     "id": "8e2bc2fc-b4ff-4a7d-8610-d278d83446e4",
+     "title": "Agentic artificial intelligence in medicine and biomedical research: A primer and framework for clinicians and researchers."
+    },
+    {
+     "id": "56b14aab-c4a0-4286-a4ba-ae2ab4a97564",
+     "title": "An Agent-Based Modeling Framework for Healthcare AI Adoption: Application to Ambient Clinical Documentation"
+    },
+    {
+     "id": "eda832a9-90a9-44ab-8c9d-a42182925f20",
+     "title": "A Deterministic Classification Core with an Agentic Interpretation Layer: An Architecture for Auditable, Human-Gated Clinical Variant Analysis"
+    }
+   ],
+   "fusion_union_splade": [
+    {
+     "id": "f3e09337-3a4e-4b56-9a27-07610c8f8ee4",
+     "title": "Human-in-the-Loop Safety, Explainability, and Governance Blueprint for Agentic Salesforce Healthcare CRMs in Regulated Care Operations"
+    },
+    {
+     "id": "a1308176-f73f-43f5-a988-05af48934a14",
+     "title": "Agentic AI: The Rise of Autonomous Intelligence"
+    },
+    {
+     "id": "b89133f3-7fe4-4b1b-a880-a709597a5d07",
+     "title": "AI agents in clinical practice: an evidence map."
+    },
+    {
+     "id": "fe068ad3-a9e2-4ca0-b3aa-bac94318a743",
+     "title": "DeepER-Med: Advancing Deep Evidence-Based Research in Medicine Through Agentic AI."
+    },
+    {
+     "id": "fb09d998-4654-4065-bafe-bf4f5d0283bc",
+     "title": "Agentic AI"
+    },
+    {
+     "id": "6d80989d-f452-4f36-9050-7591e40655fb",
+     "title": "Artificial Intelligence of Things as a Foundation for Agentic AI Systems: Architectures, Applications, and Challenges"
+    },
+    {
+     "id": "ddc1d553-d37d-455d-9085-d65162a097ca",
+     "title": "The Next Paradigm in Medical AI: A Survey of Agentic AI in Biomedicine."
+    },
+    {
+     "id": "8b606e9d-269f-4676-9c09-8570d58a83e0",
+     "title": "Agentic AI-driven closed-loop analytical systems for autonomous pharmaceutical method development and regulatory-aware analysis"
+    },
+    {
+     "id": "03d0de81-c44a-4c8b-839d-569c2b70faa7",
+     "title": "Delegated Agentic Governance: A Delegation-Centred Framework for Managing Autonomous AI in Organisations"
+    },
+    {
+     "id": "73ce3797-2bd8-47db-bc70-58c7fffff7a2",
+     "title": "Agentic AI systems in electrical power systems engineering: current state-of-the-art and challenges."
+    }
+   ],
+   "fusion_union_pool": [
+    {
+     "id": "f3e09337-3a4e-4b56-9a27-07610c8f8ee4",
+     "title": "Human-in-the-Loop Safety, Explainability, and Governance Blueprint for Agentic Salesforce Healthcare CRMs in Regulated Care Operations"
+    },
+    {
+     "id": "8f162d73-597f-4800-bc0d-78b74480abfd",
+     "title": "A Graded Autonomy Framework for Governing Agentic AI in Health Care"
+    },
+    {
+     "id": "b89133f3-7fe4-4b1b-a880-a709597a5d07",
+     "title": "AI agents in clinical practice: an evidence map."
+    },
+    {
+     "id": "e142b35e-e3be-4dda-b7c5-78dd11eadcfe",
+     "title": "From chat to act: large language model agents and agentic AI as the next frontier of AI in rheumatology."
+    },
+    {
+     "id": "a1308176-f73f-43f5-a988-05af48934a14",
+     "title": "Agentic AI: The Rise of Autonomous Intelligence"
+    },
+    {
+     "id": "6d80989d-f452-4f36-9050-7591e40655fb",
+     "title": "Artificial Intelligence of Things as a Foundation for Agentic AI Systems: Architectures, Applications, and Challenges"
+    },
+    {
+     "id": "0c530eff-9d46-420d-9375-716139bf233f",
+     "title": "Agentic AI in Agriculture: Towards Automatic Farming Systems"
+    },
+    {
+     "id": "5a89e565-d94f-435d-88ba-030b0f80bb80",
+     "title": "Beyond the algorithm: nursing as a core foundation for ethical and equitable AI in healthcare"
+    },
+    {
+     "id": "5fa25732-7f3b-4ef5-b741-e9e81b149d0b",
+     "title": "MedNegotiator: Automating requirements negotiation in healthcare; simulating clinical and technical perspectives using Generative AI agents"
+    },
+    {
+     "id": "1ac5b63a-afcc-4db0-82e2-5fda8a53c059",
+     "title": "Enterprise Zero Trust in the Age of Agentic AI"
+    }
+   ],
+   "fusion_dense_pool": [
+    {
+     "id": "8f162d73-597f-4800-bc0d-78b74480abfd",
+     "title": "A Graded Autonomy Framework for Governing Agentic AI in Health Care"
+    },
+    {
+     "id": "a1308176-f73f-43f5-a988-05af48934a14",
+     "title": "Agentic AI: The Rise of Autonomous Intelligence"
+    },
+    {
+     "id": "f3e09337-3a4e-4b56-9a27-07610c8f8ee4",
+     "title": "Human-in-the-Loop Safety, Explainability, and Governance Blueprint for Agentic Salesforce Healthcare CRMs in Regulated Care Operations"
+    },
+    {
+     "id": "b89133f3-7fe4-4b1b-a880-a709597a5d07",
+     "title": "AI agents in clinical practice: an evidence map."
+    },
+    {
+     "id": "5a89e565-d94f-435d-88ba-030b0f80bb80",
+     "title": "Beyond the algorithm: nursing as a core foundation for ethical and equitable AI in healthcare"
+    },
+    {
+     "id": "0c530eff-9d46-420d-9375-716139bf233f",
+     "title": "Agentic AI in Agriculture: Towards Automatic Farming Systems"
+    },
+    {
+     "id": "fb09d998-4654-4065-bafe-bf4f5d0283bc",
+     "title": "Agentic AI"
+    },
+    {
+     "id": "ddc1d553-d37d-455d-9085-d65162a097ca",
+     "title": "The Next Paradigm in Medical AI: A Survey of Agentic AI in Biomedicine."
+    },
+    {
+     "id": "5fa25732-7f3b-4ef5-b741-e9e81b149d0b",
+     "title": "MedNegotiator: Automating requirements negotiation in healthcare; simulating clinical and technical perspectives using Generative AI agents"
+    },
+    {
+     "id": "1ac5b63a-afcc-4db0-82e2-5fda8a53c059",
+     "title": "Enterprise Zero Trust in the Age of Agentic AI"
+    }
+   ]
+  },
+  "grant": {
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "f5ba1258-34a8-44e4-9f97-c14845135811",
+     "title": "Examining the Impact of Artificial Intelligence (AI) on Healthcare Safety (R18)"
+    },
+    {
+     "id": "45628870-efbb-4965-a4ba-fa9ab0861020",
+     "title": "Towards Artificial General Intelligence (AGI) for healthcare"
+    },
+    {
+     "id": "0f9dc419-ab37-4325-bcc9-8f3c8c2920f3",
+     "title": "Apply AI: Piloting AI-based image screening in medical centres"
+    },
+    {
+     "id": "af6788ba-2bf6-4c25-821b-8b2a43ea3f14",
+     "title": "Advanced Digital Skills for AI Uptake in Health"
+    },
+    {
+     "id": "c290cee6-af86-471b-818e-d42f2317cf68",
+     "title": "PRIMED-AI: Data-to-Model Academic-Industrial Partnerships (D2M-AIP) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (UG3/UH3 Clinical Trial Optional)"
+    },
+    {
+     "id": "7edf5627-f28c-4fae-8055-5518bf9544b6",
+     "title": "Development and Testing of a Multi-use Frameworks Playbook for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (U01 Clinical Trial Not Allowed)"
+    },
+    {
+     "id": "0de70a4d-2a28-430e-815c-c73237f39d8c",
+     "title": "Model-to-Clinic (M2C) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (UG3/UH3, Clinical Trial Optional)"
+    },
+    {
+     "id": "5ab5a110-9842-46c1-8829-6654c6decc45",
+     "title": "Logistics Center for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (U24 Clinical Trials Not Allowed)"
+    },
+    {
+     "id": "f61b27b8-9c52-4ce9-86bb-066a6f14b557",
+     "title": "Validation Center for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (U54 Clinical Trials Not Allowed)"
+    },
+    {
+     "id": "a1681425-c656-49f5-a9a3-b176d669ad12",
+     "title": "Apply AI: Challenge-Driven AI Innovation Booster in Apply AI prioritised sectors (RIA) (Partnership in AI, Data and Robotics)"
+    }
+   ],
+   "fusion_union_splade": [
+    {
+     "id": "f5ba1258-34a8-44e4-9f97-c14845135811",
+     "title": "Examining the Impact of Artificial Intelligence (AI) on Healthcare Safety (R18)"
+    },
+    {
+     "id": "45628870-efbb-4965-a4ba-fa9ab0861020",
+     "title": "Towards Artificial General Intelligence (AGI) for healthcare"
+    },
+    {
+     "id": "0f9dc419-ab37-4325-bcc9-8f3c8c2920f3",
+     "title": "Apply AI: Piloting AI-based image screening in medical centres"
+    },
+    {
+     "id": "af6788ba-2bf6-4c25-821b-8b2a43ea3f14",
+     "title": "Advanced Digital Skills for AI Uptake in Health"
+    },
+    {
+     "id": "4b826f11-2cb5-496e-8b8c-f3e56e587539",
+     "title": "Development of predictive biomarkers of disease progression and treatment response by using AI methodologies for chronic non-communicable diseases"
+    },
+    {
+     "id": "f303c718-22f9-4ebe-89e0-363050e97c7c",
+     "title": "IA Resilience call reinforcing Europe's strenght in health"
+    },
+    {
+     "id": "0de70a4d-2a28-430e-815c-c73237f39d8c",
+     "title": "Model-to-Clinic (M2C) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (UG3/UH3, Clinical Trial Optional)"
+    },
+    {
+     "id": "c290cee6-af86-471b-818e-d42f2317cf68",
+     "title": "PRIMED-AI: Data-to-Model Academic-Industrial Partnerships (D2M-AIP) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (UG3/UH3 Clinical Trial Optional)"
+    },
+    {
+     "id": "9b10c5eb-db60-42cc-96de-2af78a4e9197",
+     "title": "Bridge2AI Network for AI Health Science"
+    },
+    {
+     "id": "03830304-8813-47cd-b7fb-8b8ae41d8ead",
+     "title": "DeepRAP: Deep Reasoning, Abstraction & Planning towards trustworthy Cognitive AI Systems"
+    }
+   ],
+   "fusion_union_pool": [
+    {
+     "id": "45628870-efbb-4965-a4ba-fa9ab0861020",
+     "title": "Towards Artificial General Intelligence (AGI) for healthcare"
+    },
+    {
+     "id": "0f9dc419-ab37-4325-bcc9-8f3c8c2920f3",
+     "title": "Apply AI: Piloting AI-based image screening in medical centres"
+    },
+    {
+     "id": "f5ba1258-34a8-44e4-9f97-c14845135811",
+     "title": "Examining the Impact of Artificial Intelligence (AI) on Healthcare Safety (R18)"
+    },
+    {
+     "id": "f303c718-22f9-4ebe-89e0-363050e97c7c",
+     "title": "IA Resilience call reinforcing Europe's strenght in health"
+    },
+    {
+     "id": "aa76c94a-11f0-40cd-a80e-b273f08f5e12",
+     "title": "New approaches for Human/AI collaboration for the workforce of the future (RIA) (Made in Europe and AI, Data and Robotics partnerships)"
+    },
+    {
+     "id": "0de70a4d-2a28-430e-815c-c73237f39d8c",
+     "title": "Model-to-Clinic (M2C) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (UG3/UH3, Clinical Trial Optional)"
+    },
+    {
+     "id": "a1681425-c656-49f5-a9a3-b176d669ad12",
+     "title": "Apply AI: Challenge-Driven AI Innovation Booster in Apply AI prioritised sectors (RIA) (Partnership in AI, Data and Robotics)"
+    },
+    {
+     "id": "6acd10be-49af-4657-9611-a532a85625dc",
+     "title": "Virtual Human Twins (VHTs) for integrated clinical decision support in prevention and diagnosis"
+    },
+    {
+     "id": "4b826f11-2cb5-496e-8b8c-f3e56e587539",
+     "title": "Development of predictive biomarkers of disease progression and treatment response by using AI methodologies for chronic non-communicable diseases"
+    },
+    {
+     "id": "af6788ba-2bf6-4c25-821b-8b2a43ea3f14",
+     "title": "Advanced Digital Skills for AI Uptake in Health"
+    }
+   ],
+   "fusion_dense_pool": [
+    {
+     "id": "45628870-efbb-4965-a4ba-fa9ab0861020",
+     "title": "Towards Artificial General Intelligence (AGI) for healthcare"
+    },
+    {
+     "id": "f5ba1258-34a8-44e4-9f97-c14845135811",
+     "title": "Examining the Impact of Artificial Intelligence (AI) on Healthcare Safety (R18)"
+    },
+    {
+     "id": "0f9dc419-ab37-4325-bcc9-8f3c8c2920f3",
+     "title": "Apply AI: Piloting AI-based image screening in medical centres"
+    },
+    {
+     "id": "f303c718-22f9-4ebe-89e0-363050e97c7c",
+     "title": "IA Resilience call reinforcing Europe's strenght in health"
+    },
+    {
+     "id": "6acd10be-49af-4657-9611-a532a85625dc",
+     "title": "Virtual Human Twins (VHTs) for integrated clinical decision support in prevention and diagnosis"
+    },
+    {
+     "id": "4b826f11-2cb5-496e-8b8c-f3e56e587539",
+     "title": "Development of predictive biomarkers of disease progression and treatment response by using AI methodologies for chronic non-communicable diseases"
+    },
+    {
+     "id": "0de70a4d-2a28-430e-815c-c73237f39d8c",
+     "title": "Model-to-Clinic (M2C) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (UG3/UH3, Clinical Trial Optional)"
+    },
+    {
+     "id": "c290cee6-af86-471b-818e-d42f2317cf68",
+     "title": "PRIMED-AI: Data-to-Model Academic-Industrial Partnerships (D2M-AIP) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (UG3/UH3 Clinical Trial Optional)"
+    },
+    {
+     "id": "ab8b4e84-1728-479b-899a-5ed2c0531bc7",
+     "title": "Enhancing integrated research and healthcare in sub-Saharan Africa through digital innovation and Artificial Intelligence"
+    },
+    {
+     "id": "aa76c94a-11f0-40cd-a80e-b273f08f5e12",
+     "title": "New approaches for Human/AI collaboration for the workforce of the future (RIA) (Made in Europe and AI, Data and Robotics partnerships)"
+    }
+   ]
+  },
+  "conference": {
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "38ad75bf-484f-4f31-a3ea-5bfcf21ef68f",
+     "title": "AI Agents for Biomedical Imaging and Multimodal Clinical Data at NeurIPS2026"
+    },
+    {
+     "id": "62cb521b-4054-4556-9d2d-b51620282c77",
+     "title": "World Models for High-Stakes Health: Reliable Clinical Trial Simulation and Intervention-Aware Reasoning @ NeurIPS 2026"
+    },
+    {
+     "id": "c794807e-89a6-4759-9dd8-9270f9e76fa0",
+     "title": "NeurIPS 2026 Agentic AI for Biological Discovery Workshop"
+    },
+    {
+     "id": "1360532a-154f-48a1-a3c9-2e4d3ad9c44c",
+     "title": "2nd Workshop on Agentic AI Benchmarks and Applications for Enterprise Tasks (NeurIPS 2026)"
+    },
+    {
+     "id": "2874ad8d-5bdf-4fef-a81f-7e16c5ed47cb",
+     "title": "ACML2026: Open and Efficient Agentic AI for Resource-Constrained Environments"
+    },
+    {
+     "id": "0925ce25-e153-48b6-95f8-6011639f43b2",
+     "title": "Workshop on Resource-Aware Agentic AI"
+    },
+    {
+     "id": "df68c5e8-a40b-4241-8e9d-80564bfc2627",
+     "title": "SLM-Agents: 1st NeurIPS Workshop on SLMs for Agentic Systems"
+    },
+    {
+     "id": "c6029dc0-0d64-43a3-ad51-91e989dac2a9",
+     "title": "NeurIPS 2026 AgenticOS Workshop"
+    },
+    {
+     "id": "5a261894-b304-4d47-9247-32dc5f11f417",
+     "title": "Foundations of Agentic Systems Theory"
+    },
+    {
+     "id": "e1213a75-732d-45e9-96f2-378152dfa632",
+     "title": "Third Workshop on Agents in the Wild: Safety, Security, and Beyond"
+    }
+   ],
+   "fusion_union_splade": [
+    {
+     "id": "38ad75bf-484f-4f31-a3ea-5bfcf21ef68f",
+     "title": "AI Agents for Biomedical Imaging and Multimodal Clinical Data at NeurIPS2026"
+    },
+    {
+     "id": "1360532a-154f-48a1-a3c9-2e4d3ad9c44c",
+     "title": "2nd Workshop on Agentic AI Benchmarks and Applications for Enterprise Tasks (NeurIPS 2026)"
+    },
+    {
+     "id": "c794807e-89a6-4759-9dd8-9270f9e76fa0",
+     "title": "NeurIPS 2026 Agentic AI for Biological Discovery Workshop"
+    },
+    {
+     "id": "df68c5e8-a40b-4241-8e9d-80564bfc2627",
+     "title": "SLM-Agents: 1st NeurIPS Workshop on SLMs for Agentic Systems"
+    },
+    {
+     "id": "c6029dc0-0d64-43a3-ad51-91e989dac2a9",
+     "title": "NeurIPS 2026 AgenticOS Workshop"
+    },
+    {
+     "id": "2874ad8d-5bdf-4fef-a81f-7e16c5ed47cb",
+     "title": "ACML2026: Open and Efficient Agentic AI for Resource-Constrained Environments"
+    },
+    {
+     "id": "1bce77fa-2b60-45ae-93f6-d3013cb430f9",
+     "title": "The Sixth Workshop on Mathematical Reasoning and AI"
+    },
+    {
+     "id": "45d781fc-c7c1-47ca-8077-a096b289a0a2",
+     "title": "Toward Human-Level Robotic Teammates"
+    },
+    {
+     "id": "30fbf02f-d3c8-4ecb-a811-2f49639112d2",
+     "title": "1st NeurIPS Workshop on Agentic Web: Decentralized, Continually-Adapting Agent Ecosystems"
+    },
+    {
+     "id": "0925ce25-e153-48b6-95f8-6011639f43b2",
+     "title": "Workshop on Resource-Aware Agentic AI"
+    }
+   ],
+   "fusion_union_pool": [
+    {
+     "id": "62cb521b-4054-4556-9d2d-b51620282c77",
+     "title": "World Models for High-Stakes Health: Reliable Clinical Trial Simulation and Intervention-Aware Reasoning @ NeurIPS 2026"
+    },
+    {
+     "id": "38ad75bf-484f-4f31-a3ea-5bfcf21ef68f",
+     "title": "AI Agents for Biomedical Imaging and Multimodal Clinical Data at NeurIPS2026"
+    },
+    {
+     "id": "1360532a-154f-48a1-a3c9-2e4d3ad9c44c",
+     "title": "2nd Workshop on Agentic AI Benchmarks and Applications for Enterprise Tasks (NeurIPS 2026)"
+    },
+    {
+     "id": "c794807e-89a6-4759-9dd8-9270f9e76fa0",
+     "title": "NeurIPS 2026 Agentic AI for Biological Discovery Workshop"
+    },
+    {
+     "id": "df68c5e8-a40b-4241-8e9d-80564bfc2627",
+     "title": "SLM-Agents: 1st NeurIPS Workshop on SLMs for Agentic Systems"
+    },
+    {
+     "id": "7e2c78d2-df6e-4451-bcf2-389c6b6db5c1",
+     "title": "NeurIPS 2026 Workshop on Medical Reasoning with Vision Language Foundation Models"
+    },
+    {
+     "id": "c6029dc0-0d64-43a3-ad51-91e989dac2a9",
+     "title": "NeurIPS 2026 AgenticOS Workshop"
+    },
+    {
+     "id": "45d781fc-c7c1-47ca-8077-a096b289a0a2",
+     "title": "Toward Human-Level Robotic Teammates"
+    },
+    {
+     "id": "2874ad8d-5bdf-4fef-a81f-7e16c5ed47cb",
+     "title": "ACML2026: Open and Efficient Agentic AI for Resource-Constrained Environments"
+    },
+    {
+     "id": "8ecff6f1-fea9-4824-972c-dfe543d20d5f",
+     "title": "2026 NeurIPS Workshop Human-AI Coevolution"
+    }
+   ],
+   "fusion_dense_pool": [
+    {
+     "id": "38ad75bf-484f-4f31-a3ea-5bfcf21ef68f",
+     "title": "AI Agents for Biomedical Imaging and Multimodal Clinical Data at NeurIPS2026"
+    },
+    {
+     "id": "62cb521b-4054-4556-9d2d-b51620282c77",
+     "title": "World Models for High-Stakes Health: Reliable Clinical Trial Simulation and Intervention-Aware Reasoning @ NeurIPS 2026"
+    },
+    {
+     "id": "1360532a-154f-48a1-a3c9-2e4d3ad9c44c",
+     "title": "2nd Workshop on Agentic AI Benchmarks and Applications for Enterprise Tasks (NeurIPS 2026)"
+    },
+    {
+     "id": "c794807e-89a6-4759-9dd8-9270f9e76fa0",
+     "title": "NeurIPS 2026 Agentic AI for Biological Discovery Workshop"
+    },
+    {
+     "id": "df68c5e8-a40b-4241-8e9d-80564bfc2627",
+     "title": "SLM-Agents: 1st NeurIPS Workshop on SLMs for Agentic Systems"
+    },
+    {
+     "id": "7e2c78d2-df6e-4451-bcf2-389c6b6db5c1",
+     "title": "NeurIPS 2026 Workshop on Medical Reasoning with Vision Language Foundation Models"
+    },
+    {
+     "id": "c6029dc0-0d64-43a3-ad51-91e989dac2a9",
+     "title": "NeurIPS 2026 AgenticOS Workshop"
+    },
+    {
+     "id": "45d781fc-c7c1-47ca-8077-a096b289a0a2",
+     "title": "Toward Human-Level Robotic Teammates"
+    },
+    {
+     "id": "2874ad8d-5bdf-4fef-a81f-7e16c5ed47cb",
+     "title": "ACML2026: Open and Efficient Agentic AI for Resource-Constrained Environments"
+    },
+    {
+     "id": "5f984fce-6fa8-46fa-be8b-36e8cb07b7e7",
+     "title": "NeurIPS 2026 Workshop on Dynamic Alignment in Human-AI Coupled Systems"
+    }
+   ]
+  },
+  "fellowship": {
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "5824e25e-dfcd-4b2e-bb95-fcf83254f57d",
+     "title": "National Institutes of Health (NIH) - Loan Repayment Programs (LRPs)"
+    },
+    {
+     "id": "d603fefd-8a27-4ffc-ac26-f8d0776d8700",
+     "title": "Microsoft - Doctoral and Postdoctoral Research Fellowship"
+    },
+    {
+     "id": "5bf16428-219c-4b71-8491-72710f7e337e",
+     "title": "National Science Foundation (NSF) - Postdoctoral Research Fellowships in Biology (PRFB)"
+    },
+    {
+     "id": "75d9e00f-c1bf-44b4-ac52-74a47d8ad5e6",
+     "title": "Mayo Clinic and Illinois Alliance - Fellowships for Technology-Based Healthcare Research"
+    },
+    {
+     "id": "6d471a52-bee6-4be8-847b-ef3511dfa2ee",
+     "title": "American Medical Association (AMA) Foundation - Physicians of Tomorrow - Awards for Students in Medicine"
+    },
+    {
+     "id": "4b2916db-9c35-4c56-90b4-ff582fab58df",
+     "title": "Autism Science Foundation (ASF) - Predoctoral, Postdoctoral, and Medical Student Research Fellowship"
+    },
+    {
+     "id": "ba36474b-250b-438b-a316-16bf2135a87a",
+     "title": "Tylenol - Future Care Scholarship for Medical / Graduate Students in Health Professions"
+    },
+    {
+     "id": "2d4ec2b6-5f3f-4ed1-8773-514517d55097",
+     "title": "Stanford University - Molecular Imaging Scholars Postdoctoral Fellowship"
+    },
+    {
+     "id": "a7e72878-0778-48a6-a9f3-46dded2fc7de",
+     "title": "American Society of Tropical Medicine & Hygiene (ASTMH) - Kean Traveling Fellowship in Tropical Medicine for Medical Students"
+    }
+   ],
+   "fusion_union_splade": [
+    {
+     "id": "d603fefd-8a27-4ffc-ac26-f8d0776d8700",
+     "title": "Microsoft - Doctoral and Postdoctoral Research Fellowship"
+    },
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "ea209306-738b-4822-a88a-f9618902ce4e",
+     "title": "Microsoft Research - AI & Society Fellows Program"
+    },
+    {
+     "id": "5bf16428-219c-4b71-8491-72710f7e337e",
+     "title": "National Science Foundation (NSF) - Postdoctoral Research Fellowships in Biology (PRFB)"
+    },
+    {
+     "id": "75d9e00f-c1bf-44b4-ac52-74a47d8ad5e6",
+     "title": "Mayo Clinic and Illinois Alliance - Fellowships for Technology-Based Healthcare Research"
+    },
+    {
+     "id": "b5efb47e-7ae5-47c2-aa5d-5e0359c5d4bf",
+     "title": "NVIDIA Corporation - Graduate Fellowship Program"
+    },
+    {
+     "id": "6fa3fc94-eecd-48a4-9be4-75eedca85d2d",
+     "title": "Meta Research - Doctoral Fellowship Program"
+    },
+    {
+     "id": "341a0965-86ae-4354-b39f-bd2369094b9f",
+     "title": "IBM - PhD Fellowships"
+    },
+    {
+     "id": "ba36474b-250b-438b-a316-16bf2135a87a",
+     "title": "Tylenol - Future Care Scholarship for Medical / Graduate Students in Health Professions"
+    },
+    {
+     "id": "5824e25e-dfcd-4b2e-bb95-fcf83254f57d",
+     "title": "National Institutes of Health (NIH) - Loan Repayment Programs (LRPs)"
+    }
+   ],
+   "fusion_union_pool": [
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "d603fefd-8a27-4ffc-ac26-f8d0776d8700",
+     "title": "Microsoft - Doctoral and Postdoctoral Research Fellowship"
+    },
+    {
+     "id": "ea209306-738b-4822-a88a-f9618902ce4e",
+     "title": "Microsoft Research - AI & Society Fellows Program"
+    },
+    {
+     "id": "75d9e00f-c1bf-44b4-ac52-74a47d8ad5e6",
+     "title": "Mayo Clinic and Illinois Alliance - Fellowships for Technology-Based Healthcare Research"
+    },
+    {
+     "id": "5bf16428-219c-4b71-8491-72710f7e337e",
+     "title": "National Science Foundation (NSF) - Postdoctoral Research Fellowships in Biology (PRFB)"
+    },
+    {
+     "id": "6fa3fc94-eecd-48a4-9be4-75eedca85d2d",
+     "title": "Meta Research - Doctoral Fellowship Program"
+    },
+    {
+     "id": "1a904e2f-beed-4044-a959-0457f64faa50",
+     "title": "Qualcomm - Innovation Fellowships for Ph.D. Students in Electrical Engineering & Computer Science"
+    },
+    {
+     "id": "b5efb47e-7ae5-47c2-aa5d-5e0359c5d4bf",
+     "title": "NVIDIA Corporation - Graduate Fellowship Program"
+    },
+    {
+     "id": "341a0965-86ae-4354-b39f-bd2369094b9f",
+     "title": "IBM - PhD Fellowships"
+    },
+    {
+     "id": "6d471a52-bee6-4be8-847b-ef3511dfa2ee",
+     "title": "American Medical Association (AMA) Foundation - Physicians of Tomorrow - Awards for Students in Medicine"
+    }
+   ],
+   "fusion_dense_pool": [
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "75d9e00f-c1bf-44b4-ac52-74a47d8ad5e6",
+     "title": "Mayo Clinic and Illinois Alliance - Fellowships for Technology-Based Healthcare Research"
+    },
+    {
+     "id": "d603fefd-8a27-4ffc-ac26-f8d0776d8700",
+     "title": "Microsoft - Doctoral and Postdoctoral Research Fellowship"
+    },
+    {
+     "id": "ea209306-738b-4822-a88a-f9618902ce4e",
+     "title": "Microsoft Research - AI & Society Fellows Program"
+    },
+    {
+     "id": "5bf16428-219c-4b71-8491-72710f7e337e",
+     "title": "National Science Foundation (NSF) - Postdoctoral Research Fellowships in Biology (PRFB)"
+    },
+    {
+     "id": "6fa3fc94-eecd-48a4-9be4-75eedca85d2d",
+     "title": "Meta Research - Doctoral Fellowship Program"
+    },
+    {
+     "id": "1a904e2f-beed-4044-a959-0457f64faa50",
+     "title": "Qualcomm - Innovation Fellowships for Ph.D. Students in Electrical Engineering & Computer Science"
+    },
+    {
+     "id": "b5efb47e-7ae5-47c2-aa5d-5e0359c5d4bf",
+     "title": "NVIDIA Corporation - Graduate Fellowship Program"
+    },
+    {
+     "id": "341a0965-86ae-4354-b39f-bd2369094b9f",
+     "title": "IBM - PhD Fellowships"
+    },
+    {
+     "id": "74b1aa11-1b0a-4122-961b-90df13c4c1de",
+     "title": "Fondation Fyssen - Postdoctoral Fellowship for Research on Cognitive Mechanisms of Animal and Human Behavior"
+    }
+   ]
+  }
+ },
+ "timing": [
+  {
+   "type": "paper",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 2.744685305005987
+  },
+  {
+   "type": "paper",
+   "arm": "fusion_union_splade",
+   "seconds": 0.416296533003333
+  },
+  {
+   "type": "paper",
+   "arm": "fusion_union_pool",
+   "seconds": 0.28965040399634745
+  },
+  {
+   "type": "paper",
+   "arm": "fusion_dense_pool",
+   "seconds": 0.45102416800364153
+  },
+  {
+   "type": "grant",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 1.7715969740020228
+  },
+  {
+   "type": "grant",
+   "arm": "fusion_union_splade",
+   "seconds": 0.16773851399921114
+  },
+  {
+   "type": "grant",
+   "arm": "fusion_union_pool",
+   "seconds": 0.1046459400022286
+  },
+  {
+   "type": "grant",
+   "arm": "fusion_dense_pool",
+   "seconds": 0.10973948200262384
+  },
+  {
+   "type": "conference",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 0.80939704899356
+  },
+  {
+   "type": "conference",
+   "arm": "fusion_union_splade",
+   "seconds": 0.18038751300628064
+  },
+  {
+   "type": "conference",
+   "arm": "fusion_union_pool",
+   "seconds": 0.07971024900325574
+  },
+  {
+   "type": "conference",
+   "arm": "fusion_dense_pool",
+   "seconds": 0.09251465999841457
+  },
+  {
+   "type": "fellowship",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 1.9604747959965607
+  },
+  {
+   "type": "fellowship",
+   "arm": "fusion_union_splade",
+   "seconds": 0.19178436000220245
+  },
+  {
+   "type": "fellowship",
+   "arm": "fusion_union_pool",
+   "seconds": 0.08306977600295795
+  },
+  {
+   "type": "fellowship",
+   "arm": "fusion_dense_pool",
+   "seconds": 0.0955606200004695
+  }
+ ],
+ "corpus_sizes": {
+  "paper": 35205,
+  "grant": 2171,
+  "conference": 912,
+  "fellowship": 818
+ }
+}
