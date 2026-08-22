@@ -304,13 +304,22 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
 - That the failure is **not** the English-only reranker meeting a multilingual
   corpus either: harm is largest where the candidate set is entirely Latin-script
   (−0.0493) and smallest where non-Latin documents dominate (−0.0361).
+- That **widening the retrieval pool is the one intervention that pays, and
+  re-sorting it is not.** With paired intervals (`EXP-2026-08-011`): the union
+  pool beats production's dense-restricted pool by +0.0523 R@100
+  `[+0.0235, +0.0858]`, and adding SPLADE beats that by a further +0.0630
+  `[+0.0396, +0.0923]` — both also moving nDCG@100. Every positive result in the
+  ladder is a recall result; every refuted claim is a ranking result.
+- That **two-channel fusion retrieves less than BM25 alone** (C-018, exploratory):
+  −0.0392 R@100 `[−0.0711, −0.0100]`. The dense channel displaces documents BM25
+  would have found; only the third channel reverses it.
 - That **this collection cannot resolve a difference smaller than roughly ±0.04
   nDCG@10 at n = 100.** That is wider than most differences this project has
   discussed, and it is the reason every future contrast here ships with an
   interval (`EXP-2026-08-009` §4).
 - That **SPLADE is a poor retriever on this collection and a good recall
-  contributor to a fusion over it** (C-014, now `partial` — no interval computed;
-  Q-022) — alone it loses to BM25 (0.2617 vs 0.3212),
+  contributor to a fusion over it** (C-014, `supported` with a paired interval:
+  +0.0630 R@100 `[+0.0396, +0.0923]`, 39 queries better to 3 worse) — alone it loses to BM25 (0.2617 vs 0.3212),
   but as a third RRF channel it gives the highest recall on the ladder
   (R@100 0.7141 vs 0.6903). Those are two different claims; C-014 is only the
   second (`EXP-2026-08-008`).

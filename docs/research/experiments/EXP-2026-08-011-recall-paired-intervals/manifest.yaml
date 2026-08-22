@@ -1,0 +1,78 @@
+# The machine-readable half of the record. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-08-011
+slug: recall-paired-intervals
+title: Do the ladder's two surviving recall claims survive a paired confidence interval?
+status: complete
+date_started: 2026-08-22
+date_completed: 2026-08-22
+authors: [brendondgr]
+
+purpose: >
+  Q-022. EXP-2026-08-009 and EXP-2026-08-010 refuted C-013 and C-017 and showed
+  that every nDCG@10 contrast re-tested from EXP-2026-08-008 spans zero at n=100.
+  That left C-008 and C-014 -- both recall claims -- as the only positive findings
+  in the ladder, and neither had ever had an interval computed. This computes them
+  with the same harness.stats bootstrap that killed the others, so the survivors
+  are held to the same bar rather than a lower one.
+
+hypothesis: >
+  Pre-registered. BOTH survive: the point estimates (+0.0523 and +0.0630 R@100)
+  are an order of magnitude larger than the +/-0.04 nDCG@10 band this collection
+  could not resolve, and recall counts set membership rather than position so it
+  should be less brittle. Falsifier stated in advance: either interval includes
+  zero, in which case the ladder has produced no surviving positive finding.
+  OUTCOME: both confirmed. C-008 +0.0523 [+0.0235, +0.0858], 28W/10L, p=0.0051.
+  C-014 +0.0630 [+0.0396, +0.0923], 39W/3L, p=5.6e-09 -- the most consistent
+  effect measured anywhere in the ladder. Both also move nDCG@100 significantly,
+  so the recall reaches the ranking. An unplanned finding: two-channel fusion is
+  significantly WORSE than BM25 on recall (-0.0392), recorded as C-018.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: ac56cee
+  branch: main
+  entrypoint: "uv run --project eval python docs/research/experiments/EXP-2026-08-011-recall-paired-intervals/code/recall.py"
+  dirty: true # this experiment's own folder and harness/stats.py; apps.content unchanged
+config:
+  path: eval/configs/
+  hash: null
+data:
+  name: LongEval-Sci (CLEF)
+  version: "longeval-sci-2026/snapshot-1/train, 869,902 docs; pooled subset 84,489"
+  split: train
+  n_examples: 100
+  qrels: dctr
+  hash: null
+  card: null
+seeds: [20260821]
+n_runs: 1
+
+environment:
+  python: "3.14"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 0.3
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: R@100 (paired mean difference)
+  values:
+    fusion_union_pool__minus__fusion_dense_pool__R100: +0.0523 # CI [+0.0235, +0.0858], excludes 0, 28W/10L, sign p=0.0051
+    fusion_bm25_dense_splade__minus__fusion_union_pool__R100: +0.0630 # CI [+0.0396, +0.0923], excludes 0, 39W/3L, sign p=5.63e-09
+    fusion_bm25_dense_splade__minus__bm25_only__R100: +0.0238 # CI [+0.0031, +0.0465], excludes 0, 24W/15L, sign p=0.2
+    fusion_union_pool__minus__bm25_only__R100: -0.0392 # CI [-0.0711, -0.0100], excludes 0, 14W/32L, sign p=0.0114
+baselines_compared: [fusion_dense_pool, fusion_union_pool, bm25_only]
+statistical_test: "paired percentile bootstrap (harness.stats), 10,000 resamples over query ids, seed 20260821; two-sided exact sign test alongside"
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-008, C-014, C-018]
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-008, EXP-2026-08-009, EXP-2026-08-010]

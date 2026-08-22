@@ -19,10 +19,11 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-008` | 2026-08-21 | Does a learned-sparse channel, a late-interaction reranker, a cross-encoder, or an LLM reranker beat BM25 on LongEval-Sci? | complete | — | C-008, C-013, C-014, C-015 (refutes C-012, C-016) | [folder](experiments/EXP-2026-08-008-retrieval-ladder-splade-colbert-llm/RESULTS.md) |
 | `EXP-2026-08-009` | 2026-08-22 | Does the cross-encoder's advantage over BM25 survive a paired confidence interval at 492 queries? | complete | — | — (refutes C-013) | [folder](experiments/EXP-2026-08-009-crossencoder-paired-intervals/RESULTS.md) |
 | `EXP-2026-08-010` | 2026-08-22 | Does an LLM prose expansion of the query rescue the cross-encoder on short queries? | complete | — | — (refutes C-017) | [folder](experiments/EXP-2026-08-010-query-prose-expansion-for-reranker/RESULTS.md) |
+| `EXP-2026-08-011` | 2026-08-22 | Do the ladder's two surviving recall claims survive a paired confidence interval? | complete | — | C-008, C-014, C-018 | [folder](experiments/EXP-2026-08-011-recall-paired-intervals/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 10 |
-| **total** | **10** |
+| complete | 11 |
+| **total** | **11** |
