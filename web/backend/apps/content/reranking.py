@@ -306,6 +306,83 @@ def rerank(
     return [head_ids[i] for i in order] + tail
 
 
+def rerank_order(
+    ordered_ids: Sequence[str],
+    *,
+    items_by_id: dict[str, Retrievable],
+    per_interest_scores: dict[str, dict[str, float]],
+    queries: dict[str, str],
+    score: Scorer | None,
+    depth: int | None = None,
+    budget: int | None = None,
+    rrf_k: int = 60,
+) -> list[str]:
+    """Reorder ``ordered_ids`` by reranking **per interest** and merging by RRF.
+
+    This is the one design decision no experiment covers, so the reasoning is
+    here rather than in a commit message. Every blinded read
+    (``EXP-2026-08-014`` … ``-017``) reranked **one** list against **one** query.
+    Production builds its pool from several declared interests, and cross-encoder
+    logits are **not comparable across different queries** — the same document
+    scored against "knowledge graphs" and against "clinical data extraction"
+    produces two numbers that cannot be put in one order.
+
+    So each interest's own candidates are reranked against that interest's own
+    query, and the resulting *orderings* are merged by Reciprocal Rank Fusion —
+    ranks are comparable where scores are not, and RRF is already how this
+    codebase fuses (:data:`apps.content.fusion.DEFAULT_RRF_K`).
+
+    The property that makes this the defensible default: **with a single declared
+    interest it reduces exactly to the configuration that was judged** — one
+    query, one list, one rerank, no merge.
+
+    ``budget`` caps total query-document pairs across all interests, so a
+    22-interest profile cannot turn a nightly run into an afternoon. Candidates
+    outside every interest's reranked slice keep their incoming relative order
+    and follow underneath.
+    """
+    ids = list(ordered_ids)
+    if score is None or not ids or not per_interest_scores:
+        return ids
+
+    cut = depth if depth is not None else rerank_depth()
+    allowance = budget if budget is not None else max_pairs()
+    surviving = set(ids)
+    labels = [
+        label
+        for label in per_interest_scores
+        if label in queries and any(i in surviving for i in per_interest_scores[label])
+    ]
+    if not labels:
+        return ids
+
+    # Spread the pair budget evenly rather than letting the first interest eat it.
+    per_label = max(1, min(cut, allowance // len(labels)))
+
+    rrf: dict[str, float] = {}
+    for label in labels:
+        scores = per_interest_scores[label]
+        candidates = sorted(
+            (i for i in scores if i in surviving),
+            key=lambda i: (-scores[i], i),
+        )[:per_label]
+        items = [items_by_id[i] for i in candidates if i in items_by_id]
+        if not items:
+            continue
+        for rank, doc_id in enumerate(
+            rerank(queries[label], items, score=score, depth=per_label), start=1
+        ):
+            rrf[doc_id] = rrf.get(doc_id, 0.0) + 1.0 / (rrf_k + rank)
+
+    if not rrf:
+        return ids
+
+    position = {doc_id: index for index, doc_id in enumerate(ids)}
+    reranked = sorted(rrf, key=lambda i: (-rrf[i], position[i]))
+    remainder = [i for i in ids if i not in rrf]
+    return reranked + remainder
+
+
 def describe_device(*, load: bool = False) -> dict:
     """Diagnostics for the ``rerank_device`` management command.
 

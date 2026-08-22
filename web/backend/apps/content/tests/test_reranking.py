@@ -271,3 +271,135 @@ class RerankTests(SimpleTestCase):
         pool = [FakeItem(id="a", metadata={"title": "T", "abstract": "A"})]
         rr.rerank("q", pool, score=capture)
         self.assertEqual(seen["docs"], ["T A"])
+
+
+class RerankOrderTests(SimpleTestCase):
+    """The multi-interest merge — the one decision no experiment covers.
+
+    Every blinded read used a single query. Production reranks a pool built from
+    several interests, and cross-encoder scores are not comparable across
+    queries, so these tests pin the behaviour the module argues for: rerank per
+    interest, merge the *orderings* by RRF.
+    """
+
+    def _pool(self, *ids):
+        return {i: FakeItem(id=i, metadata={"title": i, "abstract": ""}) for i in ids}
+
+    def test_a_single_interest_reduces_to_a_plain_rerank(self):
+        """The property that makes this the defensible default."""
+        pool = self._pool("a", "b", "c")
+        order = rr.rerank_order(
+            ["a", "b", "c"],
+            items_by_id=pool,
+            per_interest_scores={"one": {"a": 0.9, "b": 0.8, "c": 0.7}},
+            queries={"one": "one"},
+            score=lambda q, docs: [1.0, 3.0, 2.0],
+        )
+        self.assertEqual(order, ["b", "c", "a"])
+
+    def test_two_interests_merge_by_rank_not_by_score(self):
+        """Scores from different queries are incomparable; ranks are not."""
+        pool = self._pool("a", "b")
+        calls: list[str] = []
+
+        def score(query, docs):
+            calls.append(query)
+            # Wildly different scales per query — a score merge would be captured
+            # by the second interest; an RRF merge cannot be.
+            return [1000.0, 0.0] if query == "qx" else [0.002, 0.001]
+
+        order = rr.rerank_order(
+            ["a", "b"],
+            items_by_id=pool,
+            per_interest_scores={"x": {"a": 0.5, "b": 0.4}, "y": {"a": 0.5, "b": 0.4}},
+            queries={"x": "qx", "y": "qy"},
+            score=score,
+        )
+        self.assertEqual(sorted(calls), ["qx", "qy"])
+        self.assertEqual(order, ["a", "b"])
+
+    def test_an_interest_that_disagrees_can_lift_a_candidate(self):
+        pool = self._pool("a", "b")
+        order = rr.rerank_order(
+            ["a", "b"],
+            items_by_id=pool,
+            per_interest_scores={"x": {"a": 0.5, "b": 0.4}, "y": {"b": 0.9}},
+            # x prefers a; y only ever saw b, and ranks it first.
+            queries={"x": "qx", "y": "qy"},
+            score=lambda q, docs: [1.0] if len(docs) == 1 else [2.0, 1.0],
+        )
+        self.assertEqual(order, ["b", "a"])
+
+    def test_candidates_no_interest_reranked_keep_their_order_underneath(self):
+        pool = self._pool("a", "b", "c")
+        order = rr.rerank_order(
+            ["a", "b", "c"],
+            items_by_id=pool,
+            per_interest_scores={"x": {"b": 0.9}},
+            queries={"x": "qx"},
+            score=lambda q, docs: [1.0],
+        )
+        self.assertEqual(order, ["b", "a", "c"])
+
+    def test_the_pair_budget_is_spread_across_interests(self):
+        """A 22-interest profile must not let the first interest eat the budget."""
+        pool = self._pool(*[str(i) for i in range(10)])
+        sizes: list[int] = []
+
+        def score(query, docs):
+            sizes.append(len(docs))
+            return [1.0] * len(docs)
+
+        rr.rerank_order(
+            [str(i) for i in range(10)],
+            items_by_id=pool,
+            per_interest_scores={
+                "x": {str(i): 1.0 for i in range(10)},
+                "y": {str(i): 1.0 for i in range(10)},
+            },
+            queries={"x": "qx", "y": "qy"},
+            score=score,
+            budget=6,
+        )
+        self.assertEqual(sizes, [3, 3])
+
+    def test_no_scorer_is_a_no_op(self):
+        pool = self._pool("a", "b")
+        order = rr.rerank_order(
+            ["a", "b"],
+            items_by_id=pool,
+            per_interest_scores={"x": {"a": 1.0}},
+            queries={"x": "qx"},
+            score=None,
+        )
+        self.assertEqual(order, ["a", "b"])
+
+    def test_an_interest_with_no_query_text_is_skipped(self):
+        pool = self._pool("a", "b")
+        order = rr.rerank_order(
+            ["a", "b"],
+            items_by_id=pool,
+            per_interest_scores={"orphan": {"a": 1.0, "b": 0.5}},
+            queries={},
+            score=lambda q, docs: [0.0, 9.0],
+        )
+        self.assertEqual(order, ["a", "b"])
+
+    def test_only_surviving_candidates_are_reranked(self):
+        """The threshold already dropped the rest; do not spend pairs on them."""
+        pool = self._pool("a", "b", "c")
+        seen: list[list[str]] = []
+
+        def score(query, docs):
+            # `_item_text` is "title abstract"; the fixtures have no abstract.
+            seen.append([d.strip() for d in docs])
+            return [1.0] * len(docs)
+
+        rr.rerank_order(
+            ["a", "b"],  # "c" was filtered out upstream
+            items_by_id=pool,
+            per_interest_scores={"x": {"a": 0.9, "b": 0.8, "c": 0.7}},
+            queries={"x": "qx"},
+            score=score,
+        )
+        self.assertEqual(seen, [["a", "b"]])
