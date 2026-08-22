@@ -295,6 +295,15 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   (−0.0439 and −0.0541, both intervals excluding zero), losing on 218 of 492
   queries, with the harm concentrated on **short keyword queries** and vanishing
   at 5+ words.
+- That **query expansion does not rescue the reranker, and makes it worse in
+  proportion to how much you expand** (C-017, refuted). Handing the cross-encoder
+  ~8/16/20/40 words of LLM prose describing the query, while BM25 keeps the
+  original short string, moves Δ vs BM25 from −0.0439 to −0.0939 monotonically —
+  and pushes the 5+ word queries, the only ones previously unharmed, from +0.0016
+  to −0.0552. Query length was a correlate, not a cause.
+- That the failure is **not** the English-only reranker meeting a multilingual
+  corpus either: harm is largest where the candidate set is entirely Latin-script
+  (−0.0493) and smallest where non-Latin documents dominate (−0.0361).
 - That **this collection cannot resolve a difference smaller than roughly ±0.04
   nDCG@10 at n = 100.** That is wider than most differences this project has
   discussed, and it is the reason every future contrast here ships with an

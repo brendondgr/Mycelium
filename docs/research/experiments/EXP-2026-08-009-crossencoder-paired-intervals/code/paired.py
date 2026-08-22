@@ -29,9 +29,7 @@ from __future__ import annotations
 
 import gzip
 import json
-import math
 import os
-import random
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -119,38 +117,17 @@ def find_run(snapshot: str, config_file: str) -> Path | None:
     return hits[-1] if hits else None
 
 
-def bootstrap(deltas: list[float], rng: random.Random) -> tuple[float, float, float]:
-    """`(mean, lo, hi)` — percentile bootstrap over the paired per-query deltas."""
-    n = len(deltas)
-    means = []
-    for _ in range(RESAMPLES):
-        total = 0.0
-        for _ in range(n):
-            total += deltas[rng.randrange(n)]
-        means.append(total / n)
-    means.sort()
-    return (
-        sum(deltas) / n,
-        means[int(0.025 * RESAMPLES)],
-        means[int(0.975 * RESAMPLES) - 1],
-    )
-
-
-def sign_test(wins: int, losses: int) -> float:
-    """Two-sided exact binomial p under p=0.5, ties excluded."""
-    n = wins + losses
-    if n == 0:
-        return 1.0
-    k = min(wins, losses)
-    tail = sum(math.comb(n, i) for i in range(k + 1)) / (2**n)
-    return min(1.0, 2 * tail)
+# The bootstrap and the sign test moved to `harness.stats` when
+# `EXP-2026-08-010` needed them too — one implementation, so two experiments
+# cannot compute subtly different intervals and then be compared. Verified
+# behaviour-identical: this script's numbers are unchanged by the move.
 
 
 def main() -> int:
     import django
 
     django.setup()
-    from harness import datasets, scoring
+    from harness import datasets, scoring, stats
 
     out: dict = {}
     lines: list[str] = []
@@ -193,13 +170,13 @@ def main() -> int:
             deltas = [per_arm[treat][q] - per_arm[control][q] for q in shared]
             if not deltas:
                 continue
-            rng = random.Random(SEED)
-            mean, lo, hi = bootstrap(deltas, rng)
-            wins = sum(1 for d in deltas if d > 1e-12)
-            losses = sum(1 for d in deltas if d < -1e-12)
-            ties = len(deltas) - wins - losses
-            p = sign_test(wins, losses)
-            excludes = "**yes**" if (lo > 0 or hi < 0) else "no"
+            result = stats.paired_bootstrap(
+                deltas, resamples=RESAMPLES, seed=SEED
+            )
+            mean, lo, hi = result.mean, result.ci_low, result.ci_high
+            wins, losses, ties = result.wins, result.losses, result.ties
+            p = result.sign_p
+            excludes = "**yes**" if result.excludes_zero else "no"
             lines.append(
                 f"| {treat} − {control} | {mean:+.4f} | "
                 f"[{lo:+.4f}, {hi:+.4f}] | {excludes} | "
@@ -213,10 +190,7 @@ def main() -> int:
             strata: dict[str, list[float]] = defaultdict(list)
             for q, d in zip(shared, deltas, strict=True):
                 n_words = query_len.get(q, 0)
-                bucket = "1 word" if n_words <= 1 else (
-                    "2 words" if n_words == 2 else
-                    "3-4 words" if n_words <= 4 else "5+ words")
-                strata[bucket].append(d)
+                strata[stats.length_bucket(n_words)].append(d)
             by_len = {
                 k: {"n": len(v), "mean_delta": sum(v) / len(v)}
                 for k, v in sorted(strata.items())
@@ -247,7 +221,7 @@ def main() -> int:
                 "| query length | queries | mean Δ nDCG@10 |",
                 "|---|---:|---:|",
             ]
-            order = ["1 word", "2 words", "3-4 words", "5+ words"]
+            order = list(stats.BUCKET_ORDER)
             for bucket in order:
                 if bucket in focus["by_query_length"]:
                     cell = focus["by_query_length"][bucket]

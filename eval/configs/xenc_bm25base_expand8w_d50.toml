@@ -1,0 +1,20 @@
+# Cross-encoder rerank over BM25, but scoring against ~8 words of LLM-written
+# prose instead of the raw keyword query. BM25 still retrieves with the ORIGINAL
+# short query — only the reranker's input changes. Tests whether query length was
+# the mechanism behind EXP-2026-08-009's short-query harm.
+arm = "xenc_rerank"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[embedding]
+parallel = 16
+batch_size = 64
+
+[params]
+pool_per_interest = 100
+base = "bm25_only"
+rerank_depth = 50
+expand_words = 8
+xenc_model = "Xenova/ms-marco-MiniLM-L-6-v2"

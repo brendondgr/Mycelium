@@ -1,0 +1,33 @@
+{
+  "arm": "xenc_rerank",
+  "collection": "sci-2025-01",
+  "config_hash": "c2a49b5b373a0563",
+  "corpus_docs": 261294,
+  "corpus_scope": "pooled",
+  "diagnostics": {},
+  "dirty": true,
+  "embedding_model": null,
+  "git_sha": "500c261",
+  "metrics": {
+    "AP": 0.15905742191008684,
+    "P@10": 0.13516260162601648,
+    "R@100": 0.5971931277679031,
+    "RR": 0.3103267452768894,
+    "nDCG@10": 0.16955732155550984,
+    "nDCG@100": 0.3002662913725213
+  },
+  "n_queries": 492,
+  "notes": "",
+  "params": {
+    "base": "bm25_only",
+    "expand_words": 8,
+    "pool_per_interest": 100,
+    "rerank_depth": 50,
+    "xenc_model": "Xenova/ms-marco-MiniLM-L-6-v2"
+  },
+  "per_query": {},
+  "qrels": "test",
+  "snapshot": "longeval-sci/2025-01",
+  "timestamp": "2026-08-22T02:06:21Z",
+  "wall_clock_s": 1178.3
+}

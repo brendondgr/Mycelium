@@ -1,0 +1,103 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-08-010
+slug: query-prose-expansion-for-reranker
+title: Does an LLM prose expansion of the query rescue the cross-encoder on short queries?
+status: complete
+date_started: 2026-08-21
+date_completed: 2026-08-22
+authors: [brendondgr]
+
+purpose: >
+  EXP-2026-08-009 refuted C-013 and located the cross-encoder's damage on short
+  keyword queries (1 word -0.053, 2 words -0.051, 3-4 words -0.108) with no harm
+  at 5+ words. If length is the mechanism, the fix is cheap and keeps BM25: leave
+  retrieval on the original short query and hand only the RERANKER an LLM-written
+  prose description of it. This tests that at four target lengths, and tests the
+  obvious second mechanism (an English-only reranker over a multilingual corpus)
+  from the same run files. Both are refuted.
+
+hypothesis: >
+  Pre-registered: PROTOCOL.md was written before any rerank arm ran.
+  PRIMARY: effectiveness rises monotonically with expansion length; by ~20-40
+  words the deficit against bm25_only closes to within noise or turns positive.
+  FALSIFIER, stated in advance: the ~40-word arm remains significantly below
+  bm25_only, or the trend is flat or non-monotonic.
+  OUTCOME: falsified on both counts. Every length is significantly worse than the
+  raw query and the trend is monotonically DOWNWARD -- -0.0439 raw, -0.0790 at
+  8w, -0.0875 at 16w, -0.0921 at 20w, -0.0939 at 40w, every interval excluding
+  zero. Expansion also broke the one bucket that was previously unharmed (5+ word
+  queries, +0.0016 -> -0.0552). The secondary language hypothesis is refuted too:
+  harm is LARGEST where the candidate set is entirely Latin-script.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 500c261
+  branch: main
+  entrypoint: "uv run --project eval python docs/research/experiments/EXP-2026-08-010-query-prose-expansion-for-reranker/code/analyse.py"
+  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+config:
+  path: eval/configs/
+  hash: null
+data:
+  name: LongEval-Sci (CLEF)
+  version: "longeval-sci/2025-01, 1,213,728 docs; pooled subset 261,294"
+  split: test
+  n_examples: 492
+  qrels: test
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.14"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 2.0
+  estimated_cost_usd: null
+
+llm:
+  model: "skynet (local relay, OpenAI-compatible; upstream identity not pinned)"
+  temperature: 0.0
+  max_tokens: 400
+  prompt_files: [eval/expand_queries.py]
+  prompt_hash: null
+  total_input_tokens: 0
+  total_output_tokens: 0
+  nondeterminism_note: >
+    The LLM was used only to write the query expansions, never to rank. 492
+    queries x 4 target lengths = 1,968 calls, all succeeding, medians 8/15/19/38
+    words against targets 8/16/20/40. Expansions are cached in full at
+    data/eval-cache/expansions/ so what the model wrote can be read rather than
+    assumed. The upstream behind the `skynet` alias is not pinned (audit item W1).
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: nDCG@10
+  values:
+    bm25_only_baseline: 0.2486
+    xenc__raw_query: 0.2047 # delta -0.0439 CI [-0.0597, -0.0283], 139W/218L, sign p=3.41e-05
+    xenc__16w_prose: 0.1611 # delta -0.0875 CI [-0.1067, -0.0683], 110W/263L, sign p=1.41e-15
+    xenc__20w_prose: 0.1564 # delta -0.0921 CI [-0.1113, -0.0728], 112W/256L, sign p=4.29e-14
+    xenc__40w_prose: 0.1547 # delta -0.0939 CI [-0.1133, -0.0742], 110W/256L, sign p=1.56e-14
+    xenc__8w_prose: 0.1696 # delta -0.0790 CI [-0.0980, -0.0606], 118W/251L, sign p=3.73e-12
+baselines_compared: []
+statistical_test: "paired percentile bootstrap (harness.stats), 10,000 resamples over query ids, seed 20260821; two-sided exact sign test alongside"
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: [C-017]
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-009, EXP-2026-08-008]

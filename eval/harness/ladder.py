@@ -28,9 +28,12 @@ preserves the arm's ordering exactly, which is the thing being measured.
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Any
 
 import numpy as np
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 Ranking = dict[str, list[tuple[str, float]]]
 
@@ -227,6 +230,35 @@ def fusion_bm25_dense_splade(
     return ranking
 
 
+# -- query expansion for the reranker only ------------------------------------
+
+
+def _expansions(collection_id: str, words: int, log) -> dict[str, str]:
+    """`{query_id: prose}` for one target length, from the cache on disk.
+
+    Built by `eval/expand_queries.py`, which sees the query string and nothing
+    else — no documents, no judgments — so an arm reading this cannot have
+    relevance leaked into it.
+    """
+    key = ("expansion", collection_id, words)
+    if key not in _CACHE:
+        import json
+
+        path = (
+            REPO_ROOT / "data" / "eval-cache" / "expansions"
+            / f"{collection_id}__{words}w.json"
+        )
+        if not path.exists():
+            raise RuntimeError(
+                f"no expansion cache at {path}; run eval/expand_queries.py first"
+            )
+        rows = json.loads(path.read_text())
+        ok = sum(1 for r in rows.values() if r.get("ok"))
+        log(f"query expansions ~{words}w: {len(rows)} queries, {ok} generated cleanly")
+        _CACHE[key] = {qid: r["expanded"] for qid, r in rows.items()}
+    return _CACHE[key]
+
+
 # -- ColBERT ------------------------------------------------------------------
 
 
@@ -329,23 +361,33 @@ def xenc_rerank(
     depth = int(params.get("rerank_depth", 100))
     base_name = params.get("base", "fusion_union_pool")
     model = params.get("xenc_model", "Xenova/ms-marco-MiniLM-L-6-v2")
+    expand_words = params.get("expand_words")
 
     encoder = _cross_encoder(model)
+    # The expansion changes ONLY what the reranker reads. The base ranking is
+    # still computed from the original short query, so BM25 keeps the rare-term
+    # exact match that `EXP-2026-08-009` showed it is best at — the intervention
+    # is confined to the one stage the query length was hurting.
+    expanded: dict[str, str] = {}
+    if expand_words:
+        expanded = _expansions(collection.id, int(expand_words), log)
     by_id = _docs_by_id(docs)
     base = base_ranking(
         base_name, queries, docs, index=index,
         pool_per_interest=pool_per_interest, log=log, collection=collection,
     )
 
-    log(f"cross-encoder ({model}) reranking top-{depth} of '{base_name}' …")
+    suffix = f", scored against ~{expand_words}-word prose" if expand_words else ""
+    log(f"cross-encoder ({model}) reranking top-{depth} of '{base_name}'{suffix} …")
     ranking: Ranking = {}
     for i, (query_id, query_text) in enumerate(queries, start=1):
+        scoring_text = expanded.get(query_id, query_text) if expanded else query_text
         candidates = [doc_id for doc_id, _ in base.get(query_id, [])]
         head, tail = candidates[:depth], candidates[depth:]
         texts = [by_id[doc_id].text for doc_id in head if doc_id in by_id]
         present = [doc_id for doc_id in head if doc_id in by_id]
         if texts:
-            scores = list(encoder.rerank(query_text, texts, batch_size=32))
+            scores = list(encoder.rerank(scoring_text, texts, batch_size=32))
             # strict=True: a length mismatch here would silently mis-pair a
             # document with another document's score.
             paired = zip(present, scores, strict=True)
