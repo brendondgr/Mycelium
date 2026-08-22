@@ -8,47 +8,60 @@
 
 id: EXP-2026-08-012
 slug: recall-replication-2025
-title: TODO: title for recall-replication-2025
-status: planned # planned | running | complete | failed | superseded
+title: Do the ladder's surviving recall claims replicate on sci-2025-01?
+status: complete
 date_started: 2026-08-22
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-08-22
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Q-024. C-008, C-014 and the exploratory C-018 were the ladder's only surviving
+  positive findings and all three rested on one snapshot with click-derived
+  judgments -- the same exposure that let the cross-encoder flip sign between
+  snapshots in EXP-2026-08-009. This recomputes all three on sci-2025-01: 492
+  queries, released human assessments. All three replicate. One adjacent claim
+  made in EXP-2026-08-011 -- that the three-channel pool beats bm25_only -- does
+  not, and is withdrawn.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Pre-registered before any arm on this snapshot was scored. PRIMARY: all three
+  replicate -- same sign, intervals excluding zero, per-query records on the same
+  side. SECONDARY: C-008's effect should be LARGER here because the dense channel
+  is weaker on this snapshot, so confining BM25 to the dense pool costs more.
+  OUTCOME: primary confirmed for all three. C-008 +0.2459 [+0.2196, +0.2717],
+  302W/21L; C-014 +0.0330 [+0.0231, +0.0433], 106W/26L; C-018 -0.0219
+  [-0.0338, -0.0104], 48W/94L. Secondary confirmed: C-008 is ~5x larger here.
+  Unpredicted: on this snapshot both gains also move nDCG@10 with intervals
+  excluding zero, where on 2026 they were recall-only. And the adjacent
+  three-channel-beats-BM25 claim fails (+0.0111 [-0.0020, +0.0244], spans zero).
 
 # --- Reproducibility block ---------------------------------------------------
 code:
   commit: 6b233b2
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
+  entrypoint: "uv run --project eval python docs/research/experiments/EXP-2026-08-012-recall-replication-2025/code/replicate.py"
   dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
-  path: <path to the config file, or null>
+  path: eval/configs/
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
-  qrels: null
+  name: LongEval-Sci (CLEF)
+  version: "longeval-sci/2025-01 (1,213,728 docs; pooled 261,294) vs longeval-sci-2026/snapshot-1/train"
+  split: test
+  n_examples: 492
+  qrels: "test (released human assessments) -- differs from the 2026 dctr comparison; see ISSUES.md 2"
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
 seeds: []
 n_runs: 1
 
 environment:
-  python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
+  python: "3.14"
+  lockfile: eval/uv.lock
   container: null
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 5.4
   estimated_cost_usd: null
 
 # --- LLM block (delete entirely if no model was called) ----------------------
@@ -67,15 +80,19 @@ compute:
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
+  primary: R@100 (paired mean difference, sci-2025-01)
+  values:
+    C_008__fusion_union_pool__minus__fusion_dense_pool: +0.2459 # CI [+0.2196, +0.2717], excludes 0, 302W/21L, sign p=6.25e-65, replicates=yes
+    C_014__fusion_bm25_dense_splade__minus__fusion_union_pool: +0.0330 # CI [+0.0231, +0.0433], excludes 0, 106W/26L, sign p=1.17e-12, replicates=yes
+    C_018__fusion_union_pool__minus__bm25_only: -0.0219 # CI [-0.0338, -0.0104], excludes 0, 48W/94L, sign p=0.000141, replicates=yes
+    adjacent__fusion_bm25_dense_splade__minus__bm25_only: +0.0111 # CI [-0.0020, +0.0244], spans 0, 88W/68L, sign p=0.128, replicates=NO
 baselines_compared: []
-statistical_test: null
+statistical_test: "paired percentile bootstrap (harness.stats), 10,000 resamples over query ids, seed 20260821; two-sided exact sign test alongside"
 
 # --- Linkage -----------------------------------------------------------------
-supports_claims: []
+supports_claims: [C-008, C-014, C-018]
 refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-08-011, EXP-2026-08-002, EXP-2026-08-009]

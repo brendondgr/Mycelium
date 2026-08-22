@@ -20,10 +20,11 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-009` | 2026-08-22 | Does the cross-encoder's advantage over BM25 survive a paired confidence interval at 492 queries? | complete | — | — (refutes C-013) | [folder](experiments/EXP-2026-08-009-crossencoder-paired-intervals/RESULTS.md) |
 | `EXP-2026-08-010` | 2026-08-22 | Does an LLM prose expansion of the query rescue the cross-encoder on short queries? | complete | — | — (refutes C-017) | [folder](experiments/EXP-2026-08-010-query-prose-expansion-for-reranker/RESULTS.md) |
 | `EXP-2026-08-011` | 2026-08-22 | Do the ladder's two surviving recall claims survive a paired confidence interval? | complete | — | C-008, C-014, C-018 | [folder](experiments/EXP-2026-08-011-recall-paired-intervals/RESULTS.md) |
+| `EXP-2026-08-012` | 2026-08-22 | Do the ladder's surviving recall claims replicate on sci-2025-01? | complete | — | C-008, C-014, C-018 | [folder](experiments/EXP-2026-08-012-recall-replication-2025/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 11 |
-| **total** | **11** |
+| complete | 12 |
+| **total** | **12** |

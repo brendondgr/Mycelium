@@ -1,0 +1,29 @@
+{
+  "arm": "fusion_bm25_dense_splade",
+  "collection": "sci-2025-01",
+  "config_hash": "357d4fe6d51b11af",
+  "corpus_docs": 261294,
+  "corpus_scope": "pooled",
+  "diagnostics": {},
+  "dirty": false,
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "git_sha": "ef5569e",
+  "metrics": {
+    "AP": 0.17630336322327964,
+    "P@10": 0.15365853658536602,
+    "R@100": 0.6083083364795395,
+    "RR": 0.3729044458897445,
+    "nDCG@10": 0.19663969902173328,
+    "nDCG@100": 0.3186506445879441
+  },
+  "n_queries": 492,
+  "notes": "",
+  "params": {
+    "pool_per_interest": 100
+  },
+  "per_query": {},
+  "qrels": "test",
+  "snapshot": "longeval-sci/2025-01",
+  "timestamp": "2026-08-22T10:31:39Z",
+  "wall_clock_s": 356.2
+}

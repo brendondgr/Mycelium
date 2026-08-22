@@ -3,6 +3,7 @@
     "sci-2025-01": {
       "bm25_only": 0.5971789143390556,
       "dense_only": 0.33482364595110764,
+      "fusion_bm25_dense_splade": 0.6083083364795396,
       "fusion_dense_pool": 0.32943938060429484,
       "fusion_union_pool": 0.575318236273553
     },
@@ -46,8 +47,18 @@
     {
       "claim": "C-014",
       "control": "fusion_union_pool",
-      "replicates": "\u2014",
-      "sci-2025-01": null,
+      "replicates": "yes",
+      "sci-2025-01": {
+        "ci_high": 0.043346898105118256,
+        "ci_low": 0.023129470205563548,
+        "excludes_zero": true,
+        "losses": 26,
+        "mean_delta": 0.032990100205986694,
+        "n": 492,
+        "sign_p": 1.168349605840244e-12,
+        "ties": 360,
+        "wins": 106
+      },
       "sci-2026-train": {
         "ci_high": 0.09229898079720598,
         "ci_low": 0.0396056934107137,
@@ -92,8 +103,18 @@
     {
       "claim": "\u2014",
       "control": "bm25_only",
-      "replicates": "\u2014",
-      "sci-2025-01": null,
+      "replicates": "NO",
+      "sci-2025-01": {
+        "ci_high": 0.024433229219984757,
+        "ci_low": -0.001972869853136511,
+        "excludes_zero": false,
+        "losses": 68,
+        "mean_delta": 0.011129422140484171,
+        "n": 492,
+        "sign_p": 0.12793767570364561,
+        "ties": 336,
+        "wins": 88
+      },
       "sci-2026-train": {
         "ci_high": 0.04650014685562354,
         "ci_low": 0.003095271625091539,

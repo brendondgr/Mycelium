@@ -35,6 +35,7 @@ produced it is worse than no number.
 | `fusion_dense_pool` (pool 100) | full | 869,902 | 100 | 0.2852 | 0.3549 | 0.2190 | 0.5419 | 0.4505 | 0.1980 | `5b66bc2` |
 | `fusion_full` (pool 100) | full | 869,902 | 100 | 0.2849 | 0.3563 | 0.2233 | 0.5419 | 0.4545 | 0.1960 | `5b66bc2` |
 | `fusion_union_pool` (pool 100) | full | 869,902 | 100 | 0.2993 | 0.4031 | 0.2519 | 0.6299 | 0.4734 | 0.1960 | `5b66bc2` |
+| `bm25_only` | pooled | 84,489 | 100 | 0.3212 | 0.4314 | 0.2760 | 0.6903 | 0.4788 | 0.2100 | `11d364e` ⚠️dirty |
 | `bm25_only` | pooled | 84,489 | 100 | 0.3212 | 0.4314 | 0.2760 | 0.6903 | 0.4788 | 0.2100 | `917ec38` ⚠️dirty |
 | `bm25_only` | pooled | 84,489 | 100 | 0.3212 | 0.4314 | 0.2760 | 0.6903 | 0.4788 | 0.2100 | `de31887` |
 | `cascade_colbert_xenc` (pool 100) | pooled | 84,489 | 100 | 0.3248 | 0.4300 | 0.2682 | 0.6511 | 0.4980 | 0.2090 | `917ec38` ⚠️dirty |
@@ -43,9 +44,12 @@ produced it is worse than no number.
 | `colbert_rerank` (pool 500) | pooled | 84,489 | 100 | 0.2919 | 0.4275 | 0.2584 | 0.7121 | 0.4940 | 0.1940 | `917ec38` ⚠️dirty |
 | `colbert_rerank` (pool 100) | pooled | 84,489 | 100 | 0.2951 | 0.4121 | 0.2517 | 0.6511 | 0.4847 | 0.1920 | `917ec38` ⚠️dirty |
 | `dense_only` | pooled | 84,489 | 100 | 0.2401 | 0.3498 | 0.1965 | 0.6120 | 0.4067 | 0.1700 | `917ec38` ⚠️dirty |
+| `dense_only` | pooled | 84,489 | 100 | 0.2401 | 0.3498 | 0.1965 | 0.6120 | 0.4067 | 0.1700 | `ac56cee` |
 | `dense_only` | pooled | 84,489 | 100 | 0.2401 | 0.3498 | 0.1965 | 0.6120 | 0.4067 | 0.1700 | `de31887` |
 | `fusion_bm25_dense_splade` (pool 100) | pooled | 84,489 | 100 | 0.3184 | 0.4356 | 0.2676 | 0.7141 | 0.4875 | 0.2140 | `917ec38` ⚠️dirty |
+| `fusion_bm25_dense_splade` (pool 100) | pooled | 84,489 | 100 | 0.3184 | 0.4356 | 0.2676 | 0.7141 | 0.4875 | 0.2140 | `ac56cee` |
 | `fusion_dense_pool` (pool 100) | pooled | 84,489 | 100 | 0.2937 | 0.3829 | 0.2360 | 0.5988 | 0.4589 | 0.2010 | `917ec38` ⚠️dirty |
+| `fusion_dense_pool` (pool 100) | pooled | 84,489 | 100 | 0.2937 | 0.3829 | 0.2360 | 0.5988 | 0.4589 | 0.2010 | `ac56cee` |
 | `fusion_dense_pool` (pool 100) | pooled | 84,489 | 100 | 0.2937 | 0.3829 | 0.2360 | 0.5988 | 0.4589 | 0.2010 | `de31887` |
 | `fusion_dense_pool` (pool 1000) | pooled | 84,489 | 100 | 0.2915 | 0.4191 | 0.2577 | 0.7021 | 0.4607 | 0.1910 | `de31887` |
 | `fusion_full` (pool 100) | pooled | 84,489 | 100 | 0.2963 | 0.3859 | 0.2415 | 0.5988 | 0.4684 | 0.2020 | `917ec38` ⚠️dirty |
@@ -53,16 +57,26 @@ produced it is worse than no number.
 | `fusion_full` (pool 1000) | pooled | 84,489 | 100 | 0.2968 | 0.4221 | 0.2614 | 0.6996 | 0.4753 | 0.1930 | `de31887` |
 | `fusion_union_pool` (pool 500) | pooled | 84,489 | 100 | 0.3015 | 0.4313 | 0.2684 | 0.7098 | 0.4696 | 0.2000 | `917ec38` ⚠️dirty |
 | `fusion_union_pool` (pool 1000) | pooled | 84,489 | 100 | 0.3001 | 0.4292 | 0.2665 | 0.7065 | 0.4645 | 0.2000 | `de31887` |
+| `fusion_union_pool` (pool 100) | pooled | 84,489 | 100 | 0.3056 | 0.4129 | 0.2562 | 0.6511 | 0.4686 | 0.2020 | `11d364e` ⚠️dirty |
+| `fusion_union_pool` (pool 100) | pooled | 84,489 | 100 | 0.3056 | 0.4129 | 0.2562 | 0.6511 | 0.4686 | 0.2020 | `16749f1` ⚠️dirty |
 | `fusion_union_pool` (pool 100) | pooled | 84,489 | 100 | 0.3056 | 0.4129 | 0.2562 | 0.6511 | 0.4686 | 0.2020 | `917ec38` ⚠️dirty |
 | `fusion_union_pool` (pool 100) | pooled | 84,489 | 100 | 0.3056 | 0.4129 | 0.2562 | 0.6511 | 0.4686 | 0.2020 | `de31887` |
+| `llm_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3177 | 0.4328 | 0.2676 | 0.6511 | 0.5306 | 0.1930 | `16749f1` ⚠️dirty |
 | `llm_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3133 | 0.4304 | 0.2640 | 0.6511 | 0.5320 | 0.1900 | `917ec38` ⚠️dirty |
+| `llm_rerank_reversed` (pool 100) | pooled | 84,489 | 100 | 0.2561 | 0.3768 | 0.2119 | 0.6511 | 0.3909 | 0.1950 | `16749f1` ⚠️dirty |
 | `llm_rerank_reversed` (pool 100) | pooled | 84,489 | 100 | 0.2563 | 0.3734 | 0.2066 | 0.6511 | 0.3837 | 0.1970 | `917ec38` ⚠️dirty |
+| `llm_rubric` (pool 100) | pooled | 84,489 | 100 | 0.3095 | 0.4175 | 0.2607 | 0.6511 | 0.4786 | 0.2040 | `16749f1` ⚠️dirty |
 | `llm_rubric` (pool 100) | pooled | 84,489 | 100 | 0.3099 | 0.4175 | 0.2606 | 0.6511 | 0.4794 | 0.2030 | `917ec38` ⚠️dirty |
 | `splade_only` | pooled | 84,489 | 100 | 0.2617 | 0.3683 | 0.2177 | 0.6173 | 0.4058 | 0.1760 | `917ec38` ⚠️dirty |
 | `xenc_rerank` (pool 500) | pooled | 84,489 | 100 | 0.3307 | 0.4504 | 0.2780 | 0.7199 | 0.4936 | 0.2150 | `917ec38` ⚠️dirty |
 | `xenc_rerank` (pool 500) | pooled | 84,489 | 100 | 0.3267 | 0.4468 | 0.2782 | 0.7098 | 0.4898 | 0.2110 | `917ec38` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3299 | 0.4330 | 0.2711 | 0.6511 | 0.5051 | 0.2110 | `11d364e` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3299 | 0.4330 | 0.2711 | 0.6511 | 0.5051 | 0.2110 | `2e05dc8` ⚠️dirty |
 | `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3299 | 0.4330 | 0.2711 | 0.6511 | 0.5051 | 0.2110 | `917ec38` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3299 | 0.4424 | 0.2792 | 0.6903 | 0.4913 | 0.2110 | `11d364e` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3213 | 0.4398 | 0.2778 | 0.6903 | 0.4943 | 0.2040 | `11d364e` ⚠️dirty |
 | `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3305 | 0.4492 | 0.2780 | 0.7141 | 0.4948 | 0.2140 | `917ec38` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3304 | 0.4320 | 0.2702 | 0.6511 | 0.4989 | 0.2130 | `11d364e` ⚠️dirty |
 | `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3304 | 0.4320 | 0.2702 | 0.6511 | 0.4989 | 0.2130 | `917ec38` ⚠️dirty |
 | `xenc_rerank` (pool 500) | pooled | 84,489 | 100 | 0.3306 | 0.4503 | 0.2779 | 0.7199 | 0.4936 | 0.2150 | `917ec38` ⚠️dirty |
 | `xenc_rerank` (pool 100) | pooled | 84,489 | 100 | 0.3304 | 0.4320 | 0.2702 | 0.6511 | 0.4989 | 0.2130 | `917ec38` ⚠️dirty |
@@ -187,14 +201,25 @@ produced it is worse than no number.
 | Arm | Corpus | Docs | Queries | nDCG@10 | nDCG@100 | AP | R@100 | RR | P@10 | Run |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
 | `bm25_only` | full | 1,213,728 | 492 | 0.2362 | 0.3426 | 0.2181 | 0.5989 | 0.4054 | 0.1846 | `de31887` |
+| `bm25_only` | pooled | 261,294 | 492 | 0.2486 | 0.3498 | 0.2280 | 0.5972 | 0.4199 | 0.1941 | `11d364e` ⚠️dirty |
 | `bm25_only` | pooled | 261,294 | 492 | 0.2486 | 0.3498 | 0.2280 | 0.5972 | 0.4199 | 0.1941 | `de31887` |
+| `dense_only` | pooled | 261,294 | 492 | 0.0931 | 0.1660 | 0.0786 | 0.3348 | 0.1996 | 0.0736 | `62d7a1d` |
 | `dense_only` | pooled | 261,294 | 492 | 0.0931 | 0.1660 | 0.0786 | 0.3348 | 0.1996 | 0.0736 | `de31887` |
+| `fusion_bm25_dense_splade` (pool 100) | pooled | 261,294 | 492 | 0.1966 | 0.3187 | 0.1763 | 0.6083 | 0.3729 | 0.1537 | `ef5569e` |
+| `fusion_dense_pool` (pool 100) | pooled | 261,294 | 492 | 0.1451 | 0.2010 | 0.1156 | 0.3294 | 0.2903 | 0.1118 | `62d7a1d` |
 | `fusion_dense_pool` (pool 100) | pooled | 261,294 | 492 | 0.1451 | 0.2010 | 0.1156 | 0.3294 | 0.2903 | 0.1118 | `de31887` |
 | `fusion_dense_pool` (pool 1000) | pooled | 261,294 | 492 | 0.1656 | 0.2628 | 0.1463 | 0.4869 | 0.3221 | 0.1272 | `de31887` |
 | `fusion_full` (pool 100) | pooled | 261,294 | 492 | 0.1506 | 0.2046 | 0.1187 | 0.3294 | 0.3002 | 0.1157 | `de31887` |
 | `fusion_full` (pool 1000) | pooled | 261,294 | 492 | 0.1710 | 0.2678 | 0.1501 | 0.4915 | 0.3286 | 0.1315 | `de31887` |
 | `fusion_union_pool` (pool 1000) | pooled | 261,294 | 492 | 0.1840 | 0.3074 | 0.1695 | 0.5946 | 0.3424 | 0.1459 | `de31887` |
+| `fusion_union_pool` (pool 100) | pooled | 261,294 | 492 | 0.1819 | 0.3000 | 0.1635 | 0.5753 | 0.3442 | 0.1435 | `62d7a1d` |
 | `fusion_union_pool` (pool 100) | pooled | 261,294 | 492 | 0.1819 | 0.3000 | 0.1635 | 0.5753 | 0.3442 | 0.1435 | `de31887` |
+| `xenc_rerank` (pool 100) | pooled | 261,294 | 492 | 0.1611 | 0.2963 | 0.1530 | 0.5972 | 0.3017 | 0.1289 | `500c261` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 261,294 | 492 | 0.1944 | 0.3138 | 0.1769 | 0.5972 | 0.3663 | 0.1537 | `11d364e` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 261,294 | 492 | 0.2047 | 0.3224 | 0.1868 | 0.5972 | 0.3762 | 0.1626 | `11d364e` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 261,294 | 492 | 0.1564 | 0.2931 | 0.1495 | 0.5972 | 0.3007 | 0.1254 | `500c261` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 261,294 | 492 | 0.1696 | 0.3003 | 0.1591 | 0.5972 | 0.3103 | 0.1352 | `500c261` ⚠️dirty |
+| `xenc_rerank` (pool 100) | pooled | 261,294 | 492 | 0.1547 | 0.2902 | 0.1454 | 0.5972 | 0.2802 | 0.1254 | `500c261` ⚠️dirty |
 
 ### Published baselines (external, for comparison)
 
@@ -204,13 +229,6 @@ Scored by this harness with the same `ir_measures` call used above, from the Lon
 |---|---|---|---:|---:|---:|---:|---:|---:|
 | BM25 (PyTerrier, organizers) | `longeval-sci-2026/snapshot-1/train` | dctr | 0.2922 | 0.4123 | 0.2573 | 0.6836 | 0.4717 | 0.1950 |
 | Qwen3-Embedding-4B (organizers) | `longeval-sci-2026/snapshot-1/train` | dctr | 0.2820 | 0.3919 | 0.2378 | 0.6390 | 0.4389 | 0.1880 |
-
-> **Reading the ladder rows.** The generated table labels an arm by its pool
-> width only, so the several `xenc_rerank` / `colbert_rerank` rows at different
-> rerank depths are not distinguishable here. The full breakdown, one row per
-> `(arm, depth, base)`, is
-> [`EXP-2026-08-008/tables/ladder.md`](research/experiments/EXP-2026-08-008-retrieval-ladder-splade-colbert-llm/tables/ladder.md),
-> generated from the same run files.
 
 > **Do not compare across corpus scopes.** A `pooled` row is a re-ranking result over the judged set plus a lexical pool; a `full` row ranks the entire snapshot. Reordering metrics (nDCG@10) are broadly comparable, recall metrics are not.
 
@@ -305,11 +323,20 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   corpus either: harm is largest where the candidate set is entirely Latin-script
   (−0.0493) and smallest where non-Latin documents dominate (−0.0361).
 - That **widening the retrieval pool is the one intervention that pays, and
-  re-sorting it is not.** With paired intervals (`EXP-2026-08-011`): the union
-  pool beats production's dense-restricted pool by +0.0523 R@100
-  `[+0.0235, +0.0858]`, and adding SPLADE beats that by a further +0.0630
-  `[+0.0396, +0.0923]` — both also moving nDCG@100. Every positive result in the
-  ladder is a recall result; every refuted claim is a ranking result.
+  re-sorting it is not** — now with paired intervals **on two snapshots under two
+  judgment regimes** (`EXP-2026-08-011`, `EXP-2026-08-012`). The union pool beats
+  production's dense-restricted pool by +0.0523 R@100 on 2026 and **+0.2459
+  `[+0.2196, +0.2717]` (302 queries better, 21 worse)** on `sci-2025-01`; adding
+  SPLADE beats that by +0.0630 and +0.0330 respectively. On the human-judged
+  snapshot both also move nDCG@10 with intervals excluding zero.
+- That the **magnitude of C-008 is corpus-dependent and must never be quoted as a
+  single number**: it is 5× larger where the dense channel is weaker, which is
+  what the claim says and why the direction — not the size — is the finding.
+- **NOT** that any configuration beats BM25. A statement in `EXP-2026-08-011` that
+  the three-channel pool did (+0.0238 R@100) **failed to replicate** — on
+  `sci-2025-01` that contrast spans zero, and the three-channel pool is
+  significantly *worse* than BM25 on ranking there (−0.0519 nDCG@10). The
+  pool-construction ordering is robust; the fusion family beating BM25 is not.
 - That **two-channel fusion retrieves less than BM25 alone** (C-018, exploratory):
   −0.0392 R@100 `[−0.0711, −0.0100]`. The dense channel displaces documents BM25
   would have found; only the third channel reverses it.
