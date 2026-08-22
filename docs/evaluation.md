@@ -460,7 +460,15 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   not reorder — `apps.content.suggest` annotates a fused ordering — so those arms
   describe a design option, not shipped behaviour. They also ran at temperature 0
   while production defaults to 0.2 (audit item W1, open).
-- That any ladder stage should ship. SPLADE, ColBERT, the cross-encoder and the
+- That the **shipped** cross-encoder rerank stage improves anything. It is in
+  `apps/content/reranking.py`, it ships **off** (`RERANK_ENABLED=false`), and the
+  only evidence for it is a **preference from one reader** over two queries
+  (`EXP-2026-08-015`…`-017`). On this collection the same model is significantly
+  *harmful* on short queries and C-013 stands refuted. What `EXP-2026-08-018`
+  establishes is narrower and is the only thing it establishes: with the flag off,
+  the pipeline is byte-identical to before the stage existed. Whether turning it on
+  helps is `Q-033`, and it is unmeasured.
+- That any *other* ladder stage should ship. SPLADE, ColBERT, the cross-encoder and the
   LLM rerankers live in `eval/harness/{ladder,llm_rerank}.py` and are **candidate
   code that is not in production**. A number from `harness/arms.py` describes
   Mycelium; a number from those two modules describes something Mycelium could

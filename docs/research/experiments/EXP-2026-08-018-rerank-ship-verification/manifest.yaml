@@ -1,0 +1,89 @@
+# The machine-readable half of the record. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-08-018
+slug: rerank-ship-verification
+title: "Shipping the cross-encoder rerank: flag-off invariance and on/off cost"
+status: complete
+date_started: 2026-08-22
+date_completed: 2026-08-22
+authors: [brendondgr]
+
+purpose: >
+  docs/skills/global.md requires a fresh evaluation run for any change to
+  pipeline.py's ranking path. A cross-encoder rerank stage was added to the tail
+  of fuse_interests_pool and fuse_clusters_pool, which the eval harness's profile
+  arms also call -- so if turning it off is not identical to the code before it
+  existed, every historical number in this record is in doubt. This verifies the
+  invariant at both levels and measures what turning it on costs. It does NOT
+  measure whether reranking helps: that is EXP-2026-08-015..017, it is a
+  preference from one reader, and Q-033 is still open.
+
+hypothesis: >
+  The gate was fixed before any code was written, in
+  docs/plans/cross-encoder-rerank.md at 0c1844f: "flag off => byte-identical;
+  re-run the harness arms and diff against the committed run files; any
+  difference is a bug in the wiring, not a result." OUTCOME: it holds. The
+  fusion_dense_pool run file on sci-2026-train is cmp-identical to the one
+  committed at ac56cee (R@100 0.5988, nDCG@10 0.2937), and on the production path
+  the candidate set, pool size, combined scores and persist-row signal keys are
+  all unchanged with the flag off. UNPREDICTED and unrelated to this change: with
+  the flag OFF, fusing the same profile in separate processes can produce a
+  different surfaced order, because combine_interests and combine_clusters
+  iterate a set of str and Python randomizes string hashing per process. The
+  deployed feed is not reproducible run to run. Recorded as Q-035.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: c224e86
+  branch: feat/cross-encoder-rerank
+  entrypoint: "uv run --directory web/backend python docs/research/experiments/EXP-2026-08-018-rerank-ship-verification/code/verify.py"
+  dirty: true  # the branch carries the stage itself; this folder records its verification
+config:
+  path: web/backend/config/settings.py
+  hash: null
+data:
+  name: Mycelium production ContentItem store (development deployment)
+  version: "compose postgres (pgvector/pgvector:pg17) at localhost:11450; 35,205 embedded papers"
+  split: test
+  n_examples: 192 # surfaced candidates for a two-interest profile
+  qrels: "none -- this experiment measures invariance and cost, not quality"
+  hash: null
+  card: null
+seeds: []  # and see RESULTS.md 3: production does not fix PYTHONHASHSEED, which is the finding
+n_runs: 4
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: "pgvector/pgvector:pg17 for the store; the pipeline runs on the host"
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 0.01
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: flag-off invariance (identical output with the stage disabled)
+  values:
+    harness_run_file_identical_to_ac56cee: 1 # cmp over the gzipped TREC run, sci-2026-train
+    harness_r_at_100_reproduced: 0.5988 # nDCG@10 0.2937, both as recorded in EXP-2026-08-011
+    flag_off_same_candidate_set: 1
+    flag_off_same_pool_size: 1
+    flag_off_scores_unchanged: 1
+    flag_off_signals_carry_no_rerank_key: 1
+    seconds_off: 0.616
+    seconds_on: 3.209
+    rerank_overhead_seconds: 2.593 # 100 pairs, ~38 pairs/s, CPU only
+    positions_moved_share: 0.526 # of 192 surfaced
+    deployed_order_reproducible_across_processes: 0 # Q-035 -- pre-existing, flag off
+baselines_compared: [fusion_dense_pool]
+statistical_test: null # an invariance check, not a contrast
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-023]
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-015, EXP-2026-08-016, EXP-2026-08-017, EXP-2026-08-011]

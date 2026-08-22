@@ -1,0 +1,32 @@
+{
+  "depth": 50,
+  "device": [
+    "cpu",
+    null
+  ],
+  "flag_off_signal_keys": [
+    "combined_score",
+    "embedding_match",
+    "focus_areas",
+    "n_matched",
+    "per_interest"
+  ],
+  "flag_off_signals_carry_no_rerank_key": true,
+  "flag_on_records_rerank_rank": true,
+  "interests": [
+    "agentic healthcare systems",
+    "knowledge graph construction"
+  ],
+  "max_pairs": 400,
+  "model": "Xenova/ms-marco-MiniLM-L-6-v2",
+  "pool": 200,
+  "positions_moved": 100,
+  "positions_moved_share": 0.5208,
+  "rerank_overhead_seconds": 4.198,
+  "same_candidate_set": true,
+  "same_pool_size": true,
+  "scores_unchanged_by_the_stage": true,
+  "seconds_off": 0.574,
+  "seconds_on": 4.772,
+  "surfaced": 192
+}

@@ -97,6 +97,7 @@ Files below are inside `web/backend/apps/content/`.
 | Manual ignore (per reader): model, endpoints, feed filtering | `models.py` (`IgnoredItem`), `views.py` (`IgnoreItemView`, `IgnoredItemsView`, `_ignored_content_ids`) |
 | Scoring target (user / lab / project) | `targets.py` |
 | Paper pipeline | `pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`, `clustering.py` |
+| Cross-encoder rerank (ships OFF, `RERANK_ENABLED`) | `reranking.py` — device resolution with CUDA auto-detect and CPU fallback, the lazy model cache, `rerank` and the per-interest/RRF `rerank_order`; entered from `pipeline.py::_apply_rerank` at the tail of `fuse_interests_pool` / `fuse_clusters_pool`. Diagnostics: `manage.py rerank_device --load`. Evidence is a **preference** (`EXP-2026-08-015`…`-017`), not a measurement — see the module docstring |
 | Ranking-stack seams (ORM-free ranking, swappable vector index) | `protocols.py` (`Retrievable`, `VectorIndex`), `retrieval.py` (`PgVectorIndex`) |
 | Theme spread (opt-in, all defaults off) | `fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
 | Grants / conferences / fellowships matching | `opportunities.py`, `fellowships.py`, `opportunity_llm.py`, `pinning.py` |
