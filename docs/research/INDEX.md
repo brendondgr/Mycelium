@@ -25,10 +25,11 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-014` | 2026-08-22 | Side-by-side top-10 lists across retrieval arms, for human preference | complete | — | C-021 | [folder](experiments/EXP-2026-08-014-retrieval-side-by-side/RESULTS.md) |
 | `EXP-2026-08-015` | 2026-08-22 | Four arms, one query: title-by-arm rank matrix for human preference | complete | — | C-021 | [folder](experiments/EXP-2026-08-015-four-arm-title-matrix/RESULTS.md) |
 | `EXP-2026-08-016` | 2026-08-22 | Same four arms, a second research area: knowledge graphs | complete | — | C-021 | [folder](experiments/EXP-2026-08-016-knowledge-graphs-title-matrix/RESULTS.md) |
+| `EXP-2026-08-017` | 2026-08-22 | Three channels + cross-encoder against the dense pool + cross-encoder | complete | — | C-021 | [folder](experiments/EXP-2026-08-017-splade-vs-dense-reranked/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 16 |
-| **total** | **16** |
+| complete | 17 |
+| **total** | **17** |

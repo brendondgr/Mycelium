@@ -1,0 +1,810 @@
+{
+ "queries": [
+  "Agentic AI in healthcare",
+  "knowledge graphs"
+ ],
+ "types": [
+  "paper",
+  "grant",
+  "conference",
+  "fellowship"
+ ],
+ "blind_labels": {
+  "K": "fusion_union_splade+xenc",
+  "V": "fusion_dense_pool+xenc"
+ },
+ "cells": {
+  "Agentic AI in healthcare|paper": {
+   "fusion_union_splade+xenc": [
+    {
+     "id": "b89133f3-7fe4-4b1b-a880-a709597a5d07",
+     "title": "AI agents in clinical practice: an evidence map."
+    },
+    {
+     "id": "fe068ad3-a9e2-4ca0-b3aa-bac94318a743",
+     "title": "DeepER-Med: Advancing Deep Evidence-Based Research in Medicine Through Agentic AI."
+    },
+    {
+     "id": "8f162d73-597f-4800-bc0d-78b74480abfd",
+     "title": "A Graded Autonomy Framework for Governing Agentic AI in Health Care"
+    },
+    {
+     "id": "f3e09337-3a4e-4b56-9a27-07610c8f8ee4",
+     "title": "Human-in-the-Loop Safety, Explainability, and Governance Blueprint for Agentic Salesforce Healthcare CRMs in Regulated Care Operations"
+    },
+    {
+     "id": "930d85ff-c825-462c-b810-d38c70a94925",
+     "title": "Agentic artificial intelligence in inflammatory bowel disease: toward autonomous and adaptive care."
+    },
+    {
+     "id": "e142b35e-e3be-4dda-b7c5-78dd11eadcfe",
+     "title": "From chat to act: large language model agents and agentic AI as the next frontier of AI in rheumatology."
+    },
+    {
+     "id": "b33ad643-7b82-41d2-8942-6cdaf08832be",
+     "title": "Enhancing patient care with AI agents: integrating advanced chatbot technologies for improved healthcare delivery."
+    },
+    {
+     "id": "8b606e9d-269f-4676-9c09-8570d58a83e0",
+     "title": "Agentic AI-driven closed-loop analytical systems for autonomous pharmaceutical method development and regulatory-aware analysis"
+    },
+    {
+     "id": "0453403a-892a-40da-8ea5-0e68f2aee03d",
+     "title": "Twelve tips for teaching research skills in the age of agentic AI: A guide for health professions educators."
+    },
+    {
+     "id": "ddc1d553-d37d-455d-9085-d65162a097ca",
+     "title": "The Next Paradigm in Medical AI: A Survey of Agentic AI in Biomedicine."
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "b89133f3-7fe4-4b1b-a880-a709597a5d07",
+     "title": "AI agents in clinical practice: an evidence map."
+    },
+    {
+     "id": "fe068ad3-a9e2-4ca0-b3aa-bac94318a743",
+     "title": "DeepER-Med: Advancing Deep Evidence-Based Research in Medicine Through Agentic AI."
+    },
+    {
+     "id": "8f162d73-597f-4800-bc0d-78b74480abfd",
+     "title": "A Graded Autonomy Framework for Governing Agentic AI in Health Care"
+    },
+    {
+     "id": "f3e09337-3a4e-4b56-9a27-07610c8f8ee4",
+     "title": "Human-in-the-Loop Safety, Explainability, and Governance Blueprint for Agentic Salesforce Healthcare CRMs in Regulated Care Operations"
+    },
+    {
+     "id": "930d85ff-c825-462c-b810-d38c70a94925",
+     "title": "Agentic artificial intelligence in inflammatory bowel disease: toward autonomous and adaptive care."
+    },
+    {
+     "id": "e142b35e-e3be-4dda-b7c5-78dd11eadcfe",
+     "title": "From chat to act: large language model agents and agentic AI as the next frontier of AI in rheumatology."
+    },
+    {
+     "id": "b33ad643-7b82-41d2-8942-6cdaf08832be",
+     "title": "Enhancing patient care with AI agents: integrating advanced chatbot technologies for improved healthcare delivery."
+    },
+    {
+     "id": "8e2bc2fc-b4ff-4a7d-8610-d278d83446e4",
+     "title": "Agentic artificial intelligence in medicine and biomedical research: A primer and framework for clinicians and researchers."
+    },
+    {
+     "id": "56b14aab-c4a0-4286-a4ba-ae2ab4a97564",
+     "title": "An Agent-Based Modeling Framework for Healthcare AI Adoption: Application to Ambient Clinical Documentation"
+    },
+    {
+     "id": "eda832a9-90a9-44ab-8c9d-a42182925f20",
+     "title": "A Deterministic Classification Core with an Agentic Interpretation Layer: An Architecture for Auditable, Human-Gated Clinical Variant Analysis"
+    }
+   ]
+  },
+  "knowledge graphs|paper": {
+   "fusion_union_splade+xenc": [
+    {
+     "id": "d3b163f0-dca6-4fec-8104-c8c59bbeccf6",
+     "title": "Construction and Applications of Knowledge Graphs in Ophthalmology."
+    },
+    {
+     "id": "ccca0eb3-54ee-45de-b4b3-5ac416a1294a",
+     "title": "Knowledge Graph Lakehouse: a cloud-native data lakehouse for contextualised knowledge graphs"
+    },
+    {
+     "id": "7cf19cbc-4236-4c73-a406-2a22db8efdbc",
+     "title": "Knowledge graphs enhanced deep reinforcement learning for distribution network fault restoration based on uncertainty estimation"
+    },
+    {
+     "id": "c25ebf2c-3816-4624-999e-82c1d10d678c",
+     "title": "Knowledge graphs as pedagogical bridges for symbolic reasoning in hybrid AI systems: a perspective."
+    },
+    {
+     "id": "4ca7258b-f9a3-4fc3-8ac1-c25c5e17f546",
+     "title": "Knowledge Graph-Enhanced Medical Large Language Models: Challenges, Methods, and Future Directions"
+    },
+    {
+     "id": "95522c30-f428-4840-b165-7a8395891ebb",
+     "title": "Beyond Triplet Plausibility: Relation Set Completion in Knowledge Graphs"
+    },
+    {
+     "id": "39e4f8a2-cd5c-4f61-8889-df7c81264f4e",
+     "title": "Architecting a Federated Semantic Knowledge Lake Framework: Knowledge Graph-as-a-Platform for Distributed Data Ecosystem"
+    },
+    {
+     "id": "61a7494e-8c0a-4810-aa62-6fd8df4e02af",
+     "title": "Knowledge graph modeling for data asset pricing"
+    },
+    {
+     "id": "40110e0c-5b68-47cb-8270-178982570abd",
+     "title": "Introduction to the Special Issue on Integrating Large Language Models and Knowledge Graphs for Generative AI"
+    },
+    {
+     "id": "be7ad6e3-2b67-400b-be0b-ea2cc2b657ca",
+     "title": "Construction of Knowledge Graph Based on Language Model"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "d3b163f0-dca6-4fec-8104-c8c59bbeccf6",
+     "title": "Construction and Applications of Knowledge Graphs in Ophthalmology."
+    },
+    {
+     "id": "ccca0eb3-54ee-45de-b4b3-5ac416a1294a",
+     "title": "Knowledge Graph Lakehouse: a cloud-native data lakehouse for contextualised knowledge graphs"
+    },
+    {
+     "id": "4ca7258b-f9a3-4fc3-8ac1-c25c5e17f546",
+     "title": "Knowledge Graph-Enhanced Medical Large Language Models: Challenges, Methods, and Future Directions"
+    },
+    {
+     "id": "61a7494e-8c0a-4810-aa62-6fd8df4e02af",
+     "title": "Knowledge graph modeling for data asset pricing"
+    },
+    {
+     "id": "40110e0c-5b68-47cb-8270-178982570abd",
+     "title": "Introduction to the Special Issue on Integrating Large Language Models and Knowledge Graphs for Generative AI"
+    },
+    {
+     "id": "be7ad6e3-2b67-400b-be0b-ea2cc2b657ca",
+     "title": "Construction of Knowledge Graph Based on Language Model"
+    },
+    {
+     "id": "676ae7f1-52e3-4577-81a7-91153498eacb",
+     "title": "Content-Based Dataset Knowledge Graphs for Dataset Search"
+    },
+    {
+     "id": "a96d96cf-6e5d-4dc2-b2b9-23df02f51522",
+     "title": "Dataset and Code for Constructing knowledge graphs using domain knowledge constraints and guidance based on LLM"
+    },
+    {
+     "id": "b7146d01-2c3a-427d-89f5-229637e16944",
+     "title": "Enhancing Knowledge Graphs with Dual Modules to Alleviate Knowledge Discrepancies in Recommender Systems"
+    },
+    {
+     "id": "e707ba2b-8a8f-43f4-8186-d6daf50419b9",
+     "title": "CECKG: A Credible Entity Classification Method for Knowledge Graph"
+    }
+   ]
+  },
+  "Agentic AI in healthcare|grant": {
+   "fusion_union_splade+xenc": [
+    {
+     "id": "f5ba1258-34a8-44e4-9f97-c14845135811",
+     "title": "Examining the Impact of Artificial Intelligence (AI) on Healthcare Safety (R18)"
+    },
+    {
+     "id": "45628870-efbb-4965-a4ba-fa9ab0861020",
+     "title": "Towards Artificial General Intelligence (AGI) for healthcare"
+    },
+    {
+     "id": "0f9dc419-ab37-4325-bcc9-8f3c8c2920f3",
+     "title": "Apply AI: Piloting AI-based image screening in medical centres"
+    },
+    {
+     "id": "af6788ba-2bf6-4c25-821b-8b2a43ea3f14",
+     "title": "Advanced Digital Skills for AI Uptake in Health"
+    },
+    {
+     "id": "c290cee6-af86-471b-818e-d42f2317cf68",
+     "title": "PRIMED-AI: Data-to-Model Academic-Industrial Partnerships (D2M-AIP) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (UG3/UH3 Clinical Trial Optional)"
+    },
+    {
+     "id": "7edf5627-f28c-4fae-8055-5518bf9544b6",
+     "title": "Development and Testing of a Multi-use Frameworks Playbook for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (U01 Clinical Trial Not Allowed)"
+    },
+    {
+     "id": "0de70a4d-2a28-430e-815c-c73237f39d8c",
+     "title": "Model-to-Clinic (M2C) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (UG3/UH3, Clinical Trial Optional)"
+    },
+    {
+     "id": "5ab5a110-9842-46c1-8829-6654c6decc45",
+     "title": "Logistics Center for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (U24 Clinical Trials Not Allowed)"
+    },
+    {
+     "id": "f61b27b8-9c52-4ce9-86bb-066a6f14b557",
+     "title": "Validation Center for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (U54 Clinical Trials Not Allowed)"
+    },
+    {
+     "id": "a1681425-c656-49f5-a9a3-b176d669ad12",
+     "title": "Apply AI: Challenge-Driven AI Innovation Booster in Apply AI prioritised sectors (RIA) (Partnership in AI, Data and Robotics)"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "f5ba1258-34a8-44e4-9f97-c14845135811",
+     "title": "Examining the Impact of Artificial Intelligence (AI) on Healthcare Safety (R18)"
+    },
+    {
+     "id": "45628870-efbb-4965-a4ba-fa9ab0861020",
+     "title": "Towards Artificial General Intelligence (AGI) for healthcare"
+    },
+    {
+     "id": "0f9dc419-ab37-4325-bcc9-8f3c8c2920f3",
+     "title": "Apply AI: Piloting AI-based image screening in medical centres"
+    },
+    {
+     "id": "af6788ba-2bf6-4c25-821b-8b2a43ea3f14",
+     "title": "Advanced Digital Skills for AI Uptake in Health"
+    },
+    {
+     "id": "c290cee6-af86-471b-818e-d42f2317cf68",
+     "title": "PRIMED-AI: Data-to-Model Academic-Industrial Partnerships (D2M-AIP) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (UG3/UH3 Clinical Trial Optional)"
+    },
+    {
+     "id": "7edf5627-f28c-4fae-8055-5518bf9544b6",
+     "title": "Development and Testing of a Multi-use Frameworks Playbook for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (U01 Clinical Trial Not Allowed)"
+    },
+    {
+     "id": "0de70a4d-2a28-430e-815c-c73237f39d8c",
+     "title": "Model-to-Clinic (M2C) for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (UG3/UH3, Clinical Trial Optional)"
+    },
+    {
+     "id": "5ab5a110-9842-46c1-8829-6654c6decc45",
+     "title": "Logistics Center for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (U24 Clinical Trials Not Allowed)"
+    },
+    {
+     "id": "f61b27b8-9c52-4ce9-86bb-066a6f14b557",
+     "title": "Validation Center for Precision Medicine with AI: Integrating Imaging with Multimodal Data (PRIMED-AI) (U54 Clinical Trials Not Allowed)"
+    },
+    {
+     "id": "a1681425-c656-49f5-a9a3-b176d669ad12",
+     "title": "Apply AI: Challenge-Driven AI Innovation Booster in Apply AI prioritised sectors (RIA) (Partnership in AI, Data and Robotics)"
+    }
+   ]
+  },
+  "knowledge graphs|grant": {
+   "fusion_union_splade+xenc": [
+    {
+     "id": "686c6e50-d67a-477b-a37b-f44973f4718e",
+     "title": "Increasing knowledge flows to practice within AKIS via EU thematic knowledge hubs"
+    },
+    {
+     "id": "fa03ba63-7f3e-4a3e-9ef7-476aa08659f6",
+     "title": "Enhancement and Management of Established Biomedical Data Repositories and Knowledgebases (R24 Clinical Trial Not Allowed)"
+    },
+    {
+     "id": "07b72874-8db5-4408-bdeb-6818e8eb2929",
+     "title": "Mathematical Sciences Research Institutes"
+    },
+    {
+     "id": "3f615d82-4992-4381-a358-ef88756c162b",
+     "title": "Automated Processes for Knowledge Discovery and Information Retrieval"
+    },
+    {
+     "id": "493435ad-368f-4287-9fda-50263c983648",
+     "title": "Novel combinations of knowledge and research methods to address social issues and advance a fair green transition of neighbourhoods"
+    },
+    {
+     "id": "005074f2-cfa2-4fc0-95df-4501e8bb3543",
+     "title": "European CCAM knowledge hub and tools for safe and scalable deployment (CCAM Partnership)"
+    },
+    {
+     "id": "a7014764-1f9d-432c-abcb-92a11e0928d0",
+     "title": "Strengthening the potential of the EOSC for knowledge valorisation and industry-academia collaboration (EOSC Partnership)"
+    },
+    {
+     "id": "addfd4af-0a73-4e92-af92-6b2b9b7b3327",
+     "title": "GlobalX Challenge 26.2: Naval Southern Hemisphere Space Weather and Plasmas (NSHSWP)"
+    },
+    {
+     "id": "e24eadce-eece-4617-ad3d-2767ebc8fd11",
+     "title": "Unlocking the potential of academic intellectual assets for industry, SMEs and startups (CSA)"
+    },
+    {
+     "id": "df054206-eaa6-4727-93a5-71abafc087fa",
+     "title": "Living labs driving transformative change via knowledge integration and inclusive governance"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "686c6e50-d67a-477b-a37b-f44973f4718e",
+     "title": "Increasing knowledge flows to practice within AKIS via EU thematic knowledge hubs"
+    },
+    {
+     "id": "fa03ba63-7f3e-4a3e-9ef7-476aa08659f6",
+     "title": "Enhancement and Management of Established Biomedical Data Repositories and Knowledgebases (R24 Clinical Trial Not Allowed)"
+    },
+    {
+     "id": "3f615d82-4992-4381-a358-ef88756c162b",
+     "title": "Automated Processes for Knowledge Discovery and Information Retrieval"
+    },
+    {
+     "id": "493435ad-368f-4287-9fda-50263c983648",
+     "title": "Novel combinations of knowledge and research methods to address social issues and advance a fair green transition of neighbourhoods"
+    },
+    {
+     "id": "005074f2-cfa2-4fc0-95df-4501e8bb3543",
+     "title": "European CCAM knowledge hub and tools for safe and scalable deployment (CCAM Partnership)"
+    },
+    {
+     "id": "e24eadce-eece-4617-ad3d-2767ebc8fd11",
+     "title": "Unlocking the potential of academic intellectual assets for industry, SMEs and startups (CSA)"
+    },
+    {
+     "id": "df054206-eaa6-4727-93a5-71abafc087fa",
+     "title": "Living labs driving transformative change via knowledge integration and inclusive governance"
+    },
+    {
+     "id": "a5f8c0af-81b2-494e-916c-ea5122a5755a",
+     "title": "Combinatorics"
+    },
+    {
+     "id": "15e68071-ceb8-43f5-80fd-83ac9498ce59",
+     "title": "Pillar IV: Upgrading the EU\u2019s independent knowledge on China's Science, Technology and Innovation system"
+    },
+    {
+     "id": "e59904c8-6f89-4664-a89e-ff0a955ac252",
+     "title": "GlobalX Challenge 26.1: AI-Native Air Interface for Tactical Communication Networks"
+    }
+   ]
+  },
+  "Agentic AI in healthcare|conference": {
+   "fusion_union_splade+xenc": [
+    {
+     "id": "38ad75bf-484f-4f31-a3ea-5bfcf21ef68f",
+     "title": "AI Agents for Biomedical Imaging and Multimodal Clinical Data at NeurIPS2026"
+    },
+    {
+     "id": "62cb521b-4054-4556-9d2d-b51620282c77",
+     "title": "World Models for High-Stakes Health: Reliable Clinical Trial Simulation and Intervention-Aware Reasoning @ NeurIPS 2026"
+    },
+    {
+     "id": "c794807e-89a6-4759-9dd8-9270f9e76fa0",
+     "title": "NeurIPS 2026 Agentic AI for Biological Discovery Workshop"
+    },
+    {
+     "id": "1360532a-154f-48a1-a3c9-2e4d3ad9c44c",
+     "title": "2nd Workshop on Agentic AI Benchmarks and Applications for Enterprise Tasks (NeurIPS 2026)"
+    },
+    {
+     "id": "2874ad8d-5bdf-4fef-a81f-7e16c5ed47cb",
+     "title": "ACML2026: Open and Efficient Agentic AI for Resource-Constrained Environments"
+    },
+    {
+     "id": "0925ce25-e153-48b6-95f8-6011639f43b2",
+     "title": "Workshop on Resource-Aware Agentic AI"
+    },
+    {
+     "id": "df68c5e8-a40b-4241-8e9d-80564bfc2627",
+     "title": "SLM-Agents: 1st NeurIPS Workshop on SLMs for Agentic Systems"
+    },
+    {
+     "id": "c6029dc0-0d64-43a3-ad51-91e989dac2a9",
+     "title": "NeurIPS 2026 AgenticOS Workshop"
+    },
+    {
+     "id": "31ed43bc-9d8e-463b-8a33-7d3823bbcfd0",
+     "title": "NeurIPS 2026 Workshop on Agentic Systems for Molecular Sciences"
+    },
+    {
+     "id": "5a261894-b304-4d47-9247-32dc5f11f417",
+     "title": "Foundations of Agentic Systems Theory"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "38ad75bf-484f-4f31-a3ea-5bfcf21ef68f",
+     "title": "AI Agents for Biomedical Imaging and Multimodal Clinical Data at NeurIPS2026"
+    },
+    {
+     "id": "62cb521b-4054-4556-9d2d-b51620282c77",
+     "title": "World Models for High-Stakes Health: Reliable Clinical Trial Simulation and Intervention-Aware Reasoning @ NeurIPS 2026"
+    },
+    {
+     "id": "c794807e-89a6-4759-9dd8-9270f9e76fa0",
+     "title": "NeurIPS 2026 Agentic AI for Biological Discovery Workshop"
+    },
+    {
+     "id": "1360532a-154f-48a1-a3c9-2e4d3ad9c44c",
+     "title": "2nd Workshop on Agentic AI Benchmarks and Applications for Enterprise Tasks (NeurIPS 2026)"
+    },
+    {
+     "id": "2874ad8d-5bdf-4fef-a81f-7e16c5ed47cb",
+     "title": "ACML2026: Open and Efficient Agentic AI for Resource-Constrained Environments"
+    },
+    {
+     "id": "0925ce25-e153-48b6-95f8-6011639f43b2",
+     "title": "Workshop on Resource-Aware Agentic AI"
+    },
+    {
+     "id": "df68c5e8-a40b-4241-8e9d-80564bfc2627",
+     "title": "SLM-Agents: 1st NeurIPS Workshop on SLMs for Agentic Systems"
+    },
+    {
+     "id": "c6029dc0-0d64-43a3-ad51-91e989dac2a9",
+     "title": "NeurIPS 2026 AgenticOS Workshop"
+    },
+    {
+     "id": "5a261894-b304-4d47-9247-32dc5f11f417",
+     "title": "Foundations of Agentic Systems Theory"
+    },
+    {
+     "id": "e1213a75-732d-45e9-96f2-378152dfa632",
+     "title": "Third Workshop on Agents in the Wild: Safety, Security, and Beyond"
+    }
+   ]
+  },
+  "knowledge graphs|conference": {
+   "fusion_union_splade+xenc": [
+    {
+     "id": "64b1f21e-615d-4d89-8d09-5c683f425f2d",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay"
+    },
+    {
+     "id": "9f742175-ec11-49f5-8843-ba4c1d955caf",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay - ARR Commitment"
+    },
+    {
+     "id": "8538d693-9960-4742-980c-20d8ec2617ac",
+     "title": "Workshop on Automated Knowledge Base Construction 2026 - ARR Commitment"
+    },
+    {
+     "id": "87e24902-f926-47ec-9e8d-347cf85ba819",
+     "title": "The 2nd International Workshop on Graph-Augmented LLMs (GaLM): Bridging Language and Structured Knowledge"
+    },
+    {
+     "id": "5b55aed3-dfd6-4a32-8a4d-80736f5a5fcf",
+     "title": "9th International Conference on Natural Language Processing"
+    },
+    {
+     "id": "5bd83325-7ce0-45e0-bf64-afe80fee460c",
+     "title": "The Second Workshop on Generative Information Retrieval"
+    },
+    {
+     "id": "c80c0ce4-f270-4add-89a7-6b1ac2606b3a",
+     "title": "ACML 2026 Workshop on Graph Machine Learning: Foundations, Frontiers, and Applications"
+    },
+    {
+     "id": "c0bc2f23-1e8d-48a9-9a1a-76f81d7b724f",
+     "title": "37th International Conference on Information Modelling and Knowledge Bases"
+    },
+    {
+     "id": "c8168392-531f-44fb-8444-063896979541",
+     "title": "Workshop on Applied Mathematics and Graph Theory"
+    },
+    {
+     "id": "1160a9b3-1139-4dd0-9904-91190be7bc16",
+     "title": "European Conference on Machine Learning and 25th Principles and Practice of Knowledge Discovery in Databases"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "64b1f21e-615d-4d89-8d09-5c683f425f2d",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay"
+    },
+    {
+     "id": "9f742175-ec11-49f5-8843-ba4c1d955caf",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay - ARR Commitment"
+    },
+    {
+     "id": "8538d693-9960-4742-980c-20d8ec2617ac",
+     "title": "Workshop on Automated Knowledge Base Construction 2026 - ARR Commitment"
+    },
+    {
+     "id": "87e24902-f926-47ec-9e8d-347cf85ba819",
+     "title": "The 2nd International Workshop on Graph-Augmented LLMs (GaLM): Bridging Language and Structured Knowledge"
+    },
+    {
+     "id": "5bd83325-7ce0-45e0-bf64-afe80fee460c",
+     "title": "The Second Workshop on Generative Information Retrieval"
+    },
+    {
+     "id": "c80c0ce4-f270-4add-89a7-6b1ac2606b3a",
+     "title": "ACML 2026 Workshop on Graph Machine Learning: Foundations, Frontiers, and Applications"
+    },
+    {
+     "id": "c0bc2f23-1e8d-48a9-9a1a-76f81d7b724f",
+     "title": "37th International Conference on Information Modelling and Knowledge Bases"
+    },
+    {
+     "id": "63533ce0-18ed-4f27-bf72-c62f2a3ad506",
+     "title": "First Workshop on Document Intelligence and Understanding (ARR Commitment)"
+    },
+    {
+     "id": "f56ee528-a8be-40d6-9d5c-a1b0a27eb52a",
+     "title": "CoRL 2026 Workshop on The Action Gap: Large Generative Models Learn Rich Knowledge"
+    },
+    {
+     "id": "7ec4ec91-048b-4012-a932-b616a2e76b73",
+     "title": "NeurIPS 2026 Workshop: Epistemic Intelligence in Machine Learning"
+    }
+   ]
+  },
+  "Agentic AI in healthcare|fellowship": {
+   "fusion_union_splade+xenc": [
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "5824e25e-dfcd-4b2e-bb95-fcf83254f57d",
+     "title": "National Institutes of Health (NIH) - Loan Repayment Programs (LRPs)"
+    },
+    {
+     "id": "d603fefd-8a27-4ffc-ac26-f8d0776d8700",
+     "title": "Microsoft - Doctoral and Postdoctoral Research Fellowship"
+    },
+    {
+     "id": "1e5fe7d1-9507-4b2c-afba-7688f95a7c70",
+     "title": "National Institutes of Health (NIH) - Ruth L. Kirschstein National Research Service Awards (NRSA) F31 - Predoctoral Fellowships to Promote Diversity in Health-Related Research"
+    },
+    {
+     "id": "5bf16428-219c-4b71-8491-72710f7e337e",
+     "title": "National Science Foundation (NSF) - Postdoctoral Research Fellowships in Biology (PRFB)"
+    },
+    {
+     "id": "75d9e00f-c1bf-44b4-ac52-74a47d8ad5e6",
+     "title": "Mayo Clinic and Illinois Alliance - Fellowships for Technology-Based Healthcare Research"
+    },
+    {
+     "id": "6d471a52-bee6-4be8-847b-ef3511dfa2ee",
+     "title": "American Medical Association (AMA) Foundation - Physicians of Tomorrow - Awards for Students in Medicine"
+    },
+    {
+     "id": "ba36474b-250b-438b-a316-16bf2135a87a",
+     "title": "Tylenol - Future Care Scholarship for Medical / Graduate Students in Health Professions"
+    },
+    {
+     "id": "a7e72878-0778-48a6-a9f3-46dded2fc7de",
+     "title": "American Society of Tropical Medicine & Hygiene (ASTMH) - Kean Traveling Fellowship in Tropical Medicine for Medical Students"
+    },
+    {
+     "id": "341a0965-86ae-4354-b39f-bd2369094b9f",
+     "title": "IBM - PhD Fellowships"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "5824e25e-dfcd-4b2e-bb95-fcf83254f57d",
+     "title": "National Institutes of Health (NIH) - Loan Repayment Programs (LRPs)"
+    },
+    {
+     "id": "d603fefd-8a27-4ffc-ac26-f8d0776d8700",
+     "title": "Microsoft - Doctoral and Postdoctoral Research Fellowship"
+    },
+    {
+     "id": "5bf16428-219c-4b71-8491-72710f7e337e",
+     "title": "National Science Foundation (NSF) - Postdoctoral Research Fellowships in Biology (PRFB)"
+    },
+    {
+     "id": "75d9e00f-c1bf-44b4-ac52-74a47d8ad5e6",
+     "title": "Mayo Clinic and Illinois Alliance - Fellowships for Technology-Based Healthcare Research"
+    },
+    {
+     "id": "6d471a52-bee6-4be8-847b-ef3511dfa2ee",
+     "title": "American Medical Association (AMA) Foundation - Physicians of Tomorrow - Awards for Students in Medicine"
+    },
+    {
+     "id": "4b2916db-9c35-4c56-90b4-ff582fab58df",
+     "title": "Autism Science Foundation (ASF) - Predoctoral, Postdoctoral, and Medical Student Research Fellowship"
+    },
+    {
+     "id": "ba36474b-250b-438b-a316-16bf2135a87a",
+     "title": "Tylenol - Future Care Scholarship for Medical / Graduate Students in Health Professions"
+    },
+    {
+     "id": "2d4ec2b6-5f3f-4ed1-8773-514517d55097",
+     "title": "Stanford University - Molecular Imaging Scholars Postdoctoral Fellowship"
+    },
+    {
+     "id": "a7e72878-0778-48a6-a9f3-46dded2fc7de",
+     "title": "American Society of Tropical Medicine & Hygiene (ASTMH) - Kean Traveling Fellowship in Tropical Medicine for Medical Students"
+    }
+   ]
+  },
+  "knowledge graphs|fellowship": {
+   "fusion_union_splade+xenc": [
+    {
+     "id": "ab3830da-5edf-4856-9b89-922627a7ec3a",
+     "title": "Open Society Archives (OSA) - Central European University, Budapest - Visegrad Scholarship"
+    },
+    {
+     "id": "07ac72c5-017f-40c4-8b74-f01112dd908b",
+     "title": "National Science Foundation - Graduate Research Fellowships (NSF-GRF)"
+    },
+    {
+     "id": "3a1b8863-460d-441c-819b-54fe5b5084be",
+     "title": "American Center of Oriental Research (ACOR) in Amman, Jordan - Pre-doctoral and Postdoctoral Fellowships"
+    },
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "5fe6c8da-6e81-41dc-8d5d-6db96d5e1093",
+     "title": "American Philosophical Society (APS) / Mellon Foundation - Native American Scholars Initiative (NASI) Digital Knowledge Sharing Fellowships"
+    },
+    {
+     "id": "f29cc261-e475-4c72-9e22-721e233b4ee5",
+     "title": "Google US/Canada PhD Fellowship Program"
+    },
+    {
+     "id": "52a6bcfd-f9d6-4a47-bc5b-3c92e251b805",
+     "title": "Los Alamos National Laboratory (LANL) - Postdoctoral Research Program"
+    },
+    {
+     "id": "4b62a6e1-79c7-4b65-be27-6cbb94e5d050",
+     "title": "Getty Conservation Institute (GCI) - Postdoctoral Fellowship in Conservation Science"
+    },
+    {
+     "id": "cae9d7f2-33bd-44e2-9817-c9feb6ce7a40",
+     "title": "Washington University in St. Louis - American Cultural Studies Program (ACSP) - Postdoctoral Fellowship"
+    },
+    {
+     "id": "acccc2eb-73d3-47e7-910c-01ffe7ea5a02",
+     "title": "American Association for the Advancement of Science (AAAS) - Science & Technology Policy Postdoctoral Fellowships"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "ab3830da-5edf-4856-9b89-922627a7ec3a",
+     "title": "Open Society Archives (OSA) - Central European University, Budapest - Visegrad Scholarship"
+    },
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "4d5cfa70-4ddb-4696-87ed-487208cc7f11",
+     "title": "Sandia National Laboratory - John von Neumann Postdoctoral Fellowship in Computational Science"
+    },
+    {
+     "id": "e9bd9c9a-ff2a-485b-8d06-8952e6eb5bb4",
+     "title": "Schmidt Science Fellows Program - Postdoctoral Fellowships in Natural Sciences, Engineering, Math, and Computing"
+    },
+    {
+     "id": "5fe6c8da-6e81-41dc-8d5d-6db96d5e1093",
+     "title": "American Philosophical Society (APS) / Mellon Foundation - Native American Scholars Initiative (NASI) Digital Knowledge Sharing Fellowships"
+    },
+    {
+     "id": "f29cc261-e475-4c72-9e22-721e233b4ee5",
+     "title": "Google US/Canada PhD Fellowship Program"
+    },
+    {
+     "id": "c8944d9b-bfb4-4c94-b23c-060067422130",
+     "title": "Linda Hall Library - Science, Engineering & Technology Doctoral and Postdoctoral Fellowships"
+    },
+    {
+     "id": "e849d87a-7ef6-473f-ba76-7283eec09a41",
+     "title": "Jump Trading PhD Fellowship"
+    },
+    {
+     "id": "d5514f2f-221b-4f30-a806-0e8af05d7c3a",
+     "title": "Council of Graduate Schools / ProQuest - Distinguished Dissertation Awards"
+    },
+    {
+     "id": "fe659ac8-0c41-4512-8c66-00efbd7a07db",
+     "title": "ACM SIGHPC - Graduate Fellowship for Women and Minorities in Computational & Data Science"
+    }
+   ]
+  }
+ },
+ "timing": [
+  {
+   "type": "paper",
+   "query": "Agentic AI in healthcare",
+   "arm": "fusion_union_splade+xenc",
+   "seconds": 2.483239337001578
+  },
+  {
+   "type": "paper",
+   "query": "Agentic AI in healthcare",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 3.008468198000628
+  },
+  {
+   "type": "paper",
+   "query": "knowledge graphs",
+   "arm": "fusion_union_splade+xenc",
+   "seconds": 2.3046044349976
+  },
+  {
+   "type": "paper",
+   "query": "knowledge graphs",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 1.5171173039998394
+  },
+  {
+   "type": "grant",
+   "query": "Agentic AI in healthcare",
+   "arm": "fusion_union_splade+xenc",
+   "seconds": 1.338793335002265
+  },
+  {
+   "type": "grant",
+   "query": "Agentic AI in healthcare",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 1.3466876220045378
+  },
+  {
+   "type": "grant",
+   "query": "knowledge graphs",
+   "arm": "fusion_union_splade+xenc",
+   "seconds": 1.1672235980004189
+  },
+  {
+   "type": "grant",
+   "query": "knowledge graphs",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 1.3092436130027636
+  },
+  {
+   "type": "conference",
+   "query": "Agentic AI in healthcare",
+   "arm": "fusion_union_splade+xenc",
+   "seconds": 0.8948763239968685
+  },
+  {
+   "type": "conference",
+   "query": "Agentic AI in healthcare",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 0.7373001499945531
+  },
+  {
+   "type": "conference",
+   "query": "knowledge graphs",
+   "arm": "fusion_union_splade+xenc",
+   "seconds": 0.8731771070015384
+  },
+  {
+   "type": "conference",
+   "query": "knowledge graphs",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 0.9369677109934855
+  },
+  {
+   "type": "fellowship",
+   "query": "Agentic AI in healthcare",
+   "arm": "fusion_union_splade+xenc",
+   "seconds": 2.7008741600002395
+  },
+  {
+   "type": "fellowship",
+   "query": "Agentic AI in healthcare",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 3.151801442996657
+  },
+  {
+   "type": "fellowship",
+   "query": "knowledge graphs",
+   "arm": "fusion_union_splade+xenc",
+   "seconds": 2.482823489001021
+  },
+  {
+   "type": "fellowship",
+   "query": "knowledge graphs",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 1.6507309829976293
+  }
+ ],
+ "corpus_sizes": {
+  "paper": 35205,
+  "grant": 2171,
+  "conference": 912,
+  "fellowship": 818
+ }
+}

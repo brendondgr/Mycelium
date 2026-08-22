@@ -1,0 +1,90 @@
+# The machine-readable half of the record. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-08-017
+slug: splade-vs-dense-reranked
+title: Three channels + cross-encoder against the dense pool + cross-encoder
+status: complete
+date_started: 2026-08-22
+date_completed: 2026-08-22
+authors: [brendondgr]
+
+purpose: >
+  EXP-2026-08-015 and EXP-2026-08-016 both gave first place to
+  fusion_dense_pool+xenc and the three-channel arm won nothing -- but in both
+  booklets the three-channel arm was BARE, so every comparison changed two things
+  at once: how the pool was built and whether anything reranked it. This gives
+  both pools the identical cross-encoder over their own top 50, leaving the pool
+  as the only difference. Two arms, two queries (Agentic AI in healthcare,
+  knowledge graphs), four content types, sixteen lists, blinded K/V.
+
+hypothesis: >
+  Pre-registered with all three outcomes and what each would mean, before either
+  arm was scored. Dense pool still preferred => the pool restriction C-008 calls
+  a defect is doing something useful and C-023 becomes a claim about the pool.
+  Three-channel preferred once reranked => the previous six firsts were about the
+  missing reranker, not the pool, and C-008/C-014's production implications
+  return. Indistinguishable => the pool does not matter at top-10 once a reranker
+  is present and the cheaper arm wins by default. No verdict is computed here --
+  the judgment is the reader's. OUTCOME on the answerable half: the reranker
+  largely erases the pool difference. Healthcare grants are byte-identical
+  (Jaccard@10 = 1.00) and healthcare papers agree exactly through rank 7,
+  diverging only at 8. Median overlap across the eight cells is ~0.54 against
+  0.27-0.63 pairwise in the four-arm booklets. The exception is knowledge-graph
+  fellowships at 0.25, the least agreement of any cell.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: dd00630
+  branch: main
+  entrypoint: "uv run --project eval python .../code/run.py && uv run --project eval python .../code/build_pdf.py"
+  dirty: true  # this experiment's own folder. ISSUES.md 8
+config:
+  # No config files: arms, queries and the blinding are constants in the runner
+  # (POOL_PER_INTEREST=100, RERANK_DEPTH=50, TOP_N=10, BLIND_ORDER).
+  path: docs/research/experiments/EXP-2026-08-017-splade-vs-dense-reranked/code/run.py
+  hash: null
+data:
+  name: Mycelium production ContentItem store (development deployment)
+  version: "compose postgres (pgvector/pgvector:pg17) at localhost:11450; papers 35,205, grants 2,171, conferences 912, fellowships 818"
+  split: test
+  n_examples: 16 # ranked lists = 2 arms x 2 queries x 4 content types
+  qrels: "none -- no relevance judgments exist for this corpus (W5). The instrument is a blinded human preference booklet."
+  hash: null
+  card: null
+seeds: []  # both arms are deterministic; ties broken by document id
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: "pgvector/pgvector:pg17 for the store; the arms run on the host"
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 0.02
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: Jaccard@10 between the two arms (agreement, not quality)
+  values:
+    overlap__healthcare__grants: 1.00 # byte-identical top-10s
+    overlap__healthcare__conferences: 0.82
+    overlap__healthcare__fellowships: 0.67
+    overlap__healthcare__papers: 0.54 # ranks 1-7 identical, diverging at 8
+    overlap__knowledge_graphs__grants: 0.54
+    overlap__knowledge_graphs__conferences: 0.54
+    overlap__knowledge_graphs__papers: 0.43
+    overlap__knowledge_graphs__fellowships: 0.25 # least agreement of any cell here
+    latency__fusion_dense_pool_xenc__seconds_per_query: 1.432
+    latency__fusion_union_splade_xenc__seconds_per_query: 1.822 # plus ~23 min one-time index and a second resident model
+baselines_compared: [fusion_dense_pool+xenc]
+statistical_test: null # by design -- reports composition and cost, and elicits a preference
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-021]
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-016, EXP-2026-08-015, EXP-2026-08-014, EXP-2026-08-013]
