@@ -1,0 +1,88 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-08-016
+slug: knowledge-graphs-title-matrix
+title: "Same four arms, a second research area: knowledge graphs"
+status: complete
+date_started: 2026-08-22
+date_completed: 2026-08-22
+authors: [brendondgr]
+
+purpose: >
+  EXP-2026-08-015 gave a clean per-category winner on "Agentic AI in healthcare"
+  -- one arm first on papers, grants and conferences and last on fellowships. One
+  query cannot say whether that is a property of the arms or of that corner of
+  the corpus. This repeats the identical measurement on a second declared
+  research cluster, "knowledge graphs", with the same four arms and a third
+  blinding. Same winner means there is a configuration to ship; a different
+  winner means no single configuration is right for the whole product and the fix
+  is routing rather than a parameter (Q-031, Q-032).
+
+hypothesis: >
+  None on which arm wins, by design -- the corpus has no relevance judgments, an
+  LLM judge is the component EXP-2026-08-008 measured as non-monotonic in
+  relevance, and the author's own reading is not evidence about what this
+  researcher wants. OUTCOME on the answerable half: papers behave identically
+  across the two areas (21 distinct documents across the four top-tens at mean
+  pairwise Jaccard@10 of 0.29 here, 0.31 on healthcare). Grants and conferences
+  are MORE convergent here (0.63 against 0.49 and 0.59). Fellowships flip
+  completely: 0.53 on healthcare, 0.27 here with 25 distinct documents out of a
+  possible 40 -- the least agreement in any cell of either experiment. Cost is
+  uniformly lower for a two-word query and the shape is unchanged, with the
+  reranked arm at ~16x the arm it reranks.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 324daf9
+  branch: main
+  entrypoint: "uv run --project eval python .../code/run.py && uv run --project eval python .../code/build_pdf.py"
+  dirty: true  # this folder plus the EXP-2026-08-015 amendment. ISSUES.md 6
+config:
+  # No config files: query and blinding are constants in the runner, which
+  # re-points EXP-2026-08-015's arm code rather than copying it (ISSUES.md 2).
+  path: docs/research/experiments/EXP-2026-08-016-knowledge-graphs-title-matrix/code/run.py
+  hash: null
+data:
+  name: Mycelium production ContentItem store (development deployment)
+  version: "compose postgres (pgvector/pgvector:pg17) at localhost:11450; papers 35,205, grants 2,171, conferences 912, fellowships 818"
+  split: test
+  n_examples: 16 # ranked lists = 4 arms x 1 query x 4 content types
+  qrels: "none -- no relevance judgments exist for this corpus (W5). The instrument is a blinded human preference booklet."
+  hash: null
+  card: null
+seeds: []  # every arm is deterministic; ties broken by document id
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: "pgvector/pgvector:pg17 for the store; the arms run on the host"
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 0.005
+  estimated_cost_usd: null
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: mean pairwise Jaccard@10 between arms (agreement, not quality)
+  values:
+    agreement__mean_pairwise_jaccard10__papers: 0.292 # 21 distinct; healthcare 0.31
+    agreement__mean_pairwise_jaccard10__grants: 0.628 # 15 distinct; healthcare 0.49
+    agreement__mean_pairwise_jaccard10__conferences: 0.628 # 14 distinct; healthcare 0.59
+    agreement__mean_pairwise_jaccard10__fellowships: 0.274 # 25 distinct; healthcare 0.53 -- the least agreement in any cell of either experiment
+    latency__fusion_union_pool__seconds_per_query: 0.055
+    latency__fusion_dense_pool__seconds_per_query: 0.056 # production as deployed
+    latency__fusion_union_splade__seconds_per_query: 0.084
+    latency__fusion_dense_pool_xenc__seconds_per_query: 0.911 # end to end; ~16x the arm it reranks
+baselines_compared: [fusion_dense_pool]
+statistical_test: null # by design -- reports composition and cost, and elicits a preference
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-021]
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-015, EXP-2026-08-014, EXP-2026-08-013]

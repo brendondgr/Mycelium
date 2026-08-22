@@ -95,3 +95,88 @@ back, and the reading that matters most is **whether the three-channel arm — t
 one this programme has been recommending on LongEval evidence — is any good on a
 real query**, since `EXP-2026-08-014` left it the only arm with no human read at
 all.
+
+---
+
+## AMENDMENTS
+
+### 2026-08-22 — the preference came back, and it is category-dependent
+
+One reader, one query (`Agentic AI in healthcare`), read blind. **Not W5**: no
+interval, no aggregation, never a relevance judgment.
+
+| | W = production **+ cross-encoder** | X = three channels **+SPLADE** | Y = union pool | Z = **production as deployed** |
+|---|:--:|:--:|:--:|:--:|
+| **Papers** | **1st** | ≈3rd | ≈3rd | ≈3rd |
+| **Grants** | **1st** | ≈2nd | ≈2nd | ≈2nd |
+| **Conferences** | **1st** | **4th** | ≈2nd | ≈2nd |
+| **Fellowships** | **4th** | 3rd | 2nd | **1st** |
+
+**Every attribution the reader made is correct against `data/lists.json`.** Spot-
+checked: the Salesforce-CRM paper they objected to at rank 1 is X's and Y's rank
+1 (W has it 4th, Z 3rd); "Agentic AI in Agriculture" is Y=7, Z=6; the predictive-
+biomarker grant is X=5, Y=9, Z=6 and **absent from W**; "Mathematical Reasoning
+and AI" and the Agentic-Web workshop are X's alone (7th and 9th); and all four
+fellowships they rejected — Physicians of Tomorrow, Autism Science Foundation,
+Molecular Imaging, Tropical Medicine & Hygiene — are **W's**, three of them
+exclusively.
+
+### 1. The cross-encoder won three categories — and the record says it should not have
+
+`EXP-2026-08-009` refuted C-013 on aggregate ranking and `EXP-2026-08-010` refuted
+the rescue for it. Here, reranking **production's dense-restricted pool** took
+first place on papers, grants and conferences.
+
+Set against `EXP-2026-08-014`'s four paired comparisons, a mechanism appears:
+
+| base pool | + cross-encoder | outcome |
+|---|---|---|
+| `dense_only` (broad, semantic) | I | **hurt** |
+| `fusion_union_pool` (broad, lexical ∪ dense) | J | **hurt** |
+| `bm25_only` (broad, lexical) | B | helped |
+| `fusion_dense_pool` (**narrow, dense-filtered**) | G / **W** | neutral, then **best** |
+
+**The cross-encoder appears to help when it reranks a narrow, already
+semantically-filtered pool and to hurt when it reranks a broad one.** That is not
+what "the cross-encoder is refuted" predicts, and it is consistent with both
+reads. It remains a hypothesis from five paired comparisons and one judge.
+
+### 2. Fellowships invert it, and the failure is diagnostic
+
+W is *worst* on fellowships, and the reader named exactly why: Tropical Medicine
+& Hygiene, Molecular Imaging, Physicians of Tomorrow, Autism Science Foundation.
+Every one is a **medical** fellowship with no connection to AI agents.
+
+That is a term-matching failure of precisely the kind an MS MARCO-trained
+cross-encoder makes: on a corpus where the query's domain word ("healthcare")
+appears as boilerplate in nearly every document, surface matching promotes domain
+membership over topical fit, and the dense channel — which W had already used to
+build the pool — was the thing keeping it honest. The reranker undid it.
+
+So the right retrieval configuration may **differ by content type**, which no
+experiment in this record has considered and which the deployed code cannot
+express: `opportunities.py` and the paper pipeline share `fuse_interests_pool`.
+Opened as `Q-031`.
+
+### 3. The two arms this programme recommends won nothing
+
+`fusion_union_pool` (C-008's implication) and `fusion_union_splade` (C-014's) took
+**no first place in any category**, and the three-channel arm came last on
+conferences. Two human reads in a row have now declined to endorse the ladder's
+production recommendation — `EXP-2026-08-014` rated the union pool "very good"
+but rated its reranked form bad, and here neither wins anything.
+
+This does not refute C-008 or C-014, which are recall claims about LongEval and
+were measured properly. It does mean **no human read has yet endorsed the change
+they imply**, which matters more for a shipping decision than either claim does.
+
+### 4. What the reader could not separate
+
+"X, Y, Z are equal to one another" (papers), "each one is pretty close" (grants),
+"Y and Z are tied… very very similar" (conferences). Three of four categories
+ended with a clear winner and a tie for the rest — so the judgment resolves *one*
+arm per category and not an ordering.
+
+**Follow-up:** `EXP-2026-08-016` repeats this on a different research area
+(`knowledge graphs`) with the same four arms and a **third** blinding, to test
+whether W's advantage is a property of the arms or of the healthcare corpus.

@@ -1,0 +1,785 @@
+{
+ "query": "knowledge graphs",
+ "types": [
+  "paper",
+  "grant",
+  "conference",
+  "fellowship"
+ ],
+ "blind_labels": {
+  "M": "fusion_union_pool",
+  "N": "fusion_dense_pool",
+  "P": "fusion_dense_pool+xenc",
+  "R": "fusion_union_splade"
+ },
+ "cells": {
+  "paper": {
+   "fusion_union_pool": [
+    {
+     "id": "df7e17c5-f943-45ba-9c77-d9430056ecef",
+     "title": "Attribute reduction for concept cognition over knowledge graphs"
+    },
+    {
+     "id": "7e5ecdbc-7ec9-4ba2-9e79-5487754e4cb2",
+     "title": "Multi-Stage Think-on-Graph: A Structured Reasoning Framework for LLM over Knowledge Graphs"
+    },
+    {
+     "id": "a96d96cf-6e5d-4dc2-b2b9-23df02f51522",
+     "title": "Dataset and Code for Constructing knowledge graphs using domain knowledge constraints and guidance based on LLM"
+    },
+    {
+     "id": "eec65bc2-540e-492f-9b4b-b4c7837774e1",
+     "title": "HYBRID GRAPH-BASED ENTITY RESOLUTION FOR KNOWLEDGE GRAPHS FROM OPEN-SOURCE TEXT"
+    },
+    {
+     "id": "1e563cbf-f29f-4ab1-9304-bb0505440afc",
+     "title": "GraphRAG or Fine-Tuning? Evaluating Knowledge Integration via Manually Extracted Graphs in Traditional Chinese Medicine"
+    },
+    {
+     "id": "40110e0c-5b68-47cb-8270-178982570abd",
+     "title": "Introduction to the Special Issue on Integrating Large Language Models and Knowledge Graphs for Generative AI"
+    },
+    {
+     "id": "f79ef2e6-c57f-4fe8-8873-0fbab4e50a31",
+     "title": "Chain-Aware Vectorized Datalog Reasoning over Large Knowledge Graphs"
+    },
+    {
+     "id": "b7146d01-2c3a-427d-89f5-229637e16944",
+     "title": "Enhancing Knowledge Graphs with Dual Modules to Alleviate Knowledge Discrepancies in Recommender Systems"
+    },
+    {
+     "id": "da3e6946-483d-4ecf-9b1c-f0fa56fa86a2",
+     "title": "Mitigating Membership Inference Attacks on Knowledge Graphs"
+    },
+    {
+     "id": "ccca0eb3-54ee-45de-b4b3-5ac416a1294a",
+     "title": "Knowledge Graph Lakehouse: a cloud-native data lakehouse for contextualised knowledge graphs"
+    }
+   ],
+   "fusion_dense_pool": [
+    {
+     "id": "df7e17c5-f943-45ba-9c77-d9430056ecef",
+     "title": "Attribute reduction for concept cognition over knowledge graphs"
+    },
+    {
+     "id": "7e5ecdbc-7ec9-4ba2-9e79-5487754e4cb2",
+     "title": "Multi-Stage Think-on-Graph: A Structured Reasoning Framework for LLM over Knowledge Graphs"
+    },
+    {
+     "id": "a96d96cf-6e5d-4dc2-b2b9-23df02f51522",
+     "title": "Dataset and Code for Constructing knowledge graphs using domain knowledge constraints and guidance based on LLM"
+    },
+    {
+     "id": "3c93e656-799f-43bc-9d2f-d246a2f870c9",
+     "title": "Unified Knowledge Graph visualization"
+    },
+    {
+     "id": "1e563cbf-f29f-4ab1-9304-bb0505440afc",
+     "title": "GraphRAG or Fine-Tuning? Evaluating Knowledge Integration via Manually Extracted Graphs in Traditional Chinese Medicine"
+    },
+    {
+     "id": "eec65bc2-540e-492f-9b4b-b4c7837774e1",
+     "title": "HYBRID GRAPH-BASED ENTITY RESOLUTION FOR KNOWLEDGE GRAPHS FROM OPEN-SOURCE TEXT"
+    },
+    {
+     "id": "f79ef2e6-c57f-4fe8-8873-0fbab4e50a31",
+     "title": "Chain-Aware Vectorized Datalog Reasoning over Large Knowledge Graphs"
+    },
+    {
+     "id": "be7ad6e3-2b67-400b-be0b-ea2cc2b657ca",
+     "title": "Construction of Knowledge Graph Based on Language Model"
+    },
+    {
+     "id": "ab783bca-fad1-4a40-9544-36b8af1f4b21",
+     "title": "Time and space in the Unified Knowledge Graph environment"
+    },
+    {
+     "id": "86641868-7fbd-4ed5-9209-7316c3c7b39e",
+     "title": "Comunica"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "d3b163f0-dca6-4fec-8104-c8c59bbeccf6",
+     "title": "Construction and Applications of Knowledge Graphs in Ophthalmology."
+    },
+    {
+     "id": "ccca0eb3-54ee-45de-b4b3-5ac416a1294a",
+     "title": "Knowledge Graph Lakehouse: a cloud-native data lakehouse for contextualised knowledge graphs"
+    },
+    {
+     "id": "4ca7258b-f9a3-4fc3-8ac1-c25c5e17f546",
+     "title": "Knowledge Graph-Enhanced Medical Large Language Models: Challenges, Methods, and Future Directions"
+    },
+    {
+     "id": "61a7494e-8c0a-4810-aa62-6fd8df4e02af",
+     "title": "Knowledge graph modeling for data asset pricing"
+    },
+    {
+     "id": "40110e0c-5b68-47cb-8270-178982570abd",
+     "title": "Introduction to the Special Issue on Integrating Large Language Models and Knowledge Graphs for Generative AI"
+    },
+    {
+     "id": "be7ad6e3-2b67-400b-be0b-ea2cc2b657ca",
+     "title": "Construction of Knowledge Graph Based on Language Model"
+    },
+    {
+     "id": "676ae7f1-52e3-4577-81a7-91153498eacb",
+     "title": "Content-Based Dataset Knowledge Graphs for Dataset Search"
+    },
+    {
+     "id": "a96d96cf-6e5d-4dc2-b2b9-23df02f51522",
+     "title": "Dataset and Code for Constructing knowledge graphs using domain knowledge constraints and guidance based on LLM"
+    },
+    {
+     "id": "b7146d01-2c3a-427d-89f5-229637e16944",
+     "title": "Enhancing Knowledge Graphs with Dual Modules to Alleviate Knowledge Discrepancies in Recommender Systems"
+    },
+    {
+     "id": "e707ba2b-8a8f-43f4-8186-d6daf50419b9",
+     "title": "CECKG: A Credible Entity Classification Method for Knowledge Graph"
+    }
+   ],
+   "fusion_union_splade": [
+    {
+     "id": "ccca0eb3-54ee-45de-b4b3-5ac416a1294a",
+     "title": "Knowledge Graph Lakehouse: a cloud-native data lakehouse for contextualised knowledge graphs"
+    },
+    {
+     "id": "a96d96cf-6e5d-4dc2-b2b9-23df02f51522",
+     "title": "Dataset and Code for Constructing knowledge graphs using domain knowledge constraints and guidance based on LLM"
+    },
+    {
+     "id": "40110e0c-5b68-47cb-8270-178982570abd",
+     "title": "Introduction to the Special Issue on Integrating Large Language Models and Knowledge Graphs for Generative AI"
+    },
+    {
+     "id": "d3b163f0-dca6-4fec-8104-c8c59bbeccf6",
+     "title": "Construction and Applications of Knowledge Graphs in Ophthalmology."
+    },
+    {
+     "id": "b7146d01-2c3a-427d-89f5-229637e16944",
+     "title": "Enhancing Knowledge Graphs with Dual Modules to Alleviate Knowledge Discrepancies in Recommender Systems"
+    },
+    {
+     "id": "676ae7f1-52e3-4577-81a7-91153498eacb",
+     "title": "Content-Based Dataset Knowledge Graphs for Dataset Search"
+    },
+    {
+     "id": "be7ad6e3-2b67-400b-be0b-ea2cc2b657ca",
+     "title": "Construction of Knowledge Graph Based on Language Model"
+    },
+    {
+     "id": "3c93e656-799f-43bc-9d2f-d246a2f870c9",
+     "title": "Unified Knowledge Graph visualization"
+    },
+    {
+     "id": "b988b2b6-e271-4451-8014-a466d5424164",
+     "title": "From Known Relations to New One: Learning to Classify Triplets of Unseen Relations from A Biomedical Knowledge Graph"
+    },
+    {
+     "id": "25674593-f8c8-46e4-ad66-5bb86ee1a6ba",
+     "title": "Towards Conflict-aware Selective Knowledge Unlearning for Continual Few-shot Knowledge Graph Completion"
+    }
+   ]
+  },
+  "grant": {
+   "fusion_union_pool": [
+    {
+     "id": "3f615d82-4992-4381-a358-ef88756c162b",
+     "title": "Automated Processes for Knowledge Discovery and Information Retrieval"
+    },
+    {
+     "id": "686c6e50-d67a-477b-a37b-f44973f4718e",
+     "title": "Increasing knowledge flows to practice within AKIS via EU thematic knowledge hubs"
+    },
+    {
+     "id": "15e68071-ceb8-43f5-80fd-83ac9498ce59",
+     "title": "Pillar IV: Upgrading the EU\u2019s independent knowledge on China's Science, Technology and Innovation system"
+    },
+    {
+     "id": "fa03ba63-7f3e-4a3e-9ef7-476aa08659f6",
+     "title": "Enhancement and Management of Established Biomedical Data Repositories and Knowledgebases (R24 Clinical Trial Not Allowed)"
+    },
+    {
+     "id": "e24eadce-eece-4617-ad3d-2767ebc8fd11",
+     "title": "Unlocking the potential of academic intellectual assets for industry, SMEs and startups (CSA)"
+    },
+    {
+     "id": "005074f2-cfa2-4fc0-95df-4501e8bb3543",
+     "title": "European CCAM knowledge hub and tools for safe and scalable deployment (CCAM Partnership)"
+    },
+    {
+     "id": "e39d93cc-dd29-4fa8-b789-273d85394778",
+     "title": "Computer and Information Science and Engineering : Future Computing Research (Future CoRe)"
+    },
+    {
+     "id": "015ddd81-f3e2-4159-8c80-cb78a68b8351",
+     "title": "Governance, sustainable development and international politics of a future ice-free Arctic"
+    },
+    {
+     "id": "493435ad-368f-4287-9fda-50263c983648",
+     "title": "Novel combinations of knowledge and research methods to address social issues and advance a fair green transition of neighbourhoods"
+    },
+    {
+     "id": "e59904c8-6f89-4664-a89e-ff0a955ac252",
+     "title": "GlobalX Challenge 26.1: AI-Native Air Interface for Tactical Communication Networks"
+    }
+   ],
+   "fusion_dense_pool": [
+    {
+     "id": "3f615d82-4992-4381-a358-ef88756c162b",
+     "title": "Automated Processes for Knowledge Discovery and Information Retrieval"
+    },
+    {
+     "id": "686c6e50-d67a-477b-a37b-f44973f4718e",
+     "title": "Increasing knowledge flows to practice within AKIS via EU thematic knowledge hubs"
+    },
+    {
+     "id": "15e68071-ceb8-43f5-80fd-83ac9498ce59",
+     "title": "Pillar IV: Upgrading the EU\u2019s independent knowledge on China's Science, Technology and Innovation system"
+    },
+    {
+     "id": "005074f2-cfa2-4fc0-95df-4501e8bb3543",
+     "title": "European CCAM knowledge hub and tools for safe and scalable deployment (CCAM Partnership)"
+    },
+    {
+     "id": "fa03ba63-7f3e-4a3e-9ef7-476aa08659f6",
+     "title": "Enhancement and Management of Established Biomedical Data Repositories and Knowledgebases (R24 Clinical Trial Not Allowed)"
+    },
+    {
+     "id": "e24eadce-eece-4617-ad3d-2767ebc8fd11",
+     "title": "Unlocking the potential of academic intellectual assets for industry, SMEs and startups (CSA)"
+    },
+    {
+     "id": "493435ad-368f-4287-9fda-50263c983648",
+     "title": "Novel combinations of knowledge and research methods to address social issues and advance a fair green transition of neighbourhoods"
+    },
+    {
+     "id": "e39d93cc-dd29-4fa8-b789-273d85394778",
+     "title": "Computer and Information Science and Engineering : Future Computing Research (Future CoRe)"
+    },
+    {
+     "id": "088e2de7-1558-4c01-a2b9-fabc47a366dd",
+     "title": "BRAIN Initiative Cell Atlas Network (BICAN): Coordinating Unit for Biostatistics, Informatics, and Engagement (CUBIE)"
+    },
+    {
+     "id": "015ddd81-f3e2-4159-8c80-cb78a68b8351",
+     "title": "Governance, sustainable development and international politics of a future ice-free Arctic"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "686c6e50-d67a-477b-a37b-f44973f4718e",
+     "title": "Increasing knowledge flows to practice within AKIS via EU thematic knowledge hubs"
+    },
+    {
+     "id": "fa03ba63-7f3e-4a3e-9ef7-476aa08659f6",
+     "title": "Enhancement and Management of Established Biomedical Data Repositories and Knowledgebases (R24 Clinical Trial Not Allowed)"
+    },
+    {
+     "id": "3f615d82-4992-4381-a358-ef88756c162b",
+     "title": "Automated Processes for Knowledge Discovery and Information Retrieval"
+    },
+    {
+     "id": "493435ad-368f-4287-9fda-50263c983648",
+     "title": "Novel combinations of knowledge and research methods to address social issues and advance a fair green transition of neighbourhoods"
+    },
+    {
+     "id": "005074f2-cfa2-4fc0-95df-4501e8bb3543",
+     "title": "European CCAM knowledge hub and tools for safe and scalable deployment (CCAM Partnership)"
+    },
+    {
+     "id": "e24eadce-eece-4617-ad3d-2767ebc8fd11",
+     "title": "Unlocking the potential of academic intellectual assets for industry, SMEs and startups (CSA)"
+    },
+    {
+     "id": "df054206-eaa6-4727-93a5-71abafc087fa",
+     "title": "Living labs driving transformative change via knowledge integration and inclusive governance"
+    },
+    {
+     "id": "a5f8c0af-81b2-494e-916c-ea5122a5755a",
+     "title": "Combinatorics"
+    },
+    {
+     "id": "15e68071-ceb8-43f5-80fd-83ac9498ce59",
+     "title": "Pillar IV: Upgrading the EU\u2019s independent knowledge on China's Science, Technology and Innovation system"
+    },
+    {
+     "id": "e59904c8-6f89-4664-a89e-ff0a955ac252",
+     "title": "GlobalX Challenge 26.1: AI-Native Air Interface for Tactical Communication Networks"
+    }
+   ],
+   "fusion_union_splade": [
+    {
+     "id": "686c6e50-d67a-477b-a37b-f44973f4718e",
+     "title": "Increasing knowledge flows to practice within AKIS via EU thematic knowledge hubs"
+    },
+    {
+     "id": "3f615d82-4992-4381-a358-ef88756c162b",
+     "title": "Automated Processes for Knowledge Discovery and Information Retrieval"
+    },
+    {
+     "id": "15e68071-ceb8-43f5-80fd-83ac9498ce59",
+     "title": "Pillar IV: Upgrading the EU\u2019s independent knowledge on China's Science, Technology and Innovation system"
+    },
+    {
+     "id": "005074f2-cfa2-4fc0-95df-4501e8bb3543",
+     "title": "European CCAM knowledge hub and tools for safe and scalable deployment (CCAM Partnership)"
+    },
+    {
+     "id": "fa03ba63-7f3e-4a3e-9ef7-476aa08659f6",
+     "title": "Enhancement and Management of Established Biomedical Data Repositories and Knowledgebases (R24 Clinical Trial Not Allowed)"
+    },
+    {
+     "id": "e24eadce-eece-4617-ad3d-2767ebc8fd11",
+     "title": "Unlocking the potential of academic intellectual assets for industry, SMEs and startups (CSA)"
+    },
+    {
+     "id": "e39d93cc-dd29-4fa8-b789-273d85394778",
+     "title": "Computer and Information Science and Engineering : Future Computing Research (Future CoRe)"
+    },
+    {
+     "id": "e59904c8-6f89-4664-a89e-ff0a955ac252",
+     "title": "GlobalX Challenge 26.1: AI-Native Air Interface for Tactical Communication Networks"
+    },
+    {
+     "id": "31f39d66-a184-4961-9692-370077bce527",
+     "title": "Science-policy support to the implementation of EU and global biodiversity policies and strategies"
+    },
+    {
+     "id": "4ed6f5f0-5bd5-45ec-878a-7ec6d01ea356",
+     "title": "Computer and Information Science and Engineering (CISE): Future Computing Research"
+    }
+   ]
+  },
+  "conference": {
+   "fusion_union_pool": [
+    {
+     "id": "64b1f21e-615d-4d89-8d09-5c683f425f2d",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay"
+    },
+    {
+     "id": "9f742175-ec11-49f5-8843-ba4c1d955caf",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay - ARR Commitment"
+    },
+    {
+     "id": "8538d693-9960-4742-980c-20d8ec2617ac",
+     "title": "Workshop on Automated Knowledge Base Construction 2026 - ARR Commitment"
+    },
+    {
+     "id": "87e24902-f926-47ec-9e8d-347cf85ba819",
+     "title": "The 2nd International Workshop on Graph-Augmented LLMs (GaLM): Bridging Language and Structured Knowledge"
+    },
+    {
+     "id": "ab7a060b-840f-43ec-9aa1-ed3a730e2815",
+     "title": "NeurIPS 2026 Workshop on Interpretability for Discovery"
+    },
+    {
+     "id": "7ec4ec91-048b-4012-a932-b616a2e76b73",
+     "title": "NeurIPS 2026 Workshop: Epistemic Intelligence in Machine Learning"
+    },
+    {
+     "id": "63533ce0-18ed-4f27-bf72-c62f2a3ad506",
+     "title": "First Workshop on Document Intelligence and Understanding (ARR Commitment)"
+    },
+    {
+     "id": "a1fe41e6-2697-4623-8437-ccf60597ec7b",
+     "title": "1st Workshop on Embodied Neuro-Symbolic AI for Reliable and Safe Robotics (ReS AI)"
+    },
+    {
+     "id": "fb639bce-47ee-4056-96d0-d36e6383663a",
+     "title": "XAI4Science: Knowledge Discovery and Trust through Interpretable Foundation Models"
+    },
+    {
+     "id": "f56ee528-a8be-40d6-9d5c-a1b0a27eb52a",
+     "title": "CoRL 2026 Workshop on The Action Gap: Large Generative Models Learn Rich Knowledge"
+    }
+   ],
+   "fusion_dense_pool": [
+    {
+     "id": "64b1f21e-615d-4d89-8d09-5c683f425f2d",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay"
+    },
+    {
+     "id": "9f742175-ec11-49f5-8843-ba4c1d955caf",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay - ARR Commitment"
+    },
+    {
+     "id": "8538d693-9960-4742-980c-20d8ec2617ac",
+     "title": "Workshop on Automated Knowledge Base Construction 2026 - ARR Commitment"
+    },
+    {
+     "id": "87e24902-f926-47ec-9e8d-347cf85ba819",
+     "title": "The 2nd International Workshop on Graph-Augmented LLMs (GaLM): Bridging Language and Structured Knowledge"
+    },
+    {
+     "id": "7ec4ec91-048b-4012-a932-b616a2e76b73",
+     "title": "NeurIPS 2026 Workshop: Epistemic Intelligence in Machine Learning"
+    },
+    {
+     "id": "ab7a060b-840f-43ec-9aa1-ed3a730e2815",
+     "title": "NeurIPS 2026 Workshop on Interpretability for Discovery"
+    },
+    {
+     "id": "63533ce0-18ed-4f27-bf72-c62f2a3ad506",
+     "title": "First Workshop on Document Intelligence and Understanding (ARR Commitment)"
+    },
+    {
+     "id": "fb639bce-47ee-4056-96d0-d36e6383663a",
+     "title": "XAI4Science: Knowledge Discovery and Trust through Interpretable Foundation Models"
+    },
+    {
+     "id": "a1fe41e6-2697-4623-8437-ccf60597ec7b",
+     "title": "1st Workshop on Embodied Neuro-Symbolic AI for Reliable and Safe Robotics (ReS AI)"
+    },
+    {
+     "id": "5bd83325-7ce0-45e0-bf64-afe80fee460c",
+     "title": "The Second Workshop on Generative Information Retrieval"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "64b1f21e-615d-4d89-8d09-5c683f425f2d",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay"
+    },
+    {
+     "id": "9f742175-ec11-49f5-8843-ba4c1d955caf",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay - ARR Commitment"
+    },
+    {
+     "id": "8538d693-9960-4742-980c-20d8ec2617ac",
+     "title": "Workshop on Automated Knowledge Base Construction 2026 - ARR Commitment"
+    },
+    {
+     "id": "87e24902-f926-47ec-9e8d-347cf85ba819",
+     "title": "The 2nd International Workshop on Graph-Augmented LLMs (GaLM): Bridging Language and Structured Knowledge"
+    },
+    {
+     "id": "5bd83325-7ce0-45e0-bf64-afe80fee460c",
+     "title": "The Second Workshop on Generative Information Retrieval"
+    },
+    {
+     "id": "c80c0ce4-f270-4add-89a7-6b1ac2606b3a",
+     "title": "ACML 2026 Workshop on Graph Machine Learning: Foundations, Frontiers, and Applications"
+    },
+    {
+     "id": "c0bc2f23-1e8d-48a9-9a1a-76f81d7b724f",
+     "title": "37th International Conference on Information Modelling and Knowledge Bases"
+    },
+    {
+     "id": "63533ce0-18ed-4f27-bf72-c62f2a3ad506",
+     "title": "First Workshop on Document Intelligence and Understanding (ARR Commitment)"
+    },
+    {
+     "id": "f56ee528-a8be-40d6-9d5c-a1b0a27eb52a",
+     "title": "CoRL 2026 Workshop on The Action Gap: Large Generative Models Learn Rich Knowledge"
+    },
+    {
+     "id": "7ec4ec91-048b-4012-a932-b616a2e76b73",
+     "title": "NeurIPS 2026 Workshop: Epistemic Intelligence in Machine Learning"
+    }
+   ],
+   "fusion_union_splade": [
+    {
+     "id": "64b1f21e-615d-4d89-8d09-5c683f425f2d",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay"
+    },
+    {
+     "id": "9f742175-ec11-49f5-8843-ba4c1d955caf",
+     "title": "NORA: The Third Workshop on KNOwledge GRaphs & Agentic Systems Interplay - ARR Commitment"
+    },
+    {
+     "id": "8538d693-9960-4742-980c-20d8ec2617ac",
+     "title": "Workshop on Automated Knowledge Base Construction 2026 - ARR Commitment"
+    },
+    {
+     "id": "87e24902-f926-47ec-9e8d-347cf85ba819",
+     "title": "The 2nd International Workshop on Graph-Augmented LLMs (GaLM): Bridging Language and Structured Knowledge"
+    },
+    {
+     "id": "7ec4ec91-048b-4012-a932-b616a2e76b73",
+     "title": "NeurIPS 2026 Workshop: Epistemic Intelligence in Machine Learning"
+    },
+    {
+     "id": "ab7a060b-840f-43ec-9aa1-ed3a730e2815",
+     "title": "NeurIPS 2026 Workshop on Interpretability for Discovery"
+    },
+    {
+     "id": "63533ce0-18ed-4f27-bf72-c62f2a3ad506",
+     "title": "First Workshop on Document Intelligence and Understanding (ARR Commitment)"
+    },
+    {
+     "id": "c0bc2f23-1e8d-48a9-9a1a-76f81d7b724f",
+     "title": "37th International Conference on Information Modelling and Knowledge Bases"
+    },
+    {
+     "id": "f56ee528-a8be-40d6-9d5c-a1b0a27eb52a",
+     "title": "CoRL 2026 Workshop on The Action Gap: Large Generative Models Learn Rich Knowledge"
+    },
+    {
+     "id": "a9cdbc05-36fb-4810-8be7-458fe6794fbd",
+     "title": "Workshop on Epistemic Injustice and AI / 23-24 March 2027"
+    }
+   ]
+  },
+  "fellowship": {
+   "fusion_union_pool": [
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "5fe6c8da-6e81-41dc-8d5d-6db96d5e1093",
+     "title": "American Philosophical Society (APS) / Mellon Foundation - Native American Scholars Initiative (NASI) Digital Knowledge Sharing Fellowships"
+    },
+    {
+     "id": "ab3830da-5edf-4856-9b89-922627a7ec3a",
+     "title": "Open Society Archives (OSA) - Central European University, Budapest - Visegrad Scholarship"
+    },
+    {
+     "id": "66720ead-c488-4e17-813d-20ea2ba84363",
+     "title": "National Institutes of Health (NIH) - National Institute of Aging (NIA) - Aging Research Dissertation Awards to Increase Diversity (R36)"
+    },
+    {
+     "id": "a56cb7e1-6f9a-40f6-bb39-ceae640bcb6c",
+     "title": "U.S. Department of Health and Human Services - National Institute on Drug Abuse (NIDA) - Substance Use/Substance Use Disorder Dissertation Research Award (R36)"
+    },
+    {
+     "id": "f29cc261-e475-4c72-9e22-721e233b4ee5",
+     "title": "Google US/Canada PhD Fellowship Program"
+    },
+    {
+     "id": "f7368ddd-e148-4b98-a9aa-1dff78d72162",
+     "title": "Longhi Foundation - Doctoral Fellowship in Art History"
+    },
+    {
+     "id": "7a148a72-a1a7-4493-a5fd-93834c4be782",
+     "title": "American Institute of Physics / American Physical Society (AIP-APS) - Postdoctoral Congressional Science Fellowship"
+    },
+    {
+     "id": "d603fefd-8a27-4ffc-ac26-f8d0776d8700",
+     "title": "Microsoft - Doctoral and Postdoctoral Research Fellowship"
+    },
+    {
+     "id": "8800b845-de05-4c51-8dbc-a998aee7e085",
+     "title": "American Institute of Physics / Acoustical Society of America (AIP-ASA) - Postdoctoral Congressional Science Fellowship"
+    }
+   ],
+   "fusion_dense_pool": [
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "5fe6c8da-6e81-41dc-8d5d-6db96d5e1093",
+     "title": "American Philosophical Society (APS) / Mellon Foundation - Native American Scholars Initiative (NASI) Digital Knowledge Sharing Fellowships"
+    },
+    {
+     "id": "66720ead-c488-4e17-813d-20ea2ba84363",
+     "title": "National Institutes of Health (NIH) - National Institute of Aging (NIA) - Aging Research Dissertation Awards to Increase Diversity (R36)"
+    },
+    {
+     "id": "ab3830da-5edf-4856-9b89-922627a7ec3a",
+     "title": "Open Society Archives (OSA) - Central European University, Budapest - Visegrad Scholarship"
+    },
+    {
+     "id": "a56cb7e1-6f9a-40f6-bb39-ceae640bcb6c",
+     "title": "U.S. Department of Health and Human Services - National Institute on Drug Abuse (NIDA) - Substance Use/Substance Use Disorder Dissertation Research Award (R36)"
+    },
+    {
+     "id": "f29cc261-e475-4c72-9e22-721e233b4ee5",
+     "title": "Google US/Canada PhD Fellowship Program"
+    },
+    {
+     "id": "d603fefd-8a27-4ffc-ac26-f8d0776d8700",
+     "title": "Microsoft - Doctoral and Postdoctoral Research Fellowship"
+    },
+    {
+     "id": "8a6dd337-9c14-4edf-a144-398a020b1bf3",
+     "title": "National Science Foundation (NSF) - Computer and Information Science and Engineering Graduate Fellowships (CSGrad4US)"
+    },
+    {
+     "id": "6fa3fc94-eecd-48a4-9be4-75eedca85d2d",
+     "title": "Meta Research - Doctoral Fellowship Program"
+    },
+    {
+     "id": "4518441f-d7e8-4b5a-8995-fb5a08751140",
+     "title": "University of Kansas - Accessible Teaching, Learning, and Assessment Systems (ATLAS) - Research Fellowship"
+    }
+   ],
+   "fusion_dense_pool+xenc": [
+    {
+     "id": "ab3830da-5edf-4856-9b89-922627a7ec3a",
+     "title": "Open Society Archives (OSA) - Central European University, Budapest - Visegrad Scholarship"
+    },
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "4d5cfa70-4ddb-4696-87ed-487208cc7f11",
+     "title": "Sandia National Laboratory - John von Neumann Postdoctoral Fellowship in Computational Science"
+    },
+    {
+     "id": "e9bd9c9a-ff2a-485b-8d06-8952e6eb5bb4",
+     "title": "Schmidt Science Fellows Program - Postdoctoral Fellowships in Natural Sciences, Engineering, Math, and Computing"
+    },
+    {
+     "id": "5fe6c8da-6e81-41dc-8d5d-6db96d5e1093",
+     "title": "American Philosophical Society (APS) / Mellon Foundation - Native American Scholars Initiative (NASI) Digital Knowledge Sharing Fellowships"
+    },
+    {
+     "id": "f29cc261-e475-4c72-9e22-721e233b4ee5",
+     "title": "Google US/Canada PhD Fellowship Program"
+    },
+    {
+     "id": "c8944d9b-bfb4-4c94-b23c-060067422130",
+     "title": "Linda Hall Library - Science, Engineering & Technology Doctoral and Postdoctoral Fellowships"
+    },
+    {
+     "id": "e849d87a-7ef6-473f-ba76-7283eec09a41",
+     "title": "Jump Trading PhD Fellowship"
+    },
+    {
+     "id": "d5514f2f-221b-4f30-a806-0e8af05d7c3a",
+     "title": "Council of Graduate Schools / ProQuest - Distinguished Dissertation Awards"
+    },
+    {
+     "id": "fe659ac8-0c41-4512-8c66-00efbd7a07db",
+     "title": "ACM SIGHPC - Graduate Fellowship for Women and Minorities in Computational & Data Science"
+    }
+   ],
+   "fusion_union_splade": [
+    {
+     "id": "5fe6c8da-6e81-41dc-8d5d-6db96d5e1093",
+     "title": "American Philosophical Society (APS) / Mellon Foundation - Native American Scholars Initiative (NASI) Digital Knowledge Sharing Fellowships"
+    },
+    {
+     "id": "e323d514-39b9-46dd-902c-b9258122af1c",
+     "title": "Apple PhD Fellowship in AI/ML"
+    },
+    {
+     "id": "ab3830da-5edf-4856-9b89-922627a7ec3a",
+     "title": "Open Society Archives (OSA) - Central European University, Budapest - Visegrad Scholarship"
+    },
+    {
+     "id": "ef9b48a3-f145-4df5-b9bc-14c3ed1a050c",
+     "title": "Coalition for Networked Information (CNI) - Paul Evan Peters Scholarship"
+    },
+    {
+     "id": "8a6dd337-9c14-4edf-a144-398a020b1bf3",
+     "title": "National Science Foundation (NSF) - Computer and Information Science and Engineering Graduate Fellowships (CSGrad4US)"
+    },
+    {
+     "id": "dcb781af-d49a-4688-a570-63ab140a787d",
+     "title": "Sultan Qaboos Cultural Center - Summer Arabic Language and Media (SALAM) Program"
+    },
+    {
+     "id": "2eb49b00-7fb1-4dc9-9dcf-1ee3000a6a18",
+     "title": "American Geographical Society (AGS) - Council Graduate Fellowship"
+    },
+    {
+     "id": "76724fb4-20f2-454d-83b7-2009a0bee8df",
+     "title": "Sandia National Laboratories - S. Scott Collis Postdoctoral Fellowship in Data Science"
+    },
+    {
+     "id": "d327d75e-b47a-4e7a-96db-930c90abda4b",
+     "title": "Graduate Women in Science (GWIS) - National Fellowship"
+    },
+    {
+     "id": "57066c7f-15d5-4d42-ab1f-5acd230a7ed1",
+     "title": "Saint Andrew's Society - Scholarships for Students of Scottish Descent"
+    }
+   ]
+  }
+ },
+ "timing": [
+  {
+   "type": "paper",
+   "arm": "fusion_union_pool",
+   "seconds": 0.1342448580035125
+  },
+  {
+   "type": "paper",
+   "arm": "fusion_dense_pool",
+   "seconds": 0.22468460600066464
+  },
+  {
+   "type": "paper",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 1.020730440999614
+  },
+  {
+   "type": "paper",
+   "arm": "fusion_union_splade",
+   "seconds": 0.17354212200007169
+  },
+  {
+   "type": "grant",
+   "arm": "fusion_union_pool",
+   "seconds": 0.060285268002189696
+  },
+  {
+   "type": "grant",
+   "arm": "fusion_dense_pool",
+   "seconds": 0.05804780899779871
+  },
+  {
+   "type": "grant",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 0.8011835709985462
+  },
+  {
+   "type": "grant",
+   "arm": "fusion_union_splade",
+   "seconds": 0.0934042170047178
+  },
+  {
+   "type": "conference",
+   "arm": "fusion_union_pool",
+   "seconds": 0.03600791699864203
+  },
+  {
+   "type": "conference",
+   "arm": "fusion_dense_pool",
+   "seconds": 0.053240901994286105
+  },
+  {
+   "type": "conference",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 0.6228970779993688
+  },
+  {
+   "type": "conference",
+   "arm": "fusion_union_splade",
+   "seconds": 0.07461089000571519
+  },
+  {
+   "type": "fellowship",
+   "arm": "fusion_union_pool",
+   "seconds": 0.04891743000189308
+  },
+  {
+   "type": "fellowship",
+   "arm": "fusion_dense_pool",
+   "seconds": 0.04611035499692662
+  },
+  {
+   "type": "fellowship",
+   "arm": "fusion_dense_pool+xenc",
+   "seconds": 1.0434943189902697
+  },
+  {
+   "type": "fellowship",
+   "arm": "fusion_union_splade",
+   "seconds": 0.05177706199901877
+  }
+ ],
+ "corpus_sizes": {
+  "paper": 35205,
+  "grant": 2171,
+  "conference": 912,
+  "fellowship": 818
+ }
+}
