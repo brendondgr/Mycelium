@@ -41,7 +41,7 @@ from apps.accounts.embedding import canonical_text
 from apps.scraper.ingest import SearchFn, scan
 from apps.scraper.window import ScanWindow
 
-from . import embeddings
+from . import embeddings, reranking
 from .clustering import Cluster, cluster_interests
 from .digest_selection import renumber, split_by_floor
 from .fusion import (
@@ -943,6 +943,14 @@ def fuse_interests_pool(
         return [], [], 0
 
     combined = combine_interests(per_interest_scores, pool, beta=beta)
+    combined, rerank_rank = _apply_rerank(
+        combined,
+        search_ints=search_ints,
+        per_interest_scores=per_interest_scores,
+        pool=pool,
+        content_type=content_type,
+        emit=emit,
+    )
     if match_threshold is None:
         surfaced = with_floor_guarantee(
             combined, per_interest_scores, limit=surface_limit
@@ -952,7 +960,7 @@ def fuse_interests_pool(
             f"surfaced {len(surfaced)}"
         )
         pairs = [(hit.item, hit.combined_score) for hit in surfaced]
-        rows = [_fusion_row(hit) for hit in surfaced]
+        rows = [_fusion_row(hit, rerank_rank=rerank_rank) for hit in surfaced]
         return pairs, rows, len(pool)
 
     # Threshold mode: keep everything above the embedding-match floor (combined is
@@ -970,9 +978,63 @@ def fuse_interests_pool(
     )
     pairs = [(hit.item, hit.combined_score) for hit in surfaced]
     rows = [
-        _fusion_row(hit, match=best_cosine.get(str(hit.item.id))) for hit in surfaced
+        _fusion_row(
+            hit,
+            match=best_cosine.get(str(hit.item.id)),
+            rerank_rank=rerank_rank,
+        )
+        for hit in surfaced
     ]
     return pairs, rows, len(pool)
+
+
+def _apply_rerank(
+    hits: list,
+    *,
+    search_ints: list[SearchInterest],
+    per_interest_scores: dict[str, dict[str, float]],
+    pool: dict[str, Retrievable],
+    content_type: str | None,
+    emit: Callable[[str], None],
+) -> tuple[list, dict[str, int]]:
+    """Reorder ``hits`` with the cross-encoder, or return them untouched.
+
+    The one place the rerank stage enters the deployed pipeline. It sits here —
+    the tail of the *shared* fusion path — so the personal, lab and project feeds
+    get it from one implementation rather than three, and so the pool it reorders
+    is exactly the pool production already built.
+
+    Returns ``(hits, rank_by_id)``; ``rank_by_id`` is empty when the stage did not
+    run, and is written into the persist rows so the audit trail shows what moved.
+
+    Off unless ``RERANK_ENABLED`` and the content type is listed — and a missing
+    model, a missing extra or a failed batch all return the fused order rather
+    than raising. See :mod:`apps.content.reranking` for what the evidence behind
+    this stage is and, more importantly, what it is not.
+    """
+    if not hits or not reranking.enabled_for(content_type):
+        return hits, {}
+    scorer = reranking.get_scorer()
+    if scorer is None:
+        return hits, {}
+
+    before = [str(hit.item.id) for hit in hits]
+    order = reranking.rerank_order(
+        before,
+        items_by_id=pool,
+        per_interest_scores=per_interest_scores,
+        queries={i.label: i.query_text for i in search_ints},
+        score=scorer,
+        rrf_k=DEFAULT_RRF_K,
+    )
+    if order == before:
+        return hits, {}
+
+    by_id = {str(hit.item.id): hit for hit in hits}
+    reordered = [by_id[key] for key in order if key in by_id]
+    moved = sum(1 for a, b in zip(before, order, strict=True) if a != b)
+    emit(f"reranked {len(before)} candidate(s); {moved} changed position")
+    return reordered, {key: index + 1 for index, key in enumerate(order)}
 
 
 def _build_pool(
@@ -1106,11 +1168,24 @@ def fuse_clusters_pool(
         merge="max" if spread is None else spread.merge,
         rrf_k=DEFAULT_RRF_K if spread is None else spread.rrf_k,
     )
+    # Reordered once, ahead of both branches, so the global ranking, the
+    # threshold cut and the per-theme slate all read the same order. Reranking
+    # only the global list would let a theme's "best" paper disagree with the
+    # feed's.
+    clustered, rerank_rank = _apply_rerank(
+        clustered,
+        search_ints=search_ints,
+        per_interest_scores=per_interest_scores,
+        pool=pool,
+        content_type=content_type,
+        emit=emit,
+    )
 
     if spread is not None:
         return _surface_with_spread(
             clustered,
             spread=spread,
+            rerank_rank=rerank_rank,
             best_cosine=best_cosine,
             match_threshold=match_threshold,
             surface_limit=surface_limit,
@@ -1166,7 +1241,12 @@ def fuse_clusters_pool(
         return best_cosine.get(str(hit.item.id))
 
     pairs = [(hit.item, hit.final_score) for hit in surfaced]
-    rows = [_cluster_row(hit, labels_by_id, match=_match_of(hit)) for hit in surfaced]
+    rows = [
+        _cluster_row(
+            hit, labels_by_id, match=_match_of(hit), rerank_rank=rerank_rank
+        )
+        for hit in surfaced
+    ]
     slate_groups = [
         [(hit.item, hit.final_score) for hit in hits] for hits in slate.values()
     ]
@@ -1184,6 +1264,7 @@ def _surface_with_spread(
     n_clusters: int,
     pool_size: int,
     emit: Callable[[str], None],
+    rerank_rank: dict[str, int] | None = None,
 ) -> tuple[list[Hit], list[PersistRow], int, list[list[Hit]]]:
     """The surfacing half of :func:`fuse_clusters_pool` under a spread policy.
 
@@ -1233,7 +1314,12 @@ def _surface_with_spread(
         return best_cosine.get(str(hit.item.id))
 
     pairs = [(hit.item, hit.final_score) for hit in surfaced]
-    rows = [_cluster_row(hit, labels_by_id, match=_match_of(hit)) for hit in surfaced]
+    rows = [
+        _cluster_row(
+            hit, labels_by_id, match=_match_of(hit), rerank_rank=rerank_rank
+        )
+        for hit in surfaced
+    ]
     return pairs, rows, pool_size, []
 
 
@@ -1242,6 +1328,7 @@ def _cluster_row(
     labels_by_id: dict[str, str],
     *,
     match: float | None = None,
+    rerank_rank: dict[str, int] | None = None,
 ) -> PersistRow:
     """A persist row for a cluster-scoped hit — the flat signals plus attribution.
 
@@ -1262,7 +1349,24 @@ def _cluster_row(
     }
     if match is not None:
         signals["embedding_match"] = round(match, 4)
+    _record_rerank(signals, hit, rerank_rank)
     return (hit.item, hit.final_score, signals)
+
+
+def _record_rerank(
+    signals: dict, hit, rerank_rank: dict[str, int] | None
+) -> None:
+    """Note the cross-encoder's placement on a persist row, when it ran.
+
+    Absent entirely when the stage is off, so an un-reranked row is byte-identical
+    to what this pipeline wrote before the stage existed — which is what makes
+    "flag off changes nothing" checkable rather than asserted.
+    """
+    if not rerank_rank:
+        return
+    position = rerank_rank.get(str(hit.item.id))
+    if position is not None:
+        signals["rerank_rank"] = position
 
 
 def _cluster_by_id(rows: list[PersistRow]) -> dict[str, str]:
@@ -1279,7 +1383,12 @@ def _cluster_by_id(rows: list[PersistRow]) -> dict[str, str]:
     }
 
 
-def _fusion_row(hit: CombinedHit, *, match: float | None = None) -> PersistRow:
+def _fusion_row(
+    hit: CombinedHit,
+    *,
+    match: float | None = None,
+    rerank_rank: dict[str, int] | None = None,
+) -> PersistRow:
     signals = {
         "combined_score": round(hit.combined_score, 6),
         "per_interest": {label: round(v, 4) for label, v in hit.per_interest.items()},
@@ -1292,6 +1401,7 @@ def _fusion_row(hit: CombinedHit, *, match: float | None = None) -> PersistRow:
     # the cross-embedding tail (which carries no language-model percent).
     if match is not None:
         signals["embedding_match"] = round(match, 4)
+    _record_rerank(signals, hit, rerank_rank)
     return (hit.item, hit.combined_score, signals)
 
 

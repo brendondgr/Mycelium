@@ -676,6 +676,40 @@ EMBEDDING_DEVICE_ID = env("EMBEDDING_DEVICE_ID", default="")
 EMBEDDING_BATCH_SIZE_CPU = env.int("EMBEDDING_BATCH_SIZE_CPU", default=64)
 EMBEDDING_BATCH_SIZE_GPU = env.int("EMBEDDING_BATCH_SIZE_GPU", default=256)
 
+# Cross-encoder rerank (apps.content.reranking). Reorders the head of the fused
+# candidate list by reading query and document together, over the pool the
+# pipeline already built — nothing about retrieval changes.
+#
+# Ships OFF. The evidence for it is a *preference*: three blinded reads by the
+# product's own user (docs/research/experiments/EXP-2026-08-015 … -017) put this
+# reranker over the deployed dense pool first in papers, grants and conferences,
+# and at 5 wins / 3 ties / 0 losses once the pool was held constant. On
+# LongEval-Sci the same model is significantly *harmful* on short queries and
+# claim C-013 stands refuted, so this is not a measured improvement and Q-033 is
+# still open. Turn it on deliberately, per environment.
+#
+# RERANK_MODEL is the one reranker any human has judged here; fastembed offers
+# five others and none of them have been looked at (Q-021/Q-023).
+# RERANK_DEVICE follows EMBEDDING_DEVICE when unset, so a GPU host is configured
+# once for both models: "auto" uses CUDA whenever ONNX Runtime really exposes it,
+# and a CUDA session that fails to build degrades to the CPU with a warning.
+# RERANK_CONTENT_TYPES omits fellowships deliberately — on that corpus the
+# query's domain word is boilerplate and this reranker was measured promoting
+# medically-themed programmes with no topical connection (Q-031).
+# RERANK_DEPTH is the depth every experiment used; RERANK_MAX_PAIRS bounds a
+# multi-interest profile so a nightly run cannot become an afternoon.
+RERANK_ENABLED = env.bool("RERANK_ENABLED", default=False)
+RERANK_MODEL = env("RERANK_MODEL", default="Xenova/ms-marco-MiniLM-L-6-v2")
+RERANK_DEVICE = env("RERANK_DEVICE", default="")
+RERANK_DEVICE_ID = env("RERANK_DEVICE_ID", default="")
+RERANK_DEPTH = env.int("RERANK_DEPTH", default=50)
+RERANK_MAX_PAIRS = env.int("RERANK_MAX_PAIRS", default=400)
+RERANK_BATCH_SIZE_CPU = env.int("RERANK_BATCH_SIZE_CPU", default=32)
+RERANK_BATCH_SIZE_GPU = env.int("RERANK_BATCH_SIZE_GPU", default=128)
+RERANK_CONTENT_TYPES = env.list(
+    "RERANK_CONTENT_TYPES", default=["paper", "grant", "conference"]
+)
+
 # ---------------------------------------------------------------------------
 # Discord integration (apps.integrations) — identity + lab linking.
 #

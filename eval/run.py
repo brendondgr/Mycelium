@@ -29,6 +29,11 @@ BACKEND = REPO_ROOT / "web" / "backend"
 sys.path.insert(0, str(BACKEND))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+# Forced, not defaulted. The profile arms call `fuse_interests_pool`, which grew
+# an optional cross-encoder tail; a stray RERANK_ENABLED in the environment would
+# silently change numbers this record treats as historical and reproducible. An
+# arm that wants reranking has to be written as an arm.
+os.environ["RERANK_ENABLED"] = "false"
 
 import django  # noqa: E402
 
