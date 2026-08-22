@@ -230,6 +230,19 @@ ARMS: dict[str, Callable[..., Ranking]] = {
 #: Arms that never touch a vector — runnable before any corpus is embedded.
 LEXICAL_ONLY = {"bm25_only"}
 
+#: Rerank arms that hold no dense index of their own: their only use of one is
+#: whatever their `base` needs. A cross-encoder scores query and document text
+#: together and never embeds a corpus; the LLM arms read text. So when such an arm
+#: is stacked on a lexical base, the whole corpus embedding can be skipped — which
+#: on a 261k-document snapshot is the difference between a 20-minute run and a
+#: two-hour one. `run.py` consults this together with `LEXICAL_ONLY`.
+VECTORLESS_OVER_LEXICAL_BASE = {
+    "xenc_rerank",
+    "llm_rerank",
+    "llm_rerank_reversed",
+    "llm_rubric",
+}
+
 
 # --- profile arms: the C-003 cluster-scoping ablation -----------------------
 

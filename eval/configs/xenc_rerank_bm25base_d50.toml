@@ -1,0 +1,18 @@
+# Cross-encoder rerank over the BM25 ranking, depth 50. On snapshots where the
+# dense channel is weak, BM25 is the strongest first stage available, so this is
+# the honest test of "does a cross-encoder improve the best base we have" —
+# and it needs no corpus embedding at all.
+arm = "xenc_rerank"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[embedding]
+parallel = 16
+batch_size = 64
+[params]
+pool_per_interest = 100
+base = "bm25_only"
+rerank_depth = 50
+xenc_model = "Xenova/ms-marco-MiniLM-L-6-v2"

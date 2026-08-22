@@ -17,10 +17,11 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-006` | 2026-08-16 | LLM structured-extraction throughput by reasoning level and concurrency | complete | — | — | [folder](experiments/EXP-2026-08-006-extraction-throughput/RESULTS.md) |
 | `EXP-2026-08-007` | 2026-08-16 | Source-length-aware grounding floor and its effect on extraction refusal | complete | — | — | [folder](experiments/EXP-2026-08-007-extraction-grounding-floor/RESULTS.md) |
 | `EXP-2026-08-008` | 2026-08-21 | Does a learned-sparse channel, a late-interaction reranker, a cross-encoder, or an LLM reranker beat BM25 on LongEval-Sci? | complete | — | C-008, C-013, C-014, C-015 (refutes C-012, C-016) | [folder](experiments/EXP-2026-08-008-retrieval-ladder-splade-colbert-llm/RESULTS.md) |
+| `EXP-2026-08-009` | 2026-08-22 | Does the cross-encoder's advantage over BM25 survive a paired confidence interval at 492 queries? | complete | — | — (refutes C-013) | [folder](experiments/EXP-2026-08-009-crossencoder-paired-intervals/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 8 |
-| **total** | **8** |
+| complete | 9 |
+| **total** | **9** |

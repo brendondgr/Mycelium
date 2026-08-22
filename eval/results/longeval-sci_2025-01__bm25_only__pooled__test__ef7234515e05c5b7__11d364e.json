@@ -1,0 +1,27 @@
+{
+  "arm": "bm25_only",
+  "collection": "sci-2025-01",
+  "config_hash": "ef7234515e05c5b7",
+  "corpus_docs": 261294,
+  "corpus_scope": "pooled",
+  "diagnostics": {},
+  "dirty": true,
+  "embedding_model": null,
+  "git_sha": "11d364e",
+  "metrics": {
+    "AP": 0.2279791120783367,
+    "P@10": 0.1941056910569103,
+    "R@100": 0.5971789143390556,
+    "RR": 0.4199349894955461,
+    "nDCG@10": 0.24856615750539554,
+    "nDCG@100": 0.3498186041286007
+  },
+  "n_queries": 492,
+  "notes": "",
+  "params": {},
+  "per_query": {},
+  "qrels": "test",
+  "snapshot": "longeval-sci/2025-01",
+  "timestamp": "2026-08-21T23:05:06Z",
+  "wall_clock_s": 344.9
+}

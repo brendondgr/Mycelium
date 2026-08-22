@@ -1,0 +1,27 @@
+{
+  "arm": "bm25_only",
+  "collection": "sci-2026-train",
+  "config_hash": "ef7234515e05c5b7",
+  "corpus_docs": 84489,
+  "corpus_scope": "pooled",
+  "diagnostics": {},
+  "dirty": true,
+  "embedding_model": null,
+  "git_sha": "11d364e",
+  "metrics": {
+    "AP": 0.27596973870260977,
+    "P@10": 0.21000000000000008,
+    "R@100": 0.690289854020731,
+    "RR": 0.47875118779085085,
+    "nDCG@10": 0.32117028583254537,
+    "nDCG@100": 0.43139829008801356
+  },
+  "n_queries": 100,
+  "notes": "",
+  "params": {},
+  "per_query": {},
+  "qrels": "dctr",
+  "snapshot": "longeval-sci-2026/snapshot-1/train",
+  "timestamp": "2026-08-21T22:49:38Z",
+  "wall_clock_s": 48.2
+}

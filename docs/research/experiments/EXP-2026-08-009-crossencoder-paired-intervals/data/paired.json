@@ -1,0 +1,283 @@
+{
+  "sci-2025-01": {
+    "absolute": {
+      "bm25_only": 0.2485661575053955,
+      "xenc over bm25 d100": 0.19443490874694896,
+      "xenc over bm25 d50": 0.20466758435248597
+    },
+    "contrasts": [
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": -0.04220437555515409,
+            "n": 231
+          },
+          "2 words": {
+            "mean_delta": -0.04005490435000921,
+            "n": 181
+          },
+          "3-4 words": {
+            "mean_delta": -0.09685082642381547,
+            "n": 48
+          },
+          "5+ words": {
+            "mean_delta": 0.0015590661782471584,
+            "n": 32
+          }
+        },
+        "ci_high": -0.02828770542400344,
+        "ci_low": -0.05974798896060686,
+        "control": "bm25_only",
+        "excludes_zero": true,
+        "losses": 218,
+        "mean_delta": -0.04389857315290954,
+        "n": 492,
+        "sign_p": 3.414049668820838e-05,
+        "ties": 135,
+        "treatment": "xenc over bm25 d50",
+        "wins": 139
+      },
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": -0.05297112165375685,
+            "n": 231
+          },
+          "2 words": {
+            "mean_delta": -0.05101587802743401,
+            "n": 181
+          },
+          "3-4 words": {
+            "mean_delta": -0.10814949355579334,
+            "n": 48
+          },
+          "5+ words": {
+            "mean_delta": 0.0009001352033049964,
+            "n": 32
+          }
+        },
+        "ci_high": -0.03799001176875924,
+        "ci_low": -0.07036707638042031,
+        "control": "bm25_only",
+        "excludes_zero": true,
+        "losses": 228,
+        "mean_delta": -0.054131248758446555,
+        "n": 492,
+        "sign_p": 2.5012061833405787e-07,
+        "ties": 134,
+        "treatment": "xenc over bm25 d100",
+        "wins": 130
+      }
+    ],
+    "missing_arms": [
+      "fusion_union_pool",
+      "xenc over fusion d50",
+      "xenc over fusion d100"
+    ],
+    "n_queries": 492,
+    "qrels": "test",
+    "snapshot": "longeval-sci/2025-01"
+  },
+  "sci-2026-train": {
+    "absolute": {
+      "bm25_only": 0.3211702858325453,
+      "fusion_union_pool": 0.3055790154040981,
+      "xenc over bm25 d100": 0.32987505710536147,
+      "xenc over bm25 d50": 0.32128998739868675,
+      "xenc over fusion d100": 0.33043574951259586,
+      "xenc over fusion d50": 0.3299225575079669
+    },
+    "contrasts": [
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": 0.03814255297695647,
+            "n": 5
+          },
+          "2 words": {
+            "mean_delta": -0.0552623903794884,
+            "n": 27
+          },
+          "3-4 words": {
+            "mean_delta": 0.024473248003507902,
+            "n": 33
+          },
+          "5+ words": {
+            "mean_delta": 0.01444927851027969,
+            "n": 35
+          }
+        },
+        "ci_high": 0.042714421379842354,
+        "ci_low": -0.041820156913680594,
+        "control": "bm25_only",
+        "excludes_zero": false,
+        "losses": 37,
+        "mean_delta": 0.00011970156614145273,
+        "n": 100,
+        "sign_p": 0.7343420330298468,
+        "ties": 22,
+        "treatment": "xenc over bm25 d50",
+        "wins": 41
+      },
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": 0.03154603301304004,
+            "n": 5
+          },
+          "2 words": {
+            "mean_delta": -0.02034267865587635,
+            "n": 27
+          },
+          "3-4 words": {
+            "mean_delta": 0.016390576338771282,
+            "n": 33
+          },
+          "5+ words": {
+            "mean_delta": 0.02060315047844631,
+            "n": 35
+          }
+        },
+        "ci_high": 0.052527332119507136,
+        "ci_low": -0.034223151230313484,
+        "control": "bm25_only",
+        "excludes_zero": false,
+        "losses": 36,
+        "mean_delta": 0.00870477127281612,
+        "n": 100,
+        "sign_p": 0.49989687686032663,
+        "ties": 21,
+        "treatment": "xenc over bm25 d100",
+        "wins": 43
+      },
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": 0.02022477160859843,
+            "n": 5
+          },
+          "2 words": {
+            "mean_delta": -0.024888484208317324,
+            "n": 27
+          },
+          "3-4 words": {
+            "mean_delta": 0.027572000570459616,
+            "n": 33
+          },
+          "5+ words": {
+            "mean_delta": 0.015320467551387504,
+            "n": 35
+          }
+        },
+        "ci_high": 0.05372339331235663,
+        "ci_low": -0.03490137224190371,
+        "control": "bm25_only",
+        "excludes_zero": false,
+        "losses": 39,
+        "mean_delta": 0.008752271675421544,
+        "n": 100,
+        "sign_p": 0.9110721212260928,
+        "ties": 20,
+        "treatment": "xenc over fusion d50",
+        "wins": 41
+      },
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": 0.011141899025995305,
+            "n": 5
+          },
+          "2 words": {
+            "mean_delta": 0.0026186299334380716,
+            "n": 27
+          },
+          "3-4 words": {
+            "mean_delta": 0.039398170781964545,
+            "n": 33
+          },
+          "5+ words": {
+            "mean_delta": 0.028794344892835548,
+            "n": 35
+          }
+        },
+        "ci_high": 0.06094024164852699,
+        "ci_low": -0.010397298326273188,
+        "control": "fusion_union_pool",
+        "excludes_zero": false,
+        "losses": 33,
+        "mean_delta": 0.024343542103868788,
+        "n": 100,
+        "sign_p": 0.25430466614770003,
+        "ties": 23,
+        "treatment": "xenc over fusion d50",
+        "wins": 44
+      },
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": 0.01504303509183011,
+            "n": 5
+          },
+          "2 words": {
+            "mean_delta": 0.007672209234849094,
+            "n": 27
+          },
+          "3-4 words": {
+            "mean_delta": 0.03534670399263817,
+            "n": 33
+          },
+          "5+ words": {
+            "mean_delta": 0.02962478155121836,
+            "n": 35
+          }
+        },
+        "ci_high": 0.06136822788643289,
+        "ci_low": -0.009691712451337169,
+        "control": "fusion_union_pool",
+        "excludes_zero": false,
+        "losses": 33,
+        "mean_delta": 0.024856734108497786,
+        "n": 100,
+        "sign_p": 0.21268281985080578,
+        "ties": 22,
+        "treatment": "xenc over fusion d100",
+        "wins": 45
+      },
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": 0.009082872582603128,
+            "n": 5
+          },
+          "2 words": {
+            "mean_delta": -0.027507114141755398,
+            "n": 27
+          },
+          "3-4 words": {
+            "mean_delta": -0.011826170211504932,
+            "n": 33
+          },
+          "5+ words": {
+            "mean_delta": -0.013473877341448042,
+            "n": 35
+          }
+        },
+        "ci_high": 0.019003399072887076,
+        "ci_low": -0.05258067843801783,
+        "control": "bm25_only",
+        "excludes_zero": false,
+        "losses": 42,
+        "mean_delta": -0.015591270428447244,
+        "n": 100,
+        "sign_p": 0.7375543089843226,
+        "ties": 20,
+        "treatment": "fusion_union_pool",
+        "wins": 38
+      }
+    ],
+    "missing_arms": [],
+    "n_queries": 100,
+    "qrels": "dctr",
+    "snapshot": "longeval-sci-2026/snapshot-1/train"
+  }
+}

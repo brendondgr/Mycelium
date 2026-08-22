@@ -1,0 +1,105 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-08-009
+slug: crossencoder-paired-intervals
+title: Does the cross-encoder's advantage over BM25 survive a paired confidence interval at 492 queries?
+status: complete
+date_started: 2026-08-21
+date_completed: 2026-08-22
+authors: [brendondgr]
+
+purpose: >
+  EXP-2026-08-008 reported that a cross-encoder is the first stage in this
+  repository to beat BM25, on a margin of +0.0087 nDCG@10 at n = 100 with no
+  confidence interval computed, and recorded that margin as C-013 supported. This
+  record has twice before been unable to separate an effect that size from no
+  effect (Q-011, Q-013). Q-016 asks whether the advantage survives a paired
+  bootstrap interval, on sci-2025-01's 492 queries. It does not: no contrast on
+  either snapshot shows a significant gain, and on the larger query set the
+  cross-encoder is significantly harmful.
+
+hypothesis: >
+  Genuinely pre-registered — PROTOCOL.md was written before any arm on
+  sci-2025-01 ran and before the BM25-base rerank arm existed anywhere.
+  PRIMARY: a cross-encoder reranking the strongest available first stage beats it
+  on nDCG@10 with a 95% paired interval excluding zero. Falsifier stated in
+  advance: the interval includes zero, or the point estimate is negative.
+  SECONDARY: the fusion-based variant will NOT replicate here, because the dense
+  channel is far weaker on this snapshot.
+  OUTCOME: the primary hypothesis is FALSIFIED. On sci-2026-train no contrast
+  excludes zero (the headline +0.0088 has sign p = 0.91). On sci-2025-01 the
+  cross-encoder is significantly worse than BM25 at both depths (-0.0439 and
+  -0.0541, both intervals excluding zero, sign p < 1e-4), losing on 218 of 492
+  queries. Harm concentrates on short keyword queries and vanishes at 5+ words.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 11d364e
+  branch: main
+  entrypoint: "uv run --project eval python docs/research/experiments/EXP-2026-08-009-crossencoder-paired-intervals/code/paired.py"
+  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+config:
+  path: eval/configs/
+  hash: null
+data:
+  name: LongEval-Sci (CLEF)
+  version: "longeval-sci/2025-01 (1,213,728 docs) and longeval-sci-2026/snapshot-1/train (869,902 docs)"
+  split: "test (2025-01) / train (2026)"
+  n_examples: 592 # 492 + 100 queries
+  qrels: "test (2025-01) / dctr (2026) — different provenance; see ISSUES.md 2"
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.14"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "32 CPU cores, 121 GB RAM, no CUDA device"
+  wall_clock_hours: 2.5
+  estimated_cost_usd: null
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+# llm:
+#   model: "<provider>/<model>@<version-or-date>"
+#   temperature: 0.0
+#   max_tokens: 2048
+#   prompt_files: []
+#   prompt_hash: null
+#   total_input_tokens: 0
+#   total_output_tokens: 0
+#   nondeterminism_note: >
+#     Provider-side nondeterminism remains even at temperature 0; report
+#     mean ± std over n_runs.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: nDCG@10 (paired mean difference)
+  values:
+    sci_2025_01__xenc_over_bm25_d50__minus__bm25_only: -0.0439 # CI [-0.0597, -0.0283], excludes 0, 139W/218L, sign p=3.41e-05
+    sci_2025_01__xenc_over_bm25_d100__minus__bm25_only: -0.0541 # CI [-0.0704, -0.0380], excludes 0, 130W/228L, sign p=2.5e-07
+    sci_2026_train__xenc_over_bm25_d50__minus__bm25_only: +0.0001 # CI [-0.0418, +0.0427], spans 0, 41W/37L, sign p=0.734
+    sci_2026_train__xenc_over_bm25_d100__minus__bm25_only: +0.0087 # CI [-0.0342, +0.0525], spans 0, 43W/36L, sign p=0.5
+    sci_2026_train__xenc_over_fusion_d50__minus__bm25_only: +0.0088 # CI [-0.0349, +0.0537], spans 0, 41W/39L, sign p=0.911
+    sci_2026_train__xenc_over_fusion_d50__minus__fusion_union_pool: +0.0243 # CI [-0.0104, +0.0609], spans 0, 44W/33L, sign p=0.254
+    sci_2026_train__xenc_over_fusion_d100__minus__fusion_union_pool: +0.0249 # CI [-0.0097, +0.0614], spans 0, 45W/33L, sign p=0.213
+    sci_2026_train__fusion_union_pool__minus__bm25_only: -0.0156 # CI [-0.0526, +0.0190], spans 0, 38W/42L, sign p=0.738
+baselines_compared: []
+statistical_test: "paired percentile bootstrap, 10,000 resamples over query ids, seed 20260821; two-sided exact sign test reported alongside"
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: [C-013]
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-008, EXP-2026-08-001]

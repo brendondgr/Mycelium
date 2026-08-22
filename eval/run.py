@@ -171,6 +171,22 @@ def load_corpus(collection, dataset, config, queries, pool_from, *, needs_vector
     return _CORPUS_CACHE[key]
 
 
+def needs_vectors(arm_name: str, config: dict) -> bool:
+    """Whether this arm requires the corpus embedding matrix at all.
+
+    A rerank arm carries no dense index of its own — it inherits whatever its
+    `base` needs. Stacked on a lexical base, it needs none, and skipping the
+    encode is the difference between minutes and hours on a large snapshot.
+    """
+    if arm_name in arms_mod.LEXICAL_ONLY:
+        return False
+    if arm_name in arms_mod.VECTORLESS_OVER_LEXICAL_BASE:
+        base = config.get("params", {}).get("base")
+        if base in arms_mod.LEXICAL_ONLY:
+            return False
+    return True
+
+
 def run_arm(
     arm_name: str,
     collection_id: str,
@@ -198,7 +214,7 @@ def run_arm(
         config,
         queries,
         pool_from,
-        needs_vectors=arm_name not in arms_mod.LEXICAL_ONLY,
+        needs_vectors=needs_vectors(arm_name, config),
     )
 
     if arm_name in arms_mod.PROFILE_ARMS:
@@ -257,7 +273,7 @@ def run_arm(
         git_sha=sha,
         dirty=dirty,
         config_hash=config_hash(config),
-        embedding_model=None if arm_name in arms_mod.LEXICAL_ONLY else EMBEDDING_MODEL,
+        embedding_model=EMBEDDING_MODEL if needs_vectors(arm_name, config) else None,
         metrics=metrics,
         n_queries=len(queries),
         wall_clock_s=round(wall, 1),

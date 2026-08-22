@@ -286,13 +286,22 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
   is a property of short keyword queries over titles+abstracts, not solely of the
   384-dimension model in use — so it is evidence about the task shape, not just a
   reason to swap embedders.
-- That **a cross-encoder reranker is the first stage measured here that beats
-  BM25** — nDCG@10 0.3307 against 0.3212, and simultaneously ahead on nDCG@100,
-  AP, R@100 and P@10 (`EXP-2026-08-008`, C-013). Quote it with its margin: +0.0095
-  at n = 100 with no interval computed (Q-016). The gap against the *deployed*
-  `fusion_dense_pool` is four times larger (+12.6% relative) and safer to state.
+- That **no reranker tried here beats BM25** — and that this was checked with
+  paired confidence intervals rather than point estimates. `EXP-2026-08-008` briefly
+  reported a cross-encoder as the first stage to clear that bar (+0.0095 nDCG@10);
+  `EXP-2026-08-009` computed the interval and **refuted C-013**. On
+  `sci-2026-train` no contrast excludes zero (the headline gain has sign p = 0.91);
+  on `sci-2025-01`'s 492 queries the cross-encoder is significantly *worse*
+  (−0.0439 and −0.0541, both intervals excluding zero), losing on 218 of 492
+  queries, with the harm concentrated on **short keyword queries** and vanishing
+  at 5+ words.
+- That **this collection cannot resolve a difference smaller than roughly ±0.04
+  nDCG@10 at n = 100.** That is wider than most differences this project has
+  discussed, and it is the reason every future contrast here ships with an
+  interval (`EXP-2026-08-009` §4).
 - That **SPLADE is a poor retriever on this collection and a good recall
-  contributor to a fusion over it** — alone it loses to BM25 (0.2617 vs 0.3212),
+  contributor to a fusion over it** (C-014, now `partial` — no interval computed;
+  Q-022) — alone it loses to BM25 (0.2617 vs 0.3212),
   but as a third RRF channel it gives the highest recall on the ladder
   (R@100 0.7141 vs 0.6903). Those are two different claims; C-014 is only the
   second (`EXP-2026-08-008`).
