@@ -22,10 +22,11 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-011` | 2026-08-22 | Do the ladder's two surviving recall claims survive a paired confidence interval? | complete | — | C-008, C-014, C-018 | [folder](experiments/EXP-2026-08-011-recall-paired-intervals/RESULTS.md) |
 | `EXP-2026-08-012` | 2026-08-22 | Do the ladder's surviving recall claims replicate on sci-2025-01? | complete | — | C-008, C-014, C-018 | [folder](experiments/EXP-2026-08-012-recall-replication-2025/RESULTS.md) |
 | `EXP-2026-08-013` | 2026-08-22 | Q-001: does the union pool's advantage survive on the production corpus? | complete | — | C-019, C-020 | [folder](experiments/EXP-2026-08-013-production-pool-contrast/RESULTS.md) |
+| `EXP-2026-08-014` | 2026-08-22 | Side-by-side top-10 lists across retrieval arms, for human preference | complete | — | C-021 | [folder](experiments/EXP-2026-08-014-retrieval-side-by-side/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 13 |
-| **total** | **13** |
+| complete | 14 |
+| **total** | **14** |

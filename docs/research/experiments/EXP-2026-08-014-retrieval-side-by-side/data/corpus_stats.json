@@ -1,0 +1,68 @@
+{
+ "conference": {
+  "duplicate_share": 0.006578947368421052,
+  "duplicate_title_rows": 6,
+  "rows": 912,
+  "untitled": 0
+ },
+ "fellowship": {
+  "duplicate_share": 0.0,
+  "duplicate_title_rows": 0,
+  "rows": 818,
+  "untitled": 0
+ },
+ "grant": {
+  "duplicate_share": 0.01427913403961308,
+  "duplicate_title_rows": 31,
+  "rows": 2171,
+  "untitled": 0
+ },
+ "paper": {
+  "duplicate_share": 0.0058791786191030706,
+  "duplicate_title_rows": 207,
+  "rows": 35209,
+  "untitled": 105
+ },
+ "worst_offenders": [
+  {
+   "copies": 6,
+   "title": "optirando: a framework for fully customizable ai agent orchestration in the browser for re"
+  },
+  {
+   "copies": 5,
+   "title": "reply on rc1"
+  },
+  {
+   "copies": 5,
+   "title": "synapse channel: local-first multi-agent coordination bus"
+  },
+  {
+   "copies": 5,
+   "title": "reply on rc2"
+  },
+  {
+   "copies": 4,
+   "title": "alphafold sovereign mcp: a model context protocol server for alphafold db and eight other "
+  },
+  {
+   "copies": 4,
+   "title": "preregistered analysis plan \u2014 whom the graph cites: auditing provenance sensitivity of gra"
+  },
+  {
+   "copies": 4,
+   "title": "introduction"
+  },
+  {
+   "copies": 3,
+   "title": "best token use path (btup): client-side traffic engineering for cost-aware llm inference"
+  },
+  {
+   "copies": 3,
+   "title": "the contrastive credence constraint: on the epistemic limits of certainty in comprehensive"
+  },
+  {
+   "copies": 3,
+   "title": "private ai platform kit"
+  }
+ ]
+}
