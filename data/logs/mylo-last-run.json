@@ -1,18 +1,9 @@
 {
-  "finished_at": "2026-08-17T07:20:29.685119-04:00",
+  "finished_at": "2026-08-22T07:08:08.241369-04:00",
   "host": "sc-zeus",
-  "ok": true,
-  "scrape_ran": true,
-  "stages_run": [
-    "run_daily_suggestions",
-    "run_daily_opportunities",
-    "run_reminder_tick",
-    "prune_opportunities",
-    "prune_briefings",
-    "generate_daily_briefing",
-    "send_daily_discord_reports",
-    "send_lab_digests"
-  ],
-  "failed_stage": null,
-  "exit_code": 0
+  "ok": false,
+  "scrape_ran": false,
+  "stages_run": [],
+  "failed_stage": "preflight",
+  "exit_code": 1
 }
