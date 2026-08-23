@@ -50,24 +50,35 @@ Between 3 and 4 sit the reminder tick and two sweeps — ``prune_opportunities``
 ``BRIEFING_RETENTION_DAYS``). Both are pure deletions of expired rows, so neither
 touches the rankings the stages above just wrote.
     4. Write daily briefings (backend)     — ``generate_daily_briefing``: the
-       cross-category "Mylo Report" synthesis for every user **and every entitled
-       lab** (LLM with a deterministic fallback), written over each target's Top-25
-       per category. This is a per-*day* replace — a rerun re-describes today and
-       leaves the earlier days' reports standing. When nothing entered a reader's
-       Top-25, yesterday's report carries forward unchanged rather than being
-       rewritten to say the same thing in new words.
+       "Mylo Report" for every user **and every entitled lab**, organised by
+       research theme (LLM with a deterministic fallback), written over each
+       theme's own slate. This is a per-*day* replace — a rerun re-describes today
+       and leaves the earlier days' reports standing. When nothing entered any of
+       a reader's themes, yesterday's report carries forward unchanged rather than
+       being rewritten to say the same thing in new words.
     5. Send daily Discord reports (backend) — ``send_daily_discord_reports``: DM
-       each linked, entitled, opted-in user their day as a PDF (the written report
-       plus the top-25 papers and top-25 grants/fellowships/conferences and a full
-       appendix). Best-effort: an unreachable DM or Discord outage is counted, never
-       fatal, so it can safely be the last stage.
+       each linked, entitled, opted-in user their day as a PDF — Mylo's lead, then
+       one section per theme with what entered it and what is standing in it.
+       Best-effort: an unreachable DM or Discord outage is counted, never fatal, so
+       it can safely be the last stage.
 
-**What "new" means.** An item is new when it *enters* a target's Top-25 for its
-category, not when it was ingested. That is the whole point of ranking the corpus
-nightly: the slate re-ranks with the reader, so a changed focus, cluster, or search
-term promotes whatever now fits and that promotion is what gets reported. Only
-entrants Mylo has not already written up are sent to the model; the rest of the
-Top-25 keeps the write-up it already has. Reporting on arrival instead is what
+**What "new" means.** An item is new when it *enters a theme's slate*, not when it
+was ingested — and entry is keyed on the **(theme, item)** pair, so the same paper
+entering a second theme later is news again for that theme. Depth is per category
+(``apps.content.slates``): papers 25 per theme because they are a flow, grants and
+conferences 10 and fellowships 5 because they are a stock of currently-open calls
+that barely moves. There is no global ranking anywhere in this path.
+
+That is the whole point of ranking the corpus nightly: each theme's slate re-ranks
+with the reader, so a changed focus, cluster, or search term promotes whatever now
+fits and that promotion is what gets reported. Slate keys for a theme the profile
+no longer declares are pruned on every run, over every stored row — a deleted
+theme produces no candidates, so a candidate-driven prune would never reach it.
+
+Only entrants Mylo has not already written up are sent to the model, and a
+write-up is keyed on (item, theme, target): re-entering a slate is badged new
+again but costs nothing, because "new to the reader's attention" is not "new to
+Mylo". The rest of the slate keeps the write-up it already has. Reporting on arrival instead is what
 produced mornings of "a new opportunity you haven't seen yet" for grants that had
 nothing to do with the reader's work.
 
@@ -181,8 +192,8 @@ REGISTRY_REFRESH_INTERVAL_DAYS = 7
 
 # The backend rank/briefing stages, in order, run inside the container. The scrape
 # stage (stage 1) is handled separately on the host. The order is the product rule:
-# collect everything, rank it all by preference, take each target's Top-25, diff
-# that against yesterday's, and report only what entered.
+# collect everything, rank it all by preference, take each target's slate per theme
+# per category, diff each theme against yesterday's, and report only what entered.
 #
 # Ordering matters for reminders (R2): opportunities ingest with ``--no-prune`` so
 # the ContentDeadline projection is rebuilt but nothing is deleted yet, then the
@@ -483,8 +494,8 @@ def preflight_llm(base: list[str]) -> bool:
     Runs ``llm_check --strict`` in the backend container before the recommend
     stages. The daily pipeline's paper rankings, opportunity scoring, and
     briefings are only worth writing when the model is up: with the model down every
-    Top-25 entrant would be written up by the template instead, and a reader would
-    get a full report of items nobody had actually judged. A day-old but real report
+    slate entrant would be written up by the template instead, and an entitled
+    reader would get a full report of items nobody had actually judged. A day-old but real report
     is better than a fresh one padded with template output. A non-zero exit therefore aborts the run instead of proceeding on
     fallbacks — nothing is scraped, matched, or briefed until the endpoint is
     back and the next run (or a manual re-run) can do it with the model up.
