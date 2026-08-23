@@ -879,6 +879,18 @@ class DailyBriefing(models.Model):
             "table existed."
         ),
     )
+    narrative = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Mylo's prose as structure rather than markdown: "
+            "{'lead', 'lead_origin', 'themes': [{'cluster_id', 'label', 'read', "
+            "'origin'}]}. Stored once per run and read back by the PDF, the app, "
+            "and the Discord message, so the three can never carry different "
+            "wordings of the same day — and so a re-render never re-bills the "
+            "model for prose that already exists."
+        ),
+    )
     generated_on = models.DateField(
         db_index=True,
         default=timezone.localdate,

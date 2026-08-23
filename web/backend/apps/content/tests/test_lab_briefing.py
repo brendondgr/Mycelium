@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 from apps.accounts.models import Lab, LabMembership
 from apps.content.briefing import generate_briefing_for_lab
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
+from apps.content.tests.entitle import entitle_lab
 
 RUN = "2026-07-11T06:00:00"
 # The report shows only what first surfaced on the run date and cleared its
@@ -22,7 +23,10 @@ def client() -> APIClient:
 
 @pytest.fixture
 def lab(db) -> Lab:
-    return Lab.objects.create(name="Reyes Lab", slug="reyes-lab")
+    """A lab on an active plan — Mylo's prose is a paid layer (plan §18)."""
+    created = Lab.objects.create(name="Reyes Lab", slug="reyes-lab")
+    entitle_lab(created)
+    return created
 
 
 @pytest.fixture
@@ -39,7 +43,7 @@ def _content(ctype: str, title: str, **metadata) -> ContentItem:
     )
 
 
-def _lab_score(lab: Lab, content: ContentItem, *, rank=1, match=85) -> RelevanceScore:
+def _lab_score(lab: Lab, content: ContentItem, *, rank=1) -> RelevanceScore:
     return RelevanceScore.objects.create(
         content=content,
         target_lab=lab,
@@ -50,12 +54,22 @@ def _lab_score(lab: Lab, content: ContentItem, *, rank=1, match=85) -> Relevance
             "rank": rank,
             "headline": f"Headline {content.metadata['title']}",
             "reason": f"Why {content.metadata['title']} fits the lab.",
-            "match_percent": match,
+            "verdict": "read",
             "first_seen": TODAY,
             "embedding_match": 0.8,
             "top_rank": rank,
             "entered_top_on": TODAY,
             "is_new_top": True,
+            # A lab declares no clusters in these fixtures, so its rows sit in the
+            # single implicit grouping every unclustered profile falls into.
+            "cluster_slates": {
+                "c-all": {
+                    "label": "",
+                    "rank": rank,
+                    "entered_on": TODAY,
+                    "is_new": True,
+                }
+            },
         },
     )
 

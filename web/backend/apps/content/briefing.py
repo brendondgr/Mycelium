@@ -51,13 +51,26 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.content import briefing_sections
+from apps.content.cluster_fit import lead_sentence, stored_writeup
 from apps.content.models import (
     ContentItem,
     DailyBriefing,
     IgnoredItem,
     RelevanceScore,
 )
+from apps.content.slates import (
+    cluster_entries,
+    cluster_rank,
+    entered_cluster_on,
+)
 from apps.content.targets import target_for_lab, target_for_user
+from apps.content.theme_report import (
+    ThemeSection,
+    declared_clusters,
+    quiet_lines,
+    section_label,
+    split_by_theme,
+)
 from apps.content.top_feed import is_entrant, order_by_slate
 
 logger = logging.getLogger(__name__)
@@ -296,7 +309,10 @@ def _deadline_rounds(meta: dict) -> list[dict]:
 
 
 def _showcase_item(
-    score: RelevanceScore, today: str, member_names: dict[str, str] | None = None
+    score: RelevanceScore,
+    today: str,
+    member_names: dict[str, str] | None = None,
+    cluster_id: str | None = None,
 ) -> dict:
     """Flatten one score into the small display item the UI/prompt use.
 
@@ -315,6 +331,20 @@ def _showcase_item(
     meta = content.metadata or {}
     signals = score.signals or {}
     title = meta.get("title") or meta.get("name") or "(untitled)"
+    # Read the write-up for the theme this item is being shown *under*. A bridge
+    # item carries a separate judgement in each theme's slate, so reading the row
+    # rather than the pair is exactly how one theme's reasoning ends up printed
+    # under both headings.
+    entries = cluster_entries(signals)
+    writeup = stored_writeup(signals, cluster_id) if cluster_id else None
+    if writeup is None and not cluster_id and entries:
+        best = min(entries, key=lambda key: entries[key].get("rank", 10**6))
+        writeup = stored_writeup(signals, best)
+    bridge_labels = [
+        (entry.get("label") or "")
+        for other, entry in entries.items()
+        if other != cluster_id and (entry.get("label") or "")
+    ]
     url = (
         content.source_url
         or meta.get("website")
@@ -358,8 +388,27 @@ def _showcase_item(
         # reader's slate on this run). Conflating them is what had a bulk import
         # announced to everyone as an opportunity they had not seen.
         "is_new": _is_new_today(signals, today),
-        "is_entrant": is_entrant(signals, today),
+        "is_entrant": (
+            entered_cluster_on(signals, cluster_id, today)
+            if cluster_id
+            else is_entrant(signals, today)
+        ),
         "top_rank": signals.get("top_rank"),
+        # Position *within this theme* — the thing that replaced the percent. A
+        # global position would be comparing scores that are not comparable, which
+        # is the failure this whole redesign removes.
+        "position": (
+            cluster_rank(signals, cluster_id) if cluster_id
+            else (signals.get("top_rank") or 0)
+        ),
+        "verdict": (writeup or {}).get("verdict") or signals.get("verdict"),
+        # The PDF prints only the first beat; the web entry gets all three plus
+        # the caveat, which is where a reader who wants depth has asked for it.
+        "lead": lead_sentence(writeup) or signals.get("reason", ""),
+        "caveat": (writeup or {}).get("caveat") or signals.get("caveat", ""),
+        "bridge_note": (writeup or {}).get("bridge_note", ""),
+        "bridge_labels": bridge_labels,
+        "edition": meta.get("edition") or meta.get("year") or "",
         # The attributed cluster (papers only; empty elsewhere) so the papers
         # section prompt can group its write-up by the researcher's focus clusters.
         "cluster_label": signals.get("cluster_label", ""),
@@ -392,10 +441,22 @@ class ScopePart:
     scope: str  # a project's owner discriminator ("user"/"lab"/…); "" for personal
     counts: dict[str, int] = field(default_factory=dict)
     items: dict[str, list[dict]] = field(default_factory=dict)
+    #: One section per research theme that has news — the document's body since
+    #: the report was reorganised from part → category → items to
+    #: theme → what's new → what's standing.
+    themes: list[ThemeSection] = field(default_factory=list)
+    #: ``[(label, standing count)]`` for themes holding a slate but nothing new.
+    #: One line at the end of the theme sequence, never a section.
+    quiet: list[tuple[str, int]] = field(default_factory=list)
 
     @property
     def total(self) -> int:
         return sum(self.counts.values())
+
+    @property
+    def live_themes(self) -> list[ThemeSection]:
+        """The themes that earn a section. A theme with no news is one quiet line."""
+        return [theme for theme in self.themes if theme.has_news]
 
     def as_summary_row(self, categories: list[str]) -> dict:
         """The JSON row the summary table renders (one row per part)."""
@@ -420,6 +481,7 @@ def gather_part(
     limit: int,
     member_names: dict[str, str] | None = None,
     reader=None,
+    clusters: list | None = None,
 ) -> ScopePart:
     """Read one target's slate into a :class:`ScopePart`, and what is new in it.
 
@@ -435,16 +497,45 @@ def gather_part(
     """
     counts: dict[str, int] = {}
     items: dict[str, list[dict]] = {}
+    sections: dict[str, ThemeSection] = {}
     for category in categories:
-        scores = report_scores(
-            target_filter, CATEGORY_TYPES[category], today, reader=reader
-        )
+        content_type = CATEGORY_TYPES[category]
+        scores = report_scores(target_filter, content_type, today, reader=reader)
         counts[category] = len(report_new_scores(scores, today))
         items[category] = [
             _showcase_item(s, today, member_names) for s in scores[:limit]
         ]
+        for cluster in clusters or []:
+            section = sections.get(cluster.id)
+            if section is None:
+                section = ThemeSection(
+                    cluster_id=cluster.id, label=section_label(cluster, label)
+                )
+                sections[cluster.id] = section
+            split = split_by_theme(
+                scores,
+                [cluster],
+                today,
+                content_type=content_type,
+                build=lambda score, cid: _showcase_item(
+                    score, today, member_names, cid
+                ),
+            )
+            entrants, standing = split.get(cluster.id, ([], []))
+            if entrants:
+                section.entrants[category] = entrants
+            if standing:
+                section.standing[category] = standing
+    themes = [section for section in sections.values() if section.is_alive]
     return ScopePart(
-        key=key, label=label, kind=kind, scope=scope, counts=counts, items=items
+        key=key,
+        label=label,
+        kind=kind,
+        scope=scope,
+        counts=counts,
+        items=items,
+        themes=themes,
+        quiet=quiet_lines(themes),
     )
 
 
@@ -571,6 +662,7 @@ def _write_briefing(
         target_filter, watch, allow, member_names, reader=reader
     )
     today = timezone.now().date().isoformat()
+    clusters = declared_clusters(getattr(target, "interests", None))
 
     personal = gather_part(
         target_filter,
@@ -582,7 +674,11 @@ def _write_briefing(
         limit=briefing_sections.REPORT_ITEMS_PER_SECTION,
         member_names=member_names,
         reader=reader,
+        clusters=clusters,
     )
+    # Projects stay flat (open decision OD3): they rarely carry themes of their
+    # own, and inheriting the parent's would attribute a project's matches to a
+    # strand the project never declared.
     project_parts = [
         gather_part(
             {"target_project": project},
@@ -599,13 +695,22 @@ def _write_briefing(
         for project in (projects or [])
     ]
 
+    narrative_payload: dict = {}
     if personal.total or any(part.total for part in project_parts):
+        narrative_payload = briefing_sections.write_narrative(
+            _profile_text(target),
+            personal,
+            clusters,
+            complete=complete,
+            entitled=_narrative_entitled(target_filter),
+        )
         body, used_llm = briefing_sections.generate_report_body(
             _profile_text(target),
             categories,
             personal,
             project_parts,
             complete=complete,
+            narrative=narrative_payload,
         )
         origin = (
             DailyBriefing.Origin.LLM if used_llm else DailyBriefing.Origin.FALLBACK
@@ -642,9 +747,22 @@ def _write_briefing(
             "new_counts": new_counts,
             "showcase": showcase,
             "project_summary": project_summary,
+            "narrative": narrative_payload,
         },
     )
     return briefing
+
+
+def _narrative_entitled(target_filter: dict) -> bool:
+    """Whether this target's plan includes Mylo's prose.
+
+    The same gate the write-ups use. A free reader's document opens on the cover
+    table and the listings — quieter, not broken — which is the honest rendering
+    of a paid layer that is not paid for.
+    """
+    from .theme_run import target_is_entitled
+
+    return target_is_entitled(target_filter)
 
 
 def _carry_forward(owner: dict) -> tuple[str, str]:
