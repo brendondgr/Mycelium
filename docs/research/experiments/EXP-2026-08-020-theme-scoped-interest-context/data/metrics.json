@@ -1,0 +1,97 @@
+{
+  "harness": {
+    "clustered_profile": {
+      "after": {
+        "R@100": 0.25211532128240066,
+        "nDCG@10": 0.17517087497920084
+      },
+      "before": {
+        "R@100": 0.25211532128240066,
+        "nDCG@10": 0.17517087497920084
+      }
+    },
+    "slate_profile": {
+      "after": {
+        "R@100": 0.25211532128240066,
+        "nDCG@10": 0.17517087497920084
+      },
+      "before": {
+        "R@100": 0.25211532128240066,
+        "nDCG@10": 0.17517087497920084
+      }
+    }
+  },
+  "harness_note": "Unchanged by construction: eval/harness/profiles.py builds SearchInterest objects directly and never calls interests_query.search_interests, so the harness cannot observe this change.",
+  "production": {
+    "after": {
+      "conference": {
+        "distinct": 45,
+        "in_all_pct": 0,
+        "jaccard": 0.03,
+        "leads": 5,
+        "pool": 307,
+        "slate_depth": 10
+      },
+      "fellowship": {
+        "distinct": 21,
+        "in_all_pct": 0,
+        "jaccard": 0.04,
+        "leads": 5,
+        "pool": 319,
+        "slate_depth": 5
+      },
+      "grant": {
+        "distinct": 44,
+        "in_all_pct": 0,
+        "jaccard": 0.04,
+        "leads": 5,
+        "pool": 311,
+        "slate_depth": 10
+      },
+      "paper": {
+        "distinct": 70,
+        "in_all_pct": 0,
+        "jaccard": 0.2,
+        "leads": 5,
+        "pool": 162,
+        "slate_depth": 25
+      }
+    },
+    "before": {
+      "conference": {
+        "distinct": 12,
+        "in_all_pct": 75,
+        "jaccard": 0.87,
+        "leads": 1,
+        "pool": 145,
+        "slate_depth": 10
+      },
+      "fellowship": {
+        "distinct": 0,
+        "in_all_pct": null,
+        "jaccard": null,
+        "leads": 0,
+        "pool": 182,
+        "slate_depth": 5
+      },
+      "grant": {
+        "distinct": 15,
+        "in_all_pct": 47,
+        "jaccard": 0.69,
+        "leads": 1,
+        "pool": 161,
+        "slate_depth": 10
+      },
+      "paper": {
+        "distinct": 31,
+        "in_all_pct": 55,
+        "jaccard": 0.75,
+        "leads": 1,
+        "pool": 119,
+        "slate_depth": 25
+      }
+    }
+  },
+  "target": "brendondgr (production store), 5 declared themes, 22 areas",
+  "themes": 5
+}

@@ -28,10 +28,11 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-017` | 2026-08-22 | Three channels + cross-encoder against the dense pool + cross-encoder | complete | — | C-021 | [folder](experiments/EXP-2026-08-017-splade-vs-dense-reranked/RESULTS.md) |
 | `EXP-2026-08-018` | 2026-08-22 | Shipping the cross-encoder rerank: flag-off invariance and on/off cost | complete | — | C-023 | [folder](experiments/EXP-2026-08-018-rerank-ship-verification/RESULTS.md) |
 | `EXP-2026-08-019` | 2026-08-23 | Per-cluster admission: harness regression check | complete | — | — | [folder](experiments/EXP-2026-08-019-per-cluster-admission-regression/RESULTS.md) |
+| `EXP-2026-08-020` | 2026-08-23 | Theme-scoped interest context: production slate separation | complete | — | — | [folder](experiments/EXP-2026-08-020-theme-scoped-interest-context/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 19 |
-| **total** | **19** |
+| complete | 20 |
+| **total** | **20** |

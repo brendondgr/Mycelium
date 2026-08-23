@@ -98,6 +98,7 @@ Files below are inside `web/backend/apps/content/`.
 | Manual ignore (per reader): model, endpoints, feed filtering | `models.py` (`IgnoredItem`), `views.py` (`IgnoreItemView`, `IgnoredItemsView`, `_ignored_content_ids`) |
 | Scoring target (user / lab / project) | `targets.py` |
 | Paper pipeline | `pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`, `clustering.py` |
+| What each interest actually searches for (theme-scoped context, capped) | `interests_query.py` (`search_interests`, `INTEREST_CONTEXT_TERMS`) — it appended the whole profile's keywords to every area until EXP-2026-08-020; do not reintroduce a profile-wide suffix |
 | Per-theme slates (depth, entrant diff, pruning, bridges) | `slates.py` — replaces the global Top-25 for any profile with declared areas; the flat `top_rank` signals are still derived from it for existing readers |
 | Per-theme admission (absolute floor OR a theme's relative floor, hard minimum) | `admission.py` (`admit`, `AdmissionStats`), entered from `pipeline.fuse_clusters_pool` |
 | The four-point verdict that replaced the percent match | `verdicts.py` (`derive_verdict` for the rank band, `parse_verdict` for the model's) |

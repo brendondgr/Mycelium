@@ -1,0 +1,95 @@
+# The machine-readable half of the record. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-08-020
+slug: theme-scoped-interest-context
+title: "Theme-scoped interest context: production slate separation"
+status: complete
+date_started: 2026-08-23
+date_completed: 2026-08-23
+authors: [brendondgr]
+
+purpose: >
+  A reader with five research themes found the same knowledge-graph workshop
+  leading the conference list of all five, including Computer Vision and
+  Robotics. This measures the fix. search_interests appended the profile's whole
+  keyword list to every area, and opportunity_search_interests merged every watch
+  topic in first -- a 473-character shared suffix on a 24-character label, so all
+  22 of that reader's searches were ~95% the same string and one document scored
+  the normalised maximum on every interest at once. Context is now drawn from an
+  interest's own theme's sibling areas instead, capped, and never from the
+  implicit cluster.
+
+hypothesis: >
+  Pre-registered acceptance test, per category: five themes must produce five
+  distinct rank-1 items. Predicted with it -- distinct items across the five
+  slates rises, mean pairwise Jaccard falls, share present in every slate falls
+  toward zero, and the candidate pool grows because five different questions
+  retrieve five different sets. OUTCOME: all four categories pass and every
+  prediction held. Papers 31 to 70 distinct items and Jaccard 0.75 to 0.20;
+  grants 15 to 44 and 0.69 to 0.04; conferences 12 to 45 and 0.87 to 0.03;
+  fellowships absent to 21 and 0.04. Items present in every slate go from 55/47/75
+  per cent to zero everywhere. UNPREDICTED: the eval harness cannot see this
+  change at all -- eval/harness/profiles.py builds SearchInterest directly and has
+  never called the rewritten function, so every profile-arm number on record was
+  measured on bare per-area queries production did not use until now.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 5fb2fee
+  branch: main
+  entrypoint: "uv run --project web/backend python web/backend/manage.py run_refitting --user brendondgr --max 1"
+  dirty: true  # the folder was created after the code commit; see ISSUES.md
+config:
+  path: web/backend/apps/content/interests_query.py
+  hash: null
+data:
+  name: Mycelium production ContentItem store (development deployment)
+  version: "compose postgres (pgvector) at localhost:11450; 35,209 papers, 2,171 grants, 912 conferences, 818 fellowships"
+  split: test
+  n_examples: 1 # one real profile: 5 declared themes, 22 areas
+  qrels: "none -- this experiment measures slate separation, not relevance"
+  hash: null
+  card: null
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: "pgvector/pgvector:pg17 for the store; the pipeline runs on the host"
+compute:
+  hardware: "host CPU only (no GPU); local LLM endpoint for the write-up stages"
+  wall_clock_hours: 0.6
+  estimated_cost_usd: 0
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: distinct_rank_1_items_across_themes
+  values:
+    paper_distinct_leads_before: 1
+    paper_distinct_leads_after: 5
+    paper_jaccard_before: 0.75
+    paper_jaccard_after: 0.20
+    grant_distinct_leads_before: 1
+    grant_distinct_leads_after: 5
+    grant_jaccard_before: 0.69
+    grant_jaccard_after: 0.04
+    conference_distinct_leads_before: 1
+    conference_distinct_leads_after: 5
+    conference_jaccard_before: 0.87
+    conference_jaccard_after: 0.03
+    fellowship_distinct_leads_after: 5
+    fellowship_jaccard_after: 0.04
+    harness_clustered_profile_nDCG@10_before: 0.17517087497920084
+    harness_clustered_profile_nDCG@10_after: 0.17517087497920084
+baselines_compared: ["production run at 9dffa35", "clustered_profile @ 9dffa35", "slate_profile @ 9dffa35"]
+statistical_test: null # n=1 profile; no interval is meaningful
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-003, EXP-2026-08-019]
