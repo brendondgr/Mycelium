@@ -129,9 +129,12 @@ export function filterAndSortGrants(
   todayIso: string,
 ): GrantOpportunity[] {
   const matched = grants.filter((g) => {
-    const pct = g.match_percent ?? 0;
-    if (f.strength === "good" && pct < 50) return false;
-    if (f.strength === "strong" && pct < 75) return false;
+    // Strength is a verdict now, not a percent. "Strong" is what Mylo said to
+    // read; "good" is anything he did not send to the bottom of the pile.
+    if (f.strength === "strong" && g.verdict !== "read") return false;
+    if (f.strength === "good" && !(g.verdict === "read" || g.verdict === "skim")) {
+      return false;
+    }
 
     if (f.deadline === "none") {
       if (g.deadline_date) return false;

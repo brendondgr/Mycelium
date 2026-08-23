@@ -399,9 +399,7 @@ function SuggestionRow({
           <p className="mt-0.5 text-[12px] text-[var(--text-secondary)]">
             {suggestion.shared_by ? `Shared by ${suggestion.shared_by.name} · ` : ""}
             {suggestion.project.name}
-            {suggestion.match_percent !== null
-              ? ` · ${suggestion.match_percent}% match`
-              : ""}
+
           </p>
           {error ? (
             <p className="mt-1 text-[11px] text-clay" role="alert">

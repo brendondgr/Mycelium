@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 
 type MatchCardProps = {
   /**
-   * The item's left-hand panel: a bare `MatchRing` on a paper card, or the
-   * fuller `MatchRail` (ring, "New", matching clusters) that the opportunity
-   * cards pass. Null when there is no percent and no tag to show.
+   * The item's left-hand panel: a bare verdict chip on a paper card, or the
+   * fuller `MatchRail` (position, verdict, "New", matching themes) the
+   * opportunity cards pass. Null when there is no judgement and no tag to show.
    */
   ring?: React.ReactNode;
   /** Badges, title and the item's own meta line — the block beside the ring. */
@@ -28,7 +28,7 @@ type MatchCardProps = {
  * tall: only the head is indented past it, and the description, reason and
  * source row start back at the card's left edge.
  *
- * With no panel (the cross-embedding tail has no percent) the gutter is not
+ * With no panel (an unscored item carries no judgement) the gutter is not
  * rendered at all, so nothing is indented past empty space.
  */
 export function MatchCard({ ring, head, children, className }: MatchCardProps) {

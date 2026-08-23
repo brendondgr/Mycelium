@@ -157,24 +157,6 @@ body {
 }
 
 /*
- * The MatchRing sweep. Registering the angle as a real percentage is what makes
- * the conic gradient interpolable — without @property the browser treats it as
- * an unanimatable token and the ring simply appears at its final value, which is
- * the correct fallback.
- */
-@property --ring-sweep {
-  syntax: "<percentage>";
-  inherits: false;
-  initial-value: 0%;
-}
-
-@keyframes mycelium-ring-sweep {
-  from {
-    --ring-sweep: 0%;
-  }
-}
-
-/*
  * The workspace's botanical ground (see `motion/section-ground.tsx`).
  *
  * Fixed behind the scrolling section rather than tiled through it, held to
@@ -306,12 +288,6 @@ body {
   }
   .leaf-vine-breeze {
     animation: leaf-vine-breeze 3.5s ease-in-out infinite alternate;
-  }
-
-  /* Ring: sweeps to the percent the element already carries inline, so the
-     keyframe needs no "to" — the underlying value is the destination. */
-  .mycelium-ring-sweep {
-    animation: mycelium-ring-sweep 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
   }
 
   /* Feed thread — the trunk, its two branches, and the three nodes, all on one

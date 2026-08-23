@@ -60,15 +60,19 @@ export type FeedItem = {
   description?: string;
   /** The "why this matched" line — never omit it; it is the whole point. */
   reason: string;
-  /** Percent fit, exactly as the app's match ring shows it. */
-  score: number;
-  /** Mylo's own rank, shown in the numbered chip beside a paper's title. */
+  /** Mylo's verdict, exactly as the app's chip shows it. There is no percentage
+   * here or in the product: the number implied a measurement nobody made. */
+  fit: "read" | "skim" | "file";
+  /** Its place in the theme that surfaced it, shown in the card's gutter. Never
+   * a global rank — scores from two themes are not comparable, so a position
+   * only means something inside one theme. */
   rank?: number;
   /**
    * Eligibility tier, for fellowships only. In the app this is a deterministic
-   * rule-engine verdict shown in the badge row, never folded into the percent.
+   * rule-engine verdict shown in the badge row, and it is a hard gate rather
+   * than a degree — it is never folded into Mylo's research-fit verdict.
    */
-  verdict?: "Qualified" | "Possible fit" | "Not eligible";
+  eligibility?: "Qualified" | "Possible fit" | "Not eligible";
   /** Fellowships: the award class chip ("Predoctoral", "Postdoctoral", …). */
   awardClass?: string;
   /** True when Mylo (the language model) wrote the reason. */
@@ -121,7 +125,7 @@ export const feedTabs: readonly FeedTab[] = [
           "Evaluates retrieval-augmented decision support across four hospital systems, and reports where grounding degrades once the deployment population drifts away from the index corpus.",
         reason:
           "Matches your Retrieval grounding cluster and shares the MIMIC-IV dataset with Clinical CDS safety.",
-        score: 92,
+        fit: "read",
         rank: 1,
         byMylo: true,
         isNew: true,
@@ -136,7 +140,7 @@ export const feedTabs: readonly FeedTab[] = [
           "A contrastive objective for high-density probe data that holds up when only a few hundred labelled trials are available per animal.",
         reason:
           "Strengthens the readout argument in your Q3 proposal; method overlaps two saved papers.",
-        score: 84,
+        fit: "skim",
         rank: 2,
         byMylo: true,
         cluster: "Plasticity mechanisms",
@@ -148,7 +152,7 @@ export const feedTabs: readonly FeedTab[] = [
         submeta: "2025 · Reyes et al.",
         reason:
           "Bridges two of your clusters — retrieval grounding and clinical CDS safety.",
-        score: 78,
+        fit: "skim",
         cluster: "Retrieval grounding",
         clusterToken: "1",
         bridge: "Clinical CDS safety",
@@ -169,7 +173,7 @@ export const feedTabs: readonly FeedTab[] = [
           "Full proposals for interdisciplinary work joining computing research with a named clinical partner. No preliminary award history required.",
         reason:
           "Scope fits Clinical CDS safety; your last two awards sit inside the stated budget band.",
-        score: 88,
+        fit: "read",
         byMylo: true,
         isNew: true,
         cluster: "Clinical CDS safety",
@@ -183,7 +187,7 @@ export const feedTabs: readonly FeedTab[] = [
         submeta: "Posted Feb 16",
         reason:
           "Matches the pilot-scale framing of your plasticity work; no preliminary data required.",
-        score: 74,
+        fit: "skim",
         cluster: "Plasticity mechanisms",
         clusterToken: "2",
         due: "Due Oct 16",
@@ -206,8 +210,8 @@ export const feedTabs: readonly FeedTab[] = [
           "Three years of support across a five-year window for graduate students in NSF-supported fields, awarded on the strength of the applicant rather than a project.",
         reason:
           "Citizenship, stage, and field all clear for two members. Research fit checked separately.",
-        score: 91,
-        verdict: "Qualified",
+        fit: "read",
+        eligibility: "Qualified",
         awardClass: "Predoctoral",
         byMylo: true,
         isNew: true,
@@ -222,8 +226,8 @@ export const feedTabs: readonly FeedTab[] = [
         submeta: "Posted Jun 11",
         reason:
           "Field match is strong, but institutional support needs confirming before applying.",
-        score: 67,
-        verdict: "Possible fit",
+        fit: "file",
+        eligibility: "Possible fit",
         awardClass: "Predoctoral",
         cluster: "Retrieval grounding",
         clusterToken: "1",
@@ -246,7 +250,7 @@ export const feedTabs: readonly FeedTab[] = [
           "A peer-reviewed track for datasets, benchmarks, and evaluation methodology, reviewed on documentation and reusability as much as on results.",
         reason:
           "Your benchmark work matches the track scope; abstract deadline lands before your defense.",
-        score: 81,
+        fit: "skim",
         byMylo: true,
         isNew: true,
         cluster: "Retrieval grounding",
@@ -261,7 +265,7 @@ export const feedTabs: readonly FeedTab[] = [
         when: "Nov 14 – Nov 18",
         reason:
           "Clinical informatics venue with a track that fits the CDS safety project directly.",
-        score: 76,
+        fit: "skim",
         cluster: "Clinical CDS safety",
         clusterToken: "3",
         due: "Full paper due Mar 11",

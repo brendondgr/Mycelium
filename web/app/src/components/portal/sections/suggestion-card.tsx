@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { MatchCard } from "@/components/portal/primitives/match-card";
-import { MatchRing } from "@/components/portal/primitives/match-ring";
+import { PositionMark, VerdictBadge } from "@/components/portal/primitives/verdict-badge";
 import { Pill } from "@/components/portal/primitives/pill";
 import {
   BridgeBadge,
@@ -43,16 +43,20 @@ function bylineLine(suggestion: Suggestion): string {
 /**
  * One research-article suggestion: fit, headline, why-it-matters reason, and a
  * link to the source. Only the cross-topics tail carries a chip — the rest of
- * the feed is Mylo's own ranking, which the ring already attributes with his
- * portrait, so labelling it again on every row said nothing. Lifts gently on
+ * the feed is Mylo's own ranking, which the verdict chip already attributes with
+ * his portrait, so labelling it again on every row said nothing. Lifts gently on
  * hover (reduced-motion aware via the global transition).
  *
- * Laid out by `MatchCard`: the ring sits in a notch at the top-left beside the
- * badges, title and meta line, and the abstract, reason and link run the card's
- * full width beneath it. The ring shows the language model's own percent and,
- * when Mylo authored the judgement, his portrait as attribution; the
- * cross-embedding tail (no model percent) falls back to its transformer
- * `embedding_match`. Every scored feed card in the workspace shares this shape.
+ * Laid out by `MatchCard`: the item's place in its theme and Mylo's verdict sit
+ * in a notch at the top-left beside the badges, title and meta line; the
+ * abstract, the full reason, the caveat and the link run the card's full width
+ * beneath it.
+ *
+ * **This is where the reasoning lives.** The printed report carries only the
+ * reason's first beat, because a morning brief is a record of what arrived; the
+ * remaining beats and the caveat are here, on demand, where a reader who wants
+ * depth has asked for it. The caveat is the part that makes the card read as
+ * judgement rather than promotion, so it is never hidden behind a disclosure.
  *
  * `recommendedFor` is the lab-only "who is this for?" strip. A personal feed
  * never passes it and renders exactly as before.
@@ -73,7 +77,6 @@ export function SuggestionCard({
 }) {
   const [ignored, setIgnored] = React.useState(false);
   const isMylo = suggestion.origin === "llm";
-  const percent = suggestion.match_percent ?? suggestion.embedding_match;
   const provenance = provenanceLine(suggestion);
   const byline = bylineLine(suggestion);
 
@@ -91,7 +94,15 @@ export function SuggestionCard({
 
   return (
     <MatchCard
-      ring={<MatchRing percent={percent} origin={suggestion.origin} />}
+      ring={
+        <div className="flex w-16 shrink-0 flex-col items-center gap-1.5">
+          <PositionMark
+            position={suggestion.position}
+            theme={suggestion.cluster?.label}
+          />
+          <VerdictBadge verdict={suggestion.verdict} origin={suggestion.origin} />
+        </div>
+      }
       head={
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -183,6 +194,21 @@ export function SuggestionCard({
             {suggestion.reason}
           </p>
         )
+      ) : null}
+
+      {/* The strongest reason to skip it. Printed plainly rather than tucked
+          away: a recommendation with no stated downside is an advertisement. */}
+      {suggestion.caveat ? (
+        <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+          <span className="font-semibold">Worth knowing: </span>
+          {suggestion.caveat}
+        </p>
+      ) : null}
+
+      {suggestion.bridge_note ? (
+        <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+          {suggestion.bridge_note}
+        </p>
       ) : null}
 
       <RecommendedFor members={recommendedFor} />

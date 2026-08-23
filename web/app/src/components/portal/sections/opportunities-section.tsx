@@ -167,7 +167,8 @@ export function GrantRow({
     <MatchCard
       ring={
         <MatchRail
-          percent={grant.match_percent ?? grant.embedding_match}
+          verdict={grant.verdict}
+          position={grant.position}
           origin={grant.origin}
           isNew={grant.is_new}
           isUpdated={grant.is_updated}

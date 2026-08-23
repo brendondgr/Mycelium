@@ -6,6 +6,7 @@ import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
+import { VerdictBadge } from "@/components/portal/primitives/verdict-badge";
 import {
   MyloReportCard,
   formatBriefingWhen,
@@ -102,7 +103,7 @@ function TodaySummaries({ data }: { data: DailyBriefing }) {
 /* -- Bottom-right zone: the top items per category -------------------------- */
 
 function ShowcaseRow({ item }: { item: BriefingShowcaseItem }) {
-  const hasMatch = typeof item.match_percent === "number";
+
   const body = (
     <span className="flex min-w-0 flex-1 items-start gap-2.5">
       <span className="min-w-0 flex-1">
@@ -117,7 +118,7 @@ function ShowcaseRow({ item }: { item: BriefingShowcaseItem }) {
       </span>
       <span className="flex shrink-0 items-center gap-1.5">
         {item.is_new ? <Pill tone="accent">New</Pill> : null}
-        {hasMatch ? <Pill tone="primary">{item.match_percent}%</Pill> : null}
+        <VerdictBadge verdict={item.verdict} size="sm" />
       </span>
     </span>
   );

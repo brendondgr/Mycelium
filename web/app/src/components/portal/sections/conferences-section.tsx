@@ -494,7 +494,8 @@ export function ConferenceCard({
     <MatchCard
       ring={
         <MatchRail
-          percent={conf.match_percent ?? conf.embedding_match}
+          verdict={conf.verdict}
+          position={conf.position}
           origin={conf.origin}
           isNew={conf.is_new}
           isUpdated={conf.is_updated}
@@ -620,7 +621,7 @@ function formatWhen(iso: string | null): string {
 /**
  * The Conferences page: calls for papers matched to the researcher, in
  * recommendation order, one card per row like Papers / Grants / Fellowships
- * (percent match and any "New" tag lead each card). A left-hand filter rail
+ * (Mylo's verdict and any "New" tag lead each card). A left-hand filter rail
  * (submission status, abstract/paper open,
  * deadline & event-date windows, continent, country, subject, new/saved, sort)
  * narrows the already-fetched feed in memory — instant, no refetch. The results
@@ -838,7 +839,7 @@ function ConferencesFeed({
               description={
                 labName
                   ? "Once Mylo has run for this lab, conferences and calls for papers matching its purpose will appear here."
-                  : "Once Mylo's nightly scan of calls for papers runs against your research profile, the venues that best fit your work — each with a percent match and its submission deadline — will appear here as cards."
+                  : "Once Mylo's nightly scan of calls for papers runs against your research profile, the venues that best fit your work — each with his read on it and its submission deadline — will appear here as cards."
               }
             />
           ) : visible.length === 0 ? (

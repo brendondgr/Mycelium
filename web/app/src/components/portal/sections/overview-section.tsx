@@ -32,7 +32,7 @@ function firstName(name: string): string {
  * The Overview section — the landing view of the portal dashboard. Two columns:
  * left holds Mylo's weekly report (scrollable, so a long write-up doesn't push
  * the page taller than the screen); right holds what Mylo found this year, the
- * top research papers (with percent match), and the nearest deadlines.
+ * top research papers (with Mylo's verdict), and the nearest deadlines.
  */
 export function OverviewSection() {
   const { user, scopeLabel, currentLab } = usePortal();

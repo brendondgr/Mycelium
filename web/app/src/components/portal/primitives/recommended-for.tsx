@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Avatar } from "@/components/portal/primitives/avatar";
+import { VERDICT_LABEL } from "@/components/portal/primitives/verdict-badge";
 import type { RecommendedMember } from "@/lib/portal/types";
 
 /**
@@ -65,7 +66,7 @@ export function RecommendedFor({
         </span>
         {members.map((member) => {
           const on = member.username === active.username;
-          const shown = shownPercent(member);
+          const shown = shownSignal(member);
           return (
             <button
               key={member.username}
@@ -84,9 +85,7 @@ export function RecommendedFor({
               <Avatar initials={member.initials} seed={member.username} size={16} />
               {member.name}
               {shown ? (
-                <span className="text-[var(--text-secondary)]">
-                  {shown.percent}%
-                </span>
+                <span className="text-[var(--text-secondary)]">{shown.text}</span>
               ) : null}
               {member.basis.includes("eligible") ? (
                 <span
@@ -117,23 +116,26 @@ export function RecommendedFor({
 }
 
 /**
- * The one percent a chip shows, and what it means.
+ * The one claim a chip shows, and what it means.
  *
- * The strip carries two measurements that are not on the same scale: a profile
- * cosine (geometry, naturally 0.4–0.7) and the member's own personal-feed score
- * (a model's 0–100 judgement, which runs hot). Showing both side by side, as an
- * undifferentiated middot list, made the same member read as "66%" and "95%" at
- * once. So: prefer the number the member themselves sees on their own page, fall
+ * The strip carries two signals that are not the same kind of statement: a
+ * profile cosine (a measured distance, naturally 0.4–0.7) and what the member's
+ * own feed concluded (a verdict). Showing both side by side as an
+ * undifferentiated middot list made the same member read as two different things
+ * at once. So: prefer what the member themselves sees on their own page, fall
  * back to the cosine, and always say which one it is.
  */
-function shownPercent(
+function shownSignal(
   member: RecommendedMember,
-): { percent: number; scope: string } | null {
-  if (member.own_feed_percent != null) {
-    return { percent: member.own_feed_percent, scope: "on their own feed" };
+): { text: string; scope: string } | null {
+  if (member.own_feed_verdict) {
+    return {
+      text: VERDICT_LABEL[member.own_feed_verdict],
+      scope: "on their own feed",
+    };
   }
   if (typeof member.profile_cosine === "number") {
-    return { percent: member.profile_cosine, scope: "profile fit" };
+    return { text: `${member.profile_cosine}%`, scope: "profile fit" };
   }
   return null;
 }
@@ -142,9 +144,9 @@ function shownPercent(
  * reader that never opens the panel. */
 function memberTitle(member: RecommendedMember): string {
   const parts = [member.name];
-  const shown = shownPercent(member);
+  const shown = shownSignal(member);
   if (shown) {
-    parts.push(`${shown.percent}% ${shown.scope}`);
+    parts.push(`${shown.text} ${shown.scope}`);
   }
   if (member.basis.includes("eligible")) {
     parts.push(member.tier === "qualified" ? "qualified" : "possibly eligible");
@@ -154,8 +156,10 @@ function memberTitle(member: RecommendedMember): string {
 
 /** The fallback sentence when a member was named on a basis with no prose. */
 function describeBasis(member: RecommendedMember): string {
-  if (member.own_feed_percent != null) {
-    return `This already matched ${member.name}'s own feed at ${member.own_feed_percent}%.`;
+  if (member.own_feed_verdict) {
+    return `${member.name}'s own feed already flagged this as a ${
+      VERDICT_LABEL[member.own_feed_verdict]
+    }.`;
   }
   if (member.basis.includes("eligible")) {
     return `${member.name} is personally eligible for this.`;
@@ -166,16 +170,13 @@ function describeBasis(member: RecommendedMember): string {
 /** The supporting line under the reason — what else is known about this member. */
 function basisNote(member: RecommendedMember): string {
   const notes: string[] = [];
-  const shown = shownPercent(member);
-  // Name what the chip's number measures, then the *other* measurement if there
-  // is one. Repeating the same number under a chip that already shows it would
-  // be the two-scales confusion in miniature.
+  const shown = shownSignal(member);
+  // Name what the chip's signal is, then the *other* one if there is one.
+  // Repeating the same claim under a chip that already shows it would be the
+  // two-scales confusion in miniature.
   if (shown) {
-    notes.push(`${shown.percent}% ${shown.scope}`);
-    if (
-      member.own_feed_percent != null &&
-      typeof member.profile_cosine === "number"
-    ) {
+    notes.push(`${shown.text} ${shown.scope}`);
+    if (member.own_feed_verdict && typeof member.profile_cosine === "number") {
       notes.push(`${member.profile_cosine}% profile fit`);
     }
   }

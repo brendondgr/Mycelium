@@ -4,6 +4,21 @@ import type { ClusterGroup, ResearchInterests, WatchCadence } from "@/lib/auth-t
 
 export type LabRole = "owner" | "admin" | "member" | "viewer";
 
+/**
+ * Mylo's four-point judgement — what replaced the percent match everywhere.
+ *
+ * The number implied a measurement nobody made: a language model was asked to
+ * guess a similarity, and the result sat next to a real embedding cosine with no
+ * way for a reader to tell which was which. A verdict says the useful part
+ * honestly, and it exists on both paths — model-judged on a paid plan, derived
+ * from the item's rank band within its own theme otherwise — so it means the same
+ * thing to every reader.
+ *
+ * `skip` is never shown as a chip: the item keeps its place in the list and its
+ * reference row, but earns no write-up and no badge.
+ */
+export type Verdict = "read" | "skim" | "file" | "skip";
+
 /** One of the signed-in user's lab memberships — powers the workspace switcher. */
 export type MyLab = {
   slug: string;
@@ -198,8 +213,21 @@ export type Suggestion = {
   year: number | null;
   authors: string[];
   score: number;
-  /** The model's 0–100 percent match for this researcher (null if unscored). */
-  match_percent: number | null;
+  /** read / skim / file / skip — Mylo's judgement, or the rank band's when the
+   * reader is on a plan without model reasoning. Null on an unscored row. */
+  verdict: Verdict | null;
+  /** Position within this item's **own theme's** slate. A global position would
+   * compare scores that are not comparable across themes. */
+  position: number | null;
+  /** The strongest reason this might not be worth the reader's time. Mandatory on
+   * a model-written judgement — it is what makes the feed read as judgement
+   * rather than promotion. */
+  caveat: string;
+  /** The reason's three beats: why it matters to this theme, how to use it, what
+   * to take from it. The printed report carries only the first. */
+  beats: string[];
+  /** One clause on what two themes share, when the item reaches both. */
+  bridge_note: string;
   /** The transformer (embedding) cosine match, 0–100, this paper cleared to be
    * surfaced — shown on the cross-embedding tail in place of the model's percent.
    * null on legacy rows written before the threshold. */
@@ -238,10 +266,12 @@ export type DailyReportSummary = {
   paper_count: number;
   /** How many of the matched papers are new this week (pinned to the top). */
   new_count: number;
+  /** How many of the feed's papers Mylo judged worth reading in full. */
   strong_matches: number;
-  top_match: number | null;
-  average_match: number | null;
-  /** The embedding-match floor (percent) each surfaced paper had to clear. */
+  /** How many of each verdict the feed currently holds. */
+  verdict_counts: Record<Verdict, number>;
+  /** The embedding-match floor (percent) each surfaced paper had to clear. Not a
+   * claim about any one item — it is what got them into the feed at all. */
   match_threshold: number;
   themes: string[];
   sources: string[];
@@ -284,7 +314,7 @@ export type BriefingShowcaseItem = {
   type: string;
   title: string;
   url: string;
-  match_percent: number | null;
+  verdict: Verdict | null;
   headline: string;
   deadline_date: string;
   is_new: boolean;
@@ -397,8 +427,14 @@ type OpportunityBase = {
   title: string;
   url: string;
   score: number;
-  /** The model's 0–100 fit judgement (null on the fallback tail). */
-  match_percent: number | null;
+  /** read / skim / file / skip (null on an unscored row). */
+  verdict: Verdict | null;
+  /** Position within this item's own theme's slate. */
+  position: number | null;
+  /** The strongest reason to skip it. Mandatory on a model-written judgement. */
+  caveat: string;
+  /** The reason's three beats; the printed report carries only the first. */
+  beats: string[];
   /** The transformer (embedding) cosine match, 0–100, a threshold-gated grant or
    * conference cleared to be surfaced — shown on the tail in place of the model's
    * percent. null for fixed-slice areas and legacy rows. */
@@ -579,7 +615,8 @@ export type InterestedMember = {
   username: string;
   name: string;
   initials: string;
-  match_percent: number;
+  /** What this member's *own* feed concluded about the item. */
+  verdict: Verdict;
 };
 
 /**
@@ -618,7 +655,7 @@ export type RecommendedMember = {
    * scales, and a ~30-point gap between them is expected, not an anomaly. Label
    * whichever one is shown with its scope; never present both as one list.
    */
-  own_feed_percent: number | null;
+  own_feed_verdict: Verdict | null;
   reason: string;
   source: "llm" | "similarity" | "own_match" | "eligibility";
   basis: Array<"profile_fit" | "own_match" | "eligible">;
@@ -972,8 +1009,9 @@ export type ReminderInput = {
 
 /**
  * A paper suggestion surfaced from a teammate's shared item (from
- * `/api/suggestions/`) — the "Suggested for you" surface. `match_percent` is
- * the caller's own personal fit for the shared paper.
+ * `/api/suggestions/`) — the "Suggested for you" surface. `score` is the fused
+ * ranking score, as itself: scaling it by 100 and calling it a percent match was
+ * exactly the false precision this product retired.
  */
 export type MemberSuggestion = {
   id: string;
@@ -981,7 +1019,6 @@ export type MemberSuggestion = {
   title: string;
   url: string;
   score: number;
-  match_percent: number | null;
   project: { id: string; name: string };
   shared_by: ProjectMember | null;
   created_at: string;

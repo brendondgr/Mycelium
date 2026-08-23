@@ -22,7 +22,8 @@ export type FellowshipDeadlineWindow =
 
 export type FellowshipFilterState = {
   sort: FellowshipSort;
-  /** Eligibility tier: all / qualified (headline === "Strong eligibility match" or match_percent >= 70). */
+  /** Eligibility tier: all / qualified (a strong eligibility headline, or a
+   * "read" verdict). */
   strength: FellowshipStrength;
   /** Deadline window filter. */
   deadline: FellowshipDeadlineWindow;
@@ -213,12 +214,15 @@ export function filterAndSortFellowships(
   todayIso: string,
 ): FellowshipOpportunity[] {
   const matched = items.filter((item) => {
-    // Eligibility strength: "qualified" means headline === "Strong eligibility match"
-    // OR match_percent >= 70 (whichever is present).
+    // Eligibility strength: "qualified" means the rule engine called it a strong
+    // eligibility match, or Mylo judged the award worth reading. The old second
+    // test was a percent, which no longer exists — the verdict is what replaced it
+    // and it exists on the deterministic path too, so the filter behaves the same
+    // for a reader with no model reasoning.
     if (f.strength === "qualified") {
       const byHeadline = item.headline === "Strong eligibility match";
-      const byPct = typeof item.match_percent === "number" && item.match_percent >= 70;
-      if (!byHeadline && !byPct) return false;
+      const byVerdict = item.verdict === "read";
+      if (!byHeadline && !byVerdict) return false;
     }
 
     // Deadline window

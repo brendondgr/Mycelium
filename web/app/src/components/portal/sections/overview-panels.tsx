@@ -7,7 +7,7 @@ import {
   DocumentIcon,
 } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
-import { MatchRing } from "@/components/portal/primitives/match-ring";
+import { VerdictBadge } from "@/components/portal/primitives/verdict-badge";
 import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { Avatar } from "@/components/portal/primitives/avatar";
 import type {
@@ -112,7 +112,7 @@ export function TopPapersPanel({
                     </span>
                   </>
                 ) : null}
-                <MatchRing percent={paper.match_percent} size="sm" />
+                <VerdictBadge verdict={paper.verdict} size="sm" />
               </div>
             </li>
           ))}

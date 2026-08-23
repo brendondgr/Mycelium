@@ -245,7 +245,8 @@ export function FellowshipRow({
          and keeps its own badge beside the award's identity line. */
       ring={
         <MatchRail
-          percent={item.match_percent}
+          verdict={item.verdict}
+          position={item.position}
           origin={item.origin}
           scope={scopeName}
           isNew={item.is_new}

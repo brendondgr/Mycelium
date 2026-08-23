@@ -11,51 +11,59 @@ interface Props {
 
 const { item, kind, linkLabel } = Astro.props;
 
-/* The same three tiers as `matchTier` in the workspace's MatchRing. */
-const tier =
-  item.score >= 85
-    ? { token: "--success", word: "strong" }
-    : item.score >= 60
-      ? { token: "--warning", word: "fair" }
-      : { token: "--clay", word: "low" };
+/* Mylo's four-point judgement, exactly as the workspace shows it. There is no
+   percentage here or there: the number implied a measurement nobody made. */
+const FIT = {
+  read: { label: "Read", blurb: "Worth your attention today." },
+  skim: { label: "Skim", blurb: "Worth a look — the abstract may be enough." },
+  file: { label: "File", blurb: "Relevant, but not urgent." },
+} as const;
+const fit = FIT[item.fit];
 
 /* Papers put chips in the head's right column; every opportunity puts the
    deadline and amount there instead, exactly as the app's cards do. */
 const isPaper = kind === "papers";
 const isConference = kind === "conferences";
 
-const ringLabel = `${item.score} percent match to your research profile — a ${tier.word} match${
-  item.byMylo ? ", judged by Mylo" : ""
-}`;
+const fitLabel = `${fit.label}: ${fit.blurb} Judged against your research${
+  item.byMylo ? ", by Mylo" : ""
+}.`;
 ---
 
 <li
   class="feed-card reveal"
-  style={`--dot: var(--cluster-${item.clusterToken}); --arc: var(${tier.token}); --pct: ${item.score};`}
+  style={`--dot: var(--cluster-${item.clusterToken});`}
 >
   <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 sm:gap-x-5">
-    {/* Left gutter: the match ring, one grid row tall, so the reason and link
-        below start back at the card's left edge rather than sitting in a tall
-        empty margin. Same notch the workspace's MatchCard draws. */}
+    {/* Left gutter: the item's place in its theme and Mylo's verdict on it, one
+        grid row tall, so the reason and link below start back at the card's left
+        edge rather than sitting in a tall empty margin. Same notch the
+        workspace's MatchCard draws. */}
     <div class="col-start-1 row-start-1 self-start">
-      <div class="flex shrink-0 flex-col items-center gap-1" role="img" aria-label={ringLabel}>
-        <span class="score-ring">
-          <span class="score-ring-value">{item.score}%</span>
+      <div class="flex w-14 shrink-0 flex-col items-center gap-1.5">
+        {
+          item.rank ? (
+            <span class="fit-position" aria-label={`Ranked ${item.rank} in ${item.cluster}`}>
+              {item.rank}
+            </span>
+          ) : null
+        }
+        <span class:list={["fit-chip", `is-${item.fit}`]} role="img" aria-label={fitLabel}>
           {
             item.byMylo ? (
               <img
-                class="score-ring-mylo"
+                class="fit-chip-mylo"
                 src="/images/mylo-headshot-256.webp"
                 alt=""
-                width="20"
-                height="20"
+                width="14"
+                height="14"
                 loading="lazy"
                 decoding="async"
               />
             ) : null
           }
+          {fit.label}
         </span>
-        <span class="score-ring-word">{tier.word}</span>
       </div>
     </div>
 
@@ -63,9 +71,11 @@ const ringLabel = `${item.score} percent match to your research profile — a ${
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0 flex-1">
           {/* Title first on every card, so it lines up with the top of the
-              ring whether or not this item carries a rank or a cluster. */}
+              gutter whether or not this item carries a position or a cluster.
+              The position itself sits in the gutter, not here: one number is one
+              number, and printing it twice invited the reader to look for a
+              difference between them. */}
           <div class="flex min-w-0 items-start gap-3">
-            {item.rank ? <span class="feed-rank">{item.rank}</span> : null}
             <h3 class="feed-title">{item.title}</h3>
           </div>
 
@@ -107,9 +117,14 @@ const ringLabel = `${item.score} percent match to your research profile — a ${
               ) : null
             }
             {
-              item.verdict ? (
-                <span class:list={["verdict-badge", item.verdict !== "Qualified" && "is-soft"]}>
-                  {item.verdict}
+              item.eligibility ? (
+                <span
+                  class:list={[
+                    "verdict-badge",
+                    item.eligibility !== "Qualified" && "is-soft",
+                  ]}
+                >
+                  {item.eligibility}
                 </span>
               ) : null
             }
@@ -265,7 +280,7 @@ const ringLabel = `${item.score} percent match to your research profile — a ${
     The workspace's scored-feed card, rebuilt in plain CSS.
 
     Every value here is read off the live components rather than approximated:
-    `Card` and `MatchCard` for the shell and the ring notch, `MatchRing` for the
+    `Card` and `MatchCard` for the shell and the notch, `VerdictBadge` for the
     arc, `ClusterBadge` / `Pill` / `NewTag` / `MyloReason` for the chips and the
     AI note (all under web/app/src/components/portal/). When one of those
     changes, this is the file that has to follow.
@@ -291,73 +306,54 @@ const ringLabel = `${item.score} percent match to your research profile — a ${
     }
   }
 
-  /* The arc: a conic gradient swept to the percent and colored by tier, the
-     number inside it, the tier word beneath — fit is never carried by color
-     alone. `--ring-sweep` animates on reveal (see global.css). */
-  .score-ring {
-    position: relative;
-    display: inline-grid;
-    place-items: center;
-    inline-size: 3rem;
-    block-size: 3rem;
-    border-radius: 9999px;
-    --ring-sweep: calc(var(--pct) * 1%);
-    background: conic-gradient(
-      var(--arc) var(--ring-sweep),
-      color-mix(in srgb, var(--border) 70%, transparent) 0
-    );
-  }
-
-  .score-ring::before {
-    content: "";
-    position: absolute;
-    inset: 4px;
-    border-radius: 9999px;
-    background: var(--surface);
-  }
-
-  .score-ring-value {
-    position: relative;
-    font-size: 0.8125rem;
+  /* The item's place in its own theme. Never a global rank: scores from two
+     themes are not comparable, so "3rd" only means anything inside one. */
+  .fit-position {
+    font-size: 0.9375rem;
     font-weight: 600;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
-    color: var(--text-primary);
+    color: var(--text-secondary);
   }
 
-  /* Mylo rides the rim when he made the judgement. */
-  .score-ring-mylo {
-    position: absolute;
-    right: -0.125rem;
-    bottom: -0.125rem;
-    inline-size: 1.25rem;
-    block-size: 1.25rem;
+  /* Mylo's verdict. Gold is absent on purpose — it is reserved for deadlines and
+     opportunity signals, so a closing date never competes with a judgement. */
+  .fit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid transparent;
     border-radius: 9999px;
-    object-fit: cover;
-    box-shadow: 0 0 0 2px var(--surface);
-  }
-
-  .score-ring-word {
-    font-size: 10px;
+    padding: 0.2rem 0.55rem;
+    font-size: 10.5px;
     font-weight: 600;
     line-height: 1;
     text-transform: uppercase;
     letter-spacing: 0.06em;
+  }
+
+  .fit-chip.is-read {
+    background: var(--primary);
+    color: var(--surface);
+  }
+
+  .fit-chip.is-skim {
+    background: var(--secondary);
+    color: var(--text-primary);
+  }
+
+  .fit-chip.is-file {
+    background: var(--surface-alt);
+    border-color: var(--border);
     color: var(--text-secondary);
   }
 
-  .feed-rank {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-top: 0.125rem;
-    inline-size: 1.5rem;
-    block-size: 1.5rem;
+  /* Mylo rides the chip when he made the judgement. */
+  .fit-chip-mylo {
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
     border-radius: 9999px;
-    background: color-mix(in srgb, var(--brand-primary) 13%, transparent);
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--brand-primary-hover);
+    object-fit: cover;
   }
 
   .feed-title {

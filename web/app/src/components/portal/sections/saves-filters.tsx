@@ -80,11 +80,19 @@ function searchableText(item: SavedItem): string {
   return parts.filter(Boolean).join(" ").toLowerCase();
 }
 
-/** A save's percent match (from its card), for the match sort. */
-function matchPercent(item: SavedItem): number {
+//: How the four verdicts order against each other for the "match" sort. An
+//: unjudged save sorts last, which is honest: nothing was concluded about it.
+const VERDICT_ORDER: Record<string, number> = { read: 0, skim: 1, file: 2, skip: 3 };
+
+/** A save's judgement rank (from its card), for the match sort. */
+function matchRank(item: SavedItem): number {
   const card = item.card;
-  if (!card) return -1;
-  return card.match_percent ?? card.embedding_match ?? -1;
+  if (!card) return 9;
+  const verdict = card.verdict;
+  if (verdict && verdict in VERDICT_ORDER) return VERDICT_ORDER[verdict];
+  // No verdict: fall back to the item's place in its theme, which is the only
+  // ordering a save can still carry, then to "unjudged".
+  return typeof card.position === "number" ? 4 : 9;
 }
 
 /**
@@ -123,7 +131,7 @@ export function filterAndSortSaves(
     });
   }
   if (f.sort === "match") {
-    return [...matched].sort((a, b) => matchPercent(b) - matchPercent(a));
+    return [...matched].sort((a, b) => matchRank(a) - matchRank(b));
   }
   if (f.sort === "title") {
     return [...matched].sort((a, b) => a.title.localeCompare(b.title));

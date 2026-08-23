@@ -25,6 +25,10 @@ import {
   ThumbsUpIcon,
 } from "@/components/portal/icons";
 import { TabBar, type TabItem } from "@/components/portal/primitives/tab-bar";
+import {
+  VERDICT_LABEL,
+  VerdictBadge,
+} from "@/components/portal/primitives/verdict-badge";
 import { usePortal } from "@/components/portal/portal-context";
 import {
   ProjectAboutCard,
@@ -67,6 +71,7 @@ import type {
   Project,
   ProjectFeedItem,
   Suggestion,
+  Verdict,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
@@ -750,13 +755,9 @@ function ProjectFocusCard({
 }
 
 /** A small percent-match chip; muted when the model left the match unscored. */
-function MatchChip({ match }: { match: number | null }) {
-  if (match === null) return null;
-  return (
-    <span className="shrink-0 rounded-full bg-surface-alt px-2 py-[2px] text-[11px] font-semibold text-[var(--text-secondary)]">
-      {match}% match
-    </span>
-  );
+/** The project feed's compact judgement chip — the same verdict the feeds show. */
+function MatchChip({ verdict }: { verdict: Verdict | null }) {
+  return <VerdictBadge verdict={verdict} size="sm" />;
 }
 
 /**
@@ -1098,7 +1099,7 @@ function PaperFeedRow({
           </span>
         )}
         <div className="flex shrink-0 items-center gap-1.5">
-          <MatchChip match={paper.match_percent} />
+          <MatchChip verdict={paper.verdict} />
           {canShare && projectId ? (
             <>
               <EngagementButtons
@@ -1146,7 +1147,7 @@ function InterestedRow({ members }: { members: InterestedMember[] }) {
       {shown.map((m) => (
         <span
           key={m.username}
-          title={`${m.name} · ${m.match_percent}% match`}
+          title={`${m.name} · ${VERDICT_LABEL[m.verdict]} on their own feed`}
           className="inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-2 py-[2px] text-[11px] font-medium text-[var(--text-secondary)]"
         >
           <Avatar initials={m.initials} seed={m.username} size={16} />

@@ -116,12 +116,6 @@ body {
  */
 
 /*
- * Registering the sweep angle as a real percentage is what makes the feed
- * card's conic gradient interpolable. Where @property is unsupported the ring
- * simply renders at its final value — the number is the message, the sweep is
- * only the manner. Mirrors `--ring-sweep` in the workspace's globals.css.
- */
-/*
  * Scroll-linked growth.
  *
  * One inherited number, `--ground-progress`, runs 0 → 1 as a section travels
@@ -190,12 +184,6 @@ body {
   }
 }
 
-@property --ring-sweep {
-  syntax: "<percentage>";
-  inherits: false;
-  initial-value: 0%;
-}
-
 :root {
   --reveal-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   --reveal-duration: 680ms;
@@ -232,21 +220,6 @@ html[data-reveal="armed"] .thread-path.is-revealed {
   stroke-dashoffset: 0;
   transition: stroke-dashoffset 1500ms cubic-bezier(0.4, 0, 0.5, 1)
     var(--reveal-delay, 0ms);
-}
-
-/*
- * The feed card's match ring sweeps to its percent as the card arrives, the
- * same gesture `MatchRing` makes in the workspace — the number reads as
- * measured rather than asserted.
- */
-html[data-reveal="armed"] .reveal .score-ring {
-  --ring-sweep: 0%;
-}
-
-html[data-reveal="armed"] .reveal.is-revealed .score-ring {
-  --ring-sweep: calc(var(--pct) * 1%);
-  transition: --ring-sweep 900ms var(--reveal-ease)
-    calc(var(--reveal-delay, 0ms) + 120ms);
 }
 
 /*

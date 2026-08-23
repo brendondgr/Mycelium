@@ -25,11 +25,9 @@ import { cn } from "@/lib/utils";
  *    the content column.
  * 3. **The note** — the rest of the rationale, quieter: the caveat, the
  *    qualification, what actually transfers.
- * 4. **The meta rail** — the `MatchRing` and the flags (`NEW`, a venue rank), all
- *    centred on one axis. A circle right-aligned against pills of differing widths
- *    reads as misaligned: the eye takes the circle's centre as the anchor, and the
- *    pills' centres then wander left of it. So the rail is sized to the ring and
- *    everything in it centres, rather than everything sharing a right edge.
+ * 4. **The meta rail** — Mylo's verdict chip and the flags (`NEW`, `ALSO IN`, a
+ *    venue rank), all centred on one axis rather than sharing a right edge, so
+ *    pills of differing widths do not read as misaligned.
  *
  * The link out sits at the foot of the content column, the way it does on a feed
  * card — a rail narrow enough to hold a ring cannot hold "Open conference" without
@@ -40,10 +38,15 @@ import { cn } from "@/lib/utils";
  * under the title, where they competed with the title and still never said *which*
  * round they meant. Here a date is reference material, set as reference material.
  *
- * The percent is the same swept `MatchRing` the feeds use — the one element this
- * app has for "how well does this fit me". A report that invented a second way to
- * show a match would read as a different product than the feed beside it, and the
- * PDF draws that same ring in print's own materials.
+ * The verdict is the same `VerdictBadge` the feeds use — the one element this app
+ * has for "is this worth my time". A report that invented a second way to show a
+ * judgement would read as a different product than the feed beside it, and the
+ * PDF draws the same chip in print's own materials.
+ *
+ * There is no percentage anywhere in it. The ring that used to sit in the rail
+ * showed a language model's guess at a similarity next to a real embedding
+ * cosine, with nothing to tell a reader which was which; position within a theme
+ * and a four-point verdict say the useful part without the false precision.
  */
 
 /**
@@ -200,7 +203,7 @@ export function ReportEntry({
   title: React.ReactNode;
   insight?: React.ReactNode;
   note?: React.ReactNode;
-  /** The `MatchRing`, or nothing when the item carries no percent. */
+  /** The verdict chip, or nothing when the item carries no judgement. */
   rail?: React.ReactNode;
   flags?: React.ReactNode;
   link?: React.ReactNode;

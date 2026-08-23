@@ -3,7 +3,8 @@
 import * as React from "react";
 
 import { ArrowRightIcon } from "@/components/portal/icons";
-import { MatchRing } from "@/components/portal/primitives/match-ring";
+import { VerdictBadge } from "@/components/portal/primitives/verdict-badge";
+import type { Verdict } from "@/lib/portal/types";
 import {
   ReportEntry,
   ReportFlag,
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils";
  * It renders the same **document** the PDF does, in the app's own materials. Both
  * carry the report's hierarchy — part, category, focus theme — and both present a
  * ranked item through the one entry shape described in `report-entry.tsx`: rank and
- * title, the insight, the note, and a meta rail carrying the `MatchRing`, the
+ * title, the insight, the note, and a meta rail carrying the verdict chip, the
  * flags, and the link out, with the item's dates in a strip beneath. The PDF's
  * `_entry_row` draws the same four zones in the same order — the two renderers
  * differ in materials, not in document.
@@ -38,19 +39,17 @@ const LINK_CLASS =
   "text-primary underline underline-offset-2 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm";
 
 // Rounded containers, not highlighter stripes — the same shape the PDF's chips use.
-const MATCH_CHIP_CLASS =
-  "inline-block rounded-full bg-primary/12 px-2 py-0.5 text-[13px] font-semibold text-primary";
 const NEW_CHIP_CLASS =
   "inline-block rounded-full border border-brand-accent px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-accent";
 
-// Matches, in one pass: **bold**, [text](url), or an `88% match` signal. Nested
+// Matches, in one pass: **bold**, [text](url), or a verdict word. Nested
 // content is rendered recursively so `**[Title](url)**` yields a bold link. A fresh
 // instance is created per `renderInline` call: the regex is stateful (global flag),
 // and sharing one across the recursive calls would let an inner call reset the
 // outer loop's `lastIndex`, re-matching the same segment forever (a browser
 // freeze on any body containing bold or a link).
 const inlinePattern = () =>
-  /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|(\d{1,3})%\s+match\b)/g;
+  /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|\b(Read|Skim|File)\b)/g;
 
 function renderInline(text: string, keyBase: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
@@ -89,9 +88,11 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
       );
     } else if (match[5] !== undefined) {
       nodes.push(
-        <span key={`${keyBase}-m${i}`} className={MATCH_CHIP_CLASS}>
-          {match[5]}% match
-        </span>,
+        <VerdictBadge
+          key={`${keyBase}-m${i}`}
+          verdict={match[5].toLowerCase() as Verdict}
+          size="sm"
+        />,
       );
     }
     last = match.index + match[0].length;
@@ -106,7 +107,7 @@ type OrderedItem = {
   text: string;
   note: string;
   isNew: boolean;
-  match: number | null;
+  verdict: Verdict | null;
   deadline: string;
 };
 
@@ -121,14 +122,14 @@ type Block =
 
 const HEADING = /^(#{2,4})\s+(.*)$/;
 const BULLET = /^[-*]\s+(.*)$/;
-// A ranked item: `1. **[Title](url)** — **NEW** · 88% match`.
+// A ranked item: `1. **[Title](url)** — **NEW** · Read`.
 const ORDERED = /^(\d{1,3})[.)]\s+(.*)$/;
 
 // The three signals a ranked item's title line carries. Each is pulled out and
 // given its own element, so the title is a title — left inline they were a run of
 // punctuation between the reader and the thing they were scanning for.
 const NEW_SIGNAL = /\*\*NEW\*\*/i;
-const MATCH_SIGNAL = /\b(\d{1,3})%\s+match\b/i;
+const VERDICT_SIGNAL = /\b(Read|Skim|File)\b/;
 const DEADLINE_SIGNAL = /\bdeadline\s+(\d{4}-\d{2}-\d{2})\b/i;
 // Whatever separators the removed signals leave stranded at the end of the line.
 const TRAILING_SEPARATORS = /[\s·•—–-]+$/;
@@ -145,9 +146,9 @@ function splitItemLine(line: string): Omit<OrderedItem, "marker" | "note"> {
   const isNew = NEW_SIGNAL.test(line);
   let rest = line.replace(NEW_SIGNAL, "");
 
-  const matched = MATCH_SIGNAL.exec(rest);
-  const match = matched ? Number(matched[1]) : null;
-  rest = rest.replace(MATCH_SIGNAL, "");
+  const matched = VERDICT_SIGNAL.exec(rest);
+  const verdict = matched ? (matched[1].toLowerCase() as Verdict) : null;
+  rest = rest.replace(VERDICT_SIGNAL, "");
 
   const due = DEADLINE_SIGNAL.exec(rest);
   const deadline = due ? due[1] : "";
@@ -155,7 +156,12 @@ function splitItemLine(line: string): Omit<OrderedItem, "marker" | "note"> {
 
   // Collapse the separator runs the removals opened up mid-line, then trim.
   rest = rest.replace(/\s*·\s*(?=[·•—–-]|\s*$)/g, " ");
-  return { text: rest.replace(TRAILING_SEPARATORS, "").trim(), isNew, match, deadline };
+  return {
+    text: rest.replace(TRAILING_SEPARATORS, "").trim(),
+    isNew,
+    verdict,
+    deadline,
+  };
 }
 
 /** "Papers" -> "paper". The report's four category headings are all plain plurals. */
@@ -332,9 +338,9 @@ function OrderedEntry({
         title={title}
         insight={insight ? renderInline(insight, `${keyBase}-i`) : null}
         note={note ? renderInline(note, `${keyBase}-n`) : null}
-        /* Renders nothing when the item carries no percent, which is the honest
-           answer rather than a fabricated score. */
-        rail={<MatchRing percent={item.match} />}
+        /* Renders nothing when the item carries no verdict, which is the honest
+           answer rather than a fabricated one. */
+        rail={<VerdictBadge verdict={item.verdict} />}
         flags={item.isNew ? <ReportFlag tone="new">New</ReportFlag> : null}
         link={
           url ? (

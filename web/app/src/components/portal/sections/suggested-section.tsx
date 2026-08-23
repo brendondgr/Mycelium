@@ -103,11 +103,6 @@ function SuggestionListRow({ suggestion }: { suggestion: MemberSuggestion }) {
           </span>
         )}
         <div className="flex shrink-0 items-center gap-2">
-          {suggestion.match_percent !== null ? (
-            <span className="rounded-full bg-surface-alt px-2 py-[2px] text-[11px] font-semibold text-[var(--text-secondary)]">
-              {suggestion.match_percent}% match
-            </span>
-          ) : null}
           <button
             type="button"
             onClick={handleDismiss}

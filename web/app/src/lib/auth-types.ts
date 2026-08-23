@@ -184,7 +184,10 @@ export type OnboardingMatchArea =
 /** One matched item previewed in the live-match table. */
 export type OnboardingMatchSample = {
   title: string;
-  match_percent: number | null;
+  /** read / skim / file / skip — see `Verdict` in `lib/portal/types`. */
+  verdict: "read" | "skim" | "file" | "skip" | null;
+  /** Its place in the theme that surfaced it. */
+  position: number | null;
 };
 
 /** The result of matching one area over the existing corpus for the caller. */

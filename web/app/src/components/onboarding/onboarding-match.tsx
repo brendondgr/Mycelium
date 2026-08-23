@@ -196,9 +196,9 @@ export function OnboardingMatch({ areas, onDone }: OnboardingMatchProps) {
                       ) : row.top ? (
                         <span className="line-clamp-2">
                           {row.top.title}
-                          {row.top.match_percent != null ? (
-                            <span className="ml-1 text-xs font-medium text-brand-secondary">
-                              {row.top.match_percent}%
+                          {row.top.verdict ? (
+                            <span className="ml-1 text-xs font-medium uppercase tracking-wide text-brand-secondary">
+                              {row.top.verdict}
                             </span>
                           ) : null}
                         </span>
