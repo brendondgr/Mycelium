@@ -419,7 +419,7 @@ daily run, scoped to the categories the caller watches.
   ],
   "showcase": {
     "papers": [{ "content_id": "…", "type": "paper", "title": "…", "url": "…",
-                 "match_percent": 91, "headline": "…", "deadline_date": "",
+                 "verdict": "read", "headline": "…", "deadline_date": "",
                  "is_new": false }]
   },
   "briefing": { "body": "Good morning. Today's scan surfaced …", "origin": "llm" }
@@ -427,28 +427,43 @@ daily run, scoped to the categories the caller watches.
 ```
 
 `origin` is `"llm"`, `"fallback"`, or `"carried"` — the last meaning nothing
-entered the reader's Top-25 that day, so the previous day's body was carried
-forward verbatim rather than re-worded to reach the same conclusions. The body is
-markdown organised as a
-`## Personal` part with a `###` section per category, then one
-`## Project · <name>` part per project the caller is on (a lab's report breaks out
-the lab's own projects). The Personal sections are written by one prompt per
-category plus a summary prompt, each with a deterministic fallback; project
-sections are rendered deterministically from the rationale already stored on each
-score. Before the first run an honest empty envelope is returned
+entered the reader's slates that day, so the previous day's body was carried
+forward verbatim rather than re-worded to reach the same conclusions.
+
+The body is markdown organised **by research theme**: Mylo's lead paragraph, then
+one `## <theme>` section per theme *that has news*, each opening with his read on
+that theme, then a `###` section per category listing what entered, then a
+`### Currently in your list` reference block of what is standing. A theme with a
+slate but nothing new is one `**Quiet today:**` line at the end; a theme with no
+matches at all does not appear. Projects follow as `## Project · <name>` parts,
+flat and entrant-only — they rarely declare themes of their own, and inheriting
+the parent's would attribute a project's matches to a strand it never declared.
+
+The prose (`narrative` on the stored briefing) is a **paid layer**: an unentitled
+reader gets the same sections, the same navigation and the same listings without
+the lead or the theme reads. Quieter, not broken. Before the first run an honest
+empty envelope is returned
 (`generated_at: null`, empty `categories` / `counts` / `showcase` /
 `project_summary`, `briefing: null`).
 
 `project_summary` is the report's summary table — the reader's own row first, then
 one per project, **including projects with an all-zero row** (that a project had a
 quiet day is an answer). Its counts are how many items **entered** that part's
-Top-25 on the run, which is what the report announces as new. The report *body*
-still covers the whole Top-25; the table counts the change in it.
+slates on the run, which is what the report announces as new. In the PDF the
+reader's own row expands to one row per theme, so the table indexes the sections
+beneath it.
 
-An item enters the Top-25 when it ranks into a target's top `REPORT_TOP_N` (25)
-for its category, having been outside it on the previous run. That is a fact about
-what the reader is being shown, not about ingestion: the feed's "New" badge keeps
-its separate 7-day arrival window, and the two numbers are deliberately different.
+An item enters a slate when it ranks into a **theme's** top N for its category,
+having been outside that theme's slate on the previous run. Depth is per category
+because the categories are different kinds of thing: papers are a *flow* (25 per
+theme, a rolling window over arrivals) while grants, conferences, and fellowships
+are a *stock* of currently-open calls (10, 10, and 5 — a live shortlist that
+barely moves). Entry is keyed on **(theme, item)**, so the same paper entering a
+second theme later is a separate entry event and is news again for that theme.
+
+That is a fact about what the reader is being shown, not about ingestion: the
+feed's "New" badge keeps its separate 7-day arrival window, and the two numbers
+are deliberately different.
 `counts` and `new_counts` at the envelope level still describe the feeds, which
 every feed endpoint serves unchanged.
 
@@ -573,7 +588,9 @@ high-fit grant floats to the top for its first week).
   "items": [{
     "content_id": "uuid", "title": "…", "sponsor": "Amazon",
     "amount": "Upper: $70,000 USD", "matched_topics": "Agentic AI; Knowledge Graphs",
-    "url": "https://…", "score": 1.19, "match_percent": 88, "rank": 1,
+    "url": "https://…", "score": 1.19, "verdict": "read", "position": 1,
+    "rank": 1, "caveat": "The cost-share level is not stated.",
+    "beats": ["Why it matters to this theme.", "How to use it.", "What to take."],
     "headline": "Strong Fit", "reason": "Aligns with your agentic AI work.",
     "origin": "llm", "is_new": true, "pinned": true,
     "deadline_date": "2026-11-12", "deadline_kind": "application",
@@ -598,8 +615,24 @@ high-fit grant floats to the top for its first week).
 }
 ```
 
-`match_percent` is the model's 0–100 judgement (`null` on the deterministic
-tail). `saved_labs` lists managed labs already holding the item.
+**There is no `match_percent` anywhere in this API.** It implied a measurement
+nobody made: a language model was asked to guess a similarity, and the result was
+rendered beside a real embedding cosine with no way for a reader to tell which
+was which. In its place:
+
+- `verdict` — `read` / `skim` / `file` / `skip`. Model-judged on a plan that
+  includes Mylo's reasoning, derived from the item's rank band within its own
+  theme otherwise, so it means the same thing to every reader. `null` on an
+  unscored row; `skip` is never chipped in the UI.
+- `position` — place within the item's **own theme's** slate. A global position
+  would compare scores that are not comparable across themes.
+- `beats` — the reason's three parts: why it matters to this theme, how to use
+  it, what to take from it. The printed report carries only the first.
+- `caveat` — the strongest reason it might not be worth the reader's time.
+  Mandatory on a model-written judgement.
+
+`rank` remains the row's place in the surfaced feed and is unrelated to
+`position`. `saved_labs` lists managed labs already holding the item.
 
 `is_updated` marks a listing whose **source page** moved something actionable —
 a deadline added, moved, or the call reopened — within the pin window. It is
@@ -843,7 +876,7 @@ Ignoring hides the item from **every feed this reader looks at** — their paper
 grants, fellowships and conferences pages, the lab and project feeds they read,
 their window counts, and their next briefing and PDF report. It hides it from
 nobody else. Nothing is deleted: the `ContentItem` and its `RelevanceScore` rows
-are untouched, the item stays rankable, and the Top-25 slate is computed exactly
+are untouched, the item stays rankable, and each theme's slate is computed exactly
 as before — the filtering is a per-reader read, not a change to the ranking.
 
 Search is the deliberate exception: `GET /api/search/` still returns ignored
@@ -870,7 +903,7 @@ cascades with its item, so `card` is never `null`.
 { "items": [{
   "id": "uuid", "content_id": "uuid", "area": "grant",
   "ignored_at": "2026-08-17T21:40:00Z",
-  "card": { "content_id": "uuid", "title": "…", "match_percent": 88 }
+  "card": { "content_id": "uuid", "title": "…", "verdict": "read" }
 }] }
 ```
 
@@ -887,7 +920,7 @@ envelope carries `can_manage`, which gates the remind and remove affordances.
   "title": "…", "url": "https://…", "subtitle": "NeurIPS",
   "deadline_date": null, "deadline_kind": "other", "note": "",
   "days_remaining": null, "within_week": false, "saved_at": "…",
-  "card": { "content_id": "uuid", "title": "…", "match_percent": 88, "saved": true }
+  "card": { "content_id": "uuid", "title": "…", "verdict": "read", "saved": true }
 }] }
 ```
 

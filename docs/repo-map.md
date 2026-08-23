@@ -34,8 +34,9 @@ Paths are relative to the repository root.
 | An app route | `web/app/src/app/app/(workspace)/<name>/page.tsx` |
 | Login / signup routes | `web/app/src/app/{login,signup}/` + `web/app/src/components/auth/` |
 | Portal shell, sidebar, nav, lab switcher | `web/app/src/components/portal/{portal-sidebar,portal-mobile-nav,lab-switcher,portal-context}.tsx` |
-| Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `match-ring`, `match-rail`, `match-card`, `cluster-badge`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `modal`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-list`, `source-footer` |
-| A feed card's match panel (ring, "New", up to 3 matching clusters) | `web/app/src/components/portal/primitives/match-rail.tsx` |
+| Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `verdict-badge`, `match-rail`, `match-card`, `cluster-badge`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `modal`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-list`, `source-footer` |
+| A card's judgement (verdict chip + position in its theme) | `web/app/src/components/portal/primitives/verdict-badge.tsx` (`VerdictBadge`, `PositionMark`, `VERDICT_LABEL`); its print half is `_verdict_chip` in `web/backend/apps/content/daily_report_pdf.py`. There is no percent match anywhere |
+| A feed card's match panel (position, verdict, "New", up to 3 matching themes) | `web/app/src/components/portal/primitives/match-rail.tsx` |
 | A feed card's Deadlines button + dropdown (alerts per round) | `web/app/src/components/portal/primitives/deadline-list.tsx` (`DeadlineMenu`) |
 | A feed card's source row + "View …" button | `web/app/src/components/portal/primitives/source-footer.tsx` (`SourceRow`, `ViewLink`) |
 | The report's ranked entry (title, insight, note, match rail, deadline strip) | `web/app/src/components/portal/primitives/report-entry.tsx`; its print half is `_entry_row` in `web/backend/apps/content/daily_report_pdf.py` |
@@ -97,6 +98,14 @@ Files below are inside `web/backend/apps/content/`.
 | Manual ignore (per reader): model, endpoints, feed filtering | `models.py` (`IgnoredItem`), `views.py` (`IgnoreItemView`, `IgnoredItemsView`, `_ignored_content_ids`) |
 | Scoring target (user / lab / project) | `targets.py` |
 | Paper pipeline | `pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`, `clustering.py` |
+| Per-theme slates (depth, entrant diff, pruning, bridges) | `slates.py` — replaces the global Top-25 for any profile with declared areas; the flat `top_rank` signals are still derived from it for existing readers |
+| Per-theme admission (absolute floor OR a theme's relative floor, hard minimum) | `admission.py` (`admit`, `AdmissionStats`), entered from `pipeline.fuse_clusters_pool` |
+| The four-point verdict that replaced the percent match | `verdicts.py` (`derive_verdict` for the rank band, `parse_verdict` for the model's) |
+| Stage one — profile-blind précis, cached per item forever | `comprehension.py`, model `ItemComprehension` in `models.py` |
+| Stage two — per-theme fit write-up (verdict, three beats, caveat, bridge) | `cluster_fit.py`; keyed on (item, cluster, target) at `signals["writeups"]` |
+| Which (theme, item) pairs earn a model call — reuse, entitlement, budget | `theme_run.py` (`plan_theme_writeups` = DB, `execute_theme_plan` = pure, `collect_theme_result`) |
+| Mylo's prose — the per-theme read and the lead paragraph | `narrative.py`; stored as structure on `DailyBriefing.narrative` and read back by the PDF, the app, and Discord |
+| Fellowship bands (matched to a theme vs open to you) | `fellowship_bands.py` — the eligibility gate is unchanged; this only splits what survives it |
 | Cross-encoder rerank (ships OFF, `RERANK_ENABLED`) | `reranking.py` — device resolution with CUDA auto-detect and CPU fallback, the lazy model cache, `rerank` and the per-interest/RRF `rerank_order`; entered from `pipeline.py::_apply_rerank` at the tail of `fuse_interests_pool` / `fuse_clusters_pool`. Diagnostics: `manage.py rerank_device --load`. Evidence is a **preference** (`EXP-2026-08-015`…`-017`), not a measurement — see the module docstring |
 | Ranking-stack seams (ORM-free ranking, swappable vector index) | `protocols.py` (`Retrievable`, `VectorIndex`), `retrieval.py` (`PgVectorIndex`) |
 | Theme spread (opt-in, all defaults off) | `fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
@@ -107,8 +116,9 @@ Files below are inside `web/backend/apps/content/`.
 | Post-onboarding live match | `onboarding_match.py`, `scan_status.py` |
 | Member fit ("who is this for?") | `member_fit.py`, `fanout.py` |
 | Project team signal & sharing | `team_profile.py`, `collaboration.py` |
-| Daily briefing (Personal + per-project parts, over each Top-25 slate) | `briefing.py`, `briefing_sections.py` |
-| Top-25 slate: membership, entrant diff, "what is new" | `top_feed.py` |
+| Daily briefing (theme sections + per-project parts, over each theme's slate) | `briefing.py`, `briefing_sections.py` |
+| Arranging a day by theme for the report (entrants, standing, quiet) | `theme_report.py` |
+| The legacy flat slate — still the single-vector path, and the derived `top_rank` | `top_feed.py` |
 | Manual re-render + re-send of one report | `report_resend.py` |
 | Briefing history & retention | `models.py` (`DailyBriefing.generated_on`), `views.py` (`BriefingHistoryView`), `management/commands/prune_briefings.py` |
 | Daily PDF report | `daily_report.py`, `daily_report_pdf.py`, `daily_report_send.py` |

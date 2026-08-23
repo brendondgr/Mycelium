@@ -118,6 +118,31 @@ Use mycelium and root-network motifs as low-opacity connective tissue: backgroun
 
 Cards should be readable and soft. Avoid harsh black borders, pure white surfaces, heavy shadows, and excessive nested cards.
 
+### How a recommendation states itself
+
+Never as a percentage. A percent implied a measurement nobody made: a language
+model was asked to guess a similarity and the number was rendered next to a real
+embedding cosine, with nothing to tell a reader which was which. Two elements
+carry it instead, and every surface — feed card, report entry, PDF, Discord —
+uses the same two:
+
+- **Position within its own theme.** "3rd in Medical AI Agents", never "3rd
+  overall". Scores from two themes are not comparable, so a global position is a
+  claim the system cannot support.
+- **A four-point verdict** — Read, Skim, File, Skip. Filled primary green for
+  Read, sage for Skim, neutral surface for File. A Skip is never chipped: the
+  item keeps its place in the list and its reference row, and spending a badge on
+  it would spend the reader's attention on the one judgement that says not to.
+
+**Gold is not used for verdicts.** It stays reserved for opportunity and deadline
+signals, so a grant's closing date never competes visually with a relevance
+judgement two centimetres from it.
+
+When Mylo made the judgement rather than the deterministic scorer, his portrait
+rides the chip. That is the honest signal that a human-readable judgement exists
+behind it — and its absence is equally honest, because most readers are on a plan
+without model reasoning and their document is quieter, not broken.
+
 ## Public Site Direction
 
 The public site should explain what Mycelium does, who it serves, why it is different from generic AI tools, and what the outputs look like.
