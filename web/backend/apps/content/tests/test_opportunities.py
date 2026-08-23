@@ -22,6 +22,7 @@ from apps.content.opportunities import (
 )
 from apps.content.opportunity_llm import generate_opportunity_suggestions
 from apps.content.pinning import compute_pins
+from apps.content.tests.entitle import entitle_user
 
 _TOKENS = ["graph", "health", "biomedical", "other"]
 
@@ -70,6 +71,52 @@ def test_opportunity_search_interests_falls_back_to_watch_topics():
 
 
 # -- LLM scoring (offline via injected complete) ------------------------------
+
+
+
+def _stored_writeup(lead: str, verdict: str = "read") -> dict:
+    """A stored per-theme write-up in the shape the reuse check accepts."""
+    from apps.content.cluster_fit import RUBRIC_VERSION, areas_fingerprint
+
+    return {
+        "verdict": verdict,
+        "beats": [lead],
+        "caveat": "Worth checking the eligibility text.",
+        "bridge_note": "",
+        "source": "llm",
+        "rubric_version": RUBRIC_VERSION,
+        "areas_fingerprint": areas_fingerprint(["Knowledge Graphs"]),
+        "written_on": "2026-07-01",
+    }
+
+
+def _mylo_answer(prompt: str) -> str:
+    """A model answering both stages — the précis, then the per-theme verdict."""
+    if prompt.startswith("Title:"):
+        return json.dumps(
+            {
+                "problem": "A problem.",
+                "method": "A method.",
+                "setting": "A cohort.",
+                "claim": "A claim.",
+                "limitations": "Small sample.",
+                "reusable": "A baseline.",
+                "thin": False,
+            }
+        )
+    rows = [
+        {
+            "n": int(line[1 : line.index("]")]),
+            "verdict": "read",
+            "matters": "It funds this strand.",
+            "use": "Apply in the spring round.",
+            "take": "Take the eligibility list.",
+            "caveat": "The deadline is tight.",
+        }
+        for line in prompt.splitlines()
+        if line.startswith("[")
+    ]
+    return json.dumps({"items": rows})
 
 
 @pytest.mark.django_db
@@ -515,25 +562,25 @@ def test_refit_bypasses_carry_forward_for_grants(pgvector):
         today="2026-07-05",
     )
 
+    entitle_user(user)
     calls = {"n": 0}
 
-    def _complete(_prompt):
+    def _complete(prompt):
         calls["n"] += 1
-        return json.dumps(
-            {"suggestions": [{"item": 1, "match": 80, "headline": "H", "reason": "R"}]}
-        )
+        return _mylo_answer(prompt)
 
     match_opportunities_for_user(
         user, "grants", complete=_complete, today="2026-07-05"
     )
-    assert calls["n"] == 1  # first run scores it
+    first = calls["n"]
+    assert first > 0  # first run reads and judges it
 
     refit_user(
         user, areas=("grants",), complete=_complete, persist=True, log=None
     )
-    # The refit re-sent the already-scored grant to the model instead of carrying
-    # its prior verdict forward.
-    assert calls["n"] == 2
+    # The refit re-sent the already-written grant to the model instead of
+    # carrying its stored write-up forward.
+    assert calls["n"] > first
 
 
 @pytest.mark.django_db
@@ -701,10 +748,20 @@ def test_daily_batch_reranks_what_is_already_in_the_feed(pgvector):
             "run_at": "2026-07-01T00:00:00",
             "suggested": True,
             "rank": 1,
-            "match_percent": 80,
             "headline": "Known Grant",
             "reason": "A write-up from an earlier run.",
             "source": "llm",
+            "cluster_slates": {
+                "c-all": {
+                    "label": "",
+                    "rank": 1,
+                    "entered_on": "2026-07-01",
+                    "is_new": True,
+                }
+            },
+            "writeups": {
+                "c-all": _stored_writeup("A write-up from an earlier run."),
+            },
             "top_rank": 1,
             "entered_top_on": "2026-07-01",
             "is_new_top": True,
@@ -721,11 +778,13 @@ def test_daily_batch_reranks_what_is_already_in_the_feed(pgvector):
 
     signals = RelevanceScore.objects.get(target_user=user, content=known).signals
     assert signals["run_at"] != "2026-07-01T00:00:00"  # re-ranked tonight
-    assert signals["match_percent"] == 80  # …on the verdict it already had
-    assert signals["reason"] == "A write-up from an earlier run."
+    assert signals["reason"] == "A write-up from an earlier run."  # reused verbatim
     assert signals["source"] == "llm"
+    assert signals["match_percent"] is None  # the percent is retired everywhere
     # It was already in the reader's slate, so it is not announced a second time,
     # and the date still says when it first appeared in a report.
+    assert signals["cluster_slates"]["c-all"]["rank"] == 1
+    assert signals["cluster_slates"]["c-all"]["is_new"] is False
     assert signals["top_rank"] == 1
     assert signals["is_new_top"] is False
     assert signals["entered_top_on"] == "2026-07-01"

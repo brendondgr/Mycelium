@@ -27,7 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
 from .models import ContentItem, ItemComprehension
@@ -107,6 +107,49 @@ def load_comprehensions(
     return out
 
 
+def extract_many(
+    items: Sequence[ContentItem], *, complete: CompleteFn | None = None
+) -> dict[str, dict]:
+    """Call the model for each item and return the parsed fields, keyed by id.
+
+    **Pure** with respect to the database — no reads, no writes — so it is safe to
+    run in a worker thread alongside other targets' scoring. The DB halves are
+    :func:`load_comprehensions` before it and :func:`store_comprehensions` after.
+
+    Never raises. A model that is unreachable or unparseable simply yields no
+    entry for that item, and the fit stage downstream degrades to the abstract.
+    """
+    ask = complete if complete is not None else _settings_complete
+    out: dict[str, dict] = {}
+    for item in items:
+        parsed = _one(item, ask)
+        if parsed is not None:
+            out[str(item.id)] = parsed
+    return out
+
+
+def store_comprehensions(
+    items: Sequence[ContentItem], parsed: Mapping[str, dict]
+) -> dict[str, ItemComprehension]:
+    """Persist the extracted fields and return the stored rows, keyed by id."""
+    by_id = {str(item.id): item for item in items}
+    out: dict[str, ItemComprehension] = {}
+    for cid, fields in parsed.items():
+        item = by_id.get(cid)
+        if item is None:
+            continue
+        row, _created = ItemComprehension.objects.update_or_create(
+            content=item,
+            defaults={
+                **fields,
+                "prompt_version": PROMPT_VERSION,
+                "source_fingerprint": source_fingerprint(item),
+            },
+        )
+        out[cid] = row
+    return out
+
+
 def comprehend(
     items: Sequence[ContentItem],
     *,
@@ -115,13 +158,10 @@ def comprehend(
 ) -> dict[str, ItemComprehension]:
     """Return a current précis for every item in ``items``, computing what is missing.
 
-    Serves from store first (:func:`load_comprehensions`); only items with no
-    current row cost a call, and ``limit`` caps how many of those a single run
-    pays for — the rest simply keep their place and are read next time, which is
-    the same carry-forward rule the fit stage uses.
-
-    Never raises. A model that is unreachable or unparseable yields no row for
-    that item, and the fit stage downstream degrades to the item's own abstract.
+    The all-in-one convenience wrapper — read, extract, store — for callers that
+    are already on a database thread. Serves from store first, so only items with
+    no current row cost a call; ``limit`` caps how many of those a single run pays
+    for, and the rest keep their place and are read next time.
     """
     cached = load_comprehensions(items)
     missing = [item for item in items if str(item.id) not in cached]
@@ -129,21 +169,9 @@ def comprehend(
         missing = missing[: max(0, limit)]
     if not missing:
         return cached
-
-    ask = complete if complete is not None else _settings_complete
-    for item in missing:
-        parsed = _one(item, ask)
-        if parsed is None:
-            continue
-        row, _created = ItemComprehension.objects.update_or_create(
-            content=item,
-            defaults={
-                **parsed,
-                "prompt_version": PROMPT_VERSION,
-                "source_fingerprint": source_fingerprint(item),
-            },
-        )
-        cached[str(item.id)] = row
+    cached.update(
+        store_comprehensions(missing, extract_many(missing, complete=complete))
+    )
     return cached
 
 

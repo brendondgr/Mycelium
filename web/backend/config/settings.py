@@ -405,22 +405,36 @@ REPORT_TOP_N = env.int("REPORT_TOP_N", default=25)
 # took the whole model budget and the lab's other themes read as empty. Each theme
 # now contributes its own best N, all of which are scored by the model and shown —
 # a slate member is not withheld by PAPER_MIN_MATCH_PERCENT, since this run is what
-# chose it. Personal feeds are unaffected. Raise it for a wider lab feed at
-# proportionally more model calls (one call per theme).
-PAPER_CLUSTER_TOP_N = env.int("PAPER_CLUSTER_TOP_N", default=10)
+# chose it. Left at 0 (the default) the depth comes from
+# ``apps.content.slates.slate_depth`` instead, which is where the per-category
+# geometry now lives; set it only to override that for papers specifically.
+PAPER_CLUSTER_TOP_N = env.int("PAPER_CLUSTER_TOP_N", default=0)
+
+# Per-cluster admission (apps.content.admission). A candidate is admitted when it
+# clears PAPER_MATCH_THRESHOLD *or* reaches CLUSTER_ADMIT_FRAC of its own theme's
+# best score — the second is what stops a theme whose vocabulary sits further from
+# the corpus being excluded wholesale. CLUSTER_ADMIT_HARD_FLOOR sits under both, so
+# a theme with nothing genuinely relevant admits nothing rather than its ten
+# least-irrelevant candidates. It is not optional; do not set it to 0.
+CLUSTER_ADMIT_FRAC = env.float("CLUSTER_ADMIT_FRAC", default=0.5)
+CLUSTER_ADMIT_HARD_FLOOR = env.float("CLUSTER_ADMIT_HARD_FLOOR", default=0.35)
+
+# Model write-ups per target per run (apps.content.cluster_fit). A run-safety cap,
+# not a spend cap: the nightly batch is shared, so an unbounded spike for one
+# reader who just redesigned their profile would degrade everyone else's report.
+# Entrants are written first and whatever does not fit carries to the next run.
+CLUSTER_WRITEUP_BUDGET = env.int("CLUSTER_WRITEUP_BUDGET", default=40)
+CLUSTER_FIT_BATCH = env.int("CLUSTER_FIT_BATCH", default=12)
 
 # Papers sign-up hybrid (apps.content.onboarding_match). A brand-new user is first
 # matched against the latest gather batch already in the store (no live scan). If
-# that yields at least PAPER_ONBOARDING_MIN_HIGH_QUALITY suggestions at or above
-# PAPER_ONBOARDING_HIGH_QUALITY_PERCENT match, those are shown; otherwise a
+# that yields at least PAPER_ONBOARDING_MIN_HIGH_QUALITY suggestions carrying a
+# "read" verdict, those are shown; otherwise a
 # background scan of the user's watch topics is kicked off and the Research Papers
 # page shows a "scanning" state (a Redis flag, best-effort) until it lands.
 # PAPER_SCAN_INFLIGHT_TTL bounds that flag so a dead scan can never wedge it on.
 PAPER_ONBOARDING_MIN_HIGH_QUALITY = env.int(
     "PAPER_ONBOARDING_MIN_HIGH_QUALITY", default=30
-)
-PAPER_ONBOARDING_HIGH_QUALITY_PERCENT = env.int(
-    "PAPER_ONBOARDING_HIGH_QUALITY_PERCENT", default=80
 )
 PAPER_SCAN_INFLIGHT_TTL = env.int("PAPER_SCAN_INFLIGHT_TTL", default=1800)
 

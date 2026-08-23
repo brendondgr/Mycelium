@@ -103,15 +103,12 @@ def test_papers_onboarding_skips_scan_when_batch_is_rich(pgvector, settings) -> 
     import json
 
     settings.PAPER_ONBOARDING_MIN_HIGH_QUALITY = 1
-    settings.PAPER_ONBOARDING_HIGH_QUALITY_PERCENT = 80
     embeddings.set_embedder(_fake_embed)
     _paper("m", "graph health", [1.0, 1.0, 0.0, 0.0])
     user = _profile_user("rich", areas=["graph", "health"])
 
     def complete(_prompt: str) -> str:
-        return json.dumps(
-            {"suggestions": [{"paper": 1, "match": 95, "headline": "H", "reason": "R"}]}
-        )
+        return None  # the rank-band verdict is what richness is measured by
 
     scans: list[str] = []
     result = onboarding_match_area(

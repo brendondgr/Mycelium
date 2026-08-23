@@ -38,7 +38,11 @@ from .cluster_fit import (
     writeup_budget,
 )
 from .clustering import Cluster
-from .comprehension import comprehend
+from .comprehension import (
+    extract_many,
+    load_comprehensions,
+    store_comprehensions,
+)
 from .models import ContentItem, RelevanceScore
 from .slates import slate_depth
 
@@ -155,7 +159,33 @@ def build_evidence(
     )
 
 
-def run_theme_writeups(
+@dataclass
+class ThemePlan:
+    """The DB-resolved half of a write-up pass, ready for the model.
+
+    Split out so the model calls can run in a worker thread while every ORM read
+    and write stays on a database thread. :func:`plan_theme_writeups` builds it,
+    :func:`execute_theme_plan` is pure and does the calling, and
+    :func:`store_theme_plan` writes the précis rows back.
+    """
+
+    clusters: list[Cluster] = field(default_factory=list)
+    profile_text: str = ""
+    depth: int = 10
+    entitled: bool = False
+    seed: int = 0
+    #: Already-current write-ups, served from store — no call, ever.
+    reused: dict[str, dict[str, dict]] = field(default_factory=dict)
+    #: ``[(cluster_id, content_id, candidate)]`` this run will pay for.
+    funded: list[tuple[str, str, Candidate]] = field(default_factory=list)
+    #: The same, beyond the budget — deterministic now, carried to the next run.
+    unfunded: list[tuple[str, str, Candidate]] = field(default_factory=list)
+    #: Items with no current précis, which the model half will read.
+    needs_precis: list[ContentItem] = field(default_factory=list)
+    fingerprints: dict[str, str] = field(default_factory=dict)
+
+
+def plan_theme_writeups(
     persist_kwargs: dict,
     content_type: str,
     clusters: Sequence[Cluster],
@@ -163,13 +193,12 @@ def run_theme_writeups(
     rows_by_id: Mapping[str, tuple[ContentItem, dict]],
     *,
     profile_text: str,
-    complete=None,
     entitled: bool | None = None,
     budget: int | None = None,
     seed: int = 0,
     reuse: bool = True,
-) -> ThemeRunResult:
-    """Produce a write-up for every (cluster, item) pair in ``slates``.
+) -> ThemePlan:
+    """Decide what this run owes the model — all database work, no calls.
 
     ``slates`` is :func:`apps.content.slates.compute_cluster_slates`' output
     (``{content_id: {cluster_id: entry}}``) and ``rows_by_id`` maps a content id
@@ -181,20 +210,23 @@ def run_theme_writeups(
     it is now answering the wrong question — and it is deliberately the *only*
     way to spend the budget on something already written.
     """
-    result = ThemeRunResult()
-    if not slates:
-        return result
     by_id = {cluster.id: cluster for cluster in clusters}
     labels = {cluster.id: cluster.label for cluster in clusters}
-    fingerprints = {c.id: areas_fingerprint(c.areas) for c in clusters}
-    depth = slate_depth(content_type)
-    result.entitled = (
-        target_is_entitled(persist_kwargs) if entitled is None else entitled
+    plan = ThemePlan(
+        clusters=list(clusters),
+        profile_text=profile_text,
+        depth=slate_depth(content_type),
+        seed=seed,
+        fingerprints={c.id: areas_fingerprint(c.areas) for c in clusters},
+        entitled=(
+            target_is_entitled(persist_kwargs) if entitled is None else entitled
+        ),
     )
+    if not slates:
+        return plan
     stored = _stored_writeups(persist_kwargs, content_type)
 
-    # Pass one: reuse, and collect what still needs writing.
-    pending: list[tuple[str, str, Candidate]] = []  # (cluster_id, cid, candidate)
+    pending: list[tuple[str, str, Candidate]] = []
     for cid, entries in slates.items():
         row = rows_by_id.get(cid)
         if row is None:
@@ -205,9 +237,8 @@ def run_theme_writeups(
             if cluster is None:
                 continue
             existing = stored.get(cid, {}).get(cluster_id)
-            if reuse and is_current(existing, fingerprints[cluster_id]):
-                result.writeups.setdefault(cid, {})[cluster_id] = existing
-                result.reused += 1
+            if reuse and is_current(existing, plan.fingerprints[cluster_id]):
+                plan.reused.setdefault(cid, {})[cluster_id] = existing
                 continue
             evidence = build_evidence(
                 signals,
@@ -223,12 +254,10 @@ def run_theme_writeups(
             )
             pending.append((cluster_id, cid, Candidate(item=item, evidence=evidence)))
 
-    if not pending:
-        return result
-
-    # Pass two: order priority-first across all themes jointly and cut at budget.
-    # Jointly, not per theme, so one noisy theme cannot starve the others, and
-    # independently of slate depth, so depth never becomes a cost dial.
+    # Priority-first across all themes **jointly**, so one noisy theme cannot
+    # starve the others, and independently of slate depth, so depth never becomes
+    # a cost dial by accident. Whatever falls past the cut is written
+    # deterministically now and carried to the next run rather than dropped.
     cap = writeup_budget() if budget is None else budget
     pending.sort(
         key=lambda triple: (
@@ -236,50 +265,130 @@ def run_theme_writeups(
             triple[2].evidence.position,
         )
     )
-    funded = pending[:cap] if result.entitled else []
-    unfunded = pending[len(funded) :]
-    result.carried = len(unfunded) if result.entitled else 0
+    if plan.entitled:
+        plan.funded = pending[:cap]
+        plan.unfunded = pending[cap:]
+    else:
+        plan.unfunded = pending
 
-    if funded:
-        precis = comprehend(
-            [candidate.item for _cluster_id, _cid, candidate in funded],
+    if plan.funded:
+        items = {cid: candidate.item for _cluster, cid, candidate in plan.funded}
+        cached = load_comprehensions(items.values())
+        for _cluster_id, cid, candidate in plan.funded:
+            candidate.precis = cached.get(cid)
+        plan.needs_precis = [
+            item for cid, item in items.items() if cid not in cached
+        ]
+    return plan
+
+
+def execute_theme_plan(
+    plan: ThemePlan, *, complete=None
+) -> tuple[dict[str, dict[str, dict]], dict[str, dict]]:
+    """Run the model over a plan. **Pure** — no ORM, safe in a worker thread.
+
+    Returns ``(writeups, precis_fields)``: the write-ups keyed
+    ``{content_id: {cluster_id: entry}}``, and the freshly-extracted précis fields
+    for :func:`apps.content.comprehension.store_comprehensions` to persist.
+    """
+    writeups: dict[str, dict[str, dict]] = {}
+    precis_fields: dict[str, dict] = {}
+    if not plan.funded:
+        return writeups, precis_fields
+
+    if plan.needs_precis:
+        precis_fields = extract_many(plan.needs_precis, complete=complete)
+
+    by_id = {cluster.id: cluster for cluster in plan.clusters}
+    by_cluster: dict[str, list[Candidate]] = {}
+    for cluster_id, _cid, candidate in plan.funded:
+        by_cluster.setdefault(cluster_id, []).append(candidate)
+    for cluster_id, candidates in by_cluster.items():
+        cluster = by_id[cluster_id]
+        written = write_cluster_fits(
+            plan.profile_text,
+            cluster,
+            [c.label for c in plan.clusters if c.id != cluster_id],
+            candidates,
+            depth=plan.depth,
             complete=complete,
+            seed=plan.seed,
         )
-        by_cluster: dict[str, list[Candidate]] = {}
-        for cluster_id, cid, candidate in funded:
-            candidate.precis = precis.get(cid)
-            by_cluster.setdefault(cluster_id, []).append(candidate)
-        for cluster_id, candidates in by_cluster.items():
-            cluster = by_id[cluster_id]
-            written = write_cluster_fits(
-                profile_text,
-                cluster,
-                [c.label for c in clusters if c.id != cluster_id],
-                candidates,
-                depth=depth,
-                complete=complete,
-                seed=seed,
-            )
-            for cid, writeup in written.items():
-                result.writeups.setdefault(cid, {})[cluster_id] = writeup
-                if writeup.get("source") == "llm":
-                    result.written += 1
-                else:
-                    result.deterministic += 1
+        for cid, writeup in written.items():
+            writeups.setdefault(cid, {})[cluster_id] = writeup
+    return writeups, precis_fields
 
-    # Pass three: everything not funded still gets a complete write-up.
-    for cluster_id, cid, candidate in unfunded:
+
+def collect_theme_result(
+    plan: ThemePlan, writeups: Mapping[str, Mapping[str, dict]]
+) -> ThemeRunResult:
+    """Fold a plan and the model's answers into the run's final write-up map.
+
+    Everything the slate holds ends up with a write-up either way, so a section is
+    never a mix of explained and unexplained rows: whatever the model did not
+    cover — because it was unfunded, unreachable, or answered without the
+    mandatory caveat — falls back to the deterministic write-up for that pair.
+    """
+    result = ThemeRunResult(entitled=plan.entitled, carried=len(plan.unfunded))
+    by_id = {cluster.id: cluster for cluster in plan.clusters}
+    for cid, entries in plan.reused.items():
+        for cluster_id, entry in entries.items():
+            result.writeups.setdefault(cid, {})[cluster_id] = entry
+            result.reused += 1
+    for cid, entries in (writeups or {}).items():
+        for cluster_id, entry in entries.items():
+            result.writeups.setdefault(cid, {})[cluster_id] = entry
+            if entry.get("source") == "llm":
+                result.written += 1
+            else:
+                result.deterministic += 1
+    for cluster_id, cid, candidate in [*plan.funded, *plan.unfunded]:
         if cluster_id in result.writeups.get(cid, {}):
             continue
         result.writeups.setdefault(cid, {})[cluster_id] = deterministic_writeup(
             candidate.item,
             by_id[cluster_id],
             candidate.evidence,
-            depth=depth,
-            fingerprint=fingerprints[cluster_id],
+            depth=plan.depth,
+            fingerprint=plan.fingerprints[cluster_id],
         )
         result.deterministic += 1
+    if not plan.entitled:
+        result.carried = 0
     return result
+
+
+def run_theme_writeups(
+    persist_kwargs: dict,
+    content_type: str,
+    clusters: Sequence[Cluster],
+    slates: Mapping[str, Mapping[str, dict]],
+    rows_by_id: Mapping[str, tuple[ContentItem, dict]],
+    *,
+    profile_text: str,
+    complete=None,
+    entitled: bool | None = None,
+    budget: int | None = None,
+    seed: int = 0,
+    reuse: bool = True,
+) -> ThemeRunResult:
+    """Plan, call, store — the all-in-one wrapper for callers on a DB thread."""
+    plan = plan_theme_writeups(
+        persist_kwargs,
+        content_type,
+        clusters,
+        slates,
+        rows_by_id,
+        profile_text=profile_text,
+        entitled=entitled,
+        budget=budget,
+        seed=seed,
+        reuse=reuse,
+    )
+    writeups, precis_fields = execute_theme_plan(plan, complete=complete)
+    if precis_fields:
+        store_comprehensions(plan.needs_precis, precis_fields)
+    return collect_theme_result(plan, writeups)
 
 
 def _stored_writeups(

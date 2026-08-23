@@ -41,7 +41,13 @@ from .pipeline import (
     fuse_clusters_pool,
     fuse_interests_pool,
 )
+from .slates import (
+    merge_cluster_signals,
+    prune_cluster_slates,
+    slate_depth,
+)
 from .targets import MatchTarget, target_for_user
+from .theme_run import _stored_writeups, carry_stored_writeups
 from .top_feed import compute_top, merge_top_signals, prior_top_ids, top_n
 
 logger = logging.getLogger(__name__)
@@ -216,6 +222,19 @@ class _MatchJob:
     # False => whole corpus (the daily re-rank, and sign-up/refit); True => only
     # items this target has never been scored on (the legacy append-only mode).
     unscored_only: bool = False
+    # The per-theme shortlists this run establishes, ``{cluster_id: [(item, score)]}``,
+    # and the profile's clusters. Empty for a profile with no declared areas, which
+    # keeps the single-vector path exactly as it was.
+    clusters: list = field(default_factory=list)
+    slate_groups: dict = field(default_factory=dict)
+    reuse_prior: bool = True
+    # The per-theme slates this run establishes and the DB-resolved write-up plan.
+    # Both are built in the prepare (DB) phase so the scoring phase stays pure and
+    # can keep running several targets at once in the thread pool.
+    cluster_slates: dict = field(default_factory=dict)
+    theme_plan: object | None = None
+    #: ``(writeups, precis_fields)`` produced by the scoring phase.
+    theme_answers: tuple = ()
 
 
 @dataclass
@@ -644,11 +663,13 @@ def _prepare_match(
     # cluster badge on its card stayed dark. One or no cluster keeps the flat path
     # byte-for-byte — the invariant every cluster feature in this codebase preserves.
     clusters = cluster_interests(target.interests or {})
-    if len(clusters) >= 2:
-        # No ``cluster_top_n``: the per-theme slate is a paper-feed concern. Grants
-        # and conferences accumulate across runs rather than being re-picked from
-        # one gather day, so they are not starved the way papers were.
-        pairs, rows, pool, _slate = fuse_clusters_pool(
+    if clusters:
+        # Opportunities are a **stock**, not a flow: what exists is a set of
+        # currently-open calls with deadlines, and a grant posted three months ago
+        # closing in two is exactly as relevant today as the day it posted. So the
+        # per-theme slate here is a shallow live shortlist (:func:`slate_depth`),
+        # not the deep rolling window papers use — and the report prints it whole.
+        pairs, rows, pool, slate_groups = fuse_clusters_pool(
             search_ints,
             clusters,
             content_type=content_type,
@@ -658,8 +679,10 @@ def _prepare_match(
             emit=emit,
             exclude_ids=exclude_ids,
             match_threshold=threshold,
+            cluster_top_n=slate_depth(content_type),
         )
     else:
+        slate_groups = {}
         pairs, rows, pool = fuse_interests_pool(
             search_ints,
             content_type=content_type,
@@ -690,6 +713,32 @@ def _prepare_match(
         target.persist_kwargs, content_type
     )
 
+    cluster_slates: dict = {}
+    theme_plan = None
+    if slate_groups:
+        from .pipeline import _profile_prompt_text
+        from .slates import compute_cluster_slates, prior_cluster_slates
+        from .theme_run import plan_theme_writeups
+
+        cluster_slates = compute_cluster_slates(
+            prior_cluster_slates(target.persist_kwargs, content_type),
+            {
+                cluster_id: [str(item.id) for item, _score in group]
+                for cluster_id, group in slate_groups.items()
+            },
+            {cluster.id: cluster.label for cluster in clusters},
+            content_type=content_type,
+        )
+        theme_plan = plan_theme_writeups(
+            target.persist_kwargs,
+            content_type,
+            clusters,
+            cluster_slates,
+            {str(item.id): (item, extra) for item, _score, extra in rows},
+            profile_text=_profile_prompt_text(target.interests or {}),
+            reuse=reuse_prior,
+        )
+
     job = _MatchJob(
         target=target,
         username=key,
@@ -703,6 +752,11 @@ def _prepare_match(
         prior=prior,
         priority_ids=entering,
         unscored_only=unscored_only,
+        clusters=clusters,
+        slate_groups=slate_groups,
+        reuse_prior=reuse_prior,
+        cluster_slates=cluster_slates,
+        theme_plan=theme_plan,
     )
     return job, None
 
@@ -710,7 +764,18 @@ def _prepare_match(
 def _score_job(
     job: _MatchJob, *, complete: Callable[[str], str | None] | None
 ) -> list[dict]:
-    """LLM phase — pure (no ORM / embedder), so it is safe to run in a thread pool."""
+    """LLM phase — pure (no ORM / embedder), so it is safe to run in a thread pool.
+
+    A clustered target runs the model half of its per-theme plan here — the
+    plan's database work was already done in the prepare phase precisely so this
+    stays pure and several targets keep scoring at once. The answers are stashed
+    on the job for the finalize phase to fold in and persist.
+    """
+    if job.theme_plan is not None:
+        from .theme_run import execute_theme_plan
+
+        job.theme_answers = execute_theme_plan(job.theme_plan, complete=complete)
+        return []
     return generate_opportunity_suggestions(
         job.content_type,
         job.target.interests,
@@ -731,12 +796,18 @@ def _finalize_match(
     persist: bool,
     today: str | None,
     log: Callable[[str], None] | None,
+    complete: Callable[[str], str | None] | None = None,
 ) -> OppRunResult:
-    """DB phase — New/pin + persist. Runs on the main thread (own connection)."""
+    """DB phase — slate, write up, New/pin, persist. Main thread (own connection)."""
 
     def emit(message: str) -> None:
         if log is not None:
             log(f"[{job.username}:{job.area}] {message}")
+
+    if job.slate_groups:
+        return _finalize_clustered_match(
+            job, persist=persist, today=today, emit=emit, complete=complete
+        )
 
     items_by_id = {str(item.id): item for item, _score in job.pairs}
     floor = _opportunity_min_match_percent()
@@ -819,7 +890,9 @@ def match_opportunities_for_target(
     if short is not None:
         return short
     suggestions = _score_job(job, complete=complete)
-    return _finalize_match(job, suggestions, persist=persist, today=today, log=log)
+    return _finalize_match(
+        job, suggestions, persist=persist, today=today, log=log, complete=complete
+    )
 
 
 def match_opportunities_for_user(
@@ -1368,7 +1441,12 @@ def run_daily_opportunities_batch(
             else:
                 results.append(
                     _finalize_match(
-                        job, suggestions, persist=persist, today=today, log=log
+                        job,
+                        suggestions,
+                        persist=persist,
+                        today=today,
+                        log=log,
+                        complete=user_complete.get(job.username, complete),
                     )
                 )
         except Exception:
@@ -1440,6 +1518,9 @@ def _persist(
     *,
     today: str | None,
     retire_missing: bool = False,
+    cluster_slates: dict[str, dict[str, dict]] | None = None,
+    writeups: dict[str, dict[str, dict]] | None = None,
+    declared_cluster_ids: list[str] | None = None,
 ) -> None:
     """Upsert one RelevanceScore per surfaced item, with opportunity signals.
 
@@ -1463,8 +1544,16 @@ def _persist(
     run; that is what the daily report is built from.
     """
     run_at = timezone.now().isoformat()
+    per_cluster = cluster_slates is not None
+    if declared_cluster_ids is not None:
+        prune_cluster_slates(persist_kwargs, area, declared_cluster_ids)
+    stored_writeups = (
+        _stored_writeups(persist_kwargs, area) if per_cluster else {}
+    )
     ordered = [s["content_id"] for s in suggestions if s["content_id"] in visible_ids]
-    slate = compute_top(persist_kwargs, area, ordered, today=today)
+    slate = (
+        {} if per_cluster else compute_top(persist_kwargs, area, ordered, today=today)
+    )
     if retire_missing:
         _retire(persist_kwargs, area, keep={str(item.id) for item, _s, _e in rows})
     promoted_by_id = {s["content_id"]: s for s in suggestions}
@@ -1487,7 +1576,13 @@ def _persist(
             "status": meta.get("status", ""),
             "status_summary": meta.get("status_summary", ""),
         }
-        merge_top_signals(signals, slate, cid)
+        if per_cluster:
+            merge_cluster_signals(signals, cluster_slates, cid)
+            carry_stored_writeups(
+                signals, stored_writeups.get(cid, {}), (writeups or {}).get(cid, {})
+            )
+        else:
+            merge_top_signals(signals, slate, cid)
         if promoted is not None:
             signals.update(
                 rank=promoted["rank"],
@@ -1497,11 +1592,91 @@ def _persist(
                 source=promoted["source"],
                 llm_scored_at=promoted.get("llm_scored_at", ""),
             )
+            signals["verdict"] = promoted.get("verdict")
+            signals["caveat"] = promoted.get("caveat", "")
         RelevanceScore.objects.update_or_create(
             content=item,
             **persist_kwargs,
             defaults={"score": round(score, 6), "signals": signals},
         )
+
+
+def _finalize_clustered_match(
+    job: _MatchJob,
+    *,
+    persist: bool,
+    today: str | None,
+    emit: Callable[[str], None],
+    complete: Callable[[str], str | None] | None,
+) -> OppRunResult:
+    """The per-theme half of an opportunity run: slate, write up, persist.
+
+    Same three stages as the paper feed and deliberately the same code — the
+    slate arithmetic and the write-up reuse rules are not category-specific, only
+    the depth is (opportunities are a stock, papers a flow). What differs here is
+    what a slate *exit* can mean: a paper leaves because something better
+    arrived, while an opportunity can also leave because its deadline passed.
+    Expiry removes it from the eligible pool rather than freeing a slot, so the
+    item beneath it is not announced as new when it was there all along —
+    :func:`_retire` keeps that distinction by never clearing a row it did not
+    re-surface into a fresh entrant.
+    """
+    from .comprehension import store_comprehensions
+    from .pipeline import cluster_suggestions
+    from .theme_run import collect_theme_result, execute_theme_plan
+
+    plan = job.theme_plan
+    answers = job.theme_answers or (
+        execute_theme_plan(plan, complete=complete) if plan is not None else ({}, {})
+    )
+    writeups, precis_fields = answers
+    if precis_fields:
+        store_comprehensions(plan.needs_precis, precis_fields)
+    slates = job.cluster_slates
+    theme = collect_theme_result(plan, writeups)
+    suggestions = cluster_suggestions(
+        job.target.interests or {},
+        job.pairs,
+        slates,
+        theme.writeups,
+        {
+            str(item.id): extra.get("cluster_label", "")
+            for item, _score, extra in job.rows
+            if extra.get("cluster_label")
+        },
+    )
+    items_by_id = {str(item.id): item for item, _score in job.pairs}
+    pins = compute_pins(suggestions, items_by_id, today=today)
+    new_count = sum(1 for p in pins.values() if p["is_new"])
+    llm = sum(1 for s in suggestions if s["source"] == "llm")
+    emit(
+        f"{len(job.slate_groups)} theme slate(s) over {job.pool} candidates; "
+        f"{theme.note()}"
+    )
+    if persist:
+        _persist(
+            job.target.persist_kwargs,
+            job.content_type,
+            job.rows,
+            suggestions,
+            {s["content_id"] for s in suggestions},
+            pins,
+            today=today,
+            retire_missing=not job.unscored_only,
+            cluster_slates=slates,
+            writeups=theme.writeups,
+            declared_cluster_ids=[cluster.id for cluster in job.clusters],
+        )
+    return OppRunResult(
+        job.username,
+        job.area,
+        "ok",
+        retrieved=job.pool,
+        suggestions=len(suggestions),
+        llm=llm,
+        fallback=len(suggestions) - llm,
+        new=new_count,
+    )
 
 
 def _retire(persist_kwargs: dict, area: str, *, keep: set[str]) -> None:

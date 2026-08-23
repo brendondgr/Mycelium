@@ -260,15 +260,21 @@ def deterministic_writeup(
     established rather than inventing a criticism.
     """
     interest = evidence.matched_interests[0] if evidence.matched_interests else ""
+    # The implicit cluster is the fallback grouping a profile with no declared
+    # themes falls into, not a theme with a name — writing "your All interests
+    # work" would name a thing the reader never created.
+    strand = "" if cluster.is_implicit else cluster.label
+    where = f"in your {strand} work" if strand else "in your feed"
     if interest:
         matters = (
-            f"Ranked {_ordinal(evidence.position)} in your {cluster.label} work "
-            f"on the strength of its overlap with {interest}."
+            f"Ranked {_ordinal(evidence.position)} {where} on the strength of "
+            f"its overlap with {interest}."
         )
     else:
         matters = (
-            f"Ranked {_ordinal(evidence.position)} against your "
-            f"{cluster.label} interests."
+            f"Ranked {_ordinal(evidence.position)} "
+            + (f"against your {strand} interests." if strand
+               else "against your research interests.")
         )
     caveat = (
         "Mylo has not read this one for you — the placement is a topical match, "

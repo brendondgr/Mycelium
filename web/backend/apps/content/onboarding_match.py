@@ -31,6 +31,7 @@ from .models import ContentItem, RelevanceScore
 from .refitting import refit_user
 from .scan_status import trigger_paper_scan
 from .suggest import CompleteFn
+from .verdicts import READ
 
 # The four opportunity/paper areas the onboarding match can run, mapped to the
 # ContentItem type whose persisted scores we read back for the sample preview.
@@ -83,24 +84,26 @@ def _sample_from(rows: list[RelevanceScore]) -> list[dict]:
     """A short title + match-percent preview for the live onboarding table."""
     sample: list[dict] = []
     for row in rows[:SAMPLE_LIMIT]:
-        match = row.signals.get("match_percent")
         sample.append(
             {
                 "title": _item_title(row),
-                "match_percent": match if isinstance(match, int) else None,
+                "verdict": row.signals.get("verdict"),
+                "position": row.signals.get("top_rank"),
             }
         )
     return sample
 
 
-def _high_quality_count(rows: list[RelevanceScore], threshold: int) -> int:
-    """How many surfaced rows scored at or above ``threshold`` percent match."""
-    count = 0
-    for row in rows:
-        match = row.signals.get("match_percent")
-        if isinstance(match, int) and match >= threshold:
-            count += 1
-    return count
+def _high_quality_count(rows: list[RelevanceScore]) -> int:
+    """How many surfaced rows Mylo (or the rank band) judged worth reading.
+
+    The old test was ``match_percent >= 80``, which is gone: the percent implied a
+    measurement nobody made. A ``read`` verdict says the same thing about the same
+    rows — and it exists on the deterministic path too, derived from the item's
+    position in its own theme, so a free account's onboarding is judged by the
+    same rule as a paid one rather than always looking thin.
+    """
+    return sum(1 for row in rows if row.signals.get("verdict") == READ)
 
 
 def onboarding_match_area(
@@ -118,8 +121,8 @@ def onboarding_match_area(
     number of surfaced items, ``sample`` a short ranked preview for the live table.
 
     **Papers are a hybrid**: if the latest batch yields fewer than
-    ``PAPER_ONBOARDING_MIN_HIGH_QUALITY`` suggestions at or above
-    ``PAPER_ONBOARDING_HIGH_QUALITY_PERCENT`` match, a background scan of the user's
+    ``PAPER_ONBOARDING_MIN_HIGH_QUALITY`` suggestions Mylo judged worth reading, a
+    background scan of the user's
     watch topics is kicked off and ``scanning`` is ``True`` — the Research Papers
     page then shows a "scanning new articles for you" state until it lands. A rich
     batch shows immediately with ``scanning`` false. The other areas never scan.
@@ -146,9 +149,8 @@ def onboarding_match_area(
 
     scanning = False
     if area == "papers":
-        threshold = getattr(settings, "PAPER_ONBOARDING_HIGH_QUALITY_PERCENT", 80)
         minimum = getattr(settings, "PAPER_ONBOARDING_MIN_HIGH_QUALITY", 30)
-        if _high_quality_count(rows, threshold) < minimum:
+        if _high_quality_count(rows) < minimum:
             scanning = trigger_paper_scan(user, enqueue=enqueue_scan)
 
     return {
