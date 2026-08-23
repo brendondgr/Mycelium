@@ -101,7 +101,6 @@ function PersonalResearchPapers() {
       // A sign-up background scan may be filling this feed; surface it.
       scanning={data?.scanning ?? false}
       generatedAt={data?.generated_at ?? null}
-      matchThreshold={data?.summary?.match_threshold}
     />
   );
 }
@@ -137,7 +136,6 @@ function PapersFeed({
   isError,
   scanning = false,
   generatedAt = null,
-  matchThreshold,
   recommendedFor,
   labName,
 }: {
@@ -146,7 +144,6 @@ function PapersFeed({
   isError: boolean;
   scanning?: boolean;
   generatedAt?: string | null;
-  matchThreshold?: number;
   /** Lab-only: content id → the members Mylo judges each paper is for. */
   recommendedFor?: Record<string, RecommendedMember[]>;
   labName?: string;
@@ -210,11 +207,13 @@ function PapersFeed({
     const when = formatWhen(generatedAt);
     const total = suggestions.length;
     const papers = `paper${total === 1 ? "" : "s"}`;
+    // No threshold percentage in the line. It was a real number — the embedding
+    // floor a paper had to clear to be in the feed at all — but sitting at the
+    // head of a ranked list it reads as a relevance claim about the items below
+    // it, which is exactly the confusion the percent match was retired for.
     const met = labName
       ? `${total} ${papers} Mylo matched to ${labName}`
-      : typeof matchThreshold === "number"
-        ? `${total} ${papers} met your ${matchThreshold}% match threshold`
-        : `${total} ${papers} matched your research`;
+      : `${total} ${papers} matched your research`;
     const ranked = `top ${rankedCount} ranked by Mylo`;
     return when
       ? `${met} — ${ranked} · gathered ${when}.`

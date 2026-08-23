@@ -107,14 +107,13 @@ export function SuggestionCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             {/* The title is always the first line, so it lines up with the top
-                of the ring on every card. Anything optional (cluster chips)
-                goes below it, where its absence cannot shift the title. */}
+                of the gutter on every card. Anything optional (cluster chips)
+                goes below it, where its absence cannot shift the title.
+
+                The position is *not* repeated here. It lives in the gutter, and
+                printing the same number twice on one card invited the reader to
+                look for a difference between them. */}
             <div className="flex min-w-0 items-start gap-3">
-              {suggestion.rank ? (
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_13%,transparent)] text-xs font-semibold text-primary">
-                  {suggestion.rank}
-                </span>
-              ) : null}
               <h3 className="min-w-0 font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
                 {suggestion.headline}
               </h3>
