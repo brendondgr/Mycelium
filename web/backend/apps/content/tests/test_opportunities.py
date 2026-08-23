@@ -56,13 +56,41 @@ def _open_opportunity_thresholds(settings):
 # -- pure: search interests ---------------------------------------------------
 
 
-def test_opportunity_search_interests_from_areas_and_topics():
+def test_watch_topics_no_longer_leak_into_every_interest():
+    """They used to, and that is what made every query the same query.
+
+    Fifteen watch topics plus nine keywords appended to each of twenty-two areas
+    left one reader's searches ~95% identical, so a single knowledge-graph
+    workshop led all five of their themes at once.
+    """
     interests = {"areas": ["Knowledge Graphs"], "keywords": ["biomedical"]}
     ints = opportunity_search_interests(interests, ["Agentic AI"])
-    labels = [i.label for i in ints]
-    assert labels == ["Knowledge Graphs"]
-    # watch topics broaden every interest's lexical query
-    assert "agentic ai" in ints[0].query_text.casefold()
+    assert [i.label for i in ints] == ["Knowledge Graphs"]
+    assert ints[0].query_text == "Knowledge Graphs"
+    assert "agentic ai" not in ints[0].query_text.casefold()
+    assert "biomedical" not in ints[0].query_text.casefold()
+
+
+def test_context_comes_from_the_interests_own_theme():
+    """Two themes must never end up asking the same question."""
+    from apps.content.clustering import Cluster
+
+    interests = {"areas": ["knowledge graphs", "entity resolution", "nanotechnology"]}
+    clusters = [
+        Cluster(id="c-kg", label="KG",
+                areas=["knowledge graphs", "entity resolution"]),
+        Cluster(id="c-nano", label="Emerging", areas=["nanotechnology"]),
+    ]
+
+    ints = {
+        i.label: i.query_text
+        for i in opportunity_search_interests(interests, ["Agentic AI"],
+                                              clusters=clusters)
+    }
+
+    assert ints["knowledge graphs"] == "knowledge graphs entity resolution"
+    # The nanotechnology query carries no knowledge-graph vocabulary at all.
+    assert ints["nanotechnology"] == "nanotechnology"
 
 
 def test_opportunity_search_interests_falls_back_to_watch_topics():
@@ -590,7 +618,12 @@ def test_grant_match_threshold_surfaces_only_related(pgvector, settings):
     A strongly-matching grant clears a 60% threshold; a weakly-related one does not,
     so it is not surfaced/persisted — and the survivor records its embedding match.
     """
-    settings.GRANT_MATCH_THRESHOLD = 0.6
+    # 0.5, not 0.6: an interest's query is now just its declared area, so a
+    # three-token document scores 1/sqrt(3) against a one-token query rather than
+    # riding the profile-wide keyword suffix that used to be bolted onto it. The
+    # separation this test is about — a related grant clears, an unrelated one
+    # does not — is unchanged (0.577 vs 0.0); only the absolute geometry moved.
+    settings.GRANT_MATCH_THRESHOLD = 0.5
     embeddings.set_embedder(_fake_embed)
     user = _profile_user("gthresh")
     _seed_grants(
@@ -614,7 +647,7 @@ def test_grant_match_threshold_surfaces_only_related(pgvector, settings):
     }
     assert "g_strong" in scores
     assert "g_weak" not in scores  # below the 60% embedding-match threshold
-    assert scores["g_strong"].signals["embedding_match"] >= 0.6
+    assert scores["g_strong"].signals["embedding_match"] >= 0.5
     assert result.suggestions == 1
 
 
@@ -636,7 +669,12 @@ def _embedded_conf(cid, name, scope):
 @pytest.mark.django_db
 def test_conference_match_threshold_surfaces_only_related(pgvector, settings):
     """Conferences are gated by the embedding-match threshold, like grants."""
-    settings.CONFERENCE_MATCH_THRESHOLD = 0.6
+    # 0.5, not 0.6: an interest's query is now just its declared area, so a
+    # three-token document scores 1/sqrt(3) against a one-token query rather than
+    # riding the profile-wide keyword suffix that used to be bolted onto it. The
+    # separation this test is about — a related grant clears, an unrelated one
+    # does not — is unchanged (0.577 vs 0.0); only the absolute geometry moved.
+    settings.CONFERENCE_MATCH_THRESHOLD = 0.5
     embeddings.set_embedder(_fake_embed)
     user = _profile_user("cthresh")
     strong = _embedded_conf(
@@ -657,7 +695,7 @@ def test_conference_match_threshold_surfaces_only_related(pgvector, settings):
     }
     assert strong.id in scores
     assert weak.id not in scores  # below the 60% embedding-match threshold
-    assert scores[strong.id].signals["embedding_match"] >= 0.6
+    assert scores[strong.id].signals["embedding_match"] >= 0.5
     assert result.suggestions == 1
 
 
@@ -832,7 +870,12 @@ def test_daily_batch_picks_up_an_unscored_backlog_from_an_earlier_day(pgvector):
 def test_whole_corpus_match_replaces_stale_feed_rows(pgvector, settings):
     """A whole-corpus run re-establishes the feed: a previously-suggested grant that
     no longer matches stops being surfaced rather than lingering in the list."""
-    settings.GRANT_MATCH_THRESHOLD = 0.6
+    # 0.5, not 0.6: an interest's query is now just its declared area, so a
+    # three-token document scores 1/sqrt(3) against a one-token query rather than
+    # riding the profile-wide keyword suffix that used to be bolted onto it. The
+    # separation this test is about — a related grant clears, an unrelated one
+    # does not — is unchanged (0.577 vs 0.0); only the absolute geometry moved.
+    settings.GRANT_MATCH_THRESHOLD = 0.5
     embeddings.set_embedder(_fake_embed)
     user = _profile_user("replace")
     _seed_grants(

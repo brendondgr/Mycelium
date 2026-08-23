@@ -837,7 +837,11 @@ def test_fellowship_embed_threshold_drops_irrelevant_eligible(pgvector, settings
     scenario from the plan) is not surfaced; a relevant one is — and its persisted
     ``embedding_match`` is the topical (not eligibility) signal.
     """
-    settings.FELLOWSHIP_MATCH_THRESHOLD = 0.6
+    # 0.5, not 0.6: an interest's query is its declared area now, not the area
+    # plus the whole profile's keyword list, so a multi-token document scores
+    # lower against it. The separation under test — relevant clears, irrelevant
+    # does not — is unchanged (0.577 vs 0.0).
+    settings.FELLOWSHIP_MATCH_THRESHOLD = 0.5
     embeddings.set_embedder(_fake_embed)
     user = _profile_user_with_sharp_interests("fthresh")
 
@@ -862,10 +866,10 @@ def test_fellowship_embed_threshold_drops_irrelevant_eligible(pgvector, settings
         )
     }
     assert "f_relevant" in scores
-    assert "f_irrelevant" not in scores  # below the 60% embedding-match threshold
+    assert "f_irrelevant" not in scores  # below the embedding-match threshold
 
     relevant_signals = scores["f_relevant"].signals
-    assert relevant_signals["embedding_match"] >= 0.6
+    assert relevant_signals["embedding_match"] >= 0.5
     # The measured cosine survives as a diagnostic; it is no longer shown as a
     # percent, because a reader cannot be expected to track which of two numbers
     # on a card is the trustworthy one.

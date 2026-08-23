@@ -1353,6 +1353,23 @@ def render_report_pdf(data: ReportData) -> bytes:
         _extend_part(story, personal, data.categories, styles)
         wrote_body = True
 
+    # 4b. The open fellowship band. It belongs to no theme by construction, so it
+    #     sits after the themes rather than inside one — listed once, and honest
+    #     about being eligibility-qualified rather than topically matched.
+    if data.open_fellowships:
+        story.append(Spacer(1, 0.2 * inch))
+        _extend_title(story, "Fellowships open to you", styles)
+        story.append(
+            Paragraph(
+                "Eligible, but not tied to any one strand of your work — so they "
+                "are listed once here rather than under every theme.",
+                styles["Muted"],
+            )
+        )
+        for item in data.open_fellowships:
+            story.extend(_standing_row(item, styles))
+        wrote_body = True
+
     for part in data.projects:
         if not part.total:
             continue

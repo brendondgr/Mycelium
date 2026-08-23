@@ -388,11 +388,10 @@ def recommend_for_user(
     # batch rather than an empty page, but old and new are never mixed. Opportunities
     # accumulate instead (see :mod:`.opportunities`); papers deliberately do not.
     created_on = latest_gather_date(content_type=ContentItem.Type.PAPER)
-    search_ints = search_interests(interests)
-    # Cluster-scoped scoring kicks in only with >= 2 clusters; with one (implicit or
-    # a lone named cluster) it is identical to the flat path, so those users and all
-    # v1 profiles score byte-identically to today (no cluster attribution).
+    # Themes first: each interest's query is padded with its own theme's sibling
+    # areas, so two themes never ask the same question (see interests_query).
     clusters = cluster_interests(interests)
+    search_ints = search_interests(interests, clusters=clusters)
     retrieved_count = 0
     slate_groups: dict[str, list[Hit]] = {}
     if search_ints and clusters:
@@ -542,8 +541,8 @@ def recommend_for_target(
     # day's search. Opportunities accumulate; papers do not.
     created_on = latest_gather_date(content_type=ContentItem.Type.PAPER)
     interests = target.interests or {}
-    search_ints = search_interests(interests)
     clusters = cluster_interests(interests)
+    search_ints = search_interests(interests, clusters=clusters)
     retrieved_count = 0
     slate_groups: dict[str, list[Hit]] = {}
     if search_ints and clusters:

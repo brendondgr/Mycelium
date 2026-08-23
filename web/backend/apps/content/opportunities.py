@@ -43,7 +43,9 @@ from .pipeline import (
     fuse_interests_pool,
 )
 from .slates import (
+    compute_cluster_slates,
     merge_cluster_signals,
+    prior_cluster_slates,
     prune_cluster_slates,
     slate_depth,
 )
@@ -179,23 +181,27 @@ def areas_for(user: User, requested: tuple[str, ...]) -> tuple[str, ...]:
 
 
 def opportunity_search_interests(
-    interests: dict, watch_topics: list[str]
+    interests: dict, watch_topics: list[str], *, clusters: list | None = None
 ) -> list[SearchInterest]:
     """Search interests for opportunity matching.
 
-    Reuses the paper multi-interest builder but broadens it for opportunities: the
-    user's declared ``areas`` drive the interests (as for papers), and their watch
-    topics both stand in as interests when no areas are declared and sharpen every
-    interest's lexical net.
+    The same builder papers use. Watch topics **stand in as interests** when the
+    profile declares no areas — that is what keeps a watch-only reader's grant
+    feed working.
+
+    What they no longer do is get appended to every other interest. Merging the
+    watch list into ``keywords`` made every opportunity query carry all of them:
+    on one real profile that was fifteen topics plus nine keywords bolted onto
+    each of twenty-two areas, so "nanotechnology" and "agentic querying" searched
+    for nearly the same string and one knowledge-graph workshop led all five of
+    that reader's themes. Context now comes from an interest's own theme instead
+    (:func:`apps.content.interests_query.search_interests`).
     """
     interests = dict(interests or {})
     areas = interests.get("areas") or []
     if not areas and watch_topics:
         interests["areas"] = list(watch_topics)
-    merged_keywords = list(interests.get("keywords") or []) + list(watch_topics)
-    if merged_keywords:
-        interests["keywords"] = merged_keywords
-    return search_interests(interests)
+    return search_interests(interests, clusters=clusters)
 
 
 @dataclass
@@ -408,13 +414,13 @@ def _fellowship_embed_by_id(
       topic-agnostic one. Empty for a profile with fewer than two themes, where
       there is nothing to vary across.
     """
+    clusters = cluster_interests(profile.interests or {})
     search_ints = opportunity_search_interests(
-        profile.interests or {}, _watch_topics(user)
+        profile.interests or {}, _watch_topics(user), clusters=clusters
     )
     has_interest_signal = bool(search_ints)
     if not has_interest_signal:
         return None, False, {}
-    clusters = cluster_interests(profile.interests or {})
 
     try:
         if len(clusters) >= 2:
@@ -627,6 +633,19 @@ def _persist_fellowships(
     }
     for index, cid in enumerate(open_band or [], start=1):
         band_position.setdefault(cid, index)
+    # Matched awards join their theme's slate on the same terms as everything
+    # else, so the report can section them by theme. Without this they carry a
+    # band and an attribution but no slate place, and the theme sections — which
+    # read slate keys — cannot see them at all. Open-band awards deliberately get
+    # no slate: they are not attached to a theme, and the report lists them once
+    # in their own band (see ``daily_report``).
+    theme_slates = compute_cluster_slates(
+        prior_cluster_slates(persist_kwargs, ContentItem.Type.FELLOWSHIP),
+        matched or {},
+        labels,
+        content_type=ContentItem.Type.FELLOWSHIP,
+        today=today,
+    )
     if retire_missing:
         _retire(
             persist_kwargs,
@@ -670,6 +689,14 @@ def _persist_fellowships(
             "embedding_match": s.get("embedding_match"),
             "llm_scored_at": s.get("llm_scored_at", ""),
         }
+        # Fellowships never reach the per-theme fit stage — they are gated by a
+        # deterministic rule engine, not judged by the model — so they would enter
+        # a theme section with no caveat, breaking the invariant that every entrant
+        # carries one. Their caveat comes from the engine's own output, which is
+        # where a fellowship's real risk lives: the eligibility verdict is read off
+        # scraped sponsor prose, and a conditional tier means a gate it could not
+        # confirm.
+        signals["caveat"] = _fellowship_caveat(s)
         entry = bands.get(cid)
         if entry is not None:
             signals["band"] = entry.band
@@ -678,6 +705,8 @@ def _persist_fellowships(
                 signals["cluster_id"] = entry.cluster_ids[0]
                 signals["cluster_label"] = labels.get(entry.cluster_ids[0], "")
                 signals["bridge_cluster_ids"] = list(entry.cluster_ids[1:])
+        if theme_slates:
+            merge_cluster_signals(signals, theme_slates, cid)
         merge_top_signals(signals, slate, cid)
         # The verdict is derived from the slate band, which is the only ordering a
         # rule-gated feed has: eligibility is a hard gate, not a degree, so nothing
@@ -726,7 +755,10 @@ def _prepare_match(
         if log is not None:
             log(f"[{key}:{area}] {message}")
 
-    search_ints = opportunity_search_interests(target.interests, target.watch_topics)
+    clusters = cluster_interests(target.interests or {})
+    search_ints = opportunity_search_interests(
+        target.interests, target.watch_topics, clusters=clusters
+    )
     if not search_ints:
         emit("no research interests or watch topics; skipping")
         return None, OppRunResult(
@@ -753,7 +785,6 @@ def _prepare_match(
     # to it, which is why an opportunity carried no cluster attribution and the
     # cluster badge on its card stayed dark. One or no cluster keeps the flat path
     # byte-for-byte — the invariant every cluster feature in this codebase preserves.
-    clusters = cluster_interests(target.interests or {})
     if clusters:
         # Opportunities are a **stock**, not a flow: what exists is a set of
         # currently-open calls with deadlines, and a grant posted three months ago
@@ -1062,7 +1093,10 @@ def _target_fellowship_embed_by_id(
     fellowships, or retrieval raised) — the caller then surfaces nothing for that
     target rather than guessing.
     """
-    search_ints = opportunity_search_interests(target.interests, target.watch_topics)
+    clusters = cluster_interests(target.interests or {})
+    search_ints = opportunity_search_interests(
+        target.interests, target.watch_topics, clusters=clusters
+    )
     if not search_ints:
         return None
     try:
@@ -1767,6 +1801,36 @@ def _finalize_clustered_match(
         llm=llm,
         fallback=len(suggestions) - llm,
         new=new_count,
+    )
+
+
+def _fellowship_caveat(suggestion: dict) -> str:
+    """The strongest reason an eligible award might still not be worth the time.
+
+    Never empty and never "none": a recommendation with no stated downside reads
+    as promotion. For a conditional tier that is the gate the engine could not
+    confirm; for a qualified one it is that the verdict rests on the sponsor's own
+    page, which is the failure mode that actually costs an applicant a week.
+    """
+    if (suggestion.get("tier") or "").casefold() == "conditional":
+        reasons = [r for r in (suggestion.get("reasons") or []) if str(r).strip()]
+        gates = [g for g in (suggestion.get("gates_failed") or []) if str(g).strip()]
+        detail = (reasons or gates or [""])[0]
+        detail = " ".join(str(detail).split())
+        if detail:
+            return f"Conditional eligibility — {detail}"
+        return (
+            "Conditional eligibility: the rule engine could not confirm every "
+            "requirement from the sponsor's page."
+        )
+    if suggestion.get("source") == "rules":
+        return (
+            "Eligibility is confirmed, but Mylo has not read this award for "
+            "research fit — the placement is a topical match, not a judgement."
+        )
+    return (
+        "Eligibility is read from the sponsor's own page and can be out of date; "
+        "confirm the current terms before investing time in an application."
     )
 
 

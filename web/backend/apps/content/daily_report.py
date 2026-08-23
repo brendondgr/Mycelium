@@ -37,7 +37,9 @@ from django.utils import timezone
 
 from apps.content import briefing
 from apps.content.briefing_sections import SECTION_NOUN, apply_narrative
+from apps.content.fellowship_bands import OPEN as OPEN_BAND
 from apps.content.models import DailyBriefing, RelevanceScore
+from apps.content.slates import standing_render_depth
 from apps.content.targets import target_for_lab
 from apps.content.theme_report import (
     ThemeSection,
@@ -183,6 +185,11 @@ class ReportData:
     #: an unentitled reader, whose document opens on the cover table instead.
     lead: str = ""
     lead_origin: str = ""
+    #: Eligibility-qualified fellowships whose research fit is **flat** across
+    #: every theme — topic-agnostic awards. They belong to no theme, so they get
+    #: their own short band rather than being repeated under all of them or
+    #: dropped for having no slate place (plan §12).
+    open_fellowships: list[ReportItem] = field(default_factory=list)
     counts: dict[str, int] = field(default_factory=dict)
     new_counts: dict[str, int] = field(default_factory=dict)
     personal: ReportPart | None = None
@@ -354,6 +361,26 @@ def _item_from_score(
     )
 
 
+def _open_fellowships(
+    target_filter: dict, today: str, *, reader=None
+) -> list[ReportItem]:
+    """The "open to you" band, in the order the eligibility engine produced.
+
+    Deliberately not re-sorted by research fit: these are the awards whose fit is
+    flat across every theme, so there is no topical order to impose and pretending
+    otherwise would be the directory problem wearing a ranking.
+    """
+    scores = briefing.report_scores(
+        target_filter, briefing.CATEGORY_TYPES["fellowships"], today, reader=reader
+    )
+    rows = [s for s in scores if (s.signals or {}).get("band") == OPEN_BAND]
+    rows.sort(key=lambda s: (s.signals or {}).get("band_position") or 10**6)
+    return [
+        _item_from_score(s, "fellowships", today)
+        for s in rows[:standing_render_depth(briefing.CATEGORY_TYPES["fellowships"])]
+    ]
+
+
 def _theme_item_builder(category: str, today: str):
     """A ``(score, cluster_id) -> ReportItem`` builder bound to one category."""
 
@@ -494,6 +521,11 @@ def _compile(
     daily = DailyBriefing.latest_for(**briefing_filter)
     narrative = getattr(daily, "narrative", None) or {}
     apply_narrative(personal, narrative)
+    open_band = (
+        _open_fellowships(target_filter, today, reader=reader)
+        if "fellowships" in categories
+        else []
+    )
 
     return ReportData(
         username=key,
@@ -504,6 +536,7 @@ def _compile(
         categories=categories,
         lead=narrative.get("lead", ""),
         lead_origin=narrative.get("lead_origin", ""),
+        open_fellowships=open_band,
         counts=counts,
         new_counts=new_counts,
         personal=personal,
