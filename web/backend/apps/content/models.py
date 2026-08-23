@@ -1347,3 +1347,86 @@ class Notification(models.Model):
 
     def __str__(self) -> str:
         return f"notif[{self.kind}] {self.user} {self.title[:30]}"
+
+
+class ItemComprehension(models.Model):
+    """A structured précis of one content item, written once and reused forever.
+
+    Stage one of the two-stage model pipeline. It is deliberately **profile-blind**
+    — no reader, no interests, no relevance judgement in the input — which is what
+    makes one extraction serve every user and every theme indefinitely. That is
+    both where the depth in the final write-ups comes from and where the cost
+    saving lives: the fit stage that follows reads this instead of six hundred
+    truncated characters of abstract, and never pays to re-read the paper.
+
+    Every field is grounded in the source text. An absent field is left empty
+    rather than inferred, and ``thin`` marks a source too sparse to support a
+    précis at all — a valid outcome that downstream stages degrade on rather than
+    receiving a fabrication.
+
+    Two things invalidate a stored précis and nothing else does (plan §19):
+    ``prompt_version`` changing, and ``source_fingerprint`` changing because the
+    item's own text changed — most often an abstract backfilled after an empty
+    first pass. Time alone never invalidates: a précis from three months ago is
+    still a correct reading of the same paper.
+    """
+
+    content = models.OneToOneField(
+        ContentItem,
+        on_delete=models.CASCADE,
+        related_name="comprehension",
+    )
+    problem = models.TextField(blank=True, default="")
+    method = models.TextField(blank=True, default="")
+    setting = models.TextField(
+        blank=True,
+        default="",
+        help_text="The data, cohort, or setting the work was carried out in.",
+    )
+    claim = models.TextField(blank=True, default="")
+    limitations = models.TextField(
+        blank=True,
+        default="",
+        help_text="Limitations the authors themselves state — never inferred.",
+    )
+    reusable = models.TextField(
+        blank=True,
+        default="",
+        help_text=(
+            "What an outside researcher could concretely take: a method, a "
+            "dataset, a baseline, a negative result, an evaluation protocol."
+        ),
+    )
+    thin = models.BooleanField(
+        default=False,
+        help_text="The source text was too sparse to support a précis.",
+    )
+    prompt_version = models.CharField(max_length=32, default="", blank=True)
+    source_fingerprint = models.CharField(max_length=64, default="", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["prompt_version"])]
+
+    def __str__(self) -> str:
+        return f"comprehension<{self.content_id}>"
+
+    @property
+    def is_empty(self) -> bool:
+        """True when nothing usable was extracted (a thin or failed pass)."""
+        return self.thin or not any(
+            (self.problem, self.method, self.claim, self.reusable)
+        )
+
+    def as_prompt_block(self) -> str:
+        """The précis as the fit prompt reads it — labelled lines, empties dropped."""
+        rows = (
+            ("Problem", self.problem),
+            ("Method", self.method),
+            ("Data / setting", self.setting),
+            ("Headline claim", self.claim),
+            ("Stated limitations", self.limitations),
+            ("Reusable", self.reusable),
+        )
+        return "\n".join(f"    {label}: {value}" for label, value in rows if value)

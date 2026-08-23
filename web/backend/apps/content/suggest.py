@@ -391,6 +391,13 @@ def _as_match(value: Any) -> int | None:
 # -- fallback -----------------------------------------------------------------
 
 
+def fallback_reason(
+    interests: dict, item: ContentItem, cluster: str | None = None
+) -> str:
+    """The deterministic one-line rationale — the baseline product's lead beat."""
+    return _fallback_reason(interests, item, cluster)
+
+
 def _fallback_reason(
     interests: dict, item: ContentItem, cluster: str | None = None
 ) -> str:

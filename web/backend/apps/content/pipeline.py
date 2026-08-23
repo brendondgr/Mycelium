@@ -42,7 +42,9 @@ from apps.scraper.ingest import SearchFn, scan
 from apps.scraper.window import ScanWindow
 
 from . import embeddings, reranking
-from .clustering import Cluster, cluster_interests
+from .admission import admit
+from .cluster_fit import full_reason
+from .clustering import IMPLICIT_CLUSTER_ID, Cluster, cluster_interests
 from .digest_selection import renumber, split_by_floor
 from .fusion import (
     DEFAULT_BETA,
@@ -72,8 +74,16 @@ from .retrieval import (
     latest_gather_date,
     retrieve_for_vector,
 )
-from .suggest import CompleteFn, generate_suggestions
+from .slates import (
+    compute_cluster_slates,
+    merge_cluster_signals,
+    prior_cluster_slates,
+    prune_cluster_slates,
+    slate_depth,
+)
+from .suggest import CompleteFn, fallback_reason, generate_suggestions
 from .targets import target_for_lab, target_for_project
+from .theme_run import carry_stored_writeups, run_theme_writeups
 from .top_feed import compute_top, merge_top_signals, prior_top_ids, top_n
 
 logger = logging.getLogger(__name__)
@@ -384,12 +394,15 @@ def recommend_for_user(
     # v1 profiles score byte-identically to today (no cluster attribution).
     clusters = cluster_interests(interests)
     retrieved_count = 0
-    if search_ints and len(clusters) >= 2:
-        # A person's own feed keeps the global ranking (no ``cluster_top_n``): their
-        # areas are specific enough that the strongest papers already spread across
-        # them. The per-cluster slate exists for institutional targets, whose areas
-        # are broad theme names — see :func:`recommend_for_target`.
-        pairs, rows, retrieved_count, _slate = fuse_clusters_pool(
+    slate_groups: dict[str, list[Hit]] = {}
+    if search_ints and clusters:
+        # Every clustered profile — including the single implicit cluster a v1
+        # profile falls back to — goes through the per-cluster path. With one
+        # cluster ``combine_clusters`` reduces exactly to ``combine_interests``
+        # and the single slate *is* the old global slate, so those readers see
+        # the same items in the same order; with several, each theme keeps its
+        # own slate and nothing merges them.
+        pairs, rows, retrieved_count, slate_groups = fuse_clusters_pool(
             search_ints,
             clusters,
             content_type=ContentItem.Type.PAPER,
@@ -399,17 +412,7 @@ def recommend_for_user(
             emit=emit,
             created_on=created_on,
             match_threshold=match_threshold,
-        )
-    elif search_ints:
-        pairs, rows, retrieved_count = fuse_interests_pool(
-            search_ints,
-            content_type=ContentItem.Type.PAPER,
-            surface_limit=max_surface,
-            pool_per_interest=pool_per_interest,
-            beta=beta,
-            emit=emit,
-            created_on=created_on,
-            match_threshold=match_threshold,
+            cluster_top_n=slate_depth(ContentItem.Type.PAPER),
         )
     else:
         pairs, rows, retrieved_count = _single_vector(
@@ -435,51 +438,22 @@ def recommend_for_user(
             note="no embedded papers to retrieve yet",
         )
 
-    # The pipeline has already filtered ``pairs`` by the embedding-match threshold,
-    # so surface all of them; only the top ``suggestion_limit`` go to the model.
-    prior = (
-        load_prior_llm_verdicts({"target_user": user}, ContentItem.Type.PAPER)
-        if reuse_prior
-        else {}
-    )
     today_iso = timezone.now().date().isoformat()
-    # The slate this run is about to establish, and the one it replaces. The model's
-    # budget goes to papers that just entered — the reader is seeing those for the
-    # first time — not to whatever happened to be ingested most recently.
-    was_top = prior_top_ids({"target_user": user}, ContentItem.Type.PAPER)
-    entering = {str(item.id) for item, _score in pairs[: top_n()]} - was_top
-    suggestions = generate_suggestions(
+    visible, theme_note, llm = _explain_run(
         interests,
+        clusters,
+        {"target_user": user},
+        ContentItem.Type.PAPER,
         pairs,
-        llm_limit=suggestion_limit,
+        rows,
+        slate_groups,
         complete=complete,
-        prior=prior,
-        priority_ids=entering,
-        cluster_by_id=_cluster_by_id(rows),
+        today=today_iso,
+        reuse_prior=reuse_prior,
+        suggestion_limit=suggestion_limit,
+        persist=persist,
+        emit=emit,
     )
-    floor = _paper_min_match_percent()
-    visible, hidden = split_by_floor(suggestions, floor)
-    # Ranks were handed out over the pre-floor list; close the gaps the hidden
-    # papers leave behind so the feed numbers what it actually shows.
-    renumber(visible)
-    llm = sum(1 for s in visible if s["source"] == "llm")
-    emit(
-        f"suggestions: {len(visible)} ({llm} llm / "
-        f"{len(visible) - llm} fallback)"
-        + (f", {len(hidden)} hidden below floor" if hidden else "")
-    )
-
-    if persist:
-        visible_ids = {s["content_id"] for s in visible}
-        _persist(
-            {"target_user": user},
-            ContentItem.Type.PAPER,
-            rows,
-            suggestions,
-            visible_ids,
-            today=today_iso,
-        )
-
     return RunResult(
         username,
         "ok",
@@ -491,7 +465,7 @@ def recommend_for_user(
         suggestions=len(visible),
         llm=llm,
         fallback=len(visible) - llm,
-        hidden=len(hidden),
+        note=theme_note,
     )
 
 
@@ -551,7 +525,13 @@ def recommend_for_target(
     if max_surface is None:
         max_surface = _paper_max_surface()
     if cluster_top_n is None:
-        cluster_top_n = _paper_cluster_top_n()
+        # The per-theme slate depth (plan §11): papers are a flow, so it runs deep
+        # and the report prints only its head. ``PAPER_CLUSTER_TOP_N`` still wins
+        # when a deployment sets it, so an operator override is not silently lost.
+        cluster_top_n = int(
+            getattr(settings, "PAPER_CLUSTER_TOP_N", 0)
+            or slate_depth(ContentItem.Type.PAPER)
+        )
 
     def emit(message: str) -> None:
         if log is not None:
@@ -565,8 +545,8 @@ def recommend_for_target(
     search_ints = search_interests(interests)
     clusters = cluster_interests(interests)
     retrieved_count = 0
-    slate_groups: list[list[Hit]] = []
-    if search_ints and len(clusters) >= 2:
+    slate_groups: dict[str, list[Hit]] = {}
+    if search_ints and clusters:
         pairs, rows, retrieved_count, slate_groups = fuse_clusters_pool(
             search_ints,
             clusters,
@@ -578,17 +558,6 @@ def recommend_for_target(
             created_on=created_on,
             match_threshold=match_threshold,
             cluster_top_n=cluster_top_n,
-        )
-    elif search_ints:
-        pairs, rows, retrieved_count = fuse_interests_pool(
-            search_ints,
-            content_type=ContentItem.Type.PAPER,
-            surface_limit=max_surface,
-            pool_per_interest=pool_per_interest,
-            beta=beta,
-            emit=emit,
-            created_on=created_on,
-            match_threshold=match_threshold,
         )
     elif target.stored_vector or target.embedding_text.strip():
         # A project with a recomputed team profile (Feature D) carries its blended
@@ -620,53 +589,22 @@ def recommend_for_target(
             note="no embedded papers to retrieve yet",
         )
 
-    prior = (
-        load_prior_llm_verdicts(target.persist_kwargs, ContentItem.Type.PAPER)
-        if reuse_prior
-        else {}
-    )
     today_iso = timezone.now().date().isoformat()
-    was_top = prior_top_ids(target.persist_kwargs, ContentItem.Type.PAPER)
-    entering = {str(item.id) for item, _score in pairs[: top_n()]} - was_top
-    suggestions = generate_suggestions(
+    visible, theme_note, llm = _explain_run(
         interests,
+        clusters,
+        target.persist_kwargs,
+        ContentItem.Type.PAPER,
         pairs,
-        # With a per-theme slate the budget is per group, not one global slice.
-        llm_limit=cluster_top_n if slate_groups else suggestion_limit,
+        rows,
+        slate_groups,
         complete=complete,
-        prior=prior,
-        priority_ids=entering,
-        cluster_by_id=_cluster_by_id(rows),
-        llm_groups=slate_groups or None,
+        today=today_iso,
+        reuse_prior=reuse_prior,
+        suggestion_limit=suggestion_limit,
+        persist=persist,
+        emit=emit,
     )
-    floor = _paper_min_match_percent()
-    visible, hidden = split_by_floor(suggestions, floor)
-    slate_ids = {str(item.id) for group in slate_groups for item, _score in group}
-    reinstated = [s for s in hidden if s["content_id"] in slate_ids]
-    if reinstated:
-        # A paper this run chose as one of its theme's best is shown with Mylo's
-        # honest percent rather than withheld — see the docstring. Rebuilding from
-        # ``suggestions`` keeps everything in its already-correct position.
-        hidden = [s for s in hidden if s["content_id"] not in slate_ids]
-        shown = {s["content_id"] for s in visible + reinstated}
-        visible = [s for s in suggestions if s["content_id"] in shown]
-    renumber(visible)
-    llm = sum(1 for s in visible if s["source"] == "llm")
-    emit(
-        f"suggestions: {len(visible)} ({llm} llm / "
-        f"{len(visible) - llm} fallback)"
-        + (f", {len(hidden)} hidden below floor" if hidden else "")
-    )
-    if persist:
-        visible_ids = {s["content_id"] for s in visible}
-        _persist(
-            target.persist_kwargs,
-            ContentItem.Type.PAPER,
-            rows,
-            suggestions,
-            visible_ids,
-            today=today_iso,
-        )
     return RunResult(
         key,
         "ok",
@@ -675,7 +613,7 @@ def recommend_for_target(
         suggestions=len(visible),
         llm=llm,
         fallback=len(visible) - llm,
-        hidden=len(hidden),
+        note=theme_note,
     )
 
 
@@ -1115,7 +1053,7 @@ def fuse_clusters_pool(
     cluster_top_n: int = 0,
     spread: SpreadPolicy | None = None,
     index: VectorIndex | None = None,
-) -> tuple[list[Hit], list[PersistRow], int, list[list[Hit]]]:
+) -> tuple[list[Hit], list[PersistRow], int, dict[str, list[Hit]]]:
     """Cluster-scoped twin of :func:`fuse_interests_pool` (papers, >= 2 clusters).
 
     Builds the same shared pool and per-interest scores, then combines **within
@@ -1156,7 +1094,7 @@ def fuse_clusters_pool(
         index=index,
     )
     if not pool:
-        return [], [], 0, []
+        return [], [], 0, {}
 
     cluster_areas = {cluster.id: cluster.areas for cluster in clusters}
     labels_by_id = {cluster.id: cluster.label for cluster in clusters}
@@ -1195,25 +1133,37 @@ def fuse_clusters_pool(
             emit=emit,
         )
 
+    admitted_hits = clustered
     if match_threshold is None:
         surfaced = cap_clusters(clustered, limit=surface_limit)
         note = ""
     else:
-        passing = [
-            hit
-            for hit in clustered
-            if best_cosine.get(str(hit.item.id), 0.0) >= match_threshold
-        ]
+        # Per-cluster admission (plan P2): the absolute floor OR a theme's own
+        # relative floor, with a hard absolute minimum underneath so a dead theme
+        # admits nothing rather than its ten least-irrelevant candidates.
+        admitted, stats = admit(
+            clustered,
+            best_cosine,
+            threshold=match_threshold,
+            relative=len(clusters) >= 2,
+        )
+        passing = [hit for hit in clustered if str(hit.item.id) in admitted]
+        admitted_hits = passing
         # cap_clusters is a no-op below surface_limit (the common case) and otherwise
         # reserves each cluster's best paper before the backstop truncation.
         surfaced = cap_clusters(passing, limit=surface_limit)
-        note = (
-            f"{len(passing)} cleared the {round(match_threshold * 100)}% match "
-            "threshold"
-            f"{f' (capped to {surface_limit})' if len(passing) > surface_limit else ''}"
-        )
+        note = stats.note()
+        if len(passing) > surface_limit:
+            note += f" (capped to {surface_limit})"
 
-    slate = top_per_cluster(clustered, limit=cluster_top_n) if cluster_top_n else {}
+    # The slate is drawn from the **admitted** list, never from the raw pool: a
+    # candidate the gate rejected has not earned a place in a theme's shortlist
+    # just because that theme had ten slots to fill. Anything the backstop
+    # truncation then dropped is folded back in, so a theme's best always survives
+    # whatever the global cut does — a bounded overshoot, and a deliberate one.
+    slate = (
+        top_per_cluster(admitted_hits, limit=cluster_top_n) if cluster_top_n else {}
+    )
     if slate:
         seen = {str(hit.item.id) for hit in surfaced}
         added = 0
@@ -1224,10 +1174,12 @@ def fuse_clusters_pool(
                     seen.add(key)
                     surfaced.append(hit)
                     added += 1
-        surfaced.sort(key=lambda hit: hit.final_score, reverse=True)
+        if added:
+            surfaced.sort(key=lambda hit: hit.final_score, reverse=True)
         note += (
             f"{'; ' if note else ''}top {cluster_top_n} per cluster over "
-            f"{len(slate)} cluster(s) (+{added} beyond the global cut)"
+            f"{len(slate)} cluster(s)"
+            + (f" (+{added} beyond the global cut)" if added else "")
         )
 
     emit(
@@ -1247,9 +1199,10 @@ def fuse_clusters_pool(
         )
         for hit in surfaced
     ]
-    slate_groups = [
-        [(hit.item, hit.final_score) for hit in hits] for hits in slate.values()
-    ]
+    slate_groups = {
+        cluster_id: [(hit.item, hit.final_score) for hit in hits]
+        for cluster_id, hits in slate.items()
+    }
     return pairs, rows, len(pool), slate_groups
 
 
@@ -1265,7 +1218,7 @@ def _surface_with_spread(
     pool_size: int,
     emit: Callable[[str], None],
     rerank_rank: dict[str, int] | None = None,
-) -> tuple[list[Hit], list[PersistRow], int, list[list[Hit]]]:
+) -> tuple[list[Hit], list[PersistRow], int, dict[str, list[Hit]]]:
     """The surfacing half of :func:`fuse_clusters_pool` under a spread policy.
 
     Split out rather than branched inline so the deployed path above stays
@@ -1320,7 +1273,7 @@ def _surface_with_spread(
         )
         for hit in surfaced
     ]
-    return pairs, rows, pool_size, []
+    return pairs, rows, pool_size, {}
 
 
 def _cluster_row(
@@ -1342,11 +1295,18 @@ def _cluster_row(
         "per_interest": {label: round(v, 4) for label, v in hit.per_interest.items()},
         "n_matched": hit.n_matched,
         "focus_areas": list(hit.per_interest.keys()),
-        "cluster_id": hit.cluster_id,
-        "cluster_label": labels_by_id.get(hit.cluster_id, ""),
-        "per_cluster": {cid: round(v, 4) for cid, v in hit.per_cluster.items()},
-        "bridge_cluster_ids": list(hit.bridge_cluster_ids),
     }
+    # The implicit cluster is not a theme — it is the fallback grouping a profile
+    # with no declared clusters falls into. Writing attribution for it would put a
+    # meaningless "All interests" badge on every card of every v1 profile, so those
+    # rows stay exactly the shape the flat path wrote.
+    if hit.cluster_id != IMPLICIT_CLUSTER_ID:
+        signals.update(
+            cluster_id=hit.cluster_id,
+            cluster_label=labels_by_id.get(hit.cluster_id, ""),
+            per_cluster={cid: round(v, 4) for cid, v in hit.per_cluster.items()},
+            bridge_cluster_ids=list(hit.bridge_cluster_ids),
+        )
     if match is not None:
         signals["embedding_match"] = round(match, 4)
     _record_rerank(signals, hit, rerank_rank)
@@ -1465,6 +1425,231 @@ def _single_vector(
     return pairs, rows, len(ranked)
 
 
+def _explain_run(
+    interests: dict,
+    clusters: list[Cluster],
+    persist_kwargs: dict,
+    content_type: str,
+    pairs: list[Hit],
+    rows: list[PersistRow],
+    slate_groups: dict[str, list[Hit]],
+    *,
+    complete: CompleteFn | None,
+    today: str,
+    reuse_prior: bool,
+    suggestion_limit: int,
+    persist: bool,
+    emit: Callable[[str], None],
+) -> tuple[list[dict], str, int]:
+    """Slate, explain and persist a run. Returns ``(rows shown, note, llm count)``.
+
+    Two paths, and the branch is on whether the profile has clusters at all:
+
+    * **Per-cluster** (every profile with declared areas) — each theme's slate is
+      diffed on its own, each entrant gets a write-up keyed on the pair, and
+      nothing is re-sorted afterwards. That last clause is the one that matters:
+      re-sorting globally after a per-cluster step is exactly what made the
+      previous rescue mechanism provably inert.
+    * **Single-vector** (no areas at all) — the legacy global slate, unchanged,
+      because there is no theme to scope anything to.
+    """
+    if clusters and slate_groups:
+        profile_text = _profile_prompt_text(interests)
+        slates, theme = run_cluster_slates(
+            interests,
+            clusters,
+            persist_kwargs,
+            content_type,
+            slate_groups,
+            rows,
+            profile_text=profile_text,
+            complete=complete,
+            today=today,
+            reuse=reuse_prior,
+        )
+        suggestions = cluster_suggestions(
+            interests, pairs, slates, theme.writeups, _cluster_by_id(rows)
+        )
+        emit(
+            f"{len(slates)} item(s) across {len(slate_groups)} theme slate(s); "
+            + theme.note()
+        )
+        if persist:
+            _persist(
+                persist_kwargs,
+                content_type,
+                rows,
+                suggestions,
+                {s["content_id"] for s in suggestions},
+                today=today,
+                cluster_slates=slates,
+                writeups=theme.writeups,
+                declared_cluster_ids=[cluster.id for cluster in clusters],
+            )
+        llm = sum(1 for s in suggestions if s["source"] == "llm")
+        return suggestions, theme.note(), llm
+
+    prior = (
+        load_prior_llm_verdicts(persist_kwargs, content_type) if reuse_prior else {}
+    )
+    was_top = prior_top_ids(persist_kwargs, content_type)
+    entering = {str(item.id) for item, _score in pairs[: top_n()]} - was_top
+    suggestions = generate_suggestions(
+        interests,
+        pairs,
+        llm_limit=suggestion_limit,
+        complete=complete,
+        prior=prior,
+        priority_ids=entering,
+        cluster_by_id=_cluster_by_id(rows),
+    )
+    visible, hidden = split_by_floor(suggestions, _paper_min_match_percent())
+    renumber(visible)
+    llm = sum(1 for s in visible if s["source"] == "llm")
+    note = f"{len(visible)} suggestion(s) ({llm} llm)"
+    emit(note + (f", {len(hidden)} hidden below floor" if hidden else ""))
+    if persist:
+        _persist(
+            persist_kwargs,
+            content_type,
+            rows,
+            suggestions,
+            {s["content_id"] for s in visible},
+            today=today,
+        )
+    return visible, note, llm
+
+
+def _profile_prompt_text(interests: dict) -> str:
+    """The reader, as the per-theme prompts read them.
+
+    Deliberately the *whole* declared surface rather than the cluster's slice:
+    the fit prompt is told which strand it is judging for, and knowing the rest
+    of the profile is what lets it name a bridge without grading fit to it.
+    """
+    interests = interests or {}
+    bits: list[str] = []
+    statement = " ".join(str(interests.get("statement") or "").split())
+    if statement:
+        bits.append(statement)
+    for label, key in (("Research focus", "areas"), ("Keywords", "keywords")):
+        values = [
+            " ".join(str(v).split())
+            for v in (interests.get(key) or [])
+            if str(v).strip()
+        ]
+        if values:
+            bits.append(f"{label}: {', '.join(values)}")
+    return "\n".join(bits)
+
+
+def cluster_suggestions(
+    interests: dict,
+    pairs: list[Hit],
+    slates: dict[str, dict[str, dict]],
+    writeups: dict[str, dict[str, dict]],
+    cluster_by_id: dict[str, str],
+) -> list[dict]:
+    """Build the digest rows for a per-cluster run — no model call of its own.
+
+    The row shape every existing reader expects (``rank`` / ``headline`` /
+    ``reason`` / ``source``), filled from the per-theme write-ups rather than
+    from a separate global prompt. Two deliberate absences:
+
+    * **No ``match_percent``.** The percent implied a measurement nobody made.
+      Position within a theme plus a verdict says the useful part honestly, so
+      the key is written as ``None`` rather than dropped — a stale row from
+      before this change would otherwise keep showing its old number.
+    * **No reordering.** ``pairs`` arrives in the fused order and leaves in it.
+
+    A candidate in no theme's slate keeps a templated reason: it is in the feed
+    because it cleared admission, and saying so is more honest than silence.
+    """
+    out: list[dict] = []
+    for rank, (item, score) in enumerate(pairs, start=1):
+        cid = str(item.id)
+        entries = slates.get(cid) or {}
+        best = (
+            min(entries, key=lambda key: entries[key]["rank"]) if entries else None
+        )
+        writeup = (writeups.get(cid) or {}).get(best) if best else None
+        reason = full_reason(writeup) or fallback_reason(
+            interests, item, cluster_by_id.get(cid)
+        )
+        out.append(
+            {
+                "content_id": cid,
+                "rank": rank,
+                "headline": _title_of(item),
+                "reason": reason,
+                "caveat": (writeup or {}).get("caveat", ""),
+                "verdict": (writeup or {}).get("verdict"),
+                "match_percent": None,
+                "similarity": round(float(score), 4),
+                # The row's origin vocabulary stays "llm" / "fallback": it is what
+                # the API, the serializers, and the UI's attribution mark read. The
+                # write-up itself records the finer "deterministic".
+                "source": (
+                    "llm" if (writeup or {}).get("source") == "llm" else "fallback"
+                ),
+            }
+        )
+    return out
+
+
+def _title_of(item: ContentItem) -> str:
+    meta = item.metadata or {}
+    title = meta.get("title") or meta.get("name")
+    return " ".join(str(title).split()) if title else "Untitled item"
+
+
+def run_cluster_slates(
+    target_interests: dict,
+    clusters: list[Cluster],
+    persist_kwargs: dict,
+    content_type: str,
+    slate_groups: dict[str, list[Hit]],
+    rows: list[PersistRow],
+    *,
+    profile_text: str,
+    complete: CompleteFn | None,
+    today: str,
+    entitled: bool | None = None,
+    seed: int = 0,
+    reuse: bool = True,
+) -> tuple[dict[str, dict[str, dict]], object]:
+    """Diff each theme's slate, then write up whatever entered it.
+
+    The one place the per-cluster half of a run happens, shared by the personal
+    and institutional paths so they cannot drift. Order matters and is fixed:
+    read the previous slates, diff, *then* decide what to write — writing first
+    would spend the budget on items the diff was about to reveal as unchanged.
+    """
+    labels = {cluster.id: cluster.label for cluster in clusters}
+    prior = prior_cluster_slates(persist_kwargs, content_type)
+    groups = {
+        cluster_id: [str(item.id) for item, _score in group]
+        for cluster_id, group in slate_groups.items()
+    }
+    slates = compute_cluster_slates(
+        prior, groups, labels, content_type=content_type, today=today
+    )
+    rows_by_id = {str(item.id): (item, extra) for item, _score, extra in rows}
+    theme = run_theme_writeups(
+        persist_kwargs,
+        content_type,
+        clusters,
+        slates,
+        rows_by_id,
+        profile_text=profile_text,
+        complete=complete,
+        entitled=entitled,
+        seed=seed,
+        reuse=reuse,
+    )
+    return slates, theme
+
+
 def _persist(
     persist_kwargs: dict,
     content_type: str,
@@ -1473,6 +1658,9 @@ def _persist(
     visible_ids: set[str],
     *,
     today: str | None = None,
+    cluster_slates: dict[str, dict[str, dict]] | None = None,
+    writeups: dict[str, dict[str, dict]] | None = None,
+    declared_cluster_ids: list[str] | None = None,
 ) -> None:
     """Upsert one RelevanceScore per surfaced item; flag the suggested subset.
 
@@ -1502,11 +1690,25 @@ def _persist(
     its own answer.
     """
     run_at = timezone.now().isoformat()
-    slate = compute_top(
-        persist_kwargs,
-        content_type,
-        [s["content_id"] for s in suggestions if s["content_id"] in visible_ids],
-        today=today,
+    per_cluster = cluster_slates is not None
+    if declared_cluster_ids is not None:
+        # Prune before writing, over *every* stored row — a cluster the profile
+        # dropped produces no candidates by definition, so a candidate-driven
+        # prune would never reach it and its rows would carry stale positions
+        # forever. See :mod:`apps.content.slates`.
+        prune_cluster_slates(persist_kwargs, content_type, declared_cluster_ids)
+    slate = (
+        {}
+        if per_cluster
+        else compute_top(
+            persist_kwargs,
+            content_type,
+            [s["content_id"] for s in suggestions if s["content_id"] in visible_ids],
+            today=today,
+        )
+    )
+    stored_writeups = (
+        _stored_writeups_by_id(persist_kwargs, content_type) if per_cluster else {}
     )
     suggested = {s["content_id"]: s for s in suggestions}
     items_by_id = {str(item.id): item for item, _score, _extra in rows}
@@ -1526,7 +1728,13 @@ def _persist(
             "pinned_until": pin.get("pinned_until"),
             "first_seen": pin.get("first_seen", ""),
         }
-        merge_top_signals(signals, slate, cid)
+        if per_cluster:
+            merge_cluster_signals(signals, cluster_slates, cid)
+            carry_stored_writeups(
+                signals, stored_writeups.get(cid, {}), (writeups or {}).get(cid, {})
+            )
+        else:
+            merge_top_signals(signals, slate, cid)
         if promoted is not None:
             signals.update(
                 rank=promoted["rank"],
@@ -1536,8 +1744,26 @@ def _persist(
                 source=promoted["source"],
                 llm_scored_at=promoted.get("llm_scored_at", ""),
             )
+            # The verdict replaces the percent as the qualitative signal. Written
+            # even when it is ``None`` so a row scored before this change stops
+            # advertising a stale one.
+            signals["verdict"] = promoted.get("verdict")
+            signals["caveat"] = promoted.get("caveat", "")
         RelevanceScore.objects.update_or_create(
             content=item,
             **persist_kwargs,
             defaults={"score": round(score, 6), "signals": signals},
         )
+
+
+def _stored_writeups_by_id(
+    persist_kwargs: dict, content_type: str
+) -> dict[str, dict[str, dict]]:
+    """Write-ups already on this target's rows, so a persist never drops one.
+
+    Slate membership prunes; write-ups persist. An item leaving a live theme's
+    slate keeps its stored reasoning, so re-entry later costs no model call.
+    """
+    from .theme_run import _stored_writeups
+
+    return _stored_writeups(persist_kwargs, content_type)

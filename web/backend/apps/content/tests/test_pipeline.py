@@ -12,6 +12,7 @@ from apps.accounts.models import WatchPreference
 from apps.content import embeddings
 from apps.content.digest_selection import renumber, split_by_floor
 from apps.content.models import ContentItem, RelevanceScore
+from apps.content.tests.entitle import entitle_user
 from apps.content.pipeline import (
     build_queries,
     gather_scan_queries,
@@ -451,33 +452,112 @@ def test_recommend_papers_are_fresh_only_and_pinned(pgvector) -> None:
     assert rows[fresh.id].signals["pinned_until"]
 
 
-@pytest.mark.django_db
-def test_llm_suggestions_counted(pgvector) -> None:
+def _mylo_answer(prompt: str) -> str:
+    """A model answering both stages — the précis, then the per-theme verdict."""
     import json
 
+    if prompt.startswith("Title:"):
+        return json.dumps(
+            {
+                "problem": "A problem.",
+                "method": "A method.",
+                "setting": "A cohort.",
+                "claim": "A claim.",
+                "limitations": "Small sample.",
+                "reusable": "A baseline.",
+                "thin": False,
+            }
+        )
+    rows = [
+        {
+            "n": int(line[1 : line.index("]")]),
+            "verdict": "read",
+            "matters": "It matches your knowledge-graph work.",
+            "use": "Use it as a baseline.",
+            "take": "Take their evaluation protocol.",
+            "caveat": "The cohort is small.",
+        }
+        for line in prompt.splitlines()
+        if line.startswith("[")
+    ]
+    return json.dumps({"items": rows})
+
+
+@pytest.mark.django_db
+def test_llm_suggestions_counted(pgvector) -> None:
+    """An entitled reader gets a model verdict, three beats, and a caveat.
+
+    And no percent: the number implied a measurement nobody made, so the row
+    carries a ``verdict`` instead and ``match_percent`` is explicitly ``None``.
+    """
     embeddings.set_embedder(_fake_embed)
     near = _paper("near", "knowledge graph for biomedical discovery")
     _paper("far", "an unrelated other topic")
     user = _profile_user("llm-user")
+    entitle_user(user)
 
-    def complete(_prompt: str) -> str:
-        return json.dumps(
-            {
-                "suggestions": [
-                    {"paper": 1, "match": 88, "headline": "Top", "reason": "Fits you."}
-                ]
-            }
-        )
-
-    result = run_for_user(user, search_fn=_no_search, complete=complete)
+    result = run_for_user(user, search_fn=_no_search, complete=_mylo_answer)
 
     assert result.llm == 1 and result.fallback == 0
     top = RelevanceScore.objects.get(target_user=user, content=near)
     assert top.signals["source"] == "llm"
     # Persisted headline is the paper's real title, not the model's rename.
     assert top.signals["headline"] == "knowledge graph for biomedical discovery"
-    # The language model's percent match is persisted for LLM-ranked papers.
-    assert top.signals["match_percent"] == 88
+    assert top.signals["match_percent"] is None
+    assert top.signals["verdict"] == "read"
+    assert top.signals["caveat"] == "The cohort is small."
+    writeup = top.signals["writeups"]["c-all"]
+    assert len(writeup["beats"]) == 3
+    assert writeup["caveat"]
+
+
+@pytest.mark.django_db
+def test_an_unentitled_reader_gets_a_complete_deterministic_report(pgvector) -> None:
+    """The deterministic path is the baseline product, not a degraded one.
+
+    No model call happens at all, and the row still carries a position-derived
+    verdict, a lead sentence, and a caveat — the same shape a paid row has.
+    """
+    embeddings.set_embedder(_fake_embed)
+    near = _paper("near", "knowledge graph for biomedical discovery")
+    user = _profile_user("free-user")  # no subscription
+
+    calls: list[str] = []
+
+    def complete(prompt: str) -> str:
+        calls.append(prompt)
+        return _mylo_answer(prompt)
+
+    run_for_user(user, search_fn=_no_search, complete=complete)
+
+    assert calls == []  # gated before the prompt, not after
+    row = RelevanceScore.objects.get(target_user=user, content=near)
+    assert row.signals["source"] == "fallback"
+    assert row.signals["verdict"] in {"read", "skim", "file"}
+    assert row.signals["caveat"]
+    assert row.signals["match_percent"] is None
+
+
+@pytest.mark.django_db
+def test_a_second_run_over_an_unchanged_profile_costs_nothing(pgvector) -> None:
+    """Reuse is the default: a model call happens once per artefact, ever."""
+    embeddings.set_embedder(_fake_embed)
+    _paper("near", "knowledge graph for biomedical discovery")
+    user = _profile_user("reuser")
+    entitle_user(user)
+
+    calls = {"n": 0}
+
+    def complete(prompt: str) -> str:
+        calls["n"] += 1
+        return _mylo_answer(prompt)
+
+    run_for_user(user, search_fn=_no_search, complete=complete)
+    first = calls["n"]
+    assert first > 0
+
+    run_for_user(user, search_fn=_no_search, complete=complete)
+    assert calls["n"] == first  # nothing re-sent
 
 
 @pytest.mark.django_db
@@ -624,21 +704,21 @@ def test_refit_bypasses_carry_forward_for_papers(pgvector) -> None:
     _paper("near", "knowledge graph for biomedical discovery")
     user = _profile_user("refitbypass")
 
+    entitle_user(user)
     calls = {"n": 0}
 
-    def complete(_prompt: str) -> str:
+    def complete(prompt: str) -> str:
         calls["n"] += 1
-        return json.dumps(
-            {"suggestions": [{"paper": 1, "match": 80, "headline": "H", "reason": "R"}]}
-        )
+        return _mylo_answer(prompt)
 
     run_for_user(user, search_fn=_no_search, complete=complete)
-    assert calls["n"] == 1  # first run scores it
+    first = calls["n"]
+    assert first > 0  # first run reads and judges it
 
     refit_user(user, areas=("papers",), complete=complete, persist=True, log=None)
-    # The refit re-sent the already-scored paper to the model instead of carrying
-    # its prior verdict forward.
-    assert calls["n"] == 2
+    # The refit re-sent the already-written paper to the model instead of
+    # carrying its stored write-up forward.
+    assert calls["n"] > first
 
 
 @pytest.mark.django_db

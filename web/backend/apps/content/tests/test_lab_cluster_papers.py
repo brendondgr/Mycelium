@@ -27,6 +27,7 @@ from apps.content import embeddings
 from apps.content.fusion import ClusteredHit, top_per_cluster
 from apps.content.models import ContentItem, RelevanceScore
 from apps.content.pipeline import recommend_for_lab, recommend_for_user
+from apps.content.tests.entitle import entitle_lab, entitle_user
 
 _TOKENS = ["ocean", "health", "climate", "other"]
 
@@ -138,66 +139,119 @@ def _vpaper(source: str, title: str, vector: list[float]) -> ContentItem:
     )
 
 
-def _score_everything(match: int):
-    """A model that gives every candidate the same verdict."""
+def _mylo(verdict: str = "read", caveat: str = "Preliminary."):
+    """A model that answers both stages: the précis first, then the fit verdict.
+
+    One injected seam serves both prompts because that is how the pipeline calls
+    it. The prompts are told apart by their opening line rather than by a flag —
+    a test double that has to be told which stage it is in stops proving the
+    stages are wired to the same client.
+    """
 
     def complete(prompt: str) -> str:
+        if prompt.startswith("Title:"):
+            return json.dumps(
+                {
+                    "problem": "A problem.",
+                    "method": "A method.",
+                    "setting": "A cohort.",
+                    "claim": "A claim.",
+                    "limitations": "Small sample.",
+                    "reusable": "A baseline.",
+                    "thin": False,
+                }
+            )
         rows = [
-            {"paper": int(line[1 : line.index("]")]), "match": match, "reason": "Yes."}
+            {
+                "n": int(line[1 : line.index("]")]),
+                "verdict": verdict,
+                "matters": "It speaks to this strand.",
+                "use": "Use it as a baseline.",
+                "take": "Take Table 2.",
+                "caveat": caveat,
+            }
             for line in prompt.splitlines()
             if line.startswith("[")
         ]
-        return json.dumps({"suggestions": rows})
+        return json.dumps({"items": rows})
 
     return complete
 
 
+def _fit_prompts(prompts: list[str]) -> list[str]:
+    """Only the per-theme fit prompts — the comprehension calls are stage one."""
+    return [p for p in prompts if not p.startswith("Title:")]
+
+
 @pytest.mark.django_db
 def test_every_theme_reaches_the_model(pgvector) -> None:
-    """One call per theme, and both themes are represented in what Mylo read."""
+    """One fit call per theme, and both themes are represented in what Mylo read."""
     embeddings.set_embedder(_fake_embed)
     for n in range(6):
         _vpaper(f"o{n}", f"ocean study {n}", [1.0, 0.0, 0.0, 0.1 * n])
         _vpaper(f"h{n}", f"health study {n}", [0.0, 1.0, 0.0, 0.1 * n])
     lab = _lab_with_two_themes()
+    entitle_lab(lab)
 
     prompts: list[str] = []
+    answer = _mylo()
 
     def complete(prompt: str) -> str:
         prompts.append(prompt)
-        return _score_everything(80)(prompt)
+        return answer(prompt)
 
     result = recommend_for_lab(lab, complete=complete)
 
     assert result.status == "ok"
+    fits = _fit_prompts(prompts)
     # One prompt per theme — not one global prompt covering whichever theme won.
-    assert len(prompts) == 2
-    assert any("ocean study" in p for p in prompts)
-    assert any("health study" in p for p in prompts)
+    assert len(fits) == 2
+    assert any("AI for Oceanography" in p for p in fits)
+    assert any("AI in Health Sciences" in p for p in fits)
     # Every paper carries Mylo's verdict; none is left unexplained.
     scores = RelevanceScore.objects.filter(target_lab=lab)
     assert scores.count() == 12
     assert all(s.signals["source"] == "llm" for s in scores)
+    assert all(s.signals["verdict"] in {"read", "skim", "file", "skip"} for s in scores)
 
 
 @pytest.mark.django_db
-def test_a_themes_best_papers_are_shown_even_when_mylo_is_lukewarm(
-    pgvector, settings
-) -> None:
-    """The behaviour that turns seven papers into a full feed.
-
-    Sending more papers to the model only helps if the model's verdict stops
-    deciding membership. A paper the run chose as one of a theme's best is shown
-    with whatever percent it earned.
-    """
-    settings.PAPER_MIN_MATCH_PERCENT = 60
+def test_each_theme_keeps_its_own_slate_and_positions(pgvector) -> None:
+    """No global list: every theme's slate is numbered from one, in its own order."""
     embeddings.set_embedder(_fake_embed)
     for n in range(4):
         _vpaper(f"o{n}", f"ocean study {n}", [1.0, 0.0, 0.0, 0.1 * n])
         _vpaper(f"h{n}", f"health study {n}", [0.0, 1.0, 0.0, 0.1 * n])
     lab = _lab_with_two_themes()
 
-    result = recommend_for_lab(lab, complete=_score_everything(25))
+    recommend_for_lab(lab, complete=lambda _p: None)
+
+    slates: dict[str, set[int]] = {}
+    for score in RelevanceScore.objects.filter(target_lab=lab):
+        for cluster_id, entry in (score.signals.get("cluster_slates") or {}).items():
+            slates.setdefault(cluster_id, set()).add(entry["rank"])
+    assert set(slates) == {"c-ocean", "c-health"}
+    # Each theme numbers from 1 — a niche theme's best is first *of its theme*.
+    for ranks in slates.values():
+        assert min(ranks) == 1
+
+
+@pytest.mark.django_db
+def test_a_lukewarm_verdict_never_removes_a_paper(pgvector) -> None:
+    """A theme's best is shown whatever Mylo thinks of it.
+
+    The percent floor that used to withhold papers is gone: an item the run chose
+    as one of a theme's best is in the slate, and a poor verdict demotes it in the
+    document rather than deleting it from the feed.
+    """
+    embeddings.set_embedder(_fake_embed)
+    for n in range(4):
+        _vpaper(f"o{n}", f"ocean study {n}", [1.0, 0.0, 0.0, 0.1 * n])
+        _vpaper(f"h{n}", f"health study {n}", [0.0, 1.0, 0.0, 0.1 * n])
+    lab = _lab_with_two_themes()
+    entitle_lab(lab)
+
+    result = recommend_for_lab(lab, complete=_mylo("skip"))
 
     assert result.status == "ok"
     shown = [
@@ -206,48 +260,16 @@ def test_a_themes_best_papers_are_shown_even_when_mylo_is_lukewarm(
         if s.signals["suggested"]
     ]
     assert len(shown) == 8
-    assert {s.signals["match_percent"] for s in shown} == {25}
+    assert {s.signals["verdict"] for s in shown} == {"skip"}
+    # No percent survives anywhere.
+    assert {s.signals["match_percent"] for s in shown} == {None}
     # And the numbering describes the list, with no gaps.
     assert sorted(s.signals["rank"] for s in shown) == list(range(1, 9))
 
 
 @pytest.mark.django_db
-def test_a_paper_outside_the_slate_still_obeys_the_floor(pgvector, settings) -> None:
-    """The floor is not abolished — it just stops overruling a deliberate pick."""
-    settings.PAPER_MIN_MATCH_PERCENT = 60
-    settings.PAPER_CLUSTER_TOP_N = 1
-    embeddings.set_embedder(_fake_embed)
-    _vpaper("o-best", "ocean study best", [1.0, 0.0, 0.0, 0.0])
-    _vpaper("o-rest", "ocean study rest", [0.9, 0.0, 0.0, 0.4])
-    _vpaper("h-best", "health study best", [0.0, 1.0, 0.0, 0.0])
-    lab = _lab_with_two_themes()
-
-    def complete(prompt: str) -> str:
-        rows = []
-        for line in prompt.splitlines():
-            if not line.startswith("["):
-                continue
-            idx = int(line[1 : line.index("]")])
-            rows.append({"paper": idx, "match": 20, "reason": "Weak."})
-        return json.dumps({"suggestions": rows})
-
-    recommend_for_lab(lab, complete=complete)
-
-    by_source = {
-        s.content.external_id: s.signals
-        for s in RelevanceScore.objects.filter(target_lab=lab).select_related("content")
-    }
-    # Each theme's single best pick survives its 20% verdict...
-    assert by_source["o-best"]["suggested"] is True
-    assert by_source["h-best"]["suggested"] is True
-    # ...while the runner-up, which the model never judged, keeps the old rule.
-    assert by_source["o-rest"]["source"] == "fallback"
-    assert by_source["o-rest"]["suggested"] is True
-
-
-@pytest.mark.django_db
-def test_a_single_theme_lab_is_unchanged(pgvector) -> None:
-    """One cluster means no cross-theme problem to solve — the flat path stands."""
+def test_a_single_theme_lab_keeps_one_slate(pgvector) -> None:
+    """One cluster means one slate — the same items, in the same order, as before."""
     embeddings.set_embedder(_fake_embed)
     for n in range(20):
         _vpaper(f"o{n}", f"ocean study {n}", [1.0, 0.0, 0.0, 0.0])
@@ -255,26 +277,25 @@ def test_a_single_theme_lab_is_unchanged(pgvector) -> None:
     lab.profile.areas = ["ocean"]
     lab.profile.save()
 
-    prompts: list[str] = []
+    recommend_for_lab(lab, complete=lambda _p: None)
 
-    def complete(prompt: str) -> str:
-        prompts.append(prompt)
-        return _score_everything(80)(prompt)
-
-    recommend_for_lab(lab, complete=complete)
-
-    # A single global call of ten, and the unscored tail still surfaces unexplained.
-    assert len(prompts) == 1
-    sources = [
-        s.signals["source"] for s in RelevanceScore.objects.filter(target_lab=lab)
-    ]
-    assert sources.count("llm") == 10
-    assert sources.count("fallback") >= 1
+    rows = list(RelevanceScore.objects.filter(target_lab=lab))
+    # The per-interest RRF floor drops the weakest of the twenty; what matters is
+    # that one theme yields exactly one slate, not how deep the pool went.
+    assert 15 <= len(rows) <= 20
+    # A lone implicit cluster carries no attribution — no phantom badge appears.
+    assert all("cluster_id" not in r.signals for r in rows)
+    slate_ids = {
+        cid
+        for r in rows
+        for cid in (r.signals.get("cluster_slates") or {})
+    }
+    assert slate_ids == {"c-all"}
 
 
 @pytest.mark.django_db
-def test_a_persons_feed_is_untouched(pgvector) -> None:
-    """The slate is an institutional answer to an institutional problem."""
+def test_a_person_also_gets_per_theme_slates(pgvector) -> None:
+    """The redesign is not institution-only: a person's themes each get a slate."""
     from apps.accounts.models import WatchPreference
 
     embeddings.set_embedder(_fake_embed)
@@ -292,18 +313,30 @@ def test_a_persons_feed_is_untouched(pgvector) -> None:
     }
     user.profile.save()
     WatchPreference.objects.update_or_create(user=user, defaults={"topics": ["ocean"]})
+    entitle_user(user)
 
     prompts: list[str] = []
+    answer = _mylo()
 
     def complete(prompt: str) -> str:
         prompts.append(prompt)
-        return _score_everything(80)(prompt)
+        return answer(prompt)
 
     recommend_for_user(user, complete=complete)
 
-    # One global call of ten, exactly as before; the rest stay the unscored tail.
-    assert len(prompts) == 1
-    sources = [
-        s.signals["source"] for s in RelevanceScore.objects.filter(target_user=user)
-    ]
-    assert sources.count("llm") == 10
+    fits = _fit_prompts(prompts)
+    # Each prompt is about exactly one strand, and both strands are covered. The
+    # count is a batching detail; the invariant is that no prompt mixes themes.
+    assert fits
+    named = {
+        line.split(": ", 1)[1]
+        for prompt in fits
+        for line in prompt.splitlines()
+        if line.startswith("The strand you are judging for: ")
+    }
+    assert named == {"Ocean", "Health"}
+    slates: dict[str, set[str]] = {}
+    for score in RelevanceScore.objects.filter(target_user=user):
+        for cluster_id in score.signals.get("cluster_slates") or {}:
+            slates.setdefault(cluster_id, set()).add(str(score.content_id))
+    assert set(slates) == {"c-ocean", "c-health"}
