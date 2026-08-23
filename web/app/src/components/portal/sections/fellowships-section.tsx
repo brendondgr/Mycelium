@@ -463,6 +463,36 @@ function FellowshipSkeleton() {
 // Animated list wrapper
 // --------------------------------------------------------------------------- //
 
+/**
+ * A band's heading, and the one line that says what the band is.
+ *
+ * The "open to you" band needs the sentence more than the matched one does: a
+ * reader who has just read a list of awards chosen for their research needs to
+ * be told, plainly, that the next list was not.
+ */
+function BandHeading({ band }: { band: "matched" | "open" }) {
+  const copy =
+    band === "matched"
+      ? {
+          title: "Matched to your themes",
+          note: "Ranked by how well each award fits the strand it sits under.",
+        }
+      : {
+          title: "Open to you",
+          note:
+            "Eligible, but not tied to any one strand of your work — listed " +
+            "once, in no particular topical order.",
+        };
+  return (
+    <div className="pt-2">
+      <h3 className="font-serif text-base font-semibold text-[var(--text-primary)]">
+        {copy.title}
+      </h3>
+      <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{copy.note}</p>
+    </div>
+  );
+}
+
 function FellowshipList({
   items,
   recommendedFor,
@@ -470,24 +500,42 @@ function FellowshipList({
 }: {
   items: FellowshipOpportunity[];
   recommendedFor?: Record<string, RecommendedMember[]>;
-  /** Set on a lab feed: what each card's ring is scored against. */
+  /** Set on a lab feed: what each card's judgement is scored against. */
   labName?: string;
 }) {
+  // Two bands, in order: the awards chosen for the reader's research lead, and
+  // the ones they merely qualify for follow, labelled as such. Eligibility is a
+  // hard gate under both — this only decides presentation. A feed whose rows
+  // carry no band at all (a single-theme profile, or rows written before the
+  // split existed) renders as one list, exactly as it did.
+  const matched = items.filter((item) => item.band === "matched");
+  const open = items.filter((item) => item.band === "open");
+  const banded = matched.length > 0 && open.length > 0;
+
+  const row = (item: FellowshipOpportunity, index: number) => (
+    <RevealOnScroll
+      key={item.content_id}
+      delay={revealDelay(index, FELLOWSHIP_PAGE_SIZE)}
+    >
+      <FellowshipRow
+        item={item}
+        recommendedFor={recommendedFor?.[item.content_id]}
+        scopeName={labName}
+        ignorable
+      />
+    </RevealOnScroll>
+  );
+
+  if (!banded) {
+    return <div className="space-y-3.5">{items.map(row)}</div>;
+  }
+
   return (
     <div className="space-y-3.5">
-      {items.map((item, index) => (
-        <RevealOnScroll
-          key={item.content_id}
-          delay={revealDelay(index, FELLOWSHIP_PAGE_SIZE)}
-        >
-          <FellowshipRow
-            item={item}
-            recommendedFor={recommendedFor?.[item.content_id]}
-            scopeName={labName}
-            ignorable
-          />
-        </RevealOnScroll>
-      ))}
+      <BandHeading band="matched" />
+      {matched.map(row)}
+      <BandHeading band="open" />
+      {open.map(row)}
     </div>
   );
 }

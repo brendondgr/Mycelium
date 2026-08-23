@@ -1124,7 +1124,25 @@ class FellowshipSerializer(_OpportunitySerializer):
     gates_failed = serializers.SerializerMethodField()
     reasons = serializers.SerializerMethodField()
     fit = serializers.SerializerMethodField()
+    band = serializers.SerializerMethodField()
+    band_position = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
+
+    def get_band(self, score: RelevanceScore) -> str:
+        """``matched`` (filed under a theme) or ``open`` (topic-agnostic).
+
+        Two bands, not one list. Eligibility is a hard gate that has already run;
+        this says how what survived it is presented. An award whose fit *spikes*
+        on one or two of the reader's themes is filed under them; one whose fit is
+        *flat* across every theme is topic-agnostic and listed once, honestly, in
+        its own band. Without the split, a university-wide dissertation grant
+        appears under every theme the reader has.
+        """
+        return score.signals.get("band") or ""
+
+    def get_band_position(self, score: RelevanceScore):
+        """Place within the band — in its theme, or in the open list."""
+        return score.signals.get("band_position")
 
     def get_url(self, score: RelevanceScore) -> str:
         meta = self._meta(score)

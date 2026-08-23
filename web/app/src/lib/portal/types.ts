@@ -1050,6 +1050,19 @@ export type FellowshipsFeed = OpportunityFeed<FellowshipOpportunity> & {
 export type FellowshipOpportunity = OpportunityBase & {
   /** Eligibility verdict: "qualified" (strong) | "conditional" (possible fit). */
   tier: string;
+  /**
+   * Which band this award belongs in: `matched` when its research fit *spikes*
+   * on one or two of the reader's themes, `open` when it is flat across all of
+   * them and is therefore topic-agnostic.
+   *
+   * The split exists because cluster-scoping a fellowship list naively puts a
+   * university-wide dissertation grant under every theme the reader has, while
+   * *not* scoping it at all turns the page into a directory. Eligibility remains
+   * a hard gate underneath both bands — no research fit promotes past it.
+   */
+  band: "matched" | "open" | "";
+  /** Place within the band: in its theme, or in the open list. */
+  band_position: number | null;
   /** Structured award class: "fellowship" | "scholarship" | "internship" | "award" | "prize". */
   award_class: string;
   /** Human-readable funding amount string (may include range or note). */

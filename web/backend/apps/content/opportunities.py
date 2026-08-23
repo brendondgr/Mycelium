@@ -25,8 +25,9 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from .clustering import cluster_interests
+from .clustering import cluster_interests, cluster_labels
 from .digest_selection import split_by_floor
+from .fellowship_bands import split as fellowship_split
 from .fusion import DEFAULT_BETA
 from .interests_query import SearchInterest, search_interests
 from .models import ContentItem, RelevanceScore
@@ -270,10 +271,15 @@ class _FellowshipMatchJob:
     # False => whole corpus (the daily re-rank, and sign-up/refit); True => only
     # fellowships this user has never been scored on (the legacy append-only mode).
     unscored_only: bool = False
+    # {content_id: {cluster_id: fit}} — read by :mod:`.fellowship_bands` to tell a
+    # topic-matched award from a topic-agnostic one. Empty below two themes.
+    per_cluster_by_id: dict = None
 
     def __post_init__(self):
         if self.items is None:
             self.items = []
+        if self.per_cluster_by_id is None:
+            self.per_cluster_by_id = {}
         if self.interests is None:
             self.interests = {}
         if self.profile_meta is None:
@@ -340,7 +346,7 @@ def _prepare_fellowship_match(
         if reuse_prior
         else {}
     )
-    embed_by_id, has_interest_signal = _fellowship_embed_by_id(
+    embed_by_id, has_interest_signal, per_cluster_by_id = _fellowship_embed_by_id(
         user, profile, emit=emit, exclude_ids=scored_ids
     )
     job = _FellowshipMatchJob(
@@ -362,6 +368,7 @@ def _prepare_fellowship_match(
         ),
         embed_by_id=embed_by_id,
         has_interest_signal=has_interest_signal,
+        per_cluster_by_id=per_cluster_by_id,
         embed_threshold=getattr(settings, "FELLOWSHIP_MATCH_THRESHOLD", 0.4),
         withhold_unverified=getattr(
             settings, "FELLOWSHIP_WITHHOLD_UNVERIFIED", False
@@ -373,7 +380,7 @@ def _prepare_fellowship_match(
 
 def _fellowship_embed_by_id(
     user: User, profile, *, emit: Callable[[str], None], exclude_ids: list | None = None
-) -> tuple[dict[str, float] | None, bool]:
+) -> tuple[dict[str, float] | None, bool, dict[str, dict[str, float]]]:
     """The researcher's embedding match to each fellowship, or ``(None, ...)``.
 
     Reuses the same multi-interest search-interest builder grants/conferences use
@@ -386,7 +393,7 @@ def _fellowship_embed_by_id(
     be looked up later; :func:`apps.content.fellowships.match_fellowships` applies
     the real ``embed_threshold`` gate itself.
 
-    Returns ``(embed_by_id, has_interest_signal)``:
+    Returns ``(embed_by_id, has_interest_signal, per_cluster_by_id)``:
 
     - ``has_interest_signal`` is ``True`` whenever the user has declared
       interests/watch topics to search on, independent of whether retrieval
@@ -396,45 +403,73 @@ def _fellowship_embed_by_id(
       retrieval step raised (pgvector unavailable, etc. — degrade, don't crash).
       A non-``None`` (possibly empty) dict means retrieval genuinely ran; a
       fellowship missing from it was retrieved-and-not-relevant, not "unknown".
+    - ``per_cluster_by_id`` is each award's fit **per declared theme**, which is
+      what :mod:`.fellowship_bands` reads to tell a topic-matched award from a
+      topic-agnostic one. Empty for a profile with fewer than two themes, where
+      there is nothing to vary across.
     """
     search_ints = opportunity_search_interests(
         profile.interests or {}, _watch_topics(user)
     )
     has_interest_signal = bool(search_ints)
     if not has_interest_signal:
-        return None, False
+        return None, False, {}
+    clusters = cluster_interests(profile.interests or {})
 
     try:
-        _pairs, rows, pool = fuse_interests_pool(
-            search_ints,
-            content_type=ContentItem.Type.FELLOWSHIP,
-            surface_limit=_opportunity_max_surface(),
-            pool_per_interest=DEFAULT_POOL_PER_INTEREST,
-            beta=DEFAULT_BETA,
-            emit=emit,
-            exclude_ids=exclude_ids,
-            match_threshold=0.0,
-        )
+        if len(clusters) >= 2:
+            # Cluster-scoped, so each award carries a fit score *per theme*. That
+            # per-theme spread is the only thing that can tell a topic-matched
+            # award from a topic-agnostic one, and a flat whole-profile cosine
+            # throws it away.
+            _pairs, rows, pool, _slate = fuse_clusters_pool(
+                search_ints,
+                clusters,
+                content_type=ContentItem.Type.FELLOWSHIP,
+                surface_limit=_opportunity_max_surface(),
+                pool_per_interest=DEFAULT_POOL_PER_INTEREST,
+                beta=DEFAULT_BETA,
+                emit=emit,
+                exclude_ids=exclude_ids,
+                match_threshold=0.0,
+            )
+        else:
+            _pairs, rows, pool = fuse_interests_pool(
+                search_ints,
+                content_type=ContentItem.Type.FELLOWSHIP,
+                surface_limit=_opportunity_max_surface(),
+                pool_per_interest=DEFAULT_POOL_PER_INTEREST,
+                beta=DEFAULT_BETA,
+                emit=emit,
+                exclude_ids=exclude_ids,
+                match_threshold=0.0,
+            )
     except Exception:
         logger.exception(
             "fellowship embedding retrieval failed for %s; falling back to "
             "rule-only ranking",
             user.get_username(),
         )
-        return None, True
+        return None, True, {}
 
     if pool == 0:
         # No embedder configured, or no embedded fellowships yet — not a real
         # "zero relevance" signal, so don't gate on it.
         emit("no embedded fellowships to retrieve yet; ranking on eligibility only")
-        return None, True
+        return None, True, {}
 
     embed_by_id: dict[str, float] = {}
+    per_cluster_by_id: dict[str, dict[str, float]] = {}
     for item, _score, extra in rows:
         match = extra.get("embedding_match")
         if match is not None:
             embed_by_id[str(item.id)] = float(match)
-    return embed_by_id, True
+        per_cluster = extra.get("per_cluster")
+        if per_cluster:
+            per_cluster_by_id[str(item.id)] = dict(per_cluster)
+    if len(clusters) >= 2:
+        emit(f"per-theme fellowship fit over {len(clusters)} theme(s)")
+    return embed_by_id, True, per_cluster_by_id
 
 
 def _score_fellowship_job(
@@ -501,6 +536,19 @@ def _finalize_fellowship_match(
         + (f", {len(hidden)} hidden below floor" if hidden else "")
     )
 
+    # Two bands, not one list (plan §12). Eligibility is the hard gate and has
+    # already run; this only decides how what survived it is *presented* — under
+    # the themes it spikes on, or once in the open band when its fit is flat.
+    matched, open_band, bands = fellowship_split(
+        [s["content_id"] for s in visible],
+        job.per_cluster_by_id,
+    )
+    if matched:
+        emit(
+            f"{sum(len(v) for v in matched.values())} matched to "
+            f"{len(matched)} theme(s), {len(open_band)} open to you"
+        )
+
     if persist:
         visible_ids = {s["content_id"] for s in visible}
         # Whole-corpus runs (the nightly one, sign-up, refit) re-establish the feed;
@@ -513,6 +561,10 @@ def _finalize_fellowship_match(
             pins,
             today=job.today,
             retire_missing=not job.unscored_only,
+            bands=bands,
+            matched=matched,
+            open_band=open_band,
+            labels=cluster_labels(job.interests),
         )
 
     return OppRunResult(
@@ -537,6 +589,10 @@ def _persist_fellowships(
     *,
     today: str | None,
     retire_missing: bool = False,
+    bands: dict | None = None,
+    matched: dict | None = None,
+    open_band: list | None = None,
+    labels: dict | None = None,
 ) -> None:
     """Upsert one RelevanceScore per fellowship under ``persist_kwargs``'s target.
 
@@ -559,6 +615,18 @@ def _persist_fellowships(
     slate = compute_top(
         persist_kwargs, ContentItem.Type.FELLOWSHIP, ordered, today=today
     )
+    bands = bands or {}
+    labels = labels or {}
+    # Position within a band, not within the whole eligible list: a matched award
+    # is 2nd *in its theme*, and an open one is 3rd in a list that is explicitly
+    # not ordered by topic.
+    band_position = {
+        cid: index
+        for ids in (matched or {}).values()
+        for index, cid in enumerate(ids, start=1)
+    }
+    for index, cid in enumerate(open_band or [], start=1):
+        band_position.setdefault(cid, index)
     if retire_missing:
         _retire(
             persist_kwargs,
@@ -602,6 +670,14 @@ def _persist_fellowships(
             "embedding_match": s.get("embedding_match"),
             "llm_scored_at": s.get("llm_scored_at", ""),
         }
+        entry = bands.get(cid)
+        if entry is not None:
+            signals["band"] = entry.band
+            signals["band_position"] = band_position.get(cid)
+            if entry.cluster_ids:
+                signals["cluster_id"] = entry.cluster_ids[0]
+                signals["cluster_label"] = labels.get(entry.cluster_ids[0], "")
+                signals["bridge_cluster_ids"] = list(entry.cluster_ids[1:])
         merge_top_signals(signals, slate, cid)
         # The verdict is derived from the slate band, which is the only ordering a
         # rule-gated feed has: eligibility is a hard gate, not a degree, so nothing
