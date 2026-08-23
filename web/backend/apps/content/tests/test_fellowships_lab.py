@@ -63,8 +63,8 @@ def _score(user, fellowship, tier):
     )
 
 
-def _lab_score(lab, fellowship, *, match=72, member_fit=None):
-    signals = {"suggested": True, "match_percent": match, "source": "llm"}
+def _lab_score(lab, fellowship, *, verdict="skim", member_fit=None):
+    signals = {"suggested": True, "verdict": verdict, "source": "llm"}
     if member_fit is not None:
         signals["member_fit"] = member_fit
     return RelevanceScore.objects.create(
@@ -139,7 +139,7 @@ def test_lab_fellowship_feed_is_the_labs_own_matches(lab) -> None:
     row = resp.data["fellowships"][0]
     # The personal fellowship serializer shape, same as the personal page.
     assert row["title"] == "Fellowship matched"
-    assert row["match_percent"] == 72
+    assert row["verdict"] == "skim"
     assert row["award_class"] == "fellowship"
     assert "eligibility" in row and "stages" in row and "citizenship" in row
 
@@ -292,9 +292,12 @@ def test_the_exclusion_discloses_nothing(lab) -> None:
 
 
 @pytest.mark.django_db
-def test_the_two_percentages_are_separate_fields(lab) -> None:
-    """66 is a cosine and 95 is a model's judgement; merging them into one `fit`
-    made a single card show the same member as two different numbers."""
+def test_the_two_member_signals_are_separate_fields(lab) -> None:
+    """A cosine and a verdict are different claims about the same member.
+
+    Merging them into one ``fit`` made a single card show one person twice, in two
+    scales. They stay two fields, and only the cosine is still a number — the
+    member's own feed now carries a verdict rather than a percent."""
     from rest_framework.test import APIClient
 
     owner = _member(lab, "owner", consented=True, role=LabMembership.Role.OWNER)
@@ -311,7 +314,7 @@ def test_the_two_percentages_are_separate_fields(lab) -> None:
         content=fellowship,
         target_user=owner,
         score=0.9,
-        signals={"tier": "qualified", "suggested": True, "match_percent": 95},
+        signals={"tier": "qualified", "suggested": True, "verdict": "read"},
     )
 
     client = APIClient()
@@ -319,8 +322,9 @@ def test_the_two_percentages_are_separate_fields(lab) -> None:
     resp = client.get(f"/api/labs/{lab.slug}/recommendations/")
     row = resp.data["recommended_for"][str(fellowship.id)][0]
     assert row["profile_cosine"] == 66
-    assert row["own_feed_percent"] == 95
+    assert row["own_feed_verdict"] == "read"
     assert "fit" not in row
+    assert "own_feed_percent" not in row
 
 
 @pytest.mark.django_db
@@ -346,7 +350,7 @@ def test_the_explained_member_leads_the_strip(lab) -> None:
         content=fellowship,
         target_user=other,
         score=0.9,
-        signals={"tier": "qualified", "suggested": True, "match_percent": 97},
+        signals={"tier": "qualified", "suggested": True, "verdict": "read"},
     )
 
     client = APIClient()

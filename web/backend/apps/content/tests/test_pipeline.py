@@ -12,13 +12,13 @@ from apps.accounts.models import WatchPreference
 from apps.content import embeddings
 from apps.content.digest_selection import renumber, split_by_floor
 from apps.content.models import ContentItem, RelevanceScore
-from apps.content.tests.entitle import entitle_user
 from apps.content.pipeline import (
     build_queries,
     gather_scan_queries,
     run_daily_batch,
     run_for_user,
 )
+from apps.content.tests.entitle import entitle_user
 
 # A tiny deterministic embedder shared by the profile and the papers so cosine
 # distance is meaningful without loading fastembed.
@@ -696,7 +696,6 @@ def test_surfaced_papers_are_numbered_contiguously(settings) -> None:
 def test_refit_bypasses_carry_forward_for_papers(pgvector) -> None:
     """``refit_user`` re-sends every surfaced paper to the model, even ones a prior
     run already scored (``reuse_prior=False`` skips the carry-forward store)."""
-    import json
 
     from apps.content.refitting import refit_user
 

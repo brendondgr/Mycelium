@@ -132,7 +132,12 @@ def test_a_theme_with_no_news_produces_no_section() -> None:
     part = _part(
         "Personal",
         "personal",
-        [_section("Ocean", standing={"papers": [_item("Settled", "Ocean", entrant=False)]})],
+        [
+            _section(
+                "Ocean",
+                standing={"papers": [_item("Settled", "Ocean", entrant=False)]},
+            )
+        ],
         quiet=[("Ocean", 1)],
     )
 

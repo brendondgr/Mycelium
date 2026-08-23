@@ -215,7 +215,7 @@ def test_fellowships_feed_shape(client: APIClient):
 
     # Required fields from the plan's contract
     required = [
-        "content_id", "url", "score", "match_percent", "rank",
+        "content_id", "url", "score", "verdict", "position", "rank",
         "headline", "reason", "origin", "is_new", "pinned",
         "deadline_date", "deadline_kind", "status_summary", "saved",
         "title", "award_class", "amount", "amount_note", "deadline_type",
@@ -542,7 +542,7 @@ def test_fellowships_e2e_match_and_signals():
     required_signal_keys = {
         "area", "run_at", "suggested", "is_new", "pinned_until",
         "first_seen", "deadline_date", "next_kind", "status", "status_summary",
-        "rank", "headline", "reason", "match_percent", "source",
+        "rank", "headline", "reason", "verdict", "source",
         "tier", "gates_failed", "reasons", "fit",
     }
     for score in scores:
@@ -663,7 +663,8 @@ def test_fellowships_e2e_llm_report():
     assert llm_scores, "expected at least one LLM-authored fellowship report"
 
     top = llm_scores[0]
-    assert top.signals["match_percent"] == 90
+    # No percent survives persistence — the reader gets a verdict instead.
+    assert top.signals["match_percent"] is None
     # A genuine multi-sentence report, not a one-line eligibility summary.
     assert top.signals["reason"].count(".") >= 2
     # The eligibility verdict is carried alongside the LLM reason.
@@ -728,9 +729,11 @@ def test_match_fellowships_floor_hides_low_score_but_persists_verdict(settings):
     assert "f_strong" in scores and "f_weak" in scores
     # ...but only the strong one is flagged suggested.
     assert scores["f_strong"].signals["suggested"] is True
-    assert scores["f_strong"].signals["match_percent"] == 90
     assert scores["f_weak"].signals["suggested"] is False
-    assert scores["f_weak"].signals["match_percent"] == 10
+    # Neither carries a percent any more; the strong one carries a slate verdict.
+    assert scores["f_strong"].signals["match_percent"] is None
+    assert scores["f_strong"].signals["verdict"] in {"read", "skim", "file"}
+    assert scores["f_weak"].signals["match_percent"] is None
 
 
 @pytest.mark.django_db
@@ -832,7 +835,7 @@ def _profile_user_with_sharp_interests(username):
 def test_fellowship_embed_threshold_drops_irrelevant_eligible(pgvector, settings):
     """A topically irrelevant-but-eligible fellowship (e.g. the cattlemen's-award
     scenario from the plan) is not surfaced; a relevant one is — and its persisted
-    ``embedding_match``/``match_percent`` are the topical (not eligibility) signal.
+    ``embedding_match`` is the topical (not eligibility) signal.
     """
     settings.FELLOWSHIP_MATCH_THRESHOLD = 0.6
     embeddings.set_embedder(_fake_embed)
@@ -863,9 +866,10 @@ def test_fellowship_embed_threshold_drops_irrelevant_eligible(pgvector, settings
 
     relevant_signals = scores["f_relevant"].signals
     assert relevant_signals["embedding_match"] >= 0.6
-    assert relevant_signals["match_percent"] == round(
-        relevant_signals["embedding_match"] * 100
-    )
+    # The measured cosine survives as a diagnostic; it is no longer shown as a
+    # percent, because a reader cannot be expected to track which of two numbers
+    # on a card is the trustworthy one.
+    assert relevant_signals["match_percent"] is None
     assert relevant_signals["source"] == "rules"
     assert "rule_fit" in relevant_signals
 

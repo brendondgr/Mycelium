@@ -42,7 +42,7 @@ def _score(project, item, *, match=80, rank=1, deadline="") -> None:
             "rank": rank,
             "headline": f"Why {item.external_id}",
             "reason": "Strong topical alignment with the project.",
-            "match_percent": match,
+            "verdict": "read" if match >= 75 else "skim",
             "source": "llm",
         },
     )
@@ -70,7 +70,7 @@ def test_project_fellowships_come_from_target_scores(project):
     assert payload["counts"]["fellowships"] == 1
     assert len(payload["fellowships"]) == 1
     assert payload["fellowships"][0]["content_id"] == str(fel.id)
-    assert payload["fellowships"][0]["match_percent"] == 88
+    assert payload["fellowships"][0]["verdict"] == "read"
 
 
 @pytest.mark.django_db

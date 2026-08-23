@@ -8,6 +8,26 @@ from apps.content.formatting import normalize_amount
 from .models import ContentItem, IgnoredItem, RelevanceScore, SavedOpportunity
 
 
+def _writeup(score: RelevanceScore) -> dict:
+    """The stored write-up for the theme this row is best placed in.
+
+    A write-up is keyed on (item, cluster, target), so a bridge item carries a
+    separate judgement per theme. A feed row is not shown under a heading, so it
+    reads the one for its strongest theme — the same theme the position refers to.
+    """
+    writeups = (score.signals or {}).get("writeups")
+    if not isinstance(writeups, dict) or not writeups:
+        return {}
+    slates = (score.signals or {}).get("cluster_slates") or {}
+    if slates:
+        best = min(slates, key=lambda cid: slates[cid].get("rank", 10**6))
+        entry = writeups.get(best)
+        if isinstance(entry, dict):
+            return entry
+    entry = next(iter(writeups.values()), {})
+    return entry if isinstance(entry, dict) else {}
+
+
 class ClusterAttributionMixin:
     """The three cluster fields, shared by papers and opportunities.
 
@@ -62,7 +82,11 @@ class SuggestionSerializer(ClusterAttributionMixin, serializers.Serializer):
     year = serializers.SerializerMethodField()
     authors = serializers.SerializerMethodField()
     score = serializers.FloatField()
-    match_percent = serializers.SerializerMethodField()
+    verdict = serializers.SerializerMethodField()
+    position = serializers.SerializerMethodField()
+    caveat = serializers.SerializerMethodField()
+    beats = serializers.SerializerMethodField()
+    bridge_note = serializers.SerializerMethodField()
     embedding_match = serializers.SerializerMethodField()
     per_interest = serializers.SerializerMethodField()
     matched_interests = serializers.SerializerMethodField()
@@ -108,10 +132,34 @@ class SuggestionSerializer(ClusterAttributionMixin, serializers.Serializer):
         authors = self._meta(score).get("authors")
         return authors[:6] if isinstance(authors, list) else []
 
-    def get_match_percent(self, score: RelevanceScore):
-        # The language model's 0–100 fit judgement for this researcher (a
-        # similarity-derived proxy when the model was unavailable).
-        return score.signals.get("match_percent")
+    def get_verdict(self, score: RelevanceScore):
+        # read / skim / file / skip — what replaced the percent. Model-judged on a
+        # paid plan, derived from the item's rank band otherwise, so the field
+        # always means the same thing to the reader whichever they are on.
+        return score.signals.get("verdict")
+
+    def get_position(self, score: RelevanceScore):
+        # Position within the item's **own theme's** slate. A global position would
+        # be comparing scores that are not comparable across themes, which is the
+        # failure the per-cluster feed removes.
+        return score.signals.get("top_rank")
+
+    def get_caveat(self, score: RelevanceScore) -> str:
+        # The strongest reason this might not be worth the reader's time. Mandatory
+        # on a model-written judgement: it is what makes the feed read as judgement
+        # rather than promotion.
+        return _writeup(score).get("caveat") or score.signals.get("caveat", "")
+
+    def get_beats(self, score: RelevanceScore) -> list:
+        # The reason's three beats — why it matters to this theme, how to use it,
+        # what to take from it. The printed report carries only the first; this is
+        # the surface where the reader asked for depth.
+        beats = _writeup(score).get("beats")
+        return list(beats) if isinstance(beats, list) else []
+
+    def get_bridge_note(self, score: RelevanceScore) -> str:
+        # One clause on what two themes share, when the item reaches both.
+        return _writeup(score).get("bridge_note", "")
 
     def get_embedding_match(self, score: RelevanceScore):
         # The transformer (embedding) cosine match, 0–100, that this paper cleared to
@@ -284,7 +332,10 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     content_id = serializers.SerializerMethodField()
     url = serializers.SerializerMethodField()
     score = serializers.FloatField()
-    match_percent = serializers.SerializerMethodField()
+    verdict = serializers.SerializerMethodField()
+    position = serializers.SerializerMethodField()
+    caveat = serializers.SerializerMethodField()
+    beats = serializers.SerializerMethodField()
     embedding_match = serializers.SerializerMethodField()
     # Which of the reader's research themes this opportunity belongs to. The cards
     # have rendered a cluster badge since the cluster sprint; until the matcher
@@ -400,8 +451,18 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
         url = self.get_url(score)
         return [{"source": src, "url": url} for src in sources]
 
-    def get_match_percent(self, score: RelevanceScore):
-        return score.signals.get("match_percent")
+    def get_verdict(self, score: RelevanceScore):
+        return score.signals.get("verdict")
+
+    def get_position(self, score: RelevanceScore):
+        return score.signals.get("top_rank")
+
+    def get_caveat(self, score: RelevanceScore) -> str:
+        return _writeup(score).get("caveat") or score.signals.get("caveat", "")
+
+    def get_beats(self, score: RelevanceScore) -> list:
+        beats = _writeup(score).get("beats")
+        return list(beats) if isinstance(beats, list) else []
 
     def get_embedding_match(self, score: RelevanceScore):
         # The transformer (embedding) cosine match, 0–100, a threshold-gated

@@ -50,7 +50,7 @@ def _suggest(
             "rank": rank,
             "headline": f"Headline {rank}",
             "reason": f"Reason {rank}",
-            "match_percent": match,
+            "verdict": "read" if match >= 75 else "skim",
             "embedding_match": embedding_match,
             "focus_areas": focus_areas or [],
             "per_interest": per_interest or {},
@@ -118,7 +118,8 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
         "url",
         "venue",
         "year",
-        "match_percent",
+        "verdict",
+        "position",
         "embedding_match",
         "abstract",
         "per_interest",
@@ -128,7 +129,7 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
     # Old rows may carry a model-invented "headline" rename in signals; the API
     # always serves the paper's real title instead.
     assert top["headline"] == "First"
-    assert top["match_percent"] == 90
+    assert top["verdict"] == "read"
     # The transformer cosine match is exposed as a whole percent for the tail badge.
     assert top["embedding_match"] == 72
     # The page reads the abstract, the per-interest fusion scores, and the
@@ -142,8 +143,8 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
     summary = resp.data["summary"]
     assert summary["paper_count"] == 2
     assert summary["strong_matches"] == 1  # only the 90% match clears the bar
-    assert summary["top_match"] == 90
-    assert summary["average_match"] == 75  # round((90 + 60) / 2)
+    assert summary["verdict_counts"]["read"] >= 1
+    assert summary["verdict_counts"]["skim"] >= 1
     assert summary["themes"] == ["Knowledge Graphs"]
     # The summary frames the count against the configurable match threshold.
     assert isinstance(summary["match_threshold"], int)

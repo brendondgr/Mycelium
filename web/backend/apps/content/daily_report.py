@@ -208,6 +208,51 @@ class ReportData:
         """How many items the report calls new — the summary table's grand total."""
         return sum(part.total for part in self.parts)
 
+    #: Discord's embed description limit. The message body has to fit inside it
+    #: whole — a truncated brief that stops mid-theme is worse than a short one.
+    DISCORD_BODY_LIMIT = 4096
+
+    def message_body(self) -> str:
+        """The Discord message that carries the PDF.
+
+        It was a summary line and the word "attached". It is now Mylo's lead
+        paragraph, one line per theme with its entrant count, and the attachment
+        line — short enough to read in the channel, complete enough that a reader
+        who never opens the PDF still knows whether they should.
+
+        Trimming is by whole themes, never mid-sentence: a body cut in half reads
+        as a delivery failure, while a body that says "and 3 more themes" reads as
+        an editor's decision.
+        """
+        tail = "Your full report is attached as a PDF."
+        lines: list[str] = []
+        if self.lead:
+            lines.append(self.lead)
+            lines.append("")
+        themes = self.personal.live_themes if self.personal is not None else []
+        for section in themes:
+            count = section.entrant_count
+            noun = "item" if count == 1 else "items"
+            lines.append(f"**{section.label}** — {count} new {noun}")
+        quiet = getattr(self.personal, "quiet", None) or []
+        if quiet:
+            lines.append(f"Quiet today: {', '.join(label for label, _ in quiet)}.")
+        if not themes:
+            lines.append(self.summary_line())
+        lines.append("")
+        lines.append(tail)
+
+        body = "\n".join(lines)
+        while len(body) > self.DISCORD_BODY_LIMIT and themes:
+            dropped = len(themes)
+            themes = themes[:-1]
+            kept = [f"**{s.label}** — {s.entrant_count} new" for s in themes]
+            more = dropped - len(themes)
+            body = "\n".join(
+                [self.lead, "", *kept, f"…and {more} more themes.", "", tail]
+            )
+        return body[: self.DISCORD_BODY_LIMIT]
+
     def summary_line(self) -> str:
         """A one-line 'what Mylo found' summary for the DM embed body.
 

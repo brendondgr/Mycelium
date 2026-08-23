@@ -177,7 +177,7 @@ def resend_user_report(
     sent = reminders_discord.send_personal_report(
         user,
         title=REPORT_TITLE,
-        body=data.summary_line() + "\nYour full report is attached as a PDF.",
+        body=data.message_body(),
         filename=filename,
         attachment_path=str(path),
         dedupe_key=outcome.dedupe_key,

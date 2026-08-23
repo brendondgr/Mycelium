@@ -100,7 +100,6 @@ def test_papers_area_matches_and_persists(pgvector) -> None:
 @pytest.mark.django_db
 def test_papers_onboarding_skips_scan_when_batch_is_rich(pgvector, settings) -> None:
     """A latest batch with enough high-quality matches shows immediately — no scan."""
-    import json
 
     settings.PAPER_ONBOARDING_MIN_HIGH_QUALITY = 1
     embeddings.set_embedder(_fake_embed)

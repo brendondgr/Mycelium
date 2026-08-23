@@ -49,6 +49,7 @@ from .slates import (
 from .targets import MatchTarget, target_for_user
 from .theme_run import _stored_writeups, carry_stored_writeups
 from .top_feed import compute_top, merge_top_signals, prior_top_ids, top_n
+from .verdicts import derive_verdict
 
 logger = logging.getLogger(__name__)
 
@@ -584,7 +585,14 @@ def _persist_fellowships(
             "rank": s["rank"],
             "headline": s["headline"],
             "reason": s["reason"],
-            "match_percent": s["match_percent"],
+            # No percent (plan D5 / OD1). A fellowship's number was a measured
+            # embedding cosine rather than a model guess, so the reasoning behind
+            # retiring it is weaker here — but a reader cannot be expected to track
+            # which of two numbers on a card is trustworthy, and consistency is
+            # worth more than the one honest percent. The cosine survives as
+            # ``embedding_match`` for diagnostics; the reader sees a verdict.
+            "match_percent": None,
+            "verdict": None,
             "source": s["source"],
             "tier": s["tier"],
             "gates_failed": s.get("gates_failed", []),
@@ -595,6 +603,13 @@ def _persist_fellowships(
             "llm_scored_at": s.get("llm_scored_at", ""),
         }
         merge_top_signals(signals, slate, cid)
+        # The verdict is derived from the slate band, which is the only ordering a
+        # rule-gated feed has: eligibility is a hard gate, not a degree, so nothing
+        # above it is a judgement about how good the award is.
+        if isinstance(signals.get("top_rank"), int):
+            signals["verdict"] = derive_verdict(
+                signals["top_rank"], depth=slate_depth(ContentItem.Type.FELLOWSHIP)
+            )
         if item:
             RelevanceScore.objects.update_or_create(
                 content=item,

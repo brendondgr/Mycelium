@@ -49,7 +49,7 @@ def _score(content, *, run_at="2026-07-05T00:00:00", rank=1, **target):
             "rank": rank,
             "headline": "Fits",
             "reason": "Aligns with the group's work.",
-            "match_percent": 90,
+            "verdict": "read",
             "source": "llm",
             "area": content.type,
         },
@@ -213,10 +213,10 @@ def test_interested_members_surface_strong_personal_matches(client: APIClient):
     _score(paper, target_lab=lab)
     # A strong personal match for keen, a weak one for meh.
     keen_score = _score(paper, target_user=keen)
-    keen_score.signals["match_percent"] = 90
+    keen_score.signals["verdict"] = "read"
     keen_score.save()
     meh_score = _score(paper, target_user=meh)
-    meh_score.signals["match_percent"] = 40
+    meh_score.signals["verdict"] = "file"
     meh_score.save()
 
     client.force_authenticate(keen)

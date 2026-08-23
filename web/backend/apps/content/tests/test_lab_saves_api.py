@@ -59,7 +59,7 @@ def _score(target, item, *, lab=None, rank=1, match=85):
             "suggested": True,
             "headline": f"Headline {rank}",
             "reason": f"Reason {rank}",
-            "match_percent": match,
+            "verdict": "read" if match >= 75 else "skim",
             "source": "llm",
         },
         **kwargs,
@@ -238,7 +238,7 @@ def test_lab_save_of_unscored_live_grant_renders_full_card(client: APIClient):
     assert card is not None  # not the pruned "listing closed" fallback
     assert card["title"] == "Active Lab Grant"
     assert card["sponsor"] == "NSF"
-    assert card["match_percent"] is None  # unscored for the lab, but still shown
+    assert card["verdict"] is None  # unscored for the lab, but still shown
 
 
 @pytest.mark.django_db

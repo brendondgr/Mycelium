@@ -934,7 +934,8 @@ def test_persist_fellowships_writes_under_target_project():
     )
     row = RelevanceScore.objects.get(content=item, target_project=project)
     assert row.target_user_id is None
-    assert row.signals["match_percent"] == 80
+    # No percent survives persistence — the reader gets a slate verdict.
+    assert row.signals["match_percent"] is None
     assert row.signals["suggested"] is True
 
 

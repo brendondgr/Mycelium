@@ -43,6 +43,7 @@ from .serializers import (
     SearchResultSerializer,
     SuggestionSerializer,
 )
+from .verdicts import READ, SKIM, VERDICTS
 
 #: A suggestion at or above this percent match is called a "strong" match in the
 #: daily summary. Kept here (not a setting) so the label logic stays with the view.
@@ -51,6 +52,8 @@ STRONG_MATCH_THRESHOLD = 75
 #: A lab member counts as "interested" in a shared item when their *own* match for
 #: it clears this percent — a confident personal fit, not a faint overlap.
 INTEREST_MATCH_THRESHOLD = 70
+#: The verdicts that mean a member is already looking at an item on their own feed.
+_INTERESTED_VERDICTS = (READ, SKIM)
 
 
 class OnboardingMatchView(APIView):
@@ -173,10 +176,13 @@ def _build_summary(rows: list[RelevanceScore], *, today: str = "") -> dict:
     and always available. The paper feed is fresh-only (the latest gather batch), so
     ``new_count`` is what highlights this batch's brand-new arrivals.
     """
-    matches = [
-        m for m in (r.signals.get("match_percent") for r in rows) if isinstance(m, int)
-    ]
-    strong = sum(1 for m in matches if m >= STRONG_MATCH_THRESHOLD)
+    # "Strong" is now a verdict, not a number: a percent implied a measurement
+    # nobody made, and the verdict says the same useful thing on both the paid and
+    # the deterministic path.
+    verdicts = Counter(
+        v for v in (r.signals.get("verdict") for r in rows) if isinstance(v, str)
+    )
+    strong = verdicts.get(READ, 0)
 
     def _is_new(row: RelevanceScore) -> bool:
         pinned_until = row.signals.get("pinned_until")
@@ -205,10 +211,12 @@ def _build_summary(rows: list[RelevanceScore], *, today: str = "") -> dict:
         "paper_count": count,
         "new_count": new_count,
         "strong_matches": strong,
-        "top_match": max(matches) if matches else None,
-        "average_match": round(sum(matches) / len(matches)) if matches else None,
-        # The embedding-match floor (percent) each surfaced paper had to clear, so the
-        # UI can frame the count as "N papers met the X% match threshold".
+        # How many of each verdict the feed currently holds, so the page can say
+        # "3 worth reading, 12 to skim" instead of an average of a number that
+        # measured nothing.
+        "verdict_counts": {v: verdicts.get(v, 0) for v in VERDICTS},
+        # The embedding-match floor (percent) each surfaced paper had to clear. Not
+        # a relevance claim about any one item — it is what got them into the feed.
         "match_threshold": threshold,
         "themes": themes,
         "sources": sources,
@@ -227,12 +235,12 @@ def _summary_headline(count: int, strong: int, threshold: int, new_count: int) -
     if count == 0:
         return "No papers currently clear your match threshold."
     papers = "paper" if count == 1 else "papers"
-    lead = f"{count} {papers} match your interests (≥{threshold}%)"
+    lead = f"{count} {papers} match your interests"
     extras = []
     if new_count:
         extras.append(f"{new_count} new this week")
     if strong:
-        extras.append(f"{strong} a strong match")
+        extras.append(f"{strong} worth reading")
     if extras:
         return f"{lead} — {', '.join(extras)}."
     return f"{lead}."
@@ -539,9 +547,13 @@ def _accumulated_scores(
     def sort_key(s: RelevanceScore):
         pinned_until = s.signals.get("pinned_until")
         pinned = bool(pinned_until and pinned_until >= today)
-        match = s.signals.get("match_percent")
-        match = match if isinstance(match, int) else -1
-        return (0 if pinned else 1, -match, -s.score)
+        # Slate position first — it is the ranking the run actually produced — then
+        # the raw fused score for everything outside a slate. Sorting by the old
+        # match percent ranked the feed by "what did the model reach", which is not
+        # a relevance order at all.
+        rank = s.signals.get("top_rank")
+        rank = rank if isinstance(rank, int) else 10**6
+        return (0 if pinned else 1, rank, -s.score)
 
     scores.sort(key=sort_key)
     if cap is None:
@@ -662,8 +674,8 @@ def _interested_members(member_ids, content_ids) -> dict[str, list[dict]]:
         .order_by("-score")
     )
     for score in scores:
-        match = score.signals.get("match_percent")
-        if not isinstance(match, int) or match < INTEREST_MATCH_THRESHOLD:
+        verdict = score.signals.get("verdict")
+        if verdict not in _INTERESTED_VERDICTS:
             continue
         member = score.target_user
         interested[str(score.content_id)].append(
@@ -671,7 +683,7 @@ def _interested_members(member_ids, content_ids) -> dict[str, list[dict]]:
                 "username": member.get_username(),
                 "name": display_name(member),
                 "initials": initials(member),
-                "match_percent": match,
+                "verdict": verdict,
             }
         )
     return interested
@@ -766,17 +778,18 @@ def _ineligible_members(roster: dict, scores: list[RelevanceScore]) -> dict[str,
 def _member_sort_key(row: dict):
     """Strip order: the members Mylo reasoned about first, then the rest.
 
-    Two scales live on this strip and they are not comparable — a profile cosine
-    sits naturally in the 0.4–0.7 band while a model's own-feed percent uses the
-    80–100 one freely. Sorting the mixed column ranked own-feed members above
-    profile-fit members almost unconditionally, which pushed the one member Mylo
-    actually wrote a rationale for down the strip and out of the expanded slot.
-    Grouping first, then sorting each group on its own scale, keeps every
-    comparison within a single scale.
+    Two different claims live on this strip and they are not comparable — a
+    profile cosine is a measured distance, an own-feed verdict is a judgement.
+    Sorting the mixed column once ranked own-feed members above profile-fit
+    members almost unconditionally, which pushed the one member Mylo actually
+    wrote a rationale for out of the expanded slot. Grouping first, then sorting
+    each group on its own terms, keeps every comparison within one scale.
     """
     explained = "profile_fit" in row["basis"]
-    within = row.get("profile_cosine") if explained else row.get("own_feed_percent")
-    return (0 if explained else 1, -(within or 0), row["username"])
+    if explained:
+        return (0, -(row.get("profile_cosine") or 0), row["username"])
+    order = {READ: 0, SKIM: 1}.get(row.get("own_feed_verdict"), 2)
+    return (1, order, row["username"])
 
 
 def _recommended_for(
@@ -803,11 +816,11 @@ def _recommended_for(
     from its strip whatever named them (:func:`_ineligible_members`). That gate
     needs no consent — it removes a name rather than publishing one.
 
-    Two percentages, each with its own field and its own meaning. ``profile_cosine``
+    Two signals, each with its own field and its own meaning. ``profile_cosine``
     is the geometric distance between the item and the member's profile vector;
-    ``own_feed_percent`` is the model's 0–100 judgement on the member's personal
-    feed. They are not the same quantity and a ~30-point gap between them is the
-    expected steady state, so they are never merged into one number.
+    ``own_feed_verdict`` is what the member's *own* feed concluded about it. They
+    are not the same quantity — one is measured and one is judged — so they are
+    never merged into a single number.
 
     Display fields (name, initials) resolve live from the member roster, so a rename
     lands without a re-score; a member who has since left the lab is dropped here
@@ -842,7 +855,7 @@ def _recommended_for(
                 "name": display_name(user),
                 "initials": initials(user),
                 "profile_cosine": entry.get("fit"),
-                "own_feed_percent": None,
+                "own_feed_verdict": None,
                 "reason": entry.get("reason") or "",
                 "source": entry.get("source") or "similarity",
                 "basis": ["profile_fit"],
@@ -858,14 +871,14 @@ def _recommended_for(
                     "name": member["name"],
                     "initials": member["initials"],
                     "profile_cosine": None,
-                    "own_feed_percent": None,
+                    "own_feed_verdict": None,
                     "reason": "",
                     "source": "own_match",
                     "basis": [],
                 }
                 rows[username] = row
             row["basis"].append("own_match")
-            row["own_feed_percent"] = member["match_percent"]
+            row["own_feed_verdict"] = member["verdict"]
         for username, tier in (eligibility.get(cid) or {}).items():
             user = roster.get(username)
             if user is None or username in blocked:
@@ -877,7 +890,7 @@ def _recommended_for(
                     "name": display_name(user),
                     "initials": initials(user),
                     "profile_cosine": None,
-                    "own_feed_percent": None,
+                    "own_feed_verdict": None,
                     "reason": "",
                     "source": "eligibility",
                     "basis": [],
@@ -1748,8 +1761,10 @@ def _suggestion_payload(suggestion: MemberSuggestion) -> dict:
         "url": meta.get("pdf_url")
         or (suggestion.content.source_url if suggestion.content_id else "")
         or "",
+        # The fused score, as itself. Scaling it by 100 and calling it a percent
+        # match was the clearest case of the false precision this release removes:
+        # a ranking score is not a similarity.
         "score": round(suggestion.score, 3),
-        "match_percent": round(suggestion.score * 100),
         "project": {
             "id": str(suggestion.project_id),
             "name": suggestion.project.name,
