@@ -34,19 +34,22 @@ from apps.research.models import Project
 # --------------------------------------------------------------------------- #
 # PDF rendering (pure — no database)
 # --------------------------------------------------------------------------- #
-def _paper_items(n: int) -> list[ReportItem]:
+def _paper_items(n: int, *, entrant: bool = True) -> list[ReportItem]:
     return [
         ReportItem(
             type="paper",
             category="papers",
             title=f"Paper number {i}",
             url=f"https://example.org/p{i}",
-            match_percent=90 - i,
             headline="",
             reason=f"Relevant to your work on topic {i}.",
             source="Nature",
             deadline_date="",
-            is_new=True,
+            is_new=entrant,
+            position=i + 1,
+            verdict="read" if i == 0 else "skim",
+            lead=f"Relevant to your work on topic {i}.",
+            caveat="The cohort is small.",
         )
         for i in range(n)
     ]
@@ -58,38 +61,78 @@ def _grant_item(title: str) -> ReportItem:
         category="grants",
         title=title,
         url="https://example.org/grant",
-        match_percent=88,
         headline="",
         reason="Matches your funding needs.",
         source="NSF",
         deadline_date="2026-09-01",
         is_new=True,
+        position=1,
+        verdict="read",
+        lead="Matches your funding needs.",
+        caveat="The match rules out non-US applicants.",
     )
+
+
+def _project_papers() -> list[ReportItem]:
+    """A project's own item, worded distinctly from the reader's own list.
+
+    Sharing wording with the personal part makes any "appears once" assertion
+    accidentally true or accidentally false depending on the project section.
+    """
+    item = _paper_items(1)[0]
+    item.title = "Project paper"
+    item.reason = item.lead = "The baseline Coral Atlas is missing."
+    return [item]
+
+
+def _theme(label: str, papers: list[ReportItem], grants: list[ReportItem]):
+    from apps.content.theme_report import ThemeSection
+
+    section = ThemeSection(
+        cluster_id=f"c-{label.lower().replace(' ', '-')}",
+        label=label,
+        read=f"Mylo's read on {label}.",
+    )
+    entrants = {
+        "papers": [p for p in papers if p.is_new],
+        "grants": [g for g in grants if g.is_new],
+    }
+    standing = {
+        "papers": [p for p in papers if not p.is_new],
+        "grants": [g for g in grants if not g.is_new],
+    }
+    section.entrants = {k: v for k, v in entrants.items() if v}
+    section.standing = {k: v for k, v in standing.items() if v}
+    return section
 
 
 def _sample_data() -> ReportData:
     papers = _paper_items(3)
+    settled = _paper_items(1, entrant=False)
+    settled[0].title = "Settled paper"
     opps = [_grant_item("Big Research Grant")]
+    reef = _theme("Reef Mapping", papers + settled, opps)
     return ReportData(
         username="tester",
         display_name="Test Person",
         generated_on="2026-07-19",
         briefing_markdown=(
             "Three strong papers today.\n\n"
-            "## Personal\n\n"
+            "## Reef Mapping\n\n"
             "### Papers\n\n"
-            "#### Reef Mapping\n\n"
-            "1. **[Paper number 0](https://example.org/p0)** — **NEW** · 90% match\n"
+            "1. **[Paper number 0](https://example.org/p0)** — **NEW** · Read\n"
             "Relevant to your work on topic 0.\n\n"
-            "2. **Paper number 1** — 89% match\n"
+            "2. **Paper number 1** — Skim\n"
             "Relevant to your work on topic 1.\n\n"
             "### Grants\n\n"
-            "1. **Big Research Grant** — 88% match · deadline 2026-09-01\n"
+            "1. **Big Research Grant** — Read · deadline 2026-09-01\n"
             "Matches your funding needs.\n"
         ),
         briefing_origin="llm",
         categories=["papers", "grants"],
-        counts={"papers": 3, "grants": 1},
+        lead="Today is about reef mapping.",
+        lead_origin="llm",
+        counts={"papers": 4, "grants": 1},
         new_counts={"papers": 3, "grants": 1},
         personal=ReportPart(
             key="personal",
@@ -97,7 +140,9 @@ def _sample_data() -> ReportData:
             kind="personal",
             cap=25,
             counts={"papers": 3, "grants": 1},
-            items={"papers": papers, "grants": opps},
+            items={"papers": papers + settled, "grants": opps},
+            themes=[reef],
+            quiet=[("Sensor Fusion", 4)],
         ),
         projects=[
             ReportPart(
@@ -106,10 +151,15 @@ def _sample_data() -> ReportData:
                 kind="project",
                 cap=10,
                 counts={"papers": 1, "grants": 0},
-                items={"papers": _paper_items(1), "grants": []},
+                items={"papers": _project_papers(), "grants": []},
             ),
         ],
     )
+
+
+def _text(data: ReportData) -> str:
+    reader = PdfReader(BytesIO(render_report_pdf(data)))
+    return "\n".join(page.extract_text() for page in reader.pages)
 
 
 def test_render_returns_pdf_bytes() -> None:
@@ -118,31 +168,48 @@ def test_render_returns_pdf_bytes() -> None:
     assert len(pdf) > 1000
 
 
-def test_pdf_has_all_required_sections() -> None:
-    reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
-    text = "\n".join(page.extract_text() for page in reader.pages)
+def test_the_document_is_organised_by_theme() -> None:
+    """theme → what's new → what's standing, with the prose beside the items."""
+    text = _text(_sample_data())
     for heading in (
         "Contents",
-        "Your Mylo Report",
-        "Personal",
-        "Top 25 Articles",
-        "Top 25 Grants",
+        "Mylo's read on today",
+        "Reef Mapping",
+        "New articles",
+        "New grants",
+        "Currently in your list",
         "Coral Atlas",
-        "Top 10 Articles",
     ):
         assert heading in text, f"missing section: {heading}"
-    # An item title and the recipient reach the page.
+    # The lead opens the body and the theme read sits above its own listings.
+    assert "Today is about reef mapping." in text
+    assert "Mylo's read on Reef Mapping." in text
     assert "Big Research Grant" in text
     assert "Test Person" in text
 
 
+def test_a_quiet_theme_is_one_line_not_a_section() -> None:
+    text = _text(_sample_data())
+    assert "Quiet today:" in text
+    assert "Sensor Fusion (4 standing)" in text
+    # Named in the quiet line, never given a heading of its own.
+    assert text.count("Sensor Fusion") == 1
+
+
+def test_no_percentage_appears_anywhere_in_the_document() -> None:
+    """Position and a verdict replace it — the number measured nothing."""
+    text = _text(_sample_data())
+    assert "% match" not in text
+    assert "STRONG" not in text
+    # What stands in its place: the verdict chip and the position in the gutter.
+    assert "READ" in text
+    assert "1." in text
+
+
 def test_the_appendix_is_gone() -> None:
     """Reprinting the whole feed answered no question anyone had."""
-    reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
-    text = "\n".join(page.extract_text() for page in reader.pages)
+    text = _text(_sample_data())
     assert "Everything Mylo Found" not in text
-    # Nor the pooled opportunity section it sat under — every category is capped
-    # in its own right now, so a heavy grant day can't crowd out conferences.
     assert "Top 25 Grants, Fellowships & Conferences" not in text
 
 
@@ -154,7 +221,6 @@ def test_the_cover_carries_both_marks() -> None:
         assert (_ASSETS / name).is_file(), f"missing cover art: {name}"
     marks = _cover_marks()
     assert marks is not None
-    # Two images with a gap column between them, and both drawn the same height.
     images = [cell for cell in marks._cellvalues[0] if hasattr(cell, "drawHeight")]
     assert len(images) == 2
     assert len({round(image.drawHeight, 3) for image in images}) == 1
@@ -178,53 +244,37 @@ def test_the_cover_counts_one_grant_as_a_grant() -> None:
     assert "2 grants" in data.summary_line()
 
 
-def test_the_summary_table_has_a_row_per_project() -> None:
+def test_the_cover_table_has_a_row_per_theme_then_per_project() -> None:
+    """The table inverts: it is a direct index of the sections below it."""
     reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
     cover = reader.pages[0].extract_text()
-    assert "Personal" in cover
+    assert "Reef Mapping" in cover
     assert "Coral Atlas" in cover
     assert "Papers" in cover and "Grants" in cover
+    # The part label is no longer a row — the themes replaced it.
+    assert "Personal" not in cover
 
 
-def test_toc_lists_the_personal_and_project_sections() -> None:
+def test_a_theme_with_a_slate_but_no_news_shows_a_dash_not_a_zero() -> None:
+    """Zero reads as "nothing here"; the theme still holds a list to go and look at."""
+    data = _sample_data()
+    data.personal.themes[0].entrants.pop("grants")
+    reader = PdfReader(BytesIO(render_report_pdf(data)))
+    assert "—" in reader.pages[0].extract_text()
+
+
+def test_toc_lists_the_lead_the_themes_and_the_projects() -> None:
     reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
     toc_text = reader.pages[1].extract_text()  # cover=0, TOC=1
-    assert "Your Mylo Report" in toc_text
-    assert "Personal" in toc_text
-    assert "Coral Atlas" in toc_text
-    assert "Top 25 Articles" in toc_text
+    wanted = ("Mylo's read on today", "Reef Mapping", "New articles", "Coral Atlas")
+    for entry in wanted:
+        assert entry in toc_text, f"missing contents entry: {entry}"
     # The TOC lists real, resolved page numbers (two-pass build), not just dots.
     assert any(ch.isdigit() for ch in toc_text)
-    # The TOC does not list its own "Contents" title as an entry.
-    assert toc_text.count("Your Mylo Report") == 1
-
-
-def test_toc_mirrors_the_whole_hierarchy() -> None:
-    """Every level of the document is on the contents page, not just the top two.
-
-    Including what is *inside* the written report — its parts, its categories, and
-    its focus-cluster groups — which is the half of the document a reader could
-    previously only find by scrolling.
-    """
-    reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
-    toc_text = reader.pages[1].extract_text()
-    for entry in (
-        "Your Mylo Report",
-        "Reef Mapping",  # the #### focus theme inside the written report
-        "Top 25 Articles",
-        "Top 25 Grants",
-        "Top 10 Articles",  # a project's capped section
-    ):
-        assert entry in toc_text, f"missing contents entry: {entry}"
 
 
 def test_every_toc_entry_is_a_link() -> None:
-    """A contents page you cannot navigate from is a list of page numbers.
-
-    Each heading is bookmarked and each contents line points at that bookmark, so
-    the page carries one ``/Link`` annotation per entry (title and page number are
-    both live).
-    """
+    """A contents page you cannot navigate from is a list of page numbers."""
     reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
     annotations = reader.pages[1].get("/Annots") or []
     links = [
@@ -233,50 +283,29 @@ def test_every_toc_entry_is_a_link() -> None:
         if a.get_object().get("/Subtype") == "/Link"
     ]
     assert links, "the contents page has no link annotations at all"
-    # One entry per H1/H2/H3/H4 in the sample, and every link resolves somewhere.
-    assert len(links) >= 10
+    assert len(links) >= 6
     assert all(link.get("/Dest") or link.get("/A") for link in links)
 
 
-def test_a_lab_report_labels_its_own_section_with_the_lab_name() -> None:
-    """The reader's own part is named for whoever the report is about."""
-    data = _sample_data()
-    data.display_name = "Reyes Lab"
-    data.personal.label = "Reyes Lab"
-    # The written body carries the same label — `briefing._write_briefing` names the
-    # part once and both the prose and the listings are built from it.
-    data.briefing_markdown = data.briefing_markdown.replace(
-        "## Personal", "## Reyes Lab"
-    )
-    reader = PdfReader(BytesIO(render_report_pdf(data)))
-    text = "\n".join(page.extract_text() for page in reader.pages)
-    assert "Reyes Lab" in text
-    # Not the cover, not the summary table, not the contents page.
-    assert "Personal" not in reader.pages[0].extract_text()
-    assert "Personal" not in reader.pages[1].extract_text()
-
-
-def test_listed_items_are_numbered_and_show_their_match() -> None:
-    """A Top-25 is a ranking, and the percent match is why an entry earned its rank."""
-    reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
-    text = "\n".join(page.extract_text() for page in reader.pages)
-    for rank in ("1.", "2.", "3."):
-        assert rank in text
-    # The ring carries the percent inside it and its tier in words beneath, so
-    # fit is never left to colour alone on a page nobody can hover.
-    assert "90%" in text and "STRONG" in text
+def test_listed_items_are_numbered_by_their_position_in_their_theme() -> None:
+    """A global position would compare scores that are not comparable."""
+    text = _text(_sample_data())
+    for position in ("1.", "2.", "3."):
+        assert position in text
     assert "NEW" in text
 
 
-def test_a_deadline_is_reference_material_under_the_entry() -> None:
-    """Dates live in the strip below an entry, formatted, never under its title.
+def test_a_standing_item_carries_no_reason_and_no_verdict() -> None:
+    """The reference block reports what is held, and argues nothing."""
+    text = _text(_sample_data())
+    assert "Settled paper" in text
+    # Its lead sentence — shared with the entrants — appears only for the entrants.
+    assert text.count("Relevant to your work on topic 0.") == 1
 
-    A red ``Deadline 2026-09-01`` between a title and the reason for it was at its
-    worst on conferences — an alarm attached to every venue in the report, which
-    never said which of the venue's rounds it meant.
-    """
-    reader = PdfReader(BytesIO(render_report_pdf(_sample_data())))
-    text = "\n".join(page.extract_text() for page in reader.pages)
+
+def test_a_deadline_is_reference_material_under_the_entry() -> None:
+    """Dates live in the strip below an entry, formatted, never under its title."""
+    text = _text(_sample_data())
     assert "Due Sep 1, 2026" in text
     assert "Deadline 2026-09-01" not in text
     assert "2026-09-01" not in text
@@ -285,15 +314,14 @@ def test_a_deadline_is_reference_material_under_the_entry() -> None:
 def test_a_multi_round_item_names_the_next_and_counts_the_rest() -> None:
     """Six dated lines under a two-sentence rationale is a table nobody asked for."""
     data = _sample_data()
-    item = data.personal.items["grants"][0]
+    item = data.personal.themes[0].entrants["grants"][0]
     item.deadline_date = "2026-11-20"
     item.deadlines = [
         {"date": "2026-11-20", "kind": "abstract", "label": ""},
         {"date": "2027-01-08", "kind": "manuscript", "label": ""},
         {"date": "2027-06-14", "kind": "event", "label": ""},
     ]
-    reader = PdfReader(BytesIO(render_report_pdf(data)))
-    text = "\n".join(page.extract_text() for page in reader.pages)
+    text = _text(data)
     assert "Due Nov 20, 2026" in text
     assert "Abstract" in text
     assert "+2 more rounds" in text
@@ -301,23 +329,47 @@ def test_a_multi_round_item_names_the_next_and_counts_the_rest() -> None:
     assert "2027-01-08" not in text
 
 
+def test_an_edition_rides_the_title_rather_than_a_second_badge() -> None:
+    """A reopened annual call is badged NEW; the edition says which cycle."""
+    data = _sample_data()
+    item = data.personal.themes[0].entrants["grants"][0]
+    item.title = "OCEANS"
+    item.edition = "2027"
+    text = _text(data)
+    assert "OCEANS 2027" in text
+    assert "REOPENED" not in text
+
+
+def test_a_bridge_item_names_the_other_theme_it_reaches() -> None:
+    data = _sample_data()
+    data.personal.themes[0].entrants["papers"][0].bridge_labels = ["Sensor Fusion"]
+    text = _text(data)
+    assert "ALSO IN" in text
+
+
+def test_a_fallback_origin_is_visible_rather_than_silent() -> None:
+    """A template must never be mistaken for something Mylo actually thought."""
+    data = _sample_data()
+    data.lead_origin = "fallback"
+    data.personal.themes[0].read_origin = "fallback"
+    text = _text(data)
+    assert "Mylo's writer was offline" in text
+
+
 @pytest.mark.parametrize(
     ("reason", "insight", "note"),
     [
-        # Two sentences: the first is the claim, the rest qualifies it.
         (
             "It closes the scale-drift gap in your surveys. The weights are "
             "released, so this is a fine-tune rather than a retrain.",
             "It closes the scale-drift gap in your surveys.",
             "The weights are released, so this is a fine-tune rather than a retrain.",
         ),
-        # One sentence: no empty second block.
         (
             "A public benchmark you can report against.",
             "A public benchmark you can report against.",
             "",
         ),
-        # An abbreviation is not a sentence end.
         (
             "Follows Reyes et al. and reuses the same transect protocol you do.",
             "Follows Reyes et al. and reuses the same transect protocol you do.",
@@ -333,26 +385,19 @@ def test_a_rationale_splits_into_its_claim_and_its_qualifications(
 
 
 def test_a_written_items_signals_move_out_of_its_title_line() -> None:
-    """The written report's chips come from parsing the item line, so parse it.
-
-    Order-independent on purpose: the line is model-written as often as it is
-    generated, and a signal left in the title would print twice — once as text,
-    once as a chip.
-    """
+    """The written report's chips come from parsing the item line, so parse it."""
     from apps.content.daily_report_pdf import _split_item_line
 
-    title, is_new, match, deadline = _split_item_line(
-        "**[A paper](https://x.org/1)** — **NEW** · 88% match · deadline 2026-09-01"
+    title, is_new, verdict, deadline = _split_item_line(
+        "**[A paper](https://x.org/1)** — **NEW** · Read · deadline 2026-09-01"
     )
     assert title == "**[A paper](https://x.org/1)**"
-    assert (is_new, match, deadline) == (True, 88, "2026-09-01")
+    assert (is_new, verdict, deadline) == (True, "read", "2026-09-01")
 
-    # A different order, and a missing signal, land the same way.
-    title, is_new, match, deadline = _split_item_line("**Plain** — 40% match")
+    title, is_new, verdict, deadline = _split_item_line("**Plain** — Skim")
     assert title == "**Plain**"
-    assert (is_new, match, deadline) == (False, 40, "")
+    assert (is_new, verdict, deadline) == (False, "skim", "")
 
-    # Nothing to strip leaves the title alone.
     assert _split_item_line("**Bare title**") == ("**Bare title**", False, None, "")
 
 
@@ -360,23 +405,20 @@ def test_the_written_report_renders_its_signals_as_chips_not_highlights() -> Non
     """No inline filled backgrounds anywhere — a chip is a container, not a stripe."""
     from apps.content.daily_report_pdf import _inline
 
-    marked = _inline("**NEW** · 88% match · deadline 2026-09-01")
+    marked = _inline("**NEW** · Read · deadline 2026-09-01")
     assert "backcolor" not in marked
-    assert "88% match" in marked
+    assert "Read" in marked
 
 
 def test_the_sample_report_renders_the_real_written_body() -> None:
-    """``render_sample_report`` is the formatting review loop, so it must be real.
-
-    Its body comes from the actual writer over synthetic items, not from hand-typed
-    markdown — a sample that drifts from the generator reviews nothing.
-    """
+    """``render_sample_report`` is the formatting review loop, so it must be real."""
     from apps.content.management.commands.render_sample_report import build_sample
 
     for kind in ("personal", "lab"):
         data = build_sample(kind)
-        assert "#### AI for Oceanography" in data.briefing_markdown
+        assert "## AI for Oceanography" in data.briefing_markdown
         assert "1. **[" in data.briefing_markdown
+        assert "% match" not in data.briefing_markdown
         assert render_report_pdf(data)[:5] == b"%PDF-"
     assert build_sample("lab").personal.label == "Pulse Lab"
     assert build_sample("personal").personal.label == "Personal"
@@ -384,18 +426,8 @@ def test_the_sample_report_renders_the_real_written_body() -> None:
 
 def test_the_report_never_says_who_an_item_is_best_suited_to() -> None:
     data = _sample_data()
-    data.briefing_markdown += "\n\n1. **Something** — 70% match\nA reason.\n"
-    reader = PdfReader(BytesIO(render_report_pdf(data)))
-    text = "\n".join(page.extract_text() for page in reader.pages)
-    assert "Best suited to" not in text
-
-
-def test_a_capped_section_says_how_many_it_is_hiding() -> None:
-    data = _sample_data()
-    data.personal.slate_sizes["papers"] = 40  # a slate deeper than the part prints
-    reader = PdfReader(BytesIO(render_report_pdf(data)))
-    text = "\n".join(page.extract_text() for page in reader.pages)
-    assert "Showing 3 of 40" in text
+    data.briefing_markdown += "\n\n1. **Something** — Skim\nA reason.\n"
+    assert "Best suited to" not in _text(data)
 
 
 def test_a_quiet_project_gets_no_section() -> None:
@@ -406,6 +438,13 @@ def test_a_quiet_project_gets_no_section() -> None:
     reader = PdfReader(BytesIO(render_report_pdf(data)))
     body = "\n".join(page.extract_text() for page in reader.pages[2:])
     assert "Dormant" not in body
+
+
+def test_the_footer_records_what_was_scanned() -> None:
+    """Provenance, not decoration."""
+    assert "Compiled 2026-07-19 over your watched papers, grants." in _text(
+        _sample_data()
+    )
 
 
 def test_empty_day_still_renders() -> None:
@@ -419,12 +458,11 @@ def test_empty_day_still_renders() -> None:
         counts={"papers": 0},
         new_counts={"papers": 0},
         personal=ReportPart(
-            key="personal", label="Personal", kind="personal", cap=25,
-            counts={"papers": 0}, items={"papers": []},
+            key="personal", label="Personal", kind="personal", cap=25, counts={}
         ),
     )
-    pdf = render_report_pdf(data)
-    assert pdf[:5] == b"%PDF-"
+    text = _text(data)
+    assert "Nothing entered your lists today." in text
 
 
 # --------------------------------------------------------------------------- #

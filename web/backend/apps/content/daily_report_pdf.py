@@ -97,6 +97,7 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.tableofcontents import TableOfContents
 
+from apps.content.briefing_sections import SECTION_NOUN
 from apps.content.daily_report import (
     CATEGORY_LABELS,
     SECTION_NOUNS,
@@ -104,6 +105,8 @@ from apps.content.daily_report import (
     ReportItem,
     ReportPart,
 )
+from apps.content.theme_report import ThemeSection
+from apps.content.verdicts import VERDICT_LABELS
 
 logger = logging.getLogger(__name__)
 
@@ -138,15 +141,8 @@ _DEADLINE_HEX = "#B07C1F"
 #: not a second opportunity flag competing with the match chip beside it.
 _RANK_HEX = "#5F6853"
 _RANK_BG_HEX = "#EFE7D7"
-
-#: The match bar's three tiers. Mirrors ``matchTier`` in the app's
-#: ``primitives/match-ring.tsx`` — same thresholds, same three colours — so the
-#: report and the app can never disagree about what a 95 means.
-_TIER_STRONG = HexColor("#6F8F4E")
-_TIER_FAIR = HexColor("#B88A3B")
-_TIER_LOW = HexColor("#A85A3C")
-_STRONG_MATCH = 85
-_FAIR_MATCH = 60
+#: Muted text inside an inline run (a standing row's source/deadline tail).
+_MUTED_HEX = "#7F8775"
 
 _SERIF = "Times-Roman"
 _SERIF_BOLD = "Times-Bold"
@@ -279,6 +275,23 @@ def _styles() -> dict[str, ParagraphStyle]:
         "Muted", fontName=_SANS, fontSize=9.5, leading=14, textColor=TEXT_MUTED,
         spaceAfter=6,
     )
+    #: One compact reference row in a theme's standing block. Lighter than an
+    #: entry's title: these are things the reader has already been shown, and the
+    #: page should make that visible before they read a word of it.
+    styles["StandingRow"] = ParagraphStyle(
+        "StandingRow", fontName=_SANS, fontSize=9, leading=13,
+        textColor=TEXT_SECONDARY, spaceAfter=0,
+    )
+    #: Mylo's read on one theme — prose set next to the items it describes.
+    styles["ThemeRead"] = ParagraphStyle(
+        "ThemeRead", fontName=_SERIF, fontSize=10.5, leading=15.5,
+        textColor=TEXT, spaceAfter=8,
+    )
+    #: The lead paragraph, set a shade larger — it is the document's opening claim.
+    styles["Lead"] = ParagraphStyle(
+        "Lead", fontName=_SERIF, fontSize=11.5, leading=17, textColor=TEXT,
+        spaceAfter=10,
+    )
     return styles
 
 
@@ -286,12 +299,12 @@ def _styles() -> dict[str, ParagraphStyle]:
 _LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
 _BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
 #: The report's item grammar (see :mod:`apps.content.briefing_sections`): a bolded
-#: ``**NEW**`` marker, ``88% match``, and ``deadline 2026-09-01``. Each is a fact a
+#: ``**NEW**`` marker, a verdict word, and ``deadline 2026-09-01``. Each is a fact a
 #: reader scans for, so each is lifted out of the run of text and given a colour.
 _NEW_MARKER_RE = re.compile(r"\*\*NEW\*\*")
-_MATCH_RE = re.compile(r"\b(\d{1,3})%\s+match\b", re.IGNORECASE)
+_VERDICT_RE = re.compile(r"\b(Read|Skim|File)\b")
 _DEADLINE_RE = re.compile(r"\bdeadline\s+(\d{4}-\d{2}-\d{2})\b", re.IGNORECASE)
-#: A numbered item line — ``1. **[Title](url)** — 88% match``.
+#: A numbered item line — ``1. **[Title](url)** — **NEW** · Read``.
 _NUMBERED_RE = re.compile(r"^(\d{1,3})[.)]\s+(.*)$")
 
 
@@ -300,18 +313,18 @@ def _inline(text: str) -> str:
 
     Deliberately draws **no filled background** anywhere. A reportlab inline
     ``backcolor`` is a square-cornered stripe behind the glyphs — a highlighter mark,
-    not a badge — so the two signals it used to paint that way (``NEW``, the percent
-    match) are lifted out of the text entirely and rendered as rounded chips beside
-    the entry (:func:`_chip`). What is left here is colour and weight, which is all
-    an inline run can carry without looking marked-up.
+    not a badge — so the two signals it used to paint that way (``NEW``, the
+    verdict) are lifted out of the text entirely and rendered as rounded chips
+    beside the entry. What is left here is colour and weight, which is all an
+    inline run can carry without looking marked-up.
     """
     out = escape(text or "")
     out = _LINK_RE.sub(
         lambda m: f'<a href="{m.group(2)}" color="{_LINK_HEX}">{m.group(1)}</a>', out
     )
     out = _NEW_MARKER_RE.sub(f'<font color="{_NEW_HEX}"><b>NEW</b></font>', out)
-    out = _MATCH_RE.sub(
-        lambda m: f'<font color="{_MATCH_HEX}"><b>{m.group(1)}% match</b></font>', out
+    out = _VERDICT_RE.sub(
+        lambda m: f'<font color="{_MATCH_HEX}"><b>{m.group(1)}</b></font>', out
     )
     out = _DEADLINE_RE.sub(
         lambda m: f'<font color="{_DEADLINE_HEX}"><b>deadline {m.group(1)}</b></font>',
@@ -374,7 +387,10 @@ class _PillHeading(Paragraph):
 #: :mod:`apps.content.briefing_sections` emits. Each is pulled out of the line and
 #: rendered as a chip, leaving the title to be a title.
 _ITEM_NEW_RE = re.compile(r"\*\*NEW\*\*")
-_ITEM_MATCH_RE = re.compile(r"\b(\d{1,3})%\s+match\b", re.IGNORECASE)
+#: The verdict word on a written item's title line, in the markdown the report
+#: body uses. It replaced ``88% match``: the percent implied a measurement nobody
+#: made, so the qualitative judgement is what the line carries now.
+_ITEM_VERDICT_RE = re.compile(r"\b(Read|Skim|File)\b")
 _ITEM_DEADLINE_RE = re.compile(
     r"\bdeadline\s+(\d{4}-\d{2}-\d{2})\b", re.IGNORECASE
 )
@@ -382,8 +398,8 @@ _ITEM_DEADLINE_RE = re.compile(
 _TRAILING_SEPARATORS_RE = re.compile(r"[\s··—–-]+$")
 
 
-def _split_item_line(text: str) -> tuple[str, bool, int | None, str]:
-    """Split a written item's title line into ``(title, is_new, match, deadline)``.
+def _split_item_line(text: str) -> tuple[str, bool, str | None, str]:
+    """Split a written item's title line into ``(title, is_new, verdict, deadline)``.
 
     Order-independent, because the line is model-written as often as it is
     generated: each signal is matched wherever it sits, removed, and the separators
@@ -392,9 +408,9 @@ def _split_item_line(text: str) -> tuple[str, bool, int | None, str]:
     is_new = bool(_ITEM_NEW_RE.search(text))
     rest = _ITEM_NEW_RE.sub("", text)
 
-    match = _ITEM_MATCH_RE.search(rest)
-    percent = int(match.group(1)) if match else None
-    rest = _ITEM_MATCH_RE.sub("", rest)
+    found_verdict = _ITEM_VERDICT_RE.search(rest)
+    verdict = found_verdict.group(1).casefold() if found_verdict else None
+    rest = _ITEM_VERDICT_RE.sub("", rest)
 
     found = _ITEM_DEADLINE_RE.search(rest)
     deadline = found.group(1) if found else ""
@@ -402,7 +418,7 @@ def _split_item_line(text: str) -> tuple[str, bool, int | None, str]:
 
     # Collapse the runs of " · " / " — " the removals opened up mid-line, then trim.
     rest = re.sub(r"\s*[·]\s*(?=[·—–-]|\s*$)", " ", rest)
-    return _TRAILING_SEPARATORS_RE.sub("", rest).strip(), is_new, percent, deadline
+    return _TRAILING_SEPARATORS_RE.sub("", rest).strip(), is_new, verdict, deadline
 
 
 def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
@@ -474,91 +490,45 @@ def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
 
 
 # --- The entry's four zones ------------------------------------------------ #
-def _tier_color(percent: int):
-    """The ring's arc colour for a percent — strong, fair, or low.
+#: Verdict chip colours. Gold is deliberately absent: ``docs/styles.md`` reserves
+#: it for opportunity and deadline signals, so a grant deadline never competes
+#: visually with a relevance judgement.
+_VERDICT_STYLES = {
+    "read": (HexColor("#FFFDF8"), PRIMARY, None),        # filled primary, white text
+    "skim": (HexColor("#2E3627"), SECONDARY, None),      # sage secondary, dark text
+    "file": (HexColor("#5F6853"), SURFACE_ALT, BORDER),  # neutral surface
+}
 
-    Same three thresholds as the app's ``matchTier``.
+
+def _shorten(text: str, limit: int) -> str:
+    """Trim a theme name to fit a rail chip, on a word boundary and with an ellipsis.
+
+    A hard slice produces ``AI FOR OCEANOG``, which reads as a rendering bug rather
+    than an abbreviation. Cutting at a space and marking the cut says the same
+    thing and looks deliberate.
     """
-    if percent >= _STRONG_MATCH:
-        return _TIER_STRONG
-    if percent >= _FAIR_MATCH:
-        return _TIER_FAIR
-    return _TIER_LOW
+    text = (text or "").strip()
+    if len(text) <= limit:
+        return text
+    cut = text[: limit - 1].rsplit(" ", 1)[0] or text[: limit - 1]
+    return f"{cut}…"
 
 
-def _tier_word(percent: int) -> str:
-    """The tier in words, printed under the ring so colour is never the only cue."""
-    if percent >= _STRONG_MATCH:
-        return "strong"
-    if percent >= _FAIR_MATCH:
-        return "fair"
-    return "low"
+def _verdict_chip(verdict: str | None, width: float) -> _Pill | None:
+    """Mylo's four-point verdict as a chip, or ``None`` when there is nothing to say.
 
-
-class _MatchRing(Flowable):
-    """The percent match, drawn as a filled arc around the number.
-
-    The print counterpart of the app's ``MatchRing`` — the one element this product
-    has for "how well does this fit me". A track ring in the divider colour, an arc
-    swept clockwise from twelve o'clock to the percent and coloured by tier, and the
-    number inside it. Beneath sits the tier word, so fit is never carried by colour
-    alone (in the app the word is in the ring's accessible name; on paper it has to
-    be visible).
-
-    Painted on the centre of whatever width it is given, as the flags beneath it
-    are, so the ring and every pill share one vertical axis. Reportlab does not
-    honour a custom flowable's ``hAlign`` inside a table cell, so each of these
-    positions itself rather than asking the cell to do it.
+    A ``skip`` never appears as a chip: the item keeps its slate place and shows in
+    the reference block, but it earns no write-up and no badge. Chipping it would
+    spend the reader's attention on the one judgement that says "do not spend your
+    attention here".
     """
-
-    #: Ring diameter and stroke weight. Sized so "100%" still sits inside it.
-    _SIZE = 38.0
-    _THICKNESS = 4.0
-    _CAPTION_GAP = 2.0
-    _CAPTION_SIZE = 6.0
-
-    def __init__(self, percent: int, width: float):
-        super().__init__()
-        self.percent = max(0, min(100, percent))
-        self.width = width
-        self.height = self._SIZE + self._CAPTION_GAP + self._CAPTION_SIZE
-
-    def wrap(self, availWidth, availHeight):  # noqa: N803 — reportlab's signature
-        return (self.width, self.height)
-
-    def draw(self) -> None:
-        canvas = self.canv
-        size = self._SIZE
-        radius = (size - self._THICKNESS) / 2
-        # Centred in the rail; the caption line sits below the ring, on the same
-        # axis, as do the pills under that.
-        cx = self.width / 2
-        cy = self.height - size / 2
-        box = (cx - radius, cy - radius, cx + radius, cy + radius)
-
-        canvas.saveState()
-        canvas.setLineWidth(self._THICKNESS)
-        canvas.setLineCap(1)
-
-        canvas.setStrokeColor(DIVIDER)
-        canvas.circle(cx, cy, radius, stroke=1, fill=0)
-
-        if self.percent:
-            # From twelve o'clock, clockwise. reportlab measures from three
-            # o'clock and counts counter-clockwise, hence 90 and a negative sweep.
-            arc = canvas.beginPath()
-            arc.arc(*box, 90, -3.6 * self.percent)
-            canvas.setStrokeColor(_tier_color(self.percent))
-            canvas.drawPath(arc, stroke=1, fill=0)
-
-        canvas.setFillColor(TEXT)
-        canvas.setFont(_SANS_BOLD, 9.5)
-        canvas.drawCentredString(cx, cy - 3.4, f"{self.percent}%")
-
-        canvas.setFillColor(TEXT_MUTED)
-        canvas.setFont(_SANS_BOLD, self._CAPTION_SIZE)
-        canvas.drawCentredString(cx, 0.5, _tier_word(self.percent).upper())
-        canvas.restoreState()
+    style = _VERDICT_STYLES.get((verdict or "").casefold())
+    if style is None:
+        return None
+    fg, bg, border = style
+    return _Pill(
+        VERDICT_LABELS[verdict].upper(), width, fg=fg, bg=bg, border=border
+    )
 
 
 class _Pill(Flowable):
@@ -755,36 +725,52 @@ def _deadline_bits(deadline_date: str, deadlines: list[dict] | None) -> list[str
 
 
 def _match_rail(
-    match_percent: int | None,
+    verdict: str | None,
     is_new: bool,
     styles: dict[str, ParagraphStyle],
     rank_badges: list[dict] | None = None,
+    bridge_labels: list[str] | None = None,
 ) -> list:
-    """The entry's right-hand rail: the match ring, then its flags.
+    """The entry's right-hand rail: Mylo's verdict, then its flags.
 
-    The ring comes first because it is what a reader ranks entries by. Flags follow,
-    each a pill sized to its own word rather than a band across the rail.
+    The percent ring used to sit here and carried three jobs at once — the number,
+    the tier colour, and Mylo's portrait as attribution. The number is gone (it
+    implied a measurement nobody made), the tier colour is now the verdict's own,
+    and the attribution survives in the chip being Mylo's word rather than a
+    computed one.
 
     ``NEW`` is filled gold, which ``docs/styles.md`` reserves for exactly this kind
-    of signal. A CCF / CORE / THCPL rank is drawn as an outline on the page's own
-    ground instead — a rank is an informational label and never a relevance signal
-    (plan D2), so a second filled badge beside ``NEW`` would compete with the one
-    that means something. Only :func:`_item_flowables` has structured rank data to
-    pass; the written report's entries are parsed back out of markdown and carry
-    none.
+    of signal. ``ALSO IN`` names a theme this item also reaches — derived from the
+    slates at render time, never scored, so a bridge costs nothing and stays
+    symmetric. A CCF / CORE / THCPL rank is drawn as an outline: a rank is
+    informational and never a relevance signal, so a second filled badge beside
+    ``NEW`` would compete with the one that means something.
     """
     rail: list = []
-    if isinstance(match_percent, int):
-        rail.append(_MatchRing(match_percent, _RAIL_WIDTH))
+    chip = _verdict_chip(verdict, _RAIL_WIDTH)
+    if chip is not None:
+        rail.append(chip)
     if is_new:
         if rail:
-            rail.append(Spacer(1, 5))
+            rail.append(Spacer(1, 4))
         rail.append(
             _Pill(
                 "NEW",
                 _RAIL_WIDTH,
                 fg=HexColor(_NEW_HEX),
                 bg=HexColor(_NEW_BG_HEX),
+            )
+        )
+    for label in (bridge_labels or [])[:1]:
+        if rail:
+            rail.append(Spacer(1, 3))
+        rail.append(
+            _Pill(
+                f"ALSO IN {_shorten(label, 14)}".upper(),
+                _RAIL_WIDTH,
+                font_size=5.4,
+                fg=HexColor(_RANK_HEX),
+                border=BORDER,
             )
         )
     for badge in rank_badges or []:
@@ -806,34 +792,37 @@ def _match_rail(
 
 
 def _entry_row(
-    rank: int | str,
+    position: int | str,
     body: list,
-    match_percent: int | None,
+    verdict: str | None,
     is_new: bool,
     styles: dict[str, ParagraphStyle],
     rank_badges: list[dict] | None = None,
+    bridge_labels: list[str] | None = None,
 ) -> list:
-    """One ranked entry: its number, its content, and its meta rail.
+    """One entry: its position within its theme, its content, and its meta rail.
 
-    The report's single entry shape, used by the written report and by every Top-N
-    listing, and the print half of the shape the app draws in
+    The report's single entry shape, and the print half of what the app draws in
     ``primitives/report-entry.tsx``. Laid out as a three-column row so the numbers
-    line up down the page and the rail lines up down the right edge — which is what
-    makes a ranked list read as one rather than as twenty-five paragraphs.
+    line up down the page and the rail lines up down the right edge — which is
+    what makes a ranked list read as one rather than as twenty-five paragraphs.
 
-    The content column carries the entry's four zones in order: title, the insight,
-    the note, and the reference strip. The strip is part of ``body`` rather than a
-    fourth column, so it spans exactly the content column and no further.
+    The gutter number is the item's place in **its own theme**, not a global
+    position. A global one would be comparing scores that are not comparable,
+    which is the failure the per-cluster redesign exists to remove.
 
-    Returned as a plain list rather than a ``KeepTogether``: a single-row table does
-    not split, so the entry is already atomic, and nesting it in a ``KeepTogether``
-    that a caller then nests again pushed every section onto a page of its own.
+    Returned as a plain list rather than a ``KeepTogether``: a single-row table
+    does not split, so the entry is already atomic, and nesting it in a
+    ``KeepTogether`` that a caller then nests again pushed every section onto a
+    page of its own.
     """
     # An empty cell is "" rather than an empty list — reportlab measures a list cell
     # by wrapping its flowables, and there are none to wrap.
-    rail = _match_rail(match_percent, is_new, styles, rank_badges) or ""
+    rail = (
+        _match_rail(verdict, is_new, styles, rank_badges, bridge_labels) or ""
+    )
     row = Table(
-        [[Paragraph(f"{rank}.", styles["Rank"]), body, rail]],
+        [[Paragraph(f"{position}.", styles["Rank"]), body, rail]],
         colWidths=[_RANK_WIDTH, _BODY_WIDTH + _CELL_PAD, _RAIL_WIDTH],
     )
     row.setStyle(
@@ -881,68 +870,124 @@ def _split_reason(text: str) -> tuple[str, str]:
 
 def _content_flowables(
     title_html: str,
-    reason: str,
+    lead: str,
     strip_bits: list[str],
     styles: dict[str, ParagraphStyle],
 ) -> list:
-    """An entry's content column: title, insight, note, reference strip.
+    """An entry's content column: title, the lead sentence, reference strip.
 
-    The one place the four zones are assembled, so the written report's entries and
-    the Top-N listings' entries cannot drift into two different documents.
+    Three zones, not four. The PDF is the **record** — what arrived, in which
+    themes, what is closing soon, what is worth opening — and the website is where
+    the reasoning lives: the remaining two beats, the caveat, the matched
+    interests, the evidence. That split is what keeps a 150-entrant day longer by
+    150 compact rows rather than by ninety pages of prose.
+
+    The single lead sentence is the one thing not to cut. Without it a reader gets
+    sixty titles and has to open the site to make any judgement at all, which
+    defeats the point of a morning brief.
     """
     body: list = [Paragraph(title_html, styles["ItemTitle"])]
-    insight, note = _split_reason(reason)
-    if insight:
+    if lead:
         body.append(Spacer(1, 3))
-        body.append(_insight_flowable(_inline(insight), styles))
-    if note:
-        body.append(Spacer(1, 3))
-        body.append(Paragraph(_inline(note), styles["ItemReason"]))
+        body.append(_insight_flowable(_inline(lead), styles))
     if strip_bits:
         body.append(_meta_strip(strip_bits, styles, width=_BODY_WIDTH))
     return body
 
 
 def _item_flowables(
-    item: ReportItem, rank: int, styles: dict[str, ParagraphStyle]
+    item: ReportItem, position: int, styles: dict[str, ParagraphStyle]
 ) -> list:
-    """One found item from a Top-N listing, as the report's standard entry row."""
+    """One found item as the report's standard entry row."""
     title = _inline(item.title)
+    if item.edition and str(item.edition) not in item.title:
+        # The edition carries the returning-reader signal on a reopened annual
+        # call — an entry reading *NeurIPS 2027* tells a returning reader
+        # everything a "reopened" chip would, so there is no second badge.
+        title = f"{title} {escape(str(item.edition))}"
     if item.url:
         title = f'<a href="{escape(item.url)}" color="{_TITLE_HEX}">{title}</a>'
 
     # Everything that identifies rather than argues — when it is due, where it came
-    # from, which of the reader's themes it landed in — goes to the strip. Above it
-    # these were three competing lines between the title and the reason for it.
+    # from — goes to the strip. Above it these were competing lines between the
+    # title and the reason for it. The theme is no longer among them: the section
+    # heading already names it.
     strip_bits = _deadline_bits(item.deadline_date, item.deadlines)
     if item.source:
         strip_bits.append(escape(item.source))
-    if item.cluster_label:
-        strip_bits.append(escape(item.cluster_label))
+    if item.license:
+        strip_bits.append(escape(item.license))
 
     return _entry_row(
-        rank,
+        position,
         _content_flowables(
-            title, item.reason or item.headline, strip_bits, styles
+            title, item.lead or item.reason or item.headline, strip_bits, styles
         ),
-        item.match_percent,
+        item.verdict,
         item.is_new,
         styles,
         item.rank_badges,
+        item.bridge_labels,
     )
+
+
+def _standing_row(
+    item: ReportItem, styles: dict[str, ParagraphStyle]
+) -> list:
+    """One compact reference row: position, linked title, source, deadline.
+
+    No reason, no verdict, no prose. This block serves the reader who skipped
+    three days; letting settled items carry commentary is how a document whose job
+    is to report change ends up dominated by the things that did not.
+    """
+    title = _inline(item.title)
+    if item.url:
+        title = f'<a href="{escape(item.url)}" color="{_TITLE_HEX}">{title}</a>'
+    due = (
+        f"due {_format_date(item.deadline_date)}" if item.deadline_date else ""
+    )
+    # The block spans every category the theme holds, so each row names its own —
+    # without it a papers row numbered 3 above a grants row numbered 2 reads as a
+    # broken list rather than as two lists sharing a heading.
+    noun = SECTION_NOUN.get(item.category, item.category)
+    bits = [b for b in (noun.title(), item.source, due) if b]
+    tail = (
+        f'  <font color="{_MUTED_HEX}">· {escape("  ·  ".join(bits))}</font>'
+        if bits
+        else ""
+    )
+    row = Table(
+        [[
+            Paragraph(f"{item.position or '–'}.", styles["Rank"]),
+            Paragraph(title + tail, styles["StandingRow"]),
+        ]],
+        colWidths=[_RANK_WIDTH, _CONTENT_WIDTH - _RANK_WIDTH],
+    )
+    row.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (0, 0), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
+    return [row]
 
 
 def _written_item_flowables(
     rank: str, lines: list[str], styles: dict[str, ParagraphStyle]
 ) -> list:
-    """One numbered item from the *written* report, as the same entry row.
+    """One numbered item from a *written* markdown block, as the same entry row.
 
-    The signals are pulled out of the title line and given to the rail and the
-    strip, so a Mylo Report entry and a Top-25 entry are the same object on the
-    page. They were two different shapes for no reason other than one arriving as
-    markdown.
+    Used by the project sections, which are rendered from markdown rather than
+    from structured items. The signals are pulled out of the title line and given
+    to the rail and the strip, so a project entry and a theme entry are the same
+    object on the page.
     """
-    title, is_new, match_percent, deadline = _split_item_line(lines[0])
+    title, is_new, verdict, deadline = _split_item_line(lines[0])
     return _entry_row(
         rank,
         _content_flowables(
@@ -951,7 +996,7 @@ def _written_item_flowables(
             _deadline_bits(deadline, None),
             styles,
         ),
-        match_percent,
+        verdict,
         is_new,
         styles,
     )
@@ -969,11 +1014,26 @@ def _summary_table(data: ReportData, styles: dict[str, ParagraphStyle]) -> Table
     )
     header = ["", *[CATEGORY_LABELS.get(c, c.title()) for c in data.categories]]
     rows: list[list] = [header]
+    theme_rows = 0
     for part in data.parts:
+        if part.kind == "personal" and part.themes:
+            # The table inverts: the reader's own part becomes one row per
+            # **theme**, so the table is a direct index of the sections below it
+            # and a reader sees in three seconds which strand moved today.
+            for section in part.themes:
+                counts = section.counts(data.categories)
+                rows.append(
+                    [
+                        Paragraph(escape(section.label), label_style),
+                        *[_cell(counts.get(c, 0)) for c in data.categories],
+                    ]
+                )
+                theme_rows += 1
+            continue
         rows.append(
             [
                 Paragraph(escape(part.label), label_style),
-                *[str(part.counts.get(c, 0)) for c in data.categories],
+                *[_cell(part.counts.get(c, 0)) for c in data.categories],
             ]
         )
     # The label column takes what the category columns leave; the categories are
@@ -1002,12 +1062,24 @@ def _summary_table(data: ReportData, styles: dict[str, ParagraphStyle]) -> Table
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
     ]
-    # The reader's own row is not just another project; setting it apart keeps a
-    # long project list from reading as though the first row were one of them.
-    if data.parts and data.parts[0].kind == "personal":
+    # The reader's own rows are not just more projects; setting them apart keeps a
+    # long project list from reading as though the themes were among them.
+    if theme_rows:
+        style.append(("FONTNAME", (0, 1), (-1, theme_rows), _SANS_BOLD))
+    elif data.parts and data.parts[0].kind == "personal":
         style.append(("FONTNAME", (0, 1), (-1, 1), _SANS_BOLD))
     table.setStyle(TableStyle(style))
     return table
+
+
+def _cell(count: int) -> str:
+    """A count, or an em dash for a theme that holds a slate but gained nothing.
+
+    A dash rather than a zero: zero reads as "nothing here", and the theme still
+    holds a list the reader can go and look at. A theme with no matches at all
+    never reaches this table — it is absent from the document entirely.
+    """
+    return str(count) if count else "—"
 
 
 # --- Cover ----------------------------------------------------------------- #
@@ -1224,8 +1296,9 @@ def render_report_pdf(data: ReportData) -> bytes:
     cover.append(Spacer(1, 0.14 * inch))
     cover.append(
         Paragraph(
-            "New today, for you and for each project you are on. Items that did not "
-            "clear the relevance bar are left on your feeds and in search.",
+            "One row per research theme, and one per project. A dash means the "
+            "theme still holds a list but nothing entered it today; a theme with "
+            "no matches at all is not listed.",
             styles["CoverFoot"],
         )
     )
@@ -1240,30 +1313,65 @@ def render_report_pdf(data: ReportData) -> bytes:
     story.append(_toc(styles))
     story.append(PageBreak())
 
-    # 3. The written report (main section).
-    _extend_title(story, "Your Mylo Report", styles)
-    body = _markdown_flowables(data.briefing_markdown, styles)
-    if body:
-        story.extend(body)
-    else:
+    # 3. Mylo's lead — one paragraph over the whole profile. It replaces the old
+    #    standalone "Your Mylo Report" section, which duplicated the listings
+    #    beneath it. A reader with no model reasoning gets the cover table and
+    #    goes straight to the themes, which is honest rather than degraded.
+    if data.lead:
+        _extend_title(story, "Mylo's read on today", styles)
+        story.append(Paragraph(_inline(data.lead), styles["Lead"]))
+        if data.lead_origin == "fallback":
+            story.append(Paragraph(_ORIGIN_NOTE, styles["Muted"]))
+        story.append(PageBreak())
+
+    # 4. The body: one section per theme with news, then the quiet line, then one
+    #    section per project. A theme with no matches at all appears nowhere.
+    personal = data.personal
+    wrote_body = False
+    if personal is not None and personal.live_themes:
+        for index, section in enumerate(personal.live_themes):
+            if index:
+                story.append(Spacer(1, 0.18 * inch))
+            _extend_theme(story, section, data.categories, styles)
+        wrote_body = True
+        quiet = getattr(personal, "quiet", None)
+        if quiet:
+            named = ", ".join(f"{label} ({count} standing)" for label, count in quiet)
+            story.append(Spacer(1, 0.12 * inch))
+            story.append(
+                Paragraph(
+                    f"<b>Quiet today:</b> {escape(named)}. Nothing new entered "
+                    "these lists; what they hold is unchanged.",
+                    styles["Muted"],
+                )
+            )
+    elif personal is not None and personal.shown:
+        # No theme sections: rows written before per-cluster slates existed. One
+        # nightly run rewrites them; until then the flat listing is still a real
+        # document rather than an empty one.
+        story.append(PageBreak()) if wrote_body else None
+        _extend_part(story, personal, data.categories, styles)
+        wrote_body = True
+
+    for part in data.projects:
+        if not part.total:
+            continue
+        story.append(PageBreak())
+        _extend_part(story, part, data.categories, styles)
+        wrote_body = True
+
+    if not wrote_body:
         story.append(
             Paragraph(
-                "Mylo has no written summary for today. The matched items are listed "
-                "below.",
+                "Nothing entered your lists today. Your feeds and search still "
+                "hold everything matched so far.",
                 styles["Muted"],
             )
         )
-    story.append(PageBreak())
 
-    # 4. The reader's own part, then one section per project. A project with
-    #    nothing today is skipped here — its zero row is already in the table, and a
-    #    page of empty headings is the crowding this report is meant to end.
-    for index, part in enumerate(data.parts):
-        if part.kind == "project" and not part.total:
-            continue
-        if index:
-            story.append(PageBreak())
-        _extend_part(story, part, data.categories, styles)
+    # 5. Provenance, as one small paragraph rather than decoration.
+    story.append(Spacer(1, 0.2 * inch))
+    story.append(Paragraph(_footer_note(data), styles["CoverFoot"]))
 
     doc.multiBuild(story, onFirstPage=_decorate, onLaterPages=_decorate)
     return buffer.getvalue()
@@ -1273,6 +1381,88 @@ def _extend_title(story: list, text: str, styles: dict[str, ParagraphStyle]) -> 
     """A top-level (``H1``) section title, underlined by a hairline rule."""
     story.append(Paragraph(escape(text), styles["H1"]))
     story.append(HRFlowable(width="100%", thickness=1, color=SECONDARY, spaceAfter=8))
+
+
+#: What the document says when Mylo's writer could not be reached at all. Rendered
+#: wherever a fallback stands in for a judgement, so a template is never mistaken
+#: for something Mylo actually thought.
+_ORIGIN_NOTE = (
+    "Mylo's writer was offline for this run, so this is the deterministic "
+    "summary. The rankings, positions, and deadlines are unaffected."
+)
+
+
+def _footer_note(data: ReportData) -> str:
+    """Provenance: what was scanned and from where. One small paragraph."""
+    sources = sorted(
+        {
+            item.source_name
+            for part in data.parts
+            for items in part.items.values()
+            for item in items
+            if item.source_name
+        }
+    )
+    scanned = ", ".join(CATEGORY_LABELS.get(c, c).lower() for c in data.categories)
+    line = f"Compiled {escape(data.generated_on)} over your watched {scanned}."
+    if sources:
+        line += " Sources: " + escape(", ".join(sources)) + "."
+    return line
+
+
+def _extend_theme(
+    story: list,
+    section: ThemeSection,
+    categories: list[str],
+    styles: dict[str, ParagraphStyle],
+) -> None:
+    """One theme: Mylo's read, what entered, then what is standing.
+
+    The order is the argument. A reader opening this document wants to know what
+    changed, so the entrants come first and in full; the settled list follows as
+    compact reference rows for the reader who skipped three days. Prose sits at the
+    top, next to the items it describes, rather than in a separate section that
+    repeats them.
+    """
+    _extend_title(story, section.label, styles)
+    if section.read:
+        story.append(Paragraph(_inline(section.read), styles["ThemeRead"]))
+        if section.read_origin == "fallback":
+            story.append(Paragraph(_ORIGIN_NOTE, styles["Muted"]))
+
+    for category in categories:
+        entrants = section.entrants.get(category) or []
+        if not entrants:
+            continue
+        noun = SECTION_NOUNS.get(category, CATEGORY_LABELS.get(category, category))
+        opening = [Paragraph(f"New {noun.lower()}", styles["H2"])]
+        first = _item_flowables(entrants[0], entrants[0].position or 1, styles)
+        # The heading travels with its first entry: a heading alone at the foot of
+        # a page is precisely the loss of hierarchy this layout exists to prevent.
+        story.append(KeepTogether(opening + first))
+        for item in entrants[1:]:
+            story.extend(_item_flowables(item, item.position or "–", styles))
+
+    standing = [
+        item
+        for category in categories
+        for item in (section.standing.get(category) or [])
+    ]
+    if not standing:
+        # Every one of this theme's slate is an entrant, so a reference block would
+        # only repeat the section above it.
+        return
+    story.append(Spacer(1, 0.08 * inch))
+    story.append(Paragraph("Currently in your list", styles["H2"]))
+    story.append(
+        Paragraph(
+            "Unchanged since you last looked — listed for reference, with no new "
+            "commentary.",
+            styles["Muted"],
+        )
+    )
+    for item in standing:
+        story.extend(_standing_row(item, styles))
 
 
 def _extend_part(

@@ -36,8 +36,16 @@ from dataclasses import dataclass, field
 from django.utils import timezone
 
 from apps.content import briefing
-from apps.content.briefing_sections import SECTION_NOUN
+from apps.content.briefing_sections import SECTION_NOUN, apply_narrative
 from apps.content.models import DailyBriefing, RelevanceScore
+from apps.content.targets import target_for_lab
+from apps.content.theme_report import (
+    ThemeSection,
+    declared_clusters,
+    quiet_lines,
+    section_label,
+    split_by_theme,
+)
 
 #: Per-category caps. The reader's own part gets the deeper list; a project is a
 #: narrower surface and a short list is the point of having one per project.
@@ -69,7 +77,6 @@ class ReportItem:
     category: str
     title: str
     url: str
-    match_percent: int | None
     headline: str
     reason: str
     source: str
@@ -77,6 +84,25 @@ class ReportItem:
     #: This item entered the reader's slate on this run — the report's "new" badge.
     is_new: bool
     cluster_label: str = ""
+    #: Position within **this theme's** slate — what replaced the percent match.
+    #: A global position would compare scores that are not comparable, which is
+    #: the failure the per-cluster redesign removes.
+    position: int = 0
+    #: read / skim / file / skip (:mod:`apps.content.verdicts`). ``None`` on a row
+    #: scored before the verdict existed.
+    verdict: str | None = None
+    #: The reason's **first beat** — the one sentence the printed page carries.
+    #: Without it a reader gets sixty titles and must open the site to make any
+    #: judgement at all, which defeats a morning brief. The remaining beats and
+    #: the caveat go to the web entry.
+    lead: str = ""
+    caveat: str = ""
+    #: Other themes whose slate this item also sits in — the ``ALSO IN`` badge.
+    bridge_labels: list[str] = field(default_factory=list)
+    #: The call's edition, where one exists (*NeurIPS 2027*). It carries the
+    #: returning-reader signal on a reopened annual call, so no second badge is
+    #: needed beyond ``NEW``.
+    edition: str = ""
     #: Every dated round, normalised across grants and conferences (see
     #: ``briefing._deadline_rounds``) — the multi-deadline detail ``deadline_date``
     #: alone cannot carry. Rendered as a small table only in the structured PDF
@@ -121,6 +147,15 @@ class ReportPart:
     items: dict[str, list[ReportItem]] = field(default_factory=dict)
     #: Slate size per category before ``cap`` — what "showing 10 of 25" counts.
     slate_sizes: dict[str, int] = field(default_factory=dict)
+    #: One section per research theme that has news — the document's body. Empty
+    #: for a project, which stays flat and entrant-only (open decision OD3).
+    themes: list[ThemeSection] = field(default_factory=list)
+    #: ``[(label, standing count)]`` for themes holding a slate but nothing new.
+    quiet: list[tuple[str, int]] = field(default_factory=list)
+
+    @property
+    def live_themes(self) -> list[ThemeSection]:
+        return [theme for theme in self.themes if theme.has_news]
 
     @property
     def total(self) -> int:
@@ -143,6 +178,11 @@ class ReportData:
     briefing_markdown: str
     briefing_origin: str
     categories: list[str]
+    #: Mylo's opening paragraph, read back from the stored narrative rather than
+    #: regenerated — a model call happens once per artefact (plan §19). Empty for
+    #: an unentitled reader, whose document opens on the cover table instead.
+    lead: str = ""
+    lead_origin: str = ""
     counts: dict[str, int] = field(default_factory=dict)
     new_counts: dict[str, int] = field(default_factory=dict)
     personal: ReportPart | None = None
@@ -236,27 +276,46 @@ def _clean(value) -> str:
     return " ".join(str(value).split()) if value else ""
 
 
-def _item_from_score(score: RelevanceScore, category: str, today: str) -> ReportItem:
-    flat = briefing._showcase_item(score, today)
+def _item_from_score(
+    score: RelevanceScore,
+    category: str,
+    today: str,
+    cluster_id: str | None = None,
+) -> ReportItem:
+    flat = briefing._showcase_item(score, today, None, cluster_id)
     meta = score.content.metadata or {}
     return ReportItem(
         type=flat["type"],
         category=category,
         title=flat["title"],
         url=flat["url"],
-        match_percent=flat["match_percent"],
         headline=flat["headline"],
         reason=flat["reason"],
         source=_source_line(flat["type"], meta),
         deadline_date=flat["deadline_date"],
         is_new=flat["is_entrant"],
         cluster_label=flat["cluster_label"],
+        position=flat["position"],
+        verdict=flat["verdict"],
+        lead=flat["lead"],
+        caveat=flat["caveat"],
+        bridge_labels=flat["bridge_labels"],
+        edition=str(flat["edition"] or ""),
         deadlines=flat["deadlines"],
         rankings=flat["rankings"],
         rank_badges=flat["rank_badges"],
         license=flat["license"],
         source_name=flat["source_name"],
     )
+
+
+def _theme_item_builder(category: str, today: str):
+    """A ``(score, cluster_id) -> ReportItem`` builder bound to one category."""
+
+    def build(score: RelevanceScore, cluster_id: str) -> ReportItem:
+        return _item_from_score(score, category, today, cluster_id)
+
+    return build
 
 
 def _compile_part(
@@ -269,6 +328,7 @@ def _compile_part(
     kind: str,
     cap: int,
     reader=None,
+    clusters: list | None = None,
 ) -> ReportPart:
     """One part's slate per category, plus how much of it is new.
 
@@ -278,15 +338,37 @@ def _compile_part(
     counts: dict[str, int] = {}
     items: dict[str, list[ReportItem]] = {}
     slate_sizes: dict[str, int] = {}
+    sections: dict[str, ThemeSection] = {}
     for category in categories:
+        content_type = briefing.CATEGORY_TYPES[category]
         scores = briefing.report_scores(
-            target_filter, briefing.CATEGORY_TYPES[category], today, reader=reader
+            target_filter, content_type, today, reader=reader
         )
         counts[category] = len(briefing.report_new_scores(scores, today))
         slate_sizes[category] = len(scores)
         items[category] = [
             _item_from_score(s, category, today) for s in scores[:cap]
         ]
+        for cluster in clusters or []:
+            section = sections.get(cluster.id)
+            if section is None:
+                section = ThemeSection(
+                    cluster_id=cluster.id, label=section_label(cluster, label)
+                )
+                sections[cluster.id] = section
+            split = split_by_theme(
+                scores,
+                [cluster],
+                today,
+                content_type=content_type,
+                build=_theme_item_builder(category, today),
+            )
+            entrants, standing = split.get(cluster.id, ([], []))
+            if entrants:
+                section.entrants[category] = entrants
+            if standing:
+                section.standing[category] = standing
+    themes = [section for section in sections.values() if section.is_alive]
     return ReportPart(
         key=key,
         label=label,
@@ -295,6 +377,8 @@ def _compile_part(
         counts=counts,
         items=items,
         slate_sizes=slate_sizes,
+        themes=themes,
+        quiet=quiet_lines(themes),
     )
 
 
@@ -309,6 +393,7 @@ def _compile(
     allow: tuple[str, ...] | None = None,
     personal_label: str = PERSONAL_LABEL,
     reader=None,
+    interests: dict | None = None,
 ) -> ReportData:
     """The shared gather, over whatever target the two public compilers name.
 
@@ -320,6 +405,7 @@ def _compile(
     """
     categories = briefing._watched_categories(watch, allow=allow)
     today = timezone.now().date().isoformat()
+    clusters = declared_clusters(interests)
 
     # Feed-level counts, kept for the cover's "what Mylo found" framing: these say
     # what the reader's pages currently hold, which is a different (and still true)
@@ -344,6 +430,7 @@ def _compile(
         kind="personal",
         cap=TOP_PERSONAL,
         reader=reader,
+        clusters=clusters,
     )
     project_parts = [
         _compile_part(
@@ -360,6 +447,8 @@ def _compile(
     ]
 
     daily = DailyBriefing.latest_for(**briefing_filter)
+    narrative = getattr(daily, "narrative", None) or {}
+    apply_narrative(personal, narrative)
 
     return ReportData(
         username=key,
@@ -368,6 +457,8 @@ def _compile(
         briefing_markdown=getattr(daily, "body", "") or "",
         briefing_origin=getattr(daily, "origin", "") or "",
         categories=categories,
+        lead=narrative.get("lead", ""),
+        lead_origin=narrative.get("lead_origin", ""),
         counts=counts,
         new_counts=new_counts,
         personal=personal,
@@ -386,6 +477,7 @@ def compile_report_for_user(user) -> ReportData:
         projects=briefing.report_projects_for_user(user),
         # One reader, so the PDF honours their manual ignores.
         reader=user,
+        interests=getattr(getattr(user, "profile", None), "interests", None),
     )
 
 
@@ -409,4 +501,5 @@ def compile_report_for_lab(lab) -> ReportData:
         projects=briefing.report_projects_for_lab(lab),
         allow=briefing.LAB_BRIEFING_CATEGORIES,
         personal_label=lab.name,
+        interests=target_for_lab(lab).interests,
     )
