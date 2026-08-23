@@ -1,0 +1,87 @@
+# The machine-readable half of the record. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-08-019
+slug: per-cluster-admission-regression
+title: "Per-cluster admission: harness regression check"
+status: complete
+date_started: 2026-08-23
+date_completed: 2026-08-23
+authors: [brendondgr]
+
+purpose: >
+  docs/skills/global.md requires a fresh evaluation run for any change to
+  pipeline.py's ranking path. The per-cluster redesign replaced the single
+  absolute cosine threshold in fuse_clusters_pool with a two-part gate -- the
+  absolute floor OR a candidate reaching CLUSTER_ADMIT_FRAC of its own theme's
+  best score, with CLUSTER_ADMIT_HARD_FLOOR beneath both. Two harness arms call
+  that function with a real match_threshold, so this checks whether anything
+  already on record moved. It does NOT measure whether the gate improves the
+  product: the harness has no reader with several competing research themes,
+  which is the entire situation the gate exists for.
+
+hypothesis: >
+  The relative floor admits strictly more candidates, so the surfaced set can
+  only grow. But both arms already surface at the surface_limit=250 backstop, so
+  the extra admissions should be truncated before scoring and the metrics should
+  be unchanged. OUTCOME: confirmed. Diagnostics are byte-identical for both arms
+  (mean_surfaced 250.0, mean_pool 574.47, clusters_cleared {1: 6692, 2: 790,
+  3: 18}), and clustered_profile's metrics are identical to six decimals against
+  its newest same-hash baseline. UNPREDICTED: slate_profile shows +0.0208
+  nDCG@10 against its only same-hash baseline, but that baseline is two commits
+  stale and clustered_profile shows the identical shift at the same older commit
+  and zero at the newer one -- so the shift is not this change. Most likely the
+  ir_measures tie-ordering behaviour, given identical diagnostics.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 7ff764a
+  branch: main
+  entrypoint: "uv run --project eval eval/run.py --config eval/configs/slateexp_slate_profile_prod_coherent.toml eval/configs/slateexp_clustered_profile_prod_coherent.toml --collection sci-2026-train"
+  dirty: true  # frontend + docs edits were uncommitted; the ranking path was not (see ISSUES.md)
+config:
+  path: eval/configs/slateexp_clustered_profile_prod_coherent.toml
+  hash: "99806ddee51b8d84 (clustered_profile), 2a30747da8a90e42 (slate_profile)"
+data:
+  name: longeval-sci-2026/snapshot-1
+  version: snapshot-1
+  split: train
+  n_examples: 30 # synthetic multi-cluster profiles over the 869,902-document corpus
+  qrels: dctr-union-profiles
+  hash: null
+  card: null
+seeds: [20260809]
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "host CPU only (no GPU on this machine); warm embedding cache at data/eval-cache/"
+  wall_clock_hours: 0.02
+  estimated_cost_usd: 0
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: nDCG@10
+  values:
+    clustered_profile_before_nDCG@10: 0.17517087497920084
+    clustered_profile_after_nDCG@10: 0.17517087497920084
+    clustered_profile_delta_nDCG@10: 0.0
+    clustered_profile_before_R@100: 0.25211532128240066
+    clustered_profile_after_R@100: 0.25211532128240066
+    slate_profile_after_nDCG@10: 0.17517087497920084
+    slate_profile_after_R@100: 0.25211532128240066
+    surfaced_per_profile_before: 250.0
+    surfaced_per_profile_after: 250.0
+baselines_compared: ["clustered_profile @ f0dc7e5", "slate_profile @ e356280"]
+statistical_test: null # no difference to bound; see RESULTS.md threats 2
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-004, EXP-2026-08-005, EXP-2026-08-018]

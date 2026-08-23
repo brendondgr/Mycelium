@@ -27,10 +27,11 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-016` | 2026-08-22 | Same four arms, a second research area: knowledge graphs | complete | — | C-021 | [folder](experiments/EXP-2026-08-016-knowledge-graphs-title-matrix/RESULTS.md) |
 | `EXP-2026-08-017` | 2026-08-22 | Three channels + cross-encoder against the dense pool + cross-encoder | complete | — | C-021 | [folder](experiments/EXP-2026-08-017-splade-vs-dense-reranked/RESULTS.md) |
 | `EXP-2026-08-018` | 2026-08-22 | Shipping the cross-encoder rerank: flag-off invariance and on/off cost | complete | — | C-023 | [folder](experiments/EXP-2026-08-018-rerank-ship-verification/RESULTS.md) |
+| `EXP-2026-08-019` | 2026-08-23 | Per-cluster admission: harness regression check | complete | — | — | [folder](experiments/EXP-2026-08-019-per-cluster-admission-regression/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 18 |
-| **total** | **18** |
+| complete | 19 |
+| **total** | **19** |

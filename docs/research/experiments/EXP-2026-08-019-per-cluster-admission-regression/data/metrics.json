@@ -1,0 +1,150 @@
+{
+  "arms": {
+    "clustered_profile": {
+      "after": {
+        "diagnostics": {
+          "clusters_cleared_per_candidate": {
+            "1": 6692,
+            "2": 790,
+            "3": 18
+          },
+          "surfacing": {
+            "max_surfaced": 250.0,
+            "mean_pool": 574.47,
+            "mean_surfaced": 250.0,
+            "median_surfaced": 250.0
+          }
+        },
+        "metrics": {
+          "AP": 0.08412060400894307,
+          "P@10": 0.21333333333333335,
+          "R@100": 0.25211532128240066,
+          "RR": 0.5131610811216074,
+          "cluster_coverage@10": 0.5333333333333333,
+          "cluster_coverage@100": 0.9111111111111111,
+          "cluster_coverage@30": 0.7444444444444444,
+          "cluster_gini@10": 0.39814814814814814,
+          "cluster_gini@100": 0.29591302814168163,
+          "cluster_gini@30": 0.3628018278018278,
+          "min_cluster_recall@10": 0.009487104886041054,
+          "min_cluster_recall@100": 0.1199550335039839,
+          "min_cluster_recall@30": 0.03848546534403856,
+          "nDCG@10": 0.17517087497920084,
+          "nDCG@100": 0.2257153912221232
+        },
+        "run_file": "longeval-sci-2026_snapshot-1_train__clustered_profile__full__dctr-union-profiles__99806ddee51b8d84__7ff764a.json"
+      },
+      "after_commit": "7ff764a",
+      "before": {
+        "diagnostics": {
+          "clusters_cleared_per_candidate": {
+            "1": 6692,
+            "2": 790,
+            "3": 18
+          },
+          "surfacing": {
+            "max_surfaced": 250.0,
+            "mean_pool": 574.47,
+            "mean_surfaced": 250.0,
+            "median_surfaced": 250.0
+          }
+        },
+        "metrics": {
+          "AP": 0.08412060400894307,
+          "P@10": 0.21333333333333335,
+          "R@100": 0.25211532128240066,
+          "RR": 0.5131610811216074,
+          "cluster_coverage@10": 0.5333333333333333,
+          "cluster_coverage@100": 0.9111111111111111,
+          "cluster_coverage@30": 0.7444444444444444,
+          "cluster_gini@10": 0.39814814814814814,
+          "cluster_gini@100": 0.29591302814168163,
+          "cluster_gini@30": 0.3628018278018278,
+          "min_cluster_recall@10": 0.009487104886041054,
+          "min_cluster_recall@100": 0.1199550335039839,
+          "min_cluster_recall@30": 0.03848546534403856,
+          "nDCG@10": 0.17517087497920084,
+          "nDCG@100": 0.2257153912221232
+        },
+        "run_file": "longeval-sci-2026_snapshot-1_train__clustered_profile__full__dctr-union-profiles__99806ddee51b8d84__f0dc7e5.json"
+      },
+      "before_commit": "f0dc7e5",
+      "config_hash": "99806ddee51b8d84",
+      "diagnostics_identical": true,
+      "metrics_identical": true
+    },
+    "slate_profile": {
+      "after": {
+        "diagnostics": {
+          "clusters_cleared_per_candidate": {
+            "1": 6692,
+            "2": 790,
+            "3": 18
+          },
+          "surfacing": {
+            "max_surfaced": 250.0,
+            "mean_pool": 574.47,
+            "mean_surfaced": 250.0,
+            "median_surfaced": 250.0
+          }
+        },
+        "metrics": {
+          "AP": 0.08412060400894307,
+          "P@10": 0.21333333333333335,
+          "R@100": 0.25211532128240066,
+          "RR": 0.5131610811216074,
+          "cluster_coverage@10": 0.5333333333333333,
+          "cluster_coverage@100": 0.9111111111111111,
+          "cluster_coverage@30": 0.7444444444444444,
+          "cluster_gini@10": 0.39814814814814814,
+          "cluster_gini@100": 0.29591302814168163,
+          "cluster_gini@30": 0.3628018278018278,
+          "min_cluster_recall@10": 0.009487104886041054,
+          "min_cluster_recall@100": 0.1199550335039839,
+          "min_cluster_recall@30": 0.03848546534403856,
+          "nDCG@10": 0.17517087497920084,
+          "nDCG@100": 0.2257153912221232
+        },
+        "run_file": "longeval-sci-2026_snapshot-1_train__slate_profile__full__dctr-union-profiles__2a30747da8a90e42__7ff764a.json"
+      },
+      "after_commit": "7ff764a",
+      "before": {
+        "diagnostics": {
+          "clusters_cleared_per_candidate": {
+            "1": 6692,
+            "2": 790,
+            "3": 18
+          },
+          "surfacing": {
+            "max_surfaced": 250.0,
+            "mean_pool": 574.47,
+            "mean_surfaced": 250.0,
+            "median_surfaced": 250.0
+          }
+        },
+        "metrics": {
+          "AP": 0.07999054884569065,
+          "P@10": 0.21333333333333335,
+          "R@100": 0.25211532128240066,
+          "RR": 0.3853833033438297,
+          "cluster_coverage@10": 0.5333333333333333,
+          "cluster_coverage@100": 0.9111111111111111,
+          "cluster_coverage@30": 0.7444444444444444,
+          "cluster_gini@10": 0.39814814814814814,
+          "cluster_gini@100": 0.29591302814168163,
+          "cluster_gini@30": 0.3628018278018278,
+          "min_cluster_recall@10": 0.009487104886041054,
+          "min_cluster_recall@100": 0.1199550335039839,
+          "min_cluster_recall@30": 0.03848546534403856,
+          "nDCG@10": 0.1543619925453572,
+          "nDCG@100": 0.21766815068794088
+        },
+        "run_file": "longeval-sci-2026_snapshot-1_train__slate_profile__full__dctr-union-profiles__2a30747da8a90e42__e356280.json"
+      },
+      "before_commit": "e356280",
+      "config_hash": "2a30747da8a90e42",
+      "diagnostics_identical": true,
+      "metrics_identical": false
+    }
+  }
+}

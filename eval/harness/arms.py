@@ -442,7 +442,12 @@ def clustered_profile(
         ranking[profile.id] = _profile_ranking(
             pairs, order_is_result=spread is not None
         )
-        cleared.extend(len(extra["per_cluster"]) for _item, _score, extra in rows)
+        # ``per_cluster`` is absent on a lone implicit cluster (the pipeline stops
+        # writing attribution there, so a v1 profile gets no phantom badge), which
+        # a single-cluster eval profile would otherwise hit as a KeyError.
+        cleared.extend(
+            len(extra.get("per_cluster") or {}) for _item, _score, extra in rows
+        )
         sizes.append(len(pairs))
         pools.append(pool_size)
         if i % 10 == 0:
