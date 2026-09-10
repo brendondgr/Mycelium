@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mylo rig — animation harness</title>
+<style>
+  :root {
+    --cream: #F6F0DB; --cream2: #EDE5C7; --tan: #DCCBA4;
+    --moss: #7A9A57; --forest: #4E6B3C; --sage: #ABC38A;
+    --bark: #8B5E34; --ink: #6E5530;
+    --bg: var(--cream); --panel: #fff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: grid; grid-template-columns: minmax(0,1fr) 300px; min-height: 100vh;
+  }
+  body.dark { --bg: #1C2419; --panel: #26301F; color: var(--cream); }
+  main { display: grid; place-items: center; padding: 32px; position: relative; overflow: hidden; }
+  #stage { display: grid; place-items: center; }
+  #stage svg { width: var(--size, 320px); height: auto; overflow: visible; }
+  #track { position: absolute; inset: auto 0 12%; height: 2px; background: var(--tan); opacity: .5; display: none; }
+  main.travelling #track { display: block; }
+  main.travelling #stage { animation: cross 7s linear infinite alternate; }
+  @keyframes cross { from { transform: translateX(-34vw); } to { transform: translateX(34vw); } }
+
+  aside { background: var(--panel); border-left: 1px solid var(--tan); padding: 20px; overflow-y: auto; }
+  body.dark aside { border-color: #3A4A31; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 18px; font-size: 13px; opacity: .75; }
+  h2 { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; opacity: .6; margin: 20px 0 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  button {
+    font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 999px;
+    border: 1.5px solid var(--tan); background: transparent; color: inherit; cursor: pointer;
+  }
+  button:hover { border-color: var(--moss); }
+  button[aria-pressed="true"] { background: var(--moss); border-color: var(--forest); color: #fff; }
+  label.range { display: block; font-size: 13px; margin-top: 6px; }
+  input[type=range] { width: 100%; accent-color: var(--moss); }
+  code { background: rgba(122,154,87,.16); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
+  #snippet { font-size: 12px; margin-top: 8px; word-break: break-all; opacity: .8; }
+</style>
+</head>
+<body>
+<main id="main">
+  <div id="track"></div>
+  <div id="stage">loading mylo.svg…</div>
+</main>
+
+<aside>
+  <h1>Mylo rig</h1>
+  <p class="sub">Every control below just sets an attribute on the root <code>&lt;svg&gt;</code>.</p>
+
+  <h2>data-anim</h2>
+  <div class="row" data-attr="data-anim">
+    <button value="idle">idle</button><button value="walk">walk</button>
+    <button value="wave">wave</button><button value="think">think</button>
+    <button value="search">search</button><button value="write">write</button>
+    <button value="cheer">cheer</button><button value="nod">nod</button>
+    <button value="shake">shake</button><button value="alert">alert</button>
+    <button value="none">none</button>
+  </div>
+
+  <h2>data-expr</h2>
+  <div class="row" data-attr="data-expr">
+    <button value="happy">happy</button><button value="curious">curious</button>
+    <button value="thinking">thinking</button><button value="excited">excited</button>
+    <button value="determined">determined</button>
+  </div>
+
+  <h2>data-prop</h2>
+  <div class="row" data-attr="data-prop">
+    <button value="none">none</button><button value="magnifier">magnifier</button>
+    <button value="notebook">notebook</button>
+  </div>
+
+  <h2>data-facing</h2>
+  <div class="row" data-attr="data-facing">
+    <button value="front">front</button><button value="left">left</button><button value="right">right</button>
+  </div>
+
+  <h2>Stage</h2>
+  <div class="row">
+    <button id="travel" aria-pressed="false">travel across</button>
+    <button id="theme" aria-pressed="false">dark ground</button>
+  </div>
+  <label class="range">size <input id="size" type="range" min="80" max="520" value="320"></label>
+  <label class="range">speed <input id="speed" type="range" min="0.3" max="2.5" step="0.1" value="1"></label>
+
+  <p id="snippet"></p>
+</aside>
+
+<script>
+const stage = document.getElementById('stage');
+let svg = null;
+
+fetch('mylo.svg')
+  .then(r => r.text())
+  .then(t => {
+    stage.innerHTML = t;
+    svg = stage.querySelector('svg');
+    sync();
+  })
+  .catch(() => {
+    stage.textContent = 'Could not load mylo.svg — serve this folder over http (see README).';
+  });
+
+function sync() {
+  if (!svg) return;
+  document.querySelectorAll('.row[data-attr] button').forEach(b => {
+    const attr = b.parentElement.dataset.attr;
+    b.setAttribute('aria-pressed', String(svg.getAttribute(attr) === b.value));
+  });
+  document.getElementById('snippet').textContent =
+    `<svg class="mylo" data-anim="${svg.getAttribute('data-anim')}" data-expr="${svg.getAttribute('data-expr')}" data-prop="${svg.getAttribute('data-prop')}" data-facing="${svg.getAttribute('data-facing')}">`;
+}
+
+document.querySelectorAll('.row[data-attr]').forEach(row => {
+  row.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b || !svg) return;
+    svg.setAttribute(row.dataset.attr, b.value);
+    // restart CSS animations so one-shot-looking states re-trigger cleanly
+    svg.style.display = 'none'; void svg.offsetHeight; svg.style.display = '';
+    sync();
+  });
+});
+
+document.getElementById('size').addEventListener('input', e => {
+  stage.style.setProperty('--size', e.target.value + 'px');
+});
+document.getElementById('speed').addEventListener('input', e => {
+  if (svg) svg.style.setProperty('--m-speed', e.target.value);
+});
+document.getElementById('travel').addEventListener('click', e => {
+  const on = document.getElementById('main').classList.toggle('travelling');
+  e.target.setAttribute('aria-pressed', String(on));
+});
+document.getElementById('theme').addEventListener('click', e => {
+  const on = document.body.classList.toggle('dark');
+  e.target.setAttribute('aria-pressed', String(on));
+});
+</script>
+</body>
+</html>

@@ -30,6 +30,20 @@
         "4322"
       ],
       "port": 4322
+    },
+    {
+      "name": "mylo-rig",
+      "cwd": "web/art/Mylo/svg",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4399",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 4399,
+      "url": "http://127.0.0.1:4399"
     }
   ]
 }
