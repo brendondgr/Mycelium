@@ -10,6 +10,7 @@ import {
   changeEmail,
   changePassword,
   getAccount,
+  requestPasswordChange,
   resendVerificationCode,
   updateAccount,
   verifyEmailCode,
@@ -81,7 +82,7 @@ export function AccountSection() {
         />
         <div className="flex flex-col gap-[22px]">
           <EmailCard account={account} onChanged={setAccount} />
-          <PasswordCard />
+          <PasswordCard email={account?.email ?? ""} />
         </div>
       </div>
 
@@ -465,13 +466,32 @@ function EmailCard({
 
 // -- password ------------------------------------------------------------------
 
-function PasswordCard() {
+function PasswordCard({ email }: { email: string }) {
   const [current, setCurrent] = React.useState("");
+  const [code, setCode] = React.useState("");
   const [next, setNext] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
+  const [stage, setStage] = React.useState<"start" | "confirm" | "done">("start");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [done, setDone] = React.useState(false);
+
+  async function sendCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await requestPasswordChange(current);
+      setStage("confirm");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not send a confirmation code.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -482,11 +502,12 @@ function PasswordCard() {
     }
     setBusy(true);
     try {
-      await changePassword(current, next, confirm);
+      await changePassword(current, code, next, confirm);
       setCurrent("");
+      setCode("");
       setNext("");
       setConfirm("");
-      setDone(true);
+      setStage("done");
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not change your password.",
@@ -502,78 +523,127 @@ function PasswordCard() {
         Password
       </h2>
       <p className="mb-4 text-sm text-[var(--text-secondary)]">
-        Changing it signs out every other device. This one stays signed in.
+        Changing it needs a code from your inbox as well as your current
+        password. Every other device is signed out; this one stays.
       </p>
 
-      <form className="space-y-3" onSubmit={save} noValidate>
-        {error ? (
-          <p
-            className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
-            role="alert"
-          >
-            {error}
-          </p>
-        ) : null}
-        {done ? (
+      {error ? (
+        <p
+          className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      {stage === "done" ? (
+        <div className="space-y-3">
           <p
             className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm text-[var(--text-primary)]"
             role="status"
           >
             Your password has been changed.
           </p>
-        ) : null}
-
-        <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="current-password">
-            Current password
-          </label>
-          <input
-            id="current-password"
-            type="password"
-            autoComplete="current-password"
-            className={fieldClass}
-            value={current}
-            disabled={busy}
-            onChange={(event) => setCurrent(event.target.value)}
-          />
+          <button
+            type="button"
+            className="text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => setStage("start")}
+          >
+            Change it again
+          </button>
         </div>
-        <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="next-password">
-            New password
-          </label>
-          <input
-            id="next-password"
-            type="password"
-            autoComplete="new-password"
-            className={fieldClass}
-            value={next}
-            disabled={busy}
-            onChange={(event) => setNext(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="confirm-new-password">
-            Confirm new password
-          </label>
-          <input
-            id="confirm-new-password"
-            type="password"
-            autoComplete="new-password"
-            className={fieldClass}
-            value={confirm}
-            disabled={busy}
-            onChange={(event) => setConfirm(event.target.value)}
-          />
-        </div>
-
-        <Button
-          className="rounded-full"
-          type="submit"
-          disabled={busy || !current || !next}
-        >
-          {busy ? "Saving…" : "Change password"}
-        </Button>
-      </form>
+      ) : stage === "start" ? (
+        <form className="space-y-3" onSubmit={sendCode} noValidate>
+          <div className="space-y-1.5">
+            <label className={labelClass} htmlFor="current-password">
+              Current password
+            </label>
+            <input
+              id="current-password"
+              type="password"
+              autoComplete="current-password"
+              className={fieldClass}
+              value={current}
+              disabled={busy}
+              onChange={(event) => setCurrent(event.target.value)}
+            />
+          </div>
+          <Button className="rounded-full" type="submit" disabled={busy || !current}>
+            {busy ? "Sending…" : "Email me a code"}
+          </Button>
+          <p className="text-xs text-[var(--text-muted)]">
+            We will send a confirmation code to {email || "your address"}.
+          </p>
+        </form>
+      ) : (
+        <form className="space-y-3" onSubmit={save} noValidate>
+          <p className="text-sm text-[var(--text-secondary)]">
+            We sent a code to <strong>{email}</strong>. Enter it with your new
+            password.
+          </p>
+          <div className="space-y-1.5">
+            <label className={labelClass} htmlFor="password-code">
+              Confirmation code
+            </label>
+            <input
+              id="password-code"
+              className={fieldClass}
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="123456"
+              value={code}
+              disabled={busy}
+              onChange={(event) =>
+                setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className={labelClass} htmlFor="next-password">
+              New password
+            </label>
+            <input
+              id="next-password"
+              type="password"
+              autoComplete="new-password"
+              className={fieldClass}
+              value={next}
+              disabled={busy}
+              onChange={(event) => setNext(event.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className={labelClass} htmlFor="confirm-new-password">
+              Confirm new password
+            </label>
+            <input
+              id="confirm-new-password"
+              type="password"
+              autoComplete="new-password"
+              className={fieldClass}
+              value={confirm}
+              disabled={busy}
+              onChange={(event) => setConfirm(event.target.value)}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              className="rounded-full"
+              type="submit"
+              disabled={busy || code.length < 6 || !next}
+            >
+              {busy ? "Saving…" : "Change password"}
+            </Button>
+            <button
+              type="button"
+              className="text-sm font-medium text-[var(--text-secondary)] hover:underline"
+              onClick={() => setStage("start")}
+            >
+              Start over
+            </button>
+          </div>
+        </form>
+      )}
     </Card>
   );
 }

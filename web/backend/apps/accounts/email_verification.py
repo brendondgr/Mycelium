@@ -1,15 +1,20 @@
 """Proving that a person controls an email address.
 
-Two flows need that proof and both run through here: confirming the address a
-new account signed up with, and confirming an address a signed-in user wants to
-move to. Both are a six-digit code mailed to the address in question, because
-the person is already in front of the app — a link would only send them to a
-second tab to come back from.
+Three flows need that proof and all run through here: confirming the address a
+new account signed up with, confirming an address a signed-in user wants to move
+to, and authorising a password change from inside the app. Each is a six-digit
+code mailed to the address in question, because the person is already in front
+of the app — a link would only send them to a second tab to come back from.
 
 What verification *means* here is activation. Mycelium mails invitations to
 people who have never heard of it, so an account that has not answered its own
 mailbox is not allowed to stand up an organization and start inviting from it;
 :mod:`apps.accounts.permissions` reads the flag this module sets.
+
+Codes are scoped to a purpose and looked up by it, which is a security property
+rather than bookkeeping: a code mailed to confirm an address cannot be redirected
+into changing a password, so no flow can be tricked into spending another's
+proof.
 
 Three bounds keep a six-digit secret honest:
 
@@ -54,6 +59,17 @@ RESEND_COOLDOWN = timedelta(seconds=60)
 EXPIRES_IN = "30 minutes"
 
 _HMAC_SALT = "apps.accounts.email_verification"
+
+#: Which template carries the code, per purpose.
+#:
+#: A password change gets its own wording rather than the generic code email. A
+#: bare "here is a code" arriving while someone is being socially engineered is
+#: indistinguishable from every phishing message ever sent; the mail should say
+#: what the code will do so an unexpected one reads as an alarm.
+_TEMPLATES = {
+    EmailVerification.Purpose.PASSWORD: "password_change_code",
+}
+_DEFAULT_TEMPLATE = "verification_code"
 
 
 class VerificationError(Exception):
@@ -130,7 +146,7 @@ def issue(
     verification.code_hash = _hash(verification.pk, code)
     verification.save()
 
-    mailed = _deliver(user, address, code)
+    mailed = _deliver(user, address, code, purpose)
     return Issued(verification=verification, mailed=mailed)
 
 
@@ -220,7 +236,7 @@ def _hash(row_id, code: str) -> str:
     return salted_hmac(f"{_HMAC_SALT}:{row_id}", code).hexdigest()
 
 
-def _deliver(user: User, address: str, code: str) -> bool:
+def _deliver(user: User, address: str, code: str, purpose: str) -> bool:
     """Mail the code on commit; report whether the send was even attempted.
 
     Failures are swallowed and logged rather than raised. A verification email
@@ -228,6 +244,7 @@ def _deliver(user: User, address: str, code: str) -> bool:
     account exists, and the person can ask for another code from the screen they
     are already looking at.
     """
+    template = _TEMPLATES.get(purpose, _DEFAULT_TEMPLATE)
     context = {
         "recipient_name": (user.first_name or "").strip(),
         "code": code,
@@ -237,7 +254,7 @@ def _deliver(user: User, address: str, code: str) -> bool:
     def _send() -> None:
         try:
             outcome = send_email(
-                "verification_code",
+                template,
                 to=address,
                 context=context,
                 fail_silently=True,

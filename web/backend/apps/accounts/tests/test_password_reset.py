@@ -13,12 +13,21 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from django.test import Client, override_settings
 
-from apps.accounts import password_reset
+from apps.accounts import email_verification, password_reset
+from apps.accounts.models import EmailVerification
 from apps.accounts.views import RESET_REQUESTED_MESSAGE
 
 LOCMEM = "django.core.mail.backends.locmem.EmailBackend"
 PASSWORD = "pw-Str0ng-1234"
 NEW_PASSWORD = "n3w-Str0ng-9876"
+
+
+@pytest.fixture(autouse=True)
+def _mail_sends_immediately(monkeypatch):
+    """Run ``on_commit`` hooks inline; see ``test_email_verification`` for why."""
+    monkeypatch.setattr(
+        "django.db.transaction.on_commit", lambda func, *args, **kwargs: func()
+    )
 
 
 @pytest.fixture
@@ -306,57 +315,166 @@ def test_the_emailed_link_is_absolute_and_not_loopback(user: User) -> None:
     assert "localhost" not in url and "127.0.0.1" not in url
 
 
-# -- changing a password you still know ------------------------------------------
+# -- changing a password from inside the app -------------------------------------
+#
+# Two steps, both required: the current password buys a code mailed to the
+# account's own address, and only that code plus the current password sets a new
+# one. A signed-in browser on its own must never be enough.
 
 
-def test_password_change_needs_the_current_password(user: User) -> None:
+@pytest.fixture
+def signed_in(user: User) -> Client:
     client = Client(enforce_csrf_checks=True)
     client.force_login(user)
+    return client
 
-    response = _post(
+
+def _request_change(client: Client, password: str = PASSWORD):
+    return _post(
+        client, "/api/auth/password/change/request/", {"current_password": password}
+    )
+
+
+def _confirm_change(client: Client, code: str, password: str = PASSWORD):
+    return _post(
         client,
         "/api/auth/password/change/",
         {
-            "current_password": "wrong",
+            "current_password": password,
+            "code": code,
+            "new_password": NEW_PASSWORD,
+            "new_password_confirm": NEW_PASSWORD,
+        },
+    )
+
+
+def _code_from_outbox() -> str:
+    body = mail.outbox[-1].body
+    digits = [word for word in body.split() if word.isdigit() and len(word) == 6]
+    assert digits, f"no code in body: {body!r}"
+    return digits[0]
+
+
+@override_settings(EMAIL_BACKEND=LOCMEM)
+def test_a_signed_in_session_alone_cannot_change_the_password(
+    user: User, signed_in: Client
+) -> None:
+    """The whole point: an unlocked browser is not authority.
+
+    Someone who walks up to a signed-in machine — and even someone who also
+    knows the current password, which is shoulder-surfable — must still be
+    stopped by something that is not in the browser.
+    """
+    response = _post(
+        signed_in,
+        "/api/auth/password/change/",
+        {
+            "current_password": PASSWORD,
             "new_password": NEW_PASSWORD,
             "new_password_confirm": NEW_PASSWORD,
         },
     )
 
     assert response.status_code == 400
+    assert "code" in response.json()
     user.refresh_from_db()
     assert user.check_password(PASSWORD)
 
 
-def test_password_change_keeps_the_actor_signed_in(user: User) -> None:
-    client = Client(enforce_csrf_checks=True)
-    client.force_login(user)
+@override_settings(EMAIL_BACKEND=LOCMEM)
+def test_the_emailed_code_completes_the_change(
+    user: User, signed_in: Client
+) -> None:
+    mail.outbox.clear()
+    assert _request_change(signed_in).status_code == 202
+    assert mail.outbox[-1].to == [user.email]
 
-    response = _post(
-        client,
-        "/api/auth/password/change/",
-        {
-            "current_password": PASSWORD,
-            "new_password": NEW_PASSWORD,
-            "new_password_confirm": NEW_PASSWORD,
-        },
-    )
+    response = _confirm_change(signed_in, _code_from_outbox())
 
     assert response.status_code == 200
     user.refresh_from_db()
     assert user.check_password(NEW_PASSWORD)
     # The session was re-stamped, so this browser is still signed in.
-    assert client.get("/api/auth/me/").status_code == 200
+    assert signed_in.get("/api/auth/me/").status_code == 200
 
 
-def test_password_change_requires_authentication(user: User) -> None:
-    response = _post(
-        Client(enforce_csrf_checks=True),
-        "/api/auth/password/change/",
-        {
-            "current_password": PASSWORD,
-            "new_password": NEW_PASSWORD,
-            "new_password_confirm": NEW_PASSWORD,
-        },
+@override_settings(EMAIL_BACKEND=LOCMEM)
+def test_no_code_is_mailed_without_the_current_password(
+    user: User, signed_in: Client
+) -> None:
+    """A borrowed browser must not be usable to spam the owner's inbox."""
+    mail.outbox.clear()
+
+    response = _request_change(signed_in, "wrong")
+
+    assert response.status_code == 400
+    assert mail.outbox == []
+
+
+@override_settings(EMAIL_BACKEND=LOCMEM)
+def test_a_wrong_code_leaves_the_password_alone(
+    user: User, signed_in: Client
+) -> None:
+    mail.outbox.clear()
+    _request_change(signed_in)
+    real = _code_from_outbox()
+    wrong = "000000" if real != "000000" else "111111"
+
+    response = _confirm_change(signed_in, wrong)
+
+    assert response.status_code == 400
+    user.refresh_from_db()
+    assert user.check_password(PASSWORD)
+
+
+@override_settings(EMAIL_BACKEND=LOCMEM)
+def test_the_code_alone_is_not_enough(user: User, signed_in: Client) -> None:
+    """Holding the mailbox does not excuse knowing the password."""
+    mail.outbox.clear()
+    _request_change(signed_in)
+
+    response = _confirm_change(signed_in, _code_from_outbox(), password="wrong")
+
+    assert response.status_code == 400
+    user.refresh_from_db()
+    assert user.check_password(PASSWORD)
+
+
+@override_settings(EMAIL_BACKEND=LOCMEM)
+def test_a_verification_code_cannot_be_spent_on_a_password(
+    user: User, signed_in: Client
+) -> None:
+    """Codes are scoped to a purpose, and the scope is enforced, not decorative."""
+    mail.outbox.clear()
+    email_verification.issue(user, user.email)  # a sign-up confirmation code
+
+    response = _confirm_change(signed_in, _code_from_outbox())
+
+    assert response.status_code == 400
+    user.refresh_from_db()
+    assert user.check_password(PASSWORD)
+
+
+@override_settings(EMAIL_BACKEND=LOCMEM)
+def test_a_password_code_does_not_settle_a_pending_email_change(
+    user: User, signed_in: Client
+) -> None:
+    """The reverse direction: one flow's proof must not leak into another's."""
+    email_verification.issue(
+        user, "moved@example.com", EmailVerification.Purpose.CHANGE
     )
-    assert response.status_code in (401, 403)
+    mail.outbox.clear()
+    _request_change(signed_in)
+
+    assert _confirm_change(signed_in, _code_from_outbox()).status_code == 200
+
+    user.refresh_from_db()
+    assert user.email == "ada@example.com"
+    assert email_verification.pending_email(user) == "moved@example.com"
+
+
+@override_settings(EMAIL_BACKEND=LOCMEM)
+def test_password_change_requires_authentication(user: User) -> None:
+    anonymous = Client(enforce_csrf_checks=True)
+    assert _request_change(anonymous).status_code in (401, 403)
+    assert _confirm_change(anonymous, "123456").status_code in (401, 403)

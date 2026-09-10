@@ -528,11 +528,15 @@ class AuditEvent(models.Model):
 class EmailVerification(models.Model):
     """An outstanding proof that someone controls an email address.
 
-    One row per issued code, covering both flows that need the proof: confirming
-    the address a new account signed up with, and confirming an address a
-    signed-in user is moving to. The pending address lives on the row rather than
-    on ``User``, so a change only touches the account once the new mailbox has
-    answered — a typo'd address can never lock anyone out of their own account.
+    One row per issued code, covering the three flows that need the proof:
+    confirming the address a new account signed up with, confirming an address a
+    signed-in user is moving to, and authorising a password change from inside
+    the app. The pending address lives on the row rather than on ``User``, so a
+    change only touches the account once the new mailbox has answered — a typo'd
+    address can never lock anyone out of their own account.
+
+    ``purpose`` is load-bearing, not a label: a code is looked up by purpose, so
+    one issued to confirm an address can never be spent to change a password.
 
     The code itself is never stored. A six-digit code has a million-wide space,
     which a plain digest surrenders instantly to an offline sweep, so what is
@@ -543,6 +547,7 @@ class EmailVerification(models.Model):
     class Purpose(models.TextChoices):
         SIGNUP = "signup", "Sign-up confirmation"
         CHANGE = "change", "Email change"
+        PASSWORD = "password", "Password change"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

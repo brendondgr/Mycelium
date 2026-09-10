@@ -175,11 +175,23 @@ the API key is send-only, so acceptance is visible here while delivery is only
 visible in the Resend dashboard. `manage.py send_test_email --to <addr>` exercises
 the whole path.
 
-Account security rides that transport. Two flows consume it: a six-digit
-verification code (`apps/accounts/email_verification.py`) proving control of an
-address, and a password reset link (`apps/accounts/password_reset.py`) signed by
-Django's own `default_token_generator` — keyed on the current password hash, so a
-link dies when it is used and `PASSWORD_RESET_TIMEOUT` bounds the rest.
+Account security rides that transport. Two mechanisms carry it: a six-digit code
+(`apps/accounts/email_verification.py`) proving control of an address, and a
+password reset link (`apps/accounts/password_reset.py`) signed by Django's own
+`default_token_generator` — keyed on the current password hash, so a link dies
+when it is used and `PASSWORD_RESET_TIMEOUT` bounds the rest. Codes are scoped to
+a purpose (sign-up, email change, password change) and looked up by it, which is
+a security property rather than bookkeeping: no flow can spend another's proof.
+
+**A signed-in session is not authority over the password.** Changing a password
+from the Account page needs the current password *and* a code mailed to the
+account's address, because the session and the password both live inside a
+browser someone can walk away from. That is not a new way in — anyone who can
+read the mailbox can already take the account through reset — and the code email
+doubles as the alarm when the first two factors have been borrowed. Asking for a
+reset, by contrast, changes nothing at all: `request_reset` only mails a link, so
+an unauthenticated endpoint can never be used to lock a stranger out by typing
+their address.
 
 **Verification is activation.** An account that has not answered a code sent to
 its own address may sign in and browse, but cannot create a lab or department,

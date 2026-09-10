@@ -283,9 +283,29 @@ export async function checkEmailAvailable(
   return Boolean(result.available);
 }
 
-/** Change the password of the signed-in account; this session stays signed in. */
+/**
+ * Step one of a password change: mail a confirmation code to the account's own
+ * address. Refused without the current password, so a borrowed browser cannot
+ * be used to fire codes at the owner's inbox.
+ */
+export async function requestPasswordChange(
+  currentPassword: string,
+): Promise<string> {
+  const body = await postAuth<{ detail: string }>(
+    ["password", "change", "request"],
+    { current_password: currentPassword },
+    "Could not send a confirmation code. Try again in a moment.",
+  );
+  return body.detail;
+}
+
+/**
+ * Step two: spend the emailed code on the new password. This session stays
+ * signed in; every other one dies with the old password hash.
+ */
 export async function changePassword(
   currentPassword: string,
+  code: string,
   newPassword: string,
   newPasswordConfirm: string,
 ): Promise<void> {
@@ -293,6 +313,7 @@ export async function changePassword(
     ["password", "change"],
     {
       current_password: currentPassword,
+      code,
       new_password: newPassword,
       new_password_confirm: newPasswordConfirm,
     },
