@@ -21,6 +21,12 @@ import { labLogoUrl } from "@/lib/portal/client";
 import { useEntitlements } from "@/lib/portal/hooks";
 import { FEATURE, type MyLab } from "@/lib/portal/types";
 
+/**
+ * Temporarily hides the "Suggested for you" entry from the sidebar. The section
+ * and its route are untouched — flip this back to `true` to bring the tab back.
+ */
+const SHOW_SUGGESTED = false;
+
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="mb-1.5 px-3.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
@@ -156,7 +162,7 @@ export function PortalSidebar() {
 
       <GroupLabel>Research</GroupLabel>
       <nav className="flex flex-col gap-0.5">
-        {!inLab ? (
+        {SHOW_SUGGESTED && !inLab ? (
           <SidebarNavItem
             icon={<SporeNode size={18} />}
             label="Suggested for you"
