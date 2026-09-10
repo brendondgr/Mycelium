@@ -40,6 +40,9 @@ import {
   fetchMemberSuggestions,
   fetchLabMentionTargets,
   fetchLabReminderChannels,
+  fetchDeptInvites,
+  fetchLabInvites,
+  fetchMyDepartments,
   fetchMyInvitations,
   fetchMyLabs,
   fetchNotifications,
@@ -78,8 +81,11 @@ import {
   attachLabToDept,
   cancelInvitation,
   createCollection,
+  createDepartment,
+  createDeptInvite,
   createLab,
   createLabInDept,
+  createLabInvite,
   createProject,
   createReminder,
   deleteLabLogo,
@@ -93,6 +99,8 @@ import {
   issueLabActivationCode,
   removeDeptMember,
   removeLabMember,
+  revokeDeptInvite,
+  revokeLabInvite,
   setDiscordDailyReport,
   setLabMemberRole,
   setLabPlanInclusion,
@@ -129,10 +137,12 @@ import {
   type AdminUserUpdate,
   type BriefingCategory,
   type InvitationAction,
+  type OrgInviteInput,
   type ProjectUpdateInput,
   type ReminderUpdateInput,
   type SearchSort,
 } from "@/lib/portal/types";
+import type { OrgKind } from "@/lib/auth-types";
 
 export type SearchInput = {
   q: string;
@@ -1437,4 +1447,59 @@ export function useUpdateAdminLab() {
       queryClient.invalidateQueries({ queryKey: ["portal", "entitlements"] });
     },
   });
+}
+
+/** The caller's departments, for the workspace-structure page. */
+export function useMyDepartments() {
+  return useQuery({
+    queryKey: ["portal", "departments"],
+    queryFn: fetchMyDepartments,
+    staleTime: 60_000,
+  });
+}
+
+/** Create a department, then refresh the list it appears in. */
+export function useCreateDepartment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; institution?: string }) =>
+      createDepartment(input.name, input.institution ?? ""),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "departments"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "entitlements"] });
+    },
+  });
+}
+
+/**
+ * One org's join invitations: the list, plus creating and withdrawing them.
+ *
+ * A lab and a department differ only in which endpoints they talk to, so the
+ * shared invite card takes this shape and never has to know which it is looking
+ * at. Pass `kind` and the lab slug or department id.
+ */
+export function useOrgInvites(kind: OrgKind, id: string) {
+  const queryClient = useQueryClient();
+  const key = ["portal", "org-invites", kind, id];
+  const list = useQuery({
+    queryKey: key,
+    queryFn: () =>
+      kind === "lab" ? fetchLabInvites(id) : fetchDeptInvites(id),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: key });
+  const create = useMutation({
+    mutationFn: (input: OrgInviteInput) =>
+      kind === "lab" ? createLabInvite(id, input) : createDeptInvite(id, input),
+    onSuccess: invalidate,
+  });
+  const revoke = useMutation({
+    mutationFn: (inviteId: string) =>
+      kind === "lab"
+        ? revokeLabInvite(id, inviteId)
+        : revokeDeptInvite(id, inviteId),
+    onSuccess: invalidate,
+  });
+  return { list, create, revoke };
 }

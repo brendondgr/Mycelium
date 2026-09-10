@@ -13,6 +13,7 @@ export const metadata = {
 const CHECKLIST = [
   "No credit card — tiers assigned, never charged yet",
   "Onboarding tunes your research radar instantly",
+  "Start a lab or department later, once you are in",
 ];
 
 export default async function SignupPage() {
@@ -30,7 +31,7 @@ export default async function SignupPage() {
 
       <AuthBrandPanel
         heading="Start your workspace in one step."
-        description="Choose how you'll work — on your own, leading a lab, or running a department. Mylo provisions the rest."
+        description="Tell Mylo who you are and what you work on. Labs and departments come later, once you have seen what the radar does for you alone."
       >
         <ul className="space-y-3">
           {CHECKLIST.map((item) => (
@@ -69,7 +70,8 @@ export default async function SignupPage() {
             Create your account
           </h2>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Pick an account type, then tell us who you are.
+            Tell us who you are. You can start a lab or department once you are
+            in.
           </p>
           <div className="mt-7">
             <SignupForm />

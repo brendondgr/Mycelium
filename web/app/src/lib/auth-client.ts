@@ -4,6 +4,9 @@ import type {
   AuthErrorBody,
   AuthUser,
   ComposeClustersInput,
+  InviteAccepted,
+  InviteDeadReason,
+  InvitePreview,
   OnboardingMatchArea,
   OnboardingMatchResult,
   ProfileBasics,
@@ -155,6 +158,51 @@ export async function register(input: RegisterInput): Promise<AuthUser> {
     is_superuser: body.is_superuser,
     onboarding_completed: Boolean(body.onboarding_completed),
   };
+}
+
+/** A dead invitation, carrying the reason so the join page can say which. */
+export class InviteDeadError extends Error {
+  reason: InviteDeadReason;
+
+  constructor(message: string, reason: InviteDeadReason) {
+    super(message);
+    this.name = "InviteDeadError";
+    this.reason = reason;
+  }
+}
+
+/**
+ * Read what an invitation link leads to. Works signed out — the whole point is
+ * that the recipient may not have an account yet.
+ *
+ * Throws `InviteDeadError` for a link that is withdrawn, expired, spent, or
+ * simply wrong, so the page can say which rather than shrug.
+ */
+export async function previewInvite(token: string): Promise<InvitePreview> {
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "invites", token),
+    { method: "GET", credentials: "include", cache: "no-store" },
+  );
+  const body = await parseJson<Record<string, unknown>>(response);
+
+  if (!response.ok) {
+    throw new InviteDeadError(
+      typeof body?.detail === "string"
+        ? body.detail
+        : "This invitation link is not valid.",
+      (body?.reason as InviteDeadReason) ?? "invalid",
+    );
+  }
+  return body as unknown as InvitePreview;
+}
+
+/** Spend an invitation as the signed-in account and join the org. */
+export async function acceptInvite(token: string): Promise<InviteAccepted> {
+  return postAuth<InviteAccepted>(
+    ["invites", token, "accept"],
+    {},
+    "Could not accept this invitation.",
+  );
 }
 
 /**

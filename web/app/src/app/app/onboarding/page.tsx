@@ -33,6 +33,7 @@ export default async function OnboardingPage({
         <OnboardingFlow
           email={user.email || "your email address"}
           mode={editing ? "edit" : "onboard"}
+          verified={Boolean(user.is_verified)}
         />
       </div>
     </main>

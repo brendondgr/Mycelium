@@ -25,6 +25,7 @@ export default async function WorkspaceLayout({
     initials: user.initials?.trim() || user.username.slice(0, 2).toUpperCase(),
     isStaff: user.is_staff,
     isSuperuser: user.is_superuser,
+    isVerified: Boolean(user.is_verified),
   };
 
   return <WorkspaceShell user={portalUser}>{children}</WorkspaceShell>;

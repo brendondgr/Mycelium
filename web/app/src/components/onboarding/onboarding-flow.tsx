@@ -195,9 +195,20 @@ type OnboardingFlowProps = {
    * prefilled with the user's saved answers, and returns there on save.
    */
   mode?: "onboard" | "edit";
+  /**
+   * Whether the account is already activated, in which case the verify screen
+   * is skipped. Someone who signed up through an emailed invitation has already
+   * proved that mailbox — no code was ever sent, so asking for one would show a
+   * screen with nothing behind it.
+   */
+  verified?: boolean;
 };
 
-export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps) {
+export function OnboardingFlow({
+  email,
+  mode = "onboard",
+  verified = false,
+}: OnboardingFlowProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const editing = mode === "edit";
@@ -213,7 +224,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   const topicCap = entitlements?.topic_cap ?? 6;
   const [screen, setScreen] = useState<
     "verify" | "intake" | "synthesizing" | "building" | "matching"
-  >(editing ? "intake" : "verify");
+  >(editing || verified ? "intake" : "verify");
   // Edit mode prefills from the saved profile; gate the form until it loads.
   const [hydrated, setHydrated] = useState(!editing);
   const [step, setStep] = useState(0);
@@ -645,7 +656,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     } else if (editing) {
       // Step 0 in edit mode has no verify screen behind it — leave the flow.
       router.push("/app/profile");
-    } else {
+    } else if (!verified) {
       setScreen("verify");
     }
   }

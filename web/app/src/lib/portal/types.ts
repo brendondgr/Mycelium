@@ -1520,3 +1520,46 @@ export type AdminLabUpdate = {
   is_comped?: boolean;
   mylo_included?: boolean;
 };
+
+/** A department the caller owns or is a direct member of. */
+export type MyDepartment = {
+  id: string;
+  name: string;
+  institution: string;
+  role: string;
+  is_owner: boolean;
+  can_manage: boolean;
+};
+
+/**
+ * One way into a lab or department — the manager's view, so it carries the URL.
+ *
+ * `kind: "email"` is bound to one address and worth exactly one use. `kind:
+ * "link"` is bound to nobody, so `max_uses` and `expires_at` are what hold it.
+ */
+export type OrgInvite = {
+  id: string;
+  kind: "email" | "link";
+  role: string;
+  email: string;
+  message: string;
+  url: string;
+  max_uses: number;
+  used_count: number;
+  uses_left: number;
+  expires_at: string;
+  revoked_at: string | null;
+  is_live: boolean;
+  created_at: string;
+  created_by: string;
+};
+
+/** What a manager fills in to create an invitation. */
+export type OrgInviteInput = {
+  kind: "email" | "link";
+  email?: string;
+  role?: string;
+  max_uses?: number;
+  expires_in_days?: number;
+  message?: string;
+};

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,33 @@ const fieldClass =
 const labelClass =
   "block text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]";
 
+/** Where signing in lands when nothing asked for somewhere else. */
+const DEFAULT_DESTINATION = "/app/overview";
+
+/**
+ * Where to send someone after they sign in, from a `?next=` parameter.
+ *
+ * An emailed invitation aimed at somebody who already has an account has to
+ * survive a detour through this form, which is what `next` is for. It is also a
+ * parameter an attacker controls, so only a path inside this app is honoured:
+ * one leading slash, no second one and no backslash (both of which a browser
+ * reads as the start of another origin), and only the two prefixes that have a
+ * reason to be a destination.
+ */
+export function safeDestination(next: string | null): string {
+  const value = (next ?? "").trim();
+  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
+    return DEFAULT_DESTINATION;
+  }
+  return value.startsWith("/join/") || value.startsWith("/app/")
+    ? value
+    : DEFAULT_DESTINATION;
+}
+
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const destination = safeDestination(searchParams.get("next"));
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
@@ -49,7 +74,7 @@ export function LoginForm() {
     try {
       await login(username.trim(), password);
       setStatus("success");
-      router.replace("/app/overview");
+      router.replace(destination);
       router.refresh();
     } catch (error) {
       setStatus("idle");

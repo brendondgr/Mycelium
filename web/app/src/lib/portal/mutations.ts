@@ -17,7 +17,10 @@ import type {
   IngestLinkResult,
   InvitationAction,
   LabProfileData,
+  MyDepartment,
   MyLab,
+  OrgInvite,
+  OrgInviteInput,
   OrgBilling,
   Project,
   ProjectCapErrorBody,
@@ -1026,5 +1029,86 @@ export function updateAdminLab(
     buildApiUrl(getPublicApiBase(), "admin", "labs", slug),
     patch,
     "Could not update this lab's plan.",
+  );
+}
+
+/** Create a department; the caller becomes its head. Verified accounts only. */
+export function createDepartment(
+  name: string,
+  institution = "",
+): Promise<MyDepartment> {
+  return sendJson<MyDepartment>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "departments"),
+    { name, institution },
+    "Could not create the department. Try again.",
+  );
+}
+
+/** Create a lab's join invitation — an emailed one, or a share link. */
+export function createLabInvite(
+  slug: string,
+  input: OrgInviteInput,
+): Promise<OrgInvite> {
+  return sendJson<OrgInvite>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "invites"),
+    input,
+    "Could not create the invitation.",
+  );
+}
+
+/** Create a department's join invitation. */
+export function createDeptInvite(
+  id: string,
+  input: OrgInviteInput,
+): Promise<OrgInvite> {
+  return sendJson<OrgInvite>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "invites"),
+    input,
+    "Could not create the invitation.",
+  );
+}
+
+/** Withdraw one of a lab's invitations. */
+export function revokeLabInvite(
+  slug: string,
+  inviteId: string,
+): Promise<OrgInvite> {
+  return sendJson<OrgInvite>(
+    "POST",
+    buildApiUrl(
+      getPublicApiBase(),
+      "auth",
+      "labs",
+      slug,
+      "invites",
+      inviteId,
+      "revoke",
+    ),
+    undefined,
+    "Could not withdraw the invitation.",
+  );
+}
+
+/** Withdraw one of a department's invitations. */
+export function revokeDeptInvite(
+  id: string,
+  inviteId: string,
+): Promise<OrgInvite> {
+  return sendJson<OrgInvite>(
+    "POST",
+    buildApiUrl(
+      getPublicApiBase(),
+      "auth",
+      "departments",
+      id,
+      "invites",
+      inviteId,
+      "revoke",
+    ),
+    undefined,
+    "Could not withdraw the invitation.",
   );
 }

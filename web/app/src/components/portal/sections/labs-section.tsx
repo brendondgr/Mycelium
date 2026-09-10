@@ -20,8 +20,10 @@ import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { LabEditorModal } from "@/components/portal/sections/lab-editor-modal";
 import { MemberRow } from "@/components/portal/sections/member-row";
+import { OrgInviteCard } from "@/components/portal/sections/org-invite-card";
 import {
   useConnectLabDiscord,
+  useCreateDepartment,
   useCreateLab,
   useCreateProject,
   useInviteToLab,
@@ -31,12 +33,13 @@ import {
   useLabMembers,
   useLabProfile,
   useLabProjects,
+  useMyDepartments,
   useProjectMembership,
 } from "@/lib/portal/hooks";
 import { ApiError } from "@/lib/api-error";
 import { SECTION_ROUTES } from "@/lib/portal/routes";
 import type { ClusterGroup } from "@/lib/auth-types";
-import type { LabMember, MyLab } from "@/lib/portal/types";
+import type { LabMember, MyDepartment, MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
 /** Pull the (untyped) `clusters` array off a lab's stored `interests` blob. */
@@ -110,14 +113,25 @@ const INPUT =
 // ---------------------------------------------------------------------------
 
 export function LabsSection() {
-  const { labs, labsLoading, labScope, setLabScope, currentLab } = usePortal();
+  const { user, labs, labsLoading, labScope, setLabScope, currentLab } =
+    usePortal();
   const [showCreate, setShowCreate] = React.useState(false);
+  const [showCreateDept, setShowCreateDept] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
+
+  // Standing up an org is what verifying the address unlocks, so the button is
+  // disabled here rather than left to 403 after someone has typed a name in.
+  const canCreateOrg = user.isVerified;
+  const lockedTitle = canCreateOrg
+    ? undefined
+    : "Verify your email address on the Account page to create a lab or department.";
 
   const createAction = (
     <button
       type="button"
       className={PRIMARY_BUTTON}
+      disabled={!canCreateOrg}
+      title={lockedTitle}
       onClick={() => setShowCreate(true)}
     >
       <PlusIcon size={15} />
@@ -178,10 +192,26 @@ export function LabsSection() {
   return (
     <div>
       <SectionHeader
-        title="Labs"
-        subtitle="Your research labs. Select one to make it the active workspace and manage it."
-        action={createAction}
+        title="Labs & departments"
+        subtitle="Your research groups. Select a lab to make it the active workspace and manage it."
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className={SECONDARY_BUTTON}
+              disabled={!canCreateOrg}
+              title={lockedTitle}
+              onClick={() => setShowCreateDept(true)}
+            >
+              <PlusIcon size={15} />
+              Create department
+            </button>
+            {createAction}
+          </div>
+        }
       />
+
+      {canCreateOrg ? null : <VerifyToCreateNotice />}
 
       {labsLoading ? (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -227,6 +257,8 @@ export function LabsSection() {
         </>
       )}
 
+      <DepartmentsBlock />
+
       {showCreate ? (
         <CreateLabModal
           onClose={() => setShowCreate(false)}
@@ -236,7 +268,68 @@ export function LabsSection() {
           }}
         />
       ) : null}
+
+      {showCreateDept ? (
+        <CreateDepartmentModal onClose={() => setShowCreateDept(false)} />
+      ) : null}
     </div>
+  );
+}
+
+/** Why the create buttons are dark, and where to go to light them up. */
+function VerifyToCreateNotice() {
+  return (
+    <p className="mb-4 rounded-xl border border-border bg-surface-alt px-3.5 py-2.5 text-[12.5px] text-[var(--text-secondary)]">
+      Creating a lab or department needs an activated account. A lab exists to
+      invite people into, and Mycelium will not mail strangers on behalf of an
+      address that has not answered its own code — enter yours on the{" "}
+      <Link
+        className="font-medium text-primary underline underline-offset-2"
+        href={SECTION_ROUTES.account}
+      >
+        Account page
+      </Link>
+      .
+    </p>
+  );
+}
+
+/** The caller's departments, listed under their labs. */
+function DepartmentsBlock() {
+  const { data, isLoading } = useMyDepartments();
+
+  if (isLoading || !data || data.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-8">
+      <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
+        Departments
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {data.map((department) => (
+          <DepartmentCard key={department.id} department={department} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DepartmentCard({ department }: { department: MyDepartment }) {
+  return (
+    <Link
+      href={`/app/department/${department.id}`}
+      className="block rounded-2xl border border-border bg-card p-4 transition-colors hover:border-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <p className="text-[15px] font-semibold text-[var(--text-primary)]">
+        {department.name}
+      </p>
+      <p className="mt-0.5 text-[12px] text-[var(--text-muted)]">
+        {department.institution || "No institution set"} ·{" "}
+        {roleLabel(department.role as never)}
+      </p>
+    </Link>
   );
 }
 
@@ -289,11 +382,20 @@ export function LabDetail({
   /** Opens the lab editor on its Purpose tab (managers only). */
   onEditProfile?: () => void;
 }) {
+  const { user } = usePortal();
   const canManage = canManageLab(lab);
 
   return (
     <div className="space-y-4">
       <LabPurposeCard lab={lab} canManage={canManage} onEdit={onEditProfile} />
+      {canManage ? (
+        <OrgInviteCard
+          kind="lab"
+          id={lab.slug}
+          canInvite
+          isVerified={user.isVerified}
+        />
+      ) : null}
       {canManage ? <InviteCard lab={lab} /> : null}
       {canManage ? <DiscordSyncCard lab={lab} /> : null}
       <MembersCard lab={lab} />
@@ -480,13 +582,13 @@ export function InviteCard({ lab }: { lab: MyLab }) {
   };
 
   return (
-    <DetailCard title="Invite members">
+    <DetailCard title="Add someone already on Mycelium">
       <form className="flex flex-col gap-2 sm:flex-row" onSubmit={submit}>
         <input
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
-          placeholder="Email or username"
-          aria-label="Invite by email or username"
+          placeholder="Username"
+          aria-label="Invite by username"
           className={cn(INPUT, "sm:flex-1")}
         />
         <select
@@ -508,8 +610,8 @@ export function InviteCard({ lab }: { lab: MyLab }) {
         </button>
       </form>
       <p className="mt-2 text-[12px] text-[var(--text-secondary)]">
-        People with an account are notified in-app. An email with no account yet
-        is invited when they sign up.
+        A username lands in that person&apos;s notifications, with nothing mailed.
+        To reach someone who may not have an account, use an invitation above.
       </p>
       {message ? (
         <p className="mt-2 text-[12.5px] text-primary">{message}</p>
@@ -927,6 +1029,123 @@ function CreateLabModal({
               disabled={create.isPending || !name.trim()}
             >
               {create.isPending ? "Creating…" : "Create lab"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Create department modal
+// ---------------------------------------------------------------------------
+
+/**
+ * Standing up a department after the fact.
+ *
+ * Sign-up used to ask this before anyone had seen the product, so it now lives
+ * beside the lab it is a parent of. The head keeps their personal workspace;
+ * the department arrives with its plan inactive, like a lab does.
+ */
+function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
+  const create = useCreateDepartment();
+  const [name, setName] = React.useState("");
+  const [institution, setInstitution] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    inputRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = name.trim();
+    if (!value) {
+      return;
+    }
+    setError(null);
+    create.mutate(
+      { name: value, institution: institution.trim() },
+      {
+        onSuccess: (department) => {
+          window.location.href = `/app/department/${department.id}`;
+        },
+        onError: (e2) => setError((e2 as Error).message),
+      },
+    );
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--text-primary)_35%,transparent)] p-4"
+      onMouseDown={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-dept-title"
+        className="w-full max-w-[420px] rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow)]"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <h2
+          id="create-dept-title"
+          className="font-serif text-[22px] font-semibold text-[var(--text-primary)]"
+        >
+          Create a department
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          You become its head. Labs can be attached to it, and its plan stays
+          inactive until you turn it on.
+        </p>
+
+        <form className="mt-4 space-y-3" onSubmit={submit}>
+          <Field label="Department name">
+            <input
+              ref={inputRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Molecular Systems"
+              className={INPUT}
+            />
+          </Field>
+          <Field label="Institution">
+            <input
+              value={institution}
+              onChange={(e) => setInstitution(e.target.value)}
+              placeholder="Northgate University"
+              className={INPUT}
+            />
+          </Field>
+
+          {error ? (
+            <p className="text-[12.5px] text-clay" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-border bg-surface px-4 py-2 text-[13px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={PRIMARY_BUTTON}
+              disabled={create.isPending || !name.trim()}
+            >
+              {create.isPending ? "Creating…" : "Create department"}
             </button>
           </div>
         </form>

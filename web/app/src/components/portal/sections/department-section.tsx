@@ -9,6 +9,8 @@ import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { DeptPlanCard } from "@/components/portal/sections/org-plan-card";
+import { OrgInviteCard } from "@/components/portal/sections/org-invite-card";
+import { usePortal } from "@/components/portal/portal-context";
 import {
   useDeptBilling,
   useDeptLabs,
@@ -29,6 +31,7 @@ export function DepartmentSection() {
   const params = useParams();
   const deptId = String((params?.id as string) ?? "");
 
+  const { user } = usePortal();
   const billing = useDeptBilling(deptId);
   const canManage = Boolean(billing.data?.can_manage);
   const deptName = billing.data?.scope_name ?? "Department";
@@ -42,6 +45,14 @@ export function DepartmentSection() {
       />
       <div className="grid items-start gap-4 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-4">
+          {canManage ? (
+            <OrgInviteCard
+              kind="department"
+              id={deptId}
+              canInvite
+              isVerified={user.isVerified}
+            />
+          ) : null}
           <DeptMembersCard deptId={deptId} canManage={canManage} />
           <DeptLabsCard deptId={deptId} canManage={canManage} />
         </div>

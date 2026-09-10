@@ -43,8 +43,10 @@ export type AuthErrorBody = {
   detail?: string;
 };
 
-export type AccountType = "personal" | "lab" | "department";
+/** Which kind of organization an invitation leads into. */
+export type OrgKind = "lab" | "department";
 
+/** Sign-up makes one solo account. Labs and departments come later, in the app. */
 export type RegisterInput = {
   username: string;
   email: string;
@@ -52,11 +54,48 @@ export type RegisterInput = {
   password_confirm: string;
   first_name?: string;
   last_name?: string;
-  account_type: AccountType;
-  org_name?: string;
-  institution?: string;
-  /** Invite-only verification code; sign-up is refused without the live one. */
-  access_code: string;
+  /**
+   * Invite-only verification code. Required unless an `invite_token` covers it —
+   * someone already inside asked for this person by name, and a beta gate that
+   * can turn their invitation away is a gate that makes invitations useless.
+   */
+  access_code?: string;
+  /** A join link's token, from `/join/<token>`. */
+  invite_token?: string;
+};
+
+/** What an invitation link says about itself, before anyone has an account. */
+export type InvitePreview = {
+  org_kind: OrgKind;
+  org_name: string;
+  role: string;
+  /** `email` is bound to one address; `link` is bounded by uses and a clock. */
+  kind: "email" | "link";
+  /** The address an email invite is spendable by; "" for a share link. */
+  email: string;
+  message: string;
+  invited_by: string;
+  expires_at: string;
+  /** Present only when the visitor is already signed in. */
+  signed_in_as?: string;
+  email_matches?: boolean;
+};
+
+/** Why a link no longer works — an invitation is not simply "not found". */
+export type InviteDeadReason =
+  | "invalid"
+  | "revoked"
+  | "expired"
+  | "exhausted"
+  | "wrong_email";
+
+/** What accepting an invitation lands the caller in. */
+export type InviteAccepted = {
+  org_kind: OrgKind;
+  org_name: string;
+  slug: string | null;
+  department_id: string | null;
+  role: string;
 };
 
 /** A single publication source the onboarding importer can pull an author from. */

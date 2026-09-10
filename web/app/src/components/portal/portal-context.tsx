@@ -31,6 +31,13 @@ export type PortalUser = {
   initials: string;
   isStaff: boolean;
   isSuperuser: boolean;
+  /**
+   * Whether the account is activated. Verifying the address is what activates
+   * it, and until then the backend refuses to create a lab or department or to
+   * send an invitation — so the UI shows the lock up front rather than letting
+   * someone fill in a form that will 403 on save.
+   */
+  isVerified: boolean;
 };
 
 /** Whether a user may see the admin dashboard (staff or superuser). */

@@ -25,8 +25,10 @@ import type {
   LabMember,
   LabProfileData,
   MemberSuggestionsFeed,
+  MyDepartment,
   MyInvitation,
   MyLab,
+  OrgInvite,
   NotificationFeed,
   OpportunityFeed,
   RankingReference,
@@ -628,5 +630,29 @@ export async function fetchAdminLab(slug: string): Promise<AdminLabDetail> {
   return getJson<AdminLabDetail>(
     buildApiUrl(getPublicApiBase(), "admin", "labs", slug),
     "Could not load this lab.",
+  );
+}
+
+/** The caller's departments — the ones they can actually act on. */
+export async function fetchMyDepartments(): Promise<MyDepartment[]> {
+  return getJson<MyDepartment[]>(
+    buildApiUrl(getPublicApiBase(), "auth", "departments"),
+    "Could not load your departments.",
+  );
+}
+
+/** A lab's join invitations (managers only). */
+export async function fetchLabInvites(slug: string): Promise<OrgInvite[]> {
+  return getJson<OrgInvite[]>(
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "invites"),
+    "Could not load this lab's invitations.",
+  );
+}
+
+/** A department's join invitations (managers only). */
+export async function fetchDeptInvites(id: string): Promise<OrgInvite[]> {
+  return getJson<OrgInvite[]>(
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "invites"),
+    "Could not load this department's invitations.",
   );
 }
