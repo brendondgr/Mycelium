@@ -93,6 +93,39 @@ def test_an_unknown_address_is_answered_identically(user: User) -> None:
     assert mailed == 1 and len(mail.outbox) == 0
 
 
+@override_settings(EMAIL_BACKEND=LOCMEM)
+def test_asking_for_a_reset_changes_nothing(user: User) -> None:
+    """A reset request is an *offer*, never a revocation.
+
+    Asking for a link must not touch the account: the old password keeps
+    working, sessions stay alive, and nothing happens until someone who can read
+    the mailbox actually spends the link. Anything else would turn this
+    unauthenticated endpoint into a way to lock a stranger out of their account
+    by typing their address.
+    """
+    before = User.objects.values_list("password", flat=True).get(pk=user.pk)
+    mail.outbox.clear()
+
+    _request(user.email)
+
+    after = User.objects.values_list("password", flat=True).get(pk=user.pk)
+    assert after == before
+    user.refresh_from_db()
+    assert user.check_password(PASSWORD)
+    assert len(mail.outbox) == 1  # the offer went out, the account is untouched
+
+
+@override_settings(EMAIL_BACKEND=LOCMEM)
+def test_an_unspent_link_leaves_the_old_password_working(user: User) -> None:
+    """Ignoring the email costs nothing, even after several requests."""
+    mail.outbox.clear()
+    _request(user.email)
+    _request(user.email)
+
+    user.refresh_from_db()
+    assert user.check_password(PASSWORD)
+
+
 # -- spending the link ----------------------------------------------------------
 
 
