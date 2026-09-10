@@ -1,0 +1,10 @@
+{% extends "email/base.html" %}
+{% block content %}
+<p style="margin:0 0 16px 0;">Hello{% if recipient_name %} {{ recipient_name }}{% endif %},</p>
+<p style="margin:0 0 16px 0;">{% if inviter_name %}{{ inviter_name }} has invited you{% else %}You have been invited{% endif %} to join <strong style="color:#2E3627;">{{ lab_name }}</strong> on Mycelium.</p>
+{% if message %}<p style="margin:0 0 16px 0;padding:12px 16px;background-color:#EFE7D7;border-radius:8px;color:#5F6853;font-size:14px;">{{ message }}</p>{% endif %}
+{% include "email/_button.html" with url=invitation_url label="Accept the invitation" %}
+<p style="margin:0 0 16px 0;color:#5F6853;font-size:14px;">If the button does not work, paste this into your browser:<br>
+<span style="color:#5E7A3E;word-break:break-all;">{{ invitation_url }}</span></p>
+<p style="margin:0;color:#5F6853;font-size:14px;">This invitation expires in {{ expires_in }}.</p>
+{% endblock %}

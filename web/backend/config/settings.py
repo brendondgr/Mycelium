@@ -103,6 +103,21 @@ TEMPLATES = [
             ],
         },
     },
+    # A second engine for the plain-text half of an email, differing in exactly
+    # one option: autoescape is off. HTML escaping is correct for a web page and
+    # actively wrong in a text/plain body, where it renders literally — a From
+    # address arrives as "Mycelium &lt;mycelium@…&gt;" in the reader's client.
+    #
+    # An engine rather than an {% autoescape %} tag in each template, because the
+    # tag is per-file and silently forgotten the day someone adds the fifth
+    # template. apps.core.mail.render selects this by name.
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "NAME": "email_text",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": False,
+        "OPTIONS": {"autoescape": False},
+    },
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
@@ -871,6 +886,64 @@ DISCORD_COMMAND_RATE_LIMITS = {
     "search": (env.int("DISCORD_RATE_SEARCH", default=5), 60),
     "command": (env.int("DISCORD_RATE_COMMAND", default=20), 60),
 }
+
+# ---------------------------------------------------------------------------
+# Transactional email (apps.core.mail) — Resend.
+#
+# The transport for anything the product has to put in a person's inbox rather
+# than a Discord DM: a password reset, an invitation to a lab or department, a
+# verification code. Those all reach people who are *not yet* linked to Discord,
+# which is exactly why email cannot be replaced by the outbox.
+#
+# Wired as a Django EMAIL_BACKEND rather than a bare helper on purpose: Django's
+# own password-reset machinery sends through `django.core.mail`, so routing that
+# name at Resend means the built-in flow works when it is built, with no second
+# transport to configure. apps.core.mail.send_email sits on top for templated
+# product mail.
+#
+# The API key is send-only (it cannot read delivery logs) and stays in the
+# environment — never persisted, never logged.
+# ---------------------------------------------------------------------------
+RESEND_API_KEY = env("RESEND_API_KEY", default="")
+RESEND_API_URL = env_str("RESEND_API_URL", "https://api.resend.com/emails")
+RESEND_TIMEOUT_SECONDS = env.int("RESEND_TIMEOUT_SECONDS", default=15)
+
+# The verified sending identity. The domain must be verified in Resend and carry
+# SPF + DKIM, or mail is accepted by the API and then dropped or spam-filed by
+# the receiving side — the failure is silent from here.
+DEFAULT_FROM_EMAIL = env_str(
+    "DEFAULT_FROM_EMAIL", "Mycelium <mycelium@mail.brendondgr.com>"
+)
+SERVER_EMAIL = env_str("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+# Optional Reply-To for product mail. Blank means replies go to DEFAULT_FROM_EMAIL,
+# which is an unmonitored no-reply address.
+EMAIL_REPLY_TO = env_str("EMAIL_REPLY_TO")
+EMAIL_SUBJECT_PREFIX = env_str("EMAIL_SUBJECT_PREFIX")
+
+# The master switch, default OFF. Real mail is irreversible: a mistimed loop in
+# development emails real people at their real addresses, and there is no recall.
+# So sending is opt-in per deployment rather than on by default, and the console
+# backend below makes an un-configured environment loud instead of silent.
+EMAIL_ENABLED = env.bool("EMAIL_ENABLED", default=False)
+
+# Backend resolution, in order of specificity:
+#   1. An explicit EMAIL_BACKEND always wins (tests pin locmem this way).
+#   2. Enabled with a key  → Resend.
+#   3. Anything else       → console, so a developer sees the message body.
+EMAIL_BACKEND = env_str(
+    "EMAIL_BACKEND",
+    (
+        "apps.core.mail.backend.ResendEmailBackend"
+        if EMAIL_ENABLED and RESEND_API_KEY
+        else "django.core.mail.backends.console.EmailBackend"
+    ),
+)
+
+# Absolute origin for links written into email (reset links, invitation links).
+# Same reasoning as DISCORD_APP_BASE_URL: these are composed outside any HTTP
+# request, so they cannot be derived from one, and a loopback origin would send a
+# real recipient to their own machine.
+EMAIL_APP_BASE_URL = outbound_base_url(env_str("EMAIL_APP_BASE_URL", PUBLIC_BASE_URL))
 
 LOGGING = {
     "version": 1,

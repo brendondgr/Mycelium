@@ -1,0 +1,10 @@
+Hello{% if recipient_name %} {{ recipient_name }}{% endif %},
+
+Your Mycelium verification code is:
+
+    {{ code }}
+
+It expires in {{ expires_in }}. Mycelium will never ask you for this code -- if
+someone does, do not share it.
+
+-- Mycelium

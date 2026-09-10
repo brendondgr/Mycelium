@@ -1,0 +1,3 @@
+If you can read this, Mycelium can send mail.
+
+Sent {{ sent_at }} from {{ sender }}.

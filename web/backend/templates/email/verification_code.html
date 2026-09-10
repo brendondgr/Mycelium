@@ -1,0 +1,7 @@
+{% extends "email/base.html" %}
+{% block content %}
+<p style="margin:0 0 16px 0;">Hello{% if recipient_name %} {{ recipient_name }}{% endif %},</p>
+<p style="margin:0 0 16px 0;">Your Mycelium verification code is below.</p>
+<p style="margin:0 0 20px 0;padding:16px 20px;background-color:#EFE7D7;border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:26px;font-weight:600;letter-spacing:0.18em;color:#2E3627;text-align:center;">{{ code }}</p>
+<p style="margin:0;color:#5F6853;font-size:14px;">It expires in {{ expires_in }}. Mycelium will never ask you for this code — if someone does, do not share it.</p>
+{% endblock %}

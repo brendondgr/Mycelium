@@ -1,0 +1,13 @@
+{% comment %}
+A call-to-action link. A table cell rather than a styled <a> because Outlook
+drops padding on inline elements. The raw URL is always printed beneath it by the
+caller's template — a button whose link a client refuses to render must still be
+followable by hand.
+{% endcomment %}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
+  <tr>
+    <td style="background-color:#5E7A3E;border-radius:8px;">
+      <a href="{{ url }}" style="display:inline-block;padding:12px 22px;color:#FFFDF8;font-size:15px;font-weight:600;text-decoration:none;">{{ label }}</a>
+    </td>
+  </tr>
+</table>

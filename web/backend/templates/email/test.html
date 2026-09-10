@@ -1,0 +1,5 @@
+{% extends "email/base.html" %}
+{% block content %}
+<p style="margin:0 0 16px 0;">If you can read this, Mycelium can send mail.</p>
+<p style="margin:0;color:#5F6853;font-size:14px;">Sent {{ sent_at }} from {{ sender }}.</p>
+{% endblock %}

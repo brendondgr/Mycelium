@@ -91,7 +91,7 @@ collector's resolve stage joins against that cache for venue identity and ranks.
 
 | App | Responsibility |
 |---|---|
-| `core` | Shared infrastructure: health endpoint, the pgvector extension migration, the exactly-one-FK helper (`db.py`), and the OpenAI-compatible LLM client (`llm.py`) |
+| `core` | Shared infrastructure: health endpoint, the pgvector extension migration, the exactly-one-FK helper (`db.py`), the OpenAI-compatible LLM client (`llm.py`), and transactional email (`mail/`) |
 | `accounts` | Identity & organization: users, profiles, departments, labs, memberships, permission roles, academic titles, audit events, derived membership. Owns session auth (CSRF, login/logout/me), the invite-only sign-up gate, lab invitations, the interests contract, and profile/lab intake (`intake/`) |
 | `research` | Projects scoped to a user, lab, or department: membership, visibility over the org hierarchy, plan-gated creation and archiving, team collaboration (shares, feed, link ingest, seen ledger, events), and collections |
 | `content` | The matching and delivery layer — the largest app. Deduplicated `ContentItem`s, per-target `RelevanceScore`s, the four feeds, clustering and fusion, the daily briefing and PDF report, saves, addressable deadlines, reminders, notifications, unified search, member fit, and the Discord digest producers |
@@ -138,6 +138,7 @@ graph phase has not started.
 | Embedding | `EMBEDDING_DEVICE` (`auto`/`cuda`/`cpu`), `EMBEDDING_BATCH_SIZE_CPU`, `EMBEDDING_BATCH_SIZE_GPU` |
 | Sign-up gate | `SIGNUP_ACCESS_CODE`, `SIGNUP_CODE_MAX_FAILURES`, `SIGNUP_CODE_FAILURE_WINDOW_SECONDS`, `SIGNUP_CODE_LOCKOUT_SECONDS` |
 | Discord (`.env-mylo`) | `DISCORD_API_KEY`, `ERROR_CHANNEL`, `ACTIVATION_CHANNEL`, `SUMMARY_CHANNEL` |
+| Email | `EMAIL_ENABLED`, `RESEND_API_KEY`, `DEFAULT_FROM_EMAIL`, `EMAIL_REPLY_TO`, `EMAIL_APP_BASE_URL` |
 | Run analytics | `RUN_ANALYTICS_JSON_PATH`, `RUN_ANALYTICS_PDF_DIR`, `RUN_ANALYTICS_RETENTION_DAYS` |
 | Opportunity collector | `COLLECT_CONTACT` |
 | Reserved (unused) | `NEO4J_*`, `S3_*` |
@@ -154,6 +155,25 @@ every other model caller routes through.
 `PUBLIC_HOSTNAME` backs every absolute URL Mycelium emits. Leaving it blank once
 published `localhost` links into a lab's Discord channel; links that leave the
 building now fall back to the public site rather than loopback.
+
+Transactional email (`apps/core/mail/`) is the transport for anything that must
+reach an inbox rather than a Discord DM — password resets, lab and department
+invitations, verification codes — because those recipients are by definition not
+yet linked to Discord. It is wired as a Django `EMAIL_BACKEND` over the Resend
+API, so `django.core.mail` and Django's own password-reset machinery route
+through it without a second transport to configure; `send_email` sits on top for
+templated product mail, rendering a matched HTML and plain-text pair from
+`web/backend/templates/email/`. There is no queue behind it: a flow that needs
+delivery to survive an outage should copy the durable outbox in
+`apps/integrations/services/outbox.py` rather than reinvent it.
+
+`EMAIL_ENABLED` defaults to **off** and unset falls back to Django's console
+backend, because real mail is irreversible and a development mistake reaches real
+addresses. Two operational cautions: the sending domain must carry SPF, DKIM and
+(for Gmail) DMARC or the API accepts a message that is then silently dropped, and
+the API key is send-only, so acceptance is visible here while delivery is only
+visible in the Resend dashboard. `manage.py send_test_email --to <addr>` exercises
+the whole path.
 
 The LLM client supports structured reasoning levels (`none`/`low`/`medium`/
 `high`) sent either as `reasoning_effort` (`LLM_REASONING_STYLE=effort`) or as a

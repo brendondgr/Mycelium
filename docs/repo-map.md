@@ -160,6 +160,9 @@ Files below are inside `web/backend/apps/content/`.
 | Embedder (CPU / CUDA) | `web/backend/apps/scraper/embedding.py` |
 | External DOI / arXiv / URL resolver | `web/backend/apps/scraper/resolver.py` |
 | LLM client | `web/backend/apps/core/llm.py` |
+| Transactional email (send one) | `web/backend/apps/core/mail/messages.py` (`send_email`, `app_url`, the `TEMPLATES` registry) |
+| Email transport & Django backend | `web/backend/apps/core/mail/{client,backend}.py` — Resend over stdlib urllib; wired as `EMAIL_BACKEND` so `django.core.mail` routes through it |
+| Email templates (HTML + text pairs) | `web/backend/templates/email/` — `base.html`, `_button.html`, and one pair per entry in `TEMPLATES` |
 | LLM call / token ledger | `web/backend/apps/core/{models,llm_usage}.py` |
 | Health endpoint, exactly-one-FK helper | `web/backend/apps/core/{views,db}.py` |
 | Django settings / URLs / Celery | `web/backend/config/` |
@@ -219,6 +222,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `run_billing_tick`, `reconcile_seats` | Billing period roll / seat reconciliation |
 | `embedding_device` | Report and benchmark the embedding device |
 | `llm_check` | LLM reachability pre-flight |
+| `send_test_email` | Send one email through the real stack to check the transport (`--to`, `--template`) |
 | `high_signal_shadow` | Shadow-run the high-signal alert rule |
 | `create_admin`, `seed_demo`, `loadtest_purge` | Ops utilities |
 
