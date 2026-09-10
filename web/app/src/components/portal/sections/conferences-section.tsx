@@ -5,7 +5,6 @@ import * as React from "react";
 import { Card } from "@/components/portal/primitives/card";
 import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
-import { MatchRail } from "@/components/portal/primitives/match-rail";
 import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -24,6 +23,8 @@ import {
   CardActionBar,
   MyloReason,
   IgnoredStrip,
+  NewTag,
+  UpdatedTag,
 } from "@/components/portal/sections/opportunity-bits";
 import { shortRoundLabel } from "@/components/portal/reminder-composer";
 import {
@@ -34,6 +35,7 @@ import {
   type ConferenceFilterState,
 } from "@/components/portal/sections/conference-filters";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
+import { HiddenByFilters } from "@/components/portal/primitives/hidden-by-filters";
 import {
   FeedSearchBar,
   clusterOptions,
@@ -493,17 +495,6 @@ export function ConferenceCard({
 
   return (
     <MatchCard
-      ring={
-        <MatchRail
-          verdict={conf.verdict}
-          position={conf.position}
-          positionOf={conf.position_of}
-          theme={conf.cluster?.label}
-          origin={conf.origin}
-          isNew={conf.is_new}
-          isUpdated={conf.is_updated}
-        />
-      }
       head={
         /* Wraps rather than squeezing: once the title column would fall below
            12rem — a narrow phone, beside the match rail — the tools drop to
@@ -527,6 +518,12 @@ export function ConferenceCard({
             <ClusterRow
               cluster={conf.cluster}
               bridgeClusters={conf.bridge_clusters}
+              leading={
+                <>
+                  {conf.is_new ? <NewTag /> : null}
+                  {conf.is_updated ? <UpdatedTag /> : null}
+                </>
+              }
               className="mt-2"
             />
 
@@ -742,6 +739,14 @@ function ConferencesFeed({
     [scoped, filters, today],
   );
 
+  // What the rail's facets took out of the scoped feed, kept so the reader can
+  // look at it rather than having to widen a filter to find out what was there.
+  const hidden = React.useMemo(() => {
+    if (visible.length === scoped.length) return [];
+    const shown = new Set(visible.map((conf) => conf.content_id));
+    return scoped.filter((conf) => !shown.has(conf.content_id));
+  }, [scoped, visible]);
+
   const clearAll = () => {
     setFilters(DEFAULT_CONFERENCE_FILTERS);
     setQuery("");
@@ -893,6 +898,22 @@ function ConferencesFeed({
               />
             </>
           )}
+
+          {/* Outside the branch above on purpose: when the facets hide *every*
+              row the reader lands on the empty state, and that is precisely the
+              moment they need to see what was taken out. */}
+          {!isLoading && !isError ? (
+            <HiddenByFilters count={hidden.length} noun="conferences">
+              {hidden.map((conf) => (
+                <ConferenceCard
+                  key={conf.content_id}
+                  conf={conf}
+                  recommendedFor={recommendedFor?.[conf.content_id]}
+                  ignorable
+                />
+              ))}
+            </HiddenByFilters>
+          ) : null}
         </div>
       </div>
     </div>

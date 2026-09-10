@@ -73,6 +73,14 @@ CompleteFn = Callable[[str], str | None]
 #: failure this stamp cannot catch, so there is a test that catches it instead.
 RUBRIC_VERSION = "b1"
 
+#: Stamped alongside the rubric on **deterministic** write-ups only, and bumped
+#: whenever their templated wording changes. It exists so template copy can be
+#: fixed without bumping :data:`RUBRIC_VERSION`, which would invalidate the
+#: model-written ones too and re-bill the whole corpus for an edit no model was
+#: involved in. Rebuilding a deterministic write-up costs nothing, so this can
+#: move as often as the wording needs it to.
+TEMPLATE_VERSION = "t2"
+
 #: Run-safety cap on write-ups per target per run — **not** a spend cap. The
 #: nightly batch is shared: a reader who just redirected their whole research
 #: profile has every item in every theme as an entrant, and an unbounded spike
@@ -188,8 +196,18 @@ def is_current(writeup: Mapping | None, fingerprint: str) -> bool:
     Four invalidations and only four (plan §19): the areas changed, the cluster
     is gone (handled by pruning), the rubric moved, or the item's text changed —
     the last cascading in through the précis, which is re-read when it does.
+
+    Deterministic write-ups carry a fifth, and it is free: their wording is a
+    template rather than a model's answer, so a copy fix re-renders them on the
+    next run instead of waiting for one of the four to fire. Model write-ups are
+    deliberately not subject to it — invalidating those means paying for them
+    again, which no wording change justifies.
     """
     if not writeup:
+        return False
+    if writeup.get("source") == "deterministic" and (
+        writeup.get("template_version") != TEMPLATE_VERSION
+    ):
         return False
     return (
         writeup.get("rubric_version") == RUBRIC_VERSION
@@ -218,6 +236,8 @@ def make_writeup(
         "rubric_version": RUBRIC_VERSION,
         "areas_fingerprint": fingerprint,
         "written_on": timezone.now().date().isoformat(),
+        # Only meaningful on the deterministic path; harmless on the other.
+        **({"template_version": TEMPLATE_VERSION} if source == "deterministic" else {}),
     }
 
 
@@ -265,17 +285,19 @@ def deterministic_writeup(
     # work" would name a thing the reader never created.
     strand = "" if cluster.is_implicit else cluster.label
     where = f"in your {strand} work" if strand else "in your feed"
+    # No position in the sentence. It used to open "Ranked 4th in your …", which
+    # was the only place a per-theme rank survived once the cards stopped showing
+    # one — and a rank quoted in prose, with nothing beside it to say which list
+    # it counts, is exactly the number that read as a sorting fault.
     if interest:
         matters = (
-            f"Ranked {_ordinal(evidence.position)} {where} on the strength of "
-            f"its overlap with {interest}."
+            f"Matches {where.removeprefix('in ')} through its overlap "
+            f"with {interest}."
         )
+    elif strand:
+        matters = f"Matches your {strand} interests."
     else:
-        matters = (
-            f"Ranked {_ordinal(evidence.position)} "
-            + (f"against your {strand} interests." if strand
-               else "against your research interests.")
-        )
+        matters = "Matches your research interests."
     caveat = (
         "Mylo has not read this one for you — the placement is a topical match, "
         "not a judgement of the work itself."
@@ -291,16 +313,6 @@ def deterministic_writeup(
         fingerprint=fingerprint,
         source="deterministic",
     )
-
-
-_ORDINAL_SUFFIX = {1: "st", 2: "nd", 3: "rd"}
-
-
-def _ordinal(n: int) -> str:
-    if n <= 0:
-        return "unranked"
-    suffix = "th" if 10 <= n % 100 <= 20 else _ORDINAL_SUFFIX.get(n % 10, "th")
-    return f"{n}{suffix}"
 
 
 # --------------------------------------------------------------------------- #

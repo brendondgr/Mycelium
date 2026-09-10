@@ -123,10 +123,19 @@ export function BridgeBadge({ clusters }: { clusters: ClusterRef[] }) {
 export function ClusterRow({
   cluster,
   bridgeClusters,
+  leading,
   className,
 }: {
   cluster?: ClusterRef | null;
   bridgeClusters?: ClusterRef[] | null;
+  /**
+   * Tags that qualify the match rather than name a theme — "New", "Updated".
+   * They share this row because they are the same size and the same kind of
+   * aside, and because a row of their own would cost every card the height
+   * whether or not it had one. Passed as a node so this primitive does not have
+   * to import from the sections that own those tags.
+   */
+  leading?: React.ReactNode;
   className?: string;
 }) {
   // The primary badge already names the attributed theme, so a bridge list that
@@ -134,9 +143,10 @@ export function ClusterRow({
   const bridges = (bridgeClusters ?? []).filter(
     (c) => c && c.label && c.id !== cluster?.id,
   );
-  if (!cluster && bridges.length === 0) return null;
+  if (!leading && !cluster && bridges.length === 0) return null;
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
+      {leading}
       {cluster ? <ClusterBadge cluster={cluster} /> : null}
       <BridgeBadge clusters={bridges} />
     </div>

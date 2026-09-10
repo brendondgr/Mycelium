@@ -5,7 +5,6 @@ import * as React from "react";
 import { Card } from "@/components/portal/primitives/card";
 import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
-import { MatchRail } from "@/components/portal/primitives/match-rail";
 import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -19,6 +18,8 @@ import {
   CardActionBar,
   MyloReason,
   IgnoredStrip,
+  NewTag,
+  UpdatedTag,
   formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
 import {
@@ -29,6 +30,7 @@ import {
   type GrantFilterState,
 } from "@/components/portal/sections/grant-filters";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
+import { HiddenByFilters } from "@/components/portal/primitives/hidden-by-filters";
 import {
   FeedSearchBar,
   clusterOptions,
@@ -166,17 +168,6 @@ export function GrantRow({
 
   return (
     <MatchCard
-      ring={
-        <MatchRail
-          verdict={grant.verdict}
-          position={grant.position}
-          positionOf={grant.position_of}
-          theme={grant.cluster?.label}
-          origin={grant.origin}
-          isNew={grant.is_new}
-          isUpdated={grant.is_updated}
-        />
-      }
       head={
         /* Wraps rather than squeezing: once the title column would fall below
            12rem — a narrow phone, beside the match rail — the tools drop to
@@ -212,6 +203,12 @@ export function GrantRow({
             <ClusterRow
               cluster={grant.cluster}
               bridgeClusters={grant.bridge_clusters}
+              leading={
+                <>
+                  {grant.is_new ? <NewTag /> : null}
+                  {grant.is_updated ? <UpdatedTag /> : null}
+                </>
+              }
               className="mt-2"
             />
           </div>
@@ -401,6 +398,13 @@ function GrantsFeed({
     [scoped, filters, today],
   );
 
+  // What the rail's facets took out of the scoped feed — see `HiddenByFilters`.
+  const hidden = React.useMemo(() => {
+    if (visible.length === scoped.length) return [];
+    const shown = new Set(visible.map((grant) => grant.content_id));
+    return scoped.filter((grant) => !shown.has(grant.content_id));
+  }, [scoped, visible]);
+
   const clearAll = () => {
     setFilters(DEFAULT_GRANT_FILTERS);
     setQuery("");
@@ -533,6 +537,13 @@ function GrantsFeed({
               />
             </>
           )}
+
+          {/* Outside the branch above on purpose — see the conferences feed. */}
+          {!isLoading && !isError ? (
+            <HiddenByFilters count={hidden.length} noun="grants">
+              <GrantsList grants={hidden} recommendedFor={recommendedFor} />
+            </HiddenByFilters>
+          ) : null}
         </div>
       </div>
     </div>

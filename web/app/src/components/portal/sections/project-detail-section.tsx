@@ -25,10 +25,6 @@ import {
   ThumbsUpIcon,
 } from "@/components/portal/icons";
 import { TabBar, type TabItem } from "@/components/portal/primitives/tab-bar";
-import {
-  VERDICT_LABEL,
-  VerdictBadge,
-} from "@/components/portal/primitives/verdict-badge";
 import { usePortal } from "@/components/portal/portal-context";
 import {
   ProjectAboutCard,
@@ -71,7 +67,6 @@ import type {
   Project,
   ProjectFeedItem,
   Suggestion,
-  Verdict,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
@@ -754,12 +749,6 @@ function ProjectFocusCard({
   );
 }
 
-/** A small percent-match chip; muted when the model left the match unscored. */
-/** The project feed's compact judgement chip — the same verdict the feeds show. */
-function MatchChip({ verdict }: { verdict: Verdict | null }) {
-  return <VerdictBadge verdict={verdict} size="sm" />;
-}
-
 /**
  * The paste-a-link row at the top of the project feed. Controlled input +
  * submit that resolves a DOI/article link into a project share. Disabled
@@ -1099,7 +1088,6 @@ function PaperFeedRow({
           </span>
         )}
         <div className="flex shrink-0 items-center gap-1.5">
-          <MatchChip verdict={paper.verdict} />
           {canShare && projectId ? (
             <>
               <EngagementButtons
@@ -1147,7 +1135,7 @@ function InterestedRow({ members }: { members: InterestedMember[] }) {
       {shown.map((m) => (
         <span
           key={m.username}
-          title={`${m.name} · ${VERDICT_LABEL[m.verdict]} on their own feed`}
+          title={`${m.name} · this already surfaced on their own feed`}
           className="inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-2 py-[2px] text-[11px] font-medium text-[var(--text-secondary)]"
         >
           <Avatar initials={m.initials} seed={m.username} size={16} />

@@ -3,7 +3,6 @@
 import * as React from "react";
 
 import { MatchCard } from "@/components/portal/primitives/match-card";
-import { PositionMark, VerdictBadge } from "@/components/portal/primitives/verdict-badge";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
 import {
@@ -91,16 +90,6 @@ export function SuggestionCard({
 
   return (
     <MatchCard
-      ring={
-        <div className="flex w-16 shrink-0 flex-col items-center gap-1.5">
-          <PositionMark
-            position={suggestion.position}
-            of={suggestion.position_of}
-            theme={suggestion.cluster?.label}
-          />
-          <VerdictBadge verdict={suggestion.verdict} origin={suggestion.origin} />
-        </div>
-      }
       head={
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -138,12 +127,12 @@ export function SuggestionCard({
             <ClusterRow
               cluster={suggestion.cluster}
               bridgeClusters={suggestion.bridge_clusters}
+              leading={suggestion.is_new ? <NewTag /> : null}
               className="mt-2"
             />
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {suggestion.is_new ? <NewTag /> : null}
             {/* Only the cross-topics tail is labelled. Every other row in this
                 feed is a Mylo pick, and a chip that appears on nearly all of
                 them distinguishes nothing — the ring already carries his

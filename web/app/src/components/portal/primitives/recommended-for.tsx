@@ -3,7 +3,6 @@
 import * as React from "react";
 
 import { Avatar } from "@/components/portal/primitives/avatar";
-import { VERDICT_LABEL } from "@/components/portal/primitives/verdict-badge";
 import type { RecommendedMember } from "@/lib/portal/types";
 
 /**
@@ -129,10 +128,10 @@ function shownSignal(
   member: RecommendedMember,
 ): { text: string; scope: string } | null {
   if (member.own_feed_verdict) {
-    return {
-      text: VERDICT_LABEL[member.own_feed_verdict],
-      scope: "on their own feed",
-    };
+    // The verdict's own word ("Read", "Skim") used to be the text here. The app
+    // no longer shows that vocabulary anywhere, so what survives is the fact it
+    // was standing in for: this reached them too.
+    return { text: "Surfaced", scope: "on their own feed" };
   }
   if (typeof member.profile_cosine === "number") {
     return { text: `${member.profile_cosine}%`, scope: "profile fit" };
@@ -157,9 +156,7 @@ function memberTitle(member: RecommendedMember): string {
 /** The fallback sentence when a member was named on a basis with no prose. */
 function describeBasis(member: RecommendedMember): string {
   if (member.own_feed_verdict) {
-    return `${member.name}'s own feed already flagged this as a ${
-      VERDICT_LABEL[member.own_feed_verdict]
-    }.`;
+    return `${member.name}'s own feed surfaced this too.`;
   }
   if (member.basis.includes("eligible")) {
     return `${member.name} is personally eligible for this.`;

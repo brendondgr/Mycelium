@@ -6,7 +6,6 @@ import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
-import { VerdictBadge } from "@/components/portal/primitives/verdict-badge";
 import {
   MyloReportCard,
   formatBriefingWhen,
@@ -118,7 +117,6 @@ function ShowcaseRow({ item }: { item: BriefingShowcaseItem }) {
       </span>
       <span className="flex shrink-0 items-center gap-1.5">
         {item.is_new ? <Pill tone="accent">New</Pill> : null}
-        <VerdictBadge verdict={item.verdict} size="sm" />
       </span>
     </span>
   );

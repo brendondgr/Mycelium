@@ -34,9 +34,9 @@ Paths are relative to the repository root.
 | An app route | `web/app/src/app/app/(workspace)/<name>/page.tsx` |
 | Login / signup routes | `web/app/src/app/{login,signup}/` + `web/app/src/components/auth/` |
 | Portal shell, sidebar, nav, lab switcher | `web/app/src/components/portal/{portal-sidebar,portal-mobile-nav,lab-switcher,portal-context}.tsx` |
-| Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `verdict-badge`, `match-rail`, `match-card`, `cluster-badge`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `modal`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-list`, `source-footer` |
-| A card's judgement (verdict chip + position in its theme) | `web/app/src/components/portal/primitives/verdict-badge.tsx` (`VerdictBadge`, `PositionMark`, `VERDICT_LABEL`); its print half is `_verdict_chip` in `web/backend/apps/content/daily_report_pdf.py`. There is no percent match anywhere |
-| A feed card's match panel (position, verdict, "New") | `web/app/src/components/portal/primitives/match-rail.tsx` |
+| Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `match-card`, `cluster-badge`, `hidden-by-filters`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `modal`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-list`, `source-footer` |
+| A card's judgement | **The app shows none.** There is no percent match, no per-theme position, and no verdict chip anywhere in the app UI. The backend still computes and stores a verdict and a slate position, and the API still serves both (`verdict`, `position`, `position_of`), so restoring a display is a frontend-only change; the printed report (`daily_report_pdf.py`), the Discord digest and the briefing still read them |
+| The rows a feed's filter rail took out | `web/app/src/components/portal/primitives/hidden-by-filters.tsx`; mounted after the card list on the grants, conferences and fellowships feeds |
 | A feed card's theme badges (attributed cluster + "Also…") | `ClusterRow` in `web/app/src/components/portal/primitives/cluster-badge.tsx`; rendered under the title by every feed card, not on the rail |
 | A feed card's Deadlines button + dropdown (alerts per round) | `web/app/src/components/portal/primitives/deadline-list.tsx` (`DeadlineMenu`) |
 | A feed card's source row + "View …" button | `web/app/src/components/portal/primitives/source-footer.tsx` (`SourceRow`, `ViewLink`) |

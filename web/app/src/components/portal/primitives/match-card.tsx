@@ -4,57 +4,35 @@ import { Card } from "@/components/portal/primitives/card";
 import { cn } from "@/lib/utils";
 
 type MatchCardProps = {
-  /**
-   * The item's left-hand panel: a bare verdict chip on a paper card, or the
-   * fuller `MatchRail` (position, verdict, "New", matching themes) the
-   * opportunity cards pass. Null when there is no judgement and no tag to show.
-   */
-  ring?: React.ReactNode;
-  /** Badges, title and the item's own meta line — the block beside the ring. */
+  /** Title, meta lines, theme badges and the card's tools — the top block. */
   head: React.ReactNode;
-  /** Description, reason, chips, link — everything that runs full width. */
+  /** Description, reason, chips, link — everything beneath the head. */
   children?: React.ReactNode;
   className?: string;
 };
 
 /**
- * The shape every scored feed card shares: Mylo's recommendation in a panel at
- * the top-left, the head beside it, and the body reclaiming the full width
- * beneath.
+ * The shape every feed card shares: a soft panel with the head at the top and
+ * the body beneath it, both starting at the card's left edge.
  *
- * The panel used to sit in a flex column running the whole height of the card,
- * which left a tall empty margin down the left of anything with a real abstract
- * — the taller the card, the worse it looked. Here the gutter is one grid row
- * tall: only the head is indented past it, and the description, reason and
- * source row start back at the card's left edge.
- *
- * With no panel (an unscored item carries no judgement) the gutter is not
- * rendered at all, so nothing is indented past empty space.
+ * There used to be a judgement gutter down the left — first a percent ring, then
+ * a rail carrying a position and a verdict chip. Both are gone. The percent
+ * implied a measurement nobody made; the position and the verdict that replaced
+ * it were per-theme, and a feed that interleaves themes rendered them as a
+ * column of repeated and apparently unsorted numbers. What is left is a card
+ * whose content starts where the card does, with no reserved column standing
+ * empty on the many rows that carried no judgement at all.
  */
-export function MatchCard({ ring, head, children, className }: MatchCardProps) {
-  const cardClass = cn(
-    "p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
-    className,
-  );
-
-  if (!ring) {
-    return (
-      <Card className={cardClass}>
-        {head}
-        {children}
-      </Card>
-    );
-  }
-
+export function MatchCard({ head, children, className }: MatchCardProps) {
   return (
-    <Card className={cardClass}>
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 sm:gap-x-5">
-        <div className="col-start-1 row-start-1 self-start">{ring}</div>
-        <div className="col-start-2 row-start-1 min-w-0">{head}</div>
-        {children ? (
-          <div className="col-span-2 min-w-0">{children}</div>
-        ) : null}
-      </div>
+    <Card
+      className={cn(
+        "p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        className,
+      )}
+    >
+      {head}
+      {children}
     </Card>
   );
 }

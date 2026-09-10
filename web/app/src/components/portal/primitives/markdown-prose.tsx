@@ -3,7 +3,6 @@
 import * as React from "react";
 
 import { ArrowRightIcon } from "@/components/portal/icons";
-import { VerdictBadge } from "@/components/portal/primitives/verdict-badge";
 import type { Verdict } from "@/lib/portal/types";
 import {
   ReportEntry,
@@ -49,7 +48,7 @@ const NEW_CHIP_CLASS =
 // outer loop's `lastIndex`, re-matching the same segment forever (a browser
 // freeze on any body containing bold or a link).
 const inlinePattern = () =>
-  /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|\b(Read|Skim|File)\b)/g;
+  /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\))/g;
 
 function renderInline(text: string, keyBase: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
@@ -85,14 +84,6 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
         >
           {renderInline(match[3], `${keyBase}-a${i}`)}
         </a>,
-      );
-    } else if (match[5] !== undefined) {
-      nodes.push(
-        <VerdictBadge
-          key={`${keyBase}-m${i}`}
-          verdict={match[5].toLowerCase() as Verdict}
-          size="sm"
-        />,
       );
     }
     last = match.index + match[0].length;
@@ -338,9 +329,7 @@ function OrderedEntry({
         title={title}
         insight={insight ? renderInline(insight, `${keyBase}-i`) : null}
         note={note ? renderInline(note, `${keyBase}-n`) : null}
-        /* Renders nothing when the item carries no verdict, which is the honest
-           answer rather than a fabricated one. */
-        rail={<VerdictBadge verdict={item.verdict} />}
+        rail={null}
         flags={item.isNew ? <ReportFlag tone="new">New</ReportFlag> : null}
         link={
           url ? (

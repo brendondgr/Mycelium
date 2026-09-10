@@ -626,7 +626,12 @@ was which. In its place:
   theme otherwise, so it means the same thing to every reader. `null` on an
   unscored row; `skip` is never chipped in the UI.
 - `position` — place within the item's **own theme's** slate. A global position
-  would compare scores that are not comparable across themes.
+  would compare scores that are not comparable across themes. **The app does not
+  render this**, and nor does it render `verdict`: a feed interleaves themes, so
+  a column of per-theme positions read as repeated and unsorted numbers, and
+  Read / Skim / File said nothing a reader could act on about a conference or a
+  grant. Both remain in the payload, and the report, the PDF and the digest still
+  use them, so putting a display back is a frontend change and nothing more.
 - `position_of` — how long that theme's slate actually ran, so a card can print
   "10th of 25" and say plainly that two adjacent positions are counts in
   different lists. It is the *realised* length, not the configured depth, so a

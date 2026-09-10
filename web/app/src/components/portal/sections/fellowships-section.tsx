@@ -5,7 +5,6 @@ import * as React from "react";
 import { Card } from "@/components/portal/primitives/card";
 import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
-import { MatchRail } from "@/components/portal/primitives/match-rail";
 import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
@@ -19,6 +18,7 @@ import {
   CardActionBar,
   MyloReason,
   IgnoredStrip,
+  NewTag,
   formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
 import {
@@ -29,6 +29,7 @@ import {
   type FellowshipFilterState,
 } from "@/components/portal/sections/fellowship-filters";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
+import { HiddenByFilters } from "@/components/portal/primitives/hidden-by-filters";
 import {
   FeedSearchBar,
   clusterOptions,
@@ -184,7 +185,6 @@ export function FellowshipRow({
   item,
   remindLabSlug,
   recommendedFor,
-  scopeName,
   ignorable = false,
 }: {
   item: FellowshipOpportunity;
@@ -192,13 +192,6 @@ export function FellowshipRow({
   remindLabSlug?: string;
   /** Lab-only: who Mylo judges this most applicable to. Personal feeds omit it. */
   recommendedFor?: RecommendedMember[];
-  /**
-   * The lab or project this card's ring is scored against. Unset on a personal
-   * feed, where the ring means the reader. A lab fellowship card can show three
-   * percentages with three different scopes — this one, the member chip, and the
-   * member's own-feed number in its note — so the ring has to say which is which.
-   */
-  scopeName?: string;
   /**
    * Show the ignore control. Feeds pass it; the Saves page does not — a save is
    * this reader asking to keep the item, so offering to hide it there would be
@@ -242,19 +235,6 @@ export function FellowshipRow({
 
   return (
     <MatchCard
-      /* The rail is research fit; eligibility is a separate rule-engine claim
-         and keeps its own badge beside the award's identity line. */
-      ring={
-        <MatchRail
-          verdict={item.verdict}
-          position={item.position}
-          positionOf={item.position_of}
-          theme={item.cluster?.label}
-          origin={item.origin}
-          scope={scopeName}
-          isNew={item.is_new}
-        />
-      }
       head={
         /* Wraps rather than squeezing: once the title column would fall below
            12rem — a narrow phone, beside the match rail — the tools drop to
@@ -273,28 +253,25 @@ export function FellowshipRow({
               </p>
             ) : null}
 
-            {/* What the award actually covers, in two parts: the figure, and
-                the source's own qualifier on it ("per year", "plus travel").
-                A fellowship's money is the reason to read the card, and the
-                two say different things — a bare "$34,000" that turns out to
-                be a one-off is a different award from one that repeats. */}
-            {item.amount || item.amount_note ? (
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                {item.amount ? (
-                  <span
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
-                    title={`Award ${item.amount}`}
-                  >
-                    <BankIcon size={13} aria-hidden="true" />
-                    {item.amount}
-                  </span>
-                ) : null}
-                {item.amount_note ? (
-                  <span className="rounded-full border border-[var(--border)] bg-[var(--surface-alt)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
-                    {item.amount_note}
-                  </span>
-                ) : null}
-              </div>
+            {/* The figure, and nothing else on the line. The source's own
+                qualifier used to sit beside it in a pill, but sources write that
+                field as a whole paragraph ("$100,000 per team ($50,000 per team
+                member). Recipients may use the award for…"), so a chip meant to
+                add two words was rendering a block of prose across the card. It
+                moves into the tooltip, where its length costs the layout
+                nothing, and the description below already carries the terms. */}
+            {item.amount ? (
+              <span
+                className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]"
+                title={
+                  item.amount_note
+                    ? `Award ${item.amount} — ${item.amount_note}`
+                    : `Award ${item.amount}`
+                }
+              >
+                <BankIcon size={13} aria-hidden="true" />
+                {item.amount}
+              </span>
             ) : null}
 
             {/* Two different claims, one row apiece: which of the reader's
@@ -303,6 +280,7 @@ export function FellowshipRow({
             <ClusterRow
               cluster={item.cluster}
               bridgeClusters={item.bridge_clusters}
+              leading={item.is_new ? <NewTag /> : null}
               className="mt-2"
             />
 
@@ -506,12 +484,9 @@ function BandHeading({ band }: { band: "matched" | "open" }) {
 function FellowshipList({
   items,
   recommendedFor,
-  labName,
 }: {
   items: FellowshipOpportunity[];
   recommendedFor?: Record<string, RecommendedMember[]>;
-  /** Set on a lab feed: what each card's judgement is scored against. */
-  labName?: string;
 }) {
   // Two bands, in order: the awards chosen for the reader's research lead, and
   // the ones they merely qualify for follow, labelled as such. Eligibility is a
@@ -530,7 +505,6 @@ function FellowshipList({
       <FellowshipRow
         item={item}
         recommendedFor={recommendedFor?.[item.content_id]}
-        scopeName={labName}
         ignorable
       />
     </RevealOnScroll>
@@ -672,6 +646,13 @@ function FellowshipsFeed({
     [scoped, filters, today],
   );
 
+  // What the rail's facets took out of the scoped feed — see `HiddenByFilters`.
+  const hidden = React.useMemo(() => {
+    if (visible.length === scoped.length) return [];
+    const shown = new Set(visible.map((item) => item.content_id));
+    return scoped.filter((item) => !shown.has(item.content_id));
+  }, [scoped, visible]);
+
   const clearAll = () => {
     setFilters(DEFAULT_FELLOWSHIP_FILTERS);
     setQuery("");
@@ -802,7 +783,6 @@ function FellowshipsFeed({
               <FellowshipList
                 items={displayed}
                 recommendedFor={recommendedFor}
-                labName={labName}
               />
               <FeedSentinel
                 sentinelRef={sentinelRef}
@@ -814,6 +794,13 @@ function FellowshipsFeed({
               />
             </>
           )}
+
+          {/* Outside the branch above on purpose — see the conferences feed. */}
+          {!isLoading && !isError ? (
+            <HiddenByFilters count={hidden.length} noun="fellowships">
+              <FellowshipList items={hidden} recommendedFor={recommendedFor} />
+            </HiddenByFilters>
+          ) : null}
         </div>
       </div>
     </div>
