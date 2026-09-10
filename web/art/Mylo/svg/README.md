@@ -1,8 +1,10 @@
 # Mylo — animation rig (SVG)
 
-`mylo.svg` is the vector, riggable Mylo: the same mushroom scout as the PNG
-masters in `web/art/Mylo/`, redrawn as flat shapes in the palette from
-`docs/styles.md` and split into named, independently transformable parts.
+`mylo.svg` is the vector, riggable Mylo: the front view from the character
+sheet, traced feature for feature — the bell cap with its striated underside,
+the glasses over big dark eyes, the open smile, the neckerchief with the leaf
+badge, the satchel and its straps, the shoulder sprout, the boots — and split
+into named, independently transformable parts.
 
 It is one self-contained file. Geometry, layer names, animation CSS and the
 default pose all live inside it, so it works as a plain `<img src>`, as an
@@ -46,13 +48,13 @@ no arithmetic.
       .m-figure            bob, hop, lean — the "root motion" handle
         .m-sprout          shoulder sprout
         .m-legs
-          .m-leg-l/.m-leg-r    hip pivots (100,256) / (140,256)
+          .m-leg-l/.m-leg-r    hip pivots (120,380) / (194,380)
         .m-torso           body, striations, straps, scarf, badge
-        .m-arm-l           shoulder pivot (62,216)
-          .m-hand-l          tip pivot (52,262) — carries the notebook
-        .m-arm-r           shoulder pivot (178,216)
-          .m-hand-r          tip pivot (188,262) — carries the magnifier
-        .m-head            cap + face, pivot (120,204)
+        .m-arm-l           shoulder pivot (84,272)
+          .m-hand-l          tip pivot (74,346) — carries the notebook
+        .m-arm-r           shoulder pivot (220,272)
+          .m-hand-r          tip pivot (230,346) — carries the magnifier
+        .m-head            cap, its underside, face — pivot (152,266)
           .m-eye-l/.m-eye-r  blink pivots
           .m-face            brows, eyes, glasses, mouths
           .m-cap
@@ -77,8 +79,8 @@ Add one block. There is no other wiring.
 Two limits worth knowing before you plan a pose:
 
 - **The arms are single stubs, not two-segment limbs.** Reach comes from the
-  shoulder only. An arm covers ~47 units, so a hand can get to the chin or out
-  to the side, but not to the far shoulder.
+  shoulder only. An arm covers ~78 units of the 340×480 viewBox, so a hand can
+  get to the chin or out to the side, but not to the far shoulder.
 - **The cap is painted last.** Anything a hand carries above head height ends up
   behind it. `search` is angled to keep the magnifying glass clear of the rim;
   a new overhead pose needs the same check.
