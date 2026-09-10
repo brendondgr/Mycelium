@@ -95,7 +95,7 @@ export function PortalSidebar() {
   const manageLab = currentLab ? canManageLab(currentLab) : false;
 
   return (
-    <aside className="hidden h-full w-[244px] shrink-0 overflow-y-auto border-r border-[var(--divider)] px-3.5 pb-6 pt-[18px] lg:block">
+    <aside className="hidden h-full w-[244px] shrink-0 flex-col overflow-y-auto border-r border-[var(--divider)] px-3.5 pb-6 pt-[18px] lg:flex">
       {inLab && currentLab ? (
         <LabIdentity lab={currentLab} />
       ) : (
@@ -147,17 +147,6 @@ export function PortalSidebar() {
           active={section === "reminders"}
           onClick={() => goToSection("reminders")}
         />
-        {/* Identity, email, password and the plan — one page, because they are
-            one question: what is true of my account? A lab's plan is its
-            managers' business, so members in a lab scope don't get the entry. */}
-        {!inLab || manageLab ? (
-          <SidebarNavItem
-            icon={<ReceiptIcon size={18} />}
-            label="Account"
-            active={section === "account"}
-            onClick={() => goToSection("account")}
-          />
-        ) : null}
       </nav>
 
       <GroupLabel>Research</GroupLabel>
@@ -217,6 +206,21 @@ export function PortalSidebar() {
             />
           </nav>
         </div>
+      ) : null}
+
+      {/* Identity, email, password and the plan — one page, because they are
+          one question: what is true of my account? It sits at the foot of the
+          sidebar, away from the day-to-day entries. A lab's plan is its
+          managers' business, so members in a lab scope don't get the entry. */}
+      {!inLab || manageLab ? (
+        <nav className="mt-auto flex flex-col gap-0.5 pt-[18px]">
+          <SidebarNavItem
+            icon={<ReceiptIcon size={18} />}
+            label="Account"
+            active={section === "account"}
+            onClick={() => goToSection("account")}
+          />
+        </nav>
       ) : null}
     </aside>
   );
