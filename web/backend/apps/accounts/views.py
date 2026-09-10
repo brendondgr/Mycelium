@@ -80,6 +80,7 @@ from .serializers import (
     LabWatchPreferenceSerializer,
     MyInvitationSerializer,
     MyLabSerializer,
+    PasswordChangeRequestSerializer,
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
     ProfileSerializer,
@@ -114,6 +115,12 @@ class RegisterRateThrottle(AnonRateThrottle):
     """Throttle anonymous account creation (rate from DEFAULT_THROTTLE_RATES)."""
 
     scope = "register"
+
+
+class EmailVerifyThrottle(UserRateThrottle):
+    """Per-account cap on code submissions and resends."""
+
+    scope = "email_verify"
 
 
 @api_view(["GET"])
@@ -353,8 +360,66 @@ def _account_payload(user: User) -> dict[str, object]:
     }
 
 
+class PasswordChangeRequestView(APIView):
+    """Step one of a password change: mail a confirmation code.
+
+    A signed-in session is not authority to change a password. The session and
+    the current password both live inside a browser someone can walk away from,
+    so the change is gated on something that does not: a code sent to the
+    account's own address. Anyone who can read that mailbox can already take the
+    account over through password reset, so this adds a factor without adding a
+    new way in.
+
+    The current password is checked before anything is sent, so this cannot be
+    used to fire codes at someone's inbox from their unattended browser.
+    """
+
+    throttle_classes = [EmailVerifyThrottle]
+
+    def post(self, request: Request) -> Response:
+        serializer = PasswordChangeRequestSerializer(
+            data=request.data, context={"user": request.user}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        address = request.user.email
+        if not address:
+            return Response(
+                {"detail": ["Your account has no email address to confirm with."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            email_verification.issue(
+                request.user,
+                address,
+                EmailVerification.Purpose.PASSWORD,
+                enforce_cooldown=True,
+            )
+        except email_verification.ResendTooSoon as exc:
+            return Response(
+                {"detail": [str(exc)]}, status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+        record_audit_event(
+            actor=request.user,
+            action="account.password_change_requested",
+            target_type="user",
+            target_id=str(request.user.pk),
+        )
+        return Response(
+            {"detail": f"We sent a confirmation code to {address}."},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
 class PasswordChangeView(APIView):
-    """Change the signed-in account's password."""
+    """Step two: spend the emailed code on a new password.
+
+    The code is looked up under its own purpose, so one issued to verify an
+    address or settle an email change cannot be redirected here.
+    """
+
+    throttle_classes = [EmailVerifyThrottle]
 
     def post(self, request: Request) -> Response:
         serializer = PasswordChangeSerializer(
@@ -363,6 +428,17 @@ class PasswordChangeView(APIView):
         serializer.is_valid(raise_exception=True)
 
         user = request.user
+        try:
+            email_verification.verify(
+                user,
+                serializer.validated_data["code"],
+                EmailVerification.Purpose.PASSWORD,
+            )
+        except email_verification.VerificationError as exc:
+            return Response(
+                {"code": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST
+            )
+
         user.set_password(serializer.validated_data["new_password"])
         user.save(update_fields=["password"])
         # Every *other* session dies with the old password hash; this one is
@@ -410,12 +486,6 @@ class EmailChangeView(APIView):
             },
             status=status.HTTP_202_ACCEPTED,
         )
-
-
-class EmailVerifyThrottle(UserRateThrottle):
-    """Per-account cap on code submissions and resends."""
-
-    scope = "email_verify"
 
 
 @api_view(["POST"])

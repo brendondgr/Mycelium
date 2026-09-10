@@ -10,7 +10,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0022_user_email_ci_unique'),
+        ('accounts', '0023_alter_emailverification_purpose'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('kind', models.CharField(choices=[('email', 'Emailed to one address'), ('link', 'Shareable link')], max_length=10)),
                 ('role', models.CharField(choices=[('owner', 'Owner'), ('admin', 'Admin'), ('member', 'Member'), ('viewer', 'Viewer')], default='member', help_text='Membership role granted when the invite is redeemed.', max_length=20)),
                 ('email', models.EmailField(blank=True, default='', help_text='Lower-cased address an email invite is bound to; blank for a link.', max_length=254)),
-                ('message', models.TextField(blank=True, default='', help_text='Optional note from the creator, shown in the email and on the link page.')),
+                ('message', models.TextField(blank=True, default='', help_text='Optional note from the creator, shown in the email and on the page.')),
                 ('token', models.CharField(max_length=64, unique=True)),
                 ('max_uses', models.PositiveIntegerField(default=1, help_text='How many accounts may join through this invite. Always 1 for email.')),
                 ('used_count', models.PositiveIntegerField(default=0)),

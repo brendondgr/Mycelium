@@ -43,6 +43,7 @@ TEMPLATES: dict[str, str] = {
     "lab_invitation": "You have been invited to a lab on Mycelium",
     "department_invitation": "You have been invited to a department on Mycelium",
     "verification_code": "Your Mycelium verification code",
+    "password_change_code": "Confirm your Mycelium password change",
     "test": "Mycelium test",
 }
 

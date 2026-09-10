@@ -439,23 +439,44 @@ class _PasswordPolicyMixin:
             raise serializers.ValidationError({field: list(exc.messages)}) from exc
 
 
-class PasswordChangeSerializer(_PasswordPolicyMixin, serializers.Serializer):
-    """Change the password of the signed-in account.
-
-    The current password is required even though the session already proves who
-    is asking: it is what stops a borrowed, unlocked browser from being turned
-    into a permanent takeover.
-    """
+class _CurrentPasswordMixin(serializers.Serializer):
+    """Require the account's current password on a security-sensitive write."""
 
     current_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True)
-    new_password_confirm = serializers.CharField(write_only=True)
 
     def validate_current_password(self, value: str) -> str:
         user = self.context["user"]
         if not user.check_password(value):
             raise serializers.ValidationError("That is not your current password.")
         return value
+
+
+class PasswordChangeRequestSerializer(_CurrentPasswordMixin):
+    """Step one of a password change: ask for the emailed confirmation code.
+
+    The current password is checked *here*, before any mail goes out, so a
+    borrowed browser cannot be used to fire confirmation codes at the account
+    owner's inbox.
+    """
+
+
+class PasswordChangeSerializer(_PasswordPolicyMixin, _CurrentPasswordMixin):
+    """Step two: the new password, the current one, and the emailed code.
+
+    A signed-in session is not enough to change a password, and neither is the
+    session plus the current password. Both of those live entirely inside a
+    browser someone walked away from; the code lives in a mailbox. Requiring the
+    current password *and* a code means an attacker needs the unlocked machine,
+    the existing password, and the inbox — and the code email doubles as the
+    alarm if they somehow have the first two.
+
+    The current password is re-checked at this step rather than trusted from
+    step one, so possessing a code is never on its own sufficient.
+    """
+
+    code = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True)
 
     def validate(self, attrs: dict) -> dict:
         if attrs["new_password"] != attrs["new_password_confirm"]:

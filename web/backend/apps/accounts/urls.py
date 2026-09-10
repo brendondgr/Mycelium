@@ -18,6 +18,14 @@ urlpatterns = [
     # current one, or an emailed link when it has been lost).
     path("account/", views.AccountView.as_view(), name="account"),
     path("account", views.AccountView.as_view(), name="account-no-slash"),
+    # Two steps: ask for a code mailed to the account's own address, then spend
+    # it. A signed-in session is not authority to change a password.
+    path(
+        "password/change/request/",
+        views.PasswordChangeRequestView.as_view(),
+        name="password-change-request",
+    ),
+    path("password/change/request", views.PasswordChangeRequestView.as_view()),
     path(
         "password/change/",
         views.PasswordChangeView.as_view(),

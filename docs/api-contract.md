@@ -35,7 +35,8 @@ routes clients depend on most.
 | `email/verify/` `email/resend/` | POST | Submit a six-digit code; ask for a new one |
 | `email/change/` | POST | Start a move to a new address (code to the new one) |
 | `email/check/` | POST | Whether an address is free (invite-code gated) |
-| `password/change/` | POST | Change the password of the signed-in account |
+| `password/change/request/` | POST | Mail a code authorising a password change |
+| `password/change/` | POST | Spend that code on a new password |
 | `password/reset/` | POST | Mail a reset link; answers the same either way |
 | `password/reset/verify/` | POST | Whether a link is still live |
 | `password/reset/confirm/` | POST | Spend a link on a new password |
@@ -271,11 +272,26 @@ it comes back through `email/verify/`.
 `{ "email", "access_code" }` → `{ "email", "available" }`. Gated on the live
 sign-up code because it is an account-enumeration oracle; `400` without it.
 
-### `POST /api/auth/password/change/`
+### `POST /api/auth/password/change/request/` · `POST /api/auth/password/change/`
 
-`{ "current_password", "new_password", "new_password_confirm" }` → `200`. Every
-other session for that user dies with the old password hash; the caller's own is
-re-stamped so it stays signed in.
+Changing a password from inside the app takes two steps, and a signed-in session
+is not authority for either. The session and the current password both live in a
+browser someone can walk away from, so the change is gated on something that does
+not: a code mailed to the account's own address. Anyone who can read that mailbox
+can already take the account over through password reset, so this adds a factor
+without adding a new way in.
+
+`request/` takes `{ "current_password" }` → `202`. The password is checked before
+anything is sent, so an unattended browser cannot be used to fire codes at its
+owner's inbox. `429` inside the resend cooldown.
+
+`change/` takes `{ "current_password", "code", "new_password",
+"new_password_confirm" }` → `200`, `400` with `code` or `new_password` errors.
+The current password is re-checked here rather than trusted from the first step,
+so holding a code is never on its own sufficient. The code is looked up under its
+own purpose, so one issued to verify an address or settle an email change cannot
+be redirected here. On success every other session for that user dies with the
+old password hash; the caller's own is re-stamped so it stays signed in.
 
 ### `POST /api/auth/password/reset/`
 
