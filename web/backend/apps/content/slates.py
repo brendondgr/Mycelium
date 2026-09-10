@@ -30,14 +30,17 @@ the per-cluster slate lives inside ``signals``::
         "<cluster_id>": {
             "label": "Medical AI Agents",
             "rank": 3,                     # 1-based, within this theme
+            "of": 25,                      # how long this theme's slate ran
             "entered_on": "2026-08-23",    # when it entered *this* theme's slate
             "is_new": True,                # entered on this run
         },
         ...
     }
 
-The legacy flat signals (``top_rank`` / ``entered_top_on`` / ``is_new_top``) are
-still written, derived as the item's *best* position across its themes, so every
+The legacy flat signals (``top_rank`` / ``top_rank_of`` / ``entered_top_on`` /
+``is_new_top``) are still written, derived from the item's *best* position across
+its themes — ``top_rank_of`` is that same theme's slate length, so a card can say
+"3rd of 25" without a second query — so every
 existing feed reader, serializer, and API filter keeps working unchanged. For a
 single-cluster (or implicit-cluster) profile the derived values are byte-identical
 to what :func:`apps.content.top_feed.compute_top` produced, which is what makes
@@ -201,10 +204,29 @@ def compute_cluster_slates(
             out.setdefault(cid, {})[cluster_id] = {
                 "label": labels.get(cluster_id, ""),
                 "rank": position,
+                # How long this theme's slate actually is, so a card can say
+                # "3rd of 7" rather than implying a depth the theme never
+                # reached. It is the realised length, not ``limit``.
+                "of": len(ordered[:limit]),
                 "entered_on": today if entered else (was[cid] or today),
                 "is_new": entered,
             }
     return out
+
+
+def _set_rank_denominator(signals: dict, best: Mapping) -> None:
+    """Write ``top_rank_of`` — the slate length ``top_rank`` is a position in.
+
+    A row written before slates recorded their own length carries no ``of``, so
+    the key is removed rather than guessed at. A card renders the bare ordinal in
+    that case; inventing a depth the run never reached would make "3rd of 25"
+    read as a measurement when the theme only ever produced seven candidates.
+    """
+    of = best.get("of")
+    if isinstance(of, int) and of > 0:
+        signals["top_rank_of"] = of
+    else:
+        signals.pop("top_rank_of", None)
 
 
 def merge_cluster_signals(
@@ -223,6 +245,7 @@ def merge_cluster_signals(
     if not entries:
         signals.pop("cluster_slates", None)
         signals.pop("top_rank", None)
+        signals.pop("top_rank_of", None)
         signals["entered_top_on"] = ""
         signals["is_new_top"] = False
         return signals
@@ -230,6 +253,7 @@ def merge_cluster_signals(
     signals["cluster_slates"] = entries
     best = min(entries.values(), key=lambda entry: entry["rank"])
     signals["top_rank"] = best["rank"]
+    _set_rank_denominator(signals, best)
     signals["is_new_top"] = any(entry["is_new"] for entry in entries.values())
     dates = [entry["entered_on"] for entry in entries.values() if entry["entered_on"]]
     signals["entered_top_on"] = min(dates) if dates else ""
@@ -333,9 +357,11 @@ def prune_cluster_slates(
             signals["cluster_slates"] = entries
             best = min(entries.values(), key=lambda entry: entry["rank"])
             signals["top_rank"] = best["rank"]
+            _set_rank_denominator(signals, best)
         else:
             signals.pop("cluster_slates", None)
             signals.pop("top_rank", None)
+            signals.pop("top_rank_of", None)
             signals["entered_top_on"] = ""
             signals["is_new_top"] = False
         if writeups:

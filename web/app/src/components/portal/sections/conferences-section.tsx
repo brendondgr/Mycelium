@@ -6,6 +6,7 @@ import { Card } from "@/components/portal/primitives/card";
 import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
 import { MatchRail } from "@/components/portal/primitives/match-rail";
+import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { InfoPopover } from "@/components/portal/primitives/info-popover";
@@ -496,11 +497,11 @@ export function ConferenceCard({
         <MatchRail
           verdict={conf.verdict}
           position={conf.position}
+          positionOf={conf.position_of}
+          theme={conf.cluster?.label}
           origin={conf.origin}
           isNew={conf.is_new}
           isUpdated={conf.is_updated}
-          cluster={conf.cluster}
-          bridgeClusters={conf.bridge_clusters}
         />
       }
       head={
@@ -521,10 +522,19 @@ export function ConferenceCard({
               </p>
             ) : null}
 
+            {/* Which of the reader's themes pulled this venue in. A row here
+                rather than a column in the rail — see `ClusterRow`. */}
+            <ClusterRow
+              cluster={conf.cluster}
+              bridgeClusters={conf.bridge_clusters}
+              className="mt-2"
+            />
+
             {/* Claims about the venue itself: its rank when the series carries
                 one (~25% do), and any predatory-practice flags. Neither is a
                 statement about the reader's fit, so neither belongs on the
-                match rail. */}
+                match rail — and neither belongs on the theme row above, which is
+                exactly a fit claim. */}
             {conf.rank_badges.length > 0 || conf.red_flags.length > 0 ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <RankBadgeRow badges={conf.rank_badges} />

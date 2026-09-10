@@ -44,12 +44,14 @@ export type ExtraDeadline = {
  * deadline, which opens onto every other round — each future one with its own
  * alert control.
  *
- * It sits directly beneath the card's three tools and spans their combined
- * width, so the head reads as one block of actions rather than a row of icons
- * with a date list orbiting it. The full list used to run the card's whole
- * width below the head, which gave every dated item a permanent three-to-six
- * row table above its description; only the next date is needed at a glance,
- * and everything else is one click away.
+ * It sits directly beneath the card's three tools and spans the same column, so
+ * the head reads as one block of actions rather than a row of icons with a date
+ * list orbiting it. That column is sized to hold a full formatted date rather
+ * than to the tool row, because the date is what this control is for — see
+ * `CardActionBar`. The full list used to run the card's whole width below the
+ * head, which gave every dated item a permanent three-to-six row table above its
+ * description; only the next date is needed at a glance, and everything else is
+ * one click away.
  *
  * The trigger is uncoloured at rest and takes the gold deadline tint on hover
  * or focus, matching the tools above it (`docs/styles.md` reserves gold for
@@ -123,15 +125,19 @@ export function DeadlineMenu({
         aria-label={`Deadlines for ${title} — next, ${triggerDescription}`}
         title={triggerDescription}
         className={cn(
-          "mt-1 inline-flex w-full items-center justify-between gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold tabular-nums transition-colors",
+          "mt-1 inline-flex w-full items-center justify-between gap-1 rounded-2xl border px-2 py-1 text-[11px] font-semibold tabular-nums transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           open
             ? "border-[color-mix(in_srgb,var(--accent)_55%,transparent)] bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--text-primary)]"
             : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[color-mix(in_srgb,var(--accent)_50%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] hover:text-[var(--text-primary)]",
         )}
       >
-        <CalendarIcon size={11} aria-hidden="true" />
-        <span className="min-w-0 flex-1 truncate text-left">{triggerText}</span>
+        <CalendarIcon size={11} aria-hidden="true" className="shrink-0" />
+        {/* No truncation: the column is sized to hold a full formatted date, and
+            a clipped deadline is the one thing this control must never show.
+            A verbatim undated wording from a source ("Rolling — see call") can
+            still run long, so it wraps onto a second line rather than being cut. */}
+        <span className="min-w-0 flex-1 text-left">{triggerText}</span>
         <ChevronDownIcon
           size={11}
           aria-hidden="true"

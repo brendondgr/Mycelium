@@ -582,6 +582,10 @@ class _OpportunityFeedView(APIView):
             "today": timezone.now().date().isoformat(),
             "saved_ids": _saved_content_ids(request.user),
             "saved_labs": _saved_lab_slugs_by_content(request.user),
+            # Without this the bridge badges resolve to empty labels: only the
+            # attributed cluster carries a frozen label in its own signals, so a
+            # feed built with no live map named one theme and left the rest blank.
+            "cluster_labels": _user_cluster_labels(request.user),
         }
         return Response(
             {
@@ -1096,6 +1100,9 @@ def _recommendations_payload(
         "today": today,
         "saved_ids": _saved_content_ids(user),
         "saved_labs": _saved_lab_slugs_by_content(user),
+        # Same live label map the paper feed below already passes — a lab's
+        # opportunity cards name their themes for the same reason its papers do.
+        "cluster_labels": _target_cluster_labels(target_filter),
     }
     # Papers are fresh-only (latest gather batch); opportunities accumulate.
     papers = _latest_scores(target_filter, ContentItem.Type.PAPER, viewer=user)

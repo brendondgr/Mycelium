@@ -36,7 +36,8 @@ Paths are relative to the repository root.
 | Portal shell, sidebar, nav, lab switcher | `web/app/src/components/portal/{portal-sidebar,portal-mobile-nav,lab-switcher,portal-context}.tsx` |
 | Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `verdict-badge`, `match-rail`, `match-card`, `cluster-badge`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `modal`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-list`, `source-footer` |
 | A card's judgement (verdict chip + position in its theme) | `web/app/src/components/portal/primitives/verdict-badge.tsx` (`VerdictBadge`, `PositionMark`, `VERDICT_LABEL`); its print half is `_verdict_chip` in `web/backend/apps/content/daily_report_pdf.py`. There is no percent match anywhere |
-| A feed card's match panel (position, verdict, "New", up to 3 matching themes) | `web/app/src/components/portal/primitives/match-rail.tsx` |
+| A feed card's match panel (position, verdict, "New") | `web/app/src/components/portal/primitives/match-rail.tsx` |
+| A feed card's theme badges (attributed cluster + "Also…") | `ClusterRow` in `web/app/src/components/portal/primitives/cluster-badge.tsx`; rendered under the title by every feed card, not on the rail |
 | A feed card's Deadlines button + dropdown (alerts per round) | `web/app/src/components/portal/primitives/deadline-list.tsx` (`DeadlineMenu`) |
 | A feed card's source row + "View …" button | `web/app/src/components/portal/primitives/source-footer.tsx` (`SourceRow`, `ViewLink`) |
 | The report's ranked entry (title, insight, note, match rail, deadline strip) | `web/app/src/components/portal/primitives/report-entry.tsx`; its print half is `_entry_row` in `web/backend/apps/content/daily_report_pdf.py` |
@@ -213,7 +214,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `reset_opportunities` | ORM-level wipe of grant / conference items before a re-populate (`--types`); leaves fellowships, papers, users, and saves alone |
 | `annotate_member_fit` | Backfill the "who is this for?" layer |
 | `recompute_project_profiles` | Rebuild project team vectors |
-| `rebuild_content_deadlines`, `backfill_project_seen`, `dedupe_content_papers` | Backfills |
+| `rebuild_content_deadlines`, `backfill_project_seen`, `backfill_slate_size`, `dedupe_content_papers` | Backfills |
 | `run_billing_tick`, `reconcile_seats` | Billing period roll / seat reconciliation |
 | `embedding_device` | Report and benchmark the embedding device |
 | `llm_check` | LLM reachability pre-flight |

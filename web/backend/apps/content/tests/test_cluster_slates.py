@@ -96,7 +96,8 @@ def test_the_same_item_entering_a_second_theme_is_a_separate_entry_event() -> No
     )
 
     assert slates["a"]["c-ocean"] == {
-        "label": "Ocean", "rank": 1, "entered_on": "2026-08-01", "is_new": False,
+        "label": "Ocean", "rank": 1, "of": 1,
+        "entered_on": "2026-08-01", "is_new": False,
     }
     assert slates["a"]["c-medai"]["is_new"] is True
     assert slates["a"]["c-medai"]["entered_on"] == "2026-08-23"
@@ -130,14 +131,60 @@ def test_the_flat_signals_derive_from_the_best_theme() -> None:
 def test_an_item_in_no_slate_is_cleared_out_of_both_shapes() -> None:
     """It keeps its stored write-up; it stops counting as something being shown."""
     signals = {"cluster_slates": {"c-ocean": {"rank": 1}}, "top_rank": 1,
-               "is_new_top": True, "writeups": {"c-ocean": {"verdict": "read"}}}
+               "top_rank_of": 1, "is_new_top": True,
+               "writeups": {"c-ocean": {"verdict": "read"}}}
 
     merge_cluster_signals(signals, {}, "a")
 
     assert "cluster_slates" not in signals
     assert "top_rank" not in signals
+    assert "top_rank_of" not in signals
     assert signals["is_new_top"] is False
     assert signals["writeups"]  # reasoning survives, so re-entry is free
+
+
+def test_the_denominator_is_the_slate_that_top_rank_came_from() -> None:
+    """A card says "1st of 2", not "1st of 4" — the two themes are different lists."""
+    slates = compute_cluster_slates(
+        {},
+        {"c-ocean": ["w", "x", "y", "a"], "c-medai": ["a", "z"]},
+        LABELS,
+        content_type=ContentItem.Type.PAPER,
+        today="2026-08-23",
+    )
+    signals: dict = {}
+
+    merge_cluster_signals(signals, slates, "a")
+
+    # 4th in Ocean, 1st in Medical AI. `top_rank` takes the better of the two, so
+    # the denominator must come from that same theme's list, not the other one.
+    assert signals["top_rank"] == 1
+    assert signals["top_rank_of"] == 2
+
+
+def test_a_short_theme_reports_its_real_length_not_the_configured_depth() -> None:
+    """A theme that only produced three candidates says "of 3", never "of 25"."""
+    slates = compute_cluster_slates(
+        {}, {"c-ocean": ["a", "b", "c"]}, LABELS,
+        content_type=ContentItem.Type.PAPER, today="2026-08-23",
+    )
+
+    assert slates["a"]["c-ocean"]["of"] == 3
+
+
+def test_a_row_written_before_slates_recorded_length_gets_no_denominator() -> None:
+    """The bare ordinal is honest; a guessed depth would not be."""
+    signals: dict = {}
+
+    merge_cluster_signals(
+        signals,
+        {"a": {"c-ocean": {"label": "Ocean", "rank": 2, "entered_on": "",
+                           "is_new": False}}},
+        "a",
+    )
+
+    assert signals["top_rank"] == 2
+    assert "top_rank_of" not in signals
 
 
 def test_a_bridge_is_symmetric_and_costs_nothing_to_derive() -> None:

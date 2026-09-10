@@ -84,6 +84,7 @@ class SuggestionSerializer(ClusterAttributionMixin, serializers.Serializer):
     score = serializers.FloatField()
     verdict = serializers.SerializerMethodField()
     position = serializers.SerializerMethodField()
+    position_of = serializers.SerializerMethodField()
     caveat = serializers.SerializerMethodField()
     beats = serializers.SerializerMethodField()
     bridge_note = serializers.SerializerMethodField()
@@ -143,6 +144,13 @@ class SuggestionSerializer(ClusterAttributionMixin, serializers.Serializer):
         # be comparing scores that are not comparable across themes, which is the
         # failure the per-cluster feed removes.
         return score.signals.get("top_rank")
+
+    def get_position_of(self, score: RelevanceScore):
+        # How long that theme's slate actually ran, so the card can say "3rd of 7"
+        # instead of leaving the reader to assume the feed's own length. ``None``
+        # on rows written before slates recorded their length — the card then
+        # shows the bare ordinal rather than a guessed denominator.
+        return score.signals.get("top_rank_of")
 
     def get_caveat(self, score: RelevanceScore) -> str:
         # The strongest reason this might not be worth the reader's time. Mandatory
@@ -334,6 +342,7 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     score = serializers.FloatField()
     verdict = serializers.SerializerMethodField()
     position = serializers.SerializerMethodField()
+    position_of = serializers.SerializerMethodField()
     caveat = serializers.SerializerMethodField()
     beats = serializers.SerializerMethodField()
     embedding_match = serializers.SerializerMethodField()
@@ -456,6 +465,10 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
 
     def get_position(self, score: RelevanceScore):
         return score.signals.get("top_rank")
+
+    def get_position_of(self, score: RelevanceScore):
+        # The slate length behind ``position`` — see the suggestion serializer.
+        return score.signals.get("top_rank_of")
 
     def get_caveat(self, score: RelevanceScore) -> str:
         return _writeup(score).get("caveat") or score.signals.get("caveat", "")

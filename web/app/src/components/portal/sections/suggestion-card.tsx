@@ -5,10 +5,7 @@ import * as React from "react";
 import { MatchCard } from "@/components/portal/primitives/match-card";
 import { PositionMark, VerdictBadge } from "@/components/portal/primitives/verdict-badge";
 import { Pill } from "@/components/portal/primitives/pill";
-import {
-  BridgeBadge,
-  ClusterBadge,
-} from "@/components/portal/primitives/cluster-badge";
+import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
 import {
   MyloReason,
   NewTag,
@@ -98,6 +95,7 @@ export function SuggestionCard({
         <div className="flex w-16 shrink-0 flex-col items-center gap-1.5">
           <PositionMark
             position={suggestion.position}
+            of={suggestion.position_of}
             theme={suggestion.cluster?.label}
           />
           <VerdictBadge verdict={suggestion.verdict} origin={suggestion.origin} />
@@ -137,16 +135,11 @@ export function SuggestionCard({
               </p>
             ) : null}
 
-            {suggestion.cluster || suggestion.bridge_clusters?.length ? (
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {suggestion.cluster ? (
-                  <ClusterBadge cluster={suggestion.cluster} />
-                ) : null}
-                {suggestion.bridge_clusters?.length ? (
-                  <BridgeBadge clusters={suggestion.bridge_clusters} />
-                ) : null}
-              </div>
-            ) : null}
+            <ClusterRow
+              cluster={suggestion.cluster}
+              bridgeClusters={suggestion.bridge_clusters}
+              className="mt-2"
+            />
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">

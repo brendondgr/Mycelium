@@ -336,10 +336,14 @@ export function CardActionBar({
   const undo = useCardUndo();
   return (
     <>
-      {/* 6.75rem is exactly the three 2rem tools plus their two 0.375rem gaps,
-          so the Deadlines control beneath them lines up with the row rather
-          than widening the column to fit whatever date it happens to carry. */}
-      <div className="flex w-[6.75rem] shrink-0 flex-col items-end">
+      {/* The column was 6.75rem — exactly the three 2rem tools plus their two
+          0.375rem gaps — which sized it from the tool row and left the Deadlines
+          control beneath them to truncate whatever date it carried ("Sep 10, …").
+          A date is the whole point of that control, so the column is sized from
+          the wider of the two things in it instead: 8.75rem fits a full
+          "Sep 10, 2026" with the calendar icon and chevron either side, and the
+          tools stay flush right, so the row still reads as one block. */}
+      <div className="flex w-[8.75rem] shrink-0 flex-col items-end">
         <div className="flex items-center justify-end gap-1.5">
           {ignorable ? (
             <IgnoreButton

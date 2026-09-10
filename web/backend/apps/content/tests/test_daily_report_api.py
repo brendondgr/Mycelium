@@ -120,6 +120,7 @@ def test_returns_latest_run_ordered_by_rank(client: APIClient) -> None:
         "year",
         "verdict",
         "position",
+        "position_of",
         "embedding_match",
         "abstract",
         "per_interest",

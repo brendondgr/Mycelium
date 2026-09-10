@@ -589,6 +589,7 @@ high-fit grant floats to the top for its first week).
     "content_id": "uuid", "title": "…", "sponsor": "Amazon",
     "amount": "Upper: $70,000 USD", "matched_topics": "Agentic AI; Knowledge Graphs",
     "url": "https://…", "score": 1.19, "verdict": "read", "position": 1,
+    "position_of": 10,
     "rank": 1, "caveat": "The cost-share level is not stated.",
     "beats": ["Why it matters to this theme.", "How to use it.", "What to take."],
     "headline": "Strong Fit", "reason": "Aligns with your agentic AI work.",
@@ -626,6 +627,12 @@ was which. In its place:
   unscored row; `skip` is never chipped in the UI.
 - `position` — place within the item's **own theme's** slate. A global position
   would compare scores that are not comparable across themes.
+- `position_of` — how long that theme's slate actually ran, so a card can print
+  "10th of 25" and say plainly that two adjacent positions are counts in
+  different lists. It is the *realised* length, not the configured depth, so a
+  theme that produced seven candidates reports 7. `null` on a row written before
+  slates recorded their length; the nightly run fills it in, and
+  `backfill_slate_size` recovers it for existing rows.
 - `beats` — the reason's three parts: why it matters to this theme, how to use
   it, what to take from it. The printed report carries only the first.
 - `caveat` — the strongest reason it might not be worth the reader's time.

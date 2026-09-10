@@ -215,7 +215,8 @@ def test_fellowships_feed_shape(client: APIClient):
 
     # Required fields from the plan's contract
     required = [
-        "content_id", "url", "score", "verdict", "position", "rank",
+        "content_id", "url", "score", "verdict", "position", "position_of",
+        "rank",
         "headline", "reason", "origin", "is_new", "pinned",
         "deadline_date", "deadline_kind", "status_summary", "saved",
         "title", "award_class", "amount", "amount_note", "deadline_type",

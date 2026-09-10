@@ -6,6 +6,7 @@ import { Card } from "@/components/portal/primitives/card";
 import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
 import { MatchRail } from "@/components/portal/primitives/match-rail";
+import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { type ExtraDeadline } from "@/components/portal/primitives/deadline-list";
@@ -169,11 +170,11 @@ export function GrantRow({
         <MatchRail
           verdict={grant.verdict}
           position={grant.position}
+          positionOf={grant.position_of}
+          theme={grant.cluster?.label}
           origin={grant.origin}
           isNew={grant.is_new}
           isUpdated={grant.is_updated}
-          cluster={grant.cluster}
-          bridgeClusters={grant.bridge_clusters}
         />
       }
       head={
@@ -183,9 +184,10 @@ export function GrantRow({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 basis-48">
             {/* Title first, then one identity line: who is funding it, and
-                when they first posted it. Everything that qualifies the match
-                (New, the themes) lives on the rail beside the ring, so this
-                column is only ever about the grant itself. */}
+                when they first posted it, then the funding figure. What
+                qualifies the match (New, the verdict) stays on the rail; the
+                themes run as a row at the foot of this column, level with the
+                Deadlines control across from them. */}
             <h3 className="font-serif text-lg font-semibold leading-snug text-[var(--text-primary)]">
               {grant.title}
             </h3>
@@ -206,6 +208,12 @@ export function GrantRow({
                 {grant.amount}
               </span>
             ) : null}
+
+            <ClusterRow
+              cluster={grant.cluster}
+              bridgeClusters={grant.bridge_clusters}
+              className="mt-2"
+            />
           </div>
 
           {/* Ignore, reminder, bookmark — and the Deadlines control beneath

@@ -51,7 +51,10 @@ export function ClusterBadge({
   return (
     <span
       className={cn(
-        "inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1",
+        // Shrinkable, not fixed: on a phone the card is narrower than a long
+        // theme label, and a badge that refuses to shrink runs off the card
+        // edge instead of clipping its own text.
+        "inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1",
         className,
       )}
       title={cluster.label}
@@ -83,18 +86,59 @@ const MAX_BRIDGE_LABELS = 2;
  * clusters so callers can render it unconditionally.
  */
 export function BridgeBadge({ clusters }: { clusters: ClusterRef[] }) {
-  if (!clusters || clusters.length === 0) return null;
-  const shown = clusters.slice(0, MAX_BRIDGE_LABELS);
-  const more = clusters.length - shown.length;
+  // A cluster whose label did not resolve has nothing to say — naming it would
+  // print "Also: , " and read as a rendering fault rather than as a theme.
+  const named = (clusters ?? []).filter((c) => c && c.label);
+  if (named.length === 0) return null;
+  const shown = named.slice(0, MAX_BRIDGE_LABELS);
+  const more = named.length - shown.length;
   const label = `Also: ${shown.map((c) => c.label).join(", ")}${
     more > 0 ? `, +${more} more` : ""
   }`;
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-dashed border-[var(--border)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]"
-      title={clusters.map((c) => c.label).join(", ")}
+      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-dashed border-[var(--border)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]"
+      title={named.map((c) => c.label).join(", ")}
     >
-      {label}
+      {/* Two theme names run past the width of a phone-sized card, so the label
+          clips inside its own pill rather than pushing the pill off the card. */}
+      <span className="min-w-0 truncate">{label}</span>
     </span>
+  );
+}
+
+/**
+ * The badge row a card carries beneath its title: the attributed theme, then the
+ * others it bridges into.
+ *
+ * These used to stack vertically inside the match rail, which made the rail as
+ * wide as the longest theme label and squeezed the title column on every card in
+ * the feed to pay for it. Horizontally, under the title, they cost one row of
+ * height that wraps when it has to, and they sit beside the deadline control
+ * rather than above it — the arrangement the Research Papers card already used.
+ *
+ * Returns null when the item carries no themes, so callers can render it
+ * unconditionally without guarding first.
+ */
+export function ClusterRow({
+  cluster,
+  bridgeClusters,
+  className,
+}: {
+  cluster?: ClusterRef | null;
+  bridgeClusters?: ClusterRef[] | null;
+  className?: string;
+}) {
+  // The primary badge already names the attributed theme, so a bridge list that
+  // repeats it would print the same label twice on one row.
+  const bridges = (bridgeClusters ?? []).filter(
+    (c) => c && c.label && c.id !== cluster?.id,
+  );
+  if (!cluster && bridges.length === 0) return null;
+  return (
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+      {cluster ? <ClusterBadge cluster={cluster} /> : null}
+      <BridgeBadge clusters={bridges} />
+    </div>
   );
 }

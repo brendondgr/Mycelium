@@ -6,6 +6,7 @@ import { Card } from "@/components/portal/primitives/card";
 import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
 import { MatchRail } from "@/components/portal/primitives/match-rail";
+import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { type ExtraDeadline } from "@/components/portal/primitives/deadline-list";
@@ -247,11 +248,11 @@ export function FellowshipRow({
         <MatchRail
           verdict={item.verdict}
           position={item.position}
+          positionOf={item.position_of}
+          theme={item.cluster?.label}
           origin={item.origin}
           scope={scopeName}
           isNew={item.is_new}
-          cluster={item.cluster}
-          bridgeClusters={item.bridge_clusters}
         />
       }
       head={
@@ -295,6 +296,15 @@ export function FellowshipRow({
                 ) : null}
               </div>
             ) : null}
+
+            {/* Two different claims, one row apiece: which of the reader's
+                themes pulled the award in, then whether they can actually
+                apply for it. */}
+            <ClusterRow
+              cluster={item.cluster}
+              bridgeClusters={item.bridge_clusters}
+              className="mt-2"
+            />
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <EligibilityBadge item={item} />

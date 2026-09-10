@@ -219,6 +219,9 @@ export type Suggestion = {
   /** Position within this item's **own theme's** slate. A global position would
    * compare scores that are not comparable across themes. */
   position: number | null;
+  /** How long that theme's slate ran, so the card can say "3rd of 7". Null on
+   * rows written before slates recorded their own length. */
+  position_of: number | null;
   /** The strongest reason this might not be worth the reader's time. Mandatory on
    * a model-written judgement — it is what makes the feed read as judgement
    * rather than promotion. */
@@ -431,6 +434,8 @@ type OpportunityBase = {
   verdict: Verdict | null;
   /** Position within this item's own theme's slate. */
   position: number | null;
+  /** That theme's slate length — the denominator behind `position`. */
+  position_of: number | null;
   /** The strongest reason to skip it. Mandatory on a model-written judgement. */
   caveat: string;
   /** The reason's three beats; the printed report carries only the first. */

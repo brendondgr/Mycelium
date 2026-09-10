@@ -119,13 +119,27 @@ export function VerdictBadge({
  * comparing scores that are not comparable, which is the failure the per-theme
  * feed exists to remove. So the mark says "3rd in Medical AI Agents", never
  * "3rd overall".
+ *
+ * That distinction is also why the mark carries a denominator when it has one.
+ * The feed interleaves themes, so a 10th can sit directly above a 3rd and look
+ * like a sorting bug; "10 of 25" says plainly that the two numbers are counts in
+ * different lists. `of` is the slate's *realised* length, so a theme that only
+ * produced seven candidates reads "of 7" — a row written before slates recorded
+ * their length carries none, and the bare ordinal renders instead of a guess.
+ *
+ * The numeral is set in the card's own serif (`--font-serif`, Fraunces) with the
+ * suffix raised off it, so the mark reads as a piece of the card's typography
+ * rather than as a scoreboard sitting beside it.
  */
 export function PositionMark({
   position,
+  of,
   theme,
   className,
 }: {
   position: number | null | undefined;
+  /** How long the theme's slate ran; omitted when the row does not record it. */
+  of?: number | null;
   /** The theme the position is within — named in the accessible label. */
   theme?: string;
   className?: string;
@@ -133,18 +147,38 @@ export function PositionMark({
   if (typeof position !== "number" || !Number.isFinite(position) || position < 1) {
     return null;
   }
+  // A denominator below the position itself would be arithmetic nonsense, and is
+  // the shape a stale row takes when only one of the two numbers has been
+  // rewritten — so it is dropped rather than printed.
+  const total =
+    typeof of === "number" && Number.isFinite(of) && of >= position ? of : null;
   const within = theme ? `in ${theme}` : "in this list";
+  const spoken = total
+    ? `Ranked ${ordinal(position)} of ${total} ${within}`
+    : `Ranked ${ordinal(position)} ${within}`;
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-baseline font-semibold tabular-nums text-[var(--text-secondary)]",
+        "inline-flex shrink-0 flex-col items-center leading-none",
         className,
       )}
-      aria-label={`Ranked ${ordinal(position)} ${within}`}
-      title={`${ordinal(position)} ${within}`}
+      aria-label={spoken}
+      title={spoken}
     >
-      <span className="text-[15px] leading-none">{position}</span>
-      <span className="text-[9px] leading-none">{suffix(position)}</span>
+      <span className="font-serif text-[21px] font-semibold tabular-nums leading-none text-[var(--text-primary)]">
+        {position}
+        <sup className="ml-px align-super text-[9px] font-medium leading-none text-[var(--text-muted)]">
+          {suffix(position)}
+        </sup>
+      </span>
+      {total ? (
+        <span
+          aria-hidden="true"
+          className="mt-0.5 text-[10px] tabular-nums leading-none text-[var(--text-muted)]"
+        >
+          of {total}
+        </span>
+      ) : null}
     </span>
   );
 }
