@@ -283,8 +283,11 @@ body {
   .portal-pulse-dot {
     animation: portal-pulse-dot 2.4s ease-in-out infinite;
   }
+  /* Short on purpose. With `both` the card holds at opacity 0 for its stagger
+     delay and then runs this, so the two add up to what the reader experiences
+     as the card taking time to arrive. */
   .portal-fade-up {
-    animation: portal-fade-up 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    animation: portal-fade-up 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both;
   }
   .leaf-vine-breeze {
     animation: leaf-vine-breeze 3.5s ease-in-out infinite alternate;

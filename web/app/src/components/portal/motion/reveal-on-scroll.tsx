@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { usePrefersReducedMotion } from "@/components/portal/motion/use-reduced-motion";
+import { scrollParent } from "@/lib/portal/scroll-parent";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,56 +16,32 @@ import { cn } from "@/lib/utils";
  * scrolled down to it, so past the first screenful the feed simply appeared,
  * fully formed, exactly the static effect the animation was there to avoid.
  *
- * This plays the entrance off the scroll position instead, and plays it *where
- * the reader is looking*. An earlier version ran ahead of the scroll, starting
- * each card's fade while it was still below the fold on the theory that content
- * should be settled by the time you reach it. That turns out to be the wrong
- * trade: the animation happens off screen and the feed just seems to snap into
- * place fully formed — the same complaint the mount-triggered version had. The
- * margin below is therefore negative, holding a card back until it is genuinely
- * inside the panel rather than clipping its bottom edge.
+ * This plays the entrance off the scroll position instead. Two earlier settings
+ * were both wrong in opposite directions. Running far ahead of the scroll meant
+ * the animation finished off screen and the feed seemed to snap into place fully
+ * formed — the same complaint the mount-triggered version had. Holding a card
+ * back until it was genuinely *inside* the panel meant the reader scrolled to a
+ * card and then waited on it, which reads as the feed being slow to load rather
+ * than as an entrance at all.
+ *
+ * The lead below is therefore small and positive: a card starts its fade as its
+ * top edge comes up on the fold, so it is arriving as the reader reaches it and
+ * settled a moment later. Paired with the short stagger cap in `revealDelay`,
+ * nothing on screen is ever waiting on an animation it cannot see.
  *
  * Fires once per card. A twenty-five card feed replaying every time the reader
  * scrolls back up would be nausea, not polish.
  */
 
 /**
- * How far *inside* the scroll port a card must come before it starts, as a
- * share of the port's height. Negative on purpose — see above.
+ * How far *past* the scroll port's bottom edge a card starts, as a share of the
+ * port's height — a tenth of a screen of lead, not a screenful.
  */
-const LEAD = -0.08;
+const LEAD = 0.1;
 
 type Ctl = {
   observe: (el: Element, onSeen: () => void) => () => void;
 };
-
-/**
- * The workspace scrolls inside `<main>`, not the window, so the observer has to
- * be rooted on that element. `rootMargin` adjusts the *root*'s box, but
- * clipping by intermediate ancestors is applied without it — left on the
- * default viewport root, the margin would be measured against the viewport
- * while `main`'s own box did the real clipping, and cards would trip the
- * observer at the wrong moment.
- *
- * Falling back to the viewport keeps this working anywhere the page itself is
- * the scroller.
- */
-function scrollParent(el: Element): Element | null {
-  let node: Element | null = el.parentElement;
-  while (node) {
-    const overflowY = getComputedStyle(node).overflowY;
-    // Identified by its overflow alone, deliberately: whether it happens to be
-    // overflowing *right now* is not the question. A feed mounts its skeletons
-    // first, so `main` is not yet taller than its box, and a check for that
-    // would send the first batch of cards to a viewport-rooted observer that
-    // can never see past `main`'s clip — leaving them invisible.
-    if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") {
-      return node;
-    }
-    node = node.parentElement;
-  }
-  return null;
-}
 
 /**
  * One observer per scroll container, shared by every card inside it, rather

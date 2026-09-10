@@ -498,11 +498,9 @@ function ConferencesPanel({
 function FellowshipsPanel({
   fellowships,
   recommendedFor,
-  scopeName,
 }: {
   fellowships: FellowshipOpportunity[];
   recommendedFor: Record<string, RecommendedMember[]>;
-  scopeName: string;
 }) {
   const [query, setQuery] = React.useState("");
   const [cluster, setCluster] = React.useState<string | null>(null);
@@ -581,7 +579,6 @@ function FellowshipsPanel({
             <FellowshipRow
               item={item}
               recommendedFor={recommendedFor[item.content_id]}
-              scopeName={scopeName}
               ignorable
             />
           )}
@@ -763,7 +760,6 @@ export function ProjectAreaPanel({
       <FellowshipsPanel
         fellowships={data?.fellowships ?? []}
         recommendedFor={recommendedFor}
-        scopeName={project.name}
       />
     );
   })();

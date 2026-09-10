@@ -65,7 +65,8 @@ Paths are relative to the repository root.
 | Admin page | `web/app/src/components/portal/sections/admin-section.tsx` |
 | Notification bell | `web/app/src/components/portal/notification-bell.tsx` |
 | API client, hooks, types | `web/app/src/lib/` and `web/app/src/lib/portal/{client,hooks,mutations,types}.ts` |
-| Infinite reveal | `web/app/src/lib/portal/use-infinite-reveal.ts` |
+| Infinite reveal (sentinel observer + scroll backstop, 1400px lead) | `web/app/src/lib/portal/use-infinite-reveal.ts` |
+| Which ancestor actually scrolls a feed (every feed observer roots on it) | `web/app/src/lib/portal/scroll-parent.ts` |
 | Calendar-date formatting for cards | `web/app/src/lib/portal/dates.ts` (`formatIsoDate`) |
 | Design tokens / theme | `web/packages/config/src/theme.css` |
 
