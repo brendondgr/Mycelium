@@ -235,6 +235,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `send_test_email` | Send one email through the real stack to check the transport (`--to`, `--template`) |
 | `high_signal_shadow` | Shadow-run the high-signal alert rule |
 | `create_admin`, `seed_demo`, `loadtest_purge` | Ops utilities |
+| `seed_fsu_sc` | Simulated FSU Dept. of Scientific Computing + PULSE Lab (public roster names, non-deliverable `@fsu-sc.mycelium.invalid` emails); the lab sits in the department but stays off its plan, on its own Lab plan |
 
 ## Documentation
 
