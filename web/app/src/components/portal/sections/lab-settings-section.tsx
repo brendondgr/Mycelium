@@ -86,7 +86,7 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
         }
       />
       <div className="grid items-start gap-4 lg:grid-cols-[1.5fr_1fr]">
-        {/* Left rail — setup cards. The plan lives on the Billing page, so nothing
+        {/* Left rail — setup cards. The plan lives on the Account page, so nothing
             monetary sits in the middle of configuring the lab. */}
         <div className="space-y-4">
           <LabLogoCard lab={lab} />

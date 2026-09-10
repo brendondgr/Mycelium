@@ -141,14 +141,15 @@ export function PortalSidebar() {
           active={section === "reminders"}
           onClick={() => goToSection("reminders")}
         />
-        {/* Plans and pricing live here, off the settings surfaces. A lab's plan is
-            its managers' business, so members don't get the entry. */}
+        {/* Identity, email, password and the plan — one page, because they are
+            one question: what is true of my account? A lab's plan is its
+            managers' business, so members in a lab scope don't get the entry. */}
         {!inLab || manageLab ? (
           <SidebarNavItem
             icon={<ReceiptIcon size={18} />}
-            label="Billing"
-            active={section === "billing"}
-            onClick={() => goToSection("billing")}
+            label="Account"
+            active={section === "account"}
+            onClick={() => goToSection("account")}
           />
         ) : null}
       </nav>

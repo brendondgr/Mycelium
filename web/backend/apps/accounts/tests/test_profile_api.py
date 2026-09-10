@@ -6,6 +6,8 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import Department, Lab, LabMembership
 
+from .conftest import verified
+
 
 @pytest.fixture
 def client() -> APIClient:
@@ -74,7 +76,7 @@ def test_embedding_text_is_read_only(client: APIClient) -> None:
 
 @pytest.mark.django_db
 def test_lab_lead_edits_member_reads_only(client: APIClient) -> None:
-    lead = User.objects.create_user(username="lead", password="p")
+    lead = verified(User.objects.create_user(username="lead", password="p"))
     member = User.objects.create_user(username="mem", password="p")
     lab = Lab.objects.create(name="Reed Lab", slug="reed-lab")
     LabMembership.objects.create(
@@ -107,7 +109,7 @@ def test_non_member_cannot_read_lab_profile(client: APIClient) -> None:
 
 @pytest.mark.django_db
 def test_dept_owner_edits_outsider_blocked(client: APIClient) -> None:
-    owner = User.objects.create_user(username="own", password="p")
+    owner = verified(User.objects.create_user(username="own", password="p"))
     dept = Department.objects.create(owner=owner, name="Dept")
     url = f"/api/auth/departments/{dept.id}/profile/"
 

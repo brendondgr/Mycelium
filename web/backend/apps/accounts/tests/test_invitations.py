@@ -7,6 +7,8 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import Lab, LabInvitation, LabMembership
 
+from .conftest import verified
+
 
 @pytest.fixture
 def client() -> APIClient:
@@ -14,7 +16,9 @@ def client() -> APIClient:
 
 
 def _lab_with_pi() -> tuple[User, Lab]:
-    pi = User.objects.create_user(username="pi", password="p", email="pi@lab.edu")
+    pi = verified(
+        User.objects.create_user(username="pi", password="p", email="pi@lab.edu")
+    )
     lab = Lab.objects.create(name="Reyes Lab", slug="reyes-lab")
     LabMembership.objects.create(
         user=pi, lab=lab, role=LabMembership.Role.OWNER, is_lead=True

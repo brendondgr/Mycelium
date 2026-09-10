@@ -31,7 +31,14 @@ routes clients depend on most.
 | `csrf/` | GET | Ensure the CSRF cookie is set |
 | `login/` `logout/` `me/` | POST / POST / GET | Session lifecycle + current user |
 | `register/` | POST | Create user + provision workspace, atomically |
-| `verify-email/` | POST | Flip `Profile.is_verified` (scaffold) |
+| `account/` | GET, PATCH | Name, affiliation, career stage, verification state |
+| `email/verify/` `email/resend/` | POST | Submit a six-digit code; ask for a new one |
+| `email/change/` | POST | Start a move to a new address (code to the new one) |
+| `email/check/` | POST | Whether an address is free (invite-code gated) |
+| `password/change/` | POST | Change the password of the signed-in account |
+| `password/reset/` | POST | Mail a reset link; answers the same either way |
+| `password/reset/verify/` | POST | Whether a link is still live |
+| `password/reset/confirm/` | POST | Spend a link on a new password |
 | `profile/me/` | GET, PATCH | The caller's own profile |
 | `watch/me/` | GET, PATCH | What Mylo watches for the caller |
 | `intake/import/` | POST | Author draft from one publication source |
@@ -195,16 +202,84 @@ explicitly from the billing page.
 
 `access_code` clears the invite-only sign-up gate — a constant-time compare with
 a per-IP failure counter and a one-hour shadow ban, enforced before any other
-validation. Clearing it sets `Profile.is_verified`.
+validation. It proves an invitation, not a mailbox: the account is created
+**unverified** and a six-digit code is mailed to the address given.
+
+`email` must be unique. The serializer rejects a duplicate case-insensitively and
+a partial unique index on `LOWER(email)` backs it, so two racing sign-ups cannot
+both land.
 
 Success `201` — the user summary; session set. `400` on field errors; `403` on
 CSRF failure or a failed/locked-out access code.
 
-### `POST /api/auth/logout/` · `GET /api/auth/me/` · `POST /api/auth/verify-email/`
+### `POST /api/auth/logout/` · `GET /api/auth/me/`
 
 `logout` returns `204`. `me` returns the user summary, `401` when anonymous.
-`verify-email` flips `Profile.is_verified` and returns `{ "is_verified": true }`
-— real token signing and SMTP delivery are deferred.
+
+## Account, email verification & password
+
+Verification is **activation**. A user whose `is_verified` is false can sign in
+and browse, but `POST labs/`, `POST departments/<id>/labs/`,
+`PATCH labs/<slug>/profile/`, `PATCH departments/<id>/profile/` and
+`POST labs/<slug>/invitations/` all answer `403` — Mycelium mails invitations to
+strangers, so an account that has not answered its own inbox does not get to
+originate that mail. Staff and superusers are exempt.
+
+### `GET` / `PATCH` `/api/auth/account/`
+
+```json
+{
+  "username": "string", "email": "string",
+  "first_name": "string", "last_name": "string",
+  "institution": "string", "academic_title": "researcher",
+  "is_verified": false, "pending_email": ""
+}
+```
+
+`PATCH` writes `first_name`, `last_name`, `institution`, `academic_title` and
+nothing else. `username` is immutable (lab invitations and audit rows resolve
+against it); `email` and the password each have their own endpoint because each
+needs a proof this one does not ask for.
+
+### `POST /api/auth/email/verify/` · `POST /api/auth/email/resend/`
+
+`verify` takes `{ "code": "123456" }` and returns the account payload above.
+Codes expire after 30 minutes, allow five wrong guesses, and are worth one use;
+`400 { "code": [message] }` on any refusal. `resend` replaces the outstanding
+code and returns `{ "detail", "email" }`, or `429` inside the 60-second cooldown.
+Both endpoints settle a pending address change when one is in flight, otherwise
+the sign-up confirmation.
+
+### `POST /api/auth/email/change/`
+
+`{ "new_email", "current_password" }` → `202 { "detail", "pending_email" }`. The
+account is **not** changed here; the new address is parked until a code mailed to
+it comes back through `email/verify/`.
+
+### `POST /api/auth/email/check/`
+
+`{ "email", "access_code" }` → `{ "email", "available" }`. Gated on the live
+sign-up code because it is an account-enumeration oracle; `400` without it.
+
+### `POST /api/auth/password/change/`
+
+`{ "current_password", "new_password", "new_password_confirm" }` → `200`. Every
+other session for that user dies with the old password hash; the caller's own is
+re-stamped so it stays signed in.
+
+### `POST /api/auth/password/reset/`
+
+`{ "email" }` → always `200` with the same body whether or not the address is
+registered. Throttled at `password_reset`.
+
+### `POST /api/auth/password/reset/verify/` · `POST /api/auth/password/reset/confirm/`
+
+`verify` takes `{ "uid", "token" }` → `{ "valid": bool }`, so the page can say a
+link is dead before the form. `confirm` adds `{ "password", "password_confirm" }`
+→ `200`, or `400` with `token` or `password` errors. The token is Django's
+`default_token_generator`, keyed on the current password hash, so it dies on use;
+`PASSWORD_RESET_TIMEOUT` defaults to one hour. A successful reset also sets
+`is_verified` — holding the link proves the mailbox.
 
 ## Profile & intake
 

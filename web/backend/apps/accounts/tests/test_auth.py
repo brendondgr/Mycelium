@@ -9,6 +9,7 @@ from apps.accounts import signup_gate
 from apps.accounts.models import (
     Department,
     DeptMembership,
+    EmailVerification,
     Lab,
     LabMembership,
     Profile,
@@ -393,28 +394,12 @@ def test_basics_patch_does_not_clobber_concurrent_interests(
 
 
 @pytest.mark.django_db
-def test_verify_email_flips_flag(api_client: Client) -> None:
-    assert _register(api_client, _personal_payload()).status_code == 201
-
-    api_client.get("/api/auth/csrf/")
-    csrf = api_client.cookies[settings.CSRF_COOKIE_NAME].value
-    response = api_client.post(
-        "/api/auth/verify-email/",
-        content_type="application/json",
-        HTTP_X_CSRFTOKEN=csrf,
-    )
-
-    assert response.status_code == 200
-    assert response.json()["is_verified"] is True
-    assert User.objects.get(username="newuser").profile.is_verified is True
-
-
-@pytest.mark.django_db
 def test_verify_email_requires_auth(api_client: Client) -> None:
     api_client.get("/api/auth/csrf/")
     csrf = api_client.cookies[settings.CSRF_COOKIE_NAME].value
     response = api_client.post(
-        "/api/auth/verify-email/",
+        "/api/auth/email/verify/",
+        data={"code": "123456"},
         content_type="application/json",
         HTTP_X_CSRFTOKEN=csrf,
     )
@@ -449,11 +434,25 @@ INVALID_CODE = signup_gate.INVALID_CODE_MESSAGE
 
 
 @pytest.mark.django_db
-def test_register_with_valid_code_marks_account_verified(api_client: Client) -> None:
+def test_register_with_valid_code_leaves_account_unverified(
+    api_client: Client,
+) -> None:
+    """Clearing the invite gate proves an invitation, not a mailbox.
+
+    The address the person typed is what a reset link and every lab invitation
+    will later depend on, so it has to answer for itself — sign-up mails a code
+    and the account stays unactivated until that code comes back.
+    """
     response = _register(api_client, _personal_payload())
 
     assert response.status_code == 201
-    assert User.objects.get(username="newuser").profile.is_verified is True
+    assert response.json()["is_verified"] is False
+    assert User.objects.get(username="newuser").profile.is_verified is False
+    assert EmailVerification.objects.filter(
+        user__username="newuser",
+        purpose=EmailVerification.Purpose.SIGNUP,
+        consumed_at__isnull=True,
+    ).exists()
 
 
 @pytest.mark.django_db

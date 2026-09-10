@@ -1,7 +1,10 @@
-import { BillingSection } from "@/components/portal/sections/billing-section";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Billing · Mycelium" };
-
+/**
+ * Billing folded into the Account page — plans are now its Subscription
+ * management half. The old route stays as a redirect because it is in people's
+ * history and bookmarks, and a 404 is a worse answer than the page they wanted.
+ */
 export default function BillingPage() {
-  return <BillingSection />;
+  redirect("/app/account");
 }

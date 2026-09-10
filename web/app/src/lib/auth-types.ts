@@ -9,7 +9,34 @@ export type AuthUser = {
   is_superuser: boolean;
   /** False until the user finishes profile onboarding (saves research areas). */
   onboarding_completed: boolean;
+  /**
+   * Whether the account is activated. Verifying the email is what activates it,
+   * and until then the backend refuses to create a lab or department, edit
+   * either's profile, or send an invitation.
+   */
+  is_verified?: boolean;
 };
+
+/** The Account page's view of who the user is — `GET /api/auth/account/`. */
+export type AccountDetails = {
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  institution: string;
+  academic_title: string;
+  is_verified: boolean;
+  /** A new address waiting on its code, or "" when no change is in flight. */
+  pending_email: string;
+};
+
+/** The subset of `AccountDetails` this page may write directly. */
+export type AccountUpdate = Partial<
+  Pick<
+    AccountDetails,
+    "first_name" | "last_name" | "institution" | "academic_title"
+  >
+>;
 
 export type AuthErrorBody = {
   non_field_errors?: string[];

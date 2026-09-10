@@ -175,6 +175,23 @@ the API key is send-only, so acceptance is visible here while delivery is only
 visible in the Resend dashboard. `manage.py send_test_email --to <addr>` exercises
 the whole path.
 
+Account security rides that transport. Two flows consume it: a six-digit
+verification code (`apps/accounts/email_verification.py`) proving control of an
+address, and a password reset link (`apps/accounts/password_reset.py`) signed by
+Django's own `default_token_generator` — keyed on the current password hash, so a
+link dies when it is used and `PASSWORD_RESET_TIMEOUT` bounds the rest.
+
+**Verification is activation.** An account that has not answered a code sent to
+its own address may sign in and browse, but cannot create a lab or department,
+edit either's profile, or send an invitation — `require_verified_email` in
+`apps/accounts/permissions.py` is the single gate. The reason is outward-facing:
+Mycelium mails invitations to people who have never heard of it, so an account
+whose own inbox has never replied does not get to originate that mail. The gate
+sits on those writes rather than on sign-up because registration provisions the
+org row inside its own transaction, at an instant when nobody is verified yet.
+Email uniqueness is enforced by a partial unique index on `LOWER(auth_user.email)`
+as well as by the serializer, because reset now looks an account up by address.
+
 The LLM client supports structured reasoning levels (`none`/`low`/`medium`/
 `high`) sent either as `reasoning_effort` (`LLM_REASONING_STYLE=effort`) or as a
 `chat_template_kwargs.enable_thinking` toggle, and reads back the server's

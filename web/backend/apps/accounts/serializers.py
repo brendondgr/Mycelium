@@ -8,6 +8,7 @@ from apps.core.people import display_name, initials
 
 from .interests import validate_interests as _validate_interests_contract
 from .models import (
+    AcademicTitle,
     DeptProfile,
     LabInvitation,
     LabMembership,
@@ -25,6 +26,7 @@ RESERVED_USERNAMES = frozenset(
 
 
 def user_to_dict(user: User) -> dict[str, object]:
+    profile = getattr(user, "profile", None)
     return {
         "id": user.pk,
         "username": user.username,
@@ -34,6 +36,10 @@ def user_to_dict(user: User) -> dict[str, object]:
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
         "onboarding_completed": is_onboarding_complete(user),
+        # Verification is activation: until it is true, the organization
+        # endpoints refuse. The app reads it to show the lock up front rather
+        # than let someone fill in a lab form that will 403 on save.
+        "is_verified": bool(profile and profile.is_verified),
     }
 
 
@@ -393,3 +399,122 @@ class LabInvitationSerializer(serializers.Serializer):
 
     def get_inviter(self, invitation: LabInvitation) -> str | None:
         return display_name(invitation.inviter) if invitation.inviter else None
+
+
+# -- Account management (name, email, affiliation, password) -------------------
+
+
+class AccountSerializer(serializers.Serializer):
+    """The Account page's one payload: identity split across two tables.
+
+    ``User`` holds the name and the address; ``Profile`` holds the affiliation
+    and career stage. The page treats them as one form, so the API does too
+    rather than making the client orchestrate two round trips and reconcile a
+    half-applied save.
+
+    Username is read-only on purpose. It is the handle lab invitations, audit
+    rows, and Discord links resolve against; renaming it is an account-migration
+    feature, not a settings field.
+    """
+
+    username = serializers.CharField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+    is_verified = serializers.BooleanField(read_only=True)
+    pending_email = serializers.EmailField(read_only=True)
+    first_name = serializers.CharField(
+        max_length=150, required=False, allow_blank=True
+    )
+    last_name = serializers.CharField(
+        max_length=150, required=False, allow_blank=True
+    )
+    institution = serializers.CharField(
+        max_length=255, required=False, allow_blank=True
+    )
+    academic_title = serializers.ChoiceField(
+        choices=AcademicTitle.choices, required=False
+    )
+
+
+class _PasswordPolicyMixin:
+    """Run a candidate password through ``AUTH_PASSWORD_VALIDATORS``."""
+
+    def _check_policy(self, password: str, field: str, user=None) -> None:
+        try:
+            validate_password(password, user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({field: list(exc.messages)}) from exc
+
+
+class PasswordChangeSerializer(_PasswordPolicyMixin, serializers.Serializer):
+    """Change the password of the signed-in account.
+
+    The current password is required even though the session already proves who
+    is asking: it is what stops a borrowed, unlocked browser from being turned
+    into a permanent takeover.
+    """
+
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True)
+
+    def validate_current_password(self, value: str) -> str:
+        user = self.context["user"]
+        if not user.check_password(value):
+            raise serializers.ValidationError("That is not your current password.")
+        return value
+
+    def validate(self, attrs: dict) -> dict:
+        if attrs["new_password"] != attrs["new_password_confirm"]:
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Passwords do not match."}
+            )
+        self._check_policy(
+            attrs["new_password"], "new_password", self.context["user"]
+        )
+        return attrs
+
+
+class PasswordResetConfirmSerializer(_PasswordPolicyMixin, serializers.Serializer):
+    """The link's uid/token plus the password it is being spent on."""
+
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    password_confirm = serializers.CharField(write_only=True)
+
+    def validate(self, attrs: dict) -> dict:
+        if attrs["password"] != attrs["password_confirm"]:
+            raise serializers.ValidationError(
+                {"password_confirm": "Passwords do not match."}
+            )
+        return attrs
+
+
+class EmailChangeSerializer(serializers.Serializer):
+    """Start a move to a new address.
+
+    Nothing is written to the account here. The new address has to answer a code
+    first, because an address entered with a typo would otherwise take the
+    account's password reset with it.
+    """
+
+    new_email = serializers.EmailField()
+    current_password = serializers.CharField(write_only=True)
+
+    def validate_current_password(self, value: str) -> str:
+        user = self.context["user"]
+        if not user.check_password(value):
+            raise serializers.ValidationError("That is not your current password.")
+        return value
+
+    def validate_new_email(self, value: str) -> str:
+        user = self.context["user"]
+        if value.strip().lower() == (user.email or "").strip().lower():
+            raise serializers.ValidationError(
+                "That is already the address on your account."
+            )
+        if User.objects.filter(email__iexact=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError(
+                "An account with that email already exists."
+            )
+        return value

@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AnonymousUser, User
+from rest_framework.exceptions import PermissionDenied
 
 from .models import Department, DeptMembership, Lab, LabMembership
 from .services import effective_member_ids
@@ -71,3 +72,37 @@ def user_can_manage_department(user: UserOrAnon, department: Department) -> bool
     name so the member/lab/billing endpoints read clearly.
     """
     return user_can_edit_dept_profile(user, department)
+
+
+#: Message every organization endpoint gives an account that has not verified.
+UNVERIFIED_MESSAGE = (
+    "Verify your email address to activate your account. "
+    "Enter the code we sent you from the Account page."
+)
+
+
+def user_email_verified(user: UserOrAnon) -> bool:
+    """Whether ``user`` has answered a code sent to their own address.
+
+    Verification is what activates an account. Staff are exempt because they are
+    created by an operator, not by the sign-up form, and there may be no mailbox
+    behind the address at all.
+    """
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    profile = getattr(user, "profile", None)
+    return bool(profile and profile.is_verified)
+
+
+def require_verified_email(user: UserOrAnon) -> None:
+    """Refuse the caller unless their account is activated.
+
+    Guards the endpoints that stand up an organization or invite someone into
+    one. Mycelium mails strangers on a lab's behalf, so an account that has not
+    proved it owns its own inbox does not get to originate that mail — and a lab
+    whose founding address bounces is a lab nobody can be added to.
+    """
+    if not user_email_verified(user):
+        raise PermissionDenied(UNVERIFIED_MESSAGE)

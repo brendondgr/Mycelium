@@ -523,3 +523,55 @@ class AuditEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.action} {self.target_type}:{self.target_id}"
+
+
+class EmailVerification(models.Model):
+    """An outstanding proof that someone controls an email address.
+
+    One row per issued code, covering both flows that need the proof: confirming
+    the address a new account signed up with, and confirming an address a
+    signed-in user is moving to. The pending address lives on the row rather than
+    on ``User``, so a change only touches the account once the new mailbox has
+    answered — a typo'd address can never lock anyone out of their own account.
+
+    The code itself is never stored. A six-digit code has a million-wide space,
+    which a plain digest surrenders instantly to an offline sweep, so what is
+    persisted is a ``SECRET_KEY``-keyed HMAC salted with this row's id. Online
+    guessing is bounded separately by ``attempts`` and ``expires_at``.
+    """
+
+    class Purpose(models.TextChoices):
+        SIGNUP = "signup", "Sign-up confirmation"
+        CHANGE = "change", "Email change"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="email_verifications",
+    )
+    email = models.EmailField(
+        help_text="The address being proved — for a change, the new one.",
+    )
+    purpose = models.CharField(
+        max_length=20,
+        choices=Purpose.choices,
+        default=Purpose.SIGNUP,
+    )
+    code_hash = models.CharField(max_length=128)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["user", "purpose", "consumed_at"],
+                name="accounts_emailver_lookup",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"EmailVerification<{self.email} ({self.purpose})>"

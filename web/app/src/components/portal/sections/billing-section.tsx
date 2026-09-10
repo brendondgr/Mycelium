@@ -8,7 +8,6 @@ import { usePortal } from "@/components/portal/portal-context";
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill } from "@/components/portal/primitives/pill";
-import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { LabPlanCard } from "@/components/portal/sections/org-plan-card";
 import { PlansCard } from "@/components/portal/sections/plans-card";
 import { useEntitlements, useLabBilling } from "@/lib/portal/hooks";
@@ -27,7 +26,33 @@ function canManageLab(lab: MyLab): boolean {
 }
 
 /**
- * Billing — the one place plans, prices, and anything else monetary live.
+ * The Account page's money half, so it heads itself as a subsection rather than
+ * a page: one `h1` per page, and the Account header above it already owns it.
+ */
+function SubsectionHeader({
+  title,
+  subtitle,
+}: {
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-6 border-b border-[var(--divider)] pb-4">
+      <h2 className="font-serif text-[22px] font-semibold leading-tight tracking-[-0.015em] text-[var(--text-primary)]">
+        {title}
+      </h2>
+      {subtitle ? (
+        <p className="mt-1.5 text-sm leading-6 text-[var(--text-secondary)]">
+          {subtitle}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Subscription management — the one place plans, prices, and anything else
+ * monetary live.
  *
  * Split out of the settings surfaces on purpose: "Your plans" used to sit in the
  * personal Profile and the lab plan in Lab settings, which put pricing in front of
@@ -45,9 +70,8 @@ export function BillingSection() {
 function PersonalBilling() {
   return (
     <div>
-      <SectionHeader
-        eyebrow="Workspace"
-        title="Billing"
+      <SubsectionHeader
+        title="Subscription management"
         subtitle="The plans on your account, what each one unlocks, and who pays for it."
       />
       <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">
@@ -102,7 +126,7 @@ function TeamPlanCard() {
               </Link>
             </React.Fragment>
           ))}
-          . Switch to it in the workspace switcher, then open Billing there.
+          . Switch to it in the workspace switcher, then open Account there.
         </p>
       ) : (
         <p className="mt-3 text-sm text-[var(--text-secondary)]">
@@ -114,7 +138,7 @@ function TeamPlanCard() {
             Create one
           </Link>{" "}
           — the workspace itself is free — then activate its plan from the lab&apos;s own
-          Billing page.
+          Account page.
         </p>
       )}
     </Card>
@@ -183,12 +207,12 @@ function LabBilling({ lab }: { lab: MyLab }) {
   if (!canManageLab(lab)) {
     return (
       <div>
-        <SectionHeader eyebrow="Workspace" title="Billing" />
+        <SubsectionHeader title="Subscription management" />
         <EmptyState
           icon={<BankIcon size={28} />}
           badge="Restricted"
           title="Only lab managers can see the lab's billing"
-          description="A lab lead, owner, or admin manages the plan and what it costs. Your own plans are on your personal Billing page."
+          description="A lab lead, owner, or admin manages the plan and what it costs. Your own plans are on your personal Account page."
         />
       </div>
     );
@@ -196,8 +220,8 @@ function LabBilling({ lab }: { lab: MyLab }) {
 
   return (
     <div>
-      <SectionHeader
-        title={`${lab.name} billing`}
+      <SubsectionHeader
+        title={`${lab.name} subscription`}
         subtitle="This lab's plan, what it covers, and what it costs per member."
       />
       <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">

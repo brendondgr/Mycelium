@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { register } from "@/lib/auth-client";
+import { checkEmailAvailable, register } from "@/lib/auth-client";
 import type { AccountType } from "@/lib/auth-types";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +78,7 @@ export function SignupForm() {
   const [orgName, setOrgName] = useState("");
   const [institution, setInstitution] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [emailTaken, setEmailTaken] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
@@ -111,6 +112,39 @@ export function SignupForm() {
     }
     return errors;
   }
+
+  /**
+   * Say that an address is already registered before the form is submitted.
+   *
+   * Watches both the address and the invite code rather than firing on one
+   * field's blur, because the code sits at the bottom of the form: whichever the
+   * person fills in last is the one that completes the pair. The endpoint is
+   * gated on that code — it is an account-enumeration oracle, and only a genuine
+   * sign-up gets to ask — so nothing is checked until there is one to send.
+   */
+  useEffect(() => {
+    const address = email.trim();
+    const code = accessCode.trim();
+    if (!EMAIL_RE.test(address) || !code) {
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void checkEmailAvailable(address, code)
+        .then((available) => {
+          if (!cancelled) {
+            setEmailTaken(!available);
+          }
+        })
+        // A failed check is not a failed sign-up — registration re-checks server
+        // side and refuses there. Say nothing rather than block the form.
+        .catch(() => undefined);
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [email, accessCode]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -363,6 +397,24 @@ export function SignupForm() {
           {fieldErrors.email ? (
             <p className={errorClass} id="email-error" role="alert">
               {fieldErrors.email}
+            </p>
+          ) : null}
+          {/* Gated on the pair still being complete rather than cleared from the
+              effect: a stale "taken" must not survive the address being edited. */}
+          {!fieldErrors.email &&
+          emailTaken &&
+          EMAIL_RE.test(email.trim()) &&
+          accessCode.trim() ? (
+            <p className={errorClass} role="alert">
+              An account already uses that email.{" "}
+              <a href="/login" className="underline underline-offset-2">
+                Sign in
+              </a>{" "}
+              or{" "}
+              <a href="/forgot-password" className="underline underline-offset-2">
+                reset your password
+              </a>
+              .
             </p>
           ) : null}
         </div>

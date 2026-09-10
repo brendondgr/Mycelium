@@ -704,7 +704,7 @@ export function ProfileSection() {
         </div>
 
         {/* RIGHT — what Mylo watches + completeness. Plans and anything else
-            monetary live on their own Billing page, not in the open here. */}
+            monetary live on the Account page, not in the open here. */}
         <div className="flex flex-col gap-[22px]">
           <WatchCard onEdit={() => setEditorTab("watch")} />
           <ProfileCompletenessCard />

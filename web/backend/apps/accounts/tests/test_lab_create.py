@@ -7,6 +7,8 @@ from rest_framework.test import APIClient
 from apps.accounts.models import LabMembership, LabProfile
 from apps.billing.models import Seat, Subscription, Tier
 
+from .conftest import verified
+
 
 @pytest.fixture
 def client() -> APIClient:
@@ -20,7 +22,7 @@ def test_create_lab_requires_authentication(client: APIClient) -> None:
 
 @pytest.mark.django_db
 def test_create_lab_makes_caller_pi_owner(client: APIClient) -> None:
-    user = User.objects.create_user(username="u", password="p")
+    user = verified(User.objects.create_user(username="u", password="p"))
     client.force_authenticate(user)
 
     resp = client.post("/api/auth/labs/", {"name": "Ocean Lab"}, format="json")
@@ -43,7 +45,7 @@ def test_create_lab_makes_caller_pi_owner(client: APIClient) -> None:
 
 @pytest.mark.django_db
 def test_created_lab_appears_in_my_labs(client: APIClient) -> None:
-    user = User.objects.create_user(username="u", password="p")
+    user = verified(User.objects.create_user(username="u", password="p"))
     client.force_authenticate(user)
     slug = client.post("/api/auth/labs/", {"name": "Ocean Lab"}, format="json").data[
         "slug"
@@ -55,7 +57,7 @@ def test_created_lab_appears_in_my_labs(client: APIClient) -> None:
 
 @pytest.mark.django_db
 def test_create_lab_rejects_blank_name(client: APIClient) -> None:
-    user = User.objects.create_user(username="u", password="p")
+    user = verified(User.objects.create_user(username="u", password="p"))
     client.force_authenticate(user)
     resp = client.post("/api/auth/labs/", {"name": "   "}, format="json")
     assert resp.status_code == 400

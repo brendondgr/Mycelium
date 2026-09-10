@@ -14,6 +14,8 @@ from apps.billing.services import (
     provision_workspace,
 )
 
+from .conftest import verified
+
 
 @pytest.fixture
 def client() -> APIClient:
@@ -21,7 +23,7 @@ def client() -> APIClient:
 
 
 def _user(name: str) -> User:
-    return User.objects.create_user(username=name, password="p")
+    return verified(User.objects.create_user(username=name, password="p"))
 
 
 # -- Lab member management -----------------------------------------------------

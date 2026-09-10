@@ -9,7 +9,7 @@ import { Avatar } from "@/components/portal/primitives/avatar";
 import { logout } from "@/lib/auth-client";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 
-/** Account button with a small menu: who you are, plus a working sign-out. */
+/** Account button with a small menu: who you are, the Account page, sign-out. */
 export function UserMenu() {
   const { user } = usePortal();
   const router = useRouter();
@@ -55,6 +55,17 @@ export function UserMenu() {
             </p>
           </div>
           <div className="my-1 h-px bg-[var(--divider)]" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              router.push("/app/account");
+            }}
+            className="w-full rounded-[9px] px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Account
+          </button>
           <button
             type="button"
             role="menuitem"

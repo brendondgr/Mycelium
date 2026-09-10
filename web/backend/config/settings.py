@@ -217,8 +217,20 @@ REST_FRAMEWORK = {
     # account creation so the open AllowAny endpoint can't be hammered.
     "DEFAULT_THROTTLE_RATES": {
         "register": env("DJANGO_REGISTER_THROTTLE_RATE", default="20/hour"),
+        # Anonymous, and each one sends mail to an address the caller names, so
+        # the cap is what stops the endpoint being pointed at someone's inbox.
+        "password_reset": env("DJANGO_PASSWORD_RESET_THROTTLE_RATE", default="10/hour"),
+        "email_check": env("DJANGO_EMAIL_CHECK_THROTTLE_RATE", default="60/hour"),
+        # Signed-in, so the cap is per account: it bounds resend spam and the
+        # rate at which one user can grind at codes.
+        "email_verify": env("DJANGO_EMAIL_VERIFY_THROTTLE_RATE", default="30/hour"),
     },
 }
+
+# How long an emailed password-reset link stays usable. Django's default is three
+# days, which is a long time for a link that grants a password change to sit in a
+# mailbox; an hour is enough for someone acting on the mail they just asked for.
+PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=3600)
 
 # Sign-up gate: registration is invite-only, so a new account must carry a valid
 # verification code. One shared code is live at a time (rotate it by setting the

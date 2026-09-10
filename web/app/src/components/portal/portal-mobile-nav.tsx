@@ -47,7 +47,7 @@ export function PortalMobileNav() {
         ...(manageLab
           ? [
               { key: "profile" as SectionKey, label: "Lab settings", icon: <TargetIcon size={15} /> },
-              { key: "billing" as SectionKey, label: "Billing", icon: <ReceiptIcon size={15} /> },
+              { key: "account" as SectionKey, label: "Account", icon: <ReceiptIcon size={15} /> },
             ]
           : []),
         { key: "saves", label: "Saves", icon: <BookmarkIcon size={15} /> },
@@ -61,7 +61,7 @@ export function PortalMobileNav() {
     : [
         { key: "overview", label: "Overview", icon: <GridIcon size={15} /> },
         { key: "profile", label: "Profile", icon: <TargetIcon size={15} /> },
-        { key: "billing", label: "Billing", icon: <ReceiptIcon size={15} /> },
+        { key: "account", label: "Account", icon: <ReceiptIcon size={15} /> },
         { key: "saves", label: "Saves", icon: <BookmarkIcon size={15} /> },
         { key: "reminders", label: "Reminders", icon: <BellIcon size={15} /> },
         { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },

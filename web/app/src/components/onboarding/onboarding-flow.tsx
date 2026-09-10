@@ -28,8 +28,9 @@ import {
   proposeClusters,
   saveProfileBasics,
   saveWatch,
+  resendVerificationCode,
   synthesizeProfile,
-  verifyEmail,
+  verifyEmailCode,
 } from "@/lib/auth-client";
 import { fetchProfile } from "@/lib/portal/client";
 import { useEntitlements } from "@/lib/portal/hooks";
@@ -176,7 +177,6 @@ const FIELD_OPTIONS = [
 const RESTRICTION_OPTIONS = ["Women", "Equity"];
 
 const MAX_RESUME_BYTES = 5 * 1024 * 1024;
-const DEMO_CODE = ["4", "8", "2", "9", "1", "3"];
 
 // Minimum time each early synthesis stage is shown so the user can read the
 // narration even when the request returns quickly. The final (language-model)
@@ -463,6 +463,16 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
   ]);
 
   // -- verify --------------------------------------------------------------
+
+  /**
+   * Submit the code that was mailed at sign-up.
+   *
+   * A wrong code stops here rather than waving the person through: verifying is
+   * what activates the account, and an account that silently believed itself
+   * verified would hit a 403 the first time it tried to build a lab. Skipping is
+   * still allowed — it just leaves the account unactivated, which the Account
+   * page says plainly.
+   */
   async function verifyAndContinue() {
     if (code.some((digit) => digit === "")) {
       setVerifyError("Enter all 6 digits, or skip for now.");
@@ -471,13 +481,33 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
     setVerifyError("");
     setBusy(true);
     try {
-      await verifyEmail();
-    } catch {
-      // Verification is non-blocking — proceed regardless (scaffold).
-    } finally {
+      await verifyEmailCode(code.join(""));
+    } catch (error) {
+      setVerifyError(
+        error instanceof Error
+          ? error.message
+          : "That code is not valid. Ask for a new one.",
+      );
       setBusy(false);
+      return;
     }
+    setBusy(false);
     enterIntake();
+  }
+
+  /** Mail a fresh code, replacing whatever was outstanding. */
+  async function resendCode() {
+    setVerifyError("");
+    try {
+      await resendVerificationCode();
+      setVerifyResent(true);
+    } catch (error) {
+      setVerifyError(
+        error instanceof Error
+          ? error.message
+          : "Could not send a new code. Try again in a moment.",
+      );
+    }
   }
 
   function enterIntake() {
@@ -905,7 +935,7 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
               <button
                 type="button"
                 className="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => setVerifyResent(true)}
+                onClick={() => void resendCode()}
               >
                 Resend code
               </button>
@@ -916,16 +946,6 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
         <div className="mt-5 flex items-center justify-center gap-4 border-t border-[var(--divider)] pt-4 text-sm">
           <button
             type="button"
-            className="font-medium text-brand-secondary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => setCode(DEMO_CODE)}
-          >
-            Fill demo code
-          </button>
-          <span className="text-[var(--text-muted)]" aria-hidden="true">
-            |
-          </span>
-          <button
-            type="button"
             className="text-[var(--text-muted)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={enterIntake}
           >
@@ -933,8 +953,9 @@ export function OnboardingFlow({ email, mode = "onboard" }: OnboardingFlowProps)
           </button>
         </div>
         <p className="mt-4 text-xs text-[var(--text-muted)]">
-          Verification is optional right now — you&rsquo;re signed in either way
-          and can confirm later from Settings.
+          You&rsquo;re signed in either way. Verifying activates your account —
+          until then you can&rsquo;t create a lab or department, or invite
+          anyone. You can finish it later from your Account page.
         </p>
       </div>
     );

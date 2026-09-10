@@ -566,7 +566,7 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
       return "Checking this lab's Discord connection…";
     if (isError) return "Couldn't check the Discord connection. Try again.";
     if (!myloIncluded && !synced)
-      return "Mylo isn't part of this lab's plan yet, so this lab can't add him to a Discord server. Add Mylo to the plan from Billing, then come back to connect your server.";
+      return "Mylo isn't part of this lab's plan yet, so this lab can't add him to a Discord server. Add Mylo to the plan from Account, then come back to connect your server.";
     if (synced) {
       const where = status?.guild_name
         ? `the ${status.guild_name} server`
@@ -599,7 +599,7 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
       <p className="mt-2 text-[12.5px] text-[var(--text-secondary)]">{detail}</p>
       {!synced && !isLoading && !billingLoading && !myloIncluded ? (
         <Link
-          href={SECTION_ROUTES.billing}
+          href={SECTION_ROUTES.account}
           className="mt-3 inline-flex items-center gap-[7px] rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Activate Mylo on this plan

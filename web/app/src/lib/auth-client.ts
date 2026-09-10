@@ -1,4 +1,6 @@
 import type {
+  AccountDetails,
+  AccountUpdate,
   AuthErrorBody,
   AuthUser,
   ComposeClustersInput,
@@ -155,13 +157,23 @@ export async function register(input: RegisterInput): Promise<AuthUser> {
   };
 }
 
-/** Mark the signed-in user's email verified (scaffold; non-blocking). */
-export async function verifyEmail(): Promise<void> {
+/**
+ * POST JSON to an `/api/auth/...` path with a fresh CSRF token, and turn a DRF
+ * error body into a thrown Error carrying the field message the user should see.
+ *
+ * Every account endpoint below answers the same way — `{ field: [message] }` on
+ * a refusal — so the handling belongs here rather than repeated nine times.
+ */
+async function postAuth<T>(
+  segments: string[],
+  payload: Record<string, unknown>,
+  fallback: string,
+): Promise<T> {
   await ensureCsrfCookie();
   const csrfToken = readCsrfToken();
 
   const response = await fetch(
-    buildApiUrl(getPublicApiBase(), "auth", "verify-email"),
+    buildApiUrl(getPublicApiBase(), "auth", ...segments),
     {
       method: "POST",
       credentials: "include",
@@ -169,12 +181,163 @@ export async function verifyEmail(): Promise<void> {
         "Content-Type": "application/json",
         ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
       },
+      body: JSON.stringify(payload),
     },
   );
 
+  const body = await parseJson<T & Record<string, unknown>>(response);
   if (!response.ok) {
-    throw new Error("Could not verify your email. Try again in a moment.");
+    throw new Error(firstFieldError(body) ?? fallback);
   }
+  return body as T;
+}
+
+/** Read the signed-in account: name, address, affiliation, verification state. */
+export async function getAccount(): Promise<AccountDetails> {
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "account"),
+    { method: "GET", credentials: "include", cache: "no-store" },
+  );
+  const body = await parseJson<AccountDetails>(response);
+  if (!response.ok || !body) {
+    throw new Error("Could not load your account.");
+  }
+  return body;
+}
+
+/** Save the fields the Account page owns outright (name, affiliation, stage). */
+export async function updateAccount(
+  payload: AccountUpdate,
+): Promise<AccountDetails> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "account"),
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  const body = await parseJson<AccountDetails & Record<string, unknown>>(
+    response,
+  );
+  if (!response.ok || !body) {
+    throw new Error(firstFieldError(body) ?? "Could not save your account.");
+  }
+  return body;
+}
+
+/** Submit the six-digit code; on success the account is activated. */
+export async function verifyEmailCode(code: string): Promise<AccountDetails> {
+  return postAuth<AccountDetails>(
+    ["email", "verify"],
+    { code },
+    "Could not verify that code. Try again in a moment.",
+  );
+}
+
+/** Send a fresh code, to the pending new address when one is in flight. */
+export async function resendVerificationCode(): Promise<{ email: string }> {
+  return postAuth<{ email: string }>(
+    ["email", "resend"],
+    {},
+    "Could not send a new code. Try again in a moment.",
+  );
+}
+
+/**
+ * Start a move to a new address. Nothing changes on the account until the code
+ * mailed to that address comes back through `verifyEmailCode`.
+ */
+export async function changeEmail(
+  newEmail: string,
+  currentPassword: string,
+): Promise<{ pending_email: string }> {
+  return postAuth<{ pending_email: string }>(
+    ["email", "change"],
+    { new_email: newEmail, current_password: currentPassword },
+    "Could not change your email. Try again in a moment.",
+  );
+}
+
+/**
+ * Whether an address is free, so sign-up can say so before the form is finished.
+ * Gated on the invite code, so it is only answerable to a genuine sign-up.
+ */
+export async function checkEmailAvailable(
+  email: string,
+  accessCode: string,
+): Promise<boolean> {
+  const result = await postAuth<{ available: boolean }>(
+    ["email", "check"],
+    { email, access_code: accessCode },
+    "Could not check that email.",
+  );
+  return Boolean(result.available);
+}
+
+/** Change the password of the signed-in account; this session stays signed in. */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+  newPasswordConfirm: string,
+): Promise<void> {
+  await postAuth(
+    ["password", "change"],
+    {
+      current_password: currentPassword,
+      new_password: newPassword,
+      new_password_confirm: newPasswordConfirm,
+    },
+    "Could not change your password. Try again in a moment.",
+  );
+}
+
+/**
+ * Ask for a reset link. The answer is the same whether or not the address is
+ * registered, so callers must not treat success as proof an account exists.
+ */
+export async function requestPasswordReset(email: string): Promise<string> {
+  const body = await postAuth<{ detail: string }>(
+    ["password", "reset"],
+    { email },
+    "Could not send a reset link. Try again in a moment.",
+  );
+  return body.detail;
+}
+
+/** Whether a reset link is still live, checked before showing the form. */
+export async function verifyResetToken(
+  uid: string,
+  token: string,
+): Promise<boolean> {
+  const body = await postAuth<{ valid: boolean }>(
+    ["password", "reset", "verify"],
+    { uid, token },
+    "Could not check that reset link.",
+  );
+  return Boolean(body.valid);
+}
+
+/** Spend a reset link on a new password. */
+export async function confirmPasswordReset(
+  uid: string,
+  token: string,
+  password: string,
+  passwordConfirm: string,
+): Promise<void> {
+  await postAuth(
+    ["password", "reset", "confirm"],
+    { uid, token, password, password_confirm: passwordConfirm },
+    "Could not reset your password. Try again in a moment.",
+  );
 }
 
 /** Build an editable research draft from one source and/or a résumé upload. */

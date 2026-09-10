@@ -122,7 +122,12 @@ export function LoginForm() {
           <label className={labelClass} htmlFor="password">
             Password
           </label>
-          <span className="text-xs font-medium text-brand-secondary">Forgot?</span>
+          <a
+            href="/forgot-password"
+            className="text-xs font-medium text-brand-secondary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Forgot?
+          </a>
         </div>
         <input
           id="password"

@@ -23,3 +23,18 @@ def _clear_throttle_cache():
         yield
         cache.clear()
         caches["signup"].clear()
+
+
+def verified(user):
+    """Mark a test user's account activated, and return it.
+
+    Verifying an email is what activates an account, and an unactivated one is
+    refused by every endpoint that stands up an organization — creating a lab,
+    editing a lab or department profile, sending an invitation. Tests about *those*
+    rules should not be re-testing the activation gate, which has its own file
+    (``test_email_verification.py``), so they say so here in one call.
+    """
+    profile = user.profile
+    profile.is_verified = True
+    profile.save(update_fields=["is_verified"])
+    return user

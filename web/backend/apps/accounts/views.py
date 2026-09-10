@@ -1,8 +1,15 @@
 import dataclasses
 import json
 
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import (
+    authenticate,
+    login,
+    logout,
+    update_session_auth_hash,
+)
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.http import FileResponse, Http404
 from django.middleware.csrf import get_token
@@ -20,12 +27,12 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import SAFE_METHODS, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from apps.billing.services import create_lab_workspace, provision_workspace
 
-from . import signup_gate
+from . import email_verification, password_reset, signup_gate
 from .intake import (
     AuthorImportError,
     IntakeAgent,
@@ -40,6 +47,7 @@ from .interests import validate_interests
 from .models import (
     Department,
     DeptMembership,
+    EmailVerification,
     Lab,
     LabInvitation,
     LabMembership,
@@ -47,6 +55,7 @@ from .models import (
     WatchPreference,
 )
 from .permissions import (
+    require_verified_email,
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
     user_can_invite_to_lab,
@@ -56,13 +65,17 @@ from .permissions import (
     user_has_lab_access,
 )
 from .serializers import (
+    AccountSerializer,
     DeptProfileSerializer,
+    EmailChangeSerializer,
     LabInvitationSerializer,
     LabMemberSerializer,
     LabProfileSerializer,
     LabWatchPreferenceSerializer,
     MyInvitationSerializer,
     MyLabSerializer,
+    PasswordChangeSerializer,
+    PasswordResetConfirmSerializer,
     ProfileSerializer,
     RegisterSerializer,
     WatchPreferenceSerializer,
@@ -144,6 +157,14 @@ def register_view(request: Request) -> Response:
     post_save signal creates the ``Profile``), then ``provision_workspace``
     builds the org + billing rows. A failure in either phase rolls back the whole
     thing, so a half-built account never persists.
+
+    The account starts **unverified** and a six-digit code goes to the address it
+    was created with. Clearing the invite gate proves the person was invited; it
+    proves nothing about the mailbox they typed, and the mailbox is what a
+    password reset and every lab invitation will later depend on. Verification is
+    what activates the account — see ``apps.accounts.permissions`` for what it
+    unlocks — but it does not block sign-in: an account nobody can get into
+    because Resend had an outage is a worse failure than an unactivated one.
     """
     subject = signup_gate.client_subject(request)
     banned = signup_gate.is_shadow_banned(subject)
@@ -178,10 +199,6 @@ def register_view(request: Request) -> Response:
             institution=data.get("institution", ""),
         )
 
-        # The account cleared the invite gate, so it starts verified.
-        user.profile.is_verified = True
-        user.profile.save(update_fields=["is_verified"])
-
         # Surface any lab invitations that were sent to this email before signup.
         claim_pending_invitations(user)
 
@@ -199,6 +216,10 @@ def register_view(request: Request) -> Response:
                 ),
             },
         )
+
+    # Outside the transaction: `issue` mails on commit, so a rollback can never
+    # leave a live code in a real inbox for an account that does not exist.
+    email_verification.issue(user, user.email)
 
     login(request, user)  # set the session immediately, same as login_view
     return Response(user_to_dict(user), status=status.HTTP_201_CREATED)
@@ -224,19 +245,313 @@ def me(request: Request) -> Response:
     return Response(user_to_dict(user))
 
 
-@api_view(["POST"])
-def verify_email_view(request: Request) -> Response:
-    """Mark the caller's email verified (scaffold).
+# -- Account management: name, email, password --------------------------------
 
-    Email verification is non-blocking this sprint: a signed-in user confirms
-    their own email. Real token signing, email templates, and SMTP delivery are
-    deferred; the endpoint and the ``Profile.is_verified`` flag are wired so the
-    flow exists end to end.
+
+class AccountView(APIView):
+    """The Account page's read/write surface for who the user is.
+
+    Identity is split across two tables — ``User`` owns the name and address,
+    ``Profile`` owns the affiliation and career stage — but it is one form to the
+    person filling it in, so it is one endpoint. Email and password are
+    deliberately *not* writable here: each has its own endpoint because each
+    needs a proof this one does not ask for.
     """
-    profile = request.user.profile
-    profile.is_verified = True
-    profile.save()
-    return Response({"is_verified": True})
+
+    def get(self, request: Request) -> Response:
+        return Response(_account_payload(request.user))
+
+    def patch(self, request: Request) -> Response:
+        serializer = AccountSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        user = request.user
+        user_fields = [f for f in ("first_name", "last_name") if f in data]
+        if user_fields:
+            for field in user_fields:
+                setattr(user, field, data[field])
+            user.save(update_fields=user_fields)
+
+        profile = user.profile
+        profile_fields = [
+            f for f in ("institution", "academic_title") if f in data
+        ]
+        if profile_fields:
+            for field in profile_fields:
+                setattr(profile, field, data[field])
+            # Scoped to the changed columns: a full-row save here would write
+            # back the `interests` this request loaded, clobbering a concurrent
+            # profile edit. Same reason the profile serializer scopes its writes.
+            profile.save(update_fields=profile_fields)
+
+        return Response(_account_payload(user))
+
+
+def _account_payload(user: User) -> dict[str, object]:
+    profile = user.profile
+    return {
+        "username": user.username,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "institution": profile.institution,
+        "academic_title": profile.academic_title,
+        "is_verified": profile.is_verified,
+        "pending_email": email_verification.pending_email(user),
+    }
+
+
+class PasswordChangeView(APIView):
+    """Change the signed-in account's password."""
+
+    def post(self, request: Request) -> Response:
+        serializer = PasswordChangeSerializer(
+            data=request.data, context={"user": request.user}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        # Every *other* session dies with the old password hash; this one is
+        # re-stamped so the person who just changed it is not signed out of the
+        # page they did it from.
+        update_session_auth_hash(request, user)
+
+        record_audit_event(
+            actor=user,
+            action="account.password_change",
+            target_type="user",
+            target_id=str(user.pk),
+        )
+        return Response({"detail": "Your password has been changed."})
+
+
+class EmailChangeView(APIView):
+    """Start moving the account to a new address.
+
+    Nothing is written to the account here — the new address is parked on a
+    verification row until a code sent to it comes back. An address accepted on
+    trust is an address a typo can hand the account's password reset to.
+    """
+
+    def post(self, request: Request) -> Response:
+        serializer = EmailChangeSerializer(
+            data=request.data, context={"user": request.user}
+        )
+        serializer.is_valid(raise_exception=True)
+        new_email = serializer.validated_data["new_email"]
+
+        email_verification.issue(
+            request.user, new_email, EmailVerification.Purpose.CHANGE
+        )
+        record_audit_event(
+            actor=request.user,
+            action="account.email_change_requested",
+            target_type="user",
+            target_id=str(request.user.pk),
+        )
+        return Response(
+            {
+                "detail": f"We sent a code to {new_email}. Enter it to finish.",
+                "pending_email": new_email,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+class EmailVerifyThrottle(UserRateThrottle):
+    """Per-account cap on code submissions and resends."""
+
+    scope = "email_verify"
+
+
+@api_view(["POST"])
+@throttle_classes([EmailVerifyThrottle])
+def email_verify_view(request: Request) -> Response:
+    """Submit a six-digit code and activate the account.
+
+    One endpoint for both purposes: a pending address change is settled first if
+    there is one, otherwise the code is read as the sign-up confirmation. The
+    caller does not have to know which flow it is in, and cannot get it wrong.
+    """
+    code = str(request.data.get("code", ""))
+    purpose = (
+        EmailVerification.Purpose.CHANGE
+        if email_verification.pending_email(request.user)
+        else EmailVerification.Purpose.SIGNUP
+    )
+    try:
+        email_verification.verify(request.user, code, purpose)
+    except email_verification.VerificationError as exc:
+        return Response(
+            {"code": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    request.user.refresh_from_db()
+    record_audit_event(
+        actor=request.user,
+        action="account.email_verified",
+        target_type="user",
+        target_id=str(request.user.pk),
+        metadata={"purpose": purpose},
+    )
+    return Response(_account_payload(request.user))
+
+
+@api_view(["POST"])
+@throttle_classes([EmailVerifyThrottle])
+def email_resend_view(request: Request) -> Response:
+    """Send a fresh code, replacing whatever was outstanding.
+
+    Re-sends to the pending new address when a change is in flight, so the
+    button on the "check your inbox" screen always means the inbox that screen
+    is talking about.
+    """
+    pending = email_verification.pending_email(request.user)
+    purpose = (
+        EmailVerification.Purpose.CHANGE
+        if pending
+        else EmailVerification.Purpose.SIGNUP
+    )
+    address = pending or request.user.email
+    if not address:
+        return Response(
+            {"detail": ["Your account has no email address."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        email_verification.issue(
+            request.user, address, purpose, enforce_cooldown=True
+        )
+    except email_verification.ResendTooSoon as exc:
+        return Response(
+            {"detail": [str(exc)]}, status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+    return Response({"detail": f"We sent a new code to {address}.", "email": address})
+
+
+class EmailCheckThrottle(AnonRateThrottle):
+    """Cap on sign-up address lookups (see ``email_check_view``)."""
+
+    scope = "email_check"
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([EmailCheckThrottle])
+def email_check_view(request: Request) -> Response:
+    """Whether an address is free, for the sign-up form to say so early.
+
+    This is an account-enumeration oracle, which is why it is behind the same
+    invite code registration is behind: a genuine sign-up already holds it, and
+    nobody else can ask. Without the gate the answer would be free to anyone; with
+    it, the gate's own shadow-ban budget is what bounds guessing.
+    """
+    subject = signup_gate.client_subject(request)
+    if signup_gate.is_shadow_banned(subject) or not signup_gate.code_matches(
+        request.data.get("access_code", "")
+    ):
+        return Response(
+            {"access_code": [signup_gate.INVALID_CODE_MESSAGE]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    email = str(request.data.get("email", "")).strip()
+    try:
+        validate_email(email)
+    except DjangoValidationError:
+        return Response(
+            {"email": ["Enter a valid email address."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    taken = User.objects.filter(email__iexact=email).exists()
+    return Response({"email": email, "available": not taken})
+
+
+# -- Password reset by emailed link -------------------------------------------
+
+
+class PasswordResetThrottle(AnonRateThrottle):
+    """Cap on reset requests — each one mails an address the caller chose."""
+
+    scope = "password_reset"
+
+
+#: The single answer a reset request gets, registered address or not.
+RESET_REQUESTED_MESSAGE = (
+    "If that email belongs to a Mycelium account, a reset link is on its way."
+)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([PasswordResetThrottle])
+def password_reset_request_view(request: Request) -> Response:
+    """Mail a reset link, and say the same thing either way.
+
+    Varying the response on whether the address is registered would turn this
+    endpoint into a way to test whether someone has a Mycelium account, so it
+    does not vary — not in the body, not in the status.
+    """
+    email = str(request.data.get("email", "")).strip()
+    password_reset.request_reset(email)
+    return Response({"detail": RESET_REQUESTED_MESSAGE})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([PasswordResetThrottle])
+def password_reset_verify_view(request: Request) -> Response:
+    """Whether a link is still good, so the page can say so before the form.
+
+    Discovering a dead link only after typing a new password twice is a bad
+    enough experience to be worth one extra round trip.
+    """
+    try:
+        password_reset.resolve(
+            str(request.data.get("uid", "")), str(request.data.get("token", ""))
+        )
+    except password_reset.ResetTokenInvalid as exc:
+        return Response({"valid": False, "detail": str(exc)})
+    return Response({"valid": True})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([PasswordResetThrottle])
+def password_reset_confirm_view(request: Request) -> Response:
+    """Spend a reset link on a new password.
+
+    The token stops verifying the moment the password changes, so the link is
+    single-use without a table to write, and every other session for that account
+    dies with the old hash.
+    """
+    serializer = PasswordResetConfirmSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    try:
+        user = password_reset.confirm_reset(
+            data["uid"], data["token"], data["password"]
+        )
+    except password_reset.ResetTokenInvalid as exc:
+        return Response(
+            {"token": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST
+        )
+    except DjangoValidationError as exc:
+        return Response(
+            {"password": list(exc.messages)}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    record_audit_event(
+        actor=user,
+        action="account.password_reset",
+        target_type="user",
+        target_id=str(user.pk),
+    )
+    return Response({"detail": "Your password has been reset. Sign in to continue."})
 
 
 # -- Profile read/update (object-level permissions, brief Phase G) -------------
@@ -264,6 +579,10 @@ class LabProfileView(RetrieveUpdateAPIView):
                 raise PermissionDenied("You do not have access to this lab.")
         elif not user_can_edit_lab_profile(user, lab):
             raise PermissionDenied("Only a lab lead or admin can edit this profile.")
+        else:
+            # Reading a lab you belong to is always fine; building one out is the
+            # thing verification activates.
+            require_verified_email(user)
         return lab.profile
 
 
@@ -424,6 +743,8 @@ class DeptProfileView(RetrieveUpdateAPIView):
                 raise PermissionDenied("You do not have access to this department.")
         elif not user_can_edit_dept_profile(user, department):
             raise PermissionDenied("Only the owner or an admin can edit this profile.")
+        else:
+            require_verified_email(user)
         return department.profile
 
 
@@ -462,6 +783,10 @@ class MyLabsView(ListAPIView):
         )
 
     def post(self, request: Request) -> Response:
+        # An unactivated account does not get to stand up an organization: a lab
+        # exists to invite people into, and inviting from an address nobody has
+        # answered is how Mycelium's mail becomes someone else's spam problem.
+        require_verified_email(request.user)
         name = str(request.data.get("name", "")).strip()
         if not name:
             return Response(
@@ -572,6 +897,9 @@ class LabInvitationsView(APIView):
 
     def post(self, request: Request, slug: str) -> Response:
         lab = self._get_lab()
+        # Sending an invitation puts Mycelium's name in a stranger's inbox on
+        # this account's behalf. Answer your own mail first.
+        require_verified_email(request.user)
         invitation = invite_to_lab(
             lab=lab,
             inviter=request.user,
@@ -695,6 +1023,7 @@ class DeptLabsView(APIView):
         department = get_object_or_404(Department, id=pk)
         if not user_can_manage_department(request.user, department):
             raise PermissionDenied("Only an owner or admin can add labs.")
+        require_verified_email(request.user)
         slug = str(request.data.get("slug", "")).strip()
         name = str(request.data.get("name", "")).strip()
         if slug:

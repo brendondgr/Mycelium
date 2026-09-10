@@ -33,6 +33,7 @@ Paths are relative to the repository root.
 |---|---|
 | An app route | `web/app/src/app/app/(workspace)/<name>/page.tsx` |
 | Login / signup routes | `web/app/src/app/{login,signup}/` + `web/app/src/components/auth/` |
+| Password reset (signed-out) | `web/app/src/app/{forgot-password,reset-password}/` + `web/app/src/components/auth/{forgot-password-form,reset-password-form}.tsx`; both need an nginx `location` block (`web/infra/nginx/default.conf`) or the emailed link 404s |
 | Portal shell, sidebar, nav, lab switcher | `web/app/src/components/portal/{portal-sidebar,portal-mobile-nav,lab-switcher,portal-context}.tsx` |
 | Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `match-card`, `cluster-badge`, `hidden-by-filters`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `modal`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-list`, `source-footer` |
 | A card's judgement | **The app shows none.** There is no percent match, no per-theme position, and no verdict chip anywhere in the app UI. The backend still computes and stores a verdict and a slate position, and the API still serves both (`verdict`, `position`, `position_of`), so restoring a display is a frontend-only change; the printed report (`daily_report_pdf.py`), the Discord digest and the briefing still read them |
@@ -61,7 +62,8 @@ Paths are relative to the repository root.
 | Project page parts (identity, four-area tabs, editor, team) | `web/app/src/components/portal/projects/{project-identity,project-tabs,project-editor-modal,project-team-card,create-project-wizard}.tsx` |
 | Labs / members / lab settings | `web/app/src/components/portal/sections/{labs-section,members-section,lab-settings-section}.tsx` |
 | Reports page (briefing history) | `web/app/src/components/portal/sections/reports-section.tsx` |
-| Billing page | `web/app/src/components/portal/sections/billing-section.tsx` |
+| Account page (identity, email, password + subscription) | `web/app/src/components/portal/sections/account-section.tsx`; route `/app/account` |
+| Subscription management (the Account page's money half) | `web/app/src/components/portal/sections/billing-section.tsx`; `/app/billing` redirects to `/app/account` |
 | Admin page | `web/app/src/components/portal/sections/admin-section.tsx` |
 | Notification bell | `web/app/src/components/portal/notification-bell.tsx` |
 | API client, hooks, types | `web/app/src/lib/` and `web/app/src/lib/portal/{client,hooks,mutations,types}.ts` |
@@ -79,6 +81,9 @@ Paths are relative to the repository root.
 | Permission rules | `web/backend/apps/accounts/permissions.py` |
 | Workspace provisioning at signup | `web/backend/apps/accounts/provisioning.py` |
 | Invite-only sign-up gate | `web/backend/apps/accounts/signup_gate.py` |
+| Email verification (the six-digit code that activates an account) | `web/backend/apps/accounts/email_verification.py`, model `EmailVerification` |
+| Password reset by emailed link | `web/backend/apps/accounts/password_reset.py` |
+| What an unverified account may not do | `require_verified_email` in `web/backend/apps/accounts/permissions.py` — guards lab/department creation, both profiles, and invitations |
 | Interests contract (v2 clusters) | `web/backend/apps/accounts/interests.py` |
 | Profile / lab intake & synthesis | `web/backend/apps/accounts/intake/` — `synthesize.py`, `lab.py`, `clusters.py`, `agent.py` |
 | Derived membership aggregates | `web/backend/apps/accounts/aggregates.py` |
