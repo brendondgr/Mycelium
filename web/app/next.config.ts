@@ -20,6 +20,9 @@ const publicHostname = process.env.PUBLIC_HOSTNAME?.trim();
 
 const nextConfig: NextConfig = {
   turbopack: { root: workspaceRoot },
+  // The floating Next dev-tools badge (bottom-left) is noise on a deployment
+  // that happens to run in dev mode; hide it entirely.
+  devIndicators: false,
   allowedDevOrigins: publicHostname ? [publicHostname] : [],
   async rewrites() {
     return [
