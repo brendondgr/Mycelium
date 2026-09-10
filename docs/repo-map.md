@@ -33,6 +33,7 @@ Paths are relative to the repository root.
 |---|---|
 | An app route | `web/app/src/app/app/(workspace)/<name>/page.tsx` |
 | Login / signup routes | `web/app/src/app/{login,signup}/` + `web/app/src/components/auth/` |
+| Join invitation landing (signed-out) | `web/app/src/app/join/[token]/` + `web/app/src/components/auth/join-invitation.tsx`; needs its own nginx `location` block like the reset routes |
 | Password reset (signed-out) | `web/app/src/app/{forgot-password,reset-password}/` + `web/app/src/components/auth/{forgot-password-form,reset-password-form}.tsx`; both need an nginx `location` block (`web/infra/nginx/default.conf`) or the emailed link 404s |
 | Portal shell, sidebar, nav, lab switcher | `web/app/src/components/portal/{portal-sidebar,portal-mobile-nav,lab-switcher,portal-context}.tsx` |
 | Shared card primitives | `web/app/src/components/portal/primitives/` — `card`, `match-card`, `cluster-badge`, `hidden-by-filters`, `pill`, `section-header`, `feed-search-bar`, `feed-sentinel`, `markdown-prose`, `modal`, `editor-modal`, `recommended-for`, `info-popover`, `deadline-list`, `source-footer` |
@@ -48,6 +49,8 @@ Paths are relative to the repository root.
 | Onboarding (first run only) | `web/app/src/components/onboarding/` + route `web/app/src/app/app/onboarding/` |
 | Cluster organizer | `web/app/src/components/onboarding/cluster-organizer.tsx` |
 | Profile / lab edit modals | `web/app/src/components/portal/sections/{profile-editor-modal,lab-editor-modal}.tsx` |
+| Inviting people into a lab or department (both ways) | `web/app/src/components/portal/sections/org-invite-card.tsx`, mounted by `labs-section.tsx` and `department-section.tsx` |
+| Creating a lab or a department from inside the app | `LabsSection` in `web/app/src/components/portal/sections/labs-section.tsx` (`CreateLabModal`, `CreateDepartmentModal`); both gated on `user.isVerified` |
 | Overview (personal + lab) | `web/app/src/components/portal/sections/{overview-panels,mylo-report-card,mylo-found-card,lab-overview-section,lab-onboarding}.tsx`, `portal/primitives/report-summary-table.tsx` |
 | Feeds: papers / grants / fellowships / conferences | `web/app/src/components/portal/sections/{research-papers-section,opportunities-section,fellowships-section,conferences-section}.tsx` |
 | Feed filter rails | `web/app/src/components/portal/sections/{grant-filters,fellowship-filters,conference-filters,saves-filters}.tsx` |
@@ -81,9 +84,10 @@ Paths are relative to the repository root.
 | Permission rules | `web/backend/apps/accounts/permissions.py` |
 | Workspace provisioning at signup | `web/backend/apps/accounts/provisioning.py` |
 | Invite-only sign-up gate | `web/backend/apps/accounts/signup_gate.py` |
+| Join invitations (emailed to one address, or a share link with a use budget + expiry) | `web/backend/apps/accounts/invites.py`, models `OrgInvite` / `OrgInviteRedemption` |
 | Email verification (the six-digit code that activates an account) | `web/backend/apps/accounts/email_verification.py`, model `EmailVerification` |
 | Password reset by emailed link | `web/backend/apps/accounts/password_reset.py` |
-| What an unverified account may not do | `require_verified_email` in `web/backend/apps/accounts/permissions.py` — guards lab/department creation, both profiles, and invitations |
+| What an unverified account may not do | `require_verified_email` in `web/backend/apps/accounts/permissions.py` — guards lab/department creation, both profiles, and issuing invitations. Redeeming one is *not* gated: it guards standing an org up, not being brought into one |
 | Interests contract (v2 clusters) | `web/backend/apps/accounts/interests.py` |
 | Profile / lab intake & synthesis | `web/backend/apps/accounts/intake/` — `synthesize.py`, `lab.py`, `clusters.py`, `agent.py` |
 | Derived membership aggregates | `web/backend/apps/accounts/aggregates.py` |
@@ -149,6 +153,7 @@ Files below are inside `web/backend/apps/content/`.
 |---|---|
 | Entitlements (the single read path) | `web/backend/apps/billing/entitlements.py` |
 | Tiers, pricing, add-ons, seats, periods | `web/backend/apps/billing/{tiers,pricing,addons,seats,seat_sync,period,services}.py` |
+| Standing up an org's rows (lab or department, plan inactive) | `create_lab_workspace` / `create_department_workspace` in `web/backend/apps/billing/services.py`; sign-up only ever calls `provision_workspace(user, "personal")` |
 | Platform-admin API | `web/backend/apps/adminpanel/` |
 | Discord identity & lab linking | `web/backend/apps/integrations/models.py`, `services/resolve.py` (the single ORM boundary) |
 | Discord OAuth, API calls, outbox | `web/backend/apps/integrations/services/` |

@@ -30,7 +30,7 @@ routes clients depend on most.
 |---|---|---|
 | `csrf/` | GET | Ensure the CSRF cookie is set |
 | `login/` `logout/` `me/` | POST / POST / GET | Session lifecycle + current user |
-| `register/` | POST | Create user + provision workspace, atomically |
+| `register/` | POST | Create one solo account (access code **or** invite token) |
 | `account/` | GET, PATCH | Name, affiliation, career stage, verification state |
 | `email/verify/` `email/resend/` | POST | Submit a six-digit code; ask for a new one |
 | `email/change/` | POST | Start a move to a new address (code to the new one) |
@@ -41,6 +41,11 @@ routes clients depend on most.
 | `password/reset/confirm/` | POST | Spend a link on a new password |
 | `profile/me/` | GET, PATCH | The caller's own profile |
 | `watch/me/` | GET, PATCH | What Mylo watches for the caller |
+| `departments/` | GET, POST | The caller's departments; create one (verified only) |
+| `labs/<slug>/invites/` `departments/<id>/invites/` | GET, POST | Join invitations: list, create an emailed one or a share link |
+| `…/invites/<id>/revoke/` | POST | Withdraw a join invitation |
+| `invites/<token>/` | GET | **Anonymous** preview of a join link; `410` when dead |
+| `invites/<token>/accept/` | POST | Spend a join link and join the org |
 | `intake/import/` | POST | Author draft from one publication source |
 | `intake/synthesize/` | POST | LLM-built interest profile from a source and/or résumé |
 | `intake/session/` | POST | One step of the bounded intake loop |
@@ -187,23 +192,28 @@ session.
   "username": "string", "email": "string",
   "password": "string", "password_confirm": "string",
   "first_name": "string (optional)", "last_name": "string (optional)",
-  "account_type": "personal | lab | department",
-  "org_name": "string (required for lab/department)",
-  "institution": "string (optional)",
-  "access_code": "string"
+  "access_code": "string (unless invite_token)",
+  "invite_token": "string (optional)"
 }
 ```
 
-`account_type` chooses what is provisioned: `personal` creates a user-scoped
-subscription and a self-paid seat; `lab` also creates a Lab with the founder as
-owner + PI lead; `department` also creates a Department the founder owns. Every
-account gets one founding seat. Org plans start **inactive** and are activated
-explicitly from the billing page.
+Sign-up always provisions a **personal** workspace: a user-scoped subscription
+and a self-paid seat. It no longer takes `account_type` / `org_name`; labs come
+from `POST /api/auth/labs/` and departments from `POST /api/auth/departments/`,
+both of which require a verified account.
 
-`access_code` clears the invite-only sign-up gate — a constant-time compare with
-a per-IP failure counter and a one-hour shadow ban, enforced before any other
-validation. It proves an invitation, not a mailbox: the account is created
-**unverified** and a six-digit code is mailed to the address given.
+Getting past the gate takes one of two proofs. `access_code` is the invite-only
+sign-up code — a constant-time compare with a per-IP failure counter and a
+one-hour shadow ban, enforced before any other validation. `invite_token` is a
+live join link (see **Join invitations**) and stands in for it, because an
+invitation the beta gate can refuse is not an invitation.
+
+Neither proves a mailbox on its own, so the account is created **unverified**
+and a six-digit code is mailed to the address given. The exception is an
+`email`-kind invite redeemed by the address it was addressed to: that is the
+same proof the code asks for, so the account is activated and no code is sent.
+A redeemed invite also creates the lab or department membership, inside the same
+transaction — a `400` there creates no account.
 
 `email` must be unique. The serializer rejects a duplicate case-insensitively and
 a partial unique index on `LOWER(email)` backs it, so two racing sign-ups cannot
@@ -367,6 +377,21 @@ is a cache-busting token (`null` when unset).
 
 `{ "name": "Ocean Lab" }`. The caller becomes OWNER and PI lead and a Lab
 subscription + founding seat are provisioned. `201` with the membership row.
+`403` unless the account is verified.
+
+### `GET | POST /api/auth/departments/`
+
+`GET` lists the departments the caller owns or is a direct member of — the ones
+they can act on, not those they are folded into through a lab:
+
+```json
+[{ "id": "uuid", "name": "Biology", "institution": "Northgate University",
+   "role": "owner", "is_owner": true, "can_manage": true }]
+```
+
+`POST { "name", "institution"? }` creates one with the caller as head, a CANOPY
+plan that starts **inactive**, and a pending founder seat. `403` unless the
+account is verified; `400` on a blank name.
 
 ### `GET | POST | PUT | DELETE /api/auth/labs/<slug>/logo/`
 
@@ -397,6 +422,57 @@ member or duplicate invite. Managers only.
 `{ "action": "accept" | "reject" | "ignore" }`. Accept creates the membership
 (idempotent). `403` if the invitation is not addressed to the caller; `409` if it
 was already answered.
+
+### Join invitations
+
+The outward-facing invitation, for someone who may have no account. Unlike the
+lab invitations above it works for departments too, and it is the only one that
+sends mail.
+
+`GET | POST /api/auth/labs/<slug>/invites/` and
+`GET | POST /api/auth/departments/<id>/invites/`. Managers only (a lab's lead PI
+or owner/admin; a department's owner or admin), and `POST` additionally requires
+a verified account. The payload:
+
+```json
+{ "kind": "email | link", "email": "required for email", "role": "member",
+  "max_uses": 25, "expires_in_days": 7, "message": "optional" }
+```
+
+An `email` invite is bound to one address and forced to one use; a `link` takes
+`max_uses` (1–500, default 25) and `expires_in_days` (1–90, default 7). `role`
+never resolves to `owner` — that is a transfer, not something a link confers, so
+it lands as `admin`. `400` on a bad setting or an address that already belongs to
+a member.
+
+The response (and the `GET` list) carries the invitation including its `url`, so
+a share link stays copyable:
+
+```json
+{ "id": "uuid", "kind": "link", "role": "member", "email": "", "message": "",
+  "url": "https://…/join/<token>", "max_uses": 25, "used_count": 0,
+  "uses_left": 25, "expires_at": "…", "revoked_at": null, "is_live": true,
+  "created_at": "…", "created_by": "lena" }
+```
+
+`POST /api/auth/labs/<slug>/invites/<id>/revoke/` and
+`POST /api/auth/departments/<id>/invites/<invite_id>/revoke/` withdraw one,
+returning the updated row. Idempotent.
+
+`GET /api/auth/invites/<token>/` is **anonymous** — the recipient may have no
+account — and returns what the join page shows: `org_kind`, `org_name`, `role`,
+`kind`, `email` (the bound address, blank for a link), `message`, `invited_by`,
+`expires_at`, plus `signed_in_as` and `email_matches` when the caller is signed
+in. A dead link answers `410` with a `reason` of `invalid | revoked | expired |
+exhausted`.
+
+`POST /api/auth/invites/<token>/accept/` spends it as the signed-in caller and
+returns `{ org_kind, org_name, slug, department_id, role }`. Membership goes
+through the seat-syncing services, so a roster at its tier ceiling refuses the
+whole redemption. Idempotent per person: following your own link twice keeps one
+membership and spends one use. Deliberately **not** behind the verified-email
+gate — that guards standing an org up, not being brought into one. `400` with a
+`reason` (adding `wrong_email`) when it cannot be spent.
 
 ## Projects
 
