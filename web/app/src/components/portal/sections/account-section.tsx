@@ -467,7 +467,6 @@ function EmailCard({
 // -- password ------------------------------------------------------------------
 
 function PasswordCard({ email }: { email: string }) {
-  const [current, setCurrent] = React.useState("");
   const [code, setCode] = React.useState("");
   const [next, setNext] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
@@ -475,12 +474,11 @@ function PasswordCard({ email }: { email: string }) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  async function sendCode(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function sendCode() {
     setError(null);
     setBusy(true);
     try {
-      await requestPasswordChange(current);
+      await requestPasswordChange();
       setStage("confirm");
     } catch (caught) {
       setError(
@@ -502,8 +500,7 @@ function PasswordCard({ email }: { email: string }) {
     }
     setBusy(true);
     try {
-      await changePassword(current, code, next, confirm);
-      setCurrent("");
+      await changePassword(code, next, confirm);
       setCode("");
       setNext("");
       setConfirm("");
@@ -523,8 +520,8 @@ function PasswordCard({ email }: { email: string }) {
         Password
       </h2>
       <p className="mb-4 text-sm text-[var(--text-secondary)]">
-        Changing it needs a code from your inbox as well as your current
-        password. Every other device is signed out; this one stays.
+        We email you a code to confirm it is you. You do not need your current
+        password. Changing it signs every other device out; this one stays.
       </p>
 
       {error ? (
@@ -553,28 +550,19 @@ function PasswordCard({ email }: { email: string }) {
           </button>
         </div>
       ) : stage === "start" ? (
-        <form className="space-y-3" onSubmit={sendCode} noValidate>
-          <div className="space-y-1.5">
-            <label className={labelClass} htmlFor="current-password">
-              Current password
-            </label>
-            <input
-              id="current-password"
-              type="password"
-              autoComplete="current-password"
-              className={fieldClass}
-              value={current}
-              disabled={busy}
-              onChange={(event) => setCurrent(event.target.value)}
-            />
-          </div>
-          <Button className="rounded-full" type="submit" disabled={busy || !current}>
+        <div className="space-y-3">
+          <Button
+            className="rounded-full"
+            type="button"
+            disabled={busy || !email}
+            onClick={() => void sendCode()}
+          >
             {busy ? "Sending…" : "Email me a code"}
           </Button>
           <p className="text-xs text-[var(--text-muted)]">
             We will send a confirmation code to {email || "your address"}.
           </p>
-        </form>
+        </div>
       ) : (
         <form className="space-y-3" onSubmit={save} noValidate>
           <p className="text-sm text-[var(--text-secondary)]">
@@ -636,10 +624,11 @@ function PasswordCard({ email }: { email: string }) {
             </Button>
             <button
               type="button"
-              className="text-sm font-medium text-[var(--text-secondary)] hover:underline"
-              onClick={() => setStage("start")}
+              onClick={() => void sendCode()}
+              disabled={busy}
+              className="text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
             >
-              Start over
+              Send a new code
             </button>
           </div>
         </form>

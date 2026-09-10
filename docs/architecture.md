@@ -183,15 +183,20 @@ when it is used and `PASSWORD_RESET_TIMEOUT` bounds the rest. Codes are scoped t
 a purpose (sign-up, email change, password change) and looked up by it, which is
 a security property rather than bookkeeping: no flow can spend another's proof.
 
-**A signed-in session is not authority over the password.** Changing a password
-from the Account page needs the current password *and* a code mailed to the
-account's address, because the session and the password both live inside a
-browser someone can walk away from. That is not a new way in — anyone who can
-read the mailbox can already take the account through reset — and the code email
-doubles as the alarm when the first two factors have been borrowed. Asking for a
-reset, by contrast, changes nothing at all: `request_reset` only mails a link, so
-an unauthenticated endpoint can never be used to lock a stranger out by typing
-their address.
+**A signed-in session is not authority over the password, and neither is the old
+password.** Both routes to a new password — the signed-out link and the Account
+page's code — demand exactly one thing: control of the account's mailbox. The
+Account page does not ask for the current password, because the person changing a
+password is very often the person who cannot remember it, and because anyone able
+to satisfy such a check could sign out and take the same account through reset.
+Requiring it would have blocked the common case while securing nothing. Changing
+the *address* is the exception and does ask, since the mailbox is what proves a
+password change and moving it is the one move that turns a borrowed browser into
+a takeover.
+
+Asking for a reset, by contrast, changes nothing at all: `request_reset` only
+mails a link, so an unauthenticated endpoint can never be used to lock a stranger
+out by typing their address.
 
 **Verification is activation.** An account that has not answered a code sent to
 its own address may sign in and browse, but cannot create a lab or department,

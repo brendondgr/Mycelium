@@ -275,23 +275,28 @@ sign-up code because it is an account-enumeration oracle; `400` without it.
 ### `POST /api/auth/password/change/request/` · `POST /api/auth/password/change/`
 
 Changing a password from inside the app takes two steps, and a signed-in session
-is not authority for either. The session and the current password both live in a
-browser someone can walk away from, so the change is gated on something that does
-not: a code mailed to the account's own address. Anyone who can read that mailbox
-can already take the account over through password reset, so this adds a factor
-without adding a new way in.
+is not authority for either. The proof is control of the account's mailbox — the
+same proof `password/reset/` accepts, and the **only** one asked for. The current
+password is deliberately not required: the person changing a password is often
+the person who cannot remember it, and anyone who could produce it could sign out
+and use the reset flow instead, so requiring it would have blocked the common
+case while securing nothing.
 
-`request/` takes `{ "current_password" }` → `202`. The password is checked before
-anything is sent, so an unattended browser cannot be used to fire codes at its
-owner's inbox. `429` inside the resend cooldown.
+`request/` takes an empty body → `202`, mailing a code to the account's address.
+`429` inside the resend cooldown; abuse is bounded by that and the `email_verify`
+throttle, as it is on the signed-out endpoint.
 
-`change/` takes `{ "current_password", "code", "new_password",
-"new_password_confirm" }` → `200`, `400` with `code` or `new_password` errors.
-The current password is re-checked here rather than trusted from the first step,
-so holding a code is never on its own sufficient. The code is looked up under its
-own purpose, so one issued to verify an address or settle an email change cannot
-be redirected here. On success every other session for that user dies with the
-old password hash; the caller's own is re-stamped so it stays signed in.
+`change/` takes `{ "code", "new_password", "new_password_confirm" }` → `200`, or
+`400` with `code` or `new_password` errors. The code is worth one use and is
+looked up under its own purpose, so one issued to verify an address or settle an
+email change cannot be redirected here. On success every other session for that
+user dies with the old password hash; the caller's own is re-stamped so it stays
+signed in.
+
+Changing the **address** still asks for the current password (see
+`email/change/`), and the asymmetry is deliberate: the mailbox is what proves a
+password change, so moving the mailbox is the one move that would turn a borrowed
+browser into a full takeover, and no signed-out flow offers it.
 
 ### `POST /api/auth/password/reset/`
 

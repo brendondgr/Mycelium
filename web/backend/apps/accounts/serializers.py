@@ -439,39 +439,18 @@ class _PasswordPolicyMixin:
             raise serializers.ValidationError({field: list(exc.messages)}) from exc
 
 
-class _CurrentPasswordMixin(serializers.Serializer):
-    """Require the account's current password on a security-sensitive write."""
+class PasswordChangeSerializer(_PasswordPolicyMixin, serializers.Serializer):
+    """Step two of a password change: the emailed code and the new password.
 
-    current_password = serializers.CharField(write_only=True)
+    The current password is deliberately **not** asked for. Control of the
+    account's mailbox is the whole proof, exactly as it is for a signed-out
+    reset — and it has to be, because the person most likely to be changing a
+    password is the person who cannot remember it. Demanding the old one here
+    would also have secured nothing: anyone able to satisfy it could sign out
+    and take the same account through ``password/reset/``, which never asked.
 
-    def validate_current_password(self, value: str) -> str:
-        user = self.context["user"]
-        if not user.check_password(value):
-            raise serializers.ValidationError("That is not your current password.")
-        return value
-
-
-class PasswordChangeRequestSerializer(_CurrentPasswordMixin):
-    """Step one of a password change: ask for the emailed confirmation code.
-
-    The current password is checked *here*, before any mail goes out, so a
-    borrowed browser cannot be used to fire confirmation codes at the account
-    owner's inbox.
-    """
-
-
-class PasswordChangeSerializer(_PasswordPolicyMixin, _CurrentPasswordMixin):
-    """Step two: the new password, the current one, and the emailed code.
-
-    A signed-in session is not enough to change a password, and neither is the
-    session plus the current password. Both of those live entirely inside a
-    browser someone walked away from; the code lives in a mailbox. Requiring the
-    current password *and* a code means an attacker needs the unlocked machine,
-    the existing password, and the inbox — and the code email doubles as the
-    alarm if they somehow have the first two.
-
-    The current password is re-checked at this step rather than trusted from
-    step one, so possessing a code is never on its own sufficient.
+    A code is still worth one use, expires, and is scoped to this purpose, so it
+    cannot be a code the account was sent for something else.
     """
 
     code = serializers.CharField(write_only=True)
@@ -511,6 +490,13 @@ class EmailChangeSerializer(serializers.Serializer):
     Nothing is written to the account here. The new address has to answer a code
     first, because an address entered with a typo would otherwise take the
     account's password reset with it.
+
+    Unlike a password change, this one *does* ask for the current password, and
+    the asymmetry is deliberate. The mailbox is what proves a password change,
+    so moving the mailbox is the one move that would let someone bootstrap a
+    full takeover out of a borrowed browser — point the account at an address
+    they control, then reset. There is no signed-out flow that does this, so the
+    check is not redundant here the way it was there.
     """
 
     new_email = serializers.EmailField()

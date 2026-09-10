@@ -333,15 +333,13 @@ export async function checkEmailAvailable(
 
 /**
  * Step one of a password change: mail a confirmation code to the account's own
- * address. Refused without the current password, so a borrowed browser cannot
- * be used to fire codes at the owner's inbox.
+ * address. The current password is not asked for — reading that mailbox is the
+ * proof, the same one the signed-out reset flow accepts.
  */
-export async function requestPasswordChange(
-  currentPassword: string,
-): Promise<string> {
+export async function requestPasswordChange(): Promise<string> {
   const body = await postAuth<{ detail: string }>(
     ["password", "change", "request"],
-    { current_password: currentPassword },
+    {},
     "Could not send a confirmation code. Try again in a moment.",
   );
   return body.detail;
@@ -352,7 +350,6 @@ export async function requestPasswordChange(
  * signed in; every other one dies with the old password hash.
  */
 export async function changePassword(
-  currentPassword: string,
   code: string,
   newPassword: string,
   newPasswordConfirm: string,
@@ -360,7 +357,6 @@ export async function changePassword(
   await postAuth(
     ["password", "change"],
     {
-      current_password: currentPassword,
       code,
       new_password: newPassword,
       new_password_confirm: newPasswordConfirm,

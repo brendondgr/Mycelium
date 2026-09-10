@@ -317,9 +317,11 @@ def test_the_emailed_link_is_absolute_and_not_loopback(user: User) -> None:
 
 # -- changing a password from inside the app -------------------------------------
 #
-# Two steps, both required: the current password buys a code mailed to the
-# account's own address, and only that code plus the current password sets a new
-# one. A signed-in browser on its own must never be enough.
+# Two steps, and the proof is the mailbox — not the old password. A signed-in
+# browser on its own is not enough; a code sent to the account's own address is.
+# The current password is deliberately never asked for: the person changing a
+# password is often the person who cannot remember it, and anyone who could
+# produce it could sign out and use `password/reset/` instead, which never asked.
 
 
 @pytest.fixture
@@ -329,18 +331,15 @@ def signed_in(user: User) -> Client:
     return client
 
 
-def _request_change(client: Client, password: str = PASSWORD):
-    return _post(
-        client, "/api/auth/password/change/request/", {"current_password": password}
-    )
+def _request_change(client: Client):
+    return _post(client, "/api/auth/password/change/request/", {})
 
 
-def _confirm_change(client: Client, code: str, password: str = PASSWORD):
+def _confirm_change(client: Client, code: str):
     return _post(
         client,
         "/api/auth/password/change/",
         {
-            "current_password": password,
             "code": code,
             "new_password": NEW_PASSWORD,
             "new_password_confirm": NEW_PASSWORD,
@@ -359,17 +358,11 @@ def _code_from_outbox() -> str:
 def test_a_signed_in_session_alone_cannot_change_the_password(
     user: User, signed_in: Client
 ) -> None:
-    """The whole point: an unlocked browser is not authority.
-
-    Someone who walks up to a signed-in machine — and even someone who also
-    knows the current password, which is shoulder-surfable — must still be
-    stopped by something that is not in the browser.
-    """
+    """An unlocked browser is not authority; something outside it must agree."""
     response = _post(
         signed_in,
         "/api/auth/password/change/",
         {
-            "current_password": PASSWORD,
             "new_password": NEW_PASSWORD,
             "new_password_confirm": NEW_PASSWORD,
         },
@@ -399,16 +392,24 @@ def test_the_emailed_code_completes_the_change(
 
 
 @override_settings(EMAIL_BACKEND=LOCMEM)
-def test_no_code_is_mailed_without_the_current_password(
+def test_someone_who_forgot_their_password_can_still_change_it(
     user: User, signed_in: Client
 ) -> None:
-    """A borrowed browser must not be usable to spam the owner's inbox."""
+    """The case the old design got wrong.
+
+    Being signed in and not remembering your password is the *normal* reason to
+    change one. Asking for the old password would have sent this person out to
+    the signed-out reset flow to prove the very same thing — the mailbox — so it
+    is not asked for at either step.
+    """
     mail.outbox.clear()
+    assert _request_change(signed_in).status_code == 202
 
-    response = _request_change(signed_in, "wrong")
+    response = _confirm_change(signed_in, _code_from_outbox())
 
-    assert response.status_code == 400
-    assert mail.outbox == []
+    assert response.status_code == 200
+    user.refresh_from_db()
+    assert user.check_password(NEW_PASSWORD)
 
 
 @override_settings(EMAIL_BACKEND=LOCMEM)
@@ -428,16 +429,14 @@ def test_a_wrong_code_leaves_the_password_alone(
 
 
 @override_settings(EMAIL_BACKEND=LOCMEM)
-def test_the_code_alone_is_not_enough(user: User, signed_in: Client) -> None:
-    """Holding the mailbox does not excuse knowing the password."""
+def test_a_code_is_worth_one_change(user: User, signed_in: Client) -> None:
+    """The code is the whole proof, so it must not be replayable."""
     mail.outbox.clear()
     _request_change(signed_in)
+    code = _code_from_outbox()
 
-    response = _confirm_change(signed_in, _code_from_outbox(), password="wrong")
-
-    assert response.status_code == 400
-    user.refresh_from_db()
-    assert user.check_password(PASSWORD)
+    assert _confirm_change(signed_in, code).status_code == 200
+    assert _confirm_change(signed_in, code).status_code == 400
 
 
 @override_settings(EMAIL_BACKEND=LOCMEM)

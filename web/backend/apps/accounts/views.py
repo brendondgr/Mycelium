@@ -80,7 +80,6 @@ from .serializers import (
     LabWatchPreferenceSerializer,
     MyInvitationSerializer,
     MyLabSerializer,
-    PasswordChangeRequestSerializer,
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
     ProfileSerializer,
@@ -363,25 +362,22 @@ def _account_payload(user: User) -> dict[str, object]:
 class PasswordChangeRequestView(APIView):
     """Step one of a password change: mail a confirmation code.
 
-    A signed-in session is not authority to change a password. The session and
-    the current password both live inside a browser someone can walk away from,
-    so the change is gated on something that does not: a code sent to the
-    account's own address. Anyone who can read that mailbox can already take the
-    account over through password reset, so this adds a factor without adding a
-    new way in.
+    A signed-in session is not authority to change a password — control of the
+    account's mailbox is, and that is the *only* thing asked for. The current
+    password is not required, for two reasons that point the same way: the
+    person changing a password is very often the person who cannot remember it,
+    and anyone who could satisfy such a check could sign out and take the same
+    account through ``password/reset/``, which never asked for it either. The
+    two routes to a new password therefore demand exactly the same proof.
 
-    The current password is checked before anything is sent, so this cannot be
-    used to fire codes at someone's inbox from their unattended browser.
+    Abuse is bounded by the resend cooldown and the per-account throttle rather
+    than by a password, matching the signed-out endpoint, which is open to
+    anyone who knows an address.
     """
 
     throttle_classes = [EmailVerifyThrottle]
 
     def post(self, request: Request) -> Response:
-        serializer = PasswordChangeRequestSerializer(
-            data=request.data, context={"user": request.user}
-        )
-        serializer.is_valid(raise_exception=True)
-
         address = request.user.email
         if not address:
             return Response(
@@ -415,8 +411,9 @@ class PasswordChangeRequestView(APIView):
 class PasswordChangeView(APIView):
     """Step two: spend the emailed code on a new password.
 
-    The code is looked up under its own purpose, so one issued to verify an
-    address or settle an email change cannot be redirected here.
+    The code is the whole proof, so it has to be a code issued *for this*: it is
+    looked up under its own purpose, meaning one sent to verify an address or to
+    settle an email change cannot be redirected here.
     """
 
     throttle_classes = [EmailVerifyThrottle]
