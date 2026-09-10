@@ -1,9 +1,0 @@
-{
-  "finished_at": "2026-08-22T07:08:08.241369-04:00",
-  "host": "sc-zeus",
-  "ok": false,
-  "scrape_ran": false,
-  "stages_run": [],
-  "failed_stage": "preflight",
-  "exit_code": 1
-}
