@@ -8,10 +8,8 @@ from django.test import Client
 from apps.accounts import signup_gate
 from apps.accounts.models import (
     Department,
-    DeptMembership,
     EmailVerification,
     Lab,
-    LabMembership,
     Profile,
 )
 from apps.accounts.views import RegisterRateThrottle
@@ -43,7 +41,6 @@ def _personal_payload(**overrides) -> dict:
         "password_confirm": "safe-pass-123",
         "first_name": "Jamie",
         "last_name": "Rivera",
-        "account_type": "personal",
         "access_code": settings.SIGNUP_ACCESS_CODE,
     }
     payload.update(overrides)
@@ -167,7 +164,15 @@ def test_register_personal_creates_user_and_seat(api_client: Client) -> None:
 
 
 @pytest.mark.django_db
-def test_register_lab_makes_founder_owner_pi(api_client: Client) -> None:
+def test_register_ignores_an_account_type_it_no_longer_offers(
+    api_client: Client,
+) -> None:
+    """A payload asking for a lab still gets one solo account and no org.
+
+    The old form's fields are gone from the serializer rather than validated, so
+    a stale client (or someone POSTing by hand) cannot reach the org-provisioning
+    path that used to sit behind them.
+    """
     response = _register(
         api_client,
         _personal_payload(
@@ -175,43 +180,15 @@ def test_register_lab_makes_founder_owner_pi(api_client: Client) -> None:
             email="pi@example.com",
             account_type="lab",
             org_name="Rivera Lab",
-        ),
-    )
-
-    assert response.status_code == 201
-    user = User.objects.get(username="leadpi")
-    lab = Lab.objects.get(slug="rivera-lab")
-    membership = LabMembership.objects.get(user=user, lab=lab)
-    assert membership.role == LabMembership.Role.OWNER
-    assert membership.is_lead is True
-
-    sub = Subscription.objects.get(scope_lab=lab)
-    assert sub.tier == Tier.LAB
-
-
-@pytest.mark.django_db
-def test_register_department_makes_founder_owner(api_client: Client) -> None:
-    response = _register(
-        api_client,
-        _personal_payload(
-            username="deptowner",
-            email="dept@example.com",
-            account_type="department",
-            org_name="Molecular Systems",
             institution="Northgate University",
         ),
     )
 
     assert response.status_code == 201
-    user = User.objects.get(username="deptowner")
-    dept = Department.objects.get(owner=user)
-    assert dept.name == "Molecular Systems"
-    assert DeptMembership.objects.filter(
-        user=user, department=dept, role=DeptMembership.Role.OWNER
-    ).exists()
-
-    sub = Subscription.objects.get(scope_department=dept)
-    assert sub.tier == Tier.CANOPY
+    user = User.objects.get(username="leadpi")
+    assert Lab.objects.count() == 0
+    assert Department.objects.count() == 0
+    assert Subscription.objects.get(scope_user=user).tier == Tier.FREE
 
 
 @pytest.mark.django_db
@@ -252,16 +229,6 @@ def test_register_weak_password_rejected(api_client: Client) -> None:
 
     assert response.status_code == 400
     assert "password" in response.json()
-
-
-@pytest.mark.django_db
-def test_register_lab_without_org_name_returns_400(api_client: Client) -> None:
-    response = _register(
-        api_client, _personal_payload(account_type="lab", org_name="")
-    )
-
-    assert response.status_code == 400
-    assert "org_name" in response.json()
 
 
 @pytest.mark.django_db

@@ -30,9 +30,13 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
-from apps.billing.services import create_lab_workspace, provision_workspace
+from apps.billing.services import (
+    create_department_workspace,
+    create_lab_workspace,
+    provision_workspace,
+)
 
-from . import email_verification, password_reset, signup_gate
+from . import email_verification, invites, password_reset, signup_gate
 from .intake import (
     AuthorImportError,
     IntakeAgent,
@@ -52,12 +56,14 @@ from .models import (
     LabInvitation,
     LabMembership,
     LabWatchPreference,
+    OrgInvite,
     WatchPreference,
 )
 from .permissions import (
     require_verified_email,
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
+    user_can_invite_to_department,
     user_can_invite_to_lab,
     user_can_manage_department,
     user_can_manage_lab,
@@ -145,30 +151,54 @@ def login_view(request: Request) -> Response:
 @permission_classes([AllowAny])
 @throttle_classes([RegisterRateThrottle])
 def register_view(request: Request) -> Response:
-    """Create a user + workspace in one atomic step, then log them in.
+    """Create one solo account, then log them in.
 
-    Sign-up is invite-only: the payload must carry the live verification code.
-    That check runs first, before any other validation, so a wrong code costs a
-    strike and reveals nothing else about the payload. Three consecutive misses
-    shadow-ban the client for an hour — see ``signup_gate`` for why every
-    outcome shares one message.
+    Sign-up provisions a personal workspace and nothing else. It no longer asks
+    whether the person is a lab or a department, because that question came
+    before they had seen anything and its answer set their billing scope for
+    them. Labs and departments are created from inside the app by an account that
+    has verified its address — see ``MyLabsView`` and ``MyDepartmentsView``.
 
-    After the gate, two phases inside one transaction: create the ``User`` (the
-    post_save signal creates the ``Profile``), then ``provision_workspace``
-    builds the org + billing rows. A failure in either phase rolls back the whole
-    thing, so a half-built account never persists.
+    Getting in takes one of two proofs, checked before any other validation so a
+    bad one costs a strike and reveals nothing about the rest of the payload:
 
-    The account starts **unverified** and a six-digit code goes to the address it
-    was created with. Clearing the invite gate proves the person was invited; it
-    proves nothing about the mailbox they typed, and the mailbox is what a
-    password reset and every lab invitation will later depend on. Verification is
-    what activates the account — see ``apps.accounts.permissions`` for what it
-    unlocks — but it does not block sign-in: an account nobody can get into
-    because Resend had an outage is a worse failure than an unactivated one.
+    * the live invite-only ``access_code``, or
+    * an ``invite_token`` — someone already inside asked for this person by name.
+      An invitation the beta gate can turn away is not an invitation, so a live
+      token stands in for the code.
+
+    Three consecutive misses shadow-ban the client for an hour; see
+    ``signup_gate`` for why every outcome shares one message.
+
+    After the gate, everything happens inside one transaction — the ``User`` (its
+    post_save signal creates the ``Profile``), the personal subscription and
+    seat, and the invited membership — so a failure anywhere leaves no half-built
+    account behind.
+
+    The account normally starts **unverified**, with a six-digit code on its way
+    to the address it was created with; verification is what activates it (see
+    ``apps.accounts.permissions``). The exception is an email invitation redeemed
+    by the address it was addressed to: Mycelium mailed a secret to that mailbox
+    and it came back, which is the same proof the code goes looking for, so the
+    account is already activated and is not asked twice.
     """
     subject = signup_gate.client_subject(request)
     banned = signup_gate.is_shadow_banned(subject)
-    if banned or not signup_gate.code_matches(request.data.get("access_code", "")):
+    token = str(request.data.get("invite_token", "") or "").strip()
+
+    invite = None
+    if token and not banned:
+        try:
+            invite = invites.find_invite(token)
+        except invites.InviteError as exc:
+            return Response(
+                {"invite_token": [str(exc)], "reason": exc.reason},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    if invite is None and (
+        banned or not signup_gate.code_matches(request.data.get("access_code", ""))
+    ):
         # Only a genuine miss adds a strike; an attempt made while already banned
         # neither extends the ban nor tells the caller anything new.
         if not banned:
@@ -183,6 +213,18 @@ def register_view(request: Request) -> Response:
     serializer.is_valid(raise_exception=True)  # -> 400 with field errors
     data = serializer.validated_data
 
+    # An email invitation is spendable by one address. Check it against what they
+    # actually typed before creating anything, so the refusal is a plain field
+    # error rather than a rolled-back account.
+    if invite is not None:
+        try:
+            invites.check_email_matches(invite, data["email"])
+        except invites.InviteError as exc:
+            return Response(
+                {"email": [str(exc)], "reason": exc.reason},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
     with transaction.atomic():
         user = User.objects.create_user(
             username=data["username"],
@@ -192,15 +234,25 @@ def register_view(request: Request) -> Response:
             last_name=data.get("last_name", ""),
         )  # post_save signal creates the Profile
 
-        result = provision_workspace(
-            user,
-            data["account_type"],
-            org_name=data.get("org_name", ""),
-            institution=data.get("institution", ""),
-        )
+        result = provision_workspace(user, "personal")
 
         # Surface any lab invitations that were sent to this email before signup.
         claim_pending_invitations(user)
+
+        joined = None
+        if invite is not None:
+            try:
+                invites.redeem(invite, user)
+            except invites.InviteError as exc:
+                return Response(
+                    {"invite_token": [str(exc)], "reason": exc.reason},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            joined = invite
+            if invite.kind == OrgInvite.Kind.EMAIL:
+                profile = user.profile
+                profile.is_verified = True
+                profile.save(update_fields=["is_verified"])
 
         record_audit_event(
             actor=user,
@@ -208,18 +260,17 @@ def register_view(request: Request) -> Response:
             target_type="user",
             target_id=str(user.pk),
             metadata={
-                "account_type": data["account_type"],
                 "tier": result.subscription.tier,
-                "lab_id": str(result.lab.id) if result.lab else None,
-                "department_id": (
-                    str(result.department.id) if result.department else None
-                ),
+                "invite_id": str(joined.id) if joined else None,
+                "invited_org": joined.org_kind if joined else None,
             },
         )
 
     # Outside the transaction: `issue` mails on commit, so a rollback can never
-    # leave a live code in a real inbox for an account that does not exist.
-    email_verification.issue(user, user.email)
+    # leave a live code in a real inbox for an account that does not exist. An
+    # account activated by its invitation has nothing left to prove.
+    if not user.profile.is_verified:
+        email_verification.issue(user, user.email)
 
     login(request, user)  # set the session immediately, same as login_view
     return Response(user_to_dict(user), status=status.HTTP_201_CREATED)
@@ -1398,3 +1449,223 @@ class LabIntakeSynthesizeView(APIView):
             source_text=source_text,
         )
         return Response(result)
+
+
+# -- Standing up an organization, and inviting people into it ------------------
+#
+# Both live behind ``require_verified_email``. Sign-up no longer asks whether
+# someone is a lab or a department, so this is where those exist now, and the
+# gate is the same one for both: an account that has not answered its own mailbox
+# does not get to stand up an org and start mailing strangers from it.
+
+
+class MyDepartmentsView(APIView):
+    """The caller's departments, and the endpoint that creates one.
+
+    The department sibling of ``MyLabsView``. ``GET`` lists the departments the
+    caller owns or is a direct member of — the ones they can act on, not the ones
+    they are merely folded into through a lab, which would put a management page
+    in front of someone with no authority over it.
+    """
+
+    def get(self, request: Request) -> Response:
+        owned = Department.objects.filter(owner=request.user)
+        joined = Department.objects.filter(memberships__user=request.user)
+        departments = (owned | joined).distinct().order_by("name")
+        return Response([_department_row(d, request.user) for d in departments])
+
+    def post(self, request: Request) -> Response:
+        require_verified_email(request.user)
+        name = str(request.data.get("name", "")).strip()
+        if not name:
+            return Response(
+                {"name": ["A department name is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        institution = str(request.data.get("institution", "")).strip()
+        result = create_department_workspace(
+            request.user, name, institution=institution
+        )
+        record_audit_event(
+            actor=request.user,
+            action="department.create",
+            target_type="department",
+            target_id=str(result.department.id),
+            metadata={"name": name, "institution": institution},
+        )
+        return Response(
+            _department_row(result.department, request.user),
+            status=status.HTTP_201_CREATED,
+        )
+
+
+def _department_row(department: Department, user: User) -> dict[str, object]:
+    """One department as the app's department list wants it."""
+    role = DeptMembership.Role.OWNER if department.owner_id == user.id else None
+    if role is None:
+        membership = DeptMembership.objects.filter(
+            department=department, user=user
+        ).first()
+        role = membership.role if membership else DeptMembership.Role.MEMBER
+    return {
+        "id": str(department.id),
+        "name": department.name,
+        "institution": department.institution,
+        "role": role,
+        "is_owner": department.owner_id == user.id,
+        "can_manage": user_can_manage_department(user, department),
+    }
+
+
+class _OrgInvitesView(APIView):
+    """Shared list/create behaviour for a lab's and a department's invitations.
+
+    Subclasses resolve the org and say who may manage its invitations; everything
+    else — the verification gate, the payload, the response shape — is identical,
+    because from the invitee's side a lab invitation and a department invitation
+    are the same object with a different name on it.
+    """
+
+    def _resolve(self, **kwargs):
+        raise NotImplementedError
+
+    def _target(self, org) -> dict:
+        raise NotImplementedError
+
+    def get(self, request: Request, **kwargs) -> Response:
+        org = self._resolve(**kwargs)
+        rows = org.join_invites.select_related("created_by").all()
+        return Response([invites.invite_payload(row) for row in rows])
+
+    def post(self, request: Request, **kwargs) -> Response:
+        org = self._resolve(**kwargs)
+        require_verified_email(request.user)
+        invite = invites.create_invite(
+            creator=request.user,
+            kind=str(request.data.get("kind", "")),
+            email=str(request.data.get("email", "")),
+            role=str(request.data.get("role", "") or OrgInvite.Role.MEMBER),
+            max_uses=request.data.get("max_uses"),
+            expires_in_days=request.data.get("expires_in_days"),
+            message=str(request.data.get("message", "")),
+            **self._target(org),
+        )  # raises ValidationError -> 400 on anything the creator can fix
+        return Response(
+            invites.invite_payload(invite), status=status.HTTP_201_CREATED
+        )
+
+
+class LabInvitesView(_OrgInvitesView):
+    """A lab's join invitations: `GET` lists them, `POST` creates one."""
+
+    def _resolve(self, slug: str, **kwargs) -> Lab:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_can_invite_to_lab(self.request.user, lab):
+            raise PermissionDenied("Only a lab lead or admin can manage invitations.")
+        return lab
+
+    def _target(self, org) -> dict:
+        return {"lab": org}
+
+
+class DeptInvitesView(_OrgInvitesView):
+    """A department's join invitations: `GET` lists them, `POST` creates one."""
+
+    def _resolve(self, pk, **kwargs) -> Department:
+        department = get_object_or_404(Department, id=pk)
+        if not user_can_invite_to_department(self.request.user, department):
+            raise PermissionDenied(
+                "Only the department owner or an admin can manage invitations."
+            )
+        return department
+
+    def _target(self, org) -> dict:
+        return {"department": org}
+
+
+class LabInviteRevokeView(APIView):
+    """Withdraw one of a lab's join invitations."""
+
+    def post(self, request: Request, slug: str, pk) -> Response:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_can_invite_to_lab(request.user, lab):
+            raise PermissionDenied("Only a lab lead or admin can manage invitations.")
+        invite = get_object_or_404(OrgInvite, pk=pk, lab=lab)
+        invites.revoke_invite(invite, actor=request.user)
+        return Response(invites.invite_payload(invite))
+
+
+class DeptInviteRevokeView(APIView):
+    """Withdraw one of a department's join invitations."""
+
+    def post(self, request: Request, pk, invite_id) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if not user_can_invite_to_department(request.user, department):
+            raise PermissionDenied(
+                "Only the department owner or an admin can manage invitations."
+            )
+        invite = get_object_or_404(OrgInvite, pk=invite_id, department=department)
+        invites.revoke_invite(invite, actor=request.user)
+        return Response(invites.invite_payload(invite))
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def invite_preview_view(request: Request, token: str) -> Response:
+    """What the join page shows someone holding a link — signed in or not.
+
+    Anonymous by necessity: the whole point is that the recipient may not have an
+    account yet, and a page that will not say what it is inviting them to before
+    they register is a page nobody registers from. What it discloses is bounded by
+    what the token holder already has — the org's name, who invited them, and (for
+    an email invite) the address it is spendable by.
+
+    A dead link answers `410` with a machine-readable ``reason`` so the page can
+    tell "withdrawn" from "expired" from "already used" instead of shrugging.
+    """
+    try:
+        invite = invites.find_invite(token)
+    except invites.InviteError as exc:
+        return Response(
+            {"detail": str(exc), "reason": exc.reason},
+            status=status.HTTP_410_GONE,
+        )
+    payload = invites.preview_payload(invite)
+    user = request.user
+    if user.is_authenticated:
+        payload["signed_in_as"] = user.email
+        payload["email_matches"] = (
+            invite.kind != OrgInvite.Kind.EMAIL
+            or (user.email or "").strip().lower() == invite.email
+        )
+    return Response(payload)
+
+
+class InviteAcceptView(APIView):
+    """A signed-in account spends an invitation and joins the org.
+
+    Deliberately *not* behind ``require_verified_email``. Verification gates
+    standing an organization up and mailing from it; joining one you were invited
+    to is the opposite direction, and refusing it would strand exactly the people
+    an invitation exists to bring in.
+    """
+
+    def post(self, request: Request, token: str) -> Response:
+        try:
+            invite = invites.redeem_token(token, request.user)
+        except invites.InviteError as exc:
+            return Response(
+                {"detail": str(exc), "reason": exc.reason},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {
+                "org_kind": invite.org_kind,
+                "org_name": invite.org_name,
+                "slug": invite.lab.slug if invite.lab_id else None,
+                "department_id": (
+                    str(invite.department_id) if invite.department_id else None
+                ),
+                "role": invite.role,
+            }
+        )

@@ -106,3 +106,13 @@ def require_verified_email(user: UserOrAnon) -> None:
     """
     if not user_email_verified(user):
         raise PermissionDenied(UNVERIFIED_MESSAGE)
+
+
+def user_can_invite_to_department(user: UserOrAnon, department: Department) -> bool:
+    """A department's owner or an admin may invite people to it.
+
+    The lab sibling of :func:`user_can_invite_to_lab`, named separately so the
+    invitation views read the same for both org types even though the underlying
+    authority differs (a lab also lets its lead PI invite).
+    """
+    return user_can_manage_department(user, department)

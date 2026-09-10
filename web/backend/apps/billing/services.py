@@ -92,6 +92,41 @@ def create_lab_workspace(user: User, name: str) -> ProvisionResult:
 
 
 @transaction.atomic
+def create_department_workspace(
+    user: User, name: str, *, institution: str = ""
+) -> ProvisionResult:
+    """Create one department with its founder as OWNER, plus an INACTIVE plan.
+
+    The department sibling of :func:`create_lab_workspace`, and shared the same way:
+    the "create a department after my account exists" endpoint and the legacy
+    ``provision_workspace`` branch both land here so the org + billing rows never
+    drift. ``Department.profile`` is created by the ``post_save`` signal.
+    """
+    dept = Department.objects.create(
+        owner=user,
+        name=name,
+        institution=institution,
+    )
+    DeptMembership.objects.create(
+        user=user,
+        department=dept,
+        role=DeptMembership.Role.OWNER,
+    )
+    sub = Subscription.objects.create(
+        tier=Tier.CANOPY,
+        scope_department=dept,
+        status=Subscription.Status.INACTIVE,
+    )
+    seat = Seat.objects.create(
+        subscription=sub,
+        member=user,
+        payer_department=dept,
+        status=Seat.Status.PENDING,
+    )
+    return ProvisionResult(subscription=sub, seat=seat, department=dept)
+
+
+@transaction.atomic
 def provision_workspace(
     user: User,
     account_type: str,
@@ -120,28 +155,7 @@ def provision_workspace(
         return create_lab_workspace(user, org_name)
 
     if account_type == "department":
-        dept = Department.objects.create(
-            owner=user,
-            name=org_name,
-            institution=institution,
-        )
-        DeptMembership.objects.create(
-            user=user,
-            department=dept,
-            role=DeptMembership.Role.OWNER,
-        )
-        sub = Subscription.objects.create(
-            tier=Tier.CANOPY,
-            scope_department=dept,
-            status=Subscription.Status.INACTIVE,
-        )
-        seat = Seat.objects.create(
-            subscription=sub,
-            member=user,
-            payer_department=dept,
-            status=Seat.Status.PENDING,
-        )
-        return ProvisionResult(subscription=sub, seat=seat, department=dept)
+        return create_department_workspace(user, org_name, institution=institution)
 
     raise ValueError(f"Unknown account_type: {account_type!r}")
 

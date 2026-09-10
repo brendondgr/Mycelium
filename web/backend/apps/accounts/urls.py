@@ -159,6 +159,10 @@ urlpatterns = [
         views.InvitationRespondView.as_view(),
         name="invitation-respond-no-slash",
     ),
+    # Departments: the caller's own, and standing a new one up. Sign-up no longer
+    # offers a department account, so this is where one comes from.
+    path("departments/", views.MyDepartmentsView.as_view(), name="my-departments"),
+    path("departments", views.MyDepartmentsView.as_view()),
     path(
         "departments/<uuid:pk>/profile/",
         views.DeptProfileView.as_view(),
@@ -229,4 +233,45 @@ urlpatterns = [
         name="intake-clusters",
     ),
     path("intake/clusters", views.ProposeClustersView.as_view()),
+    # Join invitations — an emailed invite bound to one address, or a share link
+    # with a usage budget and an expiry. Managers create and withdraw them; the
+    # last two routes are what the person holding the link talks to.
+    path(
+        "labs/<slug:slug>/invites/",
+        views.LabInvitesView.as_view(),
+        name="lab-invites",
+    ),
+    path("labs/<slug:slug>/invites", views.LabInvitesView.as_view()),
+    path(
+        "labs/<slug:slug>/invites/<uuid:pk>/revoke/",
+        views.LabInviteRevokeView.as_view(),
+        name="lab-invite-revoke",
+    ),
+    path(
+        "labs/<slug:slug>/invites/<uuid:pk>/revoke",
+        views.LabInviteRevokeView.as_view(),
+    ),
+    path(
+        "departments/<uuid:pk>/invites/",
+        views.DeptInvitesView.as_view(),
+        name="dept-invites",
+    ),
+    path("departments/<uuid:pk>/invites", views.DeptInvitesView.as_view()),
+    path(
+        "departments/<uuid:pk>/invites/<uuid:invite_id>/revoke/",
+        views.DeptInviteRevokeView.as_view(),
+        name="dept-invite-revoke",
+    ),
+    path(
+        "departments/<uuid:pk>/invites/<uuid:invite_id>/revoke",
+        views.DeptInviteRevokeView.as_view(),
+    ),
+    path("invites/<str:token>/", views.invite_preview_view, name="invite-preview"),
+    path("invites/<str:token>", views.invite_preview_view),
+    path(
+        "invites/<str:token>/accept/",
+        views.InviteAcceptView.as_view(),
+        name="invite-accept",
+    ),
+    path("invites/<str:token>/accept", views.InviteAcceptView.as_view()),
 ]

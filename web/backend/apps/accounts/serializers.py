@@ -3,7 +3,6 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from apps.billing.services import ACCOUNT_TYPES
 from apps.core.people import display_name, initials
 
 from .interests import validate_interests as _validate_interests_contract
@@ -44,15 +43,22 @@ def user_to_dict(user: User) -> dict[str, object]:
 
 
 class RegisterSerializer(serializers.Serializer):
-    """Validate a registration payload (identity + account type).
+    """Validate a registration payload — one person, no organization.
 
-    Identity fields are always required; ``org_name`` is required only for lab
-    and department accounts. Password strength is checked through the project's
-    ``AUTH_PASSWORD_VALIDATORS`` so the policy stays in one place.
+    Sign-up makes a solo account and nothing else. Choosing between a personal, a
+    lab, and a department account used to be the *first* thing the form asked,
+    before anyone had seen the product or knew which they wanted, and the answer
+    quietly fixed their billing scope. Labs and departments are now stood up from
+    inside the app, by an account that has proved its own mailbox.
 
-    The invite-only ``access_code`` is *declared* here but checked in the view
-    (``apps.accounts.signup_gate``), before any of this runs: a wrong code must
-    cost a strike and must never leak which other fields would also have failed.
+    Password strength is checked through the project's ``AUTH_PASSWORD_VALIDATORS``
+    so the policy stays in one place.
+
+    Two write-only fields are *declared* here but judged in the view: the
+    invite-only ``access_code`` (``apps.accounts.signup_gate``) and the
+    ``invite_token`` that is the other way past it. Both are checked before any of
+    this runs, so a bad one costs a strike and never leaks which other fields
+    would also have failed.
     """
 
     username = serializers.CharField(max_length=150)
@@ -65,17 +71,12 @@ class RegisterSerializer(serializers.Serializer):
     last_name = serializers.CharField(
         max_length=150, required=False, allow_blank=True
     )
-    account_type = serializers.ChoiceField(choices=ACCOUNT_TYPES)
     # Accepted so the payload validates; correctness is the view's job.
     access_code = serializers.CharField(
         write_only=True, required=False, allow_blank=True
     )
-    # Required only for lab / department (checked in validate()).
-    org_name = serializers.CharField(
-        max_length=200, required=False, allow_blank=True
-    )
-    institution = serializers.CharField(
-        max_length=255, required=False, allow_blank=True
+    invite_token = serializers.CharField(
+        write_only=True, required=False, allow_blank=True
     )
 
     def validate_username(self, value: str) -> str:
@@ -104,13 +105,6 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"password": list(exc.messages)}
             ) from exc
-        if attrs["account_type"] in ("lab", "department") and not attrs.get(
-            "org_name", ""
-        ).strip():
-            label = "lab" if attrs["account_type"] == "lab" else "department"
-            raise serializers.ValidationError(
-                {"org_name": f"A {label} name is required."}
-            )
         return attrs
 
 

@@ -575,3 +575,164 @@ class EmailVerification(models.Model):
 
     def __str__(self) -> str:
         return f"EmailVerification<{self.email} ({self.purpose})>"
+
+
+class OrgInvite(models.Model):
+    """A way in to a lab or department for someone who may have no account yet.
+
+    Two shapes of the same thing, distinguished by :class:`Kind`. An **email**
+    invite is addressed to one mailbox: the link is mailed there and can only be
+    spent by someone registering (or signed in) with that exact address, which is
+    what makes it the tighter of the two. A **link** invite is handed out by the
+    creator to whoever they like, bounded instead by a usage budget and a clock.
+
+    This is deliberately not :class:`LabInvitation`. That one addresses a person
+    Mycelium already knows and lands in their in-app notifications; this one leaves
+    the building, works for departments too, and is the only invitation that puts
+    Mycelium's name in a stranger's inbox.
+
+    The token is stored in the clear, unlike a password-reset token. The two are
+    not the same kind of secret: a reset token buys an account, is spent once, and
+    is never shown again, whereas a share link exists to be re-copied by the person
+    who made it and buys nothing but membership of one org. It is revocable,
+    expiring, use-capped, and readable only by managers who can already add members
+    directly — so hashing it would cost the feature its point and buy very little.
+    """
+
+    class Kind(models.TextChoices):
+        EMAIL = "email", "Emailed to one address"
+        LINK = "link", "Shareable link"
+
+    class Role(models.TextChoices):
+        """The four membership roles both org types share."""
+
+        OWNER = "owner", "Owner"
+        ADMIN = "admin", "Admin"
+        MEMBER = "member", "Member"
+        VIEWER = "viewer", "Viewer"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lab = models.ForeignKey(
+        Lab,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="join_invites",
+    )
+    department = models.ForeignKey(
+        Department,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="join_invites",
+    )
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.MEMBER,
+        help_text="Membership role granted when the invite is redeemed.",
+    )
+    email = models.EmailField(
+        blank=True,
+        default="",
+        help_text="Lower-cased address an email invite is bound to; blank for a link.",
+    )
+    message = models.TextField(
+        blank=True,
+        default="",
+        help_text="Optional note from the creator, shown in the email and on the page.",
+    )
+    token = models.CharField(max_length=64, unique=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_org_invites",
+    )
+    max_uses = models.PositiveIntegerField(
+        default=1,
+        help_text="How many accounts may join through this invite. Always 1 for email.",
+    )
+    used_count = models.PositiveIntegerField(default=0)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # Exactly one org. A row with neither has nothing to join; a row with
+            # both would silently grant membership of something nobody named.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(lab__isnull=False, department__isnull=True)
+                    | models.Q(lab__isnull=True, department__isnull=False)
+                ),
+                name="accounts_org_invite_one_org",
+            ),
+            # An email invite must carry the address it is bound to, or the binding
+            # that makes it the secure option quietly is not there.
+            models.CheckConstraint(
+                condition=~models.Q(kind="email") | ~models.Q(email=""),
+                name="accounts_org_invite_email_has_address",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["token"], name="accounts_orginvite_token"),
+        ]
+
+    def __str__(self) -> str:
+        return f"OrgInvite<{self.kind} -> {self.org_name}>"
+
+    @property
+    def org(self):
+        """The lab or department this invite joins."""
+        return self.lab or self.department
+
+    @property
+    def org_kind(self) -> str:
+        return "lab" if self.lab_id else "department"
+
+    @property
+    def org_name(self) -> str:
+        org = self.org
+        return org.name if org else ""
+
+    @property
+    def uses_left(self) -> int:
+        return max(self.max_uses - self.used_count, 0)
+
+
+class OrgInviteRedemption(models.Model):
+    """One account's use of one invite — the roster of who came in through it.
+
+    Unique per (invite, user) so a person re-following their own link rejoins
+    idempotently instead of spending another seat off the budget.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    invite = models.ForeignKey(
+        OrgInvite,
+        on_delete=models.CASCADE,
+        related_name="redemptions",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="org_invite_redemptions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["invite", "user"],
+                name="accounts_unique_org_invite_redemption",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Redemption<{self.user} via {self.invite_id}>"
