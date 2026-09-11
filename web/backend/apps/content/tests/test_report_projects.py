@@ -172,7 +172,9 @@ def test_lab_report_excludes_unshared_projects() -> None:
     )
     private = Project.objects.create(scope_lab=lab, name="Unpublished Coral Genome")
     _score({"target_project": shared}, _content(ContentItem.Type.PAPER, "Reef Paper"))
-    _score({"target_project": private}, _content(ContentItem.Type.PAPER, "Secret Paper"))
+    _score(
+        {"target_project": private}, _content(ContentItem.Type.PAPER, "Secret Paper")
+    )
 
     briefing = generate_briefing_for_lab(lab, complete=lambda _s, _u: None)
 
@@ -201,7 +203,9 @@ def test_lab_member_without_project_access_never_sees_project_part() -> None:
 
     private = Project.objects.create(scope_lab=lab, name="Unpublished Coral Genome")
     ProjectMember.objects.create(project=private, user=member)
-    _score({"target_project": private}, _content(ContentItem.Type.PAPER, "Secret Paper"))
+    _score(
+        {"target_project": private}, _content(ContentItem.Type.PAPER, "Secret Paper")
+    )
 
     mine = generate_briefing_for_user(member, complete=lambda _s, _u: None)
     assert "Unpublished Coral Genome" in _rows(mine)

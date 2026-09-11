@@ -36,7 +36,7 @@ from pathlib import Path
 
 from django.conf import settings
 
-from apps.content import delivery, reminders_discord
+from apps.content import delivery, discord_embeds, reminders_discord
 from apps.content.daily_report import ReportData, compile_report_for_user
 from apps.content.daily_report_pdf import render_report_pdf
 from apps.integrations.services import resolve
@@ -54,6 +54,8 @@ REPORT_TITLE = "Your daily research report"
 @dataclass
 class SendSummary:
     eligible: int = 0
+    #: Recipients whose day had no entrants and no alerts, so nothing was sent.
+    quiet: int = 0
     compiled: int = 0
     rendered: int = 0
     sent: int = 0
@@ -64,6 +66,7 @@ class SendSummary:
     def as_dict(self) -> dict:
         return {
             "eligible": self.eligible,
+            "quiet": self.quiet,
             "compiled": self.compiled,
             "rendered": self.rendered,
             "sent": self.sent,
@@ -78,6 +81,10 @@ def _default_send(user, data: ReportData, path: Path, filename: str):
         user,
         title=REPORT_TITLE,
         body=data.message_body(),
+        # The overview-and-statistics embed (plan Phase 1). ``title``/``body``
+        # stay filled so the plain path is still reachable, and so the outcome
+        # log records what the post was about.
+        embed=discord_embeds.personal_report_embed(data, data.stats),
         filename=filename,
         attachment_path=str(path),
         dedupe_key=delivery.daily_report_key(user, local_date),
@@ -150,7 +157,15 @@ def run_daily_report_send(
     compiled: list[tuple[object, ReportData]] = []
     for user in recipients:
         try:
-            compiled.append((user, compile_fn(user)))
+            data = compile_fn(user)
+            if data.stats.is_quiet:
+                # Nothing entered a top list and nothing raised an alert, so
+                # there is nothing to interrupt anyone about (plan H7). Their web
+                # report still shows the day as quiet, which is the honest place
+                # for "no news" to live.
+                summary.quiet += 1
+                continue
+            compiled.append((user, data))
             summary.compiled += 1
         except Exception as exc:  # noqa: BLE001 — one user never sinks the batch
             summary.errors += 1
@@ -198,7 +213,7 @@ def run_daily_report_send(
             summary.unreachable += 1
 
     log(
-        f"daily report: {summary.sent} queued, {summary.unreachable} unreachable, "
-        f"{summary.errors} error(s)"
+        f"daily report: {summary.sent} queued, {summary.quiet} quiet, "
+        f"{summary.unreachable} unreachable, {summary.errors} error(s)"
     )
     return summary

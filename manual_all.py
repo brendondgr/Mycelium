@@ -57,10 +57,20 @@ touches the rankings the stages above just wrote.
        a reader's themes, yesterday's report carries forward unchanged rather than
        being rewritten to say the same thing in new words.
     5. Send daily Discord reports (backend) — ``send_daily_discord_reports``: DM
-       each linked, entitled, opted-in user their day as a PDF — Mylo's lead, then
-       one section per theme with what entered it and what is standing in it.
+       each linked, entitled, opted-in user their day — an overview of what kind of
+       day it was, then statistics, with the full report attached as a PDF.
        Best-effort: an unreachable DM or Discord outage is counted, never fatal, so
        it can safely be the last stage.
+
+**Who gets a message, and when.** Stages 4 and 5 do not cover the same people, and
+that is the design (``apps.content.delivery``). Stage 4 writes a briefing for every
+scheduled-eligible target, every day, whatever their cadence — the web app updates
+daily for everyone. Stage 5 and the lab stage push only where cadence says a push is
+due today: daily cadence gets a daily Tuesday to Friday and the Monday weekly,
+weekly cadence gets the Monday weekly alone, and nobody is posted to at the weekend.
+Each queued row carries a ``not_before`` set to the recipient's own local send hour,
+so the run can finish at 3am and still land in someone's morning. A day with no
+entrants and no alerts pushes nothing at all.
 
 **What "new" means.** An item is new when it *enters a theme's slate*, not when it
 was ingested — and entry is keyed on the **(theme, item)** pair, so the same paper

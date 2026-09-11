@@ -259,7 +259,7 @@ class DailyBriefingView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        briefing = DailyBriefing.latest_for(user=request.user)
+        briefing = DailyBriefing.latest_for(_requested_kind(request), user=request.user)
         return Response(_daily_briefing_envelope(briefing))
 
 
@@ -274,6 +274,8 @@ def _daily_briefing_envelope(briefing) -> dict:
             "new_counts": {},
             "showcase": {},
             "project_summary": [],
+            "stats": {},
+            "kind": "daily",
             "briefing": None,
         }
     return {
@@ -287,6 +289,12 @@ def _daily_briefing_envelope(briefing) -> dict:
         # Empty for a briefing written before the table existed, which the card
         # reads as "no table" rather than "no projects".
         "project_summary": briefing.project_summary or [],
+        # The run's statistics, as the Discord post carries them (plan 1.5). Read
+        # from the row rather than re-derived, so the header and the post cannot
+        # quote different numbers for the same morning. Empty on a briefing
+        # written before statistics existed.
+        "stats": briefing.stats or {},
+        "kind": briefing.kind,
         "briefing": {"body": briefing.body, "origin": briefing.origin},
     }
 
@@ -302,15 +310,32 @@ def _briefing_summary(briefing) -> dict:
         "generated_on": briefing.generated_on.isoformat(),
         "generated_at": briefing.generated_at.isoformat(),
         "origin": briefing.origin,
+        "kind": briefing.kind,
         "categories": briefing.categories,
         "counts": briefing.counts,
         "new_counts": briefing.new_counts,
     }
 
 
-def _briefing_history(**target):
-    """Every retained briefing for one target, newest day first."""
-    return DailyBriefing.objects.filter(**target).order_by("-generated_on")
+def _requested_kind(request) -> str:
+    """Which report the caller is asking for — ``daily`` unless they say otherwise.
+
+    Monday carries two rows for one target and one date, so every read of the
+    history has to name a kind. Defaulting to ``daily`` keeps every existing
+    caller — the app, the resend command, the Reports page — reading exactly what
+    it read before the weekly existed.
+    """
+    asked = str(request.query_params.get("kind") or "").strip().lower()
+    return (
+        DailyBriefing.Kind.WEEKLY
+        if asked == DailyBriefing.Kind.WEEKLY
+        else DailyBriefing.Kind.DAILY
+    )
+
+
+def _briefing_history(kind: str = DailyBriefing.Kind.DAILY, **target):
+    """Every retained briefing of one kind for one target, newest day first."""
+    return DailyBriefing.objects.filter(kind=kind, **target).order_by("-generated_on")
 
 
 class BriefingHistoryView(APIView):
@@ -324,7 +349,7 @@ class BriefingHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        history = _briefing_history(user=request.user)
+        history = _briefing_history(_requested_kind(request), user=request.user)
         return Response([_briefing_summary(b) for b in history])
 
 
@@ -339,7 +364,12 @@ class BriefingDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, on):
-        briefing = get_object_or_404(DailyBriefing, user=request.user, generated_on=on)
+        briefing = get_object_or_404(
+            DailyBriefing,
+            user=request.user,
+            generated_on=on,
+            kind=_requested_kind(request),
+        )
         return Response(_daily_briefing_envelope(briefing))
 
 
@@ -352,7 +382,7 @@ class LabBriefingHistoryView(APIView):
         lab = get_object_or_404(Lab, slug=slug)
         if not user_has_lab_access(request.user, lab):
             raise PermissionDenied("You do not have access to this lab.")
-        history = _briefing_history(lab=lab)
+        history = _briefing_history(_requested_kind(request), lab=lab)
         return Response([_briefing_summary(b) for b in history])
 
 
@@ -365,7 +395,9 @@ class LabBriefingDetailView(APIView):
         lab = get_object_or_404(Lab, slug=slug)
         if not user_has_lab_access(request.user, lab):
             raise PermissionDenied("You do not have access to this lab.")
-        briefing = get_object_or_404(DailyBriefing, lab=lab, generated_on=on)
+        briefing = get_object_or_404(
+            DailyBriefing, lab=lab, generated_on=on, kind=_requested_kind(request)
+        )
         return Response(_daily_briefing_envelope(briefing))
 
 
@@ -383,7 +415,7 @@ class LabDailyBriefingView(APIView):
         lab = get_object_or_404(Lab, slug=slug)
         if not user_has_lab_access(request.user, lab):
             raise PermissionDenied("You do not have access to this lab.")
-        briefing = DailyBriefing.latest_for(lab=lab)
+        briefing = DailyBriefing.latest_for(_requested_kind(request), lab=lab)
         return Response(_daily_briefing_envelope(briefing))
 
 

@@ -250,6 +250,9 @@ _SOURCE_OF = {
 
 def _report_item(category: str, row: dict, position: int) -> ReportItem:
     return ReportItem(
+        # Synthetic but stable, so the sample's deadline horizon and its listings
+        # agree the way they do on a real day.
+        content_id=f"sample-{category}-{position}",
         type=_TYPE_OF[category],
         category=category,
         title=row["title"],

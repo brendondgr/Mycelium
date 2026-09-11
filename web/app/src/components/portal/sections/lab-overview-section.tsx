@@ -130,6 +130,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
           data={briefingQuery.data}
           isLoading={briefingQuery.isLoading}
           title="Lab Mylo Report"
+          statsSubject="the lab"
           scrollable
         />
 

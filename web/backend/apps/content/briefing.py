@@ -685,6 +685,8 @@ def _write_briefing(
     personal_label: str = briefing_sections.PERSONAL_HEADING,
     complete: briefing_sections.CompleteFn | None = None,
     reader=None,
+    kind: str = DailyBriefing.Kind.DAILY,
+    stats: dict | None = None,
 ) -> DailyBriefing:
     """Gather a target's day, write the report, and persist it as a ``DailyBriefing``.
 
@@ -761,7 +763,7 @@ def _write_briefing(
         # honest answer and the cheap one: re-running the model would spend a call
         # to re-word the same conclusions, and the reader would have to read the
         # whole thing again to discover it had not changed.
-        body, origin = _carry_forward(owner)
+        body, origin = _carry_forward(owner, kind)
 
     if not body:
         body = briefing_sections.empty_report_body()
@@ -779,6 +781,10 @@ def _write_briefing(
     briefing, _ = DailyBriefing.objects.update_or_create(
         **owner,
         generated_on=timezone.localdate(),
+        # Part of the key, not the payload: the unique constraint is
+        # (target, day, kind), and Monday carries a daily *and* a weekly. Without
+        # it a Monday weekly would overwrite that morning's daily in place.
+        kind=kind,
         defaults={
             "body": body,
             "origin": origin,
@@ -788,6 +794,7 @@ def _write_briefing(
             "showcase": showcase,
             "project_summary": project_summary,
             "narrative": narrative_payload,
+            "stats": stats or {},
         },
     )
     return briefing
@@ -805,14 +812,18 @@ def _narrative_entitled(target_filter: dict) -> bool:
     return target_is_entitled(target_filter)
 
 
-def _carry_forward(owner: dict) -> tuple[str, str]:
+def _carry_forward(
+    owner: dict, kind: str = DailyBriefing.Kind.DAILY
+) -> tuple[str, str]:
     """Yesterday's body for this target, or an honest empty note when there is none.
 
     Looks past today's own row: a same-day rerun must carry the *previous day's*
-    report forward, not the one it is in the middle of replacing.
+    report forward, not the one it is in the middle of replacing. Scoped to the
+    same ``kind``, so a quiet Monday carries forward the previous *weekly* rather
+    than reissuing Friday's daily under a weekly heading.
     """
     previous = (
-        DailyBriefing.objects.filter(**owner)
+        DailyBriefing.objects.filter(kind=kind, **owner)
         .exclude(generated_on=timezone.localdate())
         .order_by("-generated_on")
         .first()
@@ -837,7 +848,9 @@ def generate_briefing_for_user(
     or returns nothing usable, each prompt's deterministic markdown fallback fills
     in and ``origin`` is recorded as ``fallback``.
     """
-    return _write_briefing(
+    from .report_stats import record_run_stats
+
+    briefing = _write_briefing(
         owner={"user": user},
         target=target_for_user(user),
         target_filter={"target_user": user},
@@ -847,6 +860,9 @@ def generate_briefing_for_user(
         # A personal report has exactly one reader, so it honours their ignores.
         reader=user,
     )
+    # The run's numbers, settled here so every later surface reads them back off
+    # the row rather than deriving its own from the same tables minutes apart.
+    return record_run_stats(briefing)
 
 
 def generate_briefing_for_lab(
@@ -870,7 +886,9 @@ def generate_briefing_for_lab(
     shares. ``member_names`` is still resolved and passed down because
     :func:`_showcase_item` records it on the stored showcase for those surfaces.
     """
-    return _write_briefing(
+    from .report_stats import record_run_stats
+
+    briefing = _write_briefing(
         owner={"lab": lab},
         target=target_for_lab(lab),
         target_filter={"target_lab": lab},
@@ -885,6 +903,7 @@ def generate_briefing_for_lab(
         personal_label=lab.name,
         complete=complete,
     )
+    return record_run_stats(briefing)
 
 
 def _lab_member_names(lab) -> dict[str, str]:

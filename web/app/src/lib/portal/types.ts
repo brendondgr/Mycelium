@@ -367,8 +367,54 @@ export type DailyBriefing = {
    * on briefings written before the table existed, which the card reads as "no
    * table" rather than "no projects". */
   project_summary?: BriefingProjectRow[];
+  /** This run's numbers, as the Discord post carries them. Read from the stored
+   * row rather than derived here, so the header and the post can never quote
+   * different figures for the same morning. Empty on briefings written before
+   * statistics existed. */
+  stats?: BriefingStats;
+  /** Which report this is. `"daily"` unless the caller asked for the weekly. */
+  kind?: BriefingKind;
   /** The written briefing, or null when no run has produced one yet. */
   briefing: { body: string; origin: BriefingOrigin } | null;
+};
+
+export type BriefingKind = "daily" | "weekly";
+
+/**
+ * One run's statistics (`DailyBriefing.stats`). Every field is optional: a row
+ * written before this existed carries `{}`, and a header must render as "no
+ * numbers" rather than as zeros, which would read as "Mylo found nothing".
+ *
+ * `discovered_*` are corpus-wide and `null` when the collector could not answer
+ * — again distinct from zero.
+ */
+export type BriefingStats = {
+  discovered_papers?: number | null;
+  discovered_opportunities?: number | null;
+  /** Distinct items that first matched this reader or their projects this run. */
+  matched?: number;
+  /** Items that entered a top list. Equals the summary table's grand total. */
+  entered?: number;
+  /** `{category: [entered today, in the feed]}`. */
+  by_category?: Partial<Record<BriefingCategory, [number, number]>>;
+  /** `[label, entered, alerts]`, the reader's own part first. */
+  by_project?: [string, number, number][];
+  /** `[label, entered]`, busiest first. */
+  by_theme?: [string, number][];
+  /** What the first `by_project` row is called, so a caller can drop it. */
+  aggregate_label?: string;
+  alerts?: number;
+  deadline_window_days?: number;
+  deadlines_in_window?: number;
+  nearest_deadline?: {
+    title: string;
+    url: string;
+    due_date: string;
+    days: number;
+    label: string;
+  } | null;
+  /** Lab surfaces only: projects this report is not naming. */
+  private_projects_hidden?: number;
 };
 
 /**
@@ -382,6 +428,7 @@ export type DailyBriefingSummary = {
   /** When it was written (a same-day rerun moves this, not `generated_on`). */
   generated_at: string;
   origin: BriefingOrigin;
+  kind?: BriefingKind;
   categories: BriefingCategory[];
   counts: Partial<Record<BriefingCategory, number>>;
   new_counts?: Partial<Record<BriefingCategory, number>>;

@@ -38,9 +38,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         from apps.accounts.models import Lab
+        from apps.content.daily_report import compile_report_for_lab
         from apps.content.lab_digest import (
-            compile_lab_digest,
             eligible_labs,
+            is_quiet,
             queue_lab_digest,
             queue_lab_report,
             report_filename,
@@ -68,22 +69,28 @@ class Command(BaseCommand):
 
         for lab in eligible:
             try:
-                digest = compile_lab_digest(lab, on=today)
-                if digest.is_empty:
+                # Compiled once and handed to both producers: compiling twice
+                # doubles the work and, if a score lands between the two calls,
+                # can post a summary describing a different morning from the PDF
+                # underneath it.
+                data = compile_report_for_lab(lab)
+                if is_quiet(data):
                     summary["empty"] += 1
                     continue
                 if options["dry_run"]:
+                    stats = data.stats
                     self.stdout.write(
-                        f"{lab.slug}: {digest.total} item(s) across "
-                        f"{len(digest.themes)} theme(s); "
+                        f"{lab.slug}: {stats.entered} entrant(s), "
+                        f"{stats.matched} matched, {stats.alerts} alert(s) across "
+                        f"{len(stats.by_theme)} theme(s); "
                         f"report {report_filename(lab, today)}"
                     )
                     continue
-                _row, created = queue_lab_digest(lab, on=today, digest=digest)
+                _row, created = queue_lab_digest(lab, on=today, data=data)
                 summary["queued"] += int(bool(created))
                 # Enqueued after the summary so the outbox — which claims by
                 # (next_attempt_at, id) and delivers one at a time — posts it after.
-                summary["reports"] += int(queue_lab_report(lab, on=today))
+                summary["reports"] += int(queue_lab_report(lab, on=today, data=data))
             except Exception as exc:  # noqa: BLE001 — one lab never sinks the run
                 summary["errors"] += 1
                 self.stderr.write(self.style.WARNING(f"{lab.slug}: {exc}"))

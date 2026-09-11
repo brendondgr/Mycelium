@@ -488,6 +488,10 @@ def test_api_empty_envelope_when_no_briefing(client: APIClient) -> None:
         "new_counts": {},
         "showcase": {},
         "project_summary": [],
+        # Statistics are absent, not zero: a client must render "no numbers"
+        # rather than "Mylo found nothing", which are different claims.
+        "stats": {},
+        "kind": "daily",
         "briefing": None,
     }
 

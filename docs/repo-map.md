@@ -138,6 +138,8 @@ Files below are inside `web/backend/apps/content/`.
 | Report formatting sample (no database) | `management/commands/render_sample_report.py` |
 | Report cover art (derived from `web/art/`) | `report_assets/` — `mylo-headshot.png`, `mycelium-logo.png`, `README.md` |
 | Lab Discord digest | `lab_digest.py` |
+| One run's numbers (volume, matched, entered, by category/project/theme, deadline horizon) | `report_stats.py` — derived from the finished `ReportData`, stored on `DailyBriefing.stats`, read back by every surface |
+| The Discord post's shape (overview, statistics, Discord's size limits) | `discord_embeds.py` — `personal_report_embed`, `lab_post_embed`, `fit_embed` |
 | Who gets a Discord push today, and at what local hour | `delivery.py` — `push_kinds` (the cadence matrix), `send_time`/`local_today`, and every dedupe key. Cadence governs push only; the nightly run and the web app are unchanged by it |
 | Nightly run analytics | `run_analytics.py`, `analytics_report_pdf.py`, `management/commands/run_analytics_report.py` |
 | Reminders | `reminders.py`, `reminders_tick.py`, `reminders_views.py`, `reminders_discord.py`, `reminders_announce.py`, `reminder_access.py` |

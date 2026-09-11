@@ -3,6 +3,7 @@
 import { MyloGlyph } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
 import { MarkdownProse } from "@/components/portal/primitives/markdown-prose";
+import { ReportStatistics } from "@/components/portal/primitives/report-statistics";
 import { ReportSummaryTable } from "@/components/portal/primitives/report-summary-table";
 import type { DailyBriefing } from "@/lib/portal/types";
 
@@ -43,12 +44,16 @@ export function MyloReportCard({
   data,
   isLoading,
   title = "Mylo Report",
+  statsSubject = "you or your projects",
   className,
   scrollable = false,
 }: {
   data: DailyBriefing | undefined;
   isLoading?: boolean;
   title?: string;
+  /** Who the statistics strip says the matches were for — "the lab" on a lab
+   * overview, where "you or your projects" would name the wrong reader. */
+  statsSubject?: string;
   className?: string;
   /** Fill the parent cell's height and let the body scroll internally, keeping
    * the header fixed — so the overview's left column scrolls on its own (needs a
@@ -95,6 +100,15 @@ export function MyloReportCard({
         <ReportSummaryTable
           rows={data?.project_summary}
           categories={data?.categories ?? []}
+          className="mb-4"
+        />
+
+        {/* And what those counts were drawn from. The table says where today's
+            arrivals landed; this says whether that was a heavy day filtered hard
+            or a thin one — the judgement a reader makes before reading on. */}
+        <ReportStatistics
+          stats={data?.stats}
+          subject={statsSubject}
           className="mb-4"
         />
 

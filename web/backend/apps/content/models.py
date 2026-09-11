@@ -815,6 +815,19 @@ class DailyBriefing(models.Model):
         #: forward verbatim rather than re-worded to say the same thing.
         CARRIED = "carried", "Carried forward"
 
+    class Kind(models.TextChoices):
+        """Which report this row is.
+
+        Two rows can exist for one target on one date: Monday carries both the
+        daily (written for the web, as every day is) and the weekly. They are
+        separate rows rather than one row with two bodies because they have
+        different lifetimes on the Reports page and different readers — a reader
+        catching up on Thursday wants Monday's daily, not its weekly.
+        """
+
+        DAILY = "daily", "Daily"
+        WEEKLY = "weekly", "Weekly"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # A briefing belongs to exactly one target: a person or a lab (the exactly_one
     # constraint below). A lab briefing synthesizes the lab's aggregate matches.
@@ -891,6 +904,34 @@ class DailyBriefing(models.Model):
             "model for prose that already exists."
         ),
     )
+    kind = models.CharField(
+        max_length=20,
+        choices=Kind.choices,
+        default=Kind.DAILY,
+        db_index=True,
+        help_text="Daily or weekly. Every existing reader keeps reading dailies.",
+    )
+    stats = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "The run's statistics as structure — overnight volume, what matched, "
+            "what entered, the per-category / per-project / per-theme splits, "
+            "alerts and the deadline horizon. Stored so the web header and the "
+            "Discord post show identical numbers rather than each deriving their "
+            "own from the same rows at two different moments."
+        ),
+    )
+    verification = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "The citation verifier's record for a weekly: claims checked, "
+            "supported, removed, and the sentences it removed with the check "
+            "that failed. Empty on a daily, which cites nothing the model wrote "
+            "without a packet behind it."
+        ),
+    )
     generated_on = models.DateField(
         db_index=True,
         default=timezone.localdate,
@@ -913,33 +954,44 @@ class DailyBriefing(models.Model):
             # Postgres treat every NULL as distinct, which would not constrain the
             # lab rows at all (and vice versa).
             models.UniqueConstraint(
-                fields=["user", "generated_on"],
+                fields=["user", "generated_on", "kind"],
                 condition=Q(user__isnull=False),
-                name="content_dailybriefing_user_day_unique",
+                name="content_dailybriefing_user_day_kind_unique",
             ),
             models.UniqueConstraint(
-                fields=["lab", "generated_on"],
+                fields=["lab", "generated_on", "kind"],
                 condition=Q(lab__isnull=False),
-                name="content_dailybriefing_lab_day_unique",
+                name="content_dailybriefing_lab_day_kind_unique",
             ),
         ]
 
     @classmethod
-    def latest_for(cls, **target) -> "DailyBriefing | None":
-        """The newest briefing for one target (``user=`` or ``lab=``), or None.
+    def latest_for(cls, kind: str = Kind.DAILY, **target) -> "DailyBriefing | None":
+        """The newest briefing of one kind for one target (``user=``/``lab=``).
 
         Every "current briefing" surface goes through here. Ordering is stated
         rather than inherited from ``Meta``: now that the table keeps history, a
         bare ``.filter(user=…).first()`` would return an arbitrary day.
+
+        ``kind`` defaults to ``daily`` so every existing reader — the app, the PDF,
+        the Discord message, the resend command — keeps reading exactly what it was
+        reading before the weekly existed. A caller that wants the weekly has to
+        ask for it, which is the right direction for a default to fail in: a daily
+        surface accidentally rendering last Monday's weekly would be a much louder
+        wrong answer than the reverse.
         """
-        return cls.objects.filter(**target).order_by("-generated_on").first()
+        return (
+            cls.objects.filter(kind=kind, **target)
+            .order_by("-generated_on")
+            .first()
+        )
 
     def clean(self) -> None:
         validate_exactly_one(self, "user", "lab")
 
     def __str__(self) -> str:
         owner = self.user or self.lab
-        return f"DailyBriefing<{owner}> {self.generated_on} ({self.origin})"
+        return f"DailyBriefing<{owner}> {self.generated_on} {self.kind} ({self.origin})"
 
 
 # --------------------------------------------------------------------------- #

@@ -594,6 +594,20 @@ daily run, scoped to the categories the caller watches.
                  "verdict": "read", "headline": "…", "deadline_date": "",
                  "is_new": false }]
   },
+  "stats": {
+    "discovered_papers": 2140, "discovered_opportunities": 186,
+    "matched": 41, "entered": 7,
+    "by_category": { "papers": [6, 128], "grants": [0, 44] },
+    "by_project": [["Personal", 3, 0], ["Coral Atlas", 1, 0]],
+    "aggregate_label": "Personal",
+    "by_theme": [["Agentic KG construction", 1]],
+    "alerts": 0,
+    "deadline_window_days": 14, "deadlines_in_window": 2,
+    "nearest_deadline": { "title": "ECIR 2027 abstract", "url": "…",
+                          "due_date": "2026-09-25", "days": 9, "label": "abstract" },
+    "private_projects_hidden": 0
+  },
+  "kind": "daily",
   "briefing": { "body": "Good morning. Today's scan surfaced …", "origin": "llm" }
 }
 ```
@@ -643,6 +657,21 @@ every feed endpoint serves unchanged.
 when it was last written, which a same-day rerun moves and `generated_on` does not.
 This endpoint always serves the newest day.
 
+`stats` is the run's own numbers, settled by the briefing stage and stored on the
+row so the web header and the Discord post cannot quote different figures for the
+same morning. `entered` equals the summary table's grand total by construction,
+and `by_category` reads `[entered today, in the feed]`. The two `discovered_*`
+figures are corpus-wide and are `null` — never `0` — when the analytics collector
+could not answer, because "Mylo read nothing" and "Mylo does not know how much it
+read" are different claims. Percentages, cosines and scores appear nowhere.
+`stats` is `{}` on a briefing written before it existed, which a client must
+render as "no numbers" rather than as zeros.
+
+`kind` is `"daily"` or `"weekly"`. Every briefing endpoint accepts `?kind=` and
+**defaults to `daily`**, so a caller that has never heard of the weekly keeps
+reading exactly what it read before. Monday carries one row of each for a target,
+which is why the read has to name a kind at all.
+
 ### `GET /api/labs/<slug>/daily-briefing/`
 
 The same envelope over the lab's aggregate matches, across all four areas. Any
@@ -658,10 +687,12 @@ carries **no bodies**, so it stays cheap across the whole window:
 ```json
 [
   { "generated_on": "2026-07-11", "generated_at": "2026-07-11T13:00:00+00:00",
-    "origin": "llm", "categories": ["papers", "grants"],
+    "origin": "llm", "kind": "daily", "categories": ["papers", "grants"],
     "counts": { "papers": 25, "grants": 3 }, "new_counts": { "papers": 4 } }
 ]
 ```
+
+Both routes take `?kind=daily|weekly` (default `daily`).
 
 The detail route returns the same full envelope as `daily-briefing/` for that one
 date, and `404` when the date has no report (including one aged out of retention).

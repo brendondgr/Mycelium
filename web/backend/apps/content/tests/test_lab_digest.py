@@ -13,10 +13,11 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 from apps.accounts.models import Lab
+from apps.content.daily_report import compile_report_for_lab
+from apps.content.discord_embeds import lab_post_embed
 from apps.content.lab_digest import (
-    compile_lab_digest,
-    digest_embed,
     eligible_labs,
+    is_quiet,
     queue_lab_digest,
     queue_lab_report,
 )
@@ -119,39 +120,24 @@ def test_a_kicked_guild_is_not_posted_to(db) -> None:
 # Content
 # --------------------------------------------------------------------------- #
 @pytest.mark.django_db
-def test_the_digest_groups_by_research_theme(db) -> None:
+def test_the_post_counts_what_entered_a_top_list(db) -> None:
+    """The post reports change; the attached document holds the standing lists."""
     lab = _lab()
     _scored(lab, title="Segmentation nets", cluster="Medical AI")
     _scored(lab, title="Imaging call", cluster="Medical AI",
             category=ContentItem.Type.GRANT)
     _scored(lab, title="Soft actuators", cluster="Robotics")
 
-    digest = compile_lab_digest(lab, on=TODAY)
+    stats = compile_report_for_lab(lab).stats
 
-    labels = [t.label for t in digest.themes]
-    assert set(labels) == {"Medical AI", "Robotics"}
-    # Busiest theme first: a channel post is skimmed, so the lab's main focus leads.
-    assert labels[0] == "Medical AI"
-    assert digest.total == 3
-
-
-@pytest.mark.django_db
-def test_unattributed_items_are_still_counted(db) -> None:
-    """They must not vanish just because they carry no theme."""
-    lab = _lab()
-    _scored(lab, title="Themed", cluster="Medical AI")
-    _scored(lab, title="Themeless", cluster="")
-
-    digest = compile_lab_digest(lab, on=TODAY)
-
-    assert digest.total == 2
-    assert digest.ungrouped is not None
-    assert digest.ungrouped.total == 1
+    assert stats.entered == 3
+    assert stats.by_category["papers"] == (2, 2)
+    assert stats.by_category["grants"] == (1, 1)
 
 
 @pytest.mark.django_db
 def test_fellowships_are_counted_too(db) -> None:
-    """A lab is scored for fellowships, so its summary has to admit they exist."""
+    """A lab is scored for fellowships, so its post has to admit they exist."""
     lab = _lab()
     _scored(lab, title="A paper", cluster="Medical AI")
     _scored(
@@ -161,17 +147,17 @@ def test_fellowships_are_counted_too(db) -> None:
         category=ContentItem.Type.FELLOWSHIP,
     )
 
-    digest = compile_lab_digest(lab, on=TODAY)
+    stats = compile_report_for_lab(lab).stats
 
-    assert digest.counts["fellowships"] == 1
-    assert digest.themes[0].counts["fellowships"] == 1
+    assert stats.by_category["fellowships"][0] == 1
 
 
 @pytest.mark.django_db
 def test_a_quiet_day_posts_nothing(db) -> None:
-    """A daily 'I found nothing' trains people to ignore the channel."""
+    """A daily 'I found nothing' trains people to ignore the channel (plan H7)."""
     lab = _lab()
 
+    assert is_quiet(compile_report_for_lab(lab)) is True
     row, created = queue_lab_digest(lab, on=TODAY)
 
     assert created is False
@@ -239,27 +225,28 @@ def test_the_post_goes_to_the_updates_channel_and_pings_nobody(db) -> None:
 
 @pytest.mark.django_db
 def test_the_post_stays_inside_discords_embed_limits(db) -> None:
-    """Bounded by construction — at most eight themes, one line each."""
+    """Discord rejects an oversized embed outright, so the post is fitted first."""
     lab = _lab()
     for theme in range(12):
         for n in range(6):
-            _scored(lab, title=f"Item {theme}-{n}", cluster=f"Theme {theme}")
+            _scored(lab, title=f"Item {theme}-{n} " + "x" * 200, cluster=f"Theme {theme}")
 
-    digest = compile_lab_digest(lab, on=TODAY)
-    queue_lab_digest(lab, on=TODAY, digest=digest)
+    data = compile_report_for_lab(lab)
+    queue_lab_digest(lab, on=TODAY, data=data)
     row = DiscordOutboxMessage.objects.get()
 
-    assert len(digest.themes) <= 8
+    assert len(data.stats.by_theme) <= 8
     assert len(row.embed["fields"]) <= 25
-    assert len(str(row.embed)) < 6000
+    assert all(len(f["value"]) <= 1024 for f in row.embed["fields"])
+    assert len(row.embed["description"]) <= 4096
 
 
 # --------------------------------------------------------------------------- #
-# The summary: names and numbers, nothing else
+# The post: an overview first, then statistics
 # --------------------------------------------------------------------------- #
 @pytest.mark.django_db
-def test_the_summary_names_themes_and_counts_only(db) -> None:
-    """Three truncated titles per theme read as noise beside the report itself."""
+def test_the_post_says_what_kind_of_day_it_was_before_any_number(db) -> None:
+    """A count with nothing behind it cannot answer "was that a lot?"."""
     lab = _lab()
     _scored(lab, title="Segmentation nets", cluster="Medical AI")
     _scored(
@@ -270,41 +257,28 @@ def test_the_summary_names_themes_and_counts_only(db) -> None:
     )
     _scored(lab, title="Soft actuators", cluster="Robotics")
 
-    embed = digest_embed(compile_lab_digest(lab, on=TODAY))
+    data = compile_report_for_lab(lab)
+    embed = lab_post_embed(data, data.stats)
 
-    rendered = str(embed)
-    assert "Segmentation nets" not in rendered
-    assert "Soft actuators" not in rendered
-    assert "%" not in rendered  # no per-item match percentages either
-    fields = {f["name"]: f["value"] for f in embed["fields"]}
-    assert fields["Medical AI"] == "1 paper · 1 grant"
-    assert fields["Robotics"] == "1 paper"
-    assert embed["footer"]["text"] == "The full report is attached below."
+    assert embed["description"].strip()
+    names = [f["name"] for f in embed["fields"]]
+    assert any(name.startswith("Found ") for name in names)
+    assert any(name.startswith("By category") for name in names)
+    assert embed["footer"]["text"].endswith("Mylo never tags anyone")
 
 
 @pytest.mark.django_db
-def test_an_unthemed_lab_is_not_told_its_numbers_twice(db) -> None:
-    """With nothing to break down by, one line is the whole summary."""
+def test_the_post_carries_no_percentage_cosine_or_score(db) -> None:
+    """Plan H3: user-facing text shows verdicts and positions only."""
     lab = _lab()
-    _scored(lab, title="One", cluster="")
-    _scored(lab, title="Two", cluster="")
+    _scored(lab, title="Segmentation nets", cluster="Medical AI", percent=88)
 
-    embed = digest_embed(compile_lab_digest(lab, on=TODAY))
+    data = compile_report_for_lab(lab)
+    rendered = str(lab_post_embed(data, data.stats)).lower()
 
-    assert embed["description"] == "**2** papers"
-    assert embed["fields"] == []
-
-
-@pytest.mark.django_db
-def test_the_summary_link_is_not_localhost(db) -> None:
-    """It goes to a whole lab's server; a loopback link helps nobody there."""
-    lab = _lab()
-    _scored(lab, title="Something", cluster="Medical AI")
-
-    embed = digest_embed(compile_lab_digest(lab, on=TODAY))
-
-    assert "localhost" not in embed.get("url", "")
-    assert "127.0.0.1" not in embed.get("url", "")
+    assert "%" not in rendered
+    assert "cosine" not in rendered
+    assert "score" not in rendered
 
 
 # --------------------------------------------------------------------------- #
@@ -441,9 +415,8 @@ def test_the_digest_reads_the_same_scores_as_the_labs_feed(db) -> None:
         signals={"suggested": False, "match_percent": 10, "area": "paper"},
     )
 
-    digest = compile_lab_digest(lab, on=TODAY)
+    stats = compile_report_for_lab(lab).stats
 
     # Only the promoted row is counted; the computed-but-unpromoted one is not.
-    assert digest.total == 1
-    assert digest.counts["papers"] == 1
-    assert [t.label for t in digest.themes] == ["Medical AI"]
+    assert stats.entered == 1
+    assert stats.by_category["papers"] == (1, 1)

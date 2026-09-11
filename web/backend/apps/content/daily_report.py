@@ -38,7 +38,12 @@ from django.utils import timezone
 from apps.content import briefing
 from apps.content.briefing_sections import SECTION_NOUN, apply_narrative
 from apps.content.fellowship_bands import OPEN as OPEN_BAND
-from apps.content.models import DailyBriefing, RelevanceScore
+from apps.content.models import DailyBriefing, RelevanceScore, SavedOpportunity
+from apps.content.report_stats import (
+    DEFAULT_DEADLINE_WINDOW_DAYS,
+    ReportStats,
+    compile_stats,
+)
 from apps.content.slates import standing_render_depth
 from apps.content.targets import target_for_lab
 from apps.content.theme_report import (
@@ -85,6 +90,12 @@ class ReportItem:
     deadline_date: str
     #: This item entered the reader's slate on this run — the report's "new" badge.
     is_new: bool
+    #: The underlying :class:`~apps.content.models.ContentItem` id, as a string.
+    #: Carried so a surface that needs to join back — the deadline horizon, a
+    #: reader's saves — can do it without re-reading the score rows the report was
+    #: already built from. Defaults to empty for the hand-built sample items,
+    #: which have no row behind them; every join skips a falsy id.
+    content_id: str = ""
     cluster_label: str = ""
     #: Position within **this theme's** slate — what replaced the percent match.
     #: A global position would compare scores that are not comparable, which is
@@ -200,6 +211,9 @@ class ReportData:
     #: without publishing what it is withholding. Always 0 on a personal report,
     #: which is scoped to one reader.
     private_projects_hidden: int = 0
+    #: This run's numbers (plan 1.1). Derived from the parts above, so the
+    #: statistics block and the summary table can never disagree.
+    stats: ReportStats = field(default_factory=ReportStats)
 
     @property
     def parts(self) -> list[ReportPart]:
@@ -343,6 +357,7 @@ def _item_from_score(
     flat = briefing._showcase_item(score, today, None, cluster_id)
     meta = score.content.metadata or {}
     return ReportItem(
+        content_id=flat["content_id"],
         type=flat["type"],
         category=category,
         title=flat["title"],
@@ -385,6 +400,24 @@ def _open_fellowships(
         _item_from_score(s, "fellowships", today)
         for s in rows[:standing_render_depth(briefing.CATEGORY_TYPES["fellowships"])]
     ]
+
+
+def _saved_content_ids(reader, saves_filter: dict | None) -> set:
+    """What this target has bookmarked — the other half of the deadline horizon.
+
+    A saved call with a date next week matters whether or not it is still in a top
+    list this morning, and saving something is the clearest statement a reader can
+    make that they intend to act on it.
+    """
+    if saves_filter is None:
+        saves_filter = {"user": reader, "target_lab": None} if reader else None
+    if not saves_filter:
+        return set()
+    return set(
+        SavedOpportunity.objects.filter(**saves_filter)
+        .exclude(content__isnull=True)
+        .values_list("content_id", flat=True)
+    )
 
 
 def _theme_item_builder(category: str, today: str):
@@ -473,6 +506,8 @@ def _compile(
     reader=None,
     interests: dict | None = None,
     hidden_projects: int = 0,
+    window_days: int = DEFAULT_DEADLINE_WINDOW_DAYS,
+    saves_filter: dict | None = None,
 ) -> ReportData:
     """The shared gather, over whatever target the two public compilers name.
 
@@ -534,7 +569,7 @@ def _compile(
         else []
     )
 
-    return ReportData(
+    data = ReportData(
         username=key,
         display_name=display_name,
         generated_on=today,
@@ -550,6 +585,53 @@ def _compile(
         projects=project_parts,
         private_projects_hidden=hidden_projects,
     )
+    # Computed last, from the finished report: every figure in the statistics
+    # block is read off the parts above rather than re-queried, so the block and
+    # the summary table cannot quote different totals for the same morning.
+    stored = getattr(daily, "stats", None) if _is_today(daily, today) else None
+    data.stats = (
+        ReportStats.from_dict(stored)
+        if stored
+        else compile_stats(
+            data,
+            target_filter=target_filter,
+            projects=projects,
+            reader=reader,
+            window_days=window_days,
+            saved_content_ids=_saved_content_ids(reader, saves_filter),
+        )
+    )
+    return data
+
+
+def _is_today(briefing, today: str) -> bool:
+    """Whether a stored briefing covers the day being compiled.
+
+    Yesterday's statistics on today's document would be worse than none: the
+    numbers would look authoritative and describe a different morning.
+    """
+    generated = getattr(briefing, "generated_on", None)
+    return generated is not None and generated.isoformat() == today
+
+
+def _user_window(user) -> int:
+    """This person's deadline horizon, in days.
+
+    Their own buffer, which is also the window the report's "deadlines inside N
+    days" table uses, so the number in the heading and the rows under it are the
+    same setting rather than two constants that drift.
+    """
+    watch = getattr(user, "watch", None)
+    return int(
+        getattr(watch, "deadline_buffer_days", None) or DEFAULT_DEADLINE_WINDOW_DAYS
+    )
+
+
+def _lab_window(lab) -> int:
+    watch = getattr(lab, "watch", None)
+    return int(
+        getattr(watch, "deadline_buffer_days", None) or DEFAULT_DEADLINE_WINDOW_DAYS
+    )
 
 
 def compile_report_for_user(user) -> ReportData:
@@ -564,6 +646,7 @@ def compile_report_for_user(user) -> ReportData:
         # One reader, so the PDF honours their manual ignores.
         reader=user,
         interests=getattr(getattr(user, "profile", None), "interests", None),
+        window_days=_user_window(user),
     )
 
 
@@ -589,4 +672,9 @@ def compile_report_for_lab(lab) -> ReportData:
         allow=briefing.LAB_BRIEFING_CATEGORIES,
         personal_label=lab.name,
         interests=target_for_lab(lab).interests,
+        window_days=_lab_window(lab),
+        # A lab's deadline horizon covers what the *lab* saved. One member's
+        # bookmark is not the lab's intention, and a lab post naming it would
+        # publish a personal save to a channel.
+        saves_filter={"target_lab": lab},
     )

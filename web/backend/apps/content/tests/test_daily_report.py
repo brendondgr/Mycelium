@@ -28,6 +28,7 @@ from apps.content.daily_report import (
 from apps.content.daily_report_pdf import _split_reason, render_report_pdf
 from apps.content.daily_report_send import run_daily_report_send
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
+from apps.content.report_stats import ReportStats
 from apps.research.models import Project
 
 
@@ -731,6 +732,9 @@ def _report_for(user) -> ReportData:
         categories=["papers"],
         counts={"papers": 1},
         new_counts={"papers": 0},
+        # A day with nothing new and no alerts pushes nothing (plan H7), so a
+        # fixture about the *send* flow has to be a day worth sending.
+        stats=ReportStats(matched=1, entered=1),
     )
 
 
@@ -745,7 +749,9 @@ def test_send_flow_is_phased_and_keeps_the_bytes_for_the_drain(
     prevent. The outbox retention sweep owns removal instead, once a row has settled.
     """
     recipients = [_FakeUser(1, "alice"), _FakeUser(2, "bob")]
-    monkeypatch.setattr(daily_report_send, "eligible_recipients", lambda u, **_kw: recipients)
+    monkeypatch.setattr(
+        daily_report_send, "eligible_recipients", lambda u, **_kw: recipients
+    )
     monkeypatch.setattr(daily_report_send, "_report_dir", lambda: tmp_path / "outbox")
 
     queued: list[str] = []
@@ -772,7 +778,9 @@ def test_send_flow_is_phased_and_keeps_the_bytes_for_the_drain(
 
 def test_send_flow_isolates_one_failure(monkeypatch) -> None:
     recipients = [_FakeUser(1, "good"), _FakeUser(2, "bad")]
-    monkeypatch.setattr(daily_report_send, "eligible_recipients", lambda u, **_kw: recipients)
+    monkeypatch.setattr(
+        daily_report_send, "eligible_recipients", lambda u, **_kw: recipients
+    )
 
     def render_fn(data):
         if data.username == "bad":
@@ -793,7 +801,9 @@ def test_send_flow_isolates_one_failure(monkeypatch) -> None:
 
 def test_unreachable_send_is_counted_not_sent(monkeypatch, tmp_path) -> None:
     recipients = [_FakeUser(1, "u")]
-    monkeypatch.setattr(daily_report_send, "eligible_recipients", lambda u, **_kw: recipients)
+    monkeypatch.setattr(
+        daily_report_send, "eligible_recipients", lambda u, **_kw: recipients
+    )
     monkeypatch.setattr(daily_report_send, "_report_dir", lambda: tmp_path / "outbox")
     summary = run_daily_report_send(
         compile_fn=_report_for,
@@ -808,7 +818,9 @@ def test_unreachable_send_is_counted_not_sent(monkeypatch, tmp_path) -> None:
 
 def test_saved_dir_keeps_the_pdfs(monkeypatch, tmp_path) -> None:
     recipients = [_FakeUser(1, "keeper")]
-    monkeypatch.setattr(daily_report_send, "eligible_recipients", lambda u, **_kw: recipients)
+    monkeypatch.setattr(
+        daily_report_send, "eligible_recipients", lambda u, **_kw: recipients
+    )
     run_daily_report_send(
         compile_fn=_report_for,
         render_fn=lambda d: b"%PDF-x",
