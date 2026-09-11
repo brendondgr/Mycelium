@@ -178,7 +178,6 @@ def test_the_document_is_organised_by_theme() -> None:
         "Reef Mapping",
         "New articles",
         "New grants",
-        "Currently in your list",
         "Coral Atlas",
     ):
         assert heading in text, f"missing section: {heading}"
@@ -296,11 +295,18 @@ def test_listed_items_are_numbered_by_their_position_in_their_theme() -> None:
     assert "NEW" in text
 
 
-def test_a_standing_item_carries_no_reason_and_no_verdict() -> None:
-    """The reference block reports what is held, and argues nothing."""
+def test_the_printed_report_counts_what_is_standing_but_does_not_list_it() -> None:
+    """Plan 4.1: the standing list stays on the web.
+
+    Printing it turned a report about what *changed* into a 25-row-per-theme
+    catalogue identical to yesterday's, and a document whose bulk does not change
+    is a document nobody opens twice. The count survives, because "nothing new in
+    a theme that holds 25" and "nothing at all" are different days.
+    """
     text = _text(_sample_data())
-    assert "Settled paper" in text
-    # Its lead sentence — shared with the entrants — appears only for the entrants.
+    assert "Settled paper" not in text
+    assert "standing" in text
+    # The entrants' lead sentence still appears, exactly once.
     assert text.count("Relevant to your work on topic 0.") == 1
 
 

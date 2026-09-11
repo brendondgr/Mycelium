@@ -35,6 +35,7 @@ from apps.content.daily_report import (
     ReportPart,
 )
 from apps.content.daily_report_pdf import render_report_pdf
+from apps.content.report_stats import ReportStats
 from apps.content.theme_report import ThemeSection
 
 _TODAY = "2026-08-14"
@@ -346,6 +347,92 @@ _NARRATIVE = {
 }
 
 
+#: A day with two alerts, one of each shape the renderer has to handle: an
+#: overlap block with a "where you still differ" beat, and a timeline block whose
+#: date is projected rather than published. Both are what the daily v2 layout
+#: exists for, so the formatting-review loop has to show them (plan 4.5).
+_SAMPLE_ALERTS = [
+    {
+        "project": "Coral Atlas",
+        "trigger": "overlap risk",
+        "title": "Photogrammetric Reef Mapping at Scale",
+        "url": "https://example.org/sample-alert-1",
+        "beats": [
+            (
+                "What overlaps",
+                "It reports a result close to the contribution this project "
+                "claims [P1].",
+            ),
+            (
+                "Where you still differ",
+                "It does not mention turbidity compensation, diver-free capture.",
+            ),
+            (
+                "Do this week",
+                "Read it against your framing and decide whether your claim "
+                "still stands where it is.",
+            ),
+        ],
+    },
+    {
+        "project": "Coral Atlas",
+        "trigger": "fits your timeline",
+        "title": "ISWC 2027 resource track",
+        "url": "https://example.org/sample-alert-2",
+        "beats": [
+            (
+                "Fits your timeline",
+                "Due 2027-05-07, 35 days after the atlas draft — above your "
+                "14-day buffer (you).",
+            ),
+            (
+                "Caveat",
+                "This date is projected from the last cycle, not published.",
+            ),
+        ],
+    },
+]
+
+
+def _sample_blocks() -> list:
+    """The same two alerts as :class:`AlertBlock`\\ s — what the PDF renders from.
+
+    The PDF renders the body from structure and the web renders it from markdown,
+    so the sample has to carry both or the formatting-review loop only ever looks
+    at one of them.
+    """
+    from apps.content.alert_report import AlertBlock
+
+    return [
+        AlertBlock(
+            project_label=alert["project"],
+            trigger=alert["trigger"],
+            trigger_label=alert["trigger"],
+            title=alert["title"],
+            url=alert["url"],
+            beats=list(alert["beats"]),
+        )
+        for alert in _SAMPLE_ALERTS
+    ]
+
+
+def _sample_attention() -> str:
+    """The alert section, in exactly the grammar the two renderers parse."""
+    lines = ["## Needs your attention"]
+    index = 1
+    current = ""
+    for alert in _SAMPLE_ALERTS:
+        heading = f"{alert['project']} · {alert['trigger']}"
+        if heading != current:
+            lines.append(f"### {heading}")
+            current = heading
+        block = [f"{index}. **[{alert['title']}]({alert['url']})** — **NEW**"]
+        block += [f"- **{label}:** {text}" for label, text in alert["beats"]]
+        lines.append("\n".join(block))
+        index += 1
+    return "\n\n".join(lines)
+
+
 def build_sample(kind: str) -> ReportData:
     """A representative day for ``kind`` ("personal" or "lab"), ready to render."""
     own_label = _LAB_NAME if kind == "lab" else PERSONAL_LABEL
@@ -377,6 +464,7 @@ def build_sample(kind: str) -> ReportData:
         [project_scope],
         complete=_no_model,
         narrative=_NARRATIVE,
+        attention=_sample_attention(),
     )
 
     sections = _theme_sections(_PERSONAL_ITEMS)
@@ -391,6 +479,32 @@ def build_sample(kind: str) -> ReportData:
         lead_origin="llm",
         counts={c: len(rows) for c, rows in _PERSONAL_ITEMS.items()},
         new_counts=_counts(_PERSONAL_ITEMS),
+        # The statistics and deadline frame is part of what gets reviewed, so the
+        # sample carries a plausible one rather than an empty one.
+        alerts=_sample_blocks(),
+        stats=ReportStats(
+            discovered_papers=2140,
+            discovered_opportunities=186,
+            matched=41,
+            entered=sum(_counts(_PERSONAL_ITEMS).values())
+            + sum(_counts(_PROJECT_ITEMS).values()),
+            by_category={
+                category: (len(_PERSONAL_ITEMS.get(category) or []), 25)
+                for category in _CATEGORIES
+            },
+            by_project=[(own_label, 3, 2), (_PROJECT_LABEL, 1, 0)],
+            aggregate_label=own_label,
+            by_theme=[("AI for Oceanography", 2), ("Medical AI Agents", 1)],
+            alerts=len(_SAMPLE_ALERTS),
+            deadlines_in_window=2,
+            nearest_deadline={
+                "title": "ECIR 2027 abstract",
+                "url": "https://example.org/sample-deadline",
+                "due_date": "2026-09-25",
+                "days": 9,
+                "label": "abstract",
+            },
+        ),
         personal=ReportPart(
             key="personal",
             label=own_label,

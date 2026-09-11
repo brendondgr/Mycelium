@@ -201,6 +201,7 @@ def write_narrative(
     *,
     complete: CompleteFn | None = None,
     entitled: bool = False,
+    alerts: Sequence[tuple[str, str, str]] = (),
 ) -> dict:
     """Mylo's prose for one run, as structure rather than markdown.
 
@@ -252,8 +253,11 @@ def write_narrative(
         )
         reads.append((section.label, read))
 
+    # The lead is also the Discord overview, so today's alerts go into it: a
+    # paragraph about the day's reading, written while two things needed
+    # deciding, has buried the only part that was urgent (plan 4.4).
     lead, lead_origin = narrative.write_lead(
-        profile_text, reads, complete=complete
+        profile_text, reads, alerts=list(alerts), complete=complete
     )
     return {
         "lead": lead,

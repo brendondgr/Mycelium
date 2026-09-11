@@ -214,6 +214,11 @@ class ReportData:
     #: This run's numbers (plan 1.1). Derived from the parts above, so the
     #: statistics block and the summary table can never disagree.
     stats: ReportStats = field(default_factory=ReportStats)
+    #: Today's open alerts as renderable blocks
+    #: (:class:`apps.content.alert_report.AlertBlock`). Structured rather than
+    #: markdown because the PDF renders from structure — the written body carries
+    #: the same alerts as markdown for the web, and both come from one source.
+    alerts: list = field(default_factory=list)
 
     @property
     def parts(self) -> list[ReportPart]:
@@ -508,6 +513,7 @@ def _compile(
     hidden_projects: int = 0,
     window_days: int = DEFAULT_DEADLINE_WINDOW_DAYS,
     saves_filter: dict | None = None,
+    alerts: list | None = None,
 ) -> ReportData:
     """The shared gather, over whatever target the two public compilers name.
 
@@ -584,6 +590,7 @@ def _compile(
         personal=personal,
         projects=project_parts,
         private_projects_hidden=hidden_projects,
+        alerts=list(alerts or []),
     )
     # Computed last, from the finished report: every figure in the statistics
     # block is read off the parts above rather than re-queried, so the block and
@@ -612,6 +619,13 @@ def _is_today(briefing, today: str) -> bool:
     """
     generated = getattr(briefing, "generated_on", None)
     return generated is not None and generated.isoformat() == today
+
+
+def _alert_blocks(target_filter: dict) -> list:
+    """Today's open alerts, as blocks. Imported lazily to keep the module acyclic."""
+    from apps.content.alert_report import block_for, open_alerts
+
+    return [block_for(alert) for alert in open_alerts(target_filter)]
 
 
 def _user_window(user) -> int:
@@ -647,6 +661,7 @@ def compile_report_for_user(user) -> ReportData:
         reader=user,
         interests=getattr(getattr(user, "profile", None), "interests", None),
         window_days=_user_window(user),
+        alerts=_alert_blocks({"target_user": user}),
     )
 
 
@@ -673,6 +688,7 @@ def compile_report_for_lab(lab) -> ReportData:
         personal_label=lab.name,
         interests=target_for_lab(lab).interests,
         window_days=_lab_window(lab),
+        alerts=_alert_blocks({"target_lab": lab}),
         # A lab's deadline horizon covers what the *lab* saved. One member's
         # bookmark is not the lab's intention, and a lab post naming it would
         # publish a personal save to a channel.

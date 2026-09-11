@@ -145,19 +145,32 @@ def write_lead(
     theme_reads: Sequence[tuple[str, str]],
     *,
     deadline_note: str = "",
+    alerts: Sequence[tuple[str, str, str]] = (),
     complete: CompleteFn | None = None,
 ) -> tuple[str, str]:
     """Prompt D. Returns ``(paragraph, origin)``.
 
-    ``theme_reads`` is ``[(theme label, its read)]``. With nothing to lead on,
-    returns an empty string rather than a paragraph explaining that there is
-    nothing — the cover table already says so, in less space.
+    ``theme_reads`` is ``[(theme label, its read)]``. ``alerts`` is
+    ``[(project, trigger, title)]`` for whatever fired today.
+
+    The alerts are in the prompt because this paragraph is also the **Discord
+    overview**: it is the first and often only thing a reader sees, and a lead
+    that talks about the day's reading while two things needed deciding has
+    buried the only part that was urgent (plan 4.4).
+
+    With nothing to lead on at all, returns an empty string rather than a
+    paragraph explaining that there is nothing — the cover table already says so,
+    in less space. An alert counts as something to lead on even when no theme
+    moved, because something happened to a project.
     """
     reads = [(label, text) for label, text in theme_reads if text]
-    if not reads:
+    alerts = list(alerts)
+    if not reads and not alerts:
         return "", ""
     ask = complete if complete is not None else _settings_complete(_LEAD_MAX_TOKENS)
-    prompt = build_lead_prompt(portfolio_text, reads, deadline_note=deadline_note)
+    prompt = build_lead_prompt(
+        portfolio_text, reads, deadline_note=deadline_note, alerts=alerts
+    )
     try:
         raw = ask(_LEAD_SYSTEM, prompt)
     except Exception as exc:  # noqa: BLE001
@@ -166,7 +179,7 @@ def write_lead(
     prose = _clean_block(raw)
     if prose:
         return prose, "llm"
-    return lead_fallback(reads), "fallback"
+    return lead_fallback(reads, alerts), "fallback"
 
 
 def build_lead_prompt(
@@ -174,6 +187,7 @@ def build_lead_prompt(
     reads: Sequence[tuple[str, str]],
     *,
     deadline_note: str = "",
+    alerts: Sequence[tuple[str, str, str]] = (),
 ) -> str:
     lines = [
         f"About the reader:\n{portfolio_text or '(no profile details)'}",
@@ -182,21 +196,44 @@ def build_lead_prompt(
     ]
     for label, text in reads:
         lines.append(f"- {label}: {text}")
+    if alerts:
+        lines.append("")
+        lines.append(
+            "Things that need a decision today — lead with these, they matter "
+            "more than the reading:"
+        )
+        for project, trigger, title in alerts:
+            lines.append(f"- {project} ({trigger}): {title}")
     if deadline_note:
         lines.append("")
         lines.append(f"Deadline pressure today: {deadline_note}")
     return "\n".join(lines)
 
 
-def lead_fallback(reads: Sequence[tuple[str, str]]) -> str:
-    """The deterministic lead: which strands moved, and nothing more."""
+def lead_fallback(
+    reads: Sequence[tuple[str, str]],
+    alerts: Sequence[tuple[str, str, str]] = (),
+) -> str:
+    """The deterministic lead: what needs deciding, then which strands moved."""
+    alerts = list(alerts)
     labels = [label for label, _text in reads]
+    opening = ""
+    if alerts:
+        projects = []
+        for project, _trigger, _title in alerts:
+            if project and project not in projects:
+                projects.append(project)
+        noun = "thing" if len(alerts) == 1 else "things"
+        named = ", ".join(projects) if projects else "your projects"
+        opening = f"{len(alerts)} {noun} need a decision today, in {named}."
     if not labels:
-        return ""
+        return opening
     if len(labels) == 1:
-        return f"Today's news is all in your {labels[0]} work."
-    named = ", ".join(labels[:-1]) + f" and {labels[-1]}"
-    return f"Today brought something new to {named}."
+        strands = f"Today's news is all in your {labels[0]} work."
+    else:
+        named = ", ".join(labels[:-1]) + f" and {labels[-1]}"
+        strands = f"Today brought something new to {named}."
+    return f"{opening} {strands}".strip()
 
 
 def offline_note() -> str:

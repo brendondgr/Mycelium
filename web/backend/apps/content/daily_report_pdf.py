@@ -97,6 +97,7 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.tableofcontents import TableOfContents
 
+from apps.content import report_grammar
 from apps.content.briefing_sections import SECTION_NOUN
 from apps.content.daily_report import (
     CATEGORY_LABELS,
@@ -254,6 +255,13 @@ def _styles() -> dict[str, ParagraphStyle]:
         "ItemReason", fontName=_SANS, fontSize=9.5, leading=13,
         textColor=TEXT_SECONDARY, spaceAfter=2,
     )
+    # A labelled beat under an alert — "Where you still differ: …". Slightly
+    # indented so the run of them reads as one block belonging to the title
+    # above, rather than as four independent sentences.
+    styles["ItemBeat"] = ParagraphStyle(
+        "ItemBeat", fontName=_SANS, fontSize=9.5, leading=13.5,
+        textColor=TEXT_SECONDARY, leftIndent=8, spaceAfter=1,
+    )
     # The insight: the first sentence of the rationale, which is the one line that
     # says why this entry is in front of the reader. Set at body weight in the
     # primary text colour and drawn against a rule (:func:`_insight_flowable`), so
@@ -306,6 +314,10 @@ _VERDICT_RE = re.compile(r"\b(Read|Skim|File)\b")
 _DEADLINE_RE = re.compile(r"\bdeadline\s+(\d{4}-\d{2}-\d{2})\b", re.IGNORECASE)
 #: A numbered item line — ``1. **[Title](url)** — **NEW** · Read``.
 _NUMBERED_RE = re.compile(r"^(\d{1,3})[.)]\s+(.*)$")
+#: The citation into the references block (see :mod:`apps.content.report_grammar`).
+#: Set small and muted: it has to be findable without interrupting the sentence
+#: it sits in, which is the whole difference between a citation and a footnote.
+_CITATION_RE = report_grammar.CITATION
 
 
 def _inline(text: str, *, verdicts: bool = False) -> str:
@@ -326,7 +338,12 @@ def _inline(text: str, *, verdicts: bool = False) -> str:
     chip, so nothing here needs to guess at one. The flag stays so a caller that
     genuinely holds a signal segment can opt in.
     """
-    out = escape(text or "")
+    # The state markers are grammar for the verifier, not prose for the reader,
+    # so they are gone before anything is escaped or styled.
+    out = escape(report_grammar.strip_markers(text or ""))
+    out = _CITATION_RE.sub(
+        lambda m: f'<font size="7" color="{_MUTED_HEX}">[P{m.group(1)}]</font>', out
+    )
     out = _LINK_RE.sub(
         lambda m: f'<a href="{m.group(2)}" color="{_LINK_HEX}">{m.group(1)}</a>', out
     )
@@ -525,6 +542,13 @@ def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
             assert match is not None
             item = (match.group(1), [match.group(2)])
         elif stripped[:2] in ("- ", "* "):
+            # A labelled beat belongs to the numbered item above it. Flushing
+            # here — which is what used to happen for every bullet — split an
+            # alert's four beats away from the item they are about and left the
+            # title stranded above them at a page break.
+            if item is not None and report_grammar.LABELLED_BEAT.match(stripped):
+                item[1].append(stripped)
+                continue
             flush()
             flow.append(
                 Paragraph(_inline(stripped[2:]), styles["Bullet"], bulletText="•")
@@ -1039,18 +1063,32 @@ def _written_item_flowables(
     object on the page.
     """
     title, is_new, verdict, deadline = _split_item_line(lines[0])
-    return _entry_row(
-        rank,
-        _content_flowables(
-            _inline(title),
-            " ".join(lines[1:]).strip(),
-            _deadline_bits(deadline, None),
-            styles,
-        ),
-        verdict,
-        is_new,
+    # Labelled beats are the alert blocks' body — "What overlaps", "Where you
+    # still differ", "Do this week" — and each is a line of its own, because the
+    # label is what a reader scans for when deciding whether to act today.
+    beats: list[tuple[str, str]] = []
+    prose: list[str] = []
+    for line in lines[1:]:
+        matched = report_grammar.LABELLED_BEAT.match(line)
+        if matched:
+            beats.append((matched.group(1), matched.group(2)))
+        else:
+            prose.append(line)
+
+    body = _content_flowables(
+        _inline(title),
+        " ".join(prose).strip(),
+        _deadline_bits(deadline, None),
         styles,
     )
+    for label, text in beats:
+        body.append(Spacer(1, 2))
+        body.append(
+            Paragraph(
+                f"<b>{escape(label)}:</b> {_inline(text)}", styles["ItemBeat"]
+            )
+        )
+    return _entry_row(rank, body, verdict, is_new, styles)
 
 
 def _summary_table(data: ReportData, styles: dict[str, ParagraphStyle]) -> Table:
@@ -1387,10 +1425,19 @@ def render_report_pdf(data: ReportData) -> bytes:
             story.append(Paragraph(_ORIGIN_NOTE, styles["Muted"]))
         story.append(PageBreak())
 
+    # 3b. What needs attention, above everything else in the body. An alert is a
+    #     claim that something must be decided today; putting it under the week's
+    #     reading is how it gets read on Thursday. Rendered from the matchers'
+    #     own evidence, so every number in it is theirs (plan H2).
+    if data.alerts:
+        _extend_title(story, "Needs your attention", styles)
+        _extend_alerts(story, data.alerts, styles)
+        story.append(PageBreak())
+
     # 4. The body: one section per theme with news, then the quiet line, then one
     #    section per project. A theme with no matches at all appears nowhere.
     personal = data.personal
-    wrote_body = False
+    wrote_body = bool(data.alerts)
     if personal is not None and personal.live_themes:
         for index, section in enumerate(personal.live_themes):
             if index:
@@ -1449,12 +1496,146 @@ def render_report_pdf(data: ReportData) -> bytes:
             )
         )
 
-    # 5. Provenance, as one small paragraph rather than decoration.
+    # 5. The code frame's closing half (plan A.1): what is due soon, what the run
+    #    found, and the references every citation points at. All three are
+    #    rendered from structured data and never written by the model (plan H6) —
+    #    a model renumbering the references would silently re-point every
+    #    citation in the document.
+    story.extend(_deadline_horizon(data, styles))
+    story.extend(_statistics_block(data, styles))
+
+    # 6. Provenance, as one small paragraph rather than decoration.
     story.append(Spacer(1, 0.2 * inch))
     story.append(Paragraph(_footer_note(data), styles["CoverFoot"]))
 
     doc.multiBuild(story, onFirstPage=_decorate, onLaterPages=_decorate)
     return buffer.getvalue()
+
+
+def _extend_alerts(
+    story: list, blocks: list, styles: dict[str, ParagraphStyle]
+) -> None:
+    """The alert blocks, grouped by project and trigger, in the entry-row shape.
+
+    The same object as every other entry on the page — rank, title, chips, body —
+    because an alert is not a different kind of thing to read, it is the same kind
+    of thing with a reason attached.
+    """
+    current = ""
+    for index, block in enumerate(blocks, start=1):
+        heading = f"{block.project_label} · {block.trigger_label}"
+        if heading != current:
+            story.append(Spacer(1, 0.1 * inch))
+            story.append(Paragraph(escape(heading), styles["H2"]))
+            current = heading
+        body: list = [
+            Paragraph(
+                (
+                    f'<a href="{escape(block.url)}" color="{_TITLE_HEX}">'
+                    f"{_inline(block.title)}</a>"
+                )
+                if block.url
+                else _inline(block.title),
+                styles["ItemTitle"],
+            )
+        ]
+        for label, text in block.beats:
+            body.append(Spacer(1, 2))
+            body.append(
+                Paragraph(
+                    f"<b>{escape(label)}:</b> {_inline(text)}", styles["ItemBeat"]
+                )
+            )
+        story.extend(_entry_row(str(index), body, None, True, styles))
+
+
+def _deadline_horizon(
+    data: ReportData, styles: dict[str, ParagraphStyle]
+) -> list:
+    """What is due inside the reader's own buffer, as a table (plan A.1).
+
+    A table rather than prose because it is a list of dates, and because the
+    numbers in it must be the matchers' numbers exactly. The window is the
+    reader's own deadline buffer, so the heading names it: a reader who thinks 14
+    days is the wrong horizon can change it, and this is where they find out it
+    is a setting rather than a system constant.
+    """
+    stats = data.stats
+    if not stats.deadlines_in_window:
+        return []
+    nearest = stats.nearest_deadline or {}
+    rows = [["Due", "Days", "What"]]
+    rows.append(
+        [
+            Paragraph(escape(str(nearest.get("due_date") or "")), styles["Body"]),
+            Paragraph(escape(str(nearest.get("days", ""))), styles["Body"]),
+            Paragraph(escape(str(nearest.get("title") or "")), styles["Body"]),
+        ]
+    )
+    more = stats.deadlines_in_window - 1
+    heading = f"Deadlines inside {stats.deadline_window_days} days"
+    out: list = [
+        Spacer(1, 0.16 * inch),
+        Paragraph(heading, styles["H1"]),
+        HRFlowable(width="100%", thickness=1, color=SECONDARY, spaceAfter=8),
+        Table(
+            rows,
+            colWidths=[1.3 * inch, 0.7 * inch, 4.7 * inch],
+            hAlign="LEFT",
+            style=[
+                ("FONTNAME", (0, 0), (-1, 0), _SANS_BOLD),
+                ("FONTSIZE", (0, 0), (-1, -1), 9.5),
+                ("TEXTCOLOR", (0, 0), (-1, -1), TEXT),
+                ("LINEBELOW", (0, 0), (-1, 0), 0.5, BORDER),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ],
+        ),
+    ]
+    if more > 0:
+        noun = "deadline" if more == 1 else "deadlines"
+        out.append(
+            Paragraph(
+                f"And {more} more {noun} inside the window — on the web.",
+                styles["Muted"],
+            )
+        )
+    return out
+
+
+def _statistics_block(data: ReportData, styles: dict[str, ParagraphStyle]) -> list:
+    """What the run found, in the words the Discord post uses (plan A.1).
+
+    The same figures, from the same stored ``stats``, so a reader comparing the
+    post on their phone with the document on their desk sees one morning and not
+    two. Omitted entirely when the run recorded no statistics — a report written
+    before they existed says nothing rather than saying zero.
+    """
+    stats = data.stats
+    if not stats.matched and not stats.entered and not stats.has_volume:
+        return []
+
+    from apps.content.discord_embeds import volume_line
+
+    subject = "you or your projects" if data.personal is None else (
+        "you or your projects" if data.personal.kind == "personal" else "the lab"
+    )
+    lines = [volume_line(stats, subject=subject, period="overnight")]
+    if stats.by_category:
+        cells = " · ".join(
+            f"{CATEGORY_LABELS.get(category, category.title())} {new} of {total}"
+            for category, (new, total) in stats.by_category.items()
+        )
+        lines.append(f"By category (new of what your feeds hold): {cells}")
+    if stats.by_theme:
+        themes = " · ".join(f"{label} {count}" for label, count in stats.by_theme)
+        lines.append(f"By theme (new): {themes}")
+    return [
+        Spacer(1, 0.16 * inch),
+        Paragraph("What Mylo found", styles["H1"]),
+        HRFlowable(width="100%", thickness=1, color=SECONDARY, spaceAfter=8),
+        *[Paragraph(escape(line), styles["Body"]) for line in lines],
+    ]
 
 
 def _extend_title(story: list, text: str, styles: dict[str, ParagraphStyle]) -> None:
@@ -1523,26 +1704,26 @@ def _extend_theme(
         for item in entrants[1:]:
             story.extend(_item_flowables(item, item.position or "–", styles))
 
-    standing = [
-        item
-        for category in categories
-        for item in (section.standing.get(category) or [])
-    ]
+    standing = sum(
+        len(section.standing.get(category) or []) for category in categories
+    )
     if not standing:
-        # Every one of this theme's slate is an entrant, so a reference block would
-        # only repeat the section above it.
+        # Every one of this theme's slate is an entrant, so there is nothing
+        # standing to account for.
         return
-    story.append(Spacer(1, 0.08 * inch))
-    story.append(Paragraph("Currently in your list", styles["H2"]))
+    # The standing list itself stays on the web (plan 4.1). Printing it turned a
+    # report about what changed into a 25-row-per-theme catalogue that is
+    # identical to yesterday's, and a document whose bulk does not change is a
+    # document nobody opens twice. The count still prints, because "nothing new
+    # in a theme that holds 25" and "nothing at all" are different days.
+    noun = "item" if standing == 1 else "items"
+    story.append(Spacer(1, 0.06 * inch))
     story.append(
         Paragraph(
-            "Unchanged since you last looked — listed for reference, with no new "
-            "commentary.",
+            f"{standing} standing {noun} in this list, unchanged — on the web.",
             styles["Muted"],
         )
     )
-    for item in standing:
-        story.extend(_standing_row(item, styles))
 
 
 def _extend_part(

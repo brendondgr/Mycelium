@@ -682,6 +682,7 @@ def _write_briefing(
     member_names: dict[str, str] | None = None,
     projects: list | None = None,
     hidden_projects: int = 0,
+    alert_summaries: list | None = None,
     personal_label: str = briefing_sections.PERSONAL_HEADING,
     complete: briefing_sections.CompleteFn | None = None,
     reader=None,
@@ -700,6 +701,7 @@ def _write_briefing(
     points so both apply the same gather + fallback rules — a lab's report is
     structurally the same document its members receive.
     """
+    alert_summaries = alert_summaries or []
     categories, counts, new_counts, showcase = _gather(
         target_filter, watch, allow, member_names, reader=reader
     )
@@ -749,6 +751,7 @@ def _write_briefing(
             clusters,
             complete=complete,
             entitled=_narrative_entitled(target_filter),
+            alerts=alert_summaries,
         )
         body, used_llm = briefing_sections.generate_report_body(
             _profile_text(target),
@@ -858,6 +861,9 @@ def generate_briefing_for_user(
     from .report_stats import record_run_stats
 
     blocks = [block_for(alert) for alert in open_alerts({"target_user": user})]
+    summaries = [
+        (block.project_label, block.trigger_label, block.title) for block in blocks
+    ]
     briefing = _write_briefing(
         owner={"user": user},
         target=target_for_user(user),
@@ -868,6 +874,7 @@ def generate_briefing_for_user(
         # A personal report has exactly one reader, so it honours their ignores.
         reader=user,
         attention=attention_section(blocks),
+        alert_summaries=summaries,
     )
     # The run's numbers, settled here so every later surface reads them back off
     # the row rather than deriving its own from the same tables minutes apart.
@@ -899,6 +906,9 @@ def generate_briefing_for_lab(
     from .report_stats import record_run_stats
 
     blocks = [block_for(alert) for alert in open_alerts({"target_lab": lab})]
+    summaries = [
+        (block.project_label, block.trigger_label, block.title) for block in blocks
+    ]
     briefing = _write_briefing(
         owner={"lab": lab},
         target=target_for_lab(lab),
@@ -914,6 +924,7 @@ def generate_briefing_for_lab(
         personal_label=lab.name,
         complete=complete,
         attention=attention_section(blocks),
+        alert_summaries=summaries,
     )
     return record_run_stats(briefing)
 

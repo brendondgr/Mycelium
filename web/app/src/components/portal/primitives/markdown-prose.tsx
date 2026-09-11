@@ -51,9 +51,13 @@ const NEW_CHIP_CLASS =
 // outer loop's `lastIndex`, re-matching the same segment forever (a browser
 // freeze on any body containing bold or a link).
 const inlinePattern = () =>
-  /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\))/g;
+  /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|\[P(\d{1,3})\])/g;
 
-function renderInline(text: string, keyBase: string): React.ReactNode[] {
+function renderInline(rawText: string, keyBase: string): React.ReactNode[] {
+  // Stripped here rather than at every call site: every path into the renderer
+  // goes through this function, so one removal covers headings, paragraphs,
+  // bullets, item titles, notes and beats alike.
+  const text = stripMarkers(rawText);
   const nodes: React.ReactNode[] = [];
   let last = 0;
   let match: RegExpExecArray | null;
@@ -88,6 +92,15 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
           {renderInline(match[3], `${keyBase}-a${i}`)}
         </a>,
       );
+    } else if (match[5] !== undefined) {
+      nodes.push(
+        <sup
+          key={`${keyBase}-c${i}`}
+          className="ml-0.5 text-[10px] font-medium text-[var(--text-muted)]"
+        >
+          [P{match[5]}]
+        </sup>,
+      );
     }
     last = match.index + match[0].length;
     i += 1;
@@ -103,6 +116,10 @@ type OrderedItem = {
   isNew: boolean;
   verdict: Verdict | null;
   deadline: string;
+  /** Labelled beats belonging to this item — "Where you still differ: …".
+   * An alert's body. Previously any bullet flushed the open list, which split
+   * these away from the title they are about. */
+  beats: { label: string; text: string }[];
 };
 
 type Block =
@@ -127,6 +144,26 @@ const VERDICT_SIGNAL = /\b(Read|Skim|File)\b/;
 const DEADLINE_SIGNAL = /\bdeadline\s+(\d{4}-\d{2}-\d{2})\b/i;
 // Whatever separators the removed signals leave stranded at the end of the line.
 const TRAILING_SEPARATORS = /[\s·•—–-]+$/;
+
+// The report's two reference tokens (mirrors `apps/content/report_grammar.py` —
+// the two renderers read one grammar).
+//
+// `[P#]` cites the references block: findable without interrupting the sentence
+// it sits in, which is the whole difference between a citation and a footnote.
+// It is matched by `inlinePattern` rather than by its own constant, so a citation
+// inside a bolded run or a link label is found in the same pass.
+// `[S:path]` says which project-state field a sentence rests on; it is grammar
+// for the verifier, not prose for the reader, and is stripped before display.
+const STATE_MARKER = /\[S:[A-Za-z0-9_.\-[\]]+\]/g;
+const LABELLED_BEAT = /^[-*]\s+\*\*([^*]+?):\*\*\s*(.*)$/;
+
+function stripMarkers(text: string): string {
+  return text
+    .replace(STATE_MARKER, "")
+    .replace(/\s+([.,;:])/g, "$1")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
 
 /**
  * Split a ranked item's title line into `[title, signal segment]`.
@@ -164,7 +201,9 @@ function signalSegment(line: string): [string, string] {
  * off the tail. Mirrors `_split_item_line` in `apps/content/daily_report_pdf.py` —
  * the two renderers read one grammar.
  */
-function splitItemLine(line: string): Omit<OrderedItem, "marker" | "note"> {
+function splitItemLine(
+  line: string,
+): Omit<OrderedItem, "marker" | "note" | "beats"> {
   const [title, segment] = signalSegment(line);
 
   const isNew = NEW_SIGNAL.test(segment);
@@ -260,7 +299,19 @@ function parseBlocks(source: string): Block[] {
       ordered.push({
         marker: numbered[1],
         note: "",
+        beats: [],
         ...splitItemLine(numbered[2].trim()),
+      });
+      continue;
+    }
+    // A labelled beat belongs to the numbered item above it. Flushing here —
+    // which is what used to happen for every bullet — split an alert's four
+    // beats away from the item they are about.
+    const beat = LABELLED_BEAT.exec(line);
+    if (beat && ordered.length) {
+      ordered[ordered.length - 1].beats.push({
+        label: beat[1].trim(),
+        text: beat[2].trim(),
       });
       continue;
     }
@@ -366,7 +417,24 @@ function OrderedEntry({
         rank={`${item.marker}.`}
         title={title}
         insight={insight ? renderInline(insight, `${keyBase}-i`) : null}
-        note={note ? renderInline(note, `${keyBase}-n`) : null}
+        note={
+          note || item.beats.length ? (
+            <>
+              {note ? renderInline(note, `${keyBase}-n`) : null}
+              {/* An alert's body. Each beat is its own line because the label is
+                  what a reader scans for when deciding whether to act today —
+                  run together as a paragraph they read as one long caveat. */}
+              {item.beats.map((entry, index) => (
+                <span key={`${keyBase}-b${index}`} className="mt-1 block">
+                  <span className="font-semibold text-[var(--text-primary)]">
+                    {entry.label}:
+                  </span>{" "}
+                  {renderInline(entry.text, `${keyBase}-b${index}`)}
+                </span>
+              ))}
+            </>
+          ) : null
+        }
         rail={null}
         flags={item.isNew ? <ReportFlag tone="new">New</ReportFlag> : null}
         link={
