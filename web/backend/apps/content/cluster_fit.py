@@ -71,7 +71,10 @@ CompleteFn = Callable[[str], str | None]
 #: Stamped on every stored write-up. **Bump this whenever the prompt or the
 #: output contract below changes.** A rubric edit without a bump is the one
 #: failure this stamp cannot catch, so there is a test that catches it instead.
-RUBRIC_VERSION = "b1"
+#: ``b2`` added the project variant: when the target is a project that has said
+#: what it claims, the prompt carries that claim and asks for one more field —
+#: where the item still differs from it.
+RUBRIC_VERSION = "b2"
 
 #: Stamped alongside the rubric on **deterministic** write-ups only, and bumped
 #: whenever their templated wording changes. It exists so template copy can be
@@ -112,7 +115,9 @@ _SYSTEM_PROMPT = (
     'technique, table, or dataset to take from it>, "caveat": <the strongest '
     'reason this might NOT be worth their time>, "bridge": <one clause on '
     "what the two strands share here, ONLY when the evidence says the item is "
-    'also in another strand\'s slate; otherwise "">}]}\n'
+    'also in another strand\'s slate; otherwise "">, "differs": <ONLY when '
+    "the reader's project claim is given below: one clause naming what their "
+    'claim still has that this item does not; otherwise "">}]}\n'
     "Rules:\n"
     "- Ground everything in the précis and the evidence. If a claim is not in "
     "the source, do not make it.\n"
@@ -122,6 +127,10 @@ _SYSTEM_PROMPT = (
     '"none".\n'
     "- Use the full range of verdicts. Do not drift to the middle.\n"
     "- Never rename an item. Judge only the candidates given, by their number.\n"
+    "- \"differs\" is about the reader's stated claim, not about the item's "
+    "quality. If the item covers everything the claim does, say so plainly "
+    "rather than inventing a gap — a reassuring invention is the worst answer "
+    "this field can give.\n"
     "- No cross-strand comparison, no percentages, no encouragement, no prose "
     "outside the JSON, no markdown fences."
 )
@@ -190,12 +199,19 @@ def stored_writeup(signals: Mapping | None, cluster_id: str) -> dict | None:
     return entry if isinstance(entry, dict) else None
 
 
-def is_current(writeup: Mapping | None, fingerprint: str) -> bool:
+def is_current(
+    writeup: Mapping | None, fingerprint: str, state_fingerprint: str = ""
+) -> bool:
     """Whether a stored write-up still answers the question it was asked.
 
     Four invalidations and only four (plan §19): the areas changed, the cluster
     is gone (handled by pruning), the rubric moved, or the item's text changed —
     the last cascading in through the précis, which is re-read when it does.
+
+    A project write-up carries a fifth, and it is the point of the slow/fast
+    split: the **claim** changed. Moving a milestone does not invalidate anything
+    here, because the fingerprint covers the slow half alone — which is what makes
+    a milestone editable without re-billing the model for the whole project.
 
     Deterministic write-ups carry a fifth, and it is free: their wording is a
     template rather than a model's answer, so a copy fix re-renders them on the
@@ -208,6 +224,10 @@ def is_current(writeup: Mapping | None, fingerprint: str) -> bool:
     if writeup.get("source") == "deterministic" and (
         writeup.get("template_version") != TEMPLATE_VERSION
     ):
+        return False
+    # Compared in both directions: a write-up written against a claim the project
+    # has since deleted is as stale as one written against a different claim.
+    if str(writeup.get("state_fingerprint") or "") != str(state_fingerprint or ""):
         return False
     return (
         writeup.get("rubric_version") == RUBRIC_VERSION
@@ -225,6 +245,8 @@ def make_writeup(
     bridge_note: str,
     fingerprint: str,
     source: str,
+    differs: str = "",
+    state_fingerprint: str = "",
 ) -> dict:
     """One stored write-up, in the shape every renderer reads."""
     return {
@@ -235,6 +257,12 @@ def make_writeup(
         "source": source,
         "rubric_version": RUBRIC_VERSION,
         "areas_fingerprint": fingerprint,
+        # Only on the project variant: what the team's claim still has that this
+        # item does not, and the fingerprint of the claim it was judged against.
+        **({"differs": differs} if differs else {}),
+        **(
+            {"state_fingerprint": state_fingerprint} if state_fingerprint else {}
+        ),
         "written_on": timezone.now().date().isoformat(),
         # Only meaningful on the deterministic path; harmless on the other.
         **({"template_version": TEMPLATE_VERSION} if source == "deterministic" else {}),
@@ -270,6 +298,7 @@ def deterministic_writeup(
     *,
     depth: int,
     fingerprint: str,
+    state_fingerprint: str = "",
 ) -> dict:
     """A complete write-up with no model involved.
 
@@ -312,6 +341,11 @@ def deterministic_writeup(
         bridge_note=bridge,
         fingerprint=fingerprint,
         source="deterministic",
+        # Stamped even here, so a deterministic write-up is invalidated by a
+        # claim change the same way a model-written one is. Rebuilding it costs
+        # nothing, and leaving it stamped-less would make the *cheap* path the
+        # one that quietly served stale reasoning.
+        state_fingerprint=state_fingerprint,
     )
 
 
@@ -339,6 +373,8 @@ def write_cluster_fits(
     complete: CompleteFn | None = None,
     seed: int = 0,
     batch: int | None = None,
+    project_claim: str = "",
+    state_fingerprint: str = "",
 ) -> dict[str, dict]:
     """Write-ups for one theme's candidates, keyed by content id.
 
@@ -358,7 +394,12 @@ def write_cluster_fits(
         chunk = list(candidates[start : start + max(1, size)])
         order = _shuffled(chunk, seed=seed + start)
         prompt = build_prompt(
-            profile_text, cluster, other_cluster_labels, order, seed=seed + start
+            profile_text,
+            cluster,
+            other_cluster_labels,
+            order,
+            seed=seed + start,
+            project_claim=project_claim,
         )
         try:
             raw = ask(prompt)
@@ -370,7 +411,14 @@ def write_cluster_fits(
                 exc,
             )
             raw = None
-        out.update(parse(raw, order, fingerprint=fingerprint))
+        out.update(
+            parse(
+                raw,
+                order,
+                fingerprint=fingerprint,
+                state_fingerprint=state_fingerprint,
+            )
+        )
 
     for candidate in candidates:
         cid = str(candidate.item.id)
@@ -381,6 +429,7 @@ def write_cluster_fits(
                 candidate.evidence,
                 depth=depth,
                 fingerprint=fingerprint,
+                state_fingerprint=state_fingerprint,
             )
     return out
 
@@ -397,6 +446,26 @@ def _shuffled(candidates: Sequence[Candidate], *, seed: int) -> list[Candidate]:
     return shuffled
 
 
+def project_claim_block(slow: Mapping | None) -> str:
+    """What a project claims, as the prompt reads it. ``""`` when it has said none.
+
+    Only the slow half, and only the parts that describe the *claim*. Milestones
+    and venue targets are the timeline matcher's business and would only invite
+    the model to reason about dates, which is the one thing the report contract
+    forbids it from doing (plan H2).
+    """
+    slow = slow or {}
+    rows = [
+        ("Problem", slow.get("problem")),
+        ("What they claim is new", slow.get("claimed_contribution")),
+        ("Method", ", ".join(slow.get("method") or [])),
+        ("Data", ", ".join(slow.get("data") or [])),
+        ("Still to build", ", ".join(slow.get("planned_components") or [])),
+    ]
+    lines = [f"  {label}: {_clean(value)}" for label, value in rows if _clean(value)]
+    return "\n".join(lines)
+
+
 def build_prompt(
     profile_text: str,
     cluster: Cluster,
@@ -404,8 +473,16 @@ def build_prompt(
     candidates: Sequence[Candidate],
     *,
     seed: int = 0,
+    project_claim: str = "",
 ) -> str:
-    """The per-theme prompt: the reader, this strand, and the evidence packet."""
+    """The per-theme prompt: the reader, this strand, and the evidence packet.
+
+    ``project_claim`` is the project variant (plan 5.1). With it, the model is
+    judging against something far more specific than a topic — a stated
+    contribution — and can say where an item still falls short of it. Without it
+    the prompt is unchanged, which is what keeps a personal report costing
+    exactly what it did.
+    """
     parts = [
         f"Researcher:\n{profile_text or '(no profile details)'}",
         "",
@@ -418,6 +495,14 @@ def build_prompt(
             "so you can name a bridge, never so you can grade fit to them): "
             + ", ".join(other_cluster_labels)
         )
+    if project_claim:
+        parts.append("")
+        parts.append(
+            "This strand is a project, and the team has stated what it claims. "
+            'Judge each item against this, and fill "differs" with what the '
+            "claim still has that the item does not:"
+        )
+        parts.append(project_claim)
     parts.append("")
     parts.append(f"Candidates (order is arbitrary; shuffle seed {seed}):")
     for index, candidate in enumerate(candidates, start=1):
@@ -439,7 +524,11 @@ def build_prompt(
 
 
 def parse(
-    raw: str | None, candidates: Sequence[Candidate], *, fingerprint: str
+    raw: str | None,
+    candidates: Sequence[Candidate],
+    *,
+    fingerprint: str,
+    state_fingerprint: str = "",
 ) -> dict[str, dict]:
     """Model output as stored write-ups, keyed by content id.
 
@@ -481,6 +570,10 @@ def parse(
         if not beats[0]:
             continue
         bridge = _clean(row.get("bridge")) if candidate.evidence.also_in else ""
+        # Only kept when the prompt actually carried a claim to differ from.
+        # Without one, the field is the model answering a question it was not
+        # asked, and a confident answer to an unasked question is an invention.
+        differs = _clean(row.get("differs")) if state_fingerprint else ""
         out[str(candidate.item.id)] = make_writeup(
             verdict=verdict,
             beats=beats,
@@ -488,6 +581,8 @@ def parse(
             bridge_note=bridge,
             fingerprint=fingerprint,
             source="llm",
+            differs=differs,
+            state_fingerprint=state_fingerprint,
         )
     return out
 

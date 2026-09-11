@@ -468,6 +468,13 @@ def _numbered_item(index: int, item: dict) -> str:
     reason = item.get("lead") or item.get("reason") or item.get("headline")
     if reason:
         line += f"\n{reason}"
+    # The exception: on a project, where the item still falls short of what the
+    # team claims. That sentence is the single most useful thing the report can
+    # say about a paper near a project's contribution, and burying it on the web
+    # would mean the printed report showed the threat without the reassurance.
+    differs = item.get("differs")
+    if differs:
+        line += f"\n- **Where you still differ:** {differs}"
     return line
 
 

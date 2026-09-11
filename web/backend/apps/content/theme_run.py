@@ -183,6 +183,34 @@ class ThemePlan:
     #: Items with no current précis, which the model half will read.
     needs_precis: list[ContentItem] = field(default_factory=list)
     fingerprints: dict[str, str] = field(default_factory=dict)
+    #: The project's stated claim, as the prompt reads it, and the fingerprint of
+    #: the slow state it came from. Both empty for a person or a lab, and for a
+    #: project that has not said what it claims — in which case the prompt and
+    #: the cost are exactly what they were.
+    project_claim: str = ""
+    state_fingerprint: str = ""
+
+
+def _project_claim(persist_kwargs: Mapping) -> dict:
+    """``{project_claim, state_fingerprint}`` for a project target, else empty.
+
+    Read from the project's stored state. A project that has not been asked yet
+    contributes nothing, so its prompt and its cost are exactly a person's —
+    which is what lets the state be optional rather than a gate on the feature.
+    """
+    from .cluster_fit import project_claim_block
+
+    project = persist_kwargs.get("target_project")
+    state = getattr(project, "state", None) if project is not None else None
+    if state is None:
+        return {"project_claim": "", "state_fingerprint": ""}
+    claim = project_claim_block(getattr(state, "slow", None))
+    if not claim:
+        return {"project_claim": "", "state_fingerprint": ""}
+    return {
+        "project_claim": claim,
+        "state_fingerprint": str(getattr(state, "slow_fingerprint", "") or ""),
+    }
 
 
 def plan_theme_writeups(
@@ -221,6 +249,7 @@ def plan_theme_writeups(
         entitled=(
             target_is_entitled(persist_kwargs) if entitled is None else entitled
         ),
+        **_project_claim(persist_kwargs),
     )
     if not slates:
         return plan
@@ -237,7 +266,9 @@ def plan_theme_writeups(
             if cluster is None:
                 continue
             existing = stored.get(cid, {}).get(cluster_id)
-            if reuse and is_current(existing, plan.fingerprints[cluster_id]):
+            if reuse and is_current(
+                existing, plan.fingerprints[cluster_id], plan.state_fingerprint
+            ):
                 plan.reused.setdefault(cid, {})[cluster_id] = existing
                 continue
             evidence = build_evidence(
@@ -313,6 +344,8 @@ def execute_theme_plan(
             depth=plan.depth,
             complete=complete,
             seed=plan.seed,
+            project_claim=plan.project_claim,
+            state_fingerprint=plan.state_fingerprint,
         )
         for cid, writeup in written.items():
             writeups.setdefault(cid, {})[cluster_id] = writeup

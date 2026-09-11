@@ -443,6 +443,10 @@ def _showcase_item(
         "lead": lead_sentence(writeup) or signals.get("reason", ""),
         "caveat": (writeup or {}).get("caveat") or signals.get("caveat", ""),
         "bridge_note": (writeup or {}).get("bridge_note", ""),
+        # Project targets only: what the team's stated claim still has that this
+        # item does not. Empty everywhere else, because the question was only
+        # asked where there was a claim to ask it about.
+        "differs": (writeup or {}).get("differs", ""),
         "bridge_labels": bridge_labels,
         "edition": meta.get("edition") or meta.get("year") or "",
         # The attributed cluster (papers only; empty elsewhere) so the papers
