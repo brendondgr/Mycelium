@@ -498,17 +498,21 @@ def _delivery_section(data: RunAnalytics, styles) -> list:
         ["— of which used the deterministic fallback", _n(delivery.briefings_fallback)],
         ["Personal reports queued", _n(delivery.reports_queued)],
         ["Personal reports delivered", _n(delivery.reports_delivered)],
+        ["Personal reports held for a local send hour", _n(delivery.reports_scheduled)],
         ["Personal reports still pending", _n(delivery.reports_pending)],
         ["Personal reports permanently failed", _n(delivery.reports_failed)],
         ["Lab digests queued", _n(delivery.digests_queued)],
         ["Lab digests delivered", _n(delivery.digests_delivered)],
+        ["Lab digests held for a local send hour", _n(delivery.digests_scheduled)],
     ]
     return [
         Paragraph("Delivery", styles["H1"]),
         Paragraph(
             "Reports written, and how far each got toward a person. Discord sends "
             "are queued and drained on their own schedule, so a report counted as "
-            "pending here is waiting for the next drain, not lost.",
+            "pending here is waiting for the next drain, not lost. A report held "
+            "for a local send hour is not counted as pending: it is waiting on "
+            "purpose, for the recipient's morning rather than for the queue.",
             styles["Muted"],
         ),
         _table(rows, [4.2 * inch, 2.2 * inch]),

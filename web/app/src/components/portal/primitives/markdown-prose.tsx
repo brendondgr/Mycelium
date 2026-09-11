@@ -41,7 +41,10 @@ const LINK_CLASS =
 const NEW_CHIP_CLASS =
   "inline-block rounded-full border border-brand-accent px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-accent";
 
-// Matches, in one pass: **bold**, [text](url), or a verdict word. Nested
+// Matches, in one pass: **bold** or [text](url). Verdict words are deliberately
+// absent — `Read`, `Skim` and `File` are ordinary English, and the verdict a ranked
+// item carries is parsed out of its signal segment by `splitItemLine` and drawn as
+// a real chip on the rail. Nested
 // content is rendered recursively so `**[Title](url)**` yields a bold link. A fresh
 // instance is created per `renderInline` call: the regex is stateful (global flag),
 // and sharing one across the recursive calls would let an inner call reset the
@@ -126,16 +129,46 @@ const DEADLINE_SIGNAL = /\bdeadline\s+(\d{4}-\d{2}-\d{2})\b/i;
 const TRAILING_SEPARATORS = /[\s·•—–-]+$/;
 
 /**
+ * Split a ranked item's title line into `[title, signal segment]`.
+ *
+ * The report's item grammar is `**[Title](url)** — **NEW** · Read · deadline …`
+ * (`briefing_sections._numbered_item`), so every signal lives after the title.
+ * Searching the whole line for them is what made a paper called *File-Level
+ * Provenance* render a `File` verdict, and a title containing *Read* render a
+ * `Read` one — the signal words are ordinary English, and a title is exactly where
+ * ordinary English appears.
+ *
+ * Anchored on the bolded title first, since that is what the emitter always writes
+ * and it survives a title carrying its own em dash. A model-written line with no
+ * bolded title falls back to the `—` separator; a line with neither is all title
+ * and no signals, which is the safe direction — a missing chip is a smaller error
+ * than a wrong one.
+ */
+const ITEM_TITLE = /^\s*(\*\*[\s\S]+?\*\*)([\s\S]*)$/;
+const ITEM_SEPARATOR = /^([\s\S]*?)\s+—\s+([\s\S]*)$/;
+
+function signalSegment(line: string): [string, string] {
+  const bolded = ITEM_TITLE.exec(line);
+  if (bolded) return [bolded[1], bolded[2]];
+  const dashed = ITEM_SEPARATOR.exec(line);
+  if (dashed) return [dashed[1], dashed[2]];
+  return [line, ""];
+}
+
+/**
  * Split a ranked item's title line into its title and its signals.
  *
- * Order-independent, because the line is model-written as often as it is
- * generated: each signal is matched wherever it sits, removed, and the separators
- * it leaves behind are cleaned off the tail. Mirrors `_split_item_line` in
- * `apps/content/daily_report_pdf.py` — the two renderers read one grammar.
+ * Order-independent **within the signal segment**, because the line is
+ * model-written as often as it is generated: each signal is matched wherever it
+ * sits after the title, removed, and the separators it leaves behind are cleaned
+ * off the tail. Mirrors `_split_item_line` in `apps/content/daily_report_pdf.py` —
+ * the two renderers read one grammar.
  */
 function splitItemLine(line: string): Omit<OrderedItem, "marker" | "note"> {
-  const isNew = NEW_SIGNAL.test(line);
-  let rest = line.replace(NEW_SIGNAL, "");
+  const [title, segment] = signalSegment(line);
+
+  const isNew = NEW_SIGNAL.test(segment);
+  let rest = segment.replace(NEW_SIGNAL, "");
 
   const matched = VERDICT_SIGNAL.exec(rest);
   const verdict = matched ? (matched[1].toLowerCase() as Verdict) : null;
@@ -147,12 +180,17 @@ function splitItemLine(line: string): Omit<OrderedItem, "marker" | "note"> {
 
   // Collapse the separator runs the removals opened up mid-line, then trim.
   rest = rest.replace(/\s*·\s*(?=[·•—–-]|\s*$)/g, " ");
-  return {
-    text: rest.replace(TRAILING_SEPARATORS, "").trim(),
-    isNew,
-    verdict,
-    deadline,
-  };
+  // Whatever the segment still holds is prose the model wrote beside the signals
+  // ("also in Agentic KG"), so it stays with the title rather than being dropped.
+  const remainder = rest
+    .replace(TRAILING_SEPARATORS, "")
+    .trim()
+    .replace(/^[·•—–-]+\s*/, "")
+    .trim();
+  const text = (remainder ? `${title} — ${remainder}` : title)
+    .replace(TRAILING_SEPARATORS, "")
+    .trim();
+  return { text, isNew, verdict, deadline };
 }
 
 /** "Papers" -> "paper". The report's four category headings are all plain plurals. */

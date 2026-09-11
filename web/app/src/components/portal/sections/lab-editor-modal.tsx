@@ -171,7 +171,13 @@ function LabEditorForm({
     watch?.categories?.length ? watch.categories : DEFAULT_CATS,
   );
   const [cadence, setCadence] = React.useState<WatchCadence>(
-    watch?.cadence ?? "weekly",
+    watch?.cadence ?? "daily",
+  );
+  const [bufferDays, setBufferDays] = React.useState<number>(
+    watch?.deadline_buffer_days ?? 14,
+  );
+  const [windowDays, setWindowDays] = React.useState<number>(
+    watch?.min_paper_window_days ?? 60,
   );
 
   const [saving, setSaving] = React.useState(false);
@@ -266,6 +272,8 @@ function LabEditorForm({
         topics: dedupe(seedTopics),
         categories: watchCats,
         cadence,
+        deadline_buffer_days: bufferDays,
+        min_paper_window_days: windowDays,
       });
       onClose();
     } catch (caught) {
@@ -463,7 +471,10 @@ function LabEditorForm({
         </div>
       </EditorSection>
 
-      <EditorSection title="How often should Mylo report?">
+      <EditorSection
+        title="How often should Mylo post to the channel?"
+        description="Cadence governs the lab's Discord channel only. Mylo scores the lab and writes its report every day either way, and members see both on the web every day."
+      >
         <div className="flex flex-wrap gap-2">
           {CADENCES.map((option) => (
             <Chip
@@ -475,6 +486,46 @@ function LabEditorForm({
             </Chip>
           ))}
         </div>
+        <p className="text-[12.5px] leading-5 text-[var(--text-secondary)]">
+          {cadence === "daily"
+            ? "A daily post Tuesday to Friday, and the weekly on Monday. Nothing at the weekend."
+            : "One weekly post on Monday morning. Nothing at the weekend."}
+          {" Posts land at the lab's send hour, set on the lab's settings page."}
+        </p>
+      </EditorSection>
+
+      <EditorSection
+        title="The lab's timeline defaults"
+        description="What Mylo treats as enough runway when judging whether a venue or a call fits a lab project's plan. A project can override both."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <EditorField
+            label="Deadline buffer (days)"
+            hint="Slack between finishing something and its deadline. 0–90."
+          >
+            <input
+              className={inputClass}
+              type="number"
+              min={0}
+              max={90}
+              value={bufferDays}
+              onChange={(event) => setBufferDays(Number(event.target.value))}
+            />
+          </EditorField>
+          <EditorField
+            label="Minimum paper window (days)"
+            hint="Fewest days the lab considers enough to write a full paper. 7–365."
+          >
+            <input
+              className={inputClass}
+              type="number"
+              min={7}
+              max={365}
+              value={windowDays}
+              onChange={(event) => setWindowDays(Number(event.target.value))}
+            />
+          </EditorField>
+        </div>
       </EditorSection>
     </>
   );
@@ -482,7 +533,7 @@ function LabEditorForm({
   const tabs: EditorTab[] = [
     { id: "purpose", label: "Purpose & goals", hint: "Statement, funding, needs", content: panelPurpose },
     { id: "focus", label: "Focus areas", hint: "Areas, keywords, clusters", content: panelFocus },
-    { id: "watch", label: "What Mylo watches", hint: "Topics, signals, cadence", content: panelWatch },
+    { id: "watch", label: "What Mylo watches", hint: "Topics, signals, cadence, timeline", content: panelWatch },
     { id: "draft", label: "Draft with Mylo", hint: "Rewrite from source material", content: panelDraft },
   ];
 

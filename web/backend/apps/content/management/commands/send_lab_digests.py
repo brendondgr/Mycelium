@@ -55,6 +55,7 @@ class Command(BaseCommand):
             # narrowed by the add-on / link / bound-channel checks.
             labs, _projects = select_targets(None)
 
+        today = timezone.localdate()
         eligible = eligible_labs(labs)
         summary = {
             "considered": len(labs),
@@ -64,7 +65,6 @@ class Command(BaseCommand):
             "empty": 0,
             "errors": 0,
         }
-        today = timezone.localdate()
 
         for lab in eligible:
             try:

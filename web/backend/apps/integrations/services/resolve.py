@@ -814,6 +814,7 @@ def enqueue_outbox(
     subject_type: str = "",
     subject_id: str = "",
     now: datetime | None = None,
+    not_before: datetime | None = None,
 ) -> tuple[DiscordOutboxMessage, bool]:
     """Queue one message. Returns ``(row, created)``.
 
@@ -821,6 +822,14 @@ def enqueue_outbox(
     rather than queueing a second message. That is what lets the daily chain be
     re-run without spamming anyone, and it is deliberately a database uniqueness
     constraint rather than an application check.
+
+    ``not_before`` holds the row back until a wall-clock instant, by setting the
+    ``next_attempt_at`` the drain already filters on (``<= now``). No new machinery:
+    scheduled delivery and retry backoff are the same mechanism, so a scheduled row
+    retries, dead-letters and reports exactly like every other row. A ``not_before``
+    already in the past is due immediately, which is the right answer when the
+    nightly run finishes after the recipient's send hour — the alternative is
+    holding a finished report for 23 hours.
     """
     now = now or timezone.now()
     return DiscordOutboxMessage.objects.get_or_create(
@@ -838,7 +847,7 @@ def enqueue_outbox(
             "attachment_filename": attachment_filename,
             "subject_type": subject_type,
             "subject_id": subject_id,
-            "next_attempt_at": now,
+            "next_attempt_at": max(not_before, now) if not_before else now,
         },
     )
 

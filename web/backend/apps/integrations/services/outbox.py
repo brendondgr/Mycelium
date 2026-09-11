@@ -80,12 +80,16 @@ def enqueue_dm(
     attachment_filename: str = "",
     subject_type: str = "",
     subject_id: str = "",
+    not_before: datetime | None = None,
 ) -> tuple[object, bool]:
     """Queue a direct message. The DM channel is resolved at *send* time.
 
     Deliberately not resolved here: a cached ``dm_channel_id`` can go stale between
     queueing and delivery, and re-resolving costs one request only on the attempt that
     actually happens.
+
+    ``not_before`` holds the row until the recipient's local send hour
+    (:func:`apps.content.delivery.send_time`); see :func:`resolve.enqueue_outbox`.
     """
     return resolve.enqueue_outbox(
         dedupe_key=dedupe_key,
@@ -98,6 +102,7 @@ def enqueue_dm(
         attachment_filename=attachment_filename,
         subject_type=subject_type,
         subject_id=subject_id,
+        not_before=not_before,
     )
 
 
@@ -114,6 +119,7 @@ def enqueue_channel(
     attachment_filename: str = "",
     subject_type: str = "",
     subject_id: str = "",
+    not_before: datetime | None = None,
 ) -> tuple[object, bool]:
     """Queue a channel post, optionally carrying a file.
 
@@ -137,6 +143,7 @@ def enqueue_channel(
         attachment_filename=attachment_filename,
         subject_type=subject_type,
         subject_id=subject_id,
+        not_before=not_before,
     )
 
 

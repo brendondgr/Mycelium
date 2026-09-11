@@ -147,7 +147,9 @@ def test_a_quiet_project_keeps_its_row_but_gets_no_section(reader: User) -> None
 @pytest.mark.django_db
 def test_a_labs_report_covers_the_labs_projects() -> None:
     lab = Lab.objects.create(name="Reyes Lab", slug="reyes-lab")
-    project = Project.objects.create(scope_lab=lab, name="Reef Atlas")
+    project = Project.objects.create(
+        scope_lab=lab, name="Reef Atlas", share_in_lab_reports=True
+    )
     _score({"target_project": project}, _content(ContentItem.Type.PAPER, "Reef Paper"))
 
     briefing = generate_briefing_for_lab(lab, complete=lambda _s, _u: None)
@@ -155,6 +157,62 @@ def test_a_labs_report_covers_the_labs_projects() -> None:
     assert _rows(briefing)["Reef Atlas"]["counts"]["papers"] == 1
     assert "## Project · Reef Atlas" in briefing.body
     assert "Reef Paper" in briefing.body
+
+
+@pytest.mark.django_db
+def test_lab_report_excludes_unshared_projects() -> None:
+    """A lab surface shows only projects shared into it (plan 0.2, invariant 6).
+
+    A lab report is read by every lab member and posted to the lab's channel, while
+    ``Project.visible_to`` grants a lab project to its members and lab heads only.
+    """
+    lab = Lab.objects.create(name="Reyes Lab", slug="reyes-lab")
+    shared = Project.objects.create(
+        scope_lab=lab, name="Reef Atlas", share_in_lab_reports=True
+    )
+    private = Project.objects.create(scope_lab=lab, name="Unpublished Coral Genome")
+    _score({"target_project": shared}, _content(ContentItem.Type.PAPER, "Reef Paper"))
+    _score({"target_project": private}, _content(ContentItem.Type.PAPER, "Secret Paper"))
+
+    briefing = generate_briefing_for_lab(lab, complete=lambda _s, _u: None)
+
+    assert "Reef Atlas" in _rows(briefing)
+    assert "Unpublished Coral Genome" not in _rows(briefing)
+    assert "Unpublished Coral Genome" not in briefing.body
+    assert "Secret Paper" not in briefing.body
+    # Partial, and honest about it — a count, never a name.
+    assert "1 private project not shown" in briefing.body
+
+
+@pytest.mark.django_db
+def test_lab_member_without_project_access_never_sees_project_part() -> None:
+    """The private project still reaches its own member's personal report.
+
+    Sharing governs the *lab's* surfaces. Scoping it to one reader is what
+    ``report_projects_for_user`` already does, so a member loses nothing.
+    """
+    lab = Lab.objects.create(name="Reyes Lab", slug="reyes-lab")
+    member = User.objects.create_user("member", password="x")
+    WatchPreference.objects.create(user=member, categories=["papers"])
+    LabMembership.objects.create(user=member, lab=lab)
+    outsider = User.objects.create_user("outsider", password="x")
+    WatchPreference.objects.create(user=outsider, categories=["papers"])
+    LabMembership.objects.create(user=outsider, lab=lab)
+
+    private = Project.objects.create(scope_lab=lab, name="Unpublished Coral Genome")
+    ProjectMember.objects.create(project=private, user=member)
+    _score({"target_project": private}, _content(ContentItem.Type.PAPER, "Secret Paper"))
+
+    mine = generate_briefing_for_user(member, complete=lambda _s, _u: None)
+    assert "Unpublished Coral Genome" in _rows(mine)
+    assert "Secret Paper" in mine.body
+
+    theirs = generate_briefing_for_user(outsider, complete=lambda _s, _u: None)
+    assert "Unpublished Coral Genome" not in _rows(theirs)
+    assert "Secret Paper" not in theirs.body
+
+    lab_report = generate_briefing_for_lab(lab, complete=lambda _s, _u: None)
+    assert "Unpublished Coral Genome" not in lab_report.body
 
 
 # --------------------------------------------------------------------------- #

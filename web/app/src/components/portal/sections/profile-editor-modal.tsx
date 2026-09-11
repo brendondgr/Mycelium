@@ -33,7 +33,35 @@ export type ProfileEditorTab =
   | "focus"
   | "interests"
   | "watch"
+  | "delivery"
   | "eligibility";
+
+/**
+ * The zones offered in the picker. Deliberately short: these are the zones this
+ * product's readers are actually in, and a 400-entry IANA list is a worse control
+ * than five right answers plus whatever the account already has. The backend
+ * validates any zone name, so nothing here is a ceiling.
+ */
+const TIMEZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Europe/London",
+  "Europe/Berlin",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+  "UTC",
+];
+
+/** Local hours a send can target. Day-granular, like the reminder scheduler. */
+const SEND_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+
+function hourLabel(hour: number): string {
+  const suffix = hour < 12 ? "am" : "pm";
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  return `${twelve}:00 ${suffix}`;
+}
 
 const ROLES = [
   { label: "Student", value: "student" },
@@ -200,7 +228,22 @@ function ProfileEditorForm({
     }, {}),
   );
   const [cadence, setCadence] = React.useState<WatchCadence>(
-    watch?.cadence ?? "weekly",
+    watch?.cadence ?? "daily",
+  );
+  const [sendHour, setSendHour] = React.useState<number>(
+    watch?.send_hour_local ?? 8,
+  );
+  const [zone, setZone] = React.useState<string>(
+    watch?.timezone ?? "America/New_York",
+  );
+  const [urgentAlerts, setUrgentAlerts] = React.useState<boolean>(
+    watch?.urgent_alerts ?? false,
+  );
+  const [bufferDays, setBufferDays] = React.useState<number>(
+    watch?.deadline_buffer_days ?? 14,
+  );
+  const [windowDays, setWindowDays] = React.useState<number>(
+    watch?.min_paper_window_days ?? 60,
   );
 
   const eligibility = interests?.eligibility;
@@ -294,6 +337,15 @@ function ProfileEditorForm({
         topics: dedupe(watchTopics).slice(0, topicCap),
         categories,
         cadence,
+        timezone: zone,
+        send_hour_local: sendHour,
+        // Only meaningful on weekly cadence, and stored that way: a reader who
+        // switches to daily and back should not silently re-enable an opt-in
+        // they turned on months ago, but neither should switching to daily
+        // erase it. Held as the reader set it, read only where it applies.
+        urgent_alerts: urgentAlerts,
+        deadline_buffer_days: bufferDays,
+        min_paper_window_days: windowDays,
       });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["portal", "profile"] }),
@@ -442,7 +494,15 @@ function ProfileEditorForm({
         </div>
       </EditorSection>
 
-      <EditorSection title="How often should Mylo check in?">
+    </>
+  );
+
+  const panelDelivery = (
+    <>
+      <EditorSection
+        title="How often should Mylo message you?"
+        description="Cadence governs Discord only. Mylo scores your feeds and writes your report every day either way, and the web app shows both every day — choosing Weekly asks not to be interrupted, not for Mylo to do less."
+      >
         <div className="flex flex-wrap gap-2">
           {CADENCES.map((option) => (
             <Chip
@@ -453,6 +513,92 @@ function ProfileEditorForm({
               {option.label}
             </Chip>
           ))}
+        </div>
+        <p className="text-[12.5px] leading-5 text-[var(--text-secondary)]">
+          {cadence === "daily"
+            ? "A daily report Tuesday to Friday, and the weekly on Monday. No weekend messages."
+            : "One weekly report on Monday morning. No weekend messages."}
+        </p>
+      </EditorSection>
+
+      <EditorSection
+        title="When your morning is"
+        description="Mylo compiles overnight and holds the message until this hour in your own time zone."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <EditorField label="Send at">
+            <select
+              className={inputClass}
+              value={sendHour}
+              onChange={(event) => setSendHour(Number(event.target.value))}
+            >
+              {SEND_HOURS.map((hour) => (
+                <option key={hour} value={hour}>
+                  {hourLabel(hour)}
+                </option>
+              ))}
+            </select>
+          </EditorField>
+          <EditorField label="Time zone">
+            <select
+              className={inputClass}
+              value={zone}
+              onChange={(event) => setZone(event.target.value)}
+            >
+              {(TIMEZONES.includes(zone) ? TIMEZONES : [zone, ...TIMEZONES]).map(
+                (name) => (
+                  <option key={name} value={name}>
+                    {name.replace(/_/g, " ")}
+                  </option>
+                ),
+              )}
+            </select>
+          </EditorField>
+        </div>
+      </EditorSection>
+
+      {cadence === "weekly" ? (
+        <EditorSection title="Between Mondays">
+          <EditorToggleRow
+            label="Urgent deadline alerts"
+            description="One message between weeklies, and only when a deadline moves on something you saved that is due inside your buffer."
+            checked={urgentAlerts}
+            onChange={() => setUrgentAlerts((previous) => !previous)}
+          />
+        </EditorSection>
+      ) : null}
+
+      <EditorSection
+        title="Your timeline"
+        description="What Mylo treats as enough runway when it judges whether a venue or a call actually fits your plan. Projects can override both."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <EditorField
+            label="Deadline buffer (days)"
+            hint="Slack you want between finishing something and its deadline. 0–90."
+          >
+            <input
+              className={inputClass}
+              type="number"
+              min={0}
+              max={90}
+              value={bufferDays}
+              onChange={(event) => setBufferDays(Number(event.target.value))}
+            />
+          </EditorField>
+          <EditorField
+            label="Minimum paper window (days)"
+            hint="Fewest days you consider enough to write a full paper. 7–365."
+          >
+            <input
+              className={inputClass}
+              type="number"
+              min={7}
+              max={365}
+              value={windowDays}
+              onChange={(event) => setWindowDays(Number(event.target.value))}
+            />
+          </EditorField>
         </div>
       </EditorSection>
     </>
@@ -578,7 +724,8 @@ function ProfileEditorForm({
     { id: "about", label: "About you", hint: "Role & institution", content: panelAbout },
     { id: "focus", label: "Research focus", hint: "Statement, areas, keywords", content: panelFocus },
     { id: "interests", label: "Interest clusters", hint: "Group areas into themes", content: panelInterests },
-    { id: "watch", label: "What Mylo watches", hint: "Topics, signals, cadence", content: panelWatch },
+    { id: "watch", label: "What Mylo watches", hint: "Topics and signals", content: panelWatch },
+    { id: "delivery", label: "Delivery", hint: "Cadence, send hour, timeline", content: panelDelivery },
   ];
   // Eligibility only matters to someone who wants fellowship recommendations —
   // same rule the onboarding flow applies to its eligibility step.

@@ -169,9 +169,11 @@ class Delivery:
     reports_queued: int = 0
     reports_delivered: int = 0
     reports_failed: int = 0
+    reports_scheduled: int = 0
     digests_queued: int = 0
     digests_delivered: int = 0
     digests_failed: int = 0
+    digests_scheduled: int = 0
 
     @property
     def briefings_generated(self) -> int:
@@ -179,8 +181,20 @@ class Delivery:
 
     @property
     def reports_pending(self) -> int:
+        """Queued, not settled, and **due** — the number worth worrying about.
+
+        Rows held for a recipient's local send hour (``not_before``, plan 0.3) are
+        not late, they are waiting on purpose. Counting them as pending made the
+        analytics report open every morning with a backlog that resolves itself by
+        breakfast, which is how a health number stops being read.
+        """
         settled = self.reports_delivered + self.reports_failed
-        return max(0, self.reports_queued - settled)
+        return max(0, self.reports_queued - settled - self.reports_scheduled)
+
+    @property
+    def digests_pending(self) -> int:
+        settled = self.digests_delivered + self.digests_failed
+        return max(0, self.digests_queued - settled - self.digests_scheduled)
 
 
 @dataclass
@@ -275,9 +289,12 @@ class RunAnalytics:
                 "reports_delivered": self.delivery.reports_delivered,
                 "reports_failed": self.delivery.reports_failed,
                 "reports_pending": self.delivery.reports_pending,
+                "reports_scheduled": self.delivery.reports_scheduled,
                 "digests_queued": self.delivery.digests_queued,
                 "digests_delivered": self.delivery.digests_delivered,
                 "digests_failed": self.delivery.digests_failed,
+                "digests_pending": self.delivery.digests_pending,
+                "digests_scheduled": self.delivery.digests_scheduled,
             },
             "trend": [
                 {
@@ -408,11 +425,24 @@ def collect_delivery(day: date) -> Delivery:
     )
 
     outbox = DiscordOutboxMessage.objects.filter(created_at__date=day)
-    for kind, queued, delivered, failed in (
-        ("daily_report", "reports_queued", "reports_delivered", "reports_failed"),
-        ("lab_digest", "digests_queued", "digests_delivered", "digests_failed"),
+    now = timezone.now()
+    for kinds, queued, delivered, failed, scheduled in (
+        (
+            ("daily_report", "weekly_report", "urgent_alert"),
+            "reports_queued",
+            "reports_delivered",
+            "reports_failed",
+            "reports_scheduled",
+        ),
+        (
+            ("lab_digest", "lab_weekly"),
+            "digests_queued",
+            "digests_delivered",
+            "digests_failed",
+            "digests_scheduled",
+        ),
     ):
-        rows = outbox.filter(kind=kind)
+        rows = outbox.filter(kind__in=kinds)
         setattr(delivery, queued, rows.count())
         setattr(
             delivery,
@@ -427,6 +457,19 @@ def collect_delivery(day: date) -> Delivery:
                     DiscordOutboxMessage.Status.FAILED,
                     DiscordOutboxMessage.Status.DEAD,
                 )
+            ).count(),
+        )
+        # Held for a local send hour, not stuck. A future ``next_attempt_at`` is
+        # the only way a row is deliberately not due yet (plan 0.3).
+        setattr(
+            delivery,
+            scheduled,
+            rows.filter(
+                status__in=(
+                    DiscordOutboxMessage.Status.PENDING,
+                    DiscordOutboxMessage.Status.SENDING,
+                ),
+                next_attempt_at__gt=now,
             ).count(),
         )
     return delivery

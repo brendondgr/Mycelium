@@ -48,8 +48,12 @@ def test_member_reads_lab_watch(client: APIClient, lab: Lab, member: User) -> No
     client.force_authenticate(member)
     resp = client.get(f"/api/auth/labs/{lab.slug}/watch/")
     assert resp.status_code == 200
-    assert resp.data["cadence"] == "weekly"
+    assert resp.data["cadence"] == "daily"
     assert resp.data["topics"] == []
+    assert resp.data["deadline_buffer_days"] == 14
+    assert resp.data["min_paper_window_days"] == 60
+    # A lab's send hour and zone stay on the lab itself, not on its watch row.
+    assert "send_hour_local" not in resp.data
 
 
 @pytest.mark.django_db

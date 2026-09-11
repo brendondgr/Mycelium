@@ -29,12 +29,13 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from django.conf import settings
 from django.utils import timezone
 
+from apps.content import delivery
 from apps.content.briefing import LAB_BRIEFING_CATEGORIES, _suggested_scores
 from apps.content.daily_report import compile_report_for_lab
 from apps.content.daily_report_pdf import render_report_pdf
@@ -127,22 +128,32 @@ def compile_lab_digest(lab, *, on: date | None = None) -> LabDigest:
 # --------------------------------------------------------------------------- #
 # Eligibility
 # --------------------------------------------------------------------------- #
-def eligible_labs(labs) -> list:
-    """Labs that should receive a channel digest today.
+def eligible_labs(labs, *, on: date | None = None, kind: str = delivery.DAILY) -> list:
+    """Labs that should receive a channel post today.
 
     Every condition is checked here rather than trusted from setup time:
 
+    * **cadence** — a post of this shape is due to this lab on its *own* local date
+      (plan 0.4). The lab's briefing is still written and its members still see it
+      on the web; only the channel waits;
     * the bot add-on is **live now** — a lapsed plan goes quiet, and the check has to
       happen at delivery or it never happens at all;
     * the guild link is active;
     * an updates channel is bound. **A blank binding is a deliberate opt-out and is
       respected in silence** — no warning, no incident. A lab that turned this off
       should not be told about it every morning.
+
+    ``kind`` is what is being sent — :data:`delivery.DAILY` or
+    :data:`delivery.WEEKLY`. Passing it rather than assuming "daily" is what lets
+    the Monday weekly reach a weekly-cadence lab through the same gate.
     """
     from apps.billing.entitlements import Feature, lab_has_feature
 
     out = []
     for lab in labs:
+        local_date = on or delivery.local_today(lab)
+        if kind not in delivery.push_kinds(delivery.lab_cadence(lab), local_date):
+            continue
         if not lab_has_feature(lab, Feature.BOT_SERVER):
             continue
         link = resolve.get_guild_link_for_lab(lab)
@@ -177,13 +188,14 @@ def queue_lab_digest(lab, *, on: date | None = None, digest: LabDigest | None = 
         return None, False
 
     return outbox.enqueue_channel(
-        dedupe_key=f"lab_digest:{lab.id}:{on:%Y-%m-%d}",
+        dedupe_key=delivery.lab_digest_key(lab, on),
         kind="lab_digest",
         channel_id=channel_id,
         lab=lab,
         embed=digest_embed(digest),
         subject_type="lab_digest",
         subject_id=str(lab.id),
+        not_before=delivery.send_time(lab, on),
     )
 
 
@@ -294,7 +306,7 @@ def queue_lab_report(lab, *, on: date | None = None, workdir: Path | None = None
     os.replace(staged, path)
 
     _row, created = outbox.enqueue_channel(
-        dedupe_key=f"lab_report:{lab.id}:{on:%Y-%m-%d}",
+        dedupe_key=delivery.lab_report_key(lab, on),
         kind="lab_report",
         channel_id=channel_id,
         lab=lab,
@@ -303,6 +315,10 @@ def queue_lab_report(lab, *, on: date | None = None, workdir: Path | None = None
         attachment_filename=path.name,
         subject_type="lab_report",
         subject_id=str(lab.id),
+        # One second after the summary, so the outbox — which claims by
+        # (next_attempt_at, id) — still posts the file under the counts it
+        # belongs to once both rows are held for the same local hour.
+        not_before=delivery.send_time(lab, on) + timedelta(seconds=1),
     )
     return bool(created)
 

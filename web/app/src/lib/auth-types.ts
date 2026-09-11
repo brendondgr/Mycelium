@@ -237,7 +237,31 @@ export type WatchCadence = "daily" | "weekly";
 export type WatchPreference = {
   topics: string[];
   categories: string[];
+  /**
+   * How often Mylo messages you **on Discord**. The nightly run scores you and
+   * writes your report every day whatever this says, and the web app shows both
+   * every day — cadence asks not to be interrupted, not for Mylo to stop.
+   */
   cadence: WatchCadence;
+  /** IANA zone the send hour is read in. */
+  timezone: string;
+  /** Local hour (0–23) the Discord push targets. */
+  send_hour_local: number;
+  /** Weekly cadence only: allow one DM between Mondays for a moved deadline. */
+  urgent_alerts: boolean;
+  /** Days of slack you want between a milestone and a deadline to call it a fit. */
+  deadline_buffer_days: number;
+  /** Fewest days you consider enough to write a full paper. */
+  min_paper_window_days: number;
+};
+
+/** A lab's shared watch row. Its send hour and zone live on the lab itself. */
+export type LabWatchPreference = {
+  topics: string[];
+  categories: string[];
+  cadence: WatchCadence;
+  deadline_buffer_days: number;
+  min_paper_window_days: number;
 };
 
 /** The four areas the post-onboarding live match can run, in report order. */

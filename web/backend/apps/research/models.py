@@ -135,6 +135,17 @@ class Project(models.Model):
             "stops getting new ones and frees a slot against the plan cap."
         ),
     )
+    share_in_lab_reports = models.BooleanField(
+        default=False,
+        help_text=(
+            "Show this project in the lab's shared surfaces — its Discord "
+            "channel post and the lab report PDF. Off by default: a lab report "
+            "is readable by every lab member and posted to a channel, while "
+            "project visibility (see ProjectQuerySet.visible_to) is narrower "
+            "than that, so an unshared project's name and matches stay out of "
+            "both. Members still see their own projects in their own reports."
+        ),
+    )
     archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

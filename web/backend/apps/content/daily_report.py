@@ -194,6 +194,12 @@ class ReportData:
     new_counts: dict[str, int] = field(default_factory=dict)
     personal: ReportPart | None = None
     projects: list[ReportPart] = field(default_factory=list)
+    #: How many of the target's projects this surface is holding back — a lab's
+    #: projects whose editors have not turned on ``share_in_lab_reports``. Reported
+    #: as a count and never by name, so the document is honest about being partial
+    #: without publishing what it is withholding. Always 0 on a personal report,
+    #: which is scoped to one reader.
+    private_projects_hidden: int = 0
 
     @property
     def parts(self) -> list[ReportPart]:
@@ -466,6 +472,7 @@ def _compile(
     personal_label: str = PERSONAL_LABEL,
     reader=None,
     interests: dict | None = None,
+    hidden_projects: int = 0,
 ) -> ReportData:
     """The shared gather, over whatever target the two public compilers name.
 
@@ -541,6 +548,7 @@ def _compile(
         new_counts=new_counts,
         personal=personal,
         projects=project_parts,
+        private_projects_hidden=hidden_projects,
     )
 
 
@@ -577,6 +585,7 @@ def compile_report_for_lab(lab) -> ReportData:
         target_filter={"target_lab": lab},
         briefing_filter={"lab": lab},
         projects=briefing.report_projects_for_lab(lab),
+        hidden_projects=briefing.hidden_lab_projects(lab),
         allow=briefing.LAB_BRIEFING_CATEGORIES,
         personal_label=lab.name,
         interests=target_for_lab(lab).interests,

@@ -22,9 +22,16 @@ def test_get_creates_defaults(client, user) -> None:
     client.force_authenticate(user)
     resp = client.get(URL)
     assert resp.status_code == 200
-    assert resp.data["cadence"] == "weekly"
+    # Daily by default (plan D1): it is what every existing row was already
+    # receiving, so making cadence real changed nobody's experience.
+    assert resp.data["cadence"] == "daily"
     assert resp.data["topics"] == []
     assert resp.data["categories"] == []
+    assert resp.data["send_hour_local"] == 8
+    assert resp.data["timezone"] == "America/New_York"
+    assert resp.data["urgent_alerts"] is False
+    assert resp.data["deadline_buffer_days"] == 14
+    assert resp.data["min_paper_window_days"] == 60
 
 
 @pytest.mark.django_db

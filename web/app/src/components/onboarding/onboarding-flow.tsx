@@ -284,7 +284,7 @@ export function OnboardingFlow({
     retractions: false,
     graph: true,
   });
-  const [cadence, setCadence] = useState<WatchCadence>("weekly");
+  const [cadence, setCadence] = useState<WatchCadence>("daily");
 
   // Areas the live post-onboarding match will run, set from the watch toggles
   // when the user finishes (first-run only).
@@ -412,7 +412,7 @@ export function OnboardingFlow({
               return acc;
             }, {}),
           );
-          setCadence(watch.cadence ?? "weekly");
+          setCadence(watch.cadence ?? "daily");
         }
       } catch {
         // Leave the form at its defaults; the user can still fill it in.
@@ -1509,6 +1509,14 @@ export function OnboardingFlow({
         <div className="space-y-2">
           <p className="text-sm font-medium text-[var(--text-primary)]">
             How often should Mylo check in?
+          </p>
+          {/* Cadence governs Discord and nothing else: the nightly run still
+              scores this person and writes their report every day. Saying so here
+              is the difference between "Weekly" reading as "Mylo works less" and
+              reading as "Mylo interrupts less", which is what it means. */}
+          <p className="text-xs text-[var(--text-secondary)]">
+            Mylo messages you on Discord daily or weekly. Your reports on the web
+            update every day either way.
           </p>
           <div className="flex gap-1 rounded-lg bg-surface-alt p-1">
             {CADENCES.map((option) => (

@@ -169,6 +169,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "member_count",
             "is_member",
             "is_archived",
+            "share_in_lab_reports",
             "is_over_cap",
             "can_edit",
             "can_manage_members",
@@ -355,6 +356,10 @@ class ProjectUpdateSerializer(serializers.Serializer):
     written into the free-form ``goals`` JSON under its own key. Sending ``null``
     (or an empty string, for the text fields) clears one rather than storing a
     blank, so the page falls back to "not set" instead of rendering an empty pill.
+
+    ``share_in_lab_reports`` is a real column rather than a ``goals`` key: it is a
+    permission-shaped decision that the briefing query filters on, and a JSON key
+    cannot be filtered on cheaply or trusted to exist.
     """
 
     name = serializers.CharField(required=False)
@@ -369,6 +374,10 @@ class ProjectUpdateSerializer(serializers.Serializer):
     watch_categories = serializers.ListField(
         child=serializers.CharField(), required=False
     )
+    #: Opt this project into the lab's shared surfaces (plan M6). Off by default
+    #: and settable only by a project editor, which is what the view already
+    #: enforces before this serializer runs.
+    share_in_lab_reports = serializers.BooleanField(required=False)
 
     def validate_name(self, value: str) -> str:
         value = value.strip()
@@ -407,6 +416,8 @@ class ProjectUpdateSerializer(serializers.Serializer):
         if "watch_categories" in validated:
             goals["watch_categories"] = validated["watch_categories"]
         instance.goals = goals
+        if "share_in_lab_reports" in validated:
+            instance.share_in_lab_reports = bool(validated["share_in_lab_reports"])
 
         instance.save()
         return instance

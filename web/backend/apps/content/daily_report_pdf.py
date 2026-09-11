@@ -308,7 +308,7 @@ _DEADLINE_RE = re.compile(r"\bdeadline\s+(\d{4}-\d{2}-\d{2})\b", re.IGNORECASE)
 _NUMBERED_RE = re.compile(r"^(\d{1,3})[.)]\s+(.*)$")
 
 
-def _inline(text: str) -> str:
+def _inline(text: str, *, verdicts: bool = False) -> str:
     """Escape XML, then re-apply the report's markdown as reportlab tags.
 
     Deliberately draws **no filled background** anywhere. A reportlab inline
@@ -317,15 +317,24 @@ def _inline(text: str) -> str:
     verdict) are lifted out of the text entirely and rendered as rounded chips
     beside the entry. What is left here is colour and weight, which is all an
     inline run can carry without looking marked-up.
+
+    Verdict colouring is **off by default** (plan step 0.1). ``Read``, ``Skim`` and
+    ``File`` are ordinary English words: a lead paragraph opening "Read the
+    corruption study first" had its first word painted as a verdict chip colour,
+    and so did every sentence mentioning a file. The verdict a ranked item carries
+    is parsed out of its title line by :func:`_split_item_line` and drawn as a real
+    chip, so nothing here needs to guess at one. The flag stays so a caller that
+    genuinely holds a signal segment can opt in.
     """
     out = escape(text or "")
     out = _LINK_RE.sub(
         lambda m: f'<a href="{m.group(2)}" color="{_LINK_HEX}">{m.group(1)}</a>', out
     )
     out = _NEW_MARKER_RE.sub(f'<font color="{_NEW_HEX}"><b>NEW</b></font>', out)
-    out = _VERDICT_RE.sub(
-        lambda m: f'<font color="{_MATCH_HEX}"><b>{m.group(1)}</b></font>', out
-    )
+    if verdicts:
+        out = _VERDICT_RE.sub(
+            lambda m: f'<font color="{_MATCH_HEX}"><b>{m.group(1)}</b></font>', out
+        )
     out = _DEADLINE_RE.sub(
         lambda m: f'<font color="{_DEADLINE_HEX}"><b>deadline {m.group(1)}</b></font>',
         out,
@@ -397,16 +406,52 @@ _ITEM_DEADLINE_RE = re.compile(
 #: Whatever separators the removed signals leave stranded at the end of the line.
 _TRAILING_SEPARATORS_RE = re.compile(r"[\s··—–-]+$")
 
+#: The bolded title that opens a ranked item — ``**[Title](url)**`` or ``**Title**``.
+#: Non-greedy, because the signals that follow carry their own ``**NEW**`` and a
+#: greedy match would swallow it into the title.
+_ITEM_TITLE_RE = re.compile(r"^\s*(\*\*.+?\*\*)(.*)$", re.DOTALL)
+#: The separator :func:`apps.content.briefing_sections._numbered_item` puts between
+#: the title and the signals. Used only when the line carries no bolded title.
+_ITEM_SEPARATOR_RE = re.compile(r"^(.*?)\s+—\s+(.*)$", re.DOTALL)
+
+
+def _signal_segment(text: str) -> tuple[str, str]:
+    """Split a ranked item's title line into ``(title, signal segment)``.
+
+    The report's item grammar is ``**[Title](url)** — **NEW** · Read · deadline …``
+    (:func:`apps.content.briefing_sections._numbered_item`), so every signal lives
+    after the title. Searching the whole line for them is what made a paper called
+    *File-Level Provenance* render as a ``File`` verdict, and a title containing the
+    word *Read* render as ``Read`` — the signal words are ordinary English, and a
+    title is exactly where ordinary English appears.
+
+    Anchored on the bolded title first, because that is what the emitter always
+    writes and it survives a title containing its own em dash. A model-written line
+    with no bolded title falls back to the ``—`` separator, and a line with neither
+    is treated as all title and no signals, which is the safe direction: a missing
+    chip is a smaller error than a wrong one.
+    """
+    matched = _ITEM_TITLE_RE.match(text)
+    if matched:
+        return matched.group(1), matched.group(2)
+    matched = _ITEM_SEPARATOR_RE.match(text)
+    if matched:
+        return matched.group(1), matched.group(2)
+    return text, ""
+
 
 def _split_item_line(text: str) -> tuple[str, bool, str | None, str]:
     """Split a written item's title line into ``(title, is_new, verdict, deadline)``.
 
-    Order-independent, because the line is model-written as often as it is
-    generated: each signal is matched wherever it sits, removed, and the separators
-    it leaves behind are cleaned off the tail.
+    Order-independent **within the signal segment**, because the line is
+    model-written as often as it is generated: each signal is matched wherever it
+    sits after the title, removed, and the separators it leaves behind are cleaned
+    off the tail.
     """
-    is_new = bool(_ITEM_NEW_RE.search(text))
-    rest = _ITEM_NEW_RE.sub("", text)
+    title, rest = _signal_segment(text)
+
+    is_new = bool(_ITEM_NEW_RE.search(rest))
+    rest = _ITEM_NEW_RE.sub("", rest)
 
     found_verdict = _ITEM_VERDICT_RE.search(rest)
     verdict = found_verdict.group(1).casefold() if found_verdict else None
@@ -418,7 +463,13 @@ def _split_item_line(text: str) -> tuple[str, bool, str | None, str]:
 
     # Collapse the runs of " · " / " — " the removals opened up mid-line, then trim.
     rest = re.sub(r"\s*[·]\s*(?=[·—–-]|\s*$)", " ", rest)
-    return _TRAILING_SEPARATORS_RE.sub("", rest).strip(), is_new, verdict, deadline
+    # Whatever the signal segment still holds is prose the model wrote alongside the
+    # signals ("also in Agentic KG"), so it stays with the title rather than being
+    # dropped — the old whole-line parse kept it too.
+    remainder = _TRAILING_SEPARATORS_RE.sub("", rest).strip()
+    remainder = remainder.lstrip("·—–- ").strip()
+    line = f"{title} — {remainder}" if remainder else title
+    return _TRAILING_SEPARATORS_RE.sub("", line).strip(), is_new, verdict, deadline
 
 
 def _markdown_flowables(md: str, styles: dict[str, ParagraphStyle]) -> list:
@@ -1302,6 +1353,18 @@ def render_report_pdf(data: ReportData) -> bytes:
             styles["CoverFoot"],
         )
     )
+    # A lab document lists only projects opted into lab reports, so it says how
+    # many it is leaving out — a count, never a name. Without the line a reader who
+    # knows the lab runs six projects reads a one-project table as a quiet day.
+    if data.private_projects_hidden:
+        noun = "project" if data.private_projects_hidden == 1 else "projects"
+        cover.append(Spacer(1, 0.06 * inch))
+        cover.append(
+            Paragraph(
+                f"{data.private_projects_hidden} private {noun} not shown.",
+                styles["CoverFoot"],
+            )
+        )
     story.append(_CenteredCover(cover))
     story.append(PageBreak())
 

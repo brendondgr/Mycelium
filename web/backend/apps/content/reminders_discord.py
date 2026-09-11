@@ -134,6 +134,9 @@ def send_personal_report(
     attachment_path: str,
     dedupe_key: str,
     url: str = "",
+    embed: dict | None = None,
+    kind: str = "daily_report",
+    not_before=None,
 ) -> SendOutcome:
     """Queue a user's daily "Mylo Report" PDF as a DM attachment (never raises).
 
@@ -144,6 +147,10 @@ def send_personal_report(
 
     "Unreachable" (no active identity, blocked DM, no bot token) is a soft outcome —
     the caller counts the skip rather than manufacturing a dead letter.
+
+    ``not_before`` holds the row until the recipient's local send hour; ``kind``
+    separates a daily from a weekly in the outbox and the analytics; ``embed``
+    passes a prebuilt embed through instead of the plain title/body one.
     """
     if not _bot_configured():
         return SendOutcome(ok=False, unreachable=True, not_configured=True)
@@ -154,13 +161,17 @@ def send_personal_report(
 
     outbox.enqueue_dm(
         dedupe_key=dedupe_key,
-        kind="daily_report",
+        kind=kind,
         user=user,
-        embed=reminder_embed(title, body, url),
+        # A prebuilt ``embed`` is the overview-and-statistics post (plan 1.3); the
+        # title/body pair is the plain reminder shape, kept for callers that have
+        # nothing richer to say and for the deterministic fallback.
+        embed=embed if embed is not None else reminder_embed(title, body, url),
         attachment_path=attachment_path,
         attachment_filename=filename,
-        subject_type="daily_report",
+        subject_type=kind,
         subject_id=str(user.id),
+        not_before=not_before,
     )
     return SendOutcome(ok=True, queued=True, outbox_key=dedupe_key)
 

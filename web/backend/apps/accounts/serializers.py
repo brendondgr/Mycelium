@@ -231,11 +231,40 @@ class WatchPreferenceSerializer(serializers.ModelSerializer):
             "topics",
             "categories",
             "cadence",
+            # Delivery (plan M1). Cadence, hour and zone decide when a Discord
+            # message goes out; the two timeline fields decide what Mylo calls a
+            # deadline a person can actually make.
+            "timezone",
+            "send_hour_local",
+            "urgent_alerts",
+            "deadline_buffer_days",
+            "min_paper_window_days",
             "topic_cap",
             "topics_over_cap",
             "updated_at",
         ]
         read_only_fields = ["topic_cap", "topics_over_cap", "updated_at"]
+
+    def validate_timezone(self, value: str) -> str:
+        """Reject a zone name the scheduler could not read.
+
+        ``delivery.zone_for`` falls back to Eastern rather than raising, which is
+        right at send time — one bad row must not stop the batch. It is wrong here:
+        a person who types a zone and is silently given a different one has no way
+        to discover it.
+        """
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        text = (value or "").strip()
+        if not text:
+            raise serializers.ValidationError("a time zone is required")
+        try:
+            ZoneInfo(text)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise serializers.ValidationError(
+                f"unknown time zone: {text}"
+            ) from exc
+        return text
 
     def _clean_string_list(self, value: object, field: str) -> list[str]:
         if not isinstance(value, list):
@@ -309,6 +338,20 @@ class LabWatchPreferenceSerializer(WatchPreferenceSerializer):
 
     class Meta(WatchPreferenceSerializer.Meta):
         model = LabWatchPreference
+        # A lab's send hour and zone live on ``Lab`` itself, where the reminder
+        # scheduler already reads them, and are edited through the lab endpoint —
+        # two places to set "when the lab's morning is" would disagree within a
+        # release. Urgent alerts are a person's opt-in, not a channel's.
+        fields = [
+            "topics",
+            "categories",
+            "cadence",
+            "deadline_buffer_days",
+            "min_paper_window_days",
+            "topic_cap",
+            "topics_over_cap",
+            "updated_at",
+        ]
 
     def _topic_cap(self) -> int | None:
         return None  # lab shared watch keeps the structural cap only

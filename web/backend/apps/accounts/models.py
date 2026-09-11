@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from pgvector.django import VectorField
 
@@ -332,10 +333,58 @@ class DeptProfile(_InterestSurface):
 
 
 class WatchCadence(models.TextChoices):
-    """How often Mylo surfaces what it is watching for a user."""
+    """How often Mylo **pushes** what it is watching (plan D2).
+
+    Cadence governs Discord — a DM to a person, a post to a lab's channel — and
+    nothing else. The nightly run scores every scheduled-eligible target and writes
+    its briefing every day regardless, and the web app shows that briefing, its
+    alerts and its bell notifications every day regardless. Choosing Weekly asks
+    not to be interrupted; it does not ask Mylo to stop working.
+    """
 
     DAILY = "daily", "Daily"
     WEEKLY = "weekly", "Weekly"
+
+
+#: Accepted ranges for the two timeline placeholders (open decision OD8). Wide on
+#: purpose: they are a reader's own judgement about how much runway a submission
+#: needs, and Mylo has no basis for narrowing them beyond "not negative" and "not
+#: longer than a planning horizon anyone holds".
+DEADLINE_BUFFER_RANGE = (0, 90)
+MIN_PAPER_WINDOW_RANGE = (7, 365)
+DEFAULT_DEADLINE_BUFFER_DAYS = 14
+DEFAULT_MIN_PAPER_WINDOW_DAYS = 60
+
+
+def _buffer_field(owner: str):
+    """The deadline-buffer column, worded for whichever row carries it."""
+    return models.PositiveSmallIntegerField(
+        default=DEFAULT_DEADLINE_BUFFER_DAYS,
+        validators=[
+            MinValueValidator(DEADLINE_BUFFER_RANGE[0]),
+            MaxValueValidator(DEADLINE_BUFFER_RANGE[1]),
+        ],
+        help_text=(
+            f"Days of slack {owner} wants between a milestone and a deadline "
+            "before Mylo calls the venue a fit. A placeholder, adjustable here "
+            "and overridable per project."
+        ),
+    )
+
+
+def _window_field(owner: str):
+    """The minimum-paper-window column, worded for whichever row carries it."""
+    return models.PositiveSmallIntegerField(
+        default=DEFAULT_MIN_PAPER_WINDOW_DAYS,
+        validators=[
+            MinValueValidator(MIN_PAPER_WINDOW_RANGE[0]),
+            MaxValueValidator(MIN_PAPER_WINDOW_RANGE[1]),
+        ],
+        help_text=(
+            f"Fewest days {owner} considers enough to write a full paper. Below "
+            "it Mylo calls a venue not viable rather than tight."
+        ),
+    )
 
 
 class WatchPreference(models.Model):
@@ -367,8 +416,33 @@ class WatchPreference(models.Model):
     cadence = models.CharField(
         max_length=20,
         choices=WatchCadence.choices,
-        default=WatchCadence.WEEKLY,
+        default=WatchCadence.DAILY,
+        help_text="How often Mylo messages this person on Discord (plan D1/D2).",
     )
+    # Delivery timing (plan M1). A lab keeps the equivalent pair on ``Lab`` itself,
+    # where the reminder scheduler already reads them; a person has no other row to
+    # put them on, and this is where their other delivery preferences live.
+    timezone = models.CharField(
+        max_length=64,
+        default="America/New_York",
+        help_text="IANA zone the send hour is read in (e.g. America/New_York).",
+    )
+    send_hour_local = models.PositiveSmallIntegerField(
+        default=8,
+        validators=[MinValueValidator(0), MaxValueValidator(23)],
+        help_text="Local hour (0–23) the Discord push targets; day-granular.",
+    )
+    urgent_alerts = models.BooleanField(
+        default=False,
+        help_text=(
+            "Weekly cadence only (open decision OD2): allow one DM between "
+            "Mondays when a deadline moves on a saved item due inside the "
+            "buffer. Off by default — it is the single case where waiting until "
+            "Monday costs something real, not a second daily."
+        ),
+    )
+    deadline_buffer_days = _buffer_field("this person")
+    min_paper_window_days = _window_field("this person")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -404,8 +478,14 @@ class LabWatchPreference(models.Model):
     cadence = models.CharField(
         max_length=20,
         choices=WatchCadence.choices,
-        default=WatchCadence.WEEKLY,
+        default=WatchCadence.DAILY,
+        help_text="How often Mylo posts to the lab's Discord channel.",
     )
+    # The lab's timeline defaults (plan M2). The hour and zone stay on ``Lab``:
+    # they were already there for reminders, and two places to set "when the lab's
+    # morning is" would disagree within a release.
+    deadline_buffer_days = _buffer_field("this lab")
+    min_paper_window_days = _window_field("this lab")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

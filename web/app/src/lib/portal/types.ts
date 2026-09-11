@@ -192,6 +192,11 @@ export type WatchData = {
   topics: string[];
   categories: string[];
   cadence: WatchCadence;
+  timezone: string;
+  send_hour_local: number;
+  urgent_alerts: boolean;
+  deadline_buffer_days: number;
+  min_paper_window_days: number;
 };
 
 /**

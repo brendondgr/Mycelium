@@ -607,7 +607,7 @@ export async function getWatch(): Promise<WatchPreference> {
 
 /** Save what Mylo keeps an eye on for the caller (own only). */
 export async function saveWatch(
-  payload: WatchPreference,
+  payload: Partial<WatchPreference>,
 ): Promise<WatchPreference> {
   await ensureCsrfCookie();
   const csrfToken = readCsrfToken();

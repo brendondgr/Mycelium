@@ -71,7 +71,7 @@ export function LabEditor({
   // What Mylo watches.
   const [watchTopics, setWatchTopics] = React.useState<string[]>([]);
   const [watchCats, setWatchCats] = React.useState<string[]>(DEFAULT_CATS);
-  const [cadence, setCadence] = React.useState<WatchCadence>("weekly");
+  const [cadence, setCadence] = React.useState<WatchCadence>("daily");
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
   function runSynthesis() {

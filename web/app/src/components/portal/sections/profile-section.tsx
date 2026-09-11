@@ -249,7 +249,7 @@ function WatchCard({ onEdit }: { onEdit: () => void }) {
 
   const topics = watch?.topics ?? [];
   const categories = watch?.categories ?? [];
-  const cadence = watch?.cadence ?? "weekly";
+  const cadence = watch?.cadence ?? "daily";
   const clusters = profile?.interests?.clusters ?? [];
 
   const cadenceLabel = cadence === "daily" ? "daily" : "weekly";

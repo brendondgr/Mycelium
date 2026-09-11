@@ -92,27 +92,27 @@ def _scored(lab, *, title, cluster="", category=ContentItem.Type.PAPER, percent=
 @pytest.mark.django_db
 def test_a_configured_entitled_lab_is_eligible(db) -> None:
     lab = _lab()
-    assert eligible_labs([lab]) == [lab]
+    assert eligible_labs([lab], on=TODAY) == [lab]
 
 
 @pytest.mark.django_db
 def test_a_lapsed_addon_goes_quiet(db) -> None:
     """The check has to happen at delivery, or it never happens at all."""
     lab = _lab(addon=False)
-    assert eligible_labs([lab]) == []
+    assert eligible_labs([lab], on=TODAY) == []
 
 
 @pytest.mark.django_db
 def test_a_blank_channel_is_a_silent_opt_out(db) -> None:
     """A lab that turned this off should not hear about it every morning."""
     lab = _lab(channel="")
-    assert eligible_labs([lab]) == []
+    assert eligible_labs([lab], on=TODAY) == []
 
 
 @pytest.mark.django_db
 def test_a_kicked_guild_is_not_posted_to(db) -> None:
     lab = _lab(state=DiscordGuildLink.State.KICKED)
-    assert eligible_labs([lab]) == []
+    assert eligible_labs([lab], on=TODAY) == []
 
 
 # --------------------------------------------------------------------------- #

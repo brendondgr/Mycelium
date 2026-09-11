@@ -31,11 +31,12 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 from django.conf import settings
 
-from apps.content import reminders_discord
+from apps.content import delivery, reminders_discord
 from apps.content.daily_report import ReportData, compile_report_for_user
 from apps.content.daily_report_pdf import render_report_pdf
 from apps.integrations.services import resolve
@@ -72,13 +73,18 @@ class SendSummary:
 
 
 def _default_send(user, data: ReportData, path: Path, filename: str):
+    local_date = delivery.local_today(user)
     return reminders_discord.send_personal_report(
         user,
         title=REPORT_TITLE,
         body=data.message_body(),
         filename=filename,
         attachment_path=str(path),
-        dedupe_key=f"daily_report:{user.id}:{data.generated_on}",
+        dedupe_key=delivery.daily_report_key(user, local_date),
+        # Compiled in the nightly run, delivered at the recipient's morning. A
+        # send hour already past means the run finished late, and the row is due
+        # at once rather than held for a day (see ``delivery.send_time``).
+        not_before=delivery.send_time(user, local_date),
     )
 
 
@@ -93,18 +99,37 @@ def _report_dir() -> Path:
     return Path(getattr(settings, "DISCORD_OUTBOX_ATTACHMENT_DIR", "data/outbox"))
 
 
-def eligible_recipients(usernames: list[str] | None):
-    """The users who should receive the daily report DM, in a stable order."""
+def eligible_recipients(usernames: list[str] | None, *, on: date | None = None):
+    """The users who should receive the daily report DM, in a stable order.
+
+    Four gates, in order of how expensive they are to check: entitled and active
+    (``select_users``), then **cadence** — whether a daily push is even due to this
+    person on their own local date (plan 0.4) — then linked, opted in and reachable.
+
+    The cadence gate is the one that was missing. Everyone linked to Discord got a
+    post every day, whatever they chose in onboarding. A weekly-cadence reader is
+    dropped here on a Tuesday and their briefing is still written; they simply are
+    not interrupted about it until Monday.
+    """
     from apps.content.tasks import select_users
 
     users = select_users(usernames)
-    reachable = resolve.report_recipient_user_ids(users)
-    return [u for u in users if u.id in reachable]
+    due = [
+        user
+        for user in users
+        if delivery.DAILY
+        in delivery.push_kinds(
+            delivery.user_cadence(user), on or delivery.local_today(user)
+        )
+    ]
+    reachable = resolve.report_recipient_user_ids(due)
+    return [u for u in due if u.id in reachable]
 
 
 def run_daily_report_send(
     usernames: list[str] | None = None,
     *,
+    on: date | None = None,
     compile_fn: CompileFn = compile_report_for_user,
     render_fn: RenderFn = render_report_pdf,
     send_fn: SendFn = _default_send,
@@ -113,7 +138,7 @@ def run_daily_report_send(
 ) -> SendSummary:
     """Compile → render → queue, for every eligible user. Never raises."""
     summary = SendSummary()
-    recipients = eligible_recipients(usernames)
+    recipients = eligible_recipients(usernames, on=on)
     summary.eligible = len(recipients)
     log(f"daily report: {summary.eligible} eligible recipient(s)")
     if not recipients:

@@ -263,11 +263,47 @@ def report_projects_for_user(user) -> list:
     )
 
 
-def report_projects_for_lab(lab) -> list:
-    """The active projects a lab's report covers — the lab's own, in display order."""
+def report_projects_for_lab(lab, *, shared_only: bool = True) -> list:
+    """The active projects a lab's **shared** surfaces cover, in display order.
+
+    A lab report is read by every lab member and posted to the lab's Discord
+    channel, but :meth:`apps.research.models.ProjectQuerySet.visible_to` grants a
+    lab project only to its own members and to lab or department heads. Listing
+    every active lab project here therefore published names and matched items to
+    people the project itself would not show them to — and once project *state*
+    enters a report that becomes unpublished research plans.
+
+    So a project reaches a lab surface only when its editors opted it in
+    (``share_in_lab_reports``, default off). Private lab projects keep appearing in
+    their own members' personal reports through
+    :func:`report_projects_for_user`, which is scoped to one reader.
+
+    ``shared_only=False`` is for callers that are not a shared surface — a count of
+    what the lab actually owns, or an editor's own project list.
+    """
     from apps.research.models import Project
 
-    return list(Project.objects.active().filter(scope_lab=lab).order_by("name", "id"))
+    queryset = Project.objects.active().filter(scope_lab=lab)
+    if shared_only:
+        queryset = queryset.filter(share_in_lab_reports=True)
+    return list(queryset.order_by("name", "id"))
+
+
+def hidden_lab_projects(lab) -> int:
+    """How many of a lab's active projects a shared surface is leaving out.
+
+    The lab post and the lab PDF both say "N private projects not shown" rather
+    than silently showing a shorter list: a reader who knows the lab has six
+    projects and sees one should be told why, and told it is a sharing setting
+    rather than a quiet day.
+    """
+    from apps.research.models import Project
+
+    return (
+        Project.objects.active()
+        .filter(scope_lab=lab, share_in_lab_reports=False)
+        .count()
+    )
 
 
 def _deadline_rounds(meta: dict) -> list[dict]:
@@ -645,6 +681,7 @@ def _write_briefing(
     allow: tuple[str, ...] | None = None,
     member_names: dict[str, str] | None = None,
     projects: list | None = None,
+    hidden_projects: int = 0,
     personal_label: str = briefing_sections.PERSONAL_HEADING,
     complete: briefing_sections.CompleteFn | None = None,
     reader=None,
@@ -654,7 +691,9 @@ def _write_briefing(
     ``owner`` is the update-or-create key (``{"user": user}`` or ``{"lab": lab}``);
     ``target`` is the :class:`MatchTarget` the prose is grounded in; ``target_filter``
     is the ``target_*`` FK the scores are read under; ``projects`` are the projects
-    the report covers after the Personal part. Shared by the user and lab entry
+    the report covers after the Personal part, and ``hidden_projects`` is how many
+    the surface is holding back (a lab's unshared projects), which the body reports
+    as a count and never by name. Shared by the user and lab entry
     points so both apply the same gather + fallback rules — a lab's report is
     structurally the same document its members receive.
     """
@@ -711,6 +750,7 @@ def _write_briefing(
             project_parts,
             complete=complete,
             narrative=narrative_payload,
+            hidden_projects=hidden_projects,
         )
         origin = (
             DailyBriefing.Origin.LLM if used_llm else DailyBriefing.Origin.FALLBACK
@@ -838,6 +878,7 @@ def generate_briefing_for_lab(
         allow=LAB_BRIEFING_CATEGORIES,
         member_names=_lab_member_names(lab),
         projects=report_projects_for_lab(lab),
+        hidden_projects=hidden_lab_projects(lab),
         # The lab's aggregate part is the lab, so it is named after it. "Personal"
         # is what a *person's* own matches are called; on a lab's report it named
         # nobody.
