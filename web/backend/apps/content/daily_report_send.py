@@ -39,6 +39,7 @@ from django.conf import settings
 from apps.content import delivery, discord_embeds, reminders_discord
 from apps.content.daily_report import ReportData, compile_report_for_user
 from apps.content.daily_report_pdf import render_report_pdf
+from apps.content.urgent_alerts import send_urgent_alerts
 from apps.integrations.services import resolve
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,10 @@ CompileFn = Callable[[object], ReportData]
 RenderFn = Callable[[ReportData], bytes]
 # send_fn(user, report_data, path, filename) -> outcome with a bool `.ok`.
 SendFn = Callable[..., object]
+# urgent_fn(usernames, on=) -> a summary with `.sent`, `.errors`, `.error_detail`.
+# Injected for the same reason the three above are: this module's flow is
+# exercised without a database, and the urgent pass reads one.
+UrgentFn = Callable[..., object]
 
 REPORT_TITLE = "Your daily research report"
 
@@ -56,6 +61,8 @@ class SendSummary:
     eligible: int = 0
     #: Recipients whose day had no entrants and no alerts, so nothing was sent.
     quiet: int = 0
+    #: Between-Monday deadline alerts sent to opted-in weekly-cadence readers.
+    urgent: int = 0
     compiled: int = 0
     rendered: int = 0
     sent: int = 0
@@ -67,6 +74,7 @@ class SendSummary:
         return {
             "eligible": self.eligible,
             "quiet": self.quiet,
+            "urgent": self.urgent,
             "compiled": self.compiled,
             "rendered": self.rendered,
             "sent": self.sent,
@@ -151,6 +159,7 @@ def run_daily_report_send(
     *,
     on: date | None = None,
     compile_fn: CompileFn = compile_report_for_user,
+    urgent_fn: UrgentFn = send_urgent_alerts,
     render_fn: RenderFn = render_report_pdf,
     send_fn: SendFn = _default_send,
     report_dir: str | None = None,
@@ -225,8 +234,18 @@ def run_daily_report_send(
                 path.unlink(missing_ok=True)
             summary.unreachable += 1
 
+    # The one exception to "weekly cadence means Mondays" (open decision OD2).
+    # Run from the daily stage rather than its own because it is the same
+    # question asked of the same people on the same schedule — and because a
+    # separate stage is a separate thing to forget to wire into the chain.
+    urgent = urgent_fn(usernames, on=on)
+    summary.urgent = urgent.sent
+    summary.errors += urgent.errors
+    summary.error_detail.extend(urgent.error_detail)
+
     log(
         f"daily report: {summary.sent} queued, {summary.quiet} quiet, "
-        f"{summary.unreachable} unreachable, {summary.errors} error(s)"
+        f"{summary.urgent} urgent, {summary.unreachable} unreachable, "
+        f"{summary.errors} error(s)"
     )
     return summary

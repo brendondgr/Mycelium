@@ -728,6 +728,13 @@ class _Outcome:
         self.ok = ok
 
 
+def _no_urgent(_usernames=None, **_kwargs):
+    """A stand-in for the urgent pass, which reads the database."""
+    from apps.content.urgent_alerts import UrgentSummary
+
+    return UrgentSummary()
+
+
 def _report_for(user) -> ReportData:
     return ReportData(
         username=user.get_username(),
@@ -769,6 +776,8 @@ def test_send_flow_is_phased_and_keeps_the_bytes_for_the_drain(
         return _Outcome(True)
 
     summary = run_daily_report_send(
+        # The urgent pass reads the database; this flow test does not have one.
+        urgent_fn=_no_urgent,
         compile_fn=_report_for,
         render_fn=lambda data: b"%PDF-fake",
         send_fn=send_fn,
@@ -794,6 +803,8 @@ def test_send_flow_isolates_one_failure(monkeypatch) -> None:
         return b"%PDF-ok"
 
     summary = run_daily_report_send(
+        # The urgent pass reads the database; this flow test does not have one.
+        urgent_fn=_no_urgent,
         compile_fn=_report_for,
         render_fn=render_fn,
         send_fn=lambda *a: _Outcome(True),
@@ -812,6 +823,8 @@ def test_unreachable_send_is_counted_not_sent(monkeypatch, tmp_path) -> None:
     )
     monkeypatch.setattr(daily_report_send, "_report_dir", lambda: tmp_path / "outbox")
     summary = run_daily_report_send(
+        # The urgent pass reads the database; this flow test does not have one.
+        urgent_fn=_no_urgent,
         compile_fn=_report_for,
         render_fn=lambda d: b"%PDF-x",
         send_fn=lambda *a: _Outcome(False),
@@ -828,6 +841,7 @@ def test_saved_dir_keeps_the_pdfs(monkeypatch, tmp_path) -> None:
         daily_report_send, "eligible_recipients", lambda u, **_kw: recipients
     )
     run_daily_report_send(
+        urgent_fn=_no_urgent,
         compile_fn=_report_for,
         render_fn=lambda d: b"%PDF-x",
         send_fn=lambda *a: _Outcome(True),

@@ -148,6 +148,7 @@ Files below are inside `web/backend/apps/content/`.
 | The report body's markdown grammar, stated once for both renderers | `report_grammar.py` — `[P#]` citations, `[S:path]` state markers, labelled beats, the code-rendered references block |
 | Deterministic project matchers (no model writes a number) | `matchers/` — `timeline.py` (can this project make that deadline), `overlap.py` (does this threaten the claim), `blockers.py` (does this unblock), `known_literature.py` (does the reader already have it, or write it), `team_gap.py` (does the call need somebody the team lacks), `similarity.py` (raw cosine, never RRF) |
 | Which findings become alerts, and how few | `alerts.py` (five triggers, daily cap, once-ever constraint, the `PROJECT_ALERTS_ENABLED` gate), model `ProjectAlert`; command `evaluate_project_alerts` |
+| The one DM a weekly-cadence reader gets between Mondays | `urgent_alerts.py` — opt-in, weekdays only, a moved deadline on a saved item inside their buffer, keyed on the alert so it is sent once ever |
 | How an alert is said on each surface | `alert_report.py` — the "Needs your attention" section, the Discord lines, the bell notification |
 | One run's numbers (volume, matched, entered, by category/project/theme, deadline horizon) | `report_stats.py` — derived from the finished `ReportData`, stored on `DailyBriefing.stats`, read back by every surface |
 | The Discord post's shape (overview, statistics, Discord's size limits) | `discord_embeds.py` — `personal_report_embed`, `lab_post_embed`, `fit_embed` |

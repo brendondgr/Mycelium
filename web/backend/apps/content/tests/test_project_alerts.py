@@ -33,6 +33,10 @@ from apps.content.models import (
 from apps.research.models import Project, ProjectState
 
 TODAY = date(2026, 9, 11)
+# Named weekdays, because the urgent-alert rule is entirely about which day it
+# is and a test that asked the clock would pass on Tuesday and fail on Monday.
+TUESDAY = date(2026, 9, 22)
+SATURDAY = date(2026, 9, 26)
 
 
 def _item(title: str, ctype: str = ContentItem.Type.PAPER) -> ContentItem:
@@ -382,3 +386,117 @@ def test_a_lab_alert_does_not_ring_every_members_bell(db) -> None:
 
     assert notify(open_alerts({"target_lab": lab})) == 0
     assert Notification.objects.count() == 0
+
+
+# --------------------------------------------------------------------------- #
+# The one exception to "weekly means Mondays" (open decision OD2)
+# --------------------------------------------------------------------------- #
+@pytest.mark.django_db
+def test_an_urgent_alert_reaches_only_a_weekly_reader_who_asked_for_it(
+    owner: User, project: Project
+) -> None:
+    """Every clause of the rule is load-bearing, so every clause is checked."""
+    from apps.accounts.models import WatchCadence
+    from apps.content.urgent_alerts import eligible_alerts
+
+    alert = ProjectAlert.objects.create(
+        target_user=owner,
+        project=project,
+        content=_item("Moved grant", ContentItem.Type.GRANT),
+        trigger=ProjectAlert.Trigger.DEADLINE_MOVED,
+        fired_on=TUESDAY,
+        evidence={"days": 6, "previous_due_date": "2026-10-21",
+                  "due_date": "2026-09-17", "moved_earlier": True},
+    )
+
+    # Daily cadence: they hear about it in tomorrow's daily, so a second message
+    # would be the same news twice.
+    assert eligible_alerts(owner, on=TUESDAY) == []
+
+    owner.watch.cadence = WatchCadence.WEEKLY
+    owner.watch.save(update_fields=["cadence"])
+    owner.refresh_from_db()
+    # Weekly, but they never opted in.
+    assert eligible_alerts(owner, on=TUESDAY) == []
+
+    owner.watch.urgent_alerts = True
+    owner.watch.save(update_fields=["urgent_alerts"])
+    owner.refresh_from_db()
+    assert [row.id for row in eligible_alerts(owner, on=TUESDAY)] == [alert.id]
+
+    # Never at the weekend, opt-in or not — invariant 2 is one rule in one place.
+    assert eligible_alerts(owner, on=SATURDAY) == []
+
+
+@pytest.mark.django_db
+def test_only_a_moved_deadline_is_ever_urgent(owner: User, project: Project) -> None:
+    """Not a small daily: the other four triggers wait for Monday."""
+    from apps.accounts.models import WatchCadence
+    from apps.content.urgent_alerts import eligible_alerts
+
+    owner.watch.cadence = WatchCadence.WEEKLY
+    owner.watch.urgent_alerts = True
+    owner.watch.save(update_fields=["cadence", "urgent_alerts"])
+    owner.refresh_from_db()
+    for trigger in (
+        ProjectAlert.Trigger.OVERLAP_RISK,
+        ProjectAlert.Trigger.UNBLOCKS,
+        ProjectAlert.Trigger.TIMELINE,
+        ProjectAlert.Trigger.TEAM_GAP,
+    ):
+        ProjectAlert.objects.create(
+            target_user=owner,
+            project=project,
+            content=_item(f"Item {trigger}"),
+            trigger=trigger,
+            fired_on=TUESDAY,
+        )
+
+    assert eligible_alerts(owner, on=TUESDAY) == []
+
+
+@pytest.mark.django_db
+def test_the_urgent_message_costs_the_reader_one_glance(
+    owner: User, project: Project
+) -> None:
+    """No statistics, no attachment: they asked not to be interrupted."""
+    from apps.content.urgent_alerts import urgent_embed
+
+    alert = ProjectAlert.objects.create(
+        target_user=owner,
+        project=project,
+        content=_item("Moved grant", ContentItem.Type.GRANT),
+        trigger=ProjectAlert.Trigger.DEADLINE_MOVED,
+        fired_on=TUESDAY,
+        evidence={"days": 6, "previous_due_date": "2026-10-21",
+                  "due_date": "2026-09-17", "moved_earlier": True},
+    )
+
+    embed = urgent_embed(alert)
+
+    assert embed["title"] == "A deadline moved on something you saved"
+    assert "moved earlier" in embed["description"]
+    assert "2026-09-17" in embed["description"]
+    assert "6 days away" in embed["description"]
+    assert "fields" not in embed
+    assert "you asked to hear about these" in embed["footer"]["text"]
+
+
+@pytest.mark.django_db
+def test_an_urgent_alert_is_keyed_on_the_alert_not_the_day(
+    owner: User, project: Project
+) -> None:
+    """A deadline re-read every night must raise one message, not seven."""
+    alert = ProjectAlert.objects.create(
+        target_user=owner,
+        project=project,
+        content=_item("Moved grant", ContentItem.Type.GRANT),
+        trigger=ProjectAlert.Trigger.DEADLINE_MOVED,
+        fired_on=TUESDAY,
+    )
+    from apps.content import delivery
+
+    key = delivery.urgent_alert_key(owner, str(alert.id))
+
+    assert str(alert.id) in key
+    assert TUESDAY.isoformat() not in key
