@@ -26,7 +26,7 @@ Paths are relative to the repository root.
 | The motif artwork (roots, moss overhang, leaf vine, canopy, spores, filaments) | `web/landing/src/components/site/motifs/` |
 | Landing styles, scroll reveals | `web/landing/src/styles/global.css` (rules) + the two inline scripts in `web/landing/src/layouts/PublicLayout.astro` (arming flag + IntersectionObserver); no framework JS |
 | Artwork masters & sync | `web/art/`, `web/scripts/sync-art-assets.mjs` (derivatives are git-ignored) |
-| Mylo animation rig (vector, traced from the character sheet) | `web/art/Mylo/svg/` — `mylo.svg` carries the traced art, the layer names and the animation CSS in one file; states are attributes on the root element (`data-anim`, `data-prop`, `data-facing`). `trace/run.sh` regenerates it from `docs/Resources/myloCharacterCard.png`; `rig-demo.html` exercises it; see the folder README |
+| Mylo animation rig (vector) | `web/art/Mylo/svg/` — `mylo.svg`: ~70 hand-authored shapes placed by measuring the character sheet, plus the animation CSS, in one file; states are attributes on the root element (`data-anim`, `data-prop`, `data-facing`). `trace/draw.py` + `trace/rig.css` regenerate it (`trace/run.sh`); `rig-demo.html` exercises it; see the folder README |
 
 ## Frontend — authenticated app
 
