@@ -38,6 +38,7 @@ import {
   type ProjectTabKey,
 } from "@/components/portal/projects/project-tabs";
 import { ProjectStateCard } from "@/components/portal/projects/project-state-card";
+import { ReflectionCard } from "@/components/portal/projects/reflection-card";
 import { ProjectTeamCard } from "@/components/portal/projects/project-team-card";
 import {
   useAddToCollection,
@@ -287,6 +288,9 @@ function ProjectOverviewPanel({
             state says what to judge a result against, and the second is what
             turns a list of papers into advice. */}
         <ProjectStateCard project={project} />
+        {/* Below the state, because every proposal is a proposed edit *to* it.
+            Absent when there is nothing to decide. */}
+        <ReflectionCard />
         <ProjectFocusCard project={project} onEdit={onEdit} />
       </div>
     );

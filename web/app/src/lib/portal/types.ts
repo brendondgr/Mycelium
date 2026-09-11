@@ -1728,3 +1728,35 @@ export type ProjectStateProposal = {
   failures: string[];
   proposal: ProjectStateInput;
 };
+
+/**
+ * One change Mylo thinks a project's state should make, waiting for a person.
+ *
+ * The rules behind these are deterministic — counts with thresholds over what the
+ * reader actually saved, dismissed and left undated — and the model only phrases
+ * them. A model deciding on its own that a project's method has changed, and
+ * writing that in, would replace the reader's own words in the one document they
+ * are supposed to trust because they wrote it.
+ *
+ * Accepting is the only thing that applies one.
+ */
+export type ReflectionProposal = {
+  id: string;
+  project_id: string;
+  project_name: string;
+  kind: "add_method" | "add_exclusion" | "set_milestone" | "review_state";
+  /** The change, in the shape a state PATCH would take. */
+  proposal: ProjectStateInput;
+  /** What the reader did that produced it — counts, the shared term. */
+  evidence: {
+    saved?: number;
+    dismissed?: number;
+    shared_term?: string;
+    unjudged?: number;
+    venues?: string[];
+    days_since_confirmed?: number | null;
+  };
+  status: "pending" | "accepted" | "rejected" | "expired";
+  expires_on: string;
+  created_at: string;
+};

@@ -133,6 +133,10 @@ class WeeklyPacket:
     deadline_horizon: list[dict] = field(default_factory=list)
     engagement: dict = field(default_factory=dict)
     private_projects_hidden: int = 0
+    #: "Mylo's reflection", already rendered. Deterministic rules phrased in code
+    #: (:mod:`apps.content.reflection`) — the model is never asked to decide that
+    #: a reader's own description of their work should change.
+    reflection: str = ""
 
     @property
     def week_end(self) -> date:

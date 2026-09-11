@@ -28,6 +28,7 @@ import type {
   ProjectInvitation,
   ProjectStateInput,
   ProjectStateProposal,
+  ReflectionProposal,
   ProjectStatePayload,
   ProjectUpdateInput,
   Reminder,
@@ -456,6 +457,25 @@ export async function extractProjectState(
     buildApiUrl(getPublicApiBase(), "projects", id, "state", "extract"),
     body,
     "Could not read that document.",
+  );
+}
+
+/**
+ * Accept or reject one of Mylo's proposals.
+ *
+ * Accepting is the only thing that applies it: nothing else in the product
+ * writes a proposal into a project's state, which is what keeps "a stated field
+ * changes only by user action" true rather than merely intended.
+ */
+export function decideReflection(
+  id: string,
+  action: "accept" | "reject",
+): Promise<ReflectionProposal> {
+  return sendJson<ReflectionProposal>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "reflections", id, "action"),
+    { action },
+    "Could not record that decision.",
   );
 }
 

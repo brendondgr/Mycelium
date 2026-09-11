@@ -140,20 +140,36 @@ def known_literature(project=None, reader=None) -> KnownLiterature:
         ):
             _register(store, share.content, "shared")
 
-    if reader is not None and getattr(reader, "pk", None):
-        for save in (
-            SavedOpportunity.objects.filter(user=reader, target_lab__isnull=True)
-            .exclude(content__isnull=True)
-            .select_related("content", "content__comprehension")
-        ):
-            _register(store, save.content, "saved")
+    if reader is None or not getattr(reader, "pk", None):
+        return store
 
-        from apps.accounts.models import AuthorWork
+    from apps.accounts.models import AuthorWork, Lab
 
-        for work in AuthorWork.objects.filter(user=reader):
-            key = title_key(work.title)
-            if key:
-                store.by_title.setdefault(
-                    key, KnownItem(content_id="", how="authored", where=work.source)
-                )
+    # A lab reads the *lab's* saves. One member's personal bookmark is not the
+    # lab's knowledge, and treating it as such would suppress an item for
+    # everyone because one person filed it.
+    is_lab = isinstance(reader, Lab)
+    saves_filter = (
+        {"target_lab": reader} if is_lab else {"user": reader, "target_lab": None}
+    )
+    for save in (
+        SavedOpportunity.objects.filter(**saves_filter)
+        .exclude(content__isnull=True)
+        .select_related("content", "content__comprehension")
+    ):
+        _register(store, save.content, "saved")
+
+    if is_lab:
+        # A lab writes no papers; its members do, and their own reports already
+        # know that. Fanning every member's bibliography into the lab's known set
+        # would suppress a paper for the whole lab because one person wrote it —
+        # which is exactly backwards, since that is the lab's own work.
+        return store
+
+    for work in AuthorWork.objects.filter(user=reader):
+        key = title_key(work.title)
+        if key:
+            store.by_title.setdefault(
+                key, KnownItem(content_id="", how="authored", where=work.source)
+            )
     return store

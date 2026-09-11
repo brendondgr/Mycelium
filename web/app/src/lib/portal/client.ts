@@ -6,6 +6,7 @@ import type {
   AdminUserDetail,
   AdminUsersPage,
   AdminUsersQuery,
+  BriefingKind,
   CollectionBrief,
   CollectionDetail,
   ConferenceOpportunity,
@@ -36,6 +37,7 @@ import type {
   ProjectInvitation,
   ProjectRecommendations,
   ProjectStatePayload,
+  ReflectionProposal,
   LabMentionTargets,
   LabReminderChannels,
   ProfileData,
@@ -119,6 +121,14 @@ export async function fetchProjectState(id: string): Promise<ProjectStatePayload
   );
 }
 
+/** What Mylo thinks the caller's project state should say. Own proposals only. */
+export async function fetchReflections(): Promise<ReflectionProposal[]> {
+  return getJson<ReflectionProposal[]>(
+    buildApiUrl(getPublicApiBase(), "reflections"),
+    "Could not load Mylo's proposals.",
+  );
+}
+
 /** Every project of a lab (any lab member may browse them to join). */
 export async function fetchLabProjects(slug: string): Promise<Project[]> {
   return getJson<Project[]>(
@@ -188,17 +198,32 @@ export async function fetchLabDailyBriefing(
 }
 
 /** The caller's retained briefings, newest day first — dates and counts only. */
-export async function fetchBriefings(): Promise<DailyBriefingSummary[]> {
+export async function fetchBriefings(
+  kind: BriefingKind = "daily",
+): Promise<DailyBriefingSummary[]> {
   return getJson<DailyBriefingSummary[]>(
-    buildApiUrl(getPublicApiBase(), "briefings"),
+    withKind(buildApiUrl(getPublicApiBase(), "briefings"), kind),
     "Could not load your report history.",
   );
 }
 
+/**
+ * Every briefing endpoint takes `?kind=` and defaults to `daily`, so a caller
+ * that has never heard of the weekly keeps reading exactly what it read before.
+ * Monday carries one row of each for a target, which is why the read has to name
+ * a kind at all.
+ */
+function withKind(url: string, kind: BriefingKind): string {
+  return kind === "weekly" ? `${url}?kind=weekly` : url;
+}
+
 /** One archived day, in the same envelope the Daily page renders. */
-export async function fetchBriefingByDate(date: string): Promise<DailyBriefing> {
+export async function fetchBriefingByDate(
+  date: string,
+  kind: BriefingKind = "daily",
+): Promise<DailyBriefing> {
   return getJson<DailyBriefing>(
-    buildApiUrl(getPublicApiBase(), "briefings", date),
+    withKind(buildApiUrl(getPublicApiBase(), "briefings", date), kind),
     "Could not load that report.",
   );
 }
@@ -206,9 +231,10 @@ export async function fetchBriefingByDate(date: string): Promise<DailyBriefing> 
 /** A lab's retained briefings, newest day first — dates and counts only. */
 export async function fetchLabBriefings(
   slug: string,
+  kind: BriefingKind = "daily",
 ): Promise<DailyBriefingSummary[]> {
   return getJson<DailyBriefingSummary[]>(
-    buildApiUrl(getPublicApiBase(), "labs", slug, "briefings"),
+    withKind(buildApiUrl(getPublicApiBase(), "labs", slug, "briefings"), kind),
     "Could not load the lab's report history.",
   );
 }
@@ -217,9 +243,13 @@ export async function fetchLabBriefings(
 export async function fetchLabBriefingByDate(
   slug: string,
   date: string,
+  kind: BriefingKind = "daily",
 ): Promise<DailyBriefing> {
   return getJson<DailyBriefing>(
-    buildApiUrl(getPublicApiBase(), "labs", slug, "briefings", date),
+    withKind(
+      buildApiUrl(getPublicApiBase(), "labs", slug, "briefings", date),
+      kind,
+    ),
     "Could not load that report.",
   );
 }

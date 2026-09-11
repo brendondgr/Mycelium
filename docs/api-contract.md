@@ -84,6 +84,8 @@ routes clients depend on most.
 | `opportunities/fellowships/` | GET | Eligibility-gated, ranked fellowships |
 | `labs/<slug>/recommendations/` | GET | A lab's four feeds + counts + window counts |
 | `projects/<id>/recommendations/[?digest=1]` | GET | A project's four feeds, or its short list |
+| `reflections/` | GET | Mylo's pending proposals about the caller's project state |
+| `reflections/<id>/action/` | POST | Accept (applies it) or reject one |
 | `recommendations/window-counts/` | GET | The personal "what Mylo found" recency matrix |
 | `search/` | GET | Unified query-first search over the corpus |
 | `onboarding/match/` | POST | Live match for one area during onboarding |
@@ -749,6 +751,16 @@ render as "no numbers" rather than as zeros.
 reading exactly what it read before. Monday carries one row of each for a target,
 which is why the read has to name a kind at all.
 
+A weekly's `generated_on` is the **Monday its week starts**, not the day it was
+written, so a re-run after a Monday outage re-finds that week's row rather than
+adding a second copy of the week. Its `verification` carries the citation
+verifier's record — `{claims, supported, removed, unresolved, removed_sentences}`
+— and its body ends with a one-line footer saying the same thing. A weekly is
+written from a closed evidence packet, and any sentence whose citation does not
+resolve, or whose numbers the packet does not contain, is removed before the body
+is stored. `verification` is `{}` on a daily, which cites nothing the model wrote
+without a packet behind it.
+
 ### `GET /api/labs/<slug>/daily-briefing/`
 
 The same envelope over the lab's aggregate matches, across all four areas. Any
@@ -1224,6 +1236,34 @@ caller — the envelope fields are then the fallback display.
 All saved deadlines, soonest first: `id`, `content_id`, `area`, `title`, `url`,
 `subtitle`, `deadline_date`, `deadline_kind`, `note`, `days_remaining`,
 `within_week`. `content_id` is `null` once the source item was pruned.
+
+### `GET /api/reflections/` · `POST /api/reflections/<id>/action/`
+
+What Mylo thinks the caller's project state should say, and their answer. Own
+proposals only — a proposal is a request to change what someone wrote about their
+own work, so it belongs to them and to nobody else.
+
+```json
+[{ "id": "uuid", "project_id": "uuid", "project_name": "Synapse",
+   "kind": "add_exclusion", "proposal": { "fast": { "exclusions": ["federated"] } },
+   "evidence": { "dismissed": 6, "shared_term": "federated" },
+   "status": "pending", "expires_on": "2026-10-05", "created_at": "…" }]
+```
+
+The rules behind these are **deterministic** — counts with thresholds over what
+the reader saved, dismissed and left undated — and the model only phrases them. A
+model deciding on its own that a project's method has changed, and writing it in,
+is what invariant 9 forbids.
+
+`POST .../action/` takes `{ "action": "accept" | "reject" }`. **Accepting is the
+only thing that applies a proposal**: nothing else in the product writes one into
+a project's state, and the endpoint re-checks the project's edit permission rather
+than trusting that whoever was proposed to can still edit it. Accepting also sets
+`confirmed_at`, because saying "yes, add that" is also saying the state is right.
+A pending proposal lapses after 14 days and a decided one is not raised again for
+28 — declining is a decision the system respects, not a question it repeats next
+Monday. `400` on a proposal already decided, `403` when the caller cannot edit the
+project, `404` for someone else's.
 
 ### `GET /api/notifications/`
 

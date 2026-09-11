@@ -252,6 +252,20 @@ CONTAINER_STAGES = [
         [],
         "Posting each lab's digest to its Discord updates channel…",
     ),
+    # Monday only, and no-ops on every other day. It runs after the dailies for
+    # the same reason the dailies run after the briefings: the weekly is written
+    # from what the day already settled, and cadence decides whether the Monday
+    # *push* is the weekly instead of the daily — which it is, for both cadences.
+    (
+        "generate_weekly_briefing",
+        [],
+        "Writing the Monday weekly for each target…",
+    ),
+    (
+        "send_weekly_reports",
+        [],
+        "Queueing the Monday weekly to Discord…",
+    ),
 ]
 
 

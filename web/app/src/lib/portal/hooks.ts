@@ -53,6 +53,7 @@ import {
   fetchMyProjectInvitations,
   fetchProject,
   fetchProjectState,
+  fetchReflections,
   fetchProjectCollection,
   fetchProjectCollections,
   fetchProjectDigest,
@@ -137,6 +138,7 @@ import {
   type AdminUsersQuery,
   type AdminUserUpdate,
   type BriefingCategory,
+  type BriefingKind,
   type InvitationAction,
   type OrgInviteInput,
   type ProjectUpdateInput,
@@ -233,6 +235,15 @@ export function useProjectState(id?: string) {
   });
 }
 
+/** Mylo's pending proposals about the caller's project state. */
+export function useReflections() {
+  return useQuery({
+    queryKey: ["portal", "reflections"],
+    queryFn: fetchReflections,
+    staleTime: 60_000,
+  });
+}
+
 /** Members of a single lab. Disabled for the personal-workspace scope. */
 export function useLabMembers(slug?: string) {
   const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
@@ -292,19 +303,19 @@ export function useLabDailyBriefing(slug?: string) {
 }
 
 /** The caller's retained report history — the Reports page's date list. */
-export function useBriefings() {
+export function useBriefings(kind: BriefingKind = "daily") {
   return useQuery({
-    queryKey: ["portal", "briefings"],
-    queryFn: fetchBriefings,
+    queryKey: ["portal", "briefings", kind],
+    queryFn: () => fetchBriefings(kind),
     staleTime: 60_000,
   });
 }
 
 /** One archived day of the caller's history. Idle until a date is picked. */
-export function useBriefing(date?: string) {
+export function useBriefing(date?: string, kind: BriefingKind = "daily") {
   return useQuery({
-    queryKey: ["portal", "briefing", date ?? "none"],
-    queryFn: () => fetchBriefingByDate(date as string),
+    queryKey: ["portal", "briefing", kind, date ?? "none"],
+    queryFn: () => fetchBriefingByDate(date as string, kind),
     enabled: Boolean(date),
     // An archived day never changes once written, so there is nothing to refetch.
     staleTime: Infinity,
@@ -312,22 +323,26 @@ export function useBriefing(date?: string) {
 }
 
 /** A lab's retained report history. Disabled for personal scope. */
-export function useLabBriefings(slug?: string) {
+export function useLabBriefings(slug?: string, kind: BriefingKind = "daily") {
   const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
   return useQuery({
-    queryKey: ["portal", "lab-briefings", slug ?? "none"],
-    queryFn: () => fetchLabBriefings(slug as string),
+    queryKey: ["portal", "lab-briefings", slug ?? "none", kind],
+    queryFn: () => fetchLabBriefings(slug as string, kind),
     enabled,
     staleTime: 60_000,
   });
 }
 
 /** One archived day of a lab's history. Idle until a lab and a date are picked. */
-export function useLabBriefing(slug?: string, date?: string) {
+export function useLabBriefing(
+  slug?: string,
+  date?: string,
+  kind: BriefingKind = "daily",
+) {
   const enabled = Boolean(slug && slug !== PERSONAL_SLUG && date);
   return useQuery({
-    queryKey: ["portal", "lab-briefing", slug ?? "none", date ?? "none"],
-    queryFn: () => fetchLabBriefingByDate(slug as string, date as string),
+    queryKey: ["portal", "lab-briefing", slug ?? "none", kind, date ?? "none"],
+    queryFn: () => fetchLabBriefingByDate(slug as string, date as string, kind),
     enabled,
     staleTime: Infinity,
   });

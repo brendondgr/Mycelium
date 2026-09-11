@@ -101,3 +101,46 @@ def references_block(references: list[dict]) -> str:
             f"- **[P{reference['n']}]** {title}" + (f" · {tail}" if tail else "")
         )
     return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- #
+# The no-scores rule (plan H3 / invariant 4)
+# --------------------------------------------------------------------------- #
+#: A markdown link, label and target. Both are stripped before the rule below is
+#: applied, and for different reasons: a **target** is percent-encoded so often
+#: that checking it finds ``%2F`` on half the conference corpus, and a **label**
+#: is the source's own title, which Mylo neither wrote nor may censor — a paper
+#: genuinely called *Do Multi-Hop QA Scores Track Graph Quality?* has to be
+#: nameable.
+_LINK = re.compile(r"\[([^\]]*)\]\(([^)\s]*)\)")
+
+#: A percentage as a reader reads one: a number, then a sign.
+_PERCENT = re.compile(r"\d(?:[\d,.]*)\s*%")
+
+#: The vocabulary of a measurement Mylo did not make. "Score" is included because
+#: the percent match it replaced is exactly the thing that must not come back in
+#: another spelling.
+_SCORE_WORDS = re.compile(r"\b(?:cosine|similarity score|relevance score|scored)\b")
+
+
+def mylo_prose(text: str) -> str:
+    """What Mylo itself wrote — link labels and targets removed.
+
+    The rule below is about Mylo quoting a number as a judgement, not about the
+    corpus. Applying it to a title the source chose would mean refusing to name
+    real papers, which is a worse failure than the one being prevented.
+    """
+    return _LINK.sub(" ", text or "")
+
+
+def score_violations(text: str) -> list[str]:
+    """Every place a report states a measurement it is not allowed to state.
+
+    Empty means the text obeys plan H3. Used by the smoke checklist and by the
+    renderers' own lint, so there is one definition of the rule rather than three
+    that drift.
+    """
+    prose = mylo_prose(text)
+    found = [match.group(0).strip() for match in _PERCENT.finditer(prose)]
+    found += [match.group(0) for match in _SCORE_WORDS.finditer(prose.casefold())]
+    return found

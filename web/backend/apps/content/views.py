@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -1859,3 +1859,95 @@ class MemberSuggestionDismissView(APIView):
                 project=suggestion.project,
             )
         return Response({"id": str(suggestion.id), "dismissed": True})
+
+
+# --------------------------------------------------------------------------- #
+# Reflection proposals (plan 7.3)
+# --------------------------------------------------------------------------- #
+def _proposal_payload(row) -> dict:
+    return {
+        "id": str(row.id),
+        "project_id": str(row.project_id),
+        "project_name": row.project.name,
+        "kind": row.kind,
+        "proposal": row.proposal,
+        "evidence": row.evidence,
+        "status": row.status,
+        "expires_on": row.expires_on.isoformat(),
+        "created_at": row.created_at.isoformat(),
+    }
+
+
+class ReflectionProposalsView(APIView):
+    """The caller's pending proposals — what Mylo thinks their state should say.
+
+    Own proposals only. A proposal is a request to change what someone wrote
+    about their own work, so it belongs to whoever wrote it and to nobody else.
+    """
+
+    def get(self, request):
+        from apps.content.models import ReflectionProposal
+        from apps.content.reflection import expire_stale
+
+        # Lapsed on read as well as on the weekly run: a proposal that expired on
+        # Tuesday should not still be offered on Wednesday because nothing has
+        # run since.
+        expire_stale()
+        rows = (
+            ReflectionProposal.objects.filter(
+                target_user=request.user,
+                status=ReflectionProposal.Status.PENDING,
+            )
+            .select_related("project")
+            .order_by("created_at")
+        )
+        return Response([_proposal_payload(row) for row in rows])
+
+
+class ReflectionProposalActionView(APIView):
+    """Accept or reject one proposal.
+
+    **Accepting is what applies it.** Nothing else in the product writes a
+    proposal into a project's state (invariant 9), which is why this endpoint,
+    and not the weekly run, is the only place the merge happens — and why it
+    re-checks the edit permission rather than trusting that whoever was proposed
+    to can still edit the project.
+    """
+
+    def post(self, request, pk):
+        from apps.content.models import ReflectionProposal
+        from apps.research.models import ProjectState
+        from apps.research.views import _user_can_edit
+
+        action = str(request.data.get("action") or "").strip().lower()
+        if action not in {"accept", "reject"}:
+            raise ValidationError({"action": ['must be "accept" or "reject"']})
+
+        row = get_object_or_404(
+            ReflectionProposal.objects.select_related("project"),
+            pk=pk,
+            target_user=request.user,
+        )
+        if row.status != ReflectionProposal.Status.PENDING:
+            raise ValidationError(
+                {"non_field_errors": ["This proposal has already been decided."]}
+            )
+
+        if action == "accept":
+            if not _user_can_edit(request.user, row.project):
+                raise PermissionDenied("You cannot edit this project.")
+            if row.proposal:
+                state, _created = ProjectState.objects.get_or_create(
+                    project=row.project
+                )
+                state.apply(row.proposal, actor=request.user)
+                # Accepting is the reader saying the state is right, so it is a
+                # confirmation as much as an edit.
+                state.confirmed_at = timezone.localdate()
+                state.save()
+            row.status = ReflectionProposal.Status.ACCEPTED
+        else:
+            row.status = ReflectionProposal.Status.REJECTED
+        row.decided_at = timezone.now()
+        row.save(update_fields=["status", "decided_at"])
+        return Response(_proposal_payload(row))

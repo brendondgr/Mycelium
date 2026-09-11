@@ -23,6 +23,7 @@ import {
   FEATURE,
   PERSONAL_SLUG,
   type BriefingCategory,
+  type BriefingKind,
   type DailyBriefingSummary,
 } from "@/lib/portal/types";
 
@@ -148,8 +149,13 @@ export function ReportsSection() {
   const isLab = labScope !== PERSONAL_SLUG && Boolean(currentLab);
   const labSlug = isLab ? labScope : undefined;
 
-  const personalHistory = useBriefings();
-  const labHistory = useLabBriefings(labSlug);
+  // Monday carries two reports for one target: the daily, written for the web
+  // as every day is, and the weekly. They are separate rows with different
+  // readers — someone catching up on Thursday wants Monday's daily, not its
+  // weekly — so the page picks one rather than merging them.
+  const [kind, setKind] = React.useState<BriefingKind>("daily");
+  const personalHistory = useBriefings(kind);
+  const labHistory = useLabBriefings(labSlug, kind);
   const history = isLab ? labHistory : personalHistory;
 
   const [picked, setPicked] = React.useState<string | null>(null);
@@ -161,8 +167,8 @@ export function ReportsSection() {
       ? picked
       : (days[0]?.generated_on ?? undefined);
 
-  const personalDetail = useBriefing(isLab ? undefined : selected);
-  const labDetail = useLabBriefing(labSlug, selected);
+  const personalDetail = useBriefing(isLab ? undefined : selected, kind);
+  const labDetail = useLabBriefing(labSlug, selected, kind);
   const detail = isLab ? labDetail : personalDetail;
 
   const { data: entitlements } = useEntitlements();
@@ -179,15 +185,42 @@ export function ReportsSection() {
   const yesterday = localDay(1);
   const owner = isLab && currentLab ? currentLab.name : "you";
 
+  const noun = kind === "weekly" ? "weekly" : "daily";
   const subtitle = history.isLoading
     ? "Gathering the report history…"
     : days.length
-      ? `Every daily report Mylo has written for ${owner} in the last 90 days.`
-      : `Mylo's daily reports for ${owner}, kept for 90 days and readable here.`;
+      ? `Every ${noun} report Mylo has written for ${owner} in the last 90 days.`
+      : `Mylo's ${noun} reports for ${owner}, kept for 90 days and readable here.`;
 
   return (
     <div>
       <SectionHeader eyebrow="From Mylo" title="Reports" subtitle={subtitle} />
+
+      <div
+        className="mb-4 inline-flex gap-1 rounded-lg bg-surface-alt p-1"
+        role="tablist"
+        aria-label="Report kind"
+      >
+        {(["daily", "weekly"] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="tab"
+            aria-selected={kind === option}
+            onClick={() => {
+              setKind(option);
+              setPicked(null);
+            }}
+            className={
+              kind === option
+                ? "rounded-md bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-[#fffdf8]"
+                : "rounded-md px-3.5 py-1.5 text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            }
+          >
+            {option === "daily" ? "Daily" : "Weekly"}
+          </button>
+        ))}
+      </div>
 
       {history.isLoading ? (
         <SkeletonHistory />

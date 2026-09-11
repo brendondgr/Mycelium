@@ -142,6 +142,9 @@ Files below are inside `web/backend/apps/content/`.
 | Report formatting sample (no database) | `management/commands/render_sample_report.py` |
 | Report cover art (derived from `web/art/`) | `report_assets/` — `mylo-headshot.png`, `mycelium-logo.png`, `README.md` |
 | Lab Discord digest | `lab_digest.py` |
+| The §8 smoke checklist, against live data | `smoke_reports.py`; command `manage.py smoke_reports [--send]` — twelve system checks, exits non-zero on a failure so it can gate a release |
+| What Mylo proposes about a project's state, from what the reader did | `reflection.py` (deterministic rules, the rendered block), model `ReflectionProposal`, endpoints `/api/reflections/`; UI `web/app/src/components/portal/projects/reflection-card.tsx` |
+| The Monday weekly | `weekly.py` (synthesis + the code frame), `weekly_packet.py` (the closed packet's shape), `weekly_build.py` (building it), `weekly_verify.py` (the citation verifier), `weekly_send.py` (Discord); commands `generate_weekly_briefing`, `send_weekly_reports` |
 | The report body's markdown grammar, stated once for both renderers | `report_grammar.py` — `[P#]` citations, `[S:path]` state markers, labelled beats, the code-rendered references block |
 | Deterministic project matchers (no model writes a number) | `matchers/` — `timeline.py` (can this project make that deadline), `overlap.py` (does this threaten the claim), `blockers.py` (does this unblock), `known_literature.py` (does the reader already have it, or write it), `team_gap.py` (does the call need somebody the team lacks), `similarity.py` (raw cosine, never RRF) |
 | Which findings become alerts, and how few | `alerts.py` (five triggers, daily cap, once-ever constraint, the `PROJECT_ALERTS_ENABLED` gate), model `ProjectAlert`; command `evaluate_project_alerts` |

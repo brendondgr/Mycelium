@@ -193,6 +193,22 @@ urlpatterns = [
         name="lab-saves",
     ),
     path("labs/<slug:slug>/saves", views.LabSavedItemsView.as_view()),
+    # What Mylo thinks the reader's project state should say, and their answer.
+    path(
+        "reflections/",
+        views.ReflectionProposalsView.as_view(),
+        name="reflection-proposals",
+    ),
+    path("reflections", views.ReflectionProposalsView.as_view()),
+    path(
+        "reflections/<uuid:pk>/action/",
+        views.ReflectionProposalActionView.as_view(),
+        name="reflection-proposal-action",
+    ),
+    path(
+        "reflections/<uuid:pk>/action",
+        views.ReflectionProposalActionView.as_view(),
+    ),
     path("notifications/", views.NotificationsView.as_view(), name="notifications"),
     path("notifications", views.NotificationsView.as_view()),
     path(
