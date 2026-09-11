@@ -29,10 +29,13 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-018` | 2026-08-22 | Shipping the cross-encoder rerank: flag-off invariance and on/off cost | complete | — | C-023 | [folder](experiments/EXP-2026-08-018-rerank-ship-verification/RESULTS.md) |
 | `EXP-2026-08-019` | 2026-08-23 | Per-cluster admission: harness regression check | complete | — | — | [folder](experiments/EXP-2026-08-019-per-cluster-admission-regression/RESULTS.md) |
 | `EXP-2026-08-020` | 2026-08-23 | Theme-scoped interest context: production slate separation | complete | — | — | [folder](experiments/EXP-2026-08-020-theme-scoped-interest-context/RESULTS.md) |
+| `EXP-2026-09-001` | 2026-09-11 | Alert precision, and the thresholds it sets | planned | — | C-024 | [folder](experiments/EXP-2026-09-001-alert-precision-calibration/RESULTS.md) |
+| `EXP-2026-09-002` | 2026-09-11 | Does the citation verifier agree with a person? | planned | — | C-025 | [folder](experiments/EXP-2026-09-002-weekly-citation-verifier/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
 | complete | 20 |
-| **total** | **20** |
+| planned | 2 |
+| **total** | **22** |

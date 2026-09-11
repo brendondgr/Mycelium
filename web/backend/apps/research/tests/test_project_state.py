@@ -50,7 +50,11 @@ SAMPLE = {
     "slow": {
         "problem": "Whether multi-hop QA benchmarks detect KG quality at all",
         "claimed_contribution": "A measurement-validity study",
-        "method": ["multi-lens LLM extraction", "  schema settling  ", "schema settling"],
+        "method": [
+            "multi-lens LLM extraction",
+            "  schema settling  ",
+            "schema settling",
+        ],
         "data": ["MuSiQue", "HotpotQA"],
         "blockers": [{"text": "No labeled evaluation set"}, "Single unblinded rater"],
     },

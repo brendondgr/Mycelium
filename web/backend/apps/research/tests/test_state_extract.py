@@ -87,7 +87,9 @@ def test_everything_a_document_produced_is_marked_inferred() -> None:
 
 def test_json_wrapped_in_prose_or_fences_is_still_read() -> None:
     """Refusing anything but a bare object throws away correct answers."""
-    wrapped = f"Here is what I found:\n```json\n{json.dumps(GOOD)}\n```\nHope that helps."
+    wrapped = (
+        f"Here is what I found:\n```json\n{json.dumps(GOOD)}\n```\nHope that helps."
+    )
 
     outcome = extract_project_state(DOCUMENT, complete=_replies(wrapped))
 

@@ -505,6 +505,22 @@ def _delivery_section(data: RunAnalytics, styles) -> list:
         ["Lab digests delivered", _n(delivery.digests_delivered)],
         ["Lab digests held for a local send hour", _n(delivery.digests_scheduled)],
     ]
+    telemetry = data.telemetry
+    rows += [
+        ["", ""],
+        ["People on daily cadence", _n(telemetry.cadence_daily)],
+        ["People on weekly cadence", _n(telemetry.cadence_weekly)],
+        ["Labs on daily cadence", _n(telemetry.lab_cadence_daily)],
+        ["Labs on weekly cadence", _n(telemetry.lab_cadence_weekly)],
+        ["Opted into urgent alerts", _n(telemetry.urgent_alerts_opted_in)],
+        ["Opted out of the report DM", _n(telemetry.dm_opt_outs)],
+    ]
+    busiest = sorted(
+        (telemetry.opens_by_weekday or {}).items(), key=lambda row: -row[1]
+    )
+    if busiest and busiest[0][1]:
+        named = ", ".join(f"{day} {count}" for day, count in busiest[:3])
+        rows.append(["Engagement by weekday (busiest three)", named])
     return [
         Paragraph("Delivery", styles["H1"]),
         Paragraph(
@@ -512,7 +528,10 @@ def _delivery_section(data: RunAnalytics, styles) -> list:
             "are queued and drained on their own schedule, so a report counted as "
             "pending here is waiting for the next drain, not lost. A report held "
             "for a local send hour is not counted as pending: it is waiting on "
-            "purpose, for the recipient's morning rather than for the queue.",
+            "purpose, for the recipient's morning rather than for the queue. "
+            "Whether a lab has muted its channel is not observable — Discord "
+            "does not tell a bot — so it is not reported rather than reported "
+            "as zero.",
             styles["Muted"],
         ),
         _table(rows, [4.2 * inch, 2.2 * inch]),

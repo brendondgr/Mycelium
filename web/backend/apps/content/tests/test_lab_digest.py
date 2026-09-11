@@ -229,7 +229,11 @@ def test_the_post_stays_inside_discords_embed_limits(db) -> None:
     lab = _lab()
     for theme in range(12):
         for n in range(6):
-            _scored(lab, title=f"Item {theme}-{n} " + "x" * 200, cluster=f"Theme {theme}")
+            _scored(
+                lab,
+                title=f"Item {theme}-{n} " + "x" * 200,
+                cluster=f"Theme {theme}",
+            )
 
     data = compile_report_for_lab(lab)
     queue_lab_digest(lab, on=TODAY, data=data)

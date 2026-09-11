@@ -198,6 +198,45 @@ class Delivery:
 
 
 @dataclass
+class DeliveryTelemetry:
+    """Who chose what, and when they actually read it (plan 8.3).
+
+    The four numbers that say whether the cadence redesign worked, and one that
+    says it cannot be answered. Kept separate from :class:`Delivery`, which
+    counts what the run *did*; this counts what people *chose* and *did back*.
+
+    ``lab_channel_mutes`` is permanently ``None`` and that is the honest value:
+    Discord does not tell a bot when a channel is muted, so the one obvious
+    measure of whether a lab post is unwelcome is not observable. Reporting a
+    zero there would be inventing a reassurance.
+    """
+
+    cadence_daily: int = 0
+    cadence_weekly: int = 0
+    lab_cadence_daily: int = 0
+    lab_cadence_weekly: int = 0
+    urgent_alerts_opted_in: int = 0
+    dm_opt_outs: int = 0
+    #: ``{weekday name: engagement events}`` over the trend window. The question
+    #: it answers is whether weekday delivery lands: a Tuesday report nobody
+    #: opens until Friday is a Friday report with extra steps.
+    opens_by_weekday: dict = field(default_factory=dict)
+    lab_channel_mutes: int | None = None
+
+    def as_dict(self) -> dict:
+        return {
+            "cadence_daily": self.cadence_daily,
+            "cadence_weekly": self.cadence_weekly,
+            "lab_cadence_daily": self.lab_cadence_daily,
+            "lab_cadence_weekly": self.lab_cadence_weekly,
+            "urgent_alerts_opted_in": self.urgent_alerts_opted_in,
+            "dm_opt_outs": self.dm_opt_outs,
+            "opens_by_weekday": dict(self.opens_by_weekday),
+            "lab_channel_mutes": self.lab_channel_mutes,
+        }
+
+
+@dataclass
 class TrendPoint:
     """One earlier day, for the trend section."""
 
@@ -218,6 +257,7 @@ class RunAnalytics:
     recommendations: Recommendations = field(default_factory=Recommendations)
     llm: LLMUsage = field(default_factory=LLMUsage)
     delivery: Delivery = field(default_factory=Delivery)
+    telemetry: DeliveryTelemetry = field(default_factory=DeliveryTelemetry)
     trend: list[TrendPoint] = field(default_factory=list)
 
     def headline(self) -> str:
@@ -296,6 +336,7 @@ class RunAnalytics:
                 "digests_pending": self.delivery.digests_pending,
                 "digests_scheduled": self.delivery.digests_scheduled,
             },
+            "telemetry": self.telemetry.as_dict(),
             "trend": [
                 {
                     "day": point.day.isoformat(),
@@ -475,6 +516,53 @@ def collect_delivery(day: date) -> Delivery:
     return delivery
 
 
+def collect_telemetry(day: date, *, days: int = TREND_DAYS) -> DeliveryTelemetry:
+    """What people chose, and when they read what arrived (plan 8.3)."""
+    from apps.accounts.models import LabWatchPreference, WatchCadence, WatchPreference
+    from apps.content.models import RelevanceEvent
+    from apps.integrations.models import DiscordIdentity
+
+    telemetry = DeliveryTelemetry(
+        cadence_daily=WatchPreference.objects.filter(
+            cadence=WatchCadence.DAILY
+        ).count(),
+        cadence_weekly=WatchPreference.objects.filter(
+            cadence=WatchCadence.WEEKLY
+        ).count(),
+        lab_cadence_daily=LabWatchPreference.objects.filter(
+            cadence=WatchCadence.DAILY
+        ).count(),
+        lab_cadence_weekly=LabWatchPreference.objects.filter(
+            cadence=WatchCadence.WEEKLY
+        ).count(),
+        urgent_alerts_opted_in=WatchPreference.objects.filter(
+            urgent_alerts=True
+        ).count(),
+        dm_opt_outs=DiscordIdentity.objects.filter(
+            daily_report_opt_out=True
+        ).count(),
+    )
+
+    # Which weekday people actually engage on. A Tuesday report nobody opens
+    # until Friday is a Friday report with extra steps, and that is a thing the
+    # send hour and the cadence matrix can be changed in response to.
+    names = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    counts = dict.fromkeys(names, 0)
+    rows = RelevanceEvent.objects.filter(
+        created_at__date__gte=day - timedelta(days=days),
+        created_at__date__lte=day,
+        action__in=(
+            RelevanceEvent.Action.VIEW,
+            RelevanceEvent.Action.OPEN_EXTERNAL,
+            RelevanceEvent.Action.SAVE,
+        ),
+    ).values_list("created_at", flat=True)
+    for created in rows:
+        counts[names[created.weekday()]] += 1
+    telemetry.opens_by_weekday = counts
+    return telemetry
+
+
 def collect_trend(day: date, *, days: int = TREND_DAYS) -> list[TrendPoint]:
     """A short history so a single night can be read against its neighbours.
 
@@ -539,5 +627,6 @@ def collect_run_analytics(day: date | None = None) -> RunAnalytics:
         recommendations=collect_recommendations(run_day),
         llm=collect_llm_usage(run_day),
         delivery=collect_delivery(run_day),
+        telemetry=collect_telemetry(run_day),
         trend=collect_trend(run_day),
     )

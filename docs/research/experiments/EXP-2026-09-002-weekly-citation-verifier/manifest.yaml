@@ -1,0 +1,88 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-09-002
+slug: weekly-citation-verifier
+title: Does the citation verifier agree with a person?
+status: planned # planned | running | complete | failed | superseded
+date_started: 2026-09-11
+date_completed: null
+authors: [brendondgr]
+
+purpose: >
+  The weekly removes model-written sentences that fail three checks, and removal
+  is a strong action nobody has measured. This asks how often the checks remove a
+  supported sentence, how often they keep an unsupported one, and whether adding
+  an entailment call earns the model call it costs. Supports C-025.
+
+hypothesis: >
+  Stated so it can be refuted: the deterministic checks will have high removal
+  precision and poor recall — they catch inventions that show up as a number or a
+  bad citation, and miss the ones that are ungrounded in meaning alone. If that
+  is right, the entailment check is where the recall has to come from and the
+  cost is justified; if recall is already high, it is not.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 8a8ad19
+  branch: main
+  entrypoint: "not yet written — see PROTOCOL.md"
+  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+config:
+  # No config file: the checks are code, and the only parameter is whether an
+  # entailment function is supplied to verify_body().
+  path: web/backend/apps/content/weekly_verify.py
+  hash: null
+data:
+  name: Hand-labelled weekly sentences against their evidence packets
+  version: unknown
+  split: test
+  n_examples: 0 # 50 planned; see PROTOCOL.md
+  qrels: "hand labels, one labeller, packet-only judgement"
+  hash: null
+  card: null
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: null
+compute:
+  hardware: "unknown"
+  wall_clock_hours: null
+  estimated_cost_usd: null
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+# llm:
+#   model: "<provider>/<model>@<version-or-date>"
+#   temperature: 0.0
+#   max_tokens: 2048
+#   prompt_files: []
+#   prompt_hash: null
+#   total_input_tokens: 0
+#   total_output_tokens: 0
+#   nondeterminism_note: >
+#     Provider-side nondeterminism remains even at temperature 0; report
+#     mean ± std over n_runs.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: removal_precision
+  values: {}
+baselines_compared: []
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-025]
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: []
