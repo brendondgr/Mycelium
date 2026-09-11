@@ -64,13 +64,6 @@
     <button value="none">none</button>
   </div>
 
-  <h2>data-expr</h2>
-  <div class="row" data-attr="data-expr">
-    <button value="happy">happy</button><button value="curious">curious</button>
-    <button value="thinking">thinking</button><button value="excited">excited</button>
-    <button value="determined">determined</button>
-  </div>
-
   <h2>data-prop</h2>
   <div class="row" data-attr="data-prop">
     <button value="none">none</button><button value="magnifier">magnifier</button>
@@ -115,7 +108,7 @@ function sync() {
     b.setAttribute('aria-pressed', String(svg.getAttribute(attr) === b.value));
   });
   document.getElementById('snippet').textContent =
-    `<svg class="mylo" data-anim="${svg.getAttribute('data-anim')}" data-expr="${svg.getAttribute('data-expr')}" data-prop="${svg.getAttribute('data-prop')}" data-facing="${svg.getAttribute('data-facing')}">`;
+    `<svg class="mylo" data-anim="${svg.getAttribute('data-anim')}" data-prop="${svg.getAttribute('data-prop')}" data-facing="${svg.getAttribute('data-facing')}">`;
 }
 
 document.querySelectorAll('.row[data-attr]').forEach(row => {
