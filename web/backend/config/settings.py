@@ -752,6 +752,37 @@ RERANK_CONTENT_TYPES = env.list(
 )
 
 # ---------------------------------------------------------------------------
+# Project alerts (apps.content.matchers, apps.content.alerts).
+#
+# Ships OFF. The three thresholds below decide when a paper is close enough to a
+# project's claimed contribution, a venue's slot, or a stated blocker to be worth
+# interrupting somebody about, and nobody has measured them yet — a similarity
+# threshold set by taste fires constantly or never, and both teach a reader to
+# stop opening the report. Plan 3.8: a calibration run (alert precision measured
+# as saved-or-opened within seven days against dismissed) sets these, and only
+# then does the flag turn on.
+#
+# The two triggers that are NOT threshold-based — a timeline verdict and a moved
+# deadline — are arithmetic over stored dates and are correct today, so they run
+# regardless of this flag. That is the whole reason the flag is per-mechanism
+# rather than per-feature.
+# ---------------------------------------------------------------------------
+PROJECT_ALERTS_ENABLED = env.bool("PROJECT_ALERTS_ENABLED", default=False)
+PROJECT_ALERT_OVERLAP_THRESHOLD = env.float(
+    "PROJECT_ALERT_OVERLAP_THRESHOLD", default=0.62
+)
+PROJECT_ALERT_BLOCKER_THRESHOLD = env.float(
+    "PROJECT_ALERT_BLOCKER_THRESHOLD", default=0.58
+)
+PROJECT_ALERT_SLOT_THRESHOLD = env.float(
+    "PROJECT_ALERT_SLOT_THRESHOLD", default=0.55
+)
+#: At most this many alerts per target per day. The cap is the product decision,
+#: not a performance one: four things that all need attention today is a reader
+#: who attends to none of them. Overflow is held for the Monday weekly.
+PROJECT_ALERT_DAILY_CAP = env.int("PROJECT_ALERT_DAILY_CAP", default=3)
+
+# ---------------------------------------------------------------------------
 # Discord integration (apps.integrations) — identity + lab linking.
 #
 # Mylo owns no data: every Discord-originated DB touch goes through Mycelium's

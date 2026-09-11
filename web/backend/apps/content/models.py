@@ -1378,6 +1378,11 @@ class Notification(models.Model):
         REMINDER = "reminder", "Reminder"
         DEADLINE_MOVED = "deadline_moved", "Deadline moved"
         HIGH_SIGNAL = "high_signal", "High signal"
+        #: Something found today changes what a project should do — an overlap
+        #: with its claim, an unblocked blocker, a venue that just became
+        #: reachable, a deadline that moved. Unlike the three above, it is about
+        #: a *project*, so the bell links into the project rather than the item.
+        PROJECT_ALERT = "project_alert", "Project alert"
         # Mylo gave up delivering something to Discord. In-app is the only channel
         # that can carry this: if Discord is the broken thing, a Discord message
         # would fail for the same reason the original one did.
@@ -1494,3 +1499,209 @@ class ItemComprehension(models.Model):
             ("Reusable", self.reusable),
         )
         return "\n".join(f"    {label}: {value}" for label, value in rows if value)
+
+
+# --------------------------------------------------------------------------- #
+# Project alerts and reflection proposals (plan M7 / M8)
+# --------------------------------------------------------------------------- #
+class ProjectAlert(models.Model):
+    """One thing found today that changes what a project should do.
+
+    The distinction this table exists to hold is between *relevant* and
+    *actionable*. A feed is full of relevant papers; an alert says a specific
+    thing happened to a specific project and names what to do about it. That is a
+    far stronger claim, so it fires far more rarely and is held to a far stricter
+    rule: **once per (target, project, item, trigger)**, forever, enforced as a
+    database constraint rather than a query.
+
+    Once, not once a day. A paper that overlaps a project's contribution is news
+    the morning it is found and noise every morning after; the weekly reports what
+    *happened* to an already-alerted item (saved, opened, revised) instead of
+    raising it again (plan 6.6).
+
+    The target is a person or a lab, never both — the same exactly-one shape every
+    other targeted row in this module uses.
+    """
+
+    class Trigger(models.TextChoices):
+        #: Someone published something close to what this project claims is new.
+        OVERLAP_RISK = "overlap_risk", "Overlap risk"
+        #: Something on offer closes a blocker the project stated.
+        UNBLOCKS = "unblocks", "Unblocks"
+        #: A venue just became reachable from the project's next milestone.
+        TIMELINE = "timeline", "Fits your timeline"
+        #: A deadline moved on something the reader saved. The only trigger that
+        #: can reach a weekly-cadence reader between Mondays (open decision OD2).
+        DEADLINE_MOVED = "deadline_moved", "Deadline moved"
+        #: A call requires expertise nobody on the team states.
+        TEAM_GAP = "team_gap", "Team gap"
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Open"
+        #: Held back by the daily cap; carried into the Monday weekly.
+        HELD = "held", "Held for the weekly"
+        ACTED = "acted", "Acted on"
+        DISMISSED = "dismissed", "Dismissed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="project_alerts",
+    )
+    target_lab = models.ForeignKey(
+        "accounts.Lab",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="project_alerts",
+    )
+    project = models.ForeignKey(
+        "research.Project",
+        on_delete=models.CASCADE,
+        related_name="alerts",
+    )
+    content = models.ForeignKey(
+        ContentItem,
+        on_delete=models.CASCADE,
+        related_name="project_alerts",
+    )
+    trigger = models.CharField(max_length=20, choices=Trigger.choices, db_index=True)
+    fired_on = models.DateField(default=timezone.localdate, db_index=True)
+    evidence = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "What the matcher computed — similarities, the blocker it matched, "
+            "the timeline row, the requirement nobody covers. The model writes "
+            "prose *from* this and may not add a number to it."
+        ),
+    )
+    delivered_in = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Surfaces this alert has already reached, e.g. ['web:2026-09-16'].",
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.OPEN, db_index=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fired_on", "-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                name="content_projectalert_exactly_one_target",
+                condition=exactly_one("target_user", "target_lab"),
+            ),
+            # The whole idempotency guarantee, as a constraint rather than a
+            # query: two split on the populated side, because Postgres treats
+            # every NULL as distinct and a plain unique_together over a nullable
+            # column would constrain neither half.
+            models.UniqueConstraint(
+                fields=["target_user", "project", "content", "trigger"],
+                condition=Q(target_user__isnull=False),
+                name="content_projectalert_user_unique",
+            ),
+            models.UniqueConstraint(
+                fields=["target_lab", "project", "content", "trigger"],
+                condition=Q(target_lab__isnull=False),
+                name="content_projectalert_lab_unique",
+            ),
+        ]
+        indexes = [models.Index(fields=["fired_on", "status"])]
+
+    def clean(self) -> None:
+        validate_exactly_one(self, "target_user", "target_lab")
+
+    @property
+    def target(self):
+        return self.target_user or self.target_lab
+
+    def __str__(self) -> str:
+        return f"alert[{self.trigger}] {self.project} {self.fired_on}"
+
+
+class ReflectionProposal(models.Model):
+    """A change Mylo thinks a project's state should make, for a person to decide.
+
+    Proposed from what the reader actually did — four saves on one topic, six
+    dismissals sharing a word, a timeline Mylo could not judge because no
+    milestone is dated, state nobody has confirmed in a month. The **rules are
+    deterministic** (plan 7.2); the model only phrases them. A model deciding on
+    its own that a project's method has changed, and writing that into the state,
+    is exactly the failure invariant 9 exists to prevent.
+
+    Every proposal expires (14 days) and is not re-proposed for a further 28, so
+    declining one is a decision the system respects rather than a question it asks
+    again next Monday.
+    """
+
+    class Kind(models.TextChoices):
+        ADD_METHOD = "add_method", "Add a method"
+        ADD_EXCLUSION = "add_exclusion", "Add an exclusion"
+        SET_MILESTONE = "set_milestone", "Set a milestone"
+        REVIEW_STATE = "review_state", "Review the state"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+        REJECTED = "rejected", "Rejected"
+        EXPIRED = "expired", "Expired"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="reflection_proposals",
+    )
+    target_lab = models.ForeignKey(
+        "accounts.Lab",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="reflection_proposals",
+    )
+    project = models.ForeignKey(
+        "research.Project",
+        on_delete=models.CASCADE,
+        related_name="reflection_proposals",
+    )
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    proposal = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="The change itself, in the shape a state PATCH would take.",
+    )
+    evidence = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="What the reader did that produced it — counts, the shared term.",
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True
+    )
+    expires_on = models.DateField(db_index=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                name="content_reflectionproposal_exactly_one_target",
+                condition=exactly_one("target_user", "target_lab"),
+            ),
+        ]
+        indexes = [models.Index(fields=["status", "expires_on"])]
+
+    def clean(self) -> None:
+        validate_exactly_one(self, "target_user", "target_lab")
+
+    def __str__(self) -> str:
+        return f"proposal[{self.kind}] {self.project} ({self.status})"

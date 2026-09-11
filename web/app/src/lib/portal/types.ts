@@ -925,12 +925,22 @@ export type LabSavesResponse = {
 
 /**
  * One header-bell notification (from `/api/notifications/`). Backed by the
- * Notification model (reminders rework): a fired reminder, a moved deadline, or a
- * high-signal recommendation — not the old saves-due-within-a-week scan.
+ * Notification model (reminders rework): a fired reminder, a moved deadline, a
+ * high-signal recommendation, a delivery that gave up, or a project alert — not
+ * the old saves-due-within-a-week scan.
+ *
+ * `project_alert` fires for every cadence, which is what makes "cadence governs
+ * Discord and nothing else" true in practice: a weekly-cadence reader opening the
+ * app on a Wednesday sees what a daily-cadence reader was DM'd that morning.
  */
 export type NotificationItem = {
   id: string;
-  kind: "reminder" | "deadline_moved" | "high_signal";
+  kind:
+    | "reminder"
+    | "deadline_moved"
+    | "high_signal"
+    | "delivery_failed"
+    | "project_alert";
   content_id: string | null;
   title: string;
   body: string;

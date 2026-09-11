@@ -687,6 +687,7 @@ def _write_briefing(
     reader=None,
     kind: str = DailyBriefing.Kind.DAILY,
     stats: dict | None = None,
+    attention: str = "",
 ) -> DailyBriefing:
     """Gather a target's day, write the report, and persist it as a ``DailyBriefing``.
 
@@ -737,7 +738,11 @@ def _write_briefing(
     ]
 
     narrative_payload: dict = {}
-    if personal.total or any(part.total for part in project_parts):
+    # An alert is news even on a day when nothing entered a top list: something
+    # happened *to a project*, which is a different event from something entering
+    # a slate. Carrying yesterday's report forward over it would bury the one
+    # thing that needed deciding today.
+    if personal.total or any(part.total for part in project_parts) or attention:
         narrative_payload = briefing_sections.write_narrative(
             _profile_text(target),
             personal,
@@ -753,6 +758,7 @@ def _write_briefing(
             complete=complete,
             narrative=narrative_payload,
             hidden_projects=hidden_projects,
+            attention=attention,
         )
         origin = (
             DailyBriefing.Origin.LLM if used_llm else DailyBriefing.Origin.FALLBACK
@@ -848,8 +854,10 @@ def generate_briefing_for_user(
     or returns nothing usable, each prompt's deterministic markdown fallback fills
     in and ``origin`` is recorded as ``fallback``.
     """
+    from .alert_report import attention_section, block_for, open_alerts
     from .report_stats import record_run_stats
 
+    blocks = [block_for(alert) for alert in open_alerts({"target_user": user})]
     briefing = _write_briefing(
         owner={"user": user},
         target=target_for_user(user),
@@ -859,6 +867,7 @@ def generate_briefing_for_user(
         complete=complete,
         # A personal report has exactly one reader, so it honours their ignores.
         reader=user,
+        attention=attention_section(blocks),
     )
     # The run's numbers, settled here so every later surface reads them back off
     # the row rather than deriving its own from the same tables minutes apart.
@@ -886,8 +895,10 @@ def generate_briefing_for_lab(
     shares. ``member_names`` is still resolved and passed down because
     :func:`_showcase_item` records it on the stored showcase for those surfaces.
     """
+    from .alert_report import attention_section, block_for, open_alerts
     from .report_stats import record_run_stats
 
+    blocks = [block_for(alert) for alert in open_alerts({"target_lab": lab})]
     briefing = _write_briefing(
         owner={"lab": lab},
         target=target_for_lab(lab),
@@ -902,6 +913,7 @@ def generate_briefing_for_lab(
         # nobody.
         personal_label=lab.name,
         complete=complete,
+        attention=attention_section(blocks),
     )
     return record_run_stats(briefing)
 

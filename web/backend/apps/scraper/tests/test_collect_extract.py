@@ -94,6 +94,8 @@ GOOD_GRANT_PAYLOAD = {
     "research_areas": ["coastal conservation", "marine biodiversity"],
     "eligibility": GRANT_ELIGIBILITY,
     "award_summary": "",
+    # Most calls name no required expertise, and [] is the honest answer to that.
+    "required_expertise": [],
     "confidence": "high",
 }
 
@@ -632,3 +634,46 @@ def test_a_refusal_reason_is_scrubbed_too():
 
     assert "\x00" not in metadata["extraction_refusal"]
     assert "\x00" not in metadata["search_text"]
+
+
+# --------------------------------------------------------------------------- #
+# Required expertise (plan 3.5)
+# --------------------------------------------------------------------------- #
+def test_required_expertise_is_grounded_like_every_other_claim() -> None:
+    """An invented requirement talks a team out of a grant they were eligible for."""
+    payload = dict(GOOD_GRANT_PAYLOAD)
+    payload["required_expertise"] = ["orbital telemetry systems"]
+
+    fails = extract.validate(payload, grant_source_text(), "grant")
+
+    assert any("ungrounded_topic" in fail for fail in fails)
+
+
+def test_no_required_expertise_is_a_valid_answer_not_a_defect() -> None:
+    """Most calls name none, and demanding one is how a model invents one."""
+    assert extract.validate(GOOD_GRANT_PAYLOAD, grant_source_text(), "grant") == []
+
+
+def test_a_cached_verdict_from_an_older_contract_is_not_a_hit() -> None:
+    """Or the corpus stays half-populated and the gap reads as "not required"."""
+    record = grant_input()
+    from apps.scraper.collect.conferences.enrich import page_hash
+
+    digest = page_hash(grant_source_text(record))
+    checkpoint = extract.DictCheckpoint()
+    settled = {
+        "key": record.key,
+        "status": "ok",
+        "attempts": 1,
+        "page_hash": digest,
+    }
+
+    checkpoint.save(record.key, {**settled, "prompt_version": "1"})
+    assert extract._cached_outcome(record, checkpoint, digest) is None
+
+    # The same verdict under the current contract still caches, or every run
+    # would re-bill the model for the whole corpus.
+    checkpoint.save(
+        record.key, {**settled, "prompt_version": extract.PROMPT_VERSION}
+    )
+    assert extract._cached_outcome(record, checkpoint, digest) is not None

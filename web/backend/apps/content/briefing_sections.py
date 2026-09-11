@@ -138,6 +138,7 @@ def generate_report_body(
     complete: CompleteFn | None = None,
     narrative: dict | None = None,
     hidden_projects: int = 0,
+    attention: str = "",
 ) -> tuple[str, bool]:
     """Assemble the full markdown report body. Returns ``(body, used_llm)``.
 
@@ -156,8 +157,15 @@ def generate_report_body(
     used_llm = payload.get("lead_origin") == "llm" or any(
         entry.get("origin") == "llm" for entry in (payload.get("themes") or [])
     )
-    blocks: list[str] = theme_blocks(personal, categories)
-    if not blocks and getattr(personal, "items", None):
+    blocks: list[str] = []
+    # What needs attention leads the document, above the theme sections. An alert
+    # is a claim that something must be decided today; burying it under the
+    # week's reading is how it gets read on Thursday.
+    if attention:
+        blocks.append(attention)
+    theme_sections = theme_blocks(personal, categories)
+    blocks += theme_sections
+    if not theme_sections and getattr(personal, "items", None):
         # No theme sections, but the part holds items: rows written before the
         # per-cluster run existed carry no slate keys yet. One nightly run rewrites
         # them, and until it does the reader gets the flat listing rather than a

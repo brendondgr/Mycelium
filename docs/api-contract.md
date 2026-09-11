@@ -1228,10 +1228,18 @@ All saved deadlines, soonest first: `id`, `content_id`, `area`, `title`, `url`,
 ### `GET /api/notifications/`
 
 The header bell, backed by the `Notification` model — **not** an on-the-fly scan
-of saves. Three kinds: `reminder` (one fired), `deadline_moved`, and
-`high_signal`. Saving something no longer produces an alert; a reminder created
-*from* a save does. Returns undismissed notifications, newest first, with the
-unread count.
+of saves. Five kinds: `reminder` (one fired), `deadline_moved`, `high_signal`,
+`delivery_failed` (Mylo gave up reaching Discord, which only in-app can carry),
+and `project_alert`. Saving something no longer produces an alert; a reminder
+created *from* a save does. Returns undismissed notifications, newest first, with
+the unread count.
+
+`project_alert` fires for **every cadence**, and that is what makes "cadence
+governs Discord and nothing else" true rather than merely stated: a
+weekly-cadence reader opening the app on a Wednesday sees exactly the alerts a
+daily-cadence reader was DM'd that morning. A lab's alerts do not fan out to its
+members' bells — one finding ringing eight times is how a bell gets ignored — and
+reach people through the lab report instead.
 
 ```json
 { "count": 1, "items": [{

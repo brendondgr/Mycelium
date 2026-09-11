@@ -75,6 +75,17 @@ class SendSummary:
         }
 
 
+def _alert_lines(target_filter: dict):
+    """Today's open alerts as ``(project, trigger, title, url)`` rows.
+
+    Read here rather than carried on ``ReportData``: the post is the only surface
+    that wants them in this shape, and the document renders the full blocks.
+    """
+    from apps.content.alert_report import block_for, discord_lines, open_alerts
+
+    return discord_lines([block_for(alert) for alert in open_alerts(target_filter)])
+
+
 def _default_send(user, data: ReportData, path: Path, filename: str):
     local_date = delivery.local_today(user)
     return reminders_discord.send_personal_report(
@@ -84,7 +95,9 @@ def _default_send(user, data: ReportData, path: Path, filename: str):
         # The overview-and-statistics embed (plan Phase 1). ``title``/``body``
         # stay filled so the plain path is still reachable, and so the outcome
         # log records what the post was about.
-        embed=discord_embeds.personal_report_embed(data, data.stats),
+        embed=discord_embeds.personal_report_embed(
+            data, data.stats, alerts=_alert_lines({"target_user": user})
+        ),
         filename=filename,
         attachment_path=str(path),
         dedupe_key=delivery.daily_report_key(user, local_date),

@@ -256,6 +256,25 @@ def _deadline_horizon(
     return len(rows), nearest
 
 
+def open_alert_counts(target_filter: dict, day: date) -> dict[str, int]:
+    """``{project id: open alerts}`` for one target on one day.
+
+    Open only. A held alert is real and will reach the reader on Monday, but it
+    is deliberately not being shouted about today, and counting it in "needs your
+    attention (4)" beside three shown lines would make the cap look broken.
+    """
+    from apps.content.models import ProjectAlert
+
+    rows = ProjectAlert.objects.filter(
+        **target_filter, fired_on=day, status=ProjectAlert.Status.OPEN
+    ).values_list("project_id", flat=True)
+    counts: dict[str, int] = {}
+    for project_id in rows:
+        key = str(project_id)
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
 def compile_stats(
     data,
     *,
@@ -276,7 +295,8 @@ def compile_stats(
     """
     today_date = timezone.localdate()
     today = today_date.isoformat()
-    alerts_by_project = alerts_by_project or {}
+    if alerts_by_project is None:
+        alerts_by_project = open_alert_counts(target_filter, today_date)
 
     entered_by_category = _entered_by_category(data, data.categories)
     papers, opportunities = discovery_totals(today_date)

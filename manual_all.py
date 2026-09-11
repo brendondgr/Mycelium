@@ -49,6 +49,13 @@ Between 3 and 4 sit the reminder tick and two sweeps — ``prune_opportunities``
 (expired listings) and ``prune_briefings`` (reports past
 ``BRIEFING_RETENTION_DAYS``). Both are pure deletions of expired rows, so neither
 touches the rankings the stages above just wrote.
+    3b. Fire project alerts (backend)      — ``evaluate_project_alerts``: which of
+       today's findings actually change what a project should do. Five triggers,
+       at most three per target per day, once ever per (target, project, item,
+       trigger); overflow is held for the Monday weekly rather than dropped. The
+       two arithmetic triggers (a venue that now fits, a deadline that moved)
+       run always; the three similarity-based ones wait on
+       ``PROJECT_ALERTS_ENABLED``.
     4. Write daily briefings (backend)     — ``generate_daily_briefing``: the
        "Mylo Report" for every user **and every entitled lab**, organised by
        research theme (LLM with a deterministic fallback), written over each
@@ -225,6 +232,13 @@ CONTAINER_STAGES = [
     # the briefing sweep in the daily chain is what stops the Reports page history
     # from drifting past its retention window.
     ("prune_briefings", [], "Pruning daily briefings past the retention window…"),
+    # Before the briefings and after scoring, because it needs both: it reads the
+    # day's slates, and the briefing reads the day's alerts.
+    (
+        "evaluate_project_alerts",
+        [],
+        "Deciding what today changes for each project…",
+    ),
     ("generate_daily_briefing", [], "Writing each user's and lab's daily briefing…"),
     (
         "send_daily_discord_reports",

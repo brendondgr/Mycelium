@@ -116,6 +116,12 @@ def queue_lab_digest(
     """
     on = on or timezone.localdate()
     data = data if data is not None else compile_report_for_lab(lab)
+    if alerts is None:
+        from apps.content.alert_report import block_for, discord_lines, open_alerts
+
+        alerts = discord_lines(
+            [block_for(alert) for alert in open_alerts({"target_lab": lab}, on)]
+        )
     if is_quiet(data):
         # Nothing new and nothing wrong. A daily "I found nothing" post trains
         # people to ignore the channel, which costs more than the silence does

@@ -107,6 +107,14 @@ RETRYABLE_STATUSES = frozenset({"pending", "model_failed", "fetch_failed", "thin
 #: ``attributes`` is settled: the loop asked five times, the answers were
 #: rejected, and the record now carries a description composed from fields we
 #: already hold (:func:`attribute_summary`). Re-running would re-spend five
+#: The extraction contract's own version. It is part of the cache key, so
+#: changing the schema or the prompt re-reads the corpus rather than serving
+#: records that predate the change and are silently missing a field. Bumped for
+#: ``required_expertise`` (plan 3.5): without this, every already-settled grant
+#: would come back from the checkpoint with no expertise list and the team-gap
+#: matcher would conclude that no grant in the corpus requires anything.
+PROMPT_VERSION = "2"
+
 #: attempts to reach the same floor.
 SETTLED_STATUSES = frozenset(
     {"ok", "robots_denied", "not_the_venue", "refused", "no_url", "attributes"}
@@ -125,6 +133,13 @@ GRANT_KEYS = {
     "research_areas": list,
     "eligibility": str,
     "award_summary": str,
+    #: Expertise the call *requires a team to have*, as opposed to the topic it
+    #: funds. Added for the team-gap matcher (plan 3.5): a grant that needs a
+    #: co-investigator in environmental health is a different fact from a grant
+    #: about environmental health, and only the first one tells a lab it cannot
+    #: apply alone. Empty for the many calls that name no such requirement —
+    #: which is the common case, and the honest answer to it.
+    "required_expertise": list,
     "confidence": str,
 }
 
@@ -147,6 +162,11 @@ Return ONLY a JSON object with exactly these keys:
   "research_areas" array of 1-6 short topic strings (only what the source supports)
   "eligibility"    one paragraph, or "" if the source does not state it
   "award_summary"  plain-language money line, or ""
+  "required_expertise" array of 0-4 short phrases naming expertise the call
+                   REQUIRES an applicant team to include (e.g. "clinical
+                   trials", "environmental health"). Only when the source
+                   explicitly demands it — not the topic it funds, and not a
+                   preference. Use [] when the source names no requirement.
   "confidence"     "high", "medium" or "low"
 
 Every claim must be supported by the source text below. Do not add a number,
@@ -334,6 +354,14 @@ def validate(
             "want 40-900"
         )
 
+    if kind == "grant":
+        required = payload["required_expertise"]
+        if len(required) > 4:
+            fails.append(
+                f"out_of_bounds: required_expertise has {len(required)} entries, "
+                "want 0-4"
+            )
+
     listkey = "research_areas" if kind == "grant" else "topics"
     items = payload[listkey]
     # One topic is a legitimate answer, not a defective one. The floor was 2,
@@ -365,15 +393,21 @@ def validate(
     fails.extend(grounding_failures(prose, source))
 
     source_words = _words(source)
+    # Required expertise is grounded to the same standard as a topic, and for a
+    # sharper reason: this list is what tells a lab it cannot apply alone, and an
+    # invented requirement talks a team out of a grant they were eligible for.
+    checked = list(items)
+    if kind == "grant":
+        checked += [str(entry) for entry in payload["required_expertise"]]
     if len(source_words) >= MIN_SOURCE_WORDS_FOR_OVERLAP:
-        for item in items:
+        for item in checked:
             if not (_words(str(item)) & source_words):
                 fails.append(
                     f"ungrounded_topic: {str(item)!r} shares no word with "
                     "the source"
                 )
     else:
-        for item in items:
+        for item in checked:
             invented = _specifics(str(item)) - _specifics(source)
             if invented:
                 fails.append(
@@ -491,6 +525,9 @@ class ExtractionOutcome:
     #: Content hash of the source this outcome was built from. Empty when the
     #: record was never reachable at all (e.g. ``no_url``).
     page_hash: str = ""
+    #: The contract version this outcome was produced under. A cached verdict
+    #: from an older version is not a hit — see :func:`_cached_outcome`.
+    prompt_version: str = PROMPT_VERSION
 
 
 def scrub(value: Any) -> Any:
@@ -1008,6 +1045,12 @@ def _cached_outcome(
     if prior is None or prior.get("status") in RETRYABLE_STATUSES:
         return None
     if prior.get("page_hash", "") != current_hash:
+        return None
+    # A verdict produced under an older contract is missing whatever the newer
+    # one added. Serving it would leave the corpus half-populated for a field
+    # every downstream matcher then reads as "absent", which is indistinguishable
+    # from "the source did not say".
+    if str(prior.get("prompt_version", "1")) != PROMPT_VERSION:
         return None
     return ExtractionOutcome(**prior)
 
