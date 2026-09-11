@@ -49,6 +49,29 @@ def test_coauthors_exclude_the_author() -> None:
         assert "Ada Lovelace" not in draft.coauthors, source
 
 
+def test_every_evidence_row_carries_the_keys_author_works_stores() -> None:
+    """Parity extends to the evidence rows, or one source would drop the works.
+
+    ``AuthorWork`` is filled straight from these rows (plan M9), and the
+    known-literature matcher's whole job is knowing what the reader wrote — so a
+    normalizer that silently omits a key here breaks that matcher for one source
+    only, which is the hardest kind of gap to notice.
+    """
+    for source, draft in DRAFTS.items():
+        for row in draft.evidence:
+            missing = {
+                "title",
+                "year",
+                "source_id",
+                "cited_by",
+                "abstract",
+                "coauthors",
+                "doi",
+            } - set(row)
+            assert not missing, f"{source} evidence missing {missing}"
+            assert "Ada Lovelace" not in row["coauthors"], source
+
+
 def test_aggregate_ranks_and_dedups_areas() -> None:
     # "Numerical Analysis" appears in both OpenAlex works -> ranked first, once.
     ranked = aggregate(DRAFTS["openalex"])

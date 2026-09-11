@@ -35,6 +35,7 @@ import type {
   Project,
   ProjectInvitation,
   ProjectRecommendations,
+  ProjectStatePayload,
   LabMentionTargets,
   LabReminderChannels,
   ProfileData,
@@ -104,6 +105,17 @@ export async function fetchProject(id: string): Promise<Project> {
   return getJson<Project>(
     buildApiUrl(getPublicApiBase(), "projects", id),
     "Could not load this project.",
+  );
+}
+
+/**
+ * One project's state — what it claims, what blocks it, when its milestones are.
+ * Readable by anyone who can see the project; writing needs an editor.
+ */
+export async function fetchProjectState(id: string): Promise<ProjectStatePayload> {
+  return getJson<ProjectStatePayload>(
+    buildApiUrl(getPublicApiBase(), "projects", id, "state"),
+    "Could not load this project's state.",
   );
 }
 

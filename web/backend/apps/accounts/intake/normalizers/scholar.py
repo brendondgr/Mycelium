@@ -50,9 +50,11 @@ def normalize(raw: dict[str, Any]) -> AuthorProfileDraft:
 
     for pub in publications:
         bib = pub.get("bib") or {}
+        pub_coauthors: list[str] = []
         for name in _split_authors(bib.get("author")):
             if name != draft.display_name:
                 draft.coauthors.append(name)
+                pub_coauthors.append(name)
         draft.evidence.append(
             {
                 "title": bib.get("title") or "",
@@ -60,6 +62,9 @@ def normalize(raw: dict[str, Any]) -> AuthorProfileDraft:
                 "source_id": pub.get("author_pub_id"),
                 "cited_by": pub.get("num_citations"),
                 "abstract": bib.get("abstract") or "",
+                "coauthors": pub_coauthors,
+                # Scholar exposes no DOI on a publication stub.
+                "doi": "",
             }
         )
 

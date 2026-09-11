@@ -8,6 +8,7 @@ import { usePortal } from "@/components/portal/portal-context";
 import { composeClusters } from "@/lib/auth-client";
 import type { ClusterGroup } from "@/lib/auth-types";
 import { useCreateProject } from "@/lib/portal/hooks";
+import { updateProjectState } from "@/lib/portal/mutations";
 import { ProjectCapReachedError } from "@/lib/portal/mutations";
 import type { MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,14 @@ function canManageLab(lab: MyLab): boolean {
 }
 
 type Scope = { kind: "personal" } | { kind: "lab"; slug: string; name: string };
+
+/** Comma-separated free text into a clean list. The wizard's list fields. */
+function splitList(value: string): string[] {
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
 
 function samesScope(a: Scope, b: Scope): boolean {
   if (a.kind === "personal" || b.kind === "personal") {
@@ -45,7 +54,7 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
     return { kind: "personal" };
   }, [currentLab]);
 
-  const [step, setStep] = React.useState<1 | 2>(1);
+  const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [name, setName] = React.useState("");
   const [scope, setScope] = React.useState<Scope>(defaultScope);
 
@@ -59,6 +68,17 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
   const [focusAreas, setFocusAreas] = React.useState<string[]>([]);
   const [focusClusters, setFocusClusters] = React.useState<ClusterGroup[]>([]);
   const [watchTopics, setWatchTopics] = React.useState<string[]>([]);
+
+  // Step 3 — the five questions that turn "a topic" into "a project" (plan 2.3).
+  // Every one is optional: a wizard that refuses to finish until someone has
+  // articulated their contribution collects nothing, and the state panel on the
+  // project page asks the same questions whenever they are ready.
+  const [problem, setProblem] = React.useState("");
+  const [contribution, setContribution] = React.useState("");
+  const [method, setMethod] = React.useState("");
+  const [milestone, setMilestone] = React.useState("");
+  const [milestoneDate, setMilestoneDate] = React.useState("");
+  const [blocking, setBlocking] = React.useState("");
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [created, setCreated] = React.useState<{ id: string; name: string } | null>(
@@ -135,7 +155,13 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
             : undefined,
       },
       {
-        onSuccess: (project) => setCreated({ id: project.id, name: project.name }),
+        onSuccess: (project) => {
+          setCreated({ id: project.id, name: project.name });
+          // Best-effort and after the fact: the project exists either way, and a
+          // state save that fails must not read as "the project was not created".
+          // The same questions are on the project page's state panel.
+          void saveInitialState(project.id);
+        },
         onError: (err) => {
           if (err instanceof ProjectCapReachedError) {
             setSubmitError(
@@ -149,6 +175,43 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
         },
       },
     );
+  }
+
+  async function saveInitialState(projectId: string) {
+    const blockers = splitList(blocking).map((text) => ({ id: "", text }));
+    const methods = splitList(method);
+    const hasAnything =
+      problem.trim() ||
+      contribution.trim() ||
+      methods.length ||
+      milestone.trim() ||
+      blockers.length;
+    if (!hasAnything) return;
+    try {
+      await updateProjectState(projectId, {
+        slow: {
+          problem: problem.trim(),
+          claimed_contribution: contribution.trim(),
+          method: methods,
+          blockers,
+        },
+        fast: milestone.trim()
+          ? {
+              milestones: [
+                {
+                  id: "",
+                  kind: "results_by",
+                  what: milestone.trim(),
+                  date: milestoneDate,
+                  source: "stated",
+                },
+              ],
+            }
+          : undefined,
+      });
+    } catch {
+      // Swallowed on purpose — see the call site.
+    }
   }
 
   const goToProject = () => {
@@ -172,7 +235,7 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
         <div className="flex items-start justify-between border-b border-[var(--divider)] px-5 py-3.5">
           <div className="min-w-0">
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
-              {created ? "Project created" : `Step ${step} of 2`}
+              {created ? "Project created" : `Step ${step} of 3`}
             </p>
             <p className="mt-0.5 truncate text-sm font-semibold text-[var(--text-primary)]">
               New project
@@ -199,7 +262,7 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
               setScope={setScope}
               managedLabs={managedLabs}
             />
-          ) : (
+          ) : step === 2 ? (
             <StepFocus
               instruction={instruction}
               setInstruction={setInstruction}
@@ -214,6 +277,21 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
               onClustersChange={setFocusClusters}
               onWatchSeed={setWatchTopics}
             />
+          ) : (
+            <StepState
+              problem={problem}
+              setProblem={setProblem}
+              contribution={contribution}
+              setContribution={setContribution}
+              method={method}
+              setMethod={setMethod}
+              milestone={milestone}
+              setMilestone={setMilestone}
+              milestoneDate={milestoneDate}
+              setMilestoneDate={setMilestoneDate}
+              blocking={blocking}
+              setBlocking={setBlocking}
+            />
           )}
 
           {submitError ? (
@@ -227,39 +305,53 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
           <div className="flex items-center justify-between gap-2 border-t border-[var(--divider)] px-5 py-3.5">
             <button
               type="button"
-              onClick={step === 1 ? onClose : () => setStep(1)}
+              onClick={
+                step === 1 ? onClose : () => setStep(step === 3 ? 2 : 1)
+              }
               className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt"
             >
               {step === 1 ? "Cancel" : "Back"}
             </button>
             <div className="flex items-center gap-2">
-              {step === 2 ? (
+              {step >= 2 ? (
                 <button
                   type="button"
-                  onClick={() => submit(false)}
+                  onClick={() => submit(hasFocus)}
                   disabled={create.isPending}
                   className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-[var(--text-secondary)] hover:bg-surface-alt disabled:opacity-50"
                 >
-                  {create.isPending && !hasFocus
+                  {create.isPending
                     ? "Creating…"
-                    : "Skip — create without focus"}
+                    : step === 2
+                      ? "Skip — create without focus"
+                      : "Skip — create without this"}
                 </button>
               ) : null}
               <button
                 type="button"
-                onClick={() => (step === 1 ? setStep(2) : submit(true))}
+                onClick={() =>
+                  step === 1
+                    ? setStep(2)
+                    : step === 2
+                      ? setStep(3)
+                      : submit(true)
+                }
                 disabled={
                   step === 1
                     ? !canContinue
-                    : create.isPending || !hasFocus
+                    : step === 2
+                      ? !hasFocus
+                      : create.isPending
                 }
                 className="rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-[#fffdf8] hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
               >
                 {step === 1
                   ? "Continue"
-                  : create.isPending && hasFocus
-                    ? "Creating…"
-                    : "Create project"}
+                  : step === 2
+                    ? "Continue"
+                    : create.isPending
+                      ? "Creating…"
+                      : "Create project"}
               </button>
             </div>
           </div>
@@ -364,6 +456,124 @@ function StepName({
 
 /** Step 2: an optional Mylo-composed research focus, reviewed/edited before
  * creating the project. */
+/**
+ * The five questions that turn a topic into a project (plan 2.3).
+ *
+ * The research focus on the step before decides what Mylo *searches for*. These
+ * decide what it judges a result **against** — whether a preprint tests the same
+ * question, whether a dataset closes a blocker, whether a venue's deadline is
+ * reachable from the next milestone. Without them a report can only say what
+ * exists on this topic, which is the thing every other tool already does.
+ *
+ * Every field is optional and the step is skippable. A wizard that will not
+ * finish until someone has articulated their contribution collects nothing, and
+ * the project page's state panel asks exactly these questions whenever the team
+ * is ready to answer them.
+ */
+function StepState({
+  problem,
+  setProblem,
+  contribution,
+  setContribution,
+  method,
+  setMethod,
+  milestone,
+  setMilestone,
+  milestoneDate,
+  setMilestoneDate,
+  blocking,
+  setBlocking,
+}: {
+  problem: string;
+  setProblem: (v: string) => void;
+  contribution: string;
+  setContribution: (v: string) => void;
+  method: string;
+  setMethod: (v: string) => void;
+  milestone: string;
+  setMilestone: (v: string) => void;
+  milestoneDate: string;
+  setMilestoneDate: (v: string) => void;
+  blocking: string;
+  setBlocking: (v: string) => void;
+}) {
+  const input =
+    "w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const label =
+    "mb-1 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]";
+
+  return (
+    <div className="space-y-4">
+      <p className="max-w-[58ch] text-[13.5px] leading-6 text-[var(--text-secondary)]">
+        Optional, and you can fill these in later. They are what lets Mylo say
+        whether a paper threatens your contribution or unblocks you, rather than
+        only that it is on your topic.
+      </p>
+
+      <label className="block">
+        <span className={label}>What problem is this project answering?</span>
+        <textarea
+          className={cn(input, "min-h-20 resize-y")}
+          value={problem}
+          onChange={(e) => setProblem(e.target.value)}
+          placeholder="Whether multi-hop QA benchmarks can detect graph quality at all"
+        />
+      </label>
+
+      <label className="block">
+        <span className={label}>What is new about your answer?</span>
+        <textarea
+          className={cn(input, "min-h-20 resize-y")}
+          value={contribution}
+          onChange={(e) => setContribution(e.target.value)}
+          placeholder="A measurement-validity study: config-diff ablations against retrieval error"
+        />
+      </label>
+
+      <label className="block">
+        <span className={label}>Method and data</span>
+        <input
+          className={input}
+          value={method}
+          onChange={(e) => setMethod(e.target.value)}
+          placeholder="Comma-separated — multi-lens extraction, schema settling, MuSiQue"
+        />
+      </label>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
+        <label className="block">
+          <span className={label}>Next milestone</span>
+          <input
+            className={input}
+            value={milestone}
+            onChange={(e) => setMilestone(e.target.value)}
+            placeholder="50-passage pilot results"
+          />
+        </label>
+        <label className="block">
+          <span className={label}>By when</span>
+          <input
+            type="date"
+            className={input}
+            value={milestoneDate}
+            onChange={(e) => setMilestoneDate(e.target.value)}
+          />
+        </label>
+      </div>
+
+      <label className="block">
+        <span className={label}>What is blocking you?</span>
+        <input
+          className={input}
+          value={blocking}
+          onChange={(e) => setBlocking(e.target.value)}
+          placeholder="Comma-separated — no labeled evaluation set, single rater"
+        />
+      </label>
+    </div>
+  );
+}
+
 function StepFocus({
   instruction,
   setInstruction,

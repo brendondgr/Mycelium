@@ -821,3 +821,61 @@ class OrgInviteRedemption(models.Model):
 
     def __str__(self) -> str:
         return f"Redemption<{self.user} via {self.invite_id}>"
+
+
+class AuthorWork(models.Model):
+    """One of a person's own published works, kept rather than reduced (plan M9).
+
+    The author import reads up to a few dozen recent works from OpenAlex, Semantic
+    Scholar or Scholar, extracts research areas and keywords out of them, and
+    throws the works away. That was right while the only question was "what does
+    this person work on". It is wrong for every question a project-aware report
+    asks: whether a paper Mylo just found is one the reader *wrote*, whether it
+    revises one of theirs, and which of their own results a claim sits against.
+
+    So the works are kept — title, year, identifiers, abstract, coauthors — and
+    the known-literature matcher reads them alongside the reader's collections.
+    Surfacing someone their own paper as news is the single most credibility-
+    destroying thing a research feed can do, and it is entirely avoidable.
+
+    Keyed on ``(user, source, source_id)``: re-importing the same author updates
+    each work in place rather than accumulating duplicates across runs. A work
+    whose source gave no stable id is still stored, keyed on a hash of its title,
+    because a title is what the matcher compares anyway.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="author_works",
+    )
+    source = models.CharField(
+        max_length=40,
+        help_text="Which import produced it: openalex / semantic / scholar.",
+    )
+    source_id = models.CharField(
+        max_length=200,
+        help_text="The source's own work id, or a hash of the title when it gave none.",
+    )
+    title = models.CharField(max_length=500, blank=True, default="")
+    year = models.PositiveSmallIntegerField(null=True, blank=True)
+    doi = models.CharField(max_length=200, blank=True, default="")
+    abstract = models.TextField(blank=True, default="")
+    coauthors = models.JSONField(default=list, blank=True)
+    cited_by = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-year", "title"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "source", "source_id"],
+                name="accounts_authorwork_unique_source_id",
+            ),
+        ]
+        indexes = [models.Index(fields=["user", "year"])]
+
+    def __str__(self) -> str:
+        return f"{self.title[:60]} ({self.year or '—'})"

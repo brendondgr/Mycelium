@@ -37,6 +37,7 @@ from apps.billing.services import (
 )
 
 from . import email_verification, invites, password_reset, signup_gate
+from .author_works import store_author_works
 from .intake import (
     AuthorImportError,
     IntakeAgent,
@@ -1211,6 +1212,12 @@ class ImportAuthorView(APIView):
                 {"non_field_errors": [str(exc)]},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
+        # The draft is a preview and nothing here saves a profile. The *works*
+        # are stored, because the import already read them and throwing them away
+        # is what left the reports unable to tell a reader's own paper from a
+        # discovery (plan M9). Keyed on (user, source, work id), so a re-import
+        # updates in place rather than accumulating copies.
+        store_author_works(request.user, draft, source=source)
         return Response(
             {
                 "draft": dataclasses.asdict(draft),

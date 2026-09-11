@@ -285,3 +285,137 @@ class ProjectMember(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} in {self.project}"
+
+
+class ProjectState(models.Model):
+    """What a project claims, what blocks it, and what is due when (plan M5).
+
+    One row per :class:`Project`. The shape and its rules live in
+    :mod:`apps.research.state`; this is the storage, and it is deliberately three
+    JSON columns plus four scalars rather than thirty columns. The state is
+    written by a wizard, an extractor and an API, all of which produce partial
+    answers, and a table that demands every column be decided before any of it can
+    be saved collects nothing at all.
+
+    ``slow_fingerprint`` is the load-bearing scalar. Model-written project
+    write-ups record the fingerprint they were written against and invalidate on
+    it, so moving a milestone costs nothing and changing the claimed contribution
+    costs a refresh. It is maintained here rather than by the caller, because a
+    caller that forgets is a caller that silently serves stale reasoning.
+
+    ``confirmed_at`` is the last time a person said "yes, this is still true". The
+    weekly reports how long ago that was and proposes a review past thirty days:
+    project state that nobody has looked at in two months is the most dangerous
+    input the reports have, because it reads as current.
+    """
+
+    project = models.OneToOneField(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="state",
+    )
+    slow = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "The research identity: problem, claimed_contribution, method, "
+            "planned_components, data, blockers. Changing it invalidates "
+            "model-written project write-ups."
+        ),
+    )
+    fast = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Operational state: stage, milestones, venue_targets, constraints, "
+            "timeline_overrides, needs, known_literature, exclusions. Read by the "
+            "deterministic matchers, which cost nothing to re-run."
+        ),
+    )
+    provenance = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "{field: stated|inferred}. A stated field is never auto-edited; an "
+            "inferred one is a proposal until someone accepts it."
+        ),
+    )
+    state_version = models.PositiveIntegerField(
+        default=0,
+        help_text=(
+            "Bumped on every save — the reader-visible 'this changed' signal. "
+            "Zero means the row exists but nothing has been written to it, which "
+            "is a real state: a project asked but not yet answered."
+        ),
+    )
+    slow_fingerprint = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Hash of the slow half alone; write-ups invalidate on it.",
+    )
+    confirmed_at = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Last time a person confirmed this state is still true.",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="project_states_updated",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def apply(self, payload: dict, *, actor=None) -> "ProjectState":
+        """Merge a (possibly partial) payload in, normalising and refingerprinting.
+
+        Partial by design: the wizard answers five questions, the extractor fills
+        what a document actually said, and the state panel edits one section. Each
+        writes what it knows and leaves the rest alone, so ``slow`` and ``fast``
+        are merged key by key rather than replaced wholesale — a PATCH that sent
+        only ``fast`` must not erase the research identity.
+        """
+        from apps.research import state as schema
+
+        payload = payload if isinstance(payload, dict) else {}
+        merged = {
+            "slow": {**(self.slow or {}), **(payload.get("slow") or {})},
+            "fast": {**(self.fast or {}), **(payload.get("fast") or {})},
+            "provenance": {
+                **(self.provenance or {}),
+                **(payload.get("provenance") or {}),
+            },
+        }
+        normalised = schema.normalise_state(merged)
+        self.slow = normalised["slow"]
+        self.fast = normalised["fast"]
+        self.provenance = normalised["provenance"]
+        self.slow_fingerprint = schema.slow_fingerprint(self.slow)
+        self.state_version = (self.state_version or 0) + 1
+        if actor is not None:
+            self.updated_by = actor
+        return self
+
+    @property
+    def is_empty(self) -> bool:
+        from apps.research import state as schema
+
+        return schema.is_empty({"slow": self.slow, "fast": self.fast})
+
+    def days_since_confirmed(self, today=None) -> int | None:
+        """How stale this state is, or ``None`` when it was never confirmed.
+
+        ``None`` and ``0`` are different answers and both are shown: "never
+        confirmed" is a prompt, "confirmed today" is reassurance.
+        """
+        if self.confirmed_at is None:
+            return None
+        from django.utils import timezone
+
+        return ((today or timezone.localdate()) - self.confirmed_at).days
+
+    def __str__(self) -> str:
+        return f"ProjectState<{self.project}> v{self.state_version}"

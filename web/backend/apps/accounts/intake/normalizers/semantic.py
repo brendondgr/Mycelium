@@ -37,10 +37,12 @@ def normalize(raw: dict[str, Any]) -> AuthorProfileDraft:
             category = (s2_field or {}).get("category")
             if category:
                 draft.areas.append(category)
+        paper_coauthors: list[str] = []
         for coauthor in paper.get("authors") or []:
             name = (coauthor or {}).get("name")
             if name and name != draft.display_name:
                 draft.coauthors.append(name)
+                paper_coauthors.append(name)
         draft.evidence.append(
             {
                 "title": paper.get("title") or "",
@@ -48,6 +50,8 @@ def normalize(raw: dict[str, Any]) -> AuthorProfileDraft:
                 "source_id": paper.get("paperId"),
                 "cited_by": paper.get("citationCount"),
                 "abstract": paper.get("abstract") or "",
+                "coauthors": paper_coauthors,
+                "doi": ((paper.get("externalIds") or {}).get("DOI") or ""),
             }
         )
 

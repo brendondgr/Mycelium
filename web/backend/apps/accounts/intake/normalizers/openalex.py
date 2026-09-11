@@ -64,10 +64,12 @@ def normalize(raw: dict[str, Any]) -> AuthorProfileDraft:
             name = (keyword or {}).get("display_name") or (keyword or {}).get("keyword")
             if name:
                 draft.keywords.append(name)
+        work_coauthors: list[str] = []
         for authorship in work.get("authorships") or []:
             name = ((authorship or {}).get("author") or {}).get("display_name")
             if name and name != draft.display_name:
                 draft.coauthors.append(name)
+                work_coauthors.append(name)
         draft.evidence.append(
             {
                 "title": work.get("title") or work.get("display_name") or "",
@@ -75,10 +77,21 @@ def normalize(raw: dict[str, Any]) -> AuthorProfileDraft:
                 "source_id": _bare_id(work.get("id")),
                 "cited_by": work.get("cited_by_count"),
                 "abstract": _abstract(work.get("abstract_inverted_index")),
+                # Kept per work, not only aggregated on the draft: the
+                # known-literature matcher asks "did *this* person write *this*
+                # paper", which a flattened set of every collaborator cannot answer.
+                "coauthors": work_coauthors,
+                "doi": _bare_doi(work.get("doi")),
             }
         )
 
     return draft
+
+
+def _bare_doi(value: Any) -> str:
+    """``10.1234/xyz`` from OpenAlex's full ``https://doi.org/…`` URL form."""
+    text = str(value or "").strip()
+    return text.rsplit("doi.org/", 1)[-1] if text else ""
 
 
 def _abstract(inverted_index: Any) -> str:

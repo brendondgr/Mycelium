@@ -92,12 +92,16 @@ Paths are relative to the repository root.
 | Interests contract (v2 clusters) | `web/backend/apps/accounts/interests.py` |
 | Profile / lab intake & synthesis | `web/backend/apps/accounts/intake/` — `synthesize.py`, `lab.py`, `clusters.py`, `agent.py` |
 | Derived membership aggregates | `web/backend/apps/accounts/aggregates.py` |
+| The reader's own published works, kept from the author import | `web/backend/apps/accounts/author_works.py`, model `AuthorWork` — so a report can tell a discovery from a paper the reader wrote |
 
 ## Backend — research context (`apps/research`)
 
 | Task | Path |
 |---|---|
 | Projects, membership, invitations, visibility, archiving, collaboration endpoints | `web/backend/apps/research/{models,views,serializers,urls}.py` |
+| Project state (what it claims, blocks on, aims at) | `web/backend/apps/research/state.py` (shape, normalising, the slow fingerprint), model `ProjectState`, endpoints `/api/projects/<id>/state/` and `.../state/confirm/` |
+| Reading a project's state out of a document | `web/backend/apps/research/state_extract.py` — schema, deterministic grounding checks, one bounded repair; proposes only, never saves |
+| Which buffer and window a project is judged against | `web/backend/apps/content/timeline_settings.py` (`effective_timeline`): project override → the reader's own → the lab's → 14/60 |
 | Per-scope project caps | `web/backend/apps/research/limits.py` |
 
 ## Backend — matching & delivery (`apps/content`)

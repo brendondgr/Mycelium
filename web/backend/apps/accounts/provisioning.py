@@ -21,6 +21,7 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils.text import slugify
 
+from .author_works import store_author_works
 from .intake import AuthorProfileDraft, import_author
 from .interests import validate_interests
 from .models import AcademicTitle, Profile
@@ -116,6 +117,11 @@ def provision_from_author(
         "openalex_id": profile.openalex_id,
         "scholar_id": profile.scholar_id,
     }
+    # Keep the works the import already read (plan M9). Done here as well as in
+    # the app's import endpoint, because an account provisioned from an author id
+    # never passes through that endpoint at all.
+    store_author_works(user, draft, source=source)
+
     return ProvisionedAuthor(
         user=user, profile=profile, draft=draft, credentials=credentials
     )

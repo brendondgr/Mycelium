@@ -52,6 +52,7 @@ import {
   fetchProfile,
   fetchMyProjectInvitations,
   fetchProject,
+  fetchProjectState,
   fetchProjectCollection,
   fetchProjectCollections,
   fetchProjectDigest,
@@ -212,6 +213,21 @@ export function useProject(id?: string) {
   return useQuery({
     queryKey: ["portal", "project", id ?? "none"],
     queryFn: () => fetchProject(id as string),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * One project's state. Kept in its own query rather than folded into the project
+ * row: the project list is read constantly and this is read on one page, and the
+ * state is the one payload in the product that should not travel further than the
+ * surface asking for it.
+ */
+export function useProjectState(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "project-state", id ?? "none"],
+    queryFn: () => fetchProjectState(id as string),
     enabled: Boolean(id),
     staleTime: 30_000,
   });

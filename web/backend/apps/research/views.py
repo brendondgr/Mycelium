@@ -8,6 +8,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import ListAPIView, ListCreateAPIView
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -1178,3 +1179,185 @@ class ProjectCollectionItemDetailView(APIView):
             collection=collection, content_id=content_id
         ).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --------------------------------------------------------------------------- #
+# Project state (plan 2.2)
+# --------------------------------------------------------------------------- #
+def _state_payload(project: Project, reader=None) -> dict:
+    """One project's state, plus the two things a reader needs around it.
+
+    The resolved timeline is included rather than left for the client to compute:
+    it depends on the reader's own settings and the lab's, neither of which the
+    project page holds, and a page that showed a project override while the report
+    used a lab default would be describing a different judgement from the one Mylo
+    is actually making.
+    """
+    from apps.content.timeline_settings import effective_timeline
+    from apps.research.state import normalise_state
+
+    state = getattr(project, "state", None)
+    normalised = normalise_state(
+        {
+            "slow": getattr(state, "slow", None),
+            "fast": getattr(state, "fast", None),
+            "provenance": getattr(state, "provenance", None),
+        }
+    )
+    return {
+        "project_id": str(project.id),
+        "slow": normalised["slow"],
+        "fast": normalised["fast"],
+        "provenance": normalised["provenance"],
+        "state_version": getattr(state, "state_version", 0),
+        "slow_fingerprint": getattr(state, "slow_fingerprint", ""),
+        "confirmed_at": (
+            state.confirmed_at.isoformat()
+            if state is not None and state.confirmed_at
+            else None
+        ),
+        "days_since_confirmed": (
+            state.days_since_confirmed() if state is not None else None
+        ),
+        "is_empty": state is None or state.is_empty,
+        "effective_timeline": effective_timeline(project, reader).as_dict(),
+    }
+
+
+class ProjectStateView(APIView):
+    """Read or edit one project's state — what it claims, blocks on, and aims at.
+
+    Read by anyone who can see the project; written only by an editor, the same
+    permission that governs its focus. Project state is the most sensitive thing
+    Mycelium stores: unpublished research plans, what is not working, and what the
+    team cannot do yet.
+
+    PATCH is a **merge**, not a replace (see :meth:`ProjectState.apply`). A client
+    sending only ``fast`` leaves the research identity untouched, which is what
+    lets the wizard, the extractor and the state panel each write the part they
+    know about without holding the whole document.
+    """
+
+    def _get_visible(self, request, pk) -> Project:
+        project = get_object_or_404(
+            Project.objects.select_related(
+                "scope_lab", "scope_department", "scope_user", "state"
+            ),
+            pk=pk,
+        )
+        if not project.is_visible_to(request.user):
+            raise PermissionDenied("You do not have access to this project.")
+        return project
+
+    def get(self, request: Request, pk) -> Response:
+        project = self._get_visible(request, pk)
+        return Response(_state_payload(project, request.user))
+
+    def patch(self, request: Request, pk) -> Response:
+        from apps.research.models import ProjectState
+
+        project = self._get_visible(request, pk)
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot edit this project.")
+
+        state, _created = ProjectState.objects.get_or_create(project=project)
+        before = state.slow_fingerprint
+        state.apply(request.data, actor=request.user)
+        # An edit *is* a confirmation of what the editor just looked at: asking
+        # someone to type the state and then separately assert it is current is a
+        # step nobody takes, and the staleness prompt would fire on state edited
+        # an hour ago.
+        state.confirmed_at = timezone.localdate()
+        state.save()
+
+        record_audit_event(
+            actor=request.user,
+            action="project.state.update",
+            target_type="project",
+            target_id=str(project.id),
+            # Deliberately no field values: this log is read by staff, and the
+            # state is the one thing in the product they have no business seeing.
+            metadata={
+                "state_version": state.state_version,
+                "identity_changed": before != state.slow_fingerprint,
+            },
+        )
+        project.refresh_from_db()
+        return Response(_state_payload(project, request.user))
+
+
+class ProjectStateConfirmView(APIView):
+    """Mark a project's state as still true today, changing nothing else.
+
+    Separate from PATCH because it is a different act. "I read this and it is
+    still right" is the cheap, frequent one, and folding it into an edit would
+    mean a reader has to change something to say nothing changed.
+    """
+
+    def post(self, request: Request, pk) -> Response:
+        from apps.research.models import ProjectState
+
+        project = get_object_or_404(
+            Project.objects.select_related("scope_lab", "scope_user", "state"), pk=pk
+        )
+        if not project.is_visible_to(request.user):
+            raise PermissionDenied("You do not have access to this project.")
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot edit this project.")
+
+        state, _created = ProjectState.objects.get_or_create(project=project)
+        state.confirmed_at = timezone.localdate()
+        state.updated_by = request.user
+        state.save(update_fields=["confirmed_at", "updated_by", "updated_at"])
+        project.refresh_from_db()
+        return Response(_state_payload(project, request.user))
+
+
+class ProjectStateExtractView(APIView):
+    """Read a project's state out of a document, as a **proposal**.
+
+    Nobody wants to answer five questions about a project whose abstract or
+    proposal already answers them. This reads one, and returns what it found
+    without saving any of it: every field comes back marked ``inferred``, and it
+    is the person who decides whether to apply it.
+
+    Deliberately not a PATCH. An extractor that wrote straight into the state
+    would overwrite what the team stated with what a model read, which is the one
+    thing invariant 9 forbids. The client sends the accepted fields back through
+    :class:`ProjectStateView` if and when someone accepts them.
+
+    Reuses the résumé path's ``extract_text`` for the file itself — the size
+    limit, the PDF sniffing and the "no readable text" error are already decided
+    there, and a second set of answers to those questions would drift.
+    """
+
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def post(self, request: Request, pk) -> Response:
+        from apps.accounts.intake import AuthorImportError, extract_text
+        from apps.research.state_extract import extract_project_state
+
+        project = get_object_or_404(Project, pk=pk)
+        if not project.is_visible_to(request.user):
+            raise PermissionDenied("You do not have access to this project.")
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot edit this project.")
+
+        upload = request.FILES.get("file")
+        text = str(request.data.get("text") or "")
+        if upload is not None:
+            try:
+                text = extract_text(
+                    upload.read(),
+                    content_type=getattr(upload, "content_type", ""),
+                    filename=getattr(upload, "name", ""),
+                )
+            except AuthorImportError as exc:
+                raise ValidationError({"file": [str(exc)]}) from exc
+        if not text.strip():
+            raise ValidationError(
+                {"non_field_errors": ["Send a file or some text to read."]}
+            )
+
+        outcome = extract_project_state(text)
+        return Response(outcome.as_dict())

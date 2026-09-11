@@ -27,6 +27,40 @@ urlpatterns = [
         views.ProjectDetailView.as_view(),
         name="project-detail-no-slash",
     ),
+    # Project state: what it claims, what blocks it, when its milestones are.
+    # Read by anyone who can see the project, written by its editors.
+    path(
+        "projects/<uuid:pk>/state/",
+        views.ProjectStateView.as_view(),
+        name="project-state",
+    ),
+    path(
+        "projects/<uuid:pk>/state",
+        views.ProjectStateView.as_view(),
+        name="project-state-no-slash",
+    ),
+    # "Still true" — a confirmation, not an edit.
+    path(
+        "projects/<uuid:pk>/state/confirm/",
+        views.ProjectStateConfirmView.as_view(),
+        name="project-state-confirm",
+    ),
+    path(
+        "projects/<uuid:pk>/state/confirm",
+        views.ProjectStateConfirmView.as_view(),
+        name="project-state-confirm-no-slash",
+    ),
+    # Read a state proposal out of an uploaded document. Saves nothing.
+    path(
+        "projects/<uuid:pk>/state/extract/",
+        views.ProjectStateExtractView.as_view(),
+        name="project-state-extract",
+    ),
+    path(
+        "projects/<uuid:pk>/state/extract",
+        views.ProjectStateExtractView.as_view(),
+        name="project-state-extract-no-slash",
+    ),
     # Archive (POST) / unarchive (DELETE) a project. Never deletes the row.
     path(
         "projects/<uuid:pk>/archive/",

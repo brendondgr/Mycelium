@@ -26,6 +26,9 @@ import type {
   ProjectCapErrorBody,
   ProjectFocusInput,
   ProjectInvitation,
+  ProjectStateInput,
+  ProjectStateProposal,
+  ProjectStatePayload,
   ProjectUpdateInput,
   Reminder,
   ReminderInput,
@@ -118,6 +121,38 @@ async function sendJson<T>(
     if (isProjectCapError(parsed)) {
       throw new ProjectCapReachedError(parsed);
     }
+    throw new Error(firstError(parsed) ?? fallbackMessage);
+  }
+  return parsed as T;
+}
+
+/**
+ * A multipart POST — the same auth and error handling as `sendJson`, minus the
+ * `Content-Type` header, which the browser must set itself so the boundary is
+ * right.
+ */
+async function sendForm<T>(
+  url: string,
+  body: FormData,
+  fallbackMessage: string,
+): Promise<T> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+
+  const response = await fetch(url, {
+    method: "POST",
+    credentials: "include",
+    headers: { ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}) },
+    body,
+  });
+
+  let parsed: (T & Record<string, unknown>) | null = null;
+  try {
+    parsed = (await response.json()) as T & Record<string, unknown>;
+  } catch {
+    parsed = null;
+  }
+  if (!response.ok) {
     throw new Error(firstError(parsed) ?? fallbackMessage);
   }
   return parsed as T;
@@ -380,6 +415,57 @@ export function updateProject(
     buildApiUrl(getPublicApiBase(), "projects", id),
     patch,
     "Could not save this project.",
+  );
+}
+
+/**
+ * Edit a project's state (its editors only).
+ *
+ * A **merge**, not a replace: send only the half or the field that changed. The
+ * wizard, the document extractor and the state panel each write the part they
+ * know about, and a PATCH carrying only `fast` leaves the research identity
+ * alone.
+ */
+export function updateProjectState(
+  id: string,
+  patch: ProjectStateInput,
+): Promise<ProjectStatePayload> {
+  return sendJson<ProjectStatePayload>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "projects", id, "state"),
+    patch,
+    "Could not save this project's state.",
+  );
+}
+
+/**
+ * Read a project's state out of a document. **Proposes; saves nothing.**
+ *
+ * The reply's fields are all marked `inferred`; applying them is a separate
+ * `updateProjectState` call the reader triggers. Sent as multipart because the
+ * usual case is a PDF, and the backend reuses the résumé path's own size limit
+ * and "no readable text" error rather than answering those questions twice.
+ */
+export async function extractProjectState(
+  id: string,
+  file: File,
+): Promise<ProjectStateProposal> {
+  const body = new FormData();
+  body.append("file", file);
+  return sendForm<ProjectStateProposal>(
+    buildApiUrl(getPublicApiBase(), "projects", id, "state", "extract"),
+    body,
+    "Could not read that document.",
+  );
+}
+
+/** "Still true" — a confirmation, which is a different act from an edit. */
+export function confirmProjectState(id: string): Promise<ProjectStatePayload> {
+  return sendJson<ProjectStatePayload>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "state", "confirm"),
+    {},
+    "Could not confirm this project's state.",
   );
 }
 

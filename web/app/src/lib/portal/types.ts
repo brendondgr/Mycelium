@@ -1615,3 +1615,106 @@ export type OrgInviteInput = {
   expires_in_days?: number;
   message?: string;
 };
+
+
+/* -- Project state ---------------------------------------------------------- */
+
+/**
+ * What a project claims, what blocks it, and what is due when
+ * (`/api/projects/<id>/state/`).
+ *
+ * Split in two because the halves change at different speeds. `slow` is the
+ * research identity — editing it invalidates Mylo's written reasoning about the
+ * project, so it is worth a confirmation step. `fast` is operational and is read
+ * by deterministic matchers that cost nothing to re-run, so a milestone can be
+ * moved freely.
+ *
+ * `provenance` is what separates what the team said from what Mylo guessed.
+ * Every surface shows the difference, and a `stated` field is never auto-edited.
+ */
+export type ProjectStateSlow = {
+  problem: string;
+  claimed_contribution: string;
+  method: string[];
+  planned_components: string[];
+  data: string[];
+  blockers: { id: string; text: string }[];
+};
+
+export type ProjectMilestone = {
+  id: string;
+  /** `results_by` for an abstract-only venue, `draft_by` for a full paper. */
+  kind: "results_by" | "draft_by" | "submit_by" | "other";
+  what: string;
+  /** ISO date, or `""` when the team has not set one — never a guess. */
+  date: string;
+  source: string;
+};
+
+export type ProjectConstraint = {
+  id: string;
+  kind: "earliest_start" | "latest_end" | "embargo" | "other";
+  applies_to: string;
+  date: string;
+  note: string;
+};
+
+export type ProjectStateFast = {
+  stage: string;
+  milestones: ProjectMilestone[];
+  venue_targets: { venue: string; slot: string; fallback: string }[];
+  constraints: ProjectConstraint[];
+  /** `null` on either half means "inherit" — the lab's, then yours, then 14/60. */
+  timeline_overrides: {
+    deadline_buffer_days: number | null;
+    min_paper_window_days: number | null;
+  };
+  needs: { expertise: string[] };
+  known_literature: { collections: string[]; suppress_known: boolean };
+  exclusions: string[];
+};
+
+/** Where a resolved timeline setting came from, for "buffer 14 (yours)". */
+export type TimelineSource = "project" | "lab" | "you" | "default";
+
+export type ProjectStatePayload = {
+  project_id: string;
+  slow: ProjectStateSlow;
+  fast: ProjectStateFast;
+  provenance: Record<string, "stated" | "inferred">;
+  state_version: number;
+  slow_fingerprint: string;
+  confirmed_at: string | null;
+  /** `null` means never confirmed, which is a prompt; `0` is reassurance. */
+  days_since_confirmed: number | null;
+  /** True when nobody has answered yet — a prompt, not a blank document. */
+  is_empty: boolean;
+  effective_timeline: {
+    buffer_days: number;
+    window_days: number;
+    buffer_source: TimelineSource;
+    window_source: TimelineSource;
+  };
+};
+
+/** A partial state edit. Merged server-side, so send only what changed. */
+export type ProjectStateInput = {
+  slow?: Partial<ProjectStateSlow>;
+  fast?: Partial<ProjectStateFast>;
+  provenance?: Record<string, "stated" | "inferred">;
+};
+
+/**
+ * What one document yielded when Mylo read a project out of it. Nothing here is
+ * saved: every field comes back marked `inferred` and it is the reader who
+ * decides whether to apply it, because an extractor that wrote straight into the
+ * state would overwrite what the team said with what a model read.
+ */
+export type ProjectStateProposal = {
+  ok: boolean;
+  /** Why it refused, in words a person can act on. Empty on success. */
+  reason: string;
+  attempts: number;
+  failures: string[];
+  proposal: ProjectStateInput;
+};

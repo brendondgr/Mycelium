@@ -112,6 +112,9 @@ routes clients depend on most.
 | `lab/<slug>/` | GET | Every project of one lab, to browse and join |
 | `<id>/` | GET, PATCH | Detail; edit name / description / status / progress / focus / watch categories |
 | `<id>/archive/` | POST, DELETE | Archive / unarchive (never deletes) |
+| `<id>/state/` | GET, PATCH | What the project claims, blocks on, and aims at |
+| `<id>/state/confirm/` | POST | "Still true" — the date only |
+| `<id>/state/extract/` | POST | Read a state **proposal** out of a document (saves nothing) |
 | `<id>/join/` `<id>/leave/` | POST | Self-join / leave |
 | `<id>/members/` | GET, POST | Roster; add a lab member directly |
 | `<id>/members/<username>/` | DELETE | Remove a member |
@@ -550,6 +553,80 @@ admin rights. The per-scope **project cap** is enforced atomically (row-locked
 count-then-create) and a breach returns `403`. `focus` accepts a Mylo-composed
 cluster payload. On create the project is seeded over the existing corpus in the
 background.
+
+### `GET | PATCH /api/projects/<id>/state/`
+
+A project's state: what it claims, what is blocking it, and what is due when.
+Read by anyone who can see the project, written by its editors. This is the most
+sensitive payload the API serves — unpublished research plans and what is not
+working — so both gates are object-level, not scope-level.
+
+```json
+{
+  "project_id": "…",
+  "slow": {
+    "problem": "Whether multi-hop QA benchmarks detect KG quality at all",
+    "claimed_contribution": "A measurement-validity study",
+    "method": ["multi-lens LLM extraction"], "planned_components": [],
+    "data": ["MuSiQue"],
+    "blockers": [{ "id": "b1", "text": "No labeled evaluation set" }]
+  },
+  "fast": {
+    "stage": "experiments",
+    "milestones": [{ "id": "m1", "kind": "results_by", "what": "MuSiQue pilot",
+                     "date": "2026-10-09", "source": "stated" }],
+    "venue_targets": [{ "venue": "TMLR", "slot": "", "fallback": "" }],
+    "constraints": [], "exclusions": [],
+    "timeline_overrides": { "deadline_buffer_days": 21,
+                            "min_paper_window_days": null },
+    "needs": { "expertise": [] },
+    "known_literature": { "collections": [], "suppress_known": true }
+  },
+  "provenance": { "problem": "stated", "method": "inferred" },
+  "state_version": 3, "slow_fingerprint": "…",
+  "confirmed_at": "2026-09-14", "days_since_confirmed": 0, "is_empty": false,
+  "effective_timeline": { "buffer_days": 21, "window_days": 60,
+                          "buffer_source": "project", "window_source": "you" }
+}
+```
+
+The split is load-bearing. **`slow`** is the research identity, and Mylo's written
+reasoning about the project is keyed on a hash of it, so changing the claimed
+contribution invalidates those write-ups and moving a milestone does not.
+**`fast`** is operational and is read by deterministic matchers that cost nothing
+to re-run.
+
+`provenance` marks each populated field `stated` or `inferred`. A `stated` field
+is never edited by anything but a person. An unrecorded field reads as `stated`,
+because the only ways in without provenance are a hand edit and a migration.
+
+PATCH is a **merge**, not a replace: send only the half or the field that
+changed. A PATCH also sets `confirmed_at` to today — editing is confirming what
+you just read — while `POST .../state/confirm/` sets only that date and leaves
+`state_version` alone.
+
+`timeline_overrides` uses `null` for **inherit**, which is why an out-of-range
+number is stored as `null` rather than clamped: clamping would turn a typo into a
+setting. `effective_timeline` reports what is actually in force for the calling
+reader, resolved project → reader → lab → 14/60, with each half's source named so
+a reader who disagrees with a verdict knows which dial to turn.
+
+`is_empty` is true when nobody has answered yet, which a client should render as
+a prompt rather than as a blank document.
+
+### `POST /api/projects/<id>/state/extract/`
+
+Multipart `file` (PDF or text) or JSON `text`. Reads the document and returns
+`{ ok, reason, attempts, failures, proposal }` — and **saves nothing**. Every
+field in `proposal` is marked `inferred`; applying it is a separate PATCH the
+reader triggers, because an extractor that wrote directly would overwrite what
+the team stated with what a model read.
+
+`ok: false` is a real and common outcome. Every extracted claim is checked against
+the document — a word-overlap floor for a claim long enough to carry one, and
+"invent no numbers, dates or money" for a short one — and two ungrounded attempts
+end in a refusal rather than a guess. `ok: true` with an empty proposal means the
+document does not describe a project, which is a correct answer, not a failure.
 
 ### `POST | DELETE /api/projects/<id>/archive/`
 

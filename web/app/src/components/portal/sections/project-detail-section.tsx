@@ -37,6 +37,7 @@ import {
   ProjectTabBar,
   type ProjectTabKey,
 } from "@/components/portal/projects/project-tabs";
+import { ProjectStateCard } from "@/components/portal/projects/project-state-card";
 import { ProjectTeamCard } from "@/components/portal/projects/project-team-card";
 import {
   useAddToCollection,
@@ -282,6 +283,10 @@ function ProjectOverviewPanel({
           isLoading={recQuery.isLoading}
           onOpen={onOpenTab}
         />
+        {/* Above the focus, deliberately: the focus says what to search for, the
+            state says what to judge a result against, and the second is what
+            turns a list of papers into advice. */}
+        <ProjectStateCard project={project} />
         <ProjectFocusCard project={project} onEdit={onEdit} />
       </div>
     );
