@@ -262,6 +262,11 @@ export function PortalProvider({
       if (typeof window !== "undefined") {
         window.localStorage.setItem(LAB_SCOPE_KEY, key);
       }
+      // The remembered default has to move with the scope, not just the URL.
+      // Switching *to* Personal writes no `?ws=` parameter (personal is the
+      // default), so a stale stored key would win the fallback on the very next
+      // render and bounce the reader straight back into the lab they just left.
+      setStoredScopeKey(key === PERSONAL_SLUG ? null : key);
       router.push(routeWithScope(SECTION_ROUTES.overview, key));
     },
     [router],
