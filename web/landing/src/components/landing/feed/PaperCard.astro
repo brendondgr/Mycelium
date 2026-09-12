@@ -1,0 +1,61 @@
+---
+import ClusterRow from "@/components/landing/feed/ClusterRow.astro";
+import Glyph from "@/components/landing/feed/Glyph.astro";
+import Reason from "@/components/landing/feed/Reason.astro";
+import type { PaperItem } from "@/data/feed-preview";
+
+/**
+ * A row on Research Papers — `SuggestionCard` in
+ * `portal/sections/research-papers-section.tsx`.
+ *
+ * The paper card is the odd one of the four. It has no deadline, so no deadline
+ * control and no reminder bell; it carries two clamped meta lines rather than
+ * one identity line; and it ends in a plain inline link rather than the source
+ * row the three opportunity feeds share. Papers also have no filter rail.
+ */
+interface Props {
+  item: PaperItem;
+}
+
+const { item } = Astro.props;
+---
+
+<li class="fc-card reveal">
+  <div class="fc-head">
+    <div class="fc-head-main">
+      <h4 class="fc-title">{item.title}</h4>
+      <p class="fc-meta">{item.provenance}</p>
+      <p class="fc-meta fc-meta-tight">{item.byline}</p>
+
+      <ClusterRow
+        cluster={item.cluster}
+        clusterToken={item.clusterToken}
+        bridge={item.bridge}
+        isNew={item.isNew}
+      />
+    </div>
+
+    {/* Papers put their two controls inline rather than in a tool column —
+        there is no date to hang a deadline menu or a reminder off. */}
+    <div class="fc-tools" aria-hidden="true">
+      {item.crossTopics && <span class="fc-chip fc-pill-neutral">Cross-topics match</span>}
+      <span class="fc-tool"><Glyph name="bookmark" class="fc-glyph fc-glyph-tool" /></span>
+      <span class="fc-tool"><Glyph name="eye-off" class="fc-glyph fc-glyph-tool" /></span>
+    </div>
+  </div>
+
+  {item.description && <p class="fc-description is-clamped">{item.description}</p>}
+
+  <Reason
+    reason={item.reason}
+    caveat={item.caveat}
+    bridgeNote={item.bridgeNote}
+    origin={item.origin}
+    spacious
+  />
+
+  <span class="fc-paper-link" aria-hidden="true">
+    Read paper
+    <Glyph name="arrow" class="fc-glyph fc-glyph-link" />
+  </span>
+</li>

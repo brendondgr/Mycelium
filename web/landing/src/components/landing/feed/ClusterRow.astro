@@ -1,0 +1,50 @@
+---
+import Glyph from "@/components/landing/feed/Glyph.astro";
+
+/**
+ * The badge row every feed card puts under its identity block — `ClusterRow` in
+ * `portal/primitives/cluster-badge.tsx`.
+ *
+ * Order is fixed and the same on all four feeds: the New tag, then the Updated
+ * tag, then the theme this item was matched under, then the dashed "Also:" badge
+ * naming the other theme whose slate it reached. Papers included — New leads the
+ * row there too rather than riding a right-hand stack.
+ *
+ * A theme's colour is one of eight palette tokens, chosen by hashing the
+ * cluster's id in the app. The preview carries the resolved token instead, since
+ * its clusters are fictional and have no ids to hash.
+ */
+interface Props {
+  cluster: string;
+  clusterToken: string;
+  bridge?: string;
+  isNew?: boolean;
+  isUpdated?: boolean;
+}
+
+const { cluster, clusterToken, bridge, isNew, isUpdated } = Astro.props;
+---
+
+<div class="fc-chip-row" style={`--dot: var(--cluster-${clusterToken});`}>
+  {
+    isNew && (
+      <span class="fc-chip fc-new">
+        <Glyph name="sparkle" class="fc-glyph fc-glyph-sm" />
+        New
+      </span>
+    )
+  }
+  {
+    isUpdated && (
+      <span class="fc-chip fc-updated" title="The source listing changed since Mylo last read it">
+        <Glyph name="refresh" class="fc-glyph fc-glyph-sm" />
+        Updated
+      </span>
+    )
+  }
+  <span class="fc-chip fc-cluster">
+    <span class="fc-dot" aria-hidden="true"></span>
+    <span class="fc-cluster-label">{cluster}</span>
+  </span>
+  {bridge && <span class="fc-chip fc-bridge">Also: {bridge}</span>}
+</div>

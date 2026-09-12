@@ -1,7 +1,9 @@
 ---
 import FeedCard from "@/components/landing/FeedCard.astro";
+import Glyph from "@/components/landing/feed/Glyph.astro";
 import SectionGround from "@/components/site/SectionGround.astro";
-import { feedTabs } from "@/data/landing";
+import { feedTabs, type FeedItem, type FellowshipItem } from "@/data/feed-preview";
+import "@/styles/feed-card.css";
 
 interface Props {
   /** Rendered as an h1 on pages where this section leads. */
@@ -11,20 +13,28 @@ interface Props {
 const { headingLevel = "h2" } = Astro.props;
 const Heading = headingLevel;
 
-/** Matches the "Your feed" / "Opportunities" eyebrow above each app surface. */
-const eyebrows: Record<string, string> = {
-  papers: "Your feed",
-  grants: "Opportunities",
-  fellowships: "Opportunities",
-  conferences: "Opportunities",
-};
+/** The distinct themes present in a feed — the app's cluster chip row. */
+function clusterChips(items: readonly FeedItem[]): string[] {
+  return [...new Set(items.map((item) => item.cluster))];
+}
 
-const titles: Record<string, string> = {
-  papers: "Research Papers",
-  grants: "Grants",
-  fellowships: "Fellowships",
-  conferences: "Conferences",
-};
+/** Fellowships arrive in two bands and are headed separately. */
+function band(items: readonly FeedItem[], which: "matched" | "open"): FellowshipItem[] {
+  return items.filter(
+    (item): item is FellowshipItem => item.kind === "fellowship" && item.band === which,
+  );
+}
+
+const BAND_COPY = {
+  matched: {
+    title: "Matched to your themes",
+    note: "Ranked by how well each award fits the strand it sits under.",
+  },
+  open: {
+    title: "Open to you",
+    note: "Eligible, but not tied to any one strand of your work — listed once, in no particular topical order.",
+  },
+} as const;
 ---
 
 <section
@@ -45,10 +55,10 @@ const titles: Record<string, string> = {
         Four feeds, one profile, every match explained
       </Heading>
       <p class="mt-4 text-base leading-7 text-[var(--text-secondary)]">
-        These are the workspace's own cards. Mycelium scores what it finds against
-        your lab's research clusters and shows its reasoning on every one. Sample
-        content is fictional and the card controls are inert — real feeds are
-        lab-scoped and permission-gated.
+        These are the workspace's own cards. Mylo matches what he finds to one of
+        your lab's research themes, writes why it fits, and names the thing that
+        would make it a waste of your morning. Sample content is fictional and
+        the controls are inert — real feeds are lab-scoped and permission-gated.
       </p>
     </div>
 
@@ -78,23 +88,86 @@ const titles: Record<string, string> = {
       {
         feedTabs.map((tab) => (
           <div class="feed-panel" data-panel={tab.id}>
-            {/* The same header the workspace puts atop each feed surface:
-                eyebrow, Fraunces title, and one supporting line. */}
-            <div class="feed-section-header reveal">
-              <p class="feed-section-eyebrow">{eyebrows[tab.id]}</p>
-              <h3 class="feed-section-title">{titles[tab.id]}</h3>
-              <p class="feed-section-subtitle">{tab.blurb}</p>
+            {/* The header the workspace puts atop each feed: eyebrow, Fraunces
+                title, and the one line that says how much it found today. */}
+            <div class="fc-section-header reveal">
+              <p class="fc-section-eyebrow">{tab.eyebrow}</p>
+              <h3 class="fc-section-title">{tab.title}</h3>
+              <p class="fc-section-subtitle">{tab.blurb}</p>
             </div>
 
-            <ul class="mt-5 grid gap-4" data-reveal-group data-reveal-step="120">
-              {tab.items.map((item) => (
-                <FeedCard
-                  item={item}
-                  kind={tab.id as "papers" | "grants" | "fellowships" | "conferences"}
-                  linkLabel={tab.linkLabel}
-                />
-              ))}
-            </ul>
+            {/* `FeedSearchBar` — one field that narrows what has already been
+                fetched, and one row of theme chips to pin the page to a single
+                strand. Shared by all four feeds. Inert here. */}
+            <div class="fc-searchbar reveal" aria-hidden="true">
+              <div class="fc-search-field">
+                <Glyph name="search" class="fc-glyph fc-glyph-tool" />
+                {tab.searchPlaceholder}
+              </div>
+              <div class="fc-cluster-chips">
+                <span class="fc-cluster-chip is-active">All themes</span>
+                {clusterChips(tab.items).map((label) => (
+                  <span class="fc-cluster-chip">{label}</span>
+                ))}
+              </div>
+            </div>
+
+            <div class="fc-layout mt-5">
+              {/* Grants, fellowships and conferences carry a filter rail.
+                  Papers do not — they narrow by search and theme alone. */}
+              {tab.filters && (
+                <aside class="fc-rail reveal" aria-hidden="true">
+                  {tab.filters.map((group) => (
+                    <div class="fc-rail-group">
+                      <p class="fc-rail-label">{group.label}</p>
+                      <div class="fc-rail-options">
+                        {group.options.map((option, index) => (
+                          <span class:list={["fc-cluster-chip", index === 0 && "is-active"]}>
+                            {option}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </aside>
+              )}
+
+              {tab.id === "fellowships" ? (
+                /* Two bands, headed separately: awards matched to a strand of
+                   the reader's work, then awards they are simply eligible for.
+                   Mixing the two implied a topical ranking over the second. */
+                <div class="min-w-0 flex-1">
+                  {(["matched", "open"] as const).map((which) => (
+                    <>
+                      <div class="fc-band reveal">
+                        <h4 class="fc-band-title">{BAND_COPY[which].title}</h4>
+                        <p class="fc-band-note">{BAND_COPY[which].note}</p>
+                      </div>
+                      <ul class="fc-list mt-4 mb-6" data-reveal-group data-reveal-step="120">
+                        {band(tab.items, which).map((item) => (
+                          <FeedCard item={item} />
+                        ))}
+                      </ul>
+                    </>
+                  ))}
+                </div>
+              ) : (
+                <ul class="fc-list" data-reveal-group data-reveal-step="120">
+                  {tab.items.map((item) => (
+                    <>
+                      {/* Papers split: what Mylo read and ranked, then the
+                          topical tail the deterministic scorer placed. */}
+                      {item.kind === "paper" && item.crossTopics && (
+                        <li class="fc-divider reveal" aria-hidden="true">
+                          <span>Cross-topics matches</span>
+                        </li>
+                      )}
+                      <FeedCard item={item} />
+                    </>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         ))
       }
@@ -128,41 +201,5 @@ const titles: Record<string, string> = {
     .feed-panel {
       display: block;
     }
-  }
-
-  /* `SectionHeader` from the workspace (portal/primitives/section-header.tsx). */
-  .feed-section-header {
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid var(--divider);
-    padding-bottom: 1.25rem;
-  }
-
-  .feed-section-eyebrow {
-    margin-bottom: 0.375rem;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: var(--brand-primary-hover);
-  }
-
-  .feed-section-title {
-    font-family:
-      "Fraunces",
-      "Lora",
-      Georgia,
-      serif;
-    font-size: 28px;
-    font-weight: 600;
-    line-height: 1.2;
-    letter-spacing: -0.015em;
-    color: var(--text-primary);
-  }
-
-  .feed-section-subtitle {
-    margin-top: 0.375rem;
-    font-size: 0.875rem;
-    line-height: 1.5rem;
-    color: var(--text-secondary);
   }
 </style>

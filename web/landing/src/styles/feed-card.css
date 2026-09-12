@@ -1,0 +1,691 @@
+/*
+  The workspace's feed cards, rebuilt in plain CSS for the public site.
+
+  Every value here is read off the live components rather than approximated —
+  `Card` and `MatchCard` for the shell, `ClusterRow` / `Pill` / `NewTag` /
+  `UpdatedTag` / `MyloReason` for the chips and the reason block, `DeadlineMenu`
+  for the deadline control, `SourceRow` / `ViewLink` for the footer, and the four
+  feed sections for what each kind puts where. All under
+  `web/app/src/components/portal/`. When one of those changes, this file and the
+  card components beside it are what have to follow.
+
+  Two things the app has that this deliberately does not reproduce:
+
+  - **A judgement gutter.** There is none, in either place. The percent ring and
+    the position/verdict rail that briefly replaced it were both removed from the
+    app; content starts where the card starts. See `docs/styles.md`.
+  - **`--text-muted` on the caveat.** The app sets the caveat in `--text-muted`,
+    which is 3.67:1 on `--surface` in the light theme and fails WCAG 2.2 AA for
+    body text. The preview uses `--text-secondary` (5.75:1) instead. This is the
+    one intentional divergence in the file.
+
+  This stylesheet is global — it is imported once by `LiveFeed.astro` and shared
+  across the five card components, which Astro's scoped styles cannot span.
+*/
+
+/* ---------------------------------------------------------------- shell -- */
+
+.fc-card {
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.fc-card:hover {
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fc-card {
+    transition: none;
+  }
+
+  .fc-card:hover {
+    transform: none;
+  }
+}
+
+/* The head is the only row that splits: identity on the left, the tool column
+   on the right. Everything below it spans the card's full width. */
+.fc-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.fc-head-main {
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.fc-title {
+  min-width: 0;
+  font-family: "Fraunces", "Lora", Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.375;
+  color: var(--text-primary);
+}
+
+/* ------------------------------------------------------------- identity -- */
+
+/*
+  Papers carry two clamped meta lines — where it came from, then when and by
+  whom. Every opportunity carries one semicolon-joined identity line instead:
+  sponsor, award class, or location and event dates.
+*/
+.fc-meta {
+  margin-top: 0.375rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.fc-meta-tight {
+  margin-top: 0.125rem;
+}
+
+.fc-identity {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Grants and fellowships only. Conferences have no amount, papers none of it. */
+.fc-amount {
+  margin-top: 0.375rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* --------------------------------------------------------------- chips --- */
+
+.fc-chip-row {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: 9999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+/* The theme that surfaced this item, tinted from its own palette token. */
+.fc-cluster {
+  border: 1px solid color-mix(in srgb, var(--dot) 35%, var(--border));
+  background: color-mix(in srgb, var(--dot) 10%, var(--surface));
+  color: var(--text-primary);
+  gap: 0.375rem;
+}
+
+.fc-dot {
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--dot);
+}
+
+.fc-cluster-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Bridging is supplementary context, so it is deliberately quieter. */
+.fc-bridge {
+  border: 1px dashed var(--border);
+  color: var(--text-secondary);
+  font-weight: 500;
+  gap: 0.25rem;
+}
+
+.fc-new {
+  background: var(--success);
+  color: var(--destructive-foreground);
+  font-weight: 700;
+  gap: 0.25rem;
+}
+
+.fc-updated {
+  border: 1px solid color-mix(in srgb, var(--warning) 50%, var(--border));
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  color: var(--text-primary);
+  font-weight: 700;
+  gap: 0.25rem;
+}
+
+/* Papers only: the neutral pill on a row the deterministic scorer placed. */
+.fc-pill-neutral {
+  background: var(--surface-alt);
+  color: var(--text-secondary);
+}
+
+/* Fellowships only: the rule engine's tier. Kept on its own row, under the
+   theme badges, so an eligibility claim never reads as a relevance claim. */
+.fc-eligibility.is-qualified {
+  border: 1px solid color-mix(in srgb, var(--success) 35%, var(--border));
+  background: color-mix(in srgb, var(--success) 10%, var(--surface));
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.fc-eligibility.is-possible {
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+  background: color-mix(in srgb, var(--warning) 14%, var(--surface));
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.fc-eligibility.is-unlisted {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.fc-facet {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Conferences only: the venue's rank in a published system, and the quality
+   flags that sit beside it. A flag is informational — it never hides a venue. */
+.fc-rank {
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.fc-rank .fc-dot {
+  background: var(--primary);
+}
+
+.fc-flags {
+  border: 1px dashed var(--border);
+  color: var(--text-secondary);
+}
+
+.fc-date-warning {
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+  background: color-mix(in srgb, var(--warning) 14%, var(--surface));
+  color: var(--text-primary);
+}
+
+.fc-date-warning .fc-glyph {
+  color: var(--warning);
+}
+
+/* Conferences only: which submission windows are still open. */
+.fc-open {
+  border: 1px solid color-mix(in srgb, var(--success) 35%, var(--border));
+  background: color-mix(in srgb, var(--success) 10%, var(--surface));
+  color: var(--text-primary);
+  padding: 0.125rem 0.5rem;
+  font-size: 11px;
+  gap: 0.25rem;
+}
+
+/* ---------------------------------------------------- tools & deadlines -- */
+
+/*
+  The action column, sized to fit a full date rather than just the icon row.
+  Ignore, remind, save — left to right, in that order. Only save keeps colour at
+  rest, because there it is state rather than decoration; the other two are
+  neutral until hover, which they never get here.
+
+  These are spans, not buttons. The preview is a picture of the workspace, not
+  the workspace, so nothing takes focus or announces itself as a control.
+*/
+.fc-actions {
+  display: flex;
+  inline-size: 8.75rem;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.fc-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+}
+
+.fc-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.fc-deadline {
+  inline-size: 100%;
+  margin-top: 0.5rem;
+}
+
+.fc-deadline-label {
+  text-align: right;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.fc-deadline-button {
+  margin-top: 0.25rem;
+  display: inline-flex;
+  inline-size: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.25rem 0.5rem;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.fc-deadline-date {
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+
+/* --------------------------------------------------------------- body ---- */
+
+.fc-description {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: var(--text-secondary);
+}
+
+.fc-description.is-clamped {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+}
+
+/* Mylo's written reason, in the soft primary field the workspace uses whenever
+   the language model wrote it. A deterministic topical match stays a plain
+   line — most readers are on that path, and the preview has to say so. */
+.fc-mylo-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin-top: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  padding: 0.75rem;
+}
+
+.fc-mylo-reason img {
+  margin-top: 0.125rem;
+  flex-shrink: 0;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border-radius: 9999px;
+  object-fit: cover;
+}
+
+.fc-mylo-reason p,
+.fc-plain-reason {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: var(--text-secondary);
+}
+
+.fc-plain-reason {
+  margin-top: 0.625rem;
+}
+
+/*
+  The caveat — the strongest reason this might not be worth your time. Mandatory
+  on every write-up, so it appears on every card here. See the note at the top of
+  this file about why it is `--text-secondary` and not `--text-muted`.
+*/
+.fc-caveat {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: var(--text-secondary);
+}
+
+.fc-caveat b {
+  font-weight: 600;
+}
+
+.fc-bridge-note {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: var(--text-secondary);
+}
+
+.fc-bullets {
+  margin-top: 0.75rem;
+  padding-left: 1rem;
+}
+
+.fc-bullets li {
+  list-style: disc;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: var(--text-secondary);
+}
+
+.fc-bullets li + li {
+  margin-top: 0.25rem;
+}
+
+/* -------------------------------------------------------------- footer --- */
+
+/*
+  Papers end in a plain inline link. The three opportunity feeds end in a
+  `SourceRow`: the licence line on the left, the pill-shaped View button on the
+  right, above a hairline. Both are inert here.
+*/
+.fc-paper-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--brand-primary-hover);
+}
+
+.fc-source-row {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  border-top: 1px solid var(--divider);
+  padding-top: 0.75rem;
+}
+
+.fc-source-credit {
+  min-width: 0;
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.fc-view-link {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  padding: 0.375rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--brand-primary-hover);
+}
+
+/* --------------------------------------------------------------- glyphs -- */
+
+.fc-glyph {
+  inline-size: 0.8125rem;
+  block-size: 0.8125rem;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fc-glyph-sm {
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+}
+
+.fc-glyph-tool {
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+}
+
+.fc-glyph-link {
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  stroke-width: 2;
+}
+
+/* ------------------------------------------------- the page around them -- */
+
+/* `SectionHeader` from the workspace (portal/primitives/section-header.tsx). */
+.fc-section-header {
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--divider);
+  padding-bottom: 1.25rem;
+}
+
+.fc-section-eyebrow {
+  margin-bottom: 0.375rem;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--brand-primary-hover);
+}
+
+.fc-section-title {
+  font-family: "Fraunces", "Lora", Georgia, serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+.fc-section-subtitle {
+  margin-top: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  color: var(--text-secondary);
+}
+
+/* `FeedSearchBar` — one field that narrows the fetched feed, and one row of
+   theme chips. Shared by all four feeds, so the preview shows it on all four. */
+.fc-searchbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.fc-search-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.fc-cluster-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.fc-cluster-chip {
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.1875rem 0.625rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.fc-cluster-chip.is-active {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--text-primary);
+}
+
+/*
+  The filter rail. Grants, fellowships and conferences have one; papers do not.
+  It is `lg:` only in the app, and collapses out below that — so it does here
+  too, rather than stacking a column of inert controls above the cards on a
+  phone.
+*/
+.fc-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.fc-list {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 1024px) {
+  .fc-layout {
+    flex-direction: row;
+    gap: 2rem;
+  }
+
+  .fc-rail {
+    inline-size: 236px;
+    flex-shrink: 0;
+  }
+}
+
+.fc-rail {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .fc-rail {
+    display: block;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 1rem;
+  }
+}
+
+.fc-rail-group + .fc-rail-group {
+  margin-top: 1rem;
+  border-top: 1px solid var(--divider);
+  padding-top: 1rem;
+}
+
+.fc-rail-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.fc-rail-options {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+/* The papers feed's divider between what Mylo ranked and the topical tail. */
+.fc-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
+}
+
+.fc-divider::before,
+.fc-divider::after {
+  content: "";
+  block-size: 1px;
+  flex: 1;
+  background: var(--border);
+}
+
+.fc-divider span {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+/* The fellowships feed's two bands: matched to a theme, or simply open to you. */
+.fc-band {
+  margin-top: 0.5rem;
+}
+
+.fc-band-title {
+  font-family: "Fraunces", "Lora", Georgia, serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fc-band-note {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}

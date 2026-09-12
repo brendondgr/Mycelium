@@ -21,7 +21,9 @@ Paths are relative to the repository root.
 | A marketing page | `web/landing/src/pages/*.astro` — five pages: `index`, `product`, `pricing`, `about`, `contact` |
 | Landing copy & capability claims | `web/landing/src/data/{landing,product,pricing,pricingComparison,site}.ts` |
 | Landing components | `web/landing/src/components/{landing,site,pricing}/` |
-| Landing feed preview card (mirrors the app's `MatchCard`) | `web/landing/src/components/landing/FeedCard.astro` |
+| Landing feed preview — the four cards, mirroring the app's feeds | `web/landing/src/components/landing/feed/{Paper,Grant,Fellowship,Conference}Card.astro` + shared `ClusterRow`, `ActionBar`, `Reason`, `SourceRow`, `Glyph`; `FeedCard.astro` picks by kind, `LiveFeed.astro` supplies the section header, search bar and filter rail |
+| Landing feed preview content & shapes | `web/landing/src/data/feed-preview.ts` — fictional content, real field set; carries **no** verdict or position, because the app's cards draw none |
+| Landing feed preview styles (plain-CSS port of the app's card classes) | `web/landing/src/styles/feed-card.css` — global, imported once by `LiveFeed.astro` |
 | Section backgrounds (tinted ground + botanical motif) | `web/landing/src/components/site/SectionGround.astro` — pick a different motif per section; leave plain sections between |
 | The motif artwork (roots, moss overhang, leaf vine, canopy, spores, filaments) | `web/landing/src/components/site/motifs/` |
 | Landing styles, scroll reveals | `web/landing/src/styles/global.css` (rules) + the two inline scripts in `web/landing/src/layouts/PublicLayout.astro` (arming flag + IntersectionObserver); no framework JS |

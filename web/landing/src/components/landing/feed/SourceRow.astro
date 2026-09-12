@@ -1,0 +1,30 @@
+---
+import Glyph from "@/components/landing/feed/Glyph.astro";
+
+/**
+ * The footer on a grant, fellowship or conference card — `SourceRow` +
+ * `ViewLink` in `portal/primitives/source-footer.tsx`. Where the listing came
+ * from on the left, the pill-shaped View button on the right, above a hairline.
+ *
+ * Papers do not use this: they end in a plain inline "Read paper" link instead,
+ * and carry their provenance in the meta lines under the title.
+ *
+ * The button is inert — this is a preview of the workspace, not the workspace,
+ * and there is no real record behind a fictional listing to open. Hidden from
+ * assistive technology rather than announced as a link that goes nowhere.
+ */
+interface Props {
+  credit: string;
+  label: string;
+}
+
+const { credit, label } = Astro.props;
+---
+
+<div class="fc-source-row">
+  <p class="fc-source-credit">{credit}</p>
+  <span class="fc-view-link" aria-hidden="true">
+    {label}
+    <Glyph name="arrow" class="fc-glyph fc-glyph-link" />
+  </span>
+</div>
