@@ -24,11 +24,15 @@ mail — see :func:`apps.accounts.permissions.require_verified_email`.
 from __future__ import annotations
 
 import logging
+import re
 import secrets
+from dataclasses import dataclass
 from datetime import timedelta
 
 from django.contrib.auth.models import User
-from django.db import IntegrityError, transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -64,6 +68,35 @@ MAX_MAX_USES = 500
 
 #: Human phrasing of the default window, for the email body.
 _EXPIRES_IN_FALLBACK = "a week"
+
+#: How many addresses one submission may carry. Not a quota — a manager may send
+#: another batch straight away — but a ceiling on how far a single paste can fan
+#: out mail in Mycelium's name.
+MAX_BATCH_EMAILS = 15
+
+#: What separates one address from the next in a pasted list. Chips arrive as a
+#: JSON array; a paste arrives as one string, and people delimit it every way.
+_ADDRESS_SPLIT = re.compile(r"[,;\s]+")
+
+
+class AddressRefused(ValidationError):
+    """One address a batch could not invite, with a reason the UI can branch on.
+
+    A DRF ``ValidationError`` subclass on purpose: raised from
+    :func:`create_invite`, it reaches the single-address endpoint as exactly the
+    ``{"email": [...]}`` body it always returned. :func:`create_invites` catches
+    it instead and reads ``reason`` off it, so one screening pass serves both.
+    """
+
+    #: Machine-readable reason: ``invalid_email``, ``already_member``,
+    #: ``already_invited``, or ``duplicate``.
+    reason = "invalid_email"
+
+    def __init__(self, reason: str, detail: str) -> None:
+        super().__init__({"email": [detail]})
+        self.reason = reason
+        #: The sentence on its own, without DRF's field wrapper.
+        self.message = detail
 
 
 class InviteError(Exception):
@@ -108,8 +141,11 @@ def create_invite(
     """Create one invitation and, for an email invite, mail it.
 
     Raises DRF ``ValidationError`` on anything the creator can fix: a missing or
-    malformed address, a role the org does not have, a budget or window outside
-    what is allowed, or an address that is already a member.
+    malformed address, a role the org does not have, or a budget or window outside
+    what is allowed. An address that is already a member, or that already holds an
+    open invitation, raises the :class:`AddressRefused` subclass — which reaches a
+    single-address caller as the same ``{"email": [...]}`` body, and gives
+    :func:`create_invites` a reason to report per row.
     """
     if (lab is None) == (department is None):
         raise ValueError("Pass exactly one of lab / department.")
@@ -124,7 +160,7 @@ def create_invite(
     if kind == OrgInvite.Kind.EMAIL:
         if not address:
             raise ValidationError({"email": ["An email address is required."]})
-        _refuse_existing_member(address, lab=lab, department=department)
+        screen_address(address, lab=lab, department=department)
         # One address, one seat: a personal invitation is not a share link with a
         # name attached, and letting it be spent twice would erase the binding.
         uses = 1
@@ -174,6 +210,146 @@ def _create_with_unique_token(**fields) -> OrgInvite:
         except IntegrityError:
             continue
     raise RuntimeError("Could not allocate an invite token.")
+
+
+@dataclass(frozen=True)
+class BatchResult:
+    """What one :func:`create_invites` call did, address by address."""
+
+    #: The invitations that were created, in the order the addresses were given.
+    created: list[OrgInvite]
+    #: One ``{"email", "reason", "detail"}`` per address that was refused.
+    failed: list[dict]
+    #: How many addresses the caller asked for, refusals included.
+    requested: int
+
+
+def normalize_addresses(raw) -> list[str]:
+    """Clean a batch of addresses without deciding anything about them.
+
+    Accepts what each surface actually sends: a list of chips, or one string a
+    person pasted and delimited with commas, semicolons, or newlines. Lower-cases
+    and strips, drops blanks, and **keeps duplicates** — collapsing them silently
+    would leave the manager counting chips to work out why 12 addresses produced
+    11 invitations. :func:`create_invites` reports them instead.
+    """
+    if raw in (None, ""):
+        return []
+    parts: list[str] = []
+    values = raw if isinstance(raw, (list, tuple)) else [raw]
+    for value in values:
+        for piece in _ADDRESS_SPLIT.split(str(value or "").strip()):
+            cleaned = piece.strip().strip(",;<>").lower()
+            if cleaned:
+                parts.append(cleaned)
+    return parts
+
+
+def create_invites(
+    *,
+    creator: User,
+    lab: Lab | None = None,
+    department: Department | None = None,
+    emails,
+    role: str = OrgInvite.Role.MEMBER,
+    message: str = "",
+    send: bool = True,
+) -> BatchResult:
+    """Invite up to :data:`MAX_BATCH_EMAILS` addresses in one go.
+
+    Two kinds of problem, handled differently on purpose:
+
+    * **The batch is wrong** — empty, or over the cap. That is the creator's
+      mistake about the submission itself, so it raises ``ValidationError`` and
+      nothing is created.
+    * **One address is wrong** — malformed, already a member, already invited, or
+      repeated. The other addresses are still invited and the refusal is returned
+      alongside them. Discarding eleven good invitations because a twelfth was a
+      typo would make the batch less useful than sending them one at a time.
+
+    Each address is created and mailed in its own transaction, so a failure
+    part-way through leaves the invitations before it standing.
+    """
+    if (lab is None) == (department is None):
+        raise ValueError("Pass exactly one of lab / department.")
+
+    addresses = normalize_addresses(emails)
+    if not addresses:
+        raise ValidationError({"emails": ["Add at least one email address."]})
+    if len(addresses) > MAX_BATCH_EMAILS:
+        raise ValidationError(
+            {
+                "emails": [
+                    f"Invite at most {MAX_BATCH_EMAILS} people at a time — "
+                    f"you gave {len(addresses)}."
+                ]
+            }
+        )
+
+    created: list[OrgInvite] = []
+    failed: list[dict] = []
+    seen: set[str] = set()
+
+    for address in addresses:
+        if address in seen:
+            failed.append(
+                {
+                    "email": address,
+                    "reason": "duplicate",
+                    "detail": "That address is in this list twice.",
+                }
+            )
+            continue
+        seen.add(address)
+        try:
+            invite = create_invite(
+                creator=creator,
+                lab=lab,
+                department=department,
+                kind=OrgInvite.Kind.EMAIL,
+                email=address,
+                role=role,
+                message=message,
+                send=send,
+            )
+        except AddressRefused as exc:
+            failed.append(
+                {"email": address, "reason": exc.reason, "detail": exc.message}
+            )
+        except ValidationError as exc:
+            failed.append(
+                {"email": address, "reason": "invalid", "detail": _first_detail(exc)}
+            )
+        else:
+            created.append(invite)
+
+    record_audit_event(
+        actor=creator,
+        action="org.invite.batch",
+        target_type="lab" if lab is not None else "department",
+        target_id=str(lab.id if lab is not None else department.id),
+        metadata={
+            "org_kind": "lab" if lab is not None else "department",
+            "requested": len(addresses),
+            "created": len(created),
+            "failed": len(failed),
+            "role": _clean_role(role),
+        },
+    )
+    return BatchResult(created=created, failed=failed, requested=len(addresses))
+
+
+def _first_detail(exc: ValidationError) -> str:
+    """The first human sentence out of a DRF validation error, for one row."""
+    detail = exc.detail
+    if isinstance(detail, dict):
+        for messages in detail.values():
+            if isinstance(messages, (list, tuple)) and messages:
+                return str(messages[0])
+            return str(messages)
+    if isinstance(detail, (list, tuple)) and detail:
+        return str(detail[0])
+    return "That address could not be invited."
 
 
 def deliver_invite(invite: OrgInvite) -> bool:
@@ -430,23 +606,58 @@ def _clean_expiry_days(value: int | None) -> int:
     return days
 
 
-def _refuse_existing_member(
+def screen_address(
     address: str, *, lab: Lab | None, department: Department | None
 ) -> None:
-    """Do not invite someone who is already in — say so instead of mailing them."""
+    """Refuse an address this org should not be mailed about, with a reason.
+
+    Three refusals, each :class:`AddressRefused`:
+
+    * ``invalid_email`` — not an address at all, caught before any query.
+    * ``already_member`` — say so rather than mailing an invitation to somebody
+      who is already inside.
+    * ``already_invited`` — a live, unspent email invitation to this address for
+      this org exists. Without this check a re-submitted batch mails the same
+      person twice, which is how an invitation starts reading as spam.
+    """
+    noun = "lab" if lab is not None else "department"
+    try:
+        validate_email(address)
+    except DjangoValidationError as exc:
+        raise AddressRefused(
+            "invalid_email", "That does not look like an email address."
+        ) from exc
+
     user = User.objects.filter(email__iexact=address).first()
-    if user is None:
-        return
-    if lab is not None and LabMembership.objects.filter(lab=lab, user=user).exists():
-        raise ValidationError(
-            {"email": ["That person is already a member of this lab."]}
-        )
-    if (
-        department is not None
-        and DeptMembership.objects.filter(department=department, user=user).exists()
-    ):
-        raise ValidationError(
-            {"email": ["That person is already a member of this department."]}
+    if user is not None:
+        in_lab = lab is not None and LabMembership.objects.filter(
+            lab=lab, user=user
+        ).exists()
+        if in_lab:
+            raise AddressRefused(
+                "already_member", f"That person is already a member of this {noun}."
+            )
+        if (
+            department is not None
+            and DeptMembership.objects.filter(department=department, user=user).exists()
+        ):
+            raise AddressRefused(
+                "already_member", f"That person is already a member of this {noun}."
+            )
+
+    outstanding = OrgInvite.objects.filter(
+        lab=lab,
+        department=department,
+        kind=OrgInvite.Kind.EMAIL,
+        email=address,
+        revoked_at__isnull=True,
+        expires_at__gt=timezone.now(),
+    ).filter(used_count__lt=models.F("max_uses"))
+    if outstanding.exists():
+        raise AddressRefused(
+            "already_invited",
+            f"That address already has an open invitation to this {noun}. "
+            "Withdraw it first to send another.",
         )
 
 
