@@ -90,6 +90,18 @@ export function scopeFromKey(
   return PERSONAL_SCOPE;
 }
 
+/** The scope that selects a given workspace row. */
+export function scopeForWorkspace(workspace: Workspace): WorkspaceScope {
+  switch (workspace.kind) {
+    case "lab":
+      return { kind: "lab", slug: workspace.key };
+    case "department":
+      return { kind: "department", id: workspace.key };
+    default:
+      return PERSONAL_SCOPE;
+  }
+}
+
 /** Whether two scopes point at the same workspace. */
 export function sameScope(a: WorkspaceScope, b: WorkspaceScope): boolean {
   return scopeKey(a) === scopeKey(b) && a.kind === b.kind;

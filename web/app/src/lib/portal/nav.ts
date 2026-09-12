@@ -1,0 +1,227 @@
+/**
+ * What each workspace scope can navigate to.
+ *
+ * The sidebar and the mobile sheet are genuinely different components — a rail
+ * and a column make no sense on a phone, and a sheet makes none on a desktop —
+ * but they must never disagree about which sections a scope offers. So the
+ * answer lives here once and both render it.
+ *
+ * The department case is the reason this is a model rather than a pair of JSX
+ * branches. A department has **no research feeds**: `apps/content/targets.py`
+ * builds `user`, `lab` and `project` match targets and no department one, and
+ * every feed route scopes on `?lab=`. So Papers / Grants / Fellowships /
+ * Conferences are absent from a department's navigation rather than present and
+ * permanently empty — an entry that always shows nothing teaches people the
+ * product is broken.
+ */
+
+import type { SectionKey } from "@/lib/portal/routes";
+import { FEATURE, type MyDepartment, type MyLab } from "@/lib/portal/types";
+import type { WorkspaceScope } from "@/lib/portal/workspace";
+
+export type NavItem = {
+  key: SectionKey;
+  label: string;
+  /** Which icon to draw. Resolved by the renderer, so this stays JSX-free. */
+  icon: NavIcon;
+};
+
+export type NavIcon =
+  | "overview"
+  | "profile"
+  | "members"
+  | "labs"
+  | "saves"
+  | "reminders"
+  | "papers"
+  | "grants"
+  | "fellowships"
+  | "conferences"
+  | "projects"
+  | "admin"
+  | "account";
+
+export type NavGroup = { label: string; items: NavItem[] };
+
+/** A member with owner/admin/PI rights may edit the lab configuration. */
+export function canManageLab(lab: Pick<MyLab, "is_lead" | "role">): boolean {
+  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
+}
+
+/** Whether the caller may administer a department. */
+export function canManageDepartment(
+  dept: Pick<MyDepartment, "can_manage" | "is_owner">,
+): boolean {
+  return Boolean(dept.can_manage || dept.is_owner);
+}
+
+/** What the caller's rights and plan allow, passed in rather than read here. */
+export type NavContext = {
+  scope: WorkspaceScope;
+  currentLab: MyLab | null;
+  currentDepartment: MyDepartment | null;
+  isAdmin: boolean;
+  /** Whether a personal-plan feature is entitled. Labs are always allowed. */
+  hasFeature: (feature: string) => boolean;
+};
+
+const FEED_ITEMS: Record<string, NavItem> = {
+  papers: { key: "papers", label: "Research Papers", icon: "papers" },
+  grants: { key: "opportunities", label: "Grants", icon: "grants" },
+  fellowships: { key: "fellowships", label: "Fellowships", icon: "fellowships" },
+  conferences: { key: "conferences", label: "Conferences", icon: "conferences" },
+};
+
+/**
+ * The navigation for a scope, as ordered groups. `null` groups are filtered, so
+ * a caller can render this straight through without re-deciding anything.
+ */
+export function navGroupsFor(ctx: NavContext): NavGroup[] {
+  const { scope, currentLab, currentDepartment, isAdmin, hasFeature } = ctx;
+
+  const common: NavItem[] = [
+    { key: "saves", label: "Saves", icon: "saves" },
+    { key: "reminders", label: "Reminders", icon: "reminders" },
+  ];
+
+  // A lab is on its own paid plan, so its members always get the lab feeds; the
+  // personal feeds are gated on the personal plan.
+  const inLab = scope.kind === "lab";
+  const feeds: NavItem[] = [
+    FEED_ITEMS.papers,
+    ...(inLab || hasFeature(FEATURE.GRANT_ALERTS) ? [FEED_ITEMS.grants] : []),
+    ...(inLab || hasFeature(FEATURE.FELLOWSHIP_MATCHING) ? [FEED_ITEMS.fellowships] : []),
+    ...(inLab || hasFeature(FEATURE.CONFERENCE_ALERTS) ? [FEED_ITEMS.conferences] : []),
+  ];
+  const projects: NavItem = {
+    key: "projects",
+    label: "Projects",
+    icon: "projects",
+  };
+
+  const groups: NavGroup[] = [];
+
+  if (scope.kind === "department") {
+    const manage = currentDepartment
+      ? canManageDepartment(currentDepartment)
+      : false;
+    groups.push({
+      label: "Workspace",
+      items: [
+        { key: "overview", label: "Overview", icon: "overview" },
+        { key: "labs", label: "Labs", icon: "labs" },
+        { key: "members", label: "Members", icon: "members" },
+        ...(manage
+          ? [
+              {
+                key: "profile" as SectionKey,
+                label: "Department settings",
+                icon: "profile" as NavIcon,
+              },
+            ]
+          : []),
+        ...common,
+      ],
+    });
+    // Projects only. See the module docstring for why there are no feeds.
+    groups.push({ label: "Research", items: [projects] });
+    if (manage) {
+      groups.push({
+        label: "Account",
+        items: [{ key: "account", label: "Account", icon: "account" }],
+      });
+    }
+    return groups;
+  }
+
+  if (scope.kind === "lab") {
+    const manage = currentLab ? canManageLab(currentLab) : false;
+    groups.push({
+      label: "Workspace",
+      items: [
+        { key: "overview", label: "Overview", icon: "overview" },
+        { key: "members", label: "Members", icon: "members" },
+        ...(manage
+          ? [
+              {
+                key: "profile" as SectionKey,
+                label: "Lab settings",
+                icon: "profile" as NavIcon,
+              },
+            ]
+          : []),
+        ...common,
+      ],
+    });
+    groups.push({ label: "Research", items: [...feeds, projects] });
+    // A lab's plan is its managers' business; members don't get the entry.
+    if (manage) {
+      groups.push({
+        label: "Account",
+        items: [{ key: "account", label: "Account", icon: "account" }],
+      });
+    }
+    return groups;
+  }
+
+  groups.push({
+    label: "Workspace",
+    items: [
+      { key: "overview", label: "Overview", icon: "overview" },
+      { key: "profile", label: "Profile", icon: "profile" },
+      ...common,
+    ],
+  });
+  groups.push({ label: "Research", items: [...feeds, projects] });
+  if (isAdmin) {
+    groups.push({
+      label: "Admin",
+      items: [{ key: "admin", label: "Admin dashboard", icon: "admin" }],
+    });
+  }
+  groups.push({
+    label: "Account",
+    items: [{ key: "account", label: "Account", icon: "account" }],
+  });
+  return groups;
+}
+
+/** Every section the scope offers — what the scope guard checks against. */
+export function sectionsFor(ctx: NavContext): Set<SectionKey> {
+  const keys = navGroupsFor(ctx).flatMap((group) =>
+    group.items.map((item) => item.key),
+  );
+  return new Set(keys);
+}
+
+/**
+ * Sections that are always reachable regardless of scope, so the guard never
+ * bounces someone off a page the navigation simply doesn't list.
+ *
+ * `search` and `reports` have no nav entry but are opened directly; `labs` is
+ * how you browse and create, so it must stay reachable from a lab scope too;
+ * project detail lives under `projects`.
+ */
+const ALWAYS_ALLOWED: SectionKey[] = [
+  "search",
+  "reports",
+  "labs",
+  "daily",
+  "suggested",
+  "account",
+];
+
+/**
+ * Whether a section may be shown in this scope. This is what stops a department
+ * scope rendering *personal* feed results: every feed section falls back to the
+ * personal feed when `currentLab` is null, so without a guard
+ * `/app/grants?ws=<dept>` would quietly show the reader their own grants.
+ *
+ * It is a navigation guard, not a permission boundary — the API enforces access.
+ */
+export function sectionAllowed(ctx: NavContext, section: SectionKey): boolean {
+  if (ALWAYS_ALLOWED.includes(section)) {
+    return true;
+  }
+  return sectionsFor(ctx).has(section);
+}

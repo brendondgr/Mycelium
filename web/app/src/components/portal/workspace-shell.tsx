@@ -3,8 +3,10 @@
 import { usePathname } from "next/navigation";
 
 import { PortalHeader } from "@/components/portal/portal-header";
-import { PortalMobileNav } from "@/components/portal/portal-mobile-nav";
 import { PortalSidebar } from "@/components/portal/portal-sidebar";
+import { ScopeGuard } from "@/components/portal/scope-guard";
+import { WorkspacePalette } from "@/components/portal/workspace-palette";
+import { WorkspaceRail } from "@/components/portal/workspace-rail";
 import {
   PortalProvider,
   type PortalUser,
@@ -32,9 +34,16 @@ export function WorkspaceShell({
         className="flex h-screen flex-col overflow-hidden bg-background text-foreground"
         style={{ fontFamily: "var(--font-inter)" }}
       >
+        <ScopeGuard />
+        <WorkspacePalette />
         <PortalHeader />
-        <PortalMobileNav />
+        {/*
+          No secondary mobile nav row. At phone width the rail and the sidebar
+          are both hidden and everything lives in the header's sheet, so the
+          chrome is one row instead of two.
+        */}
         <div className="flex min-h-0 flex-1">
+          <WorkspaceRail />
           <PortalSidebar />
           {/*
             The ground sits in a wrapper that does not itself scroll, so it

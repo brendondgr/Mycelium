@@ -3,10 +3,11 @@
 import Image from "next/image";
 
 import { GlobalSearch } from "@/components/portal/global-search";
-import { LabSwitcher } from "@/components/portal/lab-switcher";
 import { NotificationBell } from "@/components/portal/notification-bell";
 import { ThemeToggle } from "@/components/portal/theme-toggle";
 import { UserMenu } from "@/components/portal/user-menu";
+import { WorkspaceCaption } from "@/components/portal/workspace-caption";
+import { WorkspaceSheet } from "@/components/portal/workspace-sheet";
 
 /** The sticky top bar: brand, workspace switcher, search, and account actions. */
 export function PortalHeader() {
@@ -26,12 +27,14 @@ export function PortalHeader() {
         </span>
       </div>
 
-      <LabSwitcher />
+      {/* Desktop: the rail says which workspace, this names it. Mobile: the
+          sheet is the entire navigation. */}
+      <WorkspaceCaption />
+      <WorkspaceSheet />
 
       <div className="hidden flex-1 md:flex">
         <GlobalSearch />
       </div>
-      <div className="flex-1 md:hidden" />
 
       <div className="flex shrink-0 items-center gap-2.5">
         <NotificationBell />

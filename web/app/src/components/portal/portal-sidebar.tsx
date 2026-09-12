@@ -1,31 +1,15 @@
 "use client";
 
-import {
-  BankIcon,
-  BellIcon,
-  BookmarkIcon,
-  ConferenceIcon,
-  DocumentIcon,
-  GridIcon,
-  MembersIcon,
-  ReceiptIcon,
-  ShieldIcon,
-  SparkleIcon,
-  SporeNode,
-  TargetIcon,
-} from "@/components/portal/icons";
+import { SporeNode } from "@/components/portal/icons";
+import { NavIconFor } from "@/components/portal/nav-icon";
 import { isPlatformAdmin, usePortal } from "@/components/portal/portal-context";
 import { ProjectsNav } from "@/components/portal/projects-nav";
 import { SidebarNavItem } from "@/components/portal/sidebar-nav-item";
-import { labLogoUrl } from "@/lib/portal/client";
+import { WorkspaceMark } from "@/components/portal/workspace-mark";
 import { useEntitlements } from "@/lib/portal/hooks";
-import { FEATURE, type MyLab } from "@/lib/portal/types";
-
-/**
- * Temporarily hides the "Suggested for you" entry from the sidebar. The section
- * and its route are untouched — flip this back to `true` to bring the tab back.
- */
-const SHOW_SUGGESTED = false;
+import { navGroupsFor } from "@/lib/portal/nav";
+import { KIND_LABEL, type Workspace } from "@/lib/portal/workspace";
+import { cn } from "@/lib/utils";
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -35,191 +19,135 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** A member with owner/admin/PI rights may edit the lab configuration. */
-function canManageLab(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
-
 /**
- * The lab workspace's brand block: the uploaded logo centered (or the lab name in
- * text when there's no logo), plus a green "Lab workspace" pill — the clear cue
- * that you're in a lab, not your personal space.
+ * The active workspace's brand block: a lab's uploaded logo (or its name), and a
+ * pill naming the kind of workspace you are in. The rail to its left says
+ * *which* workspace; this says *what kind*, which is what changes the navigation
+ * underneath it.
  */
-function LabIdentity({ lab }: { lab: MyLab }) {
-  const src = labLogoUrl(lab.slug, lab.logo_version);
+function WorkspaceIdentity({ workspace }: { workspace: Workspace }) {
+  if (workspace.kind === "personal") {
+    return (
+      <div className="mb-4 px-1 pt-1">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-[var(--text-secondary)]">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          Personal workspace
+        </span>
+      </div>
+    );
+  }
+
+  const hasLogo = Boolean(workspace.lab && workspace.lab.logo_version !== null);
   return (
     <div className="mb-5 flex flex-col items-center gap-2 px-2 pt-1 text-center">
-      {src ? (
-        // The logo is user-supplied and served from our own API; a plain img is right.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={src}
-          alt={`${lab.name} logo`}
-          className="h-12 w-auto max-w-[150px] rounded-lg object-contain"
+      {hasLogo ? (
+        <WorkspaceMark
+          workspace={workspace}
+          size={48}
+          radius={10}
+          className="max-w-[150px]"
         />
       ) : (
         <span className="font-serif text-[18px] font-semibold leading-tight text-[var(--text-primary)]">
-          {lab.name}
+          {workspace.name}
         </span>
       )}
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--primary)_13%,transparent)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.07em] text-primary">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.07em]",
+          workspace.kind === "lab"
+            ? "bg-[color-mix(in_srgb,var(--primary)_13%,transparent)] text-primary"
+            : "bg-[color-mix(in_srgb,var(--brand-accent)_18%,transparent)] text-[var(--warning)]",
+        )}
+      >
         <SporeNode size={11} />
-        Lab workspace
+        {KIND_LABEL[workspace.kind]} workspace
       </span>
     </div>
   );
 }
 
-/** The subtle personal-space marker (mirrors the lab identity block). */
-function PersonalIdentity() {
-  return (
-    <div className="mb-4 px-1 pt-1">
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-[var(--text-secondary)]">
-        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-        Personal workspace
-      </span>
-    </div>
-  );
-}
-
-/** The left workspace navigation (desktop). Mobile uses a separate tab strip. */
+/**
+ * The left section navigation (desktop). The workspace rail sits to its left and
+ * chooses *which* workspace; this lists what that workspace can reach, from the
+ * single scope→sections model in `lib/portal/nav.ts` that the mobile sheet also
+ * renders — so the two can never drift.
+ */
 export function PortalSidebar() {
-  const { section, goToSection, currentLab, user } = usePortal();
+  const {
+    section,
+    goToSection,
+    scope,
+    currentWorkspace,
+    currentLab,
+    currentDepartment,
+    user,
+  } = usePortal();
   const { data: entitlements } = useEntitlements();
+
   // Personal research entries only populate on a paid personal plan; a lab is on
   // its own (paid) plan, so lab research entries are always shown to members.
   const has = (feature: string) =>
     !entitlements || entitlements.features.includes(feature);
 
-  const inLab = Boolean(currentLab);
-  const manageLab = currentLab ? canManageLab(currentLab) : false;
+  const groups = navGroupsFor({
+    scope,
+    currentLab,
+    currentDepartment,
+    isAdmin: isPlatformAdmin(user),
+    hasFeature: has,
+  });
+
+  // "Account" is pinned to the foot of the sidebar, away from the day-to-day
+  // entries; the rest render in order.
+  const accountGroup = groups.find((group) => group.label === "Account");
+  const mainGroups = groups.filter((group) => group.label !== "Account");
 
   return (
     <aside className="hidden h-full w-[244px] shrink-0 flex-col overflow-y-auto border-r border-[var(--divider)] px-3.5 pb-6 pt-[18px] lg:flex">
-      {inLab && currentLab ? (
-        <LabIdentity lab={currentLab} />
-      ) : (
-        <PersonalIdentity />
-      )}
+      <WorkspaceIdentity workspace={currentWorkspace} />
 
-      <GroupLabel>Workspace</GroupLabel>
-      <nav className="mb-[18px] flex flex-col gap-0.5">
-        <SidebarNavItem
-          icon={<GridIcon size={18} />}
-          label="Overview"
-          active={section === "overview"}
-          onClick={() => goToSection("overview")}
-        />
-        {inLab ? (
-          <>
-            <SidebarNavItem
-              icon={<MembersIcon size={18} />}
-              label="Members"
-              active={section === "members"}
-              onClick={() => goToSection("members")}
-            />
-            {manageLab ? (
-              <SidebarNavItem
-                icon={<TargetIcon size={18} />}
-                label="Lab settings"
-                active={section === "profile"}
-                onClick={() => goToSection("profile")}
-              />
-            ) : null}
-          </>
-        ) : (
-          <SidebarNavItem
-            icon={<TargetIcon size={18} />}
-            label="Profile"
-            active={section === "profile"}
-            onClick={() => goToSection("profile")}
-          />
-        )}
-        <SidebarNavItem
-          icon={<BookmarkIcon size={18} />}
-          label="Saves"
-          active={section === "saves"}
-          onClick={() => goToSection("saves")}
-        />
-        <SidebarNavItem
-          icon={<BellIcon size={18} />}
-          label="Reminders"
-          active={section === "reminders"}
-          onClick={() => goToSection("reminders")}
-        />
-      </nav>
-
-      <GroupLabel>Research</GroupLabel>
-      <nav className="flex flex-col gap-0.5">
-        {SHOW_SUGGESTED && !inLab ? (
-          <SidebarNavItem
-            icon={<SporeNode size={18} />}
-            label="Suggested for you"
-            active={section === "suggested"}
-            onClick={() => goToSection("suggested")}
-          />
-        ) : null}
-        <SidebarNavItem
-          icon={<DocumentIcon size={18} />}
-          label="Research Papers"
-          active={section === "papers"}
-          onClick={() => goToSection("papers")}
-        />
-        {inLab || has(FEATURE.GRANT_ALERTS) ? (
-          <SidebarNavItem
-            icon={<BankIcon size={18} />}
-            label="Grants"
-            active={section === "opportunities"}
-            onClick={() => goToSection("opportunities")}
-          />
-        ) : null}
-        {inLab || has(FEATURE.FELLOWSHIP_MATCHING) ? (
-          <SidebarNavItem
-            icon={<SparkleIcon size={18} />}
-            label="Fellowships"
-            active={section === "fellowships"}
-            onClick={() => goToSection("fellowships")}
-          />
-        ) : null}
-        {inLab || has(FEATURE.CONFERENCE_ALERTS) ? (
-          <SidebarNavItem
-            icon={<ConferenceIcon size={18} />}
-            label="Conferences"
-            active={section === "conferences"}
-            onClick={() => goToSection("conferences")}
-          />
-        ) : null}
-        <ProjectsNav />
-      </nav>
-
-      {/* Personal-workspace admin surface — only staff/superusers see it, and only
-          in the personal scope (it manages platform users, not a lab). */}
-      {!inLab && isPlatformAdmin(user) ? (
-        <div className="mt-[18px]">
-          <GroupLabel>Admin</GroupLabel>
-          <nav className="flex flex-col gap-0.5">
-            <SidebarNavItem
-              icon={<ShieldIcon size={18} />}
-              label="Admin dashboard"
-              active={section === "admin"}
-              onClick={() => goToSection("admin")}
-            />
+      {mainGroups.map((group) => (
+        <div key={group.label}>
+          <GroupLabel>{group.label}</GroupLabel>
+          <nav className="mb-[18px] flex flex-col gap-0.5">
+            {group.items.map((item) =>
+              // Projects owns its own expandable sub-list of the reader's
+              // projects, so it renders itself rather than as a flat row.
+              item.key === "projects" ? (
+                <ProjectsNav key="projects" />
+              ) : (
+                <SidebarNavItem
+                  key={`${group.label}-${item.key}`}
+                  icon={<NavIconFor icon={item.icon} />}
+                  label={item.label}
+                  active={section === item.key}
+                  onClick={() => goToSection(item.key)}
+                />
+              ),
+            )}
           </nav>
         </div>
+      ))}
+
+      {scope.kind === "department" ? (
+        <p className="-mt-3 mb-[18px] px-3.5 text-[11px] leading-relaxed text-[var(--text-muted)]">
+          Research feeds are matched to a lab or to you — a department
+          doesn&apos;t have its own.
+        </p>
       ) : null}
 
-      {/* Identity, email, password and the plan — one page, because they are
-          one question: what is true of my account? It sits at the foot of the
-          sidebar, away from the day-to-day entries. A lab's plan is its
-          managers' business, so members in a lab scope don't get the entry. */}
-      {!inLab || manageLab ? (
+      {accountGroup ? (
         <nav className="mt-auto flex flex-col gap-0.5 pt-[18px]">
-          <SidebarNavItem
-            icon={<ReceiptIcon size={18} />}
-            label="Account"
-            active={section === "account"}
-            onClick={() => goToSection("account")}
-          />
+          {accountGroup.items.map((item) => (
+            <SidebarNavItem
+              key={`account-${item.key}`}
+              icon={<NavIconFor icon={item.icon} />}
+              label={item.label}
+              active={section === item.key}
+              onClick={() => goToSection(item.key)}
+            />
+          ))}
         </nav>
       ) : null}
     </aside>
