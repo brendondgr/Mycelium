@@ -45,6 +45,6 @@ def test_spore_me_endpoint_reports_intelligence_and_topics(client: APIClient) ->
 
     body = client.get("/api/billing/me/").data
     assert body["tier"] == "spore"
-    assert body["topic_cap"] == 10
+    assert body["topic_cap"] == 20
     assert body["topics_used"] == 2
     assert "llm_fit_scoring" in body["features"]

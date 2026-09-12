@@ -46,9 +46,13 @@ def is_onboarding_complete(user: User) -> bool:
 
 
 def get_lab_for_user(user: User, slug: str) -> Lab | None:
-    if user.is_superuser:
-        return Lab.objects.filter(slug=slug).first()
+    """The lab ``slug`` names, if ``user`` is a member of it — otherwise ``None``.
 
+    Membership is the whole rule. A superuser used to get any lab by slug here,
+    which is what let an operator account open a workspace it had never joined;
+    platform administration belongs to ``apps.adminpanel`` and Django admin, not
+    to the workspace API. See the note at the top of ``apps.accounts.permissions``.
+    """
     return (
         Lab.objects.filter(slug=slug, memberships__user=user)
         .distinct()

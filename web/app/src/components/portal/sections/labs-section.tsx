@@ -628,12 +628,18 @@ export function InviteCard({ lab }: { lab: MyLab }) {
 // -- Discord ------------------------------------------------------------------
 
 /**
- * Connect a lab's Discord server to Mylo — but only when Mylo is actually part of the
- * lab's plan. Mylo on Discord is an add-on (`bot_server`), never granted by a tier, and
- * the server-side install already refuses without it. Discovering that through a failed
- * OAuth round-trip is a bad way to learn you need an upgrade, so the card reads the
- * lab's plan first and, when Mylo isn't included, says so plainly and points at billing
- * instead of offering buttons that cannot succeed.
+ * Connect a lab's Discord server to Mylo.
+ *
+ * The install is **one step**. "Add Mylo to Discord" carries the lab through the OAuth
+ * state, so the callback binds the guild to this lab on the way back — there is no code
+ * to copy and no slash command to run. The one-time activation code exists only for the
+ * other direction: somebody added Mylo from Discord's own menu, so the bot is sitting in
+ * a guild that no lab claims (`pending_setup`), or it was removed and re-added
+ * (`kicked`). Showing both buttons side by side made a one-step install look like a
+ * two-step one, so the code path now appears only in the states that actually need it.
+ *
+ * The card still reads the lab's plan first: when Mylo genuinely is not available it
+ * says so and points at billing rather than offering a button that cannot succeed.
  *
  * Titled "Connected services" to match the personal profile's card: a lab's outside
  * connections are the same kind of thing as a person's, and a manager moving between
@@ -649,6 +655,10 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
   // Treat "still loading" as included so the card never flashes a false lock; the
   // buttons stay disabled while either read is in flight anyway.
   const myloIncluded = billingLoading || billing?.mylo_included !== false;
+  // The manual code path is the fallback for a guild Mylo reached some other way,
+  // not a second step of the normal install.
+  const needsCode =
+    status?.state === "pending_setup" || status?.state === "kicked";
 
   const badge = (() => {
     if (isLoading || billingLoading)
@@ -676,10 +686,10 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
       return `Mylo is synced to ${where}. Run /setup there to choose where reminders and updates post.`;
     }
     if (status?.state === "pending_setup")
-      return "Mylo is in a server but not linked to this lab yet. Click Activate Lab for a code, then run /activate-lab code:<code> in that server.";
+      return "Mylo is in a server but no lab has claimed it yet. Re-add Mylo from here to link it automatically, or use a one-time code if you added Mylo from Discord.";
     if (status?.state === "kicked")
-      return "Mylo was removed from the connected server. Add it again, then click Activate Lab and run /activate-lab in your server.";
-    return "Connect this lab to a Discord server in two steps: add Mylo, then activate the lab with a one-time code.";
+      return "Mylo was removed from the connected server. Add Mylo again from here and the lab reconnects itself.";
+    return "Add Mylo to your Discord server. You'll pick the server in Discord, and this lab connects itself on the way back.";
   })();
 
   const connectError =
@@ -723,14 +733,16 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
                   ? "Re-add Mylo to Discord"
                   : "Add Mylo to Discord"}
             </button>
-            <button
-              type="button"
-              className={SECONDARY_BUTTON}
-              onClick={() => issueCode.mutate(lab.slug)}
-              disabled={issueCode.isPending}
-            >
-              {issueCode.isPending ? "Generating…" : "Activate Lab"}
-            </button>
+            {needsCode ? (
+              <button
+                type="button"
+                className={SECONDARY_BUTTON}
+                onClick={() => issueCode.mutate(lab.slug)}
+                disabled={issueCode.isPending}
+              >
+                {issueCode.isPending ? "Generating…" : "Use a code instead"}
+              </button>
+            ) : null}
           </div>
           {connectError ? (
             <p className="text-[12.5px] text-clay" role="alert">

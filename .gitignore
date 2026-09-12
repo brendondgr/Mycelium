@@ -99,6 +99,11 @@ data/outbox/
 data/logs/mylo-run-analytics.json
 data/analytics/
 
+# Per-host outcome of the last nightly run (host, stages, exit code). Rewritten
+# by every run of manual_all.py and read back by the bot's `/mylo lastrun`, so
+# it is machine-local state, not shared history.
+data/logs/mylo-last-run.json
+
 # Database dumps. Large, binary, and they carry the real user table — accounts,
 # emails, Discord ids — so they must never reach the repository.
 data/*.dump

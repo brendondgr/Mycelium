@@ -34,6 +34,7 @@ from apps.billing.services import (
     create_department_workspace,
     create_lab_workspace,
     provision_workspace,
+    signup_grant_tier,
 )
 
 from . import email_verification, invites, password_reset, signup_gate
@@ -241,7 +242,12 @@ def register_view(request: Request) -> Response:
             last_name=data.get("last_name", ""),
         )  # post_save signal creates the Profile
 
-        result = provision_workspace(user, "personal")
+        # Passing the invite-only gate is itself the entitlement: a new account is
+        # provisioned on the granted tier rather than on Free, so nobody has to ask
+        # for an upgrade they already proved they were invited to.
+        result = provision_workspace(
+            user, "personal", personal_tier=signup_grant_tier()
+        )
 
         # Surface any lab invitations that were sent to this email before signup.
         claim_pending_invitations(user)

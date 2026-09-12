@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.test import Client
+from django.test import Client, override_settings
 
 from apps.accounts import signup_gate
 from apps.accounts.models import (
@@ -154,13 +154,40 @@ def test_register_personal_creates_user_and_seat(api_client: Client) -> None:
     assert Profile.objects.filter(user=user).exists()
 
     sub = Subscription.objects.get(scope_user=user)
-    assert sub.tier == Tier.FREE
+    # Getting past the invite-only gate is the entitlement: a new account lands on
+    # SIGNUP_GRANT_TIER (Spore by default), not on the Free baseline.
+    assert sub.tier == Tier.SPORE
     seat = Seat.objects.get(subscription=sub, member=user)
     assert seat.payer_user == user
 
     # No org rows for a personal account.
     assert Lab.objects.count() == 0
     assert Department.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_register_honours_the_configured_grant_tier(api_client: Client) -> None:
+    """``SIGNUP_GRANT_TIER`` chooses the tier; "free" restores the old behaviour."""
+    with override_settings(SIGNUP_GRANT_TIER="free"):
+        assert _register(api_client, _personal_payload()).status_code == 201
+    user = User.objects.get(username="newuser")
+    assert Subscription.objects.get(scope_user=user).tier == Tier.FREE
+
+
+@pytest.mark.django_db
+def test_register_falls_back_to_free_on_an_unsellable_grant_tier(
+    api_client: Client,
+) -> None:
+    """A team tier configured here must not 500 the endpoint.
+
+    ``provision_workspace`` raises ``TierScopeError`` for a Lab tier on a personal
+    scope, so ``signup_grant_tier`` screens the setting first and degrades to Free
+    rather than letting an env-var typo take registration down.
+    """
+    with override_settings(SIGNUP_GRANT_TIER="lab"):
+        assert _register(api_client, _personal_payload()).status_code == 201
+    user = User.objects.get(username="newuser")
+    assert Subscription.objects.get(scope_user=user).tier == Tier.FREE
 
 
 @pytest.mark.django_db
@@ -188,7 +215,8 @@ def test_register_ignores_an_account_type_it_no_longer_offers(
     user = User.objects.get(username="leadpi")
     assert Lab.objects.count() == 0
     assert Department.objects.count() == 0
-    assert Subscription.objects.get(scope_user=user).tier == Tier.FREE
+    # Still a personal plan on the granted tier — asking for a lab changes nothing.
+    assert Subscription.objects.get(scope_user=user).tier == Tier.SPORE
 
 
 @pytest.mark.django_db

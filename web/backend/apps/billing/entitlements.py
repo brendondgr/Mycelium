@@ -16,8 +16,16 @@ The vocabulary mirrors the pricing matrix:
 
 Add-ons are orthogonal to tiers (A4): the Mylo-server capability is granted by a
 :class:`~apps.billing.models.SubscriptionAddOn`, never by a tier.
+
+**Gating is currently off.** ``BILLING_ENFORCE_ENTITLEMENTS`` defaults to false, and
+while it is false the three resolvers here return :data:`ALL_FEATURES` for everyone —
+see :func:`enforcing`. Plans are still created, priced and billed; a tier simply
+cannot withhold a capability. The numeric caps below (watch topics, clusters, PIs,
+seats, projects) are *not* part of that switch and stay enforced, because they bound
+how much work the nightly run does rather than what a plan is worth.
 """
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db.models import Q, QuerySet
 from django.utils import timezone
@@ -118,6 +126,33 @@ TIER_FEATURES: dict[str, frozenset[str]] = {
     Tier.CANOPY: frozenset(_CANOPY),
 }
 
+#: Every named capability, tier-granted or add-on-granted. Derived from
+#: :class:`Feature` rather than from the tier matrix so a feature that is only
+#: ever sold as an add-on (``BOT_SERVER``) is included too.
+ALL_FEATURES: frozenset[str] = frozenset(
+    value
+    for name, value in vars(Feature).items()
+    if not name.startswith("_") and isinstance(value, str)
+)
+
+
+def enforcing() -> bool:
+    """Whether a tier may currently *withhold* a feature.
+
+    Off by default (``BILLING_ENFORCE_ENTITLEMENTS``). While off, the three
+    resolvers below hand back :data:`ALL_FEATURES` for every user, lab and
+    department, so every ``has_feature`` call site in the codebase sees a granted
+    capability without any of them being edited — which is the whole reason this
+    module is the single read path (decision A1).
+
+    Deliberately *not* cached in a module global: it is read per call so a test
+    (or a running process) can flip the setting with ``override_settings`` and see
+    the change immediately. Subscriptions, seats, prices, invoices and the numeric
+    caps further down are untouched by this — billing still bills.
+    """
+    return bool(getattr(settings, "BILLING_ENFORCE_ENTITLEMENTS", False))
+
+
 # Per-tier PI caps (how many lab leads a tier allows). ``None`` means unlimited.
 PI_CAPS: dict[str, int | None] = {
     Tier.FREE: 1,
@@ -154,7 +189,12 @@ CLUSTER_TOPIC_CAPS: dict[str, int] = {
 # grouping the organizer let them build.
 TOPIC_CAPS: dict[str, int] = {
     Tier.FREE: 6,
-    Tier.SPORE: 10,
+    # Spore is what sign-up grants now (``SIGNUP_GRANT_TIER``), so this is the
+    # number almost every real account lands on. 20 rather than the original 10:
+    # each topic is one more literature search per night, so it is a cost ceiling
+    # rather than a tier boundary, and it stays enforced while feature gating does
+    # not (see :func:`enforcing`).
+    Tier.SPORE: 20,
     Tier.LAB: 15,
     Tier.CANOPY: 15,
 }
@@ -201,7 +241,12 @@ def addon_features_for_subscriptions(subscriptions) -> frozenset[str]:
 
 
 def effective_features(user: User) -> frozenset[str]:
-    """The union of features the user is entitled to (tier ∪ add-ons), Free default."""
+    """The union of features the user is entitled to (tier ∪ add-ons), Free default.
+
+    Returns everything while :func:`enforcing` is off.
+    """
+    if not enforcing():
+        return ALL_FEATURES
     subs = list(covering_subscriptions(user))
     features = set(_FREE)
     for tier in (sub.tier for sub in subs):
@@ -220,9 +265,10 @@ def users_with_feature(feature: str, user_ids=None) -> set[int]:
     ``scope_user`` plus every active seat-holder). ``user_ids`` narrows the scan.
 
     ``feature`` in the Free baseline covers everyone, so this short-circuits to the
-    full id set (or all active users) for baseline features.
+    full id set (or all active users) for baseline features — as does *any* feature
+    while :func:`enforcing` is off.
     """
-    if feature in _FREE:
+    if feature in _FREE or not enforcing():
         base = User.objects.filter(is_active=True)
         if user_ids is not None:
             base = base.filter(id__in=user_ids)
@@ -408,7 +454,12 @@ def _department_subscriptions(department) -> QuerySet[Subscription]:
 
 
 def department_features(department) -> frozenset[str]:
-    """The features a department is entitled to (its subscription's tier ∪ add-ons)."""
+    """The features a department is entitled to (its subscription's tier ∪ add-ons).
+
+    Returns everything while :func:`enforcing` is off.
+    """
+    if not enforcing():
+        return ALL_FEATURES
     subs = list(_department_subscriptions(department))
     features = set(_FREE)
     for sub in subs:
@@ -453,7 +504,12 @@ def lab_features(lab) -> frozenset[str]:
 
     Used to gate lab-scoped capabilities like the Mylo-server add-on, which attach
     to the lab's (or its department's) subscription rather than to a single user.
+
+    Returns everything while :func:`enforcing` is off — including ``BOT_SERVER``,
+    so a lab can have Mylo join its guild without buying the add-on first.
     """
+    if not enforcing():
+        return ALL_FEATURES
     subs = list(_lab_subscriptions(lab))
     features = set(_FREE)
     for sub in subs:

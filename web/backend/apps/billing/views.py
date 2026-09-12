@@ -178,7 +178,9 @@ def org_billing_payload(
             "status": None,
             "is_active": False,
             "is_comped": False,
-            "mylo_included": False,
+            # No subscription row at all, but the capability question is still the
+            # effective one — see apps.billing.addons.mylo_included.
+            "mylo_included": mylo_included(None),
             "member_count": member_count,
             "activation_monthly_cents": 0,
             "seat_count": 0,
