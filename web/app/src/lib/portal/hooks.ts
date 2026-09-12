@@ -85,9 +85,11 @@ import {
   createCollection,
   createDepartment,
   createDeptInvite,
+  createDeptInvites,
   createLab,
   createLabInDept,
   createLabInvite,
+  createLabInvites,
   createProject,
   createReminder,
   deleteLabLogo,
@@ -141,6 +143,7 @@ import {
   type BriefingKind,
   type InvitationAction,
   type OrgInviteInput,
+  type OrgInviteBatchInput,
   type ProjectUpdateInput,
   type ReminderUpdateInput,
   type SearchSort,
@@ -1540,6 +1543,11 @@ export function useOrgInvites(kind: OrgKind, id: string) {
       kind === "lab" ? createLabInvite(id, input) : createDeptInvite(id, input),
     onSuccess: invalidate,
   });
+  const createMany = useMutation({
+    mutationFn: (input: OrgInviteBatchInput) =>
+      kind === "lab" ? createLabInvites(id, input) : createDeptInvites(id, input),
+    onSuccess: invalidate,
+  });
   const revoke = useMutation({
     mutationFn: (inviteId: string) =>
       kind === "lab"
@@ -1547,5 +1555,5 @@ export function useOrgInvites(kind: OrgKind, id: string) {
         : revokeDeptInvite(id, inviteId),
     onSuccess: invalidate,
   });
-  return { list, create, revoke };
+  return { list, create, createMany, revoke };
 }

@@ -1633,6 +1633,37 @@ export type OrgInviteInput = {
   message?: string;
 };
 
+/** What a manager fills in to invite several people by email at once. */
+export type OrgInviteBatchInput = {
+  emails: string[];
+  role?: string;
+  message?: string;
+};
+
+/** One address a batch could not invite, and why. */
+export type OrgInviteRefusal = {
+  email: string;
+  /** `invalid_email`, `already_member`, `already_invited`, `duplicate`. */
+  reason: string;
+  detail: string;
+};
+
+/**
+ * The outcome of one batch.
+ *
+ * Partial success is the normal case, not an error: a bad address is reported
+ * beside the invitations that did go out, so the manager fixes one chip instead
+ * of retyping fourteen.
+ */
+export type OrgInviteBatchResult = {
+  created: OrgInvite[];
+  failed: OrgInviteRefusal[];
+  requested: number;
+};
+
+/** The most addresses one submission may carry; mirrors `invites.MAX_BATCH_EMAILS`. */
+export const ORG_INVITE_BATCH_MAX = 15;
+
 
 /* -- Project state ---------------------------------------------------------- */
 

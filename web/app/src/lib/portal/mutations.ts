@@ -21,6 +21,8 @@ import type {
   MyLab,
   OrgInvite,
   OrgInviteInput,
+  OrgInviteBatchInput,
+  OrgInviteBatchResult,
   OrgBilling,
   Project,
   ProjectCapErrorBody,
@@ -1174,6 +1176,32 @@ export function createDeptInvite(
     buildApiUrl(getPublicApiBase(), "auth", "departments", id, "invites"),
     input,
     "Could not create the invitation.",
+  );
+}
+
+/** Invite several people into a lab by email in one submission. */
+export function createLabInvites(
+  slug: string,
+  input: OrgInviteBatchInput,
+): Promise<OrgInviteBatchResult> {
+  return sendJson<OrgInviteBatchResult>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "invites"),
+    input,
+    "Could not send the invitations.",
+  );
+}
+
+/** Invite several people into a department by email in one submission. */
+export function createDeptInvites(
+  id: string,
+  input: OrgInviteBatchInput,
+): Promise<OrgInviteBatchResult> {
+  return sendJson<OrgInviteBatchResult>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "invites"),
+    input,
+    "Could not send the invitations.",
   );
 }
 
