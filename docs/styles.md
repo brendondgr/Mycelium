@@ -122,9 +122,10 @@ Cards should be readable and soft. Avoid harsh black borders, pure white surface
 
 Never as a percentage. A percent implied a measurement nobody made: a language
 model was asked to guess a similarity and the number was rendered next to a real
-embedding cosine, with nothing to tell a reader which was which. Two elements
-carry it instead, and every surface — feed card, report entry, PDF, Discord —
-uses the same two:
+embedding cosine, with nothing to tell a reader which was which.
+
+Two elements replaced it — but they are **not** shown everywhere, and the split
+matters:
 
 - **Position within its own theme.** "3rd in Medical AI Agents", never "3rd
   overall". Scores from two themes are not comparable, so a global position is a
@@ -134,14 +135,32 @@ uses the same two:
   item keeps its place in the list and its reference row, and spending a badge on
   it would spend the reader's attention on the one judgement that says not to.
 
+**The ranked document shows both. The feed does not.** Position and verdict
+appear in the report entry, the printed PDF, the Discord digest and the briefing
+— surfaces that present one ordered pass through a day, where a position is read
+against the item above it. The **app's feed cards carry no judgement element at
+all**: no percent, no position, no verdict chip. A feed interleaves themes and
+scrolls indefinitely, so a per-theme position rendered down its left edge read as
+a column of repeated, apparently unsorted numbers, and a reserved gutter stood
+empty on every row that carried no judgement. The backend still computes and
+stores both, and the API still serves `verdict`, `position` and `position_of`, so
+restoring a display is a frontend-only change — it is a deliberate omission, not
+a missing feature.
+
+What the feed card carries instead is the written reason, the **caveat** — the
+strongest reason this might not be worth your time, which is never empty — and
+the theme it was matched under. The public site's feed preview must follow the
+app, not the report.
+
 **Gold is not used for verdicts.** It stays reserved for opportunity and deadline
 signals, so a grant's closing date never competes visually with a relevance
 judgement two centimetres from it.
 
-When Mylo made the judgement rather than the deterministic scorer, his portrait
-rides the chip. That is the honest signal that a human-readable judgement exists
-behind it — and its absence is equally honest, because most readers are on a plan
-without model reasoning and their document is quieter, not broken.
+Where a verdict *is* shown and Mylo made the judgement rather than the
+deterministic scorer, his portrait rides the chip. That is the honest signal that
+a human-readable judgement exists behind it — and its absence is equally honest,
+because most readers are on a plan without model reasoning and their document is
+quieter, not broken.
 
 ## Public Site Direction
 

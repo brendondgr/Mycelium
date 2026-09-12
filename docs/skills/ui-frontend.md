@@ -88,8 +88,13 @@ focus           #B8D99A
 - Prefer **CSS transforms** over an animation library for step transitions.
   `framer-motion` is present but used in only two onboarding components — do not
   spread it further without a reason.
-- Feed cards go through the shared primitives (`MatchRing`, `MatchCard`,
-  `ClusterBadge`, `FeedSearchBar`, `FeedSentinel`) rather than new one-offs.
+- Feed cards go through the shared primitives in
+  `web/app/src/components/portal/primitives/` — `Card`, `MatchCard`,
+  `ClusterRow` / `ClusterBadge`, `DeadlineMenu`, `SourceRow` / `ViewLink`,
+  `FeedSearchBar`, `FeedSentinel` — rather than new one-offs. There is no
+  `MatchRing`: the percent ring, and the position/verdict rail that briefly
+  replaced it, were both removed from the app. See `docs/styles.md`,
+  "How a recommendation states itself".
 - Not in use: Cytoscape (declared, unused — the graph phase has not started) and
   TipTap (no rich-text editing exists yet).
 
