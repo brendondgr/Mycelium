@@ -1618,8 +1618,40 @@ class _OrgInvitesView(APIView):
         return Response([invites.invite_payload(row) for row in rows])
 
     def post(self, request: Request, **kwargs) -> Response:
+        """Create one invitation, or a batch of emailed ones.
+
+        Two payload shapes on one route rather than a second route beside it: an
+        ``emails`` list takes the batch path, a bare ``email`` takes the original
+        single-invite path unchanged. A second route would have had to repeat the
+        org resolution and the authority check that ``_resolve`` already does.
+
+        The verification gate runs before the payload is read at all, so an
+        unactivated account cannot learn from an error message whether an address
+        is already a member.
+        """
         org = self._resolve(**kwargs)
         require_verified_email(request.user)
+        target = self._target(org)
+
+        if "emails" in request.data:
+            batch = invites.create_invites(
+                creator=request.user,
+                emails=request.data.get("emails"),
+                role=str(request.data.get("role", "") or OrgInvite.Role.MEMBER),
+                message=str(request.data.get("message", "")),
+                **target,
+            )  # raises ValidationError -> 400 when the batch itself is wrong
+            return Response(
+                {
+                    "created": [
+                        invites.invite_payload(row) for row in batch.created
+                    ],
+                    "failed": batch.failed,
+                    "requested": batch.requested,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
         invite = invites.create_invite(
             creator=request.user,
             kind=str(request.data.get("kind", "")),
@@ -1628,7 +1660,7 @@ class _OrgInvitesView(APIView):
             max_uses=request.data.get("max_uses"),
             expires_in_days=request.data.get("expires_in_days"),
             message=str(request.data.get("message", "")),
-            **self._target(org),
+            **target,
         )  # raises ValidationError -> 400 on anything the creator can fix
         return Response(
             invites.invite_payload(invite), status=status.HTTP_201_CREATED

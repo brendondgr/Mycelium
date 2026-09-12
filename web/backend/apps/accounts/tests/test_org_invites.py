@@ -566,3 +566,243 @@ def test_a_dead_invite_creates_no_account(client, lab, owner) -> None:
     assert response.status_code == 400
     assert response.data["reason"] == "revoked"
     assert not User.objects.filter(username="newcomer").exists()
+
+
+# -- Inviting a batch ----------------------------------------------------------
+#
+# The batch path exists so a manager can stand a lab up in one submission instead
+# of fifteen. What has to hold is that the cap is real, that one bad address does
+# not cost the good ones, and that every refusal says which address and why.
+
+
+def _batch(client: APIClient, lab: Lab, emails, **body) -> dict:
+    response = client.post(
+        f"/api/auth/labs/{lab.slug}/invites/",
+        {"emails": emails, **body},
+        format="json",
+    )
+    assert response.status_code == 201, response.data
+    return response.data
+
+
+@pytest.mark.django_db
+def test_a_batch_invites_everyone_it_was_given(client, lab, owner) -> None:
+    client.force_authenticate(owner)
+    addresses = [f"person{n}@uni.edu" for n in range(invites.MAX_BATCH_EMAILS)]
+
+    data = _batch(client, lab, addresses, role="member")
+
+    assert data["requested"] == invites.MAX_BATCH_EMAILS
+    assert data["failed"] == []
+    assert len(data["created"]) == invites.MAX_BATCH_EMAILS
+    assert [row["email"] for row in data["created"]] == addresses
+    # Every one is an email invite worth exactly one use, as if sent singly.
+    assert {row["kind"] for row in data["created"]} == {"email"}
+    assert {row["max_uses"] for row in data["created"]} == {1}
+    assert len(mail.outbox) == invites.MAX_BATCH_EMAILS
+    assert sorted(m.to[0] for m in mail.outbox) == sorted(addresses)
+
+
+@pytest.mark.django_db
+def test_a_batch_over_the_cap_creates_nothing(client, lab, owner) -> None:
+    client.force_authenticate(owner)
+    addresses = [f"person{n}@uni.edu" for n in range(invites.MAX_BATCH_EMAILS + 1)]
+
+    response = client.post(
+        f"/api/auth/labs/{lab.slug}/invites/",
+        {"emails": addresses},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "15" in str(response.data["emails"][0])
+    assert OrgInvite.objects.count() == 0
+    assert mail.outbox == []
+
+
+@pytest.mark.django_db
+def test_an_empty_batch_is_refused(client, lab, owner) -> None:
+    client.force_authenticate(owner)
+
+    response = client.post(
+        f"/api/auth/labs/{lab.slug}/invites/", {"emails": []}, format="json"
+    )
+
+    assert response.status_code == 400
+    assert OrgInvite.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_one_bad_address_does_not_cost_the_good_ones(client, lab, owner) -> None:
+    """The point of the batch: eleven good addresses survive a twelfth typo."""
+    client.force_authenticate(owner)
+    member = User.objects.create_user(
+        username="sam", password="p", email="sam@uni.edu"
+    )
+    LabMembership.objects.create(user=member, lab=lab, role=LabMembership.Role.MEMBER)
+
+    data = _batch(
+        client,
+        lab,
+        [
+            "fresh@uni.edu",
+            "sam@uni.edu",  # already in the lab
+            "not-an-address",  # malformed
+            "fresh@uni.edu",  # repeated in this very list
+        ],
+    )
+
+    assert data["requested"] == 4
+    assert [row["email"] for row in data["created"]] == ["fresh@uni.edu"]
+    assert {row["reason"] for row in data["failed"]} == {
+        "already_member",
+        "invalid_email",
+        "duplicate",
+    }
+    # Each refusal names the address it is about, so the UI can mark that chip.
+    assert {row["email"] for row in data["failed"]} == {
+        "sam@uni.edu",
+        "not-an-address",
+        "fresh@uni.edu",
+    }
+    assert [m.to[0] for m in mail.outbox] == ["fresh@uni.edu"]
+
+
+@pytest.mark.django_db
+def test_a_second_batch_will_not_mail_the_same_person_twice(
+    client, lab, owner
+) -> None:
+    client.force_authenticate(owner)
+    _batch(client, lab, ["kim@uni.edu"])
+    mail.outbox.clear()
+
+    data = _batch(client, lab, ["kim@uni.edu", "jo@uni.edu"])
+
+    assert [row["email"] for row in data["created"]] == ["jo@uni.edu"]
+    assert data["failed"][0]["reason"] == "already_invited"
+    assert [m.to[0] for m in mail.outbox] == ["jo@uni.edu"]
+
+
+@pytest.mark.django_db
+def test_withdrawing_an_invitation_frees_the_address_again(
+    client, lab, owner
+) -> None:
+    """``already_invited`` is about a *live* invitation, not a permanent block."""
+    client.force_authenticate(owner)
+    first = _batch(client, lab, ["kim@uni.edu"])["created"][0]
+    client.post(
+        f"/api/auth/labs/{lab.slug}/invites/{first['id']}/revoke/", format="json"
+    )
+
+    data = _batch(client, lab, ["kim@uni.edu"])
+
+    assert len(data["created"]) == 1
+    assert data["failed"] == []
+
+
+@pytest.mark.django_db
+def test_a_pasted_list_is_split_the_way_people_paste_it(client, lab, owner) -> None:
+    client.force_authenticate(owner)
+
+    data = _batch(client, lab, ["a@uni.edu, b@uni.edu; c@uni.edu\nd@uni.edu"])
+
+    assert [row["email"] for row in data["created"]] == [
+        "a@uni.edu",
+        "b@uni.edu",
+        "c@uni.edu",
+        "d@uni.edu",
+    ]
+
+
+@pytest.mark.django_db
+def test_a_batch_carries_the_role_and_the_note(client, lab, owner) -> None:
+    client.force_authenticate(owner)
+
+    data = _batch(
+        client, lab, ["a@uni.edu", "b@uni.edu"], role="admin", message="Join us"
+    )
+
+    assert {row["role"] for row in data["created"]} == {"admin"}
+    assert {row["message"] for row in data["created"]} == {"Join us"}
+
+
+@pytest.mark.django_db
+def test_a_batch_never_hands_out_ownership(client, lab, owner) -> None:
+    client.force_authenticate(owner)
+
+    data = _batch(client, lab, ["a@uni.edu"], role="owner")
+
+    assert data["created"][0]["role"] == "admin"
+
+
+@pytest.mark.django_db
+def test_a_department_takes_a_batch_the_same_way(client, department, owner) -> None:
+    client.force_authenticate(owner)
+
+    response = client.post(
+        f"/api/auth/departments/{department.id}/invites/",
+        {"emails": ["a@uni.edu", "b@uni.edu"]},
+        format="json",
+    )
+
+    assert response.status_code == 201, response.data
+    assert len(response.data["created"]) == 2
+    assert (
+        OrgInvite.objects.filter(department=department, kind="email").count() == 2
+    )
+
+
+@pytest.mark.django_db
+def test_a_batch_needs_a_verified_account(client, lab) -> None:
+    """The gate runs before the payload, so nothing leaks about the addresses."""
+    unverified = User.objects.create_user(
+        username="new", password="p", email="new@uni.edu"
+    )
+    LabMembership.objects.create(
+        user=unverified, lab=lab, role=LabMembership.Role.OWNER, is_lead=True
+    )
+    client.force_authenticate(unverified)
+
+    response = client.post(
+        f"/api/auth/labs/{lab.slug}/invites/",
+        {"emails": ["a@uni.edu"]},
+        format="json",
+    )
+
+    assert response.status_code == 403
+    assert OrgInvite.objects.count() == 0
+    assert mail.outbox == []
+
+
+@pytest.mark.django_db
+def test_a_plain_member_cannot_send_a_batch(client, lab, owner) -> None:
+    member = verified(
+        User.objects.create_user(username="pat", password="p", email="pat@uni.edu")
+    )
+    LabMembership.objects.create(user=member, lab=lab, role=LabMembership.Role.MEMBER)
+    client.force_authenticate(member)
+
+    response = client.post(
+        f"/api/auth/labs/{lab.slug}/invites/",
+        {"emails": ["a@uni.edu"]},
+        format="json",
+    )
+
+    assert response.status_code == 403
+    assert OrgInvite.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_single_address_still_works_exactly_as_before(client, lab, owner) -> None:
+    """The batch branch must not have moved the original payload shape."""
+    client.force_authenticate(owner)
+
+    response = client.post(
+        f"/api/auth/labs/{lab.slug}/invites/",
+        {"kind": "email", "email": "solo@uni.edu"},
+        format="json",
+    )
+
+    assert response.status_code == 201, response.data
+    assert response.data["email"] == "solo@uni.edu"
+    assert "created" not in response.data
