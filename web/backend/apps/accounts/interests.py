@@ -16,7 +16,7 @@ pipeline; the table's "Feeds" column is the contract for what reads it:
 | ``areas``      | list[str] | yes      | focus re-rank boost + LLM judgment |
 | ``keywords``   | list[str] | no       | embedding + LLM (semantic match)   |
 | ``clusters``   | list[obj] | no (v2)  | cluster-scoped scoring + attribution |
-| ``skills``     | list[str] | no       | fellowship matching (future)       |
+| ``skills``     | list[str] | no       | LLM prompts + team-gap matcher     |
 | ``funding_needs`` | list[str] | no    | grant matching                     |
 | ``eligibility``| dict      | no       | grant/fellowship gating            |
 | ``seeking``    | list[str] | no       | fellowship matching (students)     |
@@ -32,8 +32,12 @@ Notes on the fields with a non-obvious role:
   separate per-user ``WatchPreference`` (the sole source of search terms).
 - ``keywords`` (with ``statement``) is the semantic fingerprint that *is*
   embedded and retrieved against.
-- ``skills`` is collected and stored but not yet consumed by any matcher; it is
-  parked for the planned fellowship-matching feature.
+- ``skills`` reaches the model prompts (the profile block built by
+  ``apps.content.briefing`` and ``apps.content.opportunity_llm``) and the
+  deterministic ``apps.content.matchers.team_gap`` matcher, which reads ``areas``
+  and ``skills`` together as "what this person says they do". It is deliberately
+  *not* embedded and *not* turned into search queries. Fellowship matching still
+  does not read it — that gates on ``eligibility``, ``seeking`` and stage.
 """
 
 from __future__ import annotations
