@@ -173,6 +173,8 @@ Files below are inside `web/backend/apps/content/`.
 | Platform-admin API | `web/backend/apps/adminpanel/` |
 | Discord identity & lab linking | `web/backend/apps/integrations/models.py`, `services/resolve.py` (the single ORM boundary) |
 | Discord OAuth, API calls, outbox | `web/backend/apps/integrations/services/` |
+| Where the OAuth `redirect_uri` comes from (and why it must not vary) | `_redirect_uri` in `web/backend/apps/integrations/services/oauth.py`, `DISCORD_CALLBACK_ORIGIN` in `web/backend/config/settings.py`; print what to register with `manage.py discord_check` |
+| The portal's "link with a code" panel (join → copy command → wait) | `ActivationCodePanel` in `web/app/src/components/portal/sections/profile-section.tsx`; the command and invite come from `DiscordActivationCodeView` |
 | Paper source scrapers | `web/backend/apps/scraper/sources/`, `ingest.py`, `window.py` |
 | Open-source grants/conferences collector (vendored) | `web/backend/apps/scraper/collect/` — `runner.py` stages, `grants/`, `conferences/`, `core/` |
 | Collector adapters (5 live grant, 6 conference) | `web/backend/apps/scraper/collect/{grants,conferences}/adapters/` |
@@ -238,6 +240,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `prune_briefings` | Delete briefings past `BRIEFING_RETENTION_DAYS` |
 | `run_analytics_report` | Measure the run: metrics JSON + analytics PDF for the Discord summary |
 | `drain_discord_outbox`, `reconcile_discord` | Deliver queued Discord messages / reconcile guild state |
+| `discord_check` | Print the OAuth redirect URIs to register in the Developer Portal, and how that origin resolved |
 | `scan_literature` | Paper ingestion only |
 | `collect_opportunities` | Open collector end to end (collect → map → ingest → extract → embed) for grants/conferences, in-container; nightly invocation is `--new-only --no-prune` |
 | `refresh_dblp_registry` | Refresh the dblp venue registry cache the conference resolve stage joins against (weekly cadence, self-throttled from `manual_all.py`; must run before collection) |

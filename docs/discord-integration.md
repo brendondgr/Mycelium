@@ -41,7 +41,15 @@ no Mylo database, schema, or migration history.
   `applications.commands` under user-install is what grants DM rights.
 * **Path B (fallback user link):** portal issues a one-time code → user runs
   `/activate code:CODE` in **any Discord server Mylo is already in** →
-  `DiscordIdentity`. Joining the Mycelium hub is *not* a prerequisite: a guild slash
+  `DiscordIdentity`. The portal panel is three steps in the order they are done:
+  join the server (`DISCORD_INVITE_URL`; the step is dropped when unset rather
+  than offering a dead link), copy the command, wait. The command and the invite
+  are composed by the API, not assembled in the client, so renaming the slash
+  command cannot leave the portal quoting the old one. The response carries an
+  absolute `expires_at`, and while a code is live the profile card polls
+  `discord/status` every 3s and stops on success — the gateway writes the link, so
+  nothing else would tell the browser it happened. Joining the Mycelium hub is
+  *not* a prerequisite: a guild slash
   command proves in one shot that Mylo is installed there and that the caller is a
   member of it, which is the whole requirement. The hub's `#activation` channel is
   still enforced, but only *inside the hub guild* (`DISCORD_HUB_GUILD_ID`), to keep
@@ -92,13 +100,21 @@ ownership, and Discord roles grant nothing.
 * Application → both `GUILD_INSTALL` (0) and `USER_INSTALL` (1) integration types.
 * **`integration_require_code_grant` = ON** (load-bearing for Path C).
 * Register the two redirect URIs — `/api/integrations/discord/callback` and
-  `/api/integrations/discord/guild-callback`, on **every public origin** the
-  portal answers on. By default nothing pins them: `services.oauth` derives each
-  one from the origin of the live request (`_redirect_uri`), so the flow follows
-  whatever hostname the visitor used and a leftover config value can never send a
-  public visitor back to `localhost`. OAuth2 forbids a relative `redirect_uri`, so
-  request-derived is as close as it gets. `DISCORD_OAUTH_REDIRECT_URI` /
-  `DISCORD_GUILD_REDIRECT_URI` still exist to pin one fixed origin instead.
+  `/api/integrations/discord/guild-callback`. Run `manage.py discord_check` and
+  paste what it prints; it is the same resolution `services.oauth` performs.
+  Discord matches these **byte-for-byte** and refuses anything else on its own
+  page ("Invalid OAuth2 redirect_uri"), so the failure never reaches this stack's
+  logs — which is why the value must not vary. It is built on
+  `DISCORD_CALLBACK_ORIGIN`, which follows `PUBLIC_HOSTNAME`; a deployment that
+  knows its public name therefore has exactly one URI per callback to register.
+  * Deriving it from the live request was the earlier default and is now only the
+    fallback for a local checkout with no public name. It emitted more than one
+    value per deployment: a browser reaches `/api` through nginx (`Host`: the
+    public name) or through the Next rewrite proxy (`Host: backend:8000`, since a
+    rewrite target replaces the `Host` header), and only the first is an origin
+    Discord could send anyone back to.
+  * `DISCORD_OAUTH_REDIRECT_URI` / `DISCORD_GUILD_REDIRECT_URI` still pin a fully
+    custom URL and win over everything.
   * This needs Django to know the real scheme: nginx forwards the front door's
     `X-Forwarded-Proto` (it terminates plain HTTP itself) and settings set
     `SECURE_PROXY_SSL_HEADER`, so a tunnelled HTTPS site builds `https://` URIs.

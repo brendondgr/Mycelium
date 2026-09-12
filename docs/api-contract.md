@@ -1414,7 +1414,13 @@ scope.
 `GET …/callback` completes it (Discord redirects the browser to the exact
 registered no-slash URI). `guild/start/` and `guild-callback` do the same for
 installing Mylo into a server. `code/` and `lab-code/` mint the activation codes
-used by the in-Discord `/mylo` commands as the alternative link paths.
+used by the in-Discord `/mylo` commands as the alternative link paths. `code/`
+returns `{code, expires_in, expires_at, activation_channel, invite_url, command}`
+— `command` is the whole line to paste (`/activate code:ABCD-EFGH`) and
+`invite_url` is `DISCORD_INVITE_URL` or `null`; both are composed server-side so
+the portal cannot quote a renamed command, and `expires_at` is absolute so a
+countdown does not depend on the browser's clock. Redemption is by the gateway,
+so the portal polls `status/` while a code is live to notice it landed.
 `status/`, `guild/status/`, `health/`, and `probe/` report link and reachability
 state. `daily-report/` toggles `DiscordIdentity.daily_report_opt_out` (the
 profile card's "Daily research report" switch). `disconnect/` unlinks.
