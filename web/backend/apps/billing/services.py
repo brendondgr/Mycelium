@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils.text import slugify
@@ -36,7 +37,7 @@ from .seats import (
     _ensure_seat,
     schedule_seat_removal,
 )
-from .tiers import validate_tier_for_scope
+from .tiers import tier_allowed_for_scope, validate_tier_for_scope
 
 ACCOUNT_TYPES = ("personal", "lab", "department")
 
@@ -124,6 +125,23 @@ def create_department_workspace(
         status=Seat.Status.PENDING,
     )
     return ProvisionResult(subscription=sub, seat=seat, department=dept)
+
+
+def signup_grant_tier() -> str:
+    """The personal tier a successful sign-up is provisioned on.
+
+    Registration is invite-only, so getting this far already means the caller
+    presented the shared access code (or an invitation, which is the documented
+    alternative to it). Rather than land every new account on Free and make them
+    ask for an upgrade, the gate itself is treated as the entitlement: passing it
+    grants ``settings.SIGNUP_GRANT_TIER``.
+
+    Falls back to Free when the configured value is not a tier sold to a personal
+    scope, because a typo in an env var must not 500 the sign-up endpoint — and
+    :func:`provision_workspace` would raise ``TierScopeError`` on, say, "lab".
+    """
+    tier = str(getattr(settings, "SIGNUP_GRANT_TIER", "") or "").strip().lower()
+    return tier if tier_allowed_for_scope("user", tier) else Tier.FREE
 
 
 @transaction.atomic

@@ -34,15 +34,15 @@ def test_free_user_rejected_over_six_topics(client: APIClient) -> None:
 
 
 @pytest.mark.django_db
-def test_spore_user_cap_is_ten(client: APIClient) -> None:
+def test_spore_user_cap_is_twenty(client: APIClient) -> None:
     user = User.objects.create_user(username="spore", password="p")
     Subscription.objects.create(tier=Tier.SPORE, scope_user=user)
     client.force_authenticate(user)
 
-    ten = [f"t{n}" for n in range(10)]
-    assert client.patch(URL, {"topics": ten}, format="json").status_code == 200
-    eleven = [f"t{n}" for n in range(11)]
-    assert client.patch(URL, {"topics": eleven}, format="json").status_code == 400
+    at_cap = [f"t{n}" for n in range(20)]
+    assert client.patch(URL, {"topics": at_cap}, format="json").status_code == 200
+    over_cap = [f"t{n}" for n in range(21)]
+    assert client.patch(URL, {"topics": over_cap}, format="json").status_code == 400
 
 
 @pytest.mark.django_db

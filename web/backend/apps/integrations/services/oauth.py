@@ -159,7 +159,14 @@ def complete_guild_link(lab, code: str, *, installed_by=None, request=None):
 
 
 def _post_setup_nudge(guild: dict) -> None:
-    """Best-effort: post the 'run /activate-lab' nudge to the guild system channel."""
+    """Best-effort: welcome the guild and name the one command still worth running.
+
+    Called from :func:`complete_guild_link`, i.e. *after* ``bind_guild`` has already
+    attached this guild to the lab. The old copy here told the reader to fetch an
+    activation code and run ``/activate-lab``, which was work they had just been
+    saved from — the install carried the lab through the OAuth state. What is still
+    outstanding is ``/setup``, which chooses the channels Mylo posts in.
+    """
     channel_id = guild.get("system_channel_id")
     if not channel_id:
         return
@@ -169,9 +176,8 @@ def _post_setup_nudge(guild: dict) -> None:
             embed={
                 "title": "Mylo joined this server",
                 "description": (
-                    "To connect this server to your Mycelium lab, a lab lead clicks "
-                    "**Activate Lab** in the lab's settings for a code, then runs "
-                    "`/activate-lab code:<code>` here."
+                    "This server is connected to your Mycelium lab. A lab lead can "
+                    "run `/setup` here to choose where reminders and updates post."
                 ),
                 "color": 0x5E7A3E,
             },

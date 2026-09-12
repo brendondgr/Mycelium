@@ -249,6 +249,20 @@ SIGNUP_CODE_FAILURE_WINDOW_SECONDS = env.int(
 )
 SIGNUP_CODE_LOCKOUT_SECONDS = env.int("SIGNUP_CODE_LOCKOUT_SECONDS", default=3600)
 
+# Sign-up with a valid access code grants this personal tier instead of Free, so
+# everyone who gets past the invite gate lands on the intelligence line rather
+# than the on-demand baseline. Must be a tier sold to a personal scope
+# (apps.billing.tiers.PERSONAL_TIERS) — provisioning validates it and will refuse
+# a team tier here. Set to "free" to restore the old behaviour.
+SIGNUP_GRANT_TIER = env_str("SIGNUP_GRANT_TIER", "spore")
+
+# Feature gating master switch. Off (the default) makes
+# apps.billing.entitlements resolve every capability as granted, for every user
+# and every lab, whatever their tier or add-ons. Plans, prices, invoices and the
+# numeric caps below are untouched — this only stops a tier from *withholding* a
+# feature. Turn it on to sell tiered capability again.
+BILLING_ENFORCE_ENTITLEMENTS = env.bool("BILLING_ENFORCE_ENTITLEMENTS", default=False)
+
 # Email: console backend in dev (messages print to the runserver console). A real
 # transactional provider is wired in via this env var for non-dev environments.
 EMAIL_BACKEND = env(

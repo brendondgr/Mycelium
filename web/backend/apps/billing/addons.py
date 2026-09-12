@@ -66,5 +66,18 @@ def set_mylo_included(subscription: Subscription, included: bool) -> bool:
 
 
 def mylo_included(subscription: Subscription | None) -> bool:
-    """Whether this plan includes Mylo on Discord (the ``bot_server`` add-on)."""
+    """Whether this plan includes Mylo on Discord (the ``bot_server`` add-on).
+
+    Answers the *effective* question the UI asks — "can this lab put Mylo in its
+    server?" — not the narrower "does an add-on row exist?". While feature gating
+    is off (:func:`apps.billing.entitlements.enforcing`) the answer is yes for
+    every plan, which is what keeps this consistent with
+    :func:`~apps.billing.entitlements.lab_has_feature`. Reporting the bare add-on
+    row here instead would leave the lab settings card saying "Not on plan" and
+    refusing to offer the install, while the API underneath happily allowed it.
+    """
+    from .entitlements import enforcing
+
+    if not enforcing():
+        return True
     return has_active_addon(subscription, Feature.BOT_SERVER)

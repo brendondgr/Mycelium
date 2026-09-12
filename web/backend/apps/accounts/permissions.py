@@ -7,19 +7,35 @@ from .services import effective_member_ids
 UserOrAnon = User | AnonymousUser
 
 
+#: Why there is no ``is_superuser`` escape hatch below.
+#:
+#: A superuser used to pass every lab and department check here, which made an
+#: operator account a silent member of every workspace: opening a lab URL showed
+#: its feed, its members and its settings even though no ``LabMembership`` row
+#: said so. That is the wrong shape for two reasons. It reads someone else's
+#: research without leaving a membership anybody can audit, and it means an
+#: operator cannot tell what a *member* sees from what their own privilege
+#: grants — the account that most needs to reproduce a bug is the one account
+#: that cannot.
+#:
+#: Platform administration goes through the admin dashboard instead
+#: (``apps.adminpanel``, guarded by its own ``IsStaffOrSuperuser``) and Django
+#: admin. Those surfaces are built to be audited; the workspace API is not.
+#: Object-level authority in this module is therefore membership, and only
+#: membership. The one deliberate exception is :func:`user_email_verified`,
+#: which exempts staff because an operator-created account has no mailbox to
+#: answer a code with — that is about activation, not about access to data.
+
+
 def user_has_lab_access(user: UserOrAnon, lab: Lab) -> bool:
     if not user.is_authenticated:
         return False
-    if user.is_superuser:
-        return True
     return LabMembership.objects.filter(user=user, lab=lab).exists()
 
 
 def user_can_manage_lab(user: UserOrAnon, lab: Lab) -> bool:
     if not user.is_authenticated:
         return False
-    if user.is_superuser:
-        return True
     return LabMembership.objects.filter(
         user=user,
         lab=lab,
@@ -31,8 +47,6 @@ def user_can_edit_lab_profile(user: UserOrAnon, lab: Lab) -> bool:
     """A lab's interest profile is edited by its lead PI or owner/admin (brief G)."""
     if not user.is_authenticated:
         return False
-    if user.is_superuser:
-        return True
     return LabMembership.objects.filter(
         user=user, lab=lab, is_lead=True
     ).exists() or user_can_manage_lab(user, lab)
@@ -46,7 +60,7 @@ def user_can_invite_to_lab(user: UserOrAnon, lab: Lab) -> bool:
 def user_has_department_access(user: UserOrAnon, department: Department) -> bool:
     if not user.is_authenticated:
         return False
-    if user.is_superuser or department.owner_id == user.id:
+    if department.owner_id == user.id:
         return True
     return user.id in effective_member_ids(department)
 
@@ -55,7 +69,7 @@ def user_can_edit_dept_profile(user: UserOrAnon, department: Department) -> bool
     """A department's interest profile is edited by its owner or an admin (brief G)."""
     if not user.is_authenticated:
         return False
-    if user.is_superuser or department.owner_id == user.id:
+    if department.owner_id == user.id:
         return True
     return DeptMembership.objects.filter(
         user=user,
