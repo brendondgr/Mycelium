@@ -43,7 +43,7 @@ routes clients depend on most.
 | `profile/me/` | GET, PATCH | The caller's own profile |
 | `watch/me/` | GET, PATCH | What Mylo watches for the caller |
 | `departments/` | GET, POST | The caller's departments; create one (verified only) |
-| `labs/<slug>/invites/` `departments/<id>/invites/` | GET, POST | Join invitations: list, create an emailed one or a share link |
+| `labs/<slug>/invites/` `departments/<id>/invites/` | GET, POST | Join invitations: list, create a share link, or email one or up to 15 people |
 | `…/invites/<id>/revoke/` | POST | Withdraw a join invitation |
 | `invites/<token>/` | GET | **Anonymous** preview of a join link; `410` when dead |
 | `invites/<token>/accept/` | POST | Spend a join link and join the org |
@@ -468,8 +468,8 @@ a verified account. The payload:
 An `email` invite is bound to one address and forced to one use; a `link` takes
 `max_uses` (1–500, default 25) and `expires_in_days` (1–90, default 7). `role`
 never resolves to `owner` — that is a transfer, not something a link confers, so
-it lands as `admin`. `400` on a bad setting or an address that already belongs to
-a member.
+it lands as `admin`. `400` on a bad setting, an address that already belongs to a
+member, or an address that already holds an open invitation to this org.
 
 The response (and the `GET` list) carries the invitation including its `url`, so
 a share link stays copyable:
@@ -480,6 +480,36 @@ a share link stays copyable:
   "uses_left": 25, "expires_at": "…", "revoked_at": null, "is_live": true,
   "created_at": "…", "created_by": "lena" }
 ```
+
+The same `POST` takes a **batch of emailed invitations** when the payload carries
+`emails` instead of `email`. Up to 15 addresses (`invites.MAX_BATCH_EMAILS`),
+given either as a list or as one string delimited by commas, semicolons, or
+newlines. `kind`, `max_uses`, and `expires_in_days` are not read — every row is an
+email invite worth one use, on the default window. `role` and `message` apply to
+all of them.
+
+```json
+{ "emails": ["a@uni.edu", "b@uni.edu"], "role": "member", "message": "optional" }
+```
+
+The batch answers `201` with per-address outcomes, **including when some addresses
+were refused** — partial success is the normal case, and failing the whole
+submission over one typo would make batching worse than sending one at a time:
+
+```json
+{ "created": [ <invitation>, … ],
+  "failed": [ { "email": "sam@uni.edu", "reason": "already_member",
+                "detail": "That person is already a member of this lab." } ],
+  "requested": 2 }
+```
+
+`reason` is one of `already_member`, `already_invited` (a live, unspent
+invitation to that address for this org already exists), `invalid_email`, or
+`duplicate` (repeated within this submission). `400`, creating nothing, only when
+the submission itself is wrong: no addresses, or more than 15.
+
+An invitation created in a batch is the same object as one sent singly — bound to
+its address, one use, activating the account that redeems it.
 
 `POST /api/auth/labs/<slug>/invites/<id>/revoke/` and
 `POST /api/auth/departments/<id>/invites/<invite_id>/revoke/` withdraw one,

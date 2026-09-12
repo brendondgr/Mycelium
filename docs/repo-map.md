@@ -50,7 +50,7 @@ Paths are relative to the repository root.
 | Onboarding (first run only) | `web/app/src/components/onboarding/` + route `web/app/src/app/app/onboarding/` |
 | Cluster organizer | `web/app/src/components/onboarding/cluster-organizer.tsx` |
 | Profile / lab edit modals | `web/app/src/components/portal/sections/{profile-editor-modal,lab-editor-modal}.tsx` |
-| Inviting people into a lab or department (both ways) | `web/app/src/components/portal/sections/org-invite-card.tsx`, mounted by `labs-section.tsx` and `department-section.tsx` |
+| Inviting people into a lab or department (both ways, one or up to 15 at a time) | `web/app/src/components/portal/sections/org-invite-card.tsx`, mounted by `labs-section.tsx` and `department-section.tsx`; the email tab is a chip field capped at `ORG_INVITE_BATCH_MAX` |
 | Creating a lab or a department from inside the app | `LabsSection` in `web/app/src/components/portal/sections/labs-section.tsx` (`CreateLabModal`, `CreateDepartmentModal`); both gated on `user.isVerified` |
 | Overview (personal + lab) | `web/app/src/components/portal/sections/{overview-panels,mylo-report-card,mylo-found-card,lab-overview-section,lab-onboarding}.tsx`, `portal/primitives/report-summary-table.tsx` |
 | Feeds: papers / grants / fellowships / conferences | `web/app/src/components/portal/sections/{research-papers-section,opportunities-section,fellowships-section,conferences-section}.tsx` |
@@ -85,7 +85,8 @@ Paths are relative to the repository root.
 | Permission rules | `web/backend/apps/accounts/permissions.py` |
 | Workspace provisioning at signup | `web/backend/apps/accounts/provisioning.py` |
 | Invite-only sign-up gate | `web/backend/apps/accounts/signup_gate.py` |
-| Join invitations (emailed to one address, or a share link with a use budget + expiry) | `web/backend/apps/accounts/invites.py`, models `OrgInvite` / `OrgInviteRedemption` |
+| Join invitations (emailed to one address, or a share link with a use budget + expiry) | `web/backend/apps/accounts/invites.py`, models `OrgInvite` / `OrgInviteRedemption`; `create_invites` + `screen_address` are the batch path (≤15 addresses, per-address refusals) |
+| Invite → sign-up, end to end, both org kinds | `web/backend/apps/accounts/tests/test_invite_signup_flow.py` |
 | Email verification (the six-digit code that activates an account) | `web/backend/apps/accounts/email_verification.py`, model `EmailVerification` |
 | Password reset by emailed link | `web/backend/apps/accounts/password_reset.py` |
 | What an unverified account may not do | `require_verified_email` in `web/backend/apps/accounts/permissions.py` — guards lab/department creation, both profiles, and issuing invitations. Redeeming one is *not* gated: it guards standing an org up, not being brought into one |
