@@ -10,7 +10,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { useMyLabs, useProjects } from "@/lib/portal/hooks";
+import { useMyDepartments, useMyLabs, useProjects } from "@/lib/portal/hooks";
 import {
   SECTION_ROUTES,
   projectIdFromPathname,
@@ -18,7 +18,22 @@ import {
   sectionFromPathname,
 } from "@/lib/portal/routes";
 import { useTheme, type Theme } from "@/lib/portal/theme";
-import { PERSONAL_SLUG, type MyLab, type Project } from "@/lib/portal/types";
+import {
+  buildWorkspaces,
+  labSlugForScope,
+  scopeFromKey,
+  scopeKey,
+  type Workspace,
+  type WorkspaceScope,
+} from "@/lib/portal/workspace";
+import {
+  PERSONAL_SLUG,
+  type MyDepartment,
+  type MyLab,
+  type Project,
+} from "@/lib/portal/types";
+
+export { roleLabel } from "@/lib/portal/workspace";
 
 export type { SectionKey } from "@/lib/portal/routes";
 import type { SectionKey } from "@/lib/portal/routes";
@@ -57,10 +72,23 @@ export type PortalContextValue = {
   projectsExpanded: boolean;
   toggleProjectsExpanded: () => void;
 
-  // Lab scope (workspace switcher)
+  // Workspace scope (the switcher). `scope` is the authority; the lab-shaped
+  // fields below are derived from it and kept because most of the app only ever
+  // asks "am I in a lab, and which one?".
+  scope: WorkspaceScope;
+  setScope: (scope: WorkspaceScope) => void;
+  workspaces: Workspace[];
+  currentWorkspace: Workspace;
+  workspacesLoading: boolean;
+
   labs: MyLab[];
   labsLoading: boolean;
+  departments: MyDepartment[];
+  currentDepartment: MyDepartment | null;
+
+  /** @deprecated Read `scope` instead — this is `scopeKey(scope)`. */
   labScope: string;
+  /** @deprecated Call `setScope` instead. */
   setLabScope: (slug: string) => void;
   currentLab: MyLab | null;
   scopeLabel: string;
@@ -105,43 +133,85 @@ export function PortalProvider({
   const [projectsExpanded, setProjectsExpanded] = useState<boolean>(() =>
     pathname.startsWith(SECTION_ROUTES.projects),
   );
-  const [labScope, setLabScopeState] = useState<string>(PERSONAL_SLUG);
+  // The requested scope key, before it is checked against real memberships.
+  const [scopeRequest, setScopeRequest] = useState<string>(PERSONAL_SLUG);
 
-  // Restore the last active workspace scope after mount so a refresh or a
-  // deep-link stays in the lab (localStorage isn't available during SSR, so we
-  // start on Personal and hydrate here — a stale/removed lab self-heals because
-  // `currentLab` resolves to null and the UI falls back to Personal).
+  // Restore the last active workspace after mount (localStorage isn't available
+  // during SSR, so we start on Personal and hydrate here). A stale or revoked
+  // key self-heals: `scopeFromKey` resolves it against the caller's actual
+  // memberships and falls back to Personal when it finds nothing.
   useEffect(() => {
     const stored = window.localStorage.getItem(LAB_SCOPE_KEY);
     if (stored && stored !== PERSONAL_SLUG) {
       // Reading a browser-only store on mount: SSR can't see it, so hydrating the
       // restored scope here (once) is the intended pattern, not a cascading render.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLabScopeState(stored);
+      setScopeRequest(stored);
     }
   }, []);
 
   const { theme, toggleTheme } = useTheme();
   const labsQuery = useMyLabs();
-  const projectsQuery = useProjects(labScope);
+  const departmentsQuery = useMyDepartments();
 
   const labs = useMemo(() => labsQuery.data ?? [], [labsQuery.data]);
+  const departments = useMemo(
+    () => departmentsQuery.data ?? [],
+    [departmentsQuery.data],
+  );
+
+  // Resolving the request against real memberships is what makes an unknown key
+  // harmless — a lab you left, a deleted department, a typo in a pasted URL.
+  const scope = useMemo(
+    () => scopeFromKey(scopeRequest, labs, departments),
+    [scopeRequest, labs, departments],
+  );
+
+  const workspaces = useMemo(
+    () => buildWorkspaces(labs, departments),
+    [labs, departments],
+  );
+
+  const currentWorkspace = useMemo(
+    () =>
+      workspaces.find((entry) => entry.key === scopeKey(scope)) ??
+      workspaces[0],
+    [workspaces, scope],
+  );
+
+  // Projects are asked for by lab slug; a department scope has no lab, so it
+  // gets the same unscoped list the personal space does.
+  const projectsQuery = useProjects(labSlugForScope(scope) ?? PERSONAL_SLUG);
   const projects = useMemo(
     () => projectsQuery.data ?? [],
     [projectsQuery.data],
   );
 
   const currentLab = useMemo(
-    () => labs.find((lab) => lab.slug === labScope) ?? null,
-    [labs, labScope],
+    () =>
+      scope.kind === "lab"
+        ? (labs.find((lab) => lab.slug === scope.slug) ?? null)
+        : null,
+    [labs, scope],
+  );
+
+  const currentDepartment = useMemo(
+    () =>
+      scope.kind === "department"
+        ? (departments.find((dept) => dept.id === scope.id) ?? null)
+        : null,
+    [departments, scope],
   );
 
   const scopeLabel = useMemo(() => {
     if (currentLab) {
       return currentLab.name;
     }
+    if (currentDepartment) {
+      return currentDepartment.name;
+    }
     return "your personal workspace";
-  }, [currentLab]);
+  }, [currentLab, currentDepartment]);
 
   const goToSection = useCallback(
     (next: SectionKey) => {
@@ -169,13 +239,21 @@ export function PortalProvider({
   );
 
   // The active workspace is remembered across reloads, so a refresh keeps you
-  // in the same lab.
-  const setLabScope = useCallback((slug: string) => {
-    setLabScopeState(slug);
+  // where you were.
+  const setScope = useCallback((next: WorkspaceScope) => {
+    const key = scopeKey(next);
+    setScopeRequest(key);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(LAB_SCOPE_KEY, slug);
+      window.localStorage.setItem(LAB_SCOPE_KEY, key);
     }
   }, []);
+
+  // Kept for the call sites that still speak in lab slugs. A key that is not a
+  // lab resolves to personal, which is what those callers already expected.
+  const setLabScope = useCallback(
+    (slug: string) => setScope(scopeFromKey(slug, labs, departments)),
+    [setScope, labs, departments],
+  );
 
   const value: PortalContextValue = {
     user,
@@ -186,9 +264,16 @@ export function PortalProvider({
     openProject,
     projectsExpanded,
     toggleProjectsExpanded,
+    scope,
+    setScope,
+    workspaces,
+    currentWorkspace,
+    workspacesLoading: labsQuery.isLoading || departmentsQuery.isLoading,
     labs,
     labsLoading: labsQuery.isLoading,
-    labScope,
+    departments,
+    currentDepartment,
+    labScope: scopeKey(scope),
     setLabScope,
     currentLab,
     scopeLabel,
@@ -202,21 +287,4 @@ export function PortalProvider({
   return (
     <PortalContext.Provider value={value}>{children}</PortalContext.Provider>
   );
-}
-
-/** Human label for a membership role (raw role + PI lead flag → display). */
-export function roleLabel(lab: Pick<MyLab, "role" | "is_lead">): string {
-  if (lab.is_lead) {
-    return "PI";
-  }
-  switch (lab.role) {
-    case "owner":
-      return "Owner";
-    case "admin":
-      return "Admin";
-    case "viewer":
-      return "Viewer";
-    default:
-      return "Member";
-  }
 }
