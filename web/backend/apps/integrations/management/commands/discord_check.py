@@ -23,10 +23,14 @@ class Command(BaseCommand):
     help = "Show the Discord OAuth redirect URIs and config this stack will send."
 
     def handle(self, *args, **options):
+        pinned_user = settings.DISCORD_OAUTH_REDIRECT_URI
+        pinned_guild = settings.DISCORD_GUILD_REDIRECT_URI
         user_uri = oauth.user_redirect_uri()
         guild_uri = oauth.guild_redirect_uri()
 
-        self.stdout.write(self.style.MIGRATE_HEADING("Register these in the Discord Developer Portal"))
+        self.stdout.write(
+            self.style.MIGRATE_HEADING("Register these in the Discord Developer Portal")
+        )
         self.stdout.write("  (your app -> OAuth2 -> Redirects), byte-for-byte:\n")
         self.stdout.write(self.style.SUCCESS(f"    {user_uri}"))
         self.stdout.write(self.style.SUCCESS(f"    {guild_uri}"))
@@ -36,17 +40,18 @@ class Command(BaseCommand):
             ("PUBLIC_HOSTNAME", settings.PUBLIC_HOSTNAME),
             ("PUBLIC_BASE_URL", settings.PUBLIC_BASE_URL),
             ("DISCORD_CALLBACK_ORIGIN", settings.DISCORD_CALLBACK_ORIGIN),
-            ("DISCORD_OAUTH_REDIRECT_URI (pin)", settings.DISCORD_OAUTH_REDIRECT_URI),
-            ("DISCORD_GUILD_REDIRECT_URI (pin)", settings.DISCORD_GUILD_REDIRECT_URI),
+            ("DISCORD_OAUTH_REDIRECT_URI (pin)", pinned_user),
+            ("DISCORD_GUILD_REDIRECT_URI (pin)", pinned_guild),
         ):
             self.stdout.write(f"  {label:34s} {value or '(unset)'}")
 
-        if not settings.DISCORD_CALLBACK_ORIGIN and not settings.DISCORD_OAUTH_REDIRECT_URI:
+        if not settings.DISCORD_CALLBACK_ORIGIN and not pinned_user:
             self.stdout.write(
                 self.style.WARNING(
-                    "\n  No fixed origin. The redirect_uri is derived per request, so it\n"
-                    "  varies with the host the browser used — including the internal\n"
-                    "  proxy hop. Set PUBLIC_HOSTNAME (or DISCORD_CALLBACK_ORIGIN)."
+                    "\n  No fixed origin. The redirect_uri is derived per\n"
+                    "  request, so it varies with the host the browser used —\n"
+                    "  including the internal proxy hop. Set PUBLIC_HOSTNAME\n"
+                    "  (or DISCORD_CALLBACK_ORIGIN)."
                 )
             )
         elif settings.DISCORD_CALLBACK_ORIGIN.startswith("http://"):
@@ -60,7 +65,8 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.MIGRATE_HEADING("\nOther required app settings"))
         self.stdout.write(
-            f"  DISCORD_CLIENT_ID                  {settings.DISCORD_CLIENT_ID or '(unset)'}"
+            "  DISCORD_CLIENT_ID                  "
+            + (settings.DISCORD_CLIENT_ID or "(unset)")
         )
         self.stdout.write(
             "  DISCORD_CLIENT_SECRET              "
@@ -71,7 +77,8 @@ class Command(BaseCommand):
             + ("set" if settings.DISCORD_BOT_TOKEN else self.style.ERROR("UNSET"))
         )
         self.stdout.write(
-            f"  DISCORD_INVITE_URL                 {settings.DISCORD_INVITE_URL or '(unset)'}"
+            "  DISCORD_INVITE_URL                 "
+            + (settings.DISCORD_INVITE_URL or "(unset)")
         )
 
         self.stdout.write(self.style.MIGRATE_HEADING("\nAlso confirm in the portal"))

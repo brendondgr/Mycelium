@@ -195,7 +195,9 @@ class RedirectUriTests(TestCase):
             DISCORD_CALLBACK_ORIGIN="https://mycelium.example.com",
             DISCORD_OAUTH_REDIRECT_URI="",
             # "backend" is the internal proxy hop the deployment really allows.
-            ALLOWED_HOSTS=["mycelium.example.com", "backend", "localhost", "testserver"],
+            ALLOWED_HOSTS=[
+                "mycelium.example.com", "backend", "localhost", "testserver",
+            ],
         ):
             for host in ("mycelium.example.com", "backend:8000", "localhost:11050"):
                 self.assertEqual(
