@@ -18,6 +18,7 @@ services.
 
 from __future__ import annotations
 
+import logging
 from urllib.parse import urlsplit, urlunsplit
 
 from django.conf import settings
@@ -30,6 +31,8 @@ from rest_framework.views import APIView
 from .serializers import DiscordGuildStatusSerializer, DiscordStatusSerializer
 from .services import audit, discord_api, oauth, resolve, state
 from .services.state import StateBackendError
+
+logger = logging.getLogger(__name__)
 
 
 def _return(outcome: str) -> HttpResponseRedirect:
@@ -90,6 +93,14 @@ class DiscordStartView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         audit.discord_audit(action="discord.link.oauth_started", actor=request.user)
+        # Log the redirect_uri: if it is not registered in the Discord app, Discord
+        # refuses the link on its own page and never calls back, so this line is the
+        # only record of the string that was actually sent. `manage.py discord_check`
+        # prints the same value out of band.
+        logger.info(
+            "discord oauth start (user): redirect_uri=%s",
+            oauth.user_redirect_uri(request),
+        )
         return Response(
             {"authorize_url": oauth.user_authorize_url(nonce, request=request)}
         )
@@ -361,6 +372,11 @@ class DiscordGuildStartView(APIView):
                 {"detail": "install temporarily unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+        logger.info(
+            "discord oauth start (guild %s): redirect_uri=%s",
+            getattr(lab, "slug", lab),
+            oauth.guild_redirect_uri(request),
+        )
         return Response(
             {"authorize_url": oauth.guild_authorize_url(nonce, request=request)}
         )

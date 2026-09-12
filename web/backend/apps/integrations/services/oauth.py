@@ -47,19 +47,33 @@ def guild_redirect_uri(request=None) -> str:
 
 
 def _redirect_uri(request, pinned: str, path: str) -> str:
-    """Where Discord sends the browser back — the origin it is already on.
+    """Where Discord sends the browser back. Must be ONE value, not a live guess.
 
-    OAuth2 requires an absolute redirect_uri, so this cannot be a relative link;
-    deriving it from the live request is the equivalent, and keeps a deployment
-    from having to name its own hostname twice. ``request.get_host()`` is already
-    validated against ALLOWED_HOSTS, so a forged Host header cannot point the
-    callback at someone else's origin (don't set ALLOWED_HOSTS to "*").
+    Discord matches this byte-for-byte against the app's registered redirect list
+    and refuses anything else on its own page ("Invalid OAuth2 redirect_uri"), so
+    the failure never reaches our logs. That makes stability the whole requirement:
 
-    An explicit setting wins, for stacks that must pin one registered origin, and
-    the configured base URL is the fallback when there is no request at all.
+    1. An explicit pin wins outright.
+    2. ``DISCORD_CALLBACK_ORIGIN`` — the deployment's own public origin, set
+       automatically from PUBLIC_HOSTNAME. Any stack that knows its public name
+       uses this, which is what keeps the value from drifting: the browser can
+       reach the API through nginx (Host: the public name) or through the Next
+       rewrite proxy (Host: ``backend:8000``, because a rewrite target replaces
+       the Host header), and only the first is a URL Discord could ever redirect
+       to. Deriving per request would emit both.
+    3. The live request's origin — only on a local checkout with no public name to
+       pin to. ``request.get_host()`` is validated against ALLOWED_HOSTS, so a
+       forged Host header cannot redirect the callback elsewhere (don't set
+       ALLOWED_HOSTS to "*").
+    4. The configured base URL, when there is no request at all.
+
+    ``manage.py discord_check`` prints what this resolves to — register that.
     """
     if pinned:
         return pinned
+    origin = settings.DISCORD_CALLBACK_ORIGIN
+    if origin:
+        return f"{origin}{path}"
     if request is not None:
         return request.build_absolute_uri(path)
     return f"{settings.DISCORD_APP_BASE_URL}{path}"

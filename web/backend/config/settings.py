@@ -849,17 +849,31 @@ DISCORD_APP_BASE_URL = outbound_base_url(
     env_str("DISCORD_APP_BASE_URL", PUBLIC_BASE_URL)
 )
 
-# The two OAuth callbacks are NOT configured here by default. OAuth2 forbids a
-# relative redirect_uri, but the next best thing is to derive it per request from
-# the origin the browser is actually on (apps.integrations.services.oauth), so the
-# stack works at whatever hostname it is served at without re-pointing config —
-# and a leftover localhost value can never send a public visitor to localhost.
-# Set these only to PIN a fixed origin. Whatever they resolve to must be
-# registered verbatim in the Discord app's OAuth2 redirect list, or Discord
-# returns "Invalid OAuth2 redirect_uri"; with the derived form that means
-# registering every public origin the portal is reachable at.
+# The two OAuth callbacks. OAuth2 forbids a relative redirect_uri, and Discord
+# matches whatever we send BYTE-FOR-BYTE against the app's registered redirect
+# list — anything else is rejected with "Invalid OAuth2 redirect_uri" on Discord's
+# own page, with nothing reaching our logs. So the one thing this must never do is
+# vary: a deployment that emits three different origins has to register three, and
+# will silently fail the day it emits a fourth.
+#
+# The origin is therefore resolved in this order:
+#   1. An explicit DISCORD_OAUTH_REDIRECT_URI / DISCORD_GUILD_REDIRECT_URI pin.
+#   2. DISCORD_CALLBACK_ORIGIN — PUBLIC_BASE_URL whenever PUBLIC_HOSTNAME is set,
+#      i.e. any deployment that knows its own public name. This is the case that
+#      matters: it pins the callback to the one origin a browser can actually come
+#      back on, and stops the internal proxy hop (Host: backend:8000, because the
+#      Next rewrite target replaces the Host header) or a loopback dev origin from
+#      ever being sent to Discord.
+#   3. The live request's own origin — only on an unconfigured local checkout,
+#      where there is no public name to pin to.
+#
+# `manage.py discord_check` prints exactly what this resolves to, which is what
+# belongs in the Developer Portal's redirect list.
 DISCORD_OAUTH_REDIRECT_URI = env_str("DISCORD_OAUTH_REDIRECT_URI")
 DISCORD_GUILD_REDIRECT_URI = env_str("DISCORD_GUILD_REDIRECT_URI")
+DISCORD_CALLBACK_ORIGIN = env_str(
+    "DISCORD_CALLBACK_ORIGIN", PUBLIC_BASE_URL if PUBLIC_HOSTNAME else ""
+).rstrip("/")
 # Where the user lands back in the portal after a link attempt (success or error
 # is carried as a query param). The frontend profile page reads it. Kept absolute
 # because the Mylo gateway quotes it in DMs; the callback views redirect to its
@@ -888,6 +902,12 @@ DISCORD_ACTIVATION_CHANNEL_ID = env(
 # a 15-minute TTL, and one live code per user. The lockout: 5 failures in 15 min
 # → a 1-hour block, keyed on the redeeming discord_user_id (not IP), in Redis so
 # it survives a bot restart.
+# A public invite to the Mycelium hub server, quoted verbatim in the portal's
+# "link with a code" panel so someone who is not already in a server with Mylo has
+# somewhere to run /activate. Blank is a supported state: the panel then drops the
+# "join the server" step rather than offering a dead link.
+DISCORD_INVITE_URL = env_str("DISCORD_INVITE_URL")
+
 DISCORD_ACTIVATION_TTL_SECONDS = env.int(
     "DISCORD_ACTIVATION_TTL_SECONDS", default=900
 )
