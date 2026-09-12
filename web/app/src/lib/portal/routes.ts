@@ -5,6 +5,8 @@
  * navigation, the sidebar, and the mobile tabs stay in sync with the URL.
  */
 
+import { PERSONAL_SLUG } from "@/lib/portal/types";
+
 export type SectionKey =
   | "overview"
   | "profile"
@@ -48,6 +50,31 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
 /** Route for a single project's detail view. */
 export function projectRoute(id: string): string {
   return `/app/projects/${id}`;
+}
+
+/**
+ * The query parameter carrying the active workspace.
+ *
+ * Scope used to live only in `localStorage`, which made a URL dishonest: a link
+ * pasted to a labmate opened in *their* last workspace, not the one being
+ * discussed, and two tabs could not hold two workspaces. Putting it in the URL
+ * fixes both.
+ *
+ * It is a query parameter rather than a path segment deliberately. A path change
+ * would touch every entry in `SECTION_ROUTES`, every `goToSection` call, the
+ * nginx location blocks and every emailed deep link, for the same benefit.
+ */
+export const SCOPE_PARAM = "ws";
+
+/**
+ * A section route carrying a workspace. The personal scope is the default and
+ * writes no parameter, so personal URLs stay exactly as they are today.
+ */
+export function routeWithScope(route: string, scopeKey: string | null): string {
+  if (!scopeKey || scopeKey === PERSONAL_SLUG) {
+    return route;
+  }
+  return `${route}?${SCOPE_PARAM}=${encodeURIComponent(scopeKey)}`;
 }
 
 /**

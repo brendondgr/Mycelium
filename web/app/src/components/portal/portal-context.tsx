@@ -8,13 +8,15 @@ import {
   useMemo,
   useState,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useMyDepartments, useMyLabs, useProjects } from "@/lib/portal/hooks";
 import {
+  SCOPE_PARAM,
   SECTION_ROUTES,
   projectIdFromPathname,
   projectRoute,
+  routeWithScope,
   sectionFromPathname,
 } from "@/lib/portal/routes";
 import { useTheme, type Theme } from "@/lib/portal/theme";
@@ -125,6 +127,7 @@ export function PortalProvider({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Navigation is derived from the URL — the route is the source of truth.
   const section = sectionFromPathname(pathname);
@@ -133,22 +136,27 @@ export function PortalProvider({
   const [projectsExpanded, setProjectsExpanded] = useState<boolean>(() =>
     pathname.startsWith(SECTION_ROUTES.projects),
   );
-  // The requested scope key, before it is checked against real memberships.
-  const [scopeRequest, setScopeRequest] = useState<string>(PERSONAL_SLUG);
+  // The URL is the authority on scope. `localStorage` is demoted to a *default*
+  // for a bare `/app/...` entry with no parameter — which is what makes a pasted
+  // link honest while a refresh still puts you back where you were.
+  const urlScopeKey = searchParams.get(SCOPE_PARAM);
+  const [storedScopeKey, setStoredScopeKey] = useState<string | null>(null);
 
-  // Restore the last active workspace after mount (localStorage isn't available
-  // during SSR, so we start on Personal and hydrate here). A stale or revoked
-  // key self-heals: `scopeFromKey` resolves it against the caller's actual
-  // memberships and falls back to Personal when it finds nothing.
+  // localStorage isn't readable during SSR, so the stored default is hydrated
+  // once after mount. Until then the URL alone decides, which is correct.
   useEffect(() => {
     const stored = window.localStorage.getItem(LAB_SCOPE_KEY);
     if (stored && stored !== PERSONAL_SLUG) {
       // Reading a browser-only store on mount: SSR can't see it, so hydrating the
       // restored scope here (once) is the intended pattern, not a cascading render.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setScopeRequest(stored);
+      setStoredScopeKey(stored);
     }
   }, []);
+
+  // Explicit parameter wins; otherwise the remembered default; otherwise
+  // personal. A key that survives neither check self-heals below.
+  const scopeRequest = urlScopeKey ?? storedScopeKey ?? PERSONAL_SLUG;
 
   const { theme, toggleTheme } = useTheme();
   const labsQuery = useMyLabs();
@@ -213,24 +221,28 @@ export function PortalProvider({
     return "your personal workspace";
   }, [currentLab, currentDepartment]);
 
+  // Every in-app navigation carries the active workspace, so the scope survives
+  // a move between sections and the address bar never lies about where you are.
+  const activeScopeKey = scopeKey(scope);
+
   const goToSection = useCallback(
     (next: SectionKey) => {
-      router.push(SECTION_ROUTES[next]);
+      router.push(routeWithScope(SECTION_ROUTES[next], activeScopeKey));
     },
-    [router],
+    [router, activeScopeKey],
   );
 
   const openProjectsList = useCallback(() => {
     setProjectsExpanded(true);
-    router.push(SECTION_ROUTES.projects);
-  }, [router]);
+    router.push(routeWithScope(SECTION_ROUTES.projects, activeScopeKey));
+  }, [router, activeScopeKey]);
 
   const openProject = useCallback(
     (id: string) => {
       setProjectsExpanded(true);
-      router.push(projectRoute(id));
+      router.push(routeWithScope(projectRoute(id), activeScopeKey));
     },
-    [router],
+    [router, activeScopeKey],
   );
 
   const toggleProjectsExpanded = useCallback(
@@ -238,15 +250,22 @@ export function PortalProvider({
     [],
   );
 
-  // The active workspace is remembered across reloads, so a refresh keeps you
-  // where you were.
-  const setScope = useCallback((next: WorkspaceScope) => {
-    const key = scopeKey(next);
-    setScopeRequest(key);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(LAB_SCOPE_KEY, key);
-    }
-  }, []);
+  /**
+   * Switch workspace. Writes the scope into the URL (the authority) and into
+   * `localStorage` (the default for a bare entry next time), then lands on the
+   * overview — switching workspace should show you that workspace, not leave you
+   * on a section that may not exist in it.
+   */
+  const setScope = useCallback(
+    (next: WorkspaceScope) => {
+      const key = scopeKey(next);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(LAB_SCOPE_KEY, key);
+      }
+      router.push(routeWithScope(SECTION_ROUTES.overview, key));
+    },
+    [router],
+  );
 
   // Kept for the call sites that still speak in lab slugs. A key that is not a
   // lab resolves to personal, which is what those callers already expected.
