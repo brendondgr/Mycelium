@@ -43,6 +43,17 @@ def format_for_display(plaintext: str) -> str:
     return f"{p[:4]}-{p[4:]}" if len(p) == _LENGTH else p
 
 
+# The slash command a reader is told to type, named once. ``/activate`` is a
+# guild command (mylo/bot/cogs/link.py) — it is not usable in a DM with Mylo, which
+# is exactly why the portal has to hand out a server invite alongside the code.
+SLASH_COMMAND = "/activate"
+
+
+def slash_command(display_code: str) -> str:
+    """The full line to paste into Discord, with the code already in it."""
+    return f"{SLASH_COMMAND} code:{display_code}"
+
+
 def normalize(code_input: str) -> str:
     """Uppercase; strip dashes/whitespace. Lookup-by-hash is the comparison."""
     return "".join(ch for ch in (code_input or "").upper() if ch in _ALPHABET)

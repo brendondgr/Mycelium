@@ -28,6 +28,7 @@ import {
 } from "@/lib/portal/hooks";
 import { computeCompleteness } from "@/lib/portal/completeness";
 import type { ClusterGroup, ProfileEligibility } from "@/lib/auth-types";
+import type { DiscordCodeResponse } from "@/lib/portal/types";
 
 /** A small colored dot + label used as a cluster group header. */
 function ClusterGroupHeading({ cluster }: { cluster: ClusterGroup }) {
@@ -509,11 +510,146 @@ const DISCORD_RETURN_NOTICE: Record<string, string> = {
   login_required: "Please sign in and try connecting Discord again.",
 };
 
+type CodeCountdown = { live: boolean; minutesLeft: number };
+
+/** A clock that ticks once a second while ``active``, and stops when it is not. */
+function useNowTicking(active: boolean): number {
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [active]);
+  return now;
+}
+
+/** How long the issued code is still redeemable for.
+ *
+ * The deadline comes from the server as an absolute timestamp, so nothing here
+ * has to remember when the code was asked for — which is what made this stateful,
+ * and what would have gone wrong after a laptop sleep or a slow response. All
+ * that is left is a clock, and it stops as soon as the code is dead.
+ */
+function useCodeCountdown(expiresAt: string | null): CodeCountdown {
+  const deadline = expiresAt ? Date.parse(expiresAt) : null;
+  const now = useNowTicking(deadline !== null);
+  const live = deadline !== null && now < deadline;
+  return {
+    live,
+    minutesLeft: live ? Math.max(1, Math.ceil((deadline - now) / 60_000)) : 0,
+  };
+}
+
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = React.useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access can be refused; the text is on screen either way.
+    }
+  }
+
+  return (
+    <Button
+      variant="secondary"
+      className="shrink-0 rounded-full"
+      onClick={copy}
+      aria-label={label}
+    >
+      {copied ? "Copied" : "Copy"}
+    </Button>
+  );
+}
+
+/** The three steps of linking through Discord itself: join, run, wait.
+ *
+ * Ordered the way someone actually does it, and the command is quoted verbatim
+ * from the server so what is copied is what the bot answers to.
+ */
+function ActivationCodePanel({
+  code,
+  countdown,
+}: {
+  code: DiscordCodeResponse;
+  countdown: CodeCountdown;
+}) {
+  const { live, minutesLeft } = countdown;
+
+  if (!live) {
+    return (
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] px-3 py-2.5">
+        <p className="text-sm text-[var(--text-secondary)]">
+          That code has expired. Generate a new one to try again.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] px-3 py-3">
+      {code.invite_url ? (
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-[var(--text-primary)]">
+              1. Join the Mycelium server
+            </p>
+            <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+              Skip this if you are already in a server Mylo is in — the command
+              works in any of them.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            className="shrink-0 rounded-full"
+            onClick={() => window.open(code.invite_url as string, "_blank", "noopener")}
+          >
+            Open Discord
+          </Button>
+        </div>
+      ) : null}
+
+      <div>
+        <p className="text-sm font-medium text-[var(--text-primary)]">
+          {code.invite_url ? "2." : "1."} Send this command
+        </p>
+        <div className="mt-1.5 flex items-center gap-2">
+          <code className="min-w-0 flex-1 truncate rounded-md bg-[var(--surface)] px-2.5 py-1.5 font-mono text-sm text-[var(--text-primary)]">
+            {code.command}
+          </code>
+          <CopyButton value={code.command} label="Copy the activation command" />
+        </div>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Within {minutesLeft} minute{minutesLeft === 1 ? "" : "s"}. Shown once.
+        </p>
+      </div>
+
+      <p
+        className="flex items-center gap-2 text-sm text-[var(--text-secondary)]"
+        aria-live="polite"
+      >
+        <span
+          aria-hidden
+          className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--primary)]"
+        />
+        Waiting for you in Discord — this page updates itself.
+      </p>
+    </div>
+  );
+}
+
 function DiscordCard() {
-  const { data: status, isLoading } = useDiscordStatus();
   const connect = useConnectDiscord();
   const disconnect = useDisconnectDiscord();
   const issueCode = useIssueActivationCode();
+  // A live code means the reader is off in Discord running /activate right now,
+  // and nothing pushes that result back to this tab — so watch for it, and stop
+  // the moment the code can no longer be redeemed.
+  const countdown = useCodeCountdown(issueCode.data?.expires_at ?? null);
+  const { data: status, isLoading } = useDiscordStatus(countdown.live);
   const testDm = useTestDiscordDm();
   const dailyReport = useSetDiscordDailyReport();
   const searchParams = useSearchParams();
@@ -643,16 +779,7 @@ function DiscordCard() {
             </Button>
           </div>
           {issueCode.data ? (
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] px-3 py-2">
-              <p className="text-sm text-[var(--text-secondary)]">
-                Run{" "}
-                <code className="font-mono text-[var(--text-primary)]">
-                  /activate code:{issueCode.data.code}
-                </code>{" "}
-                in any Discord server Mylo is already in, within{" "}
-                {Math.round(issueCode.data.expires_in / 60)} minutes. Shown once.
-              </p>
-            </div>
+            <ActivationCodePanel code={issueCode.data} countdown={countdown} />
           ) : null}
           {issueCode.isError ? (
             <p className="text-sm text-[var(--text-secondary)]">

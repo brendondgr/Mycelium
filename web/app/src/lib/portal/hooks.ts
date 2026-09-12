@@ -1138,12 +1138,27 @@ export function useSynthesizeLabProfile(slug: string) {
   });
 }
 
-/** The caller's Discord link status (profile "Connected services" card). */
-export function useDiscordStatus() {
+/** The caller's Discord link status (profile "Connected services" card).
+ *
+ * ``watch`` turns on short polling, for the one window where the answer changes
+ * without this app doing anything: the reader has a live activation code and is
+ * off in Discord typing /activate. Nothing pushes that back here — the link is
+ * written by the Mylo gateway — so without polling the card keeps saying "not
+ * linked" until the reader navigates away and back. Polling stops the moment it
+ * succeeds, and react-query pauses it while the tab is hidden, which is most of
+ * the time it is on.
+ */
+export function useDiscordStatus(watch = false) {
   return useQuery({
     queryKey: ["portal", "discord"],
     queryFn: fetchDiscordStatus,
-    staleTime: 30_000,
+    staleTime: watch ? 0 : 30_000,
+    // Stops itself on success rather than waiting for the caller to notice and
+    // flip ``watch`` — a linked account cannot go back to unlinked on its own, so
+    // there is nothing left to watch for.
+    refetchInterval: watch
+      ? (query) => (query.state.data?.connected ? false : 3_000)
+      : false,
   });
 }
 

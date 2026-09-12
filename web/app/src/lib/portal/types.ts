@@ -1319,9 +1319,16 @@ export type DiscordStartResponse = { authorize_url: string };
 
 /** POST /integrations/discord/code → a one-time activation code (Path B). */
 export type DiscordCodeResponse = {
+  /** Already dash-formatted for display (ABCD-EFGH); redemption ignores dashes. */
   code: string;
   expires_in: number;
+  /** ISO timestamp the code stops working — count down from this, not expires_in. */
+  expires_at: string;
   activation_channel: string | null;
+  /** Invite to the hub server, or null when none is configured. */
+  invite_url: string | null;
+  /** The whole line to paste into Discord, e.g. "/activate code:ABCD-EFGH". */
+  command: string;
 };
 
 /** POST /integrations/discord/lab-code?lab=<slug> → a 10-digit lab code (Path C). */

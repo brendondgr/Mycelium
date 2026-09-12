@@ -19,10 +19,12 @@ services.
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from urllib.parse import urlsplit, urlunsplit
 
 from django.conf import settings
 from django.http import HttpResponseRedirect
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -229,12 +231,26 @@ class DiscordActivationCodeView(APIView):
     def post(self, request):
         from .services import activation
 
+        # Already dash-formatted for display; redemption strips the dash again.
         code = activation.issue_code(request.user)
+        ttl = settings.DISCORD_ACTIVATION_TTL_SECONDS
         return Response(
             {
                 "code": code,
-                "expires_in": settings.DISCORD_ACTIVATION_TTL_SECONDS,
+                "expires_in": ttl,
+                # Absolute, so the portal can count down without recording when it
+                # asked — a relative TTL makes the client's own clock part of the
+                # answer, and it is wrong after a sleep or a slow response.
+                "expires_at": (
+                    timezone.now() + timedelta(seconds=ttl)
+                ).isoformat(),
                 "activation_channel": settings.DISCORD_ACTIVATION_CHANNEL_ID or None,
+                # The invite and the command are composed here, not in the client,
+                # so the thing the reader copies stays true to the bot: rename the
+                # slash command and this string follows, instead of the portal
+                # quietly telling people to type something that no longer exists.
+                "invite_url": settings.DISCORD_INVITE_URL or None,
+                "command": activation.slash_command(code),
             }
         )
 

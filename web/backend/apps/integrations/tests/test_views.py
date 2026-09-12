@@ -8,6 +8,8 @@ from unittest import mock
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from apps.accounts.models import Lab, LabMembership
 from apps.integrations.models import DiscordGuildLink, DiscordIdentity
@@ -144,6 +146,24 @@ class PathAViewTests(TestCase):
         code = resp.json()["code"]
         self.assertRegex(code, r"^[0-9A-Z]{4}-[0-9A-Z]{4}$")
 
+    def test_issued_code_carries_what_the_portal_has_to_show(self):
+        # The portal tells someone to go type this in Discord, so the command and
+        # the invite are composed here rather than assembled in the client — a
+        # renamed slash command must not leave the portal quoting the old one.
+        with override_settings(DISCORD_INVITE_URL="https://discord.gg/example"):
+            body = self.client.post(reverse("discord-code")).json()
+        self.assertEqual(body["command"], f"/activate code:{body['code']}")
+        self.assertEqual(body["invite_url"], "https://discord.gg/example")
+        # Absolute, so the countdown does not depend on when the client asked.
+        self.assertGreater(parse_datetime(body["expires_at"]), timezone.now())
+
+    def test_issued_code_omits_an_invite_that_is_not_configured(self):
+        # A dead "join the server" button is worse than no step at all.
+        with override_settings(DISCORD_INVITE_URL=""):
+            self.assertIsNone(
+                self.client.post(reverse("discord-code")).json()["invite_url"]
+            )
+
     def test_endpoints_require_auth(self):
         self.client.logout()
         self.assertEqual(self.client.get(reverse("discord-start")).status_code, 403)
@@ -158,6 +178,7 @@ class PathAViewTests(TestCase):
     # to prove nothing leaks from it into a browser-facing URL.
     DISCORD_OAUTH_REDIRECT_URI="",
     DISCORD_GUILD_REDIRECT_URI="",
+    DISCORD_CALLBACK_ORIGIN="",
     DISCORD_APP_BASE_URL="http://localhost:11050",
     DISCORD_PORTAL_RETURN_URL="http://localhost:11050/app/profile",
     ALLOWED_HOSTS=["mycelium.example.com", "testserver"],
