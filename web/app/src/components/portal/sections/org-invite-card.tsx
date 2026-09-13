@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
-import { useOrgInvites } from "@/lib/portal/hooks";
+import { useInviteToLab, useOrgInvites } from "@/lib/portal/hooks";
 import type { OrgKind } from "@/lib/auth-types";
 import type { OrgInvite, OrgInviteBatchResult } from "@/lib/portal/types";
 import { ORG_INVITE_BATCH_MAX } from "@/lib/portal/types";
@@ -19,7 +19,13 @@ const INPUT =
 
 const ROLES = ["member", "admin", "viewer"] as const;
 
-type Tab = "email" | "link";
+const TAB_LABELS: Record<Tab, string> = {
+  email: "By email",
+  link: "Share a link",
+  member: "Already on Mycelium",
+};
+
+type Tab = "email" | "link" | "member";
 
 /** What separates one pasted address from the next. Mirrors the server's split. */
 const ADDRESS_SPLIT = /[,;\s]+/;
@@ -45,20 +51,28 @@ function splitAddresses(raw: string): string[] {
  * They are presented as a choice rather than one form with options because they
  * trade off against each other and the person picking should see the trade:
  * an emailed invitation only the named mailbox can spend, or a link anyone can
- * follow that is held instead by a headcount and a clock.
+ * follow that is held instead by a headcount and a clock. A lab gets a third way
+ * that mails nothing at all — see the `member` tab.
+ *
+ * Exported without card chrome so the same panel can sit in a settings rail or in
+ * a dialog opened from the roster. Every surface that invites mounts this, so
+ * invite copy is fixed in one place rather than three.
  */
-export function OrgInviteCard({
+export type OrgInvitePanelProps = {
+  kind: OrgKind;
+  /** A lab's slug, or a department's id — whichever the routes take. */
+  id: string;
+  canInvite: boolean;
+  /** Creating an invitation needs an activated account; the panel says so. */
+  isVerified: boolean;
+};
+
+export function OrgInvitePanel({
   kind,
   id,
   canInvite,
   isVerified,
-}: {
-  kind: OrgKind;
-  id: string;
-  canInvite: boolean;
-  /** Creating an invitation needs an activated account; the card says so. */
-  isVerified: boolean;
-}) {
+}: OrgInvitePanelProps) {
   const { list, create, createMany, revoke } = useOrgInvites(kind, id);
   const [tab, setTab] = React.useState<Tab>("email");
   const [chips, setChips] = React.useState<string[]>([]);
@@ -71,6 +85,11 @@ export function OrgInviteCard({
   const [sent, setSent] = React.useState<string | null>(null);
   const [batch, setBatch] = React.useState<OrgInviteBatchResult | null>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // The third way in, lab-only: add somebody who already has an account. It mails
+  // nothing, so it is not an invitation in the sense the other two tabs mean.
+  const inviteExisting = useInviteToLab(id);
+  const [username, setUsername] = React.useState("");
 
   /** Address -> why it was refused, so a chip can carry its own explanation. */
   const refusals = React.useMemo(() => {
@@ -87,7 +106,10 @@ export function OrgInviteCard({
 
   const noun = kind === "lab" ? "lab" : "department";
   const full = chips.length >= ORG_INVITE_BATCH_MAX;
-  const busy = create.isPending || createMany.isPending;
+  const busy = create.isPending || createMany.isPending || inviteExisting.isPending;
+  // Only a lab has the legacy roster invitation; a department has no equivalent.
+  const tabs: Tab[] =
+    kind === "lab" ? ["email", "link", "member"] : ["email", "link"];
 
   /**
    * Turn whatever is in the draft into chips.
@@ -156,6 +178,25 @@ export function OrgInviteCard({
     setSent(null);
     setBatch(null);
 
+    if (tab === "member") {
+      const value = username.trim();
+      if (!value) {
+        setError("Enter the username of someone already on Mycelium.");
+        return;
+      }
+      inviteExisting.mutate(
+        { identifier: value, role },
+        {
+          onSuccess: () => {
+            setUsername("");
+            setSent(`${value} has been asked to join. It is in their notifications now.`);
+          },
+          onError: (cause) => setError((cause as Error).message),
+        },
+      );
+      return;
+    }
+
     if (tab === "email") {
       const addresses = commitDraft(draft);
       if (addresses.length === 0) {
@@ -205,11 +246,7 @@ export function OrgInviteCard({
   const live = (list.data ?? []).filter((invite) => invite.is_live);
 
   return (
-    <Card className="p-5">
-      <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
-        Invite members
-      </h3>
-
+    <>
       {!isVerified ? (
         <p className="text-[12.5px] text-[var(--text-secondary)]">
           Verify your email address to invite people. Mycelium sends these
@@ -230,7 +267,7 @@ export function OrgInviteCard({
             aria-label="How to invite"
             className="mb-3 mt-2 flex gap-1.5"
           >
-            {(["email", "link"] as Tab[]).map((value) => (
+            {tabs.map((value) => (
               <button
                 key={value}
                 type="button"
@@ -257,7 +294,7 @@ export function OrgInviteCard({
                     : undefined
                 }
               >
-                {value === "email" ? "By email" : "Share a link"}
+                {TAB_LABELS[value]}
               </button>
             ))}
           </div>
@@ -265,7 +302,9 @@ export function OrgInviteCard({
           <p className="mb-3 text-[12px] text-[var(--text-muted)]">
             {tab === "email"
               ? `Type an address and press Enter to add it. Up to ${ORG_INVITE_BATCH_MAX} at a time — each person gets their own invitation, usable only from the address you named.`
-              : `Anyone with the link can join this ${noun} until it runs out of places or expires.`}
+              : tab === "link"
+                ? `Anyone with the link can join this ${noun} until it runs out of places or expires.`
+                : `For someone who already has a Mycelium account. It lands in their notifications for them to accept — nothing is emailed, and it does nothing for a person without an account.`}
           </p>
 
           <form onSubmit={submit} className="space-y-2.5">
@@ -338,7 +377,7 @@ export function OrgInviteCard({
                   {full ? " — remove one to add another." : ""}
                 </p>
               </div>
-            ) : (
+            ) : tab === "link" ? (
               <div className="flex flex-wrap gap-2.5">
                 <label className="flex-1 text-[12px] text-[var(--text-secondary)]">
                   Max accounts
@@ -365,7 +404,19 @@ export function OrgInviteCard({
                   />
                 </label>
               </div>
-            )}
+            ) : null}
+
+            {tab === "member" ? (
+              <input
+                type="text"
+                className={INPUT + " w-full"}
+                placeholder="Username"
+                aria-label="Username of someone already on Mycelium"
+                value={username}
+                disabled={busy}
+                onChange={(event) => setUsername(event.target.value)}
+              />
+            ) : null}
 
             <div className="flex flex-wrap items-end gap-2.5">
               <label className="text-[12px] text-[var(--text-secondary)]">
@@ -383,30 +434,37 @@ export function OrgInviteCard({
                   ))}
                 </select>
               </label>
-              <input
-                type="text"
-                className={INPUT}
-                placeholder="Optional note"
-                aria-label="Optional note to the invitee"
-                value={message}
-                disabled={busy}
-                onChange={(event) => setMessage(event.target.value)}
-              />
+              {/* The note rides in the email body or the link preview; the
+                  roster invitation has nowhere to put one. */}
+              {tab === "member" ? null : (
+                <input
+                  type="text"
+                  className={INPUT}
+                  placeholder="Optional note"
+                  aria-label="Optional note to the invitee"
+                  value={message}
+                  disabled={busy}
+                  onChange={(event) => setMessage(event.target.value)}
+                />
+              )}
               <button
                 type="submit"
                 className={PRIMARY_BUTTON}
                 disabled={
                   busy ||
-                  (tab === "email" && chips.length === 0 && !draft.trim())
+                  (tab === "email" && chips.length === 0 && !draft.trim()) ||
+                  (tab === "member" && !username.trim())
                 }
               >
                 {busy
                   ? "Working…"
                   : tab === "link"
                     ? "Create link"
-                    : chips.length > 1
-                      ? `Send ${chips.length} invitations`
-                      : "Send invitation"}
+                    : tab === "member"
+                      ? "Add to lab"
+                      : chips.length > 1
+                        ? `Send ${chips.length} invitations`
+                        : "Send invitation"}
               </button>
             </div>
           </form>
@@ -469,6 +527,27 @@ export function OrgInviteCard({
           </div>
         </>
       )}
+    </>
+  );
+}
+
+/**
+ * The panel in a card, as the lab and department settings rails mount it.
+ *
+ * A thin wrapper on purpose: the roster's dialog wants the same panel without a
+ * card around it, and the only way those two stay identical is for one of them to
+ * be the other plus chrome.
+ */
+export function OrgInviteCard(props: OrgInvitePanelProps) {
+  if (!props.canInvite) {
+    return null;
+  }
+  return (
+    <Card className="p-5">
+      <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
+        Invite members
+      </h3>
+      <OrgInvitePanel {...props} />
     </Card>
   );
 }
