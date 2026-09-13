@@ -150,6 +150,16 @@ export function MembersIcon(props: IconProps) {
   );
 }
 
+/** A single person — the personal workspace's mark (`MembersIcon` is a group). */
+export function PersonIcon(props: IconProps) {
+  return (
+    <Svg strokeWidth={1.6} {...props}>
+      <circle cx="12" cy="8.5" r="3.4" />
+      <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+    </Svg>
+  );
+}
+
 export function DocumentIcon(props: IconProps) {
   return (
     <Svg strokeWidth={1.6} {...props}>

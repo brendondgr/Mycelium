@@ -1,5 +1,6 @@
 "use client";
 
+import { PersonIcon } from "@/components/portal/icons";
 import { labLogoUrl } from "@/lib/portal/client";
 import {
   workspaceHue,
@@ -54,7 +55,25 @@ export function WorkspaceMark({
     );
   }
 
-  const personal = workspace.kind === "personal";
+  // The personal space is the one workspace whose name is not its identity — it
+  // is always "Personal", so initials would spell "PE" for everybody. A person
+  // glyph says the same thing without pretending to be an abbreviation.
+  if (workspace.kind === "personal") {
+    return (
+      <span
+        aria-hidden
+        className={cn("inline-grid shrink-0 place-items-center", className)}
+        style={{
+          ...style,
+          background: "var(--brand-panel)",
+          color: "var(--brand-panel-foreground)",
+        }}
+      >
+        <PersonIcon size={Math.round(size * 0.58)} />
+      </span>
+    );
+  }
+
   return (
     <span
       aria-hidden
@@ -64,10 +83,8 @@ export function WorkspaceMark({
       )}
       style={{
         ...style,
-        background: personal
-          ? "var(--brand-panel)"
-          : workspaceHue(workspace.key),
-        color: personal ? "var(--brand-panel-foreground)" : "#fffdf8",
+        background: workspaceHue(workspace.key),
+        color: "#fffdf8",
       }}
     >
       {workspaceInitials(workspace.name)}
