@@ -34,7 +34,7 @@ const ASSETS = [
   // ---- Public site (web/landing) -----------------------------------------
   {
     // Full-bleed hero background.
-    src: "art/frontpage/mylo-hero-rework.png",
+    src: "art/frontpage/mylo-hero-rework2.png",
     name: "mylo-hero",
     out: "landing/public/images",
     widths: [1600, 900],
