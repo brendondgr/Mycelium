@@ -55,7 +55,8 @@ Paths are relative to the repository root.
 | Onboarding (first run only) | `web/app/src/components/onboarding/` + route `web/app/src/app/app/onboarding/` |
 | Cluster organizer | `web/app/src/components/onboarding/cluster-organizer.tsx` |
 | Profile / lab edit modals | `web/app/src/components/portal/sections/{profile-editor-modal,lab-editor-modal}.tsx` |
-| Inviting people into a lab or department (both ways, one or up to 15 at a time) | `web/app/src/components/portal/sections/org-invite-card.tsx`, mounted by `labs-section.tsx` and `department-section.tsx`; the email tab is a chip field capped at `ORG_INVITE_BATCH_MAX` |
+| Inviting people into a lab or department | `web/app/src/components/portal/sections/org-invite-card.tsx` — `OrgInvitePanel` is the control, `OrgInviteCard` is it in a card. Three tabs: email (chip field, ≤ `ORG_INVITE_BATCH_MAX`), share link, and `Already on Mycelium` (lab only, the legacy `LabInvitation` path) |
+| Where that panel is mounted | `members-section.tsx` (dialog behind "Invite member"), `lab-settings-section.tsx` (left rail), `labs-section.tsx` (lab detail), `department-section.tsx` (department settings) |
 | Creating a lab or a department from inside the app | `LabsSection` in `web/app/src/components/portal/sections/labs-section.tsx` (`CreateLabModal`, `CreateDepartmentModal`); both gated on `user.isVerified` |
 | Overview (personal + lab) | `web/app/src/components/portal/sections/{overview-panels,mylo-report-card,mylo-found-card,lab-overview-section,lab-onboarding}.tsx`, `portal/primitives/report-summary-table.tsx` |
 | Feeds: papers / grants / fellowships / conferences | `web/app/src/components/portal/sections/{research-papers-section,opportunities-section,fellowships-section,conferences-section}.tsx` |
