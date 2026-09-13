@@ -52,6 +52,8 @@ Paths are relative to the repository root.
 | Decorative motion (vines, threads, seedlings, ring sweep) | `web/app/src/components/portal/motion/` (reduced-motion + in-view-once hooks), `portal/leaf-vine.tsx`, keyframes in `web/app/src/app/globals.css` |
 | Feed card scroll entrance (predictive, fires ahead of the reader) | `web/app/src/components/portal/motion/reveal-on-scroll.tsx` |
 | Workspace background growth, per section | `web/app/src/components/portal/motion/section-ground.tsx`, mounted in `portal/workspace-shell.tsx` |
+| Affiliation picker (the combobox behind every "Institution" / "Affiliation" field) | `web/app/src/components/ui/institution-picker.tsx`; search + address matching in `web/app/src/lib/institutions.ts`; mounted by onboarding step 1, `profile-editor-modal.tsx`, `account-section.tsx`, and `CreateDepartmentModal` in `labs-section.tsx`. Typed text is always the value — there is no "Custom" mode to enter |
+| The affiliation directory itself (~10.3k universities, national labs, institutes) | `web/app/public/data/institutions.json`, built by `web/scripts/build-institutions.mjs` (`npm run institutions`) from Hipolabs' list plus `web/scripts/data/research-institutions.json` (curated institutes + typed aliases). Served at `/data/`, which needs its own nginx block |
 | Onboarding (first run only) | `web/app/src/components/onboarding/` + route `web/app/src/app/app/onboarding/` |
 | Cluster organizer | `web/app/src/components/onboarding/cluster-organizer.tsx` |
 | Profile / lab edit modals | `web/app/src/components/portal/sections/{profile-editor-modal,lab-editor-modal}.tsx` |

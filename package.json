@@ -10,6 +10,7 @@
     "build": "npm --prefix web run build",
     "lint": "npm --prefix web run lint && uv run --project web/backend ruff check --cache-dir web/backend/.ruff_cache web/backend",
     "test": "uv run --project web/backend pytest web/backend",
+    "institutions": "node web/scripts/build-institutions.mjs",
     "compose:up": "docker compose up",
     "compose:down": "docker compose down"
   }

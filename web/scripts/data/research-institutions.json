@@ -1,0 +1,761 @@
+{
+  "_comment": "Hand-curated affiliations the Hipolabs university list does not carry: national laboratories, government research agencies, and independent research institutes. Mycelium's readers are not all at universities. Keep one entry per organisation, name it the way its own staff write it, and give the domain people actually have email at. 'kind' is 'institute' for everything here; the picker groups it separately from universities.",
+  "aliases": {
+    "_comment": "Short names people actually type that no substring search can reach: acronyms that collide with a hundred other schools, and campus nicknames. Keyed on the institution's primary domain because that is the stable half — Hipolabs revises names. The build fails if one of these domains leaves the directory, so a dead shortcut cannot sit here unnoticed. Add sparingly, and only where the intent is unambiguous: 'OSU' is three universities and belongs to none of them.",
+    "mit": "mit.edu",
+    "caltech": "caltech.edu",
+    "cmu": "cmu.edu",
+    "ucla": "ucla.edu",
+    "ucsd": "ucsd.edu",
+    "ucsb": "ucsb.edu",
+    "ucsf": "ucsf.edu",
+    "berkeley": "berkeley.edu",
+    "uc berkeley": "berkeley.edu",
+    "cal": "berkeley.edu",
+    "uiuc": "uiuc.edu",
+    "umich": "umich.edu",
+    "ut austin": "utexas.edu",
+    "utexas": "utexas.edu",
+    "georgia tech": "gatech.edu",
+    "gatech": "gatech.edu",
+    "virginia tech": "vt.edu",
+    "texas a and m": "tamu.edu",
+    "tamu": "tamu.edu",
+    "fsu": "fsu.edu",
+    "uf": "ufl.edu",
+    "ufl": "ufl.edu",
+    "lsu": "lsu.edu",
+    "unc": "unc.edu",
+    "upenn": "upenn.edu",
+    "penn": "upenn.edu",
+    "nyu": "nyu.edu",
+    "usc": "usc.edu",
+    "jhu": "jh.edu",
+    "johns hopkins": "jh.edu",
+    "uw": "uw.edu",
+    "udub": "uw.edu",
+    "uva": "virginia.edu",
+    "uw madison": "wisc.edu",
+    "wisc": "wisc.edu",
+    "psu": "psu.edu",
+    "asu": "asu.edu",
+    "northwestern": "northwestern.edu",
+    "eth": "ethz.ch",
+    "ethz": "ethz.ch",
+    "eth zurich": "ethz.ch",
+    "epfl": "epfl.ch",
+    "tum": "tum.de",
+    "kit": "kit.edu",
+    "ku leuven": "kuleuven.be",
+    "tu delft": "tudelft.nl",
+    "tudelft": "tudelft.nl",
+    "oxford": "oxford.ac.uk",
+    "cambridge": "cam.ac.uk",
+    "imperial": "imperial.ac.uk",
+    "ucl": "ucl.ac.uk",
+    "lse": "lse.ac.uk",
+    "kcl": "kcl.ac.uk",
+    "tsinghua": "tsinghua.edu.cn",
+    "pku": "pku.edu.cn",
+    "nus": "nus.edu",
+    "ntu singapore": "ntu.edu.sg",
+    "kaist": "kaist.ac.kr",
+    "snu": "snu.ac.kr",
+    "utokyo": "u-tokyo.ac.jp",
+    "todai": "u-tokyo.ac.jp",
+    "iisc": "iisc.ernet.in",
+    "iitb": "iitb.ac.in",
+    "iitd": "iitd.ernet.in",
+    "iitm": "iitm.ac.in",
+    "iitk": "iitk.ac.in",
+    "anu": "anu.edu.au",
+    "unsw": "unsw.edu.au",
+    "unimelb": "unimelb.edu",
+    "usyd": "sydney.edu.au",
+    "ubc": "ubc.ca",
+    "uoft": "utoronto.ca",
+    "u of t": "utoronto.ca",
+    "utoronto": "utoronto.ca",
+    "uwaterloo": "uwaterloo.ca",
+    "mcgill": "mcgill.ca",
+    "technion": "technion.ac.il",
+    "tau": "tau.ac.il",
+    "huji": "huji.ac.il",
+    "ornl": "ornl.gov",
+    "anl": "anl.gov",
+    "lbnl": "lbl.gov",
+    "llnl": "llnl.gov",
+    "lanl": "lanl.gov",
+    "pnnl": "pnnl.gov",
+    "bnl": "bnl.gov",
+    "nrel": "nrel.gov",
+    "inl": "inl.gov",
+    "jlab": "jlab.org",
+    "fermilab": "fnal.gov",
+    "jpl": "jpl.nasa.gov",
+    "apl": "jhuapl.edu",
+    "ll": "ll.mit.edu"
+  },
+  "institutions": [
+    {
+      "name": "Argonne National Laboratory",
+      "country_code": "US",
+      "region": "Illinois",
+      "domain": "anl.gov"
+    },
+    {
+      "name": "Brookhaven National Laboratory",
+      "country_code": "US",
+      "region": "New York",
+      "domain": "bnl.gov"
+    },
+    {
+      "name": "Fermi National Accelerator Laboratory",
+      "country_code": "US",
+      "region": "Illinois",
+      "domain": "fnal.gov"
+    },
+    {
+      "name": "Idaho National Laboratory",
+      "country_code": "US",
+      "region": "Idaho",
+      "domain": "inl.gov"
+    },
+    {
+      "name": "Lawrence Berkeley National Laboratory",
+      "country_code": "US",
+      "region": "California",
+      "domain": "lbl.gov"
+    },
+    {
+      "name": "Lawrence Livermore National Laboratory",
+      "country_code": "US",
+      "region": "California",
+      "domain": "llnl.gov"
+    },
+    {
+      "name": "Los Alamos National Laboratory",
+      "country_code": "US",
+      "region": "New Mexico",
+      "domain": "lanl.gov"
+    },
+    {
+      "name": "National Energy Technology Laboratory",
+      "country_code": "US",
+      "region": "Pennsylvania",
+      "domain": "netl.doe.gov"
+    },
+    {
+      "name": "National Renewable Energy Laboratory",
+      "country_code": "US",
+      "region": "Colorado",
+      "domain": "nrel.gov"
+    },
+    {
+      "name": "Oak Ridge National Laboratory",
+      "country_code": "US",
+      "region": "Tennessee",
+      "domain": "ornl.gov"
+    },
+    {
+      "name": "Pacific Northwest National Laboratory",
+      "country_code": "US",
+      "region": "Washington",
+      "domain": "pnnl.gov"
+    },
+    {
+      "name": "Princeton Plasma Physics Laboratory",
+      "country_code": "US",
+      "region": "New Jersey",
+      "domain": "pppl.gov"
+    },
+    {
+      "name": "Sandia National Laboratories",
+      "country_code": "US",
+      "region": "New Mexico",
+      "domain": "sandia.gov"
+    },
+    {
+      "name": "Savannah River National Laboratory",
+      "country_code": "US",
+      "region": "South Carolina",
+      "domain": "srnl.doe.gov"
+    },
+    {
+      "name": "SLAC National Accelerator Laboratory",
+      "country_code": "US",
+      "region": "California",
+      "domain": "slac.stanford.edu"
+    },
+    {
+      "name": "Thomas Jefferson National Accelerator Facility",
+      "country_code": "US",
+      "region": "Virginia",
+      "domain": "jlab.org"
+    },
+    {
+      "name": "Ames National Laboratory",
+      "country_code": "US",
+      "region": "Iowa",
+      "domain": "ameslab.gov"
+    },
+    {
+      "name": "National Institute of Standards and Technology",
+      "country_code": "US",
+      "region": "Maryland",
+      "domain": "nist.gov"
+    },
+    {
+      "name": "National Institutes of Health",
+      "country_code": "US",
+      "region": "Maryland",
+      "domain": "nih.gov"
+    },
+    {
+      "name": "Centers for Disease Control and Prevention",
+      "country_code": "US",
+      "region": "Georgia",
+      "domain": "cdc.gov"
+    },
+    {
+      "name": "NASA Ames Research Center",
+      "country_code": "US",
+      "region": "California",
+      "domain": "nasa.gov"
+    },
+    {
+      "name": "NASA Goddard Space Flight Center",
+      "country_code": "US",
+      "region": "Maryland",
+      "domain": "nasa.gov"
+    },
+    {
+      "name": "NASA Jet Propulsion Laboratory",
+      "country_code": "US",
+      "region": "California",
+      "domain": "jpl.nasa.gov"
+    },
+    {
+      "name": "NASA Langley Research Center",
+      "country_code": "US",
+      "region": "Virginia",
+      "domain": "nasa.gov"
+    },
+    {
+      "name": "NASA Marshall Space Flight Center",
+      "country_code": "US",
+      "region": "Alabama",
+      "domain": "nasa.gov"
+    },
+    {
+      "name": "National Center for Atmospheric Research",
+      "country_code": "US",
+      "region": "Colorado",
+      "domain": "ucar.edu"
+    },
+    {
+      "name": "National Oceanic and Atmospheric Administration",
+      "country_code": "US",
+      "region": "Maryland",
+      "domain": "noaa.gov"
+    },
+    {
+      "name": "United States Geological Survey",
+      "country_code": "US",
+      "region": "Virginia",
+      "domain": "usgs.gov"
+    },
+    {
+      "name": "US Army Research Laboratory",
+      "country_code": "US",
+      "region": "Maryland",
+      "domain": "army.mil"
+    },
+    {
+      "name": "US Naval Research Laboratory",
+      "country_code": "US",
+      "region": "District of Columbia",
+      "domain": "nrl.navy.mil"
+    },
+    {
+      "name": "Air Force Research Laboratory",
+      "country_code": "US",
+      "region": "Ohio",
+      "domain": "us.af.mil"
+    },
+    {
+      "name": "MIT Lincoln Laboratory",
+      "country_code": "US",
+      "region": "Massachusetts",
+      "domain": "ll.mit.edu"
+    },
+    {
+      "name": "Johns Hopkins Applied Physics Laboratory",
+      "country_code": "US",
+      "region": "Maryland",
+      "domain": "jhuapl.edu"
+    },
+    {
+      "name": "RAND Corporation",
+      "country_code": "US",
+      "region": "California",
+      "domain": "rand.org"
+    },
+    {
+      "name": "SRI International",
+      "country_code": "US",
+      "region": "California",
+      "domain": "sri.com"
+    },
+    {
+      "name": "Broad Institute of MIT and Harvard",
+      "country_code": "US",
+      "region": "Massachusetts",
+      "domain": "broadinstitute.org"
+    },
+    {
+      "name": "Cold Spring Harbor Laboratory",
+      "country_code": "US",
+      "region": "New York",
+      "domain": "cshl.edu"
+    },
+    {
+      "name": "Howard Hughes Medical Institute",
+      "country_code": "US",
+      "region": "Maryland",
+      "domain": "hhmi.org"
+    },
+    {
+      "name": "Janelia Research Campus",
+      "country_code": "US",
+      "region": "Virginia",
+      "domain": "janelia.hhmi.org"
+    },
+    {
+      "name": "Jackson Laboratory",
+      "country_code": "US",
+      "region": "Maine",
+      "domain": "jax.org"
+    },
+    {
+      "name": "Salk Institute for Biological Studies",
+      "country_code": "US",
+      "region": "California",
+      "domain": "salk.edu"
+    },
+    {
+      "name": "Scripps Research",
+      "country_code": "US",
+      "region": "California",
+      "domain": "scripps.edu"
+    },
+    {
+      "name": "Allen Institute",
+      "country_code": "US",
+      "region": "Washington",
+      "domain": "alleninstitute.org"
+    },
+    {
+      "name": "Santa Fe Institute",
+      "country_code": "US",
+      "region": "New Mexico",
+      "domain": "santafe.edu"
+    },
+    {
+      "name": "Marine Biological Laboratory",
+      "country_code": "US",
+      "region": "Massachusetts",
+      "domain": "mbl.edu"
+    },
+    {
+      "name": "Woods Hole Oceanographic Institution",
+      "country_code": "US",
+      "region": "Massachusetts",
+      "domain": "whoi.edu"
+    },
+    {
+      "name": "Monterey Bay Aquarium Research Institute",
+      "country_code": "US",
+      "region": "California",
+      "domain": "mbari.org"
+    },
+    {
+      "name": "Space Telescope Science Institute",
+      "country_code": "US",
+      "region": "Maryland",
+      "domain": "stsci.edu"
+    },
+    {
+      "name": "National Radio Astronomy Observatory",
+      "country_code": "US",
+      "region": "Virginia",
+      "domain": "nrao.edu"
+    },
+    {
+      "name": "Flatiron Institute",
+      "country_code": "US",
+      "region": "New York",
+      "domain": "simonsfoundation.org"
+    },
+    {
+      "name": "Allen Institute for AI",
+      "country_code": "US",
+      "region": "Washington",
+      "domain": "allenai.org"
+    },
+    {
+      "name": "CERN",
+      "country_code": "CH",
+      "region": "Geneva",
+      "domain": "cern.ch"
+    },
+    {
+      "name": "Paul Scherrer Institute",
+      "country_code": "CH",
+      "region": "Aargau",
+      "domain": "psi.ch"
+    },
+    {
+      "name": "European Molecular Biology Laboratory",
+      "country_code": "DE",
+      "region": "Baden-Württemberg",
+      "domain": "embl.de"
+    },
+    {
+      "name": "Max Planck Society",
+      "country_code": "DE",
+      "region": "Bavaria",
+      "domain": "mpg.de"
+    },
+    {
+      "name": "Fraunhofer Society",
+      "country_code": "DE",
+      "region": "Bavaria",
+      "domain": "fraunhofer.de"
+    },
+    {
+      "name": "Helmholtz Association",
+      "country_code": "DE",
+      "region": "Berlin",
+      "domain": "helmholtz.de"
+    },
+    {
+      "name": "Deutsches Elektronen-Synchrotron DESY",
+      "country_code": "DE",
+      "region": "Hamburg",
+      "domain": "desy.de"
+    },
+    {
+      "name": "Forschungszentrum Jülich",
+      "country_code": "DE",
+      "region": "North Rhine-Westphalia",
+      "domain": "fz-juelich.de"
+    },
+    {
+      "name": "Leibniz Association",
+      "country_code": "DE",
+      "region": "Berlin",
+      "domain": "leibniz-gemeinschaft.de"
+    },
+    {
+      "name": "Centre National de la Recherche Scientifique",
+      "country_code": "FR",
+      "region": "Paris",
+      "domain": "cnrs.fr"
+    },
+    {
+      "name": "Inria",
+      "country_code": "FR",
+      "region": "Île-de-France",
+      "domain": "inria.fr"
+    },
+    {
+      "name": "Commissariat à l'énergie atomique et aux énergies alternatives",
+      "country_code": "FR",
+      "region": "Île-de-France",
+      "domain": "cea.fr"
+    },
+    {
+      "name": "Institut Pasteur",
+      "country_code": "FR",
+      "region": "Paris",
+      "domain": "pasteur.fr"
+    },
+    {
+      "name": "INSERM",
+      "country_code": "FR",
+      "region": "Paris",
+      "domain": "inserm.fr"
+    },
+    {
+      "name": "European Southern Observatory",
+      "country_code": "DE",
+      "region": "Bavaria",
+      "domain": "eso.org"
+    },
+    {
+      "name": "European Space Agency",
+      "country_code": "FR",
+      "region": "Paris",
+      "domain": "esa.int"
+    },
+    {
+      "name": "Rutherford Appleton Laboratory",
+      "country_code": "GB",
+      "region": "Oxfordshire",
+      "domain": "stfc.ac.uk"
+    },
+    {
+      "name": "Diamond Light Source",
+      "country_code": "GB",
+      "region": "Oxfordshire",
+      "domain": "diamond.ac.uk"
+    },
+    {
+      "name": "Wellcome Sanger Institute",
+      "country_code": "GB",
+      "region": "Cambridgeshire",
+      "domain": "sanger.ac.uk"
+    },
+    {
+      "name": "Francis Crick Institute",
+      "country_code": "GB",
+      "region": "London",
+      "domain": "crick.ac.uk"
+    },
+    {
+      "name": "Alan Turing Institute",
+      "country_code": "GB",
+      "region": "London",
+      "domain": "turing.ac.uk"
+    },
+    {
+      "name": "National Physical Laboratory",
+      "country_code": "GB",
+      "region": "London",
+      "domain": "npl.co.uk"
+    },
+    {
+      "name": "UK Atomic Energy Authority",
+      "country_code": "GB",
+      "region": "Oxfordshire",
+      "domain": "ukaea.uk"
+    },
+    {
+      "name": "National Research Council Canada",
+      "country_code": "CA",
+      "region": "Ontario",
+      "domain": "nrc-cnrc.gc.ca"
+    },
+    {
+      "name": "TRIUMF",
+      "country_code": "CA",
+      "region": "British Columbia",
+      "domain": "triumf.ca"
+    },
+    {
+      "name": "Perimeter Institute for Theoretical Physics",
+      "country_code": "CA",
+      "region": "Ontario",
+      "domain": "perimeterinstitute.ca"
+    },
+    {
+      "name": "Mila — Quebec AI Institute",
+      "country_code": "CA",
+      "region": "Quebec",
+      "domain": "mila.quebec"
+    },
+    {
+      "name": "Vector Institute",
+      "country_code": "CA",
+      "region": "Ontario",
+      "domain": "vectorinstitute.ai"
+    },
+    {
+      "name": "RIKEN",
+      "country_code": "JP",
+      "region": "Saitama",
+      "domain": "riken.jp"
+    },
+    {
+      "name": "Japan Aerospace Exploration Agency",
+      "country_code": "JP",
+      "region": "Tokyo",
+      "domain": "jaxa.jp"
+    },
+    {
+      "name": "National Institute of Advanced Industrial Science and Technology",
+      "country_code": "JP",
+      "region": "Ibaraki",
+      "domain": "aist.go.jp"
+    },
+    {
+      "name": "High Energy Accelerator Research Organization KEK",
+      "country_code": "JP",
+      "region": "Ibaraki",
+      "domain": "kek.jp"
+    },
+    {
+      "name": "Chinese Academy of Sciences",
+      "country_code": "CN",
+      "region": "Beijing",
+      "domain": "cas.cn"
+    },
+    {
+      "name": "Beijing Academy of Artificial Intelligence",
+      "country_code": "CN",
+      "region": "Beijing",
+      "domain": "baai.ac.cn"
+    },
+    {
+      "name": "Agency for Science, Technology and Research",
+      "country_code": "SG",
+      "region": "Singapore",
+      "domain": "a-star.edu.sg"
+    },
+    {
+      "name": "Korea Institute of Science and Technology",
+      "country_code": "KR",
+      "region": "Seoul",
+      "domain": "kist.re.kr"
+    },
+    {
+      "name": "Electronics and Telecommunications Research Institute",
+      "country_code": "KR",
+      "region": "Daejeon",
+      "domain": "etri.re.kr"
+    },
+    {
+      "name": "Indian Council of Agricultural Research",
+      "country_code": "IN",
+      "region": "Delhi",
+      "domain": "icar.gov.in"
+    },
+    {
+      "name": "Council of Scientific and Industrial Research",
+      "country_code": "IN",
+      "region": "Delhi",
+      "domain": "csir.res.in"
+    },
+    {
+      "name": "Tata Institute of Fundamental Research",
+      "country_code": "IN",
+      "region": "Maharashtra",
+      "domain": "tifr.res.in"
+    },
+    {
+      "name": "Bhabha Atomic Research Centre",
+      "country_code": "IN",
+      "region": "Maharashtra",
+      "domain": "barc.gov.in"
+    },
+    {
+      "name": "Commonwealth Scientific and Industrial Research Organisation",
+      "country_code": "AU",
+      "region": "Australian Capital Territory",
+      "domain": "csiro.au"
+    },
+    {
+      "name": "Australian Nuclear Science and Technology Organisation",
+      "country_code": "AU",
+      "region": "New South Wales",
+      "domain": "ansto.gov.au"
+    },
+    {
+      "name": "Walter and Eliza Hall Institute of Medical Research",
+      "country_code": "AU",
+      "region": "Victoria",
+      "domain": "wehi.edu.au"
+    },
+    {
+      "name": "Weizmann Institute of Science",
+      "country_code": "IL",
+      "region": "Central District",
+      "domain": "weizmann.ac.il"
+    },
+    {
+      "name": "Netherlands Organisation for Applied Scientific Research TNO",
+      "country_code": "NL",
+      "region": "South Holland",
+      "domain": "tno.nl"
+    },
+    {
+      "name": "Nikhef",
+      "country_code": "NL",
+      "region": "North Holland",
+      "domain": "nikhef.nl"
+    },
+    {
+      "name": "Norwegian Institute of Science and Technology SINTEF",
+      "country_code": "NO",
+      "region": "Trøndelag",
+      "domain": "sintef.no"
+    },
+    {
+      "name": "Consejo Superior de Investigaciones Científicas",
+      "country_code": "ES",
+      "region": "Madrid",
+      "domain": "csic.es"
+    },
+    {
+      "name": "Barcelona Supercomputing Center",
+      "country_code": "ES",
+      "region": "Catalonia",
+      "domain": "bsc.es"
+    },
+    {
+      "name": "Istituto Nazionale di Fisica Nucleare",
+      "country_code": "IT",
+      "region": "Lazio",
+      "domain": "infn.it"
+    },
+    {
+      "name": "Consiglio Nazionale delle Ricerche",
+      "country_code": "IT",
+      "region": "Lazio",
+      "domain": "cnr.it"
+    },
+    {
+      "name": "Italian Institute of Technology",
+      "country_code": "IT",
+      "region": "Liguria",
+      "domain": "iit.it"
+    },
+    {
+      "name": "Academia Sinica",
+      "country_code": "TW",
+      "region": "Taipei",
+      "domain": "sinica.edu.tw"
+    },
+    {
+      "name": "African Institute for Mathematical Sciences",
+      "country_code": "ZA",
+      "region": "Western Cape",
+      "domain": "aims.ac.za"
+    },
+    {
+      "name": "Council for Scientific and Industrial Research South Africa",
+      "country_code": "ZA",
+      "region": "Gauteng",
+      "domain": "csir.co.za"
+    },
+    {
+      "name": "Instituto Nacional de Pesquisas Espaciais",
+      "country_code": "BR",
+      "region": "São Paulo",
+      "domain": "inpe.br"
+    },
+    {
+      "name": "International Institute for Applied Systems Analysis",
+      "country_code": "AT",
+      "region": "Lower Austria",
+      "domain": "iiasa.ac.at"
+    },
+    {
+      "name": "Institute of Science and Technology Austria",
+      "country_code": "AT",
+      "region": "Lower Austria",
+      "domain": "ist.ac.at"
+    }
+  ]
+}

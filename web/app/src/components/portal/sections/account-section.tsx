@@ -6,6 +6,7 @@ import { Card } from "@/components/portal/primitives/card";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { BillingSection } from "@/components/portal/sections/billing-section";
 import { Button } from "@/components/ui/button";
+import { InstitutionPicker } from "@/components/ui/institution-picker";
 import {
   changeEmail,
   changePassword,
@@ -181,13 +182,14 @@ function IdentityCard({
           <label className={labelClass} htmlFor="affiliation">
             Affiliation
           </label>
-          <input
+          <InstitutionPicker
             id="affiliation"
-            className={fieldClass}
-            placeholder="Florida State University"
             value={institution}
+            onChange={setInstitution}
+            email={account?.email}
             disabled={!account}
-            onChange={(event) => setInstitution(event.target.value)}
+            inputClassName={fieldClass}
+            placeholder="Florida State University"
           />
         </div>
 

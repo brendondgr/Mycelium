@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { ClusterOrganizer } from "@/components/onboarding/cluster-organizer";
 import { Chip, TokenField, dedupe, inputClass } from "@/components/onboarding/fields";
+import { InstitutionPicker } from "@/components/ui/institution-picker";
 import {
   EditorField,
   EditorModal,
@@ -383,14 +384,24 @@ function ProfileEditorForm({
           ))}
         </div>
       </div>
-      <EditorField label="Institution">
-        <input
+      {/* Not an `EditorField`: that primitive wraps its child in a `<label>`,
+          and a combobox's option list must not live inside one — every click on
+          a row would be a click on the label. */}
+      <div className="block">
+        <label
+          className="mb-1.5 block text-[13px] font-medium text-[var(--text-primary)]"
+          htmlFor="profile-institution"
+        >
+          Institution
+        </label>
+        <InstitutionPicker
+          id="profile-institution"
           value={institution}
-          onChange={(event) => setInstitution(event.target.value)}
+          onChange={setInstitution}
+          inputClassName={inputClass}
           placeholder="University of Example"
-          className={inputClass}
         />
-      </EditorField>
+      </div>
     </EditorSection>
   );
 

@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { InstitutionPicker } from "@/components/ui/institution-picker";
 import { MyloMark } from "@/components/brand/mylo-mark";
 import {
   ClusterOrganizer,
@@ -1017,13 +1018,18 @@ export function OnboardingFlow({
             Institution{" "}
             <span className="text-[var(--text-muted)]">(optional)</span>
           </label>
-          <input
+          <InstitutionPicker
             id="institution"
-            type="text"
             value={institution}
-            onChange={(event) => setInstitution(event.target.value)}
-            className={inputClass}
+            onChange={setInstitution}
+            email={email}
+            inputClassName={inputClass}
+            describedBy="institution-hint"
           />
+          <p className="text-xs text-[var(--text-muted)]" id="institution-hint">
+            Search the directory, or type a national lab, agency or institute of
+            your own — whatever you write is kept.
+          </p>
         </div>
       </div>
     </div>

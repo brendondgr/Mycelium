@@ -35,6 +35,7 @@ import {
   useMyDepartments,
   useProjectMembership,
 } from "@/lib/portal/hooks";
+import { InstitutionPicker } from "@/components/ui/institution-picker";
 import { ApiError } from "@/lib/api-error";
 import { SECTION_ROUTES } from "@/lib/portal/routes";
 import type { ClusterGroup } from "@/lib/auth-types";
@@ -987,6 +988,7 @@ function CreateLabModal({
  */
 function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
   const create = useCreateDepartment();
+  const { user } = usePortal();
   const [name, setName] = React.useState("");
   const [institution, setInstitution] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -1054,14 +1056,24 @@ function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
               className={INPUT}
             />
           </Field>
-          <Field label="Institution">
-            <input
+          {/* Not a `Field`: that wraps its child in a `<label>`, and a
+              combobox's option list must not sit inside one. */}
+          <div>
+            <label
+              className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]"
+              htmlFor="department-institution"
+            >
+              Institution
+            </label>
+            <InstitutionPicker
+              id="department-institution"
               value={institution}
-              onChange={(e) => setInstitution(e.target.value)}
+              onChange={setInstitution}
+              email={user?.email}
+              inputClassName={INPUT}
               placeholder="Northgate University"
-              className={INPUT}
             />
-          </Field>
+          </div>
 
           {error ? (
             <p className="text-[12.5px] text-clay" role="alert">
