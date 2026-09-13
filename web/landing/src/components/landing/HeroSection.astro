@@ -6,12 +6,22 @@ import { appLoginUrl, primaryCta } from "@/data/site";
   class="relative min-h-[min(92vh,52rem)] overflow-hidden border-b border-border sm:min-h-[min(88vh,48rem)]"
   aria-labelledby="hero-heading"
 >
+  {/*
+    The crop walks left as the viewport narrows. `object-cover` on a 2.37:1
+    master in a tall container throws away most of the width — a phone sees
+    about a fifth of it — and the copy sits on the left at every size. Holding
+    a right-hand position there framed Mylo directly under the headline, so
+    narrow screens take the open cream instead and he returns from `lg` up,
+    where the copy column no longer reaches that far across. Past ~1900px the
+    container is wider than the master's ratio, the crop turns vertical, and
+    these values stop applying at all.
+  */}
   <img
     src="/images/mylo-hero-1600.webp"
     srcset="/images/mylo-hero-900.webp 900w, /images/mylo-hero-1600.webp 1600w"
     sizes="100vw"
     alt="Mylo, the Mycelium mushroom scout, following a sunlit forest trail with a magnifying glass, a field pack, and an open map"
-    class="absolute inset-0 h-full w-full object-cover object-[70%_center] sm:object-[65%_center]"
+    class="absolute inset-0 h-full w-full object-cover object-[8%_center] sm:object-[18%_center] md:object-[32%_center] lg:object-[50%_center] xl:object-[62%_center]"
     width="1600"
     height="674"
     fetchpriority="high"
