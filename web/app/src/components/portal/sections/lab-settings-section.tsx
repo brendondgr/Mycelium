@@ -13,11 +13,12 @@ import {
 } from "@/components/portal/sections/lab-editor-modal";
 import {
   DiscordSyncCard,
-  InviteCard,
   LabPurposeCard,
   MembersCard,
   ProjectsCard,
 } from "@/components/portal/sections/labs-section";
+import { OrgInviteCard } from "@/components/portal/sections/org-invite-card";
+import { usePortal } from "@/components/portal/portal-context";
 import { labLogoUrl } from "@/lib/portal/client";
 import { useDeleteLabLogo, useUploadLabLogo } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
@@ -54,6 +55,7 @@ const MAX_BYTES = 2 * 1024 * 1024;
  * it displayed, and its one unique field (cadence) is now a tab in the editor.
  */
 export function LabSettingsSection({ lab }: { lab: MyLab }) {
+  const { user } = usePortal();
   const [editorTab, setEditorTab] = React.useState<LabEditorTab | null>(null);
 
   if (!canManageLab(lab)) {
@@ -90,7 +92,12 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
             monetary sits in the middle of configuring the lab. */}
         <div className="space-y-4">
           <LabLogoCard lab={lab} />
-          <InviteCard lab={lab} />
+          <OrgInviteCard
+            kind="lab"
+            id={lab.slug}
+            canInvite
+            isVerified={user.isVerified}
+          />
           <DiscordSyncCard lab={lab} />
           <DiscordHealthCard lab={lab} />
           <ProjectsCard lab={lab} canManage />

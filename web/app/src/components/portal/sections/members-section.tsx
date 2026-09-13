@@ -4,11 +4,14 @@ import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
+import { Modal, ModalHeader } from "@/components/portal/primitives/modal";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { MembersIcon, PlusIcon } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
 import { useLabMembers } from "@/lib/portal/hooks";
+import { canManageLab } from "@/lib/portal/nav";
 import { MemberRow } from "@/components/portal/sections/member-row";
+import { OrgInvitePanel } from "@/components/portal/sections/org-invite-card";
 
 // ---------------------------------------------------------------------------
 // Skeleton row — shown while members are loading
@@ -33,10 +36,16 @@ function SkeletonRow() {
 // ---------------------------------------------------------------------------
 
 export function MembersSection() {
-  const { currentLab, scopeLabel } = usePortal();
+  const { currentLab, scopeLabel, user } = usePortal();
   const { data: members, isLoading, isError } = useLabMembers(
     currentLab?.slug,
   );
+  const [inviting, setInviting] = React.useState(false);
+
+  // No lab in scope means no roster and nothing to invite to; a plain member has
+  // a roster but no authority over it. Either way the control is absent rather
+  // than present-and-refusing, because there is no error worth explaining.
+  const canInvite = Boolean(currentLab && canManageLab(currentLab));
 
   // Subtitle varies: unscoped vs. loaded vs. loading
   const subtitle: React.ReactNode = (() => {
@@ -50,19 +59,17 @@ export function MembersSection() {
     return `Members of ${currentLab.name}.`;
   })();
 
-  // Disabled "Invite member" button (coming soon)
-  const inviteButton = (
+  /** Opens the shared invite panel over the roster the manager was reading. */
+  const inviteButton = canInvite ? (
     <button
       type="button"
-      disabled
-      title="Inviting — coming soon"
-      aria-disabled="true"
-      className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] opacity-60"
+      onClick={() => setInviting(true)}
+      className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <PlusIcon size={14} aria-hidden="true" />
       Invite member
     </button>
-  );
+  ) : null;
 
   return (
     <div>
@@ -99,6 +106,29 @@ export function MembersSection() {
           ))}
         </Card>
       )}
+
+      {/* Left open after a send: someone inviting from the roster is usually
+          inviting several people, and the outcome is reported inside the panel. */}
+      {inviting && currentLab ? (
+        <Modal
+          onClose={() => setInviting(false)}
+          label={`Invite people to ${currentLab.name}`}
+        >
+          <ModalHeader
+            eyebrow="Members"
+            title={`Invite people to ${currentLab.name}`}
+            onClose={() => setInviting(false)}
+          />
+          <div className="px-5 py-4">
+            <OrgInvitePanel
+              kind="lab"
+              id={currentLab.slug}
+              canInvite
+              isVerified={user.isVerified}
+            />
+          </div>
+        </Modal>
+      ) : null}
     </div>
   );
 }

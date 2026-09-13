@@ -26,7 +26,6 @@ import {
   useCreateDepartment,
   useCreateLab,
   useCreateProject,
-  useInviteToLab,
   useIssueLabActivationCode,
   useLabBilling,
   useLabDiscordStatus,
@@ -396,7 +395,6 @@ export function LabDetail({
           isVerified={user.isVerified}
         />
       ) : null}
-      {canManage ? <InviteCard lab={lab} /> : null}
       {canManage ? <DiscordSyncCard lab={lab} /> : null}
       <MembersCard lab={lab} />
       <ProjectsCard lab={lab} canManage={canManage} />
@@ -549,79 +547,6 @@ function Field({
       </span>
       {children}
     </label>
-  );
-}
-
-// -- Invite -------------------------------------------------------------------
-
-export function InviteCard({ lab }: { lab: MyLab }) {
-  const invite = useInviteToLab(lab.slug);
-  const [identifier, setIdentifier] = React.useState("");
-  const [role, setRole] = React.useState("member");
-  const [message, setMessage] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const value = identifier.trim();
-    if (!value) {
-      return;
-    }
-    setMessage(null);
-    setError(null);
-    invite.mutate(
-      { identifier: value, role },
-      {
-        onSuccess: () => {
-          setMessage(`Invitation sent to ${value}.`);
-          setIdentifier("");
-        },
-        onError: (e2) => setError((e2 as Error).message),
-      },
-    );
-  };
-
-  return (
-    <DetailCard title="Add someone already on Mycelium">
-      <form className="flex flex-col gap-2 sm:flex-row" onSubmit={submit}>
-        <input
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-          placeholder="Username"
-          aria-label="Invite by username"
-          className={cn(INPUT, "sm:flex-1")}
-        />
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          aria-label="Role"
-          className="rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="member">Member</option>
-          <option value="admin">Admin</option>
-          <option value="viewer">Viewer</option>
-        </select>
-        <button
-          type="submit"
-          className={PRIMARY_BUTTON}
-          disabled={invite.isPending || !identifier.trim()}
-        >
-          {invite.isPending ? "Sending…" : "Invite"}
-        </button>
-      </form>
-      <p className="mt-2 text-[12px] text-[var(--text-secondary)]">
-        A username lands in that person&apos;s notifications, with nothing mailed.
-        To reach someone who may not have an account, use an invitation above.
-      </p>
-      {message ? (
-        <p className="mt-2 text-[12.5px] text-primary">{message}</p>
-      ) : null}
-      {error ? (
-        <p className="mt-2 text-[12.5px] text-clay" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </DetailCard>
   );
 }
 
