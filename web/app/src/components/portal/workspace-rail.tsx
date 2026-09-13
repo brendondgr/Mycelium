@@ -38,11 +38,24 @@ function RailTooltip({ tip }: { tip: TipState }) {
   return createPortal(
     <span
       aria-hidden
-      style={{ left: tip.x, top: tip.y }}
-      className="pointer-events-none fixed z-[60] -translate-y-1/2 whitespace-nowrap rounded-lg border border-[var(--divider)] bg-[var(--brand-panel)] px-2.5 py-1.5 text-[12px] font-medium leading-tight text-[var(--brand-panel-foreground)] shadow-[var(--shadow)]"
+      style={{
+        left: tip.x,
+        top: tip.y,
+        // Set inline, with a literal fallback, rather than as a utility class.
+        // The label floats over page content, so a background that fails to
+        // resolve for any reason leaves text sitting directly on whatever is
+        // underneath — unreadable, and the one failure mode worth spending an
+        // inline style to rule out entirely.
+        backgroundColor: "var(--brand-panel, #2f3b24)",
+        color: "var(--brand-panel-foreground, #f2ebdd)",
+      }}
+      className="pointer-events-none fixed z-[60] -translate-y-1/2 whitespace-nowrap rounded-lg border border-[var(--divider)] px-2.5 py-1.5 text-[12px] font-medium leading-tight shadow-[var(--shadow)]"
     >
       {/* A small notch, so the label reads as attached to its tile. */}
-      <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-[var(--divider)] bg-[var(--brand-panel)]" />
+      <span
+        style={{ backgroundColor: "var(--brand-panel, #2f3b24)" }}
+        className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-[var(--divider)]"
+      />
       <span className="relative">
         {tip.label}
         {/* The personal space is named after its own kind, so qualifying it
