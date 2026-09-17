@@ -1,0 +1,76 @@
+{
+ "calls_total": 67,
+ "confidence_mean": 0.4889,
+ "cost_usd_main_pass": 0.00272,
+ "cost_usd_total": 0.00314,
+ "determinism_max_abs_diff_fit_score": 0.13,
+ "determinism_max_abs_diff_worth": 0.03,
+ "determinism_pairs": 5,
+ "distinct_fit_per_theme_mean": 9.1667,
+ "input_tokens_determinism_extra": 9998,
+ "input_tokens_per_pair_mean": 1137.7895,
+ "input_tokens_total": 64854,
+ "latency_ms_median": 195.40845789015293,
+ "latency_ms_p95": 516.5091389790177,
+ "n_pairs_answered": 57,
+ "n_pairs_failed": 0,
+ "n_pairs_with_stored_verdict": 57,
+ "output_tokens_total": 2821,
+ "per_theme": {
+  "conference::AI for Healthcare & Cybersecurity": {
+   "distinct_fit_scores": 10,
+   "mean_area_question": 0.606,
+   "mean_worth": 0.38,
+   "n": 10,
+   "tau_fused_vs_worth": -0.15555555555555556,
+   "verdict_exact": 0.7
+  },
+  "conference::Agentic AI & Knowledge Graphs": {
+   "distinct_fit_scores": 9,
+   "mean_area_question": 0.6611,
+   "mean_worth": 0.5478,
+   "n": 9,
+   "tau_fused_vs_worth": -0.08333333333333333,
+   "verdict_exact": 0.5556
+  },
+  "conference::Local-First LLM Systems": {
+   "distinct_fit_scores": 9,
+   "mean_area_question": 0.44,
+   "mean_worth": 0.3244,
+   "n": 9,
+   "tau_fused_vs_worth": 0.19444444444444445,
+   "verdict_exact": 0.5556
+  },
+  "grant::AI for Healthcare & Cybersecurity": {
+   "distinct_fit_scores": 10,
+   "mean_area_question": 0.303,
+   "mean_worth": 0.528,
+   "n": 10,
+   "tau_fused_vs_worth": 0.35555555555555557,
+   "verdict_exact": 0.5
+  },
+  "grant::Agentic AI & Knowledge Graphs": {
+   "distinct_fit_scores": 9,
+   "mean_area_question": 0.328,
+   "mean_worth": 0.258,
+   "n": 10,
+   "tau_fused_vs_worth": -0.24444444444444444,
+   "verdict_exact": 0.5
+  },
+  "grant::Local-First LLM Systems": {
+   "distinct_fit_scores": 8,
+   "mean_area_question": 0.2689,
+   "mean_worth": 0.1344,
+   "n": 9,
+   "tau_fused_vs_worth": 0.3055555555555556,
+   "verdict_exact": 0.5556
+  }
+ },
+ "tau_max": 0.35555555555555557,
+ "tau_mean": 0.062,
+ "tau_min": -0.24444444444444444,
+ "verdict_exact": 0.5614,
+ "verdict_within_one": 0.7719,
+ "wall_seconds": 4.0,
+ "worth_mean": 0.3635
+}

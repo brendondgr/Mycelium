@@ -1,0 +1,117 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-09-003
+slug: typesafe-personal-opportunities
+title: Does a calibrated decision model agree with the fused order and the LLM verdicts on one reader's grant and conference slates?
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-09-17
+date_completed: 2026-09-17
+authors: [brendondgr]
+
+purpose: >
+  First use of TypeSafe's Jev decision model in this repository, on the smallest
+  real thing it can be judged against: one reader's current grant and
+  conference slates, 57 (theme, item) pairs across three declared themes. Each
+  pair is sent once with three typed questions — a four-level fit Score whose
+  levels are the product's own read/skim/file/skip verdicts, a worth Noul, and
+  an area question (grant eligibility or conference venue fit). The record
+  compares the answers with the two system outputs it already holds for every
+  pair, the fused slate position and the prose model's stored verdict, and
+  measures cost, latency and determinism from the API's own usage block. No
+  relevance judgements exist; the reader's reading of tables/*.md is the next
+  step and is a preference, not a label. Bears on C-004 (calibration half),
+  C-016 (pointwise discrimination) and C-026.
+
+hypothesis: >
+  Pre-registered in PROTOCOL.md before any call. PRIMARY: TypeSafe's argmax fit
+  level agrees exactly with the stored LLM verdict on >= 50% of pairs and within
+  one step on >= 85%; falsifier: exact agreement <= 30%. SECONDARY (a prior, no
+  falsifier): Kendall tau between fused position and worth averages 0.1-0.5 per
+  theme. DETERMINISM: repeated calls on five pairs differ by <= 0.01 in worth;
+  falsifier: any difference > 0.05.
+  OUTCOME: exact agreement 0.561 (bar met, falsifier far), within-one 0.772 (bar
+  missed; 13 pairs two or more steps apart, TypeSafe mostly the harsher judge).
+  Tau +0.062 mean, range -0.244 to +0.356: below the prior — fused order and
+  worth are uncorrelated on these slates. Worth repeat spread 0.03 (between bar
+  and falsifier; single-run numbers stand with that caveat); fit-score spread
+  0.13 on the 0-3 scale. Distinct fit scores per ten-item theme 9.17 against the
+  1.99 of the LLM rubric in EXP-2026-08-008.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: bedb05e
+  branch: main
+  entrypoint: "uv run --project eval python docs/research/experiments/EXP-2026-09-003-typesafe-personal-opportunities/code/run.py --user brendondgr && uv run --project eval python docs/research/experiments/EXP-2026-09-003-typesafe-personal-opportunities/code/analyse.py"
+  dirty: true  # the client, its tests, the settings block and this folder were uncommitted at run time; ISSUES.md 1
+config:
+  path: docs/research/experiments/EXP-2026-09-003-typesafe-personal-opportunities/code/run.py
+  hash: null
+data:
+  name: Mycelium production RelevanceScore store (development deployment), one reader
+  version: "compose postgres (pgvector/pgvector:pg17) at localhost:11450; slates as produced by the daily run current on 2026-09-17"
+  split: test
+  n_examples: 57 # (theme, item) pairs: 29 grant, 28 conference, over 3 themes
+  qrels: "none — both comparators (fused position, stored LLM verdict) are system outputs; see PROTOCOL.md Data and ISSUES.md 3"
+  hash: null
+  card: null
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: "pgvector/pgvector:pg17 for the store; the script runs on the host"
+compute:
+  hardware: "20 CPU cores, 62 GB RAM, Quadro RTX 5000 16 GB (unused); TypeSafe inference is remote"
+  wall_clock_hours: 0.002 # 4.0 s main pass at concurrency 8, plus the 10 determinism repeats
+  estimated_cost_usd: 0.00314 # 74,852 input tokens at $0.042 per million, list price read 2026-09-17; output free
+
+# --- LLM block ---------------------------------------------------------------
+llm:
+  model: "typesafe/jev-1.13.0"
+  temperature: null # the API exposes no sampling controls
+  max_tokens: null
+  prompt_files: ["code/run.py"]
+  prompt_hash: null
+  total_input_tokens: 74852 # 64,854 main pass + 9,998 determinism repeats
+  total_output_tokens: 2821 # main pass; billed at zero
+  nondeterminism_note: >
+    Undocumented by the provider. Measured in-run on five pairs asked three
+    times: worth moved by at most 0.03, the 0-3 fit score by at most 0.13.
+    Single-run numbers are reported with that spread stated.
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: verdict_exact (share of pairs where argmax fit level equals the stored LLM verdict)
+  values:
+    verdict_exact: 0.5614 # n=57
+    verdict_within_one: 0.7719 # n=57
+    n_disagreements_two_steps: 13
+    tau_mean_fused_vs_worth: 0.062 # mean over 6 themes; min -0.2444, max 0.3556
+    distinct_fit_per_theme_mean: 9.1667 # 6 themes of 9-10 rows
+    confidence_mean: 0.4889
+    worth_mean: 0.3635
+    determinism_max_abs_diff_worth: 0.03 # 5 pairs x 3 calls
+    determinism_max_abs_diff_fit_score: 0.13 # 0-3 scale
+    input_tokens_total_main: 64854
+    input_tokens_per_pair_mean: 1137.79
+    cost_usd_total: 0.00314
+    latency_ms_median: 195.4
+    latency_ms_p95: 516.5
+    wall_seconds: 4.0
+baselines_compared: [fused slate position, stored LLM verdict]
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-026]
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-008, EXP-2026-08-013]

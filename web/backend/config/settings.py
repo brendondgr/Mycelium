@@ -402,6 +402,17 @@ LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
 # reserves room to reason before answering. Keep >= 512 (see clusters.py).
 LLM_THINKING_BUDGET = env.int("LLM_THINKING_BUDGET", default=512)
 
+# TypeSafe System One (apps/core/systemone.py). A decision model, not a text
+# generator: typed questions in, calibrated probabilities out. Prototype seam
+# only — no production path calls it. The model is pinned to a version rather
+# than the `jev-latest` alias so an experiment names the thing that answered.
+TYPESAFE_API_KEY = env("TYPESAFE_API_KEY", default="")
+TYPESAFE_MODEL = env("TYPESAFE_MODEL", default="jev-1.13.0")
+TYPESAFE_BASE_URL = env("TYPESAFE_BASE_URL", default="https://api.typesafe.ai")
+TYPESAFE_TIMEOUT = env.float("TYPESAFE_TIMEOUT", default=10.0)
+# Retries belong to the caller, as with LLM_MAX_RETRIES.
+TYPESAFE_MAX_RETRIES = env.int("TYPESAFE_MAX_RETRIES", default=0)
+
 # Daily-suggestion ranking (apps.content.ranking). Weight applied to a paper's
 # research-focus overlap when re-ranking retrieved papers: blended score =
 # similarity + AREA_FOCUS_WEIGHT * focus_overlap. 0 disables the focus boost.

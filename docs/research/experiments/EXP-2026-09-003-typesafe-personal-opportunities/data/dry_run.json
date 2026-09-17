@@ -1,0 +1,17 @@
+{
+ "user": "brendondgr",
+ "model": "jev-1.13.0",
+ "pairs": 57,
+ "by_area": {
+  "grant": 29,
+  "conference": 28
+ },
+ "by_theme": {
+  "Agentic AI & Knowledge Graphs": 19,
+  "AI for Healthcare & Cybersecurity": 20,
+  "Local-First LLM Systems": 18
+ },
+ "estimated_input_tokens": 31684,
+ "estimated_cost_usd": 0.0013,
+ "sample_state_chars": 1578
+}

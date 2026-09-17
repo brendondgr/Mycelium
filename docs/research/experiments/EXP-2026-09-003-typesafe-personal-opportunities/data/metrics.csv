@@ -1,0 +1,61 @@
+metric,value
+n_pairs_answered,57
+n_pairs_failed,0
+n_pairs_with_stored_verdict,57
+verdict_exact,0.5614
+verdict_within_one,0.7719
+tau_mean,0.062
+tau_min,-0.24444444444444444
+tau_max,0.35555555555555557
+distinct_fit_per_theme_mean,9.1667
+confidence_mean,0.4889
+worth_mean,0.3635
+determinism_max_abs_diff_worth,0.03
+determinism_max_abs_diff_fit_score,0.13
+determinism_pairs,5
+input_tokens_determinism_extra,9998
+calls_total,67
+cost_usd_total,0.00314
+input_tokens_total,64854
+output_tokens_total,2821
+input_tokens_per_pair_mean,1137.7895
+cost_usd_main_pass,0.00272
+latency_ms_median,195.40845789015293
+latency_ms_p95,516.5091389790177
+wall_seconds,4.0
+conference::AI for Healthcare & Cybersecurity::n,10
+conference::AI for Healthcare & Cybersecurity::tau_fused_vs_worth,-0.15555555555555556
+conference::AI for Healthcare & Cybersecurity::distinct_fit_scores,10
+conference::AI for Healthcare & Cybersecurity::verdict_exact,0.7
+conference::AI for Healthcare & Cybersecurity::mean_worth,0.38
+conference::AI for Healthcare & Cybersecurity::mean_area_question,0.606
+conference::Agentic AI & Knowledge Graphs::n,9
+conference::Agentic AI & Knowledge Graphs::tau_fused_vs_worth,-0.08333333333333333
+conference::Agentic AI & Knowledge Graphs::distinct_fit_scores,9
+conference::Agentic AI & Knowledge Graphs::verdict_exact,0.5556
+conference::Agentic AI & Knowledge Graphs::mean_worth,0.5478
+conference::Agentic AI & Knowledge Graphs::mean_area_question,0.6611
+conference::Local-First LLM Systems::n,9
+conference::Local-First LLM Systems::tau_fused_vs_worth,0.19444444444444445
+conference::Local-First LLM Systems::distinct_fit_scores,9
+conference::Local-First LLM Systems::verdict_exact,0.5556
+conference::Local-First LLM Systems::mean_worth,0.3244
+conference::Local-First LLM Systems::mean_area_question,0.44
+grant::AI for Healthcare & Cybersecurity::n,10
+grant::AI for Healthcare & Cybersecurity::tau_fused_vs_worth,0.35555555555555557
+grant::AI for Healthcare & Cybersecurity::distinct_fit_scores,10
+grant::AI for Healthcare & Cybersecurity::verdict_exact,0.5
+grant::AI for Healthcare & Cybersecurity::mean_worth,0.528
+grant::AI for Healthcare & Cybersecurity::mean_area_question,0.303
+grant::Agentic AI & Knowledge Graphs::n,10
+grant::Agentic AI & Knowledge Graphs::tau_fused_vs_worth,-0.24444444444444444
+grant::Agentic AI & Knowledge Graphs::distinct_fit_scores,9
+grant::Agentic AI & Knowledge Graphs::verdict_exact,0.5
+grant::Agentic AI & Knowledge Graphs::mean_worth,0.258
+grant::Agentic AI & Knowledge Graphs::mean_area_question,0.328
+grant::Local-First LLM Systems::n,9
+grant::Local-First LLM Systems::tau_fused_vs_worth,0.3055555555555556
+grant::Local-First LLM Systems::distinct_fit_scores,8
+grant::Local-First LLM Systems::verdict_exact,0.5556
+grant::Local-First LLM Systems::mean_worth,0.1344
+grant::Local-First LLM Systems::mean_area_question,0.2689

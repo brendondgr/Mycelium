@@ -31,11 +31,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-020` | 2026-08-23 | Theme-scoped interest context: production slate separation | complete | — | — | [folder](experiments/EXP-2026-08-020-theme-scoped-interest-context/RESULTS.md) |
 | `EXP-2026-09-001` | 2026-09-11 | Alert precision, and the thresholds it sets | planned | — | C-024 | [folder](experiments/EXP-2026-09-001-alert-precision-calibration/RESULTS.md) |
 | `EXP-2026-09-002` | 2026-09-11 | Does the citation verifier agree with a person? | planned | — | C-025 | [folder](experiments/EXP-2026-09-002-weekly-citation-verifier/RESULTS.md) |
+| `EXP-2026-09-003` | 2026-09-17 | Does a calibrated decision model agree with the fused order and the LLM verdicts on one reader's grant and conference slates? | complete | — | C-026 | [folder](experiments/EXP-2026-09-003-typesafe-personal-opportunities/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 20 |
+| complete | 21 |
 | planned | 2 |
-| **total** | **22** |
+| **total** | **23** |

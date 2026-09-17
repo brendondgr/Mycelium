@@ -15,6 +15,9 @@ dependencies = [
     "neo4j>=5.28.0,<6.0.0",
     "numpy>=2.0.0",
     "openai>=1.50.0,<2.0.0",
+    # TypeSafe System One (Jev): typed decisions with calibrated probabilities.
+    # Prototype only — see apps/core/systemone.py; nothing in production calls it.
+    "typesafe-sdk>=0.6.0,<1.0.0",
     "pgvector>=0.3.0,<1.0.0",
     "psycopg[binary]>=3.2.0,<4.0.0",
     "pypdf>=5.0.0,<7.0.0",
