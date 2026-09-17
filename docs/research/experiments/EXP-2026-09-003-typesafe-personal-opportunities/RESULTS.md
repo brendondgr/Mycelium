@@ -161,4 +161,12 @@ The second command alone regenerates every metric and table from the committed
 
 ## AMENDMENTS
 
-None.
+**2026-09-17 — reader preference recorded.** The reader whose slates these are
+read `tables/grants.md` and `tables/conferences.md` and stated that the TypeSafe
+order (by `worth`) relates to their interests more closely than the fused order
+did, and that its verdicts are "far more accurate" than the stored ones. This is
+one reader's preference on their own slates, not a relevance judgement, and
+under Q-029's rule it is never aggregated or given an interval. It is the first
+human read of either judge's output and it points the same way as the two
+fused-#1 disagreements in §4. It moves no claim: C-026 already says what was
+measured, and Q-040 is where a labelled test would settle it.
