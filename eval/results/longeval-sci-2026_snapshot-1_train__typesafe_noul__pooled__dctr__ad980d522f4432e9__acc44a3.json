@@ -1,0 +1,32 @@
+{
+  "arm": "typesafe_noul",
+  "collection": "sci-2026-train",
+  "config_hash": "ad980d522f4432e9",
+  "corpus_docs": 84489,
+  "corpus_scope": "pooled",
+  "diagnostics": {},
+  "dirty": true,
+  "embedding_model": null,
+  "git_sha": "acc44a3",
+  "metrics": {
+    "AP": 0.28357850144177915,
+    "P@10": 0.21899999999999997,
+    "R@100": 0.690289854020731,
+    "RR": 0.5497926104205088,
+    "nDCG@10": 0.3396548977177741,
+    "nDCG@100": 0.4475985110479024
+  },
+  "n_queries": 100,
+  "notes": "",
+  "params": {
+    "base": "bm25_only",
+    "model": "jev-1.13.0",
+    "pool_per_interest": 100,
+    "window": 20
+  },
+  "per_query": {},
+  "qrels": "dctr",
+  "snapshot": "longeval-sci-2026/snapshot-1/train",
+  "timestamp": "2026-09-17T21:23:00Z",
+  "wall_clock_s": 104.4
+}

@@ -1,0 +1,53 @@
+{
+  "price_per_million_input_usd": 0.042,
+  "price_read_on": "2026-09-17",
+  "top10_jaccard_noul_vs_score_mean": 0.8046353646353647,
+  "typesafe_noul": {
+    "answered": 2000,
+    "base": "bm25_only",
+    "cost_usd": 0.0421,
+    "distinct_values_per_query_mean": 12.61,
+    "failed": 0,
+    "input_tokens": 1001263,
+    "mean_value_by_grade": {
+      "0": 0.6615,
+      "1": 0.8656,
+      "2": 0.83
+    },
+    "model": "jev-1.13.0",
+    "model_decided_adjacent_share": 0.6110526315789473,
+    "monotonic_in_grade": false,
+    "n_by_grade": {
+      "0": 1686,
+      "1": 138,
+      "2": 176
+    },
+    "output_tokens": 44000,
+    "pairs": 2000,
+    "window": 20
+  },
+  "typesafe_score": {
+    "answered": 2000,
+    "base": "bm25_only",
+    "cost_usd": 0.0447,
+    "distinct_values_per_query_mean": 17.38,
+    "failed": 0,
+    "input_tokens": 1065263,
+    "mean_value_by_grade": {
+      "0": 2.0464,
+      "1": 2.577,
+      "2": 2.4353
+    },
+    "model": "jev-1.13.0",
+    "model_decided_adjacent_share": 0.8621052631578947,
+    "monotonic_in_grade": false,
+    "n_by_grade": {
+      "0": 1686,
+      "1": 138,
+      "2": 176
+    },
+    "output_tokens": 38000,
+    "pairs": 2000,
+    "window": 20
+  }
+}

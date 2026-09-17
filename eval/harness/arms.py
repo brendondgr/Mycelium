@@ -241,6 +241,8 @@ VECTORLESS_OVER_LEXICAL_BASE = {
     "llm_rerank",
     "llm_rerank_reversed",
     "llm_rubric",
+    "typesafe_noul",
+    "typesafe_score",
 }
 
 
@@ -592,3 +594,7 @@ ARMS.update(LADDER_ARMS)
 from .llm_rerank import LLM_ARMS  # noqa: E402
 
 ARMS.update(LLM_ARMS)
+
+from .typesafe_rerank import TYPESAFE_ARMS  # noqa: E402
+
+ARMS.update(TYPESAFE_ARMS)

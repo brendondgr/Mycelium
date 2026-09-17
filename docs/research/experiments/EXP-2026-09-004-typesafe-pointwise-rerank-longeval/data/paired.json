@@ -1,0 +1,111 @@
+{
+  "sci-2026-train": {
+    "absolute": {
+      "bm25_only": 0.3211702858325453,
+      "typesafe_noul over bm25": 0.339654897717774,
+      "typesafe_score over bm25": 0.31599848014826304
+    },
+    "contrasts": [
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": 0.05666695641012039,
+            "n": 5
+          },
+          "2 words": {
+            "mean_delta": 0.0028767670168400455,
+            "n": 27
+          },
+          "3-4 words": {
+            "mean_delta": 0.03930777087843643,
+            "n": 33
+          },
+          "5+ words": {
+            "mean_delta": 0.005437064515119343,
+            "n": 35
+          }
+        },
+        "ci_high": 0.06034344646008618,
+        "ci_low": -0.02069702531412237,
+        "control": "bm25_only",
+        "excludes_zero": false,
+        "losses": 36,
+        "mean_delta": 0.01848461188522862,
+        "n": 100,
+        "sign_p": 0.49989687686032663,
+        "ties": 21,
+        "treatment": "typesafe_noul over bm25",
+        "wins": 43
+      },
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": 0.006751525433975012,
+            "n": 5
+          },
+          "2 words": {
+            "mean_delta": -0.03862277788649889,
+            "n": 27
+          },
+          "3-4 words": {
+            "mean_delta": 0.0300503979422959,
+            "n": 33
+          },
+          "5+ words": {
+            "mean_delta": -0.014279609278811384,
+            "n": 35
+          }
+        },
+        "ci_high": 0.03839624092923026,
+        "ci_low": -0.04600975085247725,
+        "control": "bm25_only",
+        "excludes_zero": false,
+        "losses": 39,
+        "mean_delta": -0.005171805684282287,
+        "n": 100,
+        "sign_p": 1.0,
+        "ties": 23,
+        "treatment": "typesafe_score over bm25",
+        "wins": 38
+      },
+      {
+        "by_query_length": {
+          "1 word": {
+            "mean_delta": 0.04991543097614538,
+            "n": 5
+          },
+          "2 words": {
+            "mean_delta": 0.04149954490333894,
+            "n": 27
+          },
+          "3-4 words": {
+            "mean_delta": 0.009257372936140524,
+            "n": 33
+          },
+          "5+ words": {
+            "mean_delta": 0.01971667379393073,
+            "n": 35
+          }
+        },
+        "ci_high": 0.04125067087035937,
+        "ci_low": 0.007394909079392447,
+        "control": "typesafe_score over bm25",
+        "excludes_zero": true,
+        "losses": 20,
+        "mean_delta": 0.023656417569510913,
+        "n": 100,
+        "sign_p": 0.018337087779101986,
+        "ties": 41,
+        "treatment": "typesafe_noul over bm25",
+        "wins": 39
+      }
+    ],
+    "missing_arms": [
+      "typesafe_noul over fusion",
+      "fusion_union_pool"
+    ],
+    "n_queries": 100,
+    "qrels": "dctr",
+    "snapshot": "longeval-sci-2026/snapshot-1/train"
+  }
+}

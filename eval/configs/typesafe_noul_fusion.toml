@@ -1,0 +1,17 @@
+# The like-for-like contrast with llm_rubric (same base, same window). Needs the
+# pooled dense matrix, so it runs only after fusion_union_pool has been encoded.
+arm = "typesafe_noul"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[embedding]
+parallel = 16
+batch_size = 64
+
+[params]
+pool_per_interest = 100
+base = "fusion_union_pool"
+window = 20
+model = "jev-1.13.0"

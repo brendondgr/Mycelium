@@ -222,6 +222,7 @@ Files below are inside `web/backend/apps/content/`.
 | Retrieval evaluation | `eval/` — `run.py`, `report.py`, `collections.toml`, `configs/`, `harness/`; results in `eval/results/`, guide in [`evaluation.md`](evaluation.md) |
 | Frozen eval subset + embedding-matrix slicing | `eval/freeze_subset.py`, `eval/harness/subset.py`; the id list is `eval/subsets/*.txt` (committed) |
 | Candidate ladder stages (SPLADE, ColBERT, cross-encoder, LLM rerank) — **not production** | `eval/harness/{ladder,neural,llm_rerank}.py`, encoded by `eval/encode_ladder.py`; measured in `EXP-2026-08-008` |
+| TypeSafe pointwise rerank arms (`typesafe_noul`, `typesafe_score`) — **not production** | `eval/harness/typesafe_rerank.py`, configs `eval/configs/typesafe_*.toml`; measured in `EXP-2026-09-004` |
 | Paired significance testing (bootstrap intervals, sign test, query-length strata) | `eval/harness/stats.py` — shared by `EXP-2026-08-009` and `EXP-2026-08-010`; never re-implement it per experiment |
 | LLM query expansion for the reranker (candidate, refuted) | `eval/expand_queries.py`; cached at `data/eval-cache/expansions/`, measured in `EXP-2026-08-010` |
 | Pool contrast against the **production** store (not LongEval) | `docs/research/experiments/EXP-2026-08-013-production-pool-contrast/code/` — `production_pool.py` builds the union-pool variants on top of the deployed `_build_pool`/`fuse_interest`; `run.py` scores them against the real `ContentItem` rows over a compose `postgres`. Nothing under `apps/content` is modified |

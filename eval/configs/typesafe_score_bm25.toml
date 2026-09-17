@@ -1,0 +1,14 @@
+# The TypeSafe rung, pointwise, over the strongest first stage on this collection
+# (EXP-2026-08-009: stack a reranker on BM25, not on the fusion pool). Production
+# does NOT reorder — this measures a counterfactual. Needs no vectors.
+arm = "typesafe_score"
+
+[corpus]
+scope = "pooled"
+pool_depth = 1000
+
+[params]
+pool_per_interest = 100
+base = "bm25_only"
+window = 20
+model = "jev-1.13.0"

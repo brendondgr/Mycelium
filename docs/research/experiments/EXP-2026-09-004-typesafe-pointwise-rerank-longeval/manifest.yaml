@@ -1,0 +1,125 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-09-004
+slug: typesafe-pointwise-rerank-longeval
+title: Does a calibrated pointwise probability rerank a scholarly feed better than BM25 alone?
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-09-17
+date_completed: 2026-09-17
+authors: [brendondgr]
+
+purpose: >
+  The first reranker in this record that is not MS MARCO-trained and not a text
+  generator. Every reranker tried on LongEval-Sci has lost or tied against BM25
+  (C-013 refuted; C-015 and C-016 against the LLM), and the one explanation the
+  record left standing is training-distribution mismatch (Q-021, Q-023). Two
+  pointwise arms — a yes/no probability and a four-level rubric Score whose
+  level texts are the refuted LLM rubric's — rerank BM25's top 20 on
+  sci-2026-train, with paired bootstrap intervals, the C-016 discrimination
+  measurements read from the raw answers, cost and latency from the API's usage
+  block, and a determinism check before anything is trusted. Bears on C-016,
+  C-026, C-027, Q-020, Q-021, Q-023.
+
+hypothesis: >
+  Pre-registered in PROTOCOL.md before any arm ran. PRIMARY: typesafe_noul over
+  bm25_only beats bm25_only on nDCG@10 with a 95% paired interval excluding
+  zero; falsifier: interval spans zero or mean negative. SECONDARY: typesafe_score
+  gives more than 5 distinct values per 20-window and a mean monotonic in judged
+  grade. TERTIARY: the two arms agree on the top 10 at mean Jaccard >= 0.8.
+  DETERMINISM: 20 pairs x 3, max |delta noul| <= 0.01 bar, > 0.05 falsifier.
+  OUTCOME: PRIMARY falsified — +0.0185 nDCG@10, CI [-0.0207, +0.0603], 43W/36L/21T,
+  sign p 0.5; the delta is positive in every query-length bucket, the opposite
+  shape from the cross-encoder's short-query harm, but n = 100 cannot separate
+  it from zero. SECONDARY falsified on its monotonicity half: 17.38 distinct
+  values (bar 5, LLM rubric 1.99) but grade 1 scores above grade 2 in both arms,
+  as it did for the LLM rubric (Q-041). TERTIARY met: Jaccard 0.805. The yes/no
+  framing beats the rubric framing significantly (+0.0237, CI excludes zero,
+  sign p 0.018). Determinism 0.040, between bar and falsifier. Replication on
+  sci-2025-01 did not run, per the rule; recorded as Q-040.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: acc44a3
+  branch: main
+  entrypoint: "IR_DATASETS_HOME=data/eval-cache/ir_datasets uv run --project eval eval/run.py --config eval/configs/bm25_only_pooled.toml eval/configs/typesafe_noul_bm25.toml eval/configs/typesafe_score_bm25.toml --collection sci-2026-train && uv run --project eval python docs/research/experiments/EXP-2026-09-004-typesafe-pointwise-rerank-longeval/code/paired.py && uv run --project eval python docs/research/experiments/EXP-2026-09-004-typesafe-pointwise-rerank-longeval/code/discrimination.py"
+  dirty: true  # arms, configs, tests and this folder uncommitted at run time; ISSUES.md 1
+config:
+  path: eval/configs/typesafe_noul_bm25.toml
+  hash: ad980d522f4432e9
+data:
+  name: LongEval-Sci (CLEF)
+  version: "longeval-sci-2026/snapshot-1/train (869,902 docs), pooled scope at depth 1000 from the frozen id list eval/subsets/sci-2026-train__pooled_d1000.txt (84,489 docs)"
+  split: train
+  n_examples: 100 # queries; 2,000 (query, document) pairs per arm
+  qrels: "dctr — click-model-derived pseudo-relevance, not human assessment"
+  hash: null
+  card: null
+seeds: [20260821] # harness.stats paired bootstrap
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: eval/uv.lock
+  container: null
+compute:
+  hardware: "20 CPU cores, 62 GB RAM, Quadro RTX 5000 16 GB (unused); TypeSafe inference is remote"
+  wall_clock_hours: 0.06 # bm25 65 s, noul arm 104 s, score arm 40 s, determinism and analysis a few minutes; the 11 GB corpus download is excluded
+  estimated_cost_usd: 0.088 # 2,095,611 input tokens at $0.042 per million, list price read 2026-09-17; output free
+
+# --- LLM block ---------------------------------------------------------------
+llm:
+  model: "typesafe/jev-1.13.0"
+  temperature: null # the API exposes no sampling controls
+  max_tokens: null
+  prompt_files: ["eval/harness/typesafe_rerank.py"]
+  prompt_hash: null
+  total_input_tokens: 2095611 # noul 1,001,263 + score 1,065,263 + determinism 29,085
+  total_output_tokens: 82000 # noul 44,000 + score 38,000; the determinism check's output tokens were not summed
+  nondeterminism_note: >
+    Undocumented by the provider. Measured before the arms ran: 20 pairs asked
+    three times, max |delta noul| 0.040, mean 0.014, none above 0.05. Single-run
+    numbers are reported with that spread stated.
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: nDCG@10 paired mean difference, typesafe_noul over bm25 minus bm25_only
+  values:
+    typesafe_noul_over_bm25__minus__bm25_only__ndcg10: 0.0185 # CI [-0.0207, +0.0603], spans 0, 43W/36L/21T, sign p 0.5, n=100
+    typesafe_score_over_bm25__minus__bm25_only__ndcg10: -0.0052 # CI [-0.0460, +0.0384], spans 0, 38W/39L/23T, sign p 1.0
+    typesafe_noul__minus__typesafe_score__ndcg10: 0.0237 # CI [+0.0074, +0.0413], excludes 0, 39W/20L/41T, sign p 0.018
+    bm25_only__ndcg10: 0.3212
+    typesafe_noul__ndcg10: 0.3397
+    typesafe_score__ndcg10: 0.3160
+    typesafe_noul__rr: 0.5498 # bm25_only 0.4788
+    noul_delta_by_query_length__1_word: 0.0567 # n=5
+    noul_delta_by_query_length__2_words: 0.0029 # n=27
+    noul_delta_by_query_length__3_4_words: 0.0393 # n=33
+    noul_delta_by_query_length__5_plus_words: 0.0054 # n=35
+    typesafe_noul__distinct_values_per_window: 12.61
+    typesafe_score__distinct_values_per_window: 17.38
+    typesafe_noul__mean_by_grade_0: 0.6615 # n=1686
+    typesafe_noul__mean_by_grade_1: 0.8656 # n=138
+    typesafe_noul__mean_by_grade_2: 0.83 # n=176 — below grade 1 in every pointwise judge so far (Q-041)
+    typesafe_score__mean_by_grade_0: 2.0464
+    typesafe_score__mean_by_grade_1: 2.577
+    typesafe_score__mean_by_grade_2: 2.4353
+    top10_jaccard_noul_vs_score: 0.805
+    determinism_max_abs_diff_noul: 0.04 # 20 pairs x 3
+    pairs_failed: 0 # of 4,000
+    cost_usd_total: 0.088
+baselines_compared: [bm25_only]
+statistical_test: "paired percentile bootstrap, 10,000 resamples over query ids, seed 20260821; two-sided exact sign test alongside"
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: [C-027]
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-08-008, EXP-2026-08-009, EXP-2026-09-003]
