@@ -55,6 +55,9 @@ class Feature:
 
     # The intelligence line — Spore and up.
     LLM_FIT_SCORING = "llm_fit_scoring"  # reasoned match verdict; Free = semantic only
+    # TypeSafe reorders the head of each theme's slate (RERANK_METHOD=typesafe);
+    # Free keeps the local order.
+    TYPESAFE_RERANK = "typesafe_rerank"
     SCHEDULED_REPORTS = "scheduled_reports"  # master gate: any timer-driven delivery
     GRANT_ALERTS = "grant_alerts"
     FELLOWSHIP_MATCHING = "fellowship_matching"
@@ -96,6 +99,7 @@ _FREE = frozenset(
 # conference alerts, personal fellowship matching, Mylo DMs, deadline reminders).
 _SPORE = _FREE | {
     Feature.LLM_FIT_SCORING,
+    Feature.TYPESAFE_RERANK,
     Feature.SCHEDULED_REPORTS,
     Feature.GRANT_ALERTS,
     Feature.FELLOWSHIP_MATCHING,

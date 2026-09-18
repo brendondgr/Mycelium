@@ -776,6 +776,23 @@ RERANK_CONTENT_TYPES = env.list(
     "RERANK_CONTENT_TYPES", default=["paper", "grant", "conference"]
 )
 
+# Which reranker decides the head of each theme's slate (apps.content.typesafe_rerank).
+# "local" is the stack above exactly as deployed. "typesafe" keeps that stack for
+# retrieval and the pool, then asks TypeSafe's decision model one question per
+# (theme, item) for the top TYPESAFE_RERANK_WINDOW of every theme and reorders
+# that head by the returned probability. Without a key it degrades to "local".
+# Gated to paid plans through billing.entitlements (Feature.TYPESAFE_RERANK);
+# with BILLING_ENFORCE_ENTITLEMENTS off that gate grants everyone.
+# Evidence: EXP-2026-09-003 (one reader's preference) and EXP-2026-09-004
+# (+0.0185 nDCG@10 over BM25 on LongEval, interval spanning zero).
+RERANK_METHOD = env("RERANK_METHOD", default="typesafe")
+TYPESAFE_RERANK_WINDOW = env.int("TYPESAFE_RERANK_WINDOW", default=20)
+TYPESAFE_RERANK_CONTENT_TYPES = env.list(
+    "TYPESAFE_RERANK_CONTENT_TYPES",
+    default=["paper", "grant", "conference", "fellowship"],
+)
+TYPESAFE_RERANK_CONCURRENCY = env.int("TYPESAFE_RERANK_CONCURRENCY", default=12)
+
 # ---------------------------------------------------------------------------
 # Project alerts (apps.content.matchers, apps.content.alerts).
 #

@@ -132,6 +132,7 @@ Files below are inside `web/backend/apps/content/`.
 | Which (theme, item) pairs earn a model call — reuse, entitlement, budget | `theme_run.py` (`plan_theme_writeups` = DB, `execute_theme_plan` = pure, `collect_theme_result`) |
 | Mylo's prose — the per-theme read and the lead paragraph | `narrative.py`; stored as structure on `DailyBriefing.narrative` and read back by the PDF, the app, and Discord |
 | Fellowship bands (matched to a theme vs open to you) | `fellowship_bands.py` — the eligibility gate is unchanged; this only splits what survives it |
+| The `RERANK_METHOD` switch — TypeSafe re-orders each theme's slate head (`typesafe`, default, paid plans) or the local stack stands (`local`); judgements stored at `signals["typesafe"][cluster_id]` and reused by fingerprint | `typesafe_rerank.py`; entered from `pipeline.py::_explain_run` (papers), `opportunities.py::_prepare_match` (grants, conferences) and `_finalize_fellowship_match` (fellowships). Evidence `EXP-2026-09-003`/`-004` |
 | Cross-encoder rerank (ships OFF, `RERANK_ENABLED`) | `reranking.py` — device resolution with CUDA auto-detect and CPU fallback, the lazy model cache, `rerank` and the per-interest/RRF `rerank_order`; entered from `pipeline.py::_apply_rerank` at the tail of `fuse_interests_pool` / `fuse_clusters_pool`. Diagnostics: `manage.py rerank_device --load`. Evidence is a **preference** (`EXP-2026-08-015`…`-017`), not a measurement — see the module docstring |
 | Ranking-stack seams (ORM-free ranking, swappable vector index) | `protocols.py` (`Retrievable`, `VectorIndex`), `retrieval.py` (`PgVectorIndex`) |
 | Theme spread (opt-in, all defaults off) | `fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
@@ -197,7 +198,7 @@ Files below are inside `web/backend/apps/content/`.
 | Embedder (CPU / CUDA) | `web/backend/apps/scraper/embedding.py` |
 | External DOI / arXiv / URL resolver | `web/backend/apps/scraper/resolver.py` |
 | LLM client | `web/backend/apps/core/llm.py` |
-| TypeSafe System One client (typed decisions with calibrated probabilities; prototype seam, no production caller) | `web/backend/apps/core/systemone.py` — first used by `EXP-2026-09-003` |
+| TypeSafe System One client (typed decisions with calibrated probabilities) | `web/backend/apps/core/systemone.py` — every call counted in the LLM ledger |
 | Transactional email (send one) | `web/backend/apps/core/mail/messages.py` (`send_email`, `app_url`, the `TEMPLATES` registry) |
 | Email transport & Django backend | `web/backend/apps/core/mail/{client,backend}.py` — Resend over stdlib urllib; wired as `EMAIL_BACKEND` so `django.core.mail` routes through it |
 | Email templates (HTML + text pairs) | `web/backend/templates/email/` — `base.html`, `_button.html`, and one pair per entry in `TEMPLATES` |

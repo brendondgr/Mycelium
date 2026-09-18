@@ -23,6 +23,7 @@ at the repository root, and all implementation and install state lives under
 | Cache / broker / job state | Redis 8 | `redis` service |
 | Embeddings | fastembed / ONNX Runtime (`BAAI/bge-small-en-v1.5`), CPU or CUDA | `apps/scraper/embedding.py` |
 | LLM | OpenAI-compatible endpoint (self-hosted vLLM is the reference target) | `apps/core/llm.py` |
+| Decision model | TypeSafe System One (`jev-1.13.0`, remote). With `RERANK_METHOD=typesafe` it re-orders the top window of every theme's slate, one (theme, item) question per call, for paid plans; the local stack still does retrieval and the pool. Sends each target's profile text and the candidate's public text off-host per pair | `apps/core/systemone.py`, `apps/content/typesafe_rerank.py` |
 | Edge gateway | Nginx, single origin | `web/infra/nginx/` |
 | Python deps & commands | `uv` | `web/backend/` |
 | Node workspace | npm workspaces | `web/` |
@@ -135,7 +136,8 @@ graph phase has not started.
 | Frontend wiring | `NEXT_PUBLIC_API_BASE_URL`, `API_INTERNAL_URL` |
 | Data services | `DATABASE_URL`, `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` |
 | LLM | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_TIMEOUT`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`, `LLM_REASONING`, `LLM_REASONING_STYLE`, `LLM_THINKING_BUDGET` |
-| TypeSafe (prototype seam, no production caller) | `TYPESAFE_API_KEY`, `TYPESAFE_MODEL` (pinned version, never `jev-latest`), `TYPESAFE_BASE_URL`, `TYPESAFE_TIMEOUT`, `TYPESAFE_MAX_RETRIES` |
+| TypeSafe | `TYPESAFE_API_KEY`, `TYPESAFE_MODEL` (pinned version, never `jev-latest`), `TYPESAFE_BASE_URL`, `TYPESAFE_TIMEOUT`, `TYPESAFE_MAX_RETRIES` |
+| Slate reranker switch | `RERANK_METHOD` (`typesafe` default, or `local`), `TYPESAFE_RERANK_WINDOW`, `TYPESAFE_RERANK_CONTENT_TYPES`, `TYPESAFE_RERANK_CONCURRENCY`; `OPPORTUNITY_LLM_CONCURRENCY` for the prose scorer |
 | Embedding | `EMBEDDING_DEVICE` (`auto`/`cuda`/`cpu`), `EMBEDDING_BATCH_SIZE_CPU`, `EMBEDDING_BATCH_SIZE_GPU` |
 | Sign-up gate | `SIGNUP_ACCESS_CODE`, `SIGNUP_CODE_MAX_FAILURES`, `SIGNUP_CODE_FAILURE_WINDOW_SECONDS`, `SIGNUP_CODE_LOCKOUT_SECONDS` |
 | Discord (`.env-mylo`) | `DISCORD_API_KEY`, `ERROR_CHANNEL`, `ACTIVATION_CHANNEL`, `SUMMARY_CHANNEL` |

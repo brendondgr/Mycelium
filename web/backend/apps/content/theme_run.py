@@ -74,8 +74,8 @@ class ThemeRunResult:
         return ", ".join(bits)
 
 
-def target_is_entitled(persist_kwargs: Mapping) -> bool:
-    """Whether this target's plan includes model-written reasoning.
+def target_is_entitled(persist_kwargs: Mapping, feature: str | None = None) -> bool:
+    """Whether this target's plan includes ``feature`` (default: model reasoning).
 
     The gate sits *before* any call, not after — the moment per-cluster budgets
     multiply calls per user, an unfiltered selection turns a pricing gap into a
@@ -86,9 +86,10 @@ def target_is_entitled(persist_kwargs: Mapping) -> bool:
     """
     from apps.billing.entitlements import Feature, has_feature
 
+    feature = feature or Feature.LLM_FIT_SCORING
     user = persist_kwargs.get("target_user")
     if user is not None:
-        return has_feature(user, Feature.LLM_FIT_SCORING)
+        return has_feature(user, feature)
 
     lab = persist_kwargs.get("target_lab")
     project = persist_kwargs.get("target_project")
@@ -97,7 +98,7 @@ def target_is_entitled(persist_kwargs: Mapping) -> bool:
         return _lab_entitled(scope_lab)
     owner = getattr(project, "scope_user", None)
     if owner is not None:
-        return has_feature(owner, Feature.LLM_FIT_SCORING)
+        return has_feature(owner, feature)
     return False
 
 

@@ -29,9 +29,10 @@ crash.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import date
+from typing import Any
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -41,7 +42,7 @@ from apps.accounts.embedding import canonical_text
 from apps.scraper.ingest import SearchFn, scan
 from apps.scraper.window import ScanWindow
 
-from . import embeddings, reranking
+from . import embeddings, reranking, typesafe_rerank
 from .admission import admit
 from .cluster_fit import full_reason
 from .clustering import IMPLICIT_CLUSTER_ID, Cluster, cluster_interests
@@ -452,6 +453,7 @@ def recommend_for_user(
         suggestion_limit=suggestion_limit,
         persist=persist,
         emit=emit,
+        profile_meta=typesafe_rerank.user_profile_meta(user),
     )
     return RunResult(
         username,
@@ -603,6 +605,7 @@ def recommend_for_target(
         suggestion_limit=suggestion_limit,
         persist=persist,
         emit=emit,
+        profile_meta=target.profile_meta,
     )
     return RunResult(
         key,
@@ -1439,6 +1442,7 @@ def _explain_run(
     suggestion_limit: int,
     persist: bool,
     emit: Callable[[str], None],
+    profile_meta: Mapping[str, Any] | None = None,
 ) -> tuple[list[dict], str, int]:
     """Slate, explain and persist a run. Returns ``(rows shown, note, llm count)``.
 
@@ -1453,6 +1457,23 @@ def _explain_run(
       because there is no theme to scope anything to.
     """
     if clusters and slate_groups:
+        # The RERANK_METHOD switch (apps.content.typesafe_rerank): with
+        # ``typesafe``, each theme's top window is re-ordered by the decision
+        # model before the slate is cut. Nothing is added or dropped; the
+        # judgements ride into ``signals["typesafe"]`` through the rows' extras.
+        if typesafe_rerank.enabled_for(content_type, persist_kwargs):
+            slate_groups, judgements = typesafe_rerank.reorder_slate_groups(
+                slate_groups,
+                interests=interests,
+                profile_meta=profile_meta,
+                clusters=clusters,
+                content_type=content_type,
+                prior=typesafe_rerank.prior_judgements(
+                    persist_kwargs, content_type, typesafe_rerank.head_ids(slate_groups)
+                ),
+                emit=emit,
+            )
+            typesafe_rerank.attach(rows, judgements)
         profile_text = _profile_prompt_text(interests)
         slates, theme = run_cluster_slates(
             interests,

@@ -17,7 +17,7 @@ Every seam degrades to a clear status instead of a crash.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 
@@ -25,6 +25,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+from . import typesafe_rerank
 from .clustering import cluster_interests, cluster_labels
 from .digest_selection import split_by_floor
 from .fellowship_bands import split as fellowship_split
@@ -549,6 +550,25 @@ def _finalize_fellowship_match(
         [s["content_id"] for s in visible],
         job.per_cluster_by_id,
     )
+    judgements: dict = {}
+    persist_kwargs = {"target_user": job.user}
+    if matched and typesafe_rerank.enabled_for(
+        ContentItem.Type.FELLOWSHIP, persist_kwargs
+    ):
+        matched, judgements = typesafe_rerank.reorder_id_groups(
+            matched,
+            items_by_id=items_by_id,
+            interests=job.interests,
+            profile_meta=typesafe_rerank.user_profile_meta(job.user),
+            clusters=cluster_interests(job.interests),
+            content_type=ContentItem.Type.FELLOWSHIP,
+            prior=typesafe_rerank.prior_judgements(
+                persist_kwargs,
+                ContentItem.Type.FELLOWSHIP,
+                typesafe_rerank.head_ids(matched),
+            ),
+            emit=emit,
+        )
     if matched:
         emit(
             f"{sum(len(v) for v in matched.values())} matched to "
@@ -571,6 +591,7 @@ def _finalize_fellowship_match(
             matched=matched,
             open_band=open_band,
             labels=cluster_labels(job.interests),
+            judgements=judgements,
         )
 
     return OppRunResult(
@@ -598,6 +619,7 @@ def _persist_fellowships(
     bands: dict | None = None,
     matched: dict | None = None,
     open_band: list | None = None,
+    judgements: Mapping[str, Mapping] | None = None,
     labels: dict | None = None,
 ) -> None:
     """Upsert one RelevanceScore per fellowship under ``persist_kwargs``'s target.
@@ -697,6 +719,8 @@ def _persist_fellowships(
         # scraped sponsor prose, and a conditional tier means a gate it could not
         # confirm.
         signals["caveat"] = _fellowship_caveat(s)
+        if judgements and cid in judgements:
+            signals["typesafe"] = {k: dict(v) for k, v in judgements[cid].items()}
         entry = bands.get(cid)
         if entry is not None:
             signals["band"] = entry.band
@@ -841,6 +865,24 @@ def _prepare_match(
         from .pipeline import _profile_prompt_text
         from .slates import compute_cluster_slates, prior_cluster_slates
         from .theme_run import plan_theme_writeups
+
+        # The RERANK_METHOD switch: re-order each theme's top window by the
+        # decision model before the slate is cut (see apps.content.typesafe_rerank).
+        if typesafe_rerank.enabled_for(content_type, target.persist_kwargs):
+            slate_groups, judgements = typesafe_rerank.reorder_slate_groups(
+                slate_groups,
+                interests=target.interests,
+                profile_meta=target.profile_meta,
+                clusters=clusters,
+                content_type=content_type,
+                prior=typesafe_rerank.prior_judgements(
+                    target.persist_kwargs,
+                    content_type,
+                    typesafe_rerank.head_ids(slate_groups),
+                ),
+                emit=emit,
+            )
+            typesafe_rerank.attach(rows, judgements)
 
         cluster_slates = compute_cluster_slates(
             prior_cluster_slates(target.persist_kwargs, content_type),
