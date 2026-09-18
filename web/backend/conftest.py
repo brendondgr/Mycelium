@@ -53,7 +53,7 @@ def _local_rerank(settings):
 
 @pytest.fixture(autouse=True)
 def _no_knowledge_projection_on_save(settings):
-    """Keep the knowledge core's save hook from queueing Celery tasks.
+    """Keep the knowledge core's save and import hooks from queueing Celery tasks.
 
     The hook runs on commit, which a transactional test really does reach — and
     then ``.delay()`` would hand a test-database id to whatever worker listens
@@ -61,3 +61,4 @@ def _no_knowledge_projection_on_save(settings):
     on and capture the task instead.
     """
     settings.KNOWLEDGE_PROJECT_ON_SAVE = False
+    settings.KNOWLEDGE_FACET_ON_IMPORT = False

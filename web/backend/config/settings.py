@@ -20,7 +20,6 @@ environ.Env.read_env(ROOT_DIR.parent / ".env")
 environ.Env.read_env(ROOT_DIR.parent / ".env-mylo")
 
 
-
 def env_str(name: str, default: str = "") -> str:
     """Read an env var, treating blank/whitespace as unset.
 
@@ -135,8 +134,7 @@ DATABASES = {
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
-            "django.contrib.auth.password_validation."
-            "UserAttributeSimilarityValidator"
+            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
         ),
     },
     {
@@ -343,9 +341,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sweep-ambient-retention": {
         "task": "apps.ambient.sweep_retention",
-        "schedule": crontab(
-            hour=env.int("AMBIENT_SWEEP_HOUR", default=5), minute=15
-        ),
+        "schedule": crontab(hour=env.int("AMBIENT_SWEEP_HOUR", default=5), minute=15),
     },
     # The knowledge core's reconciliation: re-mirror every declared profile,
     # lab and project into the graph (a save hook can be missed, and a wording
@@ -354,9 +350,7 @@ CELERY_BEAT_SCHEDULE = {
     # reconciled graph.
     "sweep-knowledge": {
         "task": "apps.knowledge.sweep",
-        "schedule": crontab(
-            hour=env.int("KNOWLEDGE_SWEEP_HOUR", default=4), minute=15
-        ),
+        "schedule": crontab(hour=env.int("KNOWLEDGE_SWEEP_HOUR", default=4), minute=15),
     },
 }
 
@@ -691,9 +685,7 @@ SEARCH_FUZZY_POOL = env.int("SEARCH_FUZZY_POOL", default=200)
 # host and inside the compose network. Best-effort: a Redis outage degrades to
 # "embed every time", never an error.
 _REDIS_URL = env("REDIS_URL", default="redis://localhost:11550/0")
-SEARCH_CACHE_URL = env(
-    "SEARCH_CACHE_URL", default=re.sub(r"/\d+$", "/2", _REDIS_URL)
-)
+SEARCH_CACHE_URL = env("SEARCH_CACHE_URL", default=re.sub(r"/\d+$", "/2", _REDIS_URL))
 SEARCH_CACHE_TTL = env.int("SEARCH_CACHE_TTL", default=3600)
 
 # A small Redis-backed cache for the "paper scan in flight" flag, which the web
@@ -869,9 +861,7 @@ PROJECT_ALERT_OVERLAP_THRESHOLD = env.float(
 PROJECT_ALERT_BLOCKER_THRESHOLD = env.float(
     "PROJECT_ALERT_BLOCKER_THRESHOLD", default=0.58
 )
-PROJECT_ALERT_SLOT_THRESHOLD = env.float(
-    "PROJECT_ALERT_SLOT_THRESHOLD", default=0.55
-)
+PROJECT_ALERT_SLOT_THRESHOLD = env.float("PROJECT_ALERT_SLOT_THRESHOLD", default=0.55)
 #: At most this many alerts per target per day. The cap is the product decision,
 #: not a performance one: four things that all need attention today is a reader
 #: who attends to none of them. Overflow is held for the Monday weekly.
@@ -893,9 +883,7 @@ DISCORD_CLIENT_SECRET = env("DISCORD_CLIENT_SECRET", default="")
 # The bot token. Read from the same var the Mylo gateway uses (mylo/config.py)
 # so the OAuth REST calls (DM probe, guild reconcile) act as the same bot; falls
 # back to DISCORD_BOT_TOKEN for parity with the plan's naming.
-DISCORD_BOT_TOKEN = env(
-    "DISCORD_API_KEY", default=env("DISCORD_BOT_TOKEN", default="")
-)
+DISCORD_BOT_TOKEN = env("DISCORD_API_KEY", default=env("DISCORD_BOT_TOKEN", default=""))
 # Fernet key for OAuth tokens at rest — distinct from the bot token. When unset
 # (dev/tests) apps.integrations.fields derives a stable key from SECRET_KEY, so
 # the encrypted field always works; production sets a real, rotated key here.
@@ -1003,9 +991,7 @@ DISCORD_ACTIVATION_CHANNEL_ID = env(
 # "join the server" step rather than offering a dead link.
 DISCORD_INVITE_URL = env_str("DISCORD_INVITE_URL")
 
-DISCORD_ACTIVATION_TTL_SECONDS = env.int(
-    "DISCORD_ACTIVATION_TTL_SECONDS", default=900
-)
+DISCORD_ACTIVATION_TTL_SECONDS = env.int("DISCORD_ACTIVATION_TTL_SECONDS", default=900)
 DISCORD_ACTIVATION_MAX_FAILURES = env.int("DISCORD_ACTIVATION_MAX_FAILURES", default=5)
 DISCORD_ACTIVATION_FAILURE_WINDOW_SECONDS = env.int(
     "DISCORD_ACTIVATION_FAILURE_WINDOW_SECONDS", default=900
@@ -1177,6 +1163,17 @@ KNOWLEDGE_MAX_SURFACE_CHARS = env.int("KNOWLEDGE_MAX_SURFACE_CHARS", default=120
 # nightly sweep reconciles anything a missed hook left behind, so turning this
 # off costs a day of staleness, not correctness.
 KNOWLEDGE_PROJECT_ON_SAVE = env.bool("KNOWLEDGE_PROJECT_ON_SAVE", default=True)
+# A person's own papers (plan CN-02): read once each, into facets and
+# demonstrated edges. An import is read as soon as it lands; the nightly pass
+# reads whatever is still unread within these caps (one model call per work)
+# and looks up the OpenAlex field of works from other sources by DOI.
+KNOWLEDGE_FACET_ON_IMPORT = env.bool("KNOWLEDGE_FACET_ON_IMPORT", default=True)
+KNOWLEDGE_WORK_FACETS_NIGHTLY_CAP = env.int(
+    "KNOWLEDGE_WORK_FACETS_NIGHTLY_CAP", default=200
+)
+KNOWLEDGE_FIELD_LOOKUPS_NIGHTLY_CAP = env.int(
+    "KNOWLEDGE_FIELD_LOOKUPS_NIGHTLY_CAP", default=200
+)
 
 LOGGING = {
     "version": 1,

@@ -139,3 +139,22 @@ class RefreshConferenceRegistryTests(unittest.TestCase):
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
+
+
+class FacetAuthorWorksTests(unittest.TestCase):
+    """The nightly knowledge step reads people's papers and never fails the run."""
+
+    def test_it_runs_the_command_once(self) -> None:
+        with mock.patch.object(manual_all, "run_manage", return_value=0) as run:
+            with mock.patch.object(manual_all, "_notify") as notify:
+                manual_all.facet_author_works(_BASE)
+        run.assert_called_once_with("facet_author_works", [], intro=None, base=_BASE)
+        notify.assert_not_called()
+
+    def test_a_failure_is_a_warning_not_a_failed_run(self) -> None:
+        with mock.patch.object(manual_all, "run_manage", return_value=3):
+            with mock.patch.object(manual_all, "_notify") as notify:
+                self.assertIsNone(manual_all.facet_author_works(_BASE))
+        kind, title = notify.call_args.args[:2]
+        self.assertEqual(kind, "warn")
+        self.assertIn("papers", title)

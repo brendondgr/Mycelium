@@ -358,6 +358,17 @@ _VECTOR_FIELDS = (
 )
 
 
+def missing_vectors():
+    """Rows with a facet sentence whose vector is missing — found in SQL, so the
+    nightly pass does not load every stored vector to discover the few gaps."""
+    from django.db.models import Q
+
+    gap = Q()
+    for text_field, vec_field in _VECTOR_FIELDS:
+        gap |= Q(**{f"{vec_field}__isnull": True}) & ~Q(**{text_field: ""})
+    return WorkFacets.objects.filter(thin=False).filter(gap)
+
+
 def fill_vectors(rows: Iterable[WorkFacets]) -> int:
     """Embed every facet sentence a row has and its vector lacks.
 

@@ -131,6 +131,11 @@ tables and bar charts, and attaches the PDF beneath the message. The step sits
 outside ``CONTAINER_STAGES`` on purpose: measurement failing must not fail a run
 that succeeded, so its exit code degrades the summary rather than the run.
 
+Just before analytics, a **knowledge** step (``facet_author_works``) reads
+people's own imported papers into the knowledge graph — facets, demonstrated
+edges — within a nightly cap. It is outside ``CONTAINER_STAGES`` for the same
+reason: nothing a user receives today depends on it, so a failure is a warning.
+
 Grants and conferences move into the backend container because the open
 collector is pure HTTP — the host/container split Pivot-RP needed existed only
 for its Playwright browser and saved SSO session (plan D6). The Illinois
@@ -310,6 +315,25 @@ def compile_analytics(base: list[str]) -> dict | None:
         _notify("warn", "Daily analytics not compiled", message, stage="analytics")
         return None
     return analytics.read_analytics()
+
+
+def facet_author_works(base: list[str]) -> None:
+    """Read people's own papers into the knowledge graph (non-fatal).
+
+    Outside ``CONTAINER_STAGES`` for the same reason as analytics: nothing a
+    user receives today depends on it (a person's papers never shape their own
+    ranking), so a failure here is a warning, not a failed run. Capped per night
+    inside the command; a backlog is worked through over several nights.
+    """
+    print("\n=== Knowledge · Reading people's own papers… ===", flush=True)
+    code = run_manage("facet_author_works", [], intro=None, base=base)
+    if code != 0:
+        message = (
+            f"Reading people's papers exited with code {code}; the run itself "
+            "completed. Unread papers are tried again tomorrow."
+        )
+        print(f"note: {message}", flush=True)
+        _notify("warn", "Author papers not read", message, stage="knowledge")
 
 
 def report_run_complete(payload: dict | None, *, scrape_ran: bool) -> None:
@@ -656,6 +680,7 @@ def main() -> int:
         flush=True,
     )
     _write_run_state(ok=True, scrape_ran=scrape_ran, stages_run=stages_run)
+    facet_author_works(base)
     report_run_complete(compile_analytics(base), scrape_ran=scrape_ran)
     return 0
 

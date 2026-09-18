@@ -26,6 +26,7 @@ from .read import EdgeView
 
 __all__ = [
     "Projected",
+    "queue_work_facets",
     "confirm",
     "fade",
     "forget_conversational",
@@ -130,3 +131,30 @@ def forget_conversational(user) -> int:
     """
     deleted, _ = Edge.objects.filter(user=user, tier=Tier.CONVERSATIONAL).delete()
     return deleted
+
+
+def queue_work_facets(user_id) -> None:
+    """Read a person's newly imported papers soon, without making them wait.
+
+    Called by the author import once its works are stored. Queued after the
+    import's transaction commits; a broker outage costs a night's delay (the
+    nightly pass reads whatever is still unread), never the import.
+    """
+    from django.conf import settings
+
+    if not settings.KNOWLEDGE_FACET_ON_IMPORT:
+        return
+
+    def _send() -> None:
+        from .tasks import facet_user_works
+
+        try:
+            facet_user_works.delay(str(user_id))
+        except Exception:  # noqa: BLE001 - the nightly pass catches up
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "could not queue reading %s's papers", user_id
+            )
+
+    transaction.on_commit(_send)

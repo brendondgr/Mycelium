@@ -93,6 +93,17 @@ def store_author_works(user, draft, *, source: str) -> int:
             logging.getLogger(__name__).warning(
                 "could not store an author work for %s", user, exc_info=True
             )
+    if written:
+        try:
+            from apps.knowledge.service import queue_work_facets
+
+            queue_work_facets(user.pk)
+        except Exception:  # noqa: BLE001 — the nightly pass reads them anyway
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "could not queue facets for %s", user, exc_info=True
+            )
     return written
 
 
