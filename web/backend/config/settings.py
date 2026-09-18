@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "apps.adminpanel",
     "apps.ambient",
     "apps.knowledge",
+    "apps.collab",
 ]
 
 MIDDLEWARE = [
@@ -1174,6 +1175,20 @@ KNOWLEDGE_WORK_FACETS_NIGHTLY_CAP = env.int(
 KNOWLEDGE_FIELD_LOOKUPS_NIGHTLY_CAP = env.int(
     "KNOWLEDGE_FIELD_LOOKUPS_NIGHTLY_CAP", default=200
 )
+
+# ---------------------------------------------------------------------------
+# Collaboration matching (apps.collab)
+#
+# What a funding call needs (requirement slots) and whether the reader and
+# their own lab already cover it. See docs/plans/collaboration-network/.
+# ---------------------------------------------------------------------------
+# How close a slot must be to a concept someone holds to count as covered,
+# as cosine similarity. Looser than the concept-merge threshold on purpose: a
+# slot is a call's phrasing of a need, not a second name for the same idea.
+COLLAB_COVERAGE_COSINE = env.float("COLLAB_COVERAGE_COSINE", default=0.80)
+# Calls whose slots are read per night (one model call each, ever); new calls
+# are read on arrival within the same budget.
+COLLAB_SLOTS_NIGHTLY_CAP = env.int("COLLAB_SLOTS_NIGHTLY_CAP", default=200)
 
 LOGGING = {
     "version": 1,
