@@ -292,6 +292,7 @@ def score(world, calls, texts, items, run: dict) -> dict:
         f: {"planted": 0, "found": 0} for f in ("problem", "method", "data", "role")
     }
     extracted_total = extracted_matched = 0
+    extras = extras_verbatim = 0
     required_right = required_total = 0
     matched_slot: dict[tuple[str, int], dict] = {}  # (call key, planted index) -> slot
     role_vectors = 0
@@ -316,6 +317,14 @@ def score(world, calls, texts, items, run: dict) -> dict:
                     break
         extracted_total += len(extracted)
         extracted_matched += len(used)
+        text = " ".join(
+            (texts.get(call.key) or {}).get(k, "")
+            for k in ("title", "description", "eligibility")
+        ).lower()
+        for position, slot in enumerate(extracted):
+            if position not in used:
+                extras += 1
+                extras_verbatim += int(slot["text"].lower() in text)
 
     non_role_planted = sum(v["planted"] for f, v in by_facet.items() if f != "role")
     non_role_found = sum(v["found"] for f, v in by_facet.items() if f != "role")
@@ -456,6 +465,8 @@ def score(world, calls, texts, items, run: dict) -> dict:
             f: _rate(v["found"], v["planted"]) for f, v in by_facet.items()
         },
         "slot_required_agreement": _rate(required_right, required_total),
+        "extra_slots": extras,
+        "extra_slots_verbatim_in_call": extras_verbatim,
         "coverage_agreement": {k: _rate(*v) for k, v in agree.items()},
         "coverage_pairs": {k: v[1] for k, v in agree.items()},
         "coverage_agreement_lab_canonical": _rate(*agree["lab_canonical"]),

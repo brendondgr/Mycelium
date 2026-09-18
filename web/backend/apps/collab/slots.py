@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 COMPONENT = "requirement_slots"
 #: Bump whenever the prompt changes; only rows read under an older one re-read.
-PROMPT_VERSION = "s1"
+PROMPT_VERSION = "s2"
 MAX_ATTEMPTS = 2
 MAX_SLOTS = 6
 MAX_SLOT_WORDS = 10
@@ -70,15 +70,19 @@ Reply as {{"slots": [...], "thin": false}} where each slot is
     "text": a short phrase of at most {max_words} words, in the call's words,
     "required": true only if the call says a team MUST include it}}
 
-  problem — a problem the call wants solved.
-  method  — a technique, method, or kind of expertise it asks for.
+  problem — what the call funds, in its own words. Exactly one, first.
+  method  — a technique or kind of expertise it asks for, by its standard
+            name: "finite element analysis", not "expertise in finite element
+            analysis", and not a description of an activity ("rigorous data
+            analysis", "advanced frameworks to model ...").
   data    — data, a cohort, an instrument, or a setting it wants worked in.
   role    — a kind of partner or organisation it requires that is not
             expertise (e.g. "a local authority as a partner").
 
-At most {max_slots} slots, most important first. What the call is merely about
-is not required; what it says applicants must include is. Use [] if the call
-names nothing a team could bring. Do not invent anything the call does not say.
+At most {max_slots} slots. "required" is true only when the call says teams
+must include it or that it is required; "welcome", "encouraged", "preferred"
+and "may" mean false, and so does what the call is merely about. Use [] if the
+call names nothing at all. Do not invent anything the call does not say.
 
 CALL
 ----
@@ -151,6 +155,39 @@ def _parse(raw: str | None) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+#: A wrapper the model puts around a method's name; the name is the slot.
+_WRAPPER = re.compile(
+    r"^(?:(?:demonstrated|proven|strong)\s+)?(?:expertise|experience|knowledge|"
+    r"skills?|proficiency|background|capacity)\s+(?:in|with|of)\s+",
+    re.IGNORECASE,
+)
+
+#: Words that describe an activity without naming a technique. A method slot
+#: made of nothing else is a description (kept in step with the knowledge
+#: core's own list for method terms).
+GENERIC_METHOD_WORDS = frozenset(
+    "model models modelling modeling framework frameworks approach approaches "
+    "method methods methodology pipeline pipelines representation "
+    "representations analysis analyses algorithm algorithms system systems "
+    "technique techniques structural relational feature features learning deep "
+    "statistical optimization optimisation problem sequential high dimensional "
+    "data driven based novel adaptive specialized specialised implementation "
+    "iterative integrated hybrid automated automatic advanced improved rigorous "
+    "computational numerical rich scale large multi process processing "
+    "qualitative quantitative insights architectural patterns identify track "
+    "tools tool techniques innovative robust".split()
+)
+
+
+def _unwrap(text: str) -> str:
+    return _WRAPPER.sub("", text).strip()
+
+
+def _generic(text: str) -> bool:
+    words = _content_words(text.replace("-", " "))
+    return bool(words) and words <= GENERIC_METHOD_WORDS
+
+
 def validate(payload: dict, source: str) -> tuple[SlotOutcome, list[str]]:
     outcome = SlotOutcome()
     failures: list[str] = []
@@ -168,7 +205,12 @@ def validate(payload: dict, source: str) -> tuple[SlotOutcome, list[str]]:
         if facet not in SlotFacet.values:
             failures.append(f"unknown facet {facet!r} for {text[:40]!r}")
             continue
+        if facet == SlotFacet.METHOD:
+            text = _unwrap(text)
         if not text:
+            continue
+        if facet == SlotFacet.METHOD and _generic(text):
+            failures.append(f"a description, not a method: {text!r}")
             continue
         if len(text.split()) > MAX_SLOT_WORDS or len(text) > MAX_SLOT_CHARS:
             failures.append(f"slot too long: {text[:60]!r}")

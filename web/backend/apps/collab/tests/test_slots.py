@@ -149,3 +149,26 @@ def test_the_nightly_read_respects_its_cap(db, embedder):
     ]
     run = slots.read_calls(items, limit=2, complete=Model(GOOD, GOOD))
     assert run.read == 2 and len(slots.pending(items)) == 3
+
+
+def test_a_wrapped_method_is_unwrapped(call):
+    reply = {
+        "slots": [
+            {"facet": "problem", "text": "early warning of coral bleaching"},
+            {"facet": "method", "text": "expertise in satellite remote sensing"},
+        ]
+    }
+    outcome = slots.extract(call, complete=Model(reply))
+    assert outcome.slots[1]["text"] == "satellite remote sensing"
+
+
+def test_a_described_activity_is_not_a_method(call):
+    reply = {
+        "slots": [
+            {"facet": "problem", "text": "early warning of coral bleaching"},
+            {"facet": "method", "text": "rigorous data analysis"},
+        ]
+    }
+    outcome = slots.extract(call, complete=Model(reply, reply))
+    assert [s["facet"] for s in outcome.slots] == ["problem"]
+    assert any("a description, not a method" in f for f in outcome.refused)

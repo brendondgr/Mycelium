@@ -92,3 +92,31 @@ python3 docs/research/experiments/EXP-2026-09-006-collab-slots-teamfit-sandbox/c
   0.80; required agreement < 0.85.
 - H3: `coverage_agreement_lab_canonical` < 0.95.
 - H5: the phase does not finish.
+
+## Amendment 1 — arm B (added after arm A, before arm B ran)
+
+Arm A (prompt `s1`) ran as registered and **failed H2**: non-role slot recall
+0.739 and precision 0.789 (bars 0.85 and 0.80); problem-slot recall 0.507. It
+passed H1, H3 (0.998), H4 and H5. Reading its extractions showed three causes,
+which arm B targets; arm A's numbers stay as recorded.
+
+1. The prompt asked what a call wants a team to *bring*, so the funded problem
+   was often left out or paraphrased.
+2. Method slots came back wrapped ("expertise in finite element analysis").
+3. Descriptions of activities were listed as methods ("rigorous data analysis
+   with qualitative insights").
+
+Arm B (prompt `s2`) asks for exactly one problem slot for what the call funds,
+in its words; asks for methods by standard name; states that "welcome",
+"encouraged" and "may" mean not required; strips a leading "expertise in" /
+"experience in" / "knowledge of" deterministically; and refuses a method slot
+made only of generic words. Same world, same generated calls (cached), same
+bars. Also recorded for arm B: whether each extra (unplanted) slot names
+something the generated call text itself asks for — the generator was told to
+name nothing else, but a precision figure that counts the generator's own
+additions against the extractor would be pessimistic.
+
+```bash
+uv run --project . python -m sandbox.collab calls --people 240 --calls 150 \
+  --out /app/data/sandbox/exp006-arm-b.json
+```
