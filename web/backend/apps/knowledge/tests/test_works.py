@@ -76,7 +76,7 @@ def test_a_good_reply_is_kept_whole_in_one_call(work):
     assert outcome.terms["method"] == ["semantic segmentation", "Kalman filter"]
     assert outcome.method_neutral.startswith("labelling each pixel")
     # Profile-blind: the reader appears nowhere in what the model is asked.
-    assert "ada" not in model.prompts[0]
+    assert work.user.email not in model.prompts[0]
 
 
 def test_an_ungrounded_term_is_repaired_once(work):
@@ -177,7 +177,7 @@ def test_a_stored_work_is_never_read_twice_unless_its_text_changes(work, embedde
 
 def test_a_prompt_change_re_reads_only_old_rows(work, embedder, monkeypatch):
     works.store(work, works.extract(work, complete=Model(GOOD)))
-    monkeypatch.setattr(works, "PROMPT_VERSION", "w2")
+    monkeypatch.setattr(works, "PROMPT_VERSION", "w-next")
     assert works.pending([work]) == [work]
 
 
@@ -214,3 +214,20 @@ def test_extract_many_leaves_out_what_the_model_could_not_read(work):
         return json.dumps(reply)
 
     assert set(works.extract_many([work, other], complete=model)) == {work.pk}
+
+
+@pytest.mark.parametrize(
+    "term",
+    ["high-dimensional structural representations", "sequential optimization problem"],
+)
+def test_a_method_term_that_only_describes_is_refused(work, term):
+    reply = {**GOOD, "method_terms": ["semantic segmentation", term]}
+    outcome = works.extract(work, complete=Model(reply, reply))
+    assert outcome.terms["method"] == ["semantic segmentation"]
+    assert any("a description, not a name" in f for f in outcome.refused)
+
+
+def test_a_named_technique_with_generic_words_is_kept(work):
+    reply = {**GOOD, "method_terms": ["semantic segmentation model", "Kalman filter"]}
+    outcome = works.extract(work, complete=Model(reply))
+    assert outcome.terms["method"] == ["semantic segmentation model", "Kalman filter"]

@@ -46,7 +46,7 @@ COMPONENT = "work_facets"
 
 #: Stamped on every row. **Bump this whenever the prompt changes**; rows with an
 #: older stamp are re-read on their next visit, and only those.
-PROMPT_VERSION = "w1"
+PROMPT_VERSION = "w2"
 
 #: One retry naming what failed, then refusal (the state extractor's measure).
 MAX_ATTEMPTS = 2
@@ -112,7 +112,11 @@ PROMPT = """Read the paper below and report it as JSON with exactly these keys:
   "reusable": one sentence — what an outside researcher could concretely
       reuse (a method, dataset, baseline, protocol); "" if nothing.
   "problem_terms": 1-2 short noun phrases naming the problem.
-  "method_terms": 1-3 short noun phrases naming the techniques.
+  "method_terms": 1-3 techniques, each by its standard name — the name a
+      methods section or a textbook would use: "gradient boosting", "Kalman
+      filter", "U-Net". No qualifiers ("novel", "specialized", "adaptive",
+      "implementation of") and no descriptions of what a technique does
+      ("relational representations", "sequential optimization problem").
   "setting_terms": 0-3 short noun phrases naming the data or setting.
   "reusable_terms": 0-2 short noun phrases naming what could be reused.
   "method_neutral": the main method restated without the field's vocabulary,
@@ -196,6 +200,27 @@ def _parse(raw: str | None) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+#: Words that describe a technique without naming one. A method term made of
+#: nothing else ("high-dimensional structural representations", "sequential
+#: optimization problem") is a description the linker would turn into a concept
+#: that matches everything and means nothing.
+GENERIC_METHOD_WORDS = frozenset(
+    "model models modelling modeling framework frameworks approach approaches "
+    "method methods methodology pipeline pipelines representation "
+    "representations analysis analyses algorithm algorithms system systems "
+    "technique techniques structural relational feature features learning deep "
+    "statistical optimization optimisation problem sequential high dimensional "
+    "data driven based novel adaptive specialized specialised implementation "
+    "iterative integrated hybrid automated automatic advanced improved "
+    "computational numerical rich scale large multi process processing".split()
+)
+
+
+def _generic(term: str) -> bool:
+    words = _content_words(term.replace("-", " "))
+    return bool(words) and words <= GENERIC_METHOD_WORDS
+
+
 def _term_ok(term: str, source: str) -> str | None:
     """Why a term fails, or ``None``. A term is short, so it is held to the
     narrow promise: at least one of its words is the paper's, and it invents no
@@ -251,6 +276,9 @@ def validate(payload: dict, source: str) -> tuple[FacetOutcome, list[str]]:
         for raw in raw_terms if isinstance(raw_terms, list) else []:
             term = " ".join(str(raw or "").split())
             if not term or normalise(term) in seen:
+                continue
+            if facet == "method" and _generic(term):
+                failures.append(f"method_terms: a description, not a name: {term!r}")
                 continue
             problem = _term_ok(term, source)
             if problem:
