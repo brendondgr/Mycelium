@@ -49,3 +49,15 @@ def _local_rerank(settings):
     ``typesafe`` explicitly and pass a fake client.
     """
     settings.RERANK_METHOD = "local"
+
+
+@pytest.fixture(autouse=True)
+def _no_knowledge_projection_on_save(settings):
+    """Keep the knowledge core's save hook from queueing Celery tasks.
+
+    The hook runs on commit, which a transactional test really does reach — and
+    then ``.delay()`` would hand a test-database id to whatever worker listens
+    on the broker. The knowledge-core tests that exercise the hook turn it back
+    on and capture the task instead.
+    """
+    settings.KNOWLEDGE_PROJECT_ON_SAVE = False

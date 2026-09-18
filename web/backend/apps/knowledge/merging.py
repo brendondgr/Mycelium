@@ -44,12 +44,16 @@ def _same_owner(a: Concept, b: Concept) -> bool:
     )
 
 
-def _check(source: Concept, target: Concept) -> None:
+def _check(source: Concept, target: Concept, *, promoting: bool = False) -> None:
     if source.pk == target.pk:
         raise MergeRefused("a concept cannot be merged into itself")
     if Concept.Status.ACTIVE != source.status or Concept.Status.ACTIVE != target.status:
         raise MergeRefused("only active concepts can be merged")
-    if source.facet != target.facet:
+    # An unspecified (area) concept may fold into a specific one when a shared
+    # source names it (linker._facets); staff merges keep facets equal so that
+    # every one of them stays exactly reversible.
+    unspecified = promoting and source.facet == "area"
+    if source.facet != target.facet and not unspecified:
         raise MergeRefused(
             f"a {source.facet} cannot be merged into a {target.facet}; "
             "facets are part of what a concept means"
@@ -133,8 +137,8 @@ def merge(
     """Fold ``source`` into ``target``. Staff merges keep the source row."""
     source = Concept.objects.select_for_update().get(pk=source.pk)
     target = Concept.objects.select_for_update().get(pk=target.pk)
-    _check(source, target)
     promoting = kind == ConceptMerge.Kind.PROMOTE
+    _check(source, target, promoting=promoting)
     moved, collapsed = _move_edges(source, target, keep_collapsed=not promoting)
     aliases = list(
         ConceptAlias.objects.filter(concept=source).values_list("pk", flat=True)

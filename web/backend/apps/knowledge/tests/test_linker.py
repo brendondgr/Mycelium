@@ -335,3 +335,22 @@ def test_the_module_states_how_links_go():
         "deferred",
         "skipped",
     }
+
+
+def test_a_specific_facet_may_name_an_unspecified_concept(db, embedder):
+    keyword = link("conformal prediction").concept
+    assert keyword.facet == Facet.AREA
+    method = link("Conformal Prediction", facet=Facet.METHOD)
+    assert (method.how, method.concept) == ("alias", keyword)
+    # One source's view does not reclassify a concept everyone shares.
+    keyword.refresh_from_db()
+    assert keyword.facet == Facet.AREA
+
+
+def test_two_specific_facets_never_meet(db, embedder):
+    method = link("segmentation", facet=Facet.METHOD).concept
+    problem = link("segmentation", facet=Facet.PROBLEM).concept
+    assert problem != method and problem.facet == Facet.PROBLEM
+    # Asked for a method, the method wins over the unspecified area concept.
+    link("segmentation", facet=Facet.AREA)
+    assert link("segmentation", facet=Facet.METHOD).concept == method

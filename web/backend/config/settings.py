@@ -347,6 +347,17 @@ CELERY_BEAT_SCHEDULE = {
             hour=env.int("AMBIENT_SWEEP_HOUR", default=5), minute=15
         ),
     },
+    # The knowledge core's reconciliation: re-mirror every declared profile,
+    # lab and project into the graph (a save hook can be missed, and a wording
+    # the embedder could not reach is retried here), then prune private
+    # concepts nothing points at. Before the 07:00 daily run so the run reads a
+    # reconciled graph.
+    "sweep-knowledge": {
+        "task": "apps.knowledge.sweep",
+        "schedule": crontab(
+            hour=env.int("KNOWLEDGE_SWEEP_HOUR", default=4), minute=15
+        ),
+    },
 }
 
 # How many per-(user, area) grant/conference LLM scoring calls run concurrently

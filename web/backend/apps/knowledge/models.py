@@ -63,7 +63,7 @@ class Scope(models.TextChoices):
 
 class Relation(models.TextChoices):
     INTERESTED_IN = "interested_in", "Interested in"
-    WORKS_ON = "works_on", "Works on (problem)"
+    WORKS_ON = "works_on", "Works on"
     USES_METHOD = "uses_method", "Uses method"
     WORKS_IN_SETTING = "works_in_setting", "Works in setting / with data"
     WANTS_TO_LEARN = "wants_to_learn", "Wants to learn"
@@ -238,7 +238,10 @@ class ConceptAlias(_Scoped):
         Concept, on_delete=models.CASCADE, related_name="aliases"
     )
     text = models.CharField(max_length=200, help_text="Normalised (linker.normalise).")
-    # Copied from the concept so uniqueness can be checked by the database.
+    # The facet the wording was recorded under — the concept's own at the
+    # time. Kept on the alias so the database can check uniqueness, and so an
+    # unspecified (area) wording stays one after it folds into a specific
+    # concept (linker._facets).
     facet = models.CharField(max_length=16, choices=Facet.choices)
     created_at = models.DateTimeField(auto_now_add=True)
 

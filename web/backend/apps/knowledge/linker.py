@@ -119,10 +119,27 @@ def _visible(request: LinkRequest, prefix: str = "") -> Q:
     return visible
 
 
-def _facet_filter(request: LinkRequest, prefix: str = "") -> Q:
+def _facets(request: LinkRequest) -> set[str] | None:
+    """The facets a request may link to; ``None`` means any.
+
+    ``area`` doubles as the unspecified facet: a declared keyword mints as one
+    because nobody said what it is. So a source that does know — a project's
+    stated method — may still name that concept; it only never crosses into a
+    *different* specific facet (a method is not a problem). The concept keeps
+    the facet it was minted with, because one project calling "machine
+    learning" a method should not reclassify it for everyone; the edge's
+    relation (``uses_method``) records the role.
+    """
     if request.facet is None:
+        return None
+    return {request.facet, Facet.AREA}
+
+
+def _facet_filter(request: LinkRequest, prefix: str = "") -> Q:
+    facets = _facets(request)
+    if facets is None:
         return Q()
-    return Q(**{f"{prefix}facet": request.facet})
+    return Q(**{f"{prefix}facet__in": sorted(facets)})
 
 
 def _live(concept: Concept) -> Concept:
@@ -143,12 +160,17 @@ def _by_alias(request: LinkRequest, text: str) -> Concept | None:
         .filter(_facet_filter(request))
         .select_related("concept")
     )
-    best = None
-    for alias in aliases:
-        # The source's own words first: a lab's alias beats the shared one.
-        if alias.scope != Scope.GLOBAL:
-            return _live(alias.concept)
-        best = best or alias
+
+    def rank(alias):
+        # The source's own words first (a lab's alias beats the shared one),
+        # then the facet the source asked for over the unspecified one.
+        return (
+            alias.scope == Scope.GLOBAL,
+            request.facet is not None and alias.facet != request.facet,
+            alias.pk,
+        )
+
+    best = min(aliases, key=rank, default=None)
     return _live(best.concept) if best else None
 
 
@@ -180,11 +202,11 @@ def _add_alias(concept: Concept, text: str, request: LinkRequest) -> None:
 def _private_matches(request: LinkRequest, text: str, vector) -> list[Concept]:
     """Private concepts, in any scope, that name what this shared source names."""
     threshold = settings.KNOWLEDGE_MERGE_COSINE
-    private = Concept.objects.exclude(scope=Scope.GLOBAL).filter(
-        status=Concept.Status.ACTIVE
+    private = (
+        Concept.objects.exclude(scope=Scope.GLOBAL)
+        .filter(status=Concept.Status.ACTIVE)
+        .filter(_facet_filter(request))
     )
-    if request.facet is not None:
-        private = private.filter(facet=request.facet)
     found: dict[int, tuple[float, Concept]] = {}
     for alias in ConceptAlias.objects.filter(
         text=text, concept__in=private
@@ -202,7 +224,7 @@ def _private_matches(request: LinkRequest, text: str, vector) -> list[Concept]:
 
 def _absorb(shared: Concept, private: list[Concept]) -> None:
     for concept in private:
-        if concept.pk != shared.pk and concept.facet == shared.facet:
+        if concept.pk != shared.pk and concept.facet in (shared.facet, Facet.AREA):
             merging.merge(concept, shared, kind="promote")
 
 
