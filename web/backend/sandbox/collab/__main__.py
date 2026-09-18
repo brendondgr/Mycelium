@@ -87,6 +87,47 @@ def main() -> int:
     if args.command in ("seed", "all"):
         seed_mod.reset()
         report["seeded"] = seed_mod.seed(world, corpus)
+    if args.command == "match":
+        from django.conf import settings
+
+        from . import consent_sim, match_sim
+
+        settings.COLLAB_SEARCH_ENABLED = True
+        settings.BILLING_ENFORCE_ENTITLEMENTS = False
+        planned = consent_sim.plan(world, args.seed)
+        applied = consent_sim.apply(world, planned)
+        conversation = match_sim.plant_conversation(
+            world, applied["users"], seed=args.seed
+        )
+        report["conversation_planted"] = len(conversation)
+        settings.COLLAB_APPEARANCE_CAP = 10**6  # quality first, the cap separately
+        started = time.monotonic()
+        report["quality_institution"] = match_sim.quality(
+            world, planned, applied, conversation, scope="institution"
+        )
+        settings.COLLAB_MAX_SCOPE = "anywhere"
+        report["quality_anywhere"] = match_sim.quality(
+            world, planned, applied, conversation, scope="anywhere"
+        )
+        report["quality_seconds"] = round(time.monotonic() - started, 1)
+        report["load_capped"] = match_sim.load(
+            world, planned, applied, searches=300, cap=10, seed=args.seed
+        )
+        report["load_uncapped"] = match_sim.load(
+            world, planned, applied, searches=300, cap=None, seed=args.seed
+        )
+        failures = []
+        for section in ("quality_institution", "quality_anywhere", "load_capped"):
+            for key, value in report[section].items():
+                if key.startswith("violations") and value:
+                    failures.append(f"{section}.{key} = {value}")
+        report["invariant_failures"] = failures
+        text = json.dumps(report, indent=1, sort_keys=True, default=str)
+        if args.out:
+            Path(args.out).write_text(text)
+        print(text)
+        return 1 if failures else 0
+
     if args.command == "consent":
         from . import consent_sim
 
