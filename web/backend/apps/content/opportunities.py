@@ -1563,32 +1563,37 @@ def run_daily_opportunities_batch(
             f"scoring {len(llm_jobs)} LLM + {len(fellowship_jobs)} fellowship "
             f"unit(s), up to {workers} concurrent…"
         )
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = {}
-            for idx, job in enumerate(all_jobs):
-                # A user job carries its user's LLM gate (keyed by the target key =
-                # username); institutional jobs fall back to the batch complete.
-                job_complete = user_complete.get(job.username, complete)
-                if isinstance(job, _FellowshipMatchJob):
-                    futures[
-                        executor.submit(
-                            _score_fellowship_job, job, complete=job_complete
-                        )
-                    ] = idx
-                else:
-                    futures[
-                        executor.submit(_score_job, job, complete=job_complete)
-                    ] = idx
-            for future in as_completed(futures):
-                idx = futures[future]
-                j = all_jobs[idx]
-                try:
-                    scored[idx] = future.result()
-                except Exception:
-                    logger.exception(
-                        "scoring failed for %s:%s", j.username, j.area
-                    )
-                    scored[idx] = None
+
+        def run_one(idx: int):
+            job = all_jobs[idx]
+            # A user job carries its user's LLM gate (keyed by the target key =
+            # username); institutional jobs fall back to the batch complete.
+            job_complete = user_complete.get(job.username, complete)
+            if isinstance(job, _FellowshipMatchJob):
+                return _score_fellowship_job(job, complete=job_complete)
+            return _score_job(job, complete=job_complete)
+
+        def record(idx: int, run) -> None:
+            j = all_jobs[idx]
+            try:
+                scored[idx] = run()
+            except Exception:
+                logger.exception("scoring failed for %s:%s", j.username, j.area)
+                scored[idx] = None
+
+        if workers == 1:
+            # Stay on the calling thread. A worker thread opens its own database
+            # connection, so anything it writes (the LLM ledger, for one) escapes
+            # the caller's transaction — which is exactly what a test relies on.
+            for idx in range(len(all_jobs)):
+                record(idx, lambda i=idx: run_one(i))
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = {
+                    executor.submit(run_one, idx): idx for idx in range(len(all_jobs))
+                }
+                for future in as_completed(futures):
+                    record(futures[future], future.result)
 
     # Phase 2c — finalize (serial DB writes: New/pin + persist).
     for idx, job in enumerate(all_jobs):
