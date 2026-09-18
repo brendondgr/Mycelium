@@ -11,4 +11,5 @@ urlpatterns = [
     path("api/integrations/", include("apps.integrations.urls")),
     path("api/admin/", include("apps.adminpanel.urls")),
     path("api/ambient/", include("apps.ambient.urls")),
+    path("api/collab/", include("apps.collab.urls")),
 ]

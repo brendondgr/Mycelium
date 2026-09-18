@@ -1,5 +1,6 @@
 /** Shapes returned by the workspace read endpoints (see docs/api-contract.md). */
 
+import type { TeamFit } from "@/lib/portal/collab/types";
 import type { ClusterGroup, ResearchInterests, WatchCadence } from "@/lib/auth-types";
 
 export type LabRole = "owner" | "admin" | "member" | "viewer";
@@ -637,6 +638,9 @@ export type GrantOpportunity = OpportunityBase & {
    * — `posted` now prefers this and falls back to Mylo's ingest date only for
    * a pre-migration row that carries no such key). */
   published_on: string;
+  /** Which of the call's requirements the reader, or their lab, already
+   * covers — stored at scoring time; null when the call states none. */
+  team_fit: TeamFit | null;
 };
 
 /** A matched conference (from `/api/opportunities/conferences/`). */

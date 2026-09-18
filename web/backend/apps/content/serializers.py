@@ -614,9 +614,48 @@ class GrantSerializer(_OpportunitySerializer):
     original_deadline = serializers.SerializerMethodField()
     loi_date = serializers.SerializerMethodField()
     published_on = serializers.SerializerMethodField()
+    # Which of the call's requirements the reader, or their lab, already covers
+    # (collaboration-network plan CN-03), stored at scoring time.
+    team_fit = serializers.SerializerMethodField()
 
     def get_title(self, score: RelevanceScore) -> str:
         return self._meta(score).get("title") or "Untitled grant"
+
+    def get_team_fit(self, score: RelevanceScore) -> dict | None:
+        """The stored team-fit line, with lab-mates' names resolved live.
+
+        Only usernames are stored, so a rename lands without a re-score; a
+        name is looked up once per response, not once per card.
+        """
+        fit = (score.signals or {}).get("team_fit")
+        if not fit:
+            return None
+        names = self.context.setdefault("_team_fit_names", {})
+        wanted = {
+            person
+            for slot in fit.get("slots") or []
+            for person in slot.get("people") or []
+            if person not in names
+        }
+        if wanted:
+            from django.contrib.auth import get_user_model
+
+            from apps.core.people import display_name
+
+            for user in get_user_model().objects.filter(username__in=wanted):
+                names[user.get_username()] = display_name(user)
+        slots = [
+            {
+                **{k: v for k, v in slot.items() if k != "people"},
+                "people": [
+                    {"username": person, "name": names[person]}
+                    for person in slot.get("people") or []
+                    if person in names  # someone since deleted is dropped
+                ],
+            }
+            for slot in fit.get("slots") or []
+        ]
+        return {**fit, "slots": slots}
 
     def get_sponsor(self, score: RelevanceScore) -> str:
         # Chained, not swapped, and in the same order ``daily_report._source_line``
@@ -1224,9 +1263,7 @@ class FellowshipSerializer(_OpportunitySerializer):
 
     def get_posted(self, score: RelevanceScore) -> str:
         first_seen = (
-            score.signals.get("first_seen")
-            or self._meta(score).get("first_seen")
-            or ""
+            score.signals.get("first_seen") or self._meta(score).get("first_seen") or ""
         )
         return first_seen[:10] if first_seen else ""
 
@@ -1403,9 +1440,7 @@ class SearchResultSerializer(serializers.Serializer):
         deadline = meta.get("deadline")
         if isinstance(deadline, dict):
             deadline = deadline.get("date") or deadline.get("type")
-        return str(
-            meta.get("deadline_date") or deadline or meta.get("deadlines") or ""
-        )
+        return str(meta.get("deadline_date") or deadline or meta.get("deadlines") or "")
 
 
 class SavedDeadlineSerializer(serializers.Serializer):

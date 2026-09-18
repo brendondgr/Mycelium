@@ -42,6 +42,7 @@ import {
   revealDelay,
   useInfiniteReveal,
 } from "@/lib/portal/use-infinite-reveal";
+import { TeamFitLine } from "@/components/portal/collab/team-fit-line";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
 import type {
   GrantOpportunity,
@@ -121,9 +122,12 @@ export function GrantRow({
   grant,
   remindLabSlug,
   recommendedFor,
+  forLab = false,
   ignorable = false,
 }: {
   grant: GrantOpportunity;
+  /** A lab's feed: the team-fit line names lab-mates instead of "you". */
+  forLab?: boolean;
   /** Set from a lab's Saves area so the reminder posts to that lab's channel. */
   remindLabSlug?: string;
   /** Lab-only: who Mylo judges this most applicable to. Personal feeds omit it. */
@@ -247,6 +251,12 @@ export function GrantRow({
         )
       ) : null}
 
+      <TeamFitLine
+        contentId={grant.content_id}
+        fit={grant.team_fit}
+        forLab={forLab}
+      />
+
       <RecommendedFor members={recommendedFor} />
 
       <SourceRow
@@ -295,6 +305,7 @@ function GrantsList({
           <GrantRow
             grant={grant}
             recommendedFor={recommendedFor?.[grant.content_id]}
+            forLab={recommendedFor !== undefined}
             ignorable
           />
         </RevealOnScroll>

@@ -158,6 +158,12 @@ routes clients depend on most.
 | `projects/<id>/channel-hints/` | POST | Point a heard channel at this project, or stop |
 | `attributions/<ref_id>/correct/` | POST | "This was about a different project" |
 
+### Collaboration — `/api/collab/`
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `calls/<content_id>/slot-feedback/` | POST | Correct a call's requirement slots: `{"kind": "not_a_requirement" \| "we_cover_this", "slot_text"}` or `{"kind": "missed_one", "note"}`. Append-only; 201 |
+
 ### Platform admin — `/api/admin/` (staff or superuser only)
 
 | Route | Methods | Purpose |
@@ -988,10 +994,30 @@ high-fit grant floats to the top for its first week).
     "opportunity_number": "PAR-25-144",
     "due_dates": ["2026-02-05", "2026-06-05", "2026-10-05"],
     "deadline_text": "Standard NIH cycle — see full announcement for details.",
-    "dates_inferred": false, "original_deadline": "2026-02-05", "loi_date": ""
+    "dates_inferred": false, "original_deadline": "2026-02-05", "loi_date": "",
+    "team_fit": {
+      "covered": 1, "total": 2, "gaps": ["environmental health"],
+      "roles": ["a local authority as a partner"],
+      "slots": [
+        { "text": "satellite remote sensing", "facet": "method", "required": true,
+          "covered_by": "lab", "matched": "Remote sensing of reefs",
+          "people": [{ "username": "ada", "name": "Ada Okafor" }] },
+        { "text": "environmental health", "facet": "method", "required": true,
+          "covered_by": null, "matched": "", "people": [] },
+        { "text": "a local authority as a partner", "facet": "role",
+          "required": true, "covered_by": null, "matched": "", "people": [] }
+      ]
+    }
   }]
 }
 ```
+
+`team_fit` (grants only; `null` when the call states nothing to bring) is
+stored at scoring time (collaboration-network plan CN-03): the call's
+requirement slots and who already covers each. `covered_by` is `"you"` on a
+reader's own feed, `"lab"` on a lab or project feed — where a lab-mate is named
+only on what their profile states — and `null` for a gap. A `role` is a kind of
+partner, shown and never matched. Names resolve at read time.
 
 **There is no `match_percent` anywhere in this API.** It implied a measurement
 nobody made: a language model was asked to guess a similarity, and the result was
