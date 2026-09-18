@@ -10,4 +10,5 @@ urlpatterns = [
     path("api/", include("apps.billing.urls")),
     path("api/integrations/", include("apps.integrations.urls")),
     path("api/admin/", include("apps.adminpanel.urls")),
+    path("api/ambient/", include("apps.ambient.urls")),
 ]

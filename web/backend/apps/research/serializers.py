@@ -128,6 +128,12 @@ class ProjectMemberSerializer(serializers.Serializer):
         return initials(user)
 
 
+#: Alias bounds. See ``ProjectUpdateSerializer.validate_aliases``.
+ALIAS_MIN = 3
+ALIAS_MAX = 60
+ALIAS_LIMIT = 20
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     """Read-only project summary for the dashboard.
 
@@ -174,6 +180,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "can_edit",
             "can_manage_members",
             "members",
+            "aliases",
             "updated_at",
         ]
 
@@ -378,12 +385,47 @@ class ProjectUpdateSerializer(serializers.Serializer):
     #: and settable only by a project editor, which is what the view already
     #: enforces before this serializer runs.
     share_in_lab_reports = serializers.BooleanField(required=False)
+    #: Other names people use for this project in conversation. Read by ambient
+    #: attribution, where a name or alias is the strongest single signal.
+    aliases = serializers.ListField(
+        child=serializers.CharField(allow_blank=True), required=False
+    )
 
     def validate_name(self, value: str) -> str:
         value = value.strip()
         if not value:
             raise serializers.ValidationError("A project name cannot be blank.")
         return value
+
+    def validate_aliases(self, value) -> list[str]:
+        """Short, distinct, and not the project's own name.
+
+        Three characters at least, because anything shorter ("ML", "IO") occurs
+        by accident in ordinary conversation and would attribute messages to
+        this project that were never about it. Duplicates collapse ignoring
+        case, blanks drop, and the list is capped so an alias field cannot
+        become a keyword dump.
+        """
+        out: list[str] = []
+        seen: set[str] = set()
+        for raw in value:
+            alias = " ".join(str(raw).split())
+            if not alias:
+                continue
+            if len(alias) < ALIAS_MIN or len(alias) > ALIAS_MAX:
+                raise serializers.ValidationError(
+                    f"Each alias must be {ALIAS_MIN}–{ALIAS_MAX} characters: "
+                    f"{alias!r}."
+                )
+            key = alias.casefold()
+            if key not in seen:
+                seen.add(key)
+                out.append(alias)
+        if len(out) > ALIAS_LIMIT:
+            raise serializers.ValidationError(
+                f"At most {ALIAS_LIMIT} aliases per project."
+            )
+        return out
 
     def validate_watch_categories(self, value) -> list[str]:
         allowed = {"papers", "grants", "fellowships", "conferences"}
@@ -418,6 +460,11 @@ class ProjectUpdateSerializer(serializers.Serializer):
         instance.goals = goals
         if "share_in_lab_reports" in validated:
             instance.share_in_lab_reports = bool(validated["share_in_lab_reports"])
+        if "aliases" in validated:
+            name = instance.name.casefold()
+            instance.aliases = [
+                alias for alias in validated["aliases"] if alias.casefold() != name
+            ]
 
         instance.save()
         return instance

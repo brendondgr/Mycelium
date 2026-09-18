@@ -112,7 +112,7 @@ routes clients depend on most.
 |---|---|---|
 | `/` | GET, POST | Visible projects; create (plan-capped) |
 | `lab/<slug>/` | GET | Every project of one lab, to browse and join |
-| `<id>/` | GET, PATCH | Detail; edit name / description / status / progress / focus / watch categories |
+| `<id>/` | GET, PATCH | Detail; edit name / description / status / progress / focus / watch categories / aliases |
 | `<id>/archive/` | POST, DELETE | Archive / unarchive (never deletes) |
 | `<id>/state/` | GET, PATCH | What the project claims, blocks on, and aims at |
 | `<id>/state/confirm/` | POST | "Still true" — the date only |
@@ -149,6 +149,14 @@ routes clients depend on most.
 | `code/` `lab-code/` | POST | Mint a personal / lab activation code |
 | `daily-report/` | POST | Toggle the daily PDF DM |
 | `disconnect/` | POST | Unlink |
+
+### Ambient attribution — `/api/ambient/`
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `projects/<id>/conversation/` | GET | A project editor's view: recent attributions, heard channels, correction targets |
+| `projects/<id>/channel-hints/` | POST | Point a heard channel at this project, or stop |
+| `attributions/<ref_id>/correct/` | POST | "This was about a different project" |
 
 ### Platform admin — `/api/admin/` (staff or superuser only)
 
@@ -559,11 +567,58 @@ a downgrade.
 
 ### `PATCH /api/projects/<id>/`
 
-`{ "name"?, "description"?, "status"?, "progress"?, "focus"?, "watch_categories"? }`
-— editors only. An empty string (or `null` for `progress`) clears a display field
+`{ "name"?, "description"?, "status"?, "progress"?, "focus"?, "watch_categories"?, "aliases"? }`
+— editors only. `aliases` is a list of other names people use for the project in
+conversation, read by ambient attribution: each 3–60 characters, at most 20,
+duplicates collapse ignoring case, and one equal to the project's own name is
+dropped. It is returned on every project row. An empty string (or `null` for `progress`) clears a display field
 rather than storing a blank. A whole-corpus re-seed is triggered only when the
 patch actually changes what the project searches on (its focus, watch topics, or
 tracked areas); a rename or a status change does not buy one.
+
+### Ambient attribution — `/api/ambient/`
+
+Which project a lab conversation was about, for the people who can correct it.
+Nothing here ever returns message text — none is kept.
+
+**`GET projects/<id>/conversation/`** — project editors only (403 otherwise).
+
+```json
+{
+  "scope": "lab",
+  "listening": true,
+  "channels": [{"place_id": "…", "label": "methods",
+                "hinted_project": {"id": "…", "name": "…"} | null}],
+  "hinted_channels": ["…"],
+  "attributions": [{"id": 12, "sent_at": "…", "place_kind": "channel",
+                    "place_label": "methods",
+                    "speaker": {"id": 4, "name": "Ada Lovelace"},
+                    "confidence": 0.82, "decided_by": "resolved",
+                    "matched": ["IMG-seg"], "corrected": false}],
+  "alternatives": [{"id": "…", "name": "Annotation study"}]
+}
+```
+
+A lab project lists lab-channel messages from its own lab's server attributed to
+it — never a DM and never another lab's server. A personal project lists only its
+owner's own messages. `matched` is the project's vocabulary that matched (an
+alias, a dataset name), never the person's words. `channels` are those Mylo has
+heard in the lab's server, minus excluded ones; the 50 newest attributions are
+returned.
+
+**`POST projects/<id>/channel-hints/`** `{ "place_id", "on"? }` — editors of a lab
+project. A hint raises that project's score in the channel and never decides on
+its own; a channel hints one project, so pointing it here moves it. 400 when the
+lab's server is not listening or the channel has never been heard.
+
+**`POST attributions/<ref_id>/correct/`** `{ "project": <id> | null }` — the
+message's own speaker, or an editor of the lab project it is filed under.
+`null` means "not about a project". The target must be a project of the same
+lab, or — for the speaker alone — their own personal project or a lab project
+they are on. The reference is fixed with confidence 1.0, any observation resting
+on it is updated and gets a `corrected` feedback row, and an append-only
+correction records every signal's score as a labelled example. Returns
+`{ "id", "project", "observations_updated" }`; 403 when not permitted.
 
 ### Project members and invitations
 
