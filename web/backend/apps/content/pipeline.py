@@ -1580,13 +1580,29 @@ def cluster_suggestions(
       Position within a theme plus a verdict says the useful part honestly, so
       the key is written as ``None`` rather than dropped — a stale row from
       before this change would otherwise keep showing its old number.
-    * **No reordering.** ``pairs`` arrives in the fused order and leaves in it.
+    * **No global score order.** ``rank`` is the item's best position across its
+      theme slates — every theme's 1st, then every 2nd — with the fused order
+      only breaking ties, and anything in no slate after all of them. The slates
+      are the ranking the run produced under whichever ``RERANK_METHOD`` was
+      active (TypeSafe re-orders their heads; ``local`` leaves the fused order
+      standing), so the feed follows that method rather than the pre-rerank
+      fusion. Numbering by ``pairs`` put an item TypeSafe had pushed to 17th in
+      every theme at the top of the feed, and past the write-up budget, which
+      funds by slate position.
 
     A candidate in no theme's slate keeps a templated reason: it is in the feed
     because it cleared admission, and saying so is more honest than silence.
     """
+
+    def slate_order(indexed: tuple[int, tuple[ContentItem, float]]) -> tuple:
+        fused, (item, _score) = indexed
+        entries = slates.get(str(item.id)) or {}
+        best = min((entry["rank"] for entry in entries.values()), default=None)
+        return (best is None, best or 0, fused)
+
+    ordered = [pair for _i, pair in sorted(enumerate(pairs), key=slate_order)]
     out: list[dict] = []
-    for rank, (item, score) in enumerate(pairs, start=1):
+    for rank, (item, score) in enumerate(ordered, start=1):
         cid = str(item.id)
         entries = slates.get(cid) or {}
         best = (

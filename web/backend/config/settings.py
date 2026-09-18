@@ -506,7 +506,8 @@ CLUSTER_ADMIT_HARD_FLOOR = env.float("CLUSTER_ADMIT_HARD_FLOOR", default=0.35)
 # Model write-ups per target per run (apps.content.cluster_fit). A run-safety cap,
 # not a spend cap: the nightly batch is shared, so an unbounded spike for one
 # reader who just redesigned their profile would degrade everyone else's report.
-# Entrants are written first and whatever does not fit carries to the next run.
+# Funded by slate position (entrants first at equal position); whatever does not
+# fit is written deterministically and carries to the next run.
 CLUSTER_WRITEUP_BUDGET = env.int("CLUSTER_WRITEUP_BUDGET", default=40)
 CLUSTER_FIT_BATCH = env.int("CLUSTER_FIT_BATCH", default=12)
 

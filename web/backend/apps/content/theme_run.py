@@ -9,13 +9,19 @@ and it answers that with three rules in order:
    store. A second run over an unchanged profile therefore makes zero model
    calls, and an item re-entering a slate makes zero as well — it is badged new
    again, which is the correct existing semantics, but "new to the reader's
-   attention" is not "new to Mylo".
+   attention" is not "new to Mylo". For an entitled target a *deterministic*
+   write-up is not reusable: it stands in for a call the budget could not pay
+   for, and reusing it is what used to strand it there for good.
 2. **Entitlement second.** Model reasoning is a paid layer. An unentitled target
    never reaches a prompt at all, and gets the deterministic write-up, which is
    the baseline product rather than a degraded one.
-3. **Budget third.** Whatever is left is ordered priority-first — entrants ahead
-   of standing members, then by position within the theme — and cut at the run
-   budget. What does not fit carries to the next run rather than being dropped.
+3. **Budget third.** Whatever is left is ordered by position within the theme —
+   the slate's own order, so it follows whichever ``RERANK_METHOD`` produced it —
+   with entrants ahead of standing members at the same position, and cut at the
+   run budget. What does not fit carries to the next run rather than being
+   dropped. Position leads because the head of a slate is the head of the feed:
+   funding an entrant at 25th ahead of a carried item at 2nd is how the reader's
+   first papers ended up the ones Mylo had not read.
 
 Everything the slate holds ends up with a write-up either way, so a section is
 never a mix of explained and unexplained rows.
@@ -268,8 +274,12 @@ def plan_theme_writeups(
             if cluster is None:
                 continue
             existing = stored.get(cid, {}).get(cluster_id)
-            if reuse and is_current(
-                existing, plan.fingerprints[cluster_id], plan.state_fingerprint
+            if (
+                reuse
+                and is_current(
+                    existing, plan.fingerprints[cluster_id], plan.state_fingerprint
+                )
+                and not (plan.entitled and existing.get("source") == "deterministic")
             ):
                 plan.reused.setdefault(cid, {})[cluster_id] = existing
                 continue
@@ -289,13 +299,14 @@ def plan_theme_writeups(
 
     # Priority-first across all themes **jointly**, so one noisy theme cannot
     # starve the others, and independently of slate depth, so depth never becomes
-    # a cost dial by accident. Whatever falls past the cut is written
-    # deterministically now and carried to the next run rather than dropped.
+    # a cost dial by accident. Position leads — every theme's 1st, then every 2nd
+    # — so the budget covers the head of the feed before any tail. Whatever falls
+    # past the cut is written deterministically now and carried to the next run.
     cap = writeup_budget() if budget is None else budget
     pending.sort(
         key=lambda triple: (
-            0 if triple[2].evidence.is_new else 1,
             triple[2].evidence.position,
+            0 if triple[2].evidence.is_new else 1,
         )
     )
     if plan.entitled:

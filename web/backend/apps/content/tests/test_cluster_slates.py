@@ -543,3 +543,109 @@ def test_a_model_answering_the_wrong_question_stores_nothing() -> None:
     comprehend([item], complete=lambda _p: '{"items": [{"n": 1}]}')
 
     assert ItemComprehension.objects.count() == 0
+
+
+# --------------------------------------------------------------------------- #
+# The feed follows the slates, and the budget follows the feed
+# --------------------------------------------------------------------------- #
+def test_the_feed_is_numbered_by_slate_position_not_by_the_fused_order() -> None:
+    """TypeSafe re-orders a slate's head; the feed has to show that order.
+
+    Numbered by the pre-rerank fusion, an item the rerank had pushed to 3rd came
+    out 1st — at the top of the feed, and past the write-up budget, which funds by
+    slate position. The fused order survives only as the tie-break.
+    """
+    from apps.content.pipeline import cluster_suggestions
+
+    fused_first, ocean_head, medai_head, unslated = (
+        ContentItem(external_id=name, metadata={"title": name})
+        for name in ("fused-first", "ocean-head", "medai-head", "unslated")
+    )
+    pairs = [(fused_first, 0.9), (ocean_head, 0.8), (medai_head, 0.7), (unslated, 0.6)]
+    slates = {
+        str(fused_first.id): {"c-ocean": {"rank": 3}, "c-medai": {"rank": 4}},
+        str(ocean_head.id): {"c-ocean": {"rank": 1}},
+        str(medai_head.id): {"c-medai": {"rank": 1}},
+    }
+
+    rows = cluster_suggestions({}, pairs, slates, {}, {})
+
+    assert [r["headline"] for r in rows] == [
+        "ocean-head", "medai-head", "fused-first", "unslated",
+    ]
+    assert [r["rank"] for r in rows] == [1, 2, 3, 4]
+
+
+def _plan_for(user, stored: dict, slate: dict, *, entitled: bool, budget: int = 10):
+    """Plan one Ocean theme over rows whose write-ups are already ``stored``."""
+    from apps.content.theme_run import plan_theme_writeups
+
+    items = {name: _item(name) for name in slate}
+    for name, writeup in stored.items():
+        RelevanceScore.objects.create(
+            content=items[name], target_user=user, score=1.0,
+            signals={"writeups": {OCEAN.id: writeup}},
+        )
+    return plan_theme_writeups(
+        {"target_user": user},
+        ContentItem.Type.PAPER,
+        [OCEAN],
+        {str(items[n].id): {OCEAN.id: entry} for n, entry in slate.items()},
+        {str(item.id): (item, {}) for item in items.values()},
+        profile_text="reef mapping",
+        entitled=entitled,
+        budget=budget,
+    ), items
+
+
+def _placeholder(position: int) -> dict:
+    return deterministic_writeup(
+        ContentItem(external_id="p", metadata={"title": "P"}),
+        OCEAN, Evidence(position=position), depth=25,
+        fingerprint=areas_fingerprint(OCEAN.areas),
+    )
+
+
+@pytest.mark.django_db
+def test_a_placeholder_write_up_is_carried_to_the_next_run_not_kept() -> None:
+    """Past the budget is "not yet", not "never".
+
+    Treating the deterministic stand-in as current reused it on every later run,
+    so an item that missed the cut once never got Mylo's read at all.
+    """
+    user = User.objects.create_user("carry")
+    slate = {"standing": {"rank": 2, "is_new": False}}
+
+    plan, items = _plan_for(user, {"standing": _placeholder(2)}, slate, entitled=True)
+
+    assert [cid for _c, cid, _cand in plan.funded] == [str(items["standing"].id)]
+    assert plan.reused == {}
+
+
+@pytest.mark.django_db
+def test_an_unentitled_target_keeps_its_deterministic_write_up() -> None:
+    """With no model to call, the template is the answer, and re-rendering is waste."""
+    user = User.objects.create_user("free")
+    slate = {"standing": {"rank": 2, "is_new": False}}
+
+    plan, items = _plan_for(user, {"standing": _placeholder(2)}, slate, entitled=False)
+
+    assert str(items["standing"].id) in plan.reused
+    assert plan.funded == [] and plan.unfunded == []
+
+
+@pytest.mark.django_db
+def test_the_budget_funds_the_head_of_the_slate_before_an_entrant_tail() -> None:
+    """The first papers in the feed are the ones the reader most needs read."""
+    user = User.objects.create_user("head")
+    slate = {
+        "carried-head": {"rank": 2, "is_new": False},
+        "entrant-tail": {"rank": 20, "is_new": True},
+    }
+
+    plan, items = _plan_for(
+        user, {"carried-head": _placeholder(2)}, slate, entitled=True, budget=1
+    )
+
+    assert [cid for _c, cid, _cand in plan.funded] == [str(items["carried-head"].id)]
+    assert [cid for _c, cid, _cand in plan.unfunded] == [str(items["entrant-tail"].id)]
