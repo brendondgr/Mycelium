@@ -349,6 +349,12 @@ CELERY_BEAT_SCHEDULE = {
     # the embedder could not reach is retried here), then prune private
     # concepts nothing points at. Before the 07:00 daily run so the run reads a
     # reconciled graph.
+    # Collaboration: remind people whose open-to-collaboration setting ends
+    # soon, and drop appearance records past eight weeks.
+    "collab-daily": {
+        "task": "apps.collab.daily",
+        "schedule": crontab(hour=env.int("COLLAB_DAILY_HOUR", default=4), minute=30),
+    },
     "sweep-knowledge": {
         "task": "apps.knowledge.sweep",
         "schedule": crontab(hour=env.int("KNOWLEDGE_SWEEP_HOUR", default=4), minute=15),
@@ -1190,6 +1196,18 @@ COLLAB_COVERAGE_COSINE = env.float("COLLAB_COVERAGE_COSINE", default=0.80)
 # Calls whose slots are read per night (one model call each, ever); new calls
 # are read on arrival within the same budget.
 COLLAB_SLOTS_NIGHTLY_CAP = env.int("COLLAB_SLOTS_NIGHTLY_CAP", default=200)
+# Being findable (plan CN-04). Off by default; turning it on lasts this many
+# months, with a reminder this many days before it ends. A person is shown to
+# at most COLLAB_APPEARANCE_CAP distinct seekers a week, so the most sought-
+# after people are not flooded. Verified scope reads the same affiliation
+# directory the app's institution picker uses.
+COLLAB_OPEN_MONTHS = env.int("COLLAB_OPEN_MONTHS", default=6)
+COLLAB_RENEWAL_NOTICE_DAYS = env.int("COLLAB_RENEWAL_NOTICE_DAYS", default=14)
+COLLAB_APPEARANCE_CAP = env.int("COLLAB_APPEARANCE_CAP", default=10)
+COLLAB_INSTITUTIONS_PATH = env(
+    "COLLAB_INSTITUTIONS_PATH",
+    default=str(ROOT_DIR / "app" / "public" / "data" / "institutions.json"),
+)
 
 LOGGING = {
     "version": 1,

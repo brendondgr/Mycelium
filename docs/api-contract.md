@@ -162,6 +162,8 @@ routes clients depend on most.
 
 | Route | Methods | Purpose |
 |---|---|---|
+| `settings/` | GET, PUT | The reader's own "open to collaboration" setting: `{"open", "audience": "institution" \| "country" \| "anywhere", "open_to": [...], "renew"?}`. GET adds `expires_at`, `verified`, the verified `institution` and `country`, and `allowed_audiences` (empty unverified; only `anywhere` for a personal address). 400 with `detail` on a refused choice. Never returns who searched or how often the reader appeared |
+| `preview/` | GET | Exactly what a seeker would see: `{"name", "institution", "facets": {facet: [{"label", "sources"}]}}` — declared and paper-backed concepts only, never conversation or a project |
 | `calls/<content_id>/slot-feedback/` | POST | Correct a call's requirement slots: `{"kind": "not_a_requirement" \| "we_cover_this", "slot_text"}` or `{"kind": "missed_one", "note"}`. Append-only; 201 |
 
 ### Platform admin — `/api/admin/` (staff or superuser only)

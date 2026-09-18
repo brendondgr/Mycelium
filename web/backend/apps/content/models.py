@@ -1387,6 +1387,9 @@ class Notification(models.Model):
         # that can carry this: if Discord is the broken thing, a Discord message
         # would fail for the same reason the original one did.
         DELIVERY_FAILED = "delivery_failed", "Delivery failed"
+        # Collaboration-network plan CN-04: "your open-to-collaboration setting
+        # ends soon". Never anything about who searched.
+        COLLAB_RENEWAL = "collab_renewal", "Collaboration setting ending"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

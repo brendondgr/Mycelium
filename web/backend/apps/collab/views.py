@@ -1,4 +1,4 @@
-"""The collaboration API. Plan CN-03 adds one thing: feedback on a call's slots."""
+"""The collaboration API: slot feedback (CN-03), consent and preview (CN-04)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,9 @@ from rest_framework.views import APIView
 
 from apps.content.models import ContentItem
 
-from .models import SlotFeedback
+from . import consent
+from .models import Audience, CollaborationSetting, OpenTo, SlotFeedback
+from .preview import preview
 
 
 class SlotFeedbackInput(serializers.Serializer):
@@ -53,3 +55,70 @@ class SlotFeedbackView(APIView):
         return Response(
             {"id": row.pk, "kind": row.kind}, status=status.HTTP_201_CREATED
         )
+
+
+class CollaborationSettingInput(serializers.Serializer):
+    open = serializers.BooleanField()
+    audience = serializers.ChoiceField(choices=Audience.choices)
+    open_to = serializers.ListField(
+        child=serializers.ChoiceField(choices=OpenTo.choices), required=False
+    )
+    renew = serializers.BooleanField(required=False, default=False)
+
+
+def _setting_payload(user) -> dict:
+    setting = CollaborationSetting.objects.filter(user=user).first()
+    place = consent.place_of(user)
+    affiliation = getattr(user, "verified_affiliation", None) if place else None
+    return {
+        "open": bool(setting and setting.is_open()),
+        "audience": setting.audience if setting else Audience.INSTITUTION,
+        "open_to": list(setting.open_to) if setting else [],
+        "expires_at": (
+            setting.expires_at.isoformat()
+            if setting and setting.is_open() and setting.expires_at
+            else None
+        ),
+        "verified": place is not None,
+        "institution": affiliation.institution if affiliation else "",
+        "country": affiliation.country if affiliation else "",
+        "allowed_audiences": consent.allowed_audiences(place),
+    }
+
+
+class CollaborationSettingView(APIView):
+    """``GET`` / ``PUT /api/collab/settings/`` — the person's own setting.
+
+    Off unless they turn it on; turning it on starts a fresh six-month period.
+    The response never includes how often, or by whom, they were found.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(_setting_payload(request.user))
+
+    def put(self, request):
+        payload = CollaborationSettingInput(data=request.data)
+        payload.is_valid(raise_exception=True)
+        data = payload.validated_data
+        try:
+            consent.update(
+                request.user,
+                open=data["open"],
+                audience=data["audience"],
+                open_to=data.get("open_to") or [],
+                renew=data.get("renew", False),
+            )
+        except consent.ConsentRefused as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(_setting_payload(request.user))
+
+
+class CollaborationPreviewView(APIView):
+    """``GET /api/collab/preview/`` — exactly what a seeker would see about you."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(preview(request.user))
