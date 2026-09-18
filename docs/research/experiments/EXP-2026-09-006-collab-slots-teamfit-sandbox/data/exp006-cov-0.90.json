@@ -1,0 +1,76 @@
+{
+ "calls_corpus_seconds": 0.0,
+ "corpus_path": "/app/data/sandbox/collab-20260918-240.json",
+ "corpus_seconds": 0.0,
+ "coverage_cosine": 0.9,
+ "invariant_failures": [],
+ "labs": 48,
+ "metrics": {
+  "calls": 150,
+  "calls_clean": 150,
+  "coverage_agreement": {
+   "lab_canonical": 1.0,
+   "lab_problem_data": 0.9961,
+   "lab_variant": 0.864,
+   "person_canonical": 0.9915,
+   "person_problem_data": 0.9585,
+   "person_variant": 0.9534
+  },
+  "coverage_agreement_lab_canonical": 1.0,
+  "coverage_pairs": {
+   "lab_canonical": 6624,
+   "lab_problem_data": 9408,
+   "lab_variant": 3264,
+   "person_canonical": 33120,
+   "person_problem_data": 47040,
+   "person_variant": 16320
+  },
+  "extra_slots": 98,
+  "extra_slots_verbatim_in_call": 97,
+  "generator_slips": 0,
+  "invariants": {
+   "lab_named_non_member": 0,
+   "role_slots_covered": 0,
+   "role_slots_with_a_vector": 0,
+   "slots_second_pass_model_calls": 0,
+   "slots_second_pass_reads": 0,
+   "team_fit_second_pass_changes": 0
+  },
+  "near_miss_false_cover": 0,
+  "near_miss_false_cover_rate": 0.0,
+  "run": {
+   "score_rows": 43200,
+   "slots_first": {
+    "read": 0,
+    "skipped": true
+   },
+   "slots_model_calls": 0,
+   "slots_model_failures": 0,
+   "slots_second": {
+    "read": 0,
+    "unavailable": 0,
+    "vectors": 0,
+    "with_slots": 0
+   },
+   "slots_second_model_calls": 0,
+   "slots_seconds": 0.0,
+   "team_fit_labs_seconds": 36.7,
+   "team_fit_people_seconds": 157.0,
+   "team_fit_rows_changed": 43200,
+   "team_fit_second_changes": 0
+  },
+  "slot_precision": 0.8241,
+  "slot_recall_by_facet": {
+   "data": 0.9247,
+   "method": 0.9537,
+   "problem": 0.7333,
+   "role": 1.0
+  },
+  "slot_recall_non_role": 0.8758,
+  "slot_required_agreement": 0.9782
+ },
+ "papers": 1099,
+ "people": 240,
+ "projects": 48,
+ "seed": 20260918
+}

@@ -73,7 +73,29 @@ def main() -> None:
         writer.writerow(["metric", "value"])
         for key in sorted(metrics):
             writer.writerow([key, metrics[key]])
+    sweep = []
+    for value in ("0.80", "0.85", "0.88", "0.90"):
+        m = json.loads((DATA / f"exp006-cov-{value}.json").read_text())["metrics"]
+        row = {"threshold": value, **{k: m["coverage_agreement"][k] for k in m["coverage_agreement"]}}
+        row["near_miss_false_cover"] = m["near_miss_false_cover"]
+        sweep.append(row)
+        tag = value.replace(".", "")
+        for key, val in row.items():
+            if key != "threshold":
+                metrics[f"cov_{tag}__{key}"] = val
+    (DATA / "metrics.json").write_text(json.dumps(metrics, indent=1, sort_keys=True))
+    with (DATA / "metrics.csv").open("w", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["metric", "value"])
+        for key in sorted(metrics):
+            writer.writerow([key, metrics[key]])
     TABLES.mkdir(exist_ok=True)
+    cols = ["lab_canonical", "lab_variant", "lab_problem_data", "person_canonical",
+            "person_variant", "person_problem_data", "near_miss_false_cover"]
+    lines = ["| Coverage cosine | " + " | ".join(cols) + " |", "|---:|" + "---:|" * len(cols)]
+    for row in sweep:
+        lines.append(f"| {row['threshold']} | " + " | ".join(str(row[c]) for c in cols) + " |")
+    (TABLES / "coverage_sweep.md").write_text("\n".join(lines) + "\n")
     lines = ["| Metric | Arm A (s1) | Arm B (s2) | Arm C (s3) |", "|---|---:|---:|---:|"]
     for key in ROWS + sorted(k for k in arms["c_s3"] if k.startswith("invariant__")):
         lines.append(f"| `{key}` | " + " | ".join(str(arms[a].get(key)) for a in ARMS) + " |")

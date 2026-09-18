@@ -34,11 +34,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-09-003` | 2026-09-17 | Does a calibrated decision model agree with the fused order and the LLM verdicts on one reader's grant and conference slates? | complete | — | C-026 | [folder](experiments/EXP-2026-09-003-typesafe-personal-opportunities/RESULTS.md) |
 | `EXP-2026-09-004` | 2026-09-17 | Does a calibrated pointwise probability rerank a scholarly feed better than BM25 alone? | complete | — | — (refutes C-027) | [folder](experiments/EXP-2026-09-004-typesafe-pointwise-rerank-longeval/RESULTS.md) |
 | `EXP-2026-09-005` | 2026-09-18 | Do people's papers become the right demonstrated concepts? A synthetic-world test of plan CN-02 | complete | — | — | [folder](experiments/EXP-2026-09-005-knowledge-demonstrated-sandbox/RESULTS.md) |
+| `EXP-2026-09-006` | 2026-09-18 | Do funding calls become the right requirement slots, and is team coverage marked correctly? A synthetic-world test of plan CN-03 | complete | — | — | [folder](experiments/EXP-2026-09-006-collab-slots-teamfit-sandbox/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 23 |
+| complete | 24 |
 | planned | 2 |
-| **total** | **25** |
+| **total** | **26** |

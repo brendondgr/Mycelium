@@ -9,68 +9,145 @@
 id: EXP-2026-09-006
 slug: collab-slots-teamfit-sandbox
 title: Do funding calls become the right requirement slots, and is team coverage marked correctly? A synthetic-world test of plan CN-03
-status: planned # planned | running | complete | failed | superseded
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-09-18
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-09-18
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  The sandbox validation plan CN-03 must pass before it is retired: fictional
+  funding calls with planted requirement slots, read by the real slot
+  extractor, and the team-fit line marked for every lab and every person of
+  EXP-2026-09-005's world against every call — scored against planted truth.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Pre-registered in PROTOCOL.md, with three amendments each written before the
+  arm it introduced. H1 invariants zero; H2 slot recall >= 0.85, precision >=
+  0.80, role recall >= 0.80, required agreement >= 0.85; H3 lab coverage
+  agreement on canonical method names >= 0.95; H4 near misses exploratory; H5
+  the phase completes at scale. OUTCOME: arm A (s1) failed H2 recall and
+  precision; arm B (s2) failed H2's required flag; arm C (s3, shipped) passed
+  all: recall 0.876, precision 0.824, roles 1.0, required 0.978, lab coverage
+  1.0. Coverage cosine left at 0.80 under the pre-registered rule (Q-044).
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 83befe0
+  commit: 578cfa4 # arm C; arm A ran at e9b0691 (s1), arm B at a428b32 (s2), the sweep at bea4c02
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  entrypoint: "cd web/backend && uv run --project . python -m sandbox.collab calls --people 240 --calls 150 --out /app/data/sandbox/exp006-arm-c.json && python3 docs/research/experiments/EXP-2026-09-006-collab-slots-teamfit-sandbox/code/analyse.py"
+  dirty: true  # this folder uncommitted while arms ran; ISSUES.md 1
 config:
-  path: <path to the config file, or null>
+  path: web/backend/sandbox/collab/calls.py
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
-  qrels: null
-  hash: null
-  card: null # docs/research/datasets/cards/<name>.md
-seeds: []
+  name: synthetic funding calls (sandbox.collab.calls) on the EXP-2026-09-005 world
+  version: "seed 20260918, 150 calls, 240 people; calls written by default-model 2026-09-18"
+  split: test
+  n_examples: 150 # calls; 6,624 lab x canonical-method-slot pairs for the primary in arm C
+  qrels: "planted ground truth — not human assessment"
+  hash: "sha256:02d82dd5bc2ce9e6eb815a939041e666d6cc6f353d91a21a36586795dbb9dc96"
+  card: null
+seeds: [20260918]
 n_runs: 1
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "20 CPU cores, 62 GB RAM; embedder on CPU; model served off-host via the llm-tunnel relay"
+  wall_clock_hours: 0.6
+  estimated_cost_usd: 0.0 # local model
 
-# --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+# --- LLM block ---------------------------------------------------------------
+llm:
+  model: "relay/default-model (upstream gemma4-26B-mtp)@2026-09-18"
+  temperature: null
+  max_tokens: null
+  prompt_files: ["web/backend/apps/collab/slots.py", "web/backend/sandbox/collab/calls.py"]
+  prompt_hash: null
+  total_input_tokens: null # not captured; ISSUES.md 7
+  total_output_tokens: null
+  nondeterminism_note: >
+    One run per arm; each arm re-read the same cached call texts, so arm-to-arm
+    differences mix the prompt change with sampling. The sweep re-marked arm
+    C's stored slots without calling the model.
 
 # --- Results block -----------------------------------------------------------
-# Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
-statistical_test: null
+  primary: coverage_agreement lab canonical (arm C, prompt s3, coverage cosine 0.80)
+  values:
+    c_s3__calls: 150
+    c_s3__calls_clean: 150
+    c_s3__coverage_agreement__lab_canonical: 1.0
+    c_s3__coverage_agreement__lab_problem_data: 0.9938
+    c_s3__coverage_agreement__lab_variant: 0.9078
+    c_s3__coverage_agreement__person_canonical: 0.9899
+    c_s3__coverage_agreement__person_problem_data: 0.9725
+    c_s3__coverage_agreement__person_variant: 0.9738
+    c_s3__extra_slots: 98
+    c_s3__extra_slots_verbatim_in_call: 97
+    c_s3__generator_slips: 0
+    c_s3__invariant__lab_named_non_member: 0
+    c_s3__invariant__role_slots_covered: 0
+    c_s3__invariant__role_slots_with_a_vector: 0
+    c_s3__invariant__slots_second_pass_model_calls: 0
+    c_s3__invariant__slots_second_pass_reads: 0
+    c_s3__invariant__team_fit_second_pass_changes: 0
+    c_s3__near_miss_false_cover: 48
+    c_s3__near_miss_false_cover_rate: 0.001
+    c_s3__score_rows: 43200
+    c_s3__slot_precision: 0.8241
+    c_s3__slot_recall__data: 0.9247
+    c_s3__slot_recall__method: 0.9537
+    c_s3__slot_recall__problem: 0.7333
+    c_s3__slot_recall__role: 1.0
+    c_s3__slot_recall_non_role: 0.8758
+    c_s3__slot_required_agreement: 0.9782
+    c_s3__slots_model_calls: 151
+    c_s3__slots_model_failures: 0
+    c_s3__slots_seconds: 12.5
+    c_s3__team_fit_labs_seconds: 32.7
+    c_s3__team_fit_people_seconds: 160.4
+    c_s3__team_fit_rows_changed: 43200
+    a_s1__slot_recall_non_role: 0.7386
+    a_s1__slot_precision: 0.7888
+    a_s1__slot_required_agreement: 0.9318
+    b_s2__slot_recall_non_role: 0.878
+    b_s2__slot_precision: 0.8229
+    b_s2__slot_required_agreement: 0.7891
+    a_s1__coverage_agreement__lab_canonical: 0.9981
+    b_s2__coverage_agreement__lab_canonical: 1.0
+    cov_080__lab_canonical: 1.0
+    cov_080__lab_problem_data: 0.9938
+    cov_080__lab_variant: 0.9078
+    cov_080__near_miss_false_cover: 48
+    cov_080__person_canonical: 0.9899
+    cov_080__person_problem_data: 0.9725
+    cov_080__person_variant: 0.9738
+    cov_085__lab_canonical: 1.0
+    cov_085__lab_problem_data: 0.9993
+    cov_085__lab_variant: 0.8974
+    cov_085__near_miss_false_cover: 0
+    cov_085__person_canonical: 0.9919
+    cov_085__person_problem_data: 0.9668
+    cov_085__person_variant: 0.9685
+    cov_088__lab_canonical: 1.0
+    cov_088__lab_problem_data: 0.9978
+    cov_088__lab_variant: 0.8738
+    cov_088__near_miss_false_cover: 0
+    cov_088__person_canonical: 0.9919
+    cov_088__person_problem_data: 0.9643
+    cov_088__person_variant: 0.9579
+    cov_090__lab_canonical: 1.0
+    cov_090__lab_problem_data: 0.9961
+    cov_090__lab_variant: 0.864
+    cov_090__near_miss_false_cover: 0
+    cov_090__person_canonical: 0.9915
+    cov_090__person_problem_data: 0.9585
+    cov_090__person_variant: 0.9534
+baselines_compared: [arm A (s1), arm B (s2)]
+statistical_test: null # single runs against planted truth
 
 # --- Linkage -----------------------------------------------------------------
 supports_claims: []
@@ -78,4 +155,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-09-005]
