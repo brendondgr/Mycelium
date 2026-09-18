@@ -65,4 +65,10 @@ def notify_renewals(now=None) -> int:
 
 @shared_task(name="apps.collab.daily")
 def daily() -> dict:
-    return {"renewals": notify_renewals(), "appearances_pruned": prune_appearances()}
+    from .matcher import prune_logs
+
+    return {
+        "renewals": notify_renewals(),
+        "appearances_pruned": prune_appearances(),
+        "search_logs_pruned": prune_logs(),
+    }

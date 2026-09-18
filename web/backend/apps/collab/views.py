@@ -1,4 +1,5 @@
-"""The collaboration API: slot feedback (CN-03), consent and preview (CN-04)."""
+"""The collaboration API: slot feedback (CN-03), consent and preview (CN-04),
+and the search (CN-05)."""
 
 from __future__ import annotations
 
@@ -10,7 +11,16 @@ from rest_framework.views import APIView
 from apps.content.models import ContentItem
 
 from . import consent
-from .models import Audience, CollaborationSetting, OpenTo, SlotFeedback
+from .models import (
+    Audience,
+    CollaborationSetting,
+    Lane,
+    MatchFeedback,
+    OpenTo,
+    SearchLog,
+    SlotFacet,
+    SlotFeedback,
+)
 from .preview import preview
 
 
@@ -122,3 +132,127 @@ class CollaborationPreviewView(APIView):
 
     def get(self, request):
         return Response(preview(request.user))
+
+
+class SlotInput(serializers.Serializer):
+    facet = serializers.ChoiceField(choices=SlotFacet.choices)
+    text = serializers.CharField(max_length=90)
+    required = serializers.BooleanField(required=False, default=False)
+
+
+class SearchInput(serializers.Serializer):
+    entry = serializers.ChoiceField(choices=["call", "project", "manual"])
+    content_id = serializers.UUIDField(required=False)
+    project_id = serializers.UUIDField(required=False)
+    text = serializers.CharField(max_length=2000, required=False, allow_blank=True)
+    slots = SlotInput(many=True, required=False)
+    lanes = serializers.ListField(
+        child=serializers.ChoiceField(choices=Lane.choices), required=False
+    )
+    scope = serializers.ChoiceField(choices=Audience.choices, required=False)
+
+
+class SearchView(APIView):
+    """``POST /api/collab/search/`` — find collaborators for a need.
+
+    Runs only when a seeker asks. The query comes pre-filled from a call or a
+    project, or from the seeker's own words, and may be edited (``slots``)
+    before it runs. Behind ``COLLAB_SEARCH_ENABLED``.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.conf import settings
+
+        from apps.research.models import Project
+
+        from . import matcher
+
+        if not settings.COLLAB_SEARCH_ENABLED:
+            return Response(
+                {"detail": "Collaborator search is not available yet."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        payload = SearchInput(data=request.data)
+        payload.is_valid(raise_exception=True)
+        data = payload.validated_data
+        options = {}
+        if data.get("lanes"):
+            options["lanes"] = tuple(data["lanes"])
+        if data.get("scope"):
+            options["scope"] = data["scope"]
+        try:
+            if data["entry"] == "call":
+                call = ContentItem.objects.filter(
+                    pk=data.get("content_id"), type="grant"
+                ).first()
+                if call is None:
+                    return Response({"detail": "No such call."}, status=404)
+                query = matcher.query_for_call(request.user, call, **options)
+            elif data["entry"] == "project":
+                project = Project.objects.filter(pk=data.get("project_id")).first()
+                if project is None:
+                    return Response({"detail": "No such project."}, status=404)
+                query = matcher.query_for_project(request.user, project, **options)
+            else:
+                query = matcher.query_for_text(
+                    request.user, data.get("text") or "", **options
+                )
+            if data.get("slots") is not None:
+                query.slots = matcher._with_vectors(
+                    [dict(slot) for slot in data["slots"]]
+                )
+            result = matcher.search(request.user, query)
+        except matcher.SearchRefused as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {
+                "slots": [
+                    {k: v for k, v in slot.items() if k != "vector"}
+                    for slot in query.slots
+                ],
+                **result.as_dict(),
+            }
+        )
+
+
+class MatchFeedbackInput(serializers.Serializer):
+    candidate = serializers.CharField(max_length=150)
+    lane = serializers.ChoiceField(choices=Lane.choices)
+    kind = serializers.ChoiceField(choices=MatchFeedback.Kind.choices)
+
+
+class MatchFeedbackView(APIView):
+    """``POST /api/collab/searches/<id>/feedback/`` — Save or Not relevant.
+
+    Only for a person that search actually returned to this seeker; nothing is
+    ever sent to the candidate.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, search_id):
+        from django.contrib.auth import get_user_model
+
+        log = SearchLog.objects.filter(pk=search_id, seeker=request.user).first()
+        if log is None:
+            return Response({"detail": "No such search."}, status=404)
+        payload = MatchFeedbackInput(data=request.data)
+        payload.is_valid(raise_exception=True)
+        data = payload.validated_data
+        returned = {
+            row["username"]
+            for row in (log.cached.get("lanes") or {}).get(data["lane"], [])
+        }
+        if data["candidate"] not in returned:
+            return Response({"detail": "Not a result of that search."}, status=400)
+        candidate = get_user_model().objects.get(username=data["candidate"])
+        row = MatchFeedback.objects.create(
+            seeker=request.user,
+            candidate=candidate,
+            lane=data["lane"],
+            kind=data["kind"],
+            search=log,
+        )
+        return Response({"id": row.pk}, status=status.HTTP_201_CREATED)

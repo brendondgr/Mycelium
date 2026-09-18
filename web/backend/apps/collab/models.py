@@ -193,3 +193,65 @@ class Appearance(models.Model):
             )
         ]
         indexes = [models.Index(fields=["candidate", "week"])]
+
+
+class Lane(models.TextChoices):
+    """One retrieval, defined by what must match and what must differ (design
+    §4). Lanes are never merged into one ranking."""
+
+    IN_FIELD = "in_field", "In your field"
+    METHOD_BRIDGE = "method_bridge", "Brings the method from another field"
+    PROBLEM_BRIDGE = "problem_bridge", "Same problem, a different approach"
+    RESOURCE = "resource", "Holds the data or resource"
+
+
+class SearchLog(models.Model):
+    """One search a seeker ran — theirs alone, deleted after 90 days.
+
+    Holds the slots' wording and the lanes and scope, never a query vector and
+    never anything about who was returned: a project's words stay the seeker's
+    (design §9.2), and nobody is told they were found (§9.3).
+    """
+
+    seeker = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+"
+    )
+    entry = models.CharField(max_length=16)  # call | project | manual
+    slots = models.JSONField(default=list)
+    lanes = models.JSONField(default=list)
+    scope = models.CharField(max_length=16, choices=Audience.choices)
+    query_hash = models.CharField(max_length=64, db_index=True)
+    results = models.PositiveIntegerField(default=0)
+    cached = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class MatchFeedback(models.Model):
+    """A seeker's verdict on one result — Save or Not relevant. Append-only.
+
+    The training signal that eventually teaches the matcher what a good match
+    is (design §8.2). Nothing is ever sent to the candidate.
+    """
+
+    class Kind(models.TextChoices):
+        SAVE = "save", "Save"
+        NOT_RELEVANT = "not_relevant", "Not relevant"
+
+    seeker = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+"
+    )
+    candidate = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+"
+    )
+    lane = models.CharField(max_length=16, choices=Lane.choices)
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    search = models.ForeignKey(
+        SearchLog, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]

@@ -49,6 +49,26 @@ def place_of(user) -> Place | None:
     return Place(domain=row.domain, country=row.country)
 
 
+def stored_place(user) -> Place | None:
+    """A person's place from their stored affiliation — no write.
+
+    What the matcher's gate reads for every candidate on every search; deriving
+    afresh (:func:`place_of`) there would write a row per candidate per search.
+    Falls back to deriving when no row exists yet. An unverified account has no
+    row, so it has no place.
+    """
+    from .models import VerifiedAffiliation
+
+    try:
+        row = user.verified_affiliation
+    except VerifiedAffiliation.DoesNotExist:
+        return place_of(user)
+    profile = getattr(user, "profile", None)
+    if profile is None or not profile.is_verified:
+        return None
+    return Place(domain=row.domain, country=row.country)
+
+
 def allowed_audiences(place: Place | None) -> list[str]:
     """Audiences a person may choose: nothing without a verified email; only
     ``anywhere`` without a verified institution (a personal address)."""

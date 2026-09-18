@@ -1204,6 +1204,18 @@ COLLAB_SLOTS_NIGHTLY_CAP = env.int("COLLAB_SLOTS_NIGHTLY_CAP", default=200)
 COLLAB_OPEN_MONTHS = env.int("COLLAB_OPEN_MONTHS", default=6)
 COLLAB_RENEWAL_NOTICE_DAYS = env.int("COLLAB_RENEWAL_NOTICE_DAYS", default=14)
 COLLAB_APPEARANCE_CAP = env.int("COLLAB_APPEARANCE_CAP", default=10)
+# The matcher (plan CN-05). Searches run only when a seeker asks, never in the
+# nightly run; outward search is launched at one institution. A work matches a
+# lane's slot at COLLAB_LANE_MATCH_COSINE and counts as "different" below
+# COLLAB_LANE_DIFFER_COSINE. The model reads each lane's shortlist and may drop
+# a candidate, never add one.
+COLLAB_SEARCH_ENABLED = env.bool("COLLAB_SEARCH_ENABLED", default=False)
+COLLAB_MAX_SCOPE = env("COLLAB_MAX_SCOPE", default="institution")
+COLLAB_LANE_MATCH_COSINE = env.float("COLLAB_LANE_MATCH_COSINE", default=0.70)
+COLLAB_LANE_DIFFER_COSINE = env.float("COLLAB_LANE_DIFFER_COSINE", default=0.55)
+COLLAB_SHORTLIST_PER_LANE = env.int("COLLAB_SHORTLIST_PER_LANE", default=8)
+COLLAB_RESULTS_PER_LANE = env.int("COLLAB_RESULTS_PER_LANE", default=3)
+COLLAB_SEARCHES_PER_DAY = env.int("COLLAB_SEARCHES_PER_DAY", default=20)
 COLLAB_INSTITUTIONS_PATH = env(
     "COLLAB_INSTITUTIONS_PATH",
     default=str(ROOT_DIR / "app" / "public" / "data" / "institutions.json"),
