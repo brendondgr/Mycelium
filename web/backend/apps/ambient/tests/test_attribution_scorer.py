@@ -134,7 +134,7 @@ def test_no_candidates_is_its_own_answer():
     assert result.decided_by == "no_candidates"
 
 
-# -- signals that raise confidence but never decide alone -------------------------------
+# -- signals that raise confidence but never decide alone ------------------------------
 
 
 def test_a_channel_hint_alone_never_decides():
@@ -195,7 +195,7 @@ def test_continuity_and_participants_together_can_decide():
     assert result.project_id == "img"
 
 
-# -- threads -----------------------------------------------------------------------------
+# -- threads ---------------------------------------------------------------------------
 
 
 def test_a_thread_inherits_its_opening():
@@ -232,7 +232,7 @@ def test_a_passing_mention_does_not_break_inheritance():
     assert result.project_id == "img"
 
 
-# -- semantic similarity -------------------------------------------------------------------
+# -- semantic similarity ---------------------------------------------------------------
 
 
 def test_semantic_similarity_is_absent_unless_supplied():
@@ -263,7 +263,7 @@ def test_unrelated_similarity_scores_nothing():
     assert all("semantic" not in parts for parts in result.scores.values())
 
 
-# -- what is stored ---------------------------------------------------------------------------
+# -- what is stored --------------------------------------------------------------------
 
 
 def test_the_stored_form_holds_numbers_and_project_vocabulary_only():
