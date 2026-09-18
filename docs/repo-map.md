@@ -180,6 +180,9 @@ Files below are inside `web/backend/apps/content/`.
 | Connected surfaces and the consent each one gave | `web/backend/apps/ambient/models.py` (`Source`) |
 | One person's listening opt-in and the "shut off" switch, per platform | `web/backend/apps/ambient/models.py` (`ListeningConsent`) |
 | Whether a message may be recorded at all (surface consent, person opt-in, paid effective tier) | `web/backend/apps/ambient/eligibility.py` — resolved on arrival, never cached at the edge |
+| Where a person's actual words live (and for how long) | `web/backend/apps/ambient/buffer.py` — Redis only, per-message TTL, dropped explicitly once a window is read; a source can shorten the window but never lengthen it |
+| The id-only pointer beside it (no body, ever) | `web/backend/apps/ambient/models.py` (`RawMessageRef`) — the window index and the handle an edit or deletion is reconciled through |
+| Recording one message: eligibility, hash, buffer, reference, repeat collapse | `web/backend/apps/ambient/ingest.py` (`record`, `IncomingMessage`); normalisation for the repeat hash in `text.py` |
 
 ## Backend — billing, admin, integrations, ingestion
 

@@ -154,3 +154,118 @@ class ListeningConsent(models.Model):
     def __str__(self) -> str:
         state = "on" if self.enabled else "off"
         return f"ListeningConsent(user={self.user_id}, {self.platform}, {state})"
+
+
+class PlaceKind(models.TextChoices):
+    """The kind of place a message came up in — kept so an explanation can say
+    *where* without naming an id a person cannot read."""
+
+    DM = "dm", "Direct message"
+    CHANNEL = "channel", "Channel"
+    THREAD = "thread", "Thread"
+    FORUM = "forum", "Forum post"
+    TRANSCRIPT = "transcript", "Meeting transcript"
+
+
+class SpeakerKind(models.TextChoices):
+    """Who sent a buffered message.
+
+    ``MYLO`` exists because a window has to read coherently — a question Mylo
+    asked is what makes the next line an answer. Mylo's own messages are never
+    evidence; Plan 04 excludes them at extraction, and they never become an
+    :class:`Observation`, which always has a human speaker.
+    """
+
+    LINKED = "linked", "A linked Mycelium user"
+    MYLO = "mylo", "Mylo itself"
+
+
+class RawMessageRef(models.Model):
+    """A pointer to one message. **No body, ever.**
+
+    The body lives in Redis under a TTL (:mod:`.buffer`) and is gone within
+    hours. What Postgres keeps is the id, the timestamp, the place, the speaker,
+    and a content hash — enough to assemble a window, to tell a repeat from a
+    new thought, and to reconcile a platform edit or deletion against whatever
+    was derived from it. It is not enough to reconstruct what anybody said.
+
+    A row only exists for a message that passed :mod:`.eligibility`, so there is
+    no reference here to a person without a linked, paid, opted-in account.
+    """
+
+    source = models.ForeignKey(
+        Source, on_delete=models.CASCADE, related_name="raw_refs"
+    )
+    # The platform's own message id.
+    external_id = models.CharField(max_length=64)
+
+    place_kind = models.CharField(max_length=16, choices=PlaceKind.choices)
+    place_id = models.CharField(max_length=64, blank=True, default="")
+    # A channel name rather than a snowflake: an explanation has to be readable.
+    place_label = models.CharField(max_length=120, blank=True, default="")
+
+    speaker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="ambient_raw_refs",
+        help_text="Null only for Mylo's own messages.",
+    )
+    speaker_kind = models.CharField(
+        max_length=16, choices=SpeakerKind.choices, default=SpeakerKind.LINKED
+    )
+    speaker_external_id = models.CharField(max_length=64, blank=True, default="")
+
+    sent_at = models.DateTimeField()
+    recorded_at = models.DateTimeField(auto_now_add=True)
+    # When the body in the buffer expires. Null means it was never held (a Redis
+    # outage) or has already been dropped after a window was read.
+    buffered_until = models.DateTimeField(null=True, blank=True)
+
+    # sha256 of the normalised text (:mod:`.text`). Blank for a message with no
+    # comparable text of its own, such as an attachment-only post.
+    content_hash = models.CharField(
+        max_length=64, blank=True, default="", db_index=True
+    )
+    repeat_of = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="repeats",
+        help_text="The earlier message this repeats; it counts as one piece of "
+        "evidence, not two.",
+    )
+
+    # OD-01a: a pasted PDF contributes its URL, never its content. Extraction
+    # from attachments is a later plan.
+    attachment_urls = models.JSONField(default=list, blank=True)
+
+    edited_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source", "external_id"], name="ambient_raw_unique_external"
+            ),
+            models.CheckConstraint(
+                name="ambient_raw_speaker_required",
+                condition=(
+                    models.Q(speaker__isnull=False, speaker_kind="linked")
+                    | models.Q(speaker__isnull=True, speaker_kind="mylo")
+                ),
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["source", "sent_at"]),
+            models.Index(fields=["speaker", "sent_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"RawMessageRef({self.source_id}:{self.external_id})"
+
+    @property
+    def is_repeat(self) -> bool:
+        return self.repeat_of_id is not None
