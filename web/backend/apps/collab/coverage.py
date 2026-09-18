@@ -24,10 +24,10 @@ A slot matches a concept when their cosine is at least
 
 from __future__ import annotations
 
-import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+import numpy as np
 from django.conf import settings
 
 from apps.content.member_fit import scope_members
@@ -107,31 +107,63 @@ def _norm(text: str) -> str:
     return " ".join(str(text or "").casefold().replace("-", " ").split())
 
 
-def _cosine(a, b) -> float:
-    dot = sum(x * y for x, y in zip(a, b, strict=False))
-    na = math.sqrt(sum(x * x for x in a)) or 1.0
-    nb = math.sqrt(sum(y * y for y in b)) or 1.0
-    return dot / (na * nb)
+class _Holder:
+    """One person's (or the reader's) edges, ready to be matched many times.
+
+    The edges' concept vectors are stacked into one unit-normalised matrix once,
+    so matching a slot is a single matrix-vector product rather than a Python
+    loop per concept — the difference between seconds and hours when a nightly
+    run marks every grant a few hundred people were shown.
+    """
+
+    def __init__(self, edges: list[EdgeView], vectors: dict[int, list[float]]):
+        self.edges = edges
+        self.words = {}
+        for edge in edges:
+            for text in (edge.surface, edge.label):
+                self.words.setdefault(_norm(text), edge)
+        with_vectors = [e for e in edges if e.concept_id in vectors]
+        self.vector_edges = with_vectors
+        if with_vectors:
+            matrix = np.asarray(
+                [vectors[e.concept_id] for e in with_vectors], dtype=np.float32
+            )
+            norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+            norms[norms == 0] = 1.0
+            self.matrix = matrix / norms
+        else:
+            self.matrix = None
+
+    def best(self, slot: dict, slot_vector) -> EdgeView | None:
+        """The edge that matches a slot, if any clears the bar."""
+        exact = self.words.get(_norm(slot["text"]))
+        if exact is not None:
+            return exact
+        if self.matrix is None or slot_vector is None:
+            return None
+        scores = self.matrix @ slot_vector
+        index = int(np.argmax(scores))
+        if float(scores[index]) >= settings.COLLAB_COVERAGE_COSINE:
+            return self.vector_edges[index]
+        return None
 
 
-def _best(slot: dict, edges: list[EdgeView], vectors: dict[int, list[float]]):
-    """The edge that best matches a slot, and whether it clears the bar."""
-    floor = settings.COLLAB_COVERAGE_COSINE
-    words = _norm(slot["text"])
-    best, best_score = None, 0.0
-    for edge in edges:
-        if words in (_norm(edge.surface), _norm(edge.label)):
-            return edge
-        vector = vectors.get(edge.concept_id)
-        if slot.get("vector") and vector:
-            score = _cosine(slot["vector"], vector)
-            if score > best_score:
-                best, best_score = edge, score
-    return best if best is not None and best_score >= floor else None
+def _unit(vector) -> np.ndarray | None:
+    if not vector:
+        return None
+    array = np.asarray(vector, dtype=np.float32)
+    norm = float(np.linalg.norm(array))
+    return array / norm if norm else None
 
 
 def _active(edges: list[EdgeView]) -> list[EdgeView]:
     return [edge for edge in edges if edge.status == "active"]
+
+
+def _holders(own, lab, vectors) -> tuple[_Holder, dict[str, _Holder]]:
+    return _Holder(list(own), vectors), {
+        username: _Holder(edges, vectors) for username, edges in lab.items()
+    }
 
 
 def assess(
@@ -140,14 +172,18 @@ def assess(
     own: list[EdgeView] = (),
     lab: dict[str, list[EdgeView]] | None = None,
     vectors: dict[int, list[float]] | None = None,
+    holders: tuple[_Holder, dict[str, _Holder]] | None = None,
 ) -> TeamFit:
     """Coverage of one call's slots against the reader's and their lab's edges."""
     lab = lab or {}
-    if vectors is None:
-        ids = {e.concept_id for e in own} | {
-            e.concept_id for edges in lab.values() for e in edges
-        }
-        vectors = concept_vectors(ids)
+    if holders is None:
+        if vectors is None:
+            ids = {e.concept_id for e in own} | {
+                e.concept_id for edges in lab.values() for e in edges
+            }
+            vectors = concept_vectors(ids)
+        holders = _holders(own, lab, vectors)
+    mine_holder, lab_holders = holders
     fit = TeamFit(content_id=str(row.content_id))
     for slot in row.slots:
         base = {
@@ -158,13 +194,14 @@ def assess(
         if slot["facet"] == SlotFacet.ROLE:
             fit.slots.append(SlotCoverage(**base))
             continue
-        mine = _best(slot, list(own), vectors)
+        slot_vector = _unit(slot.get("vector"))
+        mine = mine_holder.best(slot, slot_vector)
         if mine is not None:
             fit.slots.append(SlotCoverage(**base, covered_by=YOU, matched=mine.surface))
             continue
         people, matched = [], ""
-        for username, edges in lab.items():
-            hit = _best(slot, edges, vectors)
+        for username, holder in lab_holders.items():
+            hit = holder.best(slot, slot_vector)
             if hit is not None:
                 people.append(username)
                 matched = matched or hit.surface
@@ -201,11 +238,8 @@ def _assess_all(rows, own, lab) -> dict[str, TeamFit]:
     ids = {e.concept_id for e in own} | {
         e.concept_id for edges in lab.values() for e in edges
     }
-    vectors = concept_vectors(ids)
-    return {
-        str(row.content_id): assess(row, own=own, lab=lab, vectors=vectors)
-        for row in rows
-    }
+    holders = _holders(own, lab, concept_vectors(ids))
+    return {str(row.content_id): assess(row, holders=holders) for row in rows}
 
 
 def for_user(user, calls) -> dict[str, TeamFit]:
