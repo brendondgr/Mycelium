@@ -186,6 +186,7 @@ Files below are inside `web/backend/apps/content/`.
 | The durable record — what Mylo understood, in Mylo's own words | `web/backend/apps/ambient/models.py` (`Observation`); six understanding kinds, six forces, subject, visibility, supersession. **No quote column** |
 | A person's own verdict on an observation (the labels the feature is judged by) | `web/backend/apps/ambient/models.py` (`ObservationFeedback`) — append-only; a correction is a new row |
 | Something was removed, so these things must be recomputed | `web/backend/apps/ambient/models.py` (`Retraction`) |
+| How a platform gets its conversation in (translation only — no extraction, no attribution) | `web/backend/apps/ambient/adapters/base.py` (`Adapter`, `PlatformEvent`), registry in `adapters/__init__.py`, `adapters/fake.py` for tests |
 
 ## Backend — billing, admin, integrations, ingestion
 
