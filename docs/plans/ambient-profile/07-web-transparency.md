@@ -40,7 +40,12 @@ and reuses the portal primitives rather than inventing new ones.
      (enduring, exploring, preference, direction, skill) and every project
      development, with its dates and Mylo's account of where it came from.
      Each is editable and deletable in place; an edit is the person's own
-     word and is marked as such. This is the long-lived record every
+     word and is marked as such. It reads the person's edges from the shared
+     knowledge core (`read.own_edges`, CN-01), so every entry carries its
+     evidence tier — *you wrote this*, *your papers show this* (CN-02),
+     *from conversation, confirmed on <date>* — and the page says plainly
+     that conversation-derived entries are seen by nobody else and never
+     make the person findable. This is the long-lived record every
      suggestion is grounded in, shown plainly so the person can keep it true.
    Empty states say so plainly ("Nothing pending. Mylo will ask here or on
    Discord when it notices something worth checking").

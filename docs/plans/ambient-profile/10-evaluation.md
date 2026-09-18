@@ -58,6 +58,12 @@ runs, never quote a metric that is not in `manifest.yaml` and `RESULTS.md`.
 9. **EXP: attribution floor and margin.** Sweep against the labelled sample;
    pick the operating point that minimises wrong-project attributions at an
    acceptable unresolved rate.
+9a. **EXP: concept merging** — shared with collaboration-network CN-08, one
+    experiment folder cited by both. Merge precision on sampled concept pairs
+    and split rate (one idea under two concepts) at the linker's threshold
+    and two alternatives. A wrong merge makes unrelated topics count as
+    repetition and asks a person about something they never kept returning
+    to; a missed merge keeps a real interest below the consistency floor.
 10. **EXP: question budget.** Answer rate and precision at one versus two
     questions per week for the pilot group.
 

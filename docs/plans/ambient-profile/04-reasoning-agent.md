@@ -1,6 +1,8 @@
 # Plan 04 — The Reasoning Agent
 
-**Status:** draft. **Depends on:** Plans 01–03. **Unblocks:** Plans 05, 06, 08.
+**Status:** draft. **Depends on:** Plans 01–03 and
+[CN-01](../collaboration-network/01-knowledge-core.md) (the shared knowledge
+core). **Unblocks:** Plans 05, 06, 08.
 **Correlation ID:** `20260917-ambient-profile-04`
 
 ## Objective
@@ -28,12 +30,24 @@ reason a machine never replaces a person's own words in their profile.
 2. **The extractor** (`apps/ambient/extract.py`) follows the trusted pattern:
    a fixed schema, deterministic validation, grounding, one bounded repair,
    then refusal. It asks the model for a list of observations, each with
-   `understanding_kind`, `force`, `subject`, `text`, and, **for the check
+   `understanding_kind`, `force`, `subject`, `text`, a `facet` (problem,
+   method, setting, or area) with a short topic phrase, and, **for the check
    only**, the supporting sentence. The grounding check requires that sentence
    to appear in the transient window; it is then discarded and only
    `grounded = true` is kept (Plan 01, OD-01c). An observation whose sentence
    does not appear is dropped, and a window that
    yields nothing is a normal outcome.
+
+2a. **Concept linking.** Each observation's topic phrase is linked to a
+   concept through the shared knowledge core's linker
+   (`apps/knowledge/service.py`, CN-01) and the observation stores that
+   concept. This is what makes "conformal prediction" on Tuesday, "conformal
+   methods" on Friday, and "CP intervals" in a DM one topic seen three times
+   rather than three topics seen once — the repetition and near-synonym rules
+   below depend on it. A concept minted here is born in the lab's or the
+   person's scope and never enters the shared vocabulary on its own (CN-01).
+   The linker is model-free; when the embedder is down, linking waits for the
+   next run and the observation is kept unlinked until then.
 
 3. **Force matters more than topic.** The schema forces the model to say
    whether a sentence is a fact, question, preference, possibility, decision,
@@ -64,7 +78,7 @@ reason a machine never replaces a person's own words in their profile.
 7. **Aggregate before deciding.** The agent (`apps/ambient/deliberate.py`)
    never acts on one observation. For each speaker and each project it gathers
    the observations since the last deliberation plus the trailing 28 days and
-   computes, per topic and per project field:
+   computes, per **concept** (step 2a) and per project field:
    - **repetition** across distinct conversations and distinct days (one long
      debugging session counts once);
    - **recency** with a half-life;
@@ -86,16 +100,21 @@ reason a machine never replaces a person's own words in their profile.
      with undo. Nothing inferred from ambient talk is automatic (OD-A3).
    - **Suggest.** A topic that passes the **consistency test** (Plan 06,
      step 1), is **not already covered** by the person's declared areas,
-     keywords, clusters, explorations, or preferences (embedding and lexical
-     match), and was **never declined** (nor is a near-synonym of a declined
-     topic) becomes a **pending suggestion** (Plan 06): visible on the web and
+     keywords, clusters, explorations, or preferences (the same concept, or a
+     concept above the coverage cosine, among the person's edges in the
+     knowledge core), and was **never declined** (no `rejected` edge to the
+     concept or a near-synonym of it) becomes a **pending suggestion** (Plan
+     06), recorded as a `pending` conversational edge: visible on the web and
      in the DM, explained, and inert until confirmed. Covered or declined
      means silence, recorded so it is not re-evaluated tomorrow. The same
      path carries project developments inferred from ambient talk.
    - **Capability.** Repeated first-person statements of doing something —
      running a method, building a tool, teaching a technique — become a
      suggestion to add a `skill`, which feeds the team-gap matcher, and never
-     an area. "I want to learn X" is a learning goal, not a skill.
+     an area. Until the person confirms it and it lands in their declared
+     skills (Plan 08), it is a pending conversational `can_do` edge that no
+     other person and no collaboration search can read (collaboration-network
+     README, tier table). "I want to learn X" is a learning goal, not a skill.
    - **Propose.** Any edit to the declared profile or to project state becomes
      a proposal through Plan 08 and waits for a person.
    - **Ask.** The evidence is ambiguous (attribution unresolved, self vs

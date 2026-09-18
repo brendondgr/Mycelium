@@ -1,6 +1,8 @@
 # Plan 05 — The Evolving Profile Layer
 
-**Status:** draft. **Depends on:** Plan 04. **Unblocks:** Plans 06, 07, 08, 09, 10.
+**Status:** draft. **Depends on:** Plan 04 and
+[CN-01](../collaboration-network/01-knowledge-core.md). **Unblocks:** Plans 06,
+07, 08, 09, 10.
 **Correlation ID:** `20260917-ambient-profile-05`
 
 ## Objective
@@ -12,19 +14,27 @@ writing prompt. The declared profile stays the person's own words and keeps its
 budget. The evolving layer is Mylo's evidence-backed interpretation, always
 inspectable, always correctable, and never the thing that spends a cluster.
 
-## The two stores, as tables
+## The stores
 
-1. **`InterestUnderstanding`** (per user; OD-A1 recommends its own table). Rows
-   keyed by `understanding_kind` ∈ {enduring, curiosity, preference,
-   trajectory} and a `topic` string, carrying: an embedding, `weight`,
-   `first_seen`, `last_reinforced`, `half_life_days`, `status`
-   (`active`, `faded`, `confirmed`, `rejected`), and the evidence pointers
-   (observation ids). Rows are written as `pending` by Plan 04's suggest
+1. **Understanding as conversational edges** (per user, in the shared
+   knowledge core, CN-01 — this answers OD-A1: not a sidecar and not a table of
+   its own, but `Edge` rows with `tier = conversational` against shared
+   `Concept`s). Each edge carries its `understanding_kind` ∈ {enduring,
+   curiosity, preference, trajectory} as the relation's qualifier, and
+   `weight`, `first_seen`, `last_reinforced`, `half_life_days`, `status`
+   (`pending`, `active`, `faded`, `rejected`), and the evidence pointers
+   (observation ids). Because declared profile entries are mirrored into the
+   same graph as `declared` edges, "already covered", "declined near-synonym",
+   and "what Mylo knows beside what you wrote" are all one lookup. A
+   conversational edge is readable by the person and by their own ranking
+   only — never by a lab-mate and never by collaboration search (the tier
+   table in `../collaboration-network/README.md`). Rows are written as `pending` by Plan 04's suggest
    outcome; only `confirmed` rows (a yes in Plan 06) are read by ranking or
    explanation. `rejected` rows are kept so the agent does not raise them
    again for 30 days, and after that only if the consistency test is met
    again. Every row is **editable and deletable by the person** on the web
-   (Plan 07); a person's edit is a stated entry. Rows are never discarded on
+   (Plan 07); a person's edit is a stated entry.
+   In the rows below, "row" means one of these edges. Rows are never discarded on
    a subscription lapse — the memory pauses and keeps. A confirmed `curiosity` row is an
    **exploration**: it carries a `review_on` date after which Mylo asks
    "keep this?", and it never counts against cluster or topic caps.
@@ -80,11 +90,14 @@ explanation through the steps below.
 
 ## Reaching retrieval and ranking
 
-8. **The exploration vector.** For each user, fold **confirmed** exploration
-   rows into one unit vector with their decayed weights, the way
-   `team_profile._engagement_component` does, and blend it into the profile's
-   query vector at a capped weight `AMBIENT_DRIFT_WEIGHT` (default small, e.g.
-   0.15). The declared statement + keywords embedding stays dominant. The
+8. **Exploration vectors, never one average.** Each **confirmed**
+   exploration edge contributes its concept's vector, with its decayed weight,
+   as an additional query for the profile — scored per concept and taking the
+   best match, not folded into one averaged vector. Averaging a person's
+   explorations flattens mixed interests into a vector that represents none of
+   them (`../collaboration-network/design.md` §5.3). The contribution is
+   capped at `AMBIENT_DRIFT_WEIGHT` (default small, e.g. 0.15) relative to the
+   declared statement + keywords embedding, which stays dominant. The
    blend happens in `targets.py` when the `MatchTarget` is built, so every
    stage downstream sees it. Recorded as a ranking-logic change: the eval
    harness must be re-run and numbers put in the changelog (global rule).
@@ -115,7 +128,9 @@ explanation through the steps below.
 
 ## Steps
 
-14. Models and migrations for the three tables and the contract fields.
+14. Models and migrations for `ProjectDevelopment` and the contract fields;
+    the conversational-edge writer through `apps/knowledge/service.py`
+    (no new ambient table for understanding).
 15. The pending-row writer, the confirmation activation hook, and the review-date fade task (nightly, in `manual_all.py`).
 16. `targets.py` drift blend behind `AMBIENT_DRIFT_ENABLED` (ships off).
 17. Attention ordering in `briefing.py` project parts.
@@ -136,7 +151,7 @@ explanation through the steps below.
 ## Open decisions
 
 - **OD-05a** Drift cap default and whether it scales with the number of active
-  curiosity rows. Recommendation: fixed cap; tune in Plan 10.
+  curiosity edges. Recommendation: fixed cap; tune in Plan 10.
 - **OD-05b** Whether attention ordering applies to lab reports. Recommendation:
   personal only; a lab's attention is a different measure.
 

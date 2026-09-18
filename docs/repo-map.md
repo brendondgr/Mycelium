@@ -315,5 +315,5 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `docs/research/` | The research record — experiments, claims ledger, decisions, open questions, figures, paper plan |
 | `docs/skills/` | Canonical agent guidance — start at `skills/index.md` |
 | `docs/changelog.md` | Append-only project history |
-| `docs/plans/` | Implementation plans (working documents, deleted when shipped); `plans/ambient-profile/` is the sequenced series for the self-maintaining profile, start at its `README.md` |
+| `docs/plans/` | Implementation plans (working documents, deleted when shipped); `plans/ambient-profile/` is the sequenced series for the self-maintaining profile and `plans/collaboration-network/` the one for collaborator matching; both build on the shared knowledge core (`collaboration-network/01-knowledge-core.md`). Start at each `README.md` |
 | `docs/chats/`, `docs/Resources/` | Source conversations and the project brief |

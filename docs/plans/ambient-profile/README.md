@@ -125,6 +125,13 @@ a claim of expertise.
     repo's usual deterministic-fallback convention, made for this feature
     only, because a rule-based reading of conversation would produce
     confident nonsense.
+19. **What conversation teaches Mylo is never used to make a person
+    findable.** Understanding lives in the shared knowledge core
+    ([collaboration-network CN-01](../collaboration-network/01-knowledge-core.md))
+    as `conversational` edges. Those edges shape the person's own
+    recommendations once confirmed and are read by nobody else — not a
+    lab-mate, not collaboration search. The collaboration app can read only
+    `declared` and `demonstrated` edges, and a boundary test enforces it.
 12. **Everything is visible on the web.** What changed, how it was applied,
     and why Mylo thought so, with undo, on a page the person will see, plus a
     bell notification for every pending question and applied change (Plan 07).
@@ -149,6 +156,24 @@ a claim of expertise.
 | Closed packet + verifier for the weekly | `weekly_packet.py`, `weekly_verify.py` | The "what changed" section |
 | Cadence and push routing | `web/backend/apps/content/delivery.py` | Personal vs lab notification routing |
 
+## Shared with the collaboration-network series
+
+Topics are not strings here. They are **concepts** in the knowledge core
+(`apps/knowledge`, collaboration-network Plan CN-01), shared with the
+[collaboration-network](../collaboration-network/README.md) series. That is
+what lets Plan 04 count one topic said three different ways as one topic, lets
+"already covered" and "declined near-synonym" be one lookup, and lets a
+person's declared profile, their papers, and what Mylo understood from
+conversation sit side by side with their evidence tier.
+
+**Build order (decided 2026-09-18):** the collaboration-network series is built
+first (CN-01 to CN-06). This series then resumes at Plan 04, which, like Plans
+05, 07, and 10, is already written against the knowledge core, so resuming
+means plugging in rather than redesigning. Until then Plans 01–03 stay shipped
+and dark: `AMBIENT_ENABLED` is off, so nothing is captured. The rules for
+keeping the two series apart are in that README's "Keeping the two series
+apart".
+
 ## The plans, in order
 
 Each plan depends on the ones before it unless stated. A plan is many steps;
@@ -163,8 +188,8 @@ the correlation id named in the row.
 | 01 | Evidence ledger — **shipped 2026-09-18** | `web/backend/apps/ambient/`: the observation model, the transient buffer, the adapter contract, retention, deletion. Plan deleted; the record is in `docs/changelog.md` under `20260917-ambient-profile-01` |
 | 02 | Discord server listening — **shipped 2026-09-18** | `mylo/bot/cogs/listen.py` + `apps/ambient/service.py`: consented capture, the listen cog, `/setup`'s Listening section, the visible notice. Stage B (the Message Content intent) is written and **off**. Record: `20260917-ambient-profile-02` |
 | 03 | Attribution — **shipped 2026-09-18** | `apps/ambient/attribution.py` + `attention.py`: which project a message is about (seven signals, floor and margin, an honest "unresolved"), mentions, attention share, and the editors' Conversation card. Record: `20260917-ambient-profile-03` |
-| 04 | [Reasoning agent](04-reasoning-agent.md) | Windowing, grounded extraction, supersession, the deliberation step, budget rules |
-| 05 | [Evolving profile layer](05-evolving-profile.md) | The two stores, three speeds, new understanding kinds, reaching retrieval and ranking |
+| 04 | [Reasoning agent](04-reasoning-agent.md) | Windowing, grounded extraction, concept linking, supersession, the deliberation step, budget rules. Needs CN-01 |
+| 05 | [Evolving profile layer](05-evolving-profile.md) | Conversational edges and project developments, three speeds, new understanding kinds, reaching retrieval and ranking. Needs CN-01 |
 | 06 | [Confirmation dialogue](06-confirmation-dialogue.md) | Real-time, plain-language confirmation on Discord and the web; every answer a labelled record |
 | 07 | [Web transparency](07-web-transparency.md) | The bell, the "Mylo & you" page, provenance tags, feed badges, settings, undo |
 | 08 | [Applying changes](08-applying-changes.md) | Reconciliation into interests and project state through proposals; review and undo |
@@ -175,7 +200,8 @@ the correlation id named in the row.
 ## Cross-cutting open decisions
 
 - **OD-A1** Where the evolving layer is stored: a sidecar JSON on `Profile`, or
-  its own table. Plan 05 recommends its own table.
+  its own table. Plan 05 now recommends neither: `conversational` edges in the
+  shared knowledge core (CN-01).
 - **OD-A2** *Resolved 2026-09-17:* unlinked members are not involved. Dropped at
   the edge, nothing recorded.
 - **OD-A3** *Resolved 2026-09-17:* a project fact a person tells Mylo

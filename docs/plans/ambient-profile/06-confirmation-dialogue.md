@@ -40,7 +40,7 @@ linked account** only.
    whether it is covered, it does not ask; it waits for more evidence.
 
 3. **Declined — rests for a month.** A topic the person said no to is
-   recorded on `InterestUnderstanding` as `rejected` and is not raised again
+   recorded as a `rejected` conversational edge (CN-01) and is not raised again
    for **30 days**. After that it is askable again only if the consistency
    test is met afresh from conversation after the no — the person actually
    came back to it. Similarity to a rejected topic above the covered
