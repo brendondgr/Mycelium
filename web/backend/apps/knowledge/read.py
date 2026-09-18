@@ -13,6 +13,7 @@ boundary test pins which of these the collaboration app may import at all.
 | :func:`lab_declared_edges` | declared | active | a lab's view of its members |
 | :func:`discoverable_edges` | declared, demonstrated | active | collaboration search |
 | :func:`project_edges` | declared | active | a viewer who can see the project |
+| :func:`undeclared_project_concepts` | declared | active | the same viewer (Q1) |
 
 Demonstrated edges (a person's papers) are deliberately absent from
 :func:`ranking_edges`: letting them shape recommendations is a ranking change,
@@ -29,7 +30,7 @@ from django.db.models import Q, QuerySet
 
 from apps.research.models import Project
 
-from .models import Edge, EdgeStatus, Tier
+from .models import Concept, Edge, EdgeStatus, Relation, Tier
 
 __all__ = [
     "EdgeView",
@@ -38,6 +39,7 @@ __all__ = [
     "own_edges",
     "project_edges",
     "ranking_edges",
+    "undeclared_project_concepts",
 ]
 
 _RANKING = Q(tier=Tier.DECLARED) | Q(tier=Tier.CONVERSATIONAL)
@@ -147,4 +149,46 @@ def project_edges(project, viewer) -> list[EdgeView]:
         Edge.objects.filter(
             project=visible, tier=Tier.DECLARED, status=EdgeStatus.ACTIVE
         )
+    )
+
+
+#: The project relations a member could be expected to declare.
+_PROJECT_CONTENT = (
+    Relation.WORKS_ON,
+    Relation.USES_METHOD,
+    Relation.WORKS_IN_SETTING,
+    Relation.NEEDS,
+)
+
+
+def _project_people(project: Project) -> list[int]:
+    people = set(project.members.values_list("pk", flat=True))
+    if project.scope_user_id:
+        people.add(project.scope_user_id)
+    return sorted(people)
+
+
+def undeclared_project_concepts(project, viewer) -> list[EdgeView]:
+    """Q1: which of this project's concepts does none of its people declare?
+
+    The project's problem, method, setting, and need edges whose concept no
+    member (nor the owner of a personal project) holds a declared edge to. It is
+    the proof query for the graph (``docs/goals.md``, Next 1), and the shape
+    plan CN-03's coverage marking generalises to requirement slots.
+    """
+    visible = _visible_project(project, viewer)
+    if visible is None:
+        return []
+    declared_by_people = Concept.objects.filter(
+        edges__user__in=_project_people(visible),
+        edges__tier=Tier.DECLARED,
+        edges__status=EdgeStatus.ACTIVE,
+    )
+    return _views(
+        Edge.objects.filter(
+            project=visible,
+            tier=Tier.DECLARED,
+            status=EdgeStatus.ACTIVE,
+            relation__in=_PROJECT_CONTENT,
+        ).exclude(concept__in=declared_by_people)
     )
