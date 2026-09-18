@@ -93,6 +93,13 @@ _ACTIONS: dict[str, _Action] = {
     # management right the web app requires — and the bot add-on that pays for it.
     "setup": _Action(lab_permission="manage", lab_feature="bot_server"),
     "lab_digest": _Action(lab_permission="access", lab_feature="bot_server"),
+    # Turning listening on for a whole server is the most consequential switch
+    # the bot has, so it is held to the same right as `/setup` and not a looser
+    # one. Deciding whether *your own* messages may be read is personal and
+    # needs only a linked account — nobody should have to ask a manager for
+    # permission to opt out.
+    "listening": _Action(lab_permission="manage", lab_feature="bot_server"),
+    "listening_self": _Action(),
 }
 
 _DEFAULT_ACTION = _Action()

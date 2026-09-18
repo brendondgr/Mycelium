@@ -66,6 +66,12 @@ class MyloConfig:
     summary_channel_id: int | None = None
     dev_guild_id: int | None = None
     owner_ids: frozenset[int] = field(default_factory=frozenset)
+    #: Stage B — server-wide listening. Off unless this is set **and** the
+    #: Message Content privileged intent is granted in the Developer Portal.
+    #: Without the intent Discord sends empty message bodies, so setting this
+    #: alone changes nothing; both halves are required on purpose, so a portal
+    #: toggle nobody flipped shows up as "off" rather than as an empty ledger.
+    listen_enabled: bool = False
 
     @property
     def reporting_enabled(self) -> bool:
@@ -90,6 +96,16 @@ class MyloConfig:
                 "channel Mylo should post to."
             )
         return self
+
+
+def _as_bool(value: str | None) -> bool:
+    """Parse an optional on/off setting. Anything unrecognised reads as off.
+
+    Deliberately not strict: a malformed value for a switch that decides
+    whether Mylo reads a server's conversation should fail closed, not raise
+    and leave the operator guessing which half of their config broke.
+    """
+    return (value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _as_int(value: str | None, name: str) -> int | None:
@@ -136,4 +152,5 @@ def load_config(overrides: dict[str, str] | None = None) -> MyloConfig:
             get("DISCORD_DEV_GUILD_ID").strip() or None, "DISCORD_DEV_GUILD_ID"
         ),
         owner_ids=owner_ids,
+        listen_enabled=_as_bool(get("MYLO_LISTEN_ENABLED")),
     )

@@ -237,7 +237,8 @@ Files below are inside `web/backend/apps/content/`.
 | On-demand re-score everyone | `manual_mylo.py` |
 | Illinois fellowship scrape → import (host, Playwright) | `scrape_fellowships.py` |
 | Per-stage manual runners | `utils/manual/` |
-| Mylo Discord bot & run observability | `mylo/` — `bot/`, `config.py`, `reporting.py`, `analytics.py`, `runstate.py`, `linking.py` |
+| Mylo Discord bot & run observability | `mylo/` — `bot/`, `config.py`, `reporting.py`, `analytics.py`, `runstate.py`, `linking.py`, `listening.py` |
+| Hearing a conversation and handing it to the ledger | `mylo/bot/cogs/listen.py` (Stage A: DMs, mentions, edits, deletions; Stage B behind `MYLO_LISTEN_ENABLED` **and** the Message Content intent, both off) + `mylo/listening.py` |
 | systemd units | `mycelium.service`, `mycelium-update.service`, `mylo-daily.{service,timer}`, `mylo-bot.service` |
 | Gateway routing | `web/infra/nginx/default.conf` |
 | Env contract | `.env.example`, `.env-mylo.example` |
