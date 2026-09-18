@@ -90,3 +90,18 @@ is this channel excluded, is this long enough to be worth keeping.
 * **No extraction, no attribution, no questions, no web UI.**
 * **No reaction handling beyond recording it.** `on_raw_reaction_add` on Mylo's
   own messages is carried as an explicit signal; what a 👍 *means* is Plan 06's.
+
+## A second deviation: the message action is limited to your own messages
+
+Plan 02 §3 allows *Tell Mylo about this* on "any message". It is restricted to
+the caller's own messages and to Mylo's. On anybody else's it refuses and says
+why, pointing at `/mylo note`.
+
+The reason is the consent model. The action on a colleague's message would put
+that colleague's words into the buffer under the caller's name — and the
+colleague is quite likely somebody who never opted in, or has no Mycelium
+account at all, which is the exact case the whole gate exists to prevent. It
+would also be dishonest evidence: Plan 01's `subject` field exists because
+discussing a colleague's idea is not stating your own interest, and an action
+that silently files their sentence as yours defeats it. Telling Mylo about a
+colleague's idea in your own words still works, and is the truthful record.

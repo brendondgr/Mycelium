@@ -30,10 +30,33 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ... import linking
+from ... import linking, listening
 from ...runstate import read_run_state
 
 BRAND = 0x3B7A57
+
+_LISTENING_ON = (
+    "✅ **On.** I'll keep up with your work from the conversation you're already "
+    "having.\n\n"
+    "I don't keep your messages. I keep short summaries of interests and project "
+    "changes, with the dates and the kind of place they came up, and only after "
+    "you confirm them do they affect anything. Say *shut off* any time to stop me "
+    "asking questions, or run `/mylo listening off` to stop entirely."
+)
+_LISTENING_OFF = (
+    "🔕 **Off.** Nothing you say is being recorded.\n\n"
+    "Run `/mylo listening on` if you'd like me to keep up with your work from the "
+    "conversation you're already having. You can change your mind whenever you "
+    "like, and delete everything I've summarised, from your Mycelium settings."
+)
+_NOTE_REFUSALS = {
+    "person_not_opted_in": "You haven't turned listening on, so I didn't keep "
+    "that. Run `/mylo listening on` first.",
+    "speaker_unlinked": "Your Discord isn't connected to Mycelium yet, so I "
+    "didn't keep that. Run `/activate` with a code from your profile.",
+    "tier_free": "This is part of a paid plan. Nothing was saved.",
+    "ambient_disabled": "I'm not set up to remember things yet. Nothing was saved.",
+}
 _AREA_LABEL = {
     "grant": "Grant",
     "conference": "Conference",
@@ -107,6 +130,74 @@ class MyloCog(commands.Cog, name="Mylo"):
         await interaction.response.defer(ephemeral=True)
         _, message = await linking.status(str(interaction.user.id))
         await interaction.followup.send(message, ephemeral=True)
+
+    # -------------------------------------------------------------- listening
+    @mylo.command(
+        name="listening",
+        description="Choose whether Mylo may learn from what you say here.",
+    )
+    @app_commands.describe(
+        setting="on to let Mylo learn from your messages, off to stop, "
+        "blank to see where you stand."
+    )
+    @app_commands.choices(
+        setting=[
+            app_commands.Choice(name="on", value="on"),
+            app_commands.Choice(name="off", value="off"),
+        ]
+    )
+    async def listening_command(
+        self,
+        interaction: discord.Interaction,
+        setting: app_commands.Choice[str] | None = None,
+    ) -> None:
+        """Your own opt-in. Nobody needs a manager's permission to opt out."""
+        await interaction.response.defer(ephemeral=True)
+        user_id = str(interaction.user.id)
+        if setting is not None:
+            state = await listening.set_member_listening(
+                user_id, on=setting.value == "on"
+            )
+        else:
+            state = await listening.member_state(user_id)
+
+        if not state.get("linked"):
+            await interaction.followup.send(
+                "Your Discord isn't connected to Mycelium yet, so there is "
+                "nothing to turn on — and nothing about you is being recorded. "
+                "Run `/activate` with a code from your profile first.",
+                ephemeral=True,
+            )
+            return
+        await interaction.followup.send(
+            _LISTENING_ON if state.get("enabled") else _LISTENING_OFF, ephemeral=True
+        )
+
+    @mylo.command(
+        name="note",
+        description="Tell Mylo something to remember about your work.",
+    )
+    @app_commands.describe(text="In your own words — no format, no syntax.")
+    async def note(self, interaction: discord.Interaction, text: str) -> None:
+        """A convenience for people who like commands. Nothing depends on it."""
+        await interaction.response.defer(ephemeral=True)
+        outcome = await listening.note(
+            str(interaction.user.id),
+            text,
+            guild_id=str(interaction.guild_id or ""),
+        )
+        if outcome.get("stored"):
+            await interaction.followup.send(
+                "Got it — I'll take that into account.", ephemeral=True
+            )
+            return
+        await interaction.followup.send(
+            _NOTE_REFUSALS.get(
+                outcome.get("reason", ""),
+                "I couldn't record that just now. Nothing was saved.",
+            ),
+            ephemeral=True,
+        )
 
     # ----------------------------------------------------------------- search
     @mylo.command(name="search", description="Search Mycelium's research corpus.")

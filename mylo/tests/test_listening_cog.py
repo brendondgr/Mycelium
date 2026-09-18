@@ -65,6 +65,10 @@ class FakeListening:
     async def record_notice(self, guild_id, discord_user_id, *, delivered):
         self.notices.append((guild_id, discord_user_id, delivered))
 
+    async def note(self, discord_user_id, text, *, guild_id=""):
+        self.calls.append({"note": True, "text": text, "guild_id": guild_id})
+        return {"stored": self._stored, "reason": ""}
+
 
 class FakeChannel:
     def __init__(self, channel_id="chan-1", name="methods"):
@@ -348,6 +352,104 @@ class ResilienceTests(unittest.TestCase):
         with mock.patch.object(listen_module, "listening", fake):
             _run(cog.on_message(_message(guild=False, channel=Blocked())))
         self.assertEqual(len(fake.calls), 1)
+
+
+class ReactionTests(unittest.TestCase):
+    def _payload(self, *, message_author_id=999, user_id=111, guild_id=900):
+        return SimpleNamespace(
+            user_id=user_id,
+            message_author_id=message_author_id,
+            message_id=555,
+            channel_id=7,
+            guild_id=guild_id,
+            emoji="\N{THUMBS UP SIGN}",
+        )
+
+    def test_a_reaction_on_mylos_post_is_the_shortest_possible_answer(self) -> None:
+        fake = FakeListening()
+        cog = _cog(fake)
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(cog.on_raw_reaction_add(self._payload()))
+        self.assertEqual(len(fake.calls), 1)
+        self.assertTrue(fake.calls[0]["explicit"])
+        self.assertIn("reacted", fake.calls[0]["text"])
+
+    def test_a_reaction_on_somebody_elses_post_is_between_them(self) -> None:
+        fake = FakeListening()
+        cog = _cog(fake)
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(cog.on_raw_reaction_add(self._payload(message_author_id=222)))
+        self.assertEqual(fake.calls, [])
+
+    def test_mylo_reacting_to_itself_is_not_an_answer(self) -> None:
+        fake = FakeListening()
+        cog = _cog(fake)
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(cog.on_raw_reaction_add(self._payload(user_id=999)))
+        self.assertEqual(fake.calls, [])
+
+
+class MessageActionTests(unittest.TestCase):
+    def _interaction(self, user_id=111, bot_user_id=999):
+        sent: list[str] = []
+
+        async def _defer(*, ephemeral=False):
+            return None
+
+        async def _send(content, *, ephemeral=False):
+            sent.append(content)
+
+        return (
+            SimpleNamespace(
+                user=SimpleNamespace(id=user_id),
+                client=SimpleNamespace(user=SimpleNamespace(id=bot_user_id)),
+                guild_id=900,
+                response=SimpleNamespace(defer=_defer),
+                followup=SimpleNamespace(send=_send),
+            ),
+            sent,
+        )
+
+    def test_your_own_message_is_kept(self) -> None:
+        fake = FakeListening()
+        interaction, sent = self._interaction()
+        message = _message(author=FakeAuthor(author_id=111))
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(listen_module.tell_mylo_about_this(interaction, message))
+        self.assertEqual(len(fake.calls), 1)
+        self.assertIn("Got it", sent[0])
+
+    def test_somebody_elses_message_is_refused_with_a_reason(self) -> None:
+        """One person must not be able to feed a colleague's words into the ledger."""
+        fake = FakeListening()
+        interaction, sent = self._interaction()
+        message = _message(author=FakeAuthor(author_id=222))
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(listen_module.tell_mylo_about_this(interaction, message))
+        self.assertEqual(fake.calls, [])
+        self.assertIn("Somebody else's words are theirs", sent[0])
+        self.assertIn("/mylo note", sent[0])
+
+    def test_mylos_own_message_may_be_kept(self) -> None:
+        fake = FakeListening()
+        interaction, sent = self._interaction()
+        message = _message(author=FakeAuthor(author_id=999, bot=True))
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(listen_module.tell_mylo_about_this(interaction, message))
+        self.assertEqual(len(fake.calls), 1)
+
+    def test_a_refusal_says_what_to_do_about_it(self) -> None:
+        fake = FakeListening(stored=False)
+
+        async def _note(user_id, text, *, guild_id=""):
+            return {"stored": False, "reason": "person_not_opted_in"}
+
+        fake.note = _note
+        interaction, sent = self._interaction()
+        message = _message(author=FakeAuthor(author_id=111))
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(listen_module.tell_mylo_about_this(interaction, message))
+        self.assertIn("/mylo listening on", sent[0])
 
 
 class PlaceKindTests(unittest.TestCase):

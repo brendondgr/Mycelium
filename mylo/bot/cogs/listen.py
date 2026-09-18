@@ -166,6 +166,38 @@ class ListenCog(commands.Cog, name="Listening"):
         )
 
     @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        """A reaction on Mylo's own post — the shortest possible answer.
+
+        Discord delivers these without any privileged intent, which is what
+        makes a 👍 on Mylo's question usable in Stage A. What a given emoji
+        *means* is Plan 06's; all that happens here is that the reaction is
+        carried, marked explicit, so the conversation reads coherently when
+        somebody answers without typing.
+
+        Only reactions on Mylo's own messages. A reaction on somebody else's
+        post is between them.
+        """
+        try:
+            if self.bot.user is None or payload.user_id == self.bot.user.id:
+                return
+            if payload.message_author_id != self.bot.user.id:
+                return
+            await listening.heard(
+                guild_id=str(payload.guild_id or ""),
+                message_id=f"reaction:{payload.message_id}:{payload.user_id}",
+                text=f"reacted {payload.emoji} to what Mylo said",
+                sent_at=discord.utils.utcnow(),
+                author_id=str(payload.user_id),
+                place_kind="dm" if payload.guild_id is None else "channel",
+                place_id=str(payload.channel_id),
+                explicit=True,
+                is_dm=payload.guild_id is None,
+            )
+        except Exception:  # noqa: BLE001
+            log.exception("could not forward a reaction")
+
+    @commands.Cog.listener()
     async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
         """An edit invalidates the reading, not the record (Plan 01, step 8)."""
         try:
@@ -228,5 +260,71 @@ def _place_kind(channel) -> str:
     return "channel"
 
 
+#: Refusals for the message action, in the words a person should read.
+_ACTION_REFUSALS = {
+    "person_not_opted_in": "You haven't turned listening on, so I didn't keep "
+    "that. Run `/mylo listening on` first.",
+    "speaker_unlinked": "Your Discord isn't connected to Mycelium yet, so I "
+    "didn't keep that. Run `/activate` with a code from your profile.",
+    "tier_free": "This is part of a paid plan. Nothing was saved.",
+    "ambient_disabled": "I'm not set up to remember things yet. Nothing was saved.",
+}
+
+
+async def tell_mylo_about_this(
+    interaction: discord.Interaction, message: discord.Message
+) -> None:
+    """The *Tell Mylo about this* message action.
+
+    **Your own messages, or Mylo's.** The plan allows the action on "any
+    message"; that would let one person feed a colleague's words into the
+    ledger under their own name, and the colleague may well be somebody who
+    never opted in — the exact thing the consent model exists to prevent. So
+    the action refuses anybody else's message and says why. Somebody who wants
+    to tell Mylo about a colleague's idea can still do so in their own words,
+    which is also the honest way to record it: Plan 01's ``subject`` field is
+    there precisely because discussing a colleague's idea is not stating your
+    own interest.
+    """
+    await interaction.response.defer(ephemeral=True)
+    own = message.author.id == interaction.user.id
+    mine = interaction.client.user is not None and (
+        message.author.id == interaction.client.user.id
+    )
+    if not own and not mine:
+        await interaction.followup.send(
+            "I can only keep your own messages, or mine. Somebody else's words "
+            "are theirs — tell me about it in your own words instead, with "
+            "`/mylo note`.",
+            ephemeral=True,
+        )
+        return
+
+    outcome = await listening.note(
+        str(interaction.user.id),
+        message.content or "",
+        guild_id=str(interaction.guild_id or ""),
+    )
+    if outcome.get("stored"):
+        await interaction.followup.send(
+            "Got it — I'll take that into account.", ephemeral=True
+        )
+        return
+    await interaction.followup.send(
+        _ACTION_REFUSALS.get(
+            outcome.get("reason", ""),
+            "I couldn't record that just now. Nothing was saved.",
+        ),
+        ephemeral=True,
+    )
+
+
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(ListenCog(bot))
+    # A context menu cannot live inside an app_commands.Group, so it is
+    # registered on the tree directly rather than under /mylo.
+    bot.tree.add_command(
+        discord.app_commands.ContextMenu(
+            name="Tell Mylo about this", callback=tell_mylo_about_this
+        )
+    )

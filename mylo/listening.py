@@ -105,6 +105,22 @@ async def set_channel_rule(
         return ("error", {"message": "Something went wrong. Nothing was changed."})
 
 
+async def note(discord_user_id: str, text: str, *, guild_id: str = "") -> dict:
+    """``/mylo note`` and the message action — an explicit thing to remember.
+
+    The same raw message as anything overheard, marked explicit so Plan 04 can
+    weigh being told above being overheard. A convenience, never the way the
+    system is meant to be fed.
+    """
+    try:
+        return await mycelium.db(
+            _note_sync, str(discord_user_id), text or "", str(guild_id)
+        )
+    except Exception:  # noqa: BLE001
+        log.exception("could not record a note")
+        return {"stored": False, "reason": "error"}
+
+
 async def member_state(discord_user_id: str) -> dict:
     try:
         return await mycelium.db(_member_state_sync, str(discord_user_id))
@@ -178,6 +194,23 @@ def _member_state_sync(discord_user_id: str) -> dict:
     from apps.ambient import service
 
     return service.member_state(discord_user_id)
+
+
+def _note_sync(discord_user_id: str, text: str, guild_id: str) -> dict:
+    from django.utils import timezone
+
+    from apps.ambient import service
+
+    outcome = service.heard(
+        guild_id=guild_id,
+        message_id=f"note:{discord_user_id}:{timezone.now().timestamp():.0f}",
+        text=text,
+        sent_at=timezone.now(),
+        author_id=discord_user_id,
+        explicit=True,
+        is_dm=True,
+    )
+    return {"stored": outcome.stored, "reason": outcome.reason}
 
 
 def _set_member_sync(discord_user_id: str, on: bool) -> dict:

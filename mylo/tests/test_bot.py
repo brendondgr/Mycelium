@@ -27,9 +27,12 @@ class BotConstructionTests(unittest.TestCase):
     def test_mylo_group_exposes_every_subcommand(self) -> None:
         names = {command.name for command in MyloCog.mylo.commands}
         # Observability (health/lastrun), link health (status), research
-        # (search/digest/saves) and reminder control (snooze/cancel). All in one cog
-        # because discord.py cannot share an app_commands.Group across cogs.
-        # Channel setup stays the top-level /setup command.
+        # (search/digest/saves), reminder control (snooze/cancel) and listening
+        # (listening/note). All in one cog because discord.py cannot share an
+        # app_commands.Group across cogs. Channel setup stays the top-level
+        # /setup command, and listening's *server* switch lives there too —
+        # `/mylo listening` is personal, and nobody should have to ask a manager
+        # for permission to opt out.
         self.assertEqual(
             names,
             {
@@ -41,6 +44,8 @@ class BotConstructionTests(unittest.TestCase):
                 "saves",
                 "snooze",
                 "cancel",
+                "listening",
+                "note",
             },
         )
 
