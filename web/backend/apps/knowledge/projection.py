@@ -208,8 +208,17 @@ def _project_scope(project: Project) -> tuple[str, object]:
     return Scope.PERSONAL, project.scope_user
 
 
-def _apply(subject: dict, wants: list[_Want], scope: str, owner) -> Projected:
-    """Make the subject's declared edges exactly ``wants``, as far as can be seen."""
+def _apply(
+    subject: dict,
+    wants: list[_Want],
+    scope: str,
+    owner,
+    *,
+    tier: str = Tier.DECLARED,
+) -> Projected:
+    """Make the subject's edges of one tier exactly ``wants``, as far as can be
+    seen. Declared edges come from here; so do a work's demonstrated edges
+    (:mod:`.demonstrated`), which follow the same rules."""
     result = Projected(subjects=1)
     links = linker.link_many(
         [
@@ -242,9 +251,7 @@ def _apply(subject: dict, wants: list[_Want], scope: str, owner) -> Projected:
     with transaction.atomic():
         existing = {
             (edge.relation, edge.concept_id): edge
-            for edge in Edge.objects.select_for_update().filter(
-                tier=Tier.DECLARED, **subject
-            )
+            for edge in Edge.objects.select_for_update().filter(tier=tier, **subject)
         }
         for key, spec in desired.items():
             evidence = sorted(spec["evidence"])
@@ -253,7 +260,7 @@ def _apply(subject: dict, wants: list[_Want], scope: str, owner) -> Projected:
                 Edge.objects.create(
                     relation=key[0],
                     concept_id=key[1],
-                    tier=Tier.DECLARED,
+                    tier=tier,
                     surface=spec["surface"],
                     evidence=evidence,
                     **subject,
