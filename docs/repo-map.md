@@ -189,7 +189,11 @@ Files below are inside `web/backend/apps/content/`.
 | How a platform gets its conversation in (translation only — no extraction, no attribution) | `web/backend/apps/ambient/adapters/base.py` (`Adapter`, `PlatformEvent`), registry in `adapters/__init__.py`, `adapters/fake.py` for tests |
 | An edit, a deletion, "delete my observations", a surface withdrawing consent | `web/backend/apps/ambient/reconcile.py` — an edit marks what rested on it stale, a deletion removes the evidence, and anything that deletes leaves a `Retraction` |
 | The retention sweep (references only — observations are never touched) | `web/backend/apps/ambient/retention.py`, task `apps.ambient.sweep_retention`, command `sweep_ambient_retention` |
-| Reading the ledger from anywhere else — **the only door** | `web/backend/apps/ambient/read.py` (windows, evidence, retractions); the AST guard is `apps/ambient/tests/test_import_boundary.py` |
+| Reading the ledger from the rest of the backend — **one of two doors** | `web/backend/apps/ambient/read.py` (windows, evidence, retractions); the AST guard is `apps/ambient/tests/test_import_boundary.py` |
+| Everything the Mylo gateway does to the ledger — **the other door** | `web/backend/apps/ambient/service.py`; the gateway runs Django in process and imports nothing else from `ambient` |
+| Which Discord snowflake is which Mycelium user, for listening | `web/backend/apps/ambient/adapters/discord.py` — resolves through `integrations.services.resolve` and nothing else |
+| Whether a message is worth carrying at all (bots, chatter, excluded and social channels, length) | `web/backend/apps/ambient/filters.py` |
+| What one server produced on one day, in counts and never names | `web/backend/apps/ambient/models.py` (`SourceActivity`); the one-time "this server is listening" DM is `MemberNotice` |
 
 ## Backend — billing, admin, integrations, ingestion
 

@@ -1113,6 +1113,16 @@ AMBIENT_REPEAT_WINDOW_DAYS = env.int("AMBIENT_REPEAT_WINDOW_DAYS", default=30)
 # match would silently turn a repeat back into new evidence.
 AMBIENT_REF_RETENTION_DAYS = env.int("AMBIENT_REF_RETENTION_DAYS", default=45)
 
+# What is worth carrying at all (apps.ambient.filters). Discord delivers far
+# more than is useful, and feeding a server's reaction spam to an extractor
+# costs money to learn nothing. A message shorter than the minimum with no link
+# and no attachment is chatter; one longer than the maximum is a pasted
+# document, and only its head reaches the buffer. A message addressed to Mylo
+# deliberately — a DM, a mention, a note — skips the minimum, because somebody
+# answering "yes" to Mylo's own question meant that.
+AMBIENT_MIN_MESSAGE_CHARS = env.int("AMBIENT_MIN_MESSAGE_CHARS", default=24)
+AMBIENT_MAX_MESSAGE_CHARS = env.int("AMBIENT_MAX_MESSAGE_CHARS", default=4000)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

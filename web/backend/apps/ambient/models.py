@@ -91,6 +91,18 @@ class Source(models.Model):
     # source can shorten the window but never lengthen it past the hard ceiling.
     raw_ttl_hours = models.PositiveSmallIntegerField(null=True, blank=True)
 
+    # Channels a manager said Mylo must never read. Checked at the edge, before
+    # anything is forwarded, and again on arrival — an exclusion that only held
+    # in the bot process would be one restart away from not holding.
+    excluded_place_ids = models.JSONField(default=list, blank=True)
+    # Channels a manager marked as social. Not excluded — Mylo may still answer
+    # a direct question there — but nothing is drawn from them as evidence.
+    social_place_ids = models.JSONField(default=list, blank=True)
+    # The pinned "Mylo is listening" post, so it is edited rather than
+    # duplicated every time the settings change.
+    marker_message_id = models.CharField(max_length=64, blank=True, default="")
+    marker_channel_id = models.CharField(max_length=64, blank=True, default="")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -114,6 +126,14 @@ class Source(models.Model):
     def listening(self) -> bool:
         """Whether the surface's own consent currently allows listening."""
         return self.consent_state == self.Consent.ACTIVE
+
+    def excludes(self, place_id: str) -> bool:
+        """Whether a channel is on the never-read list."""
+        return str(place_id) in {str(one) for one in (self.excluded_place_ids or [])}
+
+    def is_social(self, place_id: str) -> bool:
+        """Whether a channel is marked social — heard, but never evidence."""
+        return str(place_id) in {str(one) for one in (self.social_place_ids or [])}
 
 
 class ListeningConsent(models.Model):
@@ -241,6 +261,12 @@ class RawMessageRef(models.Model):
     # OD-01a: a pasted PDF contributes its URL, never its content. Extraction
     # from attachments is a later plan.
     attachment_urls = models.JSONField(default=list, blank=True)
+
+    # True when the person deliberately told Mylo: a DM, an @mention, a note
+    # command, the message action, a reaction on Mylo's own post. Ambient talk
+    # overheard in a channel is false. Plan 04 weighs the two differently —
+    # somebody addressing Mylo meant to be understood.
+    explicit = models.BooleanField(default=False)
 
     edited_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -581,3 +607,90 @@ class Retraction(models.Model):
 
     def __str__(self) -> str:
         return f"Retraction({self.reason}, {len(self.observation_ids)} observations)"
+
+
+class SourceActivity(models.Model):
+    """What one surface produced on one day, in counts.
+
+    This is the aggregate a discarded message is allowed to leave behind. It is
+    keyed on the source and the reason and **never on a person**: "forty-one
+    messages were dropped here yesterday because their senders have not opted
+    in" is an operational fact, while "this person's messages were dropped" is
+    a record of somebody who asked not to be recorded.
+
+    It exists for two jobs: showing a manager that listening is working, and
+    giving Plan 04 real numbers to size its extraction windows from.
+    """
+
+    source = models.ForeignKey(
+        Source, on_delete=models.CASCADE, related_name="activity"
+    )
+    day = models.DateField()
+
+    # Everything the gateway saw in a consented server.
+    heard = models.IntegerField(default=0)
+    # Reached the ledger and is waiting to be read.
+    stored = models.IntegerField(default=0)
+    # Why the rest did not. One counter per refusal, so a quiet day and a
+    # misconfigured one look different.
+    dropped_not_opted_in = models.IntegerField(default=0)
+    dropped_unlinked = models.IntegerField(default=0)
+    dropped_free_tier = models.IntegerField(default=0)
+    dropped_excluded_channel = models.IntegerField(default=0)
+    dropped_too_short = models.IntegerField(default=0)
+    dropped_bot = models.IntegerField(default=0)
+    dropped_other = models.IntegerField(default=0)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "source activity"
+        ordering = ["-day"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source", "day"], name="ambient_activity_unique_day"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"SourceActivity({self.source_id}, {self.day}, heard={self.heard})"
+
+
+class MemberNotice(models.Model):
+    """That somebody was told, once, that a server they are in is listening.
+
+    Without this the notice either never arrives or arrives every night. It
+    records that a thing was said and when — not what was said, and not a
+    reply.
+    """
+
+    class Kind(models.TextChoices):
+        SERVER_LISTENING = "server_listening", "This server is listening"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ambient_notices",
+    )
+    source = models.ForeignKey(
+        Source, on_delete=models.CASCADE, related_name="member_notices"
+    )
+    kind = models.CharField(
+        max_length=24, choices=Kind.choices, default=Kind.SERVER_LISTENING
+    )
+    sent_at = models.DateTimeField(auto_now_add=True)
+    delivered = models.BooleanField(
+        default=True,
+        help_text="False when the DM could not be delivered — blocked DMs are "
+        "common, and a notice nobody received should not read as one that was.",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "source", "kind"], name="ambient_notice_once"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"MemberNotice({self.kind}, user={self.user_id})"

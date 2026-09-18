@@ -1,13 +1,16 @@
-"""The ledger has one door, and this test is the lock on it.
+"""The ledger has two doors, and this test is the lock on both.
 
-Plan 01 says ``content`` imports the ambient app only through ``read.py``. That
-is not a style preference: the ledger owns the most sensitive thing Mycelium
-touches, and an app that reaches past the read API is an app that can be
-holding a message body, a consent row or a reconciliation path in a place
-nobody is auditing.
+``read.py`` is how the rest of the backend reads the ledger. ``service.py`` is
+how the Mylo gateway writes to it — the same arrangement
+``integrations/services/resolve.py`` already has, for the same reason: the
+gateway runs Django in process, so "Mylo owns no data" is enforced by making
+every Discord-originated database touch go through one module.
 
-The rule is checked by AST rather than by convention, because a convention is
-only as good as the next person in a hurry.
+This is not a style preference. The ledger owns the most sensitive thing
+Mycelium touches, and anything reaching past these two modules is something
+that can be holding a message body, a consent row or a reconciliation path in a
+place nobody is auditing. The rule is checked by AST rather than by convention,
+because a convention is only as good as the next person in a hurry.
 """
 
 from __future__ import annotations
@@ -20,11 +23,15 @@ from django.test import SimpleTestCase
 _APPS = Path(__file__).resolve().parent.parent.parent
 _AMBIENT = _APPS / "ambient"
 
-# The one module outside this app may import.
-_PUBLIC = "apps.ambient.read"
-# Apps that are allowed to name `apps.ambient` at all, and only through _PUBLIC.
-# Everything else should not know it exists.
+#: The only modules anything outside this app may import.
+_READ_DOOR = "apps.ambient.read"
+_GATEWAY_DOOR = "apps.ambient.service"
+_PUBLIC = {_READ_DOOR, _GATEWAY_DOOR}
+#: Backend apps allowed to name `apps.ambient` at all, and only through a door.
+#: Everything else should not know it exists.
 _MAY_READ = {"content", "integrations"}
+#: The gateway, which lives outside `web/backend/apps` entirely.
+_GATEWAY = Path(__file__).resolve().parents[4] / "mylo"
 
 
 def _ambient_imports(path: Path) -> list[str]:
@@ -55,16 +62,37 @@ def _python_files_outside_ambient():
 
 
 class AmbientImportBoundary(SimpleTestCase):
-    def test_nothing_outside_the_app_reaches_past_the_read_api(self):
+    def test_nothing_outside_the_app_reaches_past_a_door(self):
         offenders: list[str] = []
         for path in _python_files_outside_ambient():
             for module in _ambient_imports(path):
-                if module != _PUBLIC:
+                if module not in _PUBLIC:
                     offenders.append(f"{path.relative_to(_APPS)} imports {module}")
         assert not offenders, (
-            "the ambient ledger is read through apps.ambient.read and nothing "
-            "else:\n  " + "\n  ".join(offenders)
+            "the ambient ledger is reached through apps.ambient.read (reads) and "
+            "apps.ambient.service (the gateway) and nothing else:\n  "
+            + "\n  ".join(offenders)
         )
+
+    def test_the_backend_never_uses_the_gateway_door(self):
+        """service.py exists for Mylo. Backend code reads through read.py."""
+        offenders = [
+            str(path.relative_to(_APPS))
+            for path in _python_files_outside_ambient()
+            if _GATEWAY_DOOR in _ambient_imports(path)
+        ]
+        assert not offenders, offenders
+
+    def test_the_gateway_imports_no_model_of_its_own(self):
+        """Mylo owns no data: every ambient touch goes through service.py."""
+        if not _GATEWAY.exists():  # pragma: no cover - checkout without the bot
+            return
+        offenders: list[str] = []
+        for path in sorted(_GATEWAY.rglob("*.py")):
+            for module in _ambient_imports(path):
+                if module != _GATEWAY_DOOR:
+                    offenders.append(f"mylo/{path.relative_to(_GATEWAY)} -> {module}")
+        assert not offenders, offenders
 
     def test_only_the_named_apps_know_the_ledger_exists(self):
         strangers: list[str] = []

@@ -47,6 +47,9 @@ class PlatformEvent:
     place_label: str = ""
     attachment_urls: list[str] = field(default_factory=list)
     edited_at: object | None = None
+    # The person addressed Mylo directly — a DM, an @mention, a note command,
+    # the message action, a reaction on Mylo's own post.
+    explicit: bool = False
     # True when the sender is Mylo itself. Its messages are buffered so a window
     # reads coherently — a question Mylo asked is what makes the next line an
     # answer — and are never evidence.
@@ -103,6 +106,7 @@ class Adapter(ABC):
             speaker_kind=SpeakerKind.MYLO if event.from_mylo else SpeakerKind.LINKED,
             attachment_urls=list(event.attachment_urls),
             edited_at=event.edited_at,
+            explicit=bool(event.explicit),
         )
 
     def deliver(self, event: PlatformEvent) -> Recorded:

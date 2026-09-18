@@ -59,6 +59,8 @@ class IncomingMessage:
     speaker_kind: str = SpeakerKind.LINKED
     attachment_urls: list[str] = field(default_factory=list)
     edited_at: object | None = None
+    # The person deliberately told Mylo rather than being overheard.
+    explicit: bool = False
 
 
 @dataclass(frozen=True)
@@ -148,6 +150,7 @@ def record(source: Source, message: IncomingMessage) -> Recorded:
                 repeat_of=repeat_root,
                 attachment_urls=list(message.attachment_urls),
                 edited_at=message.edited_at,
+                explicit=bool(message.explicit),
             )
     except IntegrityError:
         # The same message arriving twice — a gateway resume, a retried handoff.
