@@ -34,7 +34,9 @@ _PUBLIC = {_READ_DOOR, _WRITE_DOOR}
 #: the reader can already see.
 _COLLAB_MAY_READ = {
     "EdgeView",
+    "WorkView",
     "concept_vectors",
+    "discoverable_works",
     "discoverable_edges",
     "lab_declared_edges",
     "own_edges",

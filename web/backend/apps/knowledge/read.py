@@ -37,8 +37,10 @@ __all__ = [
     "Backing",
     "EdgeView",
     "backing",
+    "WorkView",
     "concept_vectors",
     "discoverable_edges",
+    "discoverable_works",
     "lab_declared_edges",
     "own_edges",
     "project_edges",
@@ -278,3 +280,65 @@ def concept_vectors(concept_ids: Iterable[int]) -> dict[int, list[float]]:
         pk__in=list(concept_ids), embedding__isnull=False
     ).values_list("pk", "embedding")
     return {pk: [float(v) for v in vector] for pk, vector in rows}
+
+
+@dataclass(frozen=True)
+class WorkView:
+    """One of a person's own published works, as facets and vectors.
+
+    What collaboration retrieval ranks (design §5.2): works first, then their
+    authors. Published and public, so it carries no tier rule beyond "not
+    thin" — but it is still read only through here.
+    """
+
+    work_id: str
+    user_id: int
+    year: int | None
+    field: str
+    problem: str
+    method: str
+    method_neutral: str
+    setting: str
+    reusable: str
+    vectors: dict  # facet -> list[float]; missing facets are absent
+
+
+_WORK_VECTORS = (
+    ("problem", "problem_vec"),
+    ("method", "method_vec"),
+    ("method_neutral", "method_neutral_vec"),
+    ("setting", "setting_vec"),
+    ("reusable", "reusable_vec"),
+)
+
+
+def discoverable_works(users: Iterable) -> list[WorkView]:
+    """The non-thin, read works of these people, with a vector per facet."""
+    from .models import WorkFacets
+
+    rows = WorkFacets.objects.filter(
+        author_work__user__in=list(users), thin=False
+    ).select_related("author_work")
+    out = []
+    for row in rows:
+        work = row.author_work
+        vectors = {
+            name: [float(v) for v in getattr(row, field)]
+            for name, field in _WORK_VECTORS
+            if getattr(row, field) is not None
+        }
+        out.append(
+            WorkView(
+                work_id=str(work.pk),
+                user_id=work.user_id,
+                year=work.year,
+                field=row.openalex_field_id or work.openalex_field_id or "",
+                problem=row.problem,
+                method=row.method,
+                method_neutral=row.method_neutral,
+                setting=row.setting,
+                reusable=row.reusable,
+                vectors=vectors,
+            )
+        )
+    return out
