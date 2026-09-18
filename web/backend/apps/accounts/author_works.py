@@ -77,7 +77,13 @@ def store_author_works(user, draft, *, source: str) -> int:
                         for name in (row.get("coauthors") or [])
                         if str(name).strip()
                     ][:50],
+                    "coauthor_ids": [
+                        str(value).strip()
+                        for value in (row.get("coauthor_ids") or [])
+                        if str(value).strip()
+                    ][:50],
                     "cited_by": _year_free_int(row.get("cited_by")),
+                    **_field(row),
                 },
             )
             written += 1
@@ -88,6 +94,87 @@ def store_author_works(user, draft, *, source: str) -> int:
                 "could not store an author work for %s", user, exc_info=True
             )
     return written
+
+
+def _field(row: dict) -> dict:
+    """The work's OpenAlex field, when the source gave one.
+
+    A work from another source is left for :func:`enrich_fields` to look up by
+    DOI; one from OpenAlex has been checked already, whatever it said.
+    """
+    field_id = str(row.get("field_id") or "").strip()[:32]
+    if field_id:
+        from django.utils import timezone
+
+        return {"openalex_field_id": field_id, "field_checked_at": timezone.now()}
+    return {}
+
+
+def enrich_fields(works, *, fetch=None, mailto: str = "", api_key: str = "") -> int:
+    """Look up the OpenAlex field and co-author ids of works that lack them.
+
+    One request per work with a DOI, ever: ``field_checked_at`` is stamped
+    whatever the answer, so a DOI OpenAlex does not know is not asked about
+    every night. A network failure leaves the work unstamped, to be tried again.
+    Returns how many works were checked. Never raises.
+    """
+    import logging
+    import urllib.error
+    import urllib.parse
+
+    from django.utils import timezone
+
+    from apps.accounts.intake.normalizers.openalex import _bare_id, primary_field_id
+    from apps.accounts.intake.retrievers._http import fetch_json
+
+    fetch = fetch or fetch_json
+    checked = 0
+    for work in works:
+        if work.field_checked_at is not None or not work.doi:
+            continue
+        params = {"select": "primary_topic,authorships"}
+        if mailto:
+            params["mailto"] = mailto
+        if api_key:
+            params["api_key"] = api_key
+        url = (
+            "https://api.openalex.org/works/doi:"
+            + urllib.parse.quote(work.doi, safe="/")
+            + "?"
+            + urllib.parse.urlencode(params)
+        )
+        try:
+            payload = fetch(url) or {}
+        except urllib.error.HTTPError as exc:
+            if exc.code != 404:
+                logging.getLogger(__name__).warning(
+                    "OpenAlex lookup failed for %s: %s", work.doi, exc
+                )
+                continue
+            payload = {}
+        except Exception as exc:  # noqa: BLE001 - tried again next run
+            logging.getLogger(__name__).warning(
+                "OpenAlex lookup failed for %s: %s", work.doi, exc
+            )
+            continue
+        own = str(getattr(work.user.profile, "openalex_id", "") or "")
+        ids = [
+            _bare_id(((row or {}).get("author") or {}).get("id"))
+            for row in payload.get("authorships") or []
+        ]
+        work.coauthor_ids = work.coauthor_ids or [i for i in ids if i and i != own][:50]
+        work.openalex_field_id = primary_field_id(payload)
+        work.field_checked_at = timezone.now()
+        work.save(
+            update_fields=[
+                "coauthor_ids",
+                "openalex_field_id",
+                "field_checked_at",
+                "updated_at",
+            ]
+        )
+        checked += 1
+    return checked
 
 
 def _year_free_int(value) -> int | None:

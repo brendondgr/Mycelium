@@ -65,11 +65,19 @@ def normalize(raw: dict[str, Any]) -> AuthorProfileDraft:
             if name:
                 draft.keywords.append(name)
         work_coauthors: list[str] = []
+        work_coauthor_ids: list[str] = []
+        own_id = draft.external_ids.get("openalex", "")
         for authorship in work.get("authorships") or []:
-            name = ((authorship or {}).get("author") or {}).get("display_name")
+            person = (authorship or {}).get("author") or {}
+            name = person.get("display_name")
+            author_id = _bare_id(person.get("id"))
+            if author_id and author_id == own_id:
+                continue
             if name and name != draft.display_name:
                 draft.coauthors.append(name)
                 work_coauthors.append(name)
+                if author_id:
+                    work_coauthor_ids.append(author_id)
         draft.evidence.append(
             {
                 "title": work.get("title") or work.get("display_name") or "",
@@ -81,11 +89,27 @@ def normalize(raw: dict[str, Any]) -> AuthorProfileDraft:
                 # known-literature matcher asks "did *this* person write *this*
                 # paper", which a flattened set of every collaborator cannot answer.
                 "coauthors": work_coauthors,
+                # By identity as well as by name, so "already works with" and
+                # introduction paths rest on who, not on how a name is spelled.
+                "coauthor_ids": work_coauthor_ids,
+                "field_id": primary_field_id(work),
                 "doi": _bare_doi(work.get("doi")),
             }
         )
 
     return draft
+
+
+def primary_field_id(work: dict[str, Any]) -> str:
+    """The OpenAlex field of a work's primary topic ("17", Computer Science).
+
+    The field level, not the topic: topic assignment is too noisy to measure
+    distance with, the field is not (collaboration-network design §5.6).
+    """
+    topic = work.get("primary_topic") or {}
+    return _bare_id(
+        ((topic.get("field") or {}) if isinstance(topic, dict) else {}).get("id")
+    )
 
 
 def _bare_doi(value: Any) -> str:

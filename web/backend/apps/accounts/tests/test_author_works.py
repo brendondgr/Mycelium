@@ -137,3 +137,104 @@ def test_the_import_endpoint_keeps_the_works_it_previewed(monkeypatch) -> None:
 
     assert resp.status_code == 200
     assert AuthorWork.objects.filter(user=user).count() == 2
+
+
+# --- identities and fields (collaboration-network plan CN-02) -----------------
+
+
+def _openalex_payload():
+    me = {"id": "https://openalex.org/A1", "display_name": "Ada Lovelace"}
+    return {
+        "author": me,
+        "works": [
+            {
+                "id": "https://openalex.org/W7",
+                "title": "Kriging reef temperatures",
+                "publication_year": 2021,
+                "primary_topic": {
+                    "field": {"id": "https://openalex.org/fields/23"},
+                },
+                "authorships": [
+                    {"author": me},
+                    {
+                        "author": {
+                            "id": "https://openalex.org/A2",
+                            "display_name": "Charles Babbage",
+                        }
+                    },
+                ],
+            }
+        ],
+    }
+
+
+def test_the_openalex_import_keeps_coauthor_ids_and_the_field():
+    from apps.accounts.intake.normalizers.openalex import normalize
+
+    row = normalize(_openalex_payload()).evidence[0]
+    assert row["coauthor_ids"] == ["A2"]
+    assert row["field_id"] == "23"
+    assert row["coauthors"] == ["Charles Babbage"]
+
+
+@pytest.mark.django_db
+def test_storing_a_work_keeps_its_identities_and_marks_the_field_checked():
+    from apps.accounts.intake.normalizers.openalex import normalize
+
+    user = User.objects.create_user("ada2", "ada2@example.org", "pw")
+    store_author_works(user, normalize(_openalex_payload()), source="openalex")
+    work = AuthorWork.objects.get(user=user)
+    assert work.coauthor_ids == ["A2"]
+    assert work.openalex_field_id == "23"
+    assert work.field_checked_at is not None
+
+
+@pytest.mark.django_db
+def test_enrich_fields_asks_once_per_doi_and_retries_only_on_failure():
+    import urllib.error
+
+    from apps.accounts.author_works import enrich_fields
+
+    user = User.objects.create_user("bo", "bo@example.org", "pw")
+    user.profile.openalex_id = "A9"
+    user.profile.save()
+
+    def make(source_id, doi):
+        return AuthorWork.objects.create(
+            user=user, source="scholar", source_id=source_id, title=source_id, doi=doi
+        )
+
+    known, unknown, flaky, no_doi = (
+        make("known", "10.1/known"),
+        make("unknown", "10.1/unknown"),
+        make("flaky", "10.1/flaky"),
+        make("nodoi", ""),
+    )
+    asked = []
+
+    def fetch(url):
+        asked.append(url)
+        if "known" in url and "unknown" not in url:
+            return {
+                "primary_topic": {"field": {"id": "https://openalex.org/fields/17"}},
+                "authorships": [
+                    {"author": {"id": "https://openalex.org/A9"}},
+                    {"author": {"id": "https://openalex.org/A3"}},
+                ],
+            }
+        if "unknown" in url:
+            raise urllib.error.HTTPError(url, 404, "not found", {}, None)
+        raise TimeoutError("slow")
+
+    assert enrich_fields([known, unknown, flaky, no_doi], fetch=fetch) == 2
+    for work in (known, unknown, flaky, no_doi):
+        work.refresh_from_db()
+    assert (known.openalex_field_id, known.coauthor_ids) == ("17", ["A3"])
+    assert unknown.field_checked_at is not None and unknown.openalex_field_id == ""
+    assert flaky.field_checked_at is None
+    assert no_doi.field_checked_at is None
+    assert len(asked) == 3
+
+    asked.clear()
+    enrich_fields([known, unknown], fetch=fetch)
+    assert asked == []
