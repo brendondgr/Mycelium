@@ -131,6 +131,10 @@ tables and bar charts, and attaches the PDF beneath the message. The step sits
 outside ``CONTAINER_STAGES`` on purpose: measurement failing must not fail a run
 that succeeded, so its exit code degrades the summary rather than the run.
 
+After collection, a **collaboration** step (``extract_requirement_slots``)
+reads what new funding calls ask a team to bring, so the scoring stages can mark
+which of it the reader and their lab already cover; it is non-fatal.
+
 Just before analytics, a **knowledge** step (``facet_author_works``) reads
 people's own imported papers into the knowledge graph — facets, demonstrated
 edges — within a nightly cap. It is outside ``CONTAINER_STAGES`` for the same
@@ -315,6 +319,24 @@ def compile_analytics(base: list[str]) -> dict | None:
         _notify("warn", "Daily analytics not compiled", message, stage="analytics")
         return None
     return analytics.read_analytics()
+
+
+def extract_requirement_slots(base: list[str]) -> None:
+    """Read what new funding calls ask a team to bring (non-fatal).
+
+    Between collection and scoring, so tonight's team-fit lines read tonight's
+    calls. Outside ``CONTAINER_STAGES``: a call without slots shows no team-fit
+    line, which is honest, and must not stop anyone's report.
+    """
+    print("\n=== Collaboration · Reading what new calls require… ===", flush=True)
+    code = run_manage("extract_requirement_slots", [], intro=None, base=base)
+    if code != 0:
+        message = (
+            f"Reading call requirements exited with code {code}; the run "
+            "continues. Calls without slots show no team-fit line until tomorrow."
+        )
+        print(f"note: {message}", flush=True)
+        _notify("warn", "Call requirements not read", message, stage="collab")
 
 
 def facet_author_works(base: list[str]) -> None:
@@ -641,6 +663,7 @@ def main() -> int:
         flush=True,
     )
     scrape_ran = scrape_opportunities(base)
+    extract_requirement_slots(base)
 
     # Stages 2..N — recommend, remind, prune, and brief inside the backend container.
     stages_run: list[str] = []

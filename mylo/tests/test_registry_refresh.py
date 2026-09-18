@@ -158,3 +158,16 @@ class FacetAuthorWorksTests(unittest.TestCase):
         kind, title = notify.call_args.args[:2]
         self.assertEqual(kind, "warn")
         self.assertIn("papers", title)
+
+
+class ExtractRequirementSlotsTests(unittest.TestCase):
+    """Reading call requirements never fails the run."""
+
+    def test_a_failure_is_a_warning(self) -> None:
+        with mock.patch.object(manual_all, "run_manage", return_value=2) as run:
+            with mock.patch.object(manual_all, "_notify") as notify:
+                manual_all.extract_requirement_slots(_BASE)
+        run.assert_called_once_with(
+            "extract_requirement_slots", [], intro=None, base=_BASE
+        )
+        self.assertEqual(notify.call_args.args[0], "warn")
