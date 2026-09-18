@@ -1123,6 +1123,19 @@ AMBIENT_REF_RETENTION_DAYS = env.int("AMBIENT_REF_RETENTION_DAYS", default=45)
 AMBIENT_MIN_MESSAGE_CHARS = env.int("AMBIENT_MIN_MESSAGE_CHARS", default=24)
 AMBIENT_MAX_MESSAGE_CHARS = env.int("AMBIENT_MAX_MESSAGE_CHARS", default=4000)
 
+# Which project a message is about (apps.ambient.attribution). The top
+# candidate must reach the floor AND lead the runner-up by the margin, or the
+# answer is "unresolved" — a real answer, because a message filed under the
+# wrong project corrupts two things at once. These ship conservative and are
+# to be set from labelled corrections (OD-03b), not by taste. Continuity is how
+# long a confident attribution carries in the same place; the thread override
+# is how strong another project's own content must be to break a thread's
+# inheritance from its opening.
+AMBIENT_ATTRIBUTION_FLOOR = env.float("AMBIENT_ATTRIBUTION_FLOOR", default=0.6)
+AMBIENT_ATTRIBUTION_MARGIN = env.float("AMBIENT_ATTRIBUTION_MARGIN", default=0.25)
+AMBIENT_CONTINUITY_MINUTES = env.int("AMBIENT_CONTINUITY_MINUTES", default=30)
+AMBIENT_THREAD_OVERRIDE = env.float("AMBIENT_THREAD_OVERRIDE", default=0.9)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

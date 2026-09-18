@@ -194,6 +194,9 @@ Files below are inside `web/backend/apps/content/`.
 | Which Discord snowflake is which Mycelium user, for listening | `web/backend/apps/ambient/adapters/discord.py` — resolves through `integrations.services.resolve` and nothing else |
 | Whether a message is worth carrying at all (bots, chatter, excluded and social channels, length) | `web/backend/apps/ambient/filters.py` |
 | What one server produced on one day, in counts and never names | `web/backend/apps/ambient/models.py` (`SourceActivity`); the one-time "this server is listening" DM is `MemberNotice` |
+| Which project a message is about — seven signals, a floor and a margin, and an honest "unresolved" | `web/backend/apps/ambient/attribution.py` (`score` is pure; `candidates_for`, `context_for`, `attribute_ref` are the database half) |
+| Other names a project goes by in conversation | `Project.aliases` in `web/backend/apps/research/models.py` |
+| A channel's optional default project, and a person's "this was a different project" | `web/backend/apps/ambient/models.py` (`ChannelHint`, `AttributionCorrection`) |
 
 ## Backend — billing, admin, integrations, ingestion
 

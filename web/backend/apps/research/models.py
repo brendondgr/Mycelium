@@ -121,6 +121,17 @@ class Project(models.Model):
         blank=True,
         help_text="Derived from goals; the project relevance target.",
     )
+    aliases = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Other names people use for this project in conversation — "
+            "'the imaging pipeline', 'IMG-seg'. Maintained by a project editor "
+            "and read by ambient attribution (apps.ambient.attribution), where "
+            "a name or alias in a message is the strongest single signal of "
+            "which project it is about."
+        ),
+    )
     members = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         through="ProjectMember",

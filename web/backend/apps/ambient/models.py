@@ -268,6 +268,32 @@ class RawMessageRef(models.Model):
     # somebody addressing Mylo meant to be understood.
     explicit = models.BooleanField(default=False)
 
+    # -- attribution (Plan 03) ------------------------------------------------
+    # Which project this message is about, decided on arrival from cheap
+    # signals and, for what that left unresolved, again at the nightly read
+    # with semantic similarity. Null is a real answer — "unresolved" — never a
+    # missing one: guessing is the failure mode.
+    project = models.ForeignKey(
+        "research.Project",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ambient_refs",
+    )
+    project_confidence = models.FloatField(null=True, blank=True)
+    # {"scores": {project_id: {signal: score}}, "matched": {project_id: [term]},
+    #  "decided_by": "...", "corrected": bool}. The matched terms are the
+    # *project's* vocabulary — an alias, a dataset name — never the person's
+    # words, so this column can outlive the body without becoming a quote.
+    attribution = models.JSONField(default=dict, blank=True)
+    attributed_at = models.DateTimeField(null=True, blank=True)
+    # How many other people the message named. A message that names a
+    # colleague is about them as much as by the speaker, which is what lets
+    # Plan 04 set subject = colleague. Ids are kept only for mentioned people
+    # who have opted in themselves; anybody else is at most a number.
+    mentions_count = models.PositiveSmallIntegerField(default=0)
+    mentioned_user_ids = models.JSONField(default=list, blank=True)
+
     edited_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -287,6 +313,8 @@ class RawMessageRef(models.Model):
         indexes = [
             models.Index(fields=["source", "sent_at"]),
             models.Index(fields=["speaker", "sent_at"]),
+            models.Index(fields=["source", "place_id", "sent_at"]),
+            models.Index(fields=["project", "sent_at"]),
         ]
 
     def __str__(self) -> str:
@@ -639,6 +667,9 @@ class SourceActivity(models.Model):
     dropped_excluded_channel = models.IntegerField(default=0)
     dropped_too_short = models.IntegerField(default=0)
     dropped_bot = models.IntegerField(default=0)
+    # Recorded, then discarded at the nightly read because the speaker was no
+    # longer eligible by then — an opt-out, an unlink, a lapsed plan.
+    dropped_lapsed = models.IntegerField(default=0)
     dropped_other = models.IntegerField(default=0)
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -694,3 +725,141 @@ class MemberNotice(models.Model):
 
     def __str__(self) -> str:
         return f"MemberNotice({self.kind}, user={self.user_id})"
+
+
+class ChannelHint(models.Model):
+    """An optional default project for one channel.
+
+    A hint, never a binding. It adds a small score that cannot resolve a
+    message on its own; the content still decides, and a channel that carries
+    three projects in an afternoon is attributed three ways.
+    """
+
+    source = models.ForeignKey(
+        Source, on_delete=models.CASCADE, related_name="channel_hints"
+    )
+    place_id = models.CharField(max_length=64)
+    place_label = models.CharField(max_length=120, blank=True, default="")
+    project = models.ForeignKey(
+        "research.Project", on_delete=models.CASCADE, related_name="channel_hints"
+    )
+    set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ambient_channel_hints",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source", "place_id"], name="ambient_hint_one_per_channel"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"ChannelHint({self.place_label or self.place_id} -> {self.project_id})"
+
+
+class AttributionCorrection(models.Model):
+    """A person said "this was about a different project". Append-only.
+
+    Two jobs. It fixes the one attribution — the reference, and any observation
+    already resting on it. And it is a labelled example: ``scores`` snapshots
+    what every signal said at the time, in numbers and project ids only, so the
+    floor and margin can be set from real disagreements rather than by taste
+    (OD-03b).
+    """
+
+    ref = models.ForeignKey(
+        RawMessageRef,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="corrections",
+    )
+    source = models.ForeignKey(
+        Source,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="attribution_corrections",
+    )
+    from_project = models.ForeignKey(
+        "research.Project",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    to_project = models.ForeignKey(
+        "research.Project",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    from_confidence = models.FloatField(null=True, blank=True)
+    scores = models.JSONField(default=dict, blank=True)
+    corrected_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="ambient_attribution_corrections",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+
+    def __str__(self) -> str:
+        return f"AttributionCorrection({self.from_project_id} -> {self.to_project_id})"
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise ValueError(
+                "AttributionCorrection is append-only; record a new row instead."
+            )
+        return super().save(*args, **kwargs)
+
+
+class ProjectAttention(models.Model):
+    """Which project a person is actually spending their conversation on.
+
+    The fraction of their *attributed* conversation that went to each project
+    over the last 7 and 28 days. Derived, recomputed nightly, never edited by
+    hand — it is a measurement, and a measurement somebody can type into is an
+    opinion. It feeds Plan 05 (what is useful now) and Plan 09 ("you spent most
+    of this week on X"), and it is personal: it is read by the person it
+    describes.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ambient_attention",
+    )
+    project = models.ForeignKey(
+        "research.Project", on_delete=models.CASCADE, related_name="ambient_attention"
+    )
+    share_7d = models.FloatField(default=0.0)
+    share_28d = models.FloatField(default=0.0)
+    messages_7d = models.PositiveIntegerField(default=0)
+    messages_28d = models.PositiveIntegerField(default=0)
+    computed_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ["-share_7d", "-share_28d"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "project"], name="ambient_attention_unique"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"ProjectAttention(user={self.user_id}, project={self.project_id}, "
+            f"7d={self.share_7d:.2f})"
+        )
