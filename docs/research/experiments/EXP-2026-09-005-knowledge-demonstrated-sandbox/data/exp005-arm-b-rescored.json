@@ -1,0 +1,296 @@
+{
+ "corpus_path": "/app/data/sandbox/collab-20260918-240.json",
+ "corpus_seconds": 0.0,
+ "invariant_failures": [
+  "second_pass_model_calls = -1",
+  "second_pass_works_read = -1",
+  "second_projection_writes = -1"
+ ],
+ "labs": 48,
+ "metrics": {
+  "concepts_global": 1593,
+  "concepts_private": 0,
+  "corpus_generator_slips": 1,
+  "edges_by_tier": {
+   "declared": 1536,
+   "demonstrated": 11096
+  },
+  "field_ruler_accuracy": 1.0,
+  "invariants": {
+   "conversational_edges": 0,
+   "neutral_phrases_in_deny_list": 0,
+   "private_concepts_from_papers": 0,
+   "rollup_evidence_from_someone_elses_work": 0,
+   "second_pass_model_calls": -1,
+   "second_pass_works_read": -1,
+   "second_projection_writes": -1,
+   "thin_works_with_edges": 0
+  },
+  "method_recall": 0.9982,
+  "method_split_total": 16,
+  "method_term_contamination": 2,
+  "methods_split": {
+   "dft": 1,
+   "fem": 1,
+   "gbm": 1,
+   "gnn": 1,
+   "gp": 1,
+   "kalman": 1,
+   "particle": 2,
+   "remote": 2,
+   "survival": 1,
+   "topic": 2,
+   "transformer": 2,
+   "unet": 1
+  },
+  "neutral_present_rate": 1.0,
+  "q1_precision": 1.0,
+  "q1_recall": 1.0,
+  "q2_declared_and_demonstrated_recall": 0.775,
+  "q2_declared_only_recall": 1.0,
+  "q2_undeclared_method_shown_recall": 1.0,
+  "refused_by_facet": {
+   "reusable_terms": 1
+  },
+  "run": {},
+  "split_examples": {
+   "dft": [
+    {
+     "concept": 9664,
+     "papers": 21,
+     "surfaces": [
+      "density functional theory"
+     ]
+    },
+    {
+     "concept": 10039,
+     "papers": 17,
+     "surfaces": [
+      "DFT calculations"
+     ]
+    }
+   ],
+   "fem": [
+    {
+     "concept": 9652,
+     "papers": 40,
+     "surfaces": [
+      "finite element analysis"
+     ]
+    },
+    {
+     "concept": 9879,
+     "papers": 32,
+     "surfaces": [
+      "finite element method"
+     ]
+    }
+   ],
+   "gbm": [
+    {
+     "concept": 9639,
+     "papers": 47,
+     "surfaces": [
+      "gradient boosting"
+     ]
+    },
+    {
+     "concept": 9737,
+     "papers": 47,
+     "surfaces": [
+      "gradient-boosted trees"
+     ]
+    }
+   ],
+   "gnn": [
+    {
+     "concept": 9640,
+     "papers": 68,
+     "surfaces": [
+      "graph neural network",
+      "graph neural networks"
+     ]
+    },
+    {
+     "concept": 10002,
+     "papers": 21,
+     "surfaces": [
+      "message-passing neural network"
+     ]
+    }
+   ],
+   "gp": [
+    {
+     "concept": 9831,
+     "papers": 44,
+     "surfaces": [
+      "kriging"
+     ]
+    },
+    {
+     "concept": 9666,
+     "papers": 36,
+     "surfaces": [
+      "Gaussian process regression"
+     ]
+    }
+   ],
+   "kalman": [
+    {
+     "concept": 9655,
+     "papers": 59,
+     "surfaces": [
+      "Kalman filter",
+      "Kalman filtering"
+     ]
+    },
+    {
+     "concept": 9753,
+     "papers": 29,
+     "surfaces": [
+      "extended Kalman filter"
+     ]
+    }
+   ],
+   "particle": [
+    {
+     "concept": 9794,
+     "papers": 40,
+     "surfaces": [
+      "sequential Monte Carlo"
+     ]
+    },
+    {
+     "concept": 9651,
+     "papers": 36,
+     "surfaces": [
+      "particle filter"
+     ]
+    },
+    {
+     "concept": 10530,
+     "papers": 2,
+     "surfaces": [
+      "sequential Monte Carlo particle filter"
+     ]
+    }
+   ],
+   "remote": [
+    {
+     "concept": 9801,
+     "papers": 39,
+     "surfaces": [
+      "multispectral data",
+      "multispectral reflectance",
+      "multispectral remote sensing"
+     ]
+    },
+    {
+     "concept": 9644,
+     "papers": 30,
+     "surfaces": [
+      "remote sensing",
+      "satellite remote sensing"
+     ]
+    },
+    {
+     "concept": 10429,
+     "papers": 1,
+     "surfaces": [
+      "multi-spectral satellite remote sensing"
+     ]
+    }
+   ],
+   "survival": [
+    {
+     "concept": 9669,
+     "papers": 38,
+     "surfaces": [
+      "survival analysis"
+     ]
+    },
+    {
+     "concept": 9750,
+     "papers": 25,
+     "surfaces": [
+      "Cox proportional hazards model"
+     ]
+    }
+   ],
+   "topic": [
+    {
+     "concept": 9784,
+     "papers": 25,
+     "surfaces": [
+      "latent Dirichlet allocation"
+     ]
+    },
+    {
+     "concept": 9658,
+     "papers": 22,
+     "surfaces": [
+      "topic modelling"
+     ]
+    },
+    {
+     "concept": 9978,
+     "papers": 2,
+     "surfaces": [
+      "probabilistic topic modeling"
+     ]
+    }
+   ],
+   "transformer": [
+    {
+     "concept": 9683,
+     "papers": 34,
+     "surfaces": [
+      "transformer language model"
+     ]
+    },
+    {
+     "concept": 9791,
+     "papers": 13,
+     "surfaces": [
+      "BERT-based language model"
+     ]
+    },
+    {
+     "concept": 9960,
+     "papers": 12,
+     "surfaces": [
+      "BERT"
+     ]
+    }
+   ],
+   "unet": [
+    {
+     "concept": 9648,
+     "papers": 46,
+     "surfaces": [
+      "U-Net"
+     ]
+    },
+    {
+     "concept": 9840,
+     "papers": 5,
+     "surfaces": [
+      "U-Net segmentation network",
+      "segmentation network"
+     ]
+    }
+   ]
+  },
+  "thin_rate_on_clean": 0.0,
+  "works_clean_corpus": 1098,
+  "works_non_thin": 1098,
+  "works_read": 1099,
+  "works_total": 1099,
+  "wrong_merge_total": 0,
+  "wrong_merges": {}
+ },
+ "papers": 1099,
+ "people": 240,
+ "projects": 48,
+ "seed": 20260918
+}

@@ -222,6 +222,17 @@ def score_cn02(world: world_mod.World, corpus: dict[str, dict], run: dict) -> di
         "method_term_contamination": contaminated,
         "methods_split": splits,
         "method_split_total": sum(splits.values()),
+        "split_examples": {
+            m: [
+                {
+                    "concept": cid,
+                    "papers": n,
+                    "surfaces": sorted(surfaces_by_concept[cid])[:5],
+                }
+                for cid, n in concepts_by_method[m].most_common(6)
+            ]
+            for m in splits
+        },
         "wrong_merges": {
             str(k): {"methods": v, "surfaces": sorted(surfaces_by_concept[k])[:6]}
             for k, v in wrong_merges.items()

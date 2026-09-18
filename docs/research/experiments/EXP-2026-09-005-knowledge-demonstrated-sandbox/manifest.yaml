@@ -1,0 +1,134 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-09-005
+slug: knowledge-demonstrated-sandbox
+title: Do people's papers become the right demonstrated concepts? A synthetic-world test of plan CN-02
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-09-18
+date_completed: 2026-09-18
+authors: [brendondgr]
+
+purpose: >
+  The sandbox validation plan CN-02 must pass before it is retired: people's
+  own papers read by the work-facet extractor, linked into the knowledge graph,
+  and rolled up onto the person — run at scale with the real local model on a
+  synthetic world whose truth is planted, and scored against it. Also the first
+  data point of the shared concept-merge experiment (collaboration-network
+  CN-08, ambient-profile Plan 10) via a merge-threshold sweep.
+
+hypothesis: >
+  Pre-registered in PROTOCOL.md. H1 every invariant zero in every arm; H2 prompt
+  w2 (standard names, no descriptions, plus a generic-term validator) raises the
+  primary metric by >= 0.05 over w1 and lowers method splits; H3 no wrong merge
+  at 0.92; H4 field ruler >= 0.9; H5 Q1 recall >= 0.9 and precision >= 0.8.
+  OUTCOME: all five hold. Primary 0.658 -> 0.775 (+0.117), splits 38 -> 16, no
+  wrong merge at any threshold from 0.80 to 0.95; first harm at 0.80.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 5ba248c # arm B and the sweep; arm A ran at d69e69f with prompt w1
+  branch: main
+  entrypoint: "cd web/backend && uv run --project . python -m sandbox.collab all --people 240 --out /app/data/sandbox/exp005-arm-b.json && uv run --project . python -m sandbox.collab sweep --people 240 --out /app/data/sandbox/exp005-sweep.json && python3 docs/research/experiments/EXP-2026-09-005-knowledge-demonstrated-sandbox/code/analyse.py"
+  dirty: true  # this folder and the protocol uncommitted while arms ran; ISSUES.md 2
+config:
+  path: web/backend/sandbox/collab/world.py
+  hash: null
+data:
+  name: synthetic collaboration world (sandbox.collab.world)
+  version: "seed 20260918, 240 people, abstracts by default-model 2026-09-18"
+  split: test
+  n_examples: 1099 # papers; 480 (person, declared method) pairs for the primary
+  qrels: "planted ground truth — not human assessment"
+  hash: "sha256:5055552cd405becf1091927c72c443bcd13a606303cb51f7c9c3915e023c4428"
+  card: null
+seeds: [20260918]
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml"
+compute:
+  hardware: "20 CPU cores, 62 GB RAM; embedder on CPU; model served off-host via the llm-tunnel relay"
+  wall_clock_hours: 0.7
+  estimated_cost_usd: 0.0 # local model
+
+# --- LLM block ---------------------------------------------------------------
+llm:
+  model: "relay/default-model (upstream gemma4-26B-mtp)@2026-09-18"
+  temperature: null # the deployment's LLM_TEMPERATURE; not overridden by the harness
+  max_tokens: null
+  prompt_files: ["web/backend/apps/knowledge/works.py", "web/backend/sandbox/collab/corpus.py"]
+  prompt_hash: null
+  total_input_tokens: null # not captured by the harness; ISSUES.md 6
+  total_output_tokens: null
+  nondeterminism_note: >
+    One run per arm; the model is not pinned to temperature 0. Re-linking the
+    stored facets is deterministic (reproduced arm B exactly); the extraction
+    itself was not repeated.
+
+# --- Results block -----------------------------------------------------------
+metrics:
+  primary: q2_declared_and_demonstrated_recall (arm B, prompt w2, threshold 0.92)
+  values:
+    b_w2__q2_declared_and_demonstrated_recall: 0.775
+    a_w1__q2_declared_and_demonstrated_recall: 0.6583
+    b_minus_a__q2_declared_and_demonstrated_recall: 0.1167
+    a_w1__method_split_total: 38
+    b_w2__method_split_total: 16
+    a_w1__wrong_merge_total: 0
+    b_w2__wrong_merge_total: 0
+    a_w1__method_recall: 0.9964
+    b_w2__method_recall: 0.9982
+    b_w2__field_ruler_accuracy: 1.0
+    b_w2__q1_recall: 1.0
+    b_w2__q1_precision: 1.0
+    b_w2__q2_declared_only_recall: 1.0
+    b_w2__q2_undeclared_method_shown_recall: 1.0
+    sweep_080__q2_declared_and_demonstrated_recall: 0.875
+    sweep_080__method_split_total: 8
+    sweep_080__q1_recall: 0.9931
+    sweep_080__q2_undeclared_method_shown_recall: 0.9875
+    sweep_085__q2_declared_and_demonstrated_recall: 0.8708
+    sweep_085__method_split_total: 9
+    sweep_088__q2_declared_and_demonstrated_recall: 0.8417
+    sweep_090__q2_declared_and_demonstrated_recall: 0.8229
+    sweep_095__q2_declared_and_demonstrated_recall: 0.7333
+    a_w1__model_calls: 1115
+    b_w2__model_calls: 1105
+    a_w1__model_seconds_mean: 2.44
+    b_w2__model_seconds_mean: 2.53
+    a_w1__model_failures: 0
+    b_w2__model_failures: 0
+    a_w1__invariant__conversational_edges: 0
+    a_w1__invariant__neutral_phrases_in_deny_list: 0
+    a_w1__invariant__private_concepts_from_papers: 0
+    a_w1__invariant__rollup_evidence_from_someone_elses_work: 0
+    a_w1__invariant__second_pass_model_calls: 0
+    a_w1__invariant__second_pass_works_read: 0
+    a_w1__invariant__second_projection_writes: 0
+    a_w1__invariant__thin_works_with_edges: 0
+    b_w2__invariant__conversational_edges: 0
+    b_w2__invariant__neutral_phrases_in_deny_list: 0
+    b_w2__invariant__private_concepts_from_papers: 0
+    b_w2__invariant__rollup_evidence_from_someone_elses_work: 0
+    b_w2__invariant__second_pass_model_calls: 0
+    b_w2__invariant__second_pass_works_read: 0
+    b_w2__invariant__second_projection_writes: 0
+    b_w2__invariant__thin_works_with_edges: 0
+baselines_compared: [arm A (prompt w1)]
+statistical_test: null # single runs against planted truth; no sampling to test over
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: []

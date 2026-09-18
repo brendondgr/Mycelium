@@ -1,0 +1,89 @@
+{
+ "corpus_path": "/app/data/sandbox/collab-20260918-240.json",
+ "corpus_seconds": 0.0,
+ "labs": 48,
+ "papers": 1099,
+ "people": 240,
+ "projects": 48,
+ "seed": 20260918,
+ "sweep": [
+  {
+   "concepts_global": 729,
+   "field_ruler_accuracy": 1.0,
+   "method_split_total": 8,
+   "q1_precision": 1.0,
+   "q1_recall": 0.9931,
+   "q2_declared_and_demonstrated_recall": 0.875,
+   "q2_undeclared_method_shown_recall": 0.9875,
+   "seconds": 125.4,
+   "threshold": 0.8,
+   "wrong_merge_total": 0,
+   "wrong_merges": {}
+  },
+  {
+   "concepts_global": 1041,
+   "field_ruler_accuracy": 1.0,
+   "method_split_total": 9,
+   "q1_precision": 1.0,
+   "q1_recall": 1.0,
+   "q2_declared_and_demonstrated_recall": 0.8708,
+   "q2_undeclared_method_shown_recall": 1.0,
+   "seconds": 129.0,
+   "threshold": 0.85,
+   "wrong_merge_total": 0,
+   "wrong_merges": {}
+  },
+  {
+   "concepts_global": 1266,
+   "field_ruler_accuracy": 1.0,
+   "method_split_total": 10,
+   "q1_precision": 1.0,
+   "q1_recall": 1.0,
+   "q2_declared_and_demonstrated_recall": 0.8417,
+   "q2_undeclared_method_shown_recall": 1.0,
+   "seconds": 126.6,
+   "threshold": 0.88,
+   "wrong_merge_total": 0,
+   "wrong_merges": {}
+  },
+  {
+   "concepts_global": 1424,
+   "field_ruler_accuracy": 1.0,
+   "method_split_total": 11,
+   "q1_precision": 1.0,
+   "q1_recall": 1.0,
+   "q2_declared_and_demonstrated_recall": 0.8229,
+   "q2_undeclared_method_shown_recall": 1.0,
+   "seconds": 132.2,
+   "threshold": 0.9,
+   "wrong_merge_total": 0,
+   "wrong_merges": {}
+  },
+  {
+   "concepts_global": 1593,
+   "field_ruler_accuracy": 1.0,
+   "method_split_total": 16,
+   "q1_precision": 1.0,
+   "q1_recall": 1.0,
+   "q2_declared_and_demonstrated_recall": 0.775,
+   "q2_undeclared_method_shown_recall": 1.0,
+   "seconds": 132.4,
+   "threshold": 0.92,
+   "wrong_merge_total": 0,
+   "wrong_merges": {}
+  },
+  {
+   "concepts_global": 1799,
+   "field_ruler_accuracy": 1.0,
+   "method_split_total": 18,
+   "q1_precision": 1.0,
+   "q1_recall": 1.0,
+   "q2_declared_and_demonstrated_recall": 0.7333,
+   "q2_undeclared_method_shown_recall": 1.0,
+   "seconds": 133.8,
+   "threshold": 0.95,
+   "wrong_merge_total": 0,
+   "wrong_merges": {}
+  }
+ ]
+}

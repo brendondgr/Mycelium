@@ -33,11 +33,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-09-002` | 2026-09-11 | Does the citation verifier agree with a person? | planned | — | C-025 | [folder](experiments/EXP-2026-09-002-weekly-citation-verifier/RESULTS.md) |
 | `EXP-2026-09-003` | 2026-09-17 | Does a calibrated decision model agree with the fused order and the LLM verdicts on one reader's grant and conference slates? | complete | — | C-026 | [folder](experiments/EXP-2026-09-003-typesafe-personal-opportunities/RESULTS.md) |
 | `EXP-2026-09-004` | 2026-09-17 | Does a calibrated pointwise probability rerank a scholarly feed better than BM25 alone? | complete | — | — (refutes C-027) | [folder](experiments/EXP-2026-09-004-typesafe-pointwise-rerank-longeval/RESULTS.md) |
+| `EXP-2026-09-005` | 2026-09-18 | Do people's papers become the right demonstrated concepts? A synthetic-world test of plan CN-02 | complete | — | — | [folder](experiments/EXP-2026-09-005-knowledge-demonstrated-sandbox/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 22 |
+| complete | 23 |
 | planned | 2 |
-| **total** | **24** |
+| **total** | **25** |

@@ -1,0 +1,111 @@
+{
+ "corpus_path": "/app/data/sandbox/collab-20260918-240.json",
+ "corpus_seconds": 0.0,
+ "invariant_failures": [],
+ "labs": 48,
+ "metrics": {
+  "concepts_global": 1594,
+  "concepts_private": 0,
+  "corpus_generator_slips": 1,
+  "edges_by_tier": {
+   "declared": 1536,
+   "demonstrated": 11092
+  },
+  "field_ruler_accuracy": 1.0,
+  "invariants": {
+   "conversational_edges": 0,
+   "neutral_phrases_in_deny_list": 0,
+   "private_concepts_from_papers": 0,
+   "rollup_evidence_from_someone_elses_work": 0,
+   "second_pass_model_calls": 0,
+   "second_pass_works_read": 0,
+   "second_projection_writes": 0,
+   "thin_works_with_edges": 0
+  },
+  "method_recall": 0.9982,
+  "method_split_total": 16,
+  "method_term_contamination": 2,
+  "methods_split": {
+   "dft": 1,
+   "fem": 1,
+   "gbm": 1,
+   "gnn": 1,
+   "gp": 1,
+   "kalman": 1,
+   "particle": 2,
+   "remote": 2,
+   "survival": 1,
+   "topic": 2,
+   "transformer": 2,
+   "unet": 1
+  },
+  "neutral_present_rate": 1.0,
+  "q1_precision": 1.0,
+  "q1_recall": 1.0,
+  "q2_declared_and_demonstrated_recall": 0.775,
+  "q2_declared_only_recall": 1.0,
+  "q2_undeclared_method_shown_recall": 1.0,
+  "refused_by_facet": {
+   "reusable_terms": 1
+  },
+  "run": {
+   "first_pass": {
+    "edges_created": 11092,
+    "edges_deleted": 0,
+    "failures": 0,
+    "looked_up": 0,
+    "people": 240,
+    "read": 1099,
+    "thin": 0,
+    "unavailable": 0,
+    "vectors": 0
+   },
+   "first_pass_seconds": 261.4,
+   "model_calls": 1105,
+   "model_failures": 0,
+   "model_seconds_mean": 2.53,
+   "model_seconds_total": 2796.4,
+   "projection": {
+    "created": 1536,
+    "deferred": 0,
+    "deleted": 0,
+    "failures": 0,
+    "orphans_removed": 0,
+    "skipped": 0,
+    "subjects": 336,
+    "updated": 0
+   },
+   "projection_seconds": 18.6,
+   "second_pass": {
+    "edges_created": 0,
+    "edges_deleted": 0,
+    "failures": 0,
+    "looked_up": 0,
+    "people": 0,
+    "read": 0,
+    "thin": 0,
+    "unavailable": 0,
+    "vectors": 0
+   },
+   "second_pass_model_calls": 0,
+   "second_projection_writes": 0
+  },
+  "thin_rate_on_clean": 0.0,
+  "works_clean_corpus": 1098,
+  "works_non_thin": 1098,
+  "works_read": 1099,
+  "works_total": 1099,
+  "wrong_merge_total": 0,
+  "wrong_merges": {}
+ },
+ "papers": 1099,
+ "people": 240,
+ "projects": 48,
+ "seed": 20260918,
+ "seeded": {
+  "labs": 48,
+  "people": 240,
+  "projects": 48,
+  "works": 1099
+ }
+}
