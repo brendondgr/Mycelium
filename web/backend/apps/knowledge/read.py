@@ -14,6 +14,7 @@ boundary test pins which of these the collaboration app may import at all.
 | :func:`discoverable_edges` | declared, demonstrated | active | collaboration search |
 | :func:`project_edges` | declared | active | a viewer who can see the project |
 | :func:`undeclared_project_concepts` | declared | active | the same viewer (Q1) |
+| :func:`backing` | declared, demonstrated | active | the person themselves (Q2) |
 
 Demonstrated edges (a person's papers) are deliberately absent from
 :func:`ranking_edges`: letting them shape recommendations is a ranking change,
@@ -33,7 +34,9 @@ from apps.research.models import Project
 from .models import Concept, Edge, EdgeStatus, Relation, Tier
 
 __all__ = [
+    "Backing",
     "EdgeView",
+    "backing",
     "discoverable_edges",
     "lab_declared_edges",
     "own_edges",
@@ -192,3 +195,72 @@ def undeclared_project_concepts(project, viewer) -> list[EdgeView]:
             relation__in=_PROJECT_CONTENT,
         ).exclude(concept__in=declared_by_people)
     )
+
+
+@dataclass(frozen=True)
+class Backing:
+    """One concept a person holds, and whether they said it, showed it, or both."""
+
+    concept_id: int
+    label: str
+    surface: str
+    declared: bool
+    demonstrated: bool
+    works: tuple[str, ...] = ()
+
+    @property
+    def declared_only(self) -> bool:
+        return self.declared and not self.demonstrated
+
+
+def backing(user) -> list[Backing]:
+    """Q2: which of a person's declared concepts their own papers back.
+
+    Every concept the person declares or their papers demonstrate, with the
+    works that demonstrate it. Declared-only claims are cheap to make and are
+    shown as visibly weaker (design §5.4); demonstrated-only ones are what
+    their papers show that their profile does not say. For the person
+    themselves, and for the preview of what a collaboration search could see.
+    """
+    rows = (
+        Edge.objects.filter(
+            user=user,
+            status=EdgeStatus.ACTIVE,
+            tier__in=[Tier.DECLARED, Tier.DEMONSTRATED],
+        )
+        .select_related("concept")
+        .order_by("concept__label", "tier", "pk")
+    )
+    found: dict[int, dict] = {}
+    for edge in rows:
+        entry = found.setdefault(
+            edge.concept_id,
+            {
+                "label": edge.concept.label,
+                "surface": "",
+                "declared": False,
+                "demonstrated": False,
+                "works": [],
+            },
+        )
+        if edge.tier == Tier.DECLARED:
+            entry["declared"] = True
+            entry["surface"] = edge.surface or entry["surface"]
+        else:
+            entry["demonstrated"] = True
+            entry["surface"] = entry["surface"] or edge.surface
+            for item in edge.evidence or []:
+                work = str(item).removeprefix("work:")
+                if work not in entry["works"]:
+                    entry["works"].append(work)
+    return [
+        Backing(
+            concept_id=concept_id,
+            label=entry["label"],
+            surface=entry["surface"] or entry["label"],
+            declared=entry["declared"],
+            demonstrated=entry["demonstrated"],
+            works=tuple(entry["works"]),
+        )
+        for concept_id, entry in found.items()
+    ]
