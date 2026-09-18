@@ -326,6 +326,17 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.integrations.purge_outbox",
         "schedule": crontab(day_of_week=0, hour=5, minute=30),
     },
+    # The ambient ledger's retention sweep: delete message references past
+    # their window. Message bodies are not its business — those expire in Redis
+    # by TTL within hours — and observations are never touched, because they are
+    # the person's own record and leave only when the person removes them.
+    # Nightly, after the daily run has read whatever it was going to read.
+    "sweep-ambient-retention": {
+        "task": "apps.ambient.sweep_retention",
+        "schedule": crontab(
+            hour=env.int("AMBIENT_SWEEP_HOUR", default=5), minute=15
+        ),
+    },
 }
 
 # How many per-(user, area) grant/conference LLM scoring calls run concurrently
@@ -1093,6 +1104,14 @@ AMBIENT_RAW_TTL_HOURS_MAX = env.int("AMBIENT_RAW_TTL_HOURS_MAX", default=24)
 # second one. Forwarded and re-pasted material is common in a lab channel and a
 # profile should not read three copies of one link as three signals.
 AMBIENT_REPEAT_WINDOW_DAYS = env.int("AMBIENT_REPEAT_WINDOW_DAYS", default=30)
+
+# How long a message *reference* is kept, in days. A reference holds ids and
+# timestamps and no text, but a permanent record of every message id and the
+# minute it was sent is still a record of who talked when, and this feature has
+# no use for one. The sweep (apps.ambient.retention) never lowers this below the
+# repeat window plus a day: a reference vanishing while its hash could still
+# match would silently turn a repeat back into new evidence.
+AMBIENT_REF_RETENTION_DAYS = env.int("AMBIENT_REF_RETENTION_DAYS", default=45)
 
 LOGGING = {
     "version": 1,

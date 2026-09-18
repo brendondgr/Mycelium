@@ -187,6 +187,8 @@ Files below are inside `web/backend/apps/content/`.
 | A person's own verdict on an observation (the labels the feature is judged by) | `web/backend/apps/ambient/models.py` (`ObservationFeedback`) — append-only; a correction is a new row |
 | Something was removed, so these things must be recomputed | `web/backend/apps/ambient/models.py` (`Retraction`) |
 | How a platform gets its conversation in (translation only — no extraction, no attribution) | `web/backend/apps/ambient/adapters/base.py` (`Adapter`, `PlatformEvent`), registry in `adapters/__init__.py`, `adapters/fake.py` for tests |
+| An edit, a deletion, "delete my observations", a surface withdrawing consent | `web/backend/apps/ambient/reconcile.py` — an edit marks what rested on it stale, a deletion removes the evidence, and anything that deletes leaves a `Retraction` |
+| The retention sweep (references only — observations are never touched) | `web/backend/apps/ambient/retention.py`, task `apps.ambient.sweep_retention`, command `sweep_ambient_retention` |
 
 ## Backend — billing, admin, integrations, ingestion
 
@@ -265,6 +267,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `run_reminder_tick` | Fire due reminders |
 | `prune_opportunities` | Delete expired listings; `--stale-only` also removes dateless conferences the collector has stopped listing, `--dry-run` reports without deleting |
 | `prune_briefings` | Delete briefings past `BRIEFING_RETENTION_DAYS` |
+| `sweep_ambient_retention` | Delete ambient message references past their window (`--dry-run` reports without deleting); observations are never touched |
 | `run_analytics_report` | Measure the run: metrics JSON + analytics PDF for the Discord summary |
 | `drain_discord_outbox`, `reconcile_discord` | Deliver queued Discord messages / reconcile guild state |
 | `discord_check` | Print the OAuth redirect URIs to register in the Developer Portal, and how that origin resolved |
