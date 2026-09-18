@@ -72,6 +72,7 @@ Paths are relative to the repository root.
 | Search UI | `web/app/src/components/portal/global-search.tsx`, `portal/sections/{search-section,search-result-card}.tsx` |
 | Projects UI | `web/app/src/components/portal/sections/{projects-list-section,project-detail-section}.tsx` |
 | Project page parts (identity, four-area tabs, editor, team) | `web/app/src/components/portal/projects/{project-identity,project-tabs,project-editor-modal,project-team-card,create-project-wizard}.tsx` |
+| What Mylo filed under a project from lab conversation (editors only): channel hints and "this was a different project" | `web/app/src/components/portal/projects/project-conversation-card.tsx`, mounted on the project page's Settings tab; a project's aliases are edited in `project-editor-modal.tsx` (Details) |
 | Labs / members / lab settings | `web/app/src/components/portal/sections/{labs-section,members-section,lab-settings-section}.tsx` |
 | Reports page (briefing history) | `web/app/src/components/portal/sections/reports-section.tsx` |
 | Account page (identity, email, password + subscription) | `web/app/src/components/portal/sections/account-section.tsx`; route `/app/account` |

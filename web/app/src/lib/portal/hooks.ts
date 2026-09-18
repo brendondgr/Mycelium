@@ -52,6 +52,7 @@ import {
   fetchProfile,
   fetchMyProjectInvitations,
   fetchProject,
+  fetchProjectConversation,
   fetchProjectState,
   fetchReflections,
   fetchProjectCollection,
@@ -234,6 +235,19 @@ export function useProjectState(id?: string) {
     queryKey: ["portal", "project-state", id ?? "none"],
     queryFn: () => fetchProjectState(id as string),
     enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Which lab conversation Mylo filed under a project. Editors only, so pass
+ * `enabled = project.can_edit` — a reader who cannot edit would only get a 403.
+ */
+export function useProjectConversation(id?: string, enabled = true) {
+  return useQuery({
+    queryKey: ["portal", "project-conversation", id ?? "none"],
+    queryFn: () => fetchProjectConversation(id as string),
+    enabled: Boolean(id) && enabled,
     staleTime: 30_000,
   });
 }

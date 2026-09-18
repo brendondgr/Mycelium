@@ -41,6 +41,7 @@ import type {
   LabMentionTargets,
   LabReminderChannels,
   ProfileData,
+  ProjectConversation,
   ProjectFeed,
   Reminder,
   ReminderAccess,
@@ -118,6 +119,19 @@ export async function fetchProjectState(id: string): Promise<ProjectStatePayload
   return getJson<ProjectStatePayload>(
     buildApiUrl(getPublicApiBase(), "projects", id, "state"),
     "Could not load this project's state.",
+  );
+}
+
+/**
+ * Which lab conversation Mylo filed under this project, and the channels it has
+ * heard. Editors only; a 403 means the caller cannot edit the project.
+ */
+export async function fetchProjectConversation(
+  id: string,
+): Promise<ProjectConversation> {
+  return getJson<ProjectConversation>(
+    buildApiUrl(getPublicApiBase(), "ambient", "projects", id, "conversation"),
+    "Could not load this project's conversation.",
   );
 }
 

@@ -134,6 +134,10 @@ export type Project = {
   /** Whether the signed-in user may add, invite, or remove members. */
   can_manage_members: boolean;
   members: ProjectMember[];
+  /** Other names people use for this project in conversation ("IMG-seg",
+   * "the imaging pipeline"). Read by Mylo when it works out which project a
+   * lab conversation is about; a name or alias is its strongest signal. */
+  aliases: string[];
   updated_at: string;
 };
 
@@ -146,6 +150,41 @@ export type ProjectUpdateInput = {
   progress?: number | null;
   watch_categories?: BriefingCategory[];
   focus?: ProjectFocusInput;
+  aliases?: string[];
+};
+
+/** A channel Mylo has heard in the lab's server, and the project it hints at. */
+export type HeardChannel = {
+  place_id: string;
+  label: string;
+  hinted_project: { id: string; name: string } | null;
+};
+
+/**
+ * One message Mylo filed under a project. Never the message itself — none is
+ * kept — only when, where, who, how sure, and which of the *project's* terms
+ * matched.
+ */
+export type AttributionEntry = {
+  id: number;
+  sent_at: string;
+  place_kind: "dm" | "channel" | "thread" | "forum" | "transcript";
+  place_label: string;
+  speaker: { id: number; name: string };
+  confidence: number | null;
+  decided_by: string;
+  matched: string[];
+  corrected: boolean;
+};
+
+/** `GET /api/ambient/projects/<id>/conversation/` — editors only. */
+export type ProjectConversation = {
+  scope: ProjectScope;
+  listening: boolean;
+  channels: HeardChannel[];
+  hinted_channels: string[];
+  attributions: AttributionEntry[];
+  alternatives: { id: string; name: string }[];
 };
 
 /** An invitation to join a project (from either end of the exchange). */

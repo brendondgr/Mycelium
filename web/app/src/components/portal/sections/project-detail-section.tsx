@@ -37,6 +37,7 @@ import {
   ProjectTabBar,
   type ProjectTabKey,
 } from "@/components/portal/projects/project-tabs";
+import { ProjectConversationCard } from "@/components/portal/projects/project-conversation-card";
 import { ProjectStateCard } from "@/components/portal/projects/project-state-card";
 import { ReflectionCard } from "@/components/portal/projects/reflection-card";
 import { ProjectTeamCard } from "@/components/portal/projects/project-team-card";
@@ -584,6 +585,10 @@ function ProjectSettingsCard({
           ) : null}
         </Card>
       ) : null}
+
+      {/* Editors only — the card renders nothing for anyone else, and the
+          endpoint behind it refuses them too. */}
+      <ProjectConversationCard project={project} />
     </div>
   );
 }

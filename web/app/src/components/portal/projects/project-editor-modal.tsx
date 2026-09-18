@@ -19,6 +19,122 @@ export type ProjectEditorTab = "details" | "focus";
 const INPUT =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
+/** Alias bounds — the API enforces the same ones. Shorter than three characters
+ * ("ML", "IO") turns up by accident in ordinary conversation and would pull in
+ * messages that were never about the project. */
+const ALIAS_MIN = 3;
+const ALIAS_MAX = 60;
+const ALIAS_LIMIT = 20;
+
+/**
+ * The other names a project goes by. Enter or a comma commits one; Backspace in
+ * an empty box removes the last. Mylo reads these when it works out which
+ * project a lab conversation is about.
+ */
+function AliasField({
+  aliases,
+  onChange,
+  projectName,
+}: {
+  aliases: string[];
+  onChange: (next: string[]) => void;
+  projectName: string;
+}) {
+  const [draft, setDraft] = React.useState("");
+  const [problem, setProblem] = React.useState<string | null>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const full = aliases.length >= ALIAS_LIMIT;
+
+  const commit = (raw: string) => {
+    const alias = raw.replace(/\s+/g, " ").trim();
+    if (!alias) {
+      setDraft("");
+      return;
+    }
+    if (alias.length < ALIAS_MIN || alias.length > ALIAS_MAX) {
+      setProblem(`An alias needs ${ALIAS_MIN}–${ALIAS_MAX} characters.`);
+      return;
+    }
+    const key = alias.toLocaleLowerCase();
+    if (key === projectName.trim().toLocaleLowerCase()) {
+      setProblem("That is already the project's name.");
+      setDraft("");
+      return;
+    }
+    if (!aliases.some((one) => one.toLocaleLowerCase() === key) && !full) {
+      onChange([...aliases, alias]);
+    }
+    setProblem(null);
+    setDraft("");
+  };
+
+  return (
+    <div>
+      <div
+        className="flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-border bg-surface px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring"
+        onClick={() => inputRef.current?.focus()}
+      >
+        {aliases.length > 0 ? (
+          <ul className="flex flex-wrap items-center gap-1.5" aria-label="Aliases">
+            {aliases.map((alias) => (
+              <li
+                key={alias}
+                className="flex max-w-full items-center gap-1 rounded-full border border-border bg-surface-alt px-2.5 py-1 text-[12.5px] text-[var(--text-primary)]"
+              >
+                <span className="truncate">{alias}</span>
+                <button
+                  type="button"
+                  className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={`Remove ${alias}`}
+                  onClick={() => onChange(aliases.filter((one) => one !== alias))}
+                >
+                  &times;
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <input
+          ref={inputRef}
+          value={draft}
+          disabled={full && draft === ""}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setProblem(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              commit(draft);
+            } else if (e.key === "Backspace" && draft === "" && aliases.length) {
+              onChange(aliases.slice(0, -1));
+            }
+          }}
+          onBlur={() => commit(draft)}
+          className="min-w-[14ch] flex-1 bg-transparent px-1.5 py-1 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none disabled:opacity-60"
+          placeholder={
+            full
+              ? "That is the maximum"
+              : aliases.length
+                ? "Add another…"
+                : "e.g. IMG-seg, the imaging pipeline"
+          }
+          aria-label="Add an alias"
+          aria-describedby="project-alias-help"
+        />
+      </div>
+      <p
+        id="project-alias-help"
+        className={`mt-1 text-[11.5px] ${problem ? "text-clay" : "text-[var(--text-muted)]"}`}
+        role={problem ? "alert" : undefined}
+      >
+        {problem ??
+          `Press Enter to add. ${aliases.length} of ${ALIAS_LIMIT}.`}
+      </p>
+    </div>
+  );
+}
+
 /** Statuses a project can be set to. Free text is still accepted by the API;
  * offering a short list keeps the pill vocabulary consistent across projects. */
 const STATUSES = ["Active", "Planning", "In review", "On hold", "Complete"];
@@ -55,6 +171,7 @@ export function ProjectEditorModal({
   const [progress, setProgress] = React.useState<string>(
     project.progress === null ? "" : String(project.progress),
   );
+  const [aliases, setAliases] = React.useState<string[]>(project.aliases ?? []);
 
   // Focus — seeded from the project's stored focus, re-composable by Mylo.
   const [areas, setAreas] = React.useState<string[]>(project.focus.areas);
@@ -92,6 +209,7 @@ export function ProjectEditorModal({
       description: description.trim(),
       status: status.trim(),
       progress: parsedProgress === null ? null : Math.round(parsedProgress),
+      aliases,
     };
     // Only send a focus when the reader actually changed one — an untouched
     // focus should not be rewritten (and re-seeded) just because they opened
@@ -184,6 +302,17 @@ export function ProjectEditorModal({
               inputMode="numeric"
               className={INPUT}
               placeholder="Not tracked"
+            />
+          </EditorField>
+
+          <EditorField
+            label="Also known as"
+            hint="Other names people use for this project in conversation. When Mylo listens to your lab's Discord, a name or alias is how it tells which project a message is about."
+          >
+            <AliasField
+              aliases={aliases}
+              onChange={setAliases}
+              projectName={trimmedName || project.name}
             />
           </EditorField>
         </EditorSection>

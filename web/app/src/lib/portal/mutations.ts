@@ -26,6 +26,7 @@ import type {
   OrgBilling,
   Project,
   ProjectCapErrorBody,
+  ProjectConversation,
   ProjectFocusInput,
   ProjectInvitation,
   ProjectStateInput,
@@ -418,6 +419,39 @@ export function updateProject(
     buildApiUrl(getPublicApiBase(), "projects", id),
     patch,
     "Could not save this project.",
+  );
+}
+
+/**
+ * Point a channel Mylo has heard at this project, or stop. A hint only raises
+ * the project's score in that channel; it never decides on its own.
+ */
+export function setChannelHint(
+  projectId: string,
+  placeId: string,
+  on: boolean,
+): Promise<ProjectConversation> {
+  return sendJson<ProjectConversation>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "ambient", "projects", projectId, "channel-hints"),
+    { place_id: placeId, on },
+    "Could not update that channel.",
+  );
+}
+
+/**
+ * "This was about a different project." `null` means it was not about a
+ * project at all. The answer outranks Mylo's, and is kept as a labelled example.
+ */
+export function correctAttribution(
+  refId: number,
+  projectId: string | null,
+): Promise<{ id: number; project: string | null; observations_updated: number }> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "ambient", "attributions", String(refId), "correct"),
+    { project: projectId },
+    "Could not save that correction.",
   );
 }
 
