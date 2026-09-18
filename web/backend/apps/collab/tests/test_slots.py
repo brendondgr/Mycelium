@@ -172,3 +172,18 @@ def test_a_described_activity_is_not_a_method(call):
     outcome = slots.extract(call, complete=Model(reply, reply))
     assert [s["facet"] for s in outcome.slots] == ["problem"]
     assert any("a description, not a method" in f for f in outcome.refused)
+
+
+def test_a_problem_is_never_required(call):
+    reply = {
+        "slots": [
+            {
+                "facet": "problem",
+                "text": "early warning of coral bleaching",
+                "required": True,
+            },
+            {"facet": "method", "text": "satellite remote sensing", "required": True},
+        ]
+    }
+    outcome = slots.extract(call, complete=Model(reply))
+    assert [s["required"] for s in outcome.slots] == [False, True]

@@ -120,3 +120,22 @@ additions against the extractor would be pessimistic.
 uv run --project . python -m sandbox.collab calls --people 240 --calls 150 \
   --out /app/data/sandbox/exp006-arm-b.json
 ```
+
+## Amendment 2 — arm C (added after arm B, before arm C ran)
+
+Arm B (`s2`) passed H1, H2's recall (0.878) and precision (0.823) and role
+bars, H3 (1.0), H4 and H5, but **failed H2's required-flag bar**: 0.789 (arm A
+0.932). The confusion table showed why: the model marks the funded problem as
+required in 87 of 112 matched problem slots, while method slots agree in 198 of
+206. That is a product bug, not only a metric: the team-gap alert reads
+required slots, so a "required" problem would alert that a team lacks the very
+topic the call funds.
+
+Arm C (version `s3`) is `s2` plus one deterministic rule in the validator: a
+problem slot is never required — what a call funds is what it is about, which
+the plan defines as not required. Same world, same calls, same bars.
+
+```bash
+uv run --project . python -m sandbox.collab calls --people 240 --calls 150 \
+  --out /app/data/sandbox/exp006-arm-c.json
+```

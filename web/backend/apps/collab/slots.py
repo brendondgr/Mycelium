@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 COMPONENT = "requirement_slots"
 #: Bump whenever the prompt changes; only rows read under an older one re-read.
-PROMPT_VERSION = "s2"
+PROMPT_VERSION = "s3"
 MAX_ATTEMPTS = 2
 MAX_SLOTS = 6
 MAX_SLOT_WORDS = 10
@@ -226,9 +226,11 @@ def validate(payload: dict, source: str) -> tuple[SlotOutcome, list[str]]:
         if key in seen:
             continue
         seen.add(key)
-        outcome.slots.append(
-            {"facet": facet, "text": text, "required": bool(entry.get("required"))}
-        )
+        # What a call funds is what it is about, never what a team must bring:
+        # a "required" problem would have the team-gap alert say a team lacks
+        # the very topic the call funds (EXP-2026-09-006, arm B).
+        required = bool(entry.get("required")) and facet != SlotFacet.PROBLEM
+        outcome.slots.append({"facet": facet, "text": text, "required": required})
     if len(outcome.slots) > MAX_SLOTS:
         failures.append(f"more than {MAX_SLOTS} slots")
         outcome.slots = outcome.slots[:MAX_SLOTS]
