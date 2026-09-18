@@ -257,6 +257,7 @@ def test_a_member_can_turn_listening_on_and_off(member):
         "linked": True,
         "enabled": False,
         "questions_muted": False,
+        "available": True,
     }
     service.set_member_listening(AUTHOR, on=True)
     assert service.member_state(AUTHOR)["enabled"]
@@ -268,6 +269,7 @@ def test_an_unlinked_snowflake_has_no_state_to_change(db):
     assert service.set_member_listening("777", on=True) == {
         "linked": False,
         "enabled": False,
+        "available": True,
     }
     assert not service.member_state("777")["linked"]
 
@@ -327,11 +329,35 @@ def test_listening_state_reports_todays_volume(listening, opted_in):
 def test_an_unknown_server_reports_itself_as_unknown(db):
     assert service.listening_state("nope") == {
         "known": False,
+        "available": True,
         "listening": False,
         "excluded": [],
         "social": [],
         "marker_channel_id": "",
     }
+
+
+def test_listening_cannot_be_turned_on_while_the_ledger_is_off(settings, lab):
+    """Otherwise a server reads "listening", and a public notice says so, while
+    nothing is recorded — true neither now nor the day the switch flips."""
+    settings.AMBIENT_ENABLED = False
+    state = service.set_guild_listening(GUILD, on=True, lab=lab)
+    assert state["refused"] == "unavailable"
+    assert state["available"] is False
+    assert service.guild_source(GUILD) is None
+
+
+def test_listening_can_always_be_turned_off(settings, listening):
+    settings.AMBIENT_ENABLED = False
+    state = service.set_guild_listening(GUILD, on=False)
+    assert "refused" not in state
+    assert not state["listening"]
+
+
+def test_a_member_is_told_when_listening_is_unavailable(settings, member):
+    settings.AMBIENT_ENABLED = False
+    state = service.set_member_listening(AUTHOR, on=True)
+    assert state == {"linked": True, "enabled": True, "available": False}
 
 
 def test_the_marker_is_remembered_so_it_is_edited_not_repeated(listening):

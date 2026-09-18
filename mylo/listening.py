@@ -280,6 +280,15 @@ def _set_listening_sync(
     state = service.set_guild_listening(
         guild_id, on=on, changed_by=None, lab=lab
     )
+    if state.get("refused") == "unavailable":
+        return (
+            "unavailable",
+            {
+                "message": "Listening isn't switched on for Mycelium yet, so "
+                "there is nothing to turn on here. Nothing was changed and no "
+                "notice was posted."
+            },
+        )
     return ("ok", state)
 
 

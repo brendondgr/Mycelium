@@ -49,6 +49,10 @@ _LISTENING_OFF = (
     "conversation you're already having. You can change your mind whenever you "
     "like, and delete everything I've summarised, from your Mycelium settings."
 )
+_LISTENING_UNAVAILABLE = (
+    "Listening isn't switched on for Mycelium yet, so nothing you say is being "
+    "recorded. Your choice — **{choice}** — is saved and will apply if it is."
+)
 _NOTE_REFUSALS = {
     "person_not_opted_in": "You haven't turned listening on, so I didn't keep "
     "that. Run `/mylo listening on` first.",
@@ -204,6 +208,17 @@ class MyloCog(commands.Cog, name="Mylo"):
                 "Your Discord isn't connected to Mycelium yet, so there is "
                 "nothing to turn on — and nothing about you is being recorded. "
                 "Run `/activate` with a code from your profile first.",
+                ephemeral=True,
+            )
+            return
+        if not state.get("available", True):
+            # Say so plainly. "On — I'll keep up with your work" would be false
+            # while the deployment records nothing; the choice is still kept,
+            # so it holds the day listening is switched on.
+            await interaction.followup.send(
+                _LISTENING_UNAVAILABLE.format(
+                    choice="on" if state.get("enabled") else "off"
+                ),
                 ephemeral=True,
             )
             return

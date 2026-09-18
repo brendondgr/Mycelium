@@ -110,6 +110,24 @@ class RenderTests(unittest.TestCase):
         text = _render_status({"lab_name": "PULSE", "listening": True})
         self.assertIn("your members choose for themselves", text)
 
+    def test_an_unavailable_deployment_says_so_rather_than_off(self) -> None:
+        text = _render_status(
+            {"lab_name": "PULSE", "listening": False, "available": False}
+        )
+        self.assertIn("not available on Mycelium yet", text)
+
+    def test_a_refusal_posts_no_notice(self) -> None:
+        fake = FakeListening(
+            status="unavailable",
+            payload={"message": "Listening isn't switched on for Mycelium yet."},
+        )
+        view = _view()
+        interaction = FakeInteraction()
+        with mock.patch.object(setup_module, "listening", fake):
+            _run(view._apply_listening(interaction, on=True))
+        self.assertEqual(interaction.channel.sent, [])
+        self.assertIn("isn't switched on", interaction.edited[-1])
+
     def test_excluded_channels_are_counted_in_the_menu(self) -> None:
         text = _render_status(
             {"lab_name": "PULSE", "listening": True, "excluded": ["1", "2"]}

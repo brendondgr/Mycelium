@@ -94,6 +94,7 @@ def listening_state(guild_id: str) -> dict:
     if source is None:
         return {
             "known": False,
+            "available": ambient_enabled(),
             "listening": False,
             "excluded": [],
             "social": [],
@@ -103,6 +104,7 @@ def listening_state(guild_id: str) -> dict:
     today_row = SourceActivity.objects.filter(source=source, day=today).first()
     return {
         "known": True,
+        "available": ambient_enabled(),
         "listening": source.listening,
         "lab_name": source.lab.name if source.lab_id else "",
         "excluded": [str(one) for one in (source.excluded_place_ids or [])],
@@ -120,7 +122,15 @@ def set_guild_listening(guild_id: str, *, on: bool, changed_by=None, lab=None) -
     Turning it off purges the raw buffer for that source at once: consent
     withdrawn is not consent to keep what has already been heard for another
     six hours.
+
+    Turning it **on** is refused while the deployment's ``AMBIENT_ENABLED`` is
+    off. The server would otherwise read "listening" and post a public notice
+    saying so while nothing is recorded — a notice that is false in the
+    reassuring direction today and in the alarming one the day somebody flips
+    the switch without anyone in that server being told again.
     """
+    if on and not ambient_enabled():
+        return {**listening_state(guild_id), "refused": "unavailable"}
     source = guild_source(guild_id)
     if source is None:
         if not on:
@@ -184,7 +194,7 @@ def set_member_listening(discord_user_id: str, *, on: bool) -> dict:
 
     user = resolve.resolve_user(str(discord_user_id))
     if user is None:
-        return {"linked": False, "enabled": False}
+        return {"linked": False, "enabled": False, "available": ambient_enabled()}
     consent, _ = ListeningConsent.objects.get_or_create(
         user=user, platform=Platform.DISCORD
     )
@@ -194,7 +204,11 @@ def set_member_listening(discord_user_id: str, *, on: bool) -> dict:
     else:
         consent.disabled_at = timezone.now()
     consent.save(update_fields=["enabled", "enabled_at", "disabled_at"])
-    return {"linked": True, "enabled": consent.enabled}
+    return {
+        "linked": True,
+        "enabled": consent.enabled,
+        "available": ambient_enabled(),
+    }
 
 
 def member_state(discord_user_id: str) -> dict:
@@ -203,7 +217,12 @@ def member_state(discord_user_id: str) -> dict:
 
     user = resolve.resolve_user(str(discord_user_id))
     if user is None:
-        return {"linked": False, "enabled": False, "questions_muted": False}
+        return {
+            "linked": False,
+            "enabled": False,
+            "questions_muted": False,
+            "available": ambient_enabled(),
+        }
     consent = ListeningConsent.objects.filter(
         user=user, platform=Platform.DISCORD
     ).first()
@@ -211,6 +230,7 @@ def member_state(discord_user_id: str) -> dict:
         "linked": True,
         "enabled": bool(consent and consent.enabled),
         "questions_muted": bool(consent and consent.questions_muted),
+        "available": ambient_enabled(),
     }
 
 

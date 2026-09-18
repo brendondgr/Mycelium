@@ -69,7 +69,9 @@ def _render_status(state: dict) -> str:
     upd_line = f"<#{upd}>" if upd else "_off_"
     listen = state.get("listening")
     excluded = state.get("excluded") or []
-    if listen:
+    if not state.get("available", True):
+        listen_line = "_not available on Mycelium yet_"
+    elif listen:
         listen_line = "**on** — your members choose for themselves"
         if excluded:
             listen_line += f" (never reading {len(excluded)} channel(s))"
