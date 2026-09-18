@@ -81,11 +81,20 @@ class TeamGap:
 def required_expertise(content) -> list[str]:
     """What a call says an applicant team must include. ``[]`` when it says none.
 
-    Read from the verified extraction (``ai_fields``), never from the raw source:
-    the extraction is the text that passed grounding checks, and a requirement
+    Read from the call's required requirement slots once they have been read
+    (``apps.collab.slots``: grounded in the call's own text, a role kept as a
+    requirement nobody's profile can meet), and until then from the verified
+    extraction (``ai_fields``) — never from the raw source: a requirement
     invented by a model is the one failure here that costs a team a grant they
     were eligible for.
     """
+    from apps.collab.models import RequirementSlots
+
+    row = RequirementSlots.objects.filter(
+        content_id=getattr(content, "pk", None)
+    ).first()
+    if row is not None and row.status != RequirementSlots.Status.THIN:
+        return [slot["text"] for slot in row.required][:4]
     metadata = getattr(content, "metadata", None) or {}
     fields = metadata.get("ai_fields")
     if not isinstance(fields, dict):
@@ -128,9 +137,7 @@ def team_gaps(
     from apps.content.member_fit import scope_members
     from apps.core.people import display_name
 
-    floor = (
-        settings.PROJECT_ALERT_SLOT_THRESHOLD if threshold is None else threshold
-    )
+    floor = settings.PROJECT_ALERT_SLOT_THRESHOLD if threshold is None else threshold
     wanted = [(content, required_expertise(content)) for content in contents]
     wanted = [(content, needs) for content, needs in wanted if needs]
     if not wanted:

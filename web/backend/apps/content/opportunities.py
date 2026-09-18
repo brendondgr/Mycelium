@@ -175,9 +175,7 @@ def areas_for(user: User, requested: tuple[str, ...]) -> tuple[str, ...]:
         "fellowships": Feature.FELLOWSHIP_MATCHING,
     }
     return tuple(
-        area
-        for area in requested
-        if area in gate and has_feature(user, gate[area])
+        area for area in requested if area in gate and has_feature(user, gate[area])
     )
 
 
@@ -261,19 +259,19 @@ class _FellowshipMatchJob:
     username: str
     area: str = "fellowships"
     content_type: str = ContentItem.Type.FELLOWSHIP
-    items: list = None           # list[ContentItem]
-    elig: object = None          # Elig dataclass
-    interests: dict = None       # Profile.interests (for the LLM report)
-    profile_meta: dict = None    # career stage / institution (for the LLM report)
+    items: list = None  # list[ContentItem]
+    elig: object = None  # Elig dataclass
+    interests: dict = None  # Profile.interests (for the LLM report)
+    profile_meta: dict = None  # career stage / institution (for the LLM report)
     llm_limit: int = DEFAULT_LLM_LIMIT
-    match_threshold: float = 0.0     # min blended fit to surface (0 => all eligible)
+    match_threshold: float = 0.0  # min blended fit to surface (0 => all eligible)
     max_surface: int = DEFAULT_SURFACE  # backstop cap on surfaced fellowships
     today: str = ""
-    prior: dict = None           # carry-forward LLM verdicts
-    prior_top: set = None        # the Top-25 as of the last run (entrant diff)
-    embed_by_id: dict | None = None   # {content_id: cosine}; None => rule-only
+    prior: dict = None  # carry-forward LLM verdicts
+    prior_top: set = None  # the Top-25 as of the last run (entrant diff)
+    embed_by_id: dict | None = None  # {content_id: cosine}; None => rule-only
     has_interest_signal: bool = False  # user declared interests/watch topics
-    embed_threshold: float = 0.0      # min cosine an eligible item must clear
+    embed_threshold: float = 0.0  # min cosine an eligible item must clear
     withhold_unverified: bool = False  # drop scrape-miss records instead of labelling
     # False => whole corpus (the daily re-rank, and sign-up/refit); True => only
     # fellowships this user has never been scored on (the legacy append-only mode).
@@ -370,16 +368,12 @@ def _prepare_fellowship_match(
         max_surface=_opportunity_max_surface(),
         today=today_final,
         prior=prior,
-        prior_top=prior_top_ids(
-            {"target_user": user}, ContentItem.Type.FELLOWSHIP
-        ),
+        prior_top=prior_top_ids({"target_user": user}, ContentItem.Type.FELLOWSHIP),
         embed_by_id=embed_by_id,
         has_interest_signal=has_interest_signal,
         per_cluster_by_id=per_cluster_by_id,
         embed_threshold=getattr(settings, "FELLOWSHIP_MATCH_THRESHOLD", 0.4),
-        withhold_unverified=getattr(
-            settings, "FELLOWSHIP_WITHHOLD_UNVERIFIED", False
-        ),
+        withhold_unverified=getattr(settings, "FELLOWSHIP_WITHHOLD_UNVERIFIED", False),
         unscored_only=unscored_only,
     )
     return job, None
@@ -1059,9 +1053,7 @@ def match_opportunities_for_target(
     )
 
 
-def match_opportunities_for_user(
-    user: User, area: str, **kwargs
-) -> OppRunResult:
+def match_opportunities_for_user(user: User, area: str, **kwargs) -> OppRunResult:
     """Retrieve → fuse → score → pin → persist one area for one user (serial)."""
     return match_opportunities_for_target(target_for_user(user), area, **kwargs)
 
@@ -1221,9 +1213,7 @@ def match_fellowships_for_target(
     )
     if not embed_by_id:
         emit("no interest embedding signal; skipping project fellowships")
-        return OppRunResult(
-            key, "fellowships", "no_results", note="no interest signal"
-        )
+        return OppRunResult(key, "fellowships", "no_results", note="no interest signal")
 
     ranked = match_fellowships(
         items,
@@ -1444,15 +1434,11 @@ def run_daily_opportunities_batch(
 
     def _user_areas(user):
         return tuple(
-            area
-            for area in areas
-            if area in area_gate and user.id in area_gate[area]
+            area for area in areas if area in area_gate and user.id in area_gate[area]
         )
 
     user_complete = {
-        user.get_username(): (
-            complete if user.id in llm_users else _force_fallback
-        )
+        user.get_username(): (complete if user.id in llm_users else _force_fallback)
         for user in users
     }
 
@@ -1474,7 +1460,9 @@ def run_daily_opportunities_batch(
                     )
                     results.append(
                         OppRunResult(
-                            user.get_username(), "fellowships", "error",
+                            user.get_username(),
+                            "fellowships",
+                            "error",
                             note="prepare failed",
                         )
                     )
@@ -1622,9 +1610,7 @@ def run_daily_opportunities_batch(
                     )
                 )
         except Exception:
-            logger.exception(
-                "finalize failed for %s:%s", job.username, job.area
-            )
+            logger.exception("finalize failed for %s:%s", job.username, job.area)
             results.append(
                 OppRunResult(job.username, job.area, "error", note="finalize failed")
             )
@@ -1677,6 +1663,21 @@ def run_daily_opportunities_batch(
         ]:
             annotate_for_target(target, complete=complete, log=log)
 
+    # Phase 4 — which of each grant's requirements the reader, or their lab,
+    # already covers (collaboration-network plan CN-03). Deterministic, no
+    # model; never fatal.
+    if persist and "grants" in areas:
+        from apps.collab.team_fit import annotate_target
+
+        from .targets import target_for_lab, target_for_project
+
+        for target in [
+            *(target_for_user(user) for user in users if user.id in grant_users),
+            *(target_for_lab(lab) for lab in labs),
+            *(target_for_project(project) for project in projects),
+        ]:
+            annotate_target(target, log=log)
+
     return OppBatchResult(ingest=ingest_summary, results=results)
 
 
@@ -1719,9 +1720,7 @@ def _persist(
     per_cluster = cluster_slates is not None
     if declared_cluster_ids is not None:
         prune_cluster_slates(persist_kwargs, area, declared_cluster_ids)
-    stored_writeups = (
-        _stored_writeups(persist_kwargs, area) if per_cluster else {}
-    )
+    stored_writeups = _stored_writeups(persist_kwargs, area) if per_cluster else {}
     ordered = [s["content_id"] for s in suggestions if s["content_id"] in visible_ids]
     slate = (
         {} if per_cluster else compute_top(persist_kwargs, area, ordered, today=today)
@@ -1894,9 +1893,9 @@ def _retire(persist_kwargs: dict, area: str, *, keep: set[str]) -> None:
     the report announced as new. Retiring makes both correct — re-entry is free, and
     it is reported as new because it genuinely left the reader's list and returned.
     """
-    stale = RelevanceScore.objects.filter(
-        **persist_kwargs, content__type=area
-    ).exclude(content_id__in=list(keep))
+    stale = RelevanceScore.objects.filter(**persist_kwargs, content__type=area).exclude(
+        content_id__in=list(keep)
+    )
     for row in stale:
         signals = row.signals or {}
         if not signals.get("suggested") and "top_rank" not in signals:
