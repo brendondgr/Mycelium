@@ -152,12 +152,16 @@ a claim of expertise.
 ## The plans, in order
 
 Each plan depends on the ones before it unless stated. A plan is many steps;
-the sequence is the point.
+the sequence is the point. A plan is a working document: once its work has
+shipped the file is deleted and the row below says so, because a plan that
+describes code which already exists is worse than no plan at all. What was
+built, what deviated from the plan, and why, is in `docs/changelog.md` under
+the correlation id named in the row.
 
 | # | Plan | Delivers |
 |---|---|---|
-| 01 | [Evidence ledger](01-evidence-ledger.md) | The platform-independent observation model, adapters interface, retention, deletion |
-| 02 | [Discord server listening](02-discord-server-listening.md) | Server-wide consented capture, the listen cog, the buffer, handoff to the backend |
+| 01 | Evidence ledger — **shipped 2026-09-18** | `web/backend/apps/ambient/`: the observation model, the transient buffer, the adapter contract, retention, deletion. Plan deleted; the record is in `docs/changelog.md` under `20260917-ambient-profile-01` |
+| 02 | Discord server listening — **shipped 2026-09-18** | `mylo/bot/cogs/listen.py` + `apps/ambient/service.py`: consented capture, the listen cog, `/setup`'s Listening section, the visible notice. Stage B (the Message Content intent) is written and **off**. Record: `20260917-ambient-profile-02` |
 | 03 | [Attribution](03-attribution.md) | Who is speaking, which project, with confidence and an honest "unresolved" |
 | 04 | [Reasoning agent](04-reasoning-agent.md) | Windowing, grounded extraction, supersession, the deliberation step, budget rules |
 | 05 | [Evolving profile layer](05-evolving-profile.md) | The two stores, three speeds, new understanding kinds, reaching retrieval and ranking |
