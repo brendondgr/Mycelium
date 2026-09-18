@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     "apps.scraper",
     "apps.integrations",
     "apps.adminpanel",
+    "apps.ambient",
 ]
 
 MIDDLEWARE = [
@@ -683,6 +684,14 @@ DISCORD_CACHE_URL = env("DISCORD_CACHE_URL", default=re.sub(r"/\d+$", "/4", _RED
 # lives in Redis in its own db. Reads fail *closed* (see signup_gate).
 SIGNUP_CACHE_URL = env("SIGNUP_CACHE_URL", default=re.sub(r"/\d+$", "/5", _REDIS_URL))
 
+# The ambient raw-message buffer (apps.ambient.buffer). This is the one place a
+# person's actual words exist, and they exist only long enough to assemble one
+# window for extraction — so it gets its own Redis db (never the Celery
+# broker/result dbs, never a shared cache), every key carries a TTL, and nothing
+# here is ever written to Postgres, a disk, or a backup. A Redis outage costs a
+# night's extraction; it must never cost a message a longer life somewhere else.
+AMBIENT_CACHE_URL = env("AMBIENT_CACHE_URL", default=re.sub(r"/\d+$", "/6", _REDIS_URL))
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -712,6 +721,14 @@ CACHES = {
         "KEY_PREFIX": "mycelium_signup",
         # No blanket TTL: the failure counter and the ban each set their own.
         "TIMEOUT": None,
+    },
+    "ambient": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": AMBIENT_CACHE_URL,
+        "KEY_PREFIX": "mycelium_ambient",
+        # Every write sets its own TTL from AMBIENT_RAW_TTL_HOURS; this is the
+        # backstop for a write that somehow does not.
+        "TIMEOUT": 60 * 60 * 6,
     },
 }
 
@@ -1053,6 +1070,29 @@ EMAIL_BACKEND = env_str(
 # request, so they cannot be derived from one, and a loopback origin would send a
 # real recipient to their own machine.
 EMAIL_APP_BASE_URL = outbound_base_url(env_str("EMAIL_APP_BASE_URL", PUBLIC_BASE_URL))
+
+# ---------------------------------------------------------------------------
+# The ambient evidence ledger (apps.ambient)
+#
+# What Mylo understands about a person from the lab's own conversation. It ships
+# OFF and collects nothing until AMBIENT_ENABLED is set, because turning it on
+# means reading what people say to each other — a decision a deployment makes
+# deliberately, never one it inherits from a default.
+# ---------------------------------------------------------------------------
+AMBIENT_ENABLED = env.bool("AMBIENT_ENABLED", default=False)
+
+# How long raw message text may sit in the buffer before it expires, in hours.
+# The buffer is deleted explicitly once a window has been read; this TTL is the
+# safety net for the night that never runs. AMBIENT_RAW_TTL_HOURS_MAX is a hard
+# ceiling the per-source override cannot raise, so "Mylo does not keep your
+# messages" stays true of every source, however it is configured.
+AMBIENT_RAW_TTL_HOURS = env.int("AMBIENT_RAW_TTL_HOURS", default=6)
+AMBIENT_RAW_TTL_HOURS_MAX = env.int("AMBIENT_RAW_TTL_HOURS_MAX", default=24)
+
+# How long a repeated message counts as the same piece of evidence rather than a
+# second one. Forwarded and re-pasted material is common in a lab channel and a
+# profile should not read three copies of one link as three signals.
+AMBIENT_REPEAT_WINDOW_DAYS = env.int("AMBIENT_REPEAT_WINDOW_DAYS", default=30)
 
 LOGGING = {
     "version": 1,

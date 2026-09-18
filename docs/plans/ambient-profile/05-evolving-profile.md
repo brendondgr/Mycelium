@@ -1,0 +1,150 @@
+# Plan 05 — The Evolving Profile Layer
+
+**Status:** draft. **Depends on:** Plan 04. **Unblocks:** Plans 06, 07, 08, 09, 10.
+**Correlation ID:** `20260917-ambient-profile-05`
+
+## Objective
+
+Store what Mylo currently understands about a person and a project **beside**
+the declared profile and project state, at three speeds, and make that
+understanding reach **retrieval, ranking, and explanation** — not only the
+writing prompt. The declared profile stays the person's own words and keeps its
+budget. The evolving layer is Mylo's evidence-backed interpretation, always
+inspectable, always correctable, and never the thing that spends a cluster.
+
+## The two stores, as tables
+
+1. **`InterestUnderstanding`** (per user; OD-A1 recommends its own table). Rows
+   keyed by `understanding_kind` ∈ {enduring, curiosity, preference,
+   trajectory} and a `topic` string, carrying: an embedding, `weight`,
+   `first_seen`, `last_reinforced`, `half_life_days`, `status`
+   (`active`, `faded`, `confirmed`, `rejected`), and the evidence pointers
+   (observation ids). Rows are written as `pending` by Plan 04's suggest
+   outcome; only `confirmed` rows (a yes in Plan 06) are read by ranking or
+   explanation. `rejected` rows are kept so the agent does not raise them
+   again for 30 days, and after that only if the consistency test is met
+   again. Every row is **editable and deletable by the person** on the web
+   (Plan 07); a person's edit is a stated entry. Rows are never discarded on
+   a subscription lapse — the memory pauses and keeps. A confirmed `curiosity` row is an
+   **exploration**: it carries a `review_on` date after which Mylo asks
+   "keep this?", and it never counts against cluster or topic caps.
+
+2. **`ProjectDevelopment`** (per project). Dated events: `kind` (dataset
+   arrived, experiment failed, venue changed, blocker closed, blocker opened,
+   milestone moved, method dropped, method adopted, result obtained),
+   `text`, `explanation`, `occurred_on`, `recorded_on`, `speaker`, `force`,
+   `status` (`active`, `superseded`, `confirmed`, `rejected`), and the
+   observation ids. This is the "what is useful now" record. It does not edit
+   `ProjectState`; Plan 08 proposes state edits from it.
+
+3. **`ProjectAttention`** (per user per project): the 7- and 28-day attention
+   share from Plan 03, recomputed nightly.
+
+## What the memory is for
+
+This store is the long-lived record of what Mylo understands about a person:
+their enduring interests, what they are exploring, what they prefer, where
+they want to go, what they can do. It accumulates over time and is theirs to
+edit. It is what Mylo's suggestions are grounded in: Mylo suggests things the
+person has already shown they want — a topic they keep returning to, a
+direction they said they were heading, a need a project stated — because
+they said so, and never a direction Mylo invented. It reaches those
+suggestions through Plan 04's suggest outcome and reaches ranking and
+explanation through the steps below.
+
+## Three speeds
+
+4. **Confirmed, then nightly.** Curiosity and ambient developments are
+   written as pending and become active on a yes (Plan 06), taking effect at
+   the next nightly run — there is no real-time refit, and the person is told
+   "from tomorrow's run". The one automatic write is a project fact the
+   person told Mylo directly, recorded with undo and likewise read by the
+   next run. An exploration fades at its review date unless kept;
+   a development is superseded by a later one on the same subject. All of it
+   is visible on the web (Plan 07) with what, how, and why.
+5. **Slow, by confirmation.** Enduring interests, preferences, trajectory, and
+   anything in the declared profile change only through a confirmed proposal.
+6. **Conflict, by proposal.** A development or an understanding that
+   contradicts a stated project claim or goal raises a proposal, never an edit.
+
+## New understanding kinds in the contract
+
+7. Extend the interests contract (`accounts/interests.py`) with three optional
+   fields that hold **confirmed** understanding only: `preferences` (list of
+   short strings: "empirical over theoretical", "reproducible code matters"),
+   `trajectory` (a short free-text direction plus an optional target stage and
+   horizon), and `learning_goals` (topics the person wants to learn, explicitly
+   not skills). All three carry provenance in `sources`. None of them count
+   against cluster or topic caps. The validator's unknown-key rule means this
+   is a deliberate schema change with a migration of existing rows (no-op).
+
+## Reaching retrieval and ranking
+
+8. **The exploration vector.** For each user, fold **confirmed** exploration
+   rows into one unit vector with their decayed weights, the way
+   `team_profile._engagement_component` does, and blend it into the profile's
+   query vector at a capped weight `AMBIENT_DRIFT_WEIGHT` (default small, e.g.
+   0.15). The declared statement + keywords embedding stays dominant. The
+   blend happens in `targets.py` when the `MatchTarget` is built, so every
+   stage downstream sees it. Recorded as a ranking-logic change: the eval
+   harness must be re-run and numbers put in the changelog (global rule).
+9. **Attention-weighted project parts.** The project a person is actually on
+   this week gets its per-project part first in the report and a slightly
+   deeper slate; an idle project is not dropped, just not first.
+10. **Developments reach the matchers.** `alerts.py` triggers read active
+    developments: a closed blocker stops `unblocks` firing for it; a moved
+    milestone re-runs `timeline`; a dropped method changes what `overlap_risk`
+    compares against — through the proposal path where the field is stated,
+    directly where it is only a development.
+11. **Preferences reach explanation and ordering.** Stage-two write-ups
+    (`cluster_fit.py`) receive confirmed preferences so a beat can say "has
+    code and an ablation, which you weigh". A preference re-rank boost is a
+    later, measured step, not part of this plan.
+12. **Trajectory reaches opportunities.** Fellowship and grant matching read
+    `trajectory` alongside `seeking` and stage: a person moving toward
+    clinical work sees clinical training fellowships they are eligible for
+    ranked higher. The eligibility gate is unchanged.
+
+## Context versioning
+
+13. Every nightly run stamps the `context_version` it ranked and wrote with: a
+    hash over the declared profile, the confirmed understanding, and the active
+    fast layer. It is stored on `DailyBriefing` and on write-ups. When the
+    version changes, affected explanations refresh on the next run; old
+    reports remain interpretable because the version they used is known.
+
+## Steps
+
+14. Models and migrations for the three tables and the contract fields.
+15. The pending-row writer, the confirmation activation hook, and the review-date fade task (nightly, in `manual_all.py`).
+16. `targets.py` drift blend behind `AMBIENT_DRIFT_ENABLED` (ships off).
+17. Attention ordering in `briefing.py` project parts.
+18. Developments wired into `alerts.py`.
+19. Preferences and trajectory into the profile text at `briefing.py:623` and
+    into `cluster_fit.py` and the fellowship band prompts.
+20. `context_version` on `DailyBriefing` and write-up keys.
+21. Eval harness run before and after step 16 with results in the changelog and
+    a research-record experiment folder.
+
+## Acceptance
+
+- A curiosity row with no reinforcement for two half-lives reads `faded`.
+- The drift blend changes a query vector by no more than the cap.
+- A stated field is byte-identical before and after a week of confirmed changes.
+- The eval harness shows no regression on the declared-only arm with drift off.
+
+## Open decisions
+
+- **OD-05a** Drift cap default and whether it scales with the number of active
+  curiosity rows. Recommendation: fixed cap; tune in Plan 10.
+- **OD-05b** Whether attention ordering applies to lab reports. Recommendation:
+  personal only; a lab's attention is a different measure.
+
+## Discussion gate
+
+No step in this plan is implemented until the implementing agent has presented,
+and the owner has approved, a short design brief: the files and models it will
+touch, every migration, every prompt and what happens when the model is
+unavailable, every
+default value and setting name, and what is deliberately not being done. A
+deviation discovered mid-implementation stops the work and reopens the brief.

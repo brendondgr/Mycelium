@@ -173,6 +173,14 @@ Files below are inside `web/backend/apps/content/`.
 | Display-time formatting shared by serializers (amounts) | `formatting.py` |
 | Celery tasks & target selection | `tasks.py` |
 
+## Backend — the ambient evidence ledger (`apps/ambient`)
+
+| Task | Path |
+|---|---|
+| Connected surfaces and the consent each one gave | `web/backend/apps/ambient/models.py` (`Source`) |
+| One person's listening opt-in and the "shut off" switch, per platform | `web/backend/apps/ambient/models.py` (`ListeningConsent`) |
+| Whether a message may be recorded at all (surface consent, person opt-in, paid effective tier) | `web/backend/apps/ambient/eligibility.py` — resolved on arrival, never cached at the edge |
+
 ## Backend — billing, admin, integrations, ingestion
 
 | Task | Path |

@@ -98,6 +98,7 @@ collector's resolve stage joins against that cache for venue identity and ranks.
 | `content` | The matching and delivery layer — the largest app. Deduplicated `ContentItem`s, per-target `RelevanceScore`s, the four feeds, clustering and fusion, the daily briefing and PDF report, saves, addressable deadlines, reminders, notifications, unified search, member fit, and the Discord digest producers |
 | `billing` | Subscriptions, per-seat billing, add-ons, and tier-based entitlement resolution. `entitlements.py` is the single read path; an expired plan reverts to Free at read time with no cleanup job. **Feature gating is currently off** (`BILLING_ENFORCE_ENTITLEMENTS=false`): every capability resolves as granted for everyone, while plans, prices and the numeric caps stay live |
 | `integrations` | Discord identity and lab linking: OAuth, activation codes, guild install, the durable outbox, and the single ORM boundary in `services/resolve.py` |
+| `ambient` | The evidence ledger for what Mylo understands from the lab's own conversation: connected surfaces and their consent, one person's per-platform opt-in, the transient raw-message buffer, the adapter contract, retention and deletion. **Ships off** (`AMBIENT_ENABLED=false`). Imports `integrations` and `research`; `content` reads it only through `ambient/read.py`. Raw message text never reaches Postgres — it lives in Redis under a TTL and is deleted once a window has been read |
 | `adminpanel` | Platform-admin API (staff/superuser only): user and lab rosters, subscription assignment, watch quotas. Every write records an `accounts.AuditEvent`. Mounted at `/api/admin/` |
 | `scraper` | Ingestion: OpenAlex / PubMed / Semantic Scholar paper sources with a scan window and cross-source dedup, the open-source grants/conferences collector (`collect/`, pure HTTP, in-container), the Illinois Fellowship Finder scraper + ingest (`fellowships/`, host-side Playwright), the fellowship eligibility rule engine (`eligibility/`), the device-aware embedder, and the external DOI/arXiv/URL resolver |
 
@@ -115,7 +116,10 @@ graph phase has not started.
   semantic vectors; `ContentItem.search_vector` is a trigger-maintained tsvector
   and there is a pg_trgm title index for fuzzy search.
 - **Redis** — Celery broker/result backend plus several named caches (`signup`
-  lockouts, the `scan` status flag, query embeddings).
+  lockouts, the `scan` status flag, query embeddings, and the `ambient`
+  raw-message buffer). The ambient buffer is the only store that ever holds a
+  person's actual words, it holds them under a TTL measured in hours, and
+  nothing copies them to Postgres or to disk.
 - **Filesystem** — Discord outbox attachments (`DISCORD_OUTBOX_ATTACHMENT_DIR`)
   and the daily-run state file. Object storage is not wired up.
 
