@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { CollaborationSettingsCard } from "@/components/portal/collab/collaboration-settings-card";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { BillingSection } from "@/components/portal/sections/billing-section";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,8 @@ export function AccountSection() {
           <PasswordCard email={account?.email ?? ""} />
         </div>
       </div>
+
+      <CollaborationSettingsCard />
 
       <BillingSection />
     </div>

@@ -34,3 +34,32 @@ export type TeamFit = {
 };
 
 export type SlotFeedbackKind = "not_a_requirement" | "we_cover_this" | "missed_one";
+
+/** Who may find a person (plan CN-04). */
+export type Audience = "institution" | "country" | "anywhere";
+export type OpenTo = "co_authoring" | "grant_partner" | "data_sharing" | "mentoring";
+
+/** `GET/PUT /api/collab/settings/` — the reader's own setting. */
+export type CollaborationSetting = {
+  open: boolean;
+  audience: Audience;
+  open_to: OpenTo[];
+  /** ISO time the setting ends, while it is on. */
+  expires_at: string | null;
+  /** The account's email is verified (nothing can be turned on otherwise). */
+  verified: boolean;
+  /** From the verified email's domain, never from the typed affiliation. */
+  institution: string;
+  country: string;
+  /** Empty when unverified; only "anywhere" for a personal address. */
+  allowed_audiences: Audience[];
+};
+
+/** `GET /api/collab/preview/` — exactly what a seeker would see. */
+export type CollaborationPreview = {
+  name: string;
+  institution: string;
+  facets: Partial<
+    Record<"problem" | "method" | "setting" | "area", { label: string; sources: string[] }[]>
+  >;
+};
