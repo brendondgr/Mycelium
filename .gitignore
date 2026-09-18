@@ -187,3 +187,7 @@ docs/research/**/*.log
 
 # Research tooling venv (scripts/research/ is its own small uv project).
 scripts/research/.venv/
+
+# Synthetic-world corpora and scratch output of the sandbox harnesses
+# (web/backend/sandbox/). Experiments record a pointer and a hash instead.
+data/sandbox/
