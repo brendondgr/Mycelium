@@ -115,10 +115,11 @@ daily run with error reporting and run state. A load-test harness for onboarding
 - **Knowledge graph & evidence layer.** *Partly built (2026-09-18).* The graph
   itself exists in Postgres (`apps/knowledge`): concepts, typed edges with an
   evidence tier (declared, demonstrated, conversational), declared profiles and
-  projects loaded, and the first cross-entity query (Q1) proven. Neo4j stays
-  reserved and unused. Demonstrated edges from people's papers, the other three
+  projects loaded, people's own papers read into demonstrated edges, and the
+  first two cross-entity queries (Q1, Q2) proven — validated at 240 synthetic
+  people in `EXP-2026-09-005`. Neo4j stays reserved and unused. The other two
   cross-entity queries, claim and evidence modeling, and contradiction
-  detection are outstanding — the first two are sequenced in
+  detection are outstanding — the queries are sequenced in
   `docs/plans/collaboration-network/`.
 - **Object storage.** MinIO runs; nothing writes to it. Uploads, exports, and
   generated artifacts live on the filesystem or in Postgres.
@@ -142,8 +143,8 @@ In rough order, against the November 14 target:
 
 1. Close the graph gap: choose the approach, define node and edge types, load
    existing content, and prove four cross-entity queries. *Approach, types,
-   declared content, and Q1 done (collaboration-network CN-01); Q2–Q4 follow in
-   CN-02, CN-03, and CN-05.*
+   declared content, Q1 and Q2 done (collaboration-network CN-01, CN-02); Q3
+   and Q4 follow in CN-03 and CN-05.*
 2. Model claims and evidence so every generated statement is traceable to a
    source, a finding, and a confidence signal.
 3. Turn the daily briefing into durable, exportable reports with human review

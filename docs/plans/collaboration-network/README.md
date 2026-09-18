@@ -134,7 +134,7 @@ functions that filter the tier set, and an AST boundary test fails the build if
 | # | Plan | Delivers | Depends on |
 |---|---|---|---|
 | 01 | Knowledge core — **shipped 2026-09-18** | `apps/knowledge`: Concept, Edge, the linker, declared edges projected from profiles and projects, the tier-filtered read door, Q1. **Shared with ambient-profile.** Plan deleted; what was built and where it departed from the plan is in `docs/changelog.md` under `20260918-collaboration-network-01`, and the app is described in `docs/architecture.md` and `docs/repo-map.md` | — |
-| 02 | [Demonstrated expertise](02-demonstrated-expertise.md) | Facets of each person's own works, field-neutral method phrasing, OpenAlex field, per-work vectors, `demonstrated` edges | CN-01 |
+| 02 | Demonstrated expertise — **shipped 2026-09-18** | Facets of each person's own works, field-neutral method phrasing, OpenAlex field, per-work vectors, `demonstrated` edges, Q2. Validated in `EXP-2026-09-005`. Plan deleted; record in `docs/changelog.md` under `20260918-collaboration-network-02` | CN-01 |
 | 03 | [Requirement slots and team fit](03-requirement-slots-and-team-fit.md) | Faceted slots from call text and project state, coverage marking, the team-fit line on opportunity cards | CN-01 |
 | 04 | [Collaboration consent](04-collaboration-consent.md) | Open to collaboration, audience, open-to types, expiry, verified scope, preview, appearance ledger, the Settings tab | CN-01, CN-02 |
 | 05 | [The matcher](05-matcher.md) | The query object, four lanes, author aggregation, the hard gate, the shortlist rerank, feedback; institution scope only | CN-02, CN-03, CN-04 |
@@ -214,7 +214,9 @@ These rules hold either way; what keeps them safe is structure, not care:
 
 ## Amendments to the shared core
 
-None yet.
+- **CN-02 (2026-09-18):** `WorkFacets` (one row per `AuthorWork`) and
+  `read.backing` (Q2); `projection._apply` takes a tier so demonstrated edges
+  reuse it. No change to `Concept` or `Edge`.
 
 ## Cross-cutting open decisions
 

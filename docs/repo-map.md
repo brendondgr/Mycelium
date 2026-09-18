@@ -209,7 +209,12 @@ Files below are inside `web/backend/apps/content/`.
 | Which concept a wording names (alias → embedding → mint; private words stay private) | `web/backend/apps/knowledge/linker.py` |
 | Staff merges, their reversal, and promotion of a private concept to the shared vocabulary | `web/backend/apps/knowledge/merging.py`; the admin's "Merge the selected concepts" and "Reverse" actions |
 | Declared profiles, labs, and projects mirrored into edges | `web/backend/apps/knowledge/projection.py`; save hooks in `signals.py`, tasks `apps.knowledge.project_subject` and `apps.knowledge.sweep` (Beat, 04:15), command `project_declared_edges` |
-| Reading the graph from anywhere else — **one of two doors** | `web/backend/apps/knowledge/read.py` (`own_edges`, `ranking_edges`, `lab_declared_edges`, `discoverable_edges`, `project_edges`, `undeclared_project_concepts` — Q1); the AST guard is `apps/knowledge/tests/test_import_boundary.py` |
+| What each of a person's own papers shows, facet by facet (sentences, terms, field-neutral method, per-facet vectors) | `web/backend/apps/knowledge/works.py`, model `WorkFacets` |
+| A person's papers as demonstrated edges, per work and rolled up; the OpenAlex field ruler on concepts | `web/backend/apps/knowledge/demonstrated.py` |
+| Reading people's papers end to end (DOI field lookups, reading, vectors, edges) | `web/backend/apps/knowledge/papers.py`; queued on import (`service.queue_work_facets`, task `apps.knowledge.facet_user_works`), nightly via `facet_author_works` in `manual_all.py` |
+| A work's co-authors by id and its OpenAlex field | `web/backend/apps/accounts/author_works.py` (`store_author_works`, `enrich_fields`); `AuthorWork.coauthor_ids`, `openalex_field_id` |
+| Reading the graph from anywhere else — **one of two doors** | `web/backend/apps/knowledge/read.py` (`own_edges`, `ranking_edges`, `lab_declared_edges`, `discoverable_edges`, `project_edges`, `undeclared_project_concepts` — Q1, `backing` — Q2); the AST guard is `apps/knowledge/tests/test_import_boundary.py` |
+| Running the knowledge pipeline at scale on a fake world, against planted truth | `web/backend/sandbox/collab/` (`python -m sandbox.collab`, from `web/backend`); its own database `mycelium_sandbox`; results under `docs/research/experiments/` (first: `EXP-2026-09-005`) |
 | Writing to it — **the other door** (projection, and ambient's conversational edges) | `web/backend/apps/knowledge/service.py` |
 
 ## Backend — billing, admin, integrations, ingestion
@@ -292,6 +297,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `prune_opportunities` | Delete expired listings; `--stale-only` also removes dateless conferences the collector has stopped listing, `--dry-run` reports without deleting |
 | `prune_briefings` | Delete briefings past `BRIEFING_RETENTION_DAYS` |
 | `project_declared_edges` | Mirror declared profiles, labs, and projects into the knowledge graph and prune orphaned private concepts (no arguments: every subject, which is also the backfill); `--user`, `--lab`, or `--project` for one |
+| `facet_author_works` | Read people's own imported papers into facets and demonstrated edges (nightly within `KNOWLEDGE_WORK_FACETS_NIGHTLY_CAP`; `--user` for one person now, `--limit`, `--lookups`) |
 | `sweep_ambient_retention` | Delete ambient message references past their window (`--dry-run` reports without deleting); observations are never touched |
 | `run_analytics_report` | Measure the run: metrics JSON + analytics PDF for the Discord summary |
 | `drain_discord_outbox`, `reconcile_discord` | Deliver queued Discord messages / reconcile guild state |
@@ -327,5 +333,5 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `docs/research/` | The research record — experiments, claims ledger, decisions, open questions, figures, paper plan |
 | `docs/skills/` | Canonical agent guidance — start at `skills/index.md` |
 | `docs/changelog.md` | Append-only project history |
-| `docs/plans/` | Implementation plans (working documents, deleted when shipped); `plans/ambient-profile/` is the sequenced series for the self-maintaining profile and `plans/collaboration-network/` the one for collaborator matching; both build on the shared knowledge core (`apps/knowledge`, shipped as plan CN-01). Start at each `README.md` |
+| `docs/plans/` | Implementation plans (working documents, deleted when shipped); `plans/ambient-profile/` is the sequenced series for the self-maintaining profile and `plans/collaboration-network/` the one for collaborator matching; both build on the shared knowledge core (`apps/knowledge`, shipped as plans CN-01 and CN-02). Start at each `README.md` |
 | `docs/chats/`, `docs/Resources/` | Source conversations and the project brief |
