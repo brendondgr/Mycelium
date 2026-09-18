@@ -1,7 +1,7 @@
 # Plan 05 — The Evolving Profile Layer
 
 **Status:** draft. **Depends on:** Plan 04 and
-[CN-01](../collaboration-network/01-knowledge-core.md). **Unblocks:** Plans 06,
+CN-01 (`apps/knowledge`, shipped 2026-09-18). **Unblocks:** Plans 06,
 07, 08, 09, 10.
 **Correlation ID:** `20260917-ambient-profile-05`
 

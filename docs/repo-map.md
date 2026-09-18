@@ -201,6 +201,17 @@ Files below are inside `web/backend/apps/content/`.
 | Which project a person is actually spending their conversation on (7- and 28-day shares) | `web/backend/apps/ambient/attention.py`, model `ProjectAttention`, task `apps.ambient.recompute_attention`; read through `read.attention_for` |
 | What a project editor can see and change about attribution (aliases aside) | `web/backend/apps/ambient/editing.py` (who sees what), `views.py` + `urls.py` at `/api/ambient/` |
 
+## Backend — the knowledge core (`apps/knowledge`)
+
+| Task | Path |
+|---|---|
+| Concepts, edges, tiers, scopes, and the merge log | `web/backend/apps/knowledge/models.py` (`Concept`, `ConceptAlias`, `Edge`, `ConceptMerge`) |
+| Which concept a wording names (alias → embedding → mint; private words stay private) | `web/backend/apps/knowledge/linker.py` |
+| Staff merges, their reversal, and promotion of a private concept to the shared vocabulary | `web/backend/apps/knowledge/merging.py`; the admin's "Merge the selected concepts" and "Reverse" actions |
+| Declared profiles, labs, and projects mirrored into edges | `web/backend/apps/knowledge/projection.py`; save hooks in `signals.py`, tasks `apps.knowledge.project_subject` and `apps.knowledge.sweep` (Beat, 04:15), command `project_declared_edges` |
+| Reading the graph from anywhere else — **one of two doors** | `web/backend/apps/knowledge/read.py` (`own_edges`, `ranking_edges`, `lab_declared_edges`, `discoverable_edges`, `project_edges`, `undeclared_project_concepts` — Q1); the AST guard is `apps/knowledge/tests/test_import_boundary.py` |
+| Writing to it — **the other door** (projection, and ambient's conversational edges) | `web/backend/apps/knowledge/service.py` |
+
 ## Backend — billing, admin, integrations, ingestion
 
 | Task | Path |
@@ -280,6 +291,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `run_reminder_tick` | Fire due reminders |
 | `prune_opportunities` | Delete expired listings; `--stale-only` also removes dateless conferences the collector has stopped listing, `--dry-run` reports without deleting |
 | `prune_briefings` | Delete briefings past `BRIEFING_RETENTION_DAYS` |
+| `project_declared_edges` | Mirror declared profiles, labs, and projects into the knowledge graph and prune orphaned private concepts (no arguments: every subject, which is also the backfill); `--user`, `--lab`, or `--project` for one |
 | `sweep_ambient_retention` | Delete ambient message references past their window (`--dry-run` reports without deleting); observations are never touched |
 | `run_analytics_report` | Measure the run: metrics JSON + analytics PDF for the Discord summary |
 | `drain_discord_outbox`, `reconcile_discord` | Deliver queued Discord messages / reconcile guild state |
@@ -315,5 +327,5 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `docs/research/` | The research record — experiments, claims ledger, decisions, open questions, figures, paper plan |
 | `docs/skills/` | Canonical agent guidance — start at `skills/index.md` |
 | `docs/changelog.md` | Append-only project history |
-| `docs/plans/` | Implementation plans (working documents, deleted when shipped); `plans/ambient-profile/` is the sequenced series for the self-maintaining profile and `plans/collaboration-network/` the one for collaborator matching; both build on the shared knowledge core (`collaboration-network/01-knowledge-core.md`). Start at each `README.md` |
+| `docs/plans/` | Implementation plans (working documents, deleted when shipped); `plans/ambient-profile/` is the sequenced series for the self-maintaining profile and `plans/collaboration-network/` the one for collaborator matching; both build on the shared knowledge core (`apps/knowledge`, shipped as plan CN-01). Start at each `README.md` |
 | `docs/chats/`, `docs/Resources/` | Source conversations and the project brief |

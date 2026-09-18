@@ -1,8 +1,8 @@
 # Plan 04 — The Reasoning Agent
 
 **Status:** draft. **Depends on:** Plans 01–03 and
-[CN-01](../collaboration-network/01-knowledge-core.md) (the shared knowledge
-core). **Unblocks:** Plans 05, 06, 08.
+CN-01, the shared knowledge core (`apps/knowledge`, shipped
+2026-09-18). **Unblocks:** Plans 05, 06, 08.
 **Correlation ID:** `20260917-ambient-profile-04`
 
 ## Objective

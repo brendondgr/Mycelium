@@ -29,9 +29,14 @@ at the repository root, and all implementation and install state lives under
 | Node workspace | npm workspaces | `web/` |
 
 **Declared but unused.** `compose.yaml` runs **Neo4j** and **MinIO**, and
-`settings.py` reads their env vars, but no application code touches either — the
-graph phase and object-storage phase are not built. `cytoscape` is an unused
-`web/app` dependency. Treat all three as reserved, not as working infrastructure.
+`settings.py` reads their env vars, but no application code touches either —
+the object-storage phase is not built, and the knowledge graph is built in
+Postgres instead (`apps/knowledge`, below): its questions are one or two hops,
+and deleting a person must cascade through foreign keys rather than a sync job
+across two stores. Whether multi-hop features (introduction paths, team
+formation) ever justify Neo4j is decided by measurement in collaboration-network
+plan CN-07. `cytoscape` is an unused `web/app` dependency. Treat all three as
+reserved, not as working infrastructure.
 
 ## Repository layout
 
@@ -99,6 +104,7 @@ collector's resolve stage joins against that cache for venue identity and ranks.
 | `billing` | Subscriptions, per-seat billing, add-ons, and tier-based entitlement resolution. `entitlements.py` is the single read path; an expired plan reverts to Free at read time with no cleanup job. **Feature gating is currently off** (`BILLING_ENFORCE_ENTITLEMENTS=false`): every capability resolves as granted for everyone, while plans, prices and the numeric caps stay live |
 | `integrations` | Discord identity and lab linking: OAuth, activation codes, guild install, the durable outbox, and the single ORM boundary in `services/resolve.py` |
 | `ambient` | The evidence ledger for what Mylo understands from the lab's own conversation: connected surfaces and their consent, one person's per-platform opt-in, the transient raw-message buffer, the adapter contract, retention and deletion. **Ships off** (`AMBIENT_ENABLED=false`). Imports `integrations` and `research`; `content` reads it only through `ambient/read.py`, which an AST test enforces. Raw message text never reaches Postgres — it lives in Redis under a TTL and is deleted once a window has been read. The Mylo gateway writes to it only through `ambient/service.py`, in process, the way `integrations/services/resolve.py` already works; there is no HTTP ingest endpoint. Each message is attributed to a project on arrival from cheap deterministic signals, with a floor and a margin and an honest "unresolved" (`attribution.py`); the nightly read re-scores what that left unresolved with semantic similarity and re-checks every speaker's eligibility first. `ProjectAttention` (7- and 28-day shares per person per project) is derived nightly. Project editors see and correct attributions at `/api/ambient/` |
+| `knowledge` | The knowledge graph, in Postgres: `Concept`s (one idea — a problem, method, setting, or research area — independent of who holds it) and `Edge`s from a person, project, lab, work, or content item to a concept, each carrying its **tier** — `declared` (a profile or a project's stated state), `demonstrated` (the person's papers, plan CN-02), or `conversational` (ambient understanding, pending until the person confirms it). Declared profiles and projects are mirrored in on save (a queued task) and reconciled by a 04:15 Beat sweep; nothing writes back to a profile. A model-free linker resolves wordings to concepts by alias, then embedding (cosine ≥ `KNOWLEDGE_MERGE_COSINE`), then minting; concepts minted from a private source stay in their owner's scope and reach the shared vocabulary only by promotion under a shared source's wording. Read through `knowledge/read.py`, whose functions each fix the tiers they may return — `discoverable_edges` can never return conversation — and written through `knowledge/service.py`; an AST test holds everything else behind the two doors. Depends on `accounts`, `research`, and the corpus embedder; nothing above it |
 | `adminpanel` | Platform-admin API (staff/superuser only): user and lab rosters, subscription assignment, watch quotas. Every write records an `accounts.AuditEvent`. Mounted at `/api/admin/` |
 | `scraper` | Ingestion: OpenAlex / PubMed / Semantic Scholar paper sources with a scan window and cross-source dedup, the open-source grants/conferences collector (`collect/`, pure HTTP, in-container), the Illinois Fellowship Finder scraper + ingest (`fellowships/`, host-side Playwright), the fellowship eligibility rule engine (`eligibility/`), the device-aware embedder, and the external DOI/arXiv/URL resolver |
 
@@ -148,6 +154,7 @@ graph phase has not started.
 | Email | `EMAIL_ENABLED`, `RESEND_API_KEY`, `DEFAULT_FROM_EMAIL`, `EMAIL_REPLY_TO`, `EMAIL_APP_BASE_URL` |
 | Run analytics | `RUN_ANALYTICS_JSON_PATH`, `RUN_ANALYTICS_PDF_DIR`, `RUN_ANALYTICS_RETENTION_DAYS` |
 | Opportunity collector | `COLLECT_CONTACT` |
+| Knowledge core | `KNOWLEDGE_MERGE_COSINE`, `KNOWLEDGE_MAX_SURFACE_CHARS`, `KNOWLEDGE_PROJECT_ON_SAVE`, `KNOWLEDGE_SWEEP_HOUR` |
 | Reserved (unused) | `NEO4J_*`, `S3_*` |
 
 `COLLECT_CONTACT` is the one variable that does **not** go through django-environ:

@@ -127,7 +127,7 @@ a claim of expertise.
     confident nonsense.
 19. **What conversation teaches Mylo is never used to make a person
     findable.** Understanding lives in the shared knowledge core
-    ([collaboration-network CN-01](../collaboration-network/01-knowledge-core.md))
+    (`apps/knowledge`, collaboration-network CN-01, shipped 2026-09-18)
     as `conversational` edges. Those edges shape the person's own
     recommendations once confirmed and are read by nobody else — not a
     lab-mate, not collaboration search. The collaboration app can read only
