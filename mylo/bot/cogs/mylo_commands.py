@@ -74,6 +74,9 @@ class MyloCog(commands.Cog, name="Mylo"):
     # ------------------------------------------------------- observability
     @mylo.command(name="health", description="Is Mylo online, and how did the last run go?")
     async def health(self, interaction: discord.Interaction) -> None:
+        # Listening state is a database read, so this one defers where the rest
+        # of `health` would happily answer from a file.
+        await interaction.response.defer(ephemeral=True)
         config = getattr(self.bot, "config", None)
         channel_set = bool(getattr(config, "error_channel_id", None))
         state = read_run_state()
@@ -91,7 +94,42 @@ class MyloCog(commands.Cog, name="Mylo"):
                 f"Last daily run: ❌ failed at "
                 f"`{state.get('failed_stage', '?')}` ({state.get('finished_at', '?')})."
             )
-        await interaction.response.send_message("\n".join(lines), ephemeral=True)
+        lines.extend(await self._listening_lines(interaction))
+        await interaction.followup.send("\n".join(lines), ephemeral=True)
+
+    async def _listening_lines(self, interaction: discord.Interaction) -> list[str]:
+        """Listening state for the server `/mylo health` was run in.
+
+        Reports the *stage* as well as the switch. "Listening is on" while the
+        Message Content intent is missing would be a true statement about the
+        database and a misleading one about what Mylo can actually hear, and an
+        operator reading this is asking the second question.
+        """
+        if not interaction.guild_id:
+            return []
+        state = await listening.listening_state(str(interaction.guild_id))
+        if not state.get("known") or not state.get("listening"):
+            return ["Listening here: **off**."]
+
+        stage_b = bool(
+            getattr(getattr(self.bot, "config", None), "listen_enabled", False)
+            and getattr(self.bot.intents, "message_content", False)
+        )
+        reach = (
+            "every channel it is not excluded from"
+            if stage_b
+            else "DMs and messages that mention it only "
+            "(server-wide listening is not enabled)"
+        )
+        lines = [f"Listening here: **on** — {reach}."]
+        excluded = state.get("excluded") or []
+        if excluded:
+            lines.append(f"Never reads: {len(excluded)} channel(s).")
+        lines.append(
+            f"Today: heard {state.get('heard_today', 0)}, "
+            f"kept {state.get('stored_today', 0)} for tonight's reading."
+        )
+        return lines
 
     @mylo.command(name="lastrun", description="Details of the most recent daily run.")
     async def lastrun(self, interaction: discord.Interaction) -> None:

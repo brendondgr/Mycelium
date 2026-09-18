@@ -52,11 +52,25 @@ def _ambient_imports(path: Path) -> list[str]:
     return hits
 
 
-def _python_files_outside_ambient():
+def _is_test(path: Path) -> bool:
+    return "tests" in path.parts or path.name.startswith("test_")
+
+
+def _python_files_outside_ambient(*, include_tests: bool = False):
+    """Every backend module outside this app.
+
+    Test modules are excluded by default. A test in another app may build
+    ambient rows directly — that is what a fixture *is*, and routing fixture
+    setup through a read API would test the read API rather than the thing
+    under test. The rule this file exists to enforce is about the code that
+    ships, which is what the default covers.
+    """
     for path in sorted(_APPS.rglob("*.py")):
         if _AMBIENT in path.parents or path == _AMBIENT:
             continue
         if "migrations" in path.parts:
+            continue
+        if not include_tests and _is_test(path):
             continue
         yield path
 
@@ -96,7 +110,7 @@ class AmbientImportBoundary(SimpleTestCase):
 
     def test_only_the_named_apps_know_the_ledger_exists(self):
         strangers: list[str] = []
-        for path in _python_files_outside_ambient():
+        for path in _python_files_outside_ambient(include_tests=True):
             if not _ambient_imports(path):
                 continue
             app = path.relative_to(_APPS).parts[0]

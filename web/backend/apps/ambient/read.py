@@ -48,6 +48,7 @@ __all__ = [
     "listening_enabled",
     "questions_muted",
     "active_sources",
+    "listening_totals",
 ]
 
 
@@ -215,6 +216,42 @@ def mark_recomputed(retraction: Retraction) -> Retraction:
 def listening_enabled(user: User, platform: str) -> bool:
     """Whether this person turned listening on for this platform."""
     return person_opted_in(user, platform)
+
+
+def listening_totals(day=None) -> dict:
+    """What every listening surface produced on one day, summed.
+
+    Counts only — this is the shape the run-analytics report reads, and a
+    report about how much was heard must not become a report about who was
+    heard. Nothing here is keyed to a person, because nothing upstream is.
+    """
+    from django.db.models import Sum
+
+    from .models import SourceActivity
+
+    when = day or timezone.localdate()
+    fields = [
+        "heard",
+        "stored",
+        "dropped_not_opted_in",
+        "dropped_unlinked",
+        "dropped_free_tier",
+        "dropped_excluded_channel",
+        "dropped_too_short",
+        "dropped_bot",
+        "dropped_other",
+    ]
+    totals = SourceActivity.objects.filter(day=when).aggregate(
+        **{name: Sum(name) for name in fields}
+    )
+    result = {name: int(totals.get(name) or 0) for name in fields}
+    result["sources_listening"] = Source.objects.filter(
+        consent_state=Source.Consent.ACTIVE
+    ).count()
+    result["sources_active_today"] = SourceActivity.objects.filter(
+        day=when, heard__gt=0
+    ).count()
+    return result
 
 
 def active_sources(*, lab=None):

@@ -434,3 +434,78 @@ class CommandTests(TestCase):
             )
             payload = json.loads(json_path.read_text())
             self.assertEqual(payload["generated_on"], target.isoformat())
+
+
+class ListeningSectionTests(TestCase):
+    """How much conversation was heard — in counts, never in names."""
+
+    def _activity(self, **counts):
+        from apps.ambient.models import Source, SourceActivity
+
+        source = Source.objects.create(
+            kind=Source.Kind.DISCORD_GUILD,
+            external_id="guild-1",
+            consent_state=Source.Consent.ACTIVE,
+        )
+        SourceActivity.objects.create(
+            source=source, day=timezone.localdate(), **counts
+        )
+        return source
+
+    def test_nothing_listening_reports_zeroes_rather_than_failing(self):
+        from apps.content.run_analytics import collect_listening
+
+        listening = collect_listening(timezone.localdate())
+        self.assertEqual(listening.heard, 0)
+        self.assertEqual(listening.sources_listening, 0)
+
+    def test_the_day_is_summed_across_servers(self):
+        from apps.ambient.models import Source, SourceActivity
+        from apps.content.run_analytics import collect_listening
+
+        self._activity(heard=10, stored=4, dropped_not_opted_in=6)
+        second = Source.objects.create(
+            kind=Source.Kind.DISCORD_GUILD,
+            external_id="guild-2",
+            consent_state=Source.Consent.ACTIVE,
+        )
+        SourceActivity.objects.create(
+            source=second, day=timezone.localdate(), heard=2, stored=2
+        )
+
+        listening = collect_listening(timezone.localdate())
+        self.assertEqual(listening.heard, 12)
+        self.assertEqual(listening.stored, 6)
+        self.assertEqual(listening.dropped, 6)
+        self.assertEqual(listening.sources_listening, 2)
+        self.assertEqual(listening.sources_active_today, 2)
+
+    def test_yesterdays_volume_is_not_counted_as_todays(self):
+        from apps.ambient.models import SourceActivity
+        from apps.content.run_analytics import collect_listening
+
+        self._activity(heard=10)
+        SourceActivity.objects.update(day=timezone.localdate() - timedelta(days=1))
+        self.assertEqual(collect_listening(timezone.localdate()).heard, 0)
+
+    def test_the_wire_format_carries_the_listening_counts(self):
+        from apps.content.run_analytics import collect_run_analytics
+
+        self._activity(heard=5, stored=1, dropped_free_tier=4)
+        payload = collect_run_analytics().as_dict()
+        self.assertEqual(payload["listening"]["heard"], 5)
+        self.assertEqual(payload["listening"]["dropped_free_tier"], 4)
+
+    def test_the_section_is_omitted_when_nothing_is_listening(self):
+        from apps.content.run_analytics import collect_run_analytics
+
+        data = collect_run_analytics()
+        pdf = render_analytics_pdf(data)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_the_section_renders_when_something_was_heard(self):
+        from apps.content.run_analytics import collect_run_analytics
+
+        self._activity(heard=5, stored=1)
+        pdf = render_analytics_pdf(collect_run_analytics())
+        self.assertTrue(pdf.startswith(b"%PDF"))

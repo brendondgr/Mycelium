@@ -191,5 +191,5 @@ Discord's privileged-intent review now triggers at **10,000 total users** with
 **annual re-application**, replacing the old 100-server threshold. A 90-day
 grace applies if access lapses. Source:
 <https://discord.com/blog/updated-requirements-to-how-apps-access-data-in-servers>.
-`docs/skills/discord-bot.md` still states the 100-server rule and needs
-correcting in its own change.
+`docs/skills/discord-bot.md` was corrected on 2026-09-18 (it had stated the
+old 100-server rule).

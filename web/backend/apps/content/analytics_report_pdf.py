@@ -538,6 +538,45 @@ def _delivery_section(data: RunAnalytics, styles) -> list:
     ]
 
 
+def _listening_section(data: RunAnalytics, styles) -> list:
+    """How much conversation was heard, and why the rest was not kept.
+
+    Omitted entirely when nothing is listening, rather than printed as a page
+    of zeros for a feature this deployment has not turned on.
+    """
+    listening = data.listening
+    if not listening.sources_listening and not listening.heard:
+        return []
+    rows = [
+        ["Stage", "Count"],
+        ["Servers listening", _n(listening.sources_listening)],
+        ["Servers that heard anything today", _n(listening.sources_active_today)],
+        ["Messages heard", _n(listening.heard)],
+        ["Messages kept for tonight's reading", _n(listening.stored)],
+        ["", ""],
+        ["Dropped — the sender has not opted in", _n(listening.dropped_not_opted_in)],
+        ["Dropped — no Mycelium account", _n(listening.dropped_unlinked)],
+        ["Dropped — free plan", _n(listening.dropped_free_tier)],
+        ["Dropped — an excluded channel", _n(listening.dropped_excluded_channel)],
+        ["Dropped — too short to be worth keeping", _n(listening.dropped_too_short)],
+        ["Dropped — another bot", _n(listening.dropped_bot)],
+    ]
+    return [
+        Paragraph("Listening", styles["H1"]),
+        Paragraph(
+            "How much of the lab's own conversation reached Mylo. The dropped "
+            "rows are the useful half: a server where everything lands in \u201cthe "
+            "sender has not opted in\u201d is not broken, it is one where nobody has "
+            "opted in yet, which is a different conversation to have with that "
+            "lab than a misconfigured exclusion. Every figure here is per server "
+            "and per reason, never per person \u2014 a report on how much was heard "
+            "must not become a report on who was heard.",
+            styles["Muted"],
+        ),
+        _table(rows, [4.2 * inch, 2.2 * inch]),
+    ]
+
+
 def _trend_section(data: RunAnalytics, styles) -> list:
     if not data.trend:
         return []
@@ -605,6 +644,7 @@ def render_analytics_pdf(data: RunAnalytics) -> bytes:
         _recommendations_section(data, styles),
         _llm_section(data, styles),
         _delivery_section(data, styles),
+        _listening_section(data, styles),
         _trend_section(data, styles),
     ]
     for index, section in enumerate(sections):

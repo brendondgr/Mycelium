@@ -486,5 +486,60 @@ class PlaceKindTests(unittest.TestCase):
         self.assertEqual(_place_kind(channel), "dm")
 
 
+class HealthTests(unittest.TestCase):
+    """`/mylo health` has to answer what Mylo can actually hear, not what a
+    database row says."""
+
+    def _cog_with(self, *, listen_enabled, message_content):
+        from mylo.bot.cogs.mylo_commands import MyloCog
+
+        bot = SimpleNamespace(
+            config=MyloConfig(
+                token="x", error_channel_id=1, listen_enabled=listen_enabled
+            ),
+            intents=SimpleNamespace(message_content=message_content),
+            user=SimpleNamespace(id=999),
+        )
+        return MyloCog(bot)  # type: ignore[arg-type]
+
+    def _lines(self, cog, state):
+        import mylo.bot.cogs.mylo_commands as commands_module
+
+        fake = SimpleNamespace()
+
+        async def _listening_state(guild_id):
+            return state
+
+        fake.listening_state = _listening_state
+        interaction = SimpleNamespace(guild_id=900)
+        with mock.patch.object(commands_module, "listening", fake):
+            return _run(cog._listening_lines(interaction))
+
+    def test_listening_off_says_off(self) -> None:
+        cog = self._cog_with(listen_enabled=False, message_content=False)
+        lines = self._lines(cog, {"known": True, "listening": False})
+        self.assertEqual(lines, ["Listening here: **off**."])
+
+    def test_stage_a_says_what_it_can_actually_hear(self) -> None:
+        cog = self._cog_with(listen_enabled=False, message_content=False)
+        lines = self._lines(
+            cog,
+            {"known": True, "listening": True, "heard_today": 3, "stored_today": 1},
+        )
+        self.assertIn("server-wide listening is not enabled", lines[0])
+        self.assertIn("heard 3", lines[-1])
+
+    def test_stage_b_says_it_reads_the_channels(self) -> None:
+        cog = self._cog_with(listen_enabled=True, message_content=True)
+        lines = self._lines(cog, {"known": True, "listening": True})
+        self.assertIn("every channel it is not excluded from", lines[0])
+
+    def test_an_unknown_server_is_reported_as_off(self) -> None:
+        cog = self._cog_with(listen_enabled=True, message_content=True)
+        self.assertEqual(
+            self._lines(cog, {"known": False}), ["Listening here: **off**."]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

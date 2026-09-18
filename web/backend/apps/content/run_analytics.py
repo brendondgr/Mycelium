@@ -248,6 +248,45 @@ class TrendPoint:
 
 
 @dataclass
+class Listening:
+    """How much conversation Mylo heard, and why the rest was dropped.
+
+    Counts only. A report about how much was heard must not become a report
+    about *who* was heard, which is why every number here is per-server and
+    per-reason and none is per-person — the ledger never records the latter.
+
+    The dropped figures are the useful half. A server with listening on and
+    everything landing in ``dropped_not_opted_in`` is not broken; it is one
+    where nobody has opted in yet, which is a different conversation to have
+    with that lab than a misconfigured exclusion.
+    """
+
+    sources_listening: int = 0
+    sources_active_today: int = 0
+    heard: int = 0
+    stored: int = 0
+    dropped_not_opted_in: int = 0
+    dropped_unlinked: int = 0
+    dropped_free_tier: int = 0
+    dropped_excluded_channel: int = 0
+    dropped_too_short: int = 0
+    dropped_bot: int = 0
+    dropped_other: int = 0
+
+    @property
+    def dropped(self) -> int:
+        return (
+            self.dropped_not_opted_in
+            + self.dropped_unlinked
+            + self.dropped_free_tier
+            + self.dropped_excluded_channel
+            + self.dropped_too_short
+            + self.dropped_bot
+            + self.dropped_other
+        )
+
+
+@dataclass
 class RunAnalytics:
     """Everything the daily analytics report shows, for one day."""
 
@@ -258,6 +297,7 @@ class RunAnalytics:
     llm: LLMUsage = field(default_factory=LLMUsage)
     delivery: Delivery = field(default_factory=Delivery)
     telemetry: DeliveryTelemetry = field(default_factory=DeliveryTelemetry)
+    listening: Listening = field(default_factory=Listening)
     trend: list[TrendPoint] = field(default_factory=list)
 
     def headline(self) -> str:
@@ -337,6 +377,21 @@ class RunAnalytics:
                 "digests_scheduled": self.delivery.digests_scheduled,
             },
             "telemetry": self.telemetry.as_dict(),
+            "listening": {
+                "sources_listening": self.listening.sources_listening,
+                "sources_active_today": self.listening.sources_active_today,
+                "heard": self.listening.heard,
+                "stored": self.listening.stored,
+                "dropped": self.listening.dropped,
+                "dropped_not_opted_in": self.listening.dropped_not_opted_in,
+                "dropped_unlinked": self.listening.dropped_unlinked,
+                "dropped_free_tier": self.listening.dropped_free_tier,
+                "dropped_excluded_channel": (
+                    self.listening.dropped_excluded_channel
+                ),
+                "dropped_too_short": self.listening.dropped_too_short,
+                "dropped_bot": self.listening.dropped_bot,
+            },
             "trend": [
                 {
                     "day": point.day.isoformat(),
@@ -617,6 +672,30 @@ def collect_trend(day: date, *, days: int = TREND_DAYS) -> list[TrendPoint]:
     return [points[d] for d in window]
 
 
+def collect_listening(day: date) -> Listening:
+    """Ambient listening volume for ``day``.
+
+    Read through ``apps.ambient.read`` — the ledger's one door for the rest of
+    the backend — so this module never touches an ambient model directly.
+    """
+    from apps.ambient.read import listening_totals
+
+    totals = listening_totals(day)
+    return Listening(
+        sources_listening=totals["sources_listening"],
+        sources_active_today=totals["sources_active_today"],
+        heard=totals["heard"],
+        stored=totals["stored"],
+        dropped_not_opted_in=totals["dropped_not_opted_in"],
+        dropped_unlinked=totals["dropped_unlinked"],
+        dropped_free_tier=totals["dropped_free_tier"],
+        dropped_excluded_channel=totals["dropped_excluded_channel"],
+        dropped_too_short=totals["dropped_too_short"],
+        dropped_bot=totals["dropped_bot"],
+        dropped_other=totals["dropped_other"],
+    )
+
+
 def collect_run_analytics(day: date | None = None) -> RunAnalytics:
     """Assemble the whole picture for ``day`` (default: today, local time)."""
     run_day = day or timezone.localdate()
@@ -628,5 +707,6 @@ def collect_run_analytics(day: date | None = None) -> RunAnalytics:
         llm=collect_llm_usage(run_day),
         delivery=collect_delivery(run_day),
         telemetry=collect_telemetry(run_day),
+        listening=collect_listening(run_day),
         trend=collect_trend(run_day),
     )

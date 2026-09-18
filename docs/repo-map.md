@@ -163,7 +163,7 @@ Files below are inside `web/backend/apps/content/`.
 | One run's numbers (volume, matched, entered, by category/project/theme, deadline horizon) | `report_stats.py` — derived from the finished `ReportData`, stored on `DailyBriefing.stats`, read back by every surface |
 | The Discord post's shape (overview, statistics, Discord's size limits) | `discord_embeds.py` — `personal_report_embed`, `lab_post_embed`, `fit_embed` |
 | Who gets a Discord push today, and at what local hour | `delivery.py` — `push_kinds` (the cadence matrix), `send_time`/`local_today`, and every dedupe key. Cadence governs push only; the nightly run and the web app are unchanged by it |
-| Nightly run analytics | `run_analytics.py`, `analytics_report_pdf.py`, `management/commands/run_analytics_report.py` |
+| Nightly run analytics | `run_analytics.py`, `analytics_report_pdf.py`, `management/commands/run_analytics_report.py`; the Listening section reads `apps.ambient.read.listening_totals` and is omitted when nothing is listening |
 | Reminders | `reminders.py`, `reminders_tick.py`, `reminders_views.py`, `reminders_discord.py`, `reminders_announce.py`, `reminder_access.py` |
 | Deadline projection | `deadlines_projection.py` |
 | Is an opportunity still worth showing (feeds + prune share it) | `liveness.py` |

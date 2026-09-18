@@ -150,10 +150,22 @@ Nothing here belongs in code.
    - **Server Members** — needed for member joins/leaves and full member lists.
    - **Presence** — needed for online status. Almost never worth it.
 
-   Under 100 servers you can toggle these yourself. At 100+ servers the app must
-   be verified and each privileged intent must be justified and approved.
-   Enabling an intent in code that isn't enabled in the portal makes the bot
-   fail to connect with a `PrivilegedIntentsRequired` error.
+   **The threshold is 10,000 total users, not 100 servers** (verified
+   2026-09-17; Discord replaced the old server-count rule). Below it you toggle
+   these yourself in the portal. At 10,000+ the app must be verified and each
+   privileged intent justified and approved, with **annual re-application** and
+   a 90-day grace period if access lapses. Enabling an intent in code that is
+   not enabled in the portal makes the bot fail to connect with a
+   `PrivilegedIntentsRequired` error — so a feature that needs one ships behind
+   a config switch that leaves the intent unrequested until somebody has the
+   grant. See
+   <https://discord.com/blog/updated-requirements-to-how-apps-access-data-in-servers>.
+
+   Mylo's own use: ambient listening (`docs/plans/ambient-profile/`) needs
+   Message Content for server-wide reading, and ships with it **off**. DMs,
+   @mentions, message actions and reactions on the bot's own posts are
+   delivered without any privileged intent, which is why the feature's first
+   stage uses only those.
 4. **Installation / OAuth2 → URL Generator** — build the invite link:
    - Scopes: **`bot`** and **`applications.commands`**. Slash commands do not
      appear without `applications.commands`.
