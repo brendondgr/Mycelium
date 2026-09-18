@@ -21,7 +21,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m sandbox.collab")
     parser.add_argument(
         "command",
-        choices=["world", "corpus", "seed", "run", "score", "all", "sweep", "calls"],
+        choices=[
+            "world",
+            "corpus",
+            "seed",
+            "run",
+            "score",
+            "all",
+            "sweep",
+            "calls",
+            "consent",
+        ],
     )
     parser.add_argument(
         "--thresholds",
@@ -77,6 +87,28 @@ def main() -> int:
     if args.command in ("seed", "all"):
         seed_mod.reset()
         report["seeded"] = seed_mod.seed(world, corpus)
+    if args.command == "consent":
+        from . import consent_sim
+
+        planned = consent_sim.plan(world, args.seed)
+        started = time.monotonic()
+        applied = consent_sim.apply(world, planned)
+        report["apply_seconds"] = round(time.monotonic() - started, 1)
+        started = time.monotonic()
+        metrics = consent_sim.check(world, planned, applied, seed=args.seed)
+        report["check_seconds"] = round(time.monotonic() - started, 1)
+        report["metrics"] = metrics
+        report["invariant_failures"] = [
+            f"{k} = {v}"
+            for k, v in metrics.items()
+            if k.startswith("violations_") and v
+        ]
+        text = json.dumps(report, indent=1, sort_keys=True, default=str)
+        if args.out:
+            Path(args.out).write_text(text)
+        print(text)
+        return 1 if report["invariant_failures"] else 0
+
     if args.command == "calls":
         from . import calls as calls_mod
 
