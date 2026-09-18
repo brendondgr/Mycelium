@@ -21,6 +21,7 @@ from apps.knowledge.models import (
     Relation,
     Scope,
     Tier,
+    WorkFacets,
 )
 from apps.research.models import Project
 
@@ -173,3 +174,10 @@ def test_a_scoped_concept_goes_with_its_owner(lab, ada):
     lab.delete()
     department.delete()
     assert not Concept.objects.filter(pk__in=[in_lab.pk, in_department.pk]).exists()
+
+
+def test_a_works_facets_go_with_the_work(ada):
+    work = AuthorWork.objects.create(user=ada, source="openalex", source_id="W9")
+    WorkFacets.objects.create(author_work=work, terms={"method": ["kriging"]})
+    ada.delete()
+    assert not WorkFacets.objects.exists()

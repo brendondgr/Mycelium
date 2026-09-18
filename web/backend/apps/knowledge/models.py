@@ -468,3 +468,58 @@ class ConceptMerge(models.Model):
 
     def __str__(self) -> str:
         return f"ConceptMerge({self.kind} {self.source_id} → {self.target_id})"
+
+
+class WorkFacets(models.Model):
+    """What one of a person's own published works shows, facet by facet.
+
+    One row per :class:`~apps.accounts.models.AuthorWork`, written once per
+    (prompt version, source fingerprint) and never again for unchanged text —
+    the same rule the corpus précis follows. Two layers:
+
+    * **Sentences** (``problem``, ``method``, ``setting``, ``reusable``) and one
+      vector per facet: what retrieval ranks, per work, so a person is never
+      averaged into one vector (design §5.3).
+    * **Terms** (short noun phrases per facet): what the linker turns into
+      concepts and ``demonstrated`` edges.
+
+    ``method_neutral`` restates the main method without field vocabulary
+    (design §5.5) so a method can be matched across fields. A thin work — no
+    abstract, or nothing the model could ground — produces no edges.
+    """
+
+    author_work = models.OneToOneField(
+        "accounts.AuthorWork", on_delete=models.CASCADE, related_name="facets"
+    )
+    problem = models.TextField(blank=True, default="")
+    method = models.TextField(blank=True, default="")
+    setting = models.TextField(blank=True, default="")
+    reusable = models.TextField(blank=True, default="")
+    method_neutral = models.CharField(max_length=200, blank=True, default="")
+    terms = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="{problem|method|setting|reusable: [short phrases]}",
+    )
+    thin = models.BooleanField(default=False)
+    refused = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="What failed validation and was dropped, for diagnosis.",
+    )
+    problem_vec = VectorField(null=True, blank=True)
+    method_vec = VectorField(null=True, blank=True)
+    method_neutral_vec = VectorField(null=True, blank=True)
+    setting_vec = VectorField(null=True, blank=True)
+    reusable_vec = VectorField(null=True, blank=True)
+    openalex_field_id = models.CharField(max_length=32, blank=True, default="")
+    prompt_version = models.CharField(max_length=32, blank=True, default="")
+    source_fingerprint = models.CharField(max_length=64, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "work facets"
+
+    def __str__(self) -> str:
+        return f"WorkFacets({self.author_work_id}{', thin' if self.thin else ''})"

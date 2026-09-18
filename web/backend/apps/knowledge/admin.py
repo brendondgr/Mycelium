@@ -10,7 +10,7 @@ from __future__ import annotations
 from django.contrib import admin, messages
 
 from . import merging
-from .models import Concept, ConceptAlias, ConceptMerge, Edge
+from .models import Concept, ConceptAlias, ConceptMerge, Edge, WorkFacets
 
 
 class ConceptAliasInline(admin.TabularInline):
@@ -86,3 +86,25 @@ class ConceptMergeAdmin(admin.ModelAdmin):
                 self.message_user(request, f"{record}: {exc}", messages.ERROR)
         if reversed_count:
             self.message_user(request, f"Reversed {reversed_count} merge(s).")
+
+
+@admin.register(WorkFacets)
+class WorkFacetsAdmin(admin.ModelAdmin):
+    list_display = ("author_work", "thin", "method_neutral", "prompt_version")
+    list_filter = ("thin", "prompt_version")
+    search_fields = ("author_work__title", "method_neutral")
+    exclude = (
+        "problem_vec",
+        "method_vec",
+        "method_neutral_vec",
+        "setting_vec",
+        "reusable_vec",
+    )
+    readonly_fields = [
+        field.name
+        for field in WorkFacets._meta.fields
+        if not field.name.endswith("_vec")
+    ]
+
+    def has_add_permission(self, request) -> bool:
+        return False

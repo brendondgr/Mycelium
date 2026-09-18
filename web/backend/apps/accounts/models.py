@@ -573,8 +573,7 @@ class LabInvitation(models.Model):
             ),
             # An invite must target either a resolved user or an email.
             models.CheckConstraint(
-                condition=models.Q(invitee__isnull=False)
-                | ~models.Q(invited_email=""),
+                condition=models.Q(invitee__isnull=False) | ~models.Q(invited_email=""),
                 name="accounts_lab_invite_has_target",
             ),
         ]
@@ -863,7 +862,17 @@ class AuthorWork(models.Model):
     doi = models.CharField(max_length=200, blank=True, default="")
     abstract = models.TextField(blank=True, default="")
     coauthors = models.JSONField(default=list, blank=True)
+    # Co-authors by identity, where the source gives one (OpenAlex author ids).
+    # Names alone cannot answer "does the seeker already work with this person"
+    # — two people share a name, one person spells theirs three ways.
+    coauthor_ids = models.JSONField(default=list, blank=True)
     cited_by = models.PositiveIntegerField(null=True, blank=True)
+    # The OpenAlex field of the work's primary topic ("17" is Computer
+    # Science), used only to measure distance between fields — never shown as a
+    # label. Blank until known; ``field_checked_at`` records that a DOI lookup
+    # was tried, so a work OpenAlex does not know is not looked up every night.
+    openalex_field_id = models.CharField(max_length=32, blank=True, default="")
+    field_checked_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
