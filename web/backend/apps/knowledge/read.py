@@ -37,6 +37,7 @@ __all__ = [
     "Backing",
     "EdgeView",
     "backing",
+    "concept_vectors",
     "discoverable_edges",
     "lab_declared_edges",
     "own_edges",
@@ -264,3 +265,16 @@ def backing(user) -> list[Backing]:
         )
         for concept_id, entry in found.items()
     ]
+
+
+def concept_vectors(concept_ids: Iterable[int]) -> dict[int, list[float]]:
+    """The embedding of each named concept, for comparing a phrase with it.
+
+    A concept's vector says nothing about who holds it, so this carries no tier
+    rule of its own: a caller only has concept ids from edges some other
+    function here already let it see.
+    """
+    rows = Concept.objects.filter(
+        pk__in=list(concept_ids), embedding__isnull=False
+    ).values_list("pk", "embedding")
+    return {pk: [float(v) for v in vector] for pk, vector in rows}

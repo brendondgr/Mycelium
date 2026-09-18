@@ -217,6 +217,10 @@ These rules hold either way; what keeps them safe is structure, not care:
 - **CN-02 (2026-09-18):** `WorkFacets` (one row per `AuthorWork`) and
   `read.backing` (Q2); `projection._apply` takes a tier so demonstrated edges
   reuse it. No change to `Concept` or `Edge`.
+- **CN-03 (2026-09-18):** `read.concept_vectors(concept_ids)` — a concept's
+  embedding, for comparing a call's slot with it; added to the functions the
+  collaboration app may import. A vector says nothing about who holds the
+  concept, and a caller only has ids from edges it was already allowed to see.
 
 ## Cross-cutting open decisions
 
