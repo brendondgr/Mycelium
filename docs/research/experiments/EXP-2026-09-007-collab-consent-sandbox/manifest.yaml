@@ -9,67 +9,81 @@
 id: EXP-2026-09-007
 slug: collab-consent-sandbox
 title: Is anyone ever findable who should not be? A synthetic-world test of plan CN-04
-status: planned # planned | running | complete | failed | superseded
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-09-18
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-09-18
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  The sandbox validation plan CN-04 must pass before it is retired: a consent
+  matrix planted on EXP-2026-09-005's world, every rule of being findable
+  checked exhaustively against an independent reference, and a simulated week
+  of searches to test the appearance cap.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Pre-registered in PROTOCOL.md: every violation counter is zero (verified
+  scope, mutual visibility, refusals, expiry, preview, cap); the cap's effect
+  on concentration is exploratory. OUTCOME: 0 violations; Gini of distinct
+  seekers per open person 0.441 without the cap, 0.038 with it; 75% of
+  would-be results withheld in the heavy simulated week.
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 2e6dff6
+  commit: 8c084fe
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  entrypoint: "cd web/backend && uv run --project . python -m sandbox.collab consent --people 240 --out /app/data/sandbox/exp007.json && python3 docs/research/experiments/EXP-2026-09-007-collab-consent-sandbox/code/analyse.py"
+  dirty: true  # this folder uncommitted while it ran
 config:
-  path: <path to the config file, or null>
+  path: web/backend/sandbox/collab/consent_sim.py
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
-  qrels: null
+  name: consent matrix on the synthetic collaboration world
+  version: "seed 20260918, 240 people"
+  split: test
+  n_examples: 240 # people; 58,794 visibility triples; 2,000 searches
+  qrels: "planted ground truth and an independent reference — not human assessment"
   hash: null
-  card: null # docs/research/datasets/cards/<name>.md
-seeds: []
+  card: null
+seeds: [20260918]
 n_runs: 1
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
-
-# --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+  hardware: "20 CPU cores, 62 GB RAM; no model"
+  wall_clock_hours: 0.01
+  estimated_cost_usd: 0.0
 
 # --- Results block -----------------------------------------------------------
-# Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
+  primary: violations_total (must be 0)
+  values:
+    apply_seconds: 8.5
+    check_seconds: 20.2
+    gini_capped: 0.0382
+    gini_uncapped: 0.4407
+    max_distinct_seekers_capped: 10
+    max_distinct_seekers_uncapped: 220
+    open_now: 82
+    previews_checked: 82
+    refusals_tried: 28
+    results_returned: 1496
+    results_withheld_by_cap: 4501
+    results_withheld_share: 0.7505
+    scope_checked: 240
+    searches: 2000
+    violations_cap: 0
+    violations_expiry: 0
+    violations_preview: 0
+    violations_refusals: 0
+    violations_scope: 0
+    violations_total: 0
+    violations_visibility: 0
+    visibility_seconds: 0.1
+    visibility_triples: 58794
+baselines_compared: [reference implementation, the same search week without the cap]
 statistical_test: null
 
 # --- Linkage -----------------------------------------------------------------
@@ -78,4 +92,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-09-005, EXP-2026-09-006]

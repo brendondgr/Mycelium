@@ -2,20 +2,20 @@
 
 | Field | Value |
 |---|---|
-| CPU | |
-| RAM | |
-| GPU | model and count, or "none" — say it explicitly rather than leaving it blank |
-| Python | |
-| Lockfile | path to the lockfile that pinned this run |
-| Container | image digest, or "none — run on the host" |
-| Total wall clock | |
+| CPU | 20 cores (host), shared by the backend container |
+| RAM | 62 GB |
+| GPU | none used |
+| Python | 3.13 (backend container) |
+| Lockfile | `web/backend/uv.lock` |
+| Container | the stack's `backend` service |
+| Model | none — no model is called; the embedder (`BAAI/bge-small-en-v1.5`, CPU) only links the planted conversational topics |
+| Total wall clock | 29 s: planting 8.5 s, every check 20.2 s |
 
 ## Where the time went
 
-A per-stage breakdown when one stage dominates. Knowing that 90% of a run is one
-embedding pass is what tells the next person which knob is worth turning.
+Planting the matrix through the real code paths, and the simulated search
+week (2,000 searches, each re-checking mutual visibility and the cap).
 
 ## Anything about the hardware that affects the claim
 
-CPU vs GPU, matched or unmatched compute against a baseline, memory limits that
-forced a smaller batch size.
+None: every number is a count against planted truth.

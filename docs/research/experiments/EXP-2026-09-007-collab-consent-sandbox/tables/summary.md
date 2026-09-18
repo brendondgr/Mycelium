@@ -1,0 +1,25 @@
+| Metric | Value |
+|---|---:|
+| `apply_seconds` | 8.5 |
+| `check_seconds` | 20.2 |
+| `gini_capped` | 0.0382 |
+| `gini_uncapped` | 0.4407 |
+| `max_distinct_seekers_capped` | 10 |
+| `max_distinct_seekers_uncapped` | 220 |
+| `open_now` | 82 |
+| `previews_checked` | 82 |
+| `refusals_tried` | 28 |
+| `results_returned` | 1496 |
+| `results_withheld_by_cap` | 4501 |
+| `results_withheld_share` | 0.7505 |
+| `scope_checked` | 240 |
+| `searches` | 2000 |
+| `violations_cap` | 0 |
+| `violations_expiry` | 0 |
+| `violations_preview` | 0 |
+| `violations_refusals` | 0 |
+| `violations_scope` | 0 |
+| `violations_total` | 0 |
+| `violations_visibility` | 0 |
+| `visibility_seconds` | 0.1 |
+| `visibility_triples` | 58794 |
