@@ -10,7 +10,8 @@ from apps.knowledge import papers, projection, works
 class CountingModel:
     """The configured model, with every call counted and timed."""
 
-    def __init__(self) -> None:
+    def __init__(self, complete=None) -> None:
+        self.complete = complete or works._settings_complete
         self.calls = 0
         self.seconds = 0.0
         self.failures = 0
@@ -19,7 +20,7 @@ class CountingModel:
         self.calls += 1
         started = time.monotonic()
         try:
-            return works._settings_complete(system, user)
+            return self.complete(system, user)
         except Exception:
             self.failures += 1
             raise

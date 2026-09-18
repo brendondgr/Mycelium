@@ -21,7 +21,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m sandbox.collab")
     parser.add_argument(
         "command",
-        choices=["world", "corpus", "seed", "run", "score", "all", "sweep"],
+        choices=["world", "corpus", "seed", "run", "score", "all", "sweep", "calls"],
     )
     parser.add_argument(
         "--thresholds",
@@ -33,6 +33,7 @@ def main() -> int:
     parser.add_argument("--corpus", help="Where generated abstracts are cached.")
     parser.add_argument("--out", help="Write the metrics JSON here.")
     parser.add_argument("--workers", type=int, default=12)
+    parser.add_argument("--calls", type=int, default=150, help="For calls: how many.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -68,6 +69,28 @@ def main() -> int:
     if args.command in ("seed", "all"):
         seed_mod.reset()
         report["seeded"] = seed_mod.seed(world, corpus)
+    if args.command == "calls":
+        from . import calls as calls_mod
+
+        planted = calls_mod.build(seed=args.seed, n=args.calls)
+        started = time.monotonic()
+        texts = calls_mod.generate(
+            planted,
+            Path(f"/app/data/sandbox/calls-{args.seed}-{args.calls}.json"),
+            workers=args.workers,
+        )
+        report["calls_corpus_seconds"] = round(time.monotonic() - started, 1)
+        items = calls_mod.seed(planted, texts)
+        run = calls_mod.run(items, world)
+        metrics = calls_mod.score(world, planted, texts, items, run)
+        report["metrics"] = metrics
+        report["invariant_failures"] = calls_mod.failures(metrics)
+        text = json.dumps(report, indent=1, sort_keys=True, default=str)
+        if args.out:
+            Path(args.out).write_text(text)
+        print(text)
+        return 1 if report["invariant_failures"] else 0
+
     if args.command == "sweep":
         rows = []
         for value in [float(v) for v in args.thresholds.split(",")]:
