@@ -101,6 +101,26 @@ zero privacy risk before anything searches outward.
 - **OD-CN03b** Whether the line shows on personal cards for people with no lab.
   Recommendation: yes; "covered by you" alone is still useful.
 
+## Sandbox validation (before moving on)
+
+Extends the harness with **planted calls**: for each fake funding call, the
+spec fixes its required expertise (one to four slots, some matching a lab's
+declared methods, some matching nobody in that lab, some roles that are not
+facets), and the local model writes the call text from it.
+
+- **Slot extraction** against the planted slots: precision and recall of
+  slots by facet; `role` slots never matched. Bars pre-registered.
+- **Coverage** against the planted labs: every (lab, call) pair's
+  covered-by-you / covered-by-lab / gap marking checked against the declared
+  profiles. Accuracy ≥ 0.95; a lab-mate named on demonstrated or
+  conversational evidence is an invariant (must be zero).
+- **Q3** for every lab and call.
+- **Scale:** the team-fit signal computed for every (target, call) pair the
+  nightly scoring would touch — 240 people, 48 labs, 200 calls — with the
+  wall-clock cost of the extra step recorded.
+- **Invariants:** no project-derived concept is global; `team_gap` alerts on
+  a frozen set match the pre-change output except the listed fixes.
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,

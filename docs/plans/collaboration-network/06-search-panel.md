@@ -59,6 +59,18 @@ mobile-friendly skills, and reuses the portal primitives.
   search.
 - Lanes render as separate groups at every width.
 
+## Sandbox validation (before moving on)
+
+- **API end to end** against the sandbox: every entry point (call, project,
+  manual) through the real endpoints with the Django test client as fake
+  seekers, checking response shape, lane grouping, coarse-pointer contents
+  (nothing beyond name, verified affiliation, one facet, tier, rationale), and
+  the free-tier and flag-off paths.
+- **In a browser**, at desktop and phone width, against a backend instance
+  pointed at the sandbox database (a second server on its own port, hooks
+  off), so the real panel is exercised with hundreds of fake people without
+  touching the development data.
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,

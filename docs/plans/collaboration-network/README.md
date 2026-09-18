@@ -161,6 +161,27 @@ inputs:
 | Q3 | For this call, which requirement slots does the lab cover, by whom, and which are gaps? | call → slot concept ← lab member | CN-03 |
 | Q4 | Who, in the seeker's scope, uses the method this project needs, in a different field? | project → method concept ← work → author, field ≠ | CN-05 |
 
+## Validation in the sandbox
+
+Unit tests prove each rule in isolation; they do not prove the pipeline works
+on hundreds of people with a real model. So no plan in this series is retired
+until it has also passed a **sandbox validation**: the real code, run at scale
+against a synthetic world whose truth is known, scored against that truth, and
+recorded as an experiment under `docs/research/experiments/`.
+
+The harness is `web/backend/sandbox/collab/` (run from `web/backend` inside the
+backend container: `uv run --project . python -m sandbox.collab all --people N`).
+It builds a deterministic fake world — researchers at real university domains,
+methods that cross fields under different names, near-miss methods, declared
+interests never published on, methods published and never declared, lab
+projects with needs no member covers — has the local model
+(`llm-tunnel:9090`, `default-model`) write every paper, seeds it into its own
+database (`mycelium_sandbox`) through the app's models, runs the pipeline, and
+scores it. It refuses to run against any other database and forces both
+knowledge hooks off, so nothing reaches the development data or the live
+worker. Each plan below states the checks it adds; invariants (things that
+must be zero) are a hard gate, rates are compared with a pre-registered bar.
+
 ## Keeping the two series apart
 
 The series are built one after the other (see the build order above), but they

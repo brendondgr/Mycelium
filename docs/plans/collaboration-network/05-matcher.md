@@ -128,6 +128,27 @@ grouped by lane — never merged (`design §6`, `§9.1`). It launches at
 - **OD-CN05b** Whether lab-mates are excluded or shown in a separate "in your
   lab" group. Recommendation: excluded here; CN-03's line already shows them.
 
+## Sandbox validation (before moving on)
+
+The largest run in the series, because the matcher is where every earlier
+plan meets. The world is scaled up (at least 600 people across the six
+institutions) and the planted truth defines, for every project need and every
+call gap, which opted-in people *should* appear in which lane: same field and
+problem (in-field), same method in another field (method bridge), same problem
+by another method (problem bridge), a reusable dataset (resource).
+
+- **Lane recall@k and precision@k** against that truth, per lane, with the
+  bridge lanes reported separately — a method-bridge result from the same
+  field is a failure, not a hit.
+- **The gate, exhaustively:** every search's results re-checked against
+  consent, audience ∩ scope, the appearance cap, lab-mates and co-authors
+  excluded. Any violation is an invariant failure.
+- **The model never adds a name:** every rationale's person is in the
+  shortlist (invariant).
+- **Load:** a simulated week of searches (hundreds of seekers) to measure the
+  appearance cap's effect on concentration (Gini before and after the cap) and
+  per-search latency p50/p95 with the model on and off.
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,

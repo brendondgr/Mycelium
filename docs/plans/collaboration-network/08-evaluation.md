@@ -50,6 +50,14 @@ in `manifest.yaml` and `RESULTS.md`.
    feedback rates, cap hits) — counts only, no names.
 10. The harm checks as a scheduled query with an error report on any non-zero.
 
+## Sandbox validation
+
+The sandbox runs of CN-02 to CN-07 are this plan's first evidence, and the
+concept-merge threshold sweep of `EXP-2026-09-005` is the shared concept-merge
+experiment's first data point. What the sandbox cannot answer — whether a real
+researcher finds a bridge result worth contacting — stays with the human
+judgment round on real projects.
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,

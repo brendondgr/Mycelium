@@ -92,6 +92,20 @@ for what, and until when — and sees exactly what a seeker would see
   Recommendation: no; it is each person's own choice and seeing it invites
   pressure.
 
+## Sandbox validation (before moving on)
+
+Extends the world with a **consent matrix**: a planted share of people opt in,
+with audiences spread over institution, country and anywhere, some already
+expired, and some on personal email domains that match no institution.
+
+- **Verified scope** derived for every person matches the planted institution
+  and country exactly (accuracy 1.0); personal-domain people have none.
+- **Preview** for every opted-in person lists no conversational and no project
+  edge (invariant), and every concept it lists is one a search could match.
+- **Expiry** reads as off at query time with no job run (invariant).
+- **Appearance ledger** under a simulated week of searches: no candidate
+  exceeds the cap for new seekers (invariant).
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,

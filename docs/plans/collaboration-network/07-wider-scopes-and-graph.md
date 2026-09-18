@@ -56,6 +56,19 @@ measurements, whether that machinery is Postgres or Neo4j.
 - No introduction path names a person who is not open to the seeker.
 - A proposed team never includes a person the gate would have removed alone.
 
+## Sandbox validation (before moving on)
+
+- **Scopes:** with the world's three countries and six institutions, every
+  search at country and anywhere scope re-checked against audience ∩ scope.
+- **Introduction paths** against the planted co-authorship graph: every path
+  returned is a real chain of co-authorships and passes through only people
+  open to the seeker (invariant); shortest-path length matches a brute-force
+  search on the same graph.
+- **Team formation:** every proposed team covers every gap slot, and every
+  member passes the gate alone.
+- **The store benchmark** (the Neo4j decision) is run on synthetic
+  co-authorship graphs of 1,000, 5,000 and 20,000 people, which needs no model.
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,
