@@ -36,3 +36,16 @@ def _serial_llm_calls(settings):
     """
     settings.WRITEUP_LLM_CONCURRENCY = 1
     settings.OPPORTUNITY_LLM_CONCURRENCY = 1
+
+
+@pytest.fixture(autouse=True)
+def _local_rerank(settings):
+    """Pin ``RERANK_METHOD`` to ``local`` for every test.
+
+    The deployment default is ``typesafe``, and with a key in the environment
+    the stage would make real, billed calls from worker threads inside a
+    pipeline test — which is how 20 ledger rows once leaked out of
+    ``test_every_theme_reaches_the_model``. Tests about the switch set
+    ``typesafe`` explicitly and pass a fake client.
+    """
+    settings.RERANK_METHOD = "local"
