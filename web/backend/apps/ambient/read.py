@@ -60,6 +60,7 @@ class WindowMessage:
     sent_at: object
     place_kind: str
     place_label: str
+    place_id: str
     speaker_id: int | None
     speaker_kind: str
     text: str | None
@@ -103,21 +104,36 @@ class Window:
         return [message.external_id for message in self.messages]
 
 
-def window(source: Source, since, until=None) -> Window:
+def window(source: Source, since, until=None, *, revalidate: bool = True) -> Window:
     """Assemble one window of conversation from a surface.
 
     Deleted messages are left out entirely: a tombstoned reference means the
     person took the message back, and a window is not the place to resurrect it.
+
+    With ``revalidate`` (the default) every speaker is checked again first, and
+    anybody who is no longer eligible — opted out, unlinked, lapsed since the
+    message arrived — has their messages discarded before the window is built.
+    It is the read boundary that enforces this, so no caller can forget to.
     """
+    from .reconcile import drop_ineligible
+
     until = until or timezone.now()
-    refs = list(
-        RawMessageRef.objects.filter(
-            source=source,
-            sent_at__gte=since,
-            sent_at__lte=until,
-            deleted_at__isnull=True,
-        ).order_by("sent_at", "pk")
-    )
+
+    def _refs():
+        return list(
+            RawMessageRef.objects.filter(
+                source=source,
+                sent_at__gte=since,
+                sent_at__lte=until,
+                deleted_at__isnull=True,
+            )
+            .select_related("speaker")
+            .order_by("sent_at", "pk")
+        )
+
+    refs = _refs()
+    if revalidate and drop_ineligible(source, refs):
+        refs = _refs()
     bodies = buffer.get_many(source.pk, [ref.external_id for ref in refs])
     return Window(
         source_id=source.pk,
@@ -129,6 +145,7 @@ def window(source: Source, since, until=None) -> Window:
                 sent_at=ref.sent_at,
                 place_kind=ref.place_kind,
                 place_label=ref.place_label,
+                place_id=ref.place_id,
                 speaker_id=ref.speaker_id,
                 speaker_kind=ref.speaker_kind,
                 text=bodies.get(ref.external_id),
@@ -239,6 +256,7 @@ def listening_totals(day=None) -> dict:
         "dropped_excluded_channel",
         "dropped_too_short",
         "dropped_bot",
+        "dropped_lapsed",
         "dropped_other",
     ]
     totals = SourceActivity.objects.filter(day=when).aggregate(

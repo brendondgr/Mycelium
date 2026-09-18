@@ -51,6 +51,16 @@ _NOTICE = (
 )
 
 
+def _mention_ids(message: discord.Message) -> list[str]:
+    """The people a message names, as snowflakes. Bots — Mylo included — are not
+    people being talked about. The backend decides what, if anything, to keep."""
+    return [
+        str(user.id)
+        for user in getattr(message, "mentions", [])
+        if not getattr(user, "bot", False)
+    ][:20]
+
+
 def _attachment_urls(message: discord.Message) -> list[str]:
     """A pasted file contributes its URL and never its content (OD-01a)."""
     return [attachment.url for attachment in message.attachments][:10]
@@ -141,6 +151,7 @@ class ListenCog(commands.Cog, name="Listening"):
             is_bot=bool(message.author.bot),
             from_mylo=from_mylo,
             explicit=explicit,
+            mention_ids=_mention_ids(message),
         )
         if outcome.get("notify_member"):
             await self._notify(message)

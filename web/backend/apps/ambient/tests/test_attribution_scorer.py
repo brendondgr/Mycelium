@@ -169,8 +169,27 @@ def test_participants_alone_never_decide():
 
 
 def test_continuity_carries_a_short_follow_up():
-    result = score(BOTH, Context(text="yes, today", continuity=("img", 0.0)))
+    result = score(BOTH, Context(text="yes, today", continuity=("img", 2.0)))
     assert result.project_id == "img"
+
+
+def test_a_message_carried_by_continuity_is_not_an_anchor():
+    """Which is what stops a chain of "ok"s carrying a project all afternoon."""
+    carried = score(BOTH, Context(text="yes, today", continuity=("img", 2.0)))
+    named = score(BOTH, Context(text="IMG-seg is done"))
+    assert not carried.anchor
+    assert named.anchor
+    assert named.as_json()["anchor"] is True
+
+
+def test_continuity_yields_to_another_project_named_outright():
+    """Even a fuzzy mention of the other project outvotes the last topic."""
+    result = score(
+        BOTH,
+        Context(text="the study on annotation is late", continuity=("img", 1.0)),
+    )
+    assert result.project_id == "ann"
+    assert "continuity" not in result.scores.get("img", {})
 
 
 def test_continuity_fades_below_the_floor():

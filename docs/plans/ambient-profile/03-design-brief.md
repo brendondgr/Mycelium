@@ -77,11 +77,21 @@ rather than a guess.
 | `AMBIENT_THREAD_OVERRIDE` | `0.9` | Content score another project needs to break a thread's inheritance |
 
 Signal caps: name or alias 1.0 exact / 0.6 fuzzy; known entities 0.25 each up
-to 0.6; thread inheritance 0.7; continuity up to 0.6, decaying to zero; a
-forum-post or thread title naming the project 0.4; channel hint 0.3;
-participants up to 0.3; semantic similarity up to 0.5. A channel hint, a title,
-continuity or participants can never resolve a message alone — each is below
-the floor on its own.
+to 0.6; thread inheritance 0.7; continuity up to 0.75, decaying to zero over
+the window; a forum-post or thread title naming the project 0.4; channel hint
+0.3; participants up to 0.3; semantic similarity up to 0.5. A channel hint, a
+title, participants or similarity can never resolve a message alone.
+
+**Continuity is the exception, deliberately.** A reply a few minutes after a
+message that named a project is about that project — that is how conversation
+works, and a rule that left "nice, ship it" unresolved would leave most of a
+lab channel unresolved. Two limits keep it honest, and both were added during
+implementation when the first version failed its own fixture: it carries only
+from an **anchor** — a message whose own words named the project, or one a
+person corrected — so a chain of "ok"s cannot carry a project across an
+afternoon; and it **yields** the moment another project is named outright, so
+the last topic never outvotes the current one. Alone it decides for about the
+first six minutes of the thirty-minute window.
 
 ## Who can see what
 

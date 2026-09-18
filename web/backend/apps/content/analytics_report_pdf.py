@@ -560,6 +560,10 @@ def _listening_section(data: RunAnalytics, styles) -> list:
         ["Dropped — an excluded channel", _n(listening.dropped_excluded_channel)],
         ["Dropped — too short to be worth keeping", _n(listening.dropped_too_short)],
         ["Dropped — another bot", _n(listening.dropped_bot)],
+        [
+            "Dropped at the nightly read — no longer eligible",
+            _n(listening.dropped_lapsed),
+        ],
     ]
     return [
         Paragraph("Listening", styles["H1"]),

@@ -13,8 +13,9 @@ known entities         0.25 per dataset, method, venue or milestone the
                        project already lists, up to 0.6
 thread inheritance     0.7 for the project a thread's opening was about,
                        unless the content disagrees strongly
-continuity             up to 0.6 for the last confident attribution in the
-                       same place, falling to nothing over the window
+continuity             up to 0.75 for the last message in the same place
+                       that named the project, falling to nothing over the
+                       window; it never chains, and yields to content
 title                  0.4 when a thread or forum-post title names it
 channel hint           0.3 for a channel's optional default project
 participants           up to 0.3 by how many of the others talking are on it
@@ -58,7 +59,7 @@ NAME_FUZZY = 0.6
 ENTITY_EACH = 0.25
 ENTITY_CAP = 0.6
 INHERIT = 0.7
-CONTINUITY_CAP = 0.6
+CONTINUITY_CAP = 0.75
 TITLE_EXACT = 0.4
 TITLE_FUZZY = 0.25
 HINT = 0.3
@@ -164,7 +165,8 @@ class Context:
     place_kind: str = "channel"
     place_label: str = ""
     hinted_project_id: str | None = None
-    #: The last confident attribution in the same place: (project id, minutes ago).
+    #: The last message in the same place whose own words named a project:
+    #: (project id, minutes ago).
     continuity: tuple[str, float] | None = None
     #: The project a thread's opening was attributed to, if this is a thread.
     inherited_project_id: str | None = None
@@ -194,16 +196,34 @@ class Attribution:
             pid: round(sum(parts.values()), 4) for pid, parts in self.scores.items()
         }
 
+    @property
+    def anchor(self) -> bool:
+        """Whether the message's own words named the winning project.
+
+        Only an anchor can start continuity. A message attributed by continuity
+        is not one, which is what stops a chain of "ok"s carrying a project
+        across an afternoon.
+        """
+        if not self.resolved:
+            return False
+        parts = self.scores.get(self.project_id, {})
+        return any(name in parts for name in _CONTENT_SIGNALS)
+
     def as_json(self) -> dict:
         """The stored form: numbers and project vocabulary, never the message."""
         return {
             "decided_by": self.decided_by,
+            "anchor": self.anchor,
             "scores": {
                 pid: {name: round(value, 4) for name, value in parts.items()}
                 for pid, parts in self.scores.items()
             },
             "matched": {pid: list(terms) for pid, terms in self.matched.items()},
         }
+
+
+#: Signals that come from the message's own words.
+_CONTENT_SIGNALS = ("name", "entities", "semantic")
 
 
 def _content_signals(candidate: Candidate, folded: str) -> tuple[dict, list[str]]:
@@ -276,11 +296,6 @@ def score(candidates: list[Candidate], context: Context) -> Attribution:
                     break
         if context.hinted_project_id == candidate.project_id:
             parts["hint"] = HINT
-        if context.continuity and context.continuity[0] == candidate.project_id:
-            window = continuity_minutes()
-            age = max(0.0, float(context.continuity[1]))
-            if age < window:
-                parts["continuity"] = CONTINUITY_CAP * (1 - age / window)
         if context.participant_ids and candidate.member_ids:
             shared = len(context.participant_ids & candidate.member_ids)
             if shared:
@@ -290,6 +305,20 @@ def score(candidates: list[Candidate], context: Context) -> Attribution:
         scores[candidate.project_id] = parts
         if terms:
             matched[candidate.project_id] = terms
+
+    # Continuity, unless another project is named outright — the conversation
+    # has moved on, and the last topic does not get to outvote the current one.
+    if context.continuity and context.continuity[0] in scores:
+        carried = context.continuity[0]
+        window = continuity_minutes()
+        age = max(0.0, float(context.continuity[1]))
+        rival = max(
+            (value for pid, value in content.items() if pid != carried), default=0.0
+        )
+        if age < window and not (
+            rival >= floor() and rival > content.get(carried, 0.0)
+        ):
+            scores[carried]["continuity"] = CONTINUITY_CAP * (1 - age / window)
 
     # Thread inheritance, unless another project's own content disagrees
     # strongly — a thread that has genuinely moved on is not held to its title.
@@ -416,12 +445,17 @@ def _place_filter(place_id: str) -> dict:
 
 
 def continuity_for(source, place_id: str, *, before, exclude_pk=None):
-    """The last confident attribution in the same place, and how long ago."""
+    """The last message in the same place that named its project, and how long ago.
+
+    Only an anchor — a message whose own words named the project — or one a
+    person corrected. See :attr:`Attribution.anchor`.
+    """
     from .models import RawMessageRef
 
     window = continuity_minutes()
     recent = (
         RawMessageRef.objects.filter(
+            Q(attribution__anchor=True) | Q(attribution__corrected=True),
             source=source,
             project__isnull=False,
             deleted_at__isnull=True,
@@ -542,3 +576,84 @@ def attribute_ref(ref, text: str, *, semantic=None) -> Attribution | None:
     result = score(candidates, context_for(ref, text, semantic=semantic))
     apply(ref, result)
     return result
+
+
+# -- the nightly pass -------------------------------------------------------------
+
+#: How many earlier lines in the same place the semantic signal reads with a
+#: message. One line ("that's the bottleneck") says little; the few before it
+#: say what "that" was.
+SEMANTIC_CONTEXT_LINES = 5
+
+
+def _cosine(left, right) -> float:
+    dot = sum(a * b for a, b in zip(left, right, strict=False))
+    norm = math.sqrt(sum(a * a for a in left)) * math.sqrt(sum(b * b for b in right))
+    return dot / norm if norm else 0.0
+
+
+def attribute_window(window_, *, embedder=None) -> dict:
+    """Re-score what the arrival pass left unresolved, now with more to go on.
+
+    Called by the nightly read (Plan 04) on each window *before* extraction,
+    while the bodies still exist. Only unresolved references are touched: a
+    resolved one stays as it was, and one a person corrected is never
+    second-guessed. With an ``embedder`` the semantic signal joins in — the
+    conversation around the message against each candidate's slow state; with
+    none it is simply absent, as on arrival.
+
+    Returns counts, for the caller to log.
+    """
+    from .models import RawMessageRef
+
+    readable = window_.readable
+    by_id = {message.external_id: message for message in readable}
+    refs = {
+        ref.external_id: ref
+        for ref in RawMessageRef.objects.filter(
+            source_id=window_.source_id,
+            external_id__in=list(by_id),
+            project__isnull=True,
+            speaker__isnull=False,
+            deleted_at__isnull=True,
+        ).select_related("source", "speaker")
+    }
+    counts = {"considered": 0, "resolved": 0}
+    slow_vectors: dict[str, list[float]] = {}
+    earlier: dict[str, list[str]] = {}
+
+    for message in readable:
+        lines = earlier.setdefault(message.place_id, [])
+        ref = refs.get(message.external_id)
+        if ref is not None and not (ref.attribution or {}).get("corrected"):
+            counts["considered"] += 1
+            semantic = None
+            if embedder is not None:
+                semantic = _semantic_scores(
+                    ref, [*lines[-SEMANTIC_CONTEXT_LINES:], message.text],
+                    embedder, slow_vectors,
+                )
+            result = attribute_ref(ref, message.text, semantic=semantic)
+            if result is not None and result.resolved:
+                counts["resolved"] += 1
+        lines.append(message.text)
+    return counts
+
+
+def _semantic_scores(ref, lines, embedder, cache) -> dict[str, float] | None:
+    candidates = candidates_for(ref.speaker, ref.source, place_kind=ref.place_kind)
+    todo = [c for c in candidates if c.slow_text and c.project_id not in cache]
+    try:
+        vectors = embedder([" ".join(lines), *(c.slow_text for c in todo)])
+    except Exception:  # pragma: no cover - an embedder failure means no signal
+        return None
+    if not vectors:
+        return None
+    for candidate, vector in zip(todo, vectors[1:], strict=False):
+        cache[candidate.project_id] = list(vector)
+    conversation = list(vectors[0])
+    return {
+        c.project_id: _cosine(conversation, cache[c.project_id])
+        for c in candidates
+        if c.project_id in cache
+    }

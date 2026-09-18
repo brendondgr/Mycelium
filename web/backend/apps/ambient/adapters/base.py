@@ -50,6 +50,9 @@ class PlatformEvent:
     # The person addressed Mylo directly — a DM, an @mention, a note command,
     # the message action, a reaction on Mylo's own post.
     explicit: bool = False
+    # Platform ids of the people the message names. Resolved by the adapter;
+    # only those who have opted in themselves are kept as ids.
+    mention_external_ids: list[str] = field(default_factory=list)
     # True when the sender is Mylo itself. Its messages are buffered so a window
     # reads coherently — a question Mylo asked is what makes the next line an
     # answer — and are never evidence.
@@ -90,10 +93,33 @@ class Adapter(ABC):
             kind=self.source_kind, external_id=source_external_id
         ).first()
 
+    def resolve_mentions(self, event: PlatformEvent) -> tuple[int, list[int]]:
+        """``(count, ids)`` for the people a message names.
+
+        The count is everybody named other than the speaker. The ids are only
+        of people who have opted in on this platform themselves — a mention of
+        somebody who never agreed to any of this is recorded as a number and
+        nothing more.
+        """
+        from ..eligibility import person_opted_in
+
+        others = [
+            one
+            for one in dict.fromkeys(str(x) for x in event.mention_external_ids)
+            if one and one != str(event.author_external_id)
+        ]
+        ids: list[int] = []
+        for external_id in others:
+            user = self.resolve_speaker(external_id)
+            if user is not None and person_opted_in(user, self.platform):
+                ids.append(user.pk)
+        return len(others), ids
+
     def to_message(
         self, event: PlatformEvent, speaker: User | None
     ) -> IncomingMessage:
         """The platform-independent shape. Pure translation, no judgement."""
+        count, ids = (0, []) if event.from_mylo else self.resolve_mentions(event)
         return IncomingMessage(
             external_id=event.message_external_id,
             text=event.text,
@@ -107,6 +133,8 @@ class Adapter(ABC):
             attachment_urls=list(event.attachment_urls),
             edited_at=event.edited_at,
             explicit=bool(event.explicit),
+            mentions_count=count,
+            mentioned_user_ids=ids,
         )
 
     def deliver(self, event: PlatformEvent) -> Recorded:

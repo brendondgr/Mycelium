@@ -271,6 +271,7 @@ class Listening:
     dropped_excluded_channel: int = 0
     dropped_too_short: int = 0
     dropped_bot: int = 0
+    dropped_lapsed: int = 0
     dropped_other: int = 0
 
     @property
@@ -282,6 +283,7 @@ class Listening:
             + self.dropped_excluded_channel
             + self.dropped_too_short
             + self.dropped_bot
+            + self.dropped_lapsed
             + self.dropped_other
         )
 
@@ -391,6 +393,7 @@ class RunAnalytics:
                 ),
                 "dropped_too_short": self.listening.dropped_too_short,
                 "dropped_bot": self.listening.dropped_bot,
+                "dropped_lapsed": self.listening.dropped_lapsed,
             },
             "trend": [
                 {
@@ -692,6 +695,7 @@ def collect_listening(day: date) -> Listening:
         dropped_excluded_channel=totals["dropped_excluded_channel"],
         dropped_too_short=totals["dropped_too_short"],
         dropped_bot=totals["dropped_bot"],
+        dropped_lapsed=totals["dropped_lapsed"],
         dropped_other=totals["dropped_other"],
     )
 

@@ -29,10 +29,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from django.db.models import F
 from django.utils import timezone
 
-from . import filters, reconcile
+from . import activity, filters, reconcile
 from .adapters.base import PlatformEvent
 from .adapters.discord import DiscordAdapter, DiscordDirectMessageAdapter
 from .eligibility import ambient_enabled
@@ -79,13 +78,7 @@ class Heard:
 
 
 def _bump(source: Source, field_name: str, *, heard: bool = True) -> None:
-    """Add one to a counter for today, creating the row if it is the first."""
-    today = timezone.localdate()
-    activity, _ = SourceActivity.objects.get_or_create(source=source, day=today)
-    updates = {field_name: F(field_name) + 1}
-    if heard:
-        updates["heard"] = F("heard") + 1
-    SourceActivity.objects.filter(pk=activity.pk).update(**updates)
+    activity.bump(source, field_name, heard=heard)
 
 
 def guild_source(guild_id: str) -> Source | None:
@@ -107,7 +100,7 @@ def listening_state(guild_id: str) -> dict:
             "marker_channel_id": "",
         }
     today = timezone.localdate()
-    activity = SourceActivity.objects.filter(source=source, day=today).first()
+    today_row = SourceActivity.objects.filter(source=source, day=today).first()
     return {
         "known": True,
         "listening": source.listening,
@@ -116,8 +109,8 @@ def listening_state(guild_id: str) -> dict:
         "social": [str(one) for one in (source.social_place_ids or [])],
         "marker_channel_id": source.marker_channel_id,
         "marker_message_id": source.marker_message_id,
-        "heard_today": activity.heard if activity else 0,
-        "stored_today": activity.stored if activity else 0,
+        "heard_today": today_row.heard if today_row else 0,
+        "stored_today": today_row.stored if today_row else 0,
     }
 
 
@@ -278,6 +271,7 @@ def heard(
     from_mylo: bool = False,
     explicit: bool = False,
     is_dm: bool = False,
+    mention_ids=None,
 ) -> Heard:
     """One message from Discord. The whole of what the gateway asks of us.
 
@@ -330,6 +324,7 @@ def heard(
                 attachment_urls=attachments,
                 from_mylo=from_mylo,
                 explicit=explicit,
+                mention_external_ids=[str(one) for one in (mention_ids or [])],
             )
         )
         if outcome.stored:

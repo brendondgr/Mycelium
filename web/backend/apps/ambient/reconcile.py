@@ -102,6 +102,16 @@ def message_edited(source: Source, external_id: str, text: str, *, edited_at=Non
             child.repeat_of = root
             child.save(update_fields=["repeat_of"])
 
+    # The words changed, so which project they were about may have too — unless
+    # a person already said which project it was. Their answer outranks ours.
+    if ref.speaker_id is not None and not (ref.attribution or {}).get("corrected"):
+        from .attribution import attribute_ref
+
+        try:
+            attribute_ref(ref, text or "")
+        except Exception:  # pragma: no cover - never lose the edit over this
+            logger.exception("ambient: could not re-attribute edited %s", ref.pk)
+
     stale = _observations_citing(source, external_id)
     for observation in stale:
         observation.status = Observation.Status.STALE
@@ -266,3 +276,40 @@ def revoke_source(source: Source, *, delete_observations: bool = False):
         project_ids=project_ids,
         note="the surface withdrew consent and its evidence was deleted",
     )
+
+
+#: Which activity counter a lapse lands in.
+_LAPSED = "dropped_lapsed"
+
+
+def drop_ineligible(source: Source, refs) -> int:
+    """Discard messages whose speaker is no longer eligible, before anybody reads them.
+
+    Between a message arriving and the nightly read, its speaker may have opted
+    out, unlinked, or let their plan lapse. Their message is then discarded —
+    body and reference — and counted, not stored: eligibility at arrival was a
+    permission to hold it until tonight, not a permission that survives the
+    person withdrawing it. Mylo's own lines have no speaker and are left alone.
+    """
+    from . import activity
+    from .eligibility import observable
+
+    verdicts: dict[int, bool] = {}
+    doomed: list[RawMessageRef] = []
+    for ref in refs:
+        if ref.speaker_id is None:
+            continue
+        if ref.speaker_id not in verdicts:
+            verdicts[ref.speaker_id] = bool(observable(ref.speaker, source))
+        if not verdicts[ref.speaker_id]:
+            doomed.append(ref)
+    if not doomed:
+        return 0
+    buffer.drop(source.pk, [ref.external_id for ref in doomed])
+    RawMessageRef.objects.filter(pk__in=[ref.pk for ref in doomed]).delete()
+    activity.bump(source, _LAPSED, heard=False, by=len(doomed))
+    logger.info(
+        "ambient: discarded %s message(s) from speakers no longer eligible",
+        len(doomed),
+    )
+    return len(doomed)

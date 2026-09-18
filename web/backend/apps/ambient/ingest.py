@@ -61,6 +61,11 @@ class IncomingMessage:
     edited_at: object | None = None
     # The person deliberately told Mylo rather than being overheard.
     explicit: bool = False
+    # Other people the message named. ``mentions_count`` is everybody; the ids
+    # are only of mentioned people who have opted in themselves — anybody else
+    # is at most a number.
+    mentions_count: int = 0
+    mentioned_user_ids: list[int] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -151,6 +156,8 @@ def record(source: Source, message: IncomingMessage) -> Recorded:
                 attachment_urls=list(message.attachment_urls),
                 edited_at=message.edited_at,
                 explicit=bool(message.explicit),
+                mentions_count=max(0, int(message.mentions_count or 0)),
+                mentioned_user_ids=[int(one) for one in message.mentioned_user_ids],
             )
     except IntegrityError:
         # The same message arriving twice — a gateway resume, a retried handoff.
@@ -162,6 +169,25 @@ def record(source: Source, message: IncomingMessage) -> Recorded:
             False, "already_recorded", ref=existing, buffered=held, repeat=False
         )
 
+    if not is_mylo:
+        _attribute_on_arrival(ref, message.text)
+
     return Recorded(
         True, ref=ref, buffered=held, repeat=repeat_root is not None
     )
+
+
+def _attribute_on_arrival(ref: RawMessageRef, text: str) -> None:
+    """Decide which project this is about while the text is still in memory.
+
+    Every signal used here is a cheap lookup, and no model is called, so this is
+    bookkeeping rather than evaluation. A failure is logged and leaves the
+    message unresolved — it never costs the message itself, which is already
+    recorded; the nightly read gets another chance at it.
+    """
+    from .attribution import attribute_ref
+
+    try:
+        attribute_ref(ref, text)
+    except Exception:  # pragma: no cover - attribution must never lose a message
+        logger.exception("ambient: could not attribute message %s", ref.pk)

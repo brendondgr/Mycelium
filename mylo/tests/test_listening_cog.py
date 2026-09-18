@@ -168,6 +168,16 @@ class GuildMessageTests(unittest.TestCase):
         self.assertTrue(fake.calls[0]["explicit"])
         self.assertEqual(fake.calls[0]["place_label"], "methods")
 
+    def test_people_named_are_forwarded_and_bots_are_not(self) -> None:
+        fake = FakeListening()
+        cog = _cog(fake)
+        colleague = SimpleNamespace(id=333, bot=False)
+        message = _message(mentions=[cog.bot.user, colleague])
+        cog.bot.user.bot = True
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(cog.on_message(message))
+        self.assertEqual(fake.calls[0]["mention_ids"], ["333"])
+
     def test_stage_b_carries_everything_in_a_channel(self) -> None:
         fake = FakeListening()
         cog = _cog(fake, listen_enabled=True, message_content=True)
