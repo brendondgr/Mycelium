@@ -331,6 +331,10 @@ CELERY_BEAT_SCHEDULE = {
 # in the daily opportunity batch. The model call is the slow step, so scoring
 # units one at a time dominates the runtime; the endpoint handles many at once.
 OPPORTUNITY_LLM_CONCURRENCY = env.int("OPPORTUNITY_LLM_CONCURRENCY", default=12)
+# How many précis and per-theme write-up calls may be in flight for one target
+# (apps.content.comprehension / cluster_fit / theme_run). Themes run side by side
+# and share this budget. vLLM batches concurrent requests.
+WRITEUP_LLM_CONCURRENCY = env.int("WRITEUP_LLM_CONCURRENCY", default=12)
 
 # Where the daily suggestion run writes its verbose, timestamped log (one file
 # per run). Under the repo's data/ dir by default so it is readable on the host.

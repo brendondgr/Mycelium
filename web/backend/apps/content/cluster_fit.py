@@ -375,6 +375,7 @@ def write_cluster_fits(
     batch: int | None = None,
     project_claim: str = "",
     state_fingerprint: str = "",
+    concurrency: int | None = None,
 ) -> dict[str, dict]:
     """Write-ups for one theme's candidates, keyed by content id.
 
@@ -390,8 +391,17 @@ def write_cluster_fits(
     size = int(batch or getattr(settings, "CLUSTER_FIT_BATCH", DEFAULT_BATCH))
     ask = complete if complete is not None else _settings_complete
 
-    for start in range(0, len(candidates), max(1, size)):
-        chunk = list(candidates[start : start + max(1, size)])
+    # One prompt per batch; the batches are independent, so they run side by
+    # side up to ``concurrency`` (``WRITEUP_LLM_CONCURRENCY`` by default). The
+    # shuffle seed is per batch offset, so the prompts are identical to the
+    # serial ones and a run can still be replayed exactly.
+    batches: list[tuple[int, list[Candidate]]] = [
+        (start, list(candidates[start : start + max(1, size)]))
+        for start in range(0, len(candidates), max(1, size))
+    ]
+
+    def one(job: tuple[int, list[Candidate]]) -> tuple[list[Candidate], str | None]:
+        start, chunk = job
         order = _shuffled(chunk, seed=seed + start)
         prompt = build_prompt(
             profile_text,
@@ -402,7 +412,7 @@ def write_cluster_fits(
             project_claim=project_claim,
         )
         try:
-            raw = ask(prompt)
+            return order, ask(prompt)
         except Exception as exc:  # noqa: BLE001 — degrade, never raise
             logger.warning(
                 "cluster-fit writer unavailable for %s (%s); using the "
@@ -410,7 +420,17 @@ def write_cluster_fits(
                 cluster.id,
                 exc,
             )
-            raw = None
+            return order, None
+
+    workers = max(1, min(concurrency or writeup_concurrency(), len(batches)))
+    if workers == 1:
+        answered = [one(job) for job in batches]
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            answered = list(pool.map(one, batches))
+    for order, raw in answered:
         out.update(
             parse(
                 raw,
@@ -593,6 +613,13 @@ def _as_index(value: Any, count: int) -> int | None:
     except (TypeError, ValueError):
         return None
     return n - 1 if 1 <= n <= count else None
+
+
+def writeup_concurrency() -> int:
+    """How many write-up calls may be in flight for one target."""
+    from .comprehension import writeup_concurrency as _shared
+
+    return _shared()
 
 
 def writeup_budget() -> int:

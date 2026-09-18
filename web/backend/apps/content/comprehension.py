@@ -121,11 +121,32 @@ def extract_many(
     """
     ask = complete if complete is not None else _settings_complete
     out: dict[str, dict] = {}
-    for item in items:
-        parsed = _one(item, ask)
+    if not items:
+        return out
+    # Items are independent, so the calls run side by side up to
+    # ``WRITEUP_LLM_CONCURRENCY``; vLLM batches concurrent requests. The result
+    # is keyed by id, so completion order is irrelevant.
+    workers = max(1, min(writeup_concurrency(), len(items)))
+    if workers == 1:
+        results = [(item, _one(item, ask)) for item in items]
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            results = list(
+                zip(items, pool.map(lambda it: _one(it, ask), items), strict=True)
+            )
+    for item, parsed in results:
         if parsed is not None:
             out[str(item.id)] = parsed
     return out
+
+
+def writeup_concurrency() -> int:
+    """How many write-up / précis calls may be in flight for one target."""
+    from django.conf import settings
+
+    return max(1, int(getattr(settings, "WRITEUP_LLM_CONCURRENCY", 12)))
 
 
 def store_comprehensions(

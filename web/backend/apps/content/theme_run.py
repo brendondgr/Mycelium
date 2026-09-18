@@ -36,6 +36,7 @@ from .cluster_fit import (
     stored_writeup,
     write_cluster_fits,
     writeup_budget,
+    writeup_concurrency,
 )
 from .clustering import Cluster
 from .comprehension import (
@@ -335,9 +336,18 @@ def execute_theme_plan(
     by_cluster: dict[str, list[Candidate]] = {}
     for cluster_id, _cid, candidate in plan.funded:
         by_cluster.setdefault(cluster_id, []).append(candidate)
-    for cluster_id, candidates in by_cluster.items():
+
+    # Themes are independent, so they run side by side and share the target's
+    # in-flight budget (``WRITEUP_LLM_CONCURRENCY``): each theme's batches get
+    # an equal slice, so the total never exceeds the budget.
+    total = writeup_concurrency()
+    theme_workers = max(1, min(total, len(by_cluster)))
+    per_theme = max(1, total // theme_workers)
+
+    def one(job: tuple[str, list[Candidate]]) -> tuple[str, dict[str, dict]]:
+        cluster_id, candidates = job
         cluster = by_id[cluster_id]
-        written = write_cluster_fits(
+        return cluster_id, write_cluster_fits(
             plan.profile_text,
             cluster,
             [c.label for c in plan.clusters if c.id != cluster_id],
@@ -347,7 +357,18 @@ def execute_theme_plan(
             seed=plan.seed,
             project_claim=plan.project_claim,
             state_fingerprint=plan.state_fingerprint,
+            concurrency=per_theme,
         )
+
+    jobs = list(by_cluster.items())
+    if theme_workers == 1:
+        results = [one(job) for job in jobs]
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=theme_workers) as pool:
+            results = list(pool.map(one, jobs))
+    for cluster_id, written in results:
         for cid, writeup in written.items():
             writeups.setdefault(cid, {})[cluster_id] = writeup
     return writeups, precis_fields
