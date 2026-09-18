@@ -183,6 +183,9 @@ Files below are inside `web/backend/apps/content/`.
 | Where a person's actual words live (and for how long) | `web/backend/apps/ambient/buffer.py` — Redis only, per-message TTL, dropped explicitly once a window is read; a source can shorten the window but never lengthen it |
 | The id-only pointer beside it (no body, ever) | `web/backend/apps/ambient/models.py` (`RawMessageRef`) — the window index and the handle an edit or deletion is reconciled through |
 | Recording one message: eligibility, hash, buffer, reference, repeat collapse | `web/backend/apps/ambient/ingest.py` (`record`, `IncomingMessage`); normalisation for the repeat hash in `text.py` |
+| The durable record — what Mylo understood, in Mylo's own words | `web/backend/apps/ambient/models.py` (`Observation`); six understanding kinds, six forces, subject, visibility, supersession. **No quote column** |
+| A person's own verdict on an observation (the labels the feature is judged by) | `web/backend/apps/ambient/models.py` (`ObservationFeedback`) — append-only; a correction is a new row |
+| Something was removed, so these things must be recomputed | `web/backend/apps/ambient/models.py` (`Retraction`) |
 
 ## Backend — billing, admin, integrations, ingestion
 
