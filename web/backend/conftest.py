@@ -23,3 +23,16 @@ import pytest
 def _enforce_entitlements(settings):
     """Pin tier gating on for every test, whatever the deployment default is."""
     settings.BILLING_ENFORCE_ENTITLEMENTS = True
+
+
+@pytest.fixture(autouse=True)
+def _serial_llm_calls(settings):
+    """Keep the write-up and opportunity scorers on the test thread.
+
+    A worker thread opens its own database connection, so anything it writes —
+    the LLM ledger row a failed call records, for one — commits outside the test
+    transaction and leaks into the next test. Serial here; tests about the
+    parallel path set these (or pass ``concurrency=``) explicitly.
+    """
+    settings.WRITEUP_LLM_CONCURRENCY = 1
+    settings.OPPORTUNITY_LLM_CONCURRENCY = 1
