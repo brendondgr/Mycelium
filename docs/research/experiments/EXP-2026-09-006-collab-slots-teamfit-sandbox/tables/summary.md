@@ -1,0 +1,30 @@
+| Metric | Arm A (s1) | Arm B (s2) | Arm C (s3) |
+|---|---:|---:|---:|
+| `slot_recall_non_role` | 0.7386 | 0.878 | 0.8758 |
+| `slot_precision` | 0.7888 | 0.8229 | 0.8241 |
+| `slot_required_agreement` | 0.9318 | 0.7891 | 0.9782 |
+| `slot_recall__problem` | 0.5067 | 0.7467 | 0.7333 |
+| `slot_recall__method` | 0.8889 | 0.9537 | 0.9537 |
+| `slot_recall__data` | 0.7634 | 0.914 | 0.9247 |
+| `slot_recall__role` | 1.0 | 1.0 | 1.0 |
+| `coverage_agreement__lab_canonical` | 0.9981 | 1.0 | 1.0 |
+| `coverage_agreement__lab_variant` | 0.873 | 0.9078 | 0.9078 |
+| `coverage_agreement__lab_problem_data` | 0.9928 | 0.9939 | 0.9938 |
+| `coverage_agreement__person_canonical` | 0.9899 | 0.991 | 0.9899 |
+| `coverage_agreement__person_variant` | 0.9609 | 0.9738 | 0.9738 |
+| `coverage_agreement__person_problem_data` | 0.9716 | 0.9729 | 0.9725 |
+| `near_miss_false_cover` | 2 | 11 | 48 |
+| `near_miss_false_cover_rate` | 0.0 | 0.0002 | 0.001 |
+| `extra_slots` | None | 99 | 98 |
+| `extra_slots_verbatim_in_call` | None | 98 | 97 |
+| `slots_model_calls` | 151 | 151 | 151 |
+| `slots_seconds` | 12.3 | 13.6 | 12.5 |
+| `team_fit_labs_seconds` | 33.0 | 33.0 | 32.7 |
+| `team_fit_people_seconds` | 158.6 | 160.1 | 160.4 |
+| `score_rows` | 43200 | 43200 | 43200 |
+| `invariant__lab_named_non_member` | 0 | 0 | 0 |
+| `invariant__role_slots_covered` | 0 | 0 | 0 |
+| `invariant__role_slots_with_a_vector` | 0 | 0 | 0 |
+| `invariant__slots_second_pass_model_calls` | 0 | 0 | 0 |
+| `invariant__slots_second_pass_reads` | 0 | 0 | 0 |
+| `invariant__team_fit_second_pass_changes` | 0 | 0 | 0 |

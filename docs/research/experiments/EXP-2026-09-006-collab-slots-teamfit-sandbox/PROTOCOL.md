@@ -139,3 +139,21 @@ the plan defines as not required. Same world, same calls, same bars.
 uv run --project . python -m sandbox.collab calls --people 240 --calls 150 \
   --out /app/data/sandbox/exp006-arm-c.json
 ```
+
+## Amendment 3 — coverage-threshold sweep (added after arm C, before it ran)
+
+Arm C passed every pre-registered bar, but near-miss false covers rose from 2
+(arm A) to 11 (B) to 48 (C): once method slots lost their "expertise in"
+wrapping, a bare "particle filter" slot sits closer to a "Kalman filter"
+concept. Exploratory, no bar: re-mark coverage on arm C's stored slots (no
+model calls, no re-reading) at `COLLAB_COVERAGE_COSINE` 0.80, 0.85, 0.88 and
+0.90, and report coverage agreement by bucket and near-miss false covers at
+each. The shipped default is changed only if a higher value keeps canonical
+lab agreement ≥ 0.95 and person agreement no worse while cutting near misses.
+
+```bash
+for t in 0.80 0.85 0.88 0.90; do
+  uv run --project . python -m sandbox.collab calls --people 240 --calls 150 \
+    --reuse --coverage-cosine $t --out /app/data/sandbox/exp006-cov-$t.json
+done
+```

@@ -193,7 +193,16 @@ def seed(calls, texts) -> dict:
     return items
 
 
-def run(items: dict, world) -> dict:
+def existing(calls) -> dict:
+    """The calls already seeded, for re-marking coverage without re-reading."""
+    from apps.content.models import ContentItem
+
+    return {
+        c.key: ContentItem.objects.get(source=SOURCE, external_id=c.key) for c in calls
+    }
+
+
+def run(items: dict, world, *, read: bool = True) -> dict:
     from django.contrib.auth import get_user_model
 
     from apps.accounts.models import Lab
@@ -206,9 +215,11 @@ def run(items: dict, world) -> dict:
     out: dict = {}
     model = CountingModel(slots._settings_complete)
     started = time.monotonic()
-    out["slots_first"] = slots.read_calls(
-        list(items.values()), complete=model
-    ).as_dict()
+    out["slots_first"] = (
+        slots.read_calls(list(items.values()), complete=model).as_dict()
+        if read
+        else {"read": 0, "skipped": True}
+    )
     out["slots_seconds"] = round(time.monotonic() - started, 1)
     out["slots_model_calls"] = model.calls
     out["slots_model_failures"] = model.failures

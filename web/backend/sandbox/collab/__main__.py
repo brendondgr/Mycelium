@@ -34,6 +34,14 @@ def main() -> int:
     parser.add_argument("--out", help="Write the metrics JSON here.")
     parser.add_argument("--workers", type=int, default=12)
     parser.add_argument("--calls", type=int, default=150, help="For calls: how many.")
+    parser.add_argument(
+        "--reuse",
+        action="store_true",
+        help="For calls: keep the seeded calls and their slots; only re-mark.",
+    )
+    parser.add_argument(
+        "--coverage-cosine", type=float, help="Override COLLAB_COVERAGE_COSINE."
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -80,8 +88,16 @@ def main() -> int:
             workers=args.workers,
         )
         report["calls_corpus_seconds"] = round(time.monotonic() - started, 1)
-        items = calls_mod.seed(planted, texts)
-        run = calls_mod.run(items, world)
+        if args.coverage_cosine is not None:
+            from django.conf import settings
+
+            settings.COLLAB_COVERAGE_COSINE = args.coverage_cosine
+            report["coverage_cosine"] = args.coverage_cosine
+        if args.reuse:
+            items = calls_mod.existing(planted)
+        else:
+            items = calls_mod.seed(planted, texts)
+        run = calls_mod.run(items, world, read=not args.reuse)
         metrics = calls_mod.score(world, planted, texts, items, run)
         report["metrics"] = metrics
         report["invariant_failures"] = calls_mod.failures(metrics)
