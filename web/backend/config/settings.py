@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "apps.integrations",
     "apps.adminpanel",
     "apps.ambient",
+    "apps.knowledge",
 ]
 
 MIDDLEWARE = [
@@ -1144,6 +1145,27 @@ AMBIENT_ATTRIBUTION_FLOOR = env.float("AMBIENT_ATTRIBUTION_FLOOR", default=0.6)
 AMBIENT_ATTRIBUTION_MARGIN = env.float("AMBIENT_ATTRIBUTION_MARGIN", default=0.25)
 AMBIENT_CONTINUITY_MINUTES = env.int("AMBIENT_CONTINUITY_MINUTES", default=30)
 AMBIENT_THREAD_OVERRIDE = env.float("AMBIENT_THREAD_OVERRIDE", default=0.9)
+
+# ---------------------------------------------------------------------------
+# The knowledge core (apps.knowledge)
+#
+# Concepts and the evidenced edges people, projects, labs and works have to
+# them — shared by collaboration matching and the ambient profile. See
+# docs/plans/collaboration-network/01-knowledge-core.md.
+# ---------------------------------------------------------------------------
+# How close two wordings must be to count as one concept, as cosine similarity
+# of their embeddings. Deliberately conservative: a wrong merge makes unrelated
+# ideas look like the same one ("uses statistics" matching everything), while a
+# missed merge only splits a count until someone merges it by hand.
+KNOWLEDGE_MERGE_COSINE = env.float("KNOWLEDGE_MERGE_COSINE", default=0.92)
+# A concept is a term, not a paragraph. A declared value longer than this is
+# prose (a problem statement, a pasted abstract) and is not turned into a
+# concept at all; requirement slots (CN-03) extract terms from prose instead.
+KNOWLEDGE_MAX_SURFACE_CHARS = env.int("KNOWLEDGE_MAX_SURFACE_CHARS", default=120)
+# Re-project a profile, lab or project into the graph when it is saved. The
+# nightly sweep reconciles anything a missed hook left behind, so turning this
+# off costs a day of staleness, not correctness.
+KNOWLEDGE_PROJECT_ON_SAVE = env.bool("KNOWLEDGE_PROJECT_ON_SAVE", default=True)
 
 LOGGING = {
     "version": 1,
