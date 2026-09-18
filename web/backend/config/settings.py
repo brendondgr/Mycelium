@@ -331,6 +331,15 @@ CELERY_BEAT_SCHEDULE = {
     # by TTL within hours — and observations are never touched, because they are
     # the person's own record and leave only when the person removes them.
     # Nightly, after the daily run has read whatever it was going to read.
+    # Which project each person actually spent their conversation on, over 7
+    # and 28 days. Derived from attributed references and never hand-edited;
+    # before the retention sweep, so it reads the same history the sweep keeps.
+    "recompute-ambient-attention": {
+        "task": "apps.ambient.recompute_attention",
+        "schedule": crontab(
+            hour=env.int("AMBIENT_ATTENTION_HOUR", default=4), minute=45
+        ),
+    },
     "sweep-ambient-retention": {
         "task": "apps.ambient.sweep_retention",
         "schedule": crontab(

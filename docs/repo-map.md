@@ -197,6 +197,7 @@ Files below are inside `web/backend/apps/content/`.
 | Which project a message is about — seven signals, a floor and a margin, and an honest "unresolved" | `web/backend/apps/ambient/attribution.py` (`score` is pure; `candidates_for`, `context_for`, `attribute_ref` are the database half) |
 | Other names a project goes by in conversation | `Project.aliases` in `web/backend/apps/research/models.py` |
 | A channel's optional default project, and a person's "this was a different project" | `web/backend/apps/ambient/models.py` (`ChannelHint`, `AttributionCorrection`) |
+| Which project a person is actually spending their conversation on (7- and 28-day shares) | `web/backend/apps/ambient/attention.py`, model `ProjectAttention`, task `apps.ambient.recompute_attention`; read through `read.attention_for` |
 
 ## Backend — billing, admin, integrations, ingestion
 

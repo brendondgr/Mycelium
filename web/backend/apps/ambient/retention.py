@@ -43,14 +43,20 @@ class SweepResult:
 def ref_retention_days() -> int:
     """How long a reference is kept, in days.
 
-    Never shorter than the repeat window plus a day: a reference that vanishes
-    while its hash could still match would silently turn a repeat back into new
-    evidence, which is a profile-corrupting bug that would look like nothing at
-    all from the outside.
+    Never shorter than the repeat window plus a day, nor than the attention
+    window plus a day: a reference that vanishes while its hash could still
+    match would silently turn a repeat back into new evidence, and one that
+    vanishes inside the attention window would quietly skew a share — bugs that
+    would look like nothing at all from the outside.
     """
     configured = int(getattr(settings, "AMBIENT_REF_RETENTION_DAYS", 45))
     repeat_window = int(getattr(settings, "AMBIENT_REPEAT_WINDOW_DAYS", 30))
-    return max(configured, repeat_window + 1)
+    # Attention share reads 28 days of attributed references, so they must
+    # outlive that window too — a share computed over a history the sweep has
+    # half-deleted would be wrong in a way nobody would notice.
+    from .attention import LONG_DAYS
+
+    return max(configured, repeat_window + 1, LONG_DAYS + 1)
 
 
 def sweep(now=None) -> SweepResult:

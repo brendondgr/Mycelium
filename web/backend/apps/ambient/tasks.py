@@ -11,7 +11,7 @@ import logging
 
 from celery import shared_task
 
-from . import retention
+from . import attention, retention
 
 logger = logging.getLogger(__name__)
 
@@ -24,3 +24,9 @@ def sweep_retention() -> dict[str, int]:
         "refs_deleted": result.refs_deleted,
         "stamps_cleared": result.stamps_cleared,
     }
+
+
+@shared_task(name="apps.ambient.recompute_attention")
+def recompute_attention() -> int:
+    """Rebuild every person's 7- and 28-day attention share per project."""
+    return attention.recompute()

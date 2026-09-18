@@ -49,6 +49,7 @@ __all__ = [
     "questions_muted",
     "active_sources",
     "listening_totals",
+    "attention_for",
 ]
 
 
@@ -278,3 +279,13 @@ def active_sources(*, lab=None):
     if lab is not None:
         rows = rows.filter(lab=lab)
     return rows
+
+
+def attention_for(user):
+    """Where this person's attributed conversation went, 7- and 28-day shares.
+
+    Personal: it describes one person and is for that person's reports.
+    """
+    from .models import ProjectAttention
+
+    return ProjectAttention.objects.filter(user=user).select_related("project")
