@@ -132,11 +132,16 @@ def quality(
         project = Project.objects.get(
             name=spec.name, scope_lab__slug=f"sandbox-{spec.lab}"
         )
+        # Keyed by lab as well: project names repeat across labs.
         jobs.append(
-            (spec.name, seeker, matcher.query_for_project(seeker, project, scope=scope))
+            (
+                (spec.lab, spec.name),
+                seeker,
+                matcher.query_for_project(seeker, project, scope=scope),
+            )
         )
     done = _search_all(jobs, complete, workers)
-    queries = {name: query for name, _, query in jobs}
+    queries = {key: query for key, _, query in jobs}
 
     out = Counter()
     rows_checked = 0
@@ -147,8 +152,8 @@ def quality(
         seeker_key = lab.members[0]
         if seeker_key in planned["unverified"]:
             continue
-        query = queries[spec.name]
-        result, took = done[spec.name]
+        query = queries[(spec.lab, spec.name)]
+        result, took = done[(spec.lab, spec.name)]
         if took is None:
             out[f"refused:{result}"] += 1
             continue
