@@ -1,6 +1,6 @@
 # Ambient Profile — Plan Series
 
-**Status:** Plans 01–10 built (10's pilot pre-registered, not run); 11 in progress.
+**Status:** Plans 01–11 built. Plan 10's pilot is pre-registered (EXP-2026-09-020) and not run; Plan 11's platforms ship off until it has.
 **Correlation ID:** `20260917-ambient-profile`
 **Owner:** Brendon (product direction); plans are working documents and are
 deleted as their work ships, with the outcome recorded in `docs/changelog.md`.
@@ -208,7 +208,7 @@ the correlation id named in the row.
 | 08 | Applying changes — **shipped 2026-09-19** | `apps/ambient/apply.py` (a yes carried into the declared profile at the next nightly run, through the contract, with provenance and exact undo), `apps/content/ambient_proposals.py` (developments proposed to a project's editors as reflection proposals; accepting applies and records an undoable change). Validated in EXP-2026-09-016. Record: `20260917-ambient-profile-08` |
 | 09 | Reports and notifications — **shipped 2026-09-19** | `apps/content/weekly_changes.py`: the weekly's code-rendered "What changed" with `[O#]` citations the verifier resolves, personal and project streams scoped by the query, the interpretation line only while drift is on, the daily's "Changed today", the bell for conversation proposals. Validated in EXP-2026-09-017. Record: `20260917-ambient-profile-09` |
 | 10 | Evaluation — **built 2026-09-19; pilot pre-registered** | `apps/ambient/evaluation.py` and `evaluate_ambient` (validation precision, maintenance, ten harm checks), `export_ambient_dataset`, the run-analytics counters. Validated in EXP-2026-09-018 (harm checks) and EXP-2026-09-019 (drift ablation); the pilot and its go/no-go are EXP-2026-09-020, not yet run. Record: `20260917-ambient-profile-10` |
-| 11 | [Other platforms](11-other-platforms.md) | Slack, Teams, transcripts as adapters over the same ledger |
+| 11 | Other platforms — **built 2026-09-19, off** | Slack (`integrations/slack_*`), Teams (`integrations/teams_*`), meeting transcripts (`ambient/transcripts.py`), all behind their switches until the pilot. Parity with Discord shown in EXP-2026-09-021. Record: `20260917-ambient-profile-11` |
 
 ## Cross-cutting open decisions
 

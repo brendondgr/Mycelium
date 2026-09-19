@@ -75,6 +75,72 @@ was wrong and gets fixed there first.
 - **OD-11b** Whether transcripts wait for a second text platform.
   Recommendation: yes.
 
+## Brief as built (2026-09-19)
+
+Implemented overnight on the owner's instruction. The plan's own gate
+("Plans 01–10 proven on Discord") is not met: the pilot (EXP-2026-09-020) has
+not run. So everything here ships **off** (`SLACK_ENABLED`, `TEAMS_ENABLED`,
+`AMBIENT_TRANSCRIPTS_ENABLED`), and turning any of it on waits for the pilot.
+
+- **The abstraction held** (EXP-2026-09-021). One corpus through Discord,
+  Slack's signed Events API and the Teams Bot Framework endpoint left the same
+  ledger: the same messages kept and the same refusals, by reason. The only
+  things changed outside the adapters and `integrations`, both additions:
+  - `askable` accepts a Slack or Teams identity;
+  - reading keeps only developments from a transcript.
+- **Slack** (steps 1–5):
+  - `SlackWorkspace` (bot token encrypted), `SlackIdentity`, `SlackOutboxMessage`
+    and the platform-neutral `LinkCode`;
+  - all Slack ORM access goes through `services/slack_resolve.py`, which the
+    import-graph test now guards;
+  - signed events (HMAC, five-minute replay window) and interactions;
+  - OAuth install with a session-bound `state`;
+  - a person links by DMing a code; a lab manager links the workspace by
+    mentioning Mylo with a lab code in the channel for reports;
+  - listening is a lab manager's switch, and each person opts in to Slack
+    separately;
+  - questions as Block Kit buttons with the same `ambient:<id>:<choice>` ids;
+  - a DM reply read as a dialogue turn off the request, because Slack wants
+    its 200 in three seconds;
+  - `app_mention` is ignored: the message event carries every mention.
+- **Teams** (steps 6–8):
+  - `TeamsTeamLink`, `TeamsIdentity`, `TeamsOutboxMessage`, and
+    `services/teams_resolve.py` as the ORM boundary;
+  - every activity's JWT is verified by hand with `cryptography`: RS256
+    against the keys Microsoft publishes, the issuer, the audience (the app
+    id), expiry and not-before with five minutes' skew, and the `serviceurl`
+    claim;
+  - the bot token is only ever sent to Microsoft's hosts;
+  - group chats are not listened to, since no consent layer covers them;
+  - the speaker key is the Azure AD object id, because tenant and id
+    together exceed the ledger's 64-character key;
+  - Adaptive Card answers.
+  - Teams never delivers a bot's own messages, so Mylo's lines are missing
+    from Teams chat windows (EXP-2026-09-021 §4).
+- **Transcripts** (steps 9–12):
+  - an upload is the per-meeting consent;
+  - the uploader maps each speaker label to a member, and turns that are
+    unmapped, from outsiders, or from people not opted in to transcripts
+    never reach the buffer;
+  - a 3-hour buffer, read at the next hourly read, keeps only project
+    developments, at 0.3 of their weight;
+  - everyone named is told on the bell;
+  - the project's channel hint attributes the meeting to its project.
+- **Cross-platform** (13–15):
+  - one person, several identities, all resolved to the same user;
+  - visibility per source;
+  - reports go where the reader or lab is: Discord first when linked, then
+    Slack, then Teams, and a lab may make Slack or Teams primary (the Discord
+    senders then skip it);
+  - the "shut off" switch stays one switch, stored with the Discord consent
+    row.
+- **Not built, deliberately:**
+  - a PDF attachment on Slack or Teams, which needs extra scopes;
+  - a person's own choice of report surface when linked on several: the
+    first linked wins;
+  - Discord voice transcripts;
+  - interest extraction from speech, until Plan 10 shows it is precise.
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,
