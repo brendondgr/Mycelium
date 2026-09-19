@@ -69,6 +69,11 @@ def keyboard_sweep(page: Page, start, region: str, limit: int = 120) -> dict:
               if (!el || !el.closest('{region}')) return null;
               const tag = el.tagName.toLowerCase();
               if (!['button','summary','select','a','input'].includes(tag)) return {{skip: true}};
+              const id0 = (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 60)
+                + '#' + [...document.querySelectorAll('{region} *')].indexOf(el);
+              // A date input's segments each take a Tab; blurring and refocusing
+              // it restarts them, so its focus ring is not compared (run 3).
+              if (tag === 'input') return {{id: id0, visible: true}};
               const f = getComputedStyle(el);
               const focused = [f.outlineStyle, f.outlineWidth, f.boxShadow].join('|');
               const id = (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 60)
