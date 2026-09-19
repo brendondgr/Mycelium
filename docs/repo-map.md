@@ -156,7 +156,7 @@ Files below are inside `web/backend/apps/content/`.
 | The §8 smoke checklist, against live data | `smoke_reports.py`; command `manage.py smoke_reports [--send]` — twelve system checks, exits non-zero on a failure so it can gate a release |
 | What Mylo proposes about a project's state, from what the reader did | `reflection.py` (deterministic rules, the rendered block), model `ReflectionProposal`, endpoints `/api/reflections/`; UI `web/app/src/components/portal/projects/reflection-card.tsx` |
 | The Monday weekly | `weekly.py` (synthesis + the code frame), `weekly_packet.py` (the closed packet's shape), `weekly_build.py` (building it), `weekly_verify.py` (the citation verifier), `weekly_send.py` (Discord); commands `generate_weekly_briefing`, `send_weekly_reports` |
-| The report body's markdown grammar, stated once for both renderers | `report_grammar.py` — `[P#]` citations, `[S:path]` state markers, labelled beats, the code-rendered references block |
+| The report body's markdown grammar, stated once for both renderers | `report_grammar.py` — `[P#]` citations, `[O#]` "What changed" citations, `[S:path]` state markers, labelled beats, the code-rendered references block |
 | Deterministic project matchers (no model writes a number) | `matchers/` — `timeline.py` (can this project make that deadline), `overlap.py` (does this threaten the claim), `blockers.py` (does this unblock), `known_literature.py` (does the reader already have it, or write it), `team_gap.py` (does the call need somebody the team lacks), `similarity.py` (raw cosine, never RRF) |
 | Which findings become alerts, and how few | `alerts.py` (five triggers, daily cap, once-ever constraint, the `PROJECT_ALERTS_ENABLED` gate), model `ProjectAlert`; command `evaluate_project_alerts` |
 | The one DM a weekly-cadence reader gets between Mondays | `urgent_alerts.py` — opt-in, weekdays only, a moved deadline on a saved item inside their buffer, keyed on the alert so it is sent once ever |
@@ -218,6 +218,7 @@ Files below are inside `web/backend/apps/content/`.
 | What changed, how and why, with undo — personal and lab | `web/backend/apps/ambient/review.py`, model `AppliedChange`; `/api/ambient/changes/`, `/api/ambient/labs/<slug>/changes/` |
 | A development that makes a project's stated state out of date, proposed to its editors | `web/backend/apps/content/ambient_proposals.py` (`propose`, `withdraw_stale`); `ReflectionProposal` kinds `close_blocker`, `drop_method`; run by `deliver_ambient_questions` |
 | Tonight's questions delivered (DM with buttons, bell), changes and told facts announced | `web/backend/apps/content/management/commands/deliver_ambient_questions.py` |
+| The weekly's "What changed" (personal and project streams, `[O#]` citations) and the daily's "Changed today" lines | `web/backend/apps/content/weekly_changes.py`; rows read through `apps.ambient.read.changes_between`; `[O#]` in `report_grammar.py`, checked by `weekly_verify.py` |
 | The profile's "heard" marks, and conversation proposals on the reflection card | `profile-section.tsx` (`FromConversation`), `projects/reflection-card.tsx` |
 
 ## Backend — the knowledge core (`apps/knowledge`)

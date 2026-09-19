@@ -94,6 +94,66 @@ lab. A change to a lab project is announced to the lab and to its members.
   (not just accepted proposals). Recommendation: no; the weekly is the unit for
   developments unless an alert trigger fires.
 
+## Brief as built (2026-09-19)
+
+Implemented overnight on the owner's instruction; the gate's decisions are
+recorded here for review.
+
+- **"What changed" is code, not model prose** (steps 1–2,
+  `apps/content/weekly_changes.py`). Every `AppliedChange` that took effect this
+  week is read through `apps.ambient.read.changes_between` and numbered `[O#]`
+  (a new citation in `report_grammar.py`, rendered like `[P#]` by the PDF and
+  `MarkdownProse`). The section sits in the weekly's frame after the checked
+  body.
+  - *Your understanding* (personal weekly only): explorations confirmed, kept
+    or let go; understanding confirmed; profile edits; undos; how many
+    questions were answered and where.
+  - *Projects*: developments told or confirmed, stated state accepted and by
+    whom, undos; the project the week's conversation went to; conversation
+    proposals waiting.
+  - Links go to "Mylo & you", one per section rather than per row, because the
+    page has no per-change anchor.
+- **Scope is the query.**
+  - A person's rows are their own changes plus lab-visible ones on their
+    projects.
+  - A lab's rows are lab-visible changes on the projects it shares
+    (`share_in_lab_reports`); a personal change cannot match.
+  - The same rule was applied to Plan 07's lab "What changed" card, which had
+    been showing unshared projects' changes to every lab member (fixed in
+    3676d91).
+- **The model may connect, never restate.** Each project's packet carries its
+  change rows. The weekly prompt (`w2`) lets the model say in one sentence why
+  an item matters now, citing both (`[P3][O2]`). The verifier removes any
+  sentence citing an `[O#]` the packet does not hold. This is step 4 ("why
+  this matters now") for the weekly.
+- **The interpretation line** (step 3) is code-framed from a confirmed,
+  not-undone exploration, and appears **only when `AMBIENT_DRIFT_ENABLED` is
+  on**. Explorations move the ranking only then, and the sentence would
+  otherwise be false.
+- **`context_version`** is stored on the weekly row too.
+- **Dailies** (steps 5 and 7): a "Changed today" block under "Needs your
+  attention", in the web and PDF report and as a field in the Discord post.
+  - Personal: profile edits, accepted stated-state edits, and a development
+    that changed what the alerts flag, with the effect said plainly.
+  - Lab: only a stated-state edit accepted on a shared project, with the
+    accepter. A lab post is made for it even on an otherwise quiet day, and it
+    remains one post a day.
+  - OD-09a: no same-day lab line for a development.
+- **The bell** (step 6): each conversation proposal rings its target's bell
+  once (`suggestion_pending`, linking to the project page). The bell is
+  dismissed when the proposal is withdrawn.
+- **Not built, deliberately:** the "why this matters now" beat in the daily's
+  per-item stage-two write-ups. Write-ups are cached per item and target, so
+  adding a development beat means regenerating them whenever a development
+  changes, and their quality is Plan 10's to measure. The weekly carries the
+  link instead.
+- **Tests:** `apps/content/tests/test_weekly_changes.py` (routing in every
+  direction, `[O#]` resolution and removal, the interpretation line with drift
+  off, on and undone, last week excluded, answers and waiting proposals
+  counted, `context_version`, the grammar, the PDF marker, the daily lines, the
+  lab embed); the bell in `test_ambient_proposals.py`; the lab card in
+  `apps/ambient/tests/test_review.py`.
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,
