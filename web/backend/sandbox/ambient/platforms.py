@@ -88,7 +88,7 @@ def _teams_token(key) -> str:
     return f"Bearer {header}.{payload}.{_b64(signature)}"
 
 
-def _messages(world: World, written: list[dict]):
+def _messages(world: World, written: list[dict], *, gates: bool = False):
     """Every message, as (id, lab, place, day-hour-minute, speaker or None,
     is_mylo, dm_person, text). Unknown speakers are kept: the unlinked drop is
     part of what is compared."""
@@ -96,6 +96,7 @@ def _messages(world: World, written: list[dict]):
 
     names = {(lab.slug, p.name): p for lab in world.labs for p in lab.people}
     hour_of: dict[tuple, int] = {}
+    human = 0
     for conv in written:
         slot = (conv["lab"], conv["day"], conv["place"])
         hour = 9 + 2 * hour_of.get(slot, 0)
@@ -103,6 +104,11 @@ def _messages(world: World, written: list[dict]):
         for index, message in enumerate(conv["messages"]):
             is_mylo = message["speaker"] == "Mylo"
             person = names.get((conv["lab"], message["speaker"]))
+            if gates and person and not is_mylo and conv["place"] != "dm":
+                human += 1
+                if human % 7 == 0:
+                    # A guest with no Mycelium account said this line (run 2).
+                    person, message = None, {**message, "speaker": f"Guest {human}"}
             yield {
                 "id": f"{conv['id']}#{index}",
                 "lab": conv["lab"],
@@ -327,7 +333,31 @@ def _ledger() -> dict:
     return {"kept": kept, "drops": drops}
 
 
-def compare(world: World, written: list[dict]) -> dict:
+def _vary_gates(world: World) -> dict:
+    """Run 2 (post hoc): a deterministic mix of people the gate refuses —
+    every third person opted out, every fifth on a free plan."""
+    from apps.ambient.models import ListeningConsent
+    from apps.billing.models import Subscription, Tier
+    from apps.integrations.models import DiscordIdentity
+
+    counts = {"opted_out": 0, "free": 0}
+    people = [p for lab in world.labs for p in lab.people]
+    for index, person in enumerate(people, start=1):
+        identity = DiscordIdentity.objects.filter(
+            discord_user_id=person.snowflake, state="active"
+        ).first()
+        if identity is None:
+            continue
+        if index % 3 == 0:
+            ListeningConsent.objects.filter(user=identity.user).update(enabled=False)
+            counts["opted_out"] += 1
+        if index % 5 == 0:
+            Subscription.objects.filter(scope_user=identity.user).update(tier=Tier.FREE)
+            counts["free"] += 1
+    return counts
+
+
+def compare(world: World, written: list[dict], *, gates: bool = False) -> dict:
     from django.test import Client
 
     from apps.ambient.models import RawMessageRef
@@ -344,7 +374,7 @@ def compare(world: World, written: list[dict]) -> dict:
     guild = {lab.slug: lab.guild for lab in world.labs}
     by_username = {p.username: p for lab in world.labs for p in lab.people}
     msgs = []
-    for msg in _messages(world, written):
+    for msg in _messages(world, written, gates=gates):
         msg["guild"] = guild[msg["lab"]]
         msg["owner"] = by_username.get(msg["dm_person"] or "")
         msgs.append(msg)
@@ -363,6 +393,7 @@ def compare(world: World, written: list[dict]) -> dict:
             try:
                 with transaction.atomic():
                     run.seed(world)
+                    varied = _vary_gates(world) if gates else {}
                     skipped = 0
                     if platform == "discord":
                         _replay_discord(msgs)
@@ -379,6 +410,7 @@ def compare(world: World, written: list[dict]) -> dict:
                         "drops": ledger["drops"],
                         "refs": RawMessageRef.objects.count(),
                         "mylo_not_delivered": skipped,
+                        "varied": varied,
                         "seconds": round(time.monotonic() - started, 1),
                     }
                     raise _Rollback
@@ -401,6 +433,7 @@ def compare(world: World, written: list[dict]) -> dict:
             "mylo_not_delivered": result["mylo_not_delivered"],
             "drops": dict(result["drops"]),
             "drops_equal_discord": dict(result["drops"]) == dict(base["drops"]),
+            "gate_mix": result["varied"],
             "seconds": result["seconds"],
         }
     return out

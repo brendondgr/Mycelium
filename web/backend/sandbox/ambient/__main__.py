@@ -39,6 +39,11 @@ def main() -> int:
     parser.add_argument("--corpus", help="Where generated conversations are cached.")
     parser.add_argument("--out", help="Write the metrics JSON here.")
     parser.add_argument("--fresh", action="store_true", help="Regenerate the corpus.")
+    parser.add_argument(
+        "--gates",
+        action="store_true",
+        help="platforms: opt out, downgrade and anonymise a fixed share (run 2).",
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING)
 
@@ -99,7 +104,7 @@ def main() -> int:
         from . import platforms
 
         started = time.monotonic()
-        report = platforms.compare(world, written)
+        report = platforms.compare(world, written, gates=args.gates)
         report["seconds"] = round(time.monotonic() - started, 1)
         text = json.dumps(report, indent=2, default=str)
         if args.out:
