@@ -1438,6 +1438,16 @@ A pending proposal lapses after 14 days and a decided one is not raised again fo
 Monday. `400` on a proposal already decided, `403` when the caller cannot edit the
 project, `404` for someone else's.
 
+**From conversation (ambient Plan 08).** Kinds `close_blocker` and
+`drop_method` (and `add_method`) are also raised from a project development Mylo
+understood in conversation and someone told or confirmed. Their `evidence` is
+`{ "source": "conversation", "development": 12, "topic": "annotation budget",
+"field": "slow.blockers", "occurred_on": "2026-09-14", "account": "…",
+"explanation": "…", "visibility": "lab" | "personal" }`. A lab one goes to the
+project's editors, a personal one only to the person who said it. Accepting one
+also records an ambient `state_edit` change, shown in `GET /api/ambient/changes/`
+with undo; a pending one is expired when its development is undone or forgotten.
+
 ### `GET /api/notifications/`
 
 The header bell, backed by the `Notification` model — **not** an on-the-fly scan

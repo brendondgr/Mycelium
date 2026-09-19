@@ -89,6 +89,60 @@ so; Mylo's interpretation changes freely but stays labelled as Mylo's.
   few times, so the person learns what Mylo does with them. Draft: yes,
   always echoed, never asked.
 
+## Brief as built (2026-09-19)
+
+Implemented overnight on the owner's instruction; the gate's decisions are
+recorded here for review.
+
+- **A personal edit's proposal is the question itself.** Plan 06 already asks
+  the person, with one choice per edit that exists for them (add to interests,
+  a new theme, a swap, a skill, a learning goal, a preference, a direction).
+  Their yes is the acceptance; there is no second `ReflectionProposal` for the
+  same edit. `apps/ambient/apply.py` (`apply_answers`, first in
+  `deliberate_ambient`) carries each yes out at the next nightly run, as the
+  question said it would.
+- **How it writes** (step 2): through `validate_interests`, with a row in
+  `interests.sources.ambient` — field, value, question id, date, where
+  answered, `provenance: "stated"`. "Add to my interests" goes into the theme
+  with the fewest areas; a new theme gets a slug id (an unclustered profile
+  keeps its implicit `c-all` theme); a swap removes exactly the stale theme the
+  question named and refuses if it has gone. A correction ("right idea, wrong
+  words") is written in the person's words. A seventh theme is refused by the
+  contract and reported, never forced.
+- **Undo** (step 4): each edit is an `AppliedChange` holding the field before
+  and after (for a theme change, areas and clusters together). Undo restores
+  exactly that — and **refuses** when the field no longer holds what the edit
+  wrote, because the person edited it since; an undo must never discard their
+  later edit. Plan 07's undo path logs it and starts the cooldown.
+- **Project state** (steps 1, 7): new `ReflectionProposal` kinds
+  `close_blocker` and `drop_method` (content migration `0032`), plus
+  `add_method`, raised by `apps/content/ambient_proposals.py` from
+  developments in effect, matched literally to the stated blockers and methods
+  as the alerts match them. A lab development goes to the project's editors; a
+  personal one (said in a DM) only to its speaker. 14-day expiry, 28-day rest
+  after a decline, never re-raised once accepted. Accepting through the
+  existing reflection action applies it and records a `state_edit`
+  `AppliedChange` (`ambient.read.note_state_change`) with undo.
+- **Retraction** (step 6): a pending proposal whose development is undone,
+  declined, superseded or forgotten is expired at the next run.
+- **Web** (step 5): the reflection card marks conversation proposals, says
+  when it was said and shows Mylo's explanation; profile chips from a yes carry
+  a "heard" mark whose accessible text says when and where it was confirmed.
+- **Not built, deliberately:** proposals for keywords, exclusions,
+  `state_slow` conflicts ("this seems to have changed — has it?"), milestone
+  dates and "retire a stale interest". Each needs evidence Plan 10 has not
+  produced yet; the rule is unchanged — nothing reaches a stated field
+  without a yes. OD-08a (echo a told fact back): answered yes by Plan 06's
+  reply to a told fact.
+- **Tests:** `apps/ambient/tests/test_apply.py` (each edit's shape, exact
+  undo, undo refused after a later edit, applied once, a no writes nothing,
+  the contract refusing, an AST check that `apply.py` is the app's only writer
+  of `Profile.interests`); `apps/content/tests/test_ambient_proposals.py`
+  (proposal shapes, only editors, private to its speaker, rest after decline,
+  withdrawn on retraction, a non-target cannot accept or see it, accept changes
+  only the named field, undo refused after a later edit, a rejection records
+  nothing).
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,
