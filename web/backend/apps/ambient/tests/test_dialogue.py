@@ -706,3 +706,57 @@ def test_what_counts_as_repeating_a_choice(correction, echo):
         {"key": "no", "label": "No, not really"},
     ]
     assert dialogue._echoes_a_choice(correction, choices) is echo
+
+
+def test_a_bare_stop_asking_while_answering_is_the_answer(ada):
+    """EXP-2026-09-015 run 4: "not really interested right now, so you can stop
+    asking" muted every question and left this one unanswered."""
+    s = _asked(ada)
+
+    def model(system, prompt):
+        if "Which choice did they pick" in prompt:
+            return json.dumps({"choice": "no", "correction": ""})
+        raise AssertionError("an answer, so no control reading")
+
+    line = dialogue.turn(
+        ada,
+        "not really interested right now, so you can stop asking.",
+        complete=model,
+        now=WEDNESDAY,
+    )
+    assert "won't ask about" in line
+    s.refresh_from_db()
+    assert s.state == "answered" and s.verdict == "rejected"
+    assert not ListeningConsent.objects.get(user=ada).questions_muted
+
+
+def test_no_more_questions_while_answering_is_still_the_switch(ada):
+    _asked(ada)
+
+    def model(system, prompt):
+        raise AssertionError("the literal switch needs no model")
+
+    line = dialogue.turn(
+        ada, "no, and no more questions please", complete=model, now=WEDNESDAY
+    )
+    assert "no more questions" in line
+    assert ListeningConsent.objects.get(user=ada).questions_muted
+
+
+def test_a_bare_stop_asking_with_nothing_open_is_the_switch(ada):
+    ListeningConsent.objects.get_or_create(user=ada, platform="discord")
+    line = dialogue.turn(ada, "you can stop asking", now=WEDNESDAY)
+    assert "no more questions" in line
+
+
+@pytest.mark.parametrize(
+    ("text", "more"),
+    [
+        ("please stop asking", False),
+        ("ok just stop asking now, thanks", False),
+        ("not really interested right now, so you can stop asking.", True),
+        ("nah, not for me, don't ask me", True),
+    ],
+)
+def test_what_says_more_than_stop(text, more):
+    assert dialogue._says_more_than_stop(text) is more

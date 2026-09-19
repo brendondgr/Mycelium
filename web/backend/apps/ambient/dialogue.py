@@ -489,6 +489,26 @@ def shut_off_request(text: str) -> str | None:
     return None
 
 
+#: Words that make a request to stop about all of Mylo's questions even in the
+#: middle of answering one.
+_BARE_STOP = re.compile(r"\b(stop asking|don'?t ask me)\b", re.I)
+_POLITE = frozenset(
+    "please pls just you can could would so ok okay thanks thank mylo hey hi "
+    "now already really seriously".split()
+)
+
+
+def _says_more_than_stop(text: str) -> bool:
+    """Whether a message with a bare "stop asking" also says something else —
+    "not really interested, so you can stop asking" — rather than only the
+    request ("please stop asking")."""
+    rest = _BARE_STOP.sub(" ", text.casefold())
+    words = [w for w in re.findall(r"[a-z']+", rest) if w not in _POLITE]
+    return len(words) >= 2
+
+
+_ABOUT_ALL = re.compile(r"\b(questions|anything|at all|interests alone)\b", re.I)
+
 _CONTROL_HINT = re.compile(
     r"\b(question|questions|ask|asking|stop|quit|chill|enough|quiet|pause|"
     r"listen|listening|leave me|off|back on|again)\b",
@@ -1119,20 +1139,8 @@ def open_for(user) -> list[PendingSuggestion]:
     )
 
 
-def turn(user, text: str, *, reply_to: str = "", complete=None, now=None) -> str | None:
-    """One message a person sent Mylo directly. The reply, or None to stay quiet.
-
-    Control phrases first ("stop asking", "stop listening too", "start asking
-    again"). Then, if the message answers one of Mylo's open questions — a
-    reply to it, or the latest question asked in the last three days — it is
-    read as the answer. Anything else is ordinary conversation, and the
-    dialogue says nothing.
-    """
-    now = now or timezone.now()
-    request = shut_off_request(text)
-    if request is None and _open_asked(user, reply_to, now) is None:
-        # Not answering anything: it may be a request in the person's own words.
-        request = read_control(text, complete=complete)
+def _switch(user, request: str, now) -> str:
+    """Carry out a request to stop or resume the questions, and say so."""
     if request == "on":
         set_questions(user, on=True, now=now)
         return "Questions are back on. I'll ask now and then, never on weekends."
@@ -1149,6 +1157,38 @@ def turn(user, text: str, *, reply_to: str = "", complete=None, now=None) -> str
             "your page, and you can turn questions back on in your settings or by "
             "saying “start asking again”."
         )
+    return ""
+
+
+def turn(user, text: str, *, reply_to: str = "", complete=None, now=None) -> str | None:
+    """One message a person sent Mylo directly. The reply, or None to stay quiet.
+
+    Control phrases first ("stop asking", "stop listening too", "start asking
+    again"). Then, if the message answers one of Mylo's open questions — a
+    reply to it, or the latest question asked in the last three days — it is
+    read as the answer. Anything else is ordinary conversation, and the
+    dialogue says nothing.
+    """
+    now = now or timezone.now()
+    request = shut_off_request(text)
+    answering = _open_asked(user, reply_to, now) is not None
+    deferred = None
+    if (
+        request == "off"
+        and answering
+        and _BARE_STOP.search(text)
+        and not _ABOUT_ALL.search(text)
+        and _says_more_than_stop(text)
+    ):
+        # "Not really interested, so you can stop asking" answers the question
+        # in front of them: it is read as the answer first, and is the switch
+        # only if it does not read as one (EXP-2026-09-015 run 4).
+        deferred, request = request, None
+    if request is None and not answering:
+        # Not answering anything: it may be a request in the person's own words.
+        request = read_control(text, complete=complete)
+    if request is not None:
+        return _switch(user, request, now)
     target = None
     if reply_to:
         from apps.integrations.models import DiscordOutboxMessage
@@ -1178,21 +1218,14 @@ def turn(user, text: str, *, reply_to: str = "", complete=None, now=None) -> str
     PendingSuggestion.objects.filter(pk=target.pk).update(turns=target.turns + 1)
     target.turns += 1
     reply = read_reply(target, text, complete=complete)
+    if reply is None and deferred is not None:
+        # The model cannot say whether it answers: the switch they named wins.
+        return _switch(user, deferred, now)
     if reply is not None and reply.verdict == Verdict.UNCLEAR:
         # Not an answer to the question — perhaps a request about all of them.
-        request = read_control(text, complete=complete)
+        request = deferred or read_control(text, complete=complete)
         if request is not None:
-            return turn(
-                user,
-                "stop asking"
-                if request == "off"
-                else (
-                    "stop listening"
-                    if request == "off_listening"
-                    else "start asking again"
-                ),
-                now=now,
-            )
+            return _switch(user, request, now)
     if reply is None:
         return (
             "I couldn't read that just now — could you use one of the buttons on my "
