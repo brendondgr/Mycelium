@@ -317,3 +317,94 @@ def test_the_pdf_renders_a_change_citation_as_a_marker():
 
     out = _inline("It addresses the blocker [P1][O2].")
     assert "[O2]</font>" in out and "[P1]</font>" in out
+
+
+# -- the daily's one line (steps 5 and 7) -------------------------------------------
+
+
+def test_the_daily_says_what_took_effect_since_yesterday(world):
+    from apps.content.weekly_changes import changed_today
+
+    ada = world["ada"]
+    _change(ada, "profile_edit", "kriging", field="interests.skills", surface="dm")
+    _change(
+        ada,
+        "state_edit",
+        "annotation budget",
+        project=world["shared"],
+        field="slow.blockers",
+        visibility="lab",
+    )
+    old = _change(ada, "profile_edit", "old skill", field="interests.skills")
+    AppliedChange.objects.filter(pk=old.pk).update(
+        created_at=timezone.now() - timezone.timedelta(days=2)
+    )
+    lines = changed_today(reader=ada, projects=[world["shared"]], is_lab=False)
+    assert "**kriging** — added to your skills; you said yes." in lines
+    assert any(
+        "stated blockers changed (annotation budget), accepted by you" in line
+        for line in lines
+    )
+    assert not any("old skill" in line for line in lines)
+    # The lab hears the accepted state change and nothing personal.
+    lab_lines = changed_today(
+        reader=world["lab"], projects=[world["shared"]], is_lab=True
+    )
+    assert lab_lines == [
+        "**Imaging pipeline** — the stated blockers changed (annotation budget), "
+        "accepted by Ada."
+    ]
+
+
+def test_a_development_that_changes_the_alerts_is_one_line(world):
+    from apps.ambient.models import ProjectDevelopment
+    from apps.content.weekly_changes import changed_today
+
+    ProjectDevelopment.objects.create(
+        project=world["shared"],
+        speaker=world["ada"],
+        change="method_dropped",
+        topic="graph neural networks",
+        text="Said the lab dropped GNNs.",
+        force="fact",
+        occurred_on=TODAY,
+        status="active",
+        origin="told",
+        visibility="lab",
+    )
+    lines = changed_today(reader=world["bo"], projects=[world["shared"]], is_lab=False)
+    assert lines == [
+        "**Imaging pipeline** — graph neural networks was dropped, so Mylo no "
+        "longer flags overlap on it."
+    ]
+    # OD-09a: the lab channel does not get a same-day line for a development.
+    assert (
+        changed_today(reader=world["lab"], projects=[world["shared"]], is_lab=True)
+        == []
+    )
+
+
+def test_the_changed_today_section_joins_needs_your_attention():
+    from apps.content.weekly_changes import with_changed_today
+
+    assert with_changed_today("", []) == ""
+    assert with_changed_today("", ["**x** — y."]).startswith(
+        "## Needs your attention\n\n### Changed today\n- **x** — y."
+    )
+    assert with_changed_today("## Needs your attention\n\n### A", ["z"]).endswith(
+        "### Changed today\n- z"
+    )
+
+
+def test_the_posts_carry_a_changed_today_field(world):
+    from apps.content.daily_report import compile_report_for_lab
+    from apps.content.discord_embeds import lab_post_embed
+
+    data = compile_report_for_lab(world["lab"])
+    embed = lab_post_embed(
+        data, data.stats, changes=["**P** — the stated method changed."]
+    )
+    [field] = [f for f in embed["fields"] if f["name"] == "Changed today"]
+    assert field["value"] == "**P** — the stated method changed."
+    quiet = lab_post_embed(data, data.stats)
+    assert "Changed today" not in [f["name"] for f in quiet["fields"]]

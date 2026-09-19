@@ -114,10 +114,12 @@ def _collect(packet, *, target_filter, projects, reader, today):
     )
     if is_lab:
         # Belt and braces on the rule the query already enforces.
-        rows = [row for row in rows if row["visibility"] == "lab"]
-    if is_lab:
         project_ids = {str(p.pk) for p in projects}
-        rows = [row for row in rows if row["project_id"] in project_ids]
+        rows = [
+            row
+            for row in rows
+            if row["visibility"] == "lab" and row["project_id"] in project_ids
+        ]
     numbered = [{**row, "n": n} for n, row in enumerate(rows, start=1)]
     packet.changes = numbered
 
@@ -287,3 +289,82 @@ def what_changed_block(packet, *, reader=None) -> str:
             f"See, edit or undo any of these on [Mylo & you]({mylo_and_you_url()})."
         )
     return "\n".join(lines)
+
+
+# -- the daily's one line (Plan 09 steps 5 and 7) -----------------------------------
+
+#: What a development that took effect does to the alerts, as a reader would
+#: want to be told. Only the two changes the alerts act on (``alerts.py``).
+_DEVELOPMENT_EFFECT = {
+    "blocker_closed": (
+        "no longer blocks it, so Mylo stopped flagging items that address it"
+    ),
+    "method_dropped": "was dropped, so Mylo no longer flags overlap on it",
+}
+
+
+def changed_today(*, reader, projects, is_lab: bool, now=None) -> list[str]:
+    """The lines a daily carries about what took effect since yesterday's run.
+
+    A person's daily: a yes that edited their profile or a project's stated
+    state, and a development that changed what the alerts flag. A lab's daily:
+    only a stated-state change accepted on a project the lab shares (OD-09a —
+    the weekly is the unit for developments). Never raises.
+    """
+    try:
+        return _changed_today(reader=reader, projects=projects, is_lab=is_lab, now=now)
+    except Exception:  # noqa: BLE001 - a daily without this line is still a daily
+        import logging
+
+        logging.getLogger(__name__).exception("changed-today lines unavailable")
+        return []
+
+
+def _changed_today(*, reader, projects, is_lab, now):
+    from apps.ambient.read import changes_between, developments_in_effect
+
+    now = now or timezone.now()
+    since = now - timedelta(hours=24)
+    lines = []
+    rows = changes_between(
+        since=since, until=now, user=None if is_lab else reader, projects=projects
+    )
+    for row in rows:
+        if row["undone"]:
+            continue
+        if row["kind"] == "state_edit" and row["project_id"]:
+            field = FIELD_LABELS.get(row["field"], "state")
+            who = _who(row, reader=reader, is_lab=is_lab)
+            lines.append(
+                f"**{row['project_name']}** — the stated {field} changed "
+                f"({row['topic']}), accepted by {who}."
+            )
+        elif row["kind"] == "profile_edit" and not is_lab:
+            field = FIELD_LABELS.get(row["field"], "profile")
+            lines.append(f"**{row['topic']}** — added to your {field}; you said yes.")
+    if is_lab:
+        return lines
+    for project in projects:
+        for development in developments_in_effect(
+            project, reader=reader, changes=tuple(_DEVELOPMENT_EFFECT)
+        ):
+            took_effect = (
+                development.decided_at
+                if development.status == "confirmed"
+                else development.recorded_on
+            )
+            if took_effect is None or not (since <= took_effect <= now):
+                continue
+            lines.append(
+                f"**{project.name}** — {development.topic} "
+                f"{_DEVELOPMENT_EFFECT[development.change]}."
+            )
+    return lines
+
+
+def with_changed_today(attention: str, lines: list[str]) -> str:
+    """The "Needs your attention" section with the day's change lines added."""
+    if not lines:
+        return attention
+    block = "\n".join(["### Changed today", *[f"- {line}" for line in lines]])
+    return "\n\n".join([attention or "## Needs your attention", block])

@@ -97,8 +97,40 @@ def withdraw_stale() -> int:
         ).only("pk", "evidence")
         if str((row.evidence or {}).get("development")) not in live
     ]
+    from apps.content.models import Notification
+
+    Notification.objects.filter(
+        dedupe_key__in=[f"ambient-proposal-{pk}" for pk in stale],
+        dismissed_at__isnull=True,
+    ).update(dismissed_at=timezone.now())
     return ReflectionProposal.objects.filter(pk__in=stale).update(
         status=ReflectionProposal.Status.EXPIRED, decided_at=timezone.now()
+    )
+
+
+_BELL_TITLES = {
+    ReflectionProposal.Kind.CLOSE_BLOCKER: "Is “{topic}” still blocking {project}?",
+    ReflectionProposal.Kind.DROP_METHOD: "Did {project} drop {topic}?",
+    ReflectionProposal.Kind.ADD_METHOD: "Is {topic} now part of {project}'s method?",
+}
+
+
+def _ring(person, proposal, development) -> None:
+    """The bell for a proposal from conversation (Plan 09 step 6), once."""
+    from apps.content.models import Notification
+
+    title = _BELL_TITLES.get(proposal.kind, "Mylo suggests a change to {project}")
+    Notification.objects.get_or_create(
+        dedupe_key=f"ambient-proposal-{proposal.pk}",
+        defaults={
+            "user": person,
+            "kind": Notification.Kind.SUGGESTION_PENDING,
+            "title": title.format(
+                topic=development.topic, project=development.project.name
+            )[:500],
+            "body": "Heard in conversation. Accept or decline it on the project page.",
+            "url": f"/app/projects/{development.project_id}",
+        },
     )
 
 
@@ -133,7 +165,7 @@ def propose(*, today: date | None = None) -> int:
                 or earlier.filter(status=ReflectionProposal.Status.ACCEPTED).exists()
             ):
                 continue
-            ReflectionProposal.objects.create(
+            proposal = ReflectionProposal.objects.create(
                 target_user=person,
                 project=development.project,
                 kind=kind,
@@ -155,5 +187,6 @@ def propose(*, today: date | None = None) -> int:
                 },
                 expires_on=today + timedelta(days=EXPIRY_DAYS),
             )
+            _ring(person, proposal, development)
             created += 1
     return created

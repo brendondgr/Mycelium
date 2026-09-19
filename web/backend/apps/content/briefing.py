@@ -97,6 +97,7 @@ LAB_BRIEFING_CATEGORIES: tuple[str, ...] = (
 #: How many items per category to show in the briefing showcase (bottom-right UI).
 SHOWCASE_PER_CATEGORY = 3
 
+
 def _watched_categories(watch, allow: tuple[str, ...] | None = None) -> list[str]:
     """The categories a target watches, or all available when none are configured.
 
@@ -230,16 +231,12 @@ def report_scores(
     )
 
 
-def filter_for_report(
-    scores: list[RelevanceScore], today: str
-) -> list[RelevanceScore]:
+def filter_for_report(scores: list[RelevanceScore], today: str) -> list[RelevanceScore]:
     """The slate, in rank order, from rows already read — see :func:`report_scores`."""
     return order_by_slate(scores)
 
 
-def report_new_scores(
-    scores: list[RelevanceScore], today: str
-) -> list[RelevanceScore]:
+def report_new_scores(scores: list[RelevanceScore], today: str) -> list[RelevanceScore]:
     """The slate members that entered on ``today``'s run — the report's news."""
     return [s for s in scores if is_entrant(s.signals or {}, today)]
 
@@ -471,7 +468,8 @@ def _showcase_item(
         # global position would be comparing scores that are not comparable, which
         # is the failure this whole redesign removes.
         "position": (
-            cluster_rank(signals, cluster_id) if cluster_id
+            cluster_rank(signals, cluster_id)
+            if cluster_id
             else (signals.get("top_rank") or 0)
         ),
         "verdict": (writeup or {}).get("verdict") or signals.get("verdict"),
@@ -813,9 +811,7 @@ def _write_briefing(
             hidden_projects=hidden_projects,
             attention=attention,
         )
-        origin = (
-            DailyBriefing.Origin.LLM if used_llm else DailyBriefing.Origin.FALLBACK
-        )
+        origin = DailyBriefing.Origin.LLM if used_llm else DailyBriefing.Origin.FALLBACK
     else:
         # Nothing entered the reader's Top-25, so there is nothing to say that was
         # not said yesterday. Carrying the previous body forward verbatim is the
@@ -929,6 +925,9 @@ def generate_briefing_for_user(
         (block.project_label, block.trigger_label, block.title) for block in blocks
     ]
     projects, lead = by_attention(user, report_projects_for_user(user))
+    from .weekly_changes import changed_today, with_changed_today
+
+    changed = changed_today(reader=user, projects=projects, is_lab=False)
     briefing = _write_briefing(
         owner={"user": user},
         target=target_for_user(user),
@@ -939,7 +938,8 @@ def generate_briefing_for_user(
         complete=complete,
         # A personal report has exactly one reader, so it honours their ignores.
         reader=user,
-        attention=attention_section(blocks),
+        # Ambient Plan 09: what took effect since yesterday, one line each.
+        attention=with_changed_today(attention_section(blocks), changed),
         alert_summaries=summaries,
     )
     # The run's numbers, settled here so every later surface reads them back off
@@ -975,6 +975,10 @@ def generate_briefing_for_lab(
     summaries = [
         (block.project_label, block.trigger_label, block.title) for block in blocks
     ]
+    from .weekly_changes import changed_today, with_changed_today
+
+    shared = report_projects_for_lab(lab)
+    changed = changed_today(reader=lab, projects=shared, is_lab=True)
     briefing = _write_briefing(
         owner={"lab": lab},
         target=target_for_lab(lab),
@@ -982,14 +986,15 @@ def generate_briefing_for_lab(
         watch=getattr(lab, "watch", None),
         allow=LAB_BRIEFING_CATEGORIES,
         member_names=_lab_member_names(lab),
-        projects=report_projects_for_lab(lab),
+        projects=shared,
         hidden_projects=hidden_lab_projects(lab),
         # The lab's aggregate part is the lab, so it is named after it. "Personal"
         # is what a *person's* own matches are called; on a lab's report it named
         # nobody.
         personal_label=lab.name,
         complete=complete,
-        attention=attention_section(blocks),
+        # Ambient Plan 09: a stated-state change accepted today, one line each.
+        attention=with_changed_today(attention_section(blocks), changed),
         alert_summaries=summaries,
     )
     return record_run_stats(briefing)

@@ -122,7 +122,15 @@ def queue_lab_digest(
         alerts = discord_lines(
             [block_for(alert) for alert in open_alerts({"target_lab": lab}, on)]
         )
-    if is_quiet(data):
+    from apps.content.briefing import report_projects_for_lab
+    from apps.content.weekly_changes import changed_today
+
+    # Ambient Plan 09: a stated-state change accepted today is one line in the
+    # day's post — never a post of its own, and never a development (OD-09a).
+    changes = changed_today(
+        reader=lab, projects=report_projects_for_lab(lab), is_lab=True
+    )
+    if is_quiet(data) and not changes:
         # Nothing new and nothing wrong. A daily "I found nothing" post trains
         # people to ignore the channel, which costs more than the silence does
         # (plan H7). The lab's web report still shows the day.
@@ -137,7 +145,9 @@ def queue_lab_digest(
         kind="lab_digest",
         channel_id=channel_id,
         lab=lab,
-        embed=discord_embeds.lab_post_embed(data, data.stats, alerts=alerts),
+        embed=discord_embeds.lab_post_embed(
+            data, data.stats, alerts=alerts, changes=changes
+        ),
         subject_type="lab_digest",
         subject_id=str(lab.id),
         not_before=delivery.send_time(lab, on),

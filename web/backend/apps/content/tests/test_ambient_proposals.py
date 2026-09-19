@@ -259,3 +259,21 @@ def test_a_rejected_proposal_records_no_change(ada, lab_project, client):
     )
     assert not AppliedChange.objects.exists()
     assert len(ProjectState.objects.get(project=project).slow["blockers"]) == 2
+
+
+def test_a_proposal_rings_the_bell_once_and_leaves_it_when_withdrawn(ada, lab_project):
+    from apps.content.ambient_proposals import propose
+    from apps.content.models import Notification
+
+    project, bo = lab_project
+    development = _development(project, bo, "blocker_closed", "annotation budget")
+    propose()
+    propose()
+    [bell] = Notification.objects.filter(user=ada)
+    assert bell.kind == "suggestion_pending"
+    assert bell.title == "Is “annotation budget” still blocking Imaging pipeline?"
+    assert bell.url == f"/app/projects/{project.pk}"
+    ProjectDevelopment.objects.filter(pk=development.pk).update(status="rejected")
+    propose()
+    bell.refresh_from_db()
+    assert bell.dismissed_at is not None

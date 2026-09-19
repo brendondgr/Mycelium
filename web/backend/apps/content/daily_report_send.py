@@ -94,6 +94,16 @@ def _alert_lines(target_filter: dict):
     return discord_lines([block_for(alert) for alert in open_alerts(target_filter)])
 
 
+def _changed_today(user) -> list[str]:
+    """What took effect since yesterday, one line each (ambient Plan 09)."""
+    from apps.content.briefing import report_projects_for_user
+    from apps.content.weekly_changes import changed_today
+
+    return changed_today(
+        reader=user, projects=report_projects_for_user(user), is_lab=False
+    )
+
+
 def _default_send(user, data: ReportData, path: Path, filename: str):
     local_date = delivery.local_today(user)
     return reminders_discord.send_personal_report(
@@ -104,7 +114,10 @@ def _default_send(user, data: ReportData, path: Path, filename: str):
         # stay filled so the plain path is still reachable, and so the outcome
         # log records what the post was about.
         embed=discord_embeds.personal_report_embed(
-            data, data.stats, alerts=_alert_lines({"target_user": user})
+            data,
+            data.stats,
+            alerts=_alert_lines({"target_user": user}),
+            changes=_changed_today(user),
         ),
         filename=filename,
         attachment_path=str(path),
