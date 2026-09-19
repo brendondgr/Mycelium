@@ -313,6 +313,9 @@ _SYSTEM = (
     "and nothing else."
 )
 
+#: Bump when the reply prompt or its reading changes (EXP-2026-09-015).
+READ_VERSION = "r2"
+
 _PROMPT = """Mylo asked:
 {question}
 
@@ -322,13 +325,16 @@ The choices were:
 The person replied:
 {reply}
 
-Reply as {{"verdict": "confirmed" | "rejected" | "corrected" | "defer" | "unclear",
-          "choice": one of the choice keys above, or "",
-          "correction": if they corrected the topic, their corrected wording in
-                        at most 8 words, else ""}}
-"confirmed" means they chose a yes-like choice; "rejected" a no; "defer" not
-now; "corrected" they said it is right but worded differently; otherwise
-"unclear"."""
+Which choice did they pick? Reply as
+{{"choice": one of the choice keys above, or "unclear",
+  "correction": if they said yes but want the topic worded differently, their
+                wording in at most 8 words, else ""}}
+
+Rules:
+- A soft no ("nah, I'm good", "don't worry about it") is "no".
+- "Not now", "maybe later", "check back another time" is "later".
+- If they do not clearly pick one — undecided, asking a question back, or
+  talking about something else — answer "unclear". Never guess a yes."""
 
 
 @dataclass(frozen=True)
@@ -413,33 +419,28 @@ def read_reply(s: PendingSuggestion, text: str, *, complete=None) -> Reply | Non
         data = {}
     if not isinstance(data, dict):
         data = {}
-    verdict = str(data.get("verdict") or "").strip().lower()
     choice = str(data.get("choice") or "").strip()
     keys = {c["key"] for c in s.choices}
-    if verdict not in Verdict.values:
+    if choice not in keys:
         return Reply(Verdict.UNCLEAR)
-    if verdict == Verdict.CONFIRMED and choice not in keys:
-        # "yes" with no choice named: the first (default) choice.
-        choice = s.choices[0]["key"] if s.choices else ""
-    if verdict == Verdict.REJECTED:
-        choice = "no" if "no" in keys else (choice if choice in keys else "")
-    if verdict == Verdict.DEFER:
-        choice = "later"
+    # The verdict follows the choice, never the other way round: a model that
+    # said "confirmed" while picking "no" must not turn a no into a yes
+    # (EXP-2026-09-015).
+    verdict = verdict_for(choice)
     correction = " ".join(str(data.get("correction") or "").split())[:200]
-    if verdict == Verdict.CORRECTED and not correction:
-        return Reply(Verdict.UNCLEAR)
-    return Reply(
-        verdict,
-        choice if choice in keys or verdict != Verdict.CONFIRMED else "",
-        correction,
-    )
+    if correction and verdict == Verdict.CONFIRMED:
+        return Reply(Verdict.CORRECTED, choice, correction)
+    return Reply(verdict, choice, "")
 
 
 # -- shut off ------------------------------------------------------------------
 
+#: "Stop asking about it" answers one question; "stop asking" is a setting.
+_ABOUT_ONE = r"(?!\s+(me\s+)?(about|on|re)\s+(it|this|that|them|the)\b)"
 _SHUT_OFF = re.compile(
-    r"\b(stop asking|shut (it )?off|no more questions|leave my interests alone|"
-    r"stop the questions|don'?t ask me)\b",
+    rf"\b(stop asking{_ABOUT_ONE}|shut (it )?off|no more questions|"
+    r"leave my interests alone|stop the questions|don'?t ask me"
+    rf"{_ABOUT_ONE})\b",
     re.I,
 )
 _LISTEN_OFF = re.compile(r"\b(stop listening|stop reading|don'?t listen)\b", re.I)
@@ -461,6 +462,71 @@ def shut_off_request(text: str) -> str | None:
     if _SHUT_OFF.search(text or ""):
         return "off"
     return None
+
+
+_CONTROL_HINT = re.compile(
+    r"\b(question|questions|ask|asking|stop|quit|chill|enough|quiet|pause|"
+    r"listen|listening|leave me|off|back on|again)\b",
+    re.I,
+)
+
+_CONTROL_SYSTEM = (
+    "You read one short message a person sent Mylo, their research lab's "
+    "assistant, and decide whether it changes a setting. You never guess. "
+    "Reply with one JSON object and nothing else."
+)
+
+_CONTROL_PROMPT = """The person wrote to Mylo:
+{text}
+
+Does this ask Mylo to change how it treats them? Reply as
+{{"intent": "stop_questions" | "stop_listening" | "resume" | "none"}}
+
+- stop_questions: stop asking them questions (about their interests, what they
+  said) in general — not just about one topic.
+- stop_listening: stop reading or listening to what they say (questions stop
+  too).
+- resume: start asking again / turn the questions back on.
+- none: anything else, including "stop asking about this one" (that is an
+  answer to one question, not a setting)."""
+
+
+def read_control(text: str, *, complete=None) -> str | None:
+    """A request, in the person's own words, to stop Mylo's questions, stop
+    listening, or resume: ``"off"``, ``"off_listening"``, ``"on"`` or None.
+
+    The literal list (:func:`shut_off_request`) answers first and needs no
+    model; this reads the many other ways people say it (EXP-2026-09-015:
+    the literal list alone caught none of 40). A message with none of the
+    words such a request would use is not sent to the model at all.
+    """
+    literal = shut_off_request(text)
+    if literal is not None:
+        return literal
+    if not _CONTROL_HINT.search(text or ""):
+        return None
+    ask = complete if complete is not None else _settings_complete
+    try:
+        raw = ask(
+            _CONTROL_SYSTEM, _CONTROL_PROMPT.format(text=" ".join(text.split())[:600])
+        )
+    except Exception:  # noqa: BLE001 - without the model, only the literal list
+        return None
+    start = (raw or "").find("{")
+    try:
+        data, _ = (
+            json.JSONDecoder().raw_decode((raw or "")[start:])
+            if start >= 0
+            else ({}, 0)
+        )
+    except ValueError:
+        return None
+    intent = str((data or {}).get("intent") or "") if isinstance(data, dict) else ""
+    return {
+        "stop_questions": "off",
+        "stop_listening": "off_listening",
+        "resume": "on",
+    }.get(intent)
 
 
 def set_questions(user, *, on: bool, listening_too: bool = False, now=None) -> None:
@@ -936,6 +1002,20 @@ def _clarify(suggestion: PendingSuggestion, key: str) -> None:
             Observation.objects.filter(pk=latest.pk).update(force="decision")
 
 
+def _reconciled(verdict: str, choice: str) -> str:
+    """The verdict an answer is recorded under: the chosen option's, always.
+
+    A caller may say "corrected" for a yes with new wording, or "unclear" for
+    no choice at all; it can never make a chosen no or not-now into a yes.
+    """
+    if not choice:
+        return verdict or Verdict.UNCLEAR
+    derived = verdict_for(choice)
+    if verdict == Verdict.CORRECTED and derived == Verdict.CONFIRMED:
+        return Verdict.CORRECTED
+    return derived
+
+
 def answer(
     suggestion: PendingSuggestion,
     *,
@@ -964,7 +1044,7 @@ def answer(
         full = {c["key"] for c in s.choices}
         if choice and choice not in full and choice.split(":", 1)[0] not in keys:
             return False, "That isn't one of the choices for this question."
-        s.verdict = verdict or verdict_for(choice)
+        s.verdict = _reconciled(verdict, choice)
         s.choice = choice
         s.correction = correction[:200]
         s.answered_at = now
@@ -979,6 +1059,29 @@ def answer(
         choice or ("unclear" if s.verdict == Verdict.UNCLEAR else "later"), topic
     )
     return True, line
+
+
+def _open_asked(user, reply_to: str, now) -> PendingSuggestion | None:
+    """The open question a message would be answering, if any."""
+    if reply_to:
+        from apps.integrations.models import DiscordOutboxMessage
+
+        row = DiscordOutboxMessage.objects.filter(
+            discord_message_id=str(reply_to), subject_type="ambient_suggestion"
+        ).first()
+        if row is not None:
+            return PendingSuggestion.objects.filter(
+                pk=row.subject_id, user=user
+            ).first()
+    return (
+        PendingSuggestion.objects.filter(
+            user=user,
+            state=PendingSuggestion.State.ASKED,
+            asked_at__gte=now - timedelta(days=3),
+        )
+        .order_by("-asked_at")
+        .first()
+    )
 
 
 def open_for(user) -> list[PendingSuggestion]:
@@ -1000,6 +1103,9 @@ def turn(user, text: str, *, reply_to: str = "", complete=None, now=None) -> str
     """
     now = now or timezone.now()
     request = shut_off_request(text)
+    if request is None and _open_asked(user, reply_to, now) is None:
+        # Not answering anything: it may be a request in the person's own words.
+        request = read_control(text, complete=complete)
     if request == "on":
         set_questions(user, on=True, now=now)
         return "Questions are back on. I'll ask now and then, never on weekends."
@@ -1045,6 +1151,21 @@ def turn(user, text: str, *, reply_to: str = "", complete=None, now=None) -> str
     PendingSuggestion.objects.filter(pk=target.pk).update(turns=target.turns + 1)
     target.turns += 1
     reply = read_reply(target, text, complete=complete)
+    if reply is not None and reply.verdict == Verdict.UNCLEAR:
+        # Not an answer to the question — perhaps a request about all of them.
+        request = read_control(text, complete=complete)
+        if request is not None:
+            return turn(
+                user,
+                "stop asking"
+                if request == "off"
+                else (
+                    "stop listening"
+                    if request == "off_listening"
+                    else "start asking again"
+                ),
+                now=now,
+            )
     if reply is None:
         return (
             "I couldn't read that just now — could you use one of the buttons on my "

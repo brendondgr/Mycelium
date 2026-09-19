@@ -576,3 +576,88 @@ def test_nobody_else_can_answer_my_question_on_the_web(ada, client):
         content_type="application/json",
     )
     assert response.status_code == 404
+
+
+# -- found by EXP-2026-09-015 -------------------------------------------------
+
+
+def test_a_model_that_says_yes_while_picking_no_records_a_no(ada):
+    concept = _consistent(ada)
+    _night()
+    PendingSuggestion.objects.update(state="asked", asked_at=WEDNESDAY)
+
+    def contradictory(system, prompt):
+        return json.dumps({"verdict": "confirmed", "choice": "no", "correction": ""})
+
+    dialogue.turn(ada, "nah, I'm good", complete=contradictory, now=WEDNESDAY)
+    s = PendingSuggestion.objects.get()
+    assert s.verdict == "rejected"
+    assert Edge.objects.get(user=ada, concept=concept).status == EdgeStatus.REJECTED
+
+
+def test_no_caller_can_make_a_chosen_no_a_yes(ada):
+    concept = _consistent(ada)
+    _night()
+    s = PendingSuggestion.objects.get()
+    dialogue.answer(s, choice="no", verdict="confirmed", surface="web", now=WEDNESDAY)
+    s.refresh_from_db()
+    assert s.verdict == "rejected"
+    assert Edge.objects.get(user=ada, concept=concept).status == EdgeStatus.REJECTED
+
+
+def test_stop_asking_in_other_words_is_read_by_the_model(ada):
+    def model(system, prompt):
+        assert "chill with the questions" in prompt
+        return json.dumps({"intent": "stop_questions"})
+
+    line = dialogue.turn(
+        ada,
+        "could you chill with the questions for a bit?",
+        complete=model,
+        now=WEDNESDAY,
+    )  # noqa: E501
+    assert "no more questions" in line
+    assert ListeningConsent.objects.get(user=ada).questions_muted
+
+
+def test_a_message_without_any_such_words_never_reaches_the_control_reader(ada):
+    def model(system, prompt):
+        raise AssertionError("not sent to the model")
+
+    assert (
+        dialogue.turn(
+            ada, "the loader is flaky again today", complete=model, now=WEDNESDAY
+        )
+        is None
+    )  # noqa: E501
+
+
+def test_stop_asking_about_this_one_is_an_answer_not_a_setting(ada):
+    _asked(ada)
+
+    def model(system, prompt):
+        if "Which choice did they pick" in prompt:
+            return json.dumps({"choice": "no", "correction": ""})
+        raise AssertionError("an answer, so no control reading")
+
+    line = dialogue.turn(
+        ada, "Nah, you can stop asking about it!", complete=model, now=WEDNESDAY
+    )  # noqa: E501
+    assert "won't ask about" in line
+    assert not ListeningConsent.objects.get(user=ada).questions_muted
+
+
+def test_an_unclear_reply_that_is_a_general_request_shuts_off(ada):
+    s = _asked(ada)
+
+    def model(system, prompt):
+        if "Which choice did they pick" in prompt:
+            return json.dumps({"choice": "unclear", "correction": ""})
+        return json.dumps({"intent": "stop_questions"})
+
+    line = dialogue.turn(
+        ada, "honestly, enough with all these questions", complete=model, now=WEDNESDAY
+    )  # noqa: E501
+    assert "no more questions" in line
+    s.refresh_from_db()
+    assert s.state == "withdrawn"
