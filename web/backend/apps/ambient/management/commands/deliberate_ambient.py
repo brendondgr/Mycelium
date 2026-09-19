@@ -17,7 +17,7 @@ import json
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from apps.ambient import deliberate, dialogue, evolve, explain, reading
+from apps.ambient import apply, deliberate, dialogue, evolve, explain, reading
 
 
 class Command(BaseCommand):
@@ -36,7 +36,10 @@ class Command(BaseCommand):
                 "ambient deliberation is off (AMBIENT_DELIBERATE_ENABLED)"
             )
             return
-        out = {"read": reading.read_ready().as_dict()}
+        # Plan 08: yesterday's yeses that edit the profile, before anything is
+        # ranked — a confirmed change takes effect at the next run.
+        out = {"applied": apply.apply_answers()}
+        out["read"] = reading.read_ready().as_dict()
         out["deliberate"] = deliberate.deliberate().as_dict()
         if not options["no_explain"]:
             out["explain"] = explain.explain_pending().as_dict()

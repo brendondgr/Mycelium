@@ -55,6 +55,8 @@ __all__ = [
     "mark_asked",
     "changes_to_announce",
     "mark_announced",
+    "developments_to_propose",
+    "note_state_change",
 ]
 
 
@@ -393,4 +395,56 @@ def mark_announced(ids, *, now=None) -> int:
 
     return PendingSuggestion.objects.filter(pk__in=list(ids)).update(
         notified_at=now or timezone.now()
+    )
+
+
+# -- Plan 08: from a development to a proposed state edit ----------------------
+
+
+def developments_to_propose():
+    """Developments in effect that could change a project's stated state: a
+    closed blocker, a dropped or adopted method. The content side turns each
+    into a reflection proposal for the project's editors — nothing is applied
+    until one of them accepts."""
+    from .models import ProjectDevelopment
+
+    return ProjectDevelopment.objects.filter(
+        status__in=[
+            ProjectDevelopment.Status.ACTIVE,
+            ProjectDevelopment.Status.CONFIRMED,
+        ],
+        change__in=["blocker_closed", "method_dropped", "method_adopted"],
+    ).select_related("project", "project__scope_lab", "speaker", "finding")
+
+
+def note_state_change(
+    user,
+    project,
+    *,
+    field: str,
+    old_value,
+    new_value,
+    topic: str,
+    proposal_id: str,
+    explanation: str = "",
+    visibility: str = Visibility.LAB,
+):
+    """Record that an editor accepted a state edit that came from conversation,
+    so "What changed" shows it and it can be undone (Plan 08). The one write
+    the content side makes into this app."""
+    from .models import AppliedChange
+    from .review import record
+
+    return record(
+        user,
+        AppliedChange.Kind.STATE_EDIT,
+        topic,
+        project=project,
+        surface="web",
+        field=field,
+        old_value=old_value,
+        new_value=new_value,
+        explanation=explanation,
+        visibility=visibility,
+        proposal_id=proposal_id,
     )

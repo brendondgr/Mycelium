@@ -1665,6 +1665,10 @@ class ReflectionProposal(models.Model):
         ADD_EXCLUSION = "add_exclusion", "Add an exclusion"
         SET_MILESTONE = "set_milestone", "Set a milestone"
         REVIEW_STATE = "review_state", "Review the state"
+        # Ambient Plan 08: from a project development someone confirmed or told
+        # Mylo — never applied until an editor accepts.
+        CLOSE_BLOCKER = "close_blocker", "Close a blocker"
+        DROP_METHOD = "drop_method", "Drop a method"
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"

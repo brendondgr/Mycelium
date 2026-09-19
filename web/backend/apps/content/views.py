@@ -1943,12 +1943,32 @@ class ReflectionProposalActionView(APIView):
                 state, _created = ProjectState.objects.get_or_create(
                     project=row.project
                 )
+                before = {
+                    part: dict(getattr(state, part) or {}) for part in ("slow", "fast")
+                }
                 state.apply(row.proposal, actor=request.user)
                 # Accepting is the reader saying the state is right, so it is a
                 # confirmation as much as an edit.
                 state.confirmed_at = timezone.localdate()
                 state.save()
             row.status = ReflectionProposal.Status.ACCEPTED
+            if row.proposal and (row.evidence or {}).get("source") == "conversation":
+                # From ambient Plan 08: shown in "What changed", with undo.
+                from apps.ambient.read import note_state_change
+
+                part, _, name = str(row.evidence.get("field") or "").partition(".")
+                if part in ("slow", "fast") and name:
+                    note_state_change(
+                        request.user,
+                        row.project,
+                        field=f"{part}.{name}",
+                        old_value={name: before[part].get(name)},
+                        new_value={name: (getattr(state, part) or {}).get(name)},
+                        topic=str(row.evidence.get("topic") or ""),
+                        proposal_id=str(row.pk),
+                        explanation=str(row.evidence.get("explanation") or ""),
+                        visibility=str(row.evidence.get("visibility") or "lab"),
+                    )
         else:
             row.status = ReflectionProposal.Status.REJECTED
         row.decided_at = timezone.now()

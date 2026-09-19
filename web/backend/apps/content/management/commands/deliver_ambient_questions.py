@@ -69,7 +69,7 @@ class Command(BaseCommand):
                     "title": QUESTION_TITLES.get(
                         question.kind, "Mylo has a question"
                     ).format(topic=question.topic)[:500],
-                    "url": "/mylo-and-you",
+                    "url": "/app/mylo-and-you",
                 },
             )
             delivered.append(question.id)
@@ -88,9 +88,18 @@ class Command(BaseCommand):
                     "user": suggestion.user,
                     "kind": Notification.Kind.CHANGE_APPLIED,
                     "title": title.format(topic=suggestion.topic)[:500],
-                    "url": "/mylo-and-you",
+                    "url": "/app/mylo-and-you",
                 },
             )
             announced.append(suggestion.pk)
         mark_announced(announced, now=now)
-        self.stdout.write(json.dumps({"questions": sent, "announced": len(announced)}))
+        # Plan 08: developments that make a project's stated state out of date,
+        # proposed to its editors on the project page.
+        from apps.content.ambient_proposals import propose
+
+        proposed = propose(today=today)
+        self.stdout.write(
+            json.dumps(
+                {"questions": sent, "announced": len(announced), "proposed": proposed}
+            )
+        )
