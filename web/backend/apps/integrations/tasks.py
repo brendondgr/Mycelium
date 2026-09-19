@@ -78,3 +78,25 @@ def drain_outbox() -> dict:
     minute of latency rather than a lost message.
     """
     return outbox.drain().as_dict()
+
+
+@shared_task(name="apps.integrations.drain_slack_outbox")
+def drain_slack_outbox() -> dict:
+    """Deliver whatever is due in the Slack queue (ambient Plan 11)."""
+    from .services import slack_outbox
+
+    return slack_outbox.drain().as_dict()
+
+
+@shared_task(name="apps.integrations.slack_dialogue")
+def slack_dialogue(
+    team_id: str, slack_user_id: str, channel_id: str, ts: str, text: str
+):
+    """A Slack DM read as a dialogue turn, off the events request (Slack wants
+    its 200 within three seconds; reading a reply can take longer)."""
+    from .services import slack_events
+
+    reply = slack_events.dialogue(team_id, slack_user_id, channel_id, ts, text)
+    if reply:
+        drain_slack_outbox.delay()
+    return bool(reply)

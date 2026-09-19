@@ -78,10 +78,11 @@ Verdict = PendingSuggestion.Verdict
 def askable(user, *, now=None) -> tuple[bool, str]:
     """Whether Mylo may put a question to this person today, and why not.
 
-    Paid effective tier, an active linked Discord identity (Plan 06, step 15),
-    questions not shut off, not in a quiet period, and not a weekend.
+    Paid effective tier, an active linked Discord or Slack identity (Plan 06,
+    step 15; Slack since Plan 11), questions not shut off, not in a quiet
+    period, and not a weekend.
     """
-    from apps.integrations.models import DiscordIdentity
+    from apps.integrations.models import DiscordIdentity, SlackIdentity
 
     from .eligibility import ambient_enabled, tier_is_paid
 
@@ -90,9 +91,14 @@ def askable(user, *, now=None) -> tuple[bool, str]:
         return False, "ambient_disabled"
     if not tier_is_paid(user):
         return False, "tier_free"
-    if not DiscordIdentity.objects.filter(
-        user=user, state=DiscordIdentity.State.ACTIVE
-    ).exists():
+    if not (
+        DiscordIdentity.objects.filter(
+            user=user, state=DiscordIdentity.State.ACTIVE
+        ).exists()
+        or SlackIdentity.objects.filter(
+            user=user, state=SlackIdentity.State.ACTIVE
+        ).exists()
+    ):
         return False, "unlinked"
     consent = ListeningConsent.objects.filter(
         user=user, platform=Platform.DISCORD

@@ -378,7 +378,7 @@ def reopen(user, concept_id: int, relation: str, *, now=None) -> AppliedChange |
 
 
 def settings_for(user) -> dict:
-    from apps.integrations.models import DiscordIdentity
+    from apps.integrations.models import DiscordIdentity, SlackIdentity
 
     from .eligibility import ambient_enabled, tier_is_paid
 
@@ -391,7 +391,16 @@ def settings_for(user) -> dict:
         "linked": DiscordIdentity.objects.filter(
             user=user, state=DiscordIdentity.State.ACTIVE
         ).exists(),
-        "listening": {"discord": bool(consent and consent.enabled)},
+        # Slack (Plan 11): its own opt-in, like any platform.
+        "slack_linked": SlackIdentity.objects.filter(
+            user=user, state=SlackIdentity.State.ACTIVE
+        ).exists(),
+        "listening": {
+            "discord": bool(consent and consent.enabled),
+            "slack": ListeningConsent.objects.filter(
+                user=user, platform=Platform.SLACK, enabled=True
+            ).exists(),
+        },
         "questions_muted": bool(consent and consent.questions_muted),
         "quiet_until": consent.questions_quiet_until if consent else None,
         "statement": STORED_STATEMENT,
@@ -419,6 +428,17 @@ def update_settings(user, data: dict, *, now=None) -> dict:
         consent.save(
             update_fields=["enabled", "enabled_at", "disabled_at", "updated_at"]
         )
+    if "listening_slack" in data:
+        slack, _ = ListeningConsent.objects.get_or_create(
+            user=user, platform=Platform.SLACK
+        )
+        on = bool(data["listening_slack"]) and paid
+        slack.enabled = on
+        if on:
+            slack.enabled_at = now
+        else:
+            slack.disabled_at = now
+        slack.save(update_fields=["enabled", "enabled_at", "disabled_at", "updated_at"])
     if "questions_muted" in data:
         set_questions(user, on=not bool(data["questions_muted"]), now=now)
     if "quiet_until" in data:

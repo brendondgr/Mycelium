@@ -320,6 +320,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.integrations.drain_outbox",
         "schedule": crontab(minute="*"),
     },
+    # The outbound Slack queue (ambient Plan 11), on the same cadence and for the
+    # same reason. A no-op while nothing is queued.
+    "drain-slack-outbox": {
+        "task": "apps.integrations.drain_slack_outbox",
+        "schedule": crontab(minute="*"),
+    },
     # Weekly clean-up of delivered outbox rows and the report PDFs they carried.
     # Sunday, well away from the daily run and the other sweeps.
     "purge-discord-outbox": {
@@ -1331,3 +1337,18 @@ LOGGING = {
         },
     },
 }
+
+# --- Slack (ambient Plan 11) ------------------------------------------------------
+# Off by default: the events endpoint answers 404 until it is on and a signing
+# secret is set. Workspaces install the app through Slack's OAuth (client id and
+# secret); requests are verified by signature before anything is read.
+SLACK_ENABLED = env.bool("SLACK_ENABLED", default=False)
+SLACK_SIGNING_SECRET = env_str("SLACK_SIGNING_SECRET", "")
+SLACK_CLIENT_ID = env_str("SLACK_CLIENT_ID", "")
+SLACK_CLIENT_SECRET = env_str("SLACK_CLIENT_SECRET", "")
+# A request older than this is refused (Slack's own replay guidance).
+SLACK_REQUEST_MAX_AGE_SECONDS = env.int("SLACK_REQUEST_MAX_AGE_SECONDS", default=300)
+SLACK_LINK_CODE_MINUTES = env.int("SLACK_LINK_CODE_MINUTES", default=15)
+SLACK_OUTBOX_RETRY_SECONDS = env.int("SLACK_OUTBOX_RETRY_SECONDS", default=300)
+SLACK_OUTBOX_MAX_ATTEMPTS = env.int("SLACK_OUTBOX_MAX_ATTEMPTS", default=5)
+SLACK_OUTBOX_BATCH_LIMIT = env.int("SLACK_OUTBOX_BATCH_LIMIT", default=50)

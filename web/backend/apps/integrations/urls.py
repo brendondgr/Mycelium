@@ -9,7 +9,7 @@ match DISCORD_OAUTH_REDIRECT_URI / DISCORD_GUILD_REDIRECT_URI defaults.
 
 from django.urls import path
 
-from . import views
+from . import slack_views, views
 
 
 def _both(route, view, name):
@@ -50,4 +50,22 @@ urlpatterns = [
         name="discord-guild-callback",
     ),
     path("discord/guild-callback/", views.DiscordGuildCallbackView.as_view()),
+    # Slack (ambient Plan 11). The events and interactions URLs are what the
+    # Slack app's configuration points at; the callback is its redirect URL.
+    *_both("slack/events", slack_views.SlackEventsView, "slack-events"),
+    *_both(
+        "slack/interactions", slack_views.SlackInteractionsView, "slack-interactions"
+    ),
+    *_both("slack/install", slack_views.SlackInstallView, "slack-install"),
+    path(
+        "slack/oauth/callback",
+        slack_views.SlackOAuthCallbackView.as_view(),
+        name="slack-callback",
+    ),
+    path("slack/oauth/callback/", slack_views.SlackOAuthCallbackView.as_view()),
+    *_both("slack/link-code", slack_views.SlackLinkCodeView, "slack-link-code"),
+    *_both("slack/lab-code", slack_views.SlackLabCodeView, "slack-lab-code"),
+    *_both("slack/status", slack_views.SlackStatusView, "slack-status"),
+    *_both("slack/unlink", slack_views.SlackUnlinkView, "slack-unlink"),
+    *_both("slack/listening", slack_views.SlackListeningView, "slack-listening"),
 ]

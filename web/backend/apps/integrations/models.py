@@ -305,3 +305,180 @@ class DiscordOutboxMessage(models.Model):
     def nonce(self) -> str:
         """Discord's idempotency token for this row (25-char limit — an int fits)."""
         return str(self.pk)
+
+
+# --------------------------------------------------------------------------- #
+# Slack (ambient Plan 11) — the second platform, over the same ledger
+# --------------------------------------------------------------------------- #
+
+
+class SlackWorkspace(models.Model):
+    """One Slack workspace Mylo was installed in, and the lab it belongs to.
+
+    The bot token comes from Slack's OAuth install and is encrypted at rest.
+    ``lab`` is bound separately, by a lab manager's link code posted in a
+    channel of the workspace (the Discord Path C, carried over), so installing
+    the app is not by itself authority over any lab.
+    """
+
+    team_id = models.CharField(max_length=32, unique=True)
+    name = models.CharField(max_length=120, blank=True, default="")
+    bot_token = EncryptedTextField(blank=True, default="")
+    bot_user_id = models.CharField(max_length=32, blank=True, default="")
+    lab = models.ForeignKey(
+        "accounts.Lab",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="slack_workspaces",
+    )
+    # Where the lab's reports go: the channel the lab was linked from.
+    updates_channel_id = models.CharField(max_length=32, blank=True, default="")
+    installed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"SlackWorkspace({self.team_id}, lab={self.lab_id})"
+
+
+class SlackIdentity(models.Model):
+    """A Mycelium user's Slack identity in one workspace.
+
+    Slack user ids are unique per workspace, so the key is the pair. Like
+    ``DiscordIdentity`` it authenticates and confers no authorization.
+    """
+
+    class State(models.TextChoices):
+        ACTIVE = "active", "Active"
+        REVOKED = "revoked", "Revoked"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="slack_identities",
+    )
+    team_id = models.CharField(max_length=32)
+    slack_user_id = models.CharField(max_length=32)
+    state = models.CharField(
+        max_length=16, choices=State.choices, default=State.ACTIVE
+    )
+    linked_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team_id", "slack_user_id"],
+                condition=models.Q(state="active"),
+                name="slack_identity_one_active_per_slack_user",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "team_id"],
+                condition=models.Q(state="active"),
+                name="slack_identity_one_active_per_user_and_team",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"SlackIdentity({self.team_id}:{self.slack_user_id} → {self.user_id})"
+
+
+class SlackLinkCode(models.Model):
+    """A short-lived, single-use code that carries authority into Slack.
+
+    ``person``: issued to a signed-in user, redeemed by DMing it to Mylo, which
+    binds the Slack user who sent it to that account. ``lab``: issued by a lab
+    manager, redeemed by mentioning Mylo with it in a channel, which binds the
+    workspace to the lab and makes that channel the lab's updates channel. The
+    code is stored only as a hash.
+    """
+
+    class Kind(models.TextChoices):
+        PERSON = "person", "Link a person"
+        LAB = "lab", "Link a lab"
+
+    kind = models.CharField(max_length=8, choices=Kind.choices)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+"
+    )
+    lab = models.ForeignKey(
+        "accounts.Lab",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    code_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    used_team_id = models.CharField(max_length=32, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class SlackOutboxMessage(models.Model):
+    """One outbound Slack message, durable from decision to delivery.
+
+    The same contract as :class:`DiscordOutboxMessage`: the dedupe key is the
+    message's logical identity and is unique, so producers can be re-run; a
+    failed attempt stays claimable until its attempts run out.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENDING = "sending", "Sending"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+        DEAD = "dead", "Dead"
+
+    TERMINAL = (Status.SENT, Status.FAILED, Status.DEAD)
+
+    class Target(models.TextChoices):
+        DM = "dm", "Direct message"
+        CHANNEL = "channel", "Channel"
+
+    dedupe_key = models.CharField(max_length=200, unique=True)
+    kind = models.CharField(max_length=40)
+    target_type = models.CharField(max_length=16, choices=Target.choices)
+    recipient_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="slack_outbox",
+    )
+    team_id = models.CharField(max_length=32)
+    channel_id = models.CharField(max_length=32, blank=True, default="")
+    lab = models.ForeignKey(
+        "accounts.Lab",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="slack_outbox",
+    )
+    text = models.TextField(blank=True, default="")
+    blocks = models.JSONField(null=True, blank=True)
+    subject_type = models.CharField(max_length=40, blank=True, default="")
+    subject_id = models.CharField(max_length=64, blank=True, default="")
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.PENDING
+    )
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(db_index=True)
+    last_error = models.CharField(max_length=64, blank=True, default="")
+    slack_ts = models.CharField(max_length=32, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    settled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["status", "next_attempt_at"])]
+        ordering = ["next_attempt_at", "id"]

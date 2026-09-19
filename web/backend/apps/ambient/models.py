@@ -42,7 +42,11 @@ class Source(models.Model):
         DISCORD_GUILD = "discord_guild", "Discord server"
         DISCORD_DM = "discord_dm", "Discord DM"
         SLACK_WORKSPACE = "slack_workspace", "Slack workspace"
+        # One person's DMs with Mylo in one workspace (Plan 11).
+        SLACK_DM = "slack_dm", "Slack DM"
         TEAMS_TEAM = "teams_team", "Microsoft Teams team"
+        # One person's personal chat with Mylo in Teams (Plan 11).
+        TEAMS_CHAT = "teams_chat", "Teams personal chat"
         TRANSCRIPT = "transcript", "Meeting transcript"
 
     class Consent(models.TextChoices):
@@ -57,6 +61,8 @@ class Source(models.Model):
         Kind.DISCORD_GUILD: Platform.DISCORD,
         Kind.DISCORD_DM: Platform.DISCORD,
         Kind.SLACK_WORKSPACE: Platform.SLACK,
+        Kind.SLACK_DM: Platform.SLACK,
+        Kind.TEAMS_CHAT: Platform.TEAMS,
         Kind.TEAMS_TEAM: Platform.TEAMS,
         Kind.TRANSCRIPT: Platform.TRANSCRIPT,
     }

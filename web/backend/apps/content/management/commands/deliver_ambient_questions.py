@@ -60,16 +60,33 @@ class Command(BaseCommand):
         sent = 0
         delivered = []
         for question in questions_to_deliver():
-            enqueue_dm(
-                dedupe_key=f"ambient-question-{question.id}",
-                kind="ambient_question",
-                user=question.user,
-                content=question.content[:1900],
-                components=question.components,
-                subject_type="ambient_suggestion",
-                subject_id=str(question.id),
-                not_before=send_time(question.user, today),
-            )
+            if _on_discord(question.user):
+                enqueue_dm(
+                    dedupe_key=f"ambient-question-{question.id}",
+                    kind="ambient_question",
+                    user=question.user,
+                    content=question.content[:1900],
+                    components=question.components,
+                    subject_type="ambient_suggestion",
+                    subject_id=str(question.id),
+                    not_before=send_time(question.user, today),
+                )
+            else:
+                # Ambient Plan 11: a person linked on Slack only is asked there.
+                from apps.integrations.services.slack_outbox import (
+                    enqueue_dm as enqueue_slack_dm,
+                )
+
+                enqueue_slack_dm(
+                    user=question.user,
+                    dedupe_key=f"ambient-question-{question.id}",
+                    kind="ambient_question",
+                    text=_slack_text(question.content)[:2900],
+                    blocks=slack_blocks(question.content, question.components),
+                    subject_type="ambient_suggestion",
+                    subject_id=str(question.id),
+                    not_before=send_time(question.user, today),
+                )
             Notification.objects.get_or_create(
                 dedupe_key=f"ambient-suggestion-{question.id}",
                 defaults={
@@ -138,3 +155,43 @@ class Command(BaseCommand):
                 }
             )
         )
+
+
+def _on_discord(user) -> bool:
+    from apps.integrations.models import DiscordIdentity
+
+    return DiscordIdentity.objects.filter(
+        user=user, state=DiscordIdentity.State.ACTIVE
+    ).exists()
+
+
+def _slack_text(content: str) -> str:
+    """Discord's ``**bold**`` as Slack's ``*bold*``; nothing else differs."""
+    import re
+
+    return re.sub(r"\*\*([^*]+)\*\*", r"*\1*", content or "")
+
+
+def slack_blocks(content: str, components) -> list[dict]:
+    """The question as Block Kit: the text, then one button per choice, with
+    the same ``ambient:<id>:<choice>`` ids the Discord buttons carry."""
+    buttons = [
+        {
+            "type": "button",
+            "text": {"type": "plain_text", "text": str(button.get("label", ""))[:75]},
+            "action_id": str(button.get("custom_id", "")),
+            "value": str(button.get("custom_id", "")).rsplit(":", 1)[-1],
+        }
+        for row in (components or [])
+        for button in (row.get("components") or [])
+        if str(button.get("custom_id", "")).startswith("ambient:")
+    ]
+    blocks = [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": _slack_text(content)[:2900]},
+        }
+    ]
+    if buttons:
+        blocks.append({"type": "actions", "elements": buttons[:25]})
+    return blocks

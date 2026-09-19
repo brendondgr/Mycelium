@@ -34,6 +34,7 @@ from django.utils import timezone
 from . import activity, filters, reconcile
 from .adapters.base import PlatformEvent
 from .adapters.discord import DiscordAdapter, DiscordDirectMessageAdapter
+from .adapters.slack import SlackAdapter, SlackDirectMessageAdapter, person_key
 from .eligibility import ambient_enabled
 from .models import (
     ListeningConsent,
@@ -48,6 +49,8 @@ logger = logging.getLogger(__name__)
 
 _GUILD = DiscordAdapter()
 _DM = DiscordDirectMessageAdapter()
+_SLACK = SlackAdapter()
+_SLACK_DM = SlackDirectMessageAdapter()
 
 #: Which activity counter a refusal reason lands in. A reason with no column of
 #: its own lands in ``dropped_other`` rather than being lost.
@@ -491,6 +494,234 @@ def answer_button(discord_user_id: str, suggestion_id: str, choice: str) -> str:
         return line
     except Exception:  # pragma: no cover - never take the gateway down
         logger.exception("ambient: a button answer failed")
+        return (
+            "Something went wrong — nothing was changed. Try again, or answer on "
+            "the web."
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Slack (Plan 11) — the same ledger, entered from the backend's events endpoint
+# --------------------------------------------------------------------------- #
+
+
+def workspace_source(team_id: str) -> Source | None:
+    return Source.objects.filter(
+        kind=Source.Kind.SLACK_WORKSPACE, external_id=str(team_id)
+    ).first()
+
+
+def set_workspace_listening(
+    team_id: str, *, on: bool, changed_by=None, lab=None
+) -> dict:
+    """Plan 02's server switch for a Slack workspace, with the same rules:
+    refused while ``AMBIENT_ENABLED`` is off, and turning it off purges the
+    buffer at once."""
+    if on and not ambient_enabled():
+        return {"listening": False, "refused": "unavailable"}
+    source = workspace_source(team_id)
+    if source is None:
+        if not on:
+            return {"listening": False}
+        source = Source.objects.create(
+            kind=Source.Kind.SLACK_WORKSPACE,
+            external_id=str(team_id),
+            lab=lab,
+            label=getattr(lab, "name", "") or "",
+            consent_state=Source.Consent.PENDING,
+        )
+    if on:
+        source.consent_state = Source.Consent.ACTIVE
+        source.consent_changed_at = timezone.now()
+        source.consent_changed_by = changed_by
+        if lab is not None and source.lab_id is None:
+            source.lab = lab
+        source.save(
+            update_fields=[
+                "consent_state",
+                "consent_changed_at",
+                "consent_changed_by",
+                "lab",
+            ]
+        )
+    else:
+        reconcile.revoke_source(source)
+        source.consent_changed_by = changed_by
+        source.save(update_fields=["consent_changed_by"])
+    return {"listening": source.listening}
+
+
+def slack_heard(
+    *,
+    team_id: str,
+    channel_id: str,
+    ts: str,
+    text: str,
+    sent_at,
+    slack_user_id: str,
+    is_dm: bool = False,
+    channel_label: str = "",
+    is_bot: bool = False,
+    from_mylo: bool = False,
+    explicit: bool = False,
+    mention_user_ids=None,
+    thread_ts: str = "",
+    attachment_urls=None,
+) -> Heard:
+    """One Slack message. The same filters, eligibility and buffer as Discord;
+    only the translation differs. Never raises."""
+    if not ambient_enabled():
+        return Heard(False, "ambient_disabled")
+    author = person_key(team_id, slack_user_id)
+    message_id = f"{channel_id}:{ts}"
+    reply_to = f"{channel_id}:{thread_ts}" if thread_ts and thread_ts != ts else ""
+    attachments = list(attachment_urls or [])
+    try:
+        if is_dm:
+            if is_bot and not from_mylo:
+                return Heard(False, "bot")
+            # Keyed on the DM channel, so Mylo's own lines land in the same
+            # window as the person's (a question makes the next line an answer).
+            source, _ = Source.objects.get_or_create(
+                kind=Source.Kind.SLACK_DM,
+                external_id=person_key(team_id, channel_id),
+                defaults={
+                    "consent_state": Source.Consent.ACTIVE,
+                    "label": "Slack direct message",
+                },
+            )
+            if not source.listening:
+                return Heard(False, "source_not_consented")
+            outcome = _SLACK_DM.deliver(
+                PlatformEvent(
+                    source_external_id=source.external_id,
+                    message_external_id=message_id,
+                    text=filters.truncate(text or ""),
+                    sent_at=sent_at,
+                    author_external_id=author,
+                    place_kind=PlaceKind.DM,
+                    attachment_urls=attachments,
+                    from_mylo=from_mylo,
+                    explicit=True,
+                    reply_to_external_id=reply_to,
+                )
+            )
+        else:
+            source = workspace_source(team_id)
+            if source is None or not source.listening:
+                return Heard(False, "source_not_consented")
+            verdict = filters.worth_keeping(
+                text,
+                source=source,
+                place_id=channel_id,
+                is_bot=is_bot,
+                from_mylo=from_mylo,
+                explicit=explicit,
+                has_attachment=bool(attachments),
+            )
+            if not verdict:
+                _bump(source, _COUNTER_BY_REASON.get(verdict.reason, "dropped_other"))
+                return Heard(False, verdict.reason)
+            outcome = _SLACK.deliver(
+                PlatformEvent(
+                    source_external_id=str(team_id),
+                    message_external_id=message_id,
+                    text=filters.truncate(text or ""),
+                    sent_at=sent_at,
+                    author_external_id=author,
+                    place_kind=PlaceKind.CHANNEL,
+                    place_id=str(channel_id),
+                    place_label=channel_label,
+                    attachment_urls=attachments,
+                    from_mylo=from_mylo,
+                    explicit=explicit,
+                    mention_external_ids=[
+                        person_key(team_id, one) for one in (mention_user_ids or [])
+                    ],
+                    reply_to_external_id=reply_to,
+                )
+            )
+        if outcome.stored:
+            _bump(source, "stored")
+            return Heard(True)
+        _bump(source, _COUNTER_BY_REASON.get(outcome.reason, "dropped_other"))
+        return Heard(False, outcome.reason)
+    except Exception:  # pragma: no cover - never fail the endpoint
+        logger.exception("ambient: failed to record a Slack message")
+        return Heard(False, "error")
+
+
+def _slack_source(team_id: str, channel_id: str, *, is_dm: bool):
+    if is_dm:
+        return Source.objects.filter(
+            kind=Source.Kind.SLACK_DM, external_id=person_key(team_id, channel_id)
+        ).first()
+    return workspace_source(team_id)
+
+
+def slack_edited(
+    team_id: str, channel_id: str, ts: str, text: str, *, is_dm=False
+) -> int:
+    source = _slack_source(team_id, channel_id, is_dm=is_dm)
+    if source is None:
+        return 0
+    return reconcile.message_edited(source, f"{channel_id}:{ts}", text or "")
+
+
+def slack_deleted(team_id: str, channel_id: str, ts: str, *, is_dm=False) -> bool:
+    source = _slack_source(team_id, channel_id, is_dm=is_dm)
+    if source is None:
+        return False
+    reconcile.message_deleted(source, f"{channel_id}:{ts}")
+    return True
+
+
+def slack_workspace_removed(team_id: str) -> None:
+    """The app was uninstalled or its token revoked: listening stops and the
+    buffer for the workspace is purged, like consent withdrawn."""
+    source = workspace_source(team_id)
+    if source is not None:
+        reconcile.revoke_source(source)
+
+
+def slack_dialogue_turn(
+    team_id: str, slack_user_id: str, text: str, *, thread_ts=""
+) -> str:
+    """A Slack DM to Mylo, read as a turn of the Plan 06 dialogue. Never raises."""
+    from . import dialogue
+
+    try:
+        user = _SLACK_DM.resolve_speaker(person_key(team_id, slack_user_id))
+        if user is None or not ambient_enabled():
+            return ""
+        return dialogue.turn(user, text or "") or ""
+    except Exception:  # pragma: no cover
+        logger.exception("ambient: a Slack dialogue turn failed")
+        return ""
+
+
+def slack_answer_button(
+    team_id: str, slack_user_id: str, suggestion_id: str, choice: str
+) -> str:
+    """A Block Kit button press on one of Mylo's questions."""
+    from . import dialogue
+    from .models import PendingSuggestion
+
+    try:
+        user = _SLACK_DM.resolve_speaker(person_key(team_id, slack_user_id))
+        suggestion = (
+            PendingSuggestion.objects.filter(pk=int(suggestion_id), user=user).first()
+            if user is not None and str(suggestion_id).isdigit()
+            else None
+        )
+        if suggestion is None:
+            return "That question isn't yours to answer, or it has closed."
+        _taken, line = dialogue.answer(
+            suggestion, choice=str(choice), surface="dm", by=user
+        )
+        return line
+    except Exception:  # pragma: no cover
+        logger.exception("ambient: a Slack button answer failed")
         return (
             "Something went wrong — nothing was changed. Try again, or answer on "
             "the web."

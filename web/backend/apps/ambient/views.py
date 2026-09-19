@@ -292,7 +292,8 @@ class UnderstandingReopenView(APIView):
 
 
 class AmbientSettingsView(APIView):
-    """``GET`` / ``PUT {listening_discord?, questions_muted?, quiet_until?}``."""
+    """``GET`` / ``PUT {listening_discord?, listening_slack?, questions_muted?,
+    quiet_until?}``."""
 
     def get(self, request: Request) -> Response:
         from . import review
@@ -302,7 +303,12 @@ class AmbientSettingsView(APIView):
     def put(self, request: Request) -> Response:
         from . import review
 
-        allowed = {"listening_discord", "questions_muted", "quiet_until"}
+        allowed = {
+            "listening_discord",
+            "listening_slack",
+            "questions_muted",
+            "quiet_until",
+        }
         data = {k: v for k, v in request.data.items() if k in allowed}
         if "quiet_until" in data and data["quiet_until"]:
             from django.utils.dateparse import parse_date
