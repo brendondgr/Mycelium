@@ -102,6 +102,15 @@ Discord-delivered reminders with lead times, snoozing, and a manage page.
 Unified query-first search over the whole corpus. A "who is this for?" member-fit
 layer on every lab feed.
 
+**Collaboration.** A team-fit line on every grant (which of a call's
+requirements the reader or their lab covers). An opt-in, expiring "open to
+collaboration" setting scoped by verified institution, with a weekly exposure
+cap and a preview. A collaborator search from a call, a project or one's own
+words — four lanes, a hard consent gate, coarse pointers only — with
+introductions through consenting co-authors, "outside my network", and team
+proposals. Six harm checks run daily. Built and validated on synthetic worlds;
+outward search ships switched off (`COLLAB_SEARCH_ENABLED`).
+
 **Operations & commerce.** Tiered subscriptions with per-seat billing for labs
 and departments, add-ons, and entitlements enforced in the API, both daily
 pipelines, and the frontend. A staff-only admin API for rosters, plan
@@ -116,11 +125,11 @@ daily run with error reporting and run state. A load-test harness for onboarding
   itself exists in Postgres (`apps/knowledge`): concepts, typed edges with an
   evidence tier (declared, demonstrated, conversational), declared profiles and
   projects loaded, people's own papers read into demonstrated edges, and the
-  first three cross-entity queries (Q1–Q3) proven — validated at 240 synthetic
-  people and 150 synthetic calls (`EXP-2026-09-005`, `-006`). Neo4j stays reserved and unused. The other two
-  cross-entity queries, claim and evidence modeling, and contradiction
-  detection are outstanding — the queries are sequenced in
-  `docs/plans/collaboration-network/`.
+  four cross-entity queries (Q1–Q4) proven — validated on synthetic worlds of
+  up to 600 people and 150 calls (`EXP-2026-09-005` to `-010`). Who published
+  with whom is a Postgres table too; Neo4j was benchmarked and not needed
+  (`EXP-2026-09-011`, decision D-007). Claim and evidence modeling and
+  contradiction detection are outstanding.
 - **Object storage.** MinIO runs; nothing writes to it. Uploads, exports, and
   generated artifacts live on the filesystem or in Postgres.
 - **Proposal readiness & deadline planning.** 30/60/90-day planning, "what is
@@ -133,9 +142,7 @@ daily run with error reporting and run state. A load-test harness for onboarding
   authoritative.
 - **Operational hardening.** Dead-letter handling, runbooks, structured job-status
   visibility, and a security review of permission boundaries end to end.
-- **Slack integration**, collaboration suggestions from missing expertise (the
-  team-fit line now shows each grant's gaps; finding people for them is
-  collaboration-network CN-05), the
+- **Slack integration**, the
   skill matrix, publication-pipeline tracking, student development support, and
   the strategic planning agent.
 
@@ -145,8 +152,7 @@ In rough order, against the November 14 target:
 
 1. Close the graph gap: choose the approach, define node and edge types, load
    existing content, and prove four cross-entity queries. *Approach, types,
-   declared content, Q1–Q3 done (collaboration-network CN-01 to CN-03); Q4
-   follows in CN-05.*
+   declared content, and Q1–Q4 done (collaboration-network CN-01 to CN-05).*
 2. Model claims and evidence so every generated statement is traceable to a
    source, a finding, and a confidence signal.
 3. Turn the daily briefing into durable, exportable reports with human review

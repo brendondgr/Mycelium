@@ -137,17 +137,17 @@ functions that filter the tier set, and an AST boundary test fails the build if
 | 02 | Demonstrated expertise — **shipped 2026-09-18** | Facets of each person's own works, field-neutral method phrasing, OpenAlex field, per-work vectors, `demonstrated` edges, Q2. Validated in `EXP-2026-09-005`. Plan deleted; record in `docs/changelog.md` under `20260918-collaboration-network-02` | CN-01 |
 | 03 | Requirement slots and team fit — **shipped 2026-09-18** | Slots from call text, coverage marking, the team-fit line on grant cards, slot feedback, Q3. Validated in `EXP-2026-09-006`. Plan deleted; record in `docs/changelog.md` under `20260918-collaboration-network-03` | CN-01 |
 | 04 | Collaboration consent — **shipped 2026-09-18** | Open to collaboration, audience, open-to types, expiry, verified scope, preview, appearance cap, the Collaboration card on the Account page. Validated in `EXP-2026-09-007`. Plan deleted; record in `docs/changelog.md` under `20260918-collaboration-network-04` | CN-01, CN-02 |
-| 05 | [The matcher](05-matcher.md) | The query object, four lanes, author aggregation, the hard gate, the shortlist rerank, feedback; institution scope only | CN-02, CN-03, CN-04 |
-| 06 | [Search panel and entry points](06-search-panel.md) | The side panel, "Find collaborators" on cards, the project Collaborators tab, manual search | CN-05 |
-| 07 | [Wider scopes and graph features](07-wider-scopes-and-graph.md) | Country and anywhere scopes; introduction paths, exclusion, team formation; the Neo4j decision | CN-06, CN-08 first results |
-| 08 | [Evaluation](08-evaluation.md) | Slot quality, concept linking, the two lane objectives, concentration, harm checks — under the research rules | CN-03 onward, run continuously |
+| 05 | The matcher — **shipped 2026-09-19** | The query object, four lanes filled slot by slot, the hard gate, the shortlist rerank, feedback, Q4; institution scope at launch, behind `COLLAB_SEARCH_ENABLED`. Validated in `EXP-2026-09-008`. Plan deleted; record in `docs/changelog.md` under `20260918-collaboration-network-05` | CN-02, CN-03, CN-04 |
+| 06 | Search panel and entry points — **shipped 2026-09-19** | The side panel, "Find collaborators" on grant cards, the project Collaborators tab, the Projects page and ⌘K. Validated in `EXP-2026-09-009` (API and browser). Plan deleted; record under `20260918-collaboration-network-06` | CN-05 |
+| 07 | Wider scopes and graph features — **shipped 2026-09-19** | The co-authorship graph, introduction paths, "outside my network", team formation; country and anywhere scopes built and validated, **live widening waits on `evaluation.readiness()`**; the store decision (Postgres, D-007). Validated in `EXP-2026-09-010`, `-011`. Plan deleted; record under `20260918-collaboration-network-07` | CN-06 |
+| 08 | Evaluation — **shipped 2026-09-19** | Counts in the nightly analytics, six harm checks run daily, scope readiness, `collab_evaluation`; the live measures registered in `EXP-2026-09-012` (status planned — they need real use). Plan deleted; record under `20260918-collaboration-network-08` | CN-03 onward |
 
-**Build order (decided 2026-09-18):** this series is built first, one plan at
-a time — CN-01 through CN-06, with CN-08's protocols and counters registered as
-each plan ships. CN-07 waits for CN-08's first results from real use. The
-ambient series resumes at its Plan 04 afterwards and plugs into the finished
-core; nothing in this series waits for it. CN-02 and CN-03 are independent of
-each other once CN-01 has shipped.
+**Build order (decided 2026-09-18):** this series was built first, one plan at
+a time, and every plan has shipped (2026-09-19), each validated on a synthetic
+world before the next began. What still needs real use: EXP-2026-09-012's live
+measures, and widening search past one institution, which waits on
+`evaluation.readiness()` over 28 days of it. The ambient series resumes at its
+Plan 04 and plugs into the finished core; nothing in this series waits for it.
 
 ## The four cross-entity queries (`docs/goals.md`, Next 1)
 
@@ -179,8 +179,17 @@ projects with needs no member covers — has the local model
 database (`mycelium_sandbox`) through the app's models, runs the pipeline, and
 scores it. It refuses to run against any other database and forces both
 knowledge hooks off, so nothing reaches the development data or the live
-worker. Each plan below states the checks it adds; invariants (things that
-must be zero) are a hard gate, rates are compared with a pre-registered bar.
+worker. Each plan's experiment (`EXP-2026-09-005` to `-011`) records the
+checks it ran; invariants (things that must be zero) are a hard gate, rates
+are compared with a pre-registered bar, and a fix made after seeing a result
+is reported as post hoc beside the registered verdict, never in place of it.
+
+Three rules learned while running it: **one run per database** —
+`SANDBOX_DB=mycelium_sandbox_<tag>` names a copy (`CREATE DATABASE … TEMPLATE
+mycelium_sandbox`) so runs can go side by side; **no run longer than an hour**
+— size it before it starts and give the harness a wall-clock budget; and **at
+most 32 model requests at once** across everything running, since the model
+server is shared.
 
 ## Keeping the two series apart
 
@@ -221,6 +230,17 @@ These rules hold either way; what keeps them safe is structure, not care:
   embedding, for comparing a call's slot with it; added to the functions the
   collaboration app may import. A vector says nothing about who holds the
   concept, and a caller only has ids from edges it was already allowed to see.
+- **CN-05 (2026-09-18):** `read.discoverable_works(users)` — per-work facet
+  sentences and vectors for people's own papers (declared and demonstrated
+  evidence only); added to the collaboration app's allow-list.
+- **CN-07 (2026-09-18):** `Coauthorship` (who on Mycelium published with whom,
+  derived nightly from `AuthorWork`; migration `knowledge.0004`) and the walks
+  `read.network_of`, `read.coauthor_distances`, `read.introduction_paths`.
+  Co-authorship carries no concept or tier, so it cannot expose conversation;
+  who may be *named* on a path is decided by the caller from consent.
+- **CN-08 (2026-09-19):** `read.evidence_texts(users)` and
+  `read.privately_held_global_concepts()` for the harm checks — the first
+  returns only declared and demonstrated wording, the second a count.
 
 ## Cross-cutting open decisions
 
@@ -241,6 +261,6 @@ These rules hold either way; what keeps them safe is structure, not care:
   account may opt in to be found (the pool is the scarce resource); searching
   outside the lab is a paid capability, resolved by effective tier exactly as
   other caps are.
-- **OD-CN6 Graph store.** Recommendation: Postgres + pgvector for CN-01 through
-  CN-06; the Neo4j decision is taken in CN-07 against the `design §10` test,
-  with measurements, not before.
+- **OD-CN6 Graph store.** Decided 2026-09-18: Postgres + pgvector throughout,
+  including the co-authorship graph — measured in `EXP-2026-09-011`, recorded
+  as research decision D-007.

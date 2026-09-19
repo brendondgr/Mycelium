@@ -191,3 +191,4 @@ scripts/research/.venv/
 # Synthetic-world corpora and scratch output of the sandbox harnesses
 # (web/backend/sandbox/). Experiments record a pointer and a hash instead.
 data/sandbox/
+data/sandbox-browser/
