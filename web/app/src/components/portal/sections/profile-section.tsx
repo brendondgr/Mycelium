@@ -185,7 +185,7 @@ function FromConversation({ trail }: { trail: AmbientProvenance | undefined }) {
     <span
       data-ambient="provenance"
       title={said}
-      className="ml-0.5 rounded-full bg-surface-alt px-1.5 text-[10px] font-medium text-[var(--text-muted)]"
+      className="ml-0.5 rounded-full bg-surface-alt px-1.5 text-[10px] font-medium text-[var(--text-secondary)]"
     >
       <span aria-hidden="true">heard</span>
       <span className="sr-only">{said}</span>

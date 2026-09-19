@@ -133,30 +133,57 @@ function when(iso: string | null | undefined): string {
 
 // -- needs your answer ------------------------------------------------------------
 
+type Answered = { id: number; message: string };
+
 function NeedsAnswer({ query }: { query: ReturnType<typeof useSuggestions> }) {
+  // Mylo's reply outlives the question: the answered card leaves the list on
+  // refetch, so the reply is kept here, in a live region (EXP-2026-09-016).
+  const [answered, setAnswered] = React.useState<Answered[]>([]);
   if (query.isLoading) return <Loading />;
   if (query.isError) return <Failed what="Mylo's questions" />;
-  const rows = query.data?.suggestions ?? [];
-  if (!rows.length) {
-    return (
-      <Quiet>
-        Nothing pending. Mylo will ask here or on Discord when it notices something worth
-        checking.
-      </Quiet>
-    );
-  }
+  const done = new Set(answered.map((row) => row.id));
+  const rows = (query.data?.suggestions ?? []).filter((row) => !done.has(row.id));
   return (
     <div className="space-y-3.5">
-      {rows.map((suggestion) => (
-        <SuggestionCard key={suggestion.id} suggestion={suggestion} />
-      ))}
+      <div role="status" aria-live="polite" className="space-y-2 empty:hidden">
+        {answered.map((row) => (
+          <p
+            key={row.id}
+            className="rounded-lg border border-border bg-surface-alt/60 px-3.5 py-2.5 text-sm text-[var(--text-primary)]"
+          >
+            <Plain text={row.message} />
+          </p>
+        ))}
+      </div>
+      {rows.length ? (
+        rows.map((suggestion) => (
+          <SuggestionCard
+            key={suggestion.id}
+            suggestion={suggestion}
+            onAnswered={(message) =>
+              setAnswered((prev) => [{ id: suggestion.id, message }, ...prev])
+            }
+          />
+        ))
+      ) : (
+        <Quiet>
+          Nothing pending. Mylo will ask here or on Discord when it notices something worth
+          checking.
+        </Quiet>
+      )}
     </div>
   );
 }
 
-function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
+function SuggestionCard({
+  suggestion,
+  onAnswered,
+}: {
+  suggestion: Suggestion;
+  onAnswered: (message: string) => void;
+}) {
   const answer = useAnswerSuggestion();
-  const [reply, setReply] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
   const [rewording, setRewording] = React.useState(false);
   const [correction, setCorrection] = React.useState("");
   const yesLike = suggestion.choices.filter((c) => !["later", "no"].includes(c.key));
@@ -164,25 +191,25 @@ function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
     answer.mutate(
       { id: suggestion.id, choice, correction: fix },
       {
-        onSuccess: (result) => setReply(result.message),
-        onError: (error) => setReply(error.message),
+        onSuccess: (result) => onAnswered(result.message),
+        onError: (failure) => setError(failure.message),
       },
     );
   };
   return (
     <Card className="p-[18px]">
-      <p className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[var(--text-muted)]">
+      <p className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[var(--text-secondary)]">
         {suggestion.project ? suggestion.project.name : "About you"}
       </p>
       <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-[var(--text-secondary)]">
         <Plain text={suggestion.question} />
       </p>
-      {reply ? (
-        <p role="status" className="mt-3 text-sm text-[var(--text-primary)]">
-          <Plain text={reply} />
+      {error ? (
+        <p role="alert" className="mt-3 text-sm text-clay">
+          {error}
         </p>
-      ) : (
-        <>
+      ) : null}
+      <>
           <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label={`Answer about ${suggestion.topic}`}>
             {suggestion.choices.map((choice, index) => (
               <button
@@ -210,7 +237,7 @@ function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
                 }}
               >
                 <label className="text-sm text-[var(--text-primary)]">
-                  <span className="block text-xs text-[var(--text-muted)]">Call it</span>
+                  <span className="block text-xs text-[var(--text-secondary)]">Call it</span>
                   <input
                     value={correction}
                     onChange={(event) => setCorrection(event.target.value)}
@@ -236,12 +263,11 @@ function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
               </button>
             )
           ) : null}
-          <p className="mt-3 text-[12px] text-[var(--text-muted)]">
+          <p className="mt-3 text-[12px] text-[var(--text-secondary)]">
             Asked {when(suggestion.asked_at) || "today"} · closes {when(suggestion.expires_at)} ·
             answering here closes it on Discord too.
           </p>
         </>
-      )}
     </Card>
   );
 }
@@ -306,12 +332,12 @@ function ChangeRow({ change }: { change: Change }) {
       <Card className="p-[16px]">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[var(--text-muted)]">
+            <p className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[var(--text-secondary)]">
               {change.kind_label}
               {change.project ? ` · ${change.project.name}` : ""}
             </p>
             <p className="mt-0.5 font-medium text-[var(--text-primary)]">{change.topic}</p>
-            <p className="mt-0.5 text-[12px] text-[var(--text-muted)]">
+            <p className="mt-0.5 text-[12px] text-[var(--text-secondary)]">
               {when(change.created_at)}
               {how ? ` · ${how}` : ""}
               {change.undone_at ? ` · undone ${when(change.undone_at)}` : ""}
@@ -321,6 +347,7 @@ function ChangeRow({ change }: { change: Change }) {
             <button
               type="button"
               disabled={undo.isPending}
+              aria-label={`Undo: ${change.topic}`}
               onClick={() =>
                 undo.mutate(change.id, { onError: (e) => setError(e.message) })
               }
@@ -369,7 +396,7 @@ function FadedAndDeclined() {
           <Card className="flex flex-wrap items-center justify-between gap-2 p-[16px]">
             <div className="min-w-0">
               <p className="font-medium text-[var(--text-primary)]">{edge.label}</p>
-              <p className="text-[12px] text-[var(--text-muted)]">
+              <p className="text-[12px] text-[var(--text-secondary)]">
                 {edge.status === "faded"
                   ? "Faded — you hadn't come back to it."
                   : edge.resting
@@ -380,6 +407,7 @@ function FadedAndDeclined() {
             <button
               type="button"
               disabled={reopen.isPending}
+              aria-label={`Include ${edge.label} after all`}
               onClick={() => reopen.mutate({ conceptId: edge.concept_id, relation: edge.relation })}
               className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-[var(--text-primary)] hover:bg-surface-alt disabled:opacity-60"
             >
@@ -424,7 +452,7 @@ function WhatMyloKnows() {
       </p>
       {groups.map((group) => (
         <section key={group.title} aria-label={group.title}>
-          <h2 className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
             {group.title}
           </h2>
           {group.rows.length ? (
@@ -434,12 +462,12 @@ function WhatMyloKnows() {
               ))}
             </ul>
           ) : (
-            <p className="mt-2 text-sm text-[var(--text-muted)]">Nothing yet.</p>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">Nothing yet.</p>
           )}
         </section>
       ))}
       <section aria-label="Your projects">
-        <h2 className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
+        <h2 className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
           Your projects
         </h2>
         {developments.length ? (
@@ -449,7 +477,7 @@ function WhatMyloKnows() {
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-sm text-[var(--text-muted)]">
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
             No project developments yet. Tell Mylo when something changes — data arrives, a
             deadline moves — and it will note it here.
           </p>
@@ -511,16 +539,17 @@ function KnownRow({ edge }: { edge: UnderstandingEdge }) {
           <div className="min-w-0">
             <span className="font-medium text-[var(--text-primary)]">{edge.label}</span>
             {edge.kind ? (
-              <span className="ml-2 text-[12px] text-[var(--text-muted)]">
+              <span className="ml-2 text-[12px] text-[var(--text-secondary)]">
                 {KIND_LABEL[edge.kind] ?? edge.kind}
               </span>
             ) : null}
-            <span className="ml-2 text-[12px] text-[var(--text-muted)]">· {tag}</span>
+            <span className="ml-2 text-[12px] text-[var(--text-secondary)]">· {tag}</span>
           </div>
           {edge.editable ? (
             <div className="flex gap-2">
               <button
                 type="button"
+                aria-label={`Edit ${edge.label}`}
                 onClick={() => setEditing(true)}
                 className="text-sm font-medium text-[var(--text-secondary)] underline-offset-2 hover:underline"
               >
@@ -529,6 +558,7 @@ function KnownRow({ edge }: { edge: UnderstandingEdge }) {
               <button
                 type="button"
                 disabled={remove.isPending}
+                aria-label={`Delete ${edge.label}`}
                 onClick={() => remove.mutate({ conceptId: edge.concept_id, relation: edge.relation })}
                 className="text-sm font-medium text-clay underline-offset-2 hover:underline"
               >
@@ -545,7 +575,7 @@ function KnownRow({ edge }: { edge: UnderstandingEdge }) {
 export function DevelopmentRow({ row }: { row: Development }) {
   return (
     <li className="rounded-lg border border-border px-3 py-2.5 text-sm">
-      <p className="text-[12px] text-[var(--text-muted)]">
+      <p className="text-[12px] text-[var(--text-secondary)]">
         {when(row.occurred_on)} · {row.project.name} · {row.change_label}
         {row.status === "pending" ? " · waiting for a confirmation" : ""}
         {row.visibility === "personal" ? " · only you see this" : ""}

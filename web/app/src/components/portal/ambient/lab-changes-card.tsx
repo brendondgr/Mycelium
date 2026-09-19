@@ -18,7 +18,7 @@ export function LabChangesCard({ slug }: { slug: string }) {
     <Card className="p-[18px]" aria-labelledby="lab-changes-title" data-ambient="lab-changes">
       <h2
         id="lab-changes-title"
-        className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]"
+        className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]"
       >
         What changed in the lab&apos;s projects
       </h2>
@@ -28,10 +28,10 @@ export function LabChangesCard({ slug }: { slug: string }) {
             <p className="text-[var(--text-primary)]">
               {row.topic}
               {row.project ? (
-                <span className="text-[var(--text-muted)]"> · {row.project.name}</span>
+                <span className="text-[var(--text-secondary)]"> · {row.project.name}</span>
               ) : null}
             </p>
-            <p className="text-[12px] text-[var(--text-muted)]">
+            <p className="text-[12px] text-[var(--text-secondary)]">
               {row.kind_label} ·{" "}
               {new Date(row.created_at).toLocaleDateString(undefined, {
                 day: "numeric",

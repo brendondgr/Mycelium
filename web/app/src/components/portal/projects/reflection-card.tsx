@@ -136,7 +136,7 @@ export function ReflectionCard() {
           return (
             <li key={row.id} className="py-3 first:pt-0 last:pb-0">
               {heard ? (
-                <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+                <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
                   Heard in conversation
                   {row.evidence?.visibility === "personal" ? " · only you see this" : ""}
                 </p>

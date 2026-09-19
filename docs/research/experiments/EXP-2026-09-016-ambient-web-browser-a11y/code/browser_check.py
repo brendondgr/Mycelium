@@ -212,11 +212,11 @@ def flows(page: Page, base: str, prep: dict, shots: Path) -> dict:
     )
     rows = page.locator("#mylo-panel li")
     out["changes_listed"] = rows.count()
-    out["undo_buttons"] = page.locator("#mylo-panel").get_by_role("button", name="Undo").count()
+    out["undo_buttons"] = page.locator("#mylo-panel").get_by_role("button", name=re.compile("^Undo")).count()
     edit = rows.filter(has_text="Profile edited").first
     out["profile_edit_row"] = edit.count() > 0
     if edit.count():
-        edit.get_by_role("button", name="Undo").click()
+        edit.get_by_role("button", name=re.compile("^Undo")).click()
         page.wait_for_timeout(2500)
         out["undone_rows"] = page.locator("#mylo-panel li").filter(has_text=re.compile("Undone|undone")).count()
     page.screenshot(path=shots / "desktop-flow-2-undone.png", full_page=True)

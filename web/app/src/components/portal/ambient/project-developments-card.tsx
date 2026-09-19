@@ -21,7 +21,7 @@ export function ProjectDevelopmentsCard({ projectId }: { projectId: string }) {
     <Card className="p-[18px]" aria-labelledby="project-developments-title" data-ambient="project-developments">
       <h2
         id="project-developments-title"
-        className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]"
+        className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]"
       >
         Developments
       </h2>

@@ -91,7 +91,7 @@ export function TabBar({
                   ? "px-4 py-3 text-[13.5px]"
                   : "px-3 py-2.5 text-[12.5px]",
                 on
-                  ? "border-b-primary bg-[color-mix(in_srgb,var(--primary)_7%,transparent)] text-primary"
+                  ? "border-b-primary bg-[color-mix(in_srgb,var(--primary)_7%,transparent)] text-[var(--brand-primary-hover)]"
                   : "border-b-transparent text-[var(--text-secondary)] hover:bg-surface-alt hover:text-[var(--text-primary)]",
               )}
             >

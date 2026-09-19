@@ -41,6 +41,13 @@ membership, _ = LabMembership.objects.get_or_create(
 )
 out["planted"]["lab_membership"] = membership.pk
 
+# Planted (added after run 1): the lab's profile, without which its overview
+# is the setup form and the lab's "What changed" card never shows.
+lab.profile.statement = "We study how markets and mechanisms behave under strategic agents."
+lab.profile.areas = ["mechanism design", "algorithmic pricing"]
+lab.profile.save()
+out["planted"]["lab_profile"] = str(lab.profile.pk)
+
 # Real: the nightly applier carries out her answered yeses.
 out["real"]["apply_answers"] = apply.apply_answers()
 

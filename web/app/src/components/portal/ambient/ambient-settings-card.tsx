@@ -97,7 +97,7 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-sm text-[var(--text-primary)]" htmlFor="ambient-quiet">
             <span className="block font-medium">Quiet until</span>
-            <span className="block text-xs text-[var(--text-muted)]">
+            <span className="block text-xs text-[var(--text-secondary)]">
               No questions before this date.
             </span>
             <input
@@ -215,7 +215,7 @@ function Toggle({
         <label htmlFor={id} className="text-sm font-medium text-[var(--text-primary)]">
           {label}
         </label>
-        <p id={`${id}-help`} className="text-xs text-[var(--text-muted)]">
+        <p id={`${id}-help`} className="text-xs text-[var(--text-secondary)]">
           {help}
         </p>
       </div>
