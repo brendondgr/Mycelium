@@ -1,6 +1,6 @@
 # Ambient Profile — Plan Series
 
-**Status:** discussion draft, nothing implemented.
+**Status:** Plans 01–04 shipped; 05 onward in progress.
 **Correlation ID:** `20260917-ambient-profile`
 **Owner:** Brendon (product direction); plans are working documents and are
 deleted as their work ships, with the outcome recorded in `docs/changelog.md`.
@@ -166,6 +166,12 @@ what lets Plan 04 count one topic said three different ways as one topic, lets
 person's declared profile, their papers, and what Mylo understood from
 conversation sit side by side with their evidence tier.
 
+**Decided 2026-09-19 (overnight build):** raw text is *read* hourly within
+the buffer's unchanged 6-hour TTL and *decided on* nightly (option C); the
+buffer runs on its own Redis with persistence off (`redis-ambient`). Plans 04
+onward were built without a stop at each discussion gate, on the owner's
+instruction; each plan's judgement calls are in its changelog entries.
+
 **Build order (decided 2026-09-18):** the collaboration-network series is built
 first (CN-01 to CN-06). This series then resumes at Plan 04, which, like Plans
 05, 07, and 10, is already written against the knowledge core, so resuming
@@ -188,7 +194,7 @@ the correlation id named in the row.
 | 01 | Evidence ledger — **shipped 2026-09-18** | `web/backend/apps/ambient/`: the observation model, the transient buffer, the adapter contract, retention, deletion. Plan deleted; the record is in `docs/changelog.md` under `20260917-ambient-profile-01` |
 | 02 | Discord server listening — **shipped 2026-09-18** | `mylo/bot/cogs/listen.py` + `apps/ambient/service.py`: consented capture, the listen cog, `/setup`'s Listening section, the visible notice. Stage B (the Message Content intent) is written and **off**. Record: `20260917-ambient-profile-02` |
 | 03 | Attribution — **shipped 2026-09-18** | `apps/ambient/attribution.py` + `attention.py`: which project a message is about (seven signals, floor and margin, an honest "unresolved"), mentions, attention share, and the editors' Conversation card. Record: `20260917-ambient-profile-03` |
-| 04 | [Reasoning agent](04-reasoning-agent.md) | Windowing, grounded extraction, concept linking, supersession, the deliberation step, budget rules. Needs CN-01 |
+| 04 | Reasoning agent — **shipped 2026-09-19** | `apps/ambient/windows.py`, `extract.py`, `reading.py`, `deliberate.py`, `explain.py`: conversations read hourly within the buffer's TTL (option C), grounded observations with no quotes, concepts linked through the knowledge core, one decided `Finding` per topic, model-written explanations. Validated in EXP-2026-09-013. Record: `20260917-ambient-profile-04` |
 | 05 | [Evolving profile layer](05-evolving-profile.md) | Conversational edges and project developments, three speeds, new understanding kinds, reaching retrieval and ranking. Needs CN-01 |
 | 06 | [Confirmation dialogue](06-confirmation-dialogue.md) | Real-time, plain-language confirmation on Discord and the web; every answer a labelled record |
 | 07 | [Web transparency](07-web-transparency.md) | The bell, the "Mylo & you" page, provenance tags, feed badges, settings, undo |
