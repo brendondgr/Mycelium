@@ -74,6 +74,33 @@ export function Modal({
     (first ?? panel).focus({ preventScroll: true });
   }, []);
 
+  // Focus can fall out of the dialog without the user leaving it — a button
+  // that disables itself while it works (the collaborator search's Run) drops
+  // focus to <body>. The panel's own handler never sees keys pressed then, so
+  // Escape did nothing and Tab walked into the page behind. Catch both at the
+  // document: Escape closes, Tab brings focus back inside.
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+  React.useEffect(() => {
+    const onDocumentKey = (event: KeyboardEvent) => {
+      const panel = panelRef.current;
+      // Only when focus has fallen to the page itself — never when it is in
+      // another dialog stacked above this one, whose keys are its own.
+      if (!panel || event.target !== document.body) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+      } else if (event.key === "Tab") {
+        event.preventDefault();
+        (focusable(panel)[0] ?? panel).focus();
+      }
+    };
+    document.addEventListener("keydown", onDocumentKey);
+    return () => document.removeEventListener("keydown", onDocumentKey);
+  }, []);
+
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
       event.stopPropagation();

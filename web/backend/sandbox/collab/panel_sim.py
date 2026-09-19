@@ -494,9 +494,22 @@ def prepare_browser(world, *, seed: int, password: str) -> dict:
     lab_row = Lab.objects.get(slug=f"sandbox-{lab.key}")
     RelevanceScore.objects.filter(target_user=user).delete()
     RelevanceScore.objects.filter(target_lab=lab_row).delete()
+    # What a scoring run writes for a shown match: the feed lists only rows
+    # marked suggested (grants without a date are live).
+    signals = {"suggested": True, "match_percent": 80}
     RelevanceScore.objects.bulk_create(
-        [RelevanceScore(content=c, score=0.9, target_user=user) for c in calls]
-        + [RelevanceScore(content=c, score=0.9, target_lab=lab_row) for c in calls]
+        [
+            RelevanceScore(
+                content=c, score=0.9, target_user=user, signals=dict(signals)
+            )
+            for c in calls
+        ]
+        + [
+            RelevanceScore(
+                content=c, score=0.9, target_lab=lab_row, signals=dict(signals)
+            )
+            for c in calls
+        ]
     )
     team_fit.annotate_target(target_for_user(user))
     team_fit.annotate_target(target_for_lab(lab_row))

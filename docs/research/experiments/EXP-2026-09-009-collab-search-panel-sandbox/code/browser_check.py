@@ -108,6 +108,14 @@ def check(page: Page, base: str, project: str, shots: Path, tag: str) -> dict:
     return out
 
 
+def _to_api(api: str):
+    def handler(route):
+        url = route.request.url
+        route.fulfill(response=route.fetch(url=api + url[url.index("/api/") :]))
+
+    return handler
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", required=True)
@@ -115,6 +123,11 @@ def main() -> int:
     parser.add_argument("--password", required=True)
     parser.add_argument("--project", required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument(
+        "--api",
+        help="Send /api/ straight to this backend (as nginx does in the real "
+        "stack); the Next dev server alone loops on trailing slashes.",
+    )
     args = parser.parse_args()
     shots = Path(args.out)
     shots.mkdir(parents=True, exist_ok=True)
@@ -123,6 +136,8 @@ def main() -> int:
         browser = p.chromium.launch()
         for tag, (width, height) in VIEWPORTS.items():
             context = browser.new_context(viewport={"width": width, "height": height})
+            if args.api:
+                context.route("**/api/**", _to_api(args.api.rstrip("/")))
             page = context.new_page()
             errors: list[str] = []
             page.on(

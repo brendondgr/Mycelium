@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start (or stop) a backend and a web server for EXP-2026-09-009's browser check.
 #
-# The backend reads the SANDBOX database and queues to its own Redis database,
+# The backend reads a sandbox database (SANDBOX_DB, default the panel run's copy) and queues to its own Redis database,
 # so nothing it saves reaches the development data or the development worker.
 # The web server proxies /api to that backend and builds into its own .next
 # (an anonymous volume), so it never disturbs the development web server.
@@ -19,7 +19,7 @@ if [ "${1:-up}" = down ]; then
 fi
 
 docker compose run -d --rm --no-deps --name "$API" -p 18001:8000 \
-  -e DATABASE_URL=postgres://mycelium:mycelium@postgres:5432/mycelium_sandbox \
+  -e DATABASE_URL=postgres://mycelium:mycelium@postgres:5432/${SANDBOX_DB:-mycelium_sandbox_panel} \
   -e REDIS_URL=redis://redis:6379/9 \
   -e CELERY_BROKER_URL=redis://redis:6379/9 \
   -e CELERY_RESULT_BACKEND=redis://redis:6379/10 \

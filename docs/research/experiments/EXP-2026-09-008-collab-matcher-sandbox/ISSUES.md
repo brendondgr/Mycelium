@@ -41,3 +41,12 @@
    person twice) — a change prompted by arm A's numbers, so it is reported as
    exploratory, and H2 is judged on arm A, not on arm C. Arm C runs on the
    shipped concept threshold (0.80), so it is compared with arm B.
+6. **Arm C's first run was invalid — a harness bug (recorded).** To use the
+   model server's headroom the harness was changed to run searches in
+   parallel (`610f8cf`); it stored results by project name, and the world's 96
+   projects share 24 names, so results were scored against the wrong seeker:
+   the run (`data/exp008-armC-invalid.json`) reported 293 and 103 gate
+   "violations" and a hit rate of 0.17 that belong to the scoring, not the
+   matcher. Fixed in `edb7c55` (keyed by lab and project) and arm C rerun on
+   the same database with the invalid run's search logs cleared. Arms A and B
+   ran before the parallel change and are unaffected.
