@@ -512,16 +512,45 @@ def _concept_hits(
     return hits
 
 
-def _best_per_person(hits: list[Hit]) -> dict[str, list[Hit]]:
-    by_lane: dict[str, dict[int, Hit]] = defaultdict(dict)
+def _slot_rounds(hits: list[Hit], k: int) -> list[Hit]:
+    """Up to ``k`` people for one lane, filled slot by slot.
+
+    The best person for each slot first (slots ordered by their best score),
+    then each slot's second best, and so on; nobody twice. A lane's places are
+    shared by every slot of the need, and ranking across slots gave a project
+    that needs three methods three people for its easiest one
+    (EXP-2026-09-008 arm A: hit rate 0.46 at precision 0.98).
+    """
+    best: dict[tuple[str, int], Hit] = {}
     for h in hits:
-        current = by_lane[h.lane].get(h.user_id)
-        if current is None or h.score > current.score:
-            by_lane[h.lane][h.user_id] = h
-    return {
-        lane: sorted(people.values(), key=lambda h: -h.score)
-        for lane, people in by_lane.items()
-    }
+        key = (h.slot, h.user_id)
+        if key not in best or h.score > best[key].score:
+            best[key] = h
+    by_slot: dict[str, list[Hit]] = defaultdict(list)
+    for h in best.values():
+        by_slot[h.slot].append(h)
+    queues = sorted(
+        (sorted(v, key=lambda h: (-h.score, h.user_id)) for v in by_slot.values()),
+        key=lambda q: -q[0].score,
+    )
+    chosen: list[Hit] = []
+    seen: set[int] = set()
+    while len(chosen) < k and any(queues):
+        for queue in queues:
+            while queue and queue[0].user_id in seen:
+                queue.pop(0)
+            if queue and len(chosen) < k:
+                h = queue.pop(0)
+                chosen.append(h)
+                seen.add(h.user_id)
+    return chosen
+
+
+def _by_lane(hits: list[Hit], k: int) -> dict[str, list[Hit]]:
+    lanes: dict[str, list[Hit]] = defaultdict(list)
+    for h in hits:
+        lanes[h.lane].append(h)
+    return {lane: _slot_rounds(v, k) for lane, v in lanes.items()}
 
 
 # --- the rerank ---------------------------------------------------------------
@@ -565,8 +594,13 @@ def _rerank(
     )
     try:
         raw = complete(RERANK_SYSTEM, prompt) or ""
-        start, end = raw.find("{"), raw.rfind("}")
-        verdicts = json.loads(raw[start : end + 1]).get("verdicts") or []
+        start = raw.find("{")
+        if start < 0:
+            raise ValueError("no JSON object in the reply")
+        # The first object only: a model that adds a second block or a
+        # sentence after its answer must not void the whole lane.
+        answer, _ = json.JSONDecoder().raw_decode(raw[start:])
+        verdicts = answer.get("verdicts") or []
     except Exception as exc:  # noqa: BLE001 - the lane stands unexplained
         logger.warning("collab rerank unavailable (%s)", exc)
         return shortlist, {}, False
@@ -724,7 +758,7 @@ def search(
             field_of[w.user_id].add(w.field)
     hits = _work_hits(query, works, gaps, covered, now)
     hits += _concept_hits(query, candidates, gaps, covered, field_of)
-    ranked = _best_per_person(hits)
+    ranked = _by_lane(hits, settings.COLLAB_SHORTLIST_PER_LANE)
 
     ask = complete if complete is not None else _default_complete
     shown: set[int] = set()

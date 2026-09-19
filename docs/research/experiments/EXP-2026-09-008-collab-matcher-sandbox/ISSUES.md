@@ -31,3 +31,13 @@
    as `second_pass_model_calls = 2`. Every other build check held: 2,732 read
    first time, method recall 0.998, Q1 precision and recall 1.0, no wrong
    merges, 17 method splits (Q-043).
+5. **Arm C is post hoc — declared after arm A's result, before its own run.**
+   Arm A failed H2's hit-rate bar (0.46 against 0.80) with precision 0.98 and
+   2.66 of 3 method-bridge places filled per search: the lane's three places
+   were shared by all of a project's method slots and ranked across them, so
+   a project needing three methods tended to get three people for its easiest
+   one. Arm C fills each lane's shortlist and places slot by slot (the best
+   person for each slot, then the second best, and so on, never the same
+   person twice) — a change prompted by arm A's numbers, so it is reported as
+   exploratory, and H2 is judged on arm A, not on arm C. Arm C runs on the
+   shipped concept threshold (0.80), so it is compared with arm B.

@@ -471,3 +471,42 @@ def test_concept_matches_follow_their_own_threshold(world, settings):
     settings.COLLAB_CONCEPT_MATCH_COSINE = 1.01
     assert matcher._concept_hits(query, candidates, gaps, [], fields) == []
     assert settings.COLLAB_LANE_MATCH_COSINE == 0.9
+
+
+def test_a_lane_gives_every_slot_a_place_before_any_slot_a_second():
+    H = matcher.Hit
+    hits = [
+        H(1, "method_bridge", 0.99, "kriging", "method", "kriging", "demonstrated"),
+        H(2, "method_bridge", 0.98, "kriging", "method", "kriging", "demonstrated"),
+        H(3, "method_bridge", 0.97, "kriging", "method", "kriging", "demonstrated"),
+        H(4, "method_bridge", 0.80, "lidar", "method", "lidar", "declared"),
+        H(1, "method_bridge", 0.75, "survival", "method", "survival", "demonstrated"),
+        H(5, "method_bridge", 0.74, "survival", "method", "survival", "declared"),
+    ]
+    chosen = matcher._slot_rounds(hits, 3)
+    # One per slot, each slot's best — and person 1, already chosen for
+    # kriging, is never offered twice (survival goes to person 5).
+    assert [(h.slot, h.user_id) for h in chosen] == [
+        ("kriging", 1),
+        ("lidar", 4),
+        ("survival", 5),
+    ]
+    assert [h.user_id for h in matcher._slot_rounds(hits, 5)] == [1, 4, 5, 2, 3]
+
+
+def test_the_rerank_reads_the_first_answer_and_ignores_what_follows():
+    shortlist = [
+        matcher.Hit(
+            7, "method_bridge", 0.9, "kriging", "method", "kriging", "demonstrated"
+        )
+    ]
+    query = matcher.Query("manual", [{"facet": "method", "text": "kriging"}])
+
+    def chatty(system, user):
+        answer = '{"verdicts": [{"id": "c1", "keep": true, "reason": "Uses kriging."}]}'
+        return answer + '\n{"note": 1}'
+
+    kept, reasons, explained = matcher._rerank(
+        query, "method_bridge", shortlist, chatty
+    )
+    assert explained and reasons == {7: "Uses kriging."} and kept == shortlist
