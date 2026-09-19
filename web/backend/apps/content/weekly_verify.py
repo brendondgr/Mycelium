@@ -37,7 +37,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from apps.content.report_grammar import CITATION
+from apps.content.report_grammar import CHANGE_CITATION, CITATION
 
 #: Splits prose into sentences. Deliberately simple: the cost of an occasional
 #: bad split is one sentence removed with its neighbour, and the cost of a
@@ -99,9 +99,7 @@ class Verification:
         """The one line the report carries about its own checking."""
         if not self.claims:
             return ""
-        removed = (
-            f" · {self.removed} removed as unsupported" if self.removed else ""
-        )
+        removed = f" · {self.removed} removed as unsupported" if self.removed else ""
         return (
             f"Checked: {self.claims} claims · {self.supported} supported{removed}. "
             "Dates, day counts, and time zones are computed, not written by the "
@@ -143,17 +141,24 @@ def verify_line(
     allowed: set[int],
     numbers: set[str],
     entails: EntailmentFn | None = None,
+    changes: set[int] | None = None,
 ) -> tuple[str, list[Removal]]:
     """One line of prose, with its unsupported sentences removed."""
     kept: list[str] = []
     removed: list[Removal] = []
+    changes = changes or set()
     for sentence in sentences(line):
         cited = [int(match.group(1)) for match in CITATION.finditer(sentence)]
-        unresolved = [number for number in cited if number not in allowed]
+        cited_changes = [
+            int(match.group(1)) for match in CHANGE_CITATION.finditer(sentence)
+        ]
+        unresolved = [number for number in cited if number not in allowed] + [
+            number for number in cited_changes if number not in changes
+        ]
         if unresolved:
             removed.append(Removal(sentence.strip(), "unresolved_citation"))
             continue
-        if cited or _ASSERTIVE.search(sentence):
+        if cited or cited_changes or _ASSERTIVE.search(sentence):
             stated = {
                 match.group(0).replace(",", "").lstrip("$").rstrip("%").rstrip(".")
                 for match in _NUMBER.finditer(sentence)
@@ -187,6 +192,7 @@ def verify_body(
     verifier decides the document's shape, which is the renderer's job.
     """
     allowed = packet.numbers() if hasattr(packet, "numbers") else set()
+    changes = packet.change_numbers() if hasattr(packet, "change_numbers") else set()
     numbers = packet_numbers(packet)
     record = Verification()
     out: list[str] = []
@@ -203,7 +209,7 @@ def verify_body(
             continue
         record.claims += len(sentences(prose))
         kept, removed = verify_line(
-            prose, allowed=allowed, numbers=numbers, entails=entails
+            prose, allowed=allowed, numbers=numbers, entails=entails, changes=changes
         )
         record.removed += len(removed)
         record.unresolved += sum(
@@ -227,8 +233,9 @@ def _split_marker(line: str) -> tuple[str, str]:
     A marker is structure. Checking it would mean an item's number could be
     removed for not appearing in the packet, which is exactly backwards.
     """
-    match = re.match(r"^(\s*(?:[-*]\s+|\d{1,3}[.)]\s+)?(?:\*\*[^*]+:\*\*\s*)?)(.*)$",
-                     line)
+    match = re.match(
+        r"^(\s*(?:[-*]\s+|\d{1,3}[.)]\s+)?(?:\*\*[^*]+:\*\*\s*)?)(.*)$", line
+    )
     if match is None:  # pragma: no cover - the pattern matches every string
         return "", line
     return match.group(1), match.group(2)

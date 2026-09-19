@@ -344,6 +344,9 @@ def _inline(text: str, *, verdicts: bool = False) -> str:
     out = _CITATION_RE.sub(
         lambda m: f'<font size="7" color="{_MUTED_HEX}">[P{m.group(1)}]</font>', out
     )
+    out = report_grammar.CHANGE_CITATION.sub(
+        lambda m: f'<font size="7" color="{_MUTED_HEX}">[O{m.group(1)}]</font>', out
+    )
     out = _LINK_RE.sub(
         lambda m: f'<a href="{m.group(2)}" color="{_LINK_HEX}">{m.group(1)}</a>', out
     )

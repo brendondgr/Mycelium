@@ -181,7 +181,7 @@ def build_project_packet(
         precis = precis_rows.get(content_id)
         metadata = content.metadata or {}
         _is_known, revised, _how = literature.verdict(content, precis)
-        signals = (by_content[content_id].signals if content_id in by_content else {})
+        signals = by_content[content_id].signals if content_id in by_content else {}
         packet.items.append(
             PacketItem(
                 n=next(numbering),
@@ -303,6 +303,23 @@ def build_weekly_packet(
         "opened": len(seen),
     }
     packet.reflection = _reflect(packet, target_filter, projects, reader, today)
+    # What changed this week (ambient Plan 09): numbered [O#], the project rows
+    # also inside each project's packet. Personal rows never reach a lab packet.
+    from apps.content.briefing import context_version
+    from apps.content.weekly_changes import collect
+
+    packet.reader = reader
+    collect(
+        packet,
+        target_filter=target_filter,
+        projects=projects,
+        reader=reader,
+        today=today,
+    )
+    is_lab = "target_lab" in target_filter
+    packet.context_version = context_version(
+        {"lab": reader} if is_lab else {"user": reader}, projects
+    )
     return packet
 
 
@@ -404,9 +421,7 @@ def _reflect(packet, target_filter, projects, reader, today):
         if is_lab
         else [
             (row.content.metadata or {}).get("title") or ""
-            for row in IgnoredItem.objects.filter(user=reader).select_related(
-                "content"
-            )
+            for row in IgnoredItem.objects.filter(user=reader).select_related("content")
         ]
     )
 

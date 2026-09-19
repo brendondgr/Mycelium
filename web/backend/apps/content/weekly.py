@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 CompleteFn = Callable[[str, str], str | None]
 
 #: Bumped whenever the prompt or the section contract below changes.
-WEEKLY_VERSION = "w1"
+WEEKLY_VERSION = "w2"
 
 #: Words per project section. The ceiling is enforced by trimming whole sentences
 #: (plan H5) rather than by asking the model nicely, because a model asked for
@@ -68,6 +68,10 @@ _SYSTEM = (
     "- Say what to DO. A sentence a reader cannot act on is a sentence that "
     "wasted their Monday.\n"
     "- If the packet does not support a section, omit the section.\n"
+    "- The packet may list this week's changes to the project, numbered like "
+    "O2. When an item bears directly on one — a blocker it addresses, a method "
+    "just dropped — you may say so in one sentence citing both, like [P3][O2]. "
+    "Never invent a connection, and never restate a change on its own.\n"
     "- Under 'Funding and team' you MAY name members the packet lists as "
     "covering a requirement, and you may say which stated research area of "
     "theirs matched. Say nothing else about any person — never their "
@@ -134,9 +138,7 @@ def _fallback_section(project) -> str:
         lines.append(f"Stage: {project.stage}.")
     if project.already_alerted:
         noun = "alert" if len(project.already_alerted) == 1 else "alerts"
-        lines.append(
-            f"{len(project.already_alerted)} {noun} raised earlier this week."
-        )
+        lines.append(f"{len(project.already_alerted)} {noun} raised earlier this week.")
     fits = [row for row in project.timeline_rows if row.get("status") == "fits"]
     if fits:
         nearest = fits[0]
@@ -181,10 +183,12 @@ def write_project_section(
 
 
 def write_overview(
-    packet: WeeklyPacket, sections: list[tuple[str, str]], *,
+    packet: WeeklyPacket,
+    sections: list[tuple[str, str]],
+    *,
     complete: CompleteFn | None = None,
 ) -> tuple[str, str]:
-    """"Your week in five lines". Returns ``(markdown, origin)``."""
+    """ "Your week in five lines". Returns ``(markdown, origin)``."""
     if not sections:
         return "", ""
     ask = complete if complete is not None else _settings_complete(700)
@@ -300,7 +304,12 @@ def compose_weekly(
     )
     checked, record = verify_body(written, packet, entails=entails)
 
+    from apps.content.weekly_changes import what_changed_block
+
     frame = [
+        # What changed (ambient Plan 09): the reader's own record, rendered by
+        # code, so it sits in the frame rather than in the checked prose.
+        what_changed_block(packet, reader=getattr(packet, "reader", None)),
         deadline_horizon_block(packet),
         # Mylo's reflection sits between the body and the references: it is about
         # the reader rather than about the corpus, so it closes the argument
@@ -310,9 +319,7 @@ def compose_weekly(
     ]
     if packet.private_projects_hidden:
         noun = "project" if packet.private_projects_hidden == 1 else "projects"
-        frame.insert(
-            0, f"_{packet.private_projects_hidden} private {noun} not shown._"
-        )
+        frame.insert(0, f"_{packet.private_projects_hidden} private {noun} not shown._")
     footer = record.footer()
     if footer:
         frame.append(f"_{footer}_")
@@ -388,6 +395,7 @@ def _persist(packet, owner: dict, *, complete, today: date):
         generated_on=packet.week_start,
         kind=DailyBriefing.Kind.WEEKLY,
         defaults={
+            "context_version": packet.context_version,
             "body": body,
             "origin": (
                 DailyBriefing.Origin.LLM

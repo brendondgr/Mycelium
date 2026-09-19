@@ -51,7 +51,7 @@ const NEW_CHIP_CLASS =
 // outer loop's `lastIndex`, re-matching the same segment forever (a browser
 // freeze on any body containing bold or a link).
 const inlinePattern = () =>
-  /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|\[P(\d{1,3})\])/g;
+  /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|\[P(\d{1,3})\]|\[O(\d{1,3})\])/g;
 
 function renderInline(rawText: string, keyBase: string): React.ReactNode[] {
   // Stripped here rather than at every call site: every path into the renderer
@@ -99,6 +99,16 @@ function renderInline(rawText: string, keyBase: string): React.ReactNode[] {
           className="ml-0.5 text-[10px] font-medium text-[var(--text-muted)]"
         >
           [P{match[5]}]
+        </sup>,
+      );
+    } else if (match[6] !== undefined) {
+      // `[O#]` cites a row of the weekly's "What changed" (ambient Plan 09).
+      nodes.push(
+        <sup
+          key={`${keyBase}-o${i}`}
+          className="ml-0.5 text-[10px] font-medium text-[var(--text-muted)]"
+        >
+          [O{match[6]}]
         </sup>,
       );
     }

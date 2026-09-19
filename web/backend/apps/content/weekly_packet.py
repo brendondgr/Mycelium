@@ -99,9 +99,14 @@ class ProjectPacket:
     already_alerted: list[dict] = field(default_factory=list)
     entered: int = 0
     left: int = 0
+    #: ``[{id: "O#", what, on}]`` — this week's changes to the project that took
+    #: effect (ambient Plan 09), citable as ``[O#]``.
+    changes: list[dict] = field(default_factory=list)
 
     @property
     def is_quiet(self) -> bool:
+        # Changes alone do not wake the model: they are in "What changed", and a
+        # section with no item to tie them to could only restate them.
         return not self.items and not self.already_alerted
 
     def as_dict(self) -> dict:
@@ -117,6 +122,7 @@ class ProjectPacket:
             },
             "already_alerted": list(self.already_alerted),
             "movement": {"entered": self.entered, "left": self.left},
+            **({"changes": list(self.changes)} if self.changes else {}),
         }
 
 
@@ -137,6 +143,19 @@ class WeeklyPacket:
     #: (:mod:`apps.content.reflection`) — the model is never asked to decide that
     #: a reader's own description of their work should change.
     reflection: str = ""
+    #: This week's changes that took effect, numbered ``[O#]`` (ambient Plan 09,
+    #: :mod:`apps.content.weekly_changes`). Rendered by code; the project ones
+    #: also travel in each project's packet.
+    changes: list[dict] = field(default_factory=list)
+    #: Personal weekly only: questions answered by surface, the project the
+    #: week's conversation went to, and conversation proposals waiting.
+    answers: dict = field(default_factory=dict)
+    attention_lead: str = ""
+    proposals_waiting: int = 0
+    #: What the report was written against (``understanding.context_version``).
+    context_version: str = ""
+    #: Who the packet is for (a user or a lab) — for the change rows' "you".
+    reader: object = None
 
     @property
     def week_end(self) -> date:
@@ -156,6 +175,10 @@ class WeeklyPacket:
         """Every citation the verifier will accept."""
         return {item.n for item in self.all_items}
 
+    def change_numbers(self) -> set[int]:
+        """Every ``[O#]`` the verifier will accept."""
+        return {row["n"] for row in self.changes}
+
     def as_dict(self) -> dict:
         return {
             "packet": self.packet_id,
@@ -166,6 +189,11 @@ class WeeklyPacket:
             "deadline_horizon": list(self.deadline_horizon),
             "engagement": dict(self.engagement),
             "private_projects_hidden": self.private_projects_hidden,
+            **(
+                {"context_version": self.context_version}
+                if self.context_version
+                else {}
+            ),
         }
 
 

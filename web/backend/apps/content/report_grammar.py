@@ -21,6 +21,12 @@ report now carries something it did not before:
     does not need to be told which JSON key a sentence came from, but the verifier
     does, and stripping it at render time keeps one body serving both.
 
+``[O#]``
+    A citation into the weekly's "What changed" rows (ambient Plan 09) — a
+    change to the reader's understanding or a project that took effect this
+    week. Rendered like ``[P#]``; the verifier removes a sentence citing one the
+    packet does not hold.
+
 ``- **Label:** text``
     A labelled beat belonging to the numbered item above it. Previously any
     bullet flushed the open ordered list, which split an alert's four beats away
@@ -40,6 +46,10 @@ import re
 #: ``[P12]`` — a citation into the references block.
 CITATION = re.compile(r"\[P(\d{1,3})\]")
 
+#: ``[O3]`` — a citation into the weekly's "What changed" rows (ambient Plan 09):
+#: a change that took effect this week, numbered by code. Displayed like ``[P#]``.
+CHANGE_CITATION = re.compile(r"\[O(\d{1,3})\]")
+
 #: ``[S:fast.milestones.m1]`` — a project-state marker. Never displayed.
 STATE_MARKER = re.compile(r"\[S:[A-Za-z0-9_.\-\[\]]+\]")
 
@@ -55,6 +65,16 @@ def citations(text: str) -> list[int]:
     """Every citation number in ``text``, in order of appearance, deduped."""
     seen: list[int] = []
     for match in CITATION.finditer(text or ""):
+        number = int(match.group(1))
+        if number not in seen:
+            seen.append(number)
+    return seen
+
+
+def change_citations(text: str) -> list[int]:
+    """Every ``[O#]`` in ``text``, in order of appearance, deduped."""
+    seen: list[int] = []
+    for match in CHANGE_CITATION.finditer(text or ""):
         number = int(match.group(1))
         if number not in seen:
             seen.append(number)

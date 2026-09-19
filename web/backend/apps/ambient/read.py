@@ -58,6 +58,8 @@ __all__ = [
     "mark_announced",
     "developments_to_propose",
     "facts_to_announce",
+    "changes_between",
+    "answers_between",
     "note_state_change",
 ]
 
@@ -413,6 +415,70 @@ def facts_to_announce(*, now=None, days: int = 7):
         undone_at__isnull=True,
         created_at__gte=since,
     ).select_related("user", "project")
+
+
+# -- Plan 09: a week of changes, for the reports -------------------------------
+
+
+def changes_between(*, since, until, user=None, projects=()):
+    """What took effect in ``[since, until)``, as plain rows for a report.
+
+    For a person (``user``): their own changes — personal ones included — and
+    the lab-visible ones on ``projects``. For a lab (no ``user``): only the
+    lab-visible changes on ``projects``, which the caller has already limited
+    to the lab's shared projects. A personal change cannot match the lab query,
+    so a lab report cannot carry one (Plan 09 acceptance).
+    """
+    from django.db.models import Q
+
+    from .models import AppliedChange
+
+    project_ids = [getattr(p, "pk", p) for p in projects]
+    shared = Q(project_id__in=project_ids, visibility=Visibility.LAB)
+    query = (Q(user=user) | shared) if user is not None else shared
+    rows = (
+        AppliedChange.objects.filter(query, created_at__gte=since, created_at__lt=until)
+        .select_related("project", "user")
+        .distinct()
+        .order_by("created_at", "pk")
+    )
+    return [
+        {
+            "id": row.pk,
+            "kind": row.kind,
+            "kind_label": row.get_kind_display(),
+            "topic": row.topic,
+            "field": row.field,
+            "project_id": str(row.project_id) if row.project_id else "",
+            "project_name": row.project.name if row.project_id else "",
+            "visibility": row.visibility,
+            "surface": row.surface,
+            "by_id": row.user_id,
+            "by_name": row.user.first_name or row.user.username,
+            "on": timezone.localtime(row.created_at).date().isoformat(),
+            "undone": row.undone_at is not None,
+        }
+        for row in rows
+    ]
+
+
+def answers_between(user, *, since, until) -> dict:
+    """How many of Mylo's questions this person answered, by surface."""
+    from django.db.models import Count
+
+    from .models import PendingSuggestion
+
+    return {
+        row["answered_on"]: row["n"]
+        for row in PendingSuggestion.objects.filter(
+            user=user,
+            state=PendingSuggestion.State.ANSWERED,
+            answered_at__gte=since,
+            answered_at__lt=until,
+        )
+        .values("answered_on")
+        .annotate(n=Count("pk"))
+    }
 
 
 # -- Plan 08: from a development to a proposed state edit ----------------------
