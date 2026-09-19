@@ -275,6 +275,19 @@ class Listening:
     dropped_bot: int = 0
     dropped_lapsed: int = 0
     dropped_other: int = 0
+    #: What the reading and the dialogue did with it (ambient Plan 10, step
+    #: 12). Counts only, like everything above.
+    observations: int = 0
+    observations_rule: int = 0
+    findings_to_ask: int = 0
+    questions_asked: int = 0
+    questions_answered: int = 0
+    answered_yes: int = 0
+    answered_no: int = 0
+    answered_later: int = 0
+    changes_applied: int = 0
+    changes_undone: int = 0
+    proposals_raised: int = 0
 
     @property
     def dropped(self) -> int:
@@ -686,10 +699,25 @@ def collect_listening(day: date) -> Listening:
     Read through ``apps.ambient.read`` — the ledger's one door for the rest of
     the backend — so this module never touches an ambient model directly.
     """
-    from apps.ambient.read import listening_totals
+    from apps.ambient.read import listening_totals, understanding_totals
+    from apps.content.models import ReflectionProposal
 
     totals = listening_totals(day)
+    understood = understanding_totals(day)
     return Listening(
+        observations=understood["observations"],
+        observations_rule=understood["observations_rule"],
+        findings_to_ask=understood["findings_to_ask"],
+        questions_asked=understood["questions_asked"],
+        questions_answered=understood["questions_answered"],
+        answered_yes=understood["answered_yes"],
+        answered_no=understood["answered_no"],
+        answered_later=understood["answered_later"],
+        changes_applied=understood["changes_applied"],
+        changes_undone=understood["changes_undone"],
+        proposals_raised=ReflectionProposal.objects.filter(
+            created_at__date=day, evidence__source="conversation"
+        ).count(),
         sources_listening=totals["sources_listening"],
         sources_active_today=totals["sources_active_today"],
         heard=totals["heard"],

@@ -452,6 +452,41 @@ class ListeningSectionTests(TestCase):
         )
         return source
 
+    def test_what_the_reading_and_the_dialogue_did_is_counted(self):
+        """Ambient Plan 10, step 12: counts only, and the rule count is zero."""
+        from datetime import timedelta
+
+        from django.contrib.auth.models import User
+
+        from apps.ambient.models import AppliedChange, PendingSuggestion
+        from apps.content.run_analytics import collect_listening
+
+        ada = User.objects.create_user("ada-counts", "ac@example.org", "pw")
+        now = timezone.now()
+        for verdict in ("confirmed", "rejected", "defer"):
+            PendingSuggestion.objects.create(
+                user=ada,
+                kind="interest",
+                topic=f"t-{verdict}",
+                state="answered",
+                verdict=verdict,
+                asked_at=now,
+                answered_at=now,
+                expires_at=now + timedelta(days=14),
+            )
+        AppliedChange.objects.create(user=ada, kind="exploration_confirmed", topic="t")
+        AppliedChange.objects.create(user=ada, kind="undone", topic="t")
+        listening = collect_listening(timezone.localdate())
+        self.assertEqual(listening.questions_asked, 3)
+        self.assertEqual(listening.questions_answered, 3)
+        self.assertEqual(
+            (listening.answered_yes, listening.answered_no, listening.answered_later),
+            (1, 1, 1),
+        )
+        self.assertEqual(listening.changes_applied, 1)
+        self.assertEqual(listening.changes_undone, 1)
+        self.assertEqual(listening.observations_rule, 0)
+
     def test_nothing_listening_reports_zeroes_rather_than_failing(self):
         from apps.content.run_analytics import collect_listening
 

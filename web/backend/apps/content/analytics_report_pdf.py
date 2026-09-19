@@ -564,6 +564,19 @@ def _listening_section(data: RunAnalytics, styles) -> list:
             "Dropped at the nightly read — no longer eligible",
             _n(listening.dropped_lapsed),
         ],
+        ["", ""],
+        ["Observations written tonight", _n(listening.observations)],
+        ["— written by a rule (must be zero)", _n(listening.observations_rule)],
+        ["Findings worth asking about", _n(listening.findings_to_ask)],
+        ["Questions asked", _n(listening.questions_asked)],
+        ["Questions answered", _n(listening.questions_answered)],
+        ["— yes · no · not now", (
+            f"{_n(listening.answered_yes)} · {_n(listening.answered_no)} · "
+            f"{_n(listening.answered_later)}"
+        )],
+        ["Changes that took effect", _n(listening.changes_applied)],
+        ["Changes undone", _n(listening.changes_undone)],
+        ["Project proposals raised", _n(listening.proposals_raised)],
     ]
     return [
         Paragraph("Listening", styles["H1"]),

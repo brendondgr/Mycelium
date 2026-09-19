@@ -60,6 +60,8 @@ __all__ = [
     "facts_to_announce",
     "changes_between",
     "answers_between",
+    "evaluation_report",
+    "understanding_totals",
     "note_state_change",
 ]
 
@@ -284,6 +286,41 @@ def listening_totals(day=None) -> dict:
     return result
 
 
+def understanding_totals(day=None) -> dict:
+    """What the reading and the dialogue did on one day, in counts (Plan 10,
+    step 12). Like :func:`listening_totals`, nothing is keyed to a person."""
+    from django.db.models import Count
+
+    from .models import AppliedChange, Finding, PendingSuggestion
+
+    when = day or timezone.localdate()
+    observations = Observation.objects.filter(recorded_at__date=when)
+    by_kind = dict(
+        observations.values_list("understanding_kind").annotate(n=Count("pk"))
+    )
+    answered = PendingSuggestion.objects.filter(answered_at__date=when)
+    verdicts = dict(answered.values_list("verdict").annotate(n=Count("pk")))
+    changes = AppliedChange.objects.filter(created_at__date=when)
+    return {
+        "observations": observations.count(),
+        "observations_by_kind": {k: int(v) for k, v in by_kind.items()},
+        "observations_rule": observations.filter(origin="rule").count(),
+        "findings_to_ask": Finding.objects.filter(
+            decided_at__date=when, outcome__in=["suggest", "ask", "capability"]
+        ).count(),
+        "questions_asked": PendingSuggestion.objects.filter(
+            asked_at__date=when
+        ).count(),
+        "questions_answered": answered.count(),
+        "answered_yes": int(verdicts.get("confirmed", 0))
+        + int(verdicts.get("corrected", 0)),
+        "answered_no": int(verdicts.get("rejected", 0)),
+        "answered_later": int(verdicts.get("defer", 0)),
+        "changes_applied": changes.exclude(kind="undone").count(),
+        "changes_undone": changes.filter(kind="undone").count(),
+    }
+
+
 def active_sources(*, lab=None):
     """Surfaces currently consented to be listened to."""
     rows = Source.objects.filter(consent_state=Source.Consent.ACTIVE)
@@ -480,6 +517,17 @@ def answers_between(user, *, since, until) -> dict:
         .values("answered_on")
         .annotate(n=Count("pk"))
     }
+
+
+# -- Plan 10: the evaluation, for the command that runs it -----------------------
+
+
+def evaluation_report(*, since=None, until=None, lab_reports=None) -> dict:
+    """The measures and harm checks (``evaluation.report``) — counts and ids
+    only, never text."""
+    from .evaluation import report
+
+    return report(since=since, until=until, lab_reports=lab_reports)
 
 
 # -- Plan 08: from a development to a proposed state edit ----------------------
