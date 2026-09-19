@@ -314,7 +314,7 @@ _SYSTEM = (
 )
 
 #: Bump when the reply prompt or its reading changes (EXP-2026-09-015).
-READ_VERSION = "r3"
+READ_VERSION = "r4"
 
 _PROMPT = """Mylo asked:
 {question}
@@ -334,6 +334,8 @@ Rules:
 - A soft no ("nah, I'm good", "don't worry about it") is "no" — and so is
   anything saying not to bring it up, track it or check in on it again, even
   with "for now".
+- Naming a choice is not picking it when they also say to drop it, that they
+  are not pursuing it, or not to note or track it: that is "no".
 - "Not now", "maybe later", "check back another time" is "later".
 - If they do not clearly pick one — undecided, asking a question back, or
   talking about something else — answer "unclear". Never guess a yes."""
@@ -507,11 +509,13 @@ Does this ask Mylo to change how it treats them? Reply as
 
 - stop_questions: stop asking them questions (about their interests, what they
   said) in general — not just about one topic.
-- stop_listening: stop reading or listening to what they say (questions stop
-  too).
+- stop_listening: stop reading or listening to what they say in their
+  conversations (questions stop too).
 - resume: start asking again / turn the questions back on.
 - none: anything else, including "stop asking about this one" (that is an
-  answer to one question, not a setting)."""
+  answer to one question, not a setting), and asking Mylo to stop, pause or
+  turn off some other thing — a data sync, a job, a pull, an experiment, a
+  reminder."""
 
 
 def read_control(text: str, *, complete=None) -> str | None:
