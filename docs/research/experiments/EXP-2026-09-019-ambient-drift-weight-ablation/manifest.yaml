@@ -9,67 +9,67 @@
 id: EXP-2026-09-019
 slug: ambient-drift-weight-ablation
 title: "How much may a confirmed exploration weigh before it moves the declared slates?"
-status: planned # planned | running | complete | failed | superseded
+status: complete
 date_started: 2026-09-19
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-09-19
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Ambient Plan 10 experiment 8, the drift ablation owed before
+  AMBIENT_DRIFT_ENABLED is turned on: declared-only against declared plus
+  confirmed explorations at four weights, persona-level (the LongEval harness
+  has no people and so no explorations; the hook is inert there).
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  H1 at 0.15 declared-slate Jaccard >= 0.95 and mean displaced from top 25 <= 1;
+  H2 monotone in the weight; H3 own papers lead the exploration slate
+  (>= 0.75) at every weight; decision rule: the largest weight meeting H1's
+  bars is the recommended default. OUTCOME: H1, H2 and H3 hold; declared-slate
+  Jaccard is weight-independent (0.98); displacement 0, 0, 0.67, 9.0 at 0.05,
+  0.15, 0.30, 1.0; by the rule 0.30; the shipped default stays 0.15.
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 3afd3ef
+  commit: 05fbe43
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  entrypoint: "manage.py shell < docs/research/experiments/EXP-2026-09-019-ambient-drift-weight-ablation/code/run.py (DATABASE_URL pointing at mycelium_sandbox_ambdrift)"
+  dirty: false
 config:
-  path: <path to the config file, or null>
+  path: web/backend/sandbox/ambient/nights.py
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: EXP-2026-09-017's end state plus the EXP-2026-09-014 templated corpus
+  version: "seed 20260919; 6 people with a confirmed exploration; 632 templated papers (158 topics x 4)"
+  split: test
+  n_examples: 6
   qrels: null
   hash: null
-  card: null # docs/research/datasets/cards/<name>.md
-seeds: []
+  card: null
+seeds: [20260919]
 n_runs: 1
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
-
-# --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+  hardware: "20 CPU cores, 62 GB RAM"
+  wall_clock_hours: 0.02
+  estimated_cost_usd: 0.0
 
 # --- Results block -----------------------------------------------------------
-# Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
+  primary: declared_displaced_from_top25_mean at the default weight (H1)
+  values:
+    w0_05_displaced_mean: 0.0
+    w0_15_displaced_mean: 0.0
+    w0_30_displaced_mean: 0.6667
+    w1_0_displaced_mean: 9.0
+    declared_slate_jaccard_mean_all_weights: 0.9811
+    declared_slate_jaccard_min_all_weights: 0.8519
+    own_papers_at_top_all_weights: 1.0
+    recommended_weight_by_rule: 0.3
+baselines_compared: [declared-only]
 statistical_test: null
 
 # --- Linkage -----------------------------------------------------------------
@@ -78,4 +78,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-09-014]

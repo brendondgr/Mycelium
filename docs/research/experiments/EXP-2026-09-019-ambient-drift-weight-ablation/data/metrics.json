@@ -1,0 +1,38 @@
+{
+  "per_weight": {
+    "0.05": {
+      "people": 6,
+      "declared_slate_jaccard_mean": 0.9811,
+      "declared_slate_jaccard_min": 0.8519,
+      "declared_displaced_from_top25_mean": 0.0,
+      "declared_displaced_from_top25_max": 0,
+      "exploration_own_papers_at_top_mean": 1.0
+    },
+    "0.15": {
+      "people": 6,
+      "declared_slate_jaccard_mean": 0.9811,
+      "declared_slate_jaccard_min": 0.8519,
+      "declared_displaced_from_top25_mean": 0.0,
+      "declared_displaced_from_top25_max": 0,
+      "exploration_own_papers_at_top_mean": 1.0
+    },
+    "0.3": {
+      "people": 6,
+      "declared_slate_jaccard_mean": 0.9811,
+      "declared_slate_jaccard_min": 0.8519,
+      "declared_displaced_from_top25_mean": 0.6667,
+      "declared_displaced_from_top25_max": 2,
+      "exploration_own_papers_at_top_mean": 1.0
+    },
+    "1.0": {
+      "people": 6,
+      "declared_slate_jaccard_mean": 0.9811,
+      "declared_slate_jaccard_min": 0.8519,
+      "declared_displaced_from_top25_mean": 9.0,
+      "declared_displaced_from_top25_max": 13,
+      "exploration_own_papers_at_top_mean": 1.0
+    }
+  },
+  "recommended_weight_by_rule": "0.3",
+  "seconds": 39.9
+}
