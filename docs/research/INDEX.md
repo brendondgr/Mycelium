@@ -44,11 +44,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-09-013` | 2026-09-19 | Does ambient Plan 04 find what people said, decide the right outcome, and keep every privacy promise? Four weeks of model-written lab conversation with planted truth | complete | — | — | [folder](experiments/EXP-2026-09-013-ambient-reasoning-sandbox/RESULTS.md) |
 | `EXP-2026-09-014` | 2026-09-19 | Does the evolving profile keep its promises over eight simulated weeks, and do exploration themes stay beside the declared ones? | complete | — | — | [folder](experiments/EXP-2026-09-014-ambient-evolving-profile-sandbox/RESULTS.md) |
 | `EXP-2026-09-015` | 2026-09-19 | Does Mylo read replies in people's own words right, never turn a no into a yes, and catch "stop asking"? | complete | — | — | [folder](experiments/EXP-2026-09-015-ambient-dialogue-replies-sandbox/RESULTS.md) |
+| `EXP-2026-09-016` | 2026-09-19 | Do the ambient web pages work in a real browser, from the keyboard, and pass WCAG 2.1 AA checks? | complete | — | — | [folder](experiments/EXP-2026-09-016-ambient-web-browser-a11y/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 32 |
+| complete | 33 |
 | planned | 3 |
-| **total** | **35** |
+| **total** | **36** |

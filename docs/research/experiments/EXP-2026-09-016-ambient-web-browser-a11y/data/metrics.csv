@@ -1,0 +1,5 @@
+run,failures,axe_serious_rule_page_pairs,axe_moderate_minor,flow_failures,keyboard_failures,page_scroll_failures,console_error_passes,missing_surfaces
+run1,15,12,0,1,0,0,0,2
+run2,7,0,0,4,2,0,1,0
+run3,1,0,0,0,1,0,0,0
+run4,0,0,0,0,0,0,0,0

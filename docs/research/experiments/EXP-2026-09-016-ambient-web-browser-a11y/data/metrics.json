@@ -1,0 +1,76 @@
+{
+  "run1": {
+    "label": "registered harness, UI @fcfe239",
+    "failures": 15,
+    "axe_serious_rule_page_pairs": 12,
+    "axe_moderate_minor": 0,
+    "flow_failures": 1,
+    "keyboard_failures": 0,
+    "page_scroll_failures": 0,
+    "console_error_passes": 0,
+    "missing_surfaces": 2,
+    "failure_list": [
+      "phone.mylo:Needs your answer.axe.color-contrast",
+      "phone.mylo:What changed.axe.color-contrast",
+      "phone.mylo:Faded and declined.axe.color-contrast",
+      "phone.mylo:What Mylo knows.axe.color-contrast",
+      "phone.mylo:Settings.axe.color-contrast",
+      "phone.profile.axe.color-contrast",
+      "desktop: AssertionError: Locator expected to be visible\nActual value: None\nError: element(s) not found \nCall log:\n  - Expect \"to_be_visible\" with timeout 30000ms\n  - waiting for get_by_role(\"status\").first\n\nAria snapshot:\n- banner:\n  - img \"Mycelium logo\"\n  - text: Mycelium Personal Personal\n  - search:\n    - searchbox \"Search the full database\"\n  - button \"Notifications \u2014 5 new items\"\n  - button \"Switch to dark theme\"\n  - button \"Account menu\": C\n- navigation \"Workspaces\":\n  - button \"Personal \u00b7 Personal\"\n  - button \"Ambient Sandbox Lab B \u00b7 Lab\"\n  - button \"Browse and create workspaces\"\n- complementary:\n  - text: Personal workspace\n  - paragraph: Workspace\n  - navigation:\n    - button \"Overview\"\n    - button \"Profile\"\n    - button \"Mylo & you\"\n    - button \"Saves\"\n    - button \"Reminders\"\n  - paragraph: Research\n  - navigation:\n    - button \"Research Papers\"\n    - button \"Grants\"\n    - button \"Fellowships\"\n    - button \"Conferences\"\n    - button \"Projects 2\"\n    - button \"Expand projects\"\n  - navigation:\n    - button \"Account\"\n- main:\n  - paragraph: Workspace\n  - heading \"Mylo & you\" [level=1]\n  - paragraph: What Mylo noticed in your conversations, what changed, and what it knows. Nothing changes a recommendation until you say yes.\n  - tablist \"Mylo and you\":\n    - tab \"Needs your answer 2\" [selected]\n    - tab \"What changed\"\n    - tab \"Faded and declined\"\n    - tab \"What Mylo knows\"\n    - tab \"Settings\"\n  - tabpanel \"Needs your answer 2\":\n    - paragraph: About you\n    - paragraph:\n      - text: \"You mentioned completing a simulation involving mechanism design for an auction protocol and your current model in #general. I read these as tasks you can perform. Would you like me to add this as a skill? Shall I add\"\n      - strong: mechanism design simulation (again)\n      - text: to your skills? Only if you say so.\n    - group \"Answer about mechanism design simulation (again)\":\n      - button \"Add it to my skills\"\n      - button \"Not now\"\n      - button \"No\"\n    - button \"Right idea, wrong words?\"\n    - paragraph: Asked Sep 19 \u00b7 closes Oct 3 \u00b7 answering here closes it on Discord too.\n    - paragraph: About you\n    - paragraph:\n      - text: \"You have expressed interest in structural equation modelling during the reading-group, #methods, and #general discussions. I noticed this topic coming up several times and thought you might be curious about it. Would you like me to include it? Shall I start looking for\"\n      - strong: structural equation modelling (again)\n      - text: for you? Nothing changes unless you say so; a yes takes effect from tomorrow morning's run.\n    - group \"Answer about structural equation modelling (again)\":\n      - button \"Include it in my reports\"\n      - button \"Add it to my interests\"\n      - button \"Make it a new theme\"\n      - button \"It's for Project B1, not me\"\n      - button \"It's for Project B2, not me\"\n      - button \"Not now\"\n      - button \"No, and don't ask about this\"\n    - button \"Right idea, wrong words?\"\n    - paragraph: Asked Sep 19 \u00b7 closes Oct 3 \u00b7 answering here closes it on Discord too.\n- alert",
+      "desktop.mylo:Needs your answer.axe.color-contrast",
+      "desktop.mylo:What changed.axe.color-contrast",
+      "desktop.mylo:Faded and declined.axe.color-contrast",
+      "desktop.mylo:What Mylo knows.axe.color-contrast",
+      "desktop.mylo:Settings.axe.color-contrast",
+      "desktop.profile.axe.color-contrast",
+      "phone.lab.missing_lab-changes",
+      "desktop.lab.missing_lab-changes"
+    ]
+  },
+  "run2": {
+    "label": "UI fixes @1f181c5",
+    "failures": 7,
+    "axe_serious_rule_page_pairs": 0,
+    "axe_moderate_minor": 0,
+    "flow_failures": 4,
+    "keyboard_failures": 2,
+    "page_scroll_failures": 0,
+    "console_error_passes": 1,
+    "missing_surfaces": 0,
+    "failure_list": [
+      "desktop.console_errors",
+      "desktop.flows.profile_edit_undone",
+      "desktop.flows.heard_gone_after_undo",
+      "desktop.flows.bell_link_same_tab",
+      "desktop.flows.bell_opened_mylo",
+      "desktop.keyboard_settings.unreached(3/5)",
+      "desktop.keyboard_settings.focus_invisible"
+    ]
+  },
+  "run3": {
+    "label": "undo + reader r5 @bf94544",
+    "failures": 1,
+    "axe_serious_rule_page_pairs": 0,
+    "axe_moderate_minor": 0,
+    "flow_failures": 0,
+    "keyboard_failures": 1,
+    "page_scroll_failures": 0,
+    "console_error_passes": 0,
+    "missing_surfaces": 0,
+    "failure_list": [
+      "desktop.keyboard_settings.unreached(3/5)"
+    ]
+  },
+  "run4": {
+    "label": "harness date-input fix @a9d4ab3",
+    "failures": 0,
+    "axe_serious_rule_page_pairs": 0,
+    "axe_moderate_minor": 0,
+    "flow_failures": 0,
+    "keyboard_failures": 0,
+    "page_scroll_failures": 0,
+    "console_error_passes": 0,
+    "missing_surfaces": 0,
+    "failure_list": []
+  }
+}

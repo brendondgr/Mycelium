@@ -1,0 +1,251 @@
+{
+ "desktop": {
+  "console_errors": [
+   "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+  ],
+  "flows": {
+   "answer_reply": "No problem \u2014 I'll leave mechanism design simulation alone for a month.",
+   "arrow_moves_selection": true,
+   "badge_after": "Needs your answer\n2",
+   "badge_before": "Needs your answer",
+   "bell_ambient_links": 0,
+   "bell_link_same_tab": false,
+   "changes_listed": 5,
+   "heard_after_undo": 1,
+   "heard_before": 1,
+   "heard_sr_text": "heard\nAdded from a conversation \u2014 you said yes on Discord on 2026-09-19.",
+   "keyboard_answer": {
+    "controls": 16,
+    "focus_invisible": [],
+    "reached": 16
+   },
+   "keyboard_changed": {
+    "controls": 11,
+    "focus_invisible": [],
+    "reached": 11
+   },
+   "keyboard_settings": {
+    "controls": 5,
+    "focus_invisible": [
+     "Listen on Discord#7",
+     "Mylo's questions#14"
+    ],
+    "reached": 3
+   },
+   "knows_sections": 4,
+   "profile_edit_row": true,
+   "project_developments_card": 1,
+   "proposal_marked_heard": true,
+   "proposal_text": "HEARD IN CONVERSATION\n\nMark \u201cannotation budget\u201d as no longer blocking Project B2?\n\nFrom conversation, Sep 17. You said in the lab channel on Tuesday that the annotation budget came through, and confirmed it.\n\nAccept\nNo thanks",
+   "questions_shown": 3,
+   "questions_switch_round_trip": true,
+   "state_edit_row": 1,
+   "switches": 2,
+   "tab_enters_panel": true,
+   "undo_buttons": 5,
+   "undone_rows": 0
+  },
+  "survey": {
+   "answer_buttons": 13,
+   "answer_buttons_under_24px": 0,
+   "pages": {
+    "account": {
+     "ambient_regions": [
+      "settings"
+     ],
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "lab": {
+     "ambient_regions": [
+      "lab-changes"
+     ],
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "mylo:Faded and declined": {
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "mylo:Needs your answer": {
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "mylo:Settings": {
+     "axe": {
+      "other": [],
+      "regions": 2,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "mylo:What Mylo knows": {
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "mylo:What changed": {
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "profile": {
+     "ambient_regions": [
+      "provenance"
+     ],
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "project": {
+     "ambient_regions": [
+      "reflection",
+      "project-developments"
+     ],
+     "axe": {
+      "other": [],
+      "regions": 2,
+      "serious": []
+     },
+     "no_page_scroll": true
+    }
+   },
+   "repeated_names_changed": {
+    "Undo: things I'm picking up": 2
+   },
+   "repeated_names_knows": {}
+  }
+ },
+ "failures": [
+  "desktop.console_errors",
+  "desktop.flows.profile_edit_undone",
+  "desktop.flows.heard_gone_after_undo",
+  "desktop.flows.bell_link_same_tab",
+  "desktop.flows.bell_opened_mylo",
+  "desktop.keyboard_settings.unreached(3/5)",
+  "desktop.keyboard_settings.focus_invisible"
+ ],
+ "phone": {
+  "console_errors": [],
+  "survey": {
+   "answer_buttons": 13,
+   "answer_buttons_under_24px": 0,
+   "pages": {
+    "account": {
+     "ambient_regions": [
+      "settings"
+     ],
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "lab": {
+     "ambient_regions": [
+      "lab-changes"
+     ],
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "mylo:Faded and declined": {
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "mylo:Needs your answer": {
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "mylo:Settings": {
+     "axe": {
+      "other": [],
+      "regions": 2,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "mylo:What Mylo knows": {
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "mylo:What changed": {
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "profile": {
+     "ambient_regions": [
+      "provenance"
+     ],
+     "axe": {
+      "other": [],
+      "regions": 1,
+      "serious": []
+     },
+     "no_page_scroll": true
+    },
+    "project": {
+     "ambient_regions": [
+      "reflection",
+      "project-developments"
+     ],
+     "axe": {
+      "other": [],
+      "regions": 2,
+      "serious": []
+     },
+     "no_page_scroll": true
+    }
+   },
+   "repeated_names_changed": {
+    "Undo: things I'm picking up": 2
+   },
+   "repeated_names_knows": {}
+  }
+ }
+}
