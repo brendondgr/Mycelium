@@ -9,47 +9,48 @@
 id: EXP-2026-09-010
 slug: collab-graph-features-sandbox
 title: Do introduction paths, 'outside my network' and team formation name only who they may, and find what they should? A synthetic-graph test of plan CN-07
-status: planned # planned | running | complete | failed | superseded
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-09-18
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-09-19
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Plan CN-07's sandbox validation: introductions, outside my network, team
+  formation and wider scopes, against planted truth and brute force.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Pre-registered (amended pre-run): H1 zero invariant violations; H2 team
+  cover precision >= 0.80. OUTCOME: H1 holds; H2 fails as registered (0.742);
+  0.995 post hoc with covers certified by concepts only.
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: b76e2e4
+  commit: 1515fb4
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
+  entrypoint: "cd web/backend && SANDBOX_DB=mycelium_sandbox_graph uv run --project . python -m sandbox.collab graph --people 600 --out /app/data/sandbox/exp010.json"
   dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
-  path: <path to the config file, or null>
+  path: web/backend/sandbox/collab/graph_sim.py
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: synthetic collaboration world with planted cross-lab co-authorship
+  version: "seed 20260918, 600 people, 400 bridge works, 1,840 co-authorships"
+  split: test
+  n_examples: 282 # searches (94 x 3 scopes); plus 395 introductions, 94 outside-network searches, 67 teams
   qrels: null
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
-seeds: []
+seeds: [20260918]
 n_runs: 1
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "20 CPU cores, 62 GB RAM; no model"
+  wall_clock_hours: 0.5
+  estimated_cost_usd: 0.0
 
 # --- LLM block (delete entirely if no model was called) ----------------------
 # llm:
@@ -67,9 +68,60 @@ compute:
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
+  primary: run1_violations_total (must be 0); run1_team_cover_precision (bar 0.80)
+  values:
+    run1_introduction_share: 0.0658
+    run1_introductions_asked: 395
+    run1_latency_introduce_p95: 0.802
+    run1_latency_search_anywhere_p95: 2.714
+    run1_latency_search_country_p95: 1.653
+    run1_latency_search_institution_p95: 1.021
+    run1_latency_team_p95: 0.993
+    run1_mean_path_length: 2.462
+    run1_mean_team_size: 1.582
+    run1_outside_network_shown: 382
+    run1_searches_institution: 94
+    run1_shown_anywhere: 596
+    run1_shown_institution: 395
+    run1_team_cover_precision: 0.7422
+    run1_team_gap_coverage: 0.9365
+    run1_teams: 67
+    run1_violations_total: 0
+    run2_introduction_share: 0.0658
+    run2_introductions_asked: 395
+    run2_latency_introduce_p95: 0.794
+    run2_latency_search_anywhere_p95: 2.646
+    run2_latency_search_country_p95: 1.588
+    run2_latency_search_institution_p95: 0.981
+    run2_latency_team_p95: 0.987
+    run2_mean_path_length: 2.462
+    run2_mean_team_size: 2.09
+    run2_outside_network_shown: 382
+    run2_searches_institution: 94
+    run2_shown_anywhere: 603
+    run2_shown_institution: 395
+    run2_team_cover_precision: 0.9954
+    run2_team_gap_coverage: 0.9365
+    run2_teams: 67
+    run2_violations_total: 0
+    smoke240_introduction_share: 0.0973
+    smoke240_introductions_asked: 113
+    smoke240_latency_introduce_p95: 0.32
+    smoke240_latency_search_anywhere_p95: 1.15
+    smoke240_latency_search_country_p95: 0.662
+    smoke240_latency_search_institution_p95: 0.43
+    smoke240_latency_team_p95: 0.42
+    smoke240_mean_path_length: 2.273
+    smoke240_mean_team_size: 1.312
+    smoke240_outside_network_shown: 108
+    smoke240_searches_institution: 46
+    smoke240_shown_anywhere: 245
+    smoke240_shown_institution: 113
+    smoke240_team_cover_precision: 0.5556
+    smoke240_team_gap_coverage: 0.8621
+    smoke240_teams: 32
+    smoke240_violations_total: 0
+baselines_compared: [brute-force BFS on the planted edge list]
 statistical_test: null
 
 # --- Linkage -----------------------------------------------------------------
@@ -78,4 +130,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-09-008, EXP-2026-09-011]

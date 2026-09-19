@@ -15,11 +15,18 @@ import json
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
-ARMS = {"A": "registered (concept 0.70)", "B": "concept 0.80", "C": "B + slot-by-slot fill (post hoc)"}
+ARMS = {
+    "A": "registered (concept 0.70)",
+    "B": "concept 0.80",
+    "C": "B + slot-by-slot fill (post hoc)",
+    "C-diag": "C, gap-only diagnostic",
+}
 QUALITY = (
     "searches",
     "rows_checked",
     "method_bridge_hit_rate",
+    "method_bridge_gap_hit_rate",
+    "method_gap_slots_with_truth",
     "method_bridge_precision",
     "method_bridge_recall_at_k",
     "method_slots_with_truth",
@@ -50,7 +57,14 @@ def main() -> None:
             q = report[f"quality_{scope}"]
             for key in QUALITY:
                 metrics[f"{arm}_{scope}_{key}"] = q.get(key, 0)
-            rows.append({"arm": arm, "scope": scope, **{k: q.get(k, 0) for k in QUALITY}})
+            rows.append(
+                {
+                    "arm": arm,
+                    "scope": scope,
+                    **{k: q.get(k, 0) for k in QUALITY},
+                    "method_bridge_gap_hit_rate": q.get("method_bridge_gap_hit_rate"),
+                }
+            )
         for kind in ("capped", "uncapped"):
             for key in LOAD:
                 metrics[f"{arm}_load_{kind}_{key}"] = report[f"load_{kind}"].get(key)
@@ -60,10 +74,11 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(rows)
     lines = [
-        "| Arm | Scope | Searches | Hit rate | Precision | Recall@3 | In-field precision | Problem-bridge rows | p50 s | p95 s |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Arm | Scope | Searches | Hit rate (registered) | Gap hit rate | Precision | Recall@3 | In-field precision | Problem-bridge rows | p50 s | p95 s |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ] + [
         f"| {r['arm']} — {ARMS[r['arm']]} | {r['scope']} | {r['searches']} | {r['method_bridge_hit_rate']} "
+        f"| {r['method_bridge_gap_hit_rate'] if r['method_bridge_gap_hit_rate'] is not None else '—'} "
         f"| {r['method_bridge_precision']} | {r['method_bridge_recall_at_k']} | {r['in_field_precision']} "
         f"| {r['problem_bridge_returned']} | {r['latency_p50']} | {r['latency_p95']} |"
         for r in rows

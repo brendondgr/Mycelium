@@ -1,0 +1,70 @@
+{
+ "bar_failures": [
+  "team_cover_precision = 0.7422"
+ ],
+ "corpus_path": "/app/data/sandbox/collab-20260918-600.json",
+ "corpus_seconds": 0.0,
+ "graph": {
+  "bridges": 400,
+  "introduction_share": 0.0658,
+  "introductions_asked": 395,
+  "introductions_found": 26,
+  "latency_seconds": {
+   "introduce": {
+    "p50": 0.663,
+    "p95": 0.802
+   },
+   "search_anywhere": {
+    "p50": 2.274,
+    "p95": 2.714
+   },
+   "search_country": {
+    "p50": 1.328,
+    "p95": 1.653
+   },
+   "search_institution": {
+    "p50": 0.771,
+    "p95": 1.021
+   },
+   "team": {
+    "p50": 0.783,
+    "p95": 0.993
+   }
+  },
+  "mean_path_length": 2.462,
+  "mean_team_size": 1.582,
+  "outside_network_shown": 382,
+  "rebuild": {
+   "created": 1840,
+   "pairs": 1840,
+   "removed": 0,
+   "seconds": 0.34,
+   "updated": 0
+  },
+  "reference_edges": 1840,
+  "searches_anywhere": 94,
+  "searches_country": 94,
+  "searches_institution": 94,
+  "shown_anywhere": 596,
+  "shown_country": 490,
+  "shown_institution": 395,
+  "team_cover_precision": 0.7422,
+  "team_cover_rows": 225,
+  "team_gap_coverage": 0.9365,
+  "team_refused_too_few_gaps": 27,
+  "teams": 67,
+  "violations_outside_network": 0,
+  "violations_outside_network_gate": 0,
+  "violations_scope_anywhere": 0,
+  "violations_scope_country": 0,
+  "violations_scope_institution": 0,
+  "violations_table": 0
+ },
+ "graph_seconds": 820.4,
+ "invariant_failures": [],
+ "labs": 96,
+ "papers": 2734,
+ "people": 600,
+ "projects": 96,
+ "seed": 20260918
+}
