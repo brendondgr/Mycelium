@@ -43,6 +43,13 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
   const [confirming, setConfirming] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const readOnly = !data.paid || !data.available;
+  const notice = !data.available
+    ? "Listening isn't turned on for this Mycelium yet, so these switches are off. Nothing is collected."
+    : !data.paid
+      ? "Mylo learning from your conversations is part of the paid plan. On your plan, nothing is collected."
+      : !data.linked
+        ? "Link your Discord account on your profile to turn on listening there."
+        : null;
 
   const update = (body: Parameters<typeof save.mutate>[0], done: string) => {
     setMessage(null);
@@ -57,18 +64,12 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
       <p className="max-w-[62ch] rounded-lg border border-border bg-surface-alt/60 px-3 py-2 text-[13px] leading-relaxed text-[var(--text-secondary)]">
         {data.statement}
       </p>
-      {!data.available ? (
-        <p className="text-sm text-[var(--text-secondary)]">
-          Listening isn&apos;t turned on for this Mycelium yet. Nothing is collected.
-        </p>
-      ) : !data.paid ? (
-        <p className="text-sm text-[var(--text-secondary)]">
-          Mylo learning from your conversations is part of the paid plan. On your plan,
-          nothing is collected.
-        </p>
-      ) : !data.linked ? (
-        <p className="text-sm text-[var(--text-secondary)]">
-          Link your Discord account on your profile to turn this on.
+      {notice ? (
+        <p
+          role="note"
+          className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-[var(--text-primary)]"
+        >
+          {notice}
         </p>
       ) : null}
 
@@ -79,7 +80,7 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
           label="Listen on Discord"
           help="Read what you say in servers that allow it and in your messages to Mylo. Off by default."
           checked={data.listening.discord}
-          disabled={readOnly && !data.listening.discord}
+          disabled={(readOnly || !data.linked) && !data.listening.discord}
           onChange={(on) =>
             update({ listening_discord: on }, on ? "Listening is on." : "Listening is off.")
           }
@@ -213,8 +214,11 @@ function Toggle({
   disabled?: boolean;
   onChange: (on: boolean) => void;
 }) {
+  // The thumb sits in the flow of an inline-flex track, as the profile page's
+  // switch does: absolutely positioned inside a <button> it has no left edge
+  // and starts from the button's centre.
   return (
-    <div className="flex items-start gap-3">
+    <div className={`flex items-start gap-3 ${disabled ? "cursor-not-allowed" : ""}`}>
       <button
         id={id}
         type="button"
@@ -223,20 +227,24 @@ function Toggle({
         aria-describedby={`${id}-help`}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full border border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 motion-reduce:transition-none ${
-          checked ? "bg-primary" : "bg-surface-alt"
+        className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none ${
+          checked ? "bg-[var(--primary)]" : "bg-[var(--border)]"
         }`}
       >
-        <span className="sr-only">{label}</span>
         <span
           aria-hidden="true"
-          className={`absolute top-0.5 h-[18px] w-[18px] rounded-full bg-surface shadow transition-transform motion-reduce:transition-none ${
-            checked ? "translate-x-[22px]" : "translate-x-0.5"
+          className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform motion-reduce:transition-none ${
+            checked ? "translate-x-[22px]" : "translate-x-[2px]"
           }`}
         />
       </button>
-      <div>
-        <label htmlFor={id} className="text-sm font-medium text-[var(--text-primary)]">
+      <div className={disabled ? "opacity-60" : undefined}>
+        <label
+          htmlFor={id}
+          className={`text-sm font-medium text-[var(--text-primary)] ${
+            disabled ? "cursor-not-allowed" : "cursor-pointer"
+          }`}
+        >
           {label}
         </label>
         <p id={`${id}-help`} className="text-xs text-[var(--text-secondary)]">
