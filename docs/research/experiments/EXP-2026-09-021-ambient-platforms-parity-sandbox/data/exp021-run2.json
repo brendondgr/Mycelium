@@ -1,0 +1,63 @@
+{
+  "messages": 1270,
+  "platforms": {
+    "discord": {
+      "refs": 554,
+      "people_kept": 531,
+      "people_kept_differ_from_discord": 0,
+      "mylo_lines_kept": 23,
+      "mylo_not_delivered": 0,
+      "drops": {
+        "dropped_not_opted_in": 339,
+        "dropped_free_tier": 102,
+        "dropped_unlinked": 146,
+        "dropped_too_short": 129
+      },
+      "drops_equal_discord": true,
+      "gate_mix": {
+        "opted_out": 7,
+        "free": 4
+      },
+      "seconds": 50.6
+    },
+    "slack": {
+      "refs": 554,
+      "people_kept": 531,
+      "people_kept_differ_from_discord": 0,
+      "mylo_lines_kept": 23,
+      "mylo_not_delivered": 0,
+      "drops": {
+        "dropped_not_opted_in": 339,
+        "dropped_free_tier": 102,
+        "dropped_unlinked": 146,
+        "dropped_too_short": 129
+      },
+      "drops_equal_discord": true,
+      "gate_mix": {
+        "opted_out": 7,
+        "free": 4
+      },
+      "seconds": 51.2
+    },
+    "teams": {
+      "refs": 531,
+      "people_kept": 531,
+      "people_kept_differ_from_discord": 0,
+      "mylo_lines_kept": 0,
+      "mylo_not_delivered": 23,
+      "drops": {
+        "dropped_free_tier": 102,
+        "dropped_not_opted_in": 339,
+        "dropped_unlinked": 146,
+        "dropped_too_short": 129
+      },
+      "drops_equal_discord": true,
+      "gate_mix": {
+        "opted_out": 7,
+        "free": 4
+      },
+      "seconds": 48.0
+    }
+  },
+  "seconds": 149.9
+}

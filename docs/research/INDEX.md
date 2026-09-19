@@ -49,11 +49,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-09-018` | 2026-09-19 | Do the ambient harm checks read zero on a clean record and catch each violation they exist for? | complete | — | — | [folder](experiments/EXP-2026-09-018-ambient-harm-checks-sandbox/RESULTS.md) |
 | `EXP-2026-09-019` | 2026-09-19 | How much may a confirmed exploration weigh before it moves the declared slates? | complete | — | — | [folder](experiments/EXP-2026-09-019-ambient-drift-weight-ablation/RESULTS.md) |
 | `EXP-2026-09-020` | 2026-09-19 | Ambient pilot: is Mylo making changes people agree with, and do they make the recommendations better? | planned | — | — | [folder](experiments/EXP-2026-09-020-ambient-pilot-go-no-go/RESULTS.md) |
+| `EXP-2026-09-021` | 2026-09-19 | Do Slack and Teams change anything past the adapter? | complete | — | — | [folder](experiments/EXP-2026-09-021-ambient-platforms-parity-sandbox/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 36 |
+| complete | 37 |
 | planned | 4 |
-| **total** | **40** |
+| **total** | **41** |

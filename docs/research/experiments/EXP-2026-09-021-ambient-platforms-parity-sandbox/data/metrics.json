@@ -1,0 +1,80 @@
+[
+  {
+    "run": "run1 (registered)",
+    "platform": "discord",
+    "people_kept": 1118,
+    "differ_from_discord": 0,
+    "mylo_lines_kept": 23,
+    "mylo_not_delivered": 0,
+    "dropped_not_opted_in": 0,
+    "dropped_free_tier": 0,
+    "dropped_unlinked": 0,
+    "dropped_too_short": 129,
+    "drops_equal_discord": true
+  },
+  {
+    "run": "run1 (registered)",
+    "platform": "slack",
+    "people_kept": 1118,
+    "differ_from_discord": 0,
+    "mylo_lines_kept": 23,
+    "mylo_not_delivered": 0,
+    "dropped_not_opted_in": 0,
+    "dropped_free_tier": 0,
+    "dropped_unlinked": 0,
+    "dropped_too_short": 129,
+    "drops_equal_discord": true
+  },
+  {
+    "run": "run1 (registered)",
+    "platform": "teams",
+    "people_kept": 1118,
+    "differ_from_discord": 0,
+    "mylo_lines_kept": 0,
+    "mylo_not_delivered": 23,
+    "dropped_not_opted_in": 0,
+    "dropped_free_tier": 0,
+    "dropped_unlinked": 0,
+    "dropped_too_short": 129,
+    "drops_equal_discord": true
+  },
+  {
+    "run": "run2 (post hoc: a fixed gate mix)",
+    "platform": "discord",
+    "people_kept": 531,
+    "differ_from_discord": 0,
+    "mylo_lines_kept": 23,
+    "mylo_not_delivered": 0,
+    "dropped_not_opted_in": 339,
+    "dropped_free_tier": 102,
+    "dropped_unlinked": 146,
+    "dropped_too_short": 129,
+    "drops_equal_discord": true
+  },
+  {
+    "run": "run2 (post hoc: a fixed gate mix)",
+    "platform": "slack",
+    "people_kept": 531,
+    "differ_from_discord": 0,
+    "mylo_lines_kept": 23,
+    "mylo_not_delivered": 0,
+    "dropped_not_opted_in": 339,
+    "dropped_free_tier": 102,
+    "dropped_unlinked": 146,
+    "dropped_too_short": 129,
+    "drops_equal_discord": true
+  },
+  {
+    "run": "run2 (post hoc: a fixed gate mix)",
+    "platform": "teams",
+    "people_kept": 531,
+    "differ_from_discord": 0,
+    "mylo_lines_kept": 0,
+    "mylo_not_delivered": 23,
+    "dropped_not_opted_in": 339,
+    "dropped_free_tier": 102,
+    "dropped_unlinked": 146,
+    "dropped_too_short": 129,
+    "drops_equal_discord": true
+  }
+]

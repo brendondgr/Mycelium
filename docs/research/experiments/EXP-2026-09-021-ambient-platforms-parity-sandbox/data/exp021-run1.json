@@ -1,0 +1,42 @@
+{
+  "messages": 1270,
+  "platforms": {
+    "discord": {
+      "refs": 1141,
+      "people_kept": 1118,
+      "people_kept_differ_from_discord": 0,
+      "mylo_lines_kept": 23,
+      "mylo_not_delivered": 0,
+      "drops": {
+        "dropped_too_short": 129
+      },
+      "drops_equal_discord": true,
+      "seconds": 67.2
+    },
+    "slack": {
+      "refs": 1141,
+      "people_kept": 1118,
+      "people_kept_differ_from_discord": 0,
+      "mylo_lines_kept": 23,
+      "mylo_not_delivered": 0,
+      "drops": {
+        "dropped_too_short": 129
+      },
+      "drops_equal_discord": true,
+      "seconds": 71.7
+    },
+    "teams": {
+      "refs": 1118,
+      "people_kept": 1118,
+      "people_kept_differ_from_discord": 0,
+      "mylo_lines_kept": 0,
+      "mylo_not_delivered": 23,
+      "drops": {
+        "dropped_too_short": 129
+      },
+      "drops_equal_discord": true,
+      "seconds": 71.1
+    }
+  },
+  "seconds": 210.1
+}
