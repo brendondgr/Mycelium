@@ -117,7 +117,7 @@ def overview_text(lead: str, stats: ReportStats, *, fallback_subject: str) -> st
 
 
 def volume_line(stats: ReportStats, *, subject: str, period: str) -> str:
-    """ "Mylo read 2,140 new papers …" — the sentence that makes the rest legible.
+    """"Mylo read 2,140 new papers …" — the sentence that makes the rest legible.
 
     Written as one sentence rather than a table because it is a ratio, not a set
     of independent figures: read, matched, entered, raised. Omits the corpus
@@ -132,7 +132,9 @@ def volume_line(stats: ReportStats, *, subject: str, period: str) -> str:
             read.append(f"{stats.discovered_papers:,} new {noun}")
         if stats.discovered_opportunities is not None:
             noun = "update" if stats.discovered_opportunities == 1 else "updates"
-            read.append(f"{stats.discovered_opportunities:,} opportunity {noun}")
+            read.append(
+                f"{stats.discovered_opportunities:,} opportunity {noun}"
+            )
         if read:
             parts.append(f"Mylo read {' and '.join(read)}.")
     matched = f"{stats.matched} matched {subject}"
@@ -154,7 +156,7 @@ def volume_line(stats: ReportStats, *, subject: str, period: str) -> str:
 
 
 def _pairs(stats: ReportStats) -> str:
-    """ "Papers 6 · 128  |  Grants 0 · 44" — new, then what the feed holds."""
+    """"Papers 6 · 128  |  Grants 0 · 44" — new, then what the feed holds."""
     cells = [
         f"{CATEGORY_LABELS.get(category, category.title())} {new} · {total}"
         for category, (new, total) in stats.by_category.items()
@@ -163,7 +165,7 @@ def _pairs(stats: ReportStats) -> str:
 
 
 def _project_line(stats: ReportStats, *, projects_only: bool = False) -> str:
-    """ "Personal 3 · —  |  Synapse 3 · 2" — what entered where, and what it raised.
+    """"Personal 3 · —  |  Synapse 3 · 2" — what entered where, and what it raised.
 
     ``projects_only`` drops the aggregate row. A lab post has already given the
     lab's own totals in the two fields above it, so repeating them under "Shared
@@ -231,7 +233,7 @@ def _top_items(data, limit: int = TOP_ITEMS) -> list[str]:
 # Assembly
 # --------------------------------------------------------------------------- #
 def attention_lines(alerts) -> str:
-    """ "Synapse · overlap risk — [title](url)", one line per alert.
+    """"Synapse · overlap risk — [title](url)", one line per alert.
 
     ``alerts`` is a sequence of ``(project label, trigger label, title, url)``.
     Capped at :data:`MAX_ALERT_LINES` and summarised past that: the field exists so
@@ -310,7 +312,8 @@ def lab_post_embed(
     period = "this week" if kind == "weekly" else "overnight"
     embed = {
         "title": (
-            f"{escape_mentions(data.display_name)} · Mylo {label} · {data.generated_on}"
+            f"{escape_mentions(data.display_name)} · Mylo {label} · "
+            f"{data.generated_on}"
         ),
         "description": overview_text(data.lead, stats, fallback_subject="the lab's"),
         "color": BRAND_COLOR,

@@ -99,7 +99,9 @@ class Verification:
         """The one line the report carries about its own checking."""
         if not self.claims:
             return ""
-        removed = f" · {self.removed} removed as unsupported" if self.removed else ""
+        removed = (
+            f" · {self.removed} removed as unsupported" if self.removed else ""
+        )
         return (
             f"Checked: {self.claims} claims · {self.supported} supported{removed}. "
             "Dates, day counts, and time zones are computed, not written by the "
@@ -149,6 +151,7 @@ def verify_line(
     changes = changes or set()
     for sentence in sentences(line):
         cited = [int(match.group(1)) for match in CITATION.finditer(sentence)]
+        # ``[O#]`` cites a "What changed" row (ambient Plan 09).
         cited_changes = [
             int(match.group(1)) for match in CHANGE_CITATION.finditer(sentence)
         ]
@@ -233,9 +236,8 @@ def _split_marker(line: str) -> tuple[str, str]:
     A marker is structure. Checking it would mean an item's number could be
     removed for not appearing in the packet, which is exactly backwards.
     """
-    match = re.match(
-        r"^(\s*(?:[-*]\s+|\d{1,3}[.)]\s+)?(?:\*\*[^*]+:\*\*\s*)?)(.*)$", line
-    )
+    match = re.match(r"^(\s*(?:[-*]\s+|\d{1,3}[.)]\s+)?(?:\*\*[^*]+:\*\*\s*)?)(.*)$",
+                     line)
     if match is None:  # pragma: no cover - the pattern matches every string
         return "", line
     return match.group(1), match.group(2)

@@ -138,7 +138,9 @@ def _fallback_section(project) -> str:
         lines.append(f"Stage: {project.stage}.")
     if project.already_alerted:
         noun = "alert" if len(project.already_alerted) == 1 else "alerts"
-        lines.append(f"{len(project.already_alerted)} {noun} raised earlier this week.")
+        lines.append(
+            f"{len(project.already_alerted)} {noun} raised earlier this week."
+        )
     fits = [row for row in project.timeline_rows if row.get("status") == "fits"]
     if fits:
         nearest = fits[0]
@@ -183,12 +185,10 @@ def write_project_section(
 
 
 def write_overview(
-    packet: WeeklyPacket,
-    sections: list[tuple[str, str]],
-    *,
+    packet: WeeklyPacket, sections: list[tuple[str, str]], *,
     complete: CompleteFn | None = None,
 ) -> tuple[str, str]:
-    """ "Your week in five lines". Returns ``(markdown, origin)``."""
+    """"Your week in five lines". Returns ``(markdown, origin)``."""
     if not sections:
         return "", ""
     ask = complete if complete is not None else _settings_complete(700)
@@ -319,7 +319,9 @@ def compose_weekly(
     ]
     if packet.private_projects_hidden:
         noun = "project" if packet.private_projects_hidden == 1 else "projects"
-        frame.insert(0, f"_{packet.private_projects_hidden} private {noun} not shown._")
+        frame.insert(
+            0, f"_{packet.private_projects_hidden} private {noun} not shown._"
+        )
     footer = record.footer()
     if footer:
         frame.append(f"_{footer}_")

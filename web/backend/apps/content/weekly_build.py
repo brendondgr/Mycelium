@@ -181,7 +181,7 @@ def build_project_packet(
         precis = precis_rows.get(content_id)
         metadata = content.metadata or {}
         _is_known, revised, _how = literature.verdict(content, precis)
-        signals = by_content[content_id].signals if content_id in by_content else {}
+        signals = (by_content[content_id].signals if content_id in by_content else {})
         packet.items.append(
             PacketItem(
                 n=next(numbering),
@@ -421,7 +421,9 @@ def _reflect(packet, target_filter, projects, reader, today):
         if is_lab
         else [
             (row.content.metadata or {}).get("title") or ""
-            for row in IgnoredItem.objects.filter(user=reader).select_related("content")
+            for row in IgnoredItem.objects.filter(user=reader).select_related(
+                "content"
+            )
         ]
     )
 

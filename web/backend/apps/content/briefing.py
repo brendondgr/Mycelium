@@ -97,7 +97,6 @@ LAB_BRIEFING_CATEGORIES: tuple[str, ...] = (
 #: How many items per category to show in the briefing showcase (bottom-right UI).
 SHOWCASE_PER_CATEGORY = 3
 
-
 def _watched_categories(watch, allow: tuple[str, ...] | None = None) -> list[str]:
     """The categories a target watches, or all available when none are configured.
 
@@ -231,12 +230,16 @@ def report_scores(
     )
 
 
-def filter_for_report(scores: list[RelevanceScore], today: str) -> list[RelevanceScore]:
+def filter_for_report(
+    scores: list[RelevanceScore], today: str
+) -> list[RelevanceScore]:
     """The slate, in rank order, from rows already read — see :func:`report_scores`."""
     return order_by_slate(scores)
 
 
-def report_new_scores(scores: list[RelevanceScore], today: str) -> list[RelevanceScore]:
+def report_new_scores(
+    scores: list[RelevanceScore], today: str
+) -> list[RelevanceScore]:
     """The slate members that entered on ``today``'s run — the report's news."""
     return [s for s in scores if is_entrant(s.signals or {}, today)]
 
@@ -468,8 +471,7 @@ def _showcase_item(
         # global position would be comparing scores that are not comparable, which
         # is the failure this whole redesign removes.
         "position": (
-            cluster_rank(signals, cluster_id)
-            if cluster_id
+            cluster_rank(signals, cluster_id) if cluster_id
             else (signals.get("top_rank") or 0)
         ),
         "verdict": (writeup or {}).get("verdict") or signals.get("verdict"),
@@ -811,7 +813,9 @@ def _write_briefing(
             hidden_projects=hidden_projects,
             attention=attention,
         )
-        origin = DailyBriefing.Origin.LLM if used_llm else DailyBriefing.Origin.FALLBACK
+        origin = (
+            DailyBriefing.Origin.LLM if used_llm else DailyBriefing.Origin.FALLBACK
+        )
     else:
         # Nothing entered the reader's Top-25, so there is nothing to say that was
         # not said yesterday. Carrying the previous body forward verbatim is the
