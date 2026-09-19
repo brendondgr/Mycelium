@@ -7,6 +7,9 @@
 * ``all``      — ``converse`` (reusing the cache when present) then ``run``.
 * ``nights``   — ``run``, then eight weeks of nights with simulated answers,
   then the exploration themes on a templated paper corpus (EXP-2026-09-014).
+* ``replies``  — ``run``, then tonight's questions answered in people's own
+  words and read by Mylo's reader, plus the "stop asking" switch
+  (EXP-2026-09-015).
 """
 
 from __future__ import annotations
@@ -23,7 +26,8 @@ from sandbox.collab import bootstrap
 def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m sandbox.ambient")
     parser.add_argument(
-        "command", choices=["world", "converse", "run", "all", "nights"]
+        "command",
+        choices=["world", "converse", "run", "all", "nights", "replies"],
     )
     parser.add_argument("--seed", type=int, default=20260919)
     parser.add_argument("--labs", type=int, default=3)
@@ -63,7 +67,7 @@ def main() -> int:
     from . import converse, run, score
 
     timings: dict[str, float] = {}
-    if args.command in ("converse", "all", "nights"):
+    if args.command in ("converse", "all", "nights", "replies"):
         if corpus.exists() and not args.fresh:
             written = json.loads(corpus.read_text())
         else:
@@ -94,6 +98,13 @@ def main() -> int:
     timings["seed_ingest_s"] = round(time.monotonic() - started, 1)
     result = run.pipeline()
     metrics = score.score(world, written, ingested)
+    if args.command == "replies":
+        from . import replies
+
+        started = time.monotonic()
+        metrics["replies"] = replies.run(world, workers=args.workers)
+        metrics["shutoff"] = replies.shutoff_check(workers=args.workers)
+        timings["replies_s"] = round(time.monotonic() - started, 1)
     if args.command == "nights":
         from . import nights
         from . import world as world_mod
