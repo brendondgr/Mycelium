@@ -690,3 +690,19 @@ def test_shut_off_in_passing_is_not_the_switch(text):
 def test_the_switch_itself_still_is():
     for text in ("shut it off", "shut off the questions", "no more questions"):
         assert dialogue.shut_off_request(text) == "off"
+
+
+@pytest.mark.parametrize(
+    ("correction", "echo"),
+    [
+        ("Include it in my reports", True),
+        ("RL", False),
+        ("graph neural networks", False),
+    ],
+)
+def test_what_counts_as_repeating_a_choice(correction, echo):
+    choices = [
+        {"key": "reports", "label": "Include it in my reports"},
+        {"key": "no", "label": "No, not really"},
+    ]
+    assert dialogue._echoes_a_choice(correction, choices) is echo

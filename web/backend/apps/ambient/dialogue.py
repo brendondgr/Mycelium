@@ -393,12 +393,19 @@ def _settings_complete(system: str, user: str) -> str | None:
     ).content
 
 
+_FILLER = frozenset(
+    "a an the it as my me i in on of to for and or as is it's that this".split()
+)
+
+
 def _echoes_a_choice(correction: str, choices: list[dict]) -> bool:
     """Whether a "correction" is only the wording of one of the choices."""
-    words = {w for w in re.findall(r"[a-z]+", correction.casefold()) if len(w) > 3}
+    words = set(re.findall(r"[a-z0-9]+", correction.casefold())) - _FILLER
     if not words:
-        return True
-    labels = " ".join(c["label"] for c in choices).casefold()
+        return False  # "RL", "GNNs": short names are still names
+    labels = set(
+        re.findall(r"[a-z0-9]+", " ".join(c["label"] for c in choices).casefold())
+    )
     return sum(1 for w in words if w in labels) * 2 >= len(words)
 
 
