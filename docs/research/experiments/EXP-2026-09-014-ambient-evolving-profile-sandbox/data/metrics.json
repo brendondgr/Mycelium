@@ -1,0 +1,48 @@
+{
+  "run3": {
+    "label": "registered",
+    "violations_total": 1,
+    "violations": {
+      "evidence_of_deleted": 1
+    },
+    "said_yes": 42,
+    "said_no": 0,
+    "faded": 5,
+    "reinforced_topics": 5,
+    "reinforced_still_active": 5,
+    "forgotten_people": 3,
+    "context_version_moves": 15,
+    "people_with_explorations": 6,
+    "declared_slate_jaccard_mean": 0.9811,
+    "declared_slate_jaccard_min": 0.8519,
+    "exploration_slate_precision_mean": 0.16,
+    "exploration_own_papers_at_top_mean": 1.0,
+    "displaced_top25_w015_mean": 0.1667,
+    "displaced_top25_w015_max": 1,
+    "displaced_top25_w1_mean": 7.3333,
+    "displaced_top25_w1_max": 13,
+    "minutes": 9.8
+  },
+  "run4": {
+    "label": "post hoc: forgotten evidence leaves at once",
+    "violations_total": 0,
+    "violations": {},
+    "said_yes": 42,
+    "said_no": 0,
+    "faded": 4,
+    "reinforced_topics": 7,
+    "reinforced_still_active": 6,
+    "forgotten_people": 3,
+    "context_version_moves": 14,
+    "people_with_explorations": 7,
+    "declared_slate_jaccard_mean": 0.9828,
+    "declared_slate_jaccard_min": 0.8519,
+    "exploration_slate_precision_mean": 0.16,
+    "exploration_own_papers_at_top_mean": 1.0,
+    "displaced_top25_w015_mean": 0.1429,
+    "displaced_top25_w015_max": 1,
+    "displaced_top25_w1_mean": 7.0,
+    "displaced_top25_w1_max": 12,
+    "minutes": 5.4
+  }
+}

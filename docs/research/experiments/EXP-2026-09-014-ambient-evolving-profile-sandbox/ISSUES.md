@@ -52,3 +52,8 @@ pass. Same class as run 2's opt-out gap, for "forget that" and platform
 deletions. **Fixed after the run** (`reconcile._drop_derived`: the pointers
 leave edges and findings in the same transaction as the observation), with a
 unit test; run 4 (post hoc) confirms.
+
+## Run 4 — post hoc
+
+Worktree `45e6477`, 07:41–07:47 UTC: 0 invariant violations; the ranking
+numbers match run 3's (0.983 / 0.143 / 7.0). Run 3's H1 verdict stands.

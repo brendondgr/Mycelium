@@ -8,48 +8,54 @@
 
 id: EXP-2026-09-014
 slug: ambient-evolving-profile-sandbox
-title: TODO: title for ambient-evolving-profile-sandbox
-status: planned # planned | running | complete | failed | superseded
+title: Does the evolving profile keep its promises over eight simulated weeks, and do exploration themes stay beside the declared ones?
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-09-19
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-09-19
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Plan 05 (ambient evolving profile) sandbox validation: nightly invariants
+  over eight simulated weeks with simulated answers, fading, deletion, and the
+  exploration-theme ranking hook on a templated corpus.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Pre-registered: H1 zero invariant violations every night; H2 fading exactly
+  at two half-lives; H3 at weight 0.15 declared slate Jaccard >= 0.95,
+  exploration slate precision >= 0.60, mean displaced from top 25 <= 1; H4 <
+  60 min. OUTCOME (run 3): H1 fails (1, deleted evidence cited until the next
+  night; fixed, run 4: 0); H2 holds; H3 Jaccard and displacement hold,
+  precision fails as registered (0.16, capped by the corpus; post hoc own
+  papers at top 1.0); H4 holds.
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 3636f73
+  commit: 8d47faf
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  entrypoint: "SANDBOX_DB=mycelium_sandbox_ambient python -m sandbox.ambient nights --workers 16 --corpus /app/data/sandbox/ambient-20260919-3x6.json (from a worktree pinned at the commit)"
+  dirty: false  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
-  path: <path to the config file, or null>
+  path: web/backend/sandbox/ambient/nights.py
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: synthetic ambient lab world (EXP-2026-09-013) plus a templated paper corpus
+  version: "seed 20260919; 9 nights over 56 days; 632 templated papers (158 topics x 4)"
+  split: test
+  n_examples: 18 # opted-in people simulated over 9 nights
   qrels: null
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
-seeds: []
-n_runs: 1
+seeds: [20260919]
+n_runs: 4 # 1 failed, 2 invalid invariants, 3 registered, 4 post hoc
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "20 CPU cores, 62 GB RAM; local model via llm-tunnel (default-model)"
+  wall_clock_hours: 0.6
+  estimated_cost_usd: 0.0
 
 # --- LLM block (delete entirely if no model was called) ----------------------
 # llm:
@@ -67,8 +73,20 @@ compute:
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
+  primary: violations_total (H1)
+  values:
+    run3_violations_total: 1
+    run3_faded: 5
+    run3_reinforced_still_active: 5
+    run3_declared_slate_jaccard_mean: 0.9811
+    run3_exploration_slate_precision_mean: 0.16
+    run3_exploration_own_papers_at_top_mean: 1.0
+    run3_displaced_top25_w015_mean: 0.1667
+    run3_displaced_top25_w1_mean: 7.3333
+    run4_violations_total: 0
+    run4_declared_slate_jaccard_mean: 0.9828
+    run4_displaced_top25_w015_mean: 0.1429
+    run4_displaced_top25_w1_mean: 7.0
 baselines_compared: []
 statistical_test: null
 

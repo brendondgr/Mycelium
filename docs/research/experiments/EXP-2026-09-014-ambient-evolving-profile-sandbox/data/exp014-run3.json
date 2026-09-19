@@ -1,0 +1,286 @@
+{
+ "timings": {
+  "seed_ingest_s": 154.7,
+  "nights_s": 28.7,
+  "drift_s": 74.8,
+  "read_s": 302.6,
+  "deliberate_s": 5.1,
+  "explain_s": 20.4
+ },
+ "metrics": {
+  "plants_total": 288,
+  "plants_written": 276,
+  "plants_dropped_by_generator": 12,
+  "plants_dropped_at_edge": 0,
+  "plants_in_truth": 276,
+  "messages": 1270,
+  "messages_stored": 1141,
+  "messages_dropped": {
+   "too_short": 129
+  },
+  "recall": 0.913,
+  "recall_by_plant": {
+   "capability": 0.9706,
+   "colleague": 0.6,
+   "declared": 0.9412,
+   "emerging": 0.9808,
+   "learning": 1.0,
+   "one_off": 0.9375,
+   "rejected": 0.902,
+   "told_fact": 1.0
+  },
+  "kind_accuracy": 0.7698,
+  "kind_confusion": {
+   "rejected->current_curiosity": 25,
+   "one_off->current_curiosity": 14,
+   "rejected->project_development": 18,
+   "emerging->current_curiosity": 24,
+   "capability->capability": 29,
+   "declared->enduring_interest": 19,
+   "learning->learning_goal": 30,
+   "declared->work_preference": 7,
+   "colleague->current_curiosity": 4,
+   "colleague->project_intent": 3,
+   "told_fact->project_development": 18,
+   "declared->project_development": 2,
+   "learning->current_curiosity": 2,
+   "emerging->enduring_interest": 4,
+   "emerging->capability": 1,
+   "emerging->learning_goal": 15,
+   "learning->career_direction": 2,
+   "colleague->project_development": 14,
+   "rejected->project_intent": 1,
+   "declared->current_curiosity": 3,
+   "capability->project_development": 4,
+   "emerging->project_development": 2,
+   "learning->project_development": 2,
+   "declared->capability": 1,
+   "rejected->learning_goal": 1,
+   "emerging->project_intent": 2,
+   "emerging->career_direction": 3,
+   "one_off->project_development": 1,
+   "rejected->career_direction": 1
+  },
+  "colleague_read_as_self": 0.0952,
+  "subject_confusion": {
+   "rejected->self": 37,
+   "one_off->self": 12,
+   "emerging->self": 51,
+   "capability->self": 33,
+   "declared->self": 32,
+   "learning->self": 36,
+   "rejected->project": 8,
+   "colleague->self": 2,
+   "colleague->colleague": 10,
+   "colleague->project": 9,
+   "told_fact->project": 18,
+   "one_off->unknown": 2,
+   "rejected->lab": 1,
+   "one_off->project": 1
+  },
+  "observations": 345,
+  "observations_on_filler": 86,
+  "strict_precision": 0.7507,
+  "observations_by_kind": {
+   "project_development": 114,
+   "capability": 38,
+   "career_direction": 8,
+   "enduring_interest": 25,
+   "current_curiosity": 85,
+   "learning_goal": 48,
+   "work_preference": 9,
+   "project_intent": 18
+  },
+  "outcome_accuracy": 0.9014,
+  "false_suggestion_rate": 0.0,
+  "outcome_confusion": {
+   "capability:capability->capability": 11,
+   "capability:capability->ignore": 7,
+   "colleague:ignore->ask": 1,
+   "colleague:ignore->ignore": 13,
+   "colleague:ignore->none": 4,
+   "declared:ignore->ignore": 18,
+   "emerging:suggest->ignore": 3,
+   "emerging:suggest->ignore/suggest": 2,
+   "emerging:suggest->suggest": 13,
+   "learning:suggest->ignore": 3,
+   "learning:suggest->suggest": 15,
+   "one_off:ignore->ignore": 15,
+   "one_off:ignore->none": 1,
+   "rejected:ignore->ignore": 18,
+   "told_fact:record->record": 18
+  },
+  "findings_by_outcome": {
+   "ignore": 210,
+   "suggest": 30,
+   "record": 18,
+   "capability": 11,
+   "ask": 1
+  },
+  "findings_by_reason": {
+   "below_floor": 162,
+   "rejected_in_conversation": 15,
+   "consistent": 30,
+   "told_directly": 18,
+   "superseded": 18,
+   "covered": 8,
+   "capability_consistent": 11,
+   "attribution_unresolved": 1,
+   "not_self": 7
+  },
+  "explained_rate": 1.0,
+  "harm": {
+   "observations_of_silent_member": 0,
+   "refs_of_silent_member": 0,
+   "findings_of_silent_member": 0,
+   "observation_quotes": 0,
+   "explanation_quotes": 0,
+   "rule_origin": 0,
+   "bodies_left_after_read": 0,
+   "unread_refs": 0,
+   "lab_findings_on_personal_observations": 0,
+   "suggestion_without_self": 0,
+   "explanation_invented_dates": 0
+  },
+  "harm_total": 0,
+  "scored_at": "2026-09-19T07:20:13.304022+00:00",
+  "nights": {
+   "nights": [
+    {
+     "night": 0,
+     "edges": {
+      "active": 41
+     },
+     "developments": {
+      "active": 18
+     }
+    },
+    {
+     "night": 7,
+     "edges": {
+      "active": 42
+     },
+     "developments": {
+      "rejected": 3,
+      "active": 15
+     }
+    },
+    {
+     "night": 14,
+     "edges": {
+      "active": 34
+     },
+     "developments": {
+      "rejected": 3,
+      "active": 15
+     }
+    },
+    {
+     "night": 21,
+     "edges": {
+      "active": 34
+     },
+     "developments": {
+      "rejected": 6,
+      "active": 12
+     }
+    },
+    {
+     "night": 28,
+     "edges": {
+      "active": 34
+     },
+     "developments": {
+      "rejected": 6,
+      "active": 12
+     }
+    },
+    {
+     "night": 35,
+     "edges": {
+      "active": 34
+     },
+     "developments": {
+      "rejected": 6,
+      "active": 12
+     }
+    },
+    {
+     "night": 42,
+     "edges": {
+      "active": 34
+     },
+     "developments": {
+      "rejected": 6,
+      "active": 12
+     }
+    },
+    {
+     "night": 49,
+     "edges": {
+      "active": 29,
+      "faded": 5
+     },
+     "developments": {
+      "rejected": 6,
+      "active": 12
+     }
+    },
+    {
+     "night": 56,
+     "edges": {
+      "active": 29,
+      "faded": 5
+     },
+     "developments": {
+      "rejected": 6,
+      "active": 12
+     }
+    }
+   ],
+   "answered": {
+    "yes": 42
+   },
+   "said_yes": 42,
+   "said_no": 0,
+   "reinforced_topics": 5,
+   "reinforced_still_active": 5,
+   "faded": 5,
+   "forgotten_people": 3,
+   "undone_developments": 3,
+   "context_version_moves": 15,
+   "violations": {
+    "evidence_of_deleted": 1
+   },
+   "violation_examples": {
+    "evidence_of_deleted": [
+     "32096"
+    ]
+   },
+   "violations_total": 1
+  },
+  "corpus_items": 632,
+  "drift": {
+   "0.15": {
+    "people": 6,
+    "declared_slate_jaccard_mean": 0.9811,
+    "declared_slate_jaccard_min": 0.8519,
+    "exploration_slate_precision_mean": 0.16,
+    "exploration_slates": 6,
+    "exploration_own_papers_at_top_mean": 1.0,
+    "declared_displaced_from_top25_mean": 0.1667,
+    "declared_displaced_from_top25_max": 1
+   },
+   "1.0": {
+    "people": 6,
+    "declared_slate_jaccard_mean": 0.9811,
+    "declared_slate_jaccard_min": 0.8519,
+    "exploration_slate_precision_mean": 0.16,
+    "exploration_slates": 6,
+    "exploration_own_papers_at_top_mean": 1.0,
+    "declared_displaced_from_top25_mean": 7.3333,
+    "declared_displaced_from_top25_max": 13
+   }
+  }
+ }
+}
