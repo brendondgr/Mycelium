@@ -314,7 +314,7 @@ _SYSTEM = (
 )
 
 #: Bump when the reply prompt or its reading changes (EXP-2026-09-015).
-READ_VERSION = "r2"
+READ_VERSION = "r3"
 
 _PROMPT = """Mylo asked:
 {question}
@@ -331,7 +331,9 @@ Which choice did they pick? Reply as
                 wording in at most 8 words, else ""}}
 
 Rules:
-- A soft no ("nah, I'm good", "don't worry about it") is "no".
+- A soft no ("nah, I'm good", "don't worry about it") is "no" — and so is
+  anything saying not to bring it up, track it or check in on it again, even
+  with "for now".
 - "Not now", "maybe later", "check back another time" is "later".
 - If they do not clearly pick one — undecided, asking a question back, or
   talking about something else — answer "unclear". Never guess a yes."""
@@ -391,6 +393,15 @@ def _settings_complete(system: str, user: str) -> str | None:
     ).content
 
 
+def _echoes_a_choice(correction: str, choices: list[dict]) -> bool:
+    """Whether a "correction" is only the wording of one of the choices."""
+    words = {w for w in re.findall(r"[a-z]+", correction.casefold()) if len(w) > 3}
+    if not words:
+        return True
+    labels = " ".join(c["label"] for c in choices).casefold()
+    return sum(1 for w in words if w in labels) * 2 >= len(words)
+
+
 def read_reply(s: PendingSuggestion, text: str, *, complete=None) -> Reply | None:
     """The model's reading of a free-text reply; ``None`` when it cannot be
     reached (the caller asks for a button rather than guessing)."""
@@ -428,6 +439,10 @@ def read_reply(s: PendingSuggestion, text: str, *, complete=None) -> Reply | Non
     # (EXP-2026-09-015).
     verdict = verdict_for(choice)
     correction = " ".join(str(data.get("correction") or "").split())[:200]
+    if correction and _echoes_a_choice(correction, s.choices):
+        # "Mark it down as something I'm learning" picks a choice; it does not
+        # rename the topic (EXP-2026-09-015 run 2).
+        correction = ""
     if correction and verdict == Verdict.CONFIRMED:
         return Reply(Verdict.CORRECTED, choice, correction)
     return Reply(verdict, choice, "")
@@ -438,7 +453,8 @@ def read_reply(s: PendingSuggestion, text: str, *, complete=None) -> Reply | Non
 #: "Stop asking about it" answers one question; "stop asking" is a setting.
 _ABOUT_ONE = r"(?!\s+(me\s+)?(about|on|re)\s+(it|this|that|them|the)\b)"
 _SHUT_OFF = re.compile(
-    rf"\b(stop asking{_ABOUT_ONE}|shut (it )?off|no more questions|"
+    rf"\b(stop asking{_ABOUT_ONE}|shut (it|them|the questions) off|"
+    r"shut off (the |your |these |all )?questions|no more questions|"
     r"leave my interests alone|stop the questions|don'?t ask me"
     rf"{_ABOUT_ONE})\b",
     re.I,

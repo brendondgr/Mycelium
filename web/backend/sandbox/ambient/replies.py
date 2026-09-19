@@ -213,11 +213,23 @@ def apply_through_turns(read_rows: list[dict], suggestions: dict) -> dict:
             relation=s.relation,
             tier="conversational",
         ).first()
-        want = {"confirmed": "active", "rejected": "rejected"}.get(
-            reading["verdict"], "pending"
+        # "For project X" is a yes to the project, so the personal edge is
+        # rejected (EXP-2026-09-015 run 2 scored it as a mismatch).
+        key = (reading.get("choice") or "").split(":", 1)[0]
+        want = (
+            "rejected"
+            if key == "project"
+            else {
+                "confirmed": "active",
+                "corrected": "active",
+                "rejected": "rejected",
+            }.get(reading["verdict"], "pending")
         )
         if edge is not None and edge.status != want:
             checked["effect_mismatch"] += 1
+            checked.setdefault("mismatches", []).append(
+                {"reply": row["reply"], "read": reading, "status": edge.status}
+            )
     return checked
 
 

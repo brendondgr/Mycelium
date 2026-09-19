@@ -661,3 +661,32 @@ def test_an_unclear_reply_that_is_a_general_request_shuts_off(ada):
     assert "no more questions" in line
     s.refresh_from_db()
     assert s.state == "withdrawn"
+
+
+def test_a_correction_that_only_repeats_a_choice_is_not_a_new_name(ada):
+    s = _asked(ada)
+
+    def model(system, prompt):
+        return json.dumps(
+            {"choice": "reports", "correction": "Include it in my reports"}
+        )
+
+    dialogue.turn(ada, "yes, include it in my reports", complete=model, now=WEDNESDAY)
+    s.refresh_from_db()
+    assert s.verdict == "confirmed" and s.correction == ""
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "the sensor might have shut off mid-experiment",
+        "I shut off the centrifuge before leaving",
+    ],
+)
+def test_shut_off_in_passing_is_not_the_switch(text):
+    assert dialogue.shut_off_request(text) is None
+
+
+def test_the_switch_itself_still_is():
+    for text in ("shut it off", "shut off the questions", "no more questions"):
+        assert dialogue.shut_off_request(text) == "off"
