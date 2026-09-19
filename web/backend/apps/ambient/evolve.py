@@ -233,13 +233,20 @@ def _retractions(run: EvolveRun, now) -> None:
     """Take deleted evidence back out of everything Plan 05 built on it."""
     from django.contrib.auth import get_user_model
 
-    from apps.knowledge.service import drop_evidence
+    from apps.knowledge.service import drop_evidence, forget_conversational
 
+    from .models import Retraction
     from .read import mark_recomputed, pending_retractions
 
     User = get_user_model()
     for retraction in pending_retractions():
         ids = {int(pk) for pk in retraction.observation_ids or []}
+        if retraction.reason == Retraction.Reason.OPT_OUT and retraction.user_id:
+            # "Delete my observations" deletes every derived influence
+            # (principle 11): what the person confirmed rested on what they
+            # said, so it goes too — every conversational edge, every finding.
+            forget_conversational(retraction.user)
+            Finding.objects.filter(user_id=retraction.user_id).delete()
         people = _people_citing(ids)
         if retraction.user_id:
             people.add(retraction.user_id)

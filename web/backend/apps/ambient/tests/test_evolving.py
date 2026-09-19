@@ -389,3 +389,31 @@ def test_a_confirmed_edge_survives_its_evidence_being_forgotten(ada):
     evolve.evolve()
     edge = Edge.objects.get(user=ada, tier="conversational")
     assert edge.status == EdgeStatus.ACTIVE and edge.evidence == []
+
+
+def test_opting_out_with_deletion_removes_every_derived_influence(ada, imaging):
+    cp = _concept("conformal prediction")
+    _consistent(ada, cp)
+    data = _concept("scanner dataset", Facet.SETTING)
+    _noted(
+        ada,
+        data,
+        days_ago=1,
+        kind="project_development",
+        force="fact",
+        subject="project",
+        explicit=True,
+        project=imaging,
+        visibility=Visibility.LAB,
+        change="dataset_arrived",
+        conversation="t",
+    )
+    _night()
+    confirm(ada, cp.pk, "interested_in")
+    reconcile.forget_person(ada)
+    evolve.evolve()
+    assert not Edge.objects.filter(user=ada, tier="conversational").exists()
+    assert not Finding.objects.filter(user=ada).exists()
+    assert ProjectDevelopment.objects.get().status == ProjectDevelopment.Status.REJECTED
+    # Their own declared profile is theirs and stays.
+    assert Profile.objects.get(user=ada).interests["areas"] == ["medical imaging"]
