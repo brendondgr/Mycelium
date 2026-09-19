@@ -66,11 +66,19 @@ class SlackEventsView(View):
             return HttpResponse(status=400)
         if payload.get("type") == "url_verification":
             return JsonResponse({"challenge": payload.get("challenge", "")})
-        if request.headers.get("X-Slack-Retry-Num"):
-            # Slack retries when we were slow; the first delivery was taken.
-            return HttpResponse(status=200)
         if payload.get("type") == "event_callback":
+            # Slack retries an event it thinks failed. One that was handled is
+            # only acknowledged — a DM read twice could answer a second open
+            # question — and one whose first attempt failed is handled now.
+            # Taking a message twice is harmless (the ledger dedupes it).
+            from django.core.cache import cache
+
+            done = f"slack-event:{payload.get('event_id') or ''}"
+            if payload.get("event_id") and cache.get(done):
+                return HttpResponse(status=200)
             slack_events.handle_event(payload)
+            if payload.get("event_id"):
+                cache.set(done, 1, 24 * 3600)
         return HttpResponse(status=200)
 
 

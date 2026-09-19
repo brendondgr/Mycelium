@@ -154,17 +154,57 @@ def test_the_url_check_is_answered(client, db):
     assert response.json() == {"challenge": "abc"}
 
 
-def test_a_retry_is_acknowledged_and_not_taken_twice(client, workspace, ada):
+def _with_id(event, event_id):
+    return json.dumps(
+        {
+            "type": "event_callback",
+            "team_id": TEAM,
+            "event_id": event_id,
+            "event": event,
+        }
+    ).encode()
+
+
+def test_a_retry_of_a_handled_event_is_only_acknowledged(client, workspace, ada):
+    from django.core.cache import cache
+
+    cache.clear()
     _linked(ada)
+    with mock.patch("apps.integrations.tasks.slack_dialogue.delay") as later:
+        event = _message("yes please", channel="D1", channel_type="im", ts="1.0")
+        _signed(client, "/api/integrations/slack/events/", _with_id(event, "Ev1"))
+        _signed(
+            client,
+            "/api/integrations/slack/events/",
+            _with_id(event, "Ev1"),
+            HTTP_X_SLACK_RETRY_NUM="1",
+        )
+    # The dialogue ran once: a DM read twice could answer a second question.
+    assert later.call_count == 1
+    assert RawMessageRef.objects.count() == 1
+
+
+def test_a_retry_after_a_failed_first_attempt_is_handled(client, workspace, ada):
+    from django.core.cache import cache
+
     from apps.ambient.service import set_workspace_listening
 
+    cache.clear()
+    _linked(ada)
     set_workspace_listening(TEAM, on=True)
-    event = _message("We should try conformal prediction on the scans soon.", ts="1.0")
-    _event(client, event)
-    body = json.dumps(
-        {"type": "event_callback", "team_id": TEAM, "event": event}
-    ).encode()
-    _signed(client, "/api/integrations/slack/events/", body, HTTP_X_SLACK_RETRY_NUM="1")
+    event = _message("We should try conformal prediction on the scans soon.", ts="2.0")
+    with mock.patch(
+        "apps.integrations.slack_views.slack_events.handle_event",
+        side_effect=RuntimeError("boom"),
+    ):
+        with pytest.raises(RuntimeError):
+            _signed(client, "/api/integrations/slack/events/", _with_id(event, "Ev2"))
+    _signed(
+        client,
+        "/api/integrations/slack/events/",
+        _with_id(event, "Ev2"),
+        HTTP_X_SLACK_RETRY_NUM="1",
+    )
     assert RawMessageRef.objects.count() == 1
 
 
