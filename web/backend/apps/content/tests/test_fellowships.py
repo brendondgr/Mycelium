@@ -986,6 +986,28 @@ def test_eligibility_from_profile_uses_the_derived_stage():
     assert ev["tier"] == "not_eligible"
 
 
+def test_eligibility_reads_only_the_institution_the_email_proves():
+    """A typed university or Illinois flag in the block cannot pass an
+    institution-restricted gate; only the verified institution counts."""
+    typed = _StubProfile(
+        interests={
+            "eligibility": {
+                "university": "University of Illinois Urbana-Champaign",
+                "is_illinois_student": True,
+            }
+        },
+        institution="Florida State University",
+    )
+    elig = eligibility_from_profile(typed)
+    assert elig.university == "Florida State University"
+    assert elig.is_illinois_student is False
+
+    proved = eligibility_from_profile(
+        _StubProfile(institution="University of Illinois Urbana-Champaign")
+    )
+    assert proved.is_illinois_student is True
+
+
 # ---- Prose constraints -------------------------------------------------------
 
 

@@ -236,8 +236,9 @@ def eligible_candidates(
     """
     now = now or timezone.now()
     seeker_place = consent.place_of(seeker)
-    if seeker_place is None:
-        return []
+    if seeker_place is None or not seeker_place.domain:
+        return []  # people are suggested only to a verified institution
+    scope = consent.clamp_scope(scope)
     settings_rows = list(
         CollaborationSetting.objects.filter(open=True, expires_at__gt=now)
         .exclude(user=seeker)
@@ -661,13 +662,12 @@ class SearchResult:
 
 
 def _allowed_scope(scope: str) -> None:
-    order = [Audience.INSTITUTION, Audience.COUNTRY, Audience.ANYWHERE]
+    order = consent.ORDER
     if scope not in order:
         raise SearchRefused(f"unknown scope {scope!r}")
-    if order.index(scope) > order.index(settings.COLLAB_MAX_SCOPE):
-        raise SearchRefused(
-            f"searches reach at most {settings.COLLAB_MAX_SCOPE} for now"
-        )
+    limit = consent.seeker_scope_limit()
+    if order.index(scope) > order.index(limit):
+        raise SearchRefused(f"searches reach at most {limit}")
 
 
 def _split(seeker, query: Query) -> tuple[list[dict], list[dict]]:
@@ -687,13 +687,19 @@ def _split(seeker, query: Query) -> tuple[list[dict], list[dict]]:
 
 
 def check_seeker(seeker, now=None) -> None:
-    """Refuse a seeker who may not search: unverified, over the daily limit, or
-    on a free plan while plans are enforced (plan CN-04, OD-CN5)."""
+    """Refuse a seeker who may not search: unverified, verified at no
+    institution, over the daily limit, or on a free plan while plans are
+    enforced (plan CN-04, OD-CN5)."""
     from apps.billing.entitlements import effective_tier, enforcing
     from apps.billing.models import Tier
 
-    if consent.place_of(seeker) is None:
+    place = consent.place_of(seeker)
+    if place is None:
         raise SearchRefused("verify your email to search", "unverified")
+    if not place.domain:
+        raise SearchRefused(
+            "use your institution's email to find people there", "no_institution"
+        )
     if enforcing() and effective_tier(seeker) == Tier.FREE:
         raise SearchRefused(
             "searching for collaborators is part of a paid plan", "paid_plan"
@@ -842,6 +848,7 @@ def introduce(seeker, search_id: int, username: str, now=None) -> dict:
     if target is None:
         raise SearchRefused("that person is no longer open to you", "not_found")
     seeker_place = consent.place_of(seeker)
+    scope = consent.clamp_scope(log.scope)
     through = []
     for setting in CollaborationSetting.objects.filter(
         open=True, expires_at__gt=now
@@ -849,8 +856,10 @@ def introduce(seeker, search_id: int, username: str, now=None) -> dict:
         person = setting.user
         if person.pk in (seeker.pk, target.pk):
             continue
-        if not consent.within(
-            consent.stored_place(person), seeker_place, setting.audience
+        # An introducer is a person shown too: inside the seeker's scope, as
+        # well as open to them.
+        if not consent.mutually_visible(
+            consent.stored_place(person), setting.audience, seeker_place, scope
         ):
             continue
         if not consent.may_appear(person, seeker, now):

@@ -183,12 +183,41 @@ def test_each_gate_condition_removes_the_person_it_guards_against(world, exclude
 
 def test_widening_the_scope_is_refused_at_launch(world, settings):
     ada, _, project = world
-    query = matcher.query_for_project(ada, project, scope=Audience.ANYWHERE)
+    query = matcher.query_for_project(ada, project, scope=Audience.COUNTRY)
     with pytest.raises(matcher.SearchRefused):
         matcher.search(ada, query, complete=_model())
-    settings.COLLAB_MAX_SCOPE = "anywhere"
+    settings.COLLAB_MAX_SCOPE = "country"
     result = matcher.search(ada, query, complete=_model())
-    assert "frank" in _names(result)
+    assert "frank" in _names(result)  # UF: another institution, the same country
+
+
+def test_a_seeker_never_looks_past_their_own_country(world, settings):
+    """People are suggested only from the seeker's institution or country — a
+    setting cannot widen search to anywhere, and a person abroad who is open to
+    anyone is still not shown."""
+    ada, _, project = world
+    abroad = _person(
+        "olu", "olu@ox.ac.uk", openalex="A11", field="27", method="kriging"
+    )
+    _open(abroad, Audience.ANYWHERE)
+    settings.COLLAB_MAX_SCOPE = "anywhere"
+    anywhere = matcher.query_for_project(ada, project, scope=Audience.ANYWHERE)
+    with pytest.raises(matcher.SearchRefused):
+        matcher.search(ada, anywhere, complete=_model())
+    country = matcher.query_for_project(ada, project, scope=Audience.COUNTRY)
+    assert "olu" not in _names(matcher.search(ada, country, complete=_model()))
+    everyone = {c.get_username() for c in matcher.eligible_candidates(ada, "anywhere")}
+    assert "olu" not in everyone and "frank" in everyone  # clamped to country
+
+
+def test_a_verified_personal_address_cannot_search(world):
+    ada, _, project = world
+    personal = _person("pat", "pat@gmail.com", openalex="A12", field="23")
+    query = matcher.query_for_project(ada, project)
+    with pytest.raises(matcher.SearchRefused) as refused:
+        matcher.search(personal, query, complete=_model())
+    assert refused.value.code == "no_institution"
+    assert matcher.eligible_candidates(personal, "institution") == []
 
 
 def test_conversation_never_finds_anyone(world, embedder):
@@ -372,6 +401,13 @@ def test_a_refused_search_says_why(world, settings):
         format="json",
     )
     assert response.status_code == 403 and "at most" in response.json()["detail"]
+
+
+def test_availability_tells_a_personal_address_why(world, settings):
+    settings.COLLAB_SEARCH_ENABLED = True
+    personal = _person("quin", "quin@gmail.com", openalex="A13", field="23")
+    body = _client(personal).get("/api/collab/search/").json()
+    assert body["available"] is False and body["code"] == "no_institution"
 
 
 def test_availability_says_why_a_search_would_be_refused(world, settings):

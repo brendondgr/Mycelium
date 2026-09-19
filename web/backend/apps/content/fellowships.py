@@ -182,21 +182,19 @@ def eligibility_from_profile(profile) -> Elig:
     """Build an :class:`Elig` from a Django Profile object.
 
     Reads ``profile.interests.get("eligibility")`` for the user-supplied block
-    and ``profile.institution`` for the university/Illinois check.  All fields
+    and ``profile.institution`` for the university/Illinois check — only that:
+    the institution is what the verified email proves
+    (``apps.accounts.institution``), so an ``eligibility.university`` or
+    ``is_illinois_student`` in the block is ignored, or anyone could pass an
+    institution-restricted gate by saying so. All fields
     default safely when absent so users without an eligibility block still get a
     sensible (US-citizen, empty fields) profile. The stage is *derived* rather
     than read straight off the block — see :func:`derive_stage`.
     """
     interests = getattr(profile, "interests", None) or {}
     e = interests.get("eligibility") or {}
-    university = (
-        e.get("university")
-        or getattr(profile, "institution", "")
-        or ""
-    )
-    is_illinois = e.get("is_illinois_student")
-    if is_illinois is None:
-        is_illinois = "illinois" in university.lower()
+    university = getattr(profile, "institution", "") or ""
+    is_illinois = "illinois" in university.lower()
     stage = derive_stage(profile)
     return Elig(
         citizenship=(e.get("citizenship") or "us").lower(),

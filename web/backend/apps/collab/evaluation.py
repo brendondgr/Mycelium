@@ -27,6 +27,7 @@ from django.conf import settings
 from django.db.models import Count
 from django.utils import timezone
 
+from . import consent
 from .models import (
     Appearance,
     Audience,
@@ -300,12 +301,15 @@ def readiness(now=None) -> dict:
         reasons.append(f"{spread['share_at_cap']:.2%} of person-weeks at the cap")
     if harmful:
         reasons.append(f"harm checks failing: {sorted(harmful)}")
-    current = settings.COLLAB_MAX_SCOPE
-    index = SCOPE_ORDER.index(current) if current in SCOPE_ORDER else 0
+    # Never past the seeker ceiling: people are suggested only from the
+    # seeker's own institution or country (consent.SEEKER_CEILING).
+    current = consent.seeker_scope_limit()
+    index = SCOPE_ORDER.index(current)
+    widest = SCOPE_ORDER.index(consent.SEEKER_CEILING)
     return {
         "scope": current,
-        "next_scope": SCOPE_ORDER[index + 1] if index + 1 < len(SCOPE_ORDER) else None,
-        "ready": not reasons and index + 1 < len(SCOPE_ORDER),
+        "next_scope": SCOPE_ORDER[index + 1] if index < widest else None,
+        "ready": not reasons and index < widest,
         "reasons": reasons,
         "rated": rated,
         "not_relevant_rate": round(not_relevant, 4)

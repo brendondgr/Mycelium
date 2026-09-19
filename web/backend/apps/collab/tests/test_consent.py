@@ -69,7 +69,8 @@ def test_a_typed_institution_changes_nothing(db):
     user.profile.save()
     row = affiliation.refresh(user)
     assert row.domain == "" and row.country == ""
-    assert consent.allowed_audiences(consent.place_of(user)) == [Audience.ANYWHERE]
+    # A personal address places nobody, so there is no audience to offer.
+    assert consent.allowed_audiences(consent.place_of(user)) == []
 
 
 def test_unverified_email_loses_its_scope(db):
@@ -119,13 +120,14 @@ def test_refusals(db):
     with pytest.raises(consent.ConsentRefused):
         consent.update(unverified, open=True, audience=Audience.ANYWHERE)
     personal = _person("fay", "fay@gmail.com")
+    for audience in Audience.values:
+        with pytest.raises(consent.ConsentRefused):
+            consent.update(personal, open=True, audience=audience)
+    assert not consent.is_open(personal)
     with pytest.raises(consent.ConsentRefused):
-        consent.update(personal, open=True, audience=Audience.INSTITUTION)
-    consent.update(personal, open=True, audience=Audience.ANYWHERE)
+        consent.update(unverified, open=True, audience="galaxy")
     with pytest.raises(consent.ConsentRefused):
-        consent.update(personal, open=True, audience="galaxy")
-    with pytest.raises(consent.ConsentRefused):
-        consent.update(personal, open=True, audience=Audience.ANYWHERE, open_to=["x"])
+        consent.update(unverified, open=True, audience=Audience.ANYWHERE, open_to=["x"])
 
 
 # --- mutual visibility ------------------------------------------------------

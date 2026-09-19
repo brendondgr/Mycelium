@@ -7,9 +7,13 @@ Two settings that sound alike are kept apart:
 
 A person may appear only when both allow it: their audience includes the
 seeker **and** the seeker's scope includes them, both judged on verified
-affiliations. On top of that, the **appearance cap** limits how many distinct
-seekers see the same person in a week, so the most sought-after people are not
-flooded into switching the setting off.
+affiliations. Both sides need a verified *institution* — a personal address can
+neither search nor be found — and a seeker never looks past their own country
+(:data:`SEEKER_CEILING`), whatever ``COLLAB_MAX_SCOPE`` says: people are only
+ever suggested from the seeker's own institution or location. On top of that,
+the **appearance cap** limits how many distinct seekers see the same person in
+a week, so the most sought-after people are not flooded into switching the
+setting off.
 """
 
 from __future__ import annotations
@@ -27,6 +31,26 @@ from .models import Appearance, Audience, CollaborationSetting, OpenTo
 #: Scopes from narrowest to widest; a seeker's scope and a candidate's audience
 #: use the same three words.
 ORDER = [Audience.INSTITUTION, Audience.COUNTRY, Audience.ANYWHERE]
+
+#: The widest a seeker may look. "Anywhere" stays a word a candidate may choose
+#: for who may find them; it is never a scope a seeker searches in.
+SEEKER_CEILING = Audience.COUNTRY
+
+
+def seeker_scope_limit() -> str:
+    """The widest scope a search may use now: the setting, under the ceiling."""
+    configured = settings.COLLAB_MAX_SCOPE
+    if configured not in ORDER:
+        return Audience.INSTITUTION
+    return ORDER[min(ORDER.index(configured), ORDER.index(SEEKER_CEILING))]
+
+
+def clamp_scope(scope: str) -> str:
+    """``scope``, narrowed to :func:`seeker_scope_limit` if it reaches past it."""
+    limit = seeker_scope_limit()
+    if scope not in ORDER or ORDER.index(scope) > ORDER.index(limit):
+        return limit
+    return scope
 
 
 class ConsentRefused(ValueError):
@@ -70,12 +94,11 @@ def stored_place(user) -> Place | None:
 
 
 def allowed_audiences(place: Place | None) -> list[str]:
-    """Audiences a person may choose: nothing without a verified email; only
-    ``anywhere`` without a verified institution (a personal address)."""
-    if place is None:
+    """Audiences a person may choose: nothing without a verified email at an
+    institution. A personal address places nobody, so no seeker's scope could
+    ever include them — offering them a setting would be a promise not kept."""
+    if place is None or not place.domain:
         return []
-    if not place.domain:
-        return [Audience.ANYWHERE]
     return list(ORDER)
 
 
@@ -116,13 +139,12 @@ def update(user, *, open: bool, audience: str, open_to=(), renew: bool = False):
         raise ConsentRefused(f"unknown kinds of collaboration: {bad}")
     place = place_of(user)
     if open:
-        choices = allowed_audiences(place)
-        if not choices:
+        if place is None:
             raise ConsentRefused("verify your email before you can be found")
-        if audience not in choices:
+        if audience not in allowed_audiences(place):
             raise ConsentRefused(
-                "your verified email is not at an institution, so only "
-                "'anywhere' is available"
+                "use your institution's email to be found: people are "
+                "suggested only from the institution or country their email proves"
             )
     setting, _ = CollaborationSetting.objects.get_or_create(user=user)
     now = timezone.now()

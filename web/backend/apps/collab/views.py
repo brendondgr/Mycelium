@@ -182,7 +182,7 @@ def search_availability(user) -> dict:
         "available": True,
         "code": "",
         "reason": "",
-        "max_scope": settings.COLLAB_MAX_SCOPE,
+        "max_scope": consent.seeker_scope_limit(),
     }
 
 
@@ -383,7 +383,12 @@ class SavedPeopleView(APIView):
 
         from . import matcher
 
-        allowed = {c.pk for c in matcher.eligible_candidates(request.user, "anywhere")}
+        allowed = {
+            c.pk
+            for c in matcher.eligible_candidates(
+                request.user, consent.seeker_scope_limit()
+            )
+        }
         seen: set[int] = set()
         rows = []
         for item in MatchFeedback.objects.filter(
