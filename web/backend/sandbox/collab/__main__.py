@@ -66,6 +66,12 @@ def main() -> int:
         help="Override COLLAB_CONCEPT_MATCH_COSINE (e.g. 0.70 for EXP-008 arm A).",
     )
     parser.add_argument(
+        "--search-workers",
+        type=int,
+        default=1,
+        help="For match, panel: searches run at once (each asks the model in turn).",
+    )
+    parser.add_argument(
         "--rerank-seekers",
         type=int,
         default=10,
@@ -161,12 +167,23 @@ def main() -> int:
         report["conversation_planted"] = len(conversation)
         settings.COLLAB_APPEARANCE_CAP = 10**6  # quality first, the cap separately
         started = time.monotonic()
+        report["search_workers"] = args.search_workers
         report["quality_institution"] = match_sim.quality(
-            world, planned, applied, conversation, scope="institution"
+            world,
+            planned,
+            applied,
+            conversation,
+            scope="institution",
+            workers=args.search_workers,
         )
         settings.COLLAB_MAX_SCOPE = "anywhere"
         report["quality_anywhere"] = match_sim.quality(
-            world, planned, applied, conversation, scope="anywhere"
+            world,
+            planned,
+            applied,
+            conversation,
+            scope="anywhere",
+            workers=args.search_workers,
         )
         report["quality_seconds"] = round(time.monotonic() - started, 1)
         report["load_capped"] = match_sim.load(

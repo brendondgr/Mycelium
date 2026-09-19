@@ -13,7 +13,11 @@ from __future__ import annotations
 import os
 import re
 
-SANDBOX_DB = "mycelium_sandbox"
+#: ``SANDBOX_DB`` may name a copy (``mycelium_sandbox_<tag>``) so that two
+#: experiments can run side by side, each on its own database.
+SANDBOX_DB = os.environ.get("SANDBOX_DB", "mycelium_sandbox")
+if not re.fullmatch(r"mycelium_sandbox(_[a-z0-9]+)?", SANDBOX_DB):
+    raise RuntimeError(f"SANDBOX_DB must be mycelium_sandbox[_tag], not {SANDBOX_DB!r}")
 
 #: Environment the harness forces, whatever the deployment says.
 FORCED = {

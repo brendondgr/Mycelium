@@ -62,8 +62,45 @@ def _gate_ok(
     return cand_key not in people[seeker_key].coauthors
 
 
+def _search_all(jobs, complete, workers: int) -> dict:
+    """Run every (key, seeker, query) search, ``workers`` at a time.
+
+    Each thread has its own database connection, closed when it is done; a
+    search's latency is its own wall time, so it includes waiting on a busy
+    model."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.db import connection
+
+    from apps.collab import matcher
+
+    def one(job):
+        key, seeker, query = job
+        started = time.monotonic()
+        try:
+            return (
+                key,
+                matcher.search(seeker, query, complete=complete),
+                (time.monotonic() - started),
+            )
+        except matcher.SearchRefused as exc:
+            return key, exc, None
+        finally:
+            connection.close()
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        return {key: (result, took) for key, result, took in pool.map(one, jobs)}
+
+
 def quality(
-    world, planned, applied, conversation, *, scope: str = "institution", complete=None
+    world,
+    planned,
+    applied,
+    conversation,
+    *,
+    scope: str = "institution",
+    complete=None,
+    workers: int = 1,
 ) -> dict:
     from django.conf import settings
     from django.utils import timezone
@@ -86,6 +123,21 @@ def quality(
     audiences = {k: s.audience for k, s in settings_rows.items()}
     field_of = {p.key: p.field for p in world.people}
 
+    jobs = []
+    for spec in world.projects:
+        lab = next(lab for lab in world.labs if lab.key == spec.lab)
+        if lab.members[0] in planned["unverified"]:
+            continue
+        seeker = users[lab.members[0]]
+        project = Project.objects.get(
+            name=spec.name, scope_lab__slug=f"sandbox-{spec.lab}"
+        )
+        jobs.append(
+            (spec.name, seeker, matcher.query_for_project(seeker, project, scope=scope))
+        )
+    done = _search_all(jobs, complete, workers)
+    queries = {name: query for name, _, query in jobs}
+
     out = Counter()
     rows_checked = 0
     latencies = []
@@ -95,18 +147,12 @@ def quality(
         seeker_key = lab.members[0]
         if seeker_key in planned["unverified"]:
             continue
-        seeker = users[seeker_key]
-        project = Project.objects.get(
-            name=spec.name, scope_lab__slug=f"sandbox-{spec.lab}"
-        )
-        query = matcher.query_for_project(seeker, project, scope=scope)
-        started = time.monotonic()
-        try:
-            result = matcher.search(seeker, query, complete=complete)
-        except matcher.SearchRefused as exc:
-            out[f"refused:{exc}"] += 1
+        query = queries[spec.name]
+        result, took = done[spec.name]
+        if took is None:
+            out[f"refused:{result}"] += 1
             continue
-        latencies.append(time.monotonic() - started)
+        latencies.append(took)
         out["searches"] += 1
         eligible = {
             k

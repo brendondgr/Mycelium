@@ -123,6 +123,7 @@ def run(
     rerank_seekers: int = 10,
     manual_every: int = 6,
     deadline: float | None = None,
+    workers: int = 1,
 ) -> dict:
     from django.conf import settings
 
@@ -179,156 +180,184 @@ def run(
     settings.COLLAB_SEARCH_ENABLED = True
     settings.COLLAB_SEARCHES_PER_DAY = 10**6
     settings.COLLAB_APPEARANCE_CAP = 10**6
-
-    def timed(kind, client, payload):
-        started = time.monotonic()
-        response = client.post("/api/collab/search/", payload, format="json")
-        latency[kind].append(time.monotonic() - started)
-        return response
-
     manual_needs = [
         f"We need someone who can do {m.names[0]} for our data."
         for m in match_sim.world_mod.METHODS
     ]
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.db import connection
+
     from apps.collab import matcher
 
     real_complete = matcher._default_complete
+    local = threading.local()
 
-    def model_off(system, user):
-        raise ConnectionError("rerank off for this seeker (EXP-2026-09-009)")
-
-    done = 0
-    for index, key in enumerate(chosen):
-        if deadline is not None and time.monotonic() > deadline:
-            break
+    def routed(system, user):
         # The model reranks the first few seekers' searches; the rest run with
         # it off, which the API must handle identically in shape.
-        matcher._default_complete = (
-            real_complete if index < rerank_seekers else model_off
-        )
-        done += 1
-        user = users[key]
-        client = _client(user)
-        eligible = eligible_for(key, "institution")
-        availability = client.get("/api/collab/search/").json()
-        if availability != {
-            "available": True,
-            "code": "",
-            "reason": "",
-            "max_scope": settings.COLLAB_MAX_SCOPE,
-        }:
-            out["violations_availability"] += 1
+        if getattr(local, "model_on", False):
+            return real_complete(system, user)
+        raise ConnectionError("rerank off for this seeker (EXP-2026-09-009)")
 
-        entries = []
-        if calls:
-            call = calls[index % len(calls)]
-            entries.append(("call", {"entry": "call", "content_id": str(call.pk)}))
-        lab_key = sorted(labs_of[key])[0]
-        if projects_by_lab.get(lab_key):
-            spec = projects_by_lab[lab_key][0]
-            project = Project.objects.get(
-                name=spec.name, scope_lab__slug=f"sandbox-{spec.lab}"
-            )
-            entries.append(
-                ("project", {"entry": "project", "project_id": str(project.pk)})
-            )
-        # The seeker's own words go through the model; a quarter of seekers is
-        # plenty to exercise the path without making the run about the model.
-        if index % manual_every == 0:
-            entries.append(
-                ("manual", {"entry": "manual", "text": rng.choice(manual_needs)})
-            )
+    def one(index, key):
+        """Everything one seeker does. Returns its own counts, latencies and
+        the people to check in the saved list afterwards (serially, since that
+        check switches a person's setting off for a moment)."""
+        mine, times, saves = Counter(), defaultdict(list), []
+        if deadline is not None and time.monotonic() > deadline:
+            return mine, times, saves, False
+        local.model_on = index < rerank_seekers
+        rng = random.Random(seed * 1000 + index)
+        try:
+            user = users[key]
+            client = _client(user)
 
-        for kind, entry in entries:
-            logs_before = SearchLog.objects.count()
-            prefill = timed(f"{kind}_dry_run", client, {**entry, "dry_run": True})
-            if prefill.status_code != 200:
-                out[f"errors_{kind}_dry_run_{prefill.status_code}"] += 1
-                continue
-            if SearchLog.objects.count() != logs_before:
-                out["violations_dry_run_logged"] += 1
-            if set(prefill.json()) != {"slots"}:
-                out["violations_dry_run_keys"] += 1
-            chips = prefill.json()["slots"]
-            if any("vector" in chip for chip in chips):
-                out["violations_vector_leaked"] += 1
-            matchable = [c for c in chips if c["facet"] != "role"]
-            if not matchable:
-                out[f"{kind}_no_matchable_slots"] += 1
-                continue
-            # The panel sends the chips back (sometimes one removed, as a
-            # person tidying the need would) and a subset of lanes.
-            if len(chips) > 1 and rng.random() < 0.3:
-                chips = chips[:-1]
-            lanes = sorted(all_lanes) if rng.random() < 0.7 else ["method_bridge"]
-            response = timed(kind, client, {**entry, "slots": chips, "lanes": lanes})
-            if response.status_code != 200:
-                out[f"errors_{kind}_{response.status_code}"] += 1
-                continue
-            out[f"searches_{kind}"] += 1
-            body = response.json()
-            if [c["text"] for c in body["slots"]] != [c["text"] for c in chips]:
-                out["violations_slots_not_honoured"] += 1
-            _check_response(body, eligible, out, set(lanes))
+            def timed(kind, payload):
+                started = time.monotonic()
+                response = client.post("/api/collab/search/", payload, format="json")
+                times[kind].append(time.monotonic() - started)
+                return response
 
-            hits = body["groups"]["fills_a_gap"] + body["groups"]["shares_expertise"]
-            if hits and index % 3 == 0:
-                hit = hits[0]
-                saved = client.post(
-                    f"/api/collab/searches/{body['search_id']}/feedback/",
-                    {"candidate": hit["username"], "lane": hit["lane"], "kind": "save"},
+            eligible = eligible_for(key, "institution")
+            availability = client.get("/api/collab/search/").json()
+            if availability != {
+                "available": True,
+                "code": "",
+                "reason": "",
+                "max_scope": settings.COLLAB_MAX_SCOPE,
+            }:
+                mine["violations_availability"] += 1
+
+            entries = []
+            if calls:
+                call = calls[index % len(calls)]
+                entries.append(("call", {"entry": "call", "content_id": str(call.pk)}))
+            lab_key = sorted(labs_of[key])[0]
+            if projects_by_lab.get(lab_key):
+                spec = projects_by_lab[lab_key][0]
+                project = Project.objects.get(
+                    name=spec.name, scope_lab__slug=f"sandbox-{spec.lab}"
+                )
+                entries.append(
+                    ("project", {"entry": "project", "project_id": str(project.pk)})
+                )
+            # The seeker's own words go through the model.
+            if index % manual_every == 0:
+                entries.append(
+                    ("manual", {"entry": "manual", "text": rng.choice(manual_needs)})
+                )
+
+            for kind, entry in entries:
+                own_logs = SearchLog.objects.filter(seeker=user).count()
+                prefill = timed(f"{kind}_dry_run", {**entry, "dry_run": True})
+                if prefill.status_code != 200:
+                    mine[f"errors_{kind}_dry_run_{prefill.status_code}"] += 1
+                    continue
+                if SearchLog.objects.filter(seeker=user).count() != own_logs:
+                    mine["violations_dry_run_logged"] += 1
+                if set(prefill.json()) != {"slots"}:
+                    mine["violations_dry_run_keys"] += 1
+                chips = prefill.json()["slots"]
+                if any("vector" in chip for chip in chips):
+                    mine["violations_vector_leaked"] += 1
+                if not [c for c in chips if c["facet"] != "role"]:
+                    mine[f"{kind}_no_matchable_slots"] += 1
+                    continue
+                # The panel sends the chips back (sometimes one removed, as a
+                # person tidying the need would) and a subset of lanes.
+                if len(chips) > 1 and rng.random() < 0.3:
+                    chips = chips[:-1]
+                lanes = sorted(all_lanes) if rng.random() < 0.7 else ["method_bridge"]
+                response = timed(kind, {**entry, "slots": chips, "lanes": lanes})
+                if response.status_code != 200:
+                    mine[f"errors_{kind}_{response.status_code}"] += 1
+                    continue
+                mine[f"searches_{kind}"] += 1
+                body = response.json()
+                if [c["text"] for c in body["slots"]] != [c["text"] for c in chips]:
+                    mine["violations_slots_not_honoured"] += 1
+                _check_response(body, eligible, mine, set(lanes))
+                hits = (
+                    body["groups"]["fills_a_gap"] + body["groups"]["shares_expertise"]
+                )
+                if hits and index % 3 == 0:
+                    saves.append((key, body["search_id"], hits[0]))
+
+            # Someone else's project, from a lab the seeker is not in.
+            other = next((s for s in world.projects if s.lab not in labs_of[key]), None)
+            if other is not None:
+                project = Project.objects.get(
+                    name=other.name, scope_lab__slug=f"sandbox-{other.lab}"
+                )
+                response = client.post(
+                    "/api/collab/search/",
+                    {
+                        "entry": "project",
+                        "project_id": str(project.pk),
+                        "dry_run": True,
+                    },
                     format="json",
                 )
-                out[f"feedback_{saved.status_code}"] += 1
-                listed = _saved(client)
-                if hit["username"] not in listed:
-                    out["violations_saved_missing"] += 1
-                # Someone who turns the setting off leaves every saved list.
-                setting = CollaborationSetting.objects.get(
-                    user__username=hit["username"]
+                # The real visibility rule decides what should happen.
+                visible = project_visible(project, user)
+                if (response.status_code == 200) != visible:
+                    mine["violations_foreign_project"] += 1
+                seen = "visible" if visible else "hidden"
+                mine[f"foreign_project_{seen}_{response.status_code}"] += 1
+            # A scope beyond the launch limit is refused, not narrowed silently.
+            if settings.COLLAB_MAX_SCOPE == "institution":
+                response = client.post(
+                    "/api/collab/search/",
+                    {
+                        "entry": "manual",
+                        "slots": [{"facet": "method", "text": "kriging"}],
+                        "scope": "anywhere",
+                    },
+                    format="json",
                 )
-                setting.open = False
-                setting.save(update_fields=["open"])
-                listed = _saved(client)
-                if hit["username"] in listed:
-                    out["violations_saved_after_off"] += 1
-                setting.open = True
-                setting.save(update_fields=["open"])
-                out["saved_checked"] += 1
+                if response.status_code != 403:
+                    mine["violations_scope_beyond_limit"] += 1
+            return mine, times, saves, True
+        finally:
+            connection.close()
 
-        # Someone else's project, from a lab the seeker is not in.
-        other = next((s for s in world.projects if s.lab not in labs_of[key]), None)
-        if other is not None:
-            project = Project.objects.get(
-                name=other.name, scope_lab__slug=f"sandbox-{other.lab}"
-            )
-            response = client.post(
-                "/api/collab/search/",
-                {"entry": "project", "project_id": str(project.pk), "dry_run": True},
-                format="json",
-            )
-            # The real visibility rule decides what should happen: a project
-            # the seeker cannot open must not be readable through the search.
-            visible = project_visible(project, user)
-            if (response.status_code == 200) != visible:
-                out["violations_foreign_project"] += 1
-            seen = "visible" if visible else "hidden"
-            out[f"foreign_project_{seen}_{response.status_code}"] += 1
-        # A scope beyond the launch limit is refused, not narrowed silently.
-        if settings.COLLAB_MAX_SCOPE == "institution":
-            response = client.post(
-                "/api/collab/search/",
-                {
-                    "entry": "manual",
-                    "slots": [{"facet": "method", "text": "kriging"}],
-                    "scope": "anywhere",
-                },
-                format="json",
-            )
-            if response.status_code != 403:
-                out["violations_scope_beyond_limit"] += 1
+    matcher._default_complete = routed
+    saves_all = []
+    done = 0
+    try:
+        with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+            for mine, times, saves, ran in pool.map(one, range(len(chosen)), chosen):
+                out.update(mine)
+                for kind, values in times.items():
+                    latency[kind].extend(values)
+                saves_all += saves
+                done += int(ran)
+    finally:
+        matcher._default_complete = real_complete
 
-    matcher._default_complete = real_complete
+    # The saved list, serially: saving someone lists them, and their switching
+    # the setting off takes them off every list at once.
+    for key, search_id, hit in saves_all:
+        client = _client(users[key])
+        saved = client.post(
+            f"/api/collab/searches/{search_id}/feedback/",
+            {"candidate": hit["username"], "lane": hit["lane"], "kind": "save"},
+            format="json",
+        )
+        out[f"feedback_{saved.status_code}"] += 1
+        if hit["username"] not in _saved(client):
+            out["violations_saved_missing"] += 1
+        setting = CollaborationSetting.objects.get(user__username=hit["username"])
+        setting.open = False
+        setting.save(update_fields=["open"])
+        if hit["username"] in _saved(client):
+            out["violations_saved_after_off"] += 1
+        setting.open = True
+        setting.save(update_fields=["open"])
+        out["saved_checked"] += 1
+
     out["seekers_done"] = done
     out["stopped_at_deadline"] = int(done < len(chosen))
     out.update(_refusals(planned, users, chosen))
@@ -420,6 +449,7 @@ def main(world, args) -> dict:
         seekers=args.seekers,
         rerank_seekers=args.rerank_seekers,
         deadline=deadline,
+        workers=args.search_workers,
     )
     report["api_seconds"] = round(time.monotonic() - started, 1)
     report["invariant_failures"] = [
