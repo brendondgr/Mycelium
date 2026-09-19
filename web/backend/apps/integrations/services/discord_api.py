@@ -183,6 +183,7 @@ def create_message(
     embed: dict | None = None,
     allowed_mentions: dict | None = None,
     nonce: str = "",
+    components: list | None = None,
 ):
     """Post a message. ``parse`` is ``[]`` unless a human explicitly asked otherwise.
 
@@ -220,6 +221,8 @@ def create_message(
         body["content"] = content
     if embed:
         body["embeds"] = [embed]
+    if components:
+        body["components"] = components
     return _request(
         "POST",
         f"/channels/{channel_id}/messages",

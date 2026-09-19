@@ -35,8 +35,11 @@ def _run(coro):
 class FakeListening:
     """Stands in for :mod:`mylo.listening`, recording what it was asked."""
 
-    def __init__(self, *, stored=True, notify=False, raises=False):
+    def __init__(self, *, stored=True, notify=False, raises=False, reply=""):
         self.calls: list[dict] = []
+        self.turns: list[tuple] = []
+        self.buttons: list[tuple] = []
+        self._reply = reply
         self.edits: list[tuple] = []
         self.deletes: list[tuple] = []
         self.notices: list[tuple] = []
@@ -53,6 +56,14 @@ class FakeListening:
             "reason": "",
             "notify_member": self._notify,
         }
+
+    async def dialogue(self, discord_user_id, text, *, reply_to_id=""):
+        self.turns.append((discord_user_id, text, reply_to_id))
+        return self._reply
+
+    async def answer_button(self, discord_user_id, suggestion_id, choice):
+        self.buttons.append((discord_user_id, suggestion_id, choice))
+        return "Done — from tomorrow morning's run."
 
     async def message_edited(self, guild_id, message_id, text, *, is_dm=False):
         self.edits.append((guild_id, message_id, text, is_dm))
@@ -234,6 +245,58 @@ class DirectMessageTests(unittest.TestCase):
         # No syntax was parsed and nothing was interpreted — just an acknowledgement.
         self.assertEqual(len(channel.sent), 1)
         self.assertIn("shut off", channel.sent[0])
+
+    def test_an_answer_to_a_question_gets_the_dialogues_reply(self) -> None:
+        """Plan 06: a DM that answers one of Mylo's questions is answered in
+        the dialogue's words, instead of the plain acknowledgement."""
+        fake = FakeListening(reply="Done — I'll include it from tomorrow's run.")
+        cog = _cog(fake)
+        channel = FakeChannel()
+        message = _message(guild=False, content="yes please", channel=channel)
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(cog.on_message(message))
+        self.assertEqual(fake.turns[0][1], "yes please")
+        self.assertEqual(channel.sent, ["Done — I'll include it from tomorrow's run."])
+
+    def test_a_question_button_is_answered_and_its_buttons_removed(self) -> None:
+        fake = FakeListening()
+        cog = _cog(fake)
+        responses, edits = [], []
+
+        class Response:
+            async def send_message(self, text):
+                responses.append(text)
+
+        class Message:
+            async def edit(self, **kwargs):
+                edits.append(kwargs)
+
+        interaction = SimpleNamespace(
+            type=discord.InteractionType.component,
+            data={"custom_id": "ambient:42:reports"},
+            user=SimpleNamespace(id=111),
+            response=Response(),
+            message=Message(),
+        )
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(cog.on_interaction(interaction))
+        self.assertEqual(fake.buttons, [("111", "42", "reports")])
+        self.assertEqual(responses, ["Done — from tomorrow morning's run."])
+        self.assertEqual(edits, [{"view": None}])
+
+    def test_other_components_are_not_ours(self) -> None:
+        fake = FakeListening()
+        cog = _cog(fake)
+        interaction = SimpleNamespace(
+            type=discord.InteractionType.component,
+            data={"custom_id": "setup:listening:on"},
+            user=SimpleNamespace(id=111),
+            response=None,
+            message=None,
+        )
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(cog.on_interaction(interaction))
+        self.assertEqual(fake.buttons, [])
 
     def test_an_unstored_dm_is_not_acknowledged(self) -> None:
         """Somebody who has not opted in should not be told "got it"."""

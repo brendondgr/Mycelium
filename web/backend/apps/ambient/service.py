@@ -442,3 +442,56 @@ def message_deleted(guild_id: str, message_id: str, *, is_dm=False) -> bool:
         return False
     reconcile.message_deleted(source, str(message_id))
     return True
+
+
+# --------------------------------------------------------------------------- #
+# The confirmation dialogue (Plan 06)
+# --------------------------------------------------------------------------- #
+
+
+def _person(discord_user_id: str):
+    return _DM.resolve_speaker(str(discord_user_id))
+
+
+def dialogue_turn(discord_user_id: str, text: str, *, reply_to_id: str = "") -> str:
+    """A direct message to Mylo, read as a turn of the dialogue.
+
+    Returns what Mylo should say back, or "" to stay quiet (the message was
+    ordinary conversation, already handed to :func:`heard`). Never raises.
+    """
+    from . import dialogue
+
+    try:
+        user = _person(discord_user_id)
+        if user is None or not ambient_enabled():
+            return ""
+        return dialogue.turn(user, text or "", reply_to=str(reply_to_id or "")) or ""
+    except Exception:  # pragma: no cover - never take the gateway down
+        logger.exception("ambient: a dialogue turn failed")
+        return ""
+
+
+def answer_button(discord_user_id: str, suggestion_id: str, choice: str) -> str:
+    """A button pressed on one of Mylo's questions. Returns the line to say."""
+    from . import dialogue
+    from .models import PendingSuggestion
+
+    try:
+        user = _person(discord_user_id)
+        suggestion = (
+            PendingSuggestion.objects.filter(pk=int(suggestion_id), user=user).first()
+            if user is not None and str(suggestion_id).isdigit()
+            else None
+        )
+        if suggestion is None:
+            return "That question isn't yours to answer, or it has closed."
+        _taken, line = dialogue.answer(
+            suggestion, choice=str(choice), surface="dm", by=user
+        )
+        return line
+    except Exception:  # pragma: no cover - never take the gateway down
+        logger.exception("ambient: a button answer failed")
+        return (
+            "Something went wrong — nothing was changed. Try again, or answer on "
+            "the web."
+        )

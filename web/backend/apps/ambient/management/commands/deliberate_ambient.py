@@ -17,7 +17,7 @@ import json
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from apps.ambient import deliberate, evolve, explain, reading
+from apps.ambient import deliberate, dialogue, evolve, explain, reading
 
 
 class Command(BaseCommand):
@@ -43,4 +43,7 @@ class Command(BaseCommand):
         # Plan 05: suggestions become pending understanding, told facts become
         # developments, old curiosity fades, retracted evidence leaves.
         out["evolve"] = evolve.evolve().as_dict()
+        # Plan 06: tonight's questions, and those nobody answered in 14 days.
+        out["expired"] = dialogue.expire()
+        out["questions"] = dialogue.schedule()
         self.stdout.write(json.dumps(out, default=str))

@@ -136,6 +136,19 @@ class ListenCog(commands.Cog, name="Listening"):
             explicit=True,
             reply_to_id=_reply_to(message),
         )
+        # An answer to one of Mylo's questions, or "stop asking", gets its own
+        # reply (Plan 06) instead of the plain acknowledgement.
+        said = await listening.dialogue(
+            str(message.author.id),
+            message.content or "",
+            reply_to_id=_reply_to(message),
+        )
+        if said:
+            try:
+                await message.channel.send(said)
+            except discord.HTTPException:
+                pass
+            return
         if outcome.get("stored"):
             try:
                 await message.channel.send(_DM_ACK)
@@ -184,6 +197,34 @@ class ListenCog(commands.Cog, name="Listening"):
             str(message.author.id),
             delivered=delivered,
         )
+
+    @commands.Cog.listener()
+    async def on_interaction(self, interaction: discord.Interaction) -> None:
+        """A button on one of Mylo's questions (Plan 06): ``ambient:<id>:<choice>``.
+
+        The answer is recorded by the backend, which checks the question is the
+        presser's own; the buttons are then removed so the question cannot be
+        answered twice from the same message.
+        """
+        try:
+            data = interaction.data or {}
+            custom_id = str(data.get("custom_id") or "")
+            if interaction.type != discord.InteractionType.component:
+                return
+            if not custom_id.startswith("ambient:"):
+                return
+            _, suggestion_id, choice = custom_id.split(":", 2)
+            line = await listening.answer_button(
+                str(interaction.user.id), suggestion_id, choice
+            )
+            await interaction.response.send_message(line)
+            try:
+                if interaction.message is not None:
+                    await interaction.message.edit(view=None)
+            except discord.HTTPException:
+                pass
+        except Exception:  # noqa: BLE001 — a listener never kills the gateway
+            log.exception("could not handle a question button")
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):

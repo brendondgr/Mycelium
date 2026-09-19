@@ -160,6 +160,9 @@ class ListeningConsent(models.Model):
     # from being recorded, and it deletes nothing.
     questions_muted = models.BooleanField(default=False)
     questions_muted_at = models.DateTimeField(null=True, blank=True)
+    # A quiet period (Plan 06, step 5): no questions until this date. Unlike
+    # "shut off" it ends by itself.
+    questions_quiet_until = models.DateField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1242,3 +1245,202 @@ class ProjectDevelopment(models.Model):
     def in_effect(self) -> bool:
         """Whether it changes anything: told, or confirmed; not undone."""
         return self.status in (self.Status.ACTIVE, self.Status.CONFIRMED)
+
+
+class PendingSuggestion(models.Model):
+    """One question Mylo wants to ask, on whichever surface is answered first.
+
+    Plan 06. Created nightly from a decided :class:`Finding` (or a pending
+    :class:`ProjectDevelopment`, or an exploration due for review), with the
+    explanation the person will read and the choices that actually exist for
+    them. It lives once and is read by both surfaces:
+
+        pending → asked (DM and/or web) → answered | expired | withdrawn
+
+    The first answer wins; the other surface shows where it was answered.
+    Nothing it proposes changes anything until it is answered yes.
+    """
+
+    class Kind(models.TextChoices):
+        INTEREST = "interest", "Include this interest?"
+        SKILL = "skill", "Add this skill?"
+        DEVELOPMENT = "development", "Did this happen in the project?"
+        INTENT = "intent", "Has the project's aim changed?"
+        CLARIFY = "clarify", "A clarifying question"
+        REVIEW = "review", "Keep exploring this?"
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Waiting to be asked"
+        ASKED = "asked", "Asked"
+        ANSWERED = "answered", "Answered"
+        EXPIRED = "expired", "Expired unanswered"
+        WITHDRAWN = "withdrawn", "Withdrawn (evidence gone, or shut off)"
+
+    class Verdict(models.TextChoices):
+        CONFIRMED = "confirmed", "Yes"
+        REJECTED = "rejected", "No"
+        CORRECTED = "corrected", "Corrected"
+        DEFER = "defer", "Not now"
+        UNCLEAR = "unclear", "Unclear"
+
+    class Surface(models.TextChoices):
+        DM = "dm", "A conversation with Mylo"
+        WEB = "web", "The web"
+
+    OPEN = (State.PENDING, State.ASKED)
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ambient_suggestions",
+        help_text="Who is asked. For a lab project, a manager or the PI.",
+    )
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    finding = models.ForeignKey(
+        Finding,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="suggestions",
+    )
+    development = models.ForeignKey(
+        "ProjectDevelopment",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="suggestions",
+    )
+    project = models.ForeignKey(
+        "research.Project",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="ambient_suggestions",
+    )
+    concept = models.ForeignKey(
+        "knowledge.Concept",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ambient_suggestions",
+    )
+    relation = models.CharField(max_length=24, blank=True, default="")
+    topic = models.CharField(max_length=200)
+    # Why a clarifying question is being asked (attribution_unresolved,
+    # subject_unclear, never_decided).
+    reason = models.CharField(max_length=48, blank=True, default="")
+    explanation = models.TextField(blank=True, default="")
+    # [{"key": ..., "label": ...}] — only the choices that exist for this person
+    # today: no "new theme" without a free slot, a swap offered instead.
+    choices = models.JSONField(default=list, blank=True)
+    influence = models.FloatField(default=0.0)
+
+    state = models.CharField(
+        max_length=16, choices=State.choices, default=State.PENDING, db_index=True
+    )
+    asked_at = models.DateTimeField(null=True, blank=True)
+    # The Discord message the question went out as, so a reply to it is read
+    # as an answer to this question and nothing else.
+    dm_message_id = models.CharField(max_length=32, blank=True, default="")
+    turns = models.PositiveSmallIntegerField(
+        default=0, help_text="Dialogue turns taken: one question, two follow-ups."
+    )
+
+    answered_at = models.DateTimeField(null=True, blank=True)
+    answered_on = models.CharField(
+        max_length=8, choices=Surface.choices, blank=True, default=""
+    )
+    answered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    verdict = models.CharField(
+        max_length=16, choices=Verdict.choices, blank=True, default=""
+    )
+    choice = models.CharField(max_length=64, blank=True, default="")
+    # A correction is the person's own words, typed to Mylo on purpose: a
+    # stated edit, like one typed on the web. Short, and theirs.
+    correction = models.CharField(max_length=200, blank=True, default="")
+    # When the consequence was applied (the edge confirmed, the development
+    # confirmed, the proposal raised), so the morning bell says so once.
+    applied_at = models.DateTimeField(null=True, blank=True)
+    notified_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-influence", "created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "kind", "topic"],
+                condition=models.Q(state__in=["pending", "asked"]),
+                name="ambient_suggestion_one_open_per_topic",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "state"]),
+            models.Index(fields=["dm_message_id"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"PendingSuggestion({self.kind}, {self.topic!r}, {self.state})"
+
+    @property
+    def is_open(self) -> bool:
+        return self.state in self.OPEN
+
+
+class ValidationRecord(models.Model):
+    """One asked question and its answer — the labelled dataset. Append-only.
+
+    What Plan 10 measures: was Mylo right? The finding as it stood, the
+    explanation shown, the choices offered, where and when it was answered,
+    and how. Nothing here is the person's words from conversation; a
+    correction they typed to Mylo on purpose is kept as theirs.
+    """
+
+    suggestion = models.ForeignKey(
+        PendingSuggestion,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="records",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ambient_validations",
+    )
+    kind = models.CharField(max_length=16)
+    understanding_kind = models.CharField(max_length=24, blank=True, default="")
+    topic = models.CharField(max_length=200)
+    finding_snapshot = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="outcome, reason, facts, influence and trace at asking time.",
+    )
+    explanation = models.TextField(blank=True, default="")
+    choices = models.JSONField(default=list, blank=True)
+    surface = models.CharField(max_length=8, blank=True, default="")
+    verdict = models.CharField(max_length=16)
+    choice = models.CharField(max_length=64, blank=True, default="")
+    correction = models.CharField(max_length=200, blank=True, default="")
+    asked_at = models.DateTimeField(null=True, blank=True)
+    answered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        indexes = [models.Index(fields=["kind", "verdict"])]
+
+    def __str__(self) -> str:
+        return f"ValidationRecord({self.kind}, {self.verdict})"
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise ValueError("ValidationRecord is append-only; record a new row.")
+        return super().save(*args, **kwargs)

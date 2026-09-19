@@ -51,6 +51,10 @@ __all__ = [
     "listening_totals",
     "attention_for",
     "developments_in_effect",
+    "questions_to_deliver",
+    "mark_asked",
+    "changes_to_announce",
+    "mark_announced",
 ]
 
 
@@ -316,3 +320,77 @@ def developments_in_effect(project, *, reader=None, changes=None):
     if changes:
         rows = rows.filter(change__in=list(changes))
     return rows
+
+
+# -- the confirmation dialogue, as the delivery side sees it (Plan 06) ----------
+
+
+@dataclass(frozen=True)
+class Question:
+    """One question ready to go out: to whom, and exactly what to send."""
+
+    id: int
+    user: User
+    kind: str
+    topic: str
+    content: str
+    components: list
+
+
+def questions_to_deliver() -> list[Question]:
+    """Questions scheduled tonight and not yet sent anywhere."""
+    from . import dialogue
+    from .models import PendingSuggestion
+
+    out = []
+    for suggestion in PendingSuggestion.objects.filter(
+        state=PendingSuggestion.State.PENDING
+    ).select_related("user", "project"):
+        payload = dialogue.message(suggestion)
+        out.append(
+            Question(
+                id=suggestion.pk,
+                user=suggestion.user,
+                kind=suggestion.kind,
+                topic=suggestion.topic,
+                content=payload["content"],
+                components=payload["components"],
+            )
+        )
+    return out
+
+
+def mark_asked(ids, *, now=None) -> int:
+    """Record that these questions went out (the web shows them either way)."""
+    from .models import PendingSuggestion
+
+    return PendingSuggestion.objects.filter(
+        pk__in=list(ids), state=PendingSuggestion.State.PENDING
+    ).update(
+        state=PendingSuggestion.State.ASKED,
+        asked_at=now or timezone.now(),
+        updated_at=now or timezone.now(),
+    )
+
+
+def changes_to_announce():
+    """Answers that took effect and have not been announced on the bell."""
+    from .models import PendingSuggestion
+
+    return PendingSuggestion.objects.filter(
+        state=PendingSuggestion.State.ANSWERED,
+        applied_at__isnull=False,
+        notified_at__isnull=True,
+        verdict__in=[
+            PendingSuggestion.Verdict.CONFIRMED,
+            PendingSuggestion.Verdict.CORRECTED,
+        ],
+    ).select_related("user")
+
+
+def mark_announced(ids, *, now=None) -> int:
+    from .models import PendingSuggestion
+
+    return PendingSuggestion.objects.filter(pk__in=list(ids)).update(
+        notified_at=now or timezone.now()
+    )

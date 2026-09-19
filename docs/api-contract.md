@@ -157,6 +157,8 @@ routes clients depend on most.
 | `projects/<id>/conversation/` | GET | A project editor's view: recent attributions, heard channels, correction targets |
 | `projects/<id>/channel-hints/` | POST | Point a heard channel at this project, or stop |
 | `attributions/<ref_id>/correct/` | POST | "This was about a different project" |
+| `suggestions/` | GET | My open questions from Mylo, strongest first (ambient Plan 06) |
+| `suggestions/<id>/answer/` | POST | Answer one of my questions: `{"choice", "correction"?}`; 409 if it was already answered |
 
 ### Collaboration — `/api/collab/`
 
@@ -633,6 +635,28 @@ they are on. The reference is fixed with confidence 1.0, any observation resting
 on it is updated and gets a `corrected` feedback row, and an append-only
 correction records every signal's score as a labelled example. Returns
 `{ "id", "project", "observations_updated" }`; 403 when not permitted.
+
+**`GET suggestions/`** — the signed-in person's own open questions (ambient Plan
+06). Never anybody else's.
+
+```json
+{"suggestions": [{"id": 7, "kind": "interest", "topic": "conformal prediction",
+  "question": "You brought up … Shall I start looking for **conformal prediction** …",
+  "explanation": "…", "choices": [{"key": "reports", "label": "Include it in my reports"}, …],
+  "project": null | {"id": "…", "name": "…"}, "state": "pending" | "asked",
+  "asked_at": "…" | null, "expires_at": "…"}]}
+```
+
+`kind` is `interest`, `skill`, `development`, `intent`, `clarify` or `review`.
+`choices` holds only what exists for this person today (a new theme only with a
+free slot; project choices only for their own projects).
+
+**`POST suggestions/<id>/answer/`** `{ "choice", "correction"? }` — the question's
+own person only (404 otherwise). `choice` must be one of the offered keys (400
+otherwise). A `correction` with a yes-like choice records the person's own
+wording. The first answer wins across Discord and the web: a second answer gets
+`409` and `{ "taken": false, "message": "That one's already answered on …" }`.
+On success `{ "taken": true, "message": <what Mylo says back>, "suggestion": … }`.
 
 ### Project members and invitations
 

@@ -158,9 +158,45 @@ async def set_marker(guild_id: str, *, channel_id: str, message_id: str) -> None
         log.exception("could not record the listening marker")
 
 
+async def dialogue(discord_user_id: str, text: str, *, reply_to_id: str = "") -> str:
+    """A DM read as a turn of the confirmation dialogue (Plan 06).
+
+    Returns what Mylo should reply, or "" when the message was ordinary
+    conversation and the dialogue has nothing to say.
+    """
+    try:
+        return await mycelium.db(
+            _dialogue_sync, str(discord_user_id), text or "", str(reply_to_id or "")
+        )
+    except Exception:  # noqa: BLE001
+        log.exception("could not run a dialogue turn")
+        return ""
+
+
+async def answer_button(discord_user_id: str, suggestion_id: str, choice: str) -> str:
+    try:
+        return await mycelium.db(
+            _button_sync, str(discord_user_id), str(suggestion_id), str(choice)
+        )
+    except Exception:  # noqa: BLE001
+        log.exception("could not record a button answer")
+        return "Something went wrong — nothing was changed."
+
+
 # --------------------------------------------------------------------------- #
 # Synchronous bodies (run in a worker thread with Django configured)
 # --------------------------------------------------------------------------- #
+def _dialogue_sync(discord_user_id: str, text: str, reply_to_id: str) -> str:
+    from apps.ambient import service
+
+    return service.dialogue_turn(discord_user_id, text, reply_to_id=reply_to_id)
+
+
+def _button_sync(discord_user_id: str, suggestion_id: str, choice: str) -> str:
+    from apps.ambient import service
+
+    return service.answer_button(discord_user_id, suggestion_id, choice)
+
 def _heard_sync(fields: dict) -> dict:
     from apps.ambient import service
 

@@ -1208,6 +1208,10 @@ AMBIENT_DRIFT_WEIGHT = env.float("AMBIENT_DRIFT_WEIGHT", default=0.15)
 AMBIENT_EXPLORATION_REVIEW_DAYS = env.int("AMBIENT_EXPLORATION_REVIEW_DAYS", default=30)
 AMBIENT_ATTENTION_LEAD_SHARE = env.float("AMBIENT_ATTENTION_LEAD_SHARE", default=0.4)
 AMBIENT_ATTENTION_EXTRA_ITEMS = env.int("AMBIENT_ATTENTION_EXTRA_ITEMS", default=2)
+# The confirmation dialogue (Plan 06): at most this many new questions a day
+# per person — reviews of explorations included — strongest evidence first,
+# never on a weekend, never in a quiet period, never once shut off.
+AMBIENT_QUESTIONS_PER_DAY = env.int("AMBIENT_QUESTIONS_PER_DAY", default=2)
 
 # ---------------------------------------------------------------------------
 # The knowledge core (apps.knowledge)

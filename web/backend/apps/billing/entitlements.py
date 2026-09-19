@@ -533,3 +533,13 @@ def can_dm(user: User) -> bool:
     digest DM must call this before sending so Free accounts are never messaged.
     """
     return has_feature(user, Feature.BOT_DM)
+
+
+def ambient_enabled(tier: str) -> bool:
+    """Whether ``tier`` includes the ambient profile: listening, suggestions,
+    questions (ambient Plan 06, step 15). Every paid tier does; free does not.
+
+    Not a :class:`Feature`: it must hold whatever ``BILLING_ENFORCE_ENTITLEMENTS``
+    says, because it bounds whose conversation is read at all.
+    """
+    return tier != Tier.FREE

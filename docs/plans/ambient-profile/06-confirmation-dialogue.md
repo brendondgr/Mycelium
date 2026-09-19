@@ -168,6 +168,60 @@ linked account** only.
     re-asked, including a near-synonym; cap and weekend; shut-off wins over
     everything; free tier receives nothing.
 
+## Brief as built (2026-09-19)
+
+Implemented overnight on the owner's instruction. The gate asked for sign-off
+on question wording; the wording below shipped **for review** — every line is
+in `apps/ambient/dialogue.py` (`question_text`, `CLOSE`, `FOOTER`) and each is
+one edit away from changing.
+
+- **`PendingSuggestion`** (migration `0008`): kinds interest, skill,
+  development, intent, clarify, review; states `pending → asked → answered |
+  expired | withdrawn` (one "asked" state: the web shows a question as soon as
+  it exists, the DM goes out at the send hour); one open question per (person,
+  kind, topic); 14-day expiry. **`ValidationRecord`** (append-only) for every
+  answer and every expiry (`ignored`), plus an `ObservationFeedback` per
+  observation behind it.
+- **Scheduling** (`dialogue.schedule`, nightly in `deliberate_ambient`): only
+  findings whose explanation is written; an interest only while its
+  conversational edge is still pending; strongest first;
+  `AMBIENT_QUESTIONS_PER_DAY` = 2 (reviews count, OD-06c); never on a weekend,
+  in a quiet period (`ListeningConsent.questions_quiet_until`, new), once shut
+  off, for a free tier (`billing.entitlements.ambient_enabled`, new), or
+  without an active linked Discord identity. "Not now" rests 30 days. Lab
+  project developments and intents are asked of the lab's PI, owners and
+  admins; the first answer closes the others' copies.
+- **Choices** are only those that exist: include in reports; add to interests
+  (if the theme has room); a new theme (if there is a free slot) or else a
+  swap for the theme nobody talked about; "it's for <project>, not me" (up to
+  three of the person's projects); not now; no. Learning goals, preferences
+  and directions get their own first choice.
+- **What an answer does:** "include in my reports" confirms the edge as an
+  exploration reviewed in 30 days; a no rejects it; "for a project" rejects it
+  as an interest and records a confirmed personal development there; a
+  clarifying answer corrects the observations and the next night decides
+  again. Choices that edit the declared profile confirm the edge and wait for
+  Plan 08's applier.
+- **Words.** Buttons are the shortcut (Discord components through the outbox —
+  `DiscordOutboxMessage.components`, integrations migration `0007`; the
+  gateway's `on_interaction` answers `ambient:<id>:<choice>` for the presser's
+  own question only). Free text is read by the model (`read_reply`); a reply
+  that *is* a choice's label or number needs no model; without the model Mylo
+  asks for a button and changes nothing. Unclear gets up to two follow-ups,
+  then a close with no change.
+- **Shut off** is a literal phrase list ("stop asking", "shut off", "no more
+  questions", "leave my interests alone"; "stop listening" also turns
+  listening off; "start asking again" undoes it) — a switch, not a reading. It
+  withdraws open questions at once.
+- **Delivery** is on the content side (`deliver_ambient_questions`, after the
+  day's stages in `manual_all.py`): the DM at the person's send hour, and the
+  bell (`suggestion_pending`, `change_applied`, `change_undone` —
+  `Notification` kinds). The web answers through `/api/ambient/suggestions/`.
+- **Not here:** the "Mylo & you" page (Plan 07), profile edits (Plan 08),
+  replies explained in the same conversation to explicit statements (step 6:
+  a DM that states a fact gets the plain acknowledgement; the fact becomes a
+  development at the next hourly read and night).
+
 ## Discussion gate
 
 Before implementation the agent presents: the `PendingSuggestion` schema, the

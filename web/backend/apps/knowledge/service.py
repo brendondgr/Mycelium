@@ -28,6 +28,7 @@ __all__ = [
     "Projected",
     "delete_conversational",
     "drop_evidence",
+    "due_for_review",
     "edit_conversational",
     "keep",
     "link_conversation",
@@ -236,6 +237,22 @@ def unreinforced_since(cutoff, *, qualifier: str) -> list[EdgeView]:
             qualifier=qualifier,
             last_reinforced__lt=cutoff,
         ).select_related("concept")
+    ]
+
+
+def due_for_review(today) -> list[tuple[EdgeView, object]]:
+    """Confirmed explorations whose review date has come: ``(edge, person)``.
+
+    Plan 06 asks each person "keep this?" about their own; no other reader.
+    """
+    return [
+        (EdgeView.of(edge), edge.user)
+        for edge in Edge.objects.filter(
+            tier=Tier.CONVERSATIONAL,
+            status=EdgeStatus.ACTIVE,
+            review_on__isnull=False,
+            review_on__lte=today,
+        ).select_related("concept", "user")
     ]
 
 

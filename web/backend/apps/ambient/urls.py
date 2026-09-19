@@ -18,4 +18,14 @@ urlpatterns = [
         views.AttributionCorrectView.as_view(),
         name="ambient-attribution-correct",
     ),
+    path(
+        "suggestions/",
+        views.SuggestionListView.as_view(),
+        name="ambient-suggestions",
+    ),
+    path(
+        "suggestions/<int:pk>/answer/",
+        views.SuggestionAnswerView.as_view(),
+        name="ambient-suggestion-answer",
+    ),
 ]

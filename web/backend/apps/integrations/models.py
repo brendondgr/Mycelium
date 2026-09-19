@@ -267,6 +267,10 @@ class DiscordOutboxMessage(models.Model):
     )
     content = models.TextField(blank=True, default="")
     embed = models.JSONField(null=True, blank=True)
+    # Message components (action rows of buttons), passed to Discord as they
+    # are. Only Mylo's own questions (ambient Plan 06) carry any; their button
+    # ids are answered by the gateway, never by a stranger.
+    components = models.JSONField(null=True, blank=True)
     allowed_mentions = models.JSONField(null=True, blank=True)
     # A path, not bytes: the daily report runs 0.2–2 MB and would bloat both this
     # table and every unqualified SELECT against it. The retention sweep owns deletion.

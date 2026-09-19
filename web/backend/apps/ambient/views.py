@@ -1,7 +1,8 @@
-"""HTTP for the ambient app: a project editor's view of attribution.
+"""HTTP for the ambient app.
 
-Thin by design — who may see and change what is decided in
-:mod:`.editing`, where it can be read in one place.
+A project editor's view of attribution (Plan 03), and a person's own questions
+from Mylo (Plan 06). Thin by design — who may see and change what is decided
+in :mod:`.editing` and :mod:`.dialogue`, where it can be read in one place.
 """
 
 from __future__ import annotations
@@ -93,4 +94,81 @@ class AttributionCorrectView(APIView):
                 "observations_updated": result.observations,
             },
             status=status.HTTP_200_OK,
+        )
+
+
+def _suggestion_row(suggestion) -> dict:
+    from . import dialogue
+
+    return {
+        "id": suggestion.pk,
+        "kind": suggestion.kind,
+        "topic": suggestion.topic,
+        "question": dialogue.question_text(suggestion),
+        "explanation": suggestion.explanation,
+        "choices": suggestion.choices,
+        "project": (
+            {"id": str(suggestion.project_id), "name": suggestion.project.name}
+            if suggestion.project_id
+            else None
+        ),
+        "state": suggestion.state,
+        "asked_at": suggestion.asked_at,
+        "expires_at": suggestion.expires_at,
+    }
+
+
+class SuggestionListView(APIView):
+    """``GET`` — the questions Mylo has for me, strongest first (Plan 06)."""
+
+    def get(self, request: Request) -> Response:
+        from . import dialogue
+
+        return Response(
+            {
+                "suggestions": [
+                    _suggestion_row(s) for s in dialogue.open_for(request.user)
+                ]
+            }
+        )
+
+
+class SuggestionAnswerView(APIView):
+    """``POST {choice, correction?}`` — answer one of my questions on the web.
+
+    The first answer wins, whichever surface it came from; a second one is
+    told where the first was given (``409``).
+    """
+
+    def post(self, request: Request, pk: int) -> Response:
+        from . import dialogue
+        from .models import PendingSuggestion
+
+        suggestion = get_object_or_404(PendingSuggestion, pk=pk, user=request.user)
+        choice = str(request.data.get("choice") or "")
+        if not choice:
+            raise ValidationError({"choice": ["Choose one of the offered answers."]})
+        correction = str(request.data.get("correction") or "")[:200]
+        verdict = (
+            PendingSuggestion.Verdict.CORRECTED
+            if correction
+            and dialogue.verdict_for(choice) == PendingSuggestion.Verdict.CONFIRMED
+            else ""
+        )
+        taken, line = dialogue.answer(
+            suggestion,
+            choice=choice,
+            verdict=verdict,
+            correction=correction,
+            surface=PendingSuggestion.Surface.WEB,
+            by=request.user,
+        )
+        suggestion.refresh_from_db()
+        return Response(
+            {
+                "taken": taken,
+                "message": line,
+                "suggestion": _suggestion_row(suggestion),
+            },
+            status=status.HTTP_200_OK if taken else status.HTTP_409_CONFLICT,
         )

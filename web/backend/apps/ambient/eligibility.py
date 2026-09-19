@@ -25,7 +25,6 @@ from django.conf import settings
 from django.contrib.auth.models import User
 
 from apps.billing.entitlements import effective_tier
-from apps.billing.models import Tier
 
 from .models import ListeningConsent, Source
 
@@ -61,7 +60,9 @@ def tier_is_paid(user: User) -> bool:
     at all, and it must hold regardless of the ``BILLING_ENFORCE_ENTITLEMENTS``
     switch, which grants every *feature* to everyone while it is off.
     """
-    return effective_tier(user) != Tier.FREE
+    from apps.billing.entitlements import ambient_enabled as tier_has_ambient
+
+    return tier_has_ambient(effective_tier(user))
 
 
 def person_opted_in(user: User, platform: str) -> bool:

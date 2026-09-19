@@ -815,6 +815,7 @@ def enqueue_outbox(
     subject_id: str = "",
     now: datetime | None = None,
     not_before: datetime | None = None,
+    components: list | None = None,
 ) -> tuple[DiscordOutboxMessage, bool]:
     """Queue one message. Returns ``(row, created)``.
 
@@ -842,6 +843,7 @@ def enqueue_outbox(
             "lab": lab,
             "content": content,
             "embed": embed,
+            "components": components,
             "allowed_mentions": allowed_mentions,
             "attachment_path": attachment_path,
             "attachment_filename": attachment_filename,

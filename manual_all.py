@@ -361,6 +361,23 @@ def deliberate_ambient(base: list[str]) -> None:
         _notify("warn", "Ambient deliberation failed", message, stage="ambient")
 
 
+def deliver_ambient_questions(base: list[str]) -> None:
+    """Send tonight's ambient questions and ring the bell (non-fatal).
+
+    After the stages, so a question arrives with — never before — the report
+    it belongs beside; each goes out at the person's own send hour.
+    """
+    print("\n=== Ambient · Sending tonight's questions… ===", flush=True)
+    code = run_manage("deliver_ambient_questions", [], intro=None, base=base)
+    if code != 0:
+        message = (
+            f"Sending ambient questions exited with code {code}; they stay "
+            "queued and go out tomorrow."
+        )
+        print(f"note: {message}", flush=True)
+        _notify("warn", "Ambient questions not sent", message, stage="ambient")
+
+
 def facet_author_works(base: list[str]) -> None:
     """Read people's own papers into the knowledge graph (non-fatal).
 
@@ -726,6 +743,7 @@ def main() -> int:
         flush=True,
     )
     _write_run_state(ok=True, scrape_ran=scrape_ran, stages_run=stages_run)
+    deliver_ambient_questions(base)
     facet_author_works(base)
     report_run_complete(compile_analytics(base), scrape_ran=scrape_ran)
     return 0

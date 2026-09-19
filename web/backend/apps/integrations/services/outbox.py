@@ -81,6 +81,7 @@ def enqueue_dm(
     subject_type: str = "",
     subject_id: str = "",
     not_before: datetime | None = None,
+    components: list | None = None,
 ) -> tuple[object, bool]:
     """Queue a direct message. The DM channel is resolved at *send* time.
 
@@ -103,6 +104,7 @@ def enqueue_dm(
         subject_type=subject_type,
         subject_id=subject_id,
         not_before=not_before,
+        components=components,
     )
 
 
@@ -180,7 +182,11 @@ def deliver_one(message) -> Classification:
                 **payload,
             )
         else:
-            resp = discord_api.create_message(channel_id, **payload)
+            resp = discord_api.create_message(
+                channel_id,
+                **payload,
+                **({"components": message.components} if message.components else {}),
+            )
     except discord_api.DiscordHTTPError as exc:
         return classify_exception(exc)
 

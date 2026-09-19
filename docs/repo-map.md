@@ -207,6 +207,7 @@ Files below are inside `web/backend/apps/content/`.
 | Mylo's explanation of a finding, written from its own notes | `web/backend/apps/ambient/explain.py` |
 | The nightly deliberation step | command `deliberate_ambient`, called by `deliberate_ambient()` in `manual_all.py` (non-fatal; off unless `AMBIENT_DELIBERATE_ENABLED`) |
 | Findings becoming understanding: pending conversational edges, project developments, fading, retraction fan-out | `web/backend/apps/ambient/evolve.py` (run by `deliberate_ambient`) |
+| Asking once and respecting the answer: tonight's questions, the choices, the words, reading a reply, shut-off, the labelled record | `web/backend/apps/ambient/dialogue.py`, models `PendingSuggestion`, `ValidationRecord`; the gateway's `service.dialogue_turn` / `answer_button`; the web at `/api/ambient/suggestions/`; delivery and the bell in `content/management/commands/deliver_ambient_questions.py` |
 | A dated event in a project, as Mylo understood it (told → active with undo; seen → pending) | `web/backend/apps/ambient/models.py` (`ProjectDevelopment`, `Change`); read through `read.developments_in_effect` |
 | Confirmed explorations as extra, down-weighted paper themes (behind `AMBIENT_DRIFT_ENABLED`) | `web/backend/apps/content/explorations.py`; the weight is `fusion.combine_clusters(cluster_weights=…)` |
 | Confirmed preferences, direction and learning goals in the model's prompts; the report's `context_version` | `web/backend/apps/content/understanding.py` |

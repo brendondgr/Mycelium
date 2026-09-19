@@ -1402,6 +1402,11 @@ class Notification(models.Model):
         # Collaboration-network plan CN-04: "your open-to-collaboration setting
         # ends soon". Never anything about who searched.
         COLLAB_RENEWAL = "collab_renewal", "Collaboration setting ending"
+        # Ambient profile (Plans 06-07): Mylo has a question; something the
+        # person confirmed has taken effect; something was undone.
+        SUGGESTION_PENDING = "suggestion_pending", "Mylo has a question"
+        CHANGE_APPLIED = "change_applied", "A change you confirmed took effect"
+        CHANGE_UNDONE = "change_undone", "A change was undone"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
