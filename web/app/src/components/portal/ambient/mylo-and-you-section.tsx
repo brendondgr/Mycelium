@@ -46,7 +46,7 @@ export function MyloAndYouSection() {
     { key: "settings", label: "Settings" },
   ];
   return (
-    <div>
+    <div data-ambient="mylo-and-you">
       <SectionHeader
         eyebrow="Workspace"
         title="Mylo & you"

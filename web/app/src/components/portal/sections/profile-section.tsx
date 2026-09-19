@@ -183,6 +183,7 @@ function FromConversation({ trail }: { trail: AmbientProvenance | undefined }) {
   const said = `Added from a conversation — you said yes ${where} on ${trail.confirmed_on}.`;
   return (
     <span
+      data-ambient="provenance"
       title={said}
       className="ml-0.5 rounded-full bg-surface-alt px-1.5 text-[10px] font-medium text-[var(--text-muted)]"
     >

@@ -119,7 +119,7 @@ export function ReflectionCard() {
   if (isLoading || !data?.length) return null;
 
   return (
-    <Card className="p-5">
+    <Card className="p-5" data-ambient="reflection">
       <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
         Mylo&rsquo;s reflection
       </h2>

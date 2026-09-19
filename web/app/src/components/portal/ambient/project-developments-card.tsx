@@ -18,7 +18,7 @@ export function ProjectDevelopmentsCard({ projectId }: { projectId: string }) {
     return null;
   }
   return (
-    <Card className="p-[18px]" aria-labelledby="project-developments-title">
+    <Card className="p-[18px]" aria-labelledby="project-developments-title" data-ambient="project-developments">
       <h2
         id="project-developments-title"
         className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]"

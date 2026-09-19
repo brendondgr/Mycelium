@@ -15,7 +15,7 @@ export function LabChangesCard({ slug }: { slug: string }) {
     return null;
   }
   return (
-    <Card className="p-[18px]" aria-labelledby="lab-changes-title">
+    <Card className="p-[18px]" aria-labelledby="lab-changes-title" data-ambient="lab-changes">
       <h2
         id="lab-changes-title"
         className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]"

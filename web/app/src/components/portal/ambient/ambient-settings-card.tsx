@@ -21,7 +21,7 @@ import type { AmbientSettings } from "@/lib/portal/ambient/types";
 export function AmbientSettingsCard() {
   const settings = useAmbientSettings();
   return (
-    <Card className="p-[22px]" aria-labelledby="ambient-settings-title">
+    <Card className="p-[22px]" aria-labelledby="ambient-settings-title" data-ambient="settings">
       <h2 id="ambient-settings-title" className="font-display text-lg text-[var(--text-primary)]">
         Mylo &amp; your conversations
       </h2>
