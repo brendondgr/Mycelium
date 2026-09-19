@@ -10,6 +10,9 @@
 * ``replies``  — ``run``, then tonight's questions answered in people's own
   words and read by Mylo's reader, plus the "stop asking" switch
   (EXP-2026-09-015).
+* ``platforms`` — the cached corpus replayed through Discord, Slack and Teams
+  into the same seeded world, compared from the ledger (EXP-2026-09-021).
+  No model is called.
 """
 
 from __future__ import annotations
@@ -27,7 +30,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m sandbox.ambient")
     parser.add_argument(
         "command",
-        choices=["world", "converse", "run", "all", "nights", "replies"],
+        choices=["world", "converse", "run", "all", "nights", "replies", "platforms"],
     )
     parser.add_argument("--seed", type=int, default=20260919)
     parser.add_argument("--labs", type=int, default=3)
@@ -92,6 +95,17 @@ def main() -> int:
         written = json.loads(corpus.read_text())
 
     run.configure(args.workers)
+    if args.command == "platforms":
+        from . import platforms
+
+        started = time.monotonic()
+        report = platforms.compare(world, written)
+        report["seconds"] = round(time.monotonic() - started, 1)
+        text = json.dumps(report, indent=2, default=str)
+        if args.out:
+            Path(args.out).write_text(text)
+        print(text)
+        return 0
     started = time.monotonic()
     seeded = run.seed(world)
     ingested = run.ingest(world, written)
