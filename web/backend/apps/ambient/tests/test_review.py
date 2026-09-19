@@ -80,7 +80,9 @@ def lab(ada, bo):
 
 @pytest.fixture
 def imaging(lab, ada, bo):
-    project = Project.objects.create(name="Imaging pipeline", scope_lab=lab)
+    project = Project.objects.create(
+        name="Imaging pipeline", scope_lab=lab, share_in_lab_reports=True
+    )
     for person in (ada, bo):
         ProjectMember.objects.create(project=project, user=person)
     return project
@@ -242,6 +244,23 @@ def test_a_private_project_fact_never_reaches_the_lab(ada, bo, lab, imaging, cli
         )
         == 1
     )
+
+
+def test_a_project_the_lab_does_not_share_stays_off_the_lab_feed(
+    ada, bo, lab, imaging, client
+):
+    """Its members see its changes in their own feed; the lab's feed, which
+    every lab member reads, does not (``share_in_lab_reports`` off)."""
+    Project.objects.filter(pk=imaging.pk).update(share_in_lab_reports=False)
+    carol = _person("carol", "444")
+    LabMembership.objects.create(user=carol, lab=lab)
+    _told(ada, imaging, "scanner dataset", Visibility.LAB)
+    client.force_login(carol)
+    assert client.get(f"/api/ambient/labs/{lab.slug}/changes/").json()["changes"] == []
+    client.force_login(bo)
+    assert [
+        c["topic"] for c in client.get("/api/ambient/changes/").json()["changes"]
+    ] == ["scanner dataset"]
 
 
 def test_a_lab_feed_is_for_its_members_only(ada, lab, client):
