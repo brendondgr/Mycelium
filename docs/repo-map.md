@@ -181,7 +181,7 @@ Files below are inside `web/backend/apps/content/`.
 | Connected surfaces and the consent each one gave | `web/backend/apps/ambient/models.py` (`Source`) |
 | One person's listening opt-in and the "shut off" switch, per platform | `web/backend/apps/ambient/models.py` (`ListeningConsent`) |
 | Whether a message may be recorded at all (surface consent, person opt-in, paid effective tier) | `web/backend/apps/ambient/eligibility.py` — resolved on arrival, never cached at the edge |
-| Where a person's actual words live (and for how long) | `web/backend/apps/ambient/buffer.py` — Redis only, per-message TTL, dropped explicitly once a window is read; a source can shorten the window but never lengthen it |
+| Where a person's actual words live (and for how long) | `web/backend/apps/ambient/buffer.py` — its own Redis (`redis-ambient` in `compose.yaml`, persistence off), per-message TTL, dropped explicitly once a window is read; a source can shorten the window but never lengthen it |
 | The id-only pointer beside it (no body, ever) | `web/backend/apps/ambient/models.py` (`RawMessageRef`) — the window index and the handle an edit or deletion is reconciled through |
 | Recording one message: eligibility, hash, buffer, reference, repeat collapse | `web/backend/apps/ambient/ingest.py` (`record`, `IncomingMessage`); normalisation for the repeat hash in `text.py` |
 | The durable record — what Mylo understood, in Mylo's own words | `web/backend/apps/ambient/models.py` (`Observation`); six understanding kinds, six forces, subject, visibility, supersession. **No quote column** |
@@ -200,12 +200,19 @@ Files below are inside `web/backend/apps/content/`.
 | A channel's optional default project, and a person's "this was a different project" | `web/backend/apps/ambient/models.py` (`ChannelHint`, `AttributionCorrection`) |
 | Which project a person is actually spending their conversation on (7- and 28-day shares) | `web/backend/apps/ambient/attention.py`, model `ProjectAttention`, task `apps.ambient.recompute_attention`; read through `read.attention_for` |
 | What a project editor can see and change about attribution (aliases aside) | `web/backend/apps/ambient/editing.py` (who sees what), `views.py` + `urls.py` at `/api/ambient/` |
+| Which conversations are ready to be read (quiet, capped, or about to expire) | `web/backend/apps/ambient/windows.py` (`ready`, `assemble`, `mark_read`); `RawMessageRef.read_at` |
+| Reading a conversation into grounded observations (schema, grounding, no quotes, one repair) | `web/backend/apps/ambient/extract.py` |
+| The hourly read: attribution's second look, extraction, concept linking, deleting the text | `web/backend/apps/ambient/reading.py`, task `apps.ambient.read_conversations`, command `read_ambient`; one `ExtractionRun` per window (counts and codes, never text) |
+| Deciding what observations mean — consistency, coverage, declines, budget, one outcome per topic | `web/backend/apps/ambient/deliberate.py` (pure, no model), model `Finding` |
+| Mylo's explanation of a finding, written from its own notes | `web/backend/apps/ambient/explain.py` |
+| The nightly deliberation step | command `deliberate_ambient`, called by `deliberate_ambient()` in `manual_all.py` (non-fatal; off unless `AMBIENT_DELIBERATE_ENABLED`) |
 
 ## Backend — the knowledge core (`apps/knowledge`)
 
 | Task | Path |
 |---|---|
 | Concepts, edges, tiers, scopes, and the merge log | `web/backend/apps/knowledge/models.py` (`Concept`, `ConceptAlias`, `Edge`, `ConceptMerge`) |
+| Linking a topic from conversation to a concept (born in the person's or lab's scope) | `service.link_conversation`; a concept as it stands now, following merges, is `read.live_concepts` |
 | Which concept a wording names (alias → embedding → mint; private words stay private) | `web/backend/apps/knowledge/linker.py` |
 | Staff merges, their reversal, and promotion of a private concept to the shared vocabulary | `web/backend/apps/knowledge/merging.py`; the admin's "Merge the selected concepts" and "Reverse" actions |
 | Declared profiles, labs, and projects mirrored into edges | `web/backend/apps/knowledge/projection.py`; save hooks in `signals.py`, tasks `apps.knowledge.project_subject` and `apps.knowledge.sweep` (Beat, 04:15), command `project_declared_edges` |

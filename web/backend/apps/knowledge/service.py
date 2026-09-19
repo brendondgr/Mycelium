@@ -26,6 +26,7 @@ from .read import EdgeView
 
 __all__ = [
     "Projected",
+    "link_conversation",
     "queue_work_facets",
     "confirm",
     "fade",
@@ -95,6 +96,42 @@ def record_conversational(
             edge.save(update_fields=["evidence", "last_reinforced", "updated_at"])
     edge.concept = result.concept
     return EdgeView.of(edge)
+
+
+def link_conversation(requests: list[tuple[str, str, object]]) -> list[int | None]:
+    """Which concept each topic from conversation names, as concept ids.
+
+    ``requests`` are ``(surface, facet, owner)``: ``owner`` is the person the
+    topic is about, or the lab whose project it concerns. A concept minted here
+    is born in that owner's scope and never in the shared vocabulary — only a
+    shared source can put a word there (:mod:`.linker`). ``area`` means "no
+    particular facet": it matches a concept of any facet and mints as an area,
+    the way a person's own keyword does. ``None`` in the result means the topic
+    could not be linked yet (the embedder is down) or is not a term.
+    """
+    from apps.accounts.models import Lab
+
+    batch = []
+    for surface, facet, owner in requests:
+        scope = Scope.LAB if isinstance(owner, Lab) else Scope.PERSONAL
+        specific = (
+            facet if facet in (Facet.PROBLEM, Facet.METHOD, Facet.SETTING) else None
+        )
+        batch.append(
+            LinkRequest(
+                surface=surface,
+                facet=specific,
+                default_facet=Facet.AREA,
+                scope=scope,
+                owner=owner,
+            )
+        )
+    if not batch:
+        return []
+    return [
+        result.concept.pk if result.concept is not None else None
+        for result in linker.link_many(batch)
+    ]
 
 
 def _set_status(user, concept_id: int, relation: str, status: str) -> bool:

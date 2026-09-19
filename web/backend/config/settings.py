@@ -340,6 +340,12 @@ CELERY_BEAT_SCHEDULE = {
             hour=env.int("AMBIENT_ATTENTION_HOUR", default=4), minute=45
         ),
     },
+    # Read conversations that have gone quiet, within the buffer's TTL (Plan
+    # 04, option C). Does nothing while AMBIENT_ENABLED is off.
+    "read-ambient-conversations": {
+        "task": "apps.ambient.read_conversations",
+        "schedule": crontab(minute=env.int("AMBIENT_READ_MINUTE", default=20)),
+    },
     "sweep-ambient-retention": {
         "task": "apps.ambient.sweep_retention",
         "schedule": crontab(hour=env.int("AMBIENT_SWEEP_HOUR", default=5), minute=15),
@@ -1150,6 +1156,45 @@ AMBIENT_ATTRIBUTION_FLOOR = env.float("AMBIENT_ATTRIBUTION_FLOOR", default=0.6)
 AMBIENT_ATTRIBUTION_MARGIN = env.float("AMBIENT_ATTRIBUTION_MARGIN", default=0.25)
 AMBIENT_CONTINUITY_MINUTES = env.int("AMBIENT_CONTINUITY_MINUTES", default=30)
 AMBIENT_THREAD_OVERRIDE = env.float("AMBIENT_THREAD_OVERRIDE", default=0.9)
+
+# The reasoning agent (ambient-profile Plan 04). Reading happens through the
+# day, within the buffer's TTL (decision 2026-09-19, option C): a conversation
+# is read once its place has been quiet for AMBIENT_WINDOW_QUIET_MINUTES, once
+# it reaches its cap, or once its oldest body is an hour from expiring. The
+# model is called at most AMBIENT_EXTRACT_DAILY_CAP_PER_LAB times a day per lab
+# (per DM source for a person's own conversation with Mylo), with at most
+# AMBIENT_EXTRACT_CONCURRENCY calls in flight.
+AMBIENT_WINDOW_HOURS = env.int("AMBIENT_WINDOW_HOURS", default=4)
+AMBIENT_WINDOW_MAX_MESSAGES = env.int("AMBIENT_WINDOW_MAX_MESSAGES", default=40)
+AMBIENT_WINDOW_QUIET_MINUTES = env.int("AMBIENT_WINDOW_QUIET_MINUTES", default=60)
+AMBIENT_EXTRACT_DAILY_CAP_PER_LAB = env.int(
+    "AMBIENT_EXTRACT_DAILY_CAP_PER_LAB", default=200
+)
+AMBIENT_EXTRACT_CONCURRENCY = env.int("AMBIENT_EXTRACT_CONCURRENCY", default=8)
+# Deciding, nightly. Ships OFF and separate from AMBIENT_ENABLED: with it off,
+# observations accumulate and nothing is decided about anybody. Deliberation is
+# pure over the ledger (no model call); the explanations it asks for are
+# model-written, at most AMBIENT_EXPLAIN_NIGHTLY_CAP a night.
+AMBIENT_DELIBERATE_ENABLED = env.bool("AMBIENT_DELIBERATE_ENABLED", default=False)
+AMBIENT_LOOKBACK_DAYS = env.int("AMBIENT_LOOKBACK_DAYS", default=28)
+AMBIENT_HALF_LIFE_DAYS = env.float("AMBIENT_HALF_LIFE_DAYS", default=21.0)
+# The consistency test (Plans 04 and 06): distinct days, how far apart the first
+# and last are, distinct conversations, and at least one preference, decision
+# or fact rather than only questions and possibilities — with no rejection
+# since. Two mentions on one day never pass; the same two a fortnight apart do.
+AMBIENT_CONSISTENT_DAYS = env.int("AMBIENT_CONSISTENT_DAYS", default=2)
+AMBIENT_CONSISTENT_SPAN_DAYS = env.int("AMBIENT_CONSISTENT_SPAN_DAYS", default=5)
+AMBIENT_CONSISTENT_CONVERSATIONS = env.int(
+    "AMBIENT_CONSISTENT_CONVERSATIONS", default=2
+)
+# A topic is "already covered" when the person holds the same concept, or one at
+# least this similar, on their declared profile or among what they confirmed.
+AMBIENT_COVERED_SIMILARITY = env.float("AMBIENT_COVERED_SIMILARITY", default=0.85)
+# A no rests this long, and afterwards only fresh consistency re-opens it.
+AMBIENT_DECLINE_REST_DAYS = env.int("AMBIENT_DECLINE_REST_DAYS", default=30)
+# A declared cluster nobody has talked about for this long is a swap candidate.
+AMBIENT_STALE_DAYS = env.int("AMBIENT_STALE_DAYS", default=90)
+AMBIENT_EXPLAIN_NIGHTLY_CAP = env.int("AMBIENT_EXPLAIN_NIGHTLY_CAP", default=200)
 
 # ---------------------------------------------------------------------------
 # The knowledge core (apps.knowledge)

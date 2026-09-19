@@ -174,9 +174,7 @@ def set_channel_rule(guild_id: str, channel_id: str, *, rule: str, on: bool) -> 
     source = guild_source(guild_id)
     if source is None:
         return listening_state(guild_id)
-    field_name = (
-        "excluded_place_ids" if rule == "excluded" else "social_place_ids"
-    )
+    field_name = "excluded_place_ids" if rule == "excluded" else "social_place_ids"
     current = [str(one) for one in (getattr(source, field_name) or [])]
     channel = str(channel_id)
     if on and channel not in current:
@@ -292,6 +290,7 @@ def heard(
     explicit: bool = False,
     is_dm: bool = False,
     mention_ids=None,
+    reply_to_id: str = "",
 ) -> Heard:
     """One message from Discord. The whole of what the gateway asks of us.
 
@@ -312,6 +311,7 @@ def heard(
                 attachments=attachments,
                 is_bot=is_bot,
                 from_mylo=from_mylo,
+                reply_to_id=reply_to_id,
             )
 
         source = guild_source(guild_id)
@@ -345,6 +345,7 @@ def heard(
                 from_mylo=from_mylo,
                 explicit=explicit,
                 mention_external_ids=[str(one) for one in (mention_ids or [])],
+                reply_to_external_id=str(reply_to_id or ""),
             )
         )
         if outcome.stored:
@@ -366,7 +367,15 @@ def heard(
 
 
 def _heard_dm(
-    *, message_id, text, sent_at, author_id, attachments, is_bot, from_mylo
+    *,
+    message_id,
+    text,
+    sent_at,
+    author_id,
+    attachments,
+    is_bot,
+    from_mylo,
+    reply_to_id="",
 ) -> Heard:
     """A conversation with Mylo. Its surface is the person, not a server.
 
@@ -396,6 +405,7 @@ def _heard_dm(
             attachment_urls=attachments,
             from_mylo=from_mylo,
             explicit=True,
+            reply_to_external_id=str(reply_to_id or ""),
         )
     )
     if outcome.stored:

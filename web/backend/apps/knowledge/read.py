@@ -20,6 +20,8 @@ boundary test pins which of these the collaboration app may import at all.
 | :func:`introduction_paths` | — (co-authorship) | — | collaboration search (CN-07) |
 | :func:`evidence_texts` | declared, demonstrated | active | harm checks (CN-08) |
 | :func:`privately_held_global_concepts` | — (a count) | active | harm checks (CN-08) |
+| :func:`live_concepts` | — (concepts, no edges) | — | the ambient reasoning agent |
+| :func:`embed_phrases` | — (no graph read) | — | the ambient reasoning agent |
 
 Demonstrated edges (a person's papers) are deliberately absent from
 :func:`ranking_edges`: letting them shape recommendations is a ranking change,
@@ -40,6 +42,7 @@ from .models import Concept, Edge, EdgeStatus, Relation, Tier
 
 __all__ = [
     "Backing",
+    "ConceptView",
     "EdgeView",
     "backing",
     "WorkView",
@@ -47,9 +50,11 @@ __all__ = [
     "concept_vectors",
     "discoverable_edges",
     "discoverable_works",
+    "embed_phrases",
     "evidence_texts",
     "introduction_paths",
     "lab_declared_edges",
+    "live_concepts",
     "network_of",
     "own_edges",
     "privately_held_global_concepts",
@@ -80,6 +85,8 @@ class EdgeView:
     user_id: int | None = None
     project_id: str | None = None
     lab_id: int | None = None
+    #: When the edge last changed — for a rejected edge, when the person said no.
+    updated_at: datetime | None = None
 
     @classmethod
     def of(cls, edge: Edge) -> EdgeView:
@@ -98,6 +105,7 @@ class EdgeView:
             user_id=edge.user_id,
             project_id=str(edge.project_id) if edge.project_id else None,
             lab_id=edge.lab_id,
+            updated_at=edge.updated_at,
         )
 
 
@@ -290,6 +298,63 @@ def concept_vectors(concept_ids: Iterable[int]) -> dict[int, list[float]]:
         pk__in=list(concept_ids), embedding__isnull=False
     ).values_list("pk", "embedding")
     return {pk: [float(v) for v in vector] for pk, vector in rows}
+
+
+def embed_phrases(texts: Iterable[str]) -> list[list[float]] | None:
+    """Vectors for phrases, in the space concepts live in; ``None`` when the
+    embedder is unavailable. For a caller comparing its own words with the
+    graph's concepts (the ambient attribution pass) without reaching into the
+    matching layer itself."""
+    from apps.content.embeddings import embed_texts
+
+    return embed_texts(list(texts))
+
+
+@dataclass(frozen=True)
+class ConceptView:
+    """One concept as it stands now — no holder, so no tier rule applies."""
+
+    id: int
+    label: str
+    facet: str
+    scope: str
+    vector: tuple | None
+
+
+def live_concepts(concept_ids: Iterable[int]) -> dict[int, ConceptView]:
+    """Each named concept as it stands now, following merges.
+
+    Keyed by the id asked for, so a caller holding an id from before a merge
+    (an observation linked last week) gets the concept that absorbed it. A
+    concept deleted outright is simply absent.
+    """
+    wanted = {int(pk) for pk in concept_ids if pk is not None}
+    out: dict[int, ConceptView] = {}
+    current = {pk: pk for pk in wanted}
+    for _ in range(8):  # merges chain; a chain this long would be a bug
+        if not current:
+            break
+        rows = {
+            row.pk: row for row in Concept.objects.filter(pk__in=set(current.values()))
+        }
+        following: dict[int, int] = {}
+        for asked, at in current.items():
+            row = rows.get(at)
+            if row is None:
+                continue
+            if row.status == Concept.Status.MERGED and row.merged_into_id:
+                following[asked] = row.merged_into_id
+                continue
+            vector = row.embedding
+            out[asked] = ConceptView(
+                id=row.pk,
+                label=row.label,
+                facet=row.facet,
+                scope=row.scope,
+                vector=tuple(float(v) for v in vector) if vector is not None else None,
+            )
+        current = following
+    return out
 
 
 @dataclass(frozen=True)

@@ -294,6 +294,15 @@ class RawMessageRef(models.Model):
     mentions_count = models.PositiveSmallIntegerField(default=0)
     mentioned_user_ids = models.JSONField(default=list, blank=True)
 
+    # The platform id of the message this one answers, when it answers one.
+    # A reply to Mylo is engagement with what Mylo said, never independent
+    # evidence of interest (Plan 04, step 5).
+    reply_to_external_id = models.CharField(max_length=64, blank=True, default="")
+    # When the reasoning agent read the window this message belongs to (Plan
+    # 04). Set once, with the body released in the same step; null means the
+    # message is still waiting to be read.
+    read_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
     edited_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -340,6 +349,28 @@ class UnderstandingKind(models.TextChoices):
     CAREER_DIRECTION = "career_direction", "Career direction"
     PROJECT_INTENT = "project_intent", "Project intent"
     PROJECT_DEVELOPMENT = "project_development", "Project development"
+    # Plan 04: "I ran X again", "I built Y" — a claim of doing, which may become
+    # a declared skill and never an area. And "I want to learn Z", which is
+    # explicitly not a claim of expertise.
+    CAPABILITY = "capability", "Capability"
+    LEARNING_GOAL = "learning_goal", "Learning goal"
+
+
+#: The kinds that describe the speaker rather than a project. Only a ``self``
+#: observation of one of these may move anything about a person.
+PERSONAL_KINDS = frozenset(
+    {
+        UnderstandingKind.ENDURING_INTEREST,
+        UnderstandingKind.CURRENT_CURIOSITY,
+        UnderstandingKind.WORK_PREFERENCE,
+        UnderstandingKind.CAREER_DIRECTION,
+        UnderstandingKind.CAPABILITY,
+        UnderstandingKind.LEARNING_GOAL,
+    }
+)
+PROJECT_KINDS = frozenset(
+    {UnderstandingKind.PROJECT_INTENT, UnderstandingKind.PROJECT_DEVELOPMENT}
+)
 
 
 class Force(models.TextChoices):
@@ -459,6 +490,37 @@ class Observation(models.Model):
     # transient window before it was discarded. A row that failed it is not
     # written at all, which the check constraint below makes structural.
     grounded = models.BooleanField(default=True)
+
+    # -- Plan 04 ---------------------------------------------------------------
+    # The side of the work the topic names, and the short topic phrase itself —
+    # a term ("conformal prediction"), never a sentence. The phrase is what the
+    # knowledge core links to a concept, so one topic said three ways is one
+    # topic seen three times.
+    facet = models.CharField(max_length=16, blank=True, default="")
+    topic = models.CharField(max_length=200, blank=True, default="")
+    concept = models.ForeignKey(
+        "knowledge.Concept",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ambient_observations",
+        help_text="Null until linked; the embedder being down only delays it.",
+    )
+    # Copied from the messages it rests on: somebody addressing Mylo meant to be
+    # understood, and weighs more than something overheard.
+    explicit = models.BooleanField(default=False)
+    # Which conversation this came from — the window's key. Repetition is
+    # counted across distinct conversations, so one long debugging session is
+    # one piece of evidence however many times a topic comes up in it.
+    conversation_key = models.CharField(max_length=128, blank=True, default="")
+    run = models.ForeignKey(
+        "ExtractionRun",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="observations",
+    )
+
     place_kind = models.CharField(max_length=16, choices=PlaceKind.choices)
     place_label = models.CharField(max_length=120, blank=True, default="")
 
@@ -863,3 +925,184 @@ class ProjectAttention(models.Model):
             f"ProjectAttention(user={self.user_id}, project={self.project_id}, "
             f"7d={self.share_7d:.2f})"
         )
+
+
+class ExtractionRun(models.Model):
+    """One window read by the extractor (Plan 04). Counts and codes, no text.
+
+    Keyed on the window's content hash, so an unchanged window is never sent to
+    the model twice. ``refused`` holds the validator's *codes* ("not_grounded",
+    "quote_in_text") and never its messages, which name the sentence that
+    failed — and that sentence is a person's words.
+    """
+
+    class Outcome(models.TextChoices):
+        READ = "read", "Read; observations kept"
+        EMPTY = "empty", "Read; nothing groundable"
+        REFUSED = "refused", "Read; every observation failed validation"
+        UNAVAILABLE = "unavailable", "The model could not be reached"
+        EXPIRED = "expired", "The text was gone before it could be read"
+
+    source = models.ForeignKey(
+        Source, on_delete=models.CASCADE, related_name="extraction_runs"
+    )
+    # Null for a person's DMs, which belong to no lab. The per-lab daily cap
+    # counts on this column.
+    lab = models.ForeignKey(
+        "accounts.Lab",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ambient_extraction_runs",
+    )
+    place_id = models.CharField(max_length=64, blank=True, default="")
+    conversation_key = models.CharField(max_length=128)
+    window_start = models.DateTimeField()
+    window_end = models.DateTimeField()
+    content_hash = models.CharField(max_length=64)
+    messages = models.PositiveSmallIntegerField(default=0)
+    readable = models.PositiveSmallIntegerField(default=0)
+    outcome = models.CharField(max_length=16, choices=Outcome.choices)
+    observations_kept = models.PositiveSmallIntegerField(default=0)
+    refused = models.JSONField(default=list, blank=True)
+    engagement = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Replies to Mylo and reactions on its posts: engagement, "
+        "never interest evidence.",
+    )
+    attempts = models.PositiveSmallIntegerField(default=0)
+    prompt_version = models.CharField(max_length=32, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        indexes = [
+            models.Index(fields=["lab", "created_at"]),
+            models.Index(fields=["source", "created_at"]),
+            models.Index(fields=["content_hash"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"ExtractionRun({self.conversation_key}, {self.outcome})"
+
+
+class Finding(models.Model):
+    """What the deliberation step decided about one topic (Plan 04).
+
+    One row per (person, concept, kind); per (person, project, concept, kind)
+    for what one person said privately about a project; or per (project,
+    concept, kind) for a lab project, built only from lab-visible observations
+    so nothing said in a DM reaches the lab through a finding. Rewritten each
+    night from the ledger, which is what makes deliberation pure: it costs no
+    model call and can be rerun at will. The outcome is exactly one
+    of the plan's six, and ``reason`` names the rule that chose it, so the trace
+    Plan 07 shows and Plan 10 audits is the rule and its numbers, not a story.
+
+    A finding changes nothing on its own. Plan 05 turns a ``suggest`` into a
+    pending conversational edge, Plan 06 asks, Plan 08 applies what was agreed.
+    """
+
+    class Outcome(models.TextChoices):
+        IGNORE = "ignore", "Ignore"
+        RECORD = "record", "Record a stated project fact"
+        SUGGEST = "suggest", "Suggest, and wait for an answer"
+        CAPABILITY = "capability", "Suggest adding a skill"
+        PROPOSE = "propose", "Propose an edit to the record"
+        ASK = "ask", "Ask a clarifying question"
+
+    class Explained(models.TextChoices):
+        NOT_NEEDED = "not_needed", "No explanation needed"
+        PENDING = "pending", "Waiting for the model"
+        WRITTEN = "written", "Written"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="ambient_findings",
+    )
+    project = models.ForeignKey(
+        "research.Project",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="ambient_findings",
+    )
+    concept = models.ForeignKey(
+        "knowledge.Concept",
+        on_delete=models.CASCADE,
+        related_name="ambient_findings",
+    )
+    topic = models.CharField(max_length=200)
+    facet = models.CharField(max_length=16, blank=True, default="")
+    understanding_kind = models.CharField(
+        max_length=24, choices=UnderstandingKind.choices
+    )
+    relation = models.CharField(max_length=24)
+    visibility = models.CharField(max_length=16, choices=Visibility.choices)
+
+    outcome = models.CharField(max_length=16, choices=Outcome.choices)
+    reason = models.CharField(max_length=48)
+    # The consistency facts Plan 06 reads: distinct days, distinct
+    # conversations, the span, the force mix, explicit count, the last
+    # rejection, first and last seen.
+    facts = models.JSONField(default=dict, blank=True)
+    influence = models.FloatField(default=0.0)
+    # Whether the declared profile has room, and what a swap would replace.
+    budget = models.JSONField(default=dict, blank=True)
+    trace = models.JSONField(default=dict, blank=True)
+    observation_ids = models.JSONField(default=list, blank=True)
+
+    explanation = models.TextField(blank=True, default="")
+    explained = models.CharField(
+        max_length=16, choices=Explained.choices, default=Explained.NOT_NEEDED
+    )
+    # The evidence the explanation was written from; a new observation makes it
+    # stale and it is written again.
+    explained_from = models.CharField(max_length=64, blank=True, default="")
+    # Which outcome the downstream plans already acted on, so tonight's rerun
+    # does not raise the same question twice.
+    handled_outcome = models.CharField(max_length=16, blank=True, default="")
+    handled_at = models.DateTimeField(null=True, blank=True)
+
+    decided_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-decided_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                name="ambient_finding_has_subject",
+                condition=models.Q(user__isnull=False)
+                | models.Q(project__isnull=False),
+            ),
+            # About a person, from anything they said.
+            models.UniqueConstraint(
+                fields=["user", "concept", "understanding_kind"],
+                condition=models.Q(user__isnull=False, project__isnull=True),
+                name="ambient_finding_unique_personal",
+            ),
+            # About a project, from what one person said privately (a DM, or a
+            # personal project): theirs alone, never the lab's.
+            models.UniqueConstraint(
+                fields=["user", "project", "concept", "understanding_kind"],
+                condition=models.Q(user__isnull=False, project__isnull=False),
+                name="ambient_finding_unique_personal_project",
+            ),
+            # About a lab project, from what was said on the lab's own surface.
+            models.UniqueConstraint(
+                fields=["project", "concept", "understanding_kind"],
+                condition=models.Q(user__isnull=True, project__isnull=False),
+                name="ambient_finding_unique_lab_project",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "outcome"]),
+            models.Index(fields=["project", "outcome"]),
+        ]
+
+    def __str__(self) -> str:
+        who = f"user={self.user_id}" if self.user_id else f"project={self.project_id}"
+        return f"Finding({who}, {self.topic!r}, {self.outcome})"

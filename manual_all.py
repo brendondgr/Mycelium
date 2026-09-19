@@ -135,6 +135,10 @@ After collection, a **collaboration** step (``extract_requirement_slots``)
 reads what new funding calls ask a team to bring, so the scoring stages can mark
 which of it the reader and their lab already cover; it is non-fatal.
 
+Then an **ambient** step (``deliberate_ambient``) decides what the day's
+conversation observations mean — pure over the ledger, plus model-written
+explanations. Non-fatal, and a no-op while ``AMBIENT_DELIBERATE_ENABLED`` is off.
+
 Just before analytics, a **knowledge** step (``facet_author_works``) reads
 people's own imported papers into the knowledge graph — facets, demonstrated
 edges — within a nightly cap. It is outside ``CONTAINER_STAGES`` for the same
@@ -337,6 +341,24 @@ def extract_requirement_slots(base: list[str]) -> None:
         )
         print(f"note: {message}", flush=True)
         _notify("warn", "Call requirements not read", message, stage="collab")
+
+
+def deliberate_ambient(base: list[str]) -> None:
+    """Decide what the day's conversation observations mean (non-fatal).
+
+    Before ranking, so today's findings can reach today's slates once Plan 05
+    reads them. Outside ``CONTAINER_STAGES``: nobody's report depends on it, and
+    it does nothing at all while ``AMBIENT_DELIBERATE_ENABLED`` is off.
+    """
+    print("\n=== Ambient · Deciding what conversation showed… ===", flush=True)
+    code = run_manage("deliberate_ambient", [], intro=None, base=base)
+    if code != 0:
+        message = (
+            f"Ambient deliberation exited with code {code}; the run continues. "
+            "Nothing is decided about anybody until tomorrow."
+        )
+        print(f"note: {message}", flush=True)
+        _notify("warn", "Ambient deliberation failed", message, stage="ambient")
 
 
 def facet_author_works(base: list[str]) -> None:
@@ -664,6 +686,7 @@ def main() -> int:
     )
     scrape_ran = scrape_opportunities(base)
     extract_requirement_slots(base)
+    deliberate_ambient(base)
 
     # Stages 2..N — recommend, remind, prune, and brief inside the backend container.
     stages_run: list[str] = []

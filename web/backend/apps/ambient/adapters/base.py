@@ -57,6 +57,9 @@ class PlatformEvent:
     # reads coherently — a question Mylo asked is what makes the next line an
     # answer — and are never evidence.
     from_mylo: bool = False
+    # The platform id of the message this one replies to, if any. A reply to
+    # Mylo is engagement, not independent interest (Plan 04, step 5).
+    reply_to_external_id: str = ""
 
 
 class Adapter(ABC):
@@ -115,9 +118,7 @@ class Adapter(ABC):
                 ids.append(user.pk)
         return len(others), ids
 
-    def to_message(
-        self, event: PlatformEvent, speaker: User | None
-    ) -> IncomingMessage:
+    def to_message(self, event: PlatformEvent, speaker: User | None) -> IncomingMessage:
         """The platform-independent shape. Pure translation, no judgement."""
         count, ids = (0, []) if event.from_mylo else self.resolve_mentions(event)
         return IncomingMessage(
@@ -135,6 +136,7 @@ class Adapter(ABC):
             explicit=bool(event.explicit),
             mentions_count=count,
             mentioned_user_ids=ids,
+            reply_to_external_id=str(event.reply_to_external_id or ""),
         )
 
     def deliver(self, event: PlatformEvent) -> Recorded:
@@ -142,7 +144,7 @@ class Adapter(ABC):
         source = self.source_for(event.source_external_id)
         if source is None:
             return Recorded(False, "unknown_source")
-        speaker = None if event.from_mylo else self.resolve_speaker(
-            event.author_external_id
+        speaker = (
+            None if event.from_mylo else self.resolve_speaker(event.author_external_id)
         )
         return record(source, self.to_message(event, speaker))

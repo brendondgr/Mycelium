@@ -173,6 +173,44 @@ reason a machine never replaces a person's own words in their profile.
   speaker so the reply can be honest about what will happen.
 - **OD-04b** Floors and half-lives. Defaults conservative; tuned by Plan 10.
 
+## Brief as built (2026-09-19)
+
+The owner asked for Plans 04 onward to be implemented overnight without a
+stop at each gate, with judgement calls made and recorded. These are they.
+
+- **Raw-text lifetime — option C.** Conversations are *read* hourly, within
+  the buffer's existing 6-hour TTL, once a place has been quiet for
+  `AMBIENT_WINDOW_QUIET_MINUTES` (60), hit its cap (4 h / 40 messages), or has
+  a body within an hour of expiring. *Deciding* stays nightly. The TTL promise
+  is unchanged; step 1's "nightly, inside `manual_all.py`" became "hourly
+  reading, nightly deciding", because a nightly read of a 6-hour buffer reads
+  almost nothing.
+- **Its own Redis.** The buffer moved to `redis-ambient` (persistence off), so
+  message text never lands in a snapshot on disk.
+- **`Finding`** (in `apps/ambient`) carries each decided outcome, its facts,
+  budget and trace, keyed per (person, concept, kind), per (person, project,
+  concept, kind) for private talk about a project, and per (project, concept,
+  kind) for a lab project, built only from lab-visible observations. Plan 05
+  turns findings into edges and developments.
+- **The consistency floor** is one test for Plans 04 and 06: ≥2 distinct days
+  spanning ≥5 days, ≥2 conversations, a preference, decision or fact, and no
+  rejection since (Plan 06's draft said 3 days; 2-over-5 meets this plan's
+  acceptance wording and is tuned in Plan 10).
+- **Grounding** folds case, width, punctuation and whitespace; the speaker is
+  taken from the matching message, never the model. An account sharing a
+  6-word run with any message is refused as a quote.
+- **Replies to Mylo** are recorded with `reply_to_external_id` (gateway →
+  adapter → ingest) and, with reactions on Mylo's posts, are context and never
+  evidence. **Deviation:** no `RelevanceEvent` is written for them — Mylo's
+  Discord posts are not tied to content items anywhere, and the event needs
+  one. The window counts them as `engagement` on its `ExtractionRun`.
+- **Unlinked topics** (embedder down) are kept and linked at night.
+- **Budget** records room for a cluster or topic and, when full, a swap
+  candidate: a declared cluster none of whose areas came up in conversation in
+  `AMBIENT_STALE_DAYS` (90). Paper engagement is not yet part of "stale".
+- **Not here:** the DM reply path (OD-04a → Plan 06), anything a person sees,
+  writing edges and developments (Plan 05), applying proposals (Plan 08).
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,

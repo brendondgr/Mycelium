@@ -109,6 +109,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      # The ambient raw-message buffer: its own Redis, never written to disk.
+      AMBIENT_CACHE_URL: redis://redis-ambient:6379/0
       NEO4J_URI: bolt://neo4j:7687
       S3_ENDPOINT_URL: http://minio:9000
       # Persist the FastEmbed/ONNX model on the bind-mounted disk (repo `models/`)
@@ -142,6 +144,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      redis-ambient:
+        condition: service_healthy
       neo4j:
         condition: service_started
       minio:
@@ -168,6 +172,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      # The ambient raw-message buffer: its own Redis, never written to disk.
+      AMBIENT_CACHE_URL: redis://redis-ambient:6379/0
       NEO4J_URI: bolt://neo4j:7687
       S3_ENDPOINT_URL: http://minio:9000
       # Share the same persistent model cache as the backend (repo `models/`).
@@ -176,6 +182,8 @@ services:
       backend-deps:
         condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      redis-ambient:
         condition: service_healthy
 
   # Celery Beat: enqueues the scheduled jobs (the daily research-suggestion run)
@@ -197,10 +205,14 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      # The ambient raw-message buffer: its own Redis, never written to disk.
+      AMBIENT_CACHE_URL: redis://redis-ambient:6379/0
     depends_on:
       backend-deps:
         condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      redis-ambient:
         condition: service_healthy
     # Liveness, not readiness. On 2026-08-04 Beat stopped scheduling for 2.5 hours
     # while its process stayed alive and asleep, so `restart: on-failure` never fired
@@ -319,6 +331,21 @@ services:
     image: redis:8-alpine
     ports:
       - "${REDIS_PORT:-11550}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # The ambient raw-message buffer (apps.ambient.buffer) — the one store that
+  # ever holds a person's actual words. Its own instance so persistence can be
+  # off: no RDB snapshot, no AOF, no volume. A restart empties it, which costs
+  # at most a few hours of unread conversation and is the promise working.
+  redis-ambient:
+    image: redis:8-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${AMBIENT_REDIS_PORT:-11551}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

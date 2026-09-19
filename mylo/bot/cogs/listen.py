@@ -51,6 +51,13 @@ _NOTICE = (
 )
 
 
+def _reply_to(message: discord.Message) -> str:
+    """The id of the message this one answers, or "" — so the backend can tell
+    a reply to Mylo (engagement) from something said unprompted (evidence)."""
+    reference = getattr(message, "reference", None)
+    return str(getattr(reference, "message_id", "") or "")
+
+
 def _mention_ids(message: discord.Message) -> list[str]:
     """The people a message names, as snowflakes. Bots — Mylo included — are not
     people being talked about. The backend decides what, if anything, to keep."""
@@ -127,6 +134,7 @@ class ListenCog(commands.Cog, name="Listening"):
             attachment_urls=_attachment_urls(message),
             is_dm=True,
             explicit=True,
+            reply_to_id=_reply_to(message),
         )
         if outcome.get("stored"):
             try:
@@ -152,6 +160,7 @@ class ListenCog(commands.Cog, name="Listening"):
             from_mylo=from_mylo,
             explicit=explicit,
             mention_ids=_mention_ids(message),
+            reply_to_id=_reply_to(message),
         )
         if outcome.get("notify_member"):
             await self._notify(message)

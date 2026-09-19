@@ -66,6 +66,7 @@ class IncomingMessage:
     # is at most a number.
     mentions_count: int = 0
     mentioned_user_ids: list[int] = field(default_factory=list)
+    reply_to_external_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -158,6 +159,7 @@ def record(source: Source, message: IncomingMessage) -> Recorded:
                 explicit=bool(message.explicit),
                 mentions_count=max(0, int(message.mentions_count or 0)),
                 mentioned_user_ids=[int(one) for one in message.mentioned_user_ids],
+                reply_to_external_id=str(message.reply_to_external_id or "")[:64],
             )
     except IntegrityError:
         # The same message arriving twice — a gateway resume, a retried handoff.
@@ -172,9 +174,7 @@ def record(source: Source, message: IncomingMessage) -> Recorded:
     if not is_mylo:
         _attribute_on_arrival(ref, message.text)
 
-    return Recorded(
-        True, ref=ref, buffered=held, repeat=repeat_root is not None
-    )
+    return Recorded(True, ref=ref, buffered=held, repeat=repeat_root is not None)
 
 
 def _attribute_on_arrival(ref: RawMessageRef, text: str) -> None:
