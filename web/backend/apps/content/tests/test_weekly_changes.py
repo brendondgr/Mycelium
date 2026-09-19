@@ -408,3 +408,16 @@ def test_the_posts_carry_a_changed_today_field(world):
     assert field["value"] == "**P** — the stated method changed."
     quiet = lab_post_embed(data, data.stats)
     assert "Changed today" not in [f["name"] for f in quiet["fields"]]
+
+
+def test_an_undo_in_the_same_week_is_a_mark_not_a_second_row(world):
+    ada = world["ada"]
+    original = _change(
+        ada, "profile_edit", "kriging", field="interests.skills", surface="dm"
+    )
+    AppliedChange.objects.filter(pk=original.pk).update(undone_at=timezone.now())
+    _change(ada, "undone", "kriging", undo_of=original)
+    body = generate_weekly_for_user(ada, complete=QUIET, today=TODAY).body
+    assert "**kriging** — added to your skills on Discord" in body
+    assert "(since undone)" in body
+    assert "**kriging** — undone on" not in body

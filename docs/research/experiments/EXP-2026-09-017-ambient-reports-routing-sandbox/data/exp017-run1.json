@@ -1,0 +1,755 @@
+{
+ "today": "2026-09-19",
+ "planted": {
+  "shared": [
+   "Project A1",
+   "Project B2",
+   "Project C1"
+  ],
+  "lab_facts": [
+   40,
+   41,
+   42,
+   43,
+   44,
+   45
+  ]
+ },
+ "checks": {
+  "H1_routing": {
+   "rows_expected": 98,
+   "rows_found": 98,
+   "missing": 0,
+   "duplicated": 8,
+   "leaked": 3
+  },
+  "H2_citations": {
+   "bodies": 24,
+   "cited": 98,
+   "unresolved": 0,
+   "model_sentences_citing_O": 0,
+   "verifier_removed_O": 0,
+   "examples": []
+  },
+  "H3_interpretation": {
+   "drift_off_with_line": [],
+   "drift_on_with_line": [
+    "amb_a3_jun",
+    "amb_a4_quinn",
+    "amb_a5_xavi",
+    "amb_b0_farouk",
+    "amb_b3_cyra",
+    "amb_c1_umar"
+   ],
+   "expected": [
+    "amb_a3_jun",
+    "amb_a4_quinn",
+    "amb_a5_xavi",
+    "amb_b0_farouk",
+    "amb_b3_cyra",
+    "amb_c1_umar"
+   ],
+   "ok": true
+  },
+  "H4_dailies": {
+   "generated": 24,
+   "errors": [],
+   "mismatch": [],
+   "lab_development_lines": 0,
+   "with_line": [
+    "amb-b",
+    "amb_b0_farouk",
+    "amb_b1_sami",
+    "amb_b2_priya",
+    "amb_b3_cyra",
+    "amb_b4_dev",
+    "amb_b5_bo",
+    "amb_b6_tove",
+    "amb_c2_oren",
+    "amb_c3_nia",
+    "amb_c4_ines"
+   ]
+  }
+ },
+ "violations": [
+  {
+   "check": "duplicated",
+   "reader": "amb_b0_farouk",
+   "topic": "annotation budget",
+   "change": 39,
+   "found": 2
+  },
+  {
+   "check": "duplicated",
+   "reader": "amb_b1_sami",
+   "topic": "annotation budget",
+   "change": 39,
+   "found": 2
+  },
+  {
+   "check": "duplicated",
+   "reader": "amb_b2_priya",
+   "topic": "annotation budget",
+   "change": 39,
+   "found": 2
+  },
+  {
+   "check": "duplicated",
+   "reader": "amb_b3_cyra",
+   "topic": "annotation budget",
+   "change": 39,
+   "found": 2
+  },
+  {
+   "check": "duplicated",
+   "reader": "amb_b4_dev",
+   "topic": "annotation budget",
+   "change": 39,
+   "found": 2
+  },
+  {
+   "check": "duplicated",
+   "reader": "amb_b5_bo",
+   "topic": "annotation budget",
+   "change": 39,
+   "found": 2
+  },
+  {
+   "check": "duplicated",
+   "reader": "amb_b6_tove",
+   "topic": "annotation budget",
+   "change": 39,
+   "found": 2
+  },
+  {
+   "check": "leaked",
+   "reader": "amb_c4_ines",
+   "reader_kind": "user",
+   "topic": "Project C1 dataset",
+   "change": 18,
+   "visibility": "personal"
+  },
+  {
+   "check": "leaked",
+   "reader": "amb_c4_ines",
+   "reader_kind": "user",
+   "topic": "Project C1 dataset",
+   "change": 2,
+   "visibility": "personal"
+  },
+  {
+   "check": "leaked",
+   "reader": "amb_c5_elin",
+   "reader_kind": "user",
+   "topic": "Project C2 dataset",
+   "change": 9,
+   "visibility": "personal"
+  },
+  {
+   "check": "duplicated",
+   "reader": "amb-b",
+   "topic": "annotation budget",
+   "change": 39,
+   "found": 2
+  }
+ ],
+ "timings": {
+  "weeklies_s": 12.9,
+  "drift_pass_s": 3.8,
+  "dailies_s": 6.5,
+  "total_s": 23.8
+ },
+ "weeklies": [
+  {
+   "kind": "user",
+   "reader": "amb_a0_zeno",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- You answered 2 of Mylo's questions this week (2 on Discord).",
+    "### Projects",
+    "- **Project A1** \u2014 Baltic tide dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project A1** \u2014 Project A1 sandbox milestone reached \u2014 you told Mylo on Sat 19 Sep. [O2]",
+    "- **Project A2** \u2014 Project A2 sandbox milestone reached \u2014 you told Mylo on Sat 19 Sep. [O3]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 891
+  },
+  {
+   "kind": "user",
+   "reader": "amb_a1_wen",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- You answered 2 of Mylo's questions this week (2 on Discord).",
+    "### Projects",
+    "- **Project A1** \u2014 Project A1 data arrival \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project A1** \u2014 Project A1 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O2]",
+    "- **Project A2** \u2014 Project A2 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O3]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 883
+  },
+  {
+   "kind": "user",
+   "reader": "amb_a2_gia",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- You answered 2 of Mylo's questions this week (2 on Discord).",
+    "### Projects",
+    "- **Project A2** \u2014 Project A2 dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project A1** \u2014 Project A1 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O2]",
+    "- **Project A2** \u2014 Project A2 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O3]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 892
+  },
+  {
+   "kind": "user",
+   "reader": "amb_a3_jun",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **algorithmic pricing** \u2014 in your reports; you confirmed it on Discord on Sat 19 Sep. [O2]",
+    "- You answered 2 of Mylo's questions this week (2 on Discord).",
+    "### Projects",
+    "- **Project A1** \u2014 Grove soil dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project A1** \u2014 Project A1 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O3]",
+    "- **Project A2** \u2014 Project A2 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O4]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 985
+  },
+  {
+   "kind": "user",
+   "reader": "amb_a4_quinn",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **diffusion models** \u2014 in your reports; you confirmed it on Discord on Sat 19 Sep. [O2]",
+    "- You answered 1 of Mylo's question this week (1 on Discord).",
+    "### Projects",
+    "- **Project A2** \u2014 Summit gait dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project A1** \u2014 Project A1 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O3]",
+    "- **Project A2** \u2014 Project A2 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O4]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 975
+  },
+  {
+   "kind": "user",
+   "reader": "amb_a5_xavi",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **retrieval augmented generation** \u2014 in your reports; you confirmed it on Discord on Sat 19 Sep. [O2]",
+    "- You answered 1 of Mylo's question this week (1 on Discord).",
+    "### Projects",
+    "- **Project A2** \u2014 Project A2 dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project A1** \u2014 Project A1 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O3]",
+    "- **Project A2** \u2014 Project A2 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O4]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 995
+  },
+  {
+   "kind": "user",
+   "reader": "amb_a6_yara",
+   "origin": "llm",
+   "what_changed": [
+    "### Projects",
+    "- **Project A1** \u2014 Project A1 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O1]",
+    "- **Project A2** \u2014 Project A2 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O2]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 725
+  },
+  {
+   "kind": "user",
+   "reader": "amb_b0_farouk",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **density functional theory** \u2014 in your reports; you confirmed it on Discord on Sat 19 Sep. [O2]",
+    "- You answered 1 of Mylo's question this week (1 on Discord).",
+    "### Projects",
+    "- **Project B1** \u2014 Project B1 dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project B2** \u2014 the annotation budget came through \u2014 Cyra told Mylo on Sat 19 Sep. [O3]",
+    "- **Project B2** \u2014 the stated blockers changed (annotation budget) \u2014 accepted by Cyra on Sat 19 Sep. [O4]",
+    "- **Project B1** \u2014 Project B1 sandbox milestone reached \u2014 you told Mylo on Sat 19 Sep. [O5]",
+    "- **Project B2** \u2014 Project B2 sandbox milestone reached \u2014 you told Mylo on Sat 19 Sep. [O6]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 1178
+  },
+  {
+   "kind": "user",
+   "reader": "amb_b1_sami",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- You answered 1 of Mylo's question this week (1 on Discord).",
+    "### Projects",
+    "- **Project B2** \u2014 Delta rainfall dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project B2** \u2014 the annotation budget came through \u2014 Cyra told Mylo on Sat 19 Sep. [O2]",
+    "- **Project B2** \u2014 the stated blockers changed (annotation budget) \u2014 accepted by Cyra on Sat 19 Sep. [O3]",
+    "- **Project B1** \u2014 Project B1 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O4]",
+    "- **Project B2** \u2014 Project B2 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O5]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 1082
+  },
+  {
+   "kind": "user",
+   "reader": "amb_b2_priya",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- You answered 1 of Mylo's question this week (1 on Discord).",
+    "### Projects",
+    "- **Project B2** \u2014 Birch corpus dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project B2** \u2014 the annotation budget came through \u2014 Cyra told Mylo on Sat 19 Sep. [O2]",
+    "- **Project B2** \u2014 the stated blockers changed (annotation budget) \u2014 accepted by Cyra on Sat 19 Sep. [O3]",
+    "- **Project B1** \u2014 Project B1 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O4]",
+    "- **Project B2** \u2014 Project B2 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O5]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 1087
+  },
+  {
+   "kind": "user",
+   "reader": "amb_b3_cyra",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **structural equation modelling** \u2014 in your reports; you confirmed it on Discord on Sat 19 Sep. [O2]",
+    "- **things I'm picking up** \u2014 confirmed as yours on Discord on Sat 19 Sep. [O3]",
+    "- **things I'm picking up** \u2014 added to your learning goals on Discord on Sat 19 Sep (since undone). [O4]",
+    "- **things I'm picking up** \u2014 undone on Sat 19 Sep. [O6]",
+    "- You answered 3 of Mylo's questions this week (2 on Discord, 1 on the web).",
+    "### Projects",
+    "- **Project B1** \u2014 Lagos air dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project B2** \u2014 the annotation budget came through \u2014 you told Mylo on Sat 19 Sep. [O5]",
+    "- **Project B2** \u2014 the stated blockers changed (annotation budget) \u2014 accepted by you on Sat 19 Sep. [O7]",
+    "- **Project B1** \u2014 Project B1 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O8]",
+    "- **Project B2** \u2014 Project B2 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O9]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 1442
+  },
+  {
+   "kind": "user",
+   "reader": "amb_b4_dev",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **Add it to my learning list** \u2014 confirmed as yours on Discord on Sat 19 Sep. [O2]",
+    "- **Add it to my learning list** \u2014 added to your learning goals on Discord on Sat 19 Sep. [O3]",
+    "- You answered 2 of Mylo's questions this week (2 on Discord).",
+    "### Projects",
+    "- **Project B2** \u2014 Project B2 dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project B2** \u2014 the annotation budget came through \u2014 Cyra told Mylo on Sat 19 Sep. [O4]",
+    "- **Project B2** \u2014 the stated blockers changed (annotation budget) \u2014 accepted by Cyra on Sat 19 Sep. [O5]",
+    "- **Project B1** \u2014 Project B1 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O6]",
+    "- **Project B2** \u2014 Project B2 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O7]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 1259
+  },
+  {
+   "kind": "user",
+   "reader": "amb_b5_bo",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **species distribution models** \u2014 confirmed as yours on Discord on Sat 19 Sep. [O2]",
+    "- **species distribution models** \u2014 added to your learning goals on Discord on Sat 19 Sep. [O3]",
+    "- You answered 2 of Mylo's questions this week (2 on Discord).",
+    "### Projects",
+    "- **Project B2** \u2014 Harbour sensor dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project B2** \u2014 the annotation budget came through \u2014 Cyra told Mylo on Sat 19 Sep. [O4]",
+    "- **Project B2** \u2014 the stated blockers changed (annotation budget) \u2014 accepted by Cyra on Sat 19 Sep. [O5]",
+    "- **Project B1** \u2014 Project B1 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O6]",
+    "- **Project B2** \u2014 Project B2 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O7]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 5 supported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 5,
+    "removed": 0,
+    "unresolved": 0
+   },
+   "body_chars": 1277
+  },
+  {
+   "kind": "user",
+   "reader": "amb_b6_tove",
+   "origin": "llm",
+   "what_changed": [
+    "### Projects",
+    "- **Project B2** \u2014 the annotation budget came through \u2014 Cyra told Mylo on Sat 19 Sep. [O1]",
+    "- **Project B2** \u2014 the stated blockers changed (annotation budget) \u2014 accepted by Cyra on Sat 19 Sep. [O2]",
+    "- **Project B1** \u2014 Project B1 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O3]",
+    "- **Project B2** \u2014 Project B2 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O4]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 926
+  },
+  {
+   "kind": "user",
+   "reader": "amb_c0_mateo",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- You answered 2 of Mylo's questions this week (2 on Discord).",
+    "### Projects",
+    "- **Project C1** \u2014 Flint archive dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project C1** \u2014 Project C1 sandbox milestone reached \u2014 you told Mylo on Sat 19 Sep. [O2]",
+    "- **Project C2** \u2014 Project C2 sandbox milestone reached \u2014 you told Mylo on Sat 19 Sep. [O3]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 5 supported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 5,
+    "removed": 0,
+    "unresolved": 0
+   },
+   "body_chars": 891
+  },
+  {
+   "kind": "user",
+   "reader": "amb_c1_umar",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **child language acquisition** \u2014 in your reports; you confirmed it on Discord on Sat 19 Sep. [O2]",
+    "- You answered 2 of Mylo's questions this week (2 on Discord).",
+    "### Projects",
+    "- **Project C1** \u2014 Project C1 dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project C1** \u2014 Project C1 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O3]",
+    "- **Project C2** \u2014 Project C2 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O4]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 5 supported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 5,
+    "removed": 0,
+    "unresolved": 0
+   },
+   "body_chars": 985
+  },
+  {
+   "kind": "user",
+   "reader": "amb_c2_oren",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **protein structure prediction** \u2014 confirmed as yours on Discord on Sat 19 Sep. [O2]",
+    "- **protein structure prediction** \u2014 added to your learning goals on Discord on Sat 19 Sep. [O3]",
+    "- You answered 2 of Mylo's questions this week (2 on Discord).",
+    "### Projects",
+    "- **Project C2** \u2014 Project C2 dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project C1** \u2014 Project C1 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O4]",
+    "- **Project C2** \u2014 Project C2 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O5]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 5 supported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 5,
+    "removed": 0,
+    "unresolved": 0
+   },
+   "body_chars": 1069
+  },
+  {
+   "kind": "user",
+   "reader": "amb_c3_nia",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **reinforcement learning from human feedback** \u2014 confirmed as yours on Discord on Sat 19 Sep. [O2]",
+    "- **reinforcement learning from human feedback** \u2014 added to your learning goals on Discord on Sat 19 Sep. [O3]",
+    "- You answered 1 of Mylo's question this week (1 on Discord).",
+    "### Projects",
+    "- **Project C1** \u2014 Project C1 dataset \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project C1** \u2014 Project C1 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O4]",
+    "- **Project C2** \u2014 Project C2 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O5]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 3 supported \u00b7 2 removed as unsupported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 3,
+    "removed": 2,
+    "unresolved": 2
+   },
+   "body_chars": 1091
+  },
+  {
+   "kind": "user",
+   "reader": "amb_c4_ines",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- **metagenomics** \u2014 confirmed as yours on Discord on Sat 19 Sep. [O2]",
+    "- **metagenomics** \u2014 added to your learning goals on Discord on Sat 19 Sep. [O3]",
+    "- You answered 1 of Mylo's question this week (1 on Discord).",
+    "### Projects",
+    "- **Project C1** \u2014 Project C1 dataset arrival \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project C1** \u2014 Project C1 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O4]",
+    "- **Project C2** \u2014 Project C2 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O5]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 5 supported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 5,
+    "removed": 0,
+    "unresolved": 0
+   },
+   "body_chars": 1079
+  },
+  {
+   "kind": "user",
+   "reader": "amb_c5_elin",
+   "origin": "llm",
+   "what_changed": [
+    "### Your understanding",
+    "- You answered 2 of Mylo's questions this week (2 on Discord).",
+    "### Projects",
+    "- **Project C2** \u2014 Project C2 dataset arrival \u2014 you told Mylo on Sat 19 Sep. [O1]",
+    "- **Project C1** \u2014 Project C1 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O2]",
+    "- **Project C2** \u2014 Project C2 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O3]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 5 supported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 5,
+    "removed": 0,
+    "unresolved": 0
+   },
+   "body_chars": 897
+  },
+  {
+   "kind": "user",
+   "reader": "amb_c6_vera",
+   "origin": "llm",
+   "what_changed": [
+    "### Projects",
+    "- **Project C1** \u2014 Project C1 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O1]",
+    "- **Project C2** \u2014 Project C2 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O2]",
+    "",
+    "See, edit or undo any of these on [Mylo & you](https://mycelium.brendondgr.com/app/mylo-and-you).",
+    "",
+    "_Checked: 5 claims \u00b7 5 supported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 5,
+    "supported": 5,
+    "removed": 0,
+    "unresolved": 0
+   },
+   "body_chars": 732
+  },
+  {
+   "kind": "lab",
+   "reader": "amb-a",
+   "origin": "llm",
+   "what_changed": [
+    "### Projects",
+    "- **Project A1** \u2014 Project A1 sandbox milestone reached \u2014 Zeno told Mylo on Sat 19 Sep. [O1]",
+    "",
+    "_Checked: 8 claims \u00b7 8 supported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 8,
+    "supported": 8,
+    "removed": 0,
+    "unresolved": 0
+   },
+   "body_chars": 671
+  },
+  {
+   "kind": "lab",
+   "reader": "amb-b",
+   "origin": "llm",
+   "what_changed": [
+    "### Projects",
+    "- **Project B2** \u2014 the annotation budget came through \u2014 Cyra told Mylo on Sat 19 Sep. [O1]",
+    "- **Project B2** \u2014 the stated blockers changed (annotation budget) \u2014 accepted by Cyra on Sat 19 Sep. [O2]",
+    "- **Project B2** \u2014 Project B2 sandbox milestone reached \u2014 Farouk told Mylo on Sat 19 Sep. [O3]",
+    "",
+    "_Checked: 3 claims \u00b7 3 supported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 3,
+    "supported": 3,
+    "removed": 0,
+    "unresolved": 0
+   },
+   "body_chars": 714
+  },
+  {
+   "kind": "lab",
+   "reader": "amb-c",
+   "origin": "llm",
+   "what_changed": [
+    "### Projects",
+    "- **Project C1** \u2014 Project C1 sandbox milestone reached \u2014 Mateo told Mylo on Sat 19 Sep. [O1]",
+    "",
+    "_Checked: 3 claims \u00b7 3 supported. Dates, day counts, and time zones are computed, not written by the model._"
+   ],
+   "verification": {
+    "claims": 3,
+    "supported": 3,
+    "removed": 0,
+    "unresolved": 0
+   },
+   "body_chars": 516
+  }
+ ],
+ "counts": {
+  "people": 21,
+  "labs": 3,
+  "changes_this_week": 45,
+  "weeklies_llm": 24
+ },
+ "violations_total": 11
+}

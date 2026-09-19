@@ -120,6 +120,10 @@ def _collect(packet, *, target_filter, projects, reader, today):
             for row in rows
             if row["visibility"] == "lab" and row["project_id"] in project_ids
         ]
+    # An undo whose change is in the same week is the "(since undone)" on that
+    # change's row, not a second row (EXP-2026-09-017 run 1).
+    this_week = {row["id"] for row in rows}
+    rows = [row for row in rows if row.get("undo_of") not in this_week]
     numbered = [{**row, "n": n} for n, row in enumerate(rows, start=1)]
     packet.changes = numbered
 

@@ -457,6 +457,7 @@ def changes_between(*, since, until, user=None, projects=()):
             "by_name": row.user.first_name or row.user.username,
             "on": timezone.localtime(row.created_at).date().isoformat(),
             "undone": row.undone_at is not None,
+            "undo_of": row.undo_of_id,
         }
         for row in rows
     ]

@@ -107,11 +107,26 @@ def section(body: str) -> list[str]:
     return rows
 
 
+def row_has(row: str, topic: str) -> bool:
+    """Whether a "What changed" row is about exactly this topic. By the row's
+    structure, never by substring: "Project C1 dataset" is inside "Project C1
+    dataset arrival" (run 1's eleven false violations)."""
+    return (
+        f"**{topic}** —" in row
+        or f"— {topic} —" in row
+        or f"({topic}) —" in row
+    )
+
+
 # -- expectations, from the change rows and the membership tables ---------------------
 since = timezone.make_aware(timezone.datetime.combine(TODAY - timedelta(days=TODAY.weekday()), timezone.datetime.min.time()))
 changes = list(
     AppliedChange.objects.filter(created_at__gte=since).select_related("project")
 )
+# An undo of a change from the same week is shown as "(since undone)" on that
+# change's row, not as a row of its own (added after run 1).
+_ids = {c.pk for c in changes}
+changes = [c for c in changes if not (c.kind == "undone" and c.undo_of_id in _ids)]
 members = {
     project.pk: set(project.members.values_list("username", flat=True))
     | ({project.scope_user.username} if project.scope_user_id else set())
@@ -146,7 +161,7 @@ for (kind, who), (body, _v, _o) in by_body.items():
     text_rows = [row for row in rows if re.search(r"\[O\d+\]", row)]
     for change in changes:
         topic = change.topic
-        found = sum(1 for row in text_rows if topic in row)
+        found = sum(1 for row in text_rows if row_has(row, topic))
         want = should_see(change, kind, who)
         # Two people can have changes with the same topic; a row is a leak only
         # if nothing this reader may see carries that topic.
