@@ -206,10 +206,14 @@ def facts(observations: list[Observation], now, *, since=None) -> Facts:
     rejections = [o.observed_at for o in observations if o.force == Force.REJECTION]
     last_rejection = max(rejections) if rejections else None
     floor = max(filter(None, [last_rejection, since]), default=None)
+    # A retired observation never counts as live, whatever retired it — a
+    # rejection filed under another kind retires across kinds (EXP-2026-09-013).
     live = [
         o
         for o in observations
-        if o.force != Force.REJECTION and (floor is None or o.observed_at > floor)
+        if o.force != Force.REJECTION
+        and o.status != Observation.Status.SUPERSEDED
+        and (floor is None or o.observed_at > floor)
     ]
     out = Facts(
         last_rejection=last_rejection.date().isoformat() if last_rejection else ""
@@ -647,11 +651,13 @@ def deliberate(*, now=None, users=None) -> DeliberateRun:
         for (side, _concept_id, kind), members in groups.items():
             # What is still standing, plus the rejections that decide what
             # counts; if everything was retired, the retired rows explain why.
-            members = [
+            standing = [
                 o
                 for o in members
                 if o.status == Observation.Status.ACTIVE or o.force == Force.REJECTION
-            ] or members
+            ]
+            retired = not standing
+            members = standing or members
             members.sort(key=lambda o: (o.observed_at, o.pk))
             concept = concepts[members[0].concept_id]
             if kind == _FAMILY:
@@ -671,6 +677,10 @@ def deliberate(*, now=None, users=None) -> DeliberateRun:
                 decision = decide_personal(
                     kind, members, concept.id, concept.vector, held, now
                 )
+                if retired:
+                    decision = Decision(
+                        Finding.Outcome.IGNORE, "superseded", decision.facts
+                    )
                 decision.extra["kinds"] = dict(
                     Counter(o.understanding_kind for o in members)
                 )
@@ -704,6 +714,10 @@ def deliberate(*, now=None, users=None) -> DeliberateRun:
                 decision = decide_project(
                     kind, members, resolved=resolved, covered=covered, now=now
                 )
+                if retired:
+                    decision = Decision(
+                        Finding.Outcome.IGNORE, "superseded", decision.facts
+                    )
                 key = {"user_id": side[1], "project_id": side[2]}
                 visibility = Visibility.LAB if side[0] == "p" else Visibility.PERSONAL
                 finding = _save(key, kind, concept, decision, members, visibility, now)

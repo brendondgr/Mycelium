@@ -1002,3 +1002,29 @@ def test_a_colleagues_intent_is_not_folded_into_an_interest(ada):
 def test_the_prompt_calls_decided_against_a_rejection():
     assert '"Decided against X" is a' in extract.PROMPT
     assert "rejection, never a decision" in extract.PROMPT
+
+
+def test_a_rejection_under_another_kind_still_retires_the_interest(ada):
+    """EXP-2026-09-013 run 4: "I'd like to try X" twice (an interest), then
+    "we decided against X" read as a project development. The rejection
+    retires the interest across kinds, and a retired row never counts again."""
+    cp = _concept("molecular dynamics")
+    _noted(ada, cp, days_ago=15, kind="current_curiosity", conversation="a")
+    _noted(ada, cp, days_ago=8, kind="current_curiosity", conversation="b")
+    _noted(
+        ada,
+        cp,
+        days_ago=2,
+        kind="project_development",
+        force="rejection",
+        subject="self",
+        conversation="c",
+    )
+    deliberate.deliberate()
+    finding = Finding.objects.get(
+        user=ada, concept=cp, understanding_kind="current_curiosity"
+    )
+    assert finding.outcome == Finding.Outcome.IGNORE
+    assert finding.reason == "superseded"
+    deliberate.deliberate()  # and it stays that way on the next night
+    assert Finding.objects.get(pk=finding.pk).reason == "superseded"
