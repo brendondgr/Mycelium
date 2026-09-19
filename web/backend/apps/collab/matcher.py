@@ -927,16 +927,19 @@ def assemble_team(seeker, query: Query, *, now=None) -> TeamResult:
         seeker, query.scope, now, outside_network=query.outside_network
     )
     by_id = {c.pk: c for c in candidates}
-    works = discoverable_works(candidates)
     field_of: dict[int, set] = defaultdict(set)
-    for w in works:
+    for w in discoverable_works(candidates):
         if w.field:
             field_of[w.user_id].add(w.field)
     # Any field may fill a gap in a team, so the bridge lanes run with no
     # "home" field: the lane rules still decide what counts as covering.
     open_query = Query(query.entry, query.slots, lanes=GAP_LANES, scope=query.scope)
-    hits = _work_hits(open_query, works, gaps, [], now)
-    hits += _concept_hits(open_query, candidates, gaps, [], field_of)
+    # Only a concept can certify a cover. A slot matched against a whole
+    # sentence of someone's paper ranks well enough in a lane, where the
+    # strongest few are shown, but as proof that a person *has* a method it is
+    # noise: in EXP-2026-09-010, 13 of 14 wrong covers were sentence matches
+    # ("random forest" meeting a sentence about a hierarchical Bayesian model).
+    hits = _concept_hits(open_query, candidates, gaps, [], field_of)
     cover: dict[str, dict[int, Hit]] = defaultdict(dict)
     for h in hits:
         best = cover[h.slot].get(h.user_id)
