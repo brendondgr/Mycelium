@@ -35,6 +35,10 @@ def configure(workers: int) -> None:
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "sandbox-ambient",
             "TIMEOUT": 60 * 60 * 6,
+            # Django's local-memory cache culls past 300 entries by default;
+            # Redis never evicts a body before its TTL. Without this the
+            # harness, not the pipeline, loses most of the text (EXP-013 run 2).
+            "OPTIONS": {"MAX_ENTRIES": 1_000_000, "CULL_FREQUENCY": 0},
         },
     }
 
