@@ -369,21 +369,33 @@ def declined_asked_again_within_30_days() -> dict:
 def covered_topic_asked() -> dict:
     """A question about something the person had already declared, or their
     papers already show, when it was asked."""
-    from apps.knowledge.models import Edge
+    from django.contrib.auth.models import User
+
+    from apps.knowledge.read import own_edges
 
     bad = []
-    # Covered means the concept at all, whatever the relation — the same rule
-    # deliberation uses before asking.
-    for pk, user, concept, asked_at in PendingSuggestion.objects.filter(
-        asked_at__isnull=False, concept__isnull=False, kind__in=["interest", "skill"]
-    ).values_list("pk", "user_id", "concept_id", "asked_at"):
-        covered = Edge.objects.filter(
-            user_id=user,
-            concept_id=concept,
-            tier__in=["declared", "demonstrated"],
-            created_at__lt=asked_at,
-        ).exists()
-        if covered:
+    rows = list(
+        PendingSuggestion.objects.filter(
+            asked_at__isnull=False,
+            concept__isnull=False,
+            kind__in=["interest", "skill"],
+        ).values_list("pk", "user_id", "concept_id", "asked_at")
+    )
+    held: dict[int, dict[int, object]] = {}
+    for user in User.objects.filter(pk__in={row[1] for row in rows}):
+        # Read through the knowledge core's door: the earliest declared or
+        # demonstrated edge per concept, whatever the relation — the same
+        # rule deliberation uses before asking.
+        first: dict[int, object] = {}
+        for edge in own_edges(user):
+            if edge.tier in ("declared", "demonstrated"):
+                seen = first.get(edge.concept_id)
+                if seen is None or edge.first_seen < seen:
+                    first[edge.concept_id] = edge.first_seen
+        held[user.pk] = first
+    for pk, user_id, concept_id, asked_at in rows:
+        since = held.get(user_id, {}).get(concept_id)
+        if since is not None and since < asked_at:
             bad.append(f"suggestion:{pk}")
     return _result(bad)
 

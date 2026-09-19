@@ -234,7 +234,10 @@ def test_a_covered_topic_asked_is_caught(ada):
     Edge.objects.create(
         user=ada, concept=concept, relation="interested_in", tier="declared"
     )
-    _suggestion(ada, concept, asked_at=NOW + timedelta(minutes=1), state="asked")
+    # The real clock, not the module's NOW: the edge is stamped when made.
+    _suggestion(
+        ada, concept, asked_at=timezone.now() + timedelta(minutes=1), state="asked"
+    )
     assert _harms()["covered_topic_asked"]["count"] == 1
 
 
@@ -296,8 +299,11 @@ def test_maintenance_counts_edits_questions_and_undos(ada):
     AppliedChange.objects.create(
         user=ada, kind="exploration_confirmed", topic="e", surface="web"
     )
+    # The real clock: the changes are stamped when made, which in a long run
+    # is well after this module was imported (the full suite, 2026-09-19).
+    now = timezone.now()
     result = evaluation.maintenance(
-        since=NOW - timedelta(days=30), until=NOW + timedelta(minutes=1)
+        since=now - timedelta(days=30), until=now + timedelta(minutes=1)
     )
     assert result["profile_edits"] == 1 and result["people_with_edits"] == 1
     assert result["questions_asked"] == 1 and result["questions_answered"] == 1
