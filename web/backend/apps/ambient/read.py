@@ -18,6 +18,7 @@ buffer exists for, and it has no reason to hold them afterwards.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -56,6 +57,7 @@ __all__ = [
     "changes_to_announce",
     "mark_announced",
     "developments_to_propose",
+    "facts_to_announce",
     "note_state_change",
 ]
 
@@ -396,6 +398,21 @@ def mark_announced(ids, *, now=None) -> int:
     return PendingSuggestion.objects.filter(pk__in=list(ids)).update(
         notified_at=now or timezone.now()
     )
+
+
+def facts_to_announce(*, now=None, days: int = 7):
+    """Project facts a person told Mylo, recorded without a question in the
+    last ``days`` (Plan 08 step 3, OD-08a: always echoed, never asked). The
+    caller dedupes on the change id, so a missed night is caught up once."""
+    from .models import AppliedChange
+
+    since = (now or timezone.now()) - timedelta(days=days)
+    return AppliedChange.objects.filter(
+        kind=AppliedChange.Kind.DEVELOPMENT_RECORDED,
+        suggestion__isnull=True,
+        undone_at__isnull=True,
+        created_at__gte=since,
+    ).select_related("user", "project")
 
 
 # -- Plan 08: from a development to a proposed state edit ----------------------

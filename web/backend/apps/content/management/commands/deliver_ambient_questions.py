@@ -18,6 +18,7 @@ from django.utils import timezone
 
 from apps.ambient.read import (
     changes_to_announce,
+    facts_to_announce,
     mark_announced,
     mark_asked,
     questions_to_deliver,
@@ -39,6 +40,14 @@ APPLIED_TITLES = {
     "keep": "Still exploring {topic} — you kept it",
     "drop": "Stopped exploring {topic}",
     "yes": "Noted on the project: {topic}",
+    # Plan 08: a yes that edits the profile, applied at the nightly run.
+    "interests": "{topic} is now in your interests — you said yes",
+    "theme": "{topic} is now a theme in your profile — you said yes",
+    "swap": "{topic} replaced a quiet theme in your profile — you said yes",
+    "skill": "{topic} is now in your skills — you said yes",
+    "learning": "{topic} is now a learning goal — you said yes",
+    "preference": "Noted as a preference: {topic}",
+    "direction": "Noted as your direction: {topic}",
 }
 
 
@@ -93,6 +102,25 @@ class Command(BaseCommand):
             )
             announced.append(suggestion.pk)
         mark_announced(announced, now=now)
+        # Plan 08 step 3 (OD-08a): a project fact someone told Mylo is recorded
+        # without a question, so it is always echoed on the bell, once.
+        facts = 0
+        for change in facts_to_announce(now=now):
+            _, made = Notification.objects.get_or_create(
+                dedupe_key=f"ambient-fact-{change.pk}",
+                defaults={
+                    "user": change.user,
+                    "kind": Notification.Kind.CHANGE_APPLIED,
+                    "title": (
+                        f"Noted on {change.project.name}: {change.topic} — "
+                        "you told Mylo. Undo it on Mylo & you."
+                        if change.project_id
+                        else f"Noted: {change.topic} — you told Mylo."
+                    )[:500],
+                    "url": "/app/mylo-and-you",
+                },
+            )
+            facts += made
         # Plan 08: developments that make a project's stated state out of date,
         # proposed to its editors on the project page.
         from apps.content.ambient_proposals import propose
@@ -100,6 +128,11 @@ class Command(BaseCommand):
         proposed = propose(today=today)
         self.stdout.write(
             json.dumps(
-                {"questions": sent, "announced": len(announced), "proposed": proposed}
+                {
+                    "questions": sent,
+                    "announced": len(announced),
+                    "facts": facts,
+                    "proposed": proposed,
+                }
             )
         )

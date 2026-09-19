@@ -73,3 +73,44 @@ def test_a_confirmed_change_is_announced_once(ada):
     ]
     call_command("deliver_ambient_questions")
     assert Notification.objects.filter(kind="change_applied").count() == 1
+
+
+def test_a_fact_told_to_mylo_is_echoed_once_and_an_undone_one_is_not(ada):
+    from apps.ambient.models import AppliedChange
+    from apps.research.models import Project
+
+    project = Project.objects.create(name="Imaging pipeline", scope_user=ada)
+    AppliedChange.objects.create(
+        user=ada,
+        project=project,
+        kind="development_recorded",
+        topic="annotation budget came through",
+        surface="told",
+    )
+    AppliedChange.objects.create(
+        user=ada,
+        project=project,
+        kind="development_recorded",
+        topic="dropped the GNN baseline",
+        surface="told",
+        undone_at=timezone.now(),
+    )
+    call_command("deliver_ambient_questions")
+    [bell] = Notification.objects.filter(kind="change_applied")
+    assert bell.title.startswith("Noted on Imaging pipeline: annotation budget")
+    assert bell.url == "/app/mylo-and-you"
+    call_command("deliver_ambient_questions")
+    assert Notification.objects.filter(kind="change_applied").count() == 1
+
+
+def test_a_profile_edit_is_announced_in_its_own_words(ada):
+    _suggestion(
+        ada,
+        state="answered",
+        verdict="confirmed",
+        choice="skill",
+        applied_at=timezone.now(),
+    )
+    call_command("deliver_ambient_questions")
+    [bell] = Notification.objects.filter(kind="change_applied")
+    assert bell.title == "conformal prediction is now in your skills — you said yes"
