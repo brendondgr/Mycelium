@@ -510,3 +510,18 @@ def test_the_rerank_reads_the_first_answer_and_ignores_what_follows():
         query, "method_bridge", shortlist, chatty
     )
     assert explained and reasons == {7: "Uses kriging."} and kept == shortlist
+
+
+def test_a_short_need_in_ones_own_words_is_read_not_refused(world):
+    ada, _, _ = world
+    asked = []
+
+    def model(system, user):
+        asked.append(user)
+        return '{"slots": [{"facet": "method", "text": "kriging", "required": true}]}'
+
+    query = matcher.query_for_text(
+        ada, "Someone who can do kriging on our reef data.", complete=model
+    )
+    assert asked, "the call floor refused a person's short statement of need"
+    assert [s["text"] for s in query.slots] == ["kriging"]

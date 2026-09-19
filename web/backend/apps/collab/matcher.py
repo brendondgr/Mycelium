@@ -189,7 +189,9 @@ def query_for_text(seeker, text: str, *, complete=None, **options) -> Query:
         pk = None
         metadata = {"title": "", "description": text}
 
-    outcome = slot_reader.extract(_Typed(), complete=complete)
+    outcome = slot_reader.extract(
+        _Typed(), complete=complete, min_words=slot_reader.MIN_NEED_WORDS
+    )
     found = outcome.slots if outcome else []
     return Query(
         "manual", _with_vectors(found), need_fields=_fields_of([seeker]), **options

@@ -47,6 +47,9 @@ MAX_SLOT_CHARS = 90
 MAX_SOURCE_CHARS = 12_000
 #: Below this many content words there is nothing to read slots out of.
 MIN_SOURCE_WORDS = 20
+#: A person's own statement of what they need is short by nature ("someone who
+#: can do kriging on our reef data"); the call floor would refuse every one.
+MIN_NEED_WORDS = 2
 
 _WORD = re.compile(r"[a-z0-9]+")
 _STOP = frozenset(
@@ -247,11 +250,14 @@ def _settings_complete(system: str, user: str) -> str | None:
     ).content
 
 
-def extract(item, *, complete: CompleteFn | None = None) -> SlotOutcome | None:
+def extract(
+    item, *, complete: CompleteFn | None = None, min_words: int = MIN_SOURCE_WORDS
+) -> SlotOutcome | None:
     """One call into slots. ``None`` means the model was unreachable: try again
-    on the next run. Never raises."""
+    on the next run. Never raises. ``min_words`` is the floor below which the
+    text is too thin to read (``MIN_NEED_WORDS`` for a person's own words)."""
     source = source_text(item)
-    if len(_content_words(source)) < MIN_SOURCE_WORDS:
+    if len(_content_words(source)) < min_words:
         return SlotOutcome(thin=True, refused=["too little text to read"])
     ask = complete if complete is not None else _settings_complete
     prompt = PROMPT.format(max_words=MAX_SLOT_WORDS, max_slots=MAX_SLOTS, source=source)
