@@ -426,7 +426,7 @@ def drift(world: World, weights=(0.15, 1.0)) -> dict:
         return (
             clusters,
             top,
-            {cid: [str(h.item.id) for h in hits] for cid, hits in slates.items()},
+            {cid: [str(hit[0].id) for hit in hits] for cid, hits in slates.items()},
         )
 
     topic_of = {

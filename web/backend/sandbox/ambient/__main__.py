@@ -101,6 +101,11 @@ def main() -> int:
         started = time.monotonic()
         metrics["nights"] = nights.simulate(world, seed=args.seed)
         timings["nights_s"] = round(time.monotonic() - started, 1)
+        if args.out:
+            # Keep the nights even if the ranking step fails (EXP-014 run 1).
+            Path(args.out + ".nights").write_text(
+                json.dumps(metrics["nights"], indent=2, default=str)
+            )
         started = time.monotonic()
         metrics["corpus_items"] = nights.seed_corpus(world_mod.POOL)
         metrics["drift"] = nights.drift(world)
