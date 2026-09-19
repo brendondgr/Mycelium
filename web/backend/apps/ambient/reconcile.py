@@ -77,14 +77,10 @@ def message_edited(source: Source, external_id: str, text: str, *, edited_at=Non
     digest = content_hash(text)
     ref.content_hash = digest
     ref.edited_at = edited_at or timezone.now()
-    ref.buffered_until = (
-        timezone.now() + timedelta(seconds=ttl) if held else None
-    )
+    ref.buffered_until = timezone.now() + timedelta(seconds=ttl) if held else None
     # The edited text may now repeat something else, or nothing.
     ref.repeat_of = None
-    ref.save(
-        update_fields=["content_hash", "edited_at", "buffered_until", "repeat_of"]
-    )
+    ref.save(update_fields=["content_hash", "edited_at", "buffered_until", "repeat_of"])
     if ref.speaker_id is not None:
         root = find_repeat_root(ref.speaker, digest, before=ref.sent_at)
         if root is not None and root.pk != ref.pk:
@@ -122,9 +118,7 @@ def message_edited(source: Source, external_id: str, text: str, *, edited_at=Non
 @transaction.atomic
 def message_deleted(source: Source, external_id: str) -> Retraction | None:
     """A message was deleted on the platform. Its evidence goes with it."""
-    ref = RawMessageRef.objects.filter(
-        source=source, external_id=external_id
-    ).first()
+    ref = RawMessageRef.objects.filter(source=source, external_id=external_id).first()
     buffer.drop(source.pk, [external_id])
 
     observations = _observations_citing(source, external_id)
@@ -191,7 +185,7 @@ def forget_observations(
 
 @transaction.atomic
 def forget_person(user: User) -> Retraction:
-    """"Delete my observations": everything derived from this person, gone.
+    """ "Delete my observations": everything derived from this person, gone.
 
     Every observation, every verdict they gave, every reference, and every body
     still sitting in the buffer. The retraction that survives names what has to
@@ -219,6 +213,18 @@ def forget_person(user: User) -> Retraction:
     Observation.objects.filter(pk__in=observation_ids).delete()
     RawMessageRef.objects.filter(speaker=user).delete()
     user.ambient_feedback.all().delete()
+    # Every derived influence, now rather than at the next nightly run
+    # (principle 11; EXP-2026-09-014): what conversation taught the knowledge
+    # core about them, what deliberation decided, and any open question.
+    from apps.knowledge.service import forget_conversational
+
+    from .models import Finding, PendingSuggestion
+
+    forget_conversational(user)
+    Finding.objects.filter(user=user).delete()
+    PendingSuggestion.objects.filter(
+        user=user, state__in=PendingSuggestion.OPEN
+    ).update(state=PendingSuggestion.State.WITHDRAWN)
 
     logger.info(
         "ambient: forgot %s observations and %s references for user %s",

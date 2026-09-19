@@ -102,6 +102,15 @@ def _night(t) -> dict:
     return {"deliberate": decided, "evolve": evolved}
 
 
+def _mine():
+    """This experiment's people only. The sandbox template also holds the
+    collaboration world, whose planted conversational edges are not ours
+    (EXP-2026-09-014 run 2)."""
+    from apps.knowledge.models import Edge
+
+    return Edge.objects.filter(user__username__startswith="amb_")
+
+
 def simulate(world: World, *, seed: int = 20260919) -> dict:
     from django.contrib.auth import get_user_model
 
@@ -110,7 +119,7 @@ def simulate(world: World, *, seed: int = 20260919) -> dict:
     from apps.ambient.models import Finding, Observation, ProjectDevelopment, Visibility
     from apps.ambient.read import developments_in_effect
     from apps.content.understanding import context_version
-    from apps.knowledge.models import Edge, EdgeStatus
+    from apps.knowledge.models import EdgeStatus
     from apps.knowledge.read import (
         confirmed_explorations,
         discoverable_edges,
@@ -143,9 +152,13 @@ def simulate(world: World, *, seed: int = 20260919) -> dict:
 
         # -- answers, the morning after the night that raised them ------------------
         with mock.patch("django.utils.timezone.now", return_value=t):
-            for edge in Edge.objects.filter(
-                tier="conversational", status=EdgeStatus.PENDING, user__in=speakers
-            ).select_related("user", "concept"):
+            for edge in (
+                _mine()
+                .filter(
+                    tier="conversational", status=EdgeStatus.PENDING, user__in=speakers
+                )
+                .select_related("user", "concept")
+            ):
                 key = (edge.user_id, edge.concept_id, edge.relation)
                 if key in said_yes or key in said_no:
                     continue
@@ -224,14 +237,13 @@ def simulate(world: World, *, seed: int = 20260919) -> dict:
                     )
 
         # -- invariants -----------------------------------------------------------------  # noqa: E501
-        for edge in Edge.objects.filter(
-            tier="conversational", status=EdgeStatus.ACTIVE
-        ):
+        for edge in _mine().filter(tier="conversational", status=EdgeStatus.ACTIVE):
             if (edge.user_id, edge.concept_id, edge.relation) not in said_yes:
                 checks.fail("active_without_yes", edge.pk)
         for key in said_no:
             if (
-                Edge.objects.filter(
+                _mine()
+                .filter(
                     user_id=key[0],
                     concept_id=key[1],
                     relation=key[2],
@@ -254,12 +266,12 @@ def simulate(world: World, *, seed: int = 20260919) -> dict:
             if edge.tier == "conversational":
                 checks.fail("conversation_discoverable", edge.concept_id)
         for user_id in forgotten:
-            if Edge.objects.filter(user_id=user_id, tier="conversational").exists():
+            if _mine().filter(user_id=user_id, tier="conversational").exists():
                 checks.fail("forgotten_edges_remain", user_id)
             if Finding.objects.filter(user_id=user_id).exists():
                 checks.fail("forgotten_findings_remain", user_id)
         live_ids = set(Observation.objects.values_list("pk", flat=True))
-        for edge in Edge.objects.filter(tier="conversational"):
+        for edge in _mine().filter(tier="conversational"):
             for item in edge.evidence or []:
                 if item.startswith("obs:") and int(item[4:]) not in live_ids:
                     checks.fail("evidence_of_deleted", edge.pk)
@@ -277,7 +289,7 @@ def simulate(world: World, *, seed: int = 20260919) -> dict:
                 if row.visibility != Visibility.LAB:
                     checks.fail("private_development_to_lab", row.pk)
         # Fading: two half-lives (42 days) without reinforcement.
-        for edge in Edge.objects.filter(
+        for edge in _mine().filter(
             tier="conversational", qualifier="current_curiosity"
         ):
             age = (t - edge.last_reinforced).days
@@ -289,9 +301,13 @@ def simulate(world: World, *, seed: int = 20260919) -> dict:
                 and age <= 42
             ):
                 checks.fail("faded_while_reinforced", edge.pk)
-        if Edge.objects.filter(
-            tier="conversational", qualifier="capability", status=EdgeStatus.FADED
-        ).exists():
+        if (
+            _mine()
+            .filter(
+                tier="conversational", qualifier="capability", status=EdgeStatus.FADED
+            )
+            .exists()
+        ):
             checks.fail("capability_faded", k)
         # How often each person's context version moved (reported, not a
         # check: the unit tests pin exactly when it must move).
@@ -305,9 +321,7 @@ def simulate(world: World, *, seed: int = 20260919) -> dict:
 
         entry["edges"] = dict(
             Counter(
-                Edge.objects.filter(tier="conversational").values_list(
-                    "status", flat=True
-                )
+                _mine().filter(tier="conversational").values_list("status", flat=True)
             )
         )
         entry["developments"] = dict(
@@ -315,13 +329,13 @@ def simulate(world: World, *, seed: int = 20260919) -> dict:
         )
         log.append(entry)
 
-    faded = Edge.objects.filter(tier="conversational", status=EdgeStatus.FADED)
+    faded = _mine().filter(tier="conversational", status=EdgeStatus.FADED)
     reinforced_active = sum(
         1
         for user_id, concept_id in reinforce
-        if Edge.objects.filter(
-            user_id=user_id, concept_id=concept_id, status=EdgeStatus.ACTIVE
-        ).exists()
+        if _mine()
+        .filter(user_id=user_id, concept_id=concept_id, status=EdgeStatus.ACTIVE)
+        .exists()
     )
     return {
         "nights": log,
@@ -441,6 +455,11 @@ def drift(world: World, weights=(0.15, 1.0)) -> dict:
     for weight in weights:
         settings.AMBIENT_DRIFT_WEIGHT = weight
         jaccards, precisions, displaced, people = [], [], [], 0
+        # Post hoc (EXP-2026-09-014 run 2): the corpus holds four papers per
+        # topic, so "share of a 25-deep slate on the topic" is capped near
+        # 0.16. This asks the answerable question: of the topic's own papers,
+        # how many lead its exploration slate?
+        own_at_top = []
         for user in User.objects.filter(username__startswith="amb_"):
             found = explorations.for_user(user)
             if not found:
@@ -459,6 +478,14 @@ def drift(world: World, weights=(0.15, 1.0)) -> dict:
                     jaccards.append(len(a & b) / len(a | b))
             for concept_id, label in found:
                 slate = slates_on.get(f"{explorations.EXPLORE_PREFIX}{concept_id}", [])
+                own = [
+                    cid
+                    for cid, topic in topic_of.items()
+                    if (topic or "").casefold() == label.casefold()
+                ]
+                if slate and own:
+                    top = slate[: len(own)]
+                    own_at_top.append(len(set(top) & set(own)) / len(own))
                 if slate:
                     precisions.append(
                         sum(
@@ -482,6 +509,9 @@ def drift(world: World, weights=(0.15, 1.0)) -> dict:
             if precisions
             else None,
             "exploration_slates": len(precisions),
+            "exploration_own_papers_at_top_mean": (
+                round(sum(own_at_top) / len(own_at_top), 4) if own_at_top else None
+            ),
             "declared_displaced_from_top25_mean": round(
                 sum(displaced) / len(displaced), 4
             )

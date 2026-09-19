@@ -411,6 +411,9 @@ def test_opting_out_with_deletion_removes_every_derived_influence(ada, imaging):
     _night()
     confirm(ada, cp.pk, "interested_in")
     reconcile.forget_person(ada)
+    # At once, not at the next night (EXP-2026-09-014).
+    assert not Edge.objects.filter(user=ada, tier="conversational").exists()
+    assert not Finding.objects.filter(user=ada).exists()
     evolve.evolve()
     assert not Edge.objects.filter(user=ada, tier="conversational").exists()
     assert not Finding.objects.filter(user=ada).exists()
