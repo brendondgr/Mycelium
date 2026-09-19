@@ -208,7 +208,11 @@ def quality(
                 else:
                     out["resource_returned"] += 1
         # Recall for every method slot of this project: did the lane find at
-        # least one person the plan says it should have?
+        # least one person the plan says it should have? Also marked: whether
+        # the slot was a gap for this seeker — bridges search only gaps, so a
+        # method the seeker already covers can never be hit (post-hoc
+        # diagnostic, EXP-2026-09-008 ISSUES 7).
+        gap_texts = {g["text"] for g in matcher._split(users[seeker_key], query)[1]}
         for slot in query.slots:
             if slot["facet"] != "method":
                 continue
@@ -228,6 +232,7 @@ def quality(
             }
             per_slot.append(
                 {
+                    "gap": slot["text"] in gap_texts,
                     "hit": bool(got & expected),
                     "recall_at_k": len(got & expected)
                     / min(settings.COLLAB_RESULTS_PER_LANE, len(expected)),
@@ -243,6 +248,11 @@ def quality(
         "in_field_precision": rate(out["in_field_correct"], out["in_field_returned"]),
         "method_slots_with_truth": len(per_slot),
         "method_bridge_hit_rate": rate(sum(s["hit"] for s in per_slot), len(per_slot)),
+        "method_gap_slots_with_truth": sum(1 for s in per_slot if s["gap"]),
+        "method_bridge_gap_hit_rate": rate(
+            sum(s["hit"] for s in per_slot if s["gap"]),
+            sum(1 for s in per_slot if s["gap"]),
+        ),
         "method_bridge_recall_at_k": round(
             statistics.mean(s["recall_at_k"] for s in per_slot), 4
         )

@@ -50,3 +50,12 @@
    matcher. Fixed in `edb7c55` (keyed by lab and project) and arm C rerun on
    the same database with the invalid run's search logs cleared. Arms A and B
    ran before the parallel change and are unaffected.
+7. **H2's hit rate counts slots the lane never searches (post-hoc
+   diagnostic, declared before measuring it).** The registered hit rate is
+   over every project method slot with an eligible holder in another field —
+   including methods the seeker already covers, which the matcher by design
+   does not bridge (bridges search the seeker's gaps). Arm C (clean run):
+   hit rate 0.574, precision 0.957. A diagnostic run of arm C's configuration
+   adds `method_bridge_gap_hit_rate` — the same measure over gap slots only.
+   H2 stays judged on the registered measure; the diagnostic says whether the
+   shortfall is the lane's or the metric's.
