@@ -1,4 +1,4 @@
-"""Reports on Slack (ambient Plan 11, step 5 and rule 15).
+"""Reports on Slack and Teams (ambient Plan 11, step 5 and rule 15).
 
 The reports are written once, by the same pipeline. This module only sends
 them to where a reader or a lab lives:
@@ -14,6 +14,11 @@ them to where a reader or a lab lives:
 The post is the same overview the Discord embed carries, as Block Kit, plus a
 link to the full report on the web. Slack gets no PDF attachment: a file
 upload needs a scope this app does not ask for.
+
+Teams follows the same rules: a person linked on Teams only gets their report
+in their chat with Mylo, and a lab gets its posts in the team's updates
+channel when it has no Discord channel or marks the team primary. On Teams
+the post is the overview as text, with the same link.
 """
 
 from __future__ import annotations
@@ -100,11 +105,45 @@ def lab_workspace(lab):
 
 
 def slack_is_primary(lab) -> bool:
-    """Whether this lab's posts go to Slack instead of Discord."""
-    if not _enabled():
-        return False
-    workspace = lab_workspace(lab)
-    return bool(workspace and workspace.reports_primary)
+    """Whether this lab's posts go to Slack or Teams instead of Discord."""
+    workspace = lab_workspace(lab) if _enabled() else None
+    team = lab_team(lab) if _teams_enabled() else None
+    return bool(
+        (workspace and workspace.reports_primary) or (team and team.reports_primary)
+    )
+
+
+def _teams_enabled() -> bool:
+    return bool(getattr(settings, "TEAMS_ENABLED", False))
+
+
+def lab_team(lab):
+    from apps.integrations.services import teams_resolve
+
+    link = teams_resolve.link_for_lab(lab)
+    return link if link is not None and link.updates_conversation_id else None
+
+
+def teams_only(user) -> bool:
+    from apps.integrations.services import resolve, slack_resolve, teams_resolve
+
+    return (
+        teams_resolve.identity_for(user) is not None
+        and resolve.active_identity_for_user(user) is None
+        and slack_resolve.identity_for(user) is None
+    )
+
+
+def embed_to_text(embed: dict, *, link: str = "") -> str:
+    """A report embed as Teams text (markdown). Pure."""
+    lines = [f"**{embed.get('title', '')}**"]
+    if embed.get("description"):
+        lines.append(str(embed["description"]))
+    for field in embed.get("fields") or []:
+        lines.append(f"**{field.get('name', '')}**\n{field.get('value', '')}")
+    if link:
+        lines.append(f"[Read the full report]({link})")
+    return "\n\n".join(lines)[:25000]
 
 
 def _lab_on_slack(lab) -> bool:
@@ -118,12 +157,107 @@ def _lab_on_slack(lab) -> bool:
 
 def send(*, on: date | None = None) -> dict:
     """Queue today's Slack reports. Never raises; a no-op while Slack is off."""
-    if not _enabled():
+    if not _enabled() and not _teams_enabled():
         return {"enabled": False}
     counts = {"people": 0, "labs": 0, "errors": 0}
-    _people(on, counts)
-    _labs(on, counts)
+    if _enabled():
+        _people(on, counts)
+        _labs(on, counts)
+    if _teams_enabled():
+        _teams_people(on, counts)
+        _teams_labs(on, counts)
     return counts
+
+
+def _report_for(target, *, is_lab: bool, on):
+    """``(embed, dedupe suffix, local date)`` for today's push, or None."""
+    from apps.content import discord_embeds
+    from apps.content.daily_report import (
+        compile_report_for_lab,
+        compile_report_for_user,
+    )
+    from apps.content.weekly_send import _monday, _weekly_body
+
+    local = on or delivery.local_today(target)
+    cadence = delivery.lab_cadence(target) if is_lab else delivery.user_cadence(target)
+    kinds = delivery.push_kinds(cadence, local)
+    build = (
+        discord_embeds.lab_post_embed
+        if is_lab
+        else discord_embeds.personal_report_embed
+    )
+    if delivery.WEEKLY in kinds:
+        data, weekly = _weekly_body(target, is_lab=is_lab)
+        if weekly is None:
+            return None
+        return build(data, data.stats, "weekly"), f"weekly:{_monday(local)}", local
+    if delivery.DAILY in kinds:
+        data = (
+            compile_report_for_lab(target)
+            if is_lab
+            else compile_report_for_user(target)
+        )
+        if data.stats.is_quiet:
+            return None
+        return build(data, data.stats), f"daily:{local}", local
+    return None
+
+
+def _teams_people(on, counts) -> None:
+    from apps.content.tasks import select_users
+    from apps.integrations.services import teams_outbox
+
+    for user in select_users(None):
+        try:
+            if not teams_only(user):
+                continue
+            report = _report_for(user, is_lab=False, on=on)
+            if report is None:
+                continue
+            embed, suffix, local = report
+            _row, created = teams_outbox.enqueue_dm(
+                user=user,
+                dedupe_key=f"teams_report:{user.pk}:{suffix}",
+                kind="report",
+                text=embed_to_text(embed, link=_report_link()),
+                not_before=delivery.send_time(user, local),
+            )
+            counts["people"] += int(created)
+        except Exception:  # noqa: BLE001
+            counts["errors"] += 1
+            logger.warning("teams report failed for %s", user, exc_info=True)
+
+
+def _teams_labs(on, counts) -> None:
+    from apps.accounts.models import Lab
+    from apps.billing.entitlements import Feature, lab_has_feature
+    from apps.integrations.services import resolve, teams_outbox
+
+    for lab in Lab.objects.filter(teams_links__active=True).distinct():
+        try:
+            team = lab_team(lab)
+            if team is None or not lab_has_feature(lab, Feature.BOT_SERVER):
+                continue
+            if not (
+                team.reports_primary or not resolve.get_updates_channel_for_lab(lab)
+            ):
+                continue
+            report = _report_for(lab, is_lab=True, on=on)
+            if report is None:
+                continue
+            embed, suffix, local = report
+            _row, created = teams_outbox.enqueue(
+                dedupe_key=f"teams_lab_report:{lab.pk}:{suffix}",
+                kind="lab_report",
+                service_url=team.service_url,
+                conversation_id=team.updates_conversation_id,
+                text=embed_to_text(embed, link=_report_link()),
+                not_before=delivery.send_time(lab, local),
+            )
+            counts["labs"] += int(created)
+        except Exception:  # noqa: BLE001
+            counts["errors"] += 1
+            logger.warning("teams lab report failed for %s", lab, exc_info=True)
 
 
 def _people(on, counts) -> None:

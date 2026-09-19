@@ -162,3 +162,80 @@ def test_a_slack_only_person_is_asked_on_slack_with_buttons(workspace):
     s = PendingSuggestion.objects.get()
     assert ids == [f"ambient:{s.pk}:reports", f"ambient:{s.pk}:no"]
     assert s.state == "asked"
+
+
+# -- Teams -----------------------------------------------------------------------
+
+
+def _teams_person(name="tia"):
+    from apps.integrations.models import TeamsIdentity
+
+    user = User.objects.create_user(name, f"{name}@example.org", "pw")
+    TeamsIdentity.objects.create(
+        user=user,
+        tenant_id="t1",
+        aad_object_id=f"aad-{name}",
+        service_url="https://smba.trafficmanager.net/x/",
+        conversation_id=f"a:{name}",
+    )
+    return user
+
+
+def test_a_teams_only_reader_gets_their_daily_in_teams(settings, monkeypatch, db):
+    from apps.integrations.models import TeamsOutboxMessage
+
+    settings.SLACK_ENABLED = False
+    settings.TEAMS_ENABLED = True
+    tia = _teams_person()
+    monkeypatch.setattr("apps.content.tasks.select_users", lambda _names: [tia])
+    monkeypatch.setattr(
+        "apps.content.daily_report.compile_report_for_user",
+        lambda _user: SimpleNamespace(stats=SimpleNamespace(is_quiet=False)),
+    )
+    monkeypatch.setattr(
+        "apps.content.discord_embeds.personal_report_embed",
+        lambda *_a, **_k: {"title": "Your daily research report", "fields": []},
+    )
+    assert slack_reports.send(on=TUESDAY)["people"] == 1
+    row = TeamsOutboxMessage.objects.get()
+    assert row.conversation_id == "a:tia" and "Read the full report" in row.text
+
+
+def test_a_lab_whose_team_is_primary_is_skipped_on_discord(settings, monkeypatch, db):
+    from apps.content.lab_digest import eligible_labs
+    from apps.integrations.models import TeamsTeamLink
+
+    settings.TEAMS_ENABLED = True
+    lab = Lab.objects.create(name="PULSE", slug="pulse")
+    TeamsTeamLink.objects.create(
+        team_id="19:t",
+        tenant_id="t1",
+        service_url="https://smba.trafficmanager.net/x/",
+        lab=lab,
+        updates_conversation_id="19:t;messageid=1",
+        reports_primary=True,
+    )
+    monkeypatch.setattr(
+        "apps.billing.entitlements.lab_has_feature", lambda *_a, **_k: True
+    )
+    assert slack_reports.slack_is_primary(lab)
+    assert eligible_labs([lab], on=TUESDAY) == []
+
+
+def test_a_teams_only_person_is_asked_with_an_adaptive_card(settings, db):
+    from apps.integrations.models import TeamsOutboxMessage
+
+    tia = _teams_person()
+    PendingSuggestion.objects.create(
+        user=tia,
+        kind="interest",
+        topic="kriging",
+        explanation="You brought this up on two days.",
+        choices=[{"key": "reports", "label": "Include it in my reports"}],
+        expires_at=timezone.now() + timedelta(days=14),
+    )
+    call_command("deliver_ambient_questions")
+    row = TeamsOutboxMessage.objects.get()
+    [card] = row.attachments
+    s = PendingSuggestion.objects.get()
+    assert card["content"]["actions"][0]["data"] == {"ambient": f"{s.pk}:reports"}

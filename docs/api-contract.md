@@ -150,6 +150,28 @@ routes clients depend on most.
 | `daily-report/` | POST | Toggle the daily PDF DM |
 | `disconnect/` | POST | Unlink |
 
+### Slack — `/api/integrations/slack/` (ambient Plan 11)
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `events/` | POST | Slack's Events API. Signed requests only (401 otherwise); 404 while `SLACK_ENABLED` is off |
+| `interactions/` | POST | Block Kit button presses on Mylo's questions; signed |
+| `install/` `oauth/callback` | GET | Install Mylo in a workspace (OAuth v2, session-bound `state`) |
+| `link-code/` `lab-code/` | POST | A code a person DMs to Mylo, or a lab manager's code posted with a mention in the channel for the lab's reports (`?lab=<slug>`, managers only) |
+| `status/` | GET | `{"enabled", "installable", "identities", "lab_workspace"}` (`?lab=<slug>` for a manager's view) |
+| `unlink/` | POST | `{"team_id"}` |
+| `listening/` | POST | A lab manager's switches: `{"on"?}` listening, `{"primary"?}` the lab's posts go to Slack |
+
+### Teams — `/api/integrations/teams/` (ambient Plan 11)
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `messages/` | POST | The Bot Framework messaging endpoint. A bearer JWT verified against Microsoft's keys (issuer, audience = the app id, expiry, `serviceurl`) or 401; 404 while `TEAMS_ENABLED` is off |
+| `link-code/` `lab-code/` | POST | Codes good on Teams only (a lab code needs `?lab=<slug>` and a manager) |
+| `status/` | GET | `{"enabled", "identities", "lab_team"}` |
+| `unlink/` | POST | `{"tenant_id"}` |
+| `lab/` | POST | A lab manager's switches: `{"on"?, "primary"?}` |
+
 ### Ambient attribution — `/api/ambient/`
 
 | Route | Methods | Purpose |
@@ -164,10 +186,11 @@ routes clients depend on most.
 | `understanding/` | GET | What Mylo knows about me: every knowledge-core edge with its source, and the developments I may see |
 | `understanding/<concept_id>/<relation>/` | PATCH, DELETE | Reword (`{"label"}`, it becomes mine) or delete one thing Mylo understood from conversation |
 | `understanding/<concept_id>/<relation>/reopen/` | POST | Include a declined or faded topic after all |
-| `settings/` | GET, PUT | Listening on Discord, Mylo's questions on/off, a quiet period; a free plan may turn things off only |
+| `settings/` | GET, PUT | Listening on Discord (and on Slack and Teams, `listening_slack` / `listening_teams`, once linked), Mylo's questions on/off, a quiet period; a free plan may turn things off only. GET also says whether transcripts are on |
 | `observations/delete/` | POST | `{"confirm": true}` — delete every summary and everything derived from them |
 | `projects/<id>/developments/` | GET | A project's development timeline, for anyone who can see the project; private ones for their speaker only |
 | `labs/<slug>/changes/` | GET | A lab's "What changed": lab-visible changes to its shared projects; members only |
+| `transcripts/` | POST | A meeting transcript (Plan 11): multipart `file` or `text`, `title`, `project` or `lab`. Without `speakers`, nothing is read: returns `{"labels", "members"}`. With `speakers` (JSON map label → user id) and `occurred_at`: reads the turns of mapped, opted-in members into the buffer, returns `{"meeting", "turns", "counts", "participants"}`. 403 while `AMBIENT_TRANSCRIPTS_ENABLED` is off or for a non-member |
 
 ### Collaboration — `/api/collab/`
 
