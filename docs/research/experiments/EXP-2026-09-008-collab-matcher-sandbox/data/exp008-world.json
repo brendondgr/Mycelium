@@ -1,0 +1,352 @@
+{
+ "corpus_path": "/app/data/sandbox/collab-20260918-600.json",
+ "corpus_seconds": 36.3,
+ "invariant_failures": [
+  "second_pass_model_calls = 2",
+  "second_pass_works_read = 2"
+ ],
+ "labs": 96,
+ "metrics": {
+  "concepts_global": 2816,
+  "concepts_private": 0,
+  "corpus_generator_slips": 4,
+  "edges_by_tier": {
+   "declared": 3672,
+   "demonstrated": 27978
+  },
+  "field_ruler_accuracy": 1.0,
+  "invariants": {
+   "conversational_edges": 0,
+   "neutral_phrases_in_deny_list": 0,
+   "private_concepts_from_papers": 0,
+   "rollup_evidence_from_someone_elses_work": 0,
+   "second_pass_model_calls": 2,
+   "second_pass_works_read": 2,
+   "second_projection_writes": 0,
+   "thin_works_with_edges": 0
+  },
+  "method_recall": 0.9978,
+  "method_split_total": 17,
+  "method_term_contamination": 5,
+  "methods_split": {
+   "dft": 1,
+   "fem": 1,
+   "gbm": 1,
+   "gnn": 1,
+   "gp": 1,
+   "kalman": 1,
+   "particle": 2,
+   "remote": 2,
+   "survival": 2,
+   "topic": 2,
+   "transformer": 2,
+   "unet": 1
+  },
+  "neutral_present_rate": 1.0,
+  "q1_precision": 1.0,
+  "q1_recall": 1.0,
+  "q2_declared_and_demonstrated_recall": 0.7775,
+  "q2_declared_only_recall": 1.0,
+  "q2_undeclared_method_shown_recall": 1.0,
+  "refused_by_facet": {
+   "problem_terms": 1,
+   "reusable_terms": 1
+  },
+  "run": {
+   "first_pass": {
+    "edges_created": 27959,
+    "edges_deleted": 0,
+    "failures": 0,
+    "looked_up": 0,
+    "people": 600,
+    "read": 2732,
+    "thin": 0,
+    "unavailable": 2,
+    "vectors": 0
+   },
+   "first_pass_seconds": 1298.9,
+   "model_calls": 2753,
+   "model_failures": 2,
+   "model_seconds_mean": 10.31,
+   "model_seconds_total": 28375.7,
+   "projection": {
+    "created": 3672,
+    "deferred": 0,
+    "deleted": 0,
+    "failures": 0,
+    "orphans_removed": 0,
+    "skipped": 0,
+    "subjects": 792,
+    "updated": 0
+   },
+   "projection_seconds": 37.1,
+   "second_pass": {
+    "edges_created": 19,
+    "edges_deleted": 0,
+    "failures": 0,
+    "looked_up": 0,
+    "people": 2,
+    "read": 2,
+    "thin": 0,
+    "unavailable": 0,
+    "vectors": 0
+   },
+   "second_pass_model_calls": 2,
+   "second_projection_writes": 0
+  },
+  "split_examples": {
+   "dft": [
+    {
+     "concept": 28,
+     "papers": 49,
+     "surfaces": [
+      "density functional theory"
+     ]
+    },
+    {
+     "concept": 352,
+     "papers": 41,
+     "surfaces": [
+      "DFT calculations"
+     ]
+    }
+   ],
+   "fem": [
+    {
+     "concept": 16,
+     "papers": 99,
+     "surfaces": [
+      "finite element analysis"
+     ]
+    },
+    {
+     "concept": 195,
+     "papers": 82,
+     "surfaces": [
+      "finite element method"
+     ]
+    }
+   ],
+   "gbm": [
+    {
+     "concept": 152,
+     "papers": 113,
+     "surfaces": [
+      "gradient-boosted trees"
+     ]
+    },
+    {
+     "concept": 3,
+     "papers": 102,
+     "surfaces": [
+      "gradient boosting"
+     ]
+    }
+   ],
+   "gnn": [
+    {
+     "concept": 4,
+     "papers": 138,
+     "surfaces": [
+      "graph neural network",
+      "graph neural networks"
+     ]
+    },
+    {
+     "concept": 154,
+     "papers": 70,
+     "surfaces": [
+      "message-passing neural network"
+     ]
+    }
+   ],
+   "gp": [
+    {
+     "concept": 269,
+     "papers": 105,
+     "surfaces": [
+      "kriging"
+     ]
+    },
+    {
+     "concept": 30,
+     "papers": 102,
+     "surfaces": [
+      "Gaussian process regression"
+     ]
+    }
+   ],
+   "kalman": [
+    {
+     "concept": 19,
+     "papers": 137,
+     "surfaces": [
+      "Kalman filter",
+      "Kalman filtering"
+     ]
+    },
+    {
+     "concept": 217,
+     "papers": 67,
+     "surfaces": [
+      "extended Kalman filter"
+     ]
+    }
+   ],
+   "particle": [
+    {
+     "concept": 192,
+     "papers": 101,
+     "surfaces": [
+      "sequential Monte Carlo"
+     ]
+    },
+    {
+     "concept": 15,
+     "papers": 72,
+     "surfaces": [
+      "particle filter"
+     ]
+    },
+    {
+     "concept": 555,
+     "papers": 6,
+     "surfaces": [
+      "sequential Monte Carlo particle filter"
+     ]
+    }
+   ],
+   "remote": [
+    {
+     "concept": 208,
+     "papers": 80,
+     "surfaces": [
+      "multispectral data",
+      "multispectral reflectance",
+      "multispectral remote sensing"
+     ]
+    },
+    {
+     "concept": 8,
+     "papers": 73,
+     "surfaces": [
+      "remote sensing",
+      "satellite remote sensing"
+     ]
+    },
+    {
+     "concept": 605,
+     "papers": 7,
+     "surfaces": [
+      "multi-spectral satellite remote sensing"
+     ]
+    }
+   ],
+   "survival": [
+    {
+     "concept": 33,
+     "papers": 111,
+     "surfaces": [
+      "survival analysis"
+     ]
+    },
+    {
+     "concept": 189,
+     "papers": 90,
+     "surfaces": [
+      "Cox proportional hazards model"
+     ]
+    },
+    {
+     "concept": 2433,
+     "papers": 1,
+     "surfaces": [
+      "survival-based approach"
+     ]
+    }
+   ],
+   "topic": [
+    {
+     "concept": 358,
+     "papers": 69,
+     "surfaces": [
+      "latent Dirichlet allocation"
+     ]
+    },
+    {
+     "concept": 22,
+     "papers": 62,
+     "surfaces": [
+      "topic modeling",
+      "topic modelling"
+     ]
+    },
+    {
+     "concept": 1395,
+     "papers": 4,
+     "surfaces": [
+      "probabilistic topic modeling",
+      "statistical topic modeling"
+     ]
+    }
+   ],
+   "transformer": [
+    {
+     "concept": 47,
+     "papers": 87,
+     "surfaces": [
+      "transformer language model"
+     ]
+    },
+    {
+     "concept": 426,
+     "papers": 46,
+     "surfaces": [
+      "BERT"
+     ]
+    },
+    {
+     "concept": 429,
+     "papers": 27,
+     "surfaces": [
+      "BERT-based language model"
+     ]
+    }
+   ],
+   "unet": [
+    {
+     "concept": 12,
+     "papers": 123,
+     "surfaces": [
+      "U-Net"
+     ]
+    },
+    {
+     "concept": 182,
+     "papers": 4,
+     "surfaces": [
+      "U-Net segmentation network",
+      "segmentation network"
+     ]
+    }
+   ]
+  },
+  "thin_rate_on_clean": 0.0,
+  "works_clean_corpus": 2730,
+  "works_non_thin": 2730,
+  "works_read": 2734,
+  "works_total": 2734,
+  "wrong_merge_total": 0,
+  "wrong_merges": {}
+ },
+ "papers": 2734,
+ "people": 600,
+ "projects": 96,
+ "seed": 20260918,
+ "seeded": {
+  "labs": 96,
+  "people": 600,
+  "projects": 96,
+  "works": 2734
+ }
+}

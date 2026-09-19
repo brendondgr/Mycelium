@@ -1,0 +1,35 @@
+{
+ "desktop": {
+  "call_chips": 3,
+  "call_chips_marked_gap": 2,
+  "console_errors": [],
+  "empty_state": false,
+  "evidence_tags": 2,
+  "grants_no_page_scroll": true,
+  "hits_shown": 2,
+  "palette_text_carried": true,
+  "panel_no_page_scroll": true,
+  "project_chips": 6,
+  "project_no_page_scroll": true,
+  "result_groups": [
+   "FILLS A GAP"
+  ]
+ },
+ "invariant_failures": [],
+ "phone": {
+  "call_chips": 3,
+  "call_chips_marked_gap": 2,
+  "console_errors": [],
+  "empty_state": false,
+  "evidence_tags": 2,
+  "grants_no_page_scroll": true,
+  "hits_shown": 2,
+  "palette_text_carried": true,
+  "panel_no_page_scroll": true,
+  "project_chips": 6,
+  "project_no_page_scroll": true,
+  "result_groups": [
+   "FILLS A GAP"
+  ]
+ }
+}

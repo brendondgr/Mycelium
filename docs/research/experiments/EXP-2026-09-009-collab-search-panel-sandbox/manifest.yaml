@@ -9,47 +9,50 @@
 id: EXP-2026-09-009
 slug: collab-search-panel-sandbox
 title: Does the collaborator search panel work end to end for hundreds of fake seekers, and does every response stay a coarse pointer? A sandbox test of plan CN-06
-status: planned # planned | running | complete | failed | superseded
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-09-18
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-09-19
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Plan CN-06's sandbox validation: every entry point of the collaborator
+  search through the real API for many fake seekers, and the panel in a real
+  browser at desktop and phone width.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Pre-registered (resized pre-run, ISSUES 2): zero shape, privacy and refusal
+  violations; saved list correct; browser assertions pass. OUTCOME: 0 API
+  violations over 130 searches; browser passes at both widths after two
+  product fixes (own-words reading; Escape after Run).
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: ca070ef
+  commit: 8a5b2a8
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
+  entrypoint: "cd web/backend && SANDBOX_DB=mycelium_sandbox_panel uv run --project . python -m sandbox.collab panel --people 600 --budget-minutes 45 --seekers 60 --rerank-seekers 10 --read-calls 20 --search-workers 12; then code/browser_check.py (see RESULTS.md 8)"
   dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
-  path: <path to the config file, or null>
+  path: web/backend/sandbox/collab/panel_sim.py
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: synthetic collaboration world (EXP-2026-09-008's)
+  version: "seed 20260918, 600 people, 150 planted calls (20 read)"
+  split: test
+  n_examples: 130 # searches through the API; plus 2 browser widths
   qrels: null
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
-seeds: []
+seeds: [20260918]
 n_runs: 1
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml; sandbox stack in code/sandbox_stack.sh; Chromium via Playwright on the host"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "20 CPU cores, 62 GB RAM; model on the shared relay"
+  wall_clock_hours: 0.1
+  estimated_cost_usd: 0.0
 
 # --- LLM block (delete entirely if no model was called) ----------------------
 # llm:
@@ -67,8 +70,52 @@ compute:
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
+  primary: api_violations_total (must be 0) and browser_failures (must be 0)
+  values:
+    api_calls_with_slots: 20
+    api_empty_results: 22
+    api_feedback_201: 39
+    api_foreign_project_hidden_403: 60
+    api_hits: 476
+    api_hits_in_field: 77
+    api_hits_method_bridge: 308
+    api_hits_problem_bridge: 42
+    api_hits_resource: 49
+    api_hits_without_reason: 391
+    api_latency_call_dry_run_p50: 0.236
+    api_latency_call_dry_run_p95: 0.617
+    api_latency_call_p50: 14.974
+    api_latency_call_p95: 22.985
+    api_latency_manual_dry_run_p50: 2.121
+    api_latency_manual_dry_run_p95: 2.549
+    api_latency_manual_p50: 8.694
+    api_latency_manual_p95: 12.712
+    api_latency_project_dry_run_p50: 0.914
+    api_latency_project_dry_run_p95: 1.628
+    api_latency_project_p50: 12.038
+    api_latency_project_p95: 19.556
+    api_saved_checked: 39
+    api_searches_call: 60
+    api_searches_manual: 10
+    api_searches_project: 60
+    api_seekers: 60
+    api_seekers_done: 60
+    api_stopped_at_deadline: 0
+    api_unverified_checked: 10
+    api_violations_total: 0
+    browser_desktop_call_chips: 3
+    browser_desktop_call_chips_marked_gap: 2
+    browser_desktop_console_errors: 0
+    browser_desktop_evidence_tags: 2
+    browser_desktop_hits_shown: 2
+    browser_desktop_project_chips: 6
+    browser_failures: 0
+    browser_phone_call_chips: 3
+    browser_phone_call_chips_marked_gap: 2
+    browser_phone_console_errors: 0
+    browser_phone_evidence_tags: 2
+    browser_phone_hits_shown: 2
+    browser_phone_project_chips: 6
 baselines_compared: []
 statistical_test: null
 
@@ -78,4 +125,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-09-008, EXP-2026-09-010]
