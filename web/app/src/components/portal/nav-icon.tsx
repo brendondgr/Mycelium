@@ -9,6 +9,7 @@ import {
   FolderIcon,
   GridIcon,
   MembersIcon,
+  MyloGlyph,
   ReceiptIcon,
   ShieldIcon,
   SparkleIcon,
@@ -52,6 +53,8 @@ export function NavIconFor({
       return <ConferenceIcon size={size} />;
     case "projects":
       return <FolderIcon size={size} />;
+    case "mylo":
+      return <MyloGlyph size={size} />;
     case "admin":
       return <ShieldIcon size={size} />;
     case "account":

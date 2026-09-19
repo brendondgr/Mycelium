@@ -294,6 +294,9 @@ def _daily_briefing_envelope(briefing) -> dict:
         # quote different numbers for the same morning. Empty on a briefing
         # written before statistics existed.
         "stats": briefing.stats or {},
+        # What the report was written against (ambient Plan 05): a digest of the
+        # declared profile, confirmed understanding and developments in effect.
+        "context_version": briefing.context_version or "",
         "kind": briefing.kind,
         "briefing": {"body": briefing.body, "origin": briefing.origin},
     }

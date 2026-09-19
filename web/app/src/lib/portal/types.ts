@@ -412,6 +412,10 @@ export type DailyBriefing = {
    * different figures for the same morning. Empty on briefings written before
    * statistics existed. */
   stats?: BriefingStats;
+  /** A digest of what the report was written against — the declared profile,
+   * what the reader confirmed Mylo understood, and project developments in
+   * effect. Empty on reports written before it existed. */
+  context_version?: string;
   /** Which report this is. `"daily"` unless the caller asked for the weekly. */
   kind?: BriefingKind;
   /** The written briefing, or null when no run has produced one yet. */

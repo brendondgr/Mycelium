@@ -283,11 +283,25 @@ export function ReportsSection() {
                 description="The report for this date could not be fetched. Pick another date, or try again shortly."
               />
             ) : (
-              <MyloReportCard
-                data={detail.data}
-                isLoading={detail.isLoading}
-                title="Report"
-              />
+              <>
+                <MyloReportCard
+                  data={detail.data}
+                  isLoading={detail.isLoading}
+                  title="Report"
+                />
+                {detail.data?.context_version ? (
+                  <p className="mt-2 text-[12px] text-[var(--text-muted)]">
+                    Written against version {detail.data.context_version.slice(0, 7)} of
+                    what Mylo understands about you ·{" "}
+                    <a
+                      href="/app/mylo-and-you"
+                      className="underline-offset-2 hover:underline"
+                    >
+                      see what Mylo understands now
+                    </a>
+                  </p>
+                ) : null}
+              </>
             )}
           </div>
         </div>

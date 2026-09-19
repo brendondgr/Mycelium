@@ -39,6 +39,7 @@ export type NavIcon =
   | "conferences"
   | "projects"
   | "admin"
+  | "mylo"
   | "account";
 
 export type NavGroup = { label: string; items: NavItem[] };
@@ -169,6 +170,8 @@ export function navGroupsFor(ctx: NavContext): NavGroup[] {
     items: [
       { key: "overview", label: "Overview", icon: "overview" },
       { key: "profile", label: "Profile", icon: "profile" },
+      // What Mylo understood from your conversations: personal, always.
+      { key: "mylo", label: "Mylo & you", icon: "mylo" },
       ...common,
     ],
   });

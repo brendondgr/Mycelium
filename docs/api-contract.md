@@ -159,6 +159,15 @@ routes clients depend on most.
 | `attributions/<ref_id>/correct/` | POST | "This was about a different project" |
 | `suggestions/` | GET | My open questions from Mylo, strongest first (ambient Plan 06) |
 | `suggestions/<id>/answer/` | POST | Answer one of my questions: `{"choice", "correction"?}`; 409 if it was already answered |
+| `changes/` | GET | What changed: my changes, and lab-visible changes to projects I am on (ambient Plan 07) |
+| `changes/<id>/undo/` | POST | Undo one change — never time-limited, logged as its own change; 403 if not mine (or not an editor of its lab project), 409 if already undone |
+| `understanding/` | GET | What Mylo knows about me: every knowledge-core edge with its source, and the developments I may see |
+| `understanding/<concept_id>/<relation>/` | PATCH, DELETE | Reword (`{"label"}`, it becomes mine) or delete one thing Mylo understood from conversation |
+| `understanding/<concept_id>/<relation>/reopen/` | POST | Include a declined or faded topic after all |
+| `settings/` | GET, PUT | Listening on Discord, Mylo's questions on/off, a quiet period; a free plan may turn things off only |
+| `observations/delete/` | POST | `{"confirm": true}` — delete every summary and everything derived from them |
+| `projects/<id>/developments/` | GET | A project's development timeline, for anyone who can see the project; private ones for their speaker only |
+| `labs/<slug>/changes/` | GET | A lab's "What changed": lab-visible changes to its shared projects; members only |
 
 ### Collaboration — `/api/collab/`
 
@@ -650,6 +659,27 @@ correction records every signal's score as a labelled example. Returns
 `kind` is `interest`, `skill`, `development`, `intent`, `clarify` or `review`.
 `choices` holds only what exists for this person today (a new theme only with a
 free slot; project choices only for their own projects).
+
+**`GET changes/`** — `{"changes": [{"id", "kind", "kind_label", "topic",
+"project": null | {"id", "name"}, "field", "old_value", "new_value", "surface":
+"dm" | "web" | "told" | "", "explanation", "visibility": "personal" | "lab", "by":
+{"id", "name", "you"}, "created_at", "undone_at", "undo_of", "can_undo"}]}`, newest
+first. `kind` is one of `exploration_confirmed`, `exploration_kept`,
+`exploration_dropped`, `understanding_confirmed`, `development_recorded`,
+`development_confirmed`, `profile_edit`, `state_edit`, `undone`. A change one
+member made privately is never in anybody else's list, nor in a lab's.
+
+**`GET understanding/`** — `{"statement", "edges": [{"concept_id", "label",
+"facet", "relation", "tier": "declared" | "demonstrated" | "conversational",
+"status", "kind", "source": "You wrote this" | "Your papers show this" | "From
+conversation", "first_seen", "last_reinforced", "review_on", "edited",
+"editable", "eligible_again_on"?, "resting"?}], "developments": [...]}`. Only the
+signed-in person's own edges; `editable` only for conversational ones.
+
+**`GET/PUT settings/`** — `{"available", "paid", "linked", "listening":
+{"discord"}, "questions_muted", "quiet_until", "statement", "observations"}`; PUT
+takes any of `listening_discord`, `questions_muted`, `quiet_until`
+(`YYYY-MM-DD` or null). Turning questions off withdraws open questions at once.
 
 **`POST suggestions/<id>/answer/`** `{ "choice", "correction"? }` — the question's
 own person only (404 otherwise). `choice` must be one of the offered keys (400

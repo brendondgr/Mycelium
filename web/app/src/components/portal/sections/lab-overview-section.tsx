@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { LabChangesCard } from "@/components/portal/ambient/lab-changes-card";
 import { usePortal } from "@/components/portal/portal-context";
 import { EditIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
@@ -150,6 +151,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
             items={savesQuery.data?.items ?? []}
             isLoading={savesQuery.isLoading}
           />
+          <LabChangesCard slug={lab.slug} />
         </div>
       </div>
 

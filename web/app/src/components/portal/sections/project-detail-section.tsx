@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { ProjectDevelopmentsCard } from "@/components/portal/ambient/project-developments-card";
 import { ProjectCollaboratorsCard } from "@/components/portal/collab/find-collaborators";
 import { Avatar } from "@/components/portal/primitives/avatar";
 import { Card } from "@/components/portal/primitives/card";
@@ -301,6 +302,8 @@ function ProjectOverviewPanel({
         {/* Below the state, because every proposal is a proposed edit *to* it.
             Absent when there is nothing to decide. */}
         <ReflectionCard />
+        {/* What conversation recorded about the project; absent when empty. */}
+        <ProjectDevelopmentsCard projectId={project.id} />
         <ProjectFocusCard project={project} onEdit={onEdit} />
       </div>
     );

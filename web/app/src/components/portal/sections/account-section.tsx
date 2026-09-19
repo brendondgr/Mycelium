@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
+import { AmbientSettingsCard } from "@/components/portal/ambient/ambient-settings-card";
 import { CollaborationSettingsCard } from "@/components/portal/collab/collaboration-settings-card";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { BillingSection } from "@/components/portal/sections/billing-section";
@@ -89,6 +90,8 @@ export function AccountSection() {
       </div>
 
       <CollaborationSettingsCard />
+
+      <AmbientSettingsCard />
 
       <BillingSection />
     </div>

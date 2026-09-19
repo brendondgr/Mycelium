@@ -158,8 +158,10 @@ function NotificationRow({ note }: { note: NotificationItem }) {
           {note.url ? (
             <a
               href={note.url}
-              target="_blank"
-              rel="noreferrer"
+              // An in-app page opens here; an item's source opens beside it.
+              {...(note.url.startsWith("/app/")
+                ? {}
+                : { target: "_blank", rel: "noreferrer" })}
               className="text-sm font-medium text-[var(--text-primary)] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {note.title}
