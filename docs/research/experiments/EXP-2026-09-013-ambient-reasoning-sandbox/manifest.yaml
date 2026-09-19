@@ -1,0 +1,81 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-09-013
+slug: ambient-reasoning-sandbox
+title: TODO: title for ambient-reasoning-sandbox
+status: planned # planned | running | complete | failed | superseded
+date_started: 2026-09-19
+date_completed: null
+authors: [<your name>]
+
+purpose: >
+  One paragraph. What question does this answer, and which claim in CLAIMS.md
+  does it support or refute?
+
+hypothesis: >
+  Stated before the run. If exploratory, write "exploratory — no prior
+  hypothesis" rather than back-filling a hypothesis the result already confirms.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: cc651be
+  branch: main
+  entrypoint: "<the exact command that produces the numbers>"
+  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+config:
+  path: <path to the config file, or null>
+  hash: null
+data:
+  name: <collection or dataset>
+  version: <version or snapshot>
+  split: <train | test | dev>
+  n_examples: 0
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: <path to the lockfile that pinned this run>
+  container: null
+compute:
+  hardware: "<CPU/GPU, RAM>"
+  wall_clock_hours: null
+  estimated_cost_usd: null
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+# llm:
+#   model: "<provider>/<model>@<version-or-date>"
+#   temperature: 0.0
+#   max_tokens: 2048
+#   prompt_files: []
+#   prompt_hash: null
+#   total_input_tokens: 0
+#   total_output_tokens: 0
+#   nondeterminism_note: >
+#     Provider-side nondeterminism remains even at temperature 0; report
+#     mean ± std over n_runs.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: <metric name>
+  values: {}
+baselines_compared: []
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: []

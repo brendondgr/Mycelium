@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 COMPONENT = "ambient_extract"
 #: Bump whenever the prompt or the validation changes.
-PROMPT_VERSION = "a1"
+PROMPT_VERSION = "a2"
 MAX_ATTEMPTS = 2
 MAX_OBSERVATIONS = 8
 MAX_TOPIC_WORDS = 6
@@ -89,8 +89,11 @@ kind:
   current_curiosity    something the speaker is curious about lately
   work_preference      how the speaker likes to work ("prefers empirical work")
   career_direction     where the speaker wants their career to go
-  capability           something the speaker says they have done or can do
-                       ("I ran the kriging again", "I built the loader")
+  capability           something the speaker says they personally did or can
+                       do with a named method, tool or technique ("I ran the
+                       kriging again", "I built the loader in Rust") — use it
+                       even when it was for a project; if the project itself
+                       changed too, note that separately as a development
   learning_goal        something the speaker wants to learn — not a skill
   project_intent       what a project is trying to show or achieve
   project_development  a concrete change in a project: data arrived, an
@@ -274,14 +277,33 @@ def _grounded_line(sentence: str, cited: Line | None, lines: list[Line]) -> Line
     return None
 
 
-def _quotes(account: str, sentence: str, lines: list[Line]) -> bool:
-    folded = fold(account)
-    if fold(sentence) and fold(sentence) in folded:
-        return True
-    grams = _ngrams(account, QUOTE_WORDS)
+def quoted_runs(text: str, sources, *, allowed: str = "") -> list[str]:
+    """Runs of ``QUOTE_WORDS`` words ``text`` shares with any of ``sources``.
+
+    A run made of nothing but the topic's own words (``allowed``) and filler is
+    a name, not a quote — "the Baltic tide dataset for" names a dataset — so it
+    only counts when it carries at least two other content words.
+    """
+    grams = _ngrams(text, QUOTE_WORDS)
     if not grams:
-        return False
-    return any(grams & _ngrams(line.text or "", QUOTE_WORDS) for line in lines)
+        return []
+    own = _content_words(allowed)
+    shared = set()
+    for source in sources:
+        shared |= grams & _ngrams(source or "", QUOTE_WORDS)
+    return [
+        " ".join(gram)
+        for gram in sorted(shared)
+        if len({w for w in gram if w not in _STOP and len(w) > 1} - own) >= 2
+    ]
+
+
+def _quotes(account: str, sentence: str, lines: list[Line], topic: str = "") -> bool:
+    folded = fold(account)
+    needle = fold(sentence)
+    if needle and needle in folded and not _content_words(needle) <= _content_words(topic):
+        return True
+    return bool(quoted_runs(account, [line.text for line in lines], allowed=topic))
 
 
 def validate(
@@ -357,7 +379,7 @@ def validate(
         if not (MIN_ACCOUNT_CHARS <= len(account) <= MAX_ACCOUNT_CHARS):
             refuse("bad_account", f"{label}: the account must be one short sentence")
             continue
-        if _quotes(account, sentence, lines):
+        if _quotes(account, sentence, lines, topic):
             refuse(
                 "quote_in_account",
                 f"{label}: the account copies the speaker's words; say it in your own",

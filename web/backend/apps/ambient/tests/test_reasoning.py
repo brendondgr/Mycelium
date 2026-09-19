@@ -856,3 +856,61 @@ def test_no_table_here_holds_a_persons_words():
     for model in (ExtractionRun, Finding):
         names = {f.name for f in model._meta.get_fields() if hasattr(f, "attname")}
         assert not names & forbidden, model
+
+
+# -- found by the sandbox smoke run (EXP-2026-09-013 ISSUES) ----------------------
+
+
+def test_one_topic_said_as_interest_and_learning_goal_is_one_finding(ada):
+    cp = _concept("conformal prediction")
+    _noted(ada, cp, days_ago=15, kind="current_curiosity", conversation="a")
+    _noted(ada, cp, days_ago=8, kind="learning_goal", conversation="b")
+    _noted(ada, cp, days_ago=1, kind="current_curiosity", conversation="c")
+    deliberate.deliberate()
+    findings = Finding.objects.filter(user=ada, concept=cp)
+    assert findings.count() == 1
+    finding = findings.get()
+    assert finding.understanding_kind == "current_curiosity"
+    assert finding.outcome == Finding.Outcome.SUGGEST
+    assert finding.facts["kinds"] == {"current_curiosity": 2, "learning_goal": 1}
+
+
+def test_the_family_kind_follows_the_majority_without_duplicating(ada):
+    cp = _concept("conformal prediction")
+    _noted(ada, cp, days_ago=15, kind="learning_goal", conversation="a")
+    deliberate.deliberate()
+    assert Finding.objects.get(user=ada, concept=cp).understanding_kind == "learning_goal"
+    _noted(ada, cp, days_ago=3, kind="current_curiosity", conversation="b")
+    _noted(ada, cp, days_ago=1, kind="current_curiosity", conversation="c")
+    deliberate.deliberate()
+    assert Finding.objects.filter(user=ada, concept=cp).count() == 1
+    assert Finding.objects.get(user=ada, concept=cp).understanding_kind == "current_curiosity"
+
+
+def test_a_capability_is_never_folded_into_an_interest(ada):
+    kriging = _concept("kriging")
+    _noted(ada, kriging, days_ago=15, kind="capability", force="fact", conversation="a")
+    _noted(ada, kriging, days_ago=1, kind="current_curiosity", conversation="b")
+    deliberate.deliberate()
+    assert Finding.objects.filter(user=ada, concept=kriging).count() == 2
+
+
+def test_unresolved_project_chatter_is_not_asked_about(ada):
+    data = _concept("centrifuge booking", Facet.SETTING)
+    _noted(ada, data, days_ago=15, kind="project_development", force="possibility",
+           subject="project", conversation="a")
+    _noted(ada, data, days_ago=1, kind="project_development", force="question",
+           subject="project", conversation="b")
+    deliberate.deliberate()
+    finding = Finding.objects.get(user=ada, concept=data)
+    assert finding.outcome == Finding.Outcome.IGNORE
+
+
+def test_a_topic_name_repeated_is_not_a_quote():
+    from apps.ambient.extract import quoted_runs
+
+    message = "just a heads up that the Baltic tide dataset for the project arrived"
+    naming = "You told me that the Baltic tide dataset for Project A1 is in."
+    assert quoted_runs(naming, [message], allowed="Baltic tide dataset") == []
+    quoting = "You said just a heads up that the Baltic tide news came."
+    assert quoted_runs(quoting, [message], allowed="Baltic tide dataset")

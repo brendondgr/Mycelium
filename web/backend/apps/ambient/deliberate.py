@@ -94,6 +94,31 @@ COVERING = {
 _INTEREST_COVERING = {"interested_in", "can_do", "wants_to_learn", "works_on"}
 
 
+#: Kinds that are one topic seen from slightly different angles. "I'd love to
+#: dig into X", "X has been on my mind" and "I want to learn X" are the same
+#: person coming back to the same thing; splitting them by kind would keep a
+#: real, repeated interest under the floor three times over. One finding per
+#: topic; its kind is the one said most (latest on a tie).
+INTEREST_FAMILY = frozenset(
+    {
+        UnderstandingKind.ENDURING_INTEREST,
+        UnderstandingKind.CURRENT_CURIOSITY,
+        UnderstandingKind.LEARNING_GOAL,
+    }
+)
+_FAMILY = "interest"
+
+
+def _family(kind: str) -> str:
+    return _FAMILY if kind in INTEREST_FAMILY else kind
+
+
+def _dominant(rows) -> str:
+    counts = Counter(o.understanding_kind for o in rows)
+    latest = {o.understanding_kind: o.observed_at for o in rows}
+    return max(counts, key=lambda kind: (counts[kind], latest[kind]))
+
+
 @dataclass
 class DeliberateRun:
     people: int = 0
@@ -417,7 +442,9 @@ def decide_project(kind, rows, *, resolved: bool, covered: str | None, now) -> D
         )
     ]
     if not resolved:
-        if _told_fact(live) or seen.repeated():
+        # Which project? is worth a question only for a fact told to Mylo, or
+        # talk consistent enough to have been suggested had it been placed.
+        if _told_fact(live) or seen.consistent():
             return Decision(Finding.Outcome.ASK, "attribution_unresolved", seen)
         return Decision(Finding.Outcome.IGNORE, "below_floor", seen)
     if kind == UnderstandingKind.PROJECT_DEVELOPMENT and _told_fact(live):
@@ -559,7 +586,7 @@ def deliberate(*, now=None, users=None) -> DeliberateRun:
                 side = ("p", None, str(o.project_id))
             else:
                 side = ("up", speaker_id, str(o.project_id))
-            groups[(side, view.id, o.understanding_kind)].append(o)
+            groups[(side, view.id, _family(o.understanding_kind))].append(o)
 
     # Supersession runs per subject and concept, across kinds.
     by_topic: dict[tuple, list[Observation]] = defaultdict(list)
@@ -588,12 +615,25 @@ def deliberate(*, now=None, users=None) -> DeliberateRun:
             ] or members
             members.sort(key=lambda o: (o.observed_at, o.pk))
             concept = concepts[members[0].concept_id]
+            if kind == _FAMILY:
+                kind = _dominant(members)
+                # One finding per topic in the family: a kind that lost the
+                # majority tonight gives its row up rather than duplicating it.
+                Finding.objects.filter(
+                    user_id=side[1],
+                    project__isnull=True,
+                    concept_id=concept.id,
+                    understanding_kind__in=INTEREST_FAMILY - {kind},
+                ).delete()
             kind_is_personal = kind in PERSONAL_KINDS
             if side[0] == "u" and kind_is_personal:
                 person = people[side[1]]
                 held = held_by_person[side[1]]
                 decision = decide_personal(
                     kind, members, concept.id, concept.vector, held, now
+                )
+                decision.extra["kinds"] = dict(
+                    Counter(o.understanding_kind for o in members)
                 )
                 spend = None
                 if decision.outcome == Finding.Outcome.SUGGEST:
