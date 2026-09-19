@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { FindCollaboratorsButton } from "@/components/portal/collab/find-collaborators";
 import { sendSlotFeedback } from "@/lib/portal/collab/client";
 import type {
   SlotFeedbackKind,
@@ -32,15 +33,22 @@ const FACET_LABEL: Record<TeamFitSlot["facet"], string> = {
  *
  * Every slot can be corrected ("not a requirement", "we do cover this", "you
  * missed one"); those corrections are how the requirement reader is measured.
+ *
+ * When something is a gap, "Find collaborators" (plan CN-06) opens the search
+ * pre-filled with these slots and their coverage — only for a reader who may
+ * search; a reader on the free plan sees a one-line note instead.
  */
 export function TeamFitLine({
   contentId,
   fit,
+  title,
   forLab = false,
   className,
 }: {
   contentId: string;
   fit: TeamFit | null | undefined;
+  /** The call's title, for the search panel's heading. */
+  title: string;
   forLab?: boolean;
   className?: string;
 }) {
@@ -83,6 +91,22 @@ export function TeamFitLine({
           {open ? "Hide" : "Details"}
         </button>
       </div>
+      {fit.gaps.length > 0 ? (
+        <FindCollaboratorsButton
+          upgradeNote
+          className="mt-2"
+          request={{
+            entry: { entry: "call", content_id: contentId },
+            title,
+            slots: fit.slots.map((slot) => ({
+              facet: slot.facet,
+              text: slot.text,
+              required: slot.required,
+              covered_by: slot.facet === "role" ? undefined : slot.covered_by,
+            })),
+          }}
+        />
+      ) : null}
       {open ? (
         <TeamFitDetails id={detailsId} contentId={contentId} fit={fit} />
       ) : null}

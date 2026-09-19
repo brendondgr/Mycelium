@@ -4,12 +4,14 @@ from .views import (
     CollaborationPreviewView,
     CollaborationSettingView,
     MatchFeedbackView,
+    SavedPeopleView,
     SearchView,
     SlotFeedbackView,
 )
 
 urlpatterns = [
     path("search/", SearchView.as_view(), name="collab-search"),
+    path("saved/", SavedPeopleView.as_view(), name="collab-saved"),
     path(
         "searches/<int:search_id>/feedback/",
         MatchFeedbackView.as_view(),

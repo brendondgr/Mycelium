@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { ProjectCollaboratorsCard } from "@/components/portal/collab/find-collaborators";
 import { Avatar } from "@/components/portal/primitives/avatar";
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
@@ -220,6 +221,11 @@ const SIDE_TABS: TabItem[] = [
   { key: "feed", label: "Feed", icon: <DocumentIcon size={14} /> },
   { key: "collections", label: "Collections", icon: <ListIcon size={14} /> },
   { key: "team", label: "Team", icon: <MembersIcon size={14} /> },
+  {
+    key: "collaborators",
+    label: "Collaborators",
+    icon: <SparkleIcon size={14} />,
+  },
   { key: "settings", label: "Settings", icon: <TargetIcon size={14} /> },
 ];
 
@@ -273,6 +279,9 @@ function ProjectOverviewPanel({
     }
     if (side === "team") {
       return <ProjectTeamCard project={project} />;
+    }
+    if (side === "collaborators") {
+      return <ProjectCollaboratorsCard project={project} />;
     }
     if (side === "settings") {
       return <ProjectSettingsCard project={project} onEdit={onEdit} />;

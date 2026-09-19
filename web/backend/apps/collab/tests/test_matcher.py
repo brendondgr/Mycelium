@@ -372,3 +372,61 @@ def test_a_refused_search_says_why(world, settings):
         format="json",
     )
     assert response.status_code == 403 and "at most" in response.json()["detail"]
+
+
+def test_availability_says_why_a_search_would_be_refused(world, settings):
+    ada, _, _ = world
+    settings.COLLAB_SEARCH_ENABLED = False
+    assert _client(ada).get("/api/collab/search/").json()["code"] == "not_enabled"
+    settings.COLLAB_SEARCH_ENABLED = True
+    body = _client(ada).get("/api/collab/search/").json()
+    assert body == {
+        "available": True,
+        "code": "",
+        "reason": "",
+        "max_scope": "institution",
+    }
+    settings.BILLING_ENFORCE_ENTITLEMENTS = True
+    body = _client(ada).get("/api/collab/search/").json()
+    assert body["available"] is False and body["code"] == "paid_plan"
+
+
+def test_a_dry_run_returns_the_prefilled_query_and_searches_nothing(world, settings):
+    ada, _, project = world
+    settings.COLLAB_SEARCH_ENABLED = True
+    body = (
+        _client(ada)
+        .post(
+            "/api/collab/search/",
+            {"entry": "project", "project_id": str(project.pk), "dry_run": True},
+            format="json",
+        )
+        .json()
+    )
+    assert {s["text"] for s in body["slots"]} >= {"kriging"}
+    assert "lanes" not in body
+    assert not SearchLog.objects.exists()
+
+
+def test_saved_people_drop_anyone_no_longer_reachable(world, settings, monkeypatch):
+    ada, people, project = world
+    settings.COLLAB_SEARCH_ENABLED = True
+    monkeypatch.setattr(matcher, "_default_complete", _model())
+    body = (
+        _client(ada)
+        .post(
+            "/api/collab/search/",
+            {"entry": "project", "project_id": str(project.pk)},
+            format="json",
+        )
+        .json()
+    )
+    _client(ada).post(
+        f"/api/collab/searches/{body['search_id']}/feedback/",
+        {"candidate": "bo", "lane": "method_bridge", "kind": "save"},
+        format="json",
+    )
+    saved = _client(ada).get("/api/collab/saved/").json()["people"]
+    assert [p["username"] for p in saved] == ["bo"]
+    consent.update(people["bo"], open=False, audience=Audience.INSTITUTION)
+    assert _client(ada).get("/api/collab/saved/").json()["people"] == []

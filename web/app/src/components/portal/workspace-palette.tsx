@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { CheckIcon, SearchIcon } from "@/components/portal/icons";
+import { openCollaboratorSearch } from "@/components/portal/collab/search-panel";
+import { CheckIcon, MembersIcon, SearchIcon } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
 import { WorkspaceMark } from "@/components/portal/workspace-mark";
 import { Modal } from "@/components/portal/primitives/modal";
+import { useSearchAvailability } from "@/lib/portal/collab/hooks";
 import {
   scopeForWorkspace,
   scopeKey,
@@ -36,6 +38,7 @@ export function WorkspacePalette() {
   const [cursor, setCursor] = useState(0);
   const [recents, setRecents] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchable = useSearchAvailability().data?.available === true;
 
   useEffect(() => {
     const stored = window.localStorage.getItem(RECENTS_KEY);
@@ -218,6 +221,34 @@ export function WorkspacePalette() {
             </p>
           ) : null}
         </div>
+        {searchable ? (
+          // One action beside the workspaces: the collaborator search, opened
+          // with whatever was typed as the need (plan CN-06).
+          <div className="border-t border-[var(--divider)] p-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                openCollaboratorSearch({
+                  entry: { entry: "manual", text: query.trim() },
+                  title: "Describe what you need",
+                });
+              }}
+              className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left text-[13.5px] text-[var(--text-primary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <MembersIcon size={16} className="shrink-0 text-[var(--text-muted)]" />
+              <span className="flex-1 truncate">
+                Find collaborators
+                {query.trim() ? (
+                  <span className="text-[11.5px] text-[var(--text-muted)]">
+                    {" "}
+                    · for “{query.trim()}”
+                  </span>
+                ) : null}
+              </span>
+            </button>
+          </div>
+        ) : null}
       </div>
     </Modal>
   );

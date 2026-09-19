@@ -80,7 +80,15 @@ CompleteFn = Callable[[str, str], str | None]
 
 
 class SearchRefused(ValueError):
-    """The seeker may not run this search; nothing was searched or recorded."""
+    """The seeker may not run this search; nothing was searched or recorded.
+
+    ``code`` names the reason for a surface that must decide what to show
+    instead (an upgrade note, a verify prompt) without parsing the message.
+    """
+
+    def __init__(self, message: str, code: str = "refused"):
+        super().__init__(message)
+        self.code = code
 
 
 # --- the query ------------------------------------------------------------
@@ -615,15 +623,17 @@ def check_seeker(seeker, now=None) -> None:
     from apps.billing.models import Tier
 
     if consent.place_of(seeker) is None:
-        raise SearchRefused("verify your email to search")
+        raise SearchRefused("verify your email to search", "unverified")
     if enforcing() and effective_tier(seeker) == Tier.FREE:
-        raise SearchRefused("searching for collaborators is part of a paid plan")
+        raise SearchRefused(
+            "searching for collaborators is part of a paid plan", "paid_plan"
+        )
     since = (now or timezone.now()) - timedelta(days=1)
     if (
         SearchLog.objects.filter(seeker=seeker, created_at__gte=since).count()
         >= settings.COLLAB_SEARCHES_PER_DAY
     ):
-        raise SearchRefused("that is today's limit of searches")
+        raise SearchRefused("that is today's limit of searches", "daily_limit")
 
 
 def search(

@@ -7,7 +7,13 @@ import type {
   Audience,
   CollaborationPreview,
   CollaborationSetting,
+  Lane,
   OpenTo,
+  QuerySlot,
+  SavedPerson,
+  SearchAvailability,
+  SearchEntry,
+  SearchResponse,
   SlotFeedbackKind,
 } from "./types";
 
@@ -84,4 +90,57 @@ export async function fetchCollaborationPreview(): Promise<CollaborationPreview>
     credentials: "include",
   });
   return readJson(response, "Could not load the preview.");
+}
+
+
+async function postJson<T>(path: string[], body: unknown, fallback: string): Promise<T> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+  const response = await fetch(buildApiUrl(getPublicApiBase(), ...path), {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  return readJson(response, fallback);
+}
+
+export async function fetchSearchAvailability(): Promise<SearchAvailability> {
+  const response = await fetch(buildApiUrl(getPublicApiBase(), "collab", "search"), {
+    credentials: "include",
+  });
+  return readJson(response, "Could not check collaborator search.");
+}
+
+/** The pre-filled query for an entry point, without searching. */
+export function prefillSearch(entry: SearchEntry): Promise<{ slots: QuerySlot[] }> {
+  return postJson(["collab", "search"], { ...entry, dry_run: true }, "Could not prepare the search.");
+}
+
+export function runSearch(
+  entry: SearchEntry,
+  options: { slots: QuerySlot[]; lanes: Lane[]; scope: Audience },
+): Promise<SearchResponse> {
+  return postJson(["collab", "search"], { ...entry, ...options }, "The search did not run.");
+}
+
+export function sendMatchFeedback(
+  searchId: number,
+  body: { candidate: string; lane: Lane; kind: "save" | "not_relevant" },
+): Promise<unknown> {
+  return postJson(
+    ["collab", "searches", String(searchId), "feedback"],
+    body,
+    "Could not record that.",
+  );
+}
+
+export async function fetchSavedPeople(): Promise<{ people: SavedPerson[] }> {
+  const response = await fetch(buildApiUrl(getPublicApiBase(), "collab", "saved"), {
+    credentials: "include",
+  });
+  return readJson(response, "Could not load saved people.");
 }

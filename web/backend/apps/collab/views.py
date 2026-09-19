@@ -150,6 +150,38 @@ class SearchInput(serializers.Serializer):
         child=serializers.ChoiceField(choices=Lane.choices), required=False
     )
     scope = serializers.ChoiceField(choices=Audience.choices, required=False)
+    dry_run = serializers.BooleanField(required=False, default=False)
+
+
+def search_availability(user) -> dict:
+    """Whether this person may search now, and if not, why — so no surface ever
+    offers a search that would only be refused."""
+    from django.conf import settings
+
+    from . import matcher
+
+    if not settings.COLLAB_SEARCH_ENABLED:
+        return {
+            "available": False,
+            "code": "not_enabled",
+            "reason": "collaborator search is not open yet",
+            "max_scope": None,
+        }
+    try:
+        matcher.check_seeker(user)
+    except matcher.SearchRefused as exc:
+        return {
+            "available": False,
+            "code": exc.code,
+            "reason": str(exc),
+            "max_scope": None,
+        }
+    return {
+        "available": True,
+        "code": "",
+        "reason": "",
+        "max_scope": settings.COLLAB_MAX_SCOPE,
+    }
 
 
 class SearchView(APIView):
@@ -161,6 +193,10 @@ class SearchView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Whether the signed-in person may search, and how widely."""
+        return Response(search_availability(request.user))
 
     def post(self, request):
         from django.conf import settings
@@ -202,6 +238,16 @@ class SearchView(APIView):
             if data.get("slots") is not None:
                 query.slots = matcher._with_vectors(
                     [dict(slot) for slot in data["slots"]]
+                )
+            if data.get("dry_run"):
+                # The pre-filled query only: nothing searched, logged or shown.
+                return Response(
+                    {
+                        "slots": [
+                            {k: v for k, v in slot.items() if k != "vector"}
+                            for slot in query.slots
+                        ]
+                    }
                 )
             result = matcher.search(request.user, query)
         except matcher.SearchRefused as exc:
@@ -256,3 +302,40 @@ class MatchFeedbackView(APIView):
             search=log,
         )
         return Response({"id": row.pk}, status=status.HTTP_201_CREATED)
+
+
+class SavedPeopleView(APIView):
+    """``GET /api/collab/saved/`` — the people this seeker saved, newest first.
+
+    Private to the seeker. A saved person who has since turned the setting off
+    or left the seeker's reach is no longer listed.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.core.people import display_name
+
+        from . import matcher
+
+        allowed = {c.pk for c in matcher.eligible_candidates(request.user, "anywhere")}
+        seen: set[int] = set()
+        rows = []
+        for item in MatchFeedback.objects.filter(
+            seeker=request.user, kind=MatchFeedback.Kind.SAVE
+        ).select_related("candidate", "search"):
+            if item.candidate_id in seen or item.candidate_id not in allowed:
+                continue
+            seen.add(item.candidate_id)
+            rows.append(
+                {
+                    "username": item.candidate.get_username(),
+                    "name": display_name(item.candidate),
+                    "lane": item.lane,
+                    "slots": [
+                        s["text"] for s in (item.search.slots if item.search else [])
+                    ],
+                    "saved_at": item.created_at.isoformat(),
+                }
+            )
+        return Response({"people": rows})

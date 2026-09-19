@@ -6,6 +6,7 @@ import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
+import { FindCollaboratorsButton } from "@/components/portal/collab/find-collaborators";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import {
   AlertTriangleIcon,
@@ -68,14 +69,23 @@ export function ProjectsListSection() {
   const anyOverCap = active.some((p) => p.is_over_cap);
 
   const newProjectAction = (
-    <button
-      type="button"
-      onClick={() => setShowWizard(true)}
-      className="inline-flex items-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <PlusIcon size={15} />
-      New project
-    </button>
+    <div className="flex flex-wrap items-center gap-2">
+      <FindCollaboratorsButton
+        className="py-[8px]"
+        request={{
+          entry: { entry: "manual", text: "" },
+          title: "Describe what you need",
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => setShowWizard(true)}
+        className="inline-flex items-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <PlusIcon size={15} />
+        New project
+      </button>
+    </div>
   );
 
   return (

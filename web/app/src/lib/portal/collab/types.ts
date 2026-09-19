@@ -63,3 +63,61 @@ export type CollaborationPreview = {
     Record<"problem" | "method" | "setting" | "area", { label: string; sources: string[] }[]>
   >;
 };
+
+/** The collaborator search (plan CN-05). */
+export type Lane = "in_field" | "method_bridge" | "problem_bridge" | "resource";
+
+export type QuerySlot = {
+  facet: SlotFacet;
+  text: string;
+  required?: boolean;
+  /** Shown on the chip when the need came from a team-fit line; never sent
+   * as a filter — the lanes decide who is looked for. */
+  covered_by?: "you" | "lab" | null;
+};
+
+export type SearchEntry =
+  | { entry: "call"; content_id: string }
+  | { entry: "project"; project_id: string }
+  | { entry: "manual"; text: string };
+
+/** One person found: a coarse pointer, never a profile. */
+export type SearchHit = {
+  username: string;
+  name: string;
+  institution: string;
+  lane: Lane;
+  /** The need it answers. */
+  slot: string;
+  facet: string;
+  /** Their own words for what matched. */
+  matched: string;
+  tier: "declared" | "demonstrated";
+  /** Mylo's one line; "" when the model was unavailable. */
+  reason: string;
+};
+
+export type SearchResponse = {
+  slots: QuerySlot[];
+  lanes: Partial<Record<Lane, SearchHit[]>>;
+  groups: { fills_a_gap: SearchHit[]; shares_expertise: SearchHit[] };
+  explained: boolean;
+  search_id: number;
+};
+
+export type SearchAvailability = {
+  available: boolean;
+  /** Why not, for a surface choosing what to show instead. */
+  code: "" | "not_enabled" | "unverified" | "paid_plan" | "daily_limit" | "refused";
+  /** The same, in words. */
+  reason: string;
+  max_scope: Audience | null;
+};
+
+export type SavedPerson = {
+  username: string;
+  name: string;
+  lane: Lane;
+  slots: string[];
+  saved_at: string;
+};

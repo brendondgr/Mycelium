@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchCollaborationPreview,
   fetchCollaborationSetting,
+  fetchSavedPeople,
+  fetchSearchAvailability,
   saveCollaborationSetting,
 } from "./client";
 
@@ -27,4 +29,17 @@ export function useSaveCollaborationSetting() {
       queryClient.setQueryData(SETTING_KEY, setting);
     },
   });
+}
+
+/** Whether this person may search for collaborators, and how widely. */
+export function useSearchAvailability() {
+  return useQuery({
+    queryKey: ["collab", "availability"],
+    queryFn: fetchSearchAvailability,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSavedPeople(enabled: boolean) {
+  return useQuery({ queryKey: ["collab", "saved"], queryFn: fetchSavedPeople, enabled });
 }

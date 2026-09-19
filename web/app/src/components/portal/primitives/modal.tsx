@@ -39,7 +39,10 @@ export function Modal({
   label: string;
   children: React.ReactNode;
   className?: string;
-  width?: "md" | "lg";
+  /** `side` is a full-height panel on the right on desktop and the whole
+   * screen on a phone — for work that should keep the page it came from in
+   * view (the collaborator search). */
+  width?: "md" | "lg" | "side";
 }) {
   const panelRef = React.useRef<HTMLDivElement | null>(null);
   // Captured on mount, before the dialog steals focus, so it can be handed back.
@@ -105,7 +108,12 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-[color-mix(in_srgb,var(--text-primary)_38%,transparent)] p-4 backdrop-blur-sm"
+      className={cn(
+        "fixed inset-0 z-[100] flex bg-[color-mix(in_srgb,var(--text-primary)_38%,transparent)] backdrop-blur-sm",
+        width === "side"
+          ? "items-stretch justify-end"
+          : "items-center justify-center overflow-y-auto p-4",
+      )}
       role="dialog"
       aria-modal="true"
       aria-label={label}
@@ -121,9 +129,14 @@ export function Modal({
         ref={panelRef}
         tabIndex={-1}
         className={cn(
-          "my-auto w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--shadow)] focus:outline-none",
+          "w-full bg-surface shadow-[var(--shadow)] focus:outline-none",
           "motion-safe:animate-[portal-fade-up_0.18s_cubic-bezier(0.22,0.61,0.36,1)_both]",
-          width === "lg" ? "max-w-2xl" : "max-w-md",
+          width === "side"
+            ? "flex h-full max-w-xl flex-col overflow-y-auto border-border sm:border-l"
+            : cn(
+                "my-auto overflow-hidden rounded-2xl border border-border",
+                width === "lg" ? "max-w-2xl" : "max-w-md",
+              ),
           className,
         )}
       >

@@ -254,6 +254,7 @@ export function GrantRow({
       <TeamFitLine
         contentId={grant.content_id}
         fit={grant.team_fit}
+        title={grant.title}
         forLab={forLab}
       />
 

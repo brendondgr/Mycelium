@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
+import { CollaboratorSearchHost } from "@/components/portal/collab/search-panel";
 import { PortalHeader } from "@/components/portal/portal-header";
 import { PortalSidebar } from "@/components/portal/portal-sidebar";
 import { ScopeGuard } from "@/components/portal/scope-guard";
@@ -36,6 +37,7 @@ export function WorkspaceShell({
       >
         <ScopeGuard />
         <WorkspacePalette />
+        <CollaboratorSearchHost />
         <PortalHeader />
         {/*
           No secondary mobile nav row. At phone width the rail and the sidebar
