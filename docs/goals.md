@@ -116,8 +116,8 @@ daily run with error reporting and run state. A load-test harness for onboarding
   itself exists in Postgres (`apps/knowledge`): concepts, typed edges with an
   evidence tier (declared, demonstrated, conversational), declared profiles and
   projects loaded, people's own papers read into demonstrated edges, and the
-  first two cross-entity queries (Q1, Q2) proven — validated at 240 synthetic
-  people in `EXP-2026-09-005`. Neo4j stays reserved and unused. The other two
+  first three cross-entity queries (Q1–Q3) proven — validated at 240 synthetic
+  people and 150 synthetic calls (`EXP-2026-09-005`, `-006`). Neo4j stays reserved and unused. The other two
   cross-entity queries, claim and evidence modeling, and contradiction
   detection are outstanding — the queries are sequenced in
   `docs/plans/collaboration-network/`.
@@ -133,7 +133,9 @@ daily run with error reporting and run state. A load-test harness for onboarding
   authoritative.
 - **Operational hardening.** Dead-letter handling, runbooks, structured job-status
   visibility, and a security review of permission boundaries end to end.
-- **Slack integration**, collaboration suggestions from missing expertise, the
+- **Slack integration**, collaboration suggestions from missing expertise (the
+  team-fit line now shows each grant's gaps; finding people for them is
+  collaboration-network CN-05), the
   skill matrix, publication-pipeline tracking, student development support, and
   the strategic planning agent.
 
@@ -143,8 +145,8 @@ In rough order, against the November 14 target:
 
 1. Close the graph gap: choose the approach, define node and edge types, load
    existing content, and prove four cross-entity queries. *Approach, types,
-   declared content, Q1 and Q2 done (collaboration-network CN-01, CN-02); Q3
-   and Q4 follow in CN-03 and CN-05.*
+   declared content, Q1–Q3 done (collaboration-network CN-01 to CN-03); Q4
+   follows in CN-05.*
 2. Model claims and evidence so every generated statement is traceable to a
    source, a finding, and a confidence signal.
 3. Turn the daily briefing into durable, exportable reports with human review

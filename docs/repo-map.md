@@ -214,8 +214,18 @@ Files below are inside `web/backend/apps/content/`.
 | Reading people's papers end to end (DOI field lookups, reading, vectors, edges) | `web/backend/apps/knowledge/papers.py`; queued on import (`service.queue_work_facets`, task `apps.knowledge.facet_user_works`), nightly via `facet_author_works` in `manual_all.py` |
 | A work's co-authors by id and its OpenAlex field | `web/backend/apps/accounts/author_works.py` (`store_author_works`, `enrich_fields`); `AuthorWork.coauthor_ids`, `openalex_field_id` |
 | Reading the graph from anywhere else — **one of two doors** | `web/backend/apps/knowledge/read.py` (`own_edges`, `ranking_edges`, `lab_declared_edges`, `discoverable_edges`, `project_edges`, `undeclared_project_concepts` — Q1, `backing` — Q2); the AST guard is `apps/knowledge/tests/test_import_boundary.py` |
-| Running the knowledge pipeline at scale on a fake world, against planted truth | `web/backend/sandbox/collab/` (`python -m sandbox.collab`, from `web/backend`); its own database `mycelium_sandbox`; results under `docs/research/experiments/` (first: `EXP-2026-09-005`) |
+| Running the knowledge pipeline at scale on a fake world, against planted truth | `web/backend/sandbox/collab/` (`python -m sandbox.collab all` for people and papers, `calls` for planted funding calls); its own database `mycelium_sandbox`; results under `docs/research/experiments/` (`EXP-2026-09-005`, `-006`) |
 | Writing to it — **the other door** (projection, and ambient's conversational edges) | `web/backend/apps/knowledge/service.py` |
+
+## Backend — collaboration matching (`apps/collab`)
+
+| Task | Path |
+|---|---|
+| What a funding call asks a team to bring (requirement slots: problem, method, data, partner role; required or not) | `web/backend/apps/collab/slots.py`, model `RequirementSlots`; nightly `extract_requirement_slots` in `manual_all.py` before scoring |
+| Which of a call's slots the reader or their lab covers (Q3: `coverage.for_call`) | `web/backend/apps/collab/coverage.py` — reads the knowledge core only through `apps.knowledge.read` |
+| The team-fit line stored on each grant score (`signals["team_fit"]`) | `web/backend/apps/collab/team_fit.py`; phase 4 of `run_daily_opportunities_batch`; backfill `annotate_team_fit` |
+| Corrections to a call's slots | `web/backend/apps/collab/views.py` (`POST /api/collab/calls/<id>/slot-feedback/`), model `SlotFeedback` |
+| The Team fit line on a grant card | `web/app/src/components/portal/collab/team-fit-line.tsx`, mounted by `GrantRow` in `opportunities-section.tsx`; types and client in `web/app/src/lib/portal/collab/` |
 
 ## Backend — billing, admin, integrations, ingestion
 
@@ -297,6 +307,8 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `prune_opportunities` | Delete expired listings; `--stale-only` also removes dateless conferences the collector has stopped listing, `--dry-run` reports without deleting |
 | `prune_briefings` | Delete briefings past `BRIEFING_RETENTION_DAYS` |
 | `project_declared_edges` | Mirror declared profiles, labs, and projects into the knowledge graph and prune orphaned private concepts (no arguments: every subject, which is also the backfill); `--user`, `--lab`, or `--project` for one |
+| `extract_requirement_slots` | Read what funding calls ask a team to bring (nightly within `COLLAB_SLOTS_NIGHTLY_CAP`; `--content` for one, `--limit`) |
+| `annotate_team_fit` | Write the team-fit line on grants already shown to each target, without re-scoring (`--user`, `--lab`) |
 | `facet_author_works` | Read people's own imported papers into facets and demonstrated edges (nightly within `KNOWLEDGE_WORK_FACETS_NIGHTLY_CAP`; `--user` for one person now, `--limit`, `--lookups`) |
 | `sweep_ambient_retention` | Delete ambient message references past their window (`--dry-run` reports without deleting); observations are never touched |
 | `run_analytics_report` | Measure the run: metrics JSON + analytics PDF for the Discord summary |
@@ -333,5 +345,5 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `docs/research/` | The research record — experiments, claims ledger, decisions, open questions, figures, paper plan |
 | `docs/skills/` | Canonical agent guidance — start at `skills/index.md` |
 | `docs/changelog.md` | Append-only project history |
-| `docs/plans/` | Implementation plans (working documents, deleted when shipped); `plans/ambient-profile/` is the sequenced series for the self-maintaining profile and `plans/collaboration-network/` the one for collaborator matching; both build on the shared knowledge core (`apps/knowledge`, shipped as plans CN-01 and CN-02). Start at each `README.md` |
+| `docs/plans/` | Implementation plans (working documents, deleted when shipped); `plans/ambient-profile/` is the sequenced series for the self-maintaining profile and `plans/collaboration-network/` the one for collaborator matching; both build on the shared knowledge core (`apps/knowledge`, shipped as plans CN-01 and CN-02; `apps/collab` since CN-03). Start at each `README.md` |
 | `docs/chats/`, `docs/Resources/` | Source conversations and the project brief |
