@@ -28,7 +28,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import SlackIdentity, SlackWorkspace
 from .services import slack_events, slack_link, slack_resolve
 
 _SCOPES = ",".join(
@@ -149,15 +148,12 @@ class SlackOAuthCallbackView(APIView):
         except slack_api.SlackError:
             return HttpResponseRedirect("/app/profile?slack=failed")
         team = body.get("team") or {}
-        workspace, _ = SlackWorkspace.objects.update_or_create(
+        slack_resolve.install_workspace(
             team_id=str(team.get("id") or ""),
-            defaults={
-                "name": str(team.get("name") or "")[:120],
-                "bot_token": str(body.get("access_token") or ""),
-                "bot_user_id": str(body.get("bot_user_id") or ""),
-                "installed_by": request.user,
-                "active": True,
-            },
+            name=str(team.get("name") or ""),
+            bot_token=str(body.get("access_token") or ""),
+            bot_user_id=str(body.get("bot_user_id") or ""),
+            installed_by=request.user,
         )
         return HttpResponseRedirect("/app/profile?slack=installed")
 
@@ -179,12 +175,11 @@ class SlackLinkCodeView(APIView):
 
 
 def _managed_lab(request):
-    from apps.accounts.models import Lab
-    from apps.accounts.permissions import user_can_manage_lab
+    from .services import resolve
 
     slug = request.data.get("lab") or request.GET.get("lab") or ""
-    lab = Lab.objects.filter(slug=slug).first()
-    if lab is None or not user_can_manage_lab(request.user, lab):
+    lab = resolve.get_lab_by_slug(slug) if slug else None
+    if lab is None or not resolve.web_user_can_manage_lab(request.user, lab):
         return None
     return lab
 
@@ -214,14 +209,10 @@ class SlackStatusView(APIView):
     def get(self, request):
         from apps.ambient.service import workspace_source
 
-        identities = SlackIdentity.objects.filter(
-            user=request.user, state=SlackIdentity.State.ACTIVE
-        )
-        names = dict(SlackWorkspace.objects.values_list("team_id", "name"))
+        identities = slack_resolve.identities_for(request.user)
+        names = slack_resolve.team_names()
         lab = _managed_lab(request)
-        workspace = (
-            SlackWorkspace.objects.filter(lab=lab, active=True).first() if lab else None
-        )
+        workspace = slack_resolve.workspace_for_lab(lab) if lab else None
         source = workspace_source(workspace.team_id) if workspace else None
         return Response(
             {
@@ -272,7 +263,7 @@ class SlackListeningView(APIView):
         lab = _managed_lab(request)
         if lab is None:
             return Response(status=status.HTTP_403_FORBIDDEN)
-        workspace = SlackWorkspace.objects.filter(lab=lab, active=True).first()
+        workspace = slack_resolve.workspace_for_lab(lab)
         if workspace is None:
             return Response(
                 {"detail": "Link a Slack workspace to this lab first."},
@@ -290,7 +281,6 @@ class SlackListeningView(APIView):
             )
         if "primary" in request.data:
             # Where the lab's posts go when it is on both platforms (rule 15).
-            workspace.reports_primary = bool(request.data.get("primary"))
-            workspace.save(update_fields=["reports_primary", "updated_at"])
+            slack_resolve.set_reports_primary(workspace, request.data.get("primary"))
         out["primary"] = workspace.reports_primary
         return Response(out)

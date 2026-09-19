@@ -85,22 +85,18 @@ def _report_link() -> str:
 
 
 def slack_only(user) -> bool:
-    from apps.integrations.models import DiscordIdentity, SlackIdentity
+    from apps.integrations.services import resolve, slack_resolve
 
     return (
-        SlackIdentity.objects.filter(user=user, state="active").exists()
-        and not DiscordIdentity.objects.filter(user=user, state="active").exists()
+        slack_resolve.identity_for(user) is not None
+        and resolve.active_identity_for_user(user) is None
     )
 
 
 def lab_workspace(lab):
-    from apps.integrations.models import SlackWorkspace
+    from apps.integrations.services import slack_resolve
 
-    return (
-        SlackWorkspace.objects.filter(lab=lab, active=True)
-        .exclude(updates_channel_id="")
-        .first()
-    )
+    return slack_resolve.workspace_for_lab(lab, with_channel=True)
 
 
 def slack_is_primary(lab) -> bool:
@@ -174,14 +170,14 @@ def _people(on, counts) -> None:
 
 
 def _labs(on, counts) -> None:
-    from apps.accounts.models import Lab
     from apps.billing.entitlements import Feature, lab_has_feature
     from apps.content import discord_embeds
     from apps.content.daily_report import compile_report_for_lab
     from apps.content.weekly_send import _monday, _weekly_body
+    from apps.integrations.services import slack_resolve
     from apps.integrations.services.slack_outbox import enqueue_channel
 
-    for lab in Lab.objects.filter(slack_workspaces__active=True).distinct():
+    for lab in slack_resolve.labs_with_workspaces():
         try:
             if not _lab_on_slack(lab) or not lab_has_feature(lab, Feature.BOT_SERVER):
                 continue

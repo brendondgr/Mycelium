@@ -4,7 +4,8 @@ The same shape as the Discord outbox (:mod:`.outbox`): the dedupe key makes a
 producer safe to re-run, a transient failure is retried with a delay, a
 permanent one settles the row as failed, and attempts run out into ``dead``.
 A DM resolves the person's identity at send time, so an identity revoked in
-the meantime is never written to.
+the meantime is never written to. Every row is reached through
+:mod:`.slack_resolve`.
 """
 
 from __future__ import annotations
@@ -16,8 +17,7 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from ..models import SlackIdentity, SlackOutboxMessage, SlackWorkspace
-from . import slack_api
+from . import slack_api, slack_resolve
 
 
 def enqueue_dm(
@@ -30,18 +30,16 @@ def enqueue_dm(
     subject_type: str = "",
     subject_id: str = "",
     not_before=None,
-) -> tuple[SlackOutboxMessage | None, bool]:
+) -> tuple:
     """Queue a DM to ``user``'s Slack identity. ``(row, created)``; ``(None,
     False)`` when the person has no Slack identity."""
-    from .slack_resolve import identity_for
-
-    identity = identity_for(user)
+    identity = slack_resolve.identity_for(user)
     if identity is None:
         return None, False
     return _enqueue(
         dedupe_key=dedupe_key,
         kind=kind,
-        target_type=SlackOutboxMessage.Target.DM,
+        target_type=slack_resolve.TARGET_DM,
         recipient_user=user,
         team_id=identity.team_id,
         text=text,
@@ -54,7 +52,7 @@ def enqueue_dm(
 
 def enqueue_channel(
     *,
-    workspace: SlackWorkspace,
+    workspace,
     dedupe_key: str,
     kind: str,
     text: str,
@@ -62,13 +60,13 @@ def enqueue_channel(
     subject_type: str = "",
     subject_id: str = "",
     not_before=None,
-) -> tuple[SlackOutboxMessage | None, bool]:
+) -> tuple:
     if not workspace.updates_channel_id:
         return None, False
     return _enqueue(
         dedupe_key=dedupe_key,
         kind=kind,
-        target_type=SlackOutboxMessage.Target.CHANNEL,
+        target_type=slack_resolve.TARGET_CHANNEL,
         team_id=workspace.team_id,
         channel_id=workspace.updates_channel_id,
         lab=workspace.lab,
@@ -82,13 +80,13 @@ def enqueue_channel(
 
 def enqueue_reply(
     *, team_id: str, channel_id: str, dedupe_key: str, kind: str, text: str, blocks=None
-) -> tuple[SlackOutboxMessage | None, bool]:
+) -> tuple:
     """A reply into the conversation it answers (a DM channel, usually) —
     for people who may not be linked yet, so no identity is resolved."""
     return _enqueue(
         dedupe_key=dedupe_key,
         kind=kind,
-        target_type=SlackOutboxMessage.Target.CHANNEL,
+        target_type=slack_resolve.TARGET_CHANNEL,
         team_id=team_id,
         channel_id=channel_id,
         text=text,
@@ -98,18 +96,18 @@ def enqueue_reply(
 
 
 def _enqueue(*, dedupe_key, not_before, **fields):
-    existing = SlackOutboxMessage.objects.filter(dedupe_key=dedupe_key).first()
+    existing = slack_resolve.outbox_by_key(dedupe_key)
     if existing is not None:
         return existing, False
     try:
         with transaction.atomic():
-            row = SlackOutboxMessage.objects.create(
+            row = slack_resolve.outbox_create(
                 dedupe_key=dedupe_key,
                 next_attempt_at=not_before or timezone.now(),
                 **fields,
             )
     except IntegrityError:
-        return SlackOutboxMessage.objects.get(dedupe_key=dedupe_key), False
+        return slack_resolve.outbox_by_key(dedupe_key), False
     return row, True
 
 
@@ -130,33 +128,15 @@ class Drained:
         }
 
 
-def _claim(limit: int, now) -> list[int]:
-    with transaction.atomic():
-        ids = list(
-            SlackOutboxMessage.objects.select_for_update(skip_locked=True)
-            .filter(status=SlackOutboxMessage.Status.PENDING, next_attempt_at__lte=now)
-            .order_by("next_attempt_at", "id")
-            .values_list("pk", flat=True)[:limit]
-        )
-        SlackOutboxMessage.objects.filter(pk__in=ids).update(
-            status=SlackOutboxMessage.Status.SENDING
-        )
-    return ids
-
-
-def deliver_one(row: SlackOutboxMessage, *, send=None) -> str:
+def deliver_one(row, *, send=None) -> str:
     """Send one row. Returns ``sent``, ``retry``, ``failed`` or ``dead``."""
     send = send or _send
-    workspace = SlackWorkspace.objects.filter(team_id=row.team_id, active=True).first()
+    workspace = slack_resolve.active_workspace(row.team_id)
     if workspace is None or not workspace.bot_token:
         return _settle(row, "failed", "workspace_not_installed")
     channel = row.channel_id
-    if row.target_type == SlackOutboxMessage.Target.DM:
-        identity = SlackIdentity.objects.filter(
-            user=row.recipient_user,
-            team_id=row.team_id,
-            state=SlackIdentity.State.ACTIVE,
-        ).first()
+    if row.target_type == slack_resolve.TARGET_DM:
+        identity = slack_resolve.identity_for(row.recipient_user, row.team_id)
         if identity is None:
             return _settle(row, "failed", "identity_revoked")
         channel = identity.slack_user_id
@@ -172,7 +152,7 @@ def deliver_one(row: SlackOutboxMessage, *, send=None) -> str:
 
 def _send(workspace, row, channel) -> str:
     token = workspace.bot_token
-    if row.target_type == SlackOutboxMessage.Target.DM:
+    if row.target_type == slack_resolve.TARGET_DM:
         channel = slack_api.open_dm(token, channel)
     return slack_api.post_message(token, channel, text=row.text, blocks=row.blocks)
 
@@ -182,9 +162,9 @@ def _settle(row, outcome: str, error: str) -> str:
     row.attempts += 1
     row.last_error = error[:64]
     row.status = {
-        "sent": SlackOutboxMessage.Status.SENT,
-        "failed": SlackOutboxMessage.Status.FAILED,
-        "dead": SlackOutboxMessage.Status.DEAD,
+        "sent": slack_resolve.OUTBOX_SENT,
+        "failed": slack_resolve.OUTBOX_FAILED,
+        "dead": slack_resolve.OUTBOX_DEAD,
     }[outcome]
     row.settled_at = now
     if outcome == "sent":
@@ -197,11 +177,11 @@ def _retry(row, error: str) -> str:
     row.attempts += 1
     row.last_error = error[:64]
     if row.attempts >= int(settings.SLACK_OUTBOX_MAX_ATTEMPTS):
-        row.status = SlackOutboxMessage.Status.DEAD
+        row.status = slack_resolve.OUTBOX_DEAD
         row.settled_at = timezone.now()
         row.save()
         return "dead"
-    row.status = SlackOutboxMessage.Status.PENDING
+    row.status = slack_resolve.OUTBOX_PENDING
     row.next_attempt_at = timezone.now() + timedelta(
         seconds=int(settings.SLACK_OUTBOX_RETRY_SECONDS) * row.attempts
     )
@@ -212,8 +192,10 @@ def _retry(row, error: str) -> str:
 def drain(*, limit: int | None = None, now=None, send=None) -> Drained:
     limit = limit or int(settings.SLACK_OUTBOX_BATCH_LIMIT)
     result = Drained()
-    for pk in _claim(limit, now or timezone.now()):
-        row = SlackOutboxMessage.objects.get(pk=pk)
+    with transaction.atomic():
+        claimed = slack_resolve.outbox_claim(limit, now or timezone.now())
+    for pk in claimed:
+        row = slack_resolve.outbox_row(pk)
         outcome = deliver_one(row, send=send)
         if outcome == "sent":
             result.sent += 1

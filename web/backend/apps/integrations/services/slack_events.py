@@ -75,18 +75,16 @@ def handle_event(payload: dict) -> dict:
     """One ``event_callback``. Returns a small summary (for logs and tests)."""
     import apps.ambient.service as service
 
-    from ..models import SlackWorkspace
-    from . import slack_link, slack_outbox
+    from . import slack_link, slack_outbox, slack_resolve
 
     team_id = str(payload.get("team_id") or "")
     event = payload.get("event") or {}
     kind = event.get("type")
-    workspace = SlackWorkspace.objects.filter(team_id=team_id, active=True).first()
+    workspace = slack_resolve.active_workspace(team_id)
 
     if kind in ("app_uninstalled", "tokens_revoked"):
         if workspace is not None:
-            workspace.active = False
-            workspace.save(update_fields=["active", "updated_at"])
+            slack_resolve.deactivate_workspace(workspace)
         service.slack_workspace_removed(team_id)
         return {"handled": "removed"}
     if kind != "message" or workspace is None:

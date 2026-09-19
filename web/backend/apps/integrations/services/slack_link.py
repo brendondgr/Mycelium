@@ -18,7 +18,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from ..models import SlackIdentity, SlackLinkCode, SlackWorkspace
+from . import slack_resolve
 
 _ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O, 1/I
 
@@ -36,13 +36,11 @@ def _new_code() -> str:
 def issue(*, user, lab=None) -> str:
     """A fresh code (the plaintext, shown once). Older unused codes of the same
     kind for the same person or lab are retired."""
-    kind = SlackLinkCode.Kind.LAB if lab is not None else SlackLinkCode.Kind.PERSON
+    kind = slack_resolve.CODE_LAB if lab is not None else slack_resolve.CODE_PERSON
     now = timezone.now()
-    SlackLinkCode.objects.filter(
-        kind=kind, user=user, lab=lab, used_at__isnull=True
-    ).update(expires_at=now)
+    slack_resolve.retire_codes(kind=kind, user=user, lab=lab, now=now)
     code = _new_code()
-    SlackLinkCode.objects.create(
+    slack_resolve.store_code(
         kind=kind,
         user=user,
         lab=lab,
@@ -59,45 +57,20 @@ class Redeemed:
     kind: str = ""
 
 
-def _claim(code: str, kind: str) -> SlackLinkCode | None:
-    row = (
-        SlackLinkCode.objects.select_for_update()
-        .filter(code_hash=_hash(code), kind=kind, used_at__isnull=True)
-        .first()
-    )
-    if row is None or row.expires_at <= timezone.now():
-        return None
-    return row
+def _claim(code: str, kind: str):
+    return slack_resolve.claim_code(_hash(code), kind)
 
 
 def redeem_person(code: str, *, team_id: str, slack_user_id: str) -> Redeemed:
     """Bind the Slack user who DMed the code to the account that issued it."""
     with transaction.atomic():
-        row = _claim(code, SlackLinkCode.Kind.PERSON)
+        row = _claim(code, slack_resolve.CODE_PERSON)
         if row is None:
             return Redeemed(False, "invalid_or_expired")
-        taken = SlackIdentity.objects.filter(
-            team_id=team_id,
-            slack_user_id=slack_user_id,
-            state=SlackIdentity.State.ACTIVE,
-        ).exclude(user=row.user)
-        if taken.exists():
+        if slack_resolve.linked_elsewhere(team_id, slack_user_id, not_user=row.user):
             return Redeemed(False, "slack_user_linked_elsewhere")
-        now = timezone.now()
-        SlackIdentity.objects.filter(
-            user=row.user, team_id=team_id, state=SlackIdentity.State.ACTIVE
-        ).exclude(slack_user_id=slack_user_id).update(
-            state=SlackIdentity.State.REVOKED, revoked_at=now
-        )
-        SlackIdentity.objects.get_or_create(
-            user=row.user,
-            team_id=team_id,
-            slack_user_id=slack_user_id,
-            state=SlackIdentity.State.ACTIVE,
-        )
-        row.used_at = now
-        row.used_team_id = team_id
-        row.save(update_fields=["used_at", "used_team_id"])
+        slack_resolve.bind_identity(row.user, team_id, slack_user_id)
+        slack_resolve.use_code(row, team_id)
     return Redeemed(True, kind="person")
 
 
@@ -105,20 +78,16 @@ def redeem_lab(code: str, *, team_id: str, channel_id: str) -> Redeemed:
     """Bind the workspace to the code's lab; the channel becomes its updates
     channel. The workspace must already be installed."""
     with transaction.atomic():
-        row = _claim(code, SlackLinkCode.Kind.LAB)
+        row = _claim(code, slack_resolve.CODE_LAB)
         if row is None or row.lab_id is None:
             return Redeemed(False, "invalid_or_expired")
-        workspace = SlackWorkspace.objects.filter(team_id=team_id, active=True).first()
+        workspace = slack_resolve.active_workspace(team_id)
         if workspace is None:
             return Redeemed(False, "workspace_not_installed")
         if workspace.lab_id and workspace.lab_id != row.lab_id:
             return Redeemed(False, "workspace_linked_to_another_lab")
-        workspace.lab_id = row.lab_id
-        workspace.updates_channel_id = channel_id
-        workspace.save(update_fields=["lab", "updates_channel_id", "updated_at"])
-        row.used_at = timezone.now()
-        row.used_team_id = team_id
-        row.save(update_fields=["used_at", "used_team_id"])
+        slack_resolve.bind_workspace_lab(workspace, row.lab_id, channel_id)
+        slack_resolve.use_code(row, team_id)
     return Redeemed(True, kind="lab")
 
 
