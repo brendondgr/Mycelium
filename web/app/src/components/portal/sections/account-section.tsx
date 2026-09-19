@@ -8,7 +8,7 @@ import { CollaborationSettingsCard } from "@/components/portal/collab/collaborat
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { BillingSection } from "@/components/portal/sections/billing-section";
 import { Button } from "@/components/ui/button";
-import { InstitutionPicker } from "@/components/ui/institution-picker";
+import { InstitutionFromEmail } from "@/components/ui/institution-from-email";
 import {
   changeEmail,
   changePassword,
@@ -109,9 +109,6 @@ function IdentityCard({
 }) {
   const [firstName, setFirstName] = React.useState(account?.first_name ?? "");
   const [lastName, setLastName] = React.useState(account?.last_name ?? "");
-  const [institution, setInstitution] = React.useState(
-    account?.institution ?? "",
-  );
   const [title, setTitle] = React.useState(
     account?.academic_title ?? "researcher",
   );
@@ -126,7 +123,6 @@ function IdentityCard({
       const next = await updateAccount({
         first_name: firstName,
         last_name: lastName,
-        institution,
         academic_title: title,
       });
       onSaved(next);
@@ -144,7 +140,7 @@ function IdentityCard({
       </h2>
       <p className="mb-4 text-sm text-[var(--text-secondary)]">
         Your name and affiliation. These appear to the labs and departments you
-        belong to.
+        belong to. Your affiliation comes from your verified email.
       </p>
 
       <form className="space-y-4" onSubmit={save} noValidate>
@@ -185,17 +181,12 @@ function IdentityCard({
         </div>
 
         <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="affiliation">
+          <p className={labelClass} id="affiliation-label">
             Affiliation
-          </label>
-          <InstitutionPicker
-            id="affiliation"
-            value={institution}
-            onChange={setInstitution}
-            email={account?.email}
-            disabled={!account}
-            inputClassName={fieldClass}
-            placeholder="Florida State University"
+          </p>
+          <InstitutionFromEmail
+            account={account}
+            labelledBy="affiliation-label"
           />
         </div>
 

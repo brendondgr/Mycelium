@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { ClusterOrganizer } from "@/components/onboarding/cluster-organizer";
 import { Chip, TokenField, dedupe, inputClass } from "@/components/onboarding/fields";
-import { InstitutionPicker } from "@/components/ui/institution-picker";
+import { InstitutionFromEmail } from "@/components/ui/institution-from-email";
 import {
   EditorField,
   EditorModal,
@@ -205,7 +205,6 @@ function ProfileEditorForm({
       ? (profile?.academic_title as string)
       : "researcher",
   );
-  const [institution, setInstitution] = React.useState(profile?.institution ?? "");
 
   const [statement, setStatement] = React.useState(interests?.statement ?? "");
   const [areas, setAreas] = React.useState<string[]>(interests?.areas ?? []);
@@ -329,7 +328,6 @@ function ProfileEditorForm({
     try {
       await saveProfileBasics({
         academic_title: role,
-        ...(institution.trim() ? { institution: institution.trim() } : {}),
       });
       await confirmInterests(nextInterests);
       await saveWatch({
@@ -384,23 +382,16 @@ function ProfileEditorForm({
           ))}
         </div>
       </div>
-      {/* Not an `EditorField`: that primitive wraps its child in a `<label>`,
-          and a combobox's option list must not live inside one — every click on
-          a row would be a click on the label. */}
+      {/* Not an `EditorField`: that wraps its child in a `<label>`, and this is
+          not a control — the institution comes from the verified email. */}
       <div className="block">
-        <label
+        <p
           className="mb-1.5 block text-[13px] font-medium text-[var(--text-primary)]"
-          htmlFor="profile-institution"
+          id="profile-institution-label"
         >
           Institution
-        </label>
-        <InstitutionPicker
-          id="profile-institution"
-          value={institution}
-          onChange={setInstitution}
-          inputClassName={inputClass}
-          placeholder="University of Example"
-        />
+        </p>
+        <InstitutionFromEmail labelledBy="profile-institution-label" />
       </div>
     </EditorSection>
   );

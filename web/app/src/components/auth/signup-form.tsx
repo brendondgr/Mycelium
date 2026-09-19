@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { checkEmailAvailable, previewInvite, register } from "@/lib/auth-client";
 import type { InvitePreview } from "@/lib/auth-types";
+import { institutionForEmail, loadInstitutions } from "@/lib/institutions";
 
 const fieldClass =
   "w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-[var(--text-muted)] focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
@@ -39,6 +40,12 @@ export function SignupForm() {
   const [confirm, setConfirm] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [emailTaken, setEmailTaken] = useState(false);
+  // What the address will prove: an institution's name, "" for none, or null
+  // while unknown (no valid address yet, or the directory is still loading).
+  const [emailInstitution, setEmailInstitution] = useState<{
+    address: string;
+    name: string;
+  } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
@@ -133,6 +140,43 @@ export function SignupForm() {
       clearTimeout(timer);
     };
   }, [email, accessCode]);
+
+  /**
+   * Say which institution the address will place this person at.
+   *
+   * An institution is never typed: the backend derives it from the verified
+   * address (`apps/accounts/institution.py`), and people are suggested only to
+   * someone at one. Saying so here is the one moment the person can still pick
+   * the address that proves it. The directory is a static file, fetched on the
+   * first valid address and cached; a failed fetch just leaves the hint out.
+   */
+  useEffect(() => {
+    const address = email.trim();
+    if (!EMAIL_RE.test(address)) {
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void loadInstitutions()
+        .then((directory) => {
+          if (!cancelled) {
+            const found = institutionForEmail(directory, address);
+            setEmailInstitution({ address, name: found?.name ?? "" });
+          }
+        })
+        .catch(() => undefined);
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [email]);
+
+  // Only a hint about the address currently in the field.
+  const institutionHint =
+    emailInstitution && emailInstitution.address === email.trim()
+      ? emailInstitution
+      : null;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -288,11 +332,16 @@ export function SignupForm() {
             disabled={isBusy}
             aria-invalid={Boolean(fieldErrors.email)}
             aria-describedby={
-              fieldErrors.email
-                ? "email-error"
-                : lockedEmail
-                  ? "email-locked"
-                  : undefined
+              [
+                fieldErrors.email
+                  ? "email-error"
+                  : lockedEmail
+                    ? "email-locked"
+                    : "",
+                institutionHint ? "email-institution" : "",
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined
             }
             onChange={(event) => setEmail(event.target.value)}
             className={fieldClass}
@@ -305,6 +354,29 @@ export function SignupForm() {
           {lockedEmail ? (
             <p className="mt-1.5 text-xs text-[var(--text-muted)]" id="email-locked">
               Your invitation was sent here, so sign-up is tied to this address.
+            </p>
+          ) : null}
+          {institutionHint ? (
+            <p
+              className="mt-1.5 text-xs text-[var(--text-muted)]"
+              id="email-institution"
+              aria-live="polite"
+            >
+              {institutionHint.name ? (
+                <>
+                  You&rsquo;ll be listed at{" "}
+                  <span className="font-medium text-[var(--text-secondary)]">
+                    {institutionHint.name}
+                  </span>{" "}
+                  once you confirm this address, and can find people there.
+                </>
+              ) : (
+                <>
+                  This address isn&rsquo;t at an institution we recognise, so
+                  none will be listed. To show yours and find people there,
+                  sign up with your institution&rsquo;s email.
+                </>
+              )}
             </p>
           ) : null}
           {/* Gated on the pair still being complete rather than cleared from the

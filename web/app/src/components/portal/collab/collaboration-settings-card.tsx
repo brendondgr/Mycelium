@@ -124,7 +124,7 @@ function CollaborationForm({
           <p className="text-sm text-[var(--text-secondary)]">
             {data.institution
               ? `Your verified email places you at ${data.institution}.`
-              : "Your verified email is not at an institution Mylo recognises, so you can only be found by anyone, anywhere."}
+              : "Your verified email isn't at an institution Mylo recognises, so you can't be found or search for people. People are suggested only from the institution or country an email proves — change your email on this page to your institution's address."}
           </p>
 
           <fieldset>

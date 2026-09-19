@@ -1525,8 +1525,7 @@ export function useMyDepartments() {
 export function useCreateDepartment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; institution?: string }) =>
-      createDepartment(input.name, input.institution ?? ""),
+    mutationFn: (input: { name: string }) => createDepartment(input.name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portal", "departments"] });
       queryClient.invalidateQueries({ queryKey: ["portal", "entitlements"] });

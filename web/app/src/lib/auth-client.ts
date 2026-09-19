@@ -253,7 +253,7 @@ export async function getAccount(): Promise<AccountDetails> {
   return body;
 }
 
-/** Save the fields the Account page owns outright (name, affiliation, stage). */
+/** Save the fields the Account page owns outright (name, career stage). */
 export async function updateAccount(
   payload: AccountUpdate,
 ): Promise<AccountDetails> {
@@ -450,7 +450,7 @@ export async function synthesizeProfile(
   return { draft: body.draft, interests: body.interests };
 }
 
-/** Persist person-global profile basics (role + institution). */
+/** Persist person-global profile basics (the role). */
 export async function saveProfileBasics(payload: ProfileBasics): Promise<void> {
   await ensureCsrfCookie();
   const csrfToken = readCsrfToken();

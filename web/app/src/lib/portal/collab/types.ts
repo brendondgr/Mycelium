@@ -108,7 +108,15 @@ export type SearchResponse = {
 export type SearchAvailability = {
   available: boolean;
   /** Why not, for a surface choosing what to show instead. */
-  code: "" | "not_enabled" | "unverified" | "paid_plan" | "daily_limit" | "refused";
+  code:
+    | ""
+    | "not_enabled"
+    | "unverified"
+    /** Verified, but the address is at no institution: nobody to search among. */
+    | "no_institution"
+    | "paid_plan"
+    | "daily_limit"
+    | "refused";
   /** The same, in words. */
   reason: string;
   max_scope: Audience | null;

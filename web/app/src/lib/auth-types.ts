@@ -15,6 +15,12 @@ export type AuthUser = {
    * either's profile, or send an invitation.
    */
   is_verified?: boolean;
+  /** The institution the verified email proves; "" until verified or for a
+   *  personal address. Never typed — see `InstitutionFromEmail`. */
+  institution?: string;
+  institution_verified?: boolean;
+  /** What the current address would prove once verified; "" for none. */
+  institution_from_email?: string;
 };
 
 /** The Account page's view of who the user is — `GET /api/auth/account/`. */
@@ -23,7 +29,11 @@ export type AccountDetails = {
   email: string;
   first_name: string;
   last_name: string;
+  /** Derived from the verified email by the backend; read-only. */
   institution: string;
+  institution_verified: boolean;
+  /** What the current address would prove once verified; "" for none. */
+  institution_from_email: string;
   academic_title: string;
   is_verified: boolean;
   /** A new address waiting on its code, or "" when no change is in flight. */
@@ -34,7 +44,7 @@ export type AccountDetails = {
 export type AccountUpdate = Partial<
   Pick<
     AccountDetails,
-    "first_name" | "last_name" | "institution" | "academic_title"
+    "first_name" | "last_name" | "academic_title"
   >
 >;
 
@@ -314,8 +324,8 @@ export type OnboardingMatchResult = {
   sample: OnboardingMatchSample[];
 };
 
-/** Person-global profile basics captured in onboarding (role + institution). */
+/** Person-global profile basics captured in onboarding (the role; the
+ *  institution is derived from the verified email, never sent). */
 export type ProfileBasics = {
   academic_title?: string;
-  institution?: string;
 };

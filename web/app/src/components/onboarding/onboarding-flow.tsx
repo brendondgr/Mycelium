@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { InstitutionPicker } from "@/components/ui/institution-picker";
+import { InstitutionFromEmail } from "@/components/ui/institution-from-email";
 import { MyloMark } from "@/components/brand/mylo-mark";
 import {
   ClusterOrganizer,
@@ -233,7 +233,6 @@ export function OnboardingFlow({
 
   // Step 0 — about you
   const [role, setRole] = useState("researcher");
-  const [institution, setInstitution] = useState("");
 
   // Step 1 — import
   const [source, setSource] = useState<ResearchSource | "">("");
@@ -378,7 +377,6 @@ export function OnboardingFlow({
         if (ROLES.some((option) => option.value === profile.academic_title)) {
           setRole(profile.academic_title);
         }
-        setInstitution(profile.institution ?? "");
         const interests = profile.interests;
         if (interests) {
           setStatement(interests.statement ?? "");
@@ -748,10 +746,7 @@ export function OnboardingFlow({
     const cappedTopics = watchTopics.slice(0, topicCap);
 
     const saves = (): Promise<unknown>[] => [
-      saveProfileBasics({
-        academic_title: role,
-        ...(institution.trim() ? { institution: institution.trim() } : {}),
-      }),
+      saveProfileBasics({ academic_title: role }),
       confirmInterests(interests),
       saveWatch({ topics: cappedTopics, categories, cadence }),
     ];
@@ -1011,25 +1006,13 @@ export function OnboardingFlow({
           </div>
         </div>
         <div className="space-y-2">
-          <label
+          <p
             className="text-sm font-medium text-[var(--text-primary)]"
-            htmlFor="institution"
+            id="institution-label"
           >
-            Institution{" "}
-            <span className="text-[var(--text-muted)]">(optional)</span>
-          </label>
-          <InstitutionPicker
-            id="institution"
-            value={institution}
-            onChange={setInstitution}
-            email={email}
-            inputClassName={inputClass}
-            describedBy="institution-hint"
-          />
-          <p className="text-xs text-[var(--text-muted)]" id="institution-hint">
-            Search the directory, or type a national lab, agency or institute of
-            your own — whatever you write is kept.
+            Institution
           </p>
+          <InstitutionFromEmail labelledBy="institution-label" />
         </div>
       </div>
     </div>

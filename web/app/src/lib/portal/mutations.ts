@@ -1174,15 +1174,15 @@ export function updateAdminLab(
   );
 }
 
-/** Create a department; the caller becomes its head. Verified accounts only. */
-export function createDepartment(
-  name: string,
-  institution = "",
-): Promise<MyDepartment> {
+/**
+ * Create a department; the caller becomes its head. Verified accounts only.
+ * Its institution is the caller's verified one — set by the backend, not sent.
+ */
+export function createDepartment(name: string): Promise<MyDepartment> {
   return sendJson<MyDepartment>(
     "POST",
     buildApiUrl(getPublicApiBase(), "auth", "departments"),
-    { name, institution },
+    { name },
     "Could not create the department. Try again.",
   );
 }

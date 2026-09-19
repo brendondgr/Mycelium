@@ -35,7 +35,7 @@ import {
   useMyDepartments,
   useProjectMembership,
 } from "@/lib/portal/hooks";
-import { InstitutionPicker } from "@/components/ui/institution-picker";
+import { InstitutionFromEmail } from "@/components/ui/institution-from-email";
 import { ApiError } from "@/lib/api-error";
 import { SECTION_ROUTES } from "@/lib/portal/routes";
 import type { ClusterGroup } from "@/lib/auth-types";
@@ -988,9 +988,7 @@ function CreateLabModal({
  */
 function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
   const create = useCreateDepartment();
-  const { user } = usePortal();
   const [name, setName] = React.useState("");
-  const [institution, setInstitution] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -1013,7 +1011,7 @@ function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
     }
     setError(null);
     create.mutate(
-      { name: value, institution: institution.trim() },
+      { name: value },
       {
         onSuccess: (department) => {
           window.location.href = `/app/department/${department.id}`;
@@ -1056,23 +1054,17 @@ function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
               className={INPUT}
             />
           </Field>
-          {/* Not a `Field`: that wraps its child in a `<label>`, and a
-              combobox's option list must not sit inside one. */}
+          {/* Not a `Field`: that wraps its child in a `<label>`, and this is
+              not a control — a department sits at its head's verified
+              institution. */}
           <div>
-            <label
+            <p
               className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]"
-              htmlFor="department-institution"
+              id="department-institution-label"
             >
               Institution
-            </label>
-            <InstitutionPicker
-              id="department-institution"
-              value={institution}
-              onChange={setInstitution}
-              email={user?.email}
-              inputClassName={INPUT}
-              placeholder="Northgate University"
-            />
+            </p>
+            <InstitutionFromEmail labelledBy="department-institution-label" />
           </div>
 
           {error ? (
