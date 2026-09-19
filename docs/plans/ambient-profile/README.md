@@ -172,6 +172,14 @@ buffer runs on its own Redis with persistence off (`redis-ambient`). Plans 04
 onward were built without a stop at each discussion gate, on the owner's
 instruction; each plan's judgement calls are in its changelog entries.
 
+**Owed before `AMBIENT_DRIFT_ENABLED` is ever turned on:** the evaluation
+harness before/after the Plan 05 ranking hook (`fusion.combine_clusters`'s
+`cluster_weights`). Tonight's run could not finish re-embedding the harness's
+pooled corpus on the shared CPU within its 45-minute cap; the hook is exactly
+inert while drift is off, which a unit test pins
+(`test_without_exploration_weights_the_merge_is_byte_identical`), and Plan 10's
+drift ablation (its EXP 8) is where the harness runs with drift on.
+
 **Build order (decided 2026-09-18):** the collaboration-network series is built
 first (CN-01 to CN-06). This series then resumes at Plan 04, which, like Plans
 05, 07, and 10, is already written against the knowledge core, so resuming

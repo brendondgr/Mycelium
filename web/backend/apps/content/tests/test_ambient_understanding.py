@@ -386,3 +386,39 @@ def test_a_learning_goal_on_the_profile_is_a_wants_to_learn_edge(ada):
         ).count()
         == 1
     )
+
+
+def test_without_exploration_weights_the_merge_is_byte_identical():
+    """Drift off: no weights, an empty mapping, and the old call all rank the
+    same candidates in the same order with the same scores — the global rule's
+    before/after, pinned without the evaluation harness."""
+    import random
+
+    from apps.content.fusion import combine_clusters
+
+    class Item:
+        def __init__(self, pk):
+            self.id = pk
+
+    rng = random.Random(7)
+    items = {str(i): Item(str(i)) for i in range(60)}
+    per_interest = {
+        f"area {k}": {str(i): rng.random() for i in rng.sample(range(60), 30)}
+        for k in range(6)
+    }
+    clusters = {
+        "c1": ["area 0", "area 1"],
+        "c2": ["area 2", "area 3"],
+        "c3": ["area 4", "area 5"],
+    }
+    for merge in ("max", "rank"):
+        plain = combine_clusters(per_interest, clusters, items, beta=0.15, merge=merge)
+        none = combine_clusters(
+            per_interest, clusters, items, beta=0.15, merge=merge, cluster_weights=None
+        )
+        empty = combine_clusters(
+            per_interest, clusters, items, beta=0.15, merge=merge, cluster_weights={}
+        )
+        key = [(h.item.id, h.final_score, h.cluster_id) for h in plain]
+        assert key == [(h.item.id, h.final_score, h.cluster_id) for h in none]
+        assert key == [(h.item.id, h.final_score, h.cluster_id) for h in empty]
