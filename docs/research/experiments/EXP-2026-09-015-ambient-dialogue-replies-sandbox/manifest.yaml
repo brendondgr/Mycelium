@@ -9,66 +9,81 @@
 id: EXP-2026-09-015
 slug: ambient-dialogue-replies-sandbox
 title: "Does Mylo read replies in people's own words right, never turn a no into a yes, and catch \"stop asking\"?"
-status: planned # planned | running | complete | failed | superseded
+status: complete
 date_started: 2026-09-19
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-09-19
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Plan 06 (ambient confirmation dialogue) sandbox validation: whether Mylo's
+  reply reader understands answers written in people's own words and never
+  turns a no, a not-now, or a noncommittal reply into a change; whether a
+  yes or no applied through the dialogue has exactly the effect its reading
+  implies; and whether "stop asking" is caught without tripping on ordinary
+  messages.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Pre-registered: H1 at most 1% of no / not-now / ambiguous / off-topic replies
+  read as a yes or correction; H2 overall reading accuracy >= 0.85, yes and no
+  >= 0.90, ambiguous and off-topic read as unclear >= 0.70; H3 zero effect
+  mismatches; H4 the literal shut-off list catches >= 0.80 of requests and
+  trips on <= 0.05 of decoys; H5 under 60 minutes at <= 16 concurrent calls.
+  OUTCOME (run 1, registered): H1 fails (0.24, the stop condition), H2 fails,
+  H3 1 mismatch, H4 fails (0/40), H5 holds. Post hoc (runs 2-4, fixes between
+  them, same world): reader r4 H1 0.0079, H2 still fails (overall 0.80; misses
+  on the safe side), H3 1 real mismatch fixed after the run, H4 literal list
+  still fails but the model-read control catches 40/40 with 0/40 decoys.
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 658d848
+  commit: 60fd1c3
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  entrypoint: "SANDBOX_DB=mycelium_sandbox_ambient python -m sandbox.ambient replies --workers 16 --corpus /app/data/sandbox/ambient-20260919-3x6.json (from a worktree pinned at each run's commit: 60fd1c3, 75b35c9, 2792c59, 377fbed)"
+  dirty: false
 config:
-  path: <path to the config file, or null>
+  path: web/backend/sandbox/ambient/replies.py
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: synthetic ambient lab world (EXP-2026-09-013) plus model-written replies
+  version: "seed 20260919; 41-44 questions and 205-220 replies per run; 40 stop requests and 40 decoys per run"
+  split: test
+  n_examples: 205 # replies in the last run
   qrels: null
   hash: null
-  card: null # docs/research/datasets/cards/<name>.md
-seeds: []
-n_runs: 1
+  card: null
+seeds: [20260919]
+n_runs: 4 # 1 registered, 2-4 post hoc
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
-
-# --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+  hardware: "20 CPU cores, 62 GB RAM; local model via llm-tunnel (default-model)"
+  wall_clock_hours: 0.35
+  estimated_cost_usd: 0.0
 
 # --- Results block -----------------------------------------------------------
-# Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
+  primary: harmful_yes_rate (H1)
+  values:
+    run1_harmful_yes_rate: 0.2406
+    run1_overall_accuracy: 0.5136
+    run1_effect_mismatch: 1
+    run1_shutoff_literal_caught: 0.0
+    run2_harmful_yes_rate: 0.0081
+    run2_overall_accuracy: 0.7463
+    run2_shutoff_model_caught: 1.0
+    run3_harmful_yes_rate: 0.0153
+    run3_overall_accuracy: 0.7581
+    run3_effect_mismatch: 0
+    run3_shutoff_model_decoys_tripped: 0.075
+    run4_harmful_yes_rate: 0.0079
+    run4_overall_accuracy: 0.8049
+    run4_accuracy_no: 0.7647
+    run4_effect_mismatch: 1
+    run4_shutoff_model_caught: 1.0
+    run4_shutoff_model_decoys_tripped: 0.0
 baselines_compared: []
 statistical_test: null
 
@@ -78,4 +93,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-09-013, EXP-2026-09-014]

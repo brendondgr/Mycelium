@@ -41,3 +41,56 @@ have to be refused. **Fixed before any use** (commit after this note):
 told plainly that off-topic and undecided replies must not answer; every row is
 saved; a keyword screen reports replies whose own words still contradict their
 intent, and the harm rate is reported with and without them.
+
+
+## Run 2 — post hoc, reader r2 (75b35c9)
+
+H1 0.0081 (1 of 123), H4 model-read 40/40. Two findings:
+
+- The one harmful case was a clarify question answered "It was Project B2, but
+  don't worry about it too much for now". The reader picked the project it
+  named.
+- One decoy tripped the **literal** list: "the sensor might have shut off
+  mid-experiment". The pattern `shut (it )?off` was too broad and is now
+  `shut (it|them|the questions) off` or `shut off … questions`.
+- The two effect mismatches came from the harness: its expectation map treated
+  "it's for a project" as confirming the personal edge, when the right effect
+  is to reject it. The harness was fixed (a3ac178) and records each mismatch
+  from run 3 on.
+- A correction that only repeated a choice's label ("mark it down as something
+  I'm learning") was being stored as a rename. It is now dropped
+  (`_echoes_a_choice`); names of three letters or fewer still count.
+
+## Run 3 — post hoc, reader r3 (2792c59)
+
+Reader r3 adds a rule: "don't bring it up / track it / check in on it, even for
+now" is a no. H1 went to 0.0153 (2 of 131), both on the same clarify question
+shape. The model-read control tripped on 3 of 40 decoys ("can you stop the
+data sync for a second?"), reading them as stop-listening.
+
+Fixed as reader r4 (377fbed):
+
+- naming a choice while saying to drop it, not pursue it, or not track it is a
+  no;
+- stopping some other thing (a sync, a job, an experiment) is not a setting.
+
+## Run 4 — post hoc, reader r4 (377fbed)
+
+H1 0.0079 (1 of 127): the same clarify shape, "It's Project B2, but don't worry
+about it too much for now. Just leave it with me". The shut-off check caught
+40/40 with 0/40 decoys tripped. There was one real effect mismatch: "not
+really interested right now, so you can stop asking" hit the literal switch
+before the answer was read, which muted every question and left this one
+open.
+
+Fixed after the run (f2da660): with a question open, a bare "stop asking"
+that comes with other words is read as the answer first. It is the switch
+only if the reading is unclear or the model is unavailable. "please stop
+asking" on its own, and anything naming "questions", is still the switch at
+once. Regression tests cover it; no fifth run was made. The next measurement
+belongs on a fresh seed (RESULTS §7), so a fifth run on this world would only
+add tuning.
+
+The clarify-question harm is left as found. Its effect is attribution to a
+named project, not a profile change. Offering buttons only for that question is
+the follow-up.

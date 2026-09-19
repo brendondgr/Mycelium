@@ -1,0 +1,2954 @@
+{
+  "seed": 20260919,
+  "workers": 16,
+  "seeded": {
+    "people": 21,
+    "projects": 6
+  },
+  "pipeline": {
+    "reads": [
+      {
+        "ready": 173,
+        "read": 173,
+        "unavailable": 0,
+        "expired": 0,
+        "duplicate": 0,
+        "capped": 0,
+        "observations": 347,
+        "linked": 347,
+        "refused": {
+          "topic_not_in_window": 6,
+          "not_grounded": 2,
+          "quote_in_account": 2
+        }
+      },
+      {
+        "ready": 0,
+        "read": 0,
+        "unavailable": 0,
+        "expired": 0,
+        "duplicate": 0,
+        "capped": 0,
+        "observations": 0,
+        "linked": 0,
+        "refused": {}
+      }
+    ],
+    "deliberate": {
+      "people": 18,
+      "projects": 6,
+      "linked": 0,
+      "superseded": 30,
+      "findings": {
+        "ignore": 210,
+        "capability": 9,
+        "record": 18,
+        "suggest": 31,
+        "ask": 1
+      },
+      "paused": 0
+    },
+    "explain": {
+      "pending": 59,
+      "written": 59,
+      "refused": 0,
+      "unavailable": 0
+    },
+    "timings": {
+      "read_s": 93.9,
+      "deliberate_s": 3.0,
+      "explain_s": 4.7
+    }
+  },
+  "timings": {
+    "seed_ingest_s": 81.0,
+    "replies_s": 29.0,
+    "read_s": 93.9,
+    "deliberate_s": 3.0,
+    "explain_s": 4.7
+  },
+  "metrics": {
+    "plants_total": 288,
+    "plants_written": 276,
+    "plants_dropped_by_generator": 12,
+    "plants_dropped_at_edge": 0,
+    "plants_in_truth": 276,
+    "messages": 1270,
+    "messages_stored": 1141,
+    "messages_dropped": {
+      "too_short": 129
+    },
+    "recall": 0.9203,
+    "recall_by_plant": {
+      "capability": 0.9412,
+      "colleague": 0.6571,
+      "declared": 0.9706,
+      "emerging": 0.9808,
+      "learning": 1.0,
+      "one_off": 0.9375,
+      "rejected": 0.902,
+      "told_fact": 1.0
+    },
+    "kind_accuracy": 0.7559,
+    "kind_confusion": {
+      "one_off->current_curiosity": 14,
+      "learning->learning_goal": 30,
+      "emerging->learning_goal": 15,
+      "rejected->current_curiosity": 26,
+      "colleague->project_development": 11,
+      "colleague->current_curiosity": 7,
+      "emerging->current_curiosity": 25,
+      "capability->capability": 25,
+      "capability->project_development": 7,
+      "told_fact->project_development": 18,
+      "declared->enduring_interest": 17,
+      "rejected->project_development": 19,
+      "emerging->career_direction": 3,
+      "emerging->enduring_interest": 3,
+      "declared->project_development": 3,
+      "emerging->project_intent": 3,
+      "declared->work_preference": 8,
+      "colleague->project_intent": 5,
+      "declared->career_direction": 1,
+      "learning->current_curiosity": 2,
+      "learning->project_development": 2,
+      "declared->capability": 1,
+      "emerging->project_development": 1,
+      "declared->current_curiosity": 3,
+      "learning->career_direction": 2,
+      "emerging->capability": 1,
+      "rejected->career_direction": 1,
+      "one_off->project_development": 1
+    },
+    "colleague_read_as_self": 0.1304,
+    "subject_confusion": {
+      "one_off->self": 12,
+      "learning->self": 36,
+      "emerging->self": 51,
+      "rejected->self": 39,
+      "colleague->colleague": 12,
+      "capability->self": 30,
+      "told_fact->project": 18,
+      "declared->self": 33,
+      "rejected->project": 5,
+      "one_off->unknown": 2,
+      "colleague->project": 8,
+      "colleague->self": 3,
+      "rejected->lab": 2,
+      "capability->project": 2,
+      "one_off->project": 1
+    },
+    "observations": 347,
+    "observations_on_filler": 85,
+    "strict_precision": 0.755,
+    "observations_by_kind": {
+      "project_development": 105,
+      "capability": 36,
+      "career_direction": 9,
+      "enduring_interest": 23,
+      "current_curiosity": 93,
+      "learning_goal": 47,
+      "work_preference": 10,
+      "project_intent": 24
+    },
+    "outcome_accuracy": 0.8944,
+    "false_suggestion_rate": 0.0,
+    "outcome_confusion": {
+      "capability:capability->capability": 8,
+      "capability:capability->capability/ignore": 1,
+      "capability:capability->ignore": 9,
+      "colleague:ignore->ask": 1,
+      "colleague:ignore->ignore": 14,
+      "colleague:ignore->none": 3,
+      "declared:ignore->ignore": 18,
+      "emerging:suggest->ignore": 2,
+      "emerging:suggest->ignore/suggest": 1,
+      "emerging:suggest->suggest": 15,
+      "learning:suggest->ignore": 3,
+      "learning:suggest->suggest": 15,
+      "one_off:ignore->ignore": 15,
+      "one_off:ignore->none": 1,
+      "rejected:ignore->ignore": 18,
+      "told_fact:record->record": 18
+    },
+    "findings_by_outcome": {
+      "ignore": 210,
+      "suggest": 31,
+      "record": 18,
+      "capability": 9,
+      "ask": 1
+    },
+    "findings_by_reason": {
+      "below_floor": 164,
+      "rejected_in_conversation": 15,
+      "consistent": 31,
+      "covered": 7,
+      "not_self": 9,
+      "told_directly": 18,
+      "superseded": 15,
+      "capability_consistent": 9,
+      "attribution_unresolved": 1
+    },
+    "explained_rate": 1.0,
+    "harm": {
+      "observations_of_silent_member": 0,
+      "refs_of_silent_member": 0,
+      "findings_of_silent_member": 0,
+      "observation_quotes": 0,
+      "explanation_quotes": 0,
+      "rule_origin": 0,
+      "bodies_left_after_read": 0,
+      "unread_refs": 0,
+      "lab_findings_on_personal_observations": 0,
+      "suggestion_without_self": 0,
+      "explanation_invented_dates": 0
+    },
+    "harm_total": 0,
+    "scored_at": "2026-09-19T08:14:39.544882+00:00",
+    "replies": {
+      "scheduled": {
+        "candidates": 41,
+        "created": 41,
+        "skipped": {}
+      },
+      "questions": 41,
+      "questions_by_kind": {
+        "interest": 31,
+        "clarify": 1,
+        "skill": 9
+      },
+      "score": {
+        "replies": 205,
+        "unread": 0,
+        "by_intent": {
+          "yes": {
+            "n": 26,
+            "accuracy": 0.8462
+          },
+          "other": {
+            "n": 24,
+            "accuracy": 0.9583
+          },
+          "no": {
+            "n": 34,
+            "accuracy": 0.7647
+          },
+          "later": {
+            "n": 32,
+            "accuracy": 0.9688
+          },
+          "correction": {
+            "n": 28,
+            "accuracy": 0.9643
+          },
+          "ambiguous": {
+            "n": 26,
+            "accuracy": 0.0385
+          },
+          "offtopic": {
+            "n": 35,
+            "accuracy": 1.0
+          }
+        },
+        "overall_accuracy": 0.8049,
+        "harmful_yes": 1,
+        "harmful_yes_rate": 0.0079,
+        "truth_contradicted": 0,
+        "harmful_yes_clean": 1,
+        "harmful_yes_rate_clean": 0.0079
+      },
+      "effects": {
+        "applied": 30,
+        "effect_mismatch": 1,
+        "mismatches": [
+          {
+            "reply": "not really interested right now, so you can stop asking.",
+            "read": {
+              "verdict": "rejected",
+              "choice": "no",
+              "correction": ""
+            },
+            "status": "pending"
+          }
+        ]
+      },
+      "rows": [
+        {
+          "suggestion": 1,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Did you manage to find that spreadsheet for the A1 data? Also, I'm starving, heading to lunch now.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 1,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not for now, but let's circle back to it in a few weeks.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 1,
+          "intent": "correction",
+          "expected_choice": "reports",
+          "fix": "contrastive methods",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, that sounds good! Just call it \"contrastive methods\" in the reports though.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "reports",
+            "correction": "contrastive methods"
+          }
+        },
+        {
+          "suggestion": 1,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add that to my interests! That would be super helpful for the next run.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 1,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "not really, let's just leave it for now. no need to keep asking!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 2,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add that to my interests! That'd be super helpful.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 2,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Can you send over that draft from the meeting earlier? Also, I'm starving lol.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 2,
+          "intent": "yes",
+          "expected_choice": "reports",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add that to my reports starting tomorrow!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "reports",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 2,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Nah, I'm good for now. Don't worry about checking in on it again!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 2,
+          "intent": "correction",
+          "expected_choice": "reports",
+          "fix": "algorithmic methods",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please do! Just call the topic \"algorithmic methods\" instead though.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "reports",
+            "correction": "algorithmic methods"
+          }
+        },
+        {
+          "suggestion": 3,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Nah, I'm good for now. Don't worry about following up on it anymore!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 3,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Did you ever find that CSV file from this morning? Also, hungry for lunch if you want to grab something soon.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 3,
+          "intent": "other",
+          "expected_choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah, that's actually for Project B1 specifically!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 3,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "I'm still weighing whether it fits the project scope right now. Let me think about it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 3,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "learning to methods",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah that works, but can we call it \"learning to methods\" instead?",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "learning",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 4,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "did you ever find that spreadsheet from the morning meeting? also i'm starving, u want to grab lunch soon?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 4,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Nah, don't worry about it. I'd rather just keep that one under my belt for now.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 4,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Not just yet, maybe check back with me in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 4,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "I'm still weighing whether it's a core enough skill to list. Let me think about it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 4,
+          "intent": "yes",
+          "expected_choice": "skill",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, go ahead and add that! Thanks for checking.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "skill",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 5,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Actually no, let's drop it for now and you can stop checking in on it.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 5,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Not quite yet, let's circle back to it in a few weeks.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 5,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "I'm still weighing my options on that one. Let me think about it a bit more before we commit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 5,
+          "intent": "yes",
+          "expected_choice": "direction",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah, that sounds right. Please include it!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "direction",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 5,
+          "intent": "other",
+          "expected_choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Actually that's just for Project B1, not my personal focus.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 6,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Did you find that file from the meeting earlier? Also, I'm starving, heading to lunch now.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 6,
+          "intent": "correction",
+          "expected_choice": "reports",
+          "fix": "child language methods",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please include it! Just rename the topic to \"child language methods\" though.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "reports",
+            "correction": "child language methods"
+          }
+        },
+        {
+          "suggestion": 6,
+          "intent": "yes",
+          "expected_choice": "reports",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add that to my reports starting tomorrow. Thanks!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "reports",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 6,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not for now, maybe check back in a few weeks.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 6,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Nah, let's just leave it out and you don't need to check back in on it.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 7,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "not yet, maybe check back in with me next week?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 7,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Nah, let's just leave it for now. Don't worry about checking in on it again.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 7,
+          "intent": "correction",
+          "expected_choice": "skill",
+          "fix": "mechanism design methods",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, sounds good! Can we call it \u201cmechanism design methods\u201d instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "skill",
+            "correction": "mechanism design methods"
+          }
+        },
+        {
+          "suggestion": 7,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "I'm still weighing how that fits with the others, maybe let's hold off for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 7,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Can you check if the data for the morning meeting is in the shared folder? Also, I'm starving, want to grab lunch around 1?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 8,
+          "intent": "correction",
+          "expected_choice": "reports",
+          "fix": "supply chain methods",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, sounds good! Can we just call it \"supply chain methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "reports",
+            "correction": "supply chain methods"
+          }
+        },
+        {
+          "suggestion": 8,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "I'm still weighing the options, maybe give me a few more days to think on it?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 8,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Did you find that spreadsheet I left on the shared drive? Also, I'm starving, want to grab food at 1?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 8,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Nah, let's just leave it for now and don't worry about checking back in.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 8,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "not right now, maybe check back with me in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 9,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "epidemic methods",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yes, but can we call it \"epidemic methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "epidemic methods"
+          }
+        },
+        {
+          "suggestion": 9,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Nah, I'm good for now. Don't worry about checking in on it anymore!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 9,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, please! Mark it down as something I'm learning.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "learning",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 9,
+          "intent": "other",
+          "expected_choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Actually, that's for Project C1, not for my own learning!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 9,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Did you ever find that spreadsheet from the meeting this morning? Also, I'm starving, heading to lunch now.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 10,
+          "intent": "correction",
+          "expected_choice": "skill",
+          "fix": "optimal transport methods",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, sounds good! Just list it as \"optimal transport methods\" instead.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "skill",
+            "correction": "optimal transport methods"
+          }
+        },
+        {
+          "suggestion": 10,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "not yet, i'll let you know later!",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 10,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "did you ever find that dataset from the morning meeting? also i'm starving, heading to lunch now.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 10,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Nah, don't worry about it for now. Let's just leave it as is.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 10,
+          "intent": "yes",
+          "expected_choice": "skill",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, go ahead and add that in! Thanks for checking.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "skill",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 11,
+          "intent": "yes",
+          "expected_choice": "reports",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add that to my reports!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "reports",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 11,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Did you ever find that folder from the meeting this morning? Also, we're out of oat milk in the lab fridge.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 11,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Nah, let's skip it. You don't need to keep checking in on that for now.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 11,
+          "intent": "correction",
+          "expected_choice": "reports",
+          "fix": "diffusion methods",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, definitely include it! Just call the topic \"diffusion methods\" instead though.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "theme",
+            "correction": "diffusion methods"
+          }
+        },
+        {
+          "suggestion": 11,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add that to my interests! Thanks for noticing.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 12,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "did you find that folder with the survey results from last week? also lmk if you're heading to lunch soon.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 12,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "I'm still weighing if I've actually mastered it enough to list. Let me think on it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 12,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "not yet, let's circle back to it in a few weeks!",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 12,
+          "intent": "yes",
+          "expected_choice": "skill",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, definitely go ahead and add that! Thanks for checking.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "skill",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 12,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Actually, don't worry about it. I've got it covered so you don't need to add it!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 13,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "I'm still weighing my workload, so maybe give it a few days before deciding.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 13,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "archaeological lidar methods",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, please do! Just list it as \"archaeological lidar methods\" instead.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "archaeological lidar methods"
+          }
+        },
+        {
+          "suggestion": 13,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Nah, I'm good for now. Don't worry about checking in on it anymore!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 13,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, please! Add it to my learning list.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "learning",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 13,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Not right now, but maybe check back with me in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 14,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Nah, don't worry about it. Let's just leave it as is for now.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 14,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "I'm still weighing whether it fits. Let me think about it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 14,
+          "intent": "correction",
+          "expected_choice": "skill",
+          "fix": "topic methods",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah that works, but can we call it \"topic methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "skill",
+            "correction": "topic methods"
+          }
+        },
+        {
+          "suggestion": 14,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "not yet, i'll let you know later!",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 14,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Did you ever find that spreadsheet from the archive run? Also, I'm starving, heading to lunch now.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 15,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Did you manage to find that spreadsheet for the afternoon meeting? Also, I'm starving, want to grab lunch?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 15,
+          "intent": "correction",
+          "expected_choice": "reports",
+          "fix": "bayesian methods",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please! Just call it \"bayesian methods\" in the reports though.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "reports",
+            "correction": "call it \"bayesian methods\" in the reports"
+          }
+        },
+        {
+          "suggestion": 15,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "I'm still weighing whether it fits the current scope, so let me think on it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 15,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not yet, let's circle back to it later!",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 15,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "yeah please add it to my interests! turns out i definitely want to keep track of it.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 16,
+          "intent": "other",
+          "expected_choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Actually, that's for Project B1 specifically, not just me.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 16,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "not really interested right now, so you can stop asking.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 16,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah, go ahead and mark it as something I'm currently learning!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "learning",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 16,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Did you ever find that dataset for the B1 analysis? Also, lmk if you're grabbing lunch with the group later.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 16,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "not yet, maybe check back with me in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 17,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, go ahead and add it to my interests! Thanks for noticing.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 17,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not right now, maybe check back with me in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 17,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "I'm still weighing how much space that should take up. Let me think about it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 17,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Did you ever find that dataset I left on the shared drive? Also, I'm starving, want to grab food around 1?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 17,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Nah, I'm good for now. Don't worry about checking in on that again!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 18,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Not right now, but let's circle back to it in a few weeks.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 18,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, sounds good! Go ahead and mark it as something I'm learning.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "learning",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 18,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "I'm still weighing the options, let me think about it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 18,
+          "intent": "other",
+          "expected_choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Actually that's meant for Project C1, not my own learning list.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 18,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "did you find that file for the seminar? also we need to grab lunch later.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 19,
+          "intent": "yes",
+          "expected_choice": "reports",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add that to my reports starting tomorrow!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "reports",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 19,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Did you manage to find that data file from the morning meeting? Also, I'm starving, what's the plan for lunch?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 19,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, definitely add that to my interests! Thanks for noticing.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 19,
+          "intent": "correction",
+          "expected_choice": "reports",
+          "fix": "retrieval augmented methods",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, sounds good! Can we just call it \"retrieval augmented methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "interests",
+            "correction": "retrieval augmented methods"
+          }
+        },
+        {
+          "suggestion": 19,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not just yet, let's circle back to it in a few weeks.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 20,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "I'm still weighing if that's actually useful right now. Let me think on it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 20,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, definitely add it to my interests! Thanks for noticing.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 20,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Nah, I'm good for now. Don't worry about checking in on it again!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 20,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Did you ever find that spreadsheet from the morning meeting? Also, I'm starving.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 20,
+          "intent": "correction",
+          "expected_choice": "reports",
+          "fix": "phylogenetic methods",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, definitely include it! Can we just call the topic \"phylogenetic methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "reports",
+            "correction": "call the topic \"phylogenetic methods\""
+          }
+        },
+        {
+          "suggestion": 21,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "hidden markov methods",
+          "other_label": "It's for Project A1, not me",
+          "reply": "Yeah, please do! Just call it \"hidden markov methods\" instead of models.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "hidden markov methods"
+          }
+        },
+        {
+          "suggestion": 21,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "not right now, you can stop asking about it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 21,
+          "intent": "other",
+          "expected_choice": "project:a3bc7ef7-f3d1-461f-a6ca-f021544093b3",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "Actually, let's slate that for Project A1 instead of my personal reading.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:a3bc7ef7-f3d1-461f-a6ca-f021544093b3",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 21,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "Not just yet, let's circle back to this in a few weeks.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 21,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "I'm still weighing my options on how to approach it, so let me think on it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 22,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "not right now, maybe check back in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 22,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "knowledge methods",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, that works, but can we call it \"knowledge methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "knowledge methods"
+          }
+        },
+        {
+          "suggestion": 22,
+          "intent": "other",
+          "expected_choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, go ahead, but keep it under Project C1 for now!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 22,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Nah, I'm good for now. Don't worry about checking back in on it.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 22,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "did you ever find that data file from this morning? also i'm starving, heading to lunch now.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 23,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "Nah, I'm good for now. Don't worry about bringing it up again!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 23,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "I'm still weighing the options, maybe give me a bit more time to decide?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 23,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "gaussian methods",
+          "other_label": "It's for Project A1, not me",
+          "reply": "Yeah, that works, but could you call it \"gaussian methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "gaussian methods"
+          }
+        },
+        {
+          "suggestion": 23,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "did you see that email about the meeting being moved to 3? also lmk if you found that dataset file.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 23,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "not yet, let's circle back to this in a few weeks!",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 24,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "did you ever find that dataset for the B1 run? also lmk if you're grabbing lunch later.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 24,
+          "intent": "yes",
+          "expected_choice": "reports",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please include that in my reports starting tomorrow!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "reports",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 24,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not right now, maybe check back with me in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 24,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not really interested right now, so you can leave it off the list. Don't worry about checking in on this again for a while!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 24,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add that to my interests! Thanks for noticing.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 25,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Nah, don't worry about it. Let's just leave it off for now.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 25,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Can you send me that spreadsheet from this morning's meeting? Also, I'm grabbing lunch if you want to join.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 25,
+          "intent": "yes",
+          "expected_choice": "skill",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, definitely add that! Thanks for checking.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "skill",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 25,
+          "intent": "correction",
+          "expected_choice": "skill",
+          "fix": "wastewater methods",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, but can you list it as \"wastewater methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "skill",
+            "correction": "wastewater methods"
+          }
+        },
+        {
+          "suggestion": 25,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "I'm still weighing if it fits the profile, let me think on it.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 26,
+          "intent": "correction",
+          "expected_choice": "reports",
+          "fix": "structural equation methods",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, definitely. Could you just call it \"structural equation methods\" instead though?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "reports",
+            "correction": "structural equation methods"
+          }
+        },
+        {
+          "suggestion": 26,
+          "intent": "yes",
+          "expected_choice": "reports",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add that to the reports! Thanks for noticing.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "reports",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 26,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not right now, but maybe check back with me in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 26,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not really interested in that right now, so you can stop asking.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 26,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add that to my interests! That would be super helpful.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 27,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "species distribution methods",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah, definitely include it! Just call it \"species distribution methods\" instead.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "call it \"species distribution methods\" instead"
+          }
+        },
+        {
+          "suggestion": 27,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Did you find that data file from the morning meeting? Also, I'm starving, what's the plan for lunch?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 27,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah, definitely! Mark it down as something I'm trying to learn.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "learning",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 27,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Not for now, but let's circle back to it in a few weeks.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 27,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "not 100% certain yet, let me think about how much time it'll take to dig into.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 28,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, add that to my interests! Thanks for noticing.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 28,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "not really interested right now, so you can stop checking in on that for a bit.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 28,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "did you find that file for the A1 report? also i'm grabbing lunch now if you want to join.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 28,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not for now, but let's revisit it in a few weeks.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 28,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "I'm still weighing whether that's actually useful for my current workflow. Can we hold off for a bit?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 29,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Nah, let's hold off for now. Don't worry about checking in on it again!",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 29,
+          "intent": "correction",
+          "expected_choice": "skill",
+          "fix": "variational methods",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, sounds good! Can we just call it \"variational methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "skill",
+            "correction": "variational methods"
+          }
+        },
+        {
+          "suggestion": 29,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Did you manage to fix that error in the dataset file? Also, let me know if you're grabbing lunch later.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 29,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "not right now, i'll let you know in a bit!",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 29,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "I'm still weighing how much it fits my current focus, let me think on it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 30,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Not just yet, maybe check back with me in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 30,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Nah, don't worry about it for now. You can stop asking about that one!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 30,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "drug methods",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah, sounds good! Just label it as \"drug methods\" instead.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "label it as \"drug methods\" instead"
+          }
+        },
+        {
+          "suggestion": 30,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "I'm still weighing my options for the project, so maybe hold off for a bit?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 30,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah, please add it to my learning list!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "learning",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 31,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Nah, i'm good for now. Let's just leave it alone.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 31,
+          "intent": "other",
+          "expected_choice": "interests",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah, please add it to my interests! That would be super helpful.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "interests",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 31,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "Not for now, but maybe check back in with me in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 31,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my interests",
+          "reply": "did you ever find that spreadsheet from the A1 meeting? also i'm starving, heading to lunch now.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 31,
+          "intent": "correction",
+          "expected_choice": "reports",
+          "fix": "precision methods",
+          "other_label": "Add it to my interests",
+          "reply": "Yeah that sounds good, just call it \"precision methods\" instead!",
+          "read": {
+            "verdict": "corrected",
+            "choice": "interests",
+            "correction": "precision methods"
+          }
+        },
+        {
+          "suggestion": 32,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Not yet, let's circle back to it later.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 32,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "I'm not entirely certain what that would entail for my profile. Let me think on it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 32,
+          "intent": "yes",
+          "expected_choice": "skill",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, go ahead and add that. Thanks for checking!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "skill",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 32,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "nah, i'm good for now. don't worry about adding it unless i bring it up again!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 32,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Did you ever find that spreadsheet from the morning meeting? Also i'm starving, wanna grab food soon?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 33,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, please! Definitely add it to my learning list.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "learning",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 33,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Did you find that spreadsheet for the C1 data yet? Also, lmk if you're grabbing lunch later.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 33,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "metagenomics work",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, sounds good! Just label it as \"metagenomics work\" instead of just metagenomics.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "label it as \"metagenomics work\""
+          }
+        },
+        {
+          "suggestion": 33,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Not yet, let's hold off for now and check back later.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 33,
+          "intent": "other",
+          "expected_choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Actually, that's more for the C1 project. Go ahead and add it to that one!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 34,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "I'm still weighing it up, let me think about it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 34,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "not yet, let's circle back to it in a few weeks.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 34,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah, please do! Add it to the list of things I'm picking up.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "things I'm picking up"
+          }
+        },
+        {
+          "suggestion": 34,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Nah, I'm good for now. Let's just leave it alone for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 34,
+          "intent": "other",
+          "expected_choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Actually, keep that for Project B1 instead of my personal list.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 35,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Did you ever find that spreadsheet for the C2 meeting? Also, I'm starving.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 35,
+          "intent": "other",
+          "expected_choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, sounds good, but actually that's for Project C1 so you can log it under that instead.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+            "correction": "log it under Project C1 instead"
+          }
+        },
+        {
+          "suggestion": 35,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "query methods",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah that works, just call it \"query methods\" instead of query expansion.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "call it \"query methods\" instead of query expansion"
+          }
+        },
+        {
+          "suggestion": 35,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Nah, I'm good for now. Don't worry about checking back in on this!",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 35,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "I'm still weighing whether that's the right move for the workflow right now. Maybe let me think on it for a bit?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 36,
+          "intent": "correction",
+          "expected_choice": "skill",
+          "fix": "simultaneous localisation and methods",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, but can you list it as \"simultaneous localisation and methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "skill",
+            "correction": "simultaneous localisation and methods"
+          }
+        },
+        {
+          "suggestion": 36,
+          "intent": "yes",
+          "expected_choice": "skill",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Yeah, go ahead and add that! Thanks for checking.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "skill",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 36,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "I'm still weighing if that actually fits my core skillset, let me think about it.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 36,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "Nah, don't worry about it. Let's just leave it off for now.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 36,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Add it to my skills",
+          "reply": "did you see the email about the meeting being moved to 3? also i'm starving lol.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 37,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "not right now, maybe check back with me in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 37,
+          "intent": "other",
+          "expected_choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah, can you actually attribute that to Project B1 instead?",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 37,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Yeah, please! Add it to my learning list for the upcoming project.",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "Add it to my learning list"
+          }
+        },
+        {
+          "suggestion": 37,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "I'm still weighing my options for the summer. Let me think about it for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 37,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project B1, not me",
+          "reply": "Did you ever find that paper I sent you this morning? Also, I'm starving, want to grab food around 1?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 38,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "not really interested right now, so you can stop checking in on it.",
+          "read": {
+            "verdict": "rejected",
+            "choice": "no",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 38,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "did you see the email about the meeting tomorrow? also i think the data file for project c is missing from the folder.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 38,
+          "intent": "other",
+          "expected_choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Actually, that's for Project C1, not my own learning. Go ahead and add it for that project!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 38,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "curriculum methods",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, but can we call it \"curriculum methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "curriculum methods"
+          }
+        },
+        {
+          "suggestion": 38,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "yeah that works, go ahead and add it to my learning list!",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "learning",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 39,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "I'm still weighing the options, so let's hold off for a bit.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 39,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "not right now, let's just leave it for now.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 39,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "Yeah, please do. Mark it down as a learning goal for me!",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "Mark it down as a learning goal for me!"
+          }
+        },
+        {
+          "suggestion": 39,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "did you ever find that dataset from the meeting? also i'm starving.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 39,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project A1, not me",
+          "reply": "Let's hold off for now, maybe check back in a few weeks?",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 40,
+          "intent": "yes",
+          "expected_choice": "project:1212097e-86a4-448f-8bd6-22bbfcecdb71",
+          "fix": "",
+          "other_label": "Project B2",
+          "reply": "Yeah, it was for Project B1. I'll catch you up on the details later!",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 40,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Project B2",
+          "reply": "did you see that email about the lunch order for friday? also can u check the lab folder for that new dataset?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 40,
+          "intent": "no",
+          "expected_choice": "no",
+          "fix": "",
+          "other_label": "Project B2",
+          "reply": "It's Project B2, but don't worry about it too much for now. Just leave it with me.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:7625b886-a888-4c10-950c-4753a4eee39b",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 40,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "Project B2",
+          "reply": "hey, i'm right in the middle of something, can we chat about this later?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 40,
+          "intent": "ambiguous",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "Project B2",
+          "reply": "Still mulling it over, let me double check the notes first.",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 41,
+          "intent": "offtopic",
+          "expected_choice": "",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "did you ever find that file from the morning meeting? also starving, want to grab lunch around 1?",
+          "read": {
+            "verdict": "unclear",
+            "choice": "",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 41,
+          "intent": "correction",
+          "expected_choice": "learning",
+          "fix": "reinforcement learning from human methods",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, but can we call it \"reinforcement learning from human methods\" instead?",
+          "read": {
+            "verdict": "corrected",
+            "choice": "learning",
+            "correction": "reinforcement learning from human methods"
+          }
+        },
+        {
+          "suggestion": 41,
+          "intent": "yes",
+          "expected_choice": "learning",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, please do! I'd love to have that in the feed for my own learning.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "learning",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 41,
+          "intent": "later",
+          "expected_choice": "later",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Not for now, but maybe check back with me in a few weeks.",
+          "read": {
+            "verdict": "defer",
+            "choice": "later",
+            "correction": ""
+          }
+        },
+        {
+          "suggestion": 41,
+          "intent": "other",
+          "expected_choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+          "fix": "",
+          "other_label": "It's for Project C1, not me",
+          "reply": "Yeah, that's actually for Project C1 specifically.",
+          "read": {
+            "verdict": "confirmed",
+            "choice": "project:91297dc5-5b90-4644-b041-e4867d0607ed",
+            "correction": ""
+          }
+        }
+      ]
+    },
+    "shutoff": {
+      "requests": 40,
+      "requests_caught": 0,
+      "requests_caught_with_model": 40,
+      "decoys": 40,
+      "decoys_tripped": 0,
+      "decoys_tripped_with_model": 0,
+      "missed_examples": [],
+      "tripped_examples": []
+    }
+  }
+}
