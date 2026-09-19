@@ -456,3 +456,18 @@ def test_manual_search_with_edited_slots_does_not_read_the_words_again(
     )
     assert response.status_code == 200
     assert [s["text"] for s in response.json()["slots"]] == ["kriging"]
+
+
+def test_concept_matches_follow_their_own_threshold(world, settings):
+    ada, people, project = world
+    query = matcher.query_for_project(ada, project)
+    candidates = matcher.eligible_candidates(ada, "institution")
+    gaps = [s for s in query.slots if s["text"] == "kriging"]
+    fields = {people["bo"].pk: {"27"}}
+    settings.COLLAB_CONCEPT_MATCH_COSINE = 0.9
+    assert matcher._concept_hits(query, candidates, gaps, [], fields)
+    # Raised past any similarity: no concept hit, while the sentence
+    # threshold is untouched.
+    settings.COLLAB_CONCEPT_MATCH_COSINE = 1.01
+    assert matcher._concept_hits(query, candidates, gaps, [], fields) == []
+    assert settings.COLLAB_LANE_MATCH_COSINE == 0.9

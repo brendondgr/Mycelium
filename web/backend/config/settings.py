@@ -1212,6 +1212,9 @@ COLLAB_APPEARANCE_CAP = env.int("COLLAB_APPEARANCE_CAP", default=10)
 COLLAB_SEARCH_ENABLED = env.bool("COLLAB_SEARCH_ENABLED", default=False)
 COLLAB_MAX_SCOPE = env("COLLAB_MAX_SCOPE", default="institution")
 COLLAB_LANE_MATCH_COSINE = env.float("COLLAB_LANE_MATCH_COSINE", default=0.70)
+# A slot against one of a person's concepts (a short phrase) — higher than the
+# sentence threshold, because short phrases for different methods sit close.
+COLLAB_CONCEPT_MATCH_COSINE = env.float("COLLAB_CONCEPT_MATCH_COSINE", default=0.80)
 COLLAB_LANE_DIFFER_COSINE = env.float("COLLAB_LANE_DIFFER_COSINE", default=0.55)
 COLLAB_SHORTLIST_PER_LANE = env.int("COLLAB_SHORTLIST_PER_LANE", default=8)
 COLLAB_RESULTS_PER_LANE = env.int("COLLAB_RESULTS_PER_LANE", default=3)

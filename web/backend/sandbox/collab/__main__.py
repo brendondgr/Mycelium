@@ -61,6 +61,11 @@ def main() -> int:
         "--seekers", type=int, default=120, help="For panel: how many seekers."
     )
     parser.add_argument(
+        "--concept-cosine",
+        type=float,
+        help="Override COLLAB_CONCEPT_MATCH_COSINE (e.g. 0.70 for EXP-008 arm A).",
+    )
+    parser.add_argument(
         "--read-calls",
         type=int,
         default=30,
@@ -92,6 +97,10 @@ def main() -> int:
         return 1 if report["invariant_failures"] else 0
 
     bootstrap.setup()
+    if args.concept_cosine is not None:
+        from django.conf import settings as django_settings
+
+        django_settings.COLLAB_CONCEPT_MATCH_COSINE = args.concept_cosine
     from . import corpus as corpus_mod
     from . import run as run_mod
     from . import score as score_mod

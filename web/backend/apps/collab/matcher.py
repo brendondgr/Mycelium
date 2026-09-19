@@ -424,8 +424,14 @@ def _concept_hits(
     papers were linked to (demonstrated) and what their profile states
     (declared, ranked slightly below, design §5.4). Sharper than whole facet
     sentences: a slot that says "kriging" meets a concept called "kriging".
-    Each concept is matched on its own; nothing is averaged."""
-    match = settings.COLLAB_LANE_MATCH_COSINE
+    Each concept is matched on its own; nothing is averaged.
+
+    A concept is a short phrase, and short phrases for *different* methods
+    sit close together in the embedding space ("finite element analysis" and
+    "image processing" meet at 0.70), so concepts match at their own, higher
+    threshold, ``COLLAB_CONCEPT_MATCH_COSINE`` — the bar coverage uses for the
+    same slot-against-concept comparison (EXP-2026-09-010's smoke run)."""
+    match = settings.COLLAB_CONCEPT_MATCH_COSINE
     differ = settings.COLLAB_LANE_DIFFER_COSINE
     edges = [
         e
