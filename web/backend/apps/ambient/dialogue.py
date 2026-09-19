@@ -793,6 +793,12 @@ def _apply(suggestion: PendingSuggestion, now) -> None:
                 )
             # An edit to the declared profile waits for Plan 08's applier.
             applied = key == "reports"
+            _changed(
+                suggestion,
+                "exploration_confirmed"
+                if key == "reports"
+                else "understanding_confirmed",
+            )
         elif key == "project" or verdict == Verdict.REJECTED:
             service.reject(user, suggestion.concept_id, suggestion.relation)
             if key == "project" and finding is not None:
@@ -815,6 +821,8 @@ def _apply(suggestion: PendingSuggestion, now) -> None:
             development.save(
                 update_fields=["status", "decided_by", "decided_at", "updated_at"]
             )
+            if verdict == Verdict.CONFIRMED:
+                _changed(suggestion, "development_confirmed", development=development)
         # The first answer on a lab project closes the question for everyone.
         PendingSuggestion.objects.filter(
             development=development, state__in=PendingSuggestion.OPEN
@@ -840,10 +848,34 @@ def _apply(suggestion: PendingSuggestion, now) -> None:
             service.keep(
                 user, suggestion.concept_id, suggestion.relation, review_on=review
             )
+            _changed(suggestion, "exploration_kept")
         elif key == "drop":
             service.fade(user, suggestion.concept_id, suggestion.relation)
+            _changed(suggestion, "exploration_dropped")
     if applied:
         suggestion.applied_at = now
+
+
+def _changed(suggestion: PendingSuggestion, kind: str, *, development=None) -> None:
+    """What took effect, for the "What changed" feed (Plan 07)."""
+    from .review import record
+
+    record(
+        suggestion.answered_by or suggestion.user
+        if development is not None
+        else suggestion.user,
+        kind,
+        suggestion.correction or suggestion.topic,
+        project=development.project if development is not None else suggestion.project,
+        surface=suggestion.answered_on,
+        suggestion=suggestion,
+        development=development,
+        finding=suggestion.finding,
+        concept_id=suggestion.concept_id,
+        relation=suggestion.relation,
+        explanation=suggestion.explanation,
+        visibility=development.visibility if development is not None else "personal",
+    )
 
 
 def _as_project_fact(suggestion: PendingSuggestion, now) -> None:
@@ -862,7 +894,7 @@ def _as_project_fact(suggestion: PendingSuggestion, now) -> None:
     )
     if latest is None:
         return
-    ProjectDevelopment.objects.create(
+    placed = ProjectDevelopment.objects.create(
         project=project,
         speaker=suggestion.user,
         change="other",
@@ -880,6 +912,7 @@ def _as_project_fact(suggestion: PendingSuggestion, now) -> None:
         decided_by=suggestion.user,
         decided_at=now,
     )
+    _changed(suggestion, "development_confirmed", development=placed)
 
 
 def _clarify(suggestion: PendingSuggestion, key: str) -> None:

@@ -196,6 +196,20 @@ def _developments(run: EvolveRun, now) -> None:
             Finding.objects.filter(pk=finding.pk).update(
                 handled_outcome=finding.outcome, handled_at=now
             )
+            if told and development.speaker_id:
+                from .review import record
+
+                record(
+                    development.speaker,
+                    "development_recorded",
+                    development.topic,
+                    project=development.project,
+                    surface="told",
+                    development=development,
+                    finding=finding,
+                    explanation=finding.explanation,
+                    visibility=development.visibility,
+                )
         run.developments[development.status] += 1
 
 

@@ -1444,3 +1444,106 @@ class ValidationRecord(models.Model):
         if self.pk is not None:
             raise ValueError("ValidationRecord is append-only; record a new row.")
         return super().save(*args, **kwargs)
+
+
+class AppliedChange(models.Model):
+    """Something Mylo understood that took effect — and how, and why (Plan 07).
+
+    One row per change: an exploration confirmed, kept or let go; a skill, a
+    preference, a direction or a learning goal confirmed; a project fact told
+    to Mylo or confirmed; an edit to the declared profile or a project's state
+    that the person accepted (Plan 08). It is what the "What changed" tab
+    shows, with Undo, and what the weekly reports (Plan 09).
+
+    An undo never erases the row: it stamps ``undone_at`` and writes its own
+    row (``kind = undone``), so the history reads as it happened (OD-07b).
+    """
+
+    class Kind(models.TextChoices):
+        EXPLORATION_CONFIRMED = "exploration_confirmed", "Exploration confirmed"
+        EXPLORATION_KEPT = "exploration_kept", "Exploration kept"
+        EXPLORATION_DROPPED = "exploration_dropped", "Exploration let go"
+        UNDERSTANDING_CONFIRMED = "understanding_confirmed", "Understanding confirmed"
+        DEVELOPMENT_RECORDED = "development_recorded", "Project fact recorded"
+        DEVELOPMENT_CONFIRMED = "development_confirmed", "Project development confirmed"
+        PROFILE_EDIT = "profile_edit", "Profile edited"
+        STATE_EDIT = "state_edit", "Project state edited"
+        UNDONE = "undone", "Undone"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ambient_changes",
+        help_text="Whose change it is: the person, or who confirmed a lab one.",
+    )
+    project = models.ForeignKey(
+        "research.Project",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="ambient_changes",
+    )
+    kind = models.CharField(max_length=32, choices=Kind.choices)
+    topic = models.CharField(max_length=200)
+    # For profile and state edits: the field path, and what it held before and
+    # after — so an undo can put back exactly what was there.
+    field = models.CharField(max_length=120, blank=True, default="")
+    old_value = models.JSONField(null=True, blank=True)
+    new_value = models.JSONField(null=True, blank=True)
+    # How it took effect: which surface, and from which question.
+    surface = models.CharField(max_length=16, blank=True, default="")
+    suggestion = models.ForeignKey(
+        PendingSuggestion,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="changes",
+    )
+    development = models.ForeignKey(
+        ProjectDevelopment,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="changes",
+    )
+    finding = models.ForeignKey(
+        Finding, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    proposal_id = models.CharField(max_length=64, blank=True, default="")
+    # The knowledge-core edge an undo reverses, by its key (ids only).
+    concept = models.ForeignKey(
+        "knowledge.Concept",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    relation = models.CharField(max_length=24, blank=True, default="")
+    # Why — Mylo's explanation as the person saw it.
+    explanation = models.TextField(blank=True, default="")
+    visibility = models.CharField(
+        max_length=16, choices=Visibility.choices, default=Visibility.PERSONAL
+    )
+    undo_of = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="undone_by",
+    )
+    undone_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["project", "created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"AppliedChange({self.kind}, {self.topic!r})"
+
+    @property
+    def undoable(self) -> bool:
+        return self.kind != self.Kind.UNDONE and self.undone_at is None

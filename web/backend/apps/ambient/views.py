@@ -172,3 +172,186 @@ class SuggestionAnswerView(APIView):
             },
             status=status.HTTP_200_OK if taken else status.HTTP_409_CONFLICT,
         )
+
+
+# -- the "Mylo & you" page (Plan 07) -------------------------------------------
+
+
+def _change_row(change, viewer) -> dict:
+    from . import review
+
+    return {
+        "id": change.pk,
+        "kind": change.kind,
+        "kind_label": change.get_kind_display(),
+        "topic": change.topic,
+        "project": (
+            {"id": str(change.project_id), "name": change.project.name}
+            if change.project_id
+            else None
+        ),
+        "field": change.field,
+        "old_value": change.old_value,
+        "new_value": change.new_value,
+        "surface": change.surface,
+        "explanation": change.explanation,
+        "visibility": change.visibility,
+        "by": {
+            "id": change.user_id,
+            "name": change.user.get_full_name() or change.user.get_username(),
+            "you": change.user_id == viewer.pk,
+        },
+        "created_at": change.created_at,
+        "undone_at": change.undone_at,
+        "undo_of": change.undo_of_id,
+        "can_undo": change.undoable and review.may_undo(change, viewer),
+    }
+
+
+class ChangeListView(APIView):
+    """``GET`` — what changed: my own changes, and the lab-visible changes to
+    projects I am on, newest first."""
+
+    def get(self, request: Request) -> Response:
+        from . import review
+
+        return Response(
+            {
+                "changes": [
+                    _change_row(c, request.user)
+                    for c in review.changes_for(request.user)
+                ]
+            }
+        )
+
+
+class ChangeUndoView(APIView):
+    """``POST`` — undo one change. Never time-limited; logged as its own change."""
+
+    def post(self, request: Request, pk: int) -> Response:
+        from . import review
+        from .models import AppliedChange
+
+        change = get_object_or_404(AppliedChange, pk=pk)
+        if not review.may_undo(change, request.user):
+            raise PermissionDenied("You can't undo this change.")
+        try:
+            reversal = review.undo(change, by=request.user)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        change.refresh_from_db()
+        return Response(
+            {
+                "change": _change_row(change, request.user),
+                "undo": _change_row(reversal, request.user),
+            }
+        )
+
+
+class UnderstandingView(APIView):
+    """``GET`` — what Mylo knows about me: every edge, with where it came from."""
+
+    def get(self, request: Request) -> Response:
+        from . import review
+
+        return Response(review.understanding_for(request.user))
+
+
+class UnderstandingItemView(APIView):
+    """``PATCH {label}`` — reword one thing Mylo understood (it becomes mine);
+    ``DELETE`` — remove it."""
+
+    def patch(self, request: Request, concept_id: int, relation: str) -> Response:
+        from . import review
+
+        label = str(request.data.get("label") or "")
+        if not review.edit_understanding(request.user, concept_id, relation, label):
+            raise ValidationError(
+                {"label": ["Nothing to change, or nothing to call it."]}
+            )
+        return Response(review.understanding_for(request.user))
+
+    def delete(self, request: Request, concept_id: int, relation: str) -> Response:
+        from . import review
+
+        if not review.delete_understanding(request.user, concept_id, relation):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UnderstandingReopenView(APIView):
+    """``POST`` — reopen something I declined or let fade: my own yes."""
+
+    def post(self, request: Request, concept_id: int, relation: str) -> Response:
+        from . import review
+
+        change = review.reopen(request.user, concept_id, relation)
+        if change is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response({"change": _change_row(change, request.user)})
+
+
+class AmbientSettingsView(APIView):
+    """``GET`` / ``PUT {listening_discord?, questions_muted?, quiet_until?}``."""
+
+    def get(self, request: Request) -> Response:
+        from . import review
+
+        return Response(review.settings_for(request.user))
+
+    def put(self, request: Request) -> Response:
+        from . import review
+
+        allowed = {"listening_discord", "questions_muted", "quiet_until"}
+        data = {k: v for k, v in request.data.items() if k in allowed}
+        if "quiet_until" in data and data["quiet_until"]:
+            from django.utils.dateparse import parse_date
+
+            parsed = parse_date(str(data["quiet_until"]))
+            if parsed is None:
+                raise ValidationError({"quiet_until": ["A date, YYYY-MM-DD."]})
+            data["quiet_until"] = parsed
+        return Response(review.update_settings(request.user, data))
+
+
+class ObservationsDeleteView(APIView):
+    """``POST {confirm: true}`` — delete everything Mylo understood about me."""
+
+    def post(self, request: Request) -> Response:
+        from . import review
+
+        if request.data.get("confirm") is not True:
+            raise ValidationError({"confirm": ["Confirm with true to delete."]})
+        retraction = review.delete_everything(request.user)
+        return Response({"deleted_observations": len(retraction.observation_ids or [])})
+
+
+class ProjectDevelopmentsView(APIView):
+    """``GET`` — a project's development timeline, for anybody who can see the
+    project; private developments only for the person who said them."""
+
+    def get(self, request: Request, pk) -> Response:
+        from apps.research.models import Project
+
+        from . import review
+
+        project = get_object_or_404(Project.objects.visible_to(request.user), pk=pk)
+        return Response(
+            {"developments": review.project_developments(project, request.user)}
+        )
+
+
+class LabChangesView(APIView):
+    """``GET`` — a lab's "What changed": shared projects only, lab members only."""
+
+    def get(self, request: Request, slug: str) -> Response:
+        from apps.accounts.models import Lab, LabMembership
+
+        from . import review
+
+        lab = get_object_or_404(Lab, slug=slug)
+        if not LabMembership.objects.filter(lab=lab, user=request.user).exists():
+            raise PermissionDenied("Only this lab's members can see its changes.")
+        return Response(
+            {"changes": [_change_row(c, request.user) for c in review.lab_changes(lab)]}
+        )
