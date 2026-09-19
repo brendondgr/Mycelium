@@ -7,6 +7,7 @@ import type {
   Audience,
   CollaborationPreview,
   CollaborationSetting,
+  Introduction,
   Lane,
   OpenTo,
   QuerySlot,
@@ -15,6 +16,7 @@ import type {
   SearchEntry,
   SearchResponse,
   SlotFeedbackKind,
+  TeamResponse,
 } from "./types";
 
 /** Tell Mylo a call's slot is wrong, covered, or missing. Append-only. */
@@ -120,11 +122,40 @@ export function prefillSearch(entry: SearchEntry): Promise<{ slots: QuerySlot[] 
   return postJson(["collab", "search"], { ...entry, dry_run: true }, "Could not prepare the search.");
 }
 
-export function runSearch(
-  entry: SearchEntry,
-  options: { slots: QuerySlot[]; lanes: Lane[]; scope: Audience },
-): Promise<SearchResponse> {
+export type SearchOptions = {
+  slots: QuerySlot[];
+  lanes: Lane[];
+  scope: Audience;
+  outside_network: boolean;
+};
+
+export function runSearch(entry: SearchEntry, options: SearchOptions): Promise<SearchResponse> {
   return postJson(["collab", "search"], { ...entry, ...options }, "The search did not run.");
+}
+
+export function assembleTeam(
+  entry: SearchEntry,
+  options: Omit<SearchOptions, "lanes">,
+): Promise<TeamResponse> {
+  return postJson(["collab", "team"], { ...entry, ...options }, "Could not assemble a team.");
+}
+
+export async function fetchIntroduction(
+  searchId: number,
+  username: string,
+): Promise<Introduction> {
+  const response = await fetch(
+    buildApiUrl(
+      getPublicApiBase(),
+      "collab",
+      "searches",
+      String(searchId),
+      "introduction",
+      username,
+    ),
+    { credentials: "include" },
+  );
+  return readJson(response, "Could not look for an introduction.");
 }
 
 export function sendMatchFeedback(

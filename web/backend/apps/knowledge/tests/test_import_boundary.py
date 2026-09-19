@@ -35,10 +35,13 @@ _PUBLIC = {_READ_DOOR, _WRITE_DOOR}
 _COLLAB_MAY_READ = {
     "EdgeView",
     "WorkView",
+    "coauthor_distances",
     "concept_vectors",
     "discoverable_works",
     "discoverable_edges",
+    "introduction_paths",
     "lab_declared_edges",
+    "network_of",
     "own_edges",
     "project_edges",
 }

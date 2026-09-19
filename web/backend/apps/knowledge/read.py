@@ -15,6 +15,9 @@ boundary test pins which of these the collaboration app may import at all.
 | :func:`project_edges` | declared | active | a viewer who can see the project |
 | :func:`undeclared_project_concepts` | declared | active | the same viewer (Q1) |
 | :func:`backing` | declared, demonstrated | active | the person themselves (Q2) |
+| :func:`network_of` | — (co-authorship) | — | collaboration search (CN-07) |
+| :func:`coauthor_distances` | — (co-authorship) | — | collaboration search (CN-07) |
+| :func:`introduction_paths` | — (co-authorship) | — | collaboration search (CN-07) |
 
 Demonstrated edges (a person's papers) are deliberately absent from
 :func:`ranking_edges`: letting them shape recommendations is a ranking change,
@@ -38,10 +41,13 @@ __all__ = [
     "EdgeView",
     "backing",
     "WorkView",
+    "coauthor_distances",
     "concept_vectors",
     "discoverable_edges",
     "discoverable_works",
+    "introduction_paths",
     "lab_declared_edges",
+    "network_of",
     "own_edges",
     "project_edges",
     "ranking_edges",
@@ -342,3 +348,95 @@ def discoverable_works(users: Iterable) -> list[WorkView]:
             )
         )
     return out
+
+
+# --- the co-authorship graph (plan CN-07) -----------------------------------
+#
+# Published co-authorship only: it holds no concept, tier or conversation, so
+# nothing here can make a person findable. Who may be *named* on a path is the
+# caller's decision (``through``); this module only walks.
+
+_NEIGHBOURS = """
+    SELECT b_id AS other FROM knowledge_coauthorship WHERE a_id = w.node
+    UNION ALL
+    SELECT a_id FROM knowledge_coauthorship WHERE b_id = w.node
+"""
+
+
+def network_of(user_id: int, hops: int = 2) -> set[int]:
+    """Everyone within ``hops`` co-authorships of a person, themselves excluded."""
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            WITH RECURSIVE walk(node, depth) AS (
+                SELECT %s::int, 0
+                UNION
+                SELECT nb.other, w.depth + 1
+                FROM walk w CROSS JOIN LATERAL ({_NEIGHBOURS}) nb
+                WHERE w.depth < %s
+            )
+            SELECT DISTINCT node FROM walk WHERE node <> %s
+            """,
+            [user_id, hops, user_id],
+        )
+        return {row[0] for row in cursor.fetchall()}
+
+
+def coauthor_distances(user_id: int, max_hops: int = 3) -> dict[int, int]:
+    """``{person: hops}`` for everyone within ``max_hops`` of a person."""
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            WITH RECURSIVE walk(node, depth) AS (
+                SELECT %s::int, 0
+                UNION
+                SELECT nb.other, w.depth + 1
+                FROM walk w CROSS JOIN LATERAL ({_NEIGHBOURS}) nb
+                WHERE w.depth < %s
+            )
+            SELECT node, MIN(depth) FROM walk WHERE node <> %s GROUP BY node
+            """,
+            [user_id, max_hops, user_id],
+        )
+        return dict(cursor.fetchall())
+
+
+def introduction_paths(
+    source_id: int, targets: Iterable[int], through: Iterable[int], max_hops: int = 3
+) -> dict[int, list[int]]:
+    """The shortest co-authorship path from ``source_id`` to each reachable
+    target, as ``[source, …intermediaries…, target]``.
+
+    Every intermediary is in ``through``; a path that would pass anyone else is
+    not taken. Among equally short paths the lowest ids win, so an answer is
+    the same every time it is asked.
+    """
+    from django.db import connection
+
+    targets = [int(t) for t in targets]
+    if not targets:
+        return {}
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            WITH RECURSIVE walk(node, path, depth) AS (
+                SELECT %s::int, ARRAY[%s::int], 0
+                UNION ALL
+                SELECT nb.other, w.path || nb.other, w.depth + 1
+                FROM walk w CROSS JOIN LATERAL ({_NEIGHBOURS}) nb
+                WHERE w.depth < %s
+                  AND NOT nb.other = ANY(w.path)
+                  AND (w.depth = 0 OR w.node = ANY(%s::int[]))
+            )
+            SELECT DISTINCT ON (node) node, path
+            FROM walk
+            WHERE node = ANY(%s::int[])
+            ORDER BY node, depth, path
+            """,
+            [source_id, source_id, max_hops, [int(t) for t in through], targets],
+        )
+        return {node: list(path) for node, path in cursor.fetchall()}

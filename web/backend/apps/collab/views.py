@@ -151,6 +151,8 @@ class SearchInput(serializers.Serializer):
     )
     scope = serializers.ChoiceField(choices=Audience.choices, required=False)
     dry_run = serializers.BooleanField(required=False, default=False)
+    #: Leave out co-authors of co-authors too (plan CN-07).
+    outside_network = serializers.BooleanField(required=False, default=False)
 
 
 def search_availability(user) -> dict:
@@ -199,77 +201,131 @@ class SearchView(APIView):
         return Response(search_availability(request.user))
 
     def post(self, request):
-        from django.conf import settings
-
-        from apps.research.models import Project
-
         from . import matcher
 
-        if not settings.COLLAB_SEARCH_ENABLED:
-            return Response(
-                {"detail": "Collaborator search is not available yet."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        closed = _search_closed()
+        if closed is not None:
+            return closed
         payload = SearchInput(data=request.data)
         payload.is_valid(raise_exception=True)
         data = payload.validated_data
-        options = {}
-        if data.get("lanes"):
-            options["lanes"] = tuple(data["lanes"])
-        if data.get("scope"):
-            options["scope"] = data["scope"]
         try:
-            if data["entry"] == "call":
-                call = ContentItem.objects.filter(
-                    pk=data.get("content_id"), type="grant"
-                ).first()
-                if call is None:
-                    return Response({"detail": "No such call."}, status=404)
-                query = matcher.query_for_call(request.user, call, **options)
-            elif data["entry"] == "project":
-                project = Project.objects.filter(pk=data.get("project_id")).first()
-                if project is None:
-                    return Response({"detail": "No such project."}, status=404)
-                query = matcher.query_for_project(request.user, project, **options)
-            elif data.get("slots") is not None:
-                # Edited slots replace whatever the words would have read as;
-                # reading them again would be a model call thrown away.
-                query = matcher.Query(
-                    "manual",
-                    [],
-                    need_fields=matcher._fields_of([request.user]),
-                    **options,
-                )
-            else:
-                query = matcher.query_for_text(
-                    request.user, data.get("text") or "", **options
-                )
-            if data.get("slots") is not None:
-                query.slots = matcher._with_vectors(
-                    [dict(slot) for slot in data["slots"]]
-                )
+            query = _query_from(request.user, data)
+            if isinstance(query, Response):
+                return query
             if data.get("dry_run"):
                 # The pre-filled query only: nothing searched, logged or shown.
-                return Response(
-                    {
-                        "slots": [
-                            {k: v for k, v in slot.items() if k != "vector"}
-                            for slot in query.slots
-                        ]
-                    }
-                )
+                return Response({"slots": _public_slots(query)})
             result = matcher.search(request.user, query)
         except matcher.SearchRefused as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
-        return Response(
-            {
-                "slots": [
-                    {k: v for k, v in slot.items() if k != "vector"}
-                    for slot in query.slots
-                ],
-                **result.as_dict(),
-            }
+        return Response({"slots": _public_slots(query), **result.as_dict()})
+
+
+def _search_closed() -> Response | None:
+    from django.conf import settings
+
+    if settings.COLLAB_SEARCH_ENABLED:
+        return None
+    return Response(
+        {"detail": "Collaborator search is not available yet."},
+        status=status.HTTP_404_NOT_FOUND,
+    )
+
+
+def _public_slots(query) -> list[dict]:
+    return [{k: v for k, v in slot.items() if k != "vector"} for slot in query.slots]
+
+
+def _query_from(user, data: dict):
+    """The query a search input describes, or a 404 response for a call or
+    project that does not exist. Refusals raise ``SearchRefused``."""
+    from apps.research.models import Project
+
+    from . import matcher
+
+    options = {"outside_network": bool(data.get("outside_network"))}
+    if data.get("lanes"):
+        options["lanes"] = tuple(data["lanes"])
+    if data.get("scope"):
+        options["scope"] = data["scope"]
+    if data["entry"] == "call":
+        call = ContentItem.objects.filter(
+            pk=data.get("content_id"), type="grant"
+        ).first()
+        if call is None:
+            return Response({"detail": "No such call."}, status=404)
+        query = matcher.query_for_call(user, call, **options)
+    elif data["entry"] == "project":
+        project = Project.objects.filter(pk=data.get("project_id")).first()
+        if project is None:
+            return Response({"detail": "No such project."}, status=404)
+        query = matcher.query_for_project(user, project, **options)
+    elif data.get("slots") is not None:
+        # Edited slots replace whatever the words would have read as; reading
+        # them again would be a model call thrown away.
+        query = matcher.Query(
+            "manual", [], need_fields=matcher._fields_of([user]), **options
         )
+    else:
+        query = matcher.query_for_text(user, data.get("text") or "", **options)
+    if data.get("slots") is not None:
+        query.slots = matcher._with_vectors([dict(slot) for slot in data["slots"]])
+    return query
+
+
+class TeamView(APIView):
+    """``POST /api/collab/team/`` — "Assemble a team" (plan CN-07).
+
+    The same input as a search. Proposes up to ``COLLAB_TEAM_MAX_SIZE`` people
+    who together cover the need's gaps, each passing the gate alone; a gap
+    nobody eligible covers is listed as uncovered. Offered for three or more
+    gaps; fewer is refused (``too_few_gaps``).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from . import matcher
+
+        closed = _search_closed()
+        if closed is not None:
+            return closed
+        payload = SearchInput(data=request.data)
+        payload.is_valid(raise_exception=True)
+        try:
+            query = _query_from(request.user, payload.validated_data)
+            if isinstance(query, Response):
+                return query
+            result = matcher.assemble_team(request.user, query)
+        except matcher.SearchRefused as exc:
+            return Response(
+                {"detail": str(exc), "code": exc.code},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response({"slots": _public_slots(query), **result.as_dict()})
+
+
+class IntroductionView(APIView):
+    """``GET /api/collab/searches/<id>/introduction/<username>/`` — "Who can
+    introduce me?" for someone that search returned (plan CN-07).
+
+    ``{"path": null}`` when no chain of co-authors who are open to the seeker
+    reaches them; nobody who has not opted in is ever named.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, search_id: int, username: str):
+        from . import matcher
+
+        closed = _search_closed()
+        if closed is not None:
+            return closed
+        try:
+            return Response(matcher.introduce(request.user, search_id, username))
+        except matcher.SearchRefused as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
 
 
 class MatchFeedbackInput(serializers.Serializer):

@@ -121,3 +121,27 @@ export type SavedPerson = {
   slots: string[];
   saved_at: string;
 };
+
+/** "Assemble a team" (plan CN-07): people who together cover the gaps. */
+export type TeamMember = {
+  username: string;
+  name: string;
+  institution: string;
+  covers: { slot: string; facet: string; matched: string; tier: "declared" | "demonstrated" }[];
+  /** Co-authorships between you and them, when three or fewer. */
+  distance: number | null;
+};
+
+export type TeamResponse = {
+  slots: QuerySlot[];
+  team: TeamMember[];
+  /** Gaps nobody open to you covers. */
+  uncovered: string[];
+  search_id: number;
+};
+
+/** "Who can introduce me?" — only people open to you are ever named. */
+export type Introduction = {
+  hops: number | null;
+  path: { username: string; name: string; institution: string }[] | null;
+};

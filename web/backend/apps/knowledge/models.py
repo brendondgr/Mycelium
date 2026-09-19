@@ -523,3 +523,39 @@ class WorkFacets(models.Model):
 
     def __str__(self) -> str:
         return f"WorkFacets({self.author_work_id}{', thin' if self.thin else ''})"
+
+
+class Coauthorship(models.Model):
+    """Two people on Mycelium who published together (plan CN-07).
+
+    Derived, never typed: rebuilt from :class:`~apps.accounts.models.AuthorWork`
+    — a work of one lists the other's OpenAlex id among its co-authors, or both
+    hold the same work. One row per pair, ``a`` always the lower id, so the
+    graph is undirected by construction. It is what introduction paths and
+    "outside my network" walk; nothing about who is *findable* lives here —
+    consent stays with the collaboration setting.
+    """
+
+    a = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+"
+    )
+    b = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+"
+    )
+    works = models.PositiveIntegerField(default=1)
+    last_year = models.PositiveSmallIntegerField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["a", "b"], name="knowledge_coauthorship_pair"
+            ),
+            models.CheckConstraint(
+                condition=Q(a__lt=models.F("b")), name="knowledge_coauthorship_ordered"
+            ),
+        ]
+        indexes = [models.Index(fields=["b", "a"])]
+
+    def __str__(self) -> str:
+        return f"{self.a_id}–{self.b_id} ({self.works})"

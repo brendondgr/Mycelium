@@ -1216,6 +1216,15 @@ COLLAB_LANE_DIFFER_COSINE = env.float("COLLAB_LANE_DIFFER_COSINE", default=0.55)
 COLLAB_SHORTLIST_PER_LANE = env.int("COLLAB_SHORTLIST_PER_LANE", default=8)
 COLLAB_RESULTS_PER_LANE = env.int("COLLAB_RESULTS_PER_LANE", default=3)
 COLLAB_SEARCHES_PER_DAY = env.int("COLLAB_SEARCHES_PER_DAY", default=20)
+# Graph features (plan CN-07). An introduction path is at most
+# COLLAB_INTRO_MAX_HOPS co-authorships long and names only people open to the
+# seeker. "Assemble a team" is offered for COLLAB_TEAM_MIN_GAPS or more gaps and
+# proposes up to COLLAB_TEAM_MAX_SIZE people, trading match strength against
+# co-authorship distance at COLLAB_TEAM_DISTANCE_WEIGHT per hop.
+COLLAB_INTRO_MAX_HOPS = env.int("COLLAB_INTRO_MAX_HOPS", default=3)
+COLLAB_TEAM_MIN_GAPS = env.int("COLLAB_TEAM_MIN_GAPS", default=3)
+COLLAB_TEAM_MAX_SIZE = env.int("COLLAB_TEAM_MAX_SIZE", default=4)
+COLLAB_TEAM_DISTANCE_WEIGHT = env.float("COLLAB_TEAM_DISTANCE_WEIGHT", default=0.15)
 COLLAB_INSTITUTIONS_PATH = env(
     "COLLAB_INSTITUTIONS_PATH",
     default=str(ROOT_DIR / "app" / "public" / "data" / "institutions.json"),

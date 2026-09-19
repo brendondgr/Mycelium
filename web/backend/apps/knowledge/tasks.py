@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 from celery import shared_task
 
-from . import papers, projection
+from . import coauthorship, papers, projection
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(name="apps.knowledge.project_subject")
@@ -15,8 +19,15 @@ def project_subject(kind: str, pk: str) -> dict:
 
 @shared_task(name="apps.knowledge.sweep")
 def sweep() -> dict:
-    """Reconcile every declared edge and prune orphaned private concepts."""
-    return projection.sweep().as_dict()
+    """Reconcile every declared edge, prune orphaned private concepts, and
+    rebuild who published with whom (plan CN-07)."""
+    out = projection.sweep().as_dict()
+    try:
+        out["coauthorship"] = coauthorship.rebuild().as_dict()
+    except Exception:  # noqa: BLE001 - the graph must not undo the sweep
+        logger.exception("coauthorship rebuild failed")
+        out["coauthorship"] = {"failed": True}
+    return out
 
 
 @shared_task(name="apps.knowledge.facet_user_works")

@@ -53,9 +53,12 @@ from apps.content.embeddings import embed_texts
 from apps.core.people import display_name
 from apps.knowledge.read import (
     WorkView,
+    coauthor_distances,
     concept_vectors,
     discoverable_edges,
     discoverable_works,
+    introduction_paths,
+    network_of,
     own_edges,
 )
 
@@ -101,6 +104,8 @@ class Query:
     lanes: tuple[str, ...] = LANES
     scope: str = Audience.INSTITUTION
     need_fields: frozenset[str] = frozenset()
+    #: Leave out co-authors of co-authors too, not only co-authors (CN-07).
+    outside_network: bool = False
 
     def key(self) -> str:
         raw = json.dumps(
@@ -108,6 +113,7 @@ class Query:
                 "slots": [(s["facet"], s["text"].casefold()) for s in self.slots],
                 "lanes": sorted(self.lanes),
                 "scope": self.scope,
+                "outside_network": self.outside_network,
             },
             sort_keys=True,
         )
@@ -215,13 +221,16 @@ def _coauthors_by_user(user_ids) -> dict[int, set[str]]:
     return out
 
 
-def eligible_candidates(seeker, scope: str, now=None) -> list:
+def eligible_candidates(
+    seeker, scope: str, now=None, *, outside_network: bool = False
+) -> list:
     """Everyone the gate lets this seeker see, before any matching.
 
     Open and not expired; mutually visible on verified affiliations; not the
     seeker, not a lab-mate, not an existing co-author; under the appearance
     cap. Every condition is re-checked on every search — nothing about who is
-    findable is cached (plan CN-04).
+    findable is cached (plan CN-04). ``outside_network`` also leaves out
+    everyone within two co-authorships of the seeker (plan CN-07).
     """
     now = now or timezone.now()
     seeker_place = consent.place_of(seeker)
@@ -236,9 +245,12 @@ def eligible_candidates(seeker, scope: str, now=None) -> list:
     labs = _labs_by_user(ids)
     coauthors = _coauthors_by_user(ids)
     seeker_openalex = getattr(seeker.profile, "openalex_id", "") or ""
+    network = network_of(seeker.pk, hops=2) if outside_network else set()
     out = []
     for setting in settings_rows:
         candidate = setting.user
+        if candidate.pk in network:
+            continue
         place = consent.stored_place(candidate)
         if not consent.mutually_visible(place, setting.audience, seeker_place, scope):
             continue
@@ -616,6 +628,22 @@ def _allowed_scope(scope: str) -> None:
         )
 
 
+def _split(seeker, query: Query) -> tuple[list[dict], list[dict]]:
+    """The query's matchable slots as (what the seeker covers, the gaps).
+
+    What the seeker already has is what the in-field lane shares; the rest is
+    what the bridges — and a team — must fill."""
+    own = [e for e in own_edges(seeker) if e.status == "active"]
+    row = RequirementSlots(content_id=None, slots=query.slots, status="ok")
+    fit = assess(row, own=own)
+    covered_texts = {s.text for s in fit.slots if s.covered_by == YOU}
+    matchable = [s for s in query.slots if s["facet"] != SlotFacet.ROLE]
+    return (
+        [s for s in matchable if s["text"] in covered_texts],
+        [s for s in matchable if s["text"] not in covered_texts],
+    )
+
+
 def check_seeker(seeker, now=None) -> None:
     """Refuse a seeker who may not search: unverified, over the daily limit, or
     on a free plan while plans are enforced (plan CN-04, OD-CN5)."""
@@ -659,7 +687,10 @@ def search(
         # cached answer passes the gate again, so a person who turned the
         # setting off since is gone from it at once.
         allowed = {
-            c.get_username() for c in eligible_candidates(seeker, query.scope, now)
+            c.get_username()
+            for c in eligible_candidates(
+                seeker, query.scope, now, outside_network=query.outside_network
+            )
         }
         lanes = {
             lane: [row for row in rows if row["username"] in allowed]
@@ -671,19 +702,13 @@ def search(
             search_id=cached.pk,
         )
 
-    # Coverage of the query's own slots: what the seeker already has is what
-    # the in-field lane shares; the rest is what the bridges must fill.
-    own = [e for e in own_edges(seeker) if e.status == "active"]
-    row = RequirementSlots(content_id=None, slots=query.slots, status="ok")
-    fit = assess(row, own=own)
-    covered_texts = {s.text for s in fit.slots if s.covered_by == YOU}
-    matchable = [s for s in query.slots if s["facet"] != SlotFacet.ROLE]
-    covered = [s for s in matchable if s["text"] in covered_texts]
-    gaps = [s for s in matchable if s["text"] not in covered_texts]
+    covered, gaps = _split(seeker, query)
     if not covered:
-        covered = [s for s in matchable if s["facet"] == SlotFacet.PROBLEM]
+        covered = [s for s in query.slots if s["facet"] == SlotFacet.PROBLEM]
 
-    candidates = eligible_candidates(seeker, query.scope, now)
+    candidates = eligible_candidates(
+        seeker, query.scope, now, outside_network=query.outside_network
+    )
     result = SearchResult(candidates_considered=len(candidates))
     by_id = {c.pk: c for c in candidates}
     works = discoverable_works(candidates)
@@ -734,6 +759,207 @@ def search(
             query_hash=query.key(),
             results=sum(len(v) for v in result.lanes.values()),
             cached={"lanes": result.lanes, "explained": result.explained},
+        )
+    result.search_id = log.pk
+    return result
+
+
+# --- introductions (plan CN-07) ----------------------------------------------
+
+
+def introduce(seeker, search_id: int, username: str, now=None) -> dict:
+    """ "Who can introduce me?" — the shortest co-authorship chain from the
+    seeker to someone a search of theirs returned.
+
+    Only for a person that search showed, who still passes the gate. Every
+    intermediary named is open to collaboration now, with an audience that
+    includes the seeker, and under the appearance cap — being named on a path
+    is being shown, so it is recorded as an appearance. Nobody else is ever
+    named; if the only chains run through people who have not opted in, the
+    answer is that there is no path.
+    """
+    now = now or timezone.now()
+    log = SearchLog.objects.filter(pk=search_id, seeker=seeker).first()
+    if log is None:
+        raise SearchRefused("no such search", "not_found")
+    shown = {
+        row["username"]
+        for rows in (log.cached or {}).get("lanes", {}).values()
+        for row in rows
+    } | {row["username"] for row in (log.cached or {}).get("team", [])}
+    if username not in shown:
+        raise SearchRefused("that person was not in this search", "not_found")
+    target = next(
+        (
+            c
+            for c in eligible_candidates(seeker, log.scope, now)
+            if c.get_username() == username
+        ),
+        None,
+    )
+    if target is None:
+        raise SearchRefused("that person is no longer open to you", "not_found")
+    seeker_place = consent.place_of(seeker)
+    through = []
+    for setting in CollaborationSetting.objects.filter(
+        open=True, expires_at__gt=now
+    ).select_related("user", "user__verified_affiliation"):
+        person = setting.user
+        if person.pk in (seeker.pk, target.pk):
+            continue
+        if not consent.within(
+            consent.stored_place(person), seeker_place, setting.audience
+        ):
+            continue
+        if not consent.may_appear(person, seeker, now):
+            continue
+        through.append(person)
+    by_id = {p.pk: p for p in through}
+    path = introduction_paths(
+        seeker.pk, [target.pk], by_id, max_hops=settings.COLLAB_INTRO_MAX_HOPS
+    ).get(target.pk)
+    if not path:
+        return {"path": None, "hops": None}
+    middle = [by_id[pk] for pk in path[1:-1]]
+    with transaction.atomic():
+        for person in middle:
+            consent.record_appearance(person, seeker, now)
+    return {
+        "hops": len(path) - 1,
+        "path": [
+            {
+                "username": person.get_username(),
+                "name": display_name(person),
+                "institution": getattr(
+                    getattr(person, "verified_affiliation", None), "institution", ""
+                ),
+            }
+            for person in middle
+        ],
+    }
+
+
+# --- team formation (plan CN-07) ---------------------------------------------
+
+
+@dataclass
+class TeamResult:
+    team: list[dict] = field(default_factory=list)
+    uncovered: list[str] = field(default_factory=list)
+    search_id: int | None = None
+
+    def as_dict(self) -> dict:
+        return {
+            "team": self.team,
+            "uncovered": self.uncovered,
+            "search_id": self.search_id,
+        }
+
+
+#: A person further than this from everyone chosen counts as this far.
+_FAR = 4
+
+
+def assemble_team(seeker, query: Query, *, now=None) -> TeamResult:
+    """A small set of people who together cover every gap in the need.
+
+    Greedy set cover with a distance penalty (the team formation problem): at
+    each step, the person whose match scores over the still-uncovered gaps,
+    less ``COLLAB_TEAM_DISTANCE_WEIGHT`` times their mean co-authorship
+    distance to the seeker and those already chosen, is added. Everyone
+    considered comes through :func:`eligible_candidates`, so each member passes
+    the gate alone; a gap nobody eligible covers is reported, never filled.
+    Deterministic: no model is asked, and each member's line is their own
+    words for what they cover.
+    """
+    now = now or timezone.now()
+    _allowed_scope(query.scope)
+    check_seeker(seeker, now)
+    _, gaps = _split(seeker, query)
+    if len(gaps) < settings.COLLAB_TEAM_MIN_GAPS:
+        raise SearchRefused(
+            f"a team is proposed for {settings.COLLAB_TEAM_MIN_GAPS} or more gaps",
+            "too_few_gaps",
+        )
+    candidates = eligible_candidates(
+        seeker, query.scope, now, outside_network=query.outside_network
+    )
+    by_id = {c.pk: c for c in candidates}
+    works = discoverable_works(candidates)
+    field_of: dict[int, set] = defaultdict(set)
+    for w in works:
+        if w.field:
+            field_of[w.user_id].add(w.field)
+    # Any field may fill a gap in a team, so the bridge lanes run with no
+    # "home" field: the lane rules still decide what counts as covering.
+    open_query = Query(query.entry, query.slots, lanes=GAP_LANES, scope=query.scope)
+    hits = _work_hits(open_query, works, gaps, [], now)
+    hits += _concept_hits(open_query, candidates, gaps, [], field_of)
+    cover: dict[str, dict[int, Hit]] = defaultdict(dict)
+    for h in hits:
+        best = cover[h.slot].get(h.user_id)
+        if best is None or h.score > best.score:
+            cover[h.slot][h.user_id] = h
+
+    distances = {seeker.pk: coauthor_distances(seeker.pk, _FAR - 1)}
+    chosen: list[int] = []
+    uncovered = [s["text"] for s in gaps]
+    weight = settings.COLLAB_TEAM_DISTANCE_WEIGHT
+    while uncovered and len(chosen) < settings.COLLAB_TEAM_MAX_SIZE:
+        best_value, best_id = None, None
+        people = sorted(
+            {uid for text in uncovered for uid in cover.get(text, {})} - set(chosen)
+        )
+        for uid in people:
+            gain = sum(
+                cover[text][uid].score for text in uncovered if uid in cover[text]
+            )
+            dist = sum(d.get(uid, _FAR) for d in distances.values()) / len(distances)
+            value = gain - weight * dist
+            if best_value is None or value > best_value:
+                best_value, best_id = value, uid
+        if best_id is None:
+            break
+        chosen.append(best_id)
+        distances[best_id] = coauthor_distances(best_id, _FAR - 1)
+        uncovered = [t for t in uncovered if best_id not in cover.get(t, {})]
+
+    result = TeamResult(uncovered=uncovered)
+    for uid in chosen:
+        person = by_id[uid]
+        place = getattr(person, "verified_affiliation", None)
+        result.team.append(
+            {
+                "username": person.get_username(),
+                "name": display_name(person),
+                "institution": place.institution if place else "",
+                "covers": [
+                    {
+                        "slot": text,
+                        "facet": cover[text][uid].facet,
+                        "matched": cover[text][uid].matched,
+                        "tier": cover[text][uid].tier,
+                    }
+                    for text in (s["text"] for s in gaps)
+                    if uid in cover.get(text, {})
+                ],
+                "distance": distances[seeker.pk].get(uid),
+            }
+        )
+    with transaction.atomic():
+        for uid in chosen:
+            consent.record_appearance(by_id[uid], seeker, now)
+        log = SearchLog.objects.create(
+            seeker=seeker,
+            entry=query.entry,
+            slots=[{"facet": s["facet"], "text": s["text"]} for s in query.slots],
+            lanes=["team"],
+            scope=query.scope,
+            # Its own hash, so a search for the same need never reads a team
+            # back from the day's cache as if it were lanes.
+            query_hash=hashlib.sha256(f"team:{query.key()}".encode()).hexdigest(),
+            results=len(chosen),
+            cached={"team": result.team},
         )
     result.search_id = log.pk
     return result
