@@ -65,4 +65,9 @@ urlpatterns = [
         views.LabChangesView.as_view(),
         name="ambient-lab-changes",
     ),
+    path(
+        "transcripts/",
+        views.TranscriptUploadView.as_view(),
+        name="ambient-transcripts",
+    ),
 ]

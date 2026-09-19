@@ -361,3 +361,100 @@ class LabChangesView(APIView):
         return Response(
             {"changes": [_change_row(c, request.user) for c in review.lab_changes(lab)]}
         )
+
+
+class TranscriptUploadView(APIView):
+    """``POST`` a meeting transcript (Plan 11, steps 9–12).
+
+    Multipart ``file`` (or a ``text`` field), ``title``, ``occurred_at`` (ISO),
+    and ``project`` (id) or ``lab`` (slug). Without ``speakers`` (a JSON map of
+    label → user id) nothing is ingested: the reply lists the labels and the
+    members they may be mapped to, so the person can say who was who. With it,
+    the transcript is read into the buffer and the reply is the counts.
+    """
+
+    def post(self, request: Request) -> Response:
+        import json
+
+        from django.conf import settings
+        from django.utils.dateparse import parse_datetime
+
+        from . import transcripts
+
+        if not getattr(settings, "AMBIENT_TRANSCRIPTS_ENABLED", False):
+            raise PermissionDenied("Meeting transcripts are not turned on here.")
+        upload = request.FILES.get("file")
+        if upload is not None:
+            if upload.size > int(settings.AMBIENT_TRANSCRIPT_MAX_BYTES):
+                raise ValidationError({"file": ["That transcript is too large."]})
+            text = upload.read().decode("utf-8", errors="replace")
+        else:
+            text = str(request.data.get("text") or "")
+        if not text.strip():
+            raise ValidationError({"file": ["The transcript is empty."]})
+        project, lab = _meeting_scope(request)
+        found = transcripts.labels(text)
+        raw = request.data.get("speakers")
+        if not raw:
+            members = transcripts.members_of(project=project, lab=lab)
+            from django.contrib.auth.models import User
+
+            return Response(
+                {
+                    "labels": found,
+                    "members": [
+                        {"id": u.pk, "name": u.get_full_name() or u.username}
+                        for u in User.objects.filter(pk__in=members).order_by(
+                            "username"
+                        )
+                    ],
+                }
+            )
+        try:
+            speakers = json.loads(raw) if isinstance(raw, str) else dict(raw)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({"speakers": ["Not a JSON object."]}) from exc
+        when = parse_datetime(str(request.data.get("occurred_at") or ""))
+        if when is None:
+            raise ValidationError(
+                {"occurred_at": ["Give the meeting's date and time."]}
+            )
+        try:
+            meeting = transcripts.ingest(
+                request.user,
+                title=str(request.data.get("title") or "Meeting")[:200],
+                occurred_at=when,
+                text=text,
+                speakers={str(k): v for k, v in speakers.items()},
+                project=project,
+                lab=lab,
+            )
+        except transcripts.TranscriptRefused as exc:
+            raise PermissionDenied(exc.reason) from exc
+        return Response(
+            {
+                "meeting": meeting.pk,
+                "turns": meeting.turns,
+                "counts": meeting.counts,
+                "participants": len(meeting.participant_ids),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+def _meeting_scope(request):
+    from apps.accounts.models import Lab
+    from apps.research.models import Project
+
+    project_id = request.data.get("project")
+    if project_id:
+        project = (
+            Project.objects.visible_to(request.user).filter(pk=project_id).first()
+        )
+        if project is None:
+            raise PermissionDenied("You can't add a meeting to that project.")
+        return project, None
+    lab = Lab.objects.filter(slug=str(request.data.get("lab") or "")).first()
+    if lab is None:
+        raise ValidationError({"project": ["Choose a project or a lab."]})
+    return None, lab

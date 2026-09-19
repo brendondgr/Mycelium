@@ -21,7 +21,9 @@ from apps.ambient.read import (
     facts_to_announce,
     mark_announced,
     mark_asked,
+    mark_transcripts_announced,
     questions_to_deliver,
+    transcripts_to_announce,
 )
 from apps.content.delivery import send_time
 from apps.content.models import Notification
@@ -60,7 +62,7 @@ class Command(BaseCommand):
         sent = 0
         delivered = []
         for question in questions_to_deliver():
-            if _on_discord(question.user):
+            if not _on_slack_only(question.user):
                 enqueue_dm(
                     dedupe_key=f"ambient-question-{question.id}",
                     kind="ambient_question",
@@ -140,6 +142,27 @@ class Command(BaseCommand):
                 },
             )
             facts += made
+        # Plan 11, step 11: everyone named in a meeting transcript is told it was
+        # read — whether or not their own turns could be used.
+        told = []
+        for meeting_id, title, participant_ids in transcripts_to_announce():
+            for user_id in participant_ids:
+                Notification.objects.get_or_create(
+                    dedupe_key=f"ambient-transcript-{meeting_id}-{user_id}",
+                    defaults={
+                        "user_id": user_id,
+                        "kind": Notification.Kind.CHANGE_APPLIED,
+                        "title": f"Mylo read the meeting “{title}”"[:500],
+                        "body": (
+                            "Only your turns, and only if you opted in to "
+                            "transcripts; only project decisions and blockers "
+                            "are kept. The transcript itself is not kept."
+                        ),
+                        "url": "/app/mylo-and-you",
+                    },
+                )
+            told.append(meeting_id)
+        mark_transcripts_announced(told, now=now)
         # Plan 08: developments that make a project's stated state out of date,
         # proposed to its editors on the project page.
         from apps.content.ambient_proposals import propose
@@ -157,12 +180,17 @@ class Command(BaseCommand):
         )
 
 
-def _on_discord(user) -> bool:
-    from apps.integrations.models import DiscordIdentity
+def _on_slack_only(user) -> bool:
+    """Linked on Slack and not on Discord: asked on Slack (Plan 11). Anyone
+    else keeps Discord, whose outbox resolves the identity at send time."""
+    from apps.integrations.models import DiscordIdentity, SlackIdentity
 
-    return DiscordIdentity.objects.filter(
-        user=user, state=DiscordIdentity.State.ACTIVE
-    ).exists()
+    return (
+        SlackIdentity.objects.filter(user=user, state="active").exists()
+        and not DiscordIdentity.objects.filter(
+            user=user, state=DiscordIdentity.State.ACTIVE
+        ).exists()
+    )
 
 
 def _slack_text(content: str) -> str:

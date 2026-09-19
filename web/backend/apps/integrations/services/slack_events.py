@@ -73,7 +73,7 @@ def _mentions(text: str) -> list[str]:
 
 def handle_event(payload: dict) -> dict:
     """One ``event_callback``. Returns a small summary (for logs and tests)."""
-    from apps.ambient import service
+    import apps.ambient.service as service
 
     from ..models import SlackWorkspace
     from . import slack_link, slack_outbox
@@ -190,7 +190,7 @@ def dialogue(
     team_id: str, slack_user_id: str, channel_id: str, ts: str, text: str
 ) -> str:
     """Off the request: read the DM as a dialogue turn and queue the reply."""
-    from apps.ambient import service
+    import apps.ambient.service as service
 
     from . import slack_outbox
 
@@ -208,7 +208,7 @@ def dialogue(
 
 def handle_interaction(payload: dict, *, respond=None) -> str:
     """A Block Kit button press. Only ``ambient:<id>:<choice>`` is Mylo's."""
-    from apps.ambient import service
+    import apps.ambient.service as service
 
     team_id = str((payload.get("team") or {}).get("id") or "")
     slack_user_id = str((payload.get("user") or {}).get("id") or "")

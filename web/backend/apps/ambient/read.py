@@ -62,6 +62,8 @@ __all__ = [
     "answers_between",
     "evaluation_report",
     "understanding_totals",
+    "transcripts_to_announce",
+    "mark_transcripts_announced",
     "note_state_change",
 ]
 
@@ -429,6 +431,25 @@ def changes_to_announce():
             PendingSuggestion.Verdict.CORRECTED,
         ],
     ).select_related("user")
+
+
+def transcripts_to_announce():
+    """Meeting transcripts read in, whose participants have not been told
+    (Plan 11, step 11): ``[(meeting_id, title, participant user ids)]``."""
+    from .models import TranscriptMeeting
+
+    return [
+        (row.pk, row.title, list(row.participant_ids or []))
+        for row in TranscriptMeeting.objects.filter(announced_at__isnull=True)
+    ]
+
+
+def mark_transcripts_announced(ids, *, now=None) -> int:
+    from .models import TranscriptMeeting
+
+    return TranscriptMeeting.objects.filter(pk__in=list(ids)).update(
+        announced_at=now or timezone.now()
+    )
 
 
 def mark_announced(ids, *, now=None) -> int:

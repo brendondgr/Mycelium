@@ -49,6 +49,7 @@ from .models import (
     Finding,
     Force,
     Observation,
+    PlaceKind,
     Subject,
     UnderstandingKind,
     Visibility,
@@ -167,6 +168,9 @@ def _weight(observation: Observation, now) -> float:
         weight *= EXPLICIT_WEIGHT
     confidence = observation.extraction_confidence
     weight *= 0.5 + 0.5 * (confidence if confidence is not None else 0.6)
+    if observation.place_kind == PlaceKind.TRANSCRIPT:
+        # Spoken speculation is cheap and abundant (Plan 11, step 9).
+        weight *= float(getattr(settings, "AMBIENT_TRANSCRIPT_WEIGHT", 0.3))
     return round(weight * math.pow(0.5, age / half_life), 4)
 
 

@@ -1352,3 +1352,14 @@ SLACK_LINK_CODE_MINUTES = env.int("SLACK_LINK_CODE_MINUTES", default=15)
 SLACK_OUTBOX_RETRY_SECONDS = env.int("SLACK_OUTBOX_RETRY_SECONDS", default=300)
 SLACK_OUTBOX_MAX_ATTEMPTS = env.int("SLACK_OUTBOX_MAX_ATTEMPTS", default=5)
 SLACK_OUTBOX_BATCH_LIMIT = env.int("SLACK_OUTBOX_BATCH_LIMIT", default=50)
+
+# --- Meeting transcripts (ambient Plan 11) ---------------------------------------
+# Off by default. A transcript is read at the next hourly read and its text
+# expires from the buffer after AMBIENT_TRANSCRIPT_TTL_HOURS (clamped by the
+# buffer's own ceiling). Speech is cheap: what a meeting yields weighs
+# AMBIENT_TRANSCRIPT_WEIGHT of the same thing said in writing, and only project
+# developments (decisions, blockers, commitments) are kept.
+AMBIENT_TRANSCRIPTS_ENABLED = env.bool("AMBIENT_TRANSCRIPTS_ENABLED", default=False)
+AMBIENT_TRANSCRIPT_TTL_HOURS = env.int("AMBIENT_TRANSCRIPT_TTL_HOURS", default=3)
+AMBIENT_TRANSCRIPT_WEIGHT = env.float("AMBIENT_TRANSCRIPT_WEIGHT", default=0.3)
+AMBIENT_TRANSCRIPT_MAX_BYTES = env.int("AMBIENT_TRANSCRIPT_MAX_BYTES", default=2_000_000)

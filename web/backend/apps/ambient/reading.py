@@ -155,6 +155,11 @@ def _store(
 
     from apps.research.models import Project
 
+    if conversation.source.kind == "transcript":
+        # Plan 11, step 10: a meeting yields its project's developments only.
+        from .transcripts import keep_only_developments
+
+        outcome.observations = keep_only_developments(outcome.observations)
     if outcome.observations:
         result = ExtractionRun.Outcome.READ
     elif outcome.refused:

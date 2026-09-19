@@ -128,3 +128,22 @@ def test_an_announcement_uses_the_persons_wording(ada):
     call_command("deliver_ambient_questions")
     [bell] = Notification.objects.filter(kind="change_applied")
     assert bell.title.startswith("conformal inference is now in your skills")
+
+
+def test_everyone_named_in_a_meeting_is_told_once(ada):
+    from apps.ambient.models import Source, TranscriptMeeting
+
+    bo = User.objects.create_user("bo", "bo@example.org", "pw")
+    source = Source.objects.create(kind="transcript", external_id="meeting:1")
+    TranscriptMeeting.objects.create(
+        source=source,
+        organiser=ada,
+        title="Imaging sync",
+        occurred_at=timezone.now(),
+        participant_ids=[ada.pk, bo.pk],
+    )
+    call_command("deliver_ambient_questions")
+    call_command("deliver_ambient_questions")
+    bells = Notification.objects.filter(title__startswith="Mylo read the meeting")
+    assert sorted(b.user_id for b in bells) == sorted([ada.pk, bo.pk])
+    assert TranscriptMeeting.objects.get().announced_at is not None

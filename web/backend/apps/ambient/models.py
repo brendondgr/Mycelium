@@ -1553,3 +1553,44 @@ class AppliedChange(models.Model):
     @property
     def undoable(self) -> bool:
         return self.kind != self.Kind.UNDONE and self.undone_at is None
+
+
+class TranscriptMeeting(models.Model):
+    """One meeting's transcript, read once (Plan 11, steps 9–12).
+
+    The source it created is the consent: the organiser enabled Mylo for this
+    meeting by uploading it. Turns by people who are not Mycelium users, not
+    mapped, or not opted in to transcripts are dropped before the buffer and
+    only counted here. The participants are told on the bell.
+    """
+
+    source = models.OneToOneField(
+        Source, on_delete=models.CASCADE, related_name="meeting"
+    )
+    organiser = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    lab = models.ForeignKey(
+        "accounts.Lab",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    project = models.ForeignKey(
+        "research.Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    title = models.CharField(max_length=200)
+    occurred_at = models.DateTimeField()
+    participant_ids = models.JSONField(default=list, blank=True)
+    turns = models.PositiveIntegerField(default=0)
+    counts = models.JSONField(default=dict, blank=True)
+    announced_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"TranscriptMeeting({self.title!r}, {self.occurred_at:%Y-%m-%d})"

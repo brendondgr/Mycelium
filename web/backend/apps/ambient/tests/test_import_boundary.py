@@ -30,6 +30,12 @@ _PUBLIC = {_READ_DOOR, _GATEWAY_DOOR}
 #: Backend apps allowed to name `apps.ambient` at all, and only through a door.
 #: Everything else should not know it exists.
 _MAY_READ = {"content", "integrations"}
+#: Platforms whose gateway is a backend endpoint rather than a process of its
+#: own (Plan 11): these files are that gateway, and may use its door.
+_BACKEND_GATEWAYS = {
+    "integrations/slack_views.py",
+    "integrations/services/slack_events.py",
+}
 #: The gateway, which lives outside `web/backend/apps` entirely.
 _GATEWAY = Path(__file__).resolve().parents[4] / "mylo"
 
@@ -89,11 +95,17 @@ class AmbientImportBoundary(SimpleTestCase):
         )
 
     def test_the_backend_never_uses_the_gateway_door(self):
-        """service.py exists for Mylo. Backend code reads through read.py."""
+        """service.py exists for Mylo. Backend code reads through read.py.
+
+        One named exception (Plan 11): Slack has no gateway process — its
+        events arrive at a backend endpoint, which therefore *is* Slack's
+        gateway and writes through the same door Mylo's does.
+        """
         offenders = [
             str(path.relative_to(_APPS))
             for path in _python_files_outside_ambient()
             if _GATEWAY_DOOR in _ambient_imports(path)
+            and str(path.relative_to(_APPS)) not in _BACKEND_GATEWAYS
         ]
         assert not offenders, offenders
 
