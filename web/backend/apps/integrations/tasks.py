@@ -100,3 +100,24 @@ def slack_dialogue(
     if reply:
         drain_slack_outbox.delay()
     return bool(reply)
+
+
+@shared_task(name="apps.integrations.drain_teams_outbox")
+def drain_teams_outbox() -> dict:
+    """Deliver whatever is due in the Teams queue (ambient Plan 11)."""
+    from .services import teams_outbox
+
+    return teams_outbox.drain()
+
+
+@shared_task(name="apps.integrations.teams_dialogue")
+def teams_dialogue(tenant, aad, service_url, conversation_id, message_id, text):
+    """A Teams personal-chat message read as a dialogue turn, off the request."""
+    from .services import teams_events
+
+    reply = teams_events.dialogue(
+        tenant, aad, service_url, conversation_id, message_id, text
+    )
+    if reply:
+        drain_teams_outbox.delay()
+    return bool(reply)

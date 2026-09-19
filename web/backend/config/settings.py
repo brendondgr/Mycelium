@@ -326,6 +326,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.integrations.drain_slack_outbox",
         "schedule": crontab(minute="*"),
     },
+    "drain-teams-outbox": {
+        "task": "apps.integrations.drain_teams_outbox",
+        "schedule": crontab(minute="*"),
+    },
     # Weekly clean-up of delivered outbox rows and the report PDFs they carried.
     # Sunday, well away from the daily run and the other sweeps.
     "purge-discord-outbox": {
@@ -1363,3 +1367,23 @@ AMBIENT_TRANSCRIPTS_ENABLED = env.bool("AMBIENT_TRANSCRIPTS_ENABLED", default=Fa
 AMBIENT_TRANSCRIPT_TTL_HOURS = env.int("AMBIENT_TRANSCRIPT_TTL_HOURS", default=3)
 AMBIENT_TRANSCRIPT_WEIGHT = env.float("AMBIENT_TRANSCRIPT_WEIGHT", default=0.3)
 AMBIENT_TRANSCRIPT_MAX_BYTES = env.int("AMBIENT_TRANSCRIPT_MAX_BYTES", default=2_000_000)
+
+# --- Microsoft Teams (ambient Plan 11) ----------------------------------------------
+# Off by default: the messaging endpoint answers 404 until it is on. Every
+# request carries a Bot Framework JWT, verified (RS256, issuer, audience = the
+# app id, the serviceUrl claim) against Microsoft's published keys before
+# anything is read.
+TEAMS_ENABLED = env.bool("TEAMS_ENABLED", default=False)
+TEAMS_APP_ID = env_str("TEAMS_APP_ID", "")
+TEAMS_APP_PASSWORD = env_str("TEAMS_APP_PASSWORD", "")
+TEAMS_OPENID_CONFIG_URL = env_str(
+    "TEAMS_OPENID_CONFIG_URL",
+    "https://login.botframework.com/v1/.well-known/openidconfiguration",
+)
+TEAMS_TOKEN_ISSUER = env_str("TEAMS_TOKEN_ISSUER", "https://api.botframework.com")
+TEAMS_TOKEN_URL = env_str(
+    "TEAMS_TOKEN_URL",
+    "https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token",
+)
+TEAMS_OUTBOX_MAX_ATTEMPTS = env.int("TEAMS_OUTBOX_MAX_ATTEMPTS", default=5)
+TEAMS_OUTBOX_RETRY_SECONDS = env.int("TEAMS_OUTBOX_RETRY_SECONDS", default=300)

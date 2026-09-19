@@ -378,7 +378,7 @@ def reopen(user, concept_id: int, relation: str, *, now=None) -> AppliedChange |
 
 
 def settings_for(user) -> dict:
-    from apps.integrations.models import DiscordIdentity, SlackIdentity
+    from apps.integrations.models import DiscordIdentity, SlackIdentity, TeamsIdentity
 
     from .eligibility import ambient_enabled, tier_is_paid
 
@@ -395,10 +395,16 @@ def settings_for(user) -> dict:
         "slack_linked": SlackIdentity.objects.filter(
             user=user, state=SlackIdentity.State.ACTIVE
         ).exists(),
+        "teams_linked": TeamsIdentity.objects.filter(
+            user=user, state=TeamsIdentity.State.ACTIVE
+        ).exists(),
         "listening": {
             "discord": bool(consent and consent.enabled),
             "slack": ListeningConsent.objects.filter(
                 user=user, platform=Platform.SLACK, enabled=True
+            ).exists(),
+            "teams": ListeningConsent.objects.filter(
+                user=user, platform=Platform.TEAMS, enabled=True
             ).exists(),
         },
         "questions_muted": bool(consent and consent.questions_muted),
@@ -428,17 +434,20 @@ def update_settings(user, data: dict, *, now=None) -> dict:
         consent.save(
             update_fields=["enabled", "enabled_at", "disabled_at", "updated_at"]
         )
-    if "listening_slack" in data:
-        slack, _ = ListeningConsent.objects.get_or_create(
-            user=user, platform=Platform.SLACK
-        )
-        on = bool(data["listening_slack"]) and paid
-        slack.enabled = on
+    for key, platform in (
+        ("listening_slack", Platform.SLACK),
+        ("listening_teams", Platform.TEAMS),
+    ):
+        if key not in data:
+            continue
+        row, _ = ListeningConsent.objects.get_or_create(user=user, platform=platform)
+        on = bool(data[key]) and paid
+        row.enabled = on
         if on:
-            slack.enabled_at = now
+            row.enabled_at = now
         else:
-            slack.disabled_at = now
-        slack.save(update_fields=["enabled", "enabled_at", "disabled_at", "updated_at"])
+            row.disabled_at = now
+        row.save(update_fields=["enabled", "enabled_at", "disabled_at", "updated_at"])
     if "questions_muted" in data:
         set_questions(user, on=not bool(data["questions_muted"]), now=now)
     if "quiet_until" in data:

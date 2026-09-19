@@ -35,6 +35,8 @@ from . import activity, filters, reconcile
 from .adapters.base import PlatformEvent
 from .adapters.discord import DiscordAdapter, DiscordDirectMessageAdapter
 from .adapters.slack import SlackAdapter, SlackDirectMessageAdapter, person_key
+from .adapters.teams import TeamsAdapter, TeamsChatAdapter
+from .adapters.teams import person_key as teams_person
 from .eligibility import ambient_enabled
 from .models import (
     ListeningConsent,
@@ -51,6 +53,8 @@ _GUILD = DiscordAdapter()
 _DM = DiscordDirectMessageAdapter()
 _SLACK = SlackAdapter()
 _SLACK_DM = SlackDirectMessageAdapter()
+_TEAMS = TeamsAdapter()
+_TEAMS_CHAT = TeamsChatAdapter()
 
 #: Which activity counter a refusal reason lands in. A reason with no column of
 #: its own lands in ``dropped_other`` rather than being lost.
@@ -722,6 +726,233 @@ def slack_answer_button(
         return line
     except Exception:  # pragma: no cover
         logger.exception("ambient: a Slack button answer failed")
+        return (
+            "Something went wrong — nothing was changed. Try again, or answer on "
+            "the web."
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Microsoft Teams (Plan 11) — the same ledger, from the Bot Framework endpoint
+# --------------------------------------------------------------------------- #
+
+
+def _key64(value: str) -> str:
+    """A source key within 64 characters: Teams ids can be longer, and a
+    truncated id could collide where a digest will not."""
+    import hashlib
+
+    value = str(value)
+    if len(value) <= 64:
+        return value
+    return "h:" + hashlib.sha256(value.encode()).hexdigest()[:62]
+
+
+def _chat_key(tenant_id: str, conversation_id: str) -> str:
+    return _key64(f"{tenant_id}:{conversation_id}")
+
+
+def team_source(team_id: str) -> Source | None:
+    return Source.objects.filter(
+        kind=Source.Kind.TEAMS_TEAM, external_id=_key64(team_id)
+    ).first()
+
+
+def set_team_listening(team_id: str, *, on: bool, changed_by=None, lab=None) -> dict:
+    """The Plan 02 server switch for a Teams team. Reading channels without a
+    mention also needs the tenant admin's resource-specific consent, granted
+    at install; this is the lab's own switch on top of it."""
+    if on and not ambient_enabled():
+        return {"listening": False, "refused": "unavailable"}
+    source = team_source(team_id)
+    if source is None:
+        if not on:
+            return {"listening": False}
+        source = Source.objects.create(
+            kind=Source.Kind.TEAMS_TEAM,
+            external_id=_key64(team_id),
+            lab=lab,
+            label=getattr(lab, "name", "") or "",
+            consent_state=Source.Consent.PENDING,
+        )
+    if on:
+        source.consent_state = Source.Consent.ACTIVE
+        source.consent_changed_at = timezone.now()
+        source.consent_changed_by = changed_by
+        if lab is not None and source.lab_id is None:
+            source.lab = lab
+        source.save(
+            update_fields=[
+                "consent_state",
+                "consent_changed_at",
+                "consent_changed_by",
+                "lab",
+            ]
+        )
+    else:
+        reconcile.revoke_source(source)
+    return {"listening": source.listening}
+
+
+def teams_heard(
+    *,
+    tenant_id: str,
+    team_id: str,
+    conversation_id: str,
+    channel_id: str,
+    message_id: str,
+    text: str,
+    sent_at,
+    aad_object_id: str,
+    is_personal: bool = False,
+    channel_label: str = "",
+    from_mylo: bool = False,
+    explicit: bool = False,
+    mention_aad_ids=None,
+    reply_to_id: str = "",
+) -> Heard:
+    """One Teams message, through the same filters, gate and buffer."""
+    if not ambient_enabled():
+        return Heard(False, "ambient_disabled")
+    author = teams_person(tenant_id, aad_object_id)
+    try:
+        if is_personal:
+            source, _ = Source.objects.get_or_create(
+                kind=Source.Kind.TEAMS_CHAT,
+                external_id=_chat_key(tenant_id, conversation_id),
+                defaults={
+                    "consent_state": Source.Consent.ACTIVE,
+                    "label": "Teams personal chat",
+                },
+            )
+            if not source.listening:
+                return Heard(False, "source_not_consented")
+            outcome = _TEAMS_CHAT.deliver(
+                PlatformEvent(
+                    source_external_id=source.external_id,
+                    message_external_id=str(message_id),
+                    text=filters.truncate(text or ""),
+                    sent_at=sent_at,
+                    author_external_id=author,
+                    place_kind=PlaceKind.DM,
+                    from_mylo=from_mylo,
+                    explicit=True,
+                    reply_to_external_id=str(reply_to_id or ""),
+                )
+            )
+        else:
+            source = team_source(team_id)
+            if source is None or not source.listening:
+                return Heard(False, "source_not_consented")
+            verdict = filters.worth_keeping(
+                text,
+                source=source,
+                place_id=channel_id,
+                is_bot=False,
+                from_mylo=from_mylo,
+                explicit=explicit,
+                has_attachment=False,
+            )
+            if not verdict:
+                _bump(source, _COUNTER_BY_REASON.get(verdict.reason, "dropped_other"))
+                return Heard(False, verdict.reason)
+            outcome = _TEAMS.deliver(
+                PlatformEvent(
+                    source_external_id=_key64(team_id),
+                    message_external_id=str(message_id),
+                    text=filters.truncate(text or ""),
+                    sent_at=sent_at,
+                    author_external_id=author,
+                    place_kind=PlaceKind.CHANNEL,
+                    place_id=str(channel_id),
+                    place_label=channel_label,
+                    from_mylo=from_mylo,
+                    explicit=explicit,
+                    mention_external_ids=[
+                        teams_person(tenant_id, one) for one in (mention_aad_ids or [])
+                    ],
+                    reply_to_external_id=str(reply_to_id or ""),
+                )
+            )
+        if outcome.stored:
+            _bump(source, "stored")
+            return Heard(True)
+        _bump(source, _COUNTER_BY_REASON.get(outcome.reason, "dropped_other"))
+        return Heard(False, outcome.reason)
+    except Exception:  # pragma: no cover - never fail the endpoint
+        logger.exception("ambient: failed to record a Teams message")
+        return Heard(False, "error")
+
+
+def _teams_source(tenant_id: str, team_id: str, conversation_id: str, *, personal):
+    if personal:
+        return Source.objects.filter(
+            kind=Source.Kind.TEAMS_CHAT,
+            external_id=_chat_key(tenant_id, conversation_id),
+        ).first()
+    return team_source(team_id)
+
+
+def teams_edited(
+    tenant_id: str, team_id: str, conversation_id: str, message_id: str, text: str,
+    *, personal=False,
+) -> int:
+    source = _teams_source(tenant_id, team_id, conversation_id, personal=personal)
+    if source is None:
+        return 0
+    return reconcile.message_edited(source, str(message_id), text or "")
+
+
+def teams_deleted(
+    tenant_id: str, team_id: str, conversation_id: str, message_id: str,
+    *, personal=False,
+) -> bool:
+    source = _teams_source(tenant_id, team_id, conversation_id, personal=personal)
+    if source is None:
+        return False
+    reconcile.message_deleted(source, str(message_id))
+    return True
+
+
+def teams_removed(team_id: str) -> None:
+    source = team_source(team_id)
+    if source is not None:
+        reconcile.revoke_source(source)
+
+
+def teams_dialogue_turn(tenant_id: str, aad_object_id: str, text: str) -> str:
+    from . import dialogue
+
+    try:
+        user = _TEAMS_CHAT.resolve_speaker(teams_person(tenant_id, aad_object_id))
+        if user is None or not ambient_enabled():
+            return ""
+        return dialogue.turn(user, text or "") or ""
+    except Exception:  # pragma: no cover
+        logger.exception("ambient: a Teams dialogue turn failed")
+        return ""
+
+
+def teams_answer(tenant_id: str, aad_object_id: str, suggestion_id, choice: str) -> str:
+    """An Adaptive Card choice on one of Mylo's questions."""
+    from . import dialogue
+    from .models import PendingSuggestion
+
+    try:
+        user = _TEAMS_CHAT.resolve_speaker(teams_person(tenant_id, aad_object_id))
+        suggestion = (
+            PendingSuggestion.objects.filter(pk=int(suggestion_id), user=user).first()
+            if user is not None and str(suggestion_id).isdigit()
+            else None
+        )
+        if suggestion is None:
+            return "That question isn't yours to answer, or it has closed."
+        _taken, line = dialogue.answer(
+            suggestion, choice=str(choice), surface="dm", by=user
+        )
+        return line
+    except Exception:  # pragma: no cover
+        logger.exception("ambient: a Teams answer failed")
         return (
             "Something went wrong — nothing was changed. Try again, or answer on "
             "the web."

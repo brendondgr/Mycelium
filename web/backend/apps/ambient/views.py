@@ -306,6 +306,7 @@ class AmbientSettingsView(APIView):
         allowed = {
             "listening_discord",
             "listening_slack",
+            "listening_teams",
             "questions_muted",
             "quiet_until",
         }

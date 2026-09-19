@@ -62,7 +62,21 @@ class Command(BaseCommand):
         sent = 0
         delivered = []
         for question in questions_to_deliver():
-            if not _on_slack_only(question.user):
+            if _on_teams_only(question.user):
+                # Ambient Plan 11: a person linked on Teams only is asked there.
+                from apps.integrations.services.teams_outbox import (
+                    enqueue_dm as enqueue_teams_dm,
+                )
+
+                enqueue_teams_dm(
+                    user=question.user,
+                    dedupe_key=f"ambient-question-{question.id}",
+                    kind="ambient_question",
+                    text=_slack_text(question.content)[:2900],
+                    attachments=teams_card(question.content, question.components),
+                    not_before=send_time(question.user, today),
+                )
+            elif not _on_slack_only(question.user):
                 enqueue_dm(
                     dedupe_key=f"ambient-question-{question.id}",
                     kind="ambient_question",
@@ -191,6 +205,52 @@ def _on_slack_only(user) -> bool:
             user=user, state=DiscordIdentity.State.ACTIVE
         ).exists()
     )
+
+
+def _on_teams_only(user) -> bool:
+    from apps.integrations.models import (
+        DiscordIdentity,
+        SlackIdentity,
+        TeamsIdentity,
+    )
+
+    return (
+        TeamsIdentity.objects.filter(user=user, state="active").exists()
+        and not DiscordIdentity.objects.filter(user=user, state="active").exists()
+        and not SlackIdentity.objects.filter(user=user, state="active").exists()
+    )
+
+
+def teams_card(content: str, components) -> list[dict]:
+    """The question as an Adaptive Card: the text, then one submit button per
+    choice carrying ``{"ambient": "<id>:<choice>"}``."""
+    actions = [
+        {
+            "type": "Action.Submit",
+            "title": str(button.get("label", ""))[:80],
+            "data": {"ambient": str(button.get("custom_id", "")).split(":", 1)[1]},
+        }
+        for row in (components or [])
+        for button in (row.get("components") or [])
+        if str(button.get("custom_id", "")).startswith("ambient:")
+    ]
+    return [
+        {
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "content": {
+                "type": "AdaptiveCard",
+                "version": "1.4",
+                "body": [
+                    {
+                        "type": "TextBlock",
+                        "text": _slack_text(content)[:2900],
+                        "wrap": True,
+                    }
+                ],
+                "actions": actions[:6],
+            },
+        }
+    ]
 
 
 def _slack_text(content: str) -> str:

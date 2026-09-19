@@ -82,7 +82,7 @@ def askable(user, *, now=None) -> tuple[bool, str]:
     step 15; Slack since Plan 11), questions not shut off, not in a quiet
     period, and not a weekend.
     """
-    from apps.integrations.models import DiscordIdentity, SlackIdentity
+    from apps.integrations.models import DiscordIdentity, SlackIdentity, TeamsIdentity
 
     from .eligibility import ambient_enabled, tier_is_paid
 
@@ -97,6 +97,9 @@ def askable(user, *, now=None) -> tuple[bool, str]:
         ).exists()
         or SlackIdentity.objects.filter(
             user=user, state=SlackIdentity.State.ACTIVE
+        ).exists()
+        or TeamsIdentity.objects.filter(
+            user=user, state=TeamsIdentity.State.ACTIVE
         ).exists()
     ):
         return False, "unlinked"

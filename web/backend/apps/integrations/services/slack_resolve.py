@@ -13,15 +13,15 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 from ..models import (
+    LinkCode,
     SlackIdentity,
-    SlackLinkCode,
     SlackOutboxMessage,
     SlackWorkspace,
 )
 
 ACTIVE = SlackIdentity.State.ACTIVE
-CODE_PERSON = SlackLinkCode.Kind.PERSON
-CODE_LAB = SlackLinkCode.Kind.LAB
+CODE_PERSON = LinkCode.Kind.PERSON
+CODE_LAB = LinkCode.Kind.LAB
 OUTBOX_PENDING = SlackOutboxMessage.Status.PENDING
 OUTBOX_SENDING = SlackOutboxMessage.Status.SENDING
 OUTBOX_SENT = SlackOutboxMessage.Status.SENT
@@ -146,23 +146,32 @@ def set_reports_primary(workspace: SlackWorkspace, primary: bool) -> None:
 # -- link codes ------------------------------------------------------------------
 
 
-def retire_codes(*, kind: str, user, lab, now) -> None:
-    SlackLinkCode.objects.filter(
-        kind=kind, user=user, lab=lab, used_at__isnull=True
+def retire_codes(*, kind: str, user, lab, now, platform: str = "slack") -> None:
+    LinkCode.objects.filter(
+        platform=platform, kind=kind, user=user, lab=lab, used_at__isnull=True
     ).update(expires_at=now)
 
 
-def store_code(*, kind: str, user, lab, code_hash: str, expires_at) -> None:
-    SlackLinkCode.objects.create(
-        kind=kind, user=user, lab=lab, code_hash=code_hash, expires_at=expires_at
+def store_code(
+    *, kind: str, user, lab, code_hash: str, expires_at, platform: str = "slack"
+) -> None:
+    LinkCode.objects.create(
+        platform=platform,
+        kind=kind,
+        user=user,
+        lab=lab,
+        code_hash=code_hash,
+        expires_at=expires_at,
     )
 
 
-def claim_code(code_hash: str, kind: str) -> SlackLinkCode | None:
+def claim_code(code_hash: str, kind: str, platform: str = "slack") -> LinkCode | None:
     """The unused, unexpired code, locked. Call inside a transaction."""
     row = (
-        SlackLinkCode.objects.select_for_update()
-        .filter(code_hash=code_hash, kind=kind, used_at__isnull=True)
+        LinkCode.objects.select_for_update()
+        .filter(
+            code_hash=code_hash, kind=kind, platform=platform, used_at__isnull=True
+        )
         .first()
     )
     if row is None or row.expires_at <= timezone.now():
@@ -170,7 +179,7 @@ def claim_code(code_hash: str, kind: str) -> SlackLinkCode | None:
     return row
 
 
-def use_code(row: SlackLinkCode, team_id: str) -> None:
+def use_code(row: LinkCode, team_id: str) -> None:
     row.used_at = timezone.now()
     row.used_team_id = team_id
     row.save(update_fields=["used_at", "used_team_id"])

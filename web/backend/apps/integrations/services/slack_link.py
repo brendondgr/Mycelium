@@ -33,12 +33,15 @@ def _new_code() -> str:
     return f"MYLO-{body[:4]}-{body[4:]}"
 
 
-def issue(*, user, lab=None) -> str:
-    """A fresh code (the plaintext, shown once). Older unused codes of the same
-    kind for the same person or lab are retired."""
+def issue(*, user, lab=None, platform: str = "slack") -> str:
+    """A fresh code (the plaintext, shown once), good on ``platform`` only
+    (Slack or Teams). Older unused codes of the same kind for the same person
+    or lab are retired."""
     kind = slack_resolve.CODE_LAB if lab is not None else slack_resolve.CODE_PERSON
     now = timezone.now()
-    slack_resolve.retire_codes(kind=kind, user=user, lab=lab, now=now)
+    slack_resolve.retire_codes(
+        kind=kind, user=user, lab=lab, now=now, platform=platform
+    )
     code = _new_code()
     slack_resolve.store_code(
         kind=kind,
@@ -46,6 +49,7 @@ def issue(*, user, lab=None) -> str:
         lab=lab,
         code_hash=_hash(code),
         expires_at=now + timedelta(minutes=int(settings.SLACK_LINK_CODE_MINUTES)),
+        platform=platform,
     )
     return code
 

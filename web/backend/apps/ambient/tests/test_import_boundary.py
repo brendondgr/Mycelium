@@ -35,6 +35,8 @@ _MAY_READ = {"content", "integrations"}
 _BACKEND_GATEWAYS = {
     "integrations/slack_views.py",
     "integrations/services/slack_events.py",
+    "integrations/teams_views.py",
+    "integrations/services/teams_events.py",
 }
 #: The gateway, which lives outside `web/backend/apps` entirely.
 _GATEWAY = Path(__file__).resolve().parents[4] / "mylo"

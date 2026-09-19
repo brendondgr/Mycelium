@@ -194,9 +194,9 @@ def test_a_person_links_by_dming_their_code(client, workspace, ada):
 
 def test_an_expired_code_links_nobody(client, workspace, ada):
     code = slack_link.issue(user=ada)
-    from apps.integrations.models import SlackLinkCode
+    from apps.integrations.models import LinkCode
 
-    SlackLinkCode.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
+    LinkCode.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
     _event(client, _message(code, user="UADA", channel="D1", channel_type="im"))
     assert not SlackIdentity.objects.exists()
     assert "didn't work" in SlackOutboxMessage.objects.get().text

@@ -9,7 +9,7 @@ match DISCORD_OAUTH_REDIRECT_URI / DISCORD_GUILD_REDIRECT_URI defaults.
 
 from django.urls import path
 
-from . import slack_views, views
+from . import slack_views, teams_views, views
 
 
 def _both(route, view, name):
@@ -68,4 +68,12 @@ urlpatterns = [
     *_both("slack/status", slack_views.SlackStatusView, "slack-status"),
     *_both("slack/unlink", slack_views.SlackUnlinkView, "slack-unlink"),
     *_both("slack/listening", slack_views.SlackListeningView, "slack-listening"),
+    # Microsoft Teams (ambient Plan 11): the Bot Framework messaging endpoint
+    # is what the bot registration points at.
+    *_both("teams/messages", teams_views.TeamsMessagesView, "teams-messages"),
+    *_both("teams/link-code", teams_views.TeamsLinkCodeView, "teams-link-code"),
+    *_both("teams/lab-code", teams_views.TeamsLabCodeView, "teams-lab-code"),
+    *_both("teams/status", teams_views.TeamsStatusView, "teams-status"),
+    *_both("teams/unlink", teams_views.TeamsUnlinkView, "teams-unlink"),
+    *_both("teams/lab", teams_views.TeamsLabView, "teams-lab"),
 ]

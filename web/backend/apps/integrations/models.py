@@ -394,20 +394,23 @@ class SlackIdentity(models.Model):
         return f"SlackIdentity({self.team_id}:{self.slack_user_id} → {self.user_id})"
 
 
-class SlackLinkCode(models.Model):
-    """A short-lived, single-use code that carries authority into Slack.
+class LinkCode(models.Model):
+    """A short-lived, single-use code that carries authority into Slack or
+    Teams (ambient Plan 11).
 
     ``person``: issued to a signed-in user, redeemed by DMing it to Mylo, which
-    binds the Slack user who sent it to that account. ``lab``: issued by a lab
-    manager, redeemed by mentioning Mylo with it in a channel, which binds the
-    workspace to the lab and makes that channel the lab's updates channel. The
-    code is stored only as a hash.
+    binds the platform user who sent it to that account. ``lab``: issued by a
+    lab manager, redeemed by mentioning Mylo with it in a channel, which binds
+    the workspace or team to the lab and makes that channel the lab's updates
+    channel. The code is stored only as a hash, and is good on its own
+    platform only.
     """
 
     class Kind(models.TextChoices):
         PERSON = "person", "Link a person"
         LAB = "lab", "Link a lab"
 
+    platform = models.CharField(max_length=16, default="slack")
     kind = models.CharField(max_length=8, choices=Kind.choices)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+"
@@ -480,6 +483,108 @@ class SlackOutboxMessage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     sent_at = models.DateTimeField(null=True, blank=True)
+    settled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["status", "next_attempt_at"])]
+        ordering = ["next_attempt_at", "id"]
+
+
+# --------------------------------------------------------------------------- #
+# Microsoft Teams (ambient Plan 11) — the Bot Framework, over the same ledger
+# --------------------------------------------------------------------------- #
+
+
+class TeamsTeamLink(models.Model):
+    """A Teams team Mylo was installed in, and the lab it belongs to.
+
+    Reading channel messages without a mention needs resource-specific consent
+    (``ChannelMessage.Read.Group``) that a tenant admin grants at install; that
+    is the Plan 02 "server" consent, held by an admin. The lab is bound by a
+    lab manager's code, as on Slack.
+    """
+
+    team_id = models.CharField(max_length=128, unique=True)
+    tenant_id = models.CharField(max_length=64)
+    name = models.CharField(max_length=120, blank=True, default="")
+    service_url = models.CharField(max_length=300)
+    lab = models.ForeignKey(
+        "accounts.Lab",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="teams_links",
+    )
+    updates_conversation_id = models.CharField(max_length=300, blank=True, default="")
+    reports_primary = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class TeamsIdentity(models.Model):
+    """A Mycelium user's Teams identity: the Azure AD object id in a tenant,
+    and the personal chat Mylo can reach them in."""
+
+    class State(models.TextChoices):
+        ACTIVE = "active", "Active"
+        REVOKED = "revoked", "Revoked"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="teams_identities",
+    )
+    tenant_id = models.CharField(max_length=64)
+    aad_object_id = models.CharField(max_length=64)
+    service_url = models.CharField(max_length=300, blank=True, default="")
+    conversation_id = models.CharField(max_length=300, blank=True, default="")
+    state = models.CharField(
+        max_length=16, choices=State.choices, default=State.ACTIVE
+    )
+    linked_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant_id", "aad_object_id"],
+                condition=models.Q(state="active"),
+                name="teams_identity_one_active_per_aad_user",
+            ),
+        ]
+
+
+class TeamsOutboxMessage(models.Model):
+    """One outbound Teams message; the Slack outbox's contract."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENDING = "sending", "Sending"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+        DEAD = "dead", "Dead"
+
+    dedupe_key = models.CharField(max_length=200, unique=True)
+    kind = models.CharField(max_length=40)
+    recipient_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="teams_outbox",
+    )
+    service_url = models.CharField(max_length=300)
+    conversation_id = models.CharField(max_length=300)
+    text = models.TextField(blank=True, default="")
+    attachments = models.JSONField(null=True, blank=True)
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.PENDING
+    )
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(db_index=True)
+    last_error = models.CharField(max_length=64, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
     settled_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:

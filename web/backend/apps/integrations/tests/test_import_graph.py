@@ -30,10 +30,11 @@ _GUARDED = [
     # Slack (ambient Plan 11) keeps the same rule; its boundary module is
     # ``services/slack_resolve.py``.
     _APP / "slack_views.py",
+    _APP / "teams_views.py",
     *sorted((_APP / "services").glob("*.py")),
     _APPS / "content" / "reminders_discord.py",
 ]
-_EXEMPT_NAMES = {"resolve.py", "slack_resolve.py", "__init__.py"}
+_EXEMPT_NAMES = {"resolve.py", "slack_resolve.py", "teams_resolve.py", "__init__.py"}
 
 
 def _typechecking_import_lines(tree: ast.AST) -> set[int]:
