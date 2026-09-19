@@ -194,7 +194,10 @@ def change_without_a_confirmation() -> dict:
     """Anything that took effect with no answered yes, accepted proposal, web
     action of the person's own, or fact they told Mylo."""
     ok = (
-        Q(
+        # Stated-field edits are the stricter check above; counting them here
+        # too would count one violation twice (EXP-2026-09-018, before its run).
+        Q(kind__in=[AppliedChange.Kind.PROFILE_EDIT, AppliedChange.Kind.STATE_EDIT])
+        | Q(
             suggestion__verdict__in=YES,
             suggestion__state=PendingSuggestion.State.ANSWERED,
         )

@@ -367,3 +367,13 @@ def test_the_export_refuses_a_short_salt(tmp_path, db):
 
     with pytest.raises(CommandError):
         call_command("export_ambient_dataset", salt="x", out=str(tmp_path))
+
+
+def test_a_stated_field_edit_is_counted_once_not_twice(ada):
+    AppliedChange.objects.create(
+        user=ada, kind="profile_edit", topic="kriging", field="interests.skills"
+    )
+    result = _harms()
+    assert result["stated_field_without_a_yes"]["count"] == 1
+    assert result["change_without_a_confirmation"]["count"] == 0
+    assert result["_total"] == 1
