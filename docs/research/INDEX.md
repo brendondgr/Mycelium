@@ -43,11 +43,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-09-012` | 2026-09-18 | Is the collaboration network useful and harmless in real use? Slot quality, coverage accuracy, concept linking, lane quality, concentration and harm on live data (plan CN-08) | planned | — | — | [folder](experiments/EXP-2026-09-012-collab-live-evaluation/RESULTS.md) |
 | `EXP-2026-09-013` | 2026-09-19 | Does ambient Plan 04 find what people said, decide the right outcome, and keep every privacy promise? Four weeks of model-written lab conversation with planted truth | complete | — | — | [folder](experiments/EXP-2026-09-013-ambient-reasoning-sandbox/RESULTS.md) |
 | `EXP-2026-09-014` | 2026-09-19 | Does the evolving profile keep its promises over eight simulated weeks, and do exploration themes stay beside the declared ones? | complete | — | — | [folder](experiments/EXP-2026-09-014-ambient-evolving-profile-sandbox/RESULTS.md) |
+| `EXP-2026-09-015` | 2026-09-19 | Does Mylo read replies in people's own words right, never turn a no into a yes, and catch "stop asking"? | planned | — | — | [folder](experiments/EXP-2026-09-015-ambient-dialogue-replies-sandbox/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
 | complete | 31 |
-| planned | 3 |
-| **total** | **34** |
+| planned | 4 |
+| **total** | **35** |
