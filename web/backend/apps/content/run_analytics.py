@@ -21,6 +21,8 @@ Five groups, matching the questions worth asking:
 * **LLM** — calls, failures, and token spend per component, from the ledger
   :mod:`apps.core.llm_usage` writes as the calls happen.
 * **Delivery** — briefings written versus reports that reached Discord.
+* **Collaboration** — searches, what they returned, feedback, the appearance
+  cap, and the harm checks (collaboration-network plan CN-08). Counts only.
 
 Two honesty constraints run through the whole module. First, **delivery is
 queued, not instant**: the outbox drains on its own timer, so a report enqueued
@@ -37,7 +39,7 @@ produced.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from django.db.models import Count, Sum
 from django.utils import timezone
@@ -301,6 +303,8 @@ class RunAnalytics:
     telemetry: DeliveryTelemetry = field(default_factory=DeliveryTelemetry)
     listening: Listening = field(default_factory=Listening)
     trend: list[TrendPoint] = field(default_factory=list)
+    #: ``apps.collab.evaluation.daily_counts`` plus ``harm`` — flat counts.
+    collaboration: dict = field(default_factory=dict)
 
     def headline(self) -> str:
         """One sentence in Mylo's voice, for the top of the report."""
@@ -395,6 +399,7 @@ class RunAnalytics:
                 "dropped_bot": self.listening.dropped_bot,
                 "dropped_lapsed": self.listening.dropped_lapsed,
             },
+            "collaboration": dict(self.collaboration),
             "trend": [
                 {
                     "day": point.day.isoformat(),
@@ -700,6 +705,17 @@ def collect_listening(day: date) -> Listening:
     )
 
 
+def collect_collaboration(day: date) -> dict:
+    """The day's collaboration counts and harm checks — never a name."""
+    from apps.collab.evaluation import daily_counts, harm_checks
+
+    start = timezone.make_aware(datetime.combine(day, datetime.min.time()))
+    return {
+        **daily_counts(day),
+        "harm": harm_checks(start, start + timedelta(days=1)),
+    }
+
+
 def collect_run_analytics(day: date | None = None) -> RunAnalytics:
     """Assemble the whole picture for ``day`` (default: today, local time)."""
     run_day = day or timezone.localdate()
@@ -713,4 +729,5 @@ def collect_run_analytics(day: date | None = None) -> RunAnalytics:
         telemetry=collect_telemetry(run_day),
         listening=collect_listening(run_day),
         trend=collect_trend(run_day),
+        collaboration=collect_collaboration(run_day),
     )

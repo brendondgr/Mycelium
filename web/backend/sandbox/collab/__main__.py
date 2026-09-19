@@ -34,6 +34,8 @@ def main() -> int:
             "match",
             "panel",
             "browser-prep",
+            "graph",
+            "bench",
         ],
     )
     parser.add_argument(
@@ -64,9 +66,30 @@ def main() -> int:
         default=30,
         help="For panel: how many seeded calls to read requirements from.",
     )
+    parser.add_argument(
+        "--sizes", default="1000,5000,20000", help="For bench: graph sizes."
+    )
+    parser.add_argument("--pairs", type=int, default=300, help="For bench.")
+    parser.add_argument(
+        "--hubs", type=float, default=0.0, help="For bench: share of hub people."
+    )
+    parser.add_argument(
+        "--neo4j-password", default="", help="For bench: omit to skip Neo4j."
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
+
+    if args.command == "bench":
+        # Its own database (mycelium_bench), never the sandbox's.
+        from . import store_bench
+
+        report = store_bench.main(args)
+        text = json.dumps(report, indent=1, sort_keys=True, default=str)
+        if args.out:
+            Path(args.out).write_text(text)
+        print(text)
+        return 1 if report["invariant_failures"] else 0
 
     bootstrap.setup()
     from . import corpus as corpus_mod
@@ -152,6 +175,16 @@ def main() -> int:
         )
         print(json.dumps(report, indent=1, default=str))
         return 0
+
+    if args.command == "graph":
+        from . import graph_sim
+
+        report.update(graph_sim.main(world, args))
+        text = json.dumps(report, indent=1, sort_keys=True, default=str)
+        if args.out:
+            Path(args.out).write_text(text)
+        print(text)
+        return 1 if report["invariant_failures"] else 0
 
     if args.command == "panel":
         from . import panel_sim

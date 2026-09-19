@@ -1225,6 +1225,16 @@ COLLAB_INTRO_MAX_HOPS = env.int("COLLAB_INTRO_MAX_HOPS", default=3)
 COLLAB_TEAM_MIN_GAPS = env.int("COLLAB_TEAM_MIN_GAPS", default=3)
 COLLAB_TEAM_MAX_SIZE = env.int("COLLAB_TEAM_MAX_SIZE", default=4)
 COLLAB_TEAM_DISTANCE_WEIGHT = env.float("COLLAB_TEAM_DISTANCE_WEIGHT", default=0.15)
+# Evaluation (plan CN-08). Search may widen past COLLAB_MAX_SCOPE only when,
+# over the last COLLAB_WIDEN_WINDOW_DAYS, at least COLLAB_WIDEN_MIN_RATINGS
+# results were rated, at most COLLAB_WIDEN_MAX_NOT_RELEVANT of them "not
+# relevant", at most COLLAB_WIDEN_MAX_SHARE_AT_CAP of person-weeks sat at the
+# appearance cap, and every harm check was zero. `collab_evaluation` reports
+# it; the widening itself is a deliberate change to COLLAB_MAX_SCOPE.
+COLLAB_WIDEN_WINDOW_DAYS = env.int("COLLAB_WIDEN_WINDOW_DAYS", default=28)
+COLLAB_WIDEN_MIN_RATINGS = env.int("COLLAB_WIDEN_MIN_RATINGS", default=100)
+COLLAB_WIDEN_MAX_NOT_RELEVANT = env.float("COLLAB_WIDEN_MAX_NOT_RELEVANT", default=0.5)
+COLLAB_WIDEN_MAX_SHARE_AT_CAP = env.float("COLLAB_WIDEN_MAX_SHARE_AT_CAP", default=0.05)
 COLLAB_INSTITUTIONS_PATH = env(
     "COLLAB_INSTITUTIONS_PATH",
     default=str(ROOT_DIR / "app" / "public" / "data" / "institutions.json"),

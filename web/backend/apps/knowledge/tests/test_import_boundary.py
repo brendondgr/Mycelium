@@ -39,10 +39,12 @@ _COLLAB_MAY_READ = {
     "concept_vectors",
     "discoverable_works",
     "discoverable_edges",
+    "evidence_texts",
     "introduction_paths",
     "lab_declared_edges",
     "network_of",
     "own_edges",
+    "privately_held_global_concepts",
     "project_edges",
 }
 

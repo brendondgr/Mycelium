@@ -18,6 +18,8 @@ boundary test pins which of these the collaboration app may import at all.
 | :func:`network_of` | — (co-authorship) | — | collaboration search (CN-07) |
 | :func:`coauthor_distances` | — (co-authorship) | — | collaboration search (CN-07) |
 | :func:`introduction_paths` | — (co-authorship) | — | collaboration search (CN-07) |
+| :func:`evidence_texts` | declared, demonstrated | active | harm checks (CN-08) |
+| :func:`privately_held_global_concepts` | — (a count) | active | harm checks (CN-08) |
 
 Demonstrated edges (a person's papers) are deliberately absent from
 :func:`ranking_edges`: letting them shape recommendations is a ranking change,
@@ -45,10 +47,12 @@ __all__ = [
     "concept_vectors",
     "discoverable_edges",
     "discoverable_works",
+    "evidence_texts",
     "introduction_paths",
     "lab_declared_edges",
     "network_of",
     "own_edges",
+    "privately_held_global_concepts",
     "project_edges",
     "ranking_edges",
     "undeclared_project_concepts",
@@ -440,3 +444,55 @@ def introduction_paths(
             [source_id, source_id, max_hops, [int(t) for t in through], targets],
         )
         return {node: list(path) for node, path in cursor.fetchall()}
+
+
+# --- harm checks (plan CN-08) --------------------------------------------------
+
+
+def evidence_texts(users: Iterable) -> dict[int, set[str]]:
+    """Everything a person's matches may legitimately quote, casefolded: the
+    wording and labels of their active declared and demonstrated edges, and
+    the facet sentences of their published works. A shown match whose words
+    are not in here came from somewhere the matcher must not read."""
+    from collections import defaultdict
+
+    from .models import WorkFacets
+
+    ids = [getattr(u, "pk", u) for u in users]
+    out: dict[int, set[str]] = defaultdict(set)
+    for user_id, surface, label in (
+        Edge.objects.filter(user_id__in=ids, status=EdgeStatus.ACTIVE)
+        .filter(_DISCOVERABLE)
+        .values_list("user_id", "surface", "concept__label")
+    ):
+        out[user_id].update(t.casefold() for t in (surface, label) if t)
+    for user_id, *texts in WorkFacets.objects.filter(
+        author_work__user_id__in=ids, thin=False
+    ).values_list(
+        "author_work__user_id", "problem", "method", "method_neutral", "reusable"
+    ):
+        out[user_id].update(t.casefold() for t in texts if t)
+    return dict(out)
+
+
+def privately_held_global_concepts() -> int:
+    """How many global concepts are held only through conversation or project
+    state — none should be. Also counts a global concept whose declared
+    holders have all left it, which is worth a look but not a leak."""
+    from django.db.models import Count
+
+    from .models import Scope
+
+    public = Q(edges__tier=Tier.DEMONSTRATED) | Q(
+        edges__tier=Tier.DECLARED, edges__project__isnull=True
+    )
+    active = Q(edges__status=EdgeStatus.ACTIVE)
+    return (
+        Concept.objects.filter(scope=Scope.GLOBAL, status=Concept.Status.ACTIVE)
+        .annotate(
+            held=Count("edges", filter=active),
+            publicly=Count("edges", filter=active & public),
+        )
+        .filter(held__gt=0, publicly=0)
+        .count()
+    )

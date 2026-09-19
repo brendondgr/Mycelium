@@ -65,9 +65,12 @@ def notify_renewals(now=None) -> int:
 
 @shared_task(name="apps.collab.daily")
 def daily() -> dict:
+    from .evaluation import report_harm
     from .matcher import prune_logs
 
     return {
+        # Before pruning, so the last day's searches are all still there.
+        "harm": report_harm(),
         "renewals": notify_renewals(),
         "appearances_pruned": prune_appearances(),
         "search_logs_pruned": prune_logs(),
