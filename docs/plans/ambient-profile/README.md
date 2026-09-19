@@ -1,6 +1,6 @@
 # Ambient Profile — Plan Series
 
-**Status:** Plans 01–06 shipped; 07 onward in progress.
+**Status:** Plans 01–08 shipped; 09 onward in progress.
 **Correlation ID:** `20260917-ambient-profile`
 **Owner:** Brendon (product direction); plans are working documents and are
 deleted as their work ships, with the outcome recorded in `docs/changelog.md`.
@@ -205,8 +205,8 @@ the correlation id named in the row.
 | 04 | Reasoning agent — **shipped 2026-09-19** | `apps/ambient/windows.py`, `extract.py`, `reading.py`, `deliberate.py`, `explain.py`: conversations read hourly within the buffer's TTL (option C), grounded observations with no quotes, concepts linked through the knowledge core, one decided `Finding` per topic, model-written explanations. Validated in EXP-2026-09-013. Record: `20260917-ambient-profile-04` |
 | 05 | Evolving profile layer — **shipped 2026-09-19** | `apps/ambient/evolve.py`, `ProjectDevelopment`, `content/explorations.py`, `content/understanding.py`: pending conversational edges and developments, fading and retraction, exploration themes behind `AMBIENT_DRIFT_ENABLED`, confirmed preferences/direction/learning goals in the prompts, attention-ordered reports, developments in the alerts, a report `context_version`. Validated in EXP-2026-09-014. Record: `20260917-ambient-profile-05` |
 | 06 | Confirmation dialogue — **shipped 2026-09-19** | `apps/ambient/dialogue.py`, `PendingSuggestion`, `ValidationRecord`, the listen cog's buttons and DM routing, `deliver_ambient_questions`: nightly questions with only the choices that exist, answered by button or in words (reader r4, a chosen no is never a yes), "stop asking" in the person's own words, the bell. Validated in EXP-2026-09-015 (registered run failed; post-hoc r4 at 0.0079 harm; a fresh-seed run owed, Q-049). Record: `20260917-ambient-profile-06` |
-| 07 | [Web transparency](07-web-transparency.md) | The bell, the "Mylo & you" page, provenance tags, feed badges, settings, undo |
-| 08 | [Applying changes](08-applying-changes.md) | Reconciliation into interests and project state through proposals; review and undo |
+| 07 | Web transparency — **shipped 2026-09-19** | `apps/ambient/review.py`, `AppliedChange`, `/api/ambient/` change, understanding, settings and lab endpoints; `components/portal/ambient/*` and `/app/mylo-and-you`: questions answerable on the web, what changed with undo, faded and declined, what Mylo knows, the switches, the lab and project cards, the bell. Validated in a browser in EXP-2026-09-016 (three defects found and fixed; run 4 clean, WCAG 2.1 AA by axe). Record: `20260917-ambient-profile-07` |
+| 08 | Applying changes — **shipped 2026-09-19** | `apps/ambient/apply.py` (a yes carried into the declared profile at the next nightly run, through the contract, with provenance and exact undo), `apps/content/ambient_proposals.py` (developments proposed to a project's editors as reflection proposals; accepting applies and records an undoable change). Validated in EXP-2026-09-016. Record: `20260917-ambient-profile-08` |
 | 09 | [Reports and notifications](09-reports-and-notifications.md) | The weekly "what changed", split personal vs lab, routed correctly |
 | 10 | [Evaluation](10-evaluation.md) | The replay experiment and the validation-record metrics, under the research rules |
 | 11 | [Other platforms](11-other-platforms.md) | Slack, Teams, transcripts as adapters over the same ledger |

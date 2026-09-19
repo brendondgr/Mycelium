@@ -214,6 +214,11 @@ Files below are inside `web/backend/apps/content/`.
 | Confirmed preferences, direction and learning goals in the model's prompts; the report's `context_version` | `web/backend/apps/content/understanding.py` |
 | A person's report projects ordered by where their conversation went | `briefing.by_attention` |
 | Developments reaching the alerts (closed blockers, dropped methods) | `alerts.developments_for`, `matchers/developments.py` |
+| Carrying out a yes that edits the declared profile (the only writer of `Profile.interests` in the feature), and its exact undo | `web/backend/apps/ambient/apply.py` (`apply_answers`, first in `deliberate_ambient`; `revert`); provenance in `interests.sources.ambient` |
+| What changed, how and why, with undo — personal and lab | `web/backend/apps/ambient/review.py`, model `AppliedChange`; `/api/ambient/changes/`, `/api/ambient/labs/<slug>/changes/` |
+| A development that makes a project's stated state out of date, proposed to its editors | `web/backend/apps/content/ambient_proposals.py` (`propose`, `withdraw_stale`); `ReflectionProposal` kinds `close_blocker`, `drop_method`; run by `deliver_ambient_questions` |
+| Tonight's questions delivered (DM with buttons, bell), changes and told facts announced | `web/backend/apps/content/management/commands/deliver_ambient_questions.py` |
+| The profile's "heard" marks, and conversation proposals on the reflection card | `profile-section.tsx` (`FromConversation`), `projects/reflection-card.tsx` |
 
 ## Backend — the knowledge core (`apps/knowledge`)
 
