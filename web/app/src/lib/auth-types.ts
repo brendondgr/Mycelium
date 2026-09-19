@@ -150,6 +150,16 @@ export type ClusterGroup = {
   areas: string[];
 };
 
+/** One profile edit made from a person's yes to one of Mylo's questions. */
+export type AmbientProvenance = {
+  field: string;
+  value: string;
+  suggestion: string | number;
+  confirmed_on: string;
+  surface: string;
+  provenance: "stated";
+};
+
 /** The contract-shaped research interests stored on a profile. */
 export type ResearchInterests = {
   version: number;
@@ -157,7 +167,14 @@ export type ResearchInterests = {
   statement?: string;
   keywords?: string[];
   skills?: string[];
-  sources?: Record<string, unknown>;
+  /** Ambient Plan 05's contract fields: filled only by the person, or by a yes
+   * they gave to one of Mylo's questions (Plan 08). */
+  learning_goals?: string[];
+  preferences?: string[];
+  trajectory?: { direction?: string };
+  /** Where fields came from. `ambient` lists each edit made from a yes to one
+   * of Mylo's questions — the field, the value, the day, where it was answered. */
+  sources?: Record<string, unknown> & { ambient?: AmbientProvenance[] };
   /** Fellowship eligibility block — optional until the user completes step 4. */
   eligibility?: ProfileEligibility;
   /** Research-interest clusters derived from the profile's areas (interest-

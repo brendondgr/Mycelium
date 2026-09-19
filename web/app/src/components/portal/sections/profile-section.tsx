@@ -27,7 +27,12 @@ import {
   useWatch,
 } from "@/lib/portal/hooks";
 import { computeCompleteness } from "@/lib/portal/completeness";
-import type { ClusterGroup, ProfileEligibility } from "@/lib/auth-types";
+import type {
+  AmbientProvenance,
+  ClusterGroup,
+  ProfileEligibility,
+  ResearchInterests,
+} from "@/lib/auth-types";
 import type { DiscordCodeResponse } from "@/lib/portal/types";
 
 /** A small colored dot + label used as a cluster group header. */
@@ -81,9 +86,18 @@ function ResearchFocusCard({ onOrganize }: { onOrganize: () => void }) {
   const statement = interests?.statement?.trim() ?? "";
   const keywords = interests?.keywords ?? [];
   const skills = interests?.skills ?? [];
+  const learning = interests?.learning_goals ?? [];
+  const preferences = interests?.preferences ?? [];
+  const direction = interests?.trajectory?.direction?.trim();
+  const heard = ambientTrail(interests);
 
   const hasContent =
-    Boolean(statement) || keywords.length > 0 || skills.length > 0;
+    Boolean(statement) ||
+    keywords.length > 0 ||
+    skills.length > 0 ||
+    learning.length > 0 ||
+    preferences.length > 0 ||
+    Boolean(direction);
 
   return (
     <Card className="p-[22px]">
@@ -111,6 +125,9 @@ function ResearchFocusCard({ onOrganize }: { onOrganize: () => void }) {
       {[
         { label: "Keywords", items: keywords },
         { label: "Skills", items: skills },
+        { label: "Learning", items: learning },
+        { label: "Preferences", items: preferences },
+        { label: "Direction", items: direction ? [direction] : [] },
       ]
         .filter(({ items }) => items.length > 0)
         .map(({ label, items }) => (
@@ -122,6 +139,7 @@ function ResearchFocusCard({ onOrganize }: { onOrganize: () => void }) {
               {items.map((item) => (
                 <Pill key={item} tone="neutral">
                   {item}
+                  <FromConversation trail={heard.get(item.toLowerCase())} />
                 </Pill>
               ))}
             </div>
@@ -135,6 +153,42 @@ function ResearchFocusCard({ onOrganize }: { onOrganize: () => void }) {
         </p>
       ) : null}
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Provenance: what came from a yes to one of Mylo's questions (ambient Plan 08)
+// ---------------------------------------------------------------------------
+
+/** Each value added from a conversation the person confirmed, by lowercase
+ * value; the latest confirmation wins. */
+function ambientTrail(
+  interests: ResearchInterests | undefined,
+): Map<string, AmbientProvenance> {
+  const trail = new Map<string, AmbientProvenance>();
+  for (const row of interests?.sources?.ambient ?? []) {
+    if (row && typeof row.value === "string") trail.set(row.value.toLowerCase(), row);
+  }
+  return trail;
+}
+
+/**
+ * A small mark on a chip that came from a conversation, so a person can tell
+ * what they typed from what they said yes to. The full sentence is for screen
+ * readers and the tooltip; the details and undo are on the Mylo & you page.
+ */
+function FromConversation({ trail }: { trail: AmbientProvenance | undefined }) {
+  if (!trail) return null;
+  const where = trail.surface === "dm" ? "on Discord" : "on the web";
+  const said = `Added from a conversation — you said yes ${where} on ${trail.confirmed_on}.`;
+  return (
+    <span
+      title={said}
+      className="ml-0.5 rounded-full bg-surface-alt px-1.5 text-[10px] font-medium text-[var(--text-muted)]"
+    >
+      <span aria-hidden="true">heard</span>
+      <span className="sr-only">{said}</span>
+    </span>
   );
 }
 
@@ -252,6 +306,7 @@ function WatchCard({ onEdit }: { onEdit: () => void }) {
   const categories = watch?.categories ?? [];
   const cadence = watch?.cadence ?? "daily";
   const clusters = profile?.interests?.clusters ?? [];
+  const heard = ambientTrail(profile?.interests);
 
   const cadenceLabel = cadence === "daily" ? "daily" : "weekly";
 
@@ -310,6 +365,7 @@ function WatchCard({ onEdit }: { onEdit: () => void }) {
                     {items.map((item) => (
                       <Pill key={item} tone="neutral">
                         {item}
+                        <FromConversation trail={heard.get(item.toLowerCase())} />
                       </Pill>
                     ))}
                   </div>

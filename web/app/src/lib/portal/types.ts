@@ -1829,10 +1829,20 @@ export type ReflectionProposal = {
   id: string;
   project_id: string;
   project_name: string;
-  kind: "add_method" | "add_exclusion" | "set_milestone" | "review_state";
+  kind:
+    | "add_method"
+    | "add_exclusion"
+    | "set_milestone"
+    | "review_state"
+    | "close_blocker"
+    | "drop_method";
   /** The change, in the shape a state PATCH would take. */
   proposal: ProjectStateInput;
-  /** What the reader did that produced it — counts, the shared term. */
+  /**
+   * What produced it. From the reader's own activity: counts and the shared
+   * term. From conversation (ambient Plan 08, `source: "conversation"`): the
+   * development Mylo understood, when it happened, and Mylo's explanation.
+   */
   evidence: {
     saved?: number;
     dismissed?: number;
@@ -1840,6 +1850,13 @@ export type ReflectionProposal = {
     unjudged?: number;
     venues?: string[];
     days_since_confirmed?: number | null;
+    source?: "conversation";
+    topic?: string;
+    field?: string;
+    occurred_on?: string;
+    account?: string;
+    explanation?: string;
+    visibility?: "personal" | "lab";
   };
   status: "pending" | "accepted" | "rejected" | "expired";
   expires_on: string;

@@ -20,10 +20,42 @@ import { useQueryClient } from "@tanstack/react-query";
  * So each card says plainly what prompted it — four saves sharing a word, six
  * dismissals sharing another — and each has exactly two buttons. Rejecting is a
  * real answer: a declined proposal is not raised again for four weeks.
+ *
+ * Ambient Plan 08 adds proposals from conversation — a blocker someone said was
+ * cleared, a method they said the project dropped or took up. Those say so, show
+ * when it was said and Mylo's own account of it, and are otherwise the same two
+ * buttons: the project's stated state still changes only when an editor accepts.
  */
+
+function fromConversation(row: ReflectionProposal): { title: string; why: string } {
+  const evidence = row.evidence ?? {};
+  const topic = evidence.topic ? `“${evidence.topic}”` : "this";
+  const title =
+    row.kind === "close_blocker"
+      ? `Mark ${topic} as no longer blocking ${row.project_name}?`
+      : row.kind === "drop_method"
+        ? `Remove ${topic} from ${row.project_name}'s method?`
+        : `Add ${topic} to ${row.project_name}'s method?`;
+  const when = evidence.occurred_on ? formatDay(evidence.occurred_on) : null;
+  const said = evidence.explanation || evidence.account || "";
+  const why = [
+    when ? `From conversation, ${when}.` : "From conversation.",
+    said,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return { title, why };
+}
+
+function formatDay(iso: string): string {
+  const day = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(day.getTime())) return iso;
+  return day.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
 
 function summarise(row: ReflectionProposal): { title: string; why: string } {
   const evidence = row.evidence ?? {};
+  if (evidence.source === "conversation") return fromConversation(row);
   const term = evidence.shared_term ? `“${evidence.shared_term}”` : "a topic";
   switch (row.kind) {
     case "add_method":
@@ -92,15 +124,23 @@ export function ReflectionCard() {
         Mylo&rsquo;s reflection
       </h2>
       <p className="mb-3 text-[12.5px] leading-5 text-[var(--text-secondary)]">
-        Drawn from what you saved and dismissed, not from an opinion about your
-        research. Nothing changes until you say so.
+        Drawn from what you saved and dismissed, and from what your lab told
+        Mylo — never from an opinion about your research. Nothing changes until
+        you say so.
       </p>
 
       <ul className="divide-y divide-[var(--divider)]">
         {data.map((row) => {
           const { title, why } = summarise(row);
+          const heard = row.evidence?.source === "conversation";
           return (
             <li key={row.id} className="py-3 first:pt-0 last:pb-0">
+              {heard ? (
+                <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+                  Heard in conversation
+                  {row.evidence?.visibility === "personal" ? " · only you see this" : ""}
+                </p>
+              ) : null}
               <p className="text-[13.5px] font-semibold text-[var(--text-primary)]">
                 {title}
               </p>
