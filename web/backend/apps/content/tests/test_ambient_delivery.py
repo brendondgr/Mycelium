@@ -114,3 +114,17 @@ def test_a_profile_edit_is_announced_in_its_own_words(ada):
     call_command("deliver_ambient_questions")
     [bell] = Notification.objects.filter(kind="change_applied")
     assert bell.title == "conformal prediction is now in your skills — you said yes"
+
+
+def test_an_announcement_uses_the_persons_wording(ada):
+    _suggestion(
+        ada,
+        state="answered",
+        verdict="corrected",
+        choice="skill",
+        correction="conformal inference",
+        applied_at=timezone.now(),
+    )
+    call_command("deliver_ambient_questions")
+    [bell] = Notification.objects.filter(kind="change_applied")
+    assert bell.title.startswith("conformal inference is now in your skills")

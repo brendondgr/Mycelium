@@ -77,7 +77,9 @@ def keyboard_sweep(page: Page, start, region: str, limit: int = 120) -> dict:
               const b = getComputedStyle(el);
               const blurred = [b.outlineStyle, b.outlineWidth, b.boxShadow].join('|');
               el.focus({{focusVisible: true}});
-              return {{id, visible: focused !== blurred && f.outlineStyle !== 'none' || f.boxShadow !== b.boxShadow}};
+              // getComputedStyle is live: compare the strings captured before
+              // and after blur, never the objects (fixed after run 2).
+              return {{id, visible: focused !== blurred}};
             }}"""
         )
         if info is None:
@@ -178,8 +180,10 @@ def flows(page: Page, base: str, prep: dict, shots: Path) -> dict:
 
     # Needs your answer: the tabs pattern, then answer one by button.
     mylo(page, base)
-    first = page.get_by_role("tab", name=re.compile("^Needs your answer"))
+    first = page.get_by_role("tab", name=re.compile(r"^Needs your answer\s*\d"))
+    first.wait_for(timeout=60_000)  # the badge loads after the tab (run 2)
     badge_before = first.inner_text()
+    first = page.get_by_role("tab", name=re.compile("^Needs your answer"))
     first.focus()
     page.keyboard.press("ArrowRight")
     out["arrow_moves_selection"] = (
@@ -268,6 +272,10 @@ def flows(page: Page, base: str, prep: dict, shots: Path) -> dict:
     dialog = page.get_by_role("dialog", name="Notifications")
     expect(dialog).to_be_visible()
     link = dialog.locator('a[href="/app/mylo-and-you"]').first
+    try:
+        link.wait_for(timeout=30_000)  # the list loads after the dialog (run 2)
+    except Exception:  # noqa: BLE001 - counted as zero below
+        pass
     out["bell_ambient_links"] = dialog.locator('a[href="/app/mylo-and-you"]').count()
     out["bell_link_same_tab"] = link.get_attribute("target") is None if out["bell_ambient_links"] else False
     if out["bell_ambient_links"]:

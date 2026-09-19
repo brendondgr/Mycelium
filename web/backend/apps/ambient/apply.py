@@ -255,7 +255,22 @@ def revert(change: AppliedChange, *, by) -> None:
             raise ValueError(
                 "This was changed again since — edit your profile directly instead."
             )
-        restored = {**current, **(change.old_value or {})}
+        restored = dict(current)
+        for key, value in (change.old_value or {}).items():
+            if value is None:
+                # The field did not exist before this edit (EXP-2026-09-016:
+                # restoring ``null`` was refused by the contract).
+                restored.pop(key, None)
+            else:
+                restored[key] = value
+        sources = dict(restored.get("sources") or {})
+        if sources.get("ambient") and change.suggestion_id:
+            sources["ambient"] = [
+                row
+                for row in sources["ambient"]
+                if row.get("suggestion") != change.suggestion_id
+            ]
+            restored["sources"] = sources
         profile.interests = validate_interests(restored)
         profile.save(update_fields=["interests"])
 

@@ -96,7 +96,9 @@ class Command(BaseCommand):
                 defaults={
                     "user": suggestion.user,
                     "kind": Notification.Kind.CHANGE_APPLIED,
-                    "title": title.format(topic=suggestion.topic)[:500],
+                    "title": title.format(
+                        topic=suggestion.correction or suggestion.topic
+                    )[:500],
                     "url": "/app/mylo-and-you",
                 },
             )

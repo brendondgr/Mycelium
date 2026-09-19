@@ -698,6 +698,9 @@ def test_the_switch_itself_still_is():
         ("Include it in my reports", True),
         ("RL", False),
         ("graph neural networks", False),
+        ("things I'm picking up", True),  # EXP-2026-09-016
+        ("my learning list", True),
+        ("argument mining for debates", False),
     ],
 )
 def test_what_counts_as_repeating_a_choice(correction, echo):

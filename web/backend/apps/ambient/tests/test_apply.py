@@ -232,3 +232,28 @@ def test_the_applier_is_the_only_writer_of_a_profile_in_this_app():
                     if isinstance(target, ast.Attribute) and target.attr == "interests":
                         writers.append(path.name)
     assert set(writers) <= {"apply.py"}, writers
+
+
+@pytest.mark.parametrize(
+    ("choice", "field"),
+    [
+        ("learning", "learning_goals"),
+        ("skill", "skills"),
+        ("preference", "preferences"),
+        ("direction", "trajectory"),
+    ],
+)
+def test_undoing_a_first_entry_removes_the_field(ada, choice, field):
+    """EXP-2026-09-016: the field did not exist before, so undo must remove
+    it — restoring ``null`` was refused by the contract."""
+    before = dict(_interests(ada))
+    assert field not in before
+    s = _answered(ada, choice, "kriging")
+    apply.apply_answers()
+    review.undo(AppliedChange.objects.get(suggestion=s), by=ada)
+    after = _interests(ada)
+    assert field not in after
+    assert after.get("sources", {}).get("ambient", []) == []
+    assert {k: v for k, v in after.items() if k != "sources"} == {
+        k: v for k, v in before.items() if k != "sources"
+    }

@@ -314,7 +314,7 @@ _SYSTEM = (
 )
 
 #: Bump when the reply prompt or its reading changes (EXP-2026-09-015).
-READ_VERSION = "r4"
+READ_VERSION = "r5"
 
 _PROMPT = """Mylo asked:
 {question}
@@ -327,8 +327,10 @@ The person replied:
 
 Which choice did they pick? Reply as
 {{"choice": one of the choice keys above, or "unclear",
-  "correction": if they said yes but want the topic worded differently, their
-                wording in at most 8 words, else ""}}
+  "correction": only if they give a different NAME for the topic itself
+                ("SEM", "structural equation models"), at most 8 words;
+                never words about where to put it ("the things I'm
+                learning", "my list"); else ""}}
 
 Rules:
 - A soft no ("nah, I'm good", "don't worry about it") is "no" — and so is
@@ -400,11 +402,23 @@ _FILLER = frozenset(
 )
 
 
+#: Words about where something is filed, not what it is called
+#: ("things I'm picking up", "my learning list") — EXP-2026-09-016.
+_FILING = frozenset(
+    "things thing stuff list lists pile picking up learning learn skills skill "
+    "interests interest reports report goals goal something stuff m working "
+    "doing into getting".split()
+)
+
+
 def _echoes_a_choice(correction: str, choices: list[dict]) -> bool:
-    """Whether a "correction" is only the wording of one of the choices."""
+    """Whether a "correction" is only the wording of one of the choices, or
+    only says where to file the topic."""
     words = set(re.findall(r"[a-z0-9]+", correction.casefold())) - _FILLER
     if not words:
         return False  # "RL", "GNNs": short names are still names
+    if words <= _FILING:
+        return True
     labels = set(
         re.findall(r"[a-z0-9]+", " ".join(c["label"] for c in choices).casefold())
     )
