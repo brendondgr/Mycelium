@@ -99,3 +99,87 @@ export function useSlackLabSwitches(labSlug: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portal", "slack"] }),
   });
 }
+
+/** Teams (ambient Plan 11): the same shapes, under /integrations/teams/. */
+export type TeamsStatus = {
+  enabled: boolean;
+  identities: { tenant_id: string; linked_at: string }[];
+  lab_team: {
+    team_id: string;
+    name: string;
+    has_channel: boolean;
+    listening: boolean;
+    primary: boolean;
+  } | null;
+};
+
+export function useTeamsStatus(labSlug?: string) {
+  return useQuery({
+    queryKey: ["portal", "teams", labSlug ?? ""],
+    queryFn: () => call<TeamsStatus>("GET", ["integrations", "teams", "status"], labQuery(labSlug)),
+  });
+}
+
+export function useTeamsLinkCode() {
+  return useMutation({
+    mutationFn: () => call<SlackCode>("POST", ["integrations", "teams", "link-code"]),
+  });
+}
+
+export function useTeamsLabCode(labSlug: string) {
+  return useMutation({
+    mutationFn: () =>
+      call<SlackCode>("POST", ["integrations", "teams", "lab-code"], labQuery(labSlug)),
+  });
+}
+
+export function useTeamsLabSwitches(labSlug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { on?: boolean; primary?: boolean }) =>
+      call<{ listening?: boolean; primary: boolean }>(
+        "POST",
+        ["integrations", "teams", "lab"],
+        labQuery(labSlug),
+        body,
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portal", "teams"] }),
+  });
+}
+
+/** Meeting transcripts (ambient Plan 11): upload, then say who was who. */
+export type TranscriptPreview = {
+  labels: string[];
+  members: { id: number; name: string }[];
+};
+export type TranscriptRead = {
+  meeting: number;
+  turns: number;
+  participants: number;
+  counts: Record<string, number>;
+};
+
+export async function uploadTranscript(form: FormData): Promise<TranscriptPreview | TranscriptRead> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+  const response = await fetch(buildApiUrl(getPublicApiBase(), "ambient", "transcripts"), {
+    method: "POST",
+    credentials: "include",
+    headers: csrfToken ? { "X-CSRFToken": csrfToken } : {},
+    body: form,
+  });
+  let data: unknown = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+  if (!response.ok) {
+    const detail =
+      data && typeof data === "object" && "detail" in data
+        ? String((data as { detail: unknown }).detail)
+        : "The transcript didn't go through.";
+    throw new Error(detail);
+  }
+  return data as TranscriptPreview | TranscriptRead;
+}

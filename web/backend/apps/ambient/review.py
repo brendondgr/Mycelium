@@ -385,8 +385,13 @@ def settings_for(user) -> dict:
     consent = ListeningConsent.objects.filter(
         user=user, platform=Platform.DISCORD
     ).first()
+    from django.conf import settings as django_settings
+
     return {
         "available": ambient_enabled(),
+        # Plan 11: whether meeting transcripts can be uploaded here at all.
+        "transcripts": ambient_enabled()
+        and bool(getattr(django_settings, "AMBIENT_TRANSCRIPTS_ENABLED", False)),
         "paid": tier_is_paid(user),
         "linked": DiscordIdentity.objects.filter(
             user=user, state=DiscordIdentity.State.ACTIVE

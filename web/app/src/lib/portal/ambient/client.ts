@@ -120,6 +120,7 @@ export function fetchAmbientSettings(): Promise<AmbientSettings> {
 export function saveAmbientSettings(body: {
   listening_discord?: boolean;
   listening_slack?: boolean;
+  listening_teams?: boolean;
   questions_muted?: boolean;
   quiet_until?: string | null;
 }): Promise<AmbientSettings> {

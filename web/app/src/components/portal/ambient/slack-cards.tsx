@@ -9,6 +9,10 @@ import {
   useSlackLinkCode,
   useSlackStatus,
   useSlackUnlink,
+  useTeamsLabCode,
+  useTeamsLabSwitches,
+  useTeamsLinkCode,
+  useTeamsStatus,
 } from "@/lib/portal/ambient/slack";
 
 /**
@@ -135,6 +139,92 @@ export function SlackLabCard({ slug }: { slug: string }) {
           )}
           {code.error ? <p className="text-clay">{code.error.message}</p> : null}
         </div>
+      )}
+    </Card>
+  );
+}
+
+export function TeamsPersonCard() {
+  const status = useTeamsStatus();
+  const code = useTeamsLinkCode();
+  if (!status.data?.enabled) return null;
+  const linked = status.data.identities.length > 0;
+  return (
+    <Card className="p-[22px]" data-ambient="teams-person">
+      <h2 className="mb-2 text-base font-semibold text-[var(--text-primary)]">Microsoft Teams</h2>
+      <p className="mb-3 text-sm text-[var(--text-secondary)]">
+        {linked
+          ? "Your Teams account is linked."
+          : "Link your Teams account so Mylo can ask you questions there."}
+      </p>
+      {code.data ? (
+        <p role="status" className="text-sm text-[var(--text-primary)]">
+          Send Mylo this in a Teams chat:{" "}
+          <code className="rounded bg-surface-alt px-1.5 py-0.5 font-mono text-[13px]">{code.data.code}</code>
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={() => code.mutate()}
+          disabled={code.isPending}
+          className="rounded-lg border border-border px-3.5 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-surface-alt disabled:opacity-60"
+        >
+          {linked ? "Link again" : "Link Teams"}
+        </button>
+      )}
+      {code.error ? <p className="mt-2 text-sm text-clay">{code.error.message}</p> : null}
+    </Card>
+  );
+}
+
+export function TeamsLabCard({ slug }: { slug: string }) {
+  const status = useTeamsStatus(slug);
+  const code = useTeamsLabCode(slug);
+  const switches = useTeamsLabSwitches(slug);
+  if (!status.data?.enabled) return null;
+  const team = status.data.lab_team;
+  return (
+    <Card className="p-[22px]" data-ambient="teams-lab">
+      <h2 className="mb-2 text-base font-semibold text-[var(--text-primary)]">Microsoft Teams</h2>
+      {team ? (
+        <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+          <p>
+            Linked to <span className="font-medium text-[var(--text-primary)]">{team.name || "a team"}</span>.
+            Reading channels without a mention needs your tenant admin&apos;s consent at install.
+          </p>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={team.listening}
+              disabled={switches.isPending}
+              onChange={(event) => switches.mutate({ on: event.target.checked })}
+            />
+            Listen in this team (each person still opts in themselves)
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={team.primary}
+              disabled={switches.isPending}
+              onChange={(event) => switches.mutate({ primary: event.target.checked })}
+            />
+            Post the lab&apos;s reports here instead of Discord
+          </label>
+        </div>
+      ) : code.data ? (
+        <p role="status" className="text-sm text-[var(--text-primary)]">
+          Add Mylo to your team, then in the channel for the lab&apos;s posts mention Mylo with:{" "}
+          <code className="rounded bg-surface-alt px-1.5 py-0.5 font-mono text-[13px]">{code.data.code}</code>
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={() => code.mutate()}
+          disabled={code.isPending}
+          className="rounded-lg border border-border px-3.5 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-surface-alt disabled:opacity-60"
+        >
+          Make a lab link code
+        </button>
       )}
     </Card>
   );

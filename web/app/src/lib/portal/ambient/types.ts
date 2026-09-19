@@ -107,7 +107,9 @@ export type AmbientSettings = {
   linked: boolean;
   /** Plan 11: linked on Slack, and its own opt-in. */
   slack_linked?: boolean;
-  listening: { discord: boolean; slack?: boolean };
+  teams_linked?: boolean;
+  transcripts?: boolean;
+  listening: { discord: boolean; slack?: boolean; teams?: boolean };
   questions_muted: boolean;
   quiet_until: string | null;
   statement: string;

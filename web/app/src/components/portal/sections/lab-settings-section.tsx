@@ -20,7 +20,7 @@ import {
 import { OrgInviteCard } from "@/components/portal/sections/org-invite-card";
 import { usePortal } from "@/components/portal/portal-context";
 import { labLogoUrl } from "@/lib/portal/client";
-import { SlackLabCard } from "@/components/portal/ambient/slack-cards";
+import { SlackLabCard, TeamsLabCard } from "@/components/portal/ambient/slack-cards";
 import { useDeleteLabLogo, useUploadLabLogo } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
@@ -101,6 +101,7 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
           />
           <DiscordSyncCard lab={lab} />
           <SlackLabCard slug={lab.slug} />
+          <TeamsLabCard slug={lab.slug} />
           <DiscordHealthCard lab={lab} />
           <ProjectsCard lab={lab} canManage />
         </div>

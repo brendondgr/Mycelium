@@ -96,6 +96,18 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
             }
           />
         ) : null}
+        {data.teams_linked ? (
+          <Toggle
+            id="ambient-listening-teams"
+            label="Listen on Microsoft Teams"
+            help="Read what you say in Teams channels of a team Mylo was added to, and in your chat with Mylo. Off by default."
+            checked={Boolean(data.listening.teams)}
+            disabled={readOnly && !data.listening.teams}
+            onChange={(on) =>
+              update({ listening_teams: on }, on ? "Listening on Teams is on." : "Listening on Teams is off.")
+            }
+          />
+        ) : null}
         <Toggle
           id="ambient-questions"
           label="Mylo's questions"
