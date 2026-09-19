@@ -64,7 +64,7 @@ def graph(
                 edges.add(pair)
                 pool += [x, y]
     for hub in rng.sample(range(n), int(n * hubs)):
-        for y in rng.sample(range(n), rng.randint(100, 400)):
+        for y in rng.sample(range(n), min(n - 1, rng.randint(100, 400))):
             if y != hub:
                 edges.add((hub, y) if hub < y else (y, hub))
     open_people = {x for x in range(n) if rng.random() < 0.3}
@@ -292,26 +292,54 @@ RETURN count(o) AS c
 """
 
 
-def run_neo4j(driver, sample, warmup: int = 20) -> dict:
+def run_neo4j(driver, sample, *, timeout: float, deadline: float, warmup=20) -> dict:
+    """Each query under a server-side ``timeout`` (seconds); a timed-out query
+    is recorded at the timeout and counted, since it has missed any budget.
+    Stops early at the wall-clock ``deadline`` and says so."""
+    from neo4j import Query
+    from neo4j.exceptions import ClientError
+
     times = {"intro": [], "network": [], "distance": []}
+    timeouts = {"intro": 0, "network": 0, "distance": 0}
     lengths, network_sizes = [], []
+
+    def timed(session, walk, text, **params):
+        started = time.perf_counter()
+        try:
+            value = session.run(Query(text, timeout=timeout), **params).single()
+        except ClientError as exc:
+            if "imeout" not in f"{exc.code} {exc}":
+                raise
+            timeouts[walk] += 1
+            times[walk].append(timeout)
+            return "timeout"
+        times[walk].append(time.perf_counter() - started)
+        return value
+
+    done = 0
     with driver.session() as session:
         for s, t in sample[:warmup]:
-            session.run(INTRO, s=s, t=t).consume()
-            session.run(NETWORK, s=s).consume()
+            timed(session, "intro", INTRO, s=s, t=t)
+            timed(session, "network", NETWORK, s=s)
+        for key in times:
+            times[key].clear()
+            timeouts[key] = 0
         for s, t in sample:
-            started = time.perf_counter()
-            row = session.run(INTRO, s=s, t=t).single()
-            times["intro"].append(time.perf_counter() - started)
-            lengths.append(row["hops"] if row else None)
-            started = time.perf_counter()
-            network_sizes.append(session.run(NETWORK, s=s).single()["c"])
-            times["network"].append(time.perf_counter() - started)
-            started = time.perf_counter()
-            session.run(DISTANCE, s=s).consume()
-            times["distance"].append(time.perf_counter() - started)
+            if time.monotonic() > deadline:
+                break
+            row = timed(session, "intro", INTRO, s=s, t=t)
+            lengths.append(
+                "timeout" if row == "timeout" else (row["hops"] if row else None)
+            )
+            row = timed(session, "network", NETWORK, s=s)
+            network_sizes.append("timeout" if row == "timeout" else row["c"])
+            timed(session, "distance", DISTANCE, s=s)
+            done += 1
     return {
-        "times": {k: _summary(v) for k, v in times.items()},
+        "times": {k: _summary(v) for k, v in times.items() if v},
+        "timeouts": timeouts,
+        "pairs_done": done,
+        "stopped_at_deadline": done < len(sample),
         "lengths": lengths,
         "network_sizes": network_sizes,
     }
@@ -324,6 +352,8 @@ def main(args) -> dict:
     setup_postgres()
     driver = _neo4j(args.neo4j_password) if args.neo4j_password else None
     report: dict = {"sizes": {}, "hubs": args.hubs, "invariant_failures": []}
+    # Nothing in this experiment may run past its wall-clock budget.
+    deadline = time.monotonic() + args.budget_minutes * 60
     try:
         for n in [int(v) for v in args.sizes.split(",")]:
             edges, open_people = graph(n, args.seed, hubs=args.hubs)
@@ -357,16 +387,24 @@ def main(args) -> dict:
                 started = time.monotonic()
                 load_neo4j(driver, n, edges, open_people)
                 row["neo4j_load_seconds"] = round(time.monotonic() - started, 1)
-                neo = run_neo4j(driver, sample)
+                neo = run_neo4j(
+                    driver, sample, timeout=args.query_timeout, deadline=deadline
+                )
                 row["neo4j"] = neo["times"]
+                row["neo4j_timeouts"] = neo["timeouts"]
+                row["neo4j_pairs_done"] = neo["pairs_done"]
+                row["neo4j_stopped_at_deadline"] = neo["stopped_at_deadline"]
+                # A timed-out answer is a miss, not a disagreement.
                 row["neo4j_disagreements"] = sum(
-                    1 for a, b in zip(neo["lengths"], reference, strict=True) if a != b
+                    1
+                    for a, b in zip(neo["lengths"], reference, strict=False)
+                    if a != "timeout" and a != b
                 ) + sum(
                     1
                     for a, b in zip(
-                        neo["network_sizes"], network_reference, strict=True
+                        neo["network_sizes"], network_reference, strict=False
                     )
-                    if a != b
+                    if a != "timeout" and a != b
                 )
             for store in ("pg", "neo4j"):
                 if row.get(f"{store}_disagreements"):

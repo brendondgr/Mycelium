@@ -36,11 +36,16 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-09-005` | 2026-09-18 | Do people's papers become the right demonstrated concepts? A synthetic-world test of plan CN-02 | complete | — | — | [folder](experiments/EXP-2026-09-005-knowledge-demonstrated-sandbox/RESULTS.md) |
 | `EXP-2026-09-006` | 2026-09-18 | Do funding calls become the right requirement slots, and is team coverage marked correctly? A synthetic-world test of plan CN-03 | complete | — | — | [folder](experiments/EXP-2026-09-006-collab-slots-teamfit-sandbox/RESULTS.md) |
 | `EXP-2026-09-007` | 2026-09-18 | Is anyone ever findable who should not be? A synthetic-world test of plan CN-04 | complete | — | — | [folder](experiments/EXP-2026-09-007-collab-consent-sandbox/RESULTS.md) |
+| `EXP-2026-09-008` | 2026-09-18 | Does the matcher find the right people in the right lane, and nobody it should not? A 600-person synthetic test of plan CN-05 | planned | — | — | [folder](experiments/EXP-2026-09-008-collab-matcher-sandbox/RESULTS.md) |
+| `EXP-2026-09-009` | 2026-09-18 | Does the collaborator search panel work end to end for hundreds of fake seekers, and does every response stay a coarse pointer? A sandbox test of plan CN-06 | planned | — | — | [folder](experiments/EXP-2026-09-009-collab-search-panel-sandbox/RESULTS.md) |
+| `EXP-2026-09-010` | 2026-09-18 | Do introduction paths, 'outside my network' and team formation name only who they may, and find what they should? A synthetic-graph test of plan CN-07 | planned | — | — | [folder](experiments/EXP-2026-09-010-collab-graph-features-sandbox/RESULTS.md) |
+| `EXP-2026-09-011` | 2026-09-18 | Postgres recursive queries or Neo4j for the co-authorship graph? Latency at 1,000, 5,000 and 20,000 people | complete | — | — | [folder](experiments/EXP-2026-09-011-coauthorship-store-benchmark/RESULTS.md) |
+| `EXP-2026-09-012` | 2026-09-18 | Is the collaboration network useful and harmless in real use? Slot quality, coverage accuracy, concept linking, lane quality, concentration and harm on live data (plan CN-08) | planned | — | — | [folder](experiments/EXP-2026-09-012-collab-live-evaluation/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 25 |
-| planned | 2 |
-| **total** | **27** |
+| complete | 26 |
+| planned | 6 |
+| **total** | **32** |

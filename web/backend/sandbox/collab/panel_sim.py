@@ -112,7 +112,18 @@ def _check_response(body, eligible, out, lanes_asked):
         out["empty_results"] += 1
 
 
-def run(world, planned, applied, calls, *, seed: int, seekers: int) -> dict:
+def run(
+    world,
+    planned,
+    applied,
+    calls,
+    *,
+    seed: int,
+    seekers: int,
+    rerank_seekers: int = 10,
+    manual_every: int = 6,
+    deadline: float | None = None,
+) -> dict:
     from django.conf import settings
 
     from apps.collab.matcher import project_visible
@@ -179,7 +190,23 @@ def run(world, planned, applied, calls, *, seed: int, seekers: int) -> dict:
         f"We need someone who can do {m.names[0]} for our data."
         for m in match_sim.world_mod.METHODS
     ]
+    from apps.collab import matcher
+
+    real_complete = matcher._default_complete
+
+    def model_off(system, user):
+        raise ConnectionError("rerank off for this seeker (EXP-2026-09-009)")
+
+    done = 0
     for index, key in enumerate(chosen):
+        if deadline is not None and time.monotonic() > deadline:
+            break
+        # The model reranks the first few seekers' searches; the rest run with
+        # it off, which the API must handle identically in shape.
+        matcher._default_complete = (
+            real_complete if index < rerank_seekers else model_off
+        )
+        done += 1
         user = users[key]
         client = _client(user)
         eligible = eligible_for(key, "institution")
@@ -207,7 +234,7 @@ def run(world, planned, applied, calls, *, seed: int, seekers: int) -> dict:
             )
         # The seeker's own words go through the model; a quarter of seekers is
         # plenty to exercise the path without making the run about the model.
-        if index % 4 == 0:
+        if index % manual_every == 0:
             entries.append(
                 ("manual", {"entry": "manual", "text": rng.choice(manual_needs)})
             )
@@ -301,6 +328,9 @@ def run(world, planned, applied, calls, *, seed: int, seekers: int) -> dict:
             if response.status_code != 403:
                 out["violations_scope_beyond_limit"] += 1
 
+    matcher._default_complete = real_complete
+    out["seekers_done"] = done
+    out["stopped_at_deadline"] = int(done < len(chosen))
     out.update(_refusals(planned, users, chosen))
     summary = {
         f"latency_{kind}_p50": round(statistics.median(values), 3)
@@ -371,6 +401,8 @@ def main(world, args) -> dict:
     from django.conf import settings
 
     settings.BILLING_ENFORCE_ENTITLEMENTS = False
+    # The whole run, calls included, stays inside the budget.
+    deadline = time.monotonic() + args.budget_minutes * 60
     planned = consent_sim.plan(world, args.seed)
     applied = consent_sim.apply(world, planned)
     started = time.monotonic()
@@ -380,7 +412,14 @@ def main(world, args) -> dict:
     report = {"calls_seconds": round(time.monotonic() - started, 1)}
     started = time.monotonic()
     report["api"] = run(
-        world, planned, applied, calls, seed=args.seed, seekers=args.seekers
+        world,
+        planned,
+        applied,
+        calls,
+        seed=args.seed,
+        seekers=args.seekers,
+        rerank_seekers=args.rerank_seekers,
+        deadline=deadline,
     )
     report["api_seconds"] = round(time.monotonic() - started, 1)
     report["invariant_failures"] = [

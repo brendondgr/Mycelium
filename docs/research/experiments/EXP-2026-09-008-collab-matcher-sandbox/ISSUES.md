@@ -10,3 +10,24 @@
    below the limit — including EXP-2026-09-005 to -007's 240 — is unchanged)
    and rebuilt. The `match` command was also missing from the harness's
    command list and would have been refused; added.
+2. **The second build failed at seeding (recorded).** The rebuild wrote the
+   whole corpus (2,734 papers; 2,706 with an abstract — 28 calls failed while
+   the model server was under heavy load and are retried by the next build),
+   then failed flushing the sandbox database, because EXP-2026-09-010's smoke
+   run was writing to the same database at that moment. An operator error, not
+   a code fault; the build was rerun with nothing else on the database.
+3. **A second arm, declared before any matcher run.** EXP-2026-09-010's smoke
+   run (240 people) showed short concept phrases for *different* methods
+   matching at the registered lane threshold (0.70): across the world's
+   method names, 12.75% of distinct-method pairs reach 0.70 and none reach
+   0.80. The shipped matcher now matches concepts at
+   `COLLAB_CONCEPT_MATCH_COSINE = 0.80`. This experiment therefore runs:
+   **arm A** exactly as registered (`--concept-cosine 0.70`), and **arm B**
+   with the shipped setting (0.80). H2's bars apply to both; the decision
+   follows arm A's result, never replaces it.
+4. **The world build's two invariant flags are load, not code.** Two of 2,734
+   papers got a 502 from the model relay on the first reading pass (the server
+   was under heavy load) and were read on the second, which the harness flags
+   as `second_pass_model_calls = 2`. Every other build check held: 2,732 read
+   first time, method recall 0.998, Q1 precision and recall 1.0, no wrong
+   merges, 17 method splits (Q-043).

@@ -9,47 +9,49 @@
 id: EXP-2026-09-011
 slug: coauthorship-store-benchmark
 title: Postgres recursive queries or Neo4j for the co-authorship graph? Latency at 1,000, 5,000 and 20,000 people
-status: planned # planned | running | complete | failed | superseded
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-09-18
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-09-18
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Plan CN-07 step 5: whether the co-authorship walks (network, distances,
+  introduction paths) can stay in Postgres at realistic size, or need Neo4j.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Pre-registered: Postgres p95 <= 250 ms per walk at 20,000 people (H1); zero
+  disagreement between Postgres, Neo4j and a Python BFS (H2). OUTCOME: H1 holds
+  (introduction p95 31.6 ms; 60 ms worst walk in the exploratory hub arm); H2
+  holds (0 disagreements).
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: b76e2e4
+  commit: 0d1cc6b
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
+  entrypoint: "cd web/backend && uv run --project . python -m sandbox.collab bench --sizes 1000,5000,20000 --pairs 300 --neo4j-password <compose default> --out /app/data/sandbox/exp011.json"
   dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
-  path: <path to the config file, or null>
+  path: web/backend/sandbox/collab/store_bench.py
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: synthetic co-authorship graphs
+  version: "seed 20260918; n = 1,000, 5,000, 20,000; arm B hubs 1%"
+  split: test
+  n_examples: 1000 # sampled (seeker, target) pairs: 300 x 3 sizes + 100 in arm B
   qrels: null
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
-seeds: []
+seeds: [20260918]
 n_runs: 1
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml; neo4j:5-community"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "20 CPU cores, 62 GB RAM; no model"
+  wall_clock_hours: 0.4
+  estimated_cost_usd: 0.0
 
 # --- LLM block (delete entirely if no model was called) ----------------------
 # llm:
@@ -67,9 +69,35 @@ compute:
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
+  primary: pg_intro_p95_ms (arm A, 20,000 people)
+  values:
+    a_neo4j_distance_p95_ms_1000: 14.2
+    a_neo4j_distance_p95_ms_20000: 15.05
+    a_neo4j_distance_p95_ms_5000: 14.77
+    a_neo4j_intro_p95_ms_1000: 7.2
+    a_neo4j_intro_p95_ms_20000: 5.74
+    a_neo4j_intro_p95_ms_5000: 6.14
+    a_neo4j_network_p95_ms_1000: 4.88
+    a_neo4j_network_p95_ms_20000: 3.68
+    a_neo4j_network_p95_ms_5000: 4.03
+    a_pg_distance_p95_ms_1000: 7.0
+    a_pg_distance_p95_ms_20000: 11.09
+    a_pg_distance_p95_ms_5000: 10.71
+    a_pg_intro_p95_ms_1000: 4.48
+    a_pg_intro_p95_ms_20000: 31.56
+    a_pg_intro_p95_ms_5000: 11.13
+    a_pg_network_p95_ms_1000: 2.05
+    a_pg_network_p95_ms_20000: 2.37
+    a_pg_network_p95_ms_5000: 2.36
+    b_neo4j_distance_p95_ms_20000: 103.13
+    b_neo4j_intro_p95_ms_20000: 17.52
+    b_neo4j_network_p95_ms_20000: 4.28
+    b_pg_distance_p95_ms_20000: 59.96
+    b_pg_intro_p95_ms_20000: 37.51
+    b_pg_network_p95_ms_20000: 5.71
+    disagreements_total: 0
+    pg_intro_p95_ms: 31.56
+baselines_compared: [Neo4j 5 Community on the same graphs, Python breadth-first search (correctness)]
 statistical_test: null
 
 # --- Linkage -----------------------------------------------------------------
@@ -78,4 +106,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-09-010]

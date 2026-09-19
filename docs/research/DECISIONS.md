@@ -130,3 +130,31 @@ visibly unsupported rather than quietly assumed. The cost is a CI job that will
 block pull requests when the record goes stale, which is the point.
 **Revisit when:** the record exceeds what a validator can meaningfully check, or
 a tracker becomes the capture layer.
+
+---
+
+## D-007 — The co-authorship graph stays in Postgres
+
+**Date:** 2026-09-18
+**Context:** Plan CN-07 adds three walks over who published with whom —
+everyone within two co-authorships ("outside my network"), distances up to
+three (team formation), and the shortest path through consenting people
+("who can introduce me?"). The design reserved Neo4j for exactly this kind of
+multi-hop query, and a Neo4j service already runs in the compose stack,
+unused. The plan said to move only if a pre-registered benchmark showed
+Postgres missing the latency budget at realistic size.
+**Options:**
+- Postgres recursive queries over a `knowledge_coauthorship` edge table
+  (built): one store, so consent, tiers and deletion never need mirroring.
+- Neo4j for the co-authorship graph only, fed from Postgres: purpose-built
+  path queries, at the cost of a second store to keep consistent — including
+  a person's deletion and every consent change that decides who may be named.
+**Decision:** Postgres. In `EXP-2026-09-011` every walk's p95 at 20,000 people
+was at most 31.6 ms (budget 250 ms), 60 ms in an exploratory graph with
+prolific co-authors; Neo4j was faster on introductions and slower on
+distances, and all three implementations agreed on every pair.
+**Consequences:** No second store to secure or keep in step. The introduction
+walk's cost grows with the number of people open to collaboration, because the
+allowed intermediaries travel as an array (Q-046).
+**Revisit when:** Mycelium approaches 100,000 people with a large share open to
+collaboration, or any walk's live p95 passes 100 ms.

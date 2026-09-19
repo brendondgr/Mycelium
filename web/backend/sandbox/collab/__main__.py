@@ -66,6 +66,12 @@ def main() -> int:
         help="Override COLLAB_CONCEPT_MATCH_COSINE (e.g. 0.70 for EXP-008 arm A).",
     )
     parser.add_argument(
+        "--rerank-seekers",
+        type=int,
+        default=10,
+        help="For panel: how many seekers' searches the model reranks.",
+    )
+    parser.add_argument(
         "--read-calls",
         type=int,
         default=30,
@@ -77,6 +83,15 @@ def main() -> int:
     parser.add_argument("--pairs", type=int, default=300, help="For bench.")
     parser.add_argument(
         "--hubs", type=float, default=0.0, help="For bench: share of hub people."
+    )
+    parser.add_argument(
+        "--query-timeout", type=float, default=5.0, help="For bench: Neo4j, seconds."
+    )
+    parser.add_argument(
+        "--budget-minutes",
+        type=float,
+        default=50.0,
+        help="Wall-clock budget (bench, panel).",
     )
     parser.add_argument(
         "--neo4j-password", default="", help="For bench: omit to skip Neo4j."

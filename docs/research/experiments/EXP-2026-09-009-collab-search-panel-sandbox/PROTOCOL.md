@@ -55,8 +55,8 @@ with each path that must not offer a search refusing?
 
 ```bash
 cd web/backend
-uv run --project . python -m sandbox.collab panel --people 600 \
-  --seekers 120 --read-calls 30 --out /app/data/sandbox/exp009.json
+uv run --project . python -m sandbox.collab panel --people 600 --budget-minutes 45 \
+  --seekers 60 --rerank-seekers 10 --read-calls 20 --out /app/data/sandbox/exp009.json
 ```
 
 Then the browser check: a second backend container on the sandbox database

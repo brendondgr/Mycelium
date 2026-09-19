@@ -1,0 +1,60 @@
+{
+ "hubs": 0.01,
+ "invariant_failures": [],
+ "sizes": {
+  "20000": {
+   "edges": 157167,
+   "max_degree": 417,
+   "mean_degree": 15.72,
+   "neo4j": {
+    "distance": {
+     "max_ms": 153.59,
+     "p50_ms": 54.11,
+     "p95_ms": 103.13
+    },
+    "intro": {
+     "max_ms": 35.13,
+     "p50_ms": 8.83,
+     "p95_ms": 17.52
+    },
+    "network": {
+     "max_ms": 15.39,
+     "p50_ms": 2.88,
+     "p95_ms": 4.28
+    }
+   },
+   "neo4j_disagreements": 0,
+   "neo4j_load_seconds": 7.1,
+   "neo4j_pairs_done": 100,
+   "neo4j_stopped_at_deadline": false,
+   "neo4j_timeouts": {
+    "distance": 0,
+    "intro": 0,
+    "network": 0
+   },
+   "open": 6000,
+   "pairs": 100,
+   "people": 20000,
+   "pg": {
+    "distance": {
+     "max_ms": 81.44,
+     "p50_ms": 41.53,
+     "p95_ms": 59.96
+    },
+    "intro": {
+     "max_ms": 41.16,
+     "p50_ms": 24.64,
+     "p95_ms": 37.51
+    },
+    "network": {
+     "max_ms": 9.08,
+     "p50_ms": 2.82,
+     "p95_ms": 5.71
+    }
+   },
+   "pg_disagreements": 0,
+   "pg_load_seconds": 15.0,
+   "reachable": 18
+  }
+ }
+}
