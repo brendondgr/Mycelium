@@ -47,6 +47,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 
@@ -261,6 +262,42 @@ def report_projects_for_user(user) -> list:
         .distinct()
         .order_by("name", "id")
     )
+
+
+def by_attention(user, projects: list) -> tuple[list, str | None]:
+    """A person's projects with the one they actually spent the week on first.
+
+    Ambient Plan 05, step 9, personal reports only (OD-05b: a lab's attention
+    is a different measure). Ordered by the 7-day attention share, then the
+    28-day one, then the usual name order; a project with no conversation keeps
+    its place after those that have some — an idle project is never dropped,
+    just not first. Returns the ordered list and the id of the project that
+    leads by at least ``AMBIENT_ATTENTION_LEAD_SHARE`` (it gets a slightly
+    deeper slate), or None. With no attention rows, the order is unchanged.
+    """
+    from apps.ambient.read import attention_for
+
+    shares = {
+        str(row.project_id): (row.share_7d, row.share_28d)
+        for row in attention_for(user)
+    }
+    if not shares:
+        return list(projects), None
+    ordered = sorted(
+        enumerate(projects),
+        key=lambda pair: (
+            -shares.get(str(pair[1].id), (0.0, 0.0))[0],
+            -shares.get(str(pair[1].id), (0.0, 0.0))[1],
+            pair[0],
+        ),
+    )
+    ordered = [project for _, project in ordered]
+    lead = None
+    if ordered:
+        share = shares.get(str(ordered[0].id), (0.0, 0.0))[0]
+        if share >= float(getattr(settings, "AMBIENT_ATTENTION_LEAD_SHARE", 0.4)):
+            lead = str(ordered[0].id)
+    return ordered, lead
 
 
 def report_projects_for_lab(lab, *, shared_only: bool = True) -> list:
@@ -650,6 +687,9 @@ def _profile_text(target) -> str:
         values = _clean_list(interests.get(key))
         if values:
             bits.append(f"{label}: {', '.join(values)}")
+    from .understanding import lines as understanding_lines
+
+    bits.extend(understanding_lines(interests))
     return "\n".join(bits)
 
 
@@ -693,6 +733,7 @@ def _write_briefing(
     kind: str = DailyBriefing.Kind.DAILY,
     stats: dict | None = None,
     attention: str = "",
+    lead_project: str | None = None,
 ) -> DailyBriefing:
     """Gather a target's day, write the report, and persist it as a ``DailyBriefing``.
 
@@ -736,7 +777,12 @@ def _write_briefing(
             label=project.name,
             kind="project",
             scope=project.scope,
-            limit=briefing_sections.PROJECT_ITEMS_PER_SECTION,
+            limit=briefing_sections.PROJECT_ITEMS_PER_SECTION
+            + (
+                int(getattr(settings, "AMBIENT_ATTENTION_EXTRA_ITEMS", 2))
+                if lead_project and str(project.id) == lead_project
+                else 0
+            ),
             member_names=_project_member_names(project),
             reader=reader,
         )
@@ -808,9 +854,23 @@ def _write_briefing(
             "project_summary": project_summary,
             "narrative": narrative_payload,
             "stats": stats or {},
+            "context_version": context_version(owner, projects or []),
         },
     )
     return briefing
+
+
+def context_version(owner: dict, projects: list) -> str:
+    """What this report was written against, as a digest (ambient Plan 05).
+
+    Never raises: a report that cannot compute its version is still a report.
+    """
+    from .understanding import context_version as compute
+
+    try:
+        return compute(owner.get("user"), owner.get("lab"), projects)
+    except Exception:  # noqa: BLE001 - interpretability must not cost the report
+        return ""
 
 
 def _narrative_entitled(target_filter: dict) -> bool:
@@ -868,12 +928,14 @@ def generate_briefing_for_user(
     summaries = [
         (block.project_label, block.trigger_label, block.title) for block in blocks
     ]
+    projects, lead = by_attention(user, report_projects_for_user(user))
     briefing = _write_briefing(
         owner={"user": user},
         target=target_for_user(user),
         target_filter={"target_user": user},
         watch=getattr(user, "watch", None),
-        projects=report_projects_for_user(user),
+        projects=projects,
+        lead_project=lead,
         complete=complete,
         # A personal report has exactly one reader, so it honours their ignores.
         reader=user,

@@ -20,13 +20,18 @@ from django.utils import timezone
 
 from . import linker
 from .linker import LinkRequest
-from .models import Edge, EdgeStatus, Facet, Relation, Scope, Tier
+from .models import Concept, Edge, EdgeStatus, Facet, Relation, Scope, Tier
 from .projection import Projected, project_declared
 from .read import EdgeView
 
 __all__ = [
     "Projected",
+    "delete_conversational",
+    "drop_evidence",
+    "edit_conversational",
+    "keep",
     "link_conversation",
+    "unreinforced_since",
     "queue_work_facets",
     "confirm",
     "fade",
@@ -47,6 +52,8 @@ def record_conversational(
     default_facet: str = Facet.AREA,
     weight: float = 1.0,
     half_life_days: float | None = None,
+    concept_id: int | None = None,
+    qualifier: str = "",
 ) -> EdgeView | None:
     """Record, or reinforce, something Mylo understood about this person.
 
@@ -58,25 +65,32 @@ def record_conversational(
     """
     if relation not in Relation.values:
         raise ValueError(f"unknown relation {relation!r}")
-    result = linker.link_many(
-        [
-            LinkRequest(
-                surface=surface,
-                facet=facet,
-                default_facet=default_facet,
-                scope=Scope.PERSONAL,
-                owner=user,
-            )
-        ]
-    )[0]
-    if result.concept is None:
+    if concept_id is not None:
+        # The caller already linked this wording (the ambient ledger links
+        # every topic when it is read); following a merge keeps it current.
+        concept = Concept.objects.filter(pk=concept_id).first()
+        while concept is not None and concept.merged_into_id:
+            concept = Concept.objects.filter(pk=concept.merged_into_id).first()
+    else:
+        concept = linker.link_many(
+            [
+                LinkRequest(
+                    surface=surface,
+                    facet=facet,
+                    default_facet=default_facet,
+                    scope=Scope.PERSONAL,
+                    owner=user,
+                )
+            ]
+        )[0].concept
+    if concept is None:
         return None
     now = timezone.now()
     with transaction.atomic():
         edge, created = Edge.objects.select_for_update().get_or_create(
             user=user,
             relation=relation,
-            concept=result.concept,
+            concept=concept,
             tier=Tier.CONVERSATIONAL,
             defaults={
                 "status": EdgeStatus.PENDING,
@@ -86,15 +100,21 @@ def record_conversational(
                 "evidence": list(evidence),
                 "first_seen": now,
                 "last_reinforced": now,
+                "qualifier": qualifier,
             },
         )
         if not created:
             merged = list(edge.evidence or [])
             merged += [item for item in evidence if item not in merged]
+            fields = ["evidence", "updated_at"]
+            if merged != list(edge.evidence or []):
+                # Reinforced only by new evidence; rerunning the night is not
+                # the person coming back to it.
+                edge.last_reinforced = now
+                fields.append("last_reinforced")
             edge.evidence = merged
-            edge.last_reinforced = now
-            edge.save(update_fields=["evidence", "last_reinforced", "updated_at"])
-    edge.concept = result.concept
+            edge.save(update_fields=fields)
+    edge.concept = concept
     return EdgeView.of(edge)
 
 
@@ -145,9 +165,100 @@ def _set_status(user, concept_id: int, relation: str, status: str) -> bool:
     )
 
 
-def confirm(user, concept_id: int, relation: str) -> bool:
-    """The person said yes: the edge may now shape their own recommendations."""
-    return _set_status(user, concept_id, relation, EdgeStatus.ACTIVE)
+def confirm(user, concept_id: int, relation: str, *, review_on=None) -> bool:
+    """The person said yes: the edge may now shape their own recommendations.
+
+    ``review_on`` makes it an exploration with a date to ask "keep this?".
+    """
+    updated = _set_status(user, concept_id, relation, EdgeStatus.ACTIVE)
+    if updated and review_on is not None:
+        Edge.objects.filter(
+            user=user,
+            concept_id=concept_id,
+            relation=relation,
+            tier=Tier.CONVERSATIONAL,
+        ).update(review_on=review_on)
+    return updated
+
+
+def keep(user, concept_id: int, relation: str, *, review_on) -> bool:
+    """An exploration kept at its review: active again, reviewed later."""
+    return bool(
+        Edge.objects.filter(
+            user=user,
+            concept_id=concept_id,
+            relation=relation,
+            tier=Tier.CONVERSATIONAL,
+        ).update(
+            status=EdgeStatus.ACTIVE,
+            review_on=review_on,
+            last_reinforced=timezone.now(),
+            updated_at=timezone.now(),
+        )
+    )
+
+
+def edit_conversational(user, concept_id: int, relation: str, *, surface: str) -> bool:
+    """The person reworded what Mylo understood; it is their word now."""
+    return bool(
+        Edge.objects.filter(
+            user=user,
+            concept_id=concept_id,
+            relation=relation,
+            tier=Tier.CONVERSATIONAL,
+        ).update(
+            surface=linker.clean(surface),
+            edited_by_person=True,
+            updated_at=timezone.now(),
+        )
+    )
+
+
+def delete_conversational(user, concept_id: int, relation: str) -> int:
+    """The person deleted one thing Mylo understood. Gone, not rejected."""
+    deleted, _ = Edge.objects.filter(
+        user=user,
+        concept_id=concept_id,
+        relation=relation,
+        tier=Tier.CONVERSATIONAL,
+    ).delete()
+    return deleted
+
+
+def unreinforced_since(cutoff, *, qualifier: str) -> list[EdgeView]:
+    """Active conversational edges of one kind not reinforced since ``cutoff``
+    — what the nightly fade reads. People's own edges only; no other reader."""
+    return [
+        EdgeView.of(edge)
+        for edge in Edge.objects.filter(
+            tier=Tier.CONVERSATIONAL,
+            status=EdgeStatus.ACTIVE,
+            qualifier=qualifier,
+            last_reinforced__lt=cutoff,
+        ).select_related("concept")
+    ]
+
+
+def drop_evidence(user, items: Iterable) -> int:
+    """Take retracted evidence out of this person's conversational edges.
+
+    A pending edge left with no evidence at all is deleted — nothing supports
+    asking any more. A confirmed one stays (the person said yes; the yes is the
+    evidence now) with the retracted pointers removed.
+    """
+    gone = set(items)
+    touched = 0
+    for edge in Edge.objects.filter(user=user, tier=Tier.CONVERSATIONAL):
+        kept = [item for item in (edge.evidence or []) if item not in gone]
+        if kept == list(edge.evidence or []):
+            continue
+        touched += 1
+        if not kept and edge.status == EdgeStatus.PENDING:
+            edge.delete()
+            continue
+        edge.evidence = kept
+        edge.save(update_fields=["evidence", "updated_at"])
+    return touched
 
 
 def reject(user, concept_id: int, relation: str) -> bool:

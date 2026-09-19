@@ -34,14 +34,14 @@ import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from .models import Force, Subject, UnderstandingKind
+from .models import Change, Force, Subject, UnderstandingKind
 from .windows import Conversation, Line
 
 logger = logging.getLogger(__name__)
 
 COMPONENT = "ambient_extract"
 #: Bump whenever the prompt or the validation changes.
-PROMPT_VERSION = "a2"
+PROMPT_VERSION = "a3"
 MAX_ATTEMPTS = 2
 MAX_OBSERVATIONS = 8
 MAX_TOPIC_WORDS = 6
@@ -81,6 +81,7 @@ Note what the numbered lines show. Reply as
     "account": one sentence in your own words saying what the speaker said,
                e.g. "Said they want to try conformal prediction on the imaging
                data." Never copy their wording.,
+    "change": for a project_development only, one of {changes},
     "confidence": how sure you are you read it correctly, 0 to 1}}
 ]}}
 
@@ -174,6 +175,7 @@ class Extracted:
     topic: str
     account: str
     confidence: float
+    change: str = ""
 
 
 @dataclass
@@ -239,6 +241,7 @@ def prompt_for(conversation: Conversation) -> tuple[str, dict[int, Line]]:
             forces=", ".join(Force.values),
             subjects=", ".join(Subject.values),
             facets=", ".join(FACETS),
+            changes=", ".join(Change.values),
             topic_words=MAX_TOPIC_WORDS,
             max_obs=MAX_OBSERVATIONS,
             transcript=text,
@@ -301,7 +304,11 @@ def quoted_runs(text: str, sources, *, allowed: str = "") -> list[str]:
 def _quotes(account: str, sentence: str, lines: list[Line], topic: str = "") -> bool:
     folded = fold(account)
     needle = fold(sentence)
-    if needle and needle in folded and not _content_words(needle) <= _content_words(topic):
+    if (
+        needle
+        and needle in folded
+        and not _content_words(needle) <= _content_words(topic)
+    ):
         return True
     return bool(quoted_runs(account, [line.text for line in lines], allowed=topic))
 
@@ -389,6 +396,11 @@ def validate(
             confidence = float(entry.get("confidence", 0.5))
         except (TypeError, ValueError):
             confidence = 0.5
+        change = ""
+        if kind == UnderstandingKind.PROJECT_DEVELOPMENT:
+            change = str(entry.get("change") or "").strip().lower()
+            if change not in Change.values:
+                change = Change.OTHER
         key = (line.ref_id, kind, topic.casefold())
         if key in seen:
             continue
@@ -403,6 +415,7 @@ def validate(
                 topic=topic,
                 account=account,
                 confidence=max(0.0, min(1.0, confidence)),
+                change=change,
             )
         )
     if len(kept) > MAX_OBSERVATIONS:

@@ -222,6 +222,7 @@ def _store(
                         origin=Origin.MODEL,
                         facet=item.facet,
                         topic=item.topic,
+                        change=item.change,
                         explicit=item.line.explicit
                         or item.line.place_kind == PlaceKind.DM,
                         conversation_key=conversation.spec.key,

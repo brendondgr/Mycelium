@@ -420,6 +420,12 @@ def _profile_text(interests: dict, profile_meta: dict) -> str:
         values = _clean_list(interests.get(key))
         if values:
             bits.append(f"{label}: {', '.join(values)}")
+    # A confirmed career direction reaches grant and fellowship judgement
+    # beside ``seeking`` and stage (ambient Plan 05, step 12); the eligibility
+    # gate is unchanged. Absent, the prompt is byte-identical.
+    from .understanding import lines as understanding_lines
+
+    bits.extend(understanding_lines(interests))
     return "\n".join(bits) or "(no profile details)"
 
 

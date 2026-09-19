@@ -262,7 +262,8 @@ def _cosine(left, right) -> float:
 class Holdings:
     """A person's own edges, as the coverage and decline checks need them."""
 
-    covering: list = field(default_factory=list)  # (live id, relation, label)
+    # (live id, relation, label, conversational?)
+    covering: list = field(default_factory=list)
     rejected: list = field(default_factory=list)  # (live id, updated_at)
     declared_areas: list = field(default_factory=list)  # EdgeView
     vectors: dict = field(default_factory=dict)
@@ -280,11 +281,15 @@ def holdings(user) -> Holdings:
             continue
         out.vectors[view.id] = view.vector
         if edge.tier == "declared" and edge.status == "active":
-            out.covering.append((view.id, edge.relation, edge.surface or view.label))
+            out.covering.append(
+                (view.id, edge.relation, edge.surface or view.label, False)
+            )
             if edge.relation == "interested_in":
                 out.declared_areas.append(edge)
         elif edge.tier == "conversational" and edge.status in ("active", "pending"):
-            out.covering.append((view.id, edge.relation, edge.surface or view.label))
+            out.covering.append(
+                (view.id, edge.relation, edge.surface or view.label, True)
+            )
         elif edge.tier == "conversational" and edge.status == "rejected":
             out.rejected.append((view.id, edge.updated_at))
     return out
@@ -297,9 +302,21 @@ def _similar(concept_id: int, vector, other_id: int, vectors: dict) -> bool:
 
 
 def covered_by(kind: str, concept_id: int, vector, held: Holdings) -> str | None:
+    """What the person already holds that makes this topic not worth asking.
+
+    Their declared profile, by the same concept or a near one. And what Mylo
+    already understood under a *near-synonym* — a second question about the
+    same idea in other words. Never the topic's own conversational edge: that
+    is this finding's own suggestion (or its confirmed exploration), and it
+    has to stay a suggestion to keep being reinforced.
+    """
     relations = COVERING.get(kind, _INTEREST_COVERING)
-    for other, relation, label in held.covering:
-        if relation in relations and _similar(concept_id, vector, other, held.vectors):
+    for other, relation, label, conversational in held.covering:
+        if relation not in relations:
+            continue
+        if conversational and other == concept_id:
+            continue
+        if _similar(concept_id, vector, other, held.vectors):
             return label
     return None
 

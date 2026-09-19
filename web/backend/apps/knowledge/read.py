@@ -10,6 +10,7 @@ boundary test pins which of these the collaboration app may import at all.
 |---|---|---|---|
 | :func:`own_edges` | all | all | the person, about themselves |
 | :func:`ranking_edges` | declared, conversational | active | the person's own ranking |
+| :func:`confirmed_explorations` | conversational | active | the person's own ranking |
 | :func:`lab_declared_edges` | declared | active | a lab's view of its members |
 | :func:`discoverable_edges` | declared, demonstrated | active | collaboration search |
 | :func:`project_edges` | declared | active | a viewer who can see the project |
@@ -49,6 +50,7 @@ __all__ = [
     "coauthor_distances",
     "concept_vectors",
     "discoverable_edges",
+    "confirmed_explorations",
     "discoverable_works",
     "embed_phrases",
     "evidence_texts",
@@ -87,6 +89,11 @@ class EdgeView:
     lab_id: int | None = None
     #: When the edge last changed — for a rejected edge, when the person said no.
     updated_at: datetime | None = None
+    #: Conversational edges only: the kind of understanding, the date a
+    #: confirmed exploration is reviewed, and whether the person edited it.
+    qualifier: str = ""
+    review_on: object = None
+    edited_by_person: bool = False
 
     @classmethod
     def of(cls, edge: Edge) -> EdgeView:
@@ -106,6 +113,9 @@ class EdgeView:
             project_id=str(edge.project_id) if edge.project_id else None,
             lab_id=edge.lab_id,
             updated_at=edge.updated_at,
+            qualifier=edge.qualifier,
+            review_on=edge.review_on,
+            edited_by_person=edge.edited_by_person,
         )
 
 
@@ -129,6 +139,23 @@ def ranking_edges(user) -> list[EdgeView]:
     """
     return _views(
         Edge.objects.filter(user=user, status=EdgeStatus.ACTIVE).filter(_RANKING)
+    )
+
+
+def confirmed_explorations(user) -> list[EdgeView]:
+    """What this person said yes to exploring: their own ranking only.
+
+    Active conversational ``interested_in`` edges — the understanding a person
+    confirmed, which the paper pipeline searches alongside their declared
+    themes (ambient Plan 05). Pending, faded and rejected edges never appear.
+    """
+    return _views(
+        Edge.objects.filter(
+            user=user,
+            tier=Tier.CONVERSATIONAL,
+            status=EdgeStatus.ACTIVE,
+            relation=Relation.INTERESTED_IN,
+        )
     )
 
 

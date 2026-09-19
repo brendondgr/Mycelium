@@ -206,6 +206,12 @@ Files below are inside `web/backend/apps/content/`.
 | Deciding what observations mean — consistency, coverage, declines, budget, one outcome per topic | `web/backend/apps/ambient/deliberate.py` (pure, no model), model `Finding` |
 | Mylo's explanation of a finding, written from its own notes | `web/backend/apps/ambient/explain.py` |
 | The nightly deliberation step | command `deliberate_ambient`, called by `deliberate_ambient()` in `manual_all.py` (non-fatal; off unless `AMBIENT_DELIBERATE_ENABLED`) |
+| Findings becoming understanding: pending conversational edges, project developments, fading, retraction fan-out | `web/backend/apps/ambient/evolve.py` (run by `deliberate_ambient`) |
+| A dated event in a project, as Mylo understood it (told → active with undo; seen → pending) | `web/backend/apps/ambient/models.py` (`ProjectDevelopment`, `Change`); read through `read.developments_in_effect` |
+| Confirmed explorations as extra, down-weighted paper themes (behind `AMBIENT_DRIFT_ENABLED`) | `web/backend/apps/content/explorations.py`; the weight is `fusion.combine_clusters(cluster_weights=…)` |
+| Confirmed preferences, direction and learning goals in the model's prompts; the report's `context_version` | `web/backend/apps/content/understanding.py` |
+| A person's report projects ordered by where their conversation went | `briefing.by_attention` |
+| Developments reaching the alerts (closed blockers, dropped methods) | `alerts.developments_for`, `matchers/developments.py` |
 
 ## Backend — the knowledge core (`apps/knowledge`)
 
@@ -213,6 +219,7 @@ Files below are inside `web/backend/apps/content/`.
 |---|---|
 | Concepts, edges, tiers, scopes, and the merge log | `web/backend/apps/knowledge/models.py` (`Concept`, `ConceptAlias`, `Edge`, `ConceptMerge`) |
 | Linking a topic from conversation to a concept (born in the person's or lab's scope) | `service.link_conversation`; a concept as it stands now, following merges, is `read.live_concepts` |
+| What conversation taught Mylo about a person: pending, confirmed, faded, rejected, edited | `Edge` rows with `tier=conversational` (`qualifier`, `review_on`, `edited_by_person`); written by `service.record_conversational` / `confirm` / `keep` / `reject` / `fade` / `edit_conversational` / `delete_conversational` / `drop_evidence`; confirmed explorations read by `read.confirmed_explorations` |
 | Which concept a wording names (alias → embedding → mint; private words stay private) | `web/backend/apps/knowledge/linker.py` |
 | Staff merges, their reversal, and promotion of a private concept to the shared vocabulary | `web/backend/apps/knowledge/merging.py`; the admin's "Merge the selected concepts" and "Reverse" actions |
 | Declared profiles, labs, and projects mirrored into edges | `web/backend/apps/knowledge/projection.py`; save hooks in `signals.py`, tasks `apps.knowledge.project_subject` and `apps.knowledge.sweep` (Beat, 04:15), command `project_declared_edges` |

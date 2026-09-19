@@ -115,9 +115,33 @@ def _enabled(trigger: str) -> bool:
 # --------------------------------------------------------------------------- #
 # The five triggers
 # --------------------------------------------------------------------------- #
-def overlap_candidates(project, precis_by_content, contents) -> list[Candidate]:
+def developments_for(project, reader) -> dict[str, tuple[str, ...]]:
+    """What conversation says changed about this project, by kind of change.
+
+    Only developments in effect — told to Mylo, or confirmed — and only those
+    this reader may know: lab-visible ones, plus a person's own private ones in
+    their own report (``apps.ambient.read.developments_in_effect``).
+    """
+    from django.contrib.auth import get_user_model
+
+    from apps.ambient.read import developments_in_effect
+
+    person = reader if isinstance(reader, get_user_model()) else None
+    out: dict[str, list[str]] = {}
+    for row in developments_in_effect(
+        project, reader=person, changes=("blocker_closed", "method_dropped")
+    ):
+        out.setdefault(row.change, []).append(row.topic)
+    return {change: tuple(topics) for change, topics in out.items()}
+
+
+def overlap_candidates(
+    project, precis_by_content, contents, *, dropped_methods: tuple[str, ...] = ()
+) -> list[Candidate]:
     out = []
-    for verdict in overlap_matcher.overlap_rows(project, precis_by_content):
+    for verdict in overlap_matcher.overlap_rows(
+        project, precis_by_content, dropped_methods=dropped_methods
+    ):
         if not verdict.fires():
             continue
         content = contents.get(verdict.content_id)
@@ -134,10 +158,14 @@ def overlap_candidates(project, precis_by_content, contents) -> list[Candidate]:
     return out
 
 
-def blocker_candidates(project, precis_by_content, contents) -> list[Candidate]:
+def blocker_candidates(
+    project, precis_by_content, contents, *, closed: tuple[str, ...] = ()
+) -> list[Candidate]:
     out = []
     seen: set[str] = set()
-    for match in blocker_matcher.blocker_rows(project, precis_by_content):
+    for match in blocker_matcher.blocker_rows(
+        project, precis_by_content, closed=closed
+    ):
         # One alert per item, not per (item, blocker): a dataset closing two
         # blockers at once is one piece of good news, and saying it twice makes
         # it read like two.
@@ -399,11 +427,22 @@ def _evaluate(*, target_filter: dict, projects: list, reader, today: date) -> Al
         if not contents:
             continue
         timeline = effective_timeline(project, reader)
+        changed = developments_for(project, reader)
         candidates.extend(
-            overlap_candidates(project, precis_by_content, contents)
+            overlap_candidates(
+                project,
+                precis_by_content,
+                contents,
+                dropped_methods=changed.get("method_dropped", ()),
+            )
         )
         candidates.extend(
-            blocker_candidates(project, precis_by_content, contents)
+            blocker_candidates(
+                project,
+                precis_by_content,
+                contents,
+                closed=changed.get("blocker_closed", ()),
+            )
         )
         candidates.extend(
             timeline_candidates(project, contents, reader=reader, today=today)

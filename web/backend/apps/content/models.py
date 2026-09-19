@@ -932,6 +932,18 @@ class DailyBriefing(models.Model):
             "without a packet behind it."
         ),
     )
+    context_version = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text=(
+            "A digest of what the report was written against: the declared "
+            "profile, the understanding the person confirmed, and the project "
+            "developments in effect (ambient Plan 05). Two reports with the same "
+            "version were written against the same picture of the reader; an "
+            "old report stays interpretable because its version is known."
+        ),
+    )
     generated_on = models.DateField(
         db_index=True,
         default=timezone.localdate,

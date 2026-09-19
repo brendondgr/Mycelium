@@ -879,12 +879,17 @@ def test_the_family_kind_follows_the_majority_without_duplicating(ada):
     cp = _concept("conformal prediction")
     _noted(ada, cp, days_ago=15, kind="learning_goal", conversation="a")
     deliberate.deliberate()
-    assert Finding.objects.get(user=ada, concept=cp).understanding_kind == "learning_goal"
+    assert (
+        Finding.objects.get(user=ada, concept=cp).understanding_kind == "learning_goal"
+    )
     _noted(ada, cp, days_ago=3, kind="current_curiosity", conversation="b")
     _noted(ada, cp, days_ago=1, kind="current_curiosity", conversation="c")
     deliberate.deliberate()
     assert Finding.objects.filter(user=ada, concept=cp).count() == 1
-    assert Finding.objects.get(user=ada, concept=cp).understanding_kind == "current_curiosity"
+    assert (
+        Finding.objects.get(user=ada, concept=cp).understanding_kind
+        == "current_curiosity"
+    )
 
 
 def test_a_capability_is_never_folded_into_an_interest(ada):
@@ -897,10 +902,24 @@ def test_a_capability_is_never_folded_into_an_interest(ada):
 
 def test_unresolved_project_chatter_is_not_asked_about(ada):
     data = _concept("centrifuge booking", Facet.SETTING)
-    _noted(ada, data, days_ago=15, kind="project_development", force="possibility",
-           subject="project", conversation="a")
-    _noted(ada, data, days_ago=1, kind="project_development", force="question",
-           subject="project", conversation="b")
+    _noted(
+        ada,
+        data,
+        days_ago=15,
+        kind="project_development",
+        force="possibility",
+        subject="project",
+        conversation="a",
+    )
+    _noted(
+        ada,
+        data,
+        days_ago=1,
+        kind="project_development",
+        force="question",
+        subject="project",
+        conversation="b",
+    )
     deliberate.deliberate()
     finding = Finding.objects.get(user=ada, concept=data)
     assert finding.outcome == Finding.Outcome.IGNORE

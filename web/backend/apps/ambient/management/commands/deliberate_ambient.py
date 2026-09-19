@@ -5,10 +5,11 @@ nothing a person receives today depends on it yet, so a failure here is a
 warning and never a failed run. Does nothing while
 ``AMBIENT_DELIBERATE_ENABLED`` is off.
 
-Three steps: read any conversation still waiting (the hourly task's work, in
-case Beat missed it), decide every finding (pure, no model), and write the
+Four steps: read any conversation still waiting (the hourly task's work, in
+case Beat missed it), decide every finding (pure, no model), write the
 explanations the decided findings need (model-written; a missing model leaves
-them pending for tomorrow).
+them pending for tomorrow), and evolve the profile layer (Plan 05): pending
+understanding and project developments, fading, retractions.
 """
 
 import json
@@ -16,7 +17,7 @@ import json
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from apps.ambient import deliberate, explain, reading
+from apps.ambient import deliberate, evolve, explain, reading
 
 
 class Command(BaseCommand):
@@ -39,4 +40,7 @@ class Command(BaseCommand):
         out["deliberate"] = deliberate.deliberate().as_dict()
         if not options["no_explain"]:
             out["explain"] = explain.explain_pending().as_dict()
+        # Plan 05: suggestions become pending understanding, told facts become
+        # developments, old curiosity fades, retracted evidence leaves.
+        out["evolve"] = evolve.evolve().as_dict()
         self.stdout.write(json.dumps(out, default=str))

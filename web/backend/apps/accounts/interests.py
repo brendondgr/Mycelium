@@ -21,6 +21,9 @@ pipeline; the table's "Feeds" column is the contract for what reads it:
 | ``eligibility``| dict      | no       | grant/fellowship gating            |
 | ``seeking``    | list[str] | no       | fellowship matching (students)     |
 | ``exclusions`` | list[str] | no       | noise reduction                    |
+| ``preferences``| list[str] | no       | write-up beats, explanation (Plan 05) |
+| ``trajectory`` | dict      | no       | fellowship / grant matching (Plan 05) |
+| ``learning_goals`` | list[str] | no   | wants_to_learn edges; never a skill |
 | ``sources``    | dict      | no       | provenance / audit                 |
 
 Notes on the fields with a non-obvious role:
@@ -180,6 +183,21 @@ class ClusterContract(serializers.Serializer):
     areas = _str_list(allow_empty=False)
 
 
+class TrajectoryContract(serializers.Serializer):
+    """Where the person wants their career to go (ambient Plan 05).
+
+    Confirmed understanding only: written when the person says yes to Mylo's
+    reading, or types it themselves. ``direction`` is short free text;
+    ``target_stage`` and ``horizon`` are optional ("postdoc", "two years").
+    """
+
+    direction = serializers.CharField(max_length=200)
+    target_stage = serializers.CharField(
+        max_length=60, required=False, allow_blank=True
+    )
+    horizon = serializers.CharField(max_length=60, required=False, allow_blank=True)
+
+
 class InterestsContract(serializers.Serializer):
     """Validate one ``Profile.interests`` payload against the contract.
 
@@ -199,6 +217,12 @@ class InterestsContract(serializers.Serializer):
     eligibility = EligibilityContract(required=False)
     seeking = _str_list(required=False)
     exclusions = _str_list(required=False)
+    # Ambient Plan 05. Confirmed understanding only, and none of it counts
+    # against a cluster or topic cap: preferences reach explanation, trajectory
+    # reaches opportunities, learning goals are topics to learn — never skills.
+    preferences = _str_list(required=False)
+    trajectory = TrajectoryContract(required=False)
+    learning_goals = _str_list(required=False)
     sources = serializers.DictField(required=False)
 
     def to_internal_value(self, data: Any) -> dict[str, Any]:
@@ -265,8 +289,12 @@ class InterestsContract(serializers.Serializer):
         orphans = area_folds - assigned
         if orphans:
             raise serializers.ValidationError(
-                {"clusters": ["every area must belong to a cluster; unassigned: "
-                              + ", ".join(sorted(orphans))]}
+                {
+                    "clusters": [
+                        "every area must belong to a cluster; unassigned: "
+                        + ", ".join(sorted(orphans))
+                    ]
+                }
             )
         return attrs
 

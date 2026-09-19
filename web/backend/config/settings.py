@@ -1195,6 +1195,19 @@ AMBIENT_DECLINE_REST_DAYS = env.int("AMBIENT_DECLINE_REST_DAYS", default=30)
 # A declared cluster nobody has talked about for this long is a swap candidate.
 AMBIENT_STALE_DAYS = env.int("AMBIENT_STALE_DAYS", default=90)
 AMBIENT_EXPLAIN_NIGHTLY_CAP = env.int("AMBIENT_EXPLAIN_NIGHTLY_CAP", default=200)
+# The evolving profile (Plan 05). A confirmed exploration joins a person's
+# paper search as its own theme, weighted at AMBIENT_DRIFT_WEIGHT of a declared
+# theme in the global ranking so it can never crowd one (apps.content
+# .explorations). Ships OFF: a ranking change is turned on with an evaluation
+# run behind it. An exploration is reviewed ("keep this?") after
+# AMBIENT_EXPLORATION_REVIEW_DAYS. The project a person spent most of their
+# week on leads their report, with AMBIENT_ATTENTION_EXTRA_ITEMS more items,
+# once its 7-day share reaches AMBIENT_ATTENTION_LEAD_SHARE.
+AMBIENT_DRIFT_ENABLED = env.bool("AMBIENT_DRIFT_ENABLED", default=False)
+AMBIENT_DRIFT_WEIGHT = env.float("AMBIENT_DRIFT_WEIGHT", default=0.15)
+AMBIENT_EXPLORATION_REVIEW_DAYS = env.int("AMBIENT_EXPLORATION_REVIEW_DAYS", default=30)
+AMBIENT_ATTENTION_LEAD_SHARE = env.float("AMBIENT_ATTENTION_LEAD_SHARE", default=0.4)
+AMBIENT_ATTENTION_EXTRA_ITEMS = env.int("AMBIENT_ATTENTION_EXTRA_ITEMS", default=2)
 
 # ---------------------------------------------------------------------------
 # The knowledge core (apps.knowledge)

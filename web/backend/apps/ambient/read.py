@@ -50,6 +50,7 @@ __all__ = [
     "active_sources",
     "listening_totals",
     "attention_for",
+    "developments_in_effect",
 ]
 
 
@@ -289,3 +290,29 @@ def attention_for(user):
     from .models import ProjectAttention
 
     return ProjectAttention.objects.filter(user=user).select_related("project")
+
+
+def developments_in_effect(project, *, reader=None, changes=None):
+    """A project's developments that change something: told, or confirmed.
+
+    Lab-visible ones for anybody who can see the project. A personal one — a
+    fact somebody told Mylo in a DM — only for the ``reader`` who said it, so
+    a lab report never learns what one member said privately.
+    """
+    from django.db.models import Q
+
+    from .models import ProjectDevelopment
+
+    visible = Q(visibility=Visibility.LAB)
+    if reader is not None:
+        visible |= Q(visibility=Visibility.PERSONAL, speaker=reader)
+    rows = ProjectDevelopment.objects.filter(
+        project=project,
+        status__in=[
+            ProjectDevelopment.Status.ACTIVE,
+            ProjectDevelopment.Status.CONFIRMED,
+        ],
+    ).filter(visible)
+    if changes:
+        rows = rows.filter(change__in=list(changes))
+    return rows

@@ -171,6 +171,7 @@ def combine_clusters(
     beta: float = DEFAULT_BETA,
     merge: str = "max",
     rrf_k: int = DEFAULT_RRF_K,
+    cluster_weights: Mapping[str, float] | None = None,
 ) -> list[ClusteredHit]:
     """Combine per-interest scores **within each cluster**, then merge globally.
 
@@ -200,7 +201,14 @@ def combine_clusters(
       argument for within-cluster ranking being "scale-free"; ``"rank"`` applies
       the same reasoning to the global merge. ``per_cluster`` keeps the raw
       combined scores either way, so attribution and the UI chips are unchanged.
+
+    ``cluster_weights`` scales a cluster's score in the **global** ranking key
+    only (default: every cluster 1.0 — the deployed behaviour). A confirmed
+    exploration is a theme weighted below 1 (:mod:`.explorations`), so it can
+    never outrank a declared theme's candidate of equal strength; its own
+    within-cluster order, ``per_cluster``, and its slate are untouched.
     """
+    weights = cluster_weights or {}
     order = list(cluster_interest_labels.keys())
     cluster_hits: dict[str, dict[str, CombinedHit]] = {}
     for cluster_id in order:
@@ -255,7 +263,7 @@ def combine_clusters(
                 hit.combined_score
                 if merge == "max"
                 else rank_scores[cluster_id][item_id]
-            )
+            ) * weights.get(cluster_id, 1.0)
             if key_score > best_score:  # strict: earliest cluster wins ties
                 best_score = key_score
                 best_cluster = cluster_id

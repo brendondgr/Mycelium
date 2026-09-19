@@ -58,9 +58,7 @@ class OverlapVerdict:
 
     def fires(self, threshold: float | None = None) -> bool:
         floor = (
-            settings.PROJECT_ALERT_OVERLAP_THRESHOLD
-            if threshold is None
-            else threshold
+            settings.PROJECT_ALERT_OVERLAP_THRESHOLD if threshold is None else threshold
         )
         return self.score >= floor
 
@@ -78,8 +76,11 @@ def _approach(precis) -> str:
     return " ".join(part for part in parts if part)
 
 
-def _project_approach(slow: dict) -> str:
-    parts = list(slow.get("method") or []) + list(slow.get("data") or [])
+def _project_approach(slow: dict, dropped: tuple[str, ...] = ()) -> str:
+    from .developments import any_names
+
+    methods = [m for m in (slow.get("method") or []) if not any_names(dropped, str(m))]
+    parts = methods + list(slow.get("data") or [])
     return " ".join(parts)
 
 
@@ -112,7 +113,9 @@ def _differences(slow: dict, precis) -> list[str]:
     return out[:6]
 
 
-def overlap_rows(project, precis_by_content: dict) -> list[OverlapVerdict]:
+def overlap_rows(
+    project, precis_by_content: dict, *, dropped_methods: tuple[str, ...] = ()
+) -> list[OverlapVerdict]:
     """Compare every précis against one project's claimed contribution.
 
     ``precis_by_content`` is ``{content_id: ItemComprehension}``. Returns a
@@ -121,10 +124,15 @@ def overlap_rows(project, precis_by_content: dict) -> list[OverlapVerdict]:
 
     An empty list when the project has not said what it claims — which is the
     honest answer, and the reason the state panel exists.
+
+    ``dropped_methods`` are methods a development says the project dropped
+    (ambient Plan 05): a stated method one of them names no longer counts
+    toward the approach compared, so a paper using an abandoned method stops
+    reading as a threat. The stated field itself is untouched.
     """
     slow = getattr(getattr(project, "state", None), "slow", None) or {}
     contribution = str(slow.get("claimed_contribution") or "").strip()
-    approach = _project_approach(slow)
+    approach = _project_approach(slow, dropped_methods)
     if not contribution and not approach:
         return []
 

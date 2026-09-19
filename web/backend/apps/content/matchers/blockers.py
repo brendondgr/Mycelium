@@ -38,9 +38,7 @@ class BlockerMatch:
 
     def fires(self, threshold: float | None = None) -> bool:
         floor = (
-            settings.PROJECT_ALERT_BLOCKER_THRESHOLD
-            if threshold is None
-            else threshold
+            settings.PROJECT_ALERT_BLOCKER_THRESHOLD if threshold is None else threshold
         )
         return self.score >= floor
 
@@ -54,17 +52,27 @@ class BlockerMatch:
         }
 
 
-def blocker_rows(project, precis_by_content: dict) -> list[BlockerMatch]:
+def blocker_rows(
+    project, precis_by_content: dict, *, closed: tuple[str, ...] = ()
+) -> list[BlockerMatch]:
     """Every (item, blocker) pair worth a number, strongest first.
 
     Empty when the project lists no blockers — which is a real state and not a
     failure, though it is usually a project that has not been asked.
+
+    ``closed`` are the topics of blockers a development says have closed
+    (ambient Plan 05): a stated blocker one of them names is left out, so
+    "this unblocks you" stops firing for something already unblocked. The
+    stated text itself is untouched — changing it is Plan 08's proposal.
     """
+    from .developments import any_names
+
     slow = getattr(getattr(project, "state", None), "slow", None) or {}
     blockers = [
         row
         for row in (slow.get("blockers") or [])
         if str(row.get("text") or "").strip()
+        and not any_names(closed, str(row.get("text") or ""))
     ]
     if not blockers:
         return []

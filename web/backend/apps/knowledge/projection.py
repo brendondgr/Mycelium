@@ -12,6 +12,7 @@ and a new one is minted as the facet shown):
 |---|---|---|---|
 | a person's profile | ``areas``, ``keywords`` | interested_in | any; mints as area |
 | a person's profile | ``skills`` | can_do | any; mints as method |
+| a person's profile | ``learning_goals`` | wants_to_learn | any; mints as area |
 | a lab's profile | ``areas`` (both copies), ``keywords`` | interested_in | as above |
 | a lab's profile | ``skills`` | can_do | as above |
 | a project's focus | ``areas``, ``keywords`` | works_on | any; mints as area |
@@ -124,6 +125,10 @@ def _interest_wants(interests: dict, prefix: str) -> list[_Want]:
             default_facet=Facet.METHOD,
         )
         for surface in _strings(interests.get("skills"))
+    ]
+    wants += [
+        _Want(Relation.WANTS_TO_LEARN, surface, f"{prefix}.learning_goals")
+        for surface in _strings(interests.get("learning_goals"))
     ]
     return wants
 

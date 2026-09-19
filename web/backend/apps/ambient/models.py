@@ -373,6 +373,27 @@ PROJECT_KINDS = frozenset(
 )
 
 
+class Change(models.TextChoices):
+    """What happened to a project, for a project development (Plan 05).
+
+    Each is a different event downstream: a closed blocker stops the
+    ``unblocks`` alert firing for it, a dropped method leaves what
+    ``overlap_risk`` compares against, a moved milestone is a date Plan 08 may
+    propose.
+    """
+
+    DATASET_ARRIVED = "dataset_arrived", "Data arrived"
+    EXPERIMENT_FAILED = "experiment_failed", "An experiment failed"
+    RESULT_OBTAINED = "result_obtained", "A result came in"
+    VENUE_CHANGED = "venue_changed", "The target venue changed"
+    MILESTONE_MOVED = "milestone_moved", "A milestone moved"
+    BLOCKER_OPENED = "blocker_opened", "A blocker opened"
+    BLOCKER_CLOSED = "blocker_closed", "A blocker closed"
+    METHOD_ADOPTED = "method_adopted", "A method was adopted"
+    METHOD_DROPPED = "method_dropped", "A method was dropped"
+    OTHER = "other", "Something else changed"
+
+
 class Force(models.TextChoices):
     """How firmly a thing was said. "The experiment finished" and "we should
     finish the experiment" are different rows, not the same row twice."""
@@ -498,6 +519,10 @@ class Observation(models.Model):
     # topic seen three times.
     facet = models.CharField(max_length=16, blank=True, default="")
     topic = models.CharField(max_length=200, blank=True, default="")
+    # For a project development only: what kind of change it was (Plan 05).
+    change = models.CharField(
+        max_length=24, choices=Change.choices, blank=True, default=""
+    )
     concept = models.ForeignKey(
         "knowledge.Concept",
         null=True,
@@ -1106,3 +1131,114 @@ class Finding(models.Model):
     def __str__(self) -> str:
         who = f"user={self.user_id}" if self.user_id else f"project={self.project_id}"
         return f"Finding({who}, {self.topic!r}, {self.outcome})"
+
+
+class ProjectDevelopment(models.Model):
+    """A dated event in a project, as Mylo understood it (Plan 05).
+
+    "What is useful right now" for a project. It never edits ``ProjectState``
+    — Plan 08 proposes state edits from it — and it is visible on the web with
+    what, when, where it came from, and undo (Plan 07).
+
+    Born one of two ways. A fact the person told Mylo directly is recorded
+    ``active`` at once (OD-A3) with undo. A development seen consistently in
+    ambient talk is ``pending`` until someone confirms it (Plan 06). A later
+    development on the same subject supersedes an earlier one.
+
+    Personal visibility means one person said it privately (a DM, or about a
+    personal project): it is theirs, and no lab surface ever shows it.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Waiting for a confirmation"
+        ACTIVE = "active", "Active"
+        CONFIRMED = "confirmed", "Confirmed"
+        SUPERSEDED = "superseded", "Superseded by a later development"
+        REJECTED = "rejected", "Rejected, or undone"
+
+    class Origin(models.TextChoices):
+        TOLD = "told", "Told to Mylo directly"
+        CONVERSATION = "conversation", "Seen in conversation, then confirmed"
+
+    project = models.ForeignKey(
+        "research.Project",
+        on_delete=models.CASCADE,
+        related_name="ambient_developments",
+    )
+    # Who said it. For a personal development, also who may see it.
+    speaker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ambient_developments",
+    )
+    change = models.CharField(max_length=24, choices=Change.choices)
+    topic = models.CharField(max_length=200)
+    concept = models.ForeignKey(
+        "knowledge.Concept",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ambient_developments",
+    )
+    # Mylo's own account (the observation's), and its explanation of why.
+    text = models.TextField()
+    explanation = models.TextField(blank=True, default="")
+    force = models.CharField(max_length=16, choices=Force.choices)
+    occurred_on = models.DateField()
+    recorded_on = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.PENDING, db_index=True
+    )
+    origin = models.CharField(max_length=16, choices=Origin.choices)
+    visibility = models.CharField(max_length=16, choices=Visibility.choices)
+    finding = models.ForeignKey(
+        Finding,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="developments",
+    )
+    observation_ids = models.JSONField(default=list, blank=True)
+    supersedes = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="superseded_by",
+    )
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Who confirmed, rejected, or undid it.",
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-occurred_on", "-pk"]
+        indexes = [
+            models.Index(fields=["project", "status", "occurred_on"]),
+            models.Index(fields=["speaker", "status"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                name="ambient_development_has_text", condition=~models.Q(text="")
+            ),
+            models.CheckConstraint(
+                name="ambient_development_has_visibility",
+                condition=~models.Q(visibility=""),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"ProjectDevelopment({self.project_id}, {self.change}, {self.status})"
+
+    @property
+    def in_effect(self) -> bool:
+        """Whether it changes anything: told, or confirmed; not undone."""
+        return self.status in (self.Status.ACTIVE, self.Status.CONFIRMED)

@@ -366,6 +366,16 @@ class Edge(models.Model):
         blank=True,
         help_text="Ids and field paths only — never text.",
     )
+    # -- conversational edges only (ambient Plan 05) ---------------------------
+    # Which kind of understanding this is — an enduring interest, a current
+    # curiosity, a work preference, a direction, a capability, a learning goal.
+    # Blank for declared and demonstrated edges, whose relation says it all.
+    qualifier = models.CharField(max_length=24, blank=True, default="")
+    # A confirmed curiosity is an *exploration*: on this date Mylo asks "keep
+    # this?" rather than letting it run on unexamined (Plan 06).
+    review_on = models.DateField(null=True, blank=True)
+    # A person's own edit of what Mylo understood makes it their word (Plan 07).
+    edited_by_person = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

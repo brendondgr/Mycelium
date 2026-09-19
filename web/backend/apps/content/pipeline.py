@@ -351,6 +351,14 @@ def recommend_for_user(
         return RunResult(username, "no_profile", note="user has no profile")
 
     interests = profile.interests or {}
+    # Confirmed explorations join as their own, down-weighted themes (ambient
+    # Plan 05). Off unless AMBIENT_DRIFT_ENABLED: then nothing changes.
+    from .explorations import for_user as explorations_for
+    from .explorations import with_explorations
+
+    interests, exploration_weights = with_explorations(
+        interests, explorations_for(user)
+    )
 
     # Only recommend to users who opted into monitoring (have watch topics) —
     # identical to the single-user gate, so batch and CLI stay consistent.
@@ -413,6 +421,7 @@ def recommend_for_user(
             created_on=created_on,
             match_threshold=match_threshold,
             cluster_top_n=slate_depth(ContentItem.Type.PAPER),
+            cluster_weights=exploration_weights or None,
         )
     else:
         pairs, rows, retrieved_count = _single_vector(
@@ -1055,6 +1064,7 @@ def fuse_clusters_pool(
     cluster_top_n: int = 0,
     spread: SpreadPolicy | None = None,
     index: VectorIndex | None = None,
+    cluster_weights: dict[str, float] | None = None,
 ) -> tuple[list[Hit], list[PersistRow], int, dict[str, list[Hit]]]:
     """Cluster-scoped twin of :func:`fuse_interests_pool` (papers, >= 2 clusters).
 
@@ -1107,6 +1117,7 @@ def fuse_clusters_pool(
         beta=beta,
         merge="max" if spread is None else spread.merge,
         rrf_k=DEFAULT_RRF_K if spread is None else spread.rrf_k,
+        cluster_weights=cluster_weights,
     )
     # Reordered once, ahead of both branches, so the global ranking, the
     # threshold cut and the per-theme slate all read the same order. Reranking
@@ -1560,6 +1571,9 @@ def _profile_prompt_text(interests: dict) -> str:
         ]
         if values:
             bits.append(f"{label}: {', '.join(values)}")
+    from .understanding import lines as understanding_lines
+
+    bits.extend(understanding_lines(interests))
     return "\n".join(bits)
 
 

@@ -155,6 +155,50 @@ explanation through the steps below.
 - **OD-05b** Whether attention ordering applies to lab reports. Recommendation:
   personal only; a lab's attention is a different measure.
 
+## Brief as built (2026-09-19)
+
+Implemented overnight on the owner's instruction; the judgement calls:
+
+- **Edges carry their kind.** `Edge.qualifier` (the understanding kind),
+  `Edge.review_on` (an exploration's "keep this?" date) and
+  `Edge.edited_by_person` (knowledge migration `0005`). Written only through
+  `knowledge/service.py`: `record_conversational` now takes the concept the
+  ledger already linked, and reinforces (restarts the clock) only on *new*
+  evidence, so rerunning a night is not the person coming back to a topic.
+- **`ProjectDevelopment`** lives in `apps/ambient` (migration `0007`), with a
+  `pending` status beside the plan's four, an origin (told / conversation),
+  and a `change` kind the extractor now reports (prompt `a3`). A told fact is
+  `active` at once; ambient development talk is `pending`. Later supersedes
+  earlier on the same (project, concept, visibility).
+- **`apps/ambient/evolve.py`** is the nightly writer (step 15), run by
+  `deliberate_ambient` after explaining: findings → pending edges and
+  developments; fade at two half-lives; retraction fan-out (it also covers
+  Plan 08 step 6 for everything Plan 05 builds).
+- **Reaching ranking — per theme, not a blended vector.** Step 8's "additional
+  query per concept, capped" is built as: each confirmed exploration joins a
+  person's paper search as **its own theme** (after the declared ones), and in
+  the global ranking its score counts at `AMBIENT_DRIFT_WEIGHT` (0.15) of a
+  declared theme's (`fusion.combine_clusters(cluster_weights=…)`). Its own
+  slate keeps its own order. **Deviation:** the acceptance line "the drift
+  blend changes a query vector by no more than the cap" does not apply — no
+  vector is blended; the tested equivalent is that an exploration cannot
+  outrank an equally strong declared candidate. Ships off
+  (`AMBIENT_DRIFT_ENABLED=false`); off, ranking is byte-identical.
+- **Trajectory reaches opportunity *judgement*** (the grant/fellowship prompts,
+  beside stage), not retrieval: that would be a second ranking change.
+- **Preferences reach explanation** via the prompts' profile text. They are
+  not in any write-up's reuse key: the global rule never re-bills a write-up
+  for a context change, so new preferences shape the next write-up asked for.
+- **`context_version`** is stamped on `DailyBriefing` only (content migration
+  `0030`), for the same reason.
+- **Attention ordering** (step 9) orders a person's report projects by 7-day
+  share and gives a clear leader (≥ `AMBIENT_ATTENTION_LEAD_SHARE`, 0.4)
+  `AMBIENT_ATTENTION_EXTRA_ITEMS` (2) more items. Personal reports only.
+- **Developments reach the alerts** (step 10): a closed blocker is left out of
+  `unblocks`, a dropped method out of the `overlap_risk` approach — both by a
+  literal content-word match (`matchers/developments.py`). A moved milestone
+  needs a date, which is Plan 08's proposal; nothing here edits state.
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,
