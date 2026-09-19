@@ -73,16 +73,53 @@ peer assessment; citation analysis; science of science; open peer review
 POOL = [t.strip() for t in TOPICS.split(";") if t.strip()]
 
 FIRST_NAMES = [
-    "Ana", "Bo", "Cyra", "Dev", "Elin", "Farouk", "Gia", "Hugo", "Ines", "Jun",
-    "Kofi", "Lena", "Mateo", "Nia", "Oren", "Priya", "Quinn", "Rosa", "Sami",
-    "Tove", "Umar", "Vera", "Wen", "Xavi", "Yara", "Zeno",
+    "Ana",
+    "Bo",
+    "Cyra",
+    "Dev",
+    "Elin",
+    "Farouk",
+    "Gia",
+    "Hugo",
+    "Ines",
+    "Jun",
+    "Kofi",
+    "Lena",
+    "Mateo",
+    "Nia",
+    "Oren",
+    "Priya",
+    "Quinn",
+    "Rosa",
+    "Sami",
+    "Tove",
+    "Umar",
+    "Vera",
+    "Wen",
+    "Xavi",
+    "Yara",
+    "Zeno",
 ]
 CHANNELS = ["methods", "general", "reading-group"]
 DATASETS = [
-    "Lagos air", "Baltic tide", "Kestrel scan", "Harbour sensor", "Mesa survey",
-    "Orchid cohort", "Pine ridge", "Quarry audio", "Delta rainfall", "Fjord sonar",
-    "Summit gait", "Atlas clinic", "Birch corpus", "Cedar trial", "Dune camera",
-    "Ember lab", "Flint archive", "Grove soil",
+    "Lagos air",
+    "Baltic tide",
+    "Kestrel scan",
+    "Harbour sensor",
+    "Mesa survey",
+    "Orchid cohort",
+    "Pine ridge",
+    "Quarry audio",
+    "Delta rainfall",
+    "Fjord sonar",
+    "Summit gait",
+    "Atlas clinic",
+    "Birch corpus",
+    "Cedar trial",
+    "Dune camera",
+    "Ember lab",
+    "Flint archive",
+    "Grove soil",
 ]
 
 #: What deliberation should decide for each kind of plant.
@@ -101,10 +138,10 @@ NEVER_SUGGEST = {"one_off", "colleague", "rejected", "declared"}
 
 #: How the model is told to say each plant. ``{t}`` is the topic phrase.
 GIST = {
-    "emerging": "says in their own words that they would really like to dig into {t} themselves",
-    "one_off": "mentions in passing that {t} came up somewhere and seemed mildly interesting",
-    "colleague": "talks about {c}'s idea of using {t} (it is {c}'s idea, not their own interest)",
-    "capability": "says they themselves ran or built something with {t} (e.g. 'I ran {t} on ...')",
+    "emerging": "says in their own words that they would really like to dig into {t} themselves",  # noqa: E501
+    "one_off": "mentions in passing that {t} came up somewhere and seemed mildly interesting",  # noqa: E501
+    "colleague": "talks about {c}'s idea of using {t} (it is {c}'s idea, not their own interest)",  # noqa: E501
+    "capability": "says they themselves ran or built something with {t} (e.g. 'I ran {t} on ...')",  # noqa: E501
     "learning": "says they want to learn {t} but do not know it yet",
     "rejected_maybe": "says they would like to try {t} on their work",
     "rejected_no": "says they have decided against {t} and will not do it after all",
@@ -165,7 +202,9 @@ class World:
         raise KeyError(username)
 
 
-def build(seed: int = 20260919, *, labs: int = 3, people: int = 6, days: int = 26) -> World:
+def build(
+    seed: int = 20260919, *, labs: int = 3, people: int = 6, days: int = 26
+) -> World:
     rng = random.Random(seed)
     topics = POOL[:]
     rng.shuffle(topics)
@@ -221,37 +260,110 @@ def build(seed: int = 20260919, *, labs: int = 3, people: int = 6, days: int = 2
 
             emerging = topics.pop()
             for day in spread(3):
-                plants.append(Plant(pid(), person.username, "emerging", emerging,
-                                    "emerging", max(1, day), place()))
-            plants.append(Plant(pid(), person.username, "one_off", topics.pop(),
-                                "one_off", rng.randint(1, days), place()))
+                plants.append(
+                    Plant(
+                        pid(),
+                        person.username,
+                        "emerging",
+                        emerging,
+                        "emerging",
+                        max(1, day),
+                        place(),
+                    )
+                )
+            plants.append(
+                Plant(
+                    pid(),
+                    person.username,
+                    "one_off",
+                    topics.pop(),
+                    "one_off",
+                    rng.randint(1, days),
+                    place(),
+                )
+            )
             colleague_topic = topics.pop()
             colleague = rng.choice(others).name
             for day in spread(2):
-                plants.append(Plant(pid(), person.username, "colleague", colleague_topic,
-                                    "colleague", max(1, day), place(), colleague=colleague))
+                plants.append(
+                    Plant(
+                        pid(),
+                        person.username,
+                        "colleague",
+                        colleague_topic,
+                        "colleague",
+                        max(1, day),
+                        place(),
+                        colleague=colleague,
+                    )
+                )
             capability = topics.pop()
             for day in spread(2):
-                plants.append(Plant(pid(), person.username, "capability", capability,
-                                    "capability", max(1, day), place()))
+                plants.append(
+                    Plant(
+                        pid(),
+                        person.username,
+                        "capability",
+                        capability,
+                        "capability",
+                        max(1, day),
+                        place(),
+                    )
+                )
             learning = topics.pop()
             for day in spread(2):
-                plants.append(Plant(pid(), person.username, "learning", learning,
-                                    "learning", max(1, day), place()))
+                plants.append(
+                    Plant(
+                        pid(),
+                        person.username,
+                        "learning",
+                        learning,
+                        "learning",
+                        max(1, day),
+                        place(),
+                    )
+                )
             rejected = topics.pop()
             first = rng.randint(14, days)
             for k, day in enumerate((first, first - 6, first - 11)):
-                plants.append(Plant(pid(), person.username, "rejected", rejected,
-                                    "rejected_no" if k == 2 else "rejected_maybe",
-                                    max(1, day), place(), part=1 if k == 2 else 0))
+                plants.append(
+                    Plant(
+                        pid(),
+                        person.username,
+                        "rejected",
+                        rejected,
+                        "rejected_no" if k == 2 else "rejected_maybe",
+                        max(1, day),
+                        place(),
+                        part=1 if k == 2 else 0,
+                    )
+                )
             declared = person.declared[0]
             for day in spread(2):
-                plants.append(Plant(pid(), person.username, "declared", declared,
-                                    "declared", max(1, day), place()))
+                plants.append(
+                    Plant(
+                        pid(),
+                        person.username,
+                        "declared",
+                        declared,
+                        "declared",
+                        max(1, day),
+                        place(),
+                    )
+                )
             dataset = f"{datasets.pop() if datasets else 'Spare'} dataset"
-            plants.append(Plant(pid(), person.username, "told_fact", dataset,
-                                "told_fact", rng.randint(1, 10), "dm",
-                                project=rng.choice(projects)))
+            plants.append(
+                Plant(
+                    pid(),
+                    person.username,
+                    "told_fact",
+                    dataset,
+                    "told_fact",
+                    rng.randint(1, 10),
+                    "dm",
+                    project=rng.choice(projects),
+                )
+            )
     return World(seed=seed, labs=out_labs, plants=plants)
 
 

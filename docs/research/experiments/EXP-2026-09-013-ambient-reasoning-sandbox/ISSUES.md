@@ -67,3 +67,43 @@ results.
 **Fix:** the harness's local cache is configured with `MAX_ENTRIES` 1,000,000
 and no culling. **Run 3** reruns the registered protocol from a worktree pinned
 at the fix's commit, with the same cached conversations and a fresh database.
+
+## Run 3 — registered, valid
+
+Worktree `7dfa77b` (prompt `a2`), 05:40–05:45 UTC, 16 workers, cached
+conversations. H1, H2, H4, H5, H6 hold; **H3 fails** (kind accuracy 0.585).
+Inspecting the sandbox database after the run (`_inspect`, not committed):
+"I've decided against X" came back as force `decision`, so no rejection ever
+retired the earlier "I'd like to try X" and those topics reached `ask`; and a
+person's own wish phrased as project talk ("for my next project"), with no
+project attributed, came back as `project_intent`, which split one interest
+across two findings and kept both under the floor.
+
+## Run 4 — post hoc, not a verdict
+
+Worktree `902328e`: prompt `a4` ("decided against" is a rejection; a person's
+own wish is an interest, project_intent is what a named project is trying to
+achieve) and deliberation folding an unattributed self `project_intent` into
+the person's interest family. The same cached conversations, a fresh database.
+Confound: `902328e` also carries Plan 05 (prompt `a3`'s `change` field and the
+coverage rule that ignores a topic's own conversational edge); the harness runs
+no `evolve`, so no conversational edge exists during its one deliberation and
+the coverage change cannot act. Run 4 reports whether the fix works; run 3's
+verdict stands.
+
+## Runs 4 and 5 — post hoc
+
+Run 4 (`902328e`, 06:11–06:16 UTC): kind accuracy 0.585 → 0.775 and outcome
+accuracy 0.761 → 0.845, but the false-suggestion rate rose from 0 to 0.114:
+eight rejected topics were suggested. Cause, found in the database: the
+rejection was now extracted correctly but filed under `project_development`,
+which retired the topic's interest rows across kinds (correct) — and then
+deliberation's "if everything was retired, use the retired rows" fallback
+counted them as live again. A bug in deliberation, present since the first
+commit, that run 3 could not show because its rejections were never read as
+rejections. Fixed in `5300c7a` (a retired observation is never live; an
+all-retired group decides `ignore: superseded`), with a unit test.
+
+Run 5 (`5300c7a`, 06:27–06:33 UTC): outcome accuracy 0.894, false-suggestion
+rate 0.0 (all 18 rejected topics ignored), harm checks 0, kind accuracy 0.772,
+colleague read as self 0.10.

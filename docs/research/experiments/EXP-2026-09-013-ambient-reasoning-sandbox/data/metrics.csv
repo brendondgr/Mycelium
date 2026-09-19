@@ -1,0 +1,4 @@
+run,plants_in_truth,recall,kind_accuracy,colleague_read_as_self,strict_precision,outcome_accuracy,false_suggestion_rate,explained_rate,harm_total,minutes,recall_capability,recall_colleague,recall_declared,recall_emerging,recall_learning,recall_one_off,recall_rejected,recall_told_fact,label
+run3,276,0.9167,0.585,0.0,0.7205,0.7606,0.0,1.0,0,4.7,0.9706,0.6857,0.9118,0.9808,1.0,0.9375,0.8824,1.0,registered: prompt a2
+run4,276,0.9167,0.7747,0.1304,0.7429,0.8451,0.1143,1.0,0,4.0,0.9706,0.6571,0.9412,0.9808,1.0,0.9375,0.8824,1.0,"post hoc: prompt a4, unattributed self intents as interests"
+run5,276,0.9058,0.772,0.1,0.745,0.8944,0.0,1.0,0,5.9,0.9706,0.5714,0.9118,0.9808,1.0,0.9375,0.902,1.0,post hoc: run 4 + a retired row never counts as live

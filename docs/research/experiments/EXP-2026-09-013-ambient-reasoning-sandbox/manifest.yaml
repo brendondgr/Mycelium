@@ -8,48 +8,52 @@
 
 id: EXP-2026-09-013
 slug: ambient-reasoning-sandbox
-title: TODO: title for ambient-reasoning-sandbox
-status: planned # planned | running | complete | failed | superseded
+title: Does ambient Plan 04 find what people said, decide the right outcome, and keep every privacy promise? Four weeks of model-written lab conversation with planted truth
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-09-19
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-09-19
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Plan 04 (ambient reasoning agent) sandbox validation: extraction recall and
+  kind accuracy, decision accuracy, false suggestions, and eleven privacy harm
+  checks, on a synthetic three-lab world with planted statements.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Pre-registered: H1 all harm checks zero; H2 recall >= 0.70; H3 kind accuracy
+  >= 0.80 and colleague read as self <= 0.20; H4 outcome accuracy >= 0.75 and
+  false-suggestion rate <= 0.05; H5 explained >= 0.90; H6 < 60 min, <= 16
+  concurrent model calls. OUTCOME (run 3): H1, H2, H4, H5, H6 hold; H3 fails
+  (0.585). Post hoc run 5: kind 0.772, outcome 0.894, false suggestions 0.
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: cc651be
+  commit: 7dfa77b
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  entrypoint: "SANDBOX_DB=mycelium_sandbox_ambient python -m sandbox.ambient all --workers 16 --corpus /app/data/sandbox/ambient-20260919-3x6.json (from a worktree pinned at the commit)"
+  dirty: false  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
-  path: <path to the config file, or null>
+  path: web/backend/sandbox/ambient/world.py
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: synthetic ambient lab world with planted statements
+  version: "seed 20260919, 3 labs x 6 opted-in people (+1 not opted in each), 288 plants, 173 conversations"
+  split: test
+  n_examples: 276 # planted statements in the truth
   qrels: null
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
-seeds: []
-n_runs: 1
+seeds: [20260919]
+n_runs: 5 # runs 1-2 void/invalid, 3 registered, 4-5 post hoc
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "20 CPU cores, 62 GB RAM; local model via llm-tunnel (default-model)"
+  wall_clock_hours: 0.5
+  estimated_cost_usd: 0.0
 
 # --- LLM block (delete entirely if no model was called) ----------------------
 # llm:
@@ -67,8 +71,28 @@ compute:
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
+  primary: outcome_accuracy (H4); kind_accuracy (H3)
+  values:
+    run3_recall: 0.9167
+    run3_kind_accuracy: 0.585
+    run3_colleague_read_as_self: 0.0
+    run3_strict_precision: 0.7205
+    run3_outcome_accuracy: 0.7606
+    run3_false_suggestion_rate: 0.0
+    run3_explained_rate: 1.0
+    run3_harm_total: 0
+    run4_recall: 0.9167
+    run4_kind_accuracy: 0.7747
+    run4_outcome_accuracy: 0.8451
+    run4_false_suggestion_rate: 0.1143
+    run4_harm_total: 0
+    run5_recall: 0.9058
+    run5_kind_accuracy: 0.772
+    run5_colleague_read_as_self: 0.1
+    run5_outcome_accuracy: 0.8944
+    run5_false_suggestion_rate: 0.0
+    run5_explained_rate: 1.0
+    run5_harm_total: 0
 baselines_compared: []
 statistical_test: null
 

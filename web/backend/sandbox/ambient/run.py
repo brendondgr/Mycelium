@@ -86,7 +86,9 @@ def seed(world: World) -> dict:
         members = []
         for person in spec.people:
             user = User.objects.create_user(
-                person.username, f"{person.username}@sandbox.invalid", "x",
+                person.username,
+                f"{person.username}@sandbox.invalid",
+                "x",
                 first_name=person.name,
             )
             Subscription.objects.create(tier=Tier.SPORE, scope_user=user)
@@ -129,18 +131,16 @@ def seed(world: World) -> dict:
 
 def _when(day: int, hour: int, minute: int) -> datetime:
     base = timezone.localtime(timezone.now() - timedelta(days=day))
-    return base.replace(hour=hour, minute=minute % 60, second=0, microsecond=0) + timedelta(
-        hours=minute // 60
-    )
+    return base.replace(
+        hour=hour, minute=minute % 60, second=0, microsecond=0
+    ) + timedelta(hours=minute // 60)
 
 
 def ingest(world: World, written: list[dict]) -> dict:
     """Every generated message, through the gateway's own door."""
     from apps.ambient import service
 
-    names = {
-        (lab.slug, p.name): p for lab in world.labs for p in lab.people
-    }
+    names = {(lab.slug, p.name): p for lab in world.labs for p in lab.people}
     guild = {lab.slug: lab.guild for lab in world.labs}
     counts = {"messages": 0, "stored": 0, "dropped": {}, "plant_messages": {}}
     hour_of: dict[tuple, int] = {}
@@ -154,12 +154,19 @@ def ingest(world: World, written: list[dict]) -> dict:
             sent = _when(conv["day"], hour, 2 * index)
             if message["speaker"] == "Mylo":
                 owner = next(
-                    p for (lab, _n), p in names.items()
+                    p
+                    for (lab, _n), p in names.items()
                     if lab == conv["lab"] and p.username == conv["dm_person"]
                 )
                 outcome = service.heard(
-                    guild_id="", message_id=mid, text=message["text"], sent_at=sent,
-                    author_id=owner.snowflake, is_dm=True, is_bot=True, from_mylo=True,
+                    guild_id="",
+                    message_id=mid,
+                    text=message["text"],
+                    sent_at=sent,
+                    author_id=owner.snowflake,
+                    is_dm=True,
+                    is_bot=True,
+                    from_mylo=True,
                 )
             else:
                 person = names.get((conv["lab"], message["speaker"]))
@@ -167,20 +174,30 @@ def ingest(world: World, written: list[dict]) -> dict:
                     continue
                 if conv["place"] == "dm":
                     outcome = service.heard(
-                        guild_id="", message_id=mid, text=message["text"], sent_at=sent,
-                        author_id=person.snowflake, is_dm=True, explicit=True,
+                        guild_id="",
+                        message_id=mid,
+                        text=message["text"],
+                        sent_at=sent,
+                        author_id=person.snowflake,
+                        is_dm=True,
+                        explicit=True,
                     )
                 else:
                     outcome = service.heard(
-                        guild_id=guild[conv["lab"]], message_id=mid, text=message["text"],
-                        sent_at=sent, author_id=person.snowflake,
+                        guild_id=guild[conv["lab"]],
+                        message_id=mid,
+                        text=message["text"],
+                        sent_at=sent,
+                        author_id=person.snowflake,
                         place_id=f"{conv['lab']}-{conv['place']}",
                         place_label=conv["place"],
                     )
             if outcome.stored:
                 counts["stored"] += 1
             else:
-                counts["dropped"][outcome.reason] = counts["dropped"].get(outcome.reason, 0) + 1
+                counts["dropped"][outcome.reason] = (
+                    counts["dropped"].get(outcome.reason, 0) + 1
+                )
             if message.get("plant"):
                 counts["plant_messages"][message["plant"]] = {
                     "mid": mid,
@@ -211,4 +228,9 @@ def pipeline() -> dict:
     started = time.monotonic()
     explained = explain.explain_pending().as_dict()
     timings["explain_s"] = round(time.monotonic() - started, 1)
-    return {"reads": reads, "deliberate": decided, "explain": explained, "timings": timings}
+    return {
+        "reads": reads,
+        "deliberate": decided,
+        "explain": explained,
+        "timings": timings,
+    }

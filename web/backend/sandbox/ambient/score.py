@@ -102,7 +102,8 @@ def score(world: World, written: list[dict], ingested: dict) -> dict:
             # A told fact is matched by its message and kind: the model may
             # title "the Quarry audio dataset arrived" as "data arrival".
             if _topic_match(o.topic, plant.topic) or (
-                plant.kind == "told_fact" and o.understanding_kind == "project_development"
+                plant.kind == "told_fact"
+                and o.understanding_kind == "project_development"
             ):
                 matched[pid] = o
                 break
@@ -113,7 +114,9 @@ def score(world: World, written: list[dict], ingested: dict) -> dict:
         k: _ratio(hit_kind[k], per_kind[k]) for k in sorted(per_kind)
     }
     right = sum(
-        1 for pid, o in matched.items() if o.understanding_kind in RIGHT_KIND[plants[pid].kind]
+        1
+        for pid, o in matched.items()
+        if o.understanding_kind in RIGHT_KIND[plants[pid].kind]
     )
     out["kind_accuracy"] = _ratio(right, len(matched))
     out["kind_confusion"] = dict(
@@ -132,13 +135,18 @@ def score(world: World, written: list[dict], ingested: dict) -> dict:
     ]
     out["observations"] = len(observations)
     out["observations_on_filler"] = len(unmatched)
-    out["strict_precision"] = _ratio(len(observations) - len(unmatched), len(observations))
-    out["observations_by_kind"] = dict(Counter(o.understanding_kind for o in observations))
+    out["strict_precision"] = _ratio(
+        len(observations) - len(unmatched), len(observations)
+    )
+    out["observations_by_kind"] = dict(
+        Counter(o.understanding_kind for o in observations)
+    )
 
     # -- H4: deciding ---------------------------------------------------------------
-    findings = list(Finding.objects.filter(
-        user__username__startswith="amb_"
-    ) | Finding.objects.filter(project__scope_lab__slug__startswith="amb-"))
+    findings = list(
+        Finding.objects.filter(user__username__startswith="amb_")
+        | Finding.objects.filter(project__scope_lab__slug__startswith="amb-")
+    )
     by_obs: dict[int, list] = defaultdict(list)
     for f in findings:
         for oid in f.observation_ids:
@@ -152,9 +160,12 @@ def score(world: World, written: list[dict], ingested: dict) -> dict:
     false_suggest = 0
     never = 0
     confusion = Counter()
-    for (person, kind, topic), pids in groups.items():
+    for (_person, kind, _topic), pids in groups.items():
         related = {
-            f.pk: f for pid in pids if pid in matched for f in by_obs.get(matched[pid].pk, [])
+            f.pk: f
+            for pid in pids
+            if pid in matched
+            for f in by_obs.get(matched[pid].pk, [])
         }.values()
         outcomes = {f.outcome for f in related}
         expected = EXPECTED[kind]
@@ -181,20 +192,20 @@ def score(world: World, written: list[dict], ingested: dict) -> dict:
         sum(1 for f in needing if f.explained == "written"), len(needing)
     )
 
-    # -- H1: harm checks ----------------------------------------------------------------
+    # -- H1: harm checks ----------------------------------------------------------------  # noqa: E501
     from apps.ambient.extract import quoted_runs
 
     texts = [m["text"] for conv in written for m in conv["messages"]]
     projects = " ".join(name for lab in world.labs for name in lab.projects)
-    silent = [
-        u for name, u in users.items() if not world.person(name).opted_in
-    ]
+    silent = [u for name, u in users.items() if not world.person(name).opted_in]
     evidence = {o.pk: o for o in observations}
     invented_dates = 0
     for f in findings:
         if not f.explanation:
             continue
-        notes = explain.notes(f, [evidence[i] for i in f.observation_ids if i in evidence])
+        notes = explain.notes(
+            f, [evidence[i] for i in f.observation_ids if i in evidence]
+        )
         allowed = set(_DATE.findall(notes))
         allowed |= {(str(int(d)), m) for d, m in allowed}
         for day, month in _DATE.findall(f.explanation):
@@ -214,30 +225,49 @@ def score(world: World, written: list[dict], ingested: dict) -> dict:
     for f in findings:
         if f.user_id is None:
             lab_on_personal += sum(
-                1 for i in f.observation_ids
+                1
+                for i in f.observation_ids
                 if i in evidence and evidence[i].visibility != Visibility.LAB
             )
     colleague_only = 0
     for f in findings:
-        if f.outcome in ("suggest", "capability") and f.user_id and f.understanding_kind in (
-            "enduring_interest", "current_curiosity", "work_preference",
-            "career_direction", "capability", "learning_goal",
+        if (
+            f.outcome in ("suggest", "capability")
+            and f.user_id
+            and f.understanding_kind
+            in (
+                "enduring_interest",
+                "current_curiosity",
+                "work_preference",
+                "career_direction",
+                "capability",
+                "learning_goal",
+            )
         ):
             if not any(
-                evidence[i].subject == "self" for i in f.observation_ids if i in evidence
+                evidence[i].subject == "self"
+                for i in f.observation_ids
+                if i in evidence
             ):
                 colleague_only += 1
     out["harm"] = {
-        "observations_of_silent_member": Observation.objects.filter(speaker__in=silent).count(),
-        "refs_of_silent_member": RawMessageRef.objects.filter(speaker__in=silent).count(),
+        "observations_of_silent_member": Observation.objects.filter(
+            speaker__in=silent
+        ).count(),
+        "refs_of_silent_member": RawMessageRef.objects.filter(
+            speaker__in=silent
+        ).count(),
         "findings_of_silent_member": Finding.objects.filter(user__in=silent).count(),
         "observation_quotes": sum(
-            1 for o in observations
+            1
+            for o in observations
             if quoted_runs(o.text, texts, allowed=f"{o.topic} {projects}")
         ),
         "explanation_quotes": sum(
-            1 for f in findings
-            if f.explanation and quoted_runs(f.explanation, texts, allowed=f"{f.topic} {projects}")
+            1
+            for f in findings
+            if f.explanation
+            and quoted_runs(f.explanation, texts, allowed=f"{f.topic} {projects}")
         ),
         "rule_origin": sum(1 for o in observations if o.origin == "rule"),
         "bodies_left_after_read": still_buffered,

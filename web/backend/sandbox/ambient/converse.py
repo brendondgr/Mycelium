@@ -57,9 +57,11 @@ def _parse(raw: str | None) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
-def _check(payload: dict | None, plants: dict, names: set[str]) -> tuple[list, list[str]]:
+def _check(
+    payload: dict | None, plants: dict, names: set[str]
+) -> tuple[list, list[str]]:
     if not payload or not isinstance(payload.get("messages"), list):
-        return [], ["the reply was not {\"messages\": [...]}"]
+        return [], ['the reply was not {"messages": [...]}']
     messages = []
     problems = []
     seen: dict[str, int] = {}
@@ -80,7 +82,7 @@ def _check(payload: dict | None, plants: dict, names: set[str]) -> tuple[list, l
                 problems.append(f"plant {plant} must be said by {spec['speaker']}")
                 plant = None
             elif spec["topic"].casefold() not in text.casefold():
-                problems.append(f"plant {plant} must use the phrase \"{spec['topic']}\"")
+                problems.append(f'plant {plant} must use the phrase "{spec["topic"]}"')
                 plant = None
             elif plant in seen:
                 plant = None
@@ -114,7 +116,9 @@ def write_one(conversation: dict, world: World, complete) -> dict:
     by_user = {p.username: p for p in lab.people}
     speakers = {by_user[p.person].name for p in plants.values()}
     if conversation["place"] == "dm":
-        where = "in a direct message between one person and Mylo, the lab's assistant bot"
+        where = (
+            "in a direct message between one person and Mylo, the lab's assistant bot"
+        )
         people = next(iter(speakers))
         mylo = "Mylo may answer briefly; its speaker name is Mylo."
         names = {people, "Mylo"}
@@ -137,7 +141,7 @@ def write_one(conversation: dict, world: World, complete) -> dict:
     listed = "\n".join(
         f"- {pid}: {specs[pid]['speaker']} "
         + GIST[p.gist_key].format(t=p.topic, c=p.colleague, p=p.project)
-        + f" — phrase \"{p.topic}\""
+        + f' — phrase "{p.topic}"'
         for pid, p in plants.items()
     )
     prompt = PROMPT.format(
@@ -172,8 +176,9 @@ def write_one(conversation: dict, world: World, complete) -> dict:
     }
 
 
-def write_all(world: World, conversations: list[dict], *, workers: int = 16,
-              complete=None) -> list[dict]:
+def write_all(
+    world: World, conversations: list[dict], *, workers: int = 16, complete=None
+) -> list[dict]:
     complete = complete or _default_complete()
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         return list(pool.map(lambda c: write_one(c, world, complete), conversations))

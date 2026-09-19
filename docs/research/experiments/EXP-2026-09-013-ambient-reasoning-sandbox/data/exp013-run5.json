@@ -1,0 +1,206 @@
+{
+  "seed": 20260919,
+  "workers": 16,
+  "seeded": {
+    "people": 21,
+    "projects": 6
+  },
+  "pipeline": {
+    "reads": [
+      {
+        "ready": 173,
+        "read": 173,
+        "unavailable": 0,
+        "expired": 0,
+        "duplicate": 0,
+        "capped": 0,
+        "observations": 349,
+        "linked": 349,
+        "refused": {
+          "topic_not_in_window": 6,
+          "not_grounded": 1,
+          "quote_in_account": 1
+        }
+      },
+      {
+        "ready": 0,
+        "read": 0,
+        "unavailable": 0,
+        "expired": 0,
+        "duplicate": 0,
+        "capped": 0,
+        "observations": 0,
+        "linked": 0,
+        "refused": {}
+      }
+    ],
+    "deliberate": {
+      "people": 18,
+      "projects": 6,
+      "linked": 0,
+      "superseded": 29,
+      "findings": {
+        "ignore": 212,
+        "capability": 10,
+        "record": 18,
+        "suggest": 30,
+        "ask": 1
+      },
+      "paused": 0
+    },
+    "explain": {
+      "pending": 59,
+      "written": 59,
+      "refused": 0,
+      "unavailable": 0
+    },
+    "timings": {
+      "read_s": 185.9,
+      "deliberate_s": 4.9,
+      "explain_s": 7.1
+    }
+  },
+  "timings": {
+    "seed_ingest_s": 154.7,
+    "read_s": 185.9,
+    "deliberate_s": 4.9,
+    "explain_s": 7.1
+  },
+  "metrics": {
+    "plants_total": 288,
+    "plants_written": 276,
+    "plants_dropped_by_generator": 12,
+    "plants_dropped_at_edge": 0,
+    "plants_in_truth": 276,
+    "messages": 1270,
+    "messages_stored": 1141,
+    "messages_dropped": {
+      "too_short": 129
+    },
+    "recall": 0.9058,
+    "recall_by_plant": {
+      "capability": 0.9706,
+      "colleague": 0.5714,
+      "declared": 0.9118,
+      "emerging": 0.9808,
+      "learning": 1.0,
+      "one_off": 0.9375,
+      "rejected": 0.902,
+      "told_fact": 1.0
+    },
+    "kind_accuracy": 0.772,
+    "kind_confusion": {
+      "emerging->current_curiosity": 25,
+      "learning->career_direction": 2,
+      "capability->capability": 29,
+      "learning->current_curiosity": 2,
+      "declared->enduring_interest": 18,
+      "learning->learning_goal": 30,
+      "rejected->current_curiosity": 26,
+      "emerging->career_direction": 4,
+      "one_off->current_curiosity": 15,
+      "emerging->learning_goal": 14,
+      "rejected->project_development": 17,
+      "emerging->enduring_interest": 3,
+      "colleague->project_development": 13,
+      "colleague->current_curiosity": 3,
+      "emerging->project_development": 2,
+      "told_fact->project_development": 18,
+      "learning->project_development": 2,
+      "capability->project_development": 4,
+      "declared->work_preference": 7,
+      "rejected->learning_goal": 1,
+      "colleague->project_intent": 4,
+      "emerging->project_intent": 3,
+      "rejected->project_intent": 1,
+      "declared->current_curiosity": 2,
+      "declared->capability": 1,
+      "declared->project_development": 3,
+      "rejected->career_direction": 1
+    },
+    "colleague_read_as_self": 0.1,
+    "subject_confusion": {
+      "emerging->self": 51,
+      "learning->self": 36,
+      "capability->self": 31,
+      "declared->self": 31,
+      "rejected->self": 38,
+      "one_off->self": 13,
+      "rejected->project": 8,
+      "colleague->project": 8,
+      "colleague->colleague": 10,
+      "told_fact->project": 18,
+      "capability->project": 2,
+      "colleague->self": 2,
+      "one_off->unknown": 2
+    },
+    "observations": 349,
+    "observations_on_filler": 89,
+    "strict_precision": 0.745,
+    "observations_by_kind": {
+      "project_development": 109,
+      "capability": 39,
+      "learning_goal": 47,
+      "career_direction": 9,
+      "enduring_interest": 24,
+      "current_curiosity": 89,
+      "work_preference": 9,
+      "project_intent": 23
+    },
+    "outcome_accuracy": 0.8944,
+    "false_suggestion_rate": 0.0,
+    "outcome_confusion": {
+      "capability:capability->capability": 9,
+      "capability:capability->capability/ignore": 1,
+      "capability:capability->ignore": 8,
+      "colleague:ignore->ask": 1,
+      "colleague:ignore->ignore": 13,
+      "colleague:ignore->none": 4,
+      "declared:ignore->ignore": 17,
+      "declared:ignore->none": 1,
+      "emerging:suggest->ignore": 3,
+      "emerging:suggest->ignore/suggest": 1,
+      "emerging:suggest->suggest": 14,
+      "learning:suggest->ignore": 3,
+      "learning:suggest->suggest": 15,
+      "one_off:ignore->ignore": 15,
+      "one_off:ignore->none": 1,
+      "rejected:ignore->ignore": 18,
+      "told_fact:record->record": 18
+    },
+    "findings_by_outcome": {
+      "ignore": 212,
+      "suggest": 30,
+      "record": 18,
+      "capability": 10,
+      "ask": 1
+    },
+    "findings_by_reason": {
+      "below_floor": 164,
+      "rejected_in_conversation": 16,
+      "consistent": 30,
+      "covered": 9,
+      "told_directly": 18,
+      "superseded": 17,
+      "capability_consistent": 10,
+      "attribution_unresolved": 1,
+      "not_self": 6
+    },
+    "explained_rate": 1.0,
+    "harm": {
+      "observations_of_silent_member": 0,
+      "refs_of_silent_member": 0,
+      "findings_of_silent_member": 0,
+      "observation_quotes": 0,
+      "explanation_quotes": 0,
+      "rule_origin": 0,
+      "bodies_left_after_read": 0,
+      "unread_refs": 0,
+      "lab_findings_on_personal_observations": 0,
+      "suggestion_without_self": 0,
+      "explanation_invented_dates": 0
+    },
+    "harm_total": 0,
+    "scored_at": "2026-09-19T06:33:24.729799+00:00"
+  }
+}

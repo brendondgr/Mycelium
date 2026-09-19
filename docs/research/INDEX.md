@@ -41,11 +41,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-09-010` | 2026-09-19 | Do introduction paths, 'outside my network' and team formation name only who they may, and find what they should? A synthetic-graph test of plan CN-07 | complete | — | — | [folder](experiments/EXP-2026-09-010-collab-graph-features-sandbox/RESULTS.md) |
 | `EXP-2026-09-011` | 2026-09-18 | Postgres recursive queries or Neo4j for the co-authorship graph? Latency at 1,000, 5,000 and 20,000 people | complete | — | — | [folder](experiments/EXP-2026-09-011-coauthorship-store-benchmark/RESULTS.md) |
 | `EXP-2026-09-012` | 2026-09-18 | Is the collaboration network useful and harmless in real use? Slot quality, coverage accuracy, concept linking, lane quality, concentration and harm on live data (plan CN-08) | planned | — | — | [folder](experiments/EXP-2026-09-012-collab-live-evaluation/RESULTS.md) |
+| `EXP-2026-09-013` | 2026-09-19 | Does ambient Plan 04 find what people said, decide the right outcome, and keep every privacy promise? Four weeks of model-written lab conversation with planted truth | complete | — | — | [folder](experiments/EXP-2026-09-013-ambient-reasoning-sandbox/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 29 |
+| complete | 30 |
 | planned | 3 |
-| **total** | **32** |
+| **total** | **33** |
