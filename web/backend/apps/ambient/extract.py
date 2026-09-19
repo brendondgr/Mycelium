@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 COMPONENT = "ambient_extract"
 #: Bump whenever the prompt or the validation changes.
-PROMPT_VERSION = "a3"
+PROMPT_VERSION = "a4"
 MAX_ATTEMPTS = 2
 MAX_OBSERVATIONS = 8
 MAX_TOPIC_WORDS = 6
@@ -96,16 +96,21 @@ kind:
                        even when it was for a project; if the project itself
                        changed too, note that separately as a development
   learning_goal        something the speaker wants to learn — not a skill
-  project_intent       what a project is trying to show or achieve
+  project_intent       what a named project as a whole is trying to show or
+                       achieve — not one person's wish
   project_development  a concrete change in a project: data arrived, an
                        experiment failed, a venue or deadline moved, a method
                        was dropped or adopted, a blocker opened or closed
 A method the speaker discusses because their project needs it, without saying
 they want it, is a project_development or project_intent, not an interest.
+A person's own wish to try, dig into or learn something — "I'd love to try X
+on my work", "I want to dig into X for my next project" — is theirs:
+current_curiosity, enduring_interest or learning_goal, not project_intent.
 
 force: fact (it happened), question, preference, possibility (might, should,
-could, next week), decision (we will, we decided), rejection (we dropped it,
-not doing that).
+could, next week), decision (we will, we decided to do it), rejection (we
+dropped it, decided against it, will not do it). "Decided against X" is a
+rejection, never a decision.
 
 subject: self when the speaker is talking about their own view or work;
 colleague when they discuss someone else's idea, a paper's claim or a talk;

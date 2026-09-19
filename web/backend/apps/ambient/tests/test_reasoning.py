@@ -933,3 +933,72 @@ def test_a_topic_name_repeated_is_not_a_quote():
     assert quoted_runs(naming, [message], allowed="Baltic tide dataset") == []
     quoting = "You said just a heads up that the Baltic tide news came."
     assert quoted_runs(quoting, [message], allowed="Baltic tide dataset")
+
+
+# -- found by EXP-2026-09-013 run 3 (post hoc) ------------------------------------
+
+
+def test_an_unattributed_self_intent_is_the_persons_interest(ada):
+    cp = _concept("contrastive learning")
+    _noted(ada, cp, days_ago=15, kind="project_intent", conversation="a")
+    _noted(ada, cp, days_ago=8, kind="learning_goal", conversation="b")
+    _noted(ada, cp, days_ago=1, kind="project_intent", conversation="c")
+    deliberate.deliberate()
+    finding = Finding.objects.get(user=ada, concept=cp)
+    assert finding.outcome == Finding.Outcome.SUGGEST
+    assert finding.understanding_kind == "current_curiosity"
+    assert finding.facts["kinds"] == {"project_intent": 2, "learning_goal": 1}
+
+
+def test_a_project_intent_about_a_project_stays_the_projects(ada, imaging):
+    cp = _concept("contrastive learning")
+    _noted(
+        ada,
+        cp,
+        days_ago=15,
+        kind="project_intent",
+        conversation="a",
+        project=imaging,
+        visibility=Visibility.LAB,
+    )
+    _noted(
+        ada,
+        cp,
+        days_ago=1,
+        kind="project_intent",
+        conversation="b",
+        project=imaging,
+        visibility=Visibility.LAB,
+    )
+    deliberate.deliberate()
+    assert not Finding.objects.filter(user=ada, project__isnull=True).exists()
+    assert Finding.objects.get(project=imaging).outcome == Finding.Outcome.PROPOSE
+
+
+def test_a_colleagues_intent_is_not_folded_into_an_interest(ada):
+    cp = _concept("contrastive learning")
+    _noted(
+        ada,
+        cp,
+        days_ago=15,
+        kind="project_intent",
+        subject="colleague",
+        conversation="a",
+    )
+    _noted(
+        ada,
+        cp,
+        days_ago=1,
+        kind="project_intent",
+        subject="colleague",
+        conversation="b",
+    )
+    deliberate.deliberate()
+    assert not Finding.objects.filter(
+        user=ada, outcome__in=[Finding.Outcome.SUGGEST, Finding.Outcome.CAPABILITY]
+    ).exists()
+
+
+def test_the_prompt_calls_decided_against_a_rejection():
+    assert '"Decided against X" is a' in extract.PROMPT
+    assert "rejection, never a decision" in extract.PROMPT

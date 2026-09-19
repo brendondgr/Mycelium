@@ -109,13 +109,35 @@ INTEREST_FAMILY = frozenset(
 _FAMILY = "interest"
 
 
-def _family(kind: str) -> str:
+def _family(observation) -> str:
+    """The group an observation's kind decides in.
+
+    A project intent with no project and the speaker as its subject is one
+    person's own intention — "I want to dig into X for my next project" with
+    nothing to attribute it to — and joins their interest family rather than
+    becoming an unresolved project question (EXP-2026-09-013).
+    """
+    kind = observation.understanding_kind
+    if (
+        kind == UnderstandingKind.PROJECT_INTENT
+        and not observation.project_id
+        and observation.subject == Subject.SELF
+    ):
+        return _FAMILY
     return _FAMILY if kind in INTEREST_FAMILY else kind
 
 
 def _dominant(rows) -> str:
-    counts = Counter(o.understanding_kind for o in rows)
-    latest = {o.understanding_kind: o.observed_at for o in rows}
+    """The family's kind: the interest kind said most, latest on a tie. A
+    self intent folded in counts as a current curiosity."""
+
+    def kind_of(o):
+        if o.understanding_kind in INTEREST_FAMILY:
+            return o.understanding_kind
+        return UnderstandingKind.CURRENT_CURIOSITY
+
+    counts = Counter(kind_of(o) for o in rows)
+    latest = {kind_of(o): o.observed_at for o in rows}
     return max(counts, key=lambda kind: (counts[kind], latest[kind]))
 
 
@@ -603,7 +625,7 @@ def deliberate(*, now=None, users=None) -> DeliberateRun:
                 side = ("p", None, str(o.project_id))
             else:
                 side = ("up", speaker_id, str(o.project_id))
-            groups[(side, view.id, _family(o.understanding_kind))].append(o)
+            groups[(side, view.id, _family(o))].append(o)
 
     # Supersession runs per subject and concept, across kinds.
     by_topic: dict[tuple, list[Observation]] = defaultdict(list)
