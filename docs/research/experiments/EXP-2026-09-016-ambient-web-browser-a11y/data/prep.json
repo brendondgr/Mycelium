@@ -1,0 +1,35 @@
+{
+    "person": "amb_b3_cyra",
+    "planted": {
+        "lab_membership": 577,
+        "reasked_questions": [
+            42,
+            43
+        ],
+        "told_fact_change": 37,
+        "development": 19
+    },
+    "real": {
+        "apply_answers": {
+            "applied": 6,
+            "nothing_to_do": 0,
+            "refused": 0
+        },
+        "deliver_ambient_questions": {
+            "questions": 10,
+            "announced": 12,
+            "facts": 19,
+            "proposed": 1
+        }
+    },
+    "project_id": "7625b886-a888-4c10-950c-4753a4eee39b",
+    "lab_slug": "amb-b",
+    "counts": {
+        "open_questions": 3,
+        "changes": 5,
+        "profile_edits": 1,
+        "notifications": 5,
+        "proposals": 1,
+        "heard": 1
+    }
+}
