@@ -105,7 +105,9 @@ layer on every lab feed.
 **Collaboration.** A team-fit line on every grant (which of a call's
 requirements the reader or their lab covers). An opt-in, expiring "open to
 collaboration" setting scoped by verified institution, with a weekly exposure
-cap and a preview. A collaborator search from a call, a project or one's own
+cap and a preview. An institution is proved by a verified email, never typed,
+and people are suggested only to someone verified at one — from the same
+institution or, at widest, the same country. A collaborator search from a call, a project or one's own
 words — four lanes, a hard consent gate, coarse pointers only — with
 introductions through consenting co-authors, "outside my network", and team
 proposals. Six harm checks run daily. Built and validated on synthetic worlds;

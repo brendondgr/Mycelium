@@ -196,11 +196,11 @@ routes clients depend on most.
 
 | Route | Methods | Purpose |
 |---|---|---|
-| `settings/` | GET, PUT | The reader's own "open to collaboration" setting: `{"open", "audience": "institution" \| "country" \| "anywhere", "open_to": [...], "renew"?}`. GET adds `expires_at`, `verified`, the verified `institution` and `country`, and `allowed_audiences` (empty unverified; only `anywhere` for a personal address). 400 with `detail` on a refused choice. Never returns who searched or how often the reader appeared |
+| `settings/` | GET, PUT | The reader's own "open to collaboration" setting: `{"open", "audience": "institution" \| "country" \| "anywhere", "open_to": [...], "renew"?}`. GET adds `expires_at`, `verified`, the verified `institution` and `country`, and `allowed_audiences` (empty unless the verified email is at an institution — a personal address can be neither found nor search). 400 with `detail` on a refused choice. Never returns who searched or how often the reader appeared |
 | `preview/` | GET | Exactly what a seeker would see: `{"name", "institution", "facets": {facet: [{"label", "sources"}]}}` — declared and paper-backed concepts only, never conversation or a project |
 | `calls/<content_id>/slot-feedback/` | POST | Correct a call's requirement slots: `{"kind": "not_a_requirement" \| "we_cover_this", "slot_text"}` or `{"kind": "missed_one", "note"}`. Append-only; 201 |
 | `search/` | GET | Whether the reader may search now: `{"available", "code": "" \| "not_enabled" \| "unverified" \| "paid_plan" \| "daily_limit", "reason", "max_scope"}` — so no surface offers a search that would only be refused |
-| `search/` | POST | Find collaborators. `{"entry": "call", "content_id"}` \| `{"entry": "project", "project_id"}` \| `{"entry": "manual", "text"}`, plus optional `slots` (edited `[{"facet", "text", "required"}]`, which replace the pre-filled ones), `lanes`, `scope`, `outside_network`, `dry_run`. A dry run returns only `{"slots"}` and searches, logs and shows nothing. Otherwise `{"slots", "lanes": {lane: [hit]}, "groups": {"fills_a_gap", "shares_expertise"}, "explained", "search_id"}`; a hit is exactly `{"username", "name", "institution", "lane", "slot", "facet", "matched", "tier": "declared" \| "demonstrated", "reason"}`. Never a count of who was held back. 404 while `COLLAB_SEARCH_ENABLED` is off; 403 with `detail` on a refusal (unverified, free plan while plans are enforced, the daily limit, a scope past `COLLAB_MAX_SCOPE`, a project the reader cannot open) |
+| `search/` | POST | Find collaborators. `{"entry": "call", "content_id"}` \| `{"entry": "project", "project_id"}` \| `{"entry": "manual", "text"}`, plus optional `slots` (edited `[{"facet", "text", "required"}]`, which replace the pre-filled ones), `lanes`, `scope`, `outside_network`, `dry_run`. A dry run returns only `{"slots"}` and searches, logs and shows nothing. Otherwise `{"slots", "lanes": {lane: [hit]}, "groups": {"fills_a_gap", "shares_expertise"}, "explained", "search_id"}`; a hit is exactly `{"username", "name", "institution", "lane", "slot", "facet", "matched", "tier": "declared" \| "demonstrated", "reason"}`. Never a count of who was held back. 404 while `COLLAB_SEARCH_ENABLED` is off; 403 with `detail` on a refusal (unverified, verified at no institution, free plan while plans are enforced, the daily limit, a scope past `COLLAB_MAX_SCOPE` or past `country` — no search ever reaches past the seeker's own country — a project the reader cannot open) |
 | `searches/<id>/feedback/` | POST | `{"candidate", "lane", "kind": "save" \| "not_relevant"}` on one of that search's results; 201 |
 | `saved/` | GET | The reader's saved people who are still reachable: `{"people": [{"username", "name", "lane", "slots", "saved_at"}]}` — someone who has switched off drops out |
 | `team/` | POST | "Assemble a team" (plan CN-07): the search input; `{"slots", "team": [{"username", "name", "institution", "covers": [{"slot", "facet", "matched", "tier"}], "distance"}], "uncovered", "search_id"}`. 403 with `code: "too_few_gaps"` under three gaps |
@@ -303,13 +303,22 @@ originate that mail. Staff and superusers are exempt.
 {
   "username": "string", "email": "string",
   "first_name": "string", "last_name": "string",
-  "institution": "string", "academic_title": "researcher",
+  "institution": "string", "institution_verified": false,
+  "institution_from_email": "string", "academic_title": "researcher",
   "is_verified": false, "pending_email": ""
 }
 ```
 
-`PATCH` writes `first_name`, `last_name`, `institution`, `academic_title` and
-nothing else. `username` is immutable (lab invitations and audit rows resolve
+`institution` is **derived, never written**: the name the *verified* address's
+domain resolves to in the affiliation directory (`apps/accounts/institution.py`),
+`""` until the address is verified and for a personal one.
+`institution_from_email` is what the current address would prove once verified.
+`GET /api/auth/me/` carries the same three fields.
+
+`PATCH` writes `first_name`, `last_name`, `academic_title` and nothing else. A
+request carrying a *different* `institution` is refused with
+`400 { "institution": [message], "code": "institution_from_email" }`; resending
+the one held (or the one the address will prove) is a no-op. `username` is immutable (lab invitations and audit rows resolve
 against it); `email` and the password each have their own endpoint because each
 needs a proof this one does not ask for.
 
@@ -427,8 +436,9 @@ profile. `200` with the profile; `400` on contract violation.
 
 ### `GET` / `PATCH` `/api/auth/profile/me/`
 
-Reads or updates the caller's own profile (`academic_title`, `institution`,
-`interests`, `eligibility`, external ids). Writes are **scoped to the columns
+Reads or updates the caller's own profile (`academic_title`, `interests`,
+`eligibility`, external ids; `institution` is read-only and a differing one is
+refused as on the account endpoint). Writes are **scoped to the columns
 that changed** — a full-row update once let one concurrent save clobber another's
 columns.
 
@@ -471,9 +481,11 @@ they can act on, not those they are folded into through a lab:
    "role": "owner", "is_owner": true, "can_manage": true }]
 ```
 
-`POST { "name", "institution"? }` creates one with the caller as head, a CANOPY
-plan that starts **inactive**, and a pending founder seat. `403` unless the
-account is verified; `400` on a blank name.
+`POST { "name" }` creates one with the caller as head, a CANOPY plan that starts
+**inactive**, and a pending founder seat. Its `institution` is the caller's
+verified one; a differing `institution` in the body is refused with
+`code: "institution_from_email"`. `403` unless the account is verified; `400` on
+a blank name.
 
 ### `GET | POST | PUT | DELETE /api/auth/labs/<slug>/logo/`
 
