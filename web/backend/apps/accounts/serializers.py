@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from apps.core.people import display_name, initials
 
+from . import institution
 from .interests import validate_interests as _validate_interests_contract
 from .models import (
     AcademicTitle,
@@ -39,6 +40,25 @@ def user_to_dict(user: User) -> dict[str, object]:
         # endpoints refuse. The app reads it to show the lock up front rather
         # than let someone fill in a lab form that will 403 on save.
         "is_verified": bool(profile and profile.is_verified),
+        **institution_fields(user),
+    }
+
+
+def institution_fields(user: User) -> dict[str, object]:
+    """What the app shows for a person's institution, all derived from email.
+
+    ``institution`` is what the verified address proves (empty until it is
+    verified, and for a personal address); ``institution_from_email`` is what
+    the current address *would* prove, so the app can say so before the code
+    is entered.
+    """
+    profile = getattr(user, "profile", None)
+    pending = institution.resolve_email(user.email)
+    held = profile.institution if profile else ""
+    return {
+        "institution": held,
+        "institution_verified": bool(held),
+        "institution_from_email": pending.name if pending else "",
     }
 
 
@@ -168,7 +188,14 @@ class ProfileSerializer(_ContractInterestsMixin):
             "embedding_text",
             "updated_at",
         ]
-        read_only_fields = ["is_verified", "embedding_text", "updated_at"]
+        # ``institution`` is derived from the verified email, never written
+        # here; the view refuses a request that tries to change it.
+        read_only_fields = [
+            "institution",
+            "is_verified",
+            "embedding_text",
+            "updated_at",
+        ]
 
 
 class LabProfileSerializer(_ContractInterestsMixin):

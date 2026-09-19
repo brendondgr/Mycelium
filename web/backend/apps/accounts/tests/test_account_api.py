@@ -56,21 +56,21 @@ def test_account_returns_identity_from_both_tables(
     assert body["pending_email"] == ""
 
 
-def test_account_patch_writes_name_and_affiliation(
+def test_account_patch_writes_the_name(
     user: User, client_for: Client
 ) -> None:
     response = _send(
         client_for,
         "patch",
         "/api/auth/account/",
-        {"first_name": "Augusta", "institution": "Analytical Engine Lab"},
+        {"first_name": "Augusta"},
     )
 
     assert response.status_code == 200
     user.refresh_from_db()
     assert user.first_name == "Augusta"
     assert user.last_name == "Lovelace"  # untouched by a partial write
-    assert user.profile.institution == "Analytical Engine Lab"
+    # The institution is not written here: see test_institution_from_email.
 
 
 def test_account_patch_leaves_research_interests_alone(

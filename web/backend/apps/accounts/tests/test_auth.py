@@ -303,7 +303,6 @@ def test_register_then_onboarding_handoff(api_client: Client) -> None:
         "/api/auth/profile/me/",
         data={
             "academic_title": "pi",
-            "institution": "Northgate University",
             "interests": {
                 "version": 1,
                 "areas": ["Microbial Ecology", "Genomics"],
@@ -318,7 +317,8 @@ def test_register_then_onboarding_handoff(api_client: Client) -> None:
     assert response.status_code == 200
     profile = User.objects.get(username="newuser").profile
     assert profile.academic_title == "pi"
-    assert profile.institution == "Northgate University"
+    # Not typed: an institution comes from the verified email (unverified here).
+    assert profile.institution == ""
     assert profile.interests["areas"] == ["Microbial Ecology", "Genomics"]
     assert profile.interests["keywords"] == ["metagenomics", "field sampling"]
 

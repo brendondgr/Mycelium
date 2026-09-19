@@ -44,6 +44,7 @@ from django.utils.crypto import salted_hmac
 
 from apps.core.mail import send_email
 
+from . import institution
 from .models import EmailVerification
 
 logger = logging.getLogger(__name__)
@@ -199,6 +200,9 @@ def verify(
         if not profile.is_verified:
             profile.is_verified = True
             profile.save(update_fields=["is_verified"])
+        # The proved address decides the institution — a change code can move
+        # a person to another one, or to none.
+        institution.verified_then_sync(user)
 
     return verification
 

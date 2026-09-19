@@ -33,7 +33,9 @@ def test_provision_creates_login_and_profile() -> None:
     assert User.objects.filter(username=result.credentials["username"]).exists()
     assert result.user.check_password(result.credentials["password"])
     profile = Profile.objects.get(user=result.user)
-    assert profile.institution == "Analytical Engine Institute"
+    # The record names an institution; an unverified, generated address proves
+    # none, so none is held (apps.accounts.institution).
+    assert profile.institution == ""
 
 
 @pytest.mark.django_db

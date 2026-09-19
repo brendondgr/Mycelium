@@ -3,7 +3,7 @@
 ``provision_from_author`` is the single entry point the brief asks for: it
 resolves an author, builds the interest draft (via the Phase C importer), creates
 a ``User`` with generated credentials, writes a contract-valid ``Profile``
-(institution, interests, external ids), and returns the credentials. Both the
+(interests, external ids), and returns the credentials. Both the
 ``provision_user`` management path and the import-from-author API call it.
 
 The importer is injectable so the service is unit-tested offline with a canned
@@ -99,7 +99,6 @@ def provision_from_author(
 
         profile = user.profile
         profile.academic_title = academic_title
-        profile.institution = draft.institution
         profile.interests = interests
         profile.orcid = external.get("orcid", "")
         profile.openalex_id = external.get("openalex", "")
@@ -112,7 +111,9 @@ def provision_from_author(
         "email": email,
         "password": raw_password,
         "academic_title": academic_title,
-        "institution": draft.institution,
+        # Never the imported record's: an institution is proved by a verified
+        # address (apps.accounts.institution), and this one is not verified.
+        "institution": "",
         "orcid": profile.orcid,
         "openalex_id": profile.openalex_id,
         "scholar_id": profile.scholar_id,

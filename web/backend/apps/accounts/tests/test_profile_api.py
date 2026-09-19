@@ -29,7 +29,6 @@ def test_user_reads_and_updates_own_profile(client: APIClient) -> None:
     resp = client.patch(
         "/api/auth/profile/me/",
         {
-            "institution": "Cascadia",
             "interests": {
                 "version": 1,
                 "areas": ["genomics"],
@@ -40,7 +39,7 @@ def test_user_reads_and_updates_own_profile(client: APIClient) -> None:
     )
     assert resp.status_code == 200
     user.profile.refresh_from_db()
-    assert user.profile.institution == "Cascadia"
+    assert user.profile.institution == ""  # derived from email, never typed
     assert user.profile.interests["areas"] == ["genomics"]
     # The embedding hook ran on save; Profile embeds statement + keywords only.
     assert "Keywords: genome sequencing" in user.profile.embedding_text

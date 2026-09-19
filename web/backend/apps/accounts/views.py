@@ -37,7 +37,7 @@ from apps.billing.services import (
     signup_grant_tier,
 )
 
-from . import email_verification, invites, password_reset, signup_gate
+from . import email_verification, institution, invites, password_reset, signup_gate
 from .author_works import store_author_works
 from .intake import (
     AuthorImportError,
@@ -87,6 +87,7 @@ from .serializers import (
     ProfileSerializer,
     RegisterSerializer,
     WatchPreferenceSerializer,
+    institution_fields,
     user_to_dict,
 )
 from .services import (
@@ -266,6 +267,7 @@ def register_view(request: Request) -> Response:
                 profile = user.profile
                 profile.is_verified = True
                 profile.save(update_fields=["is_verified"])
+                institution.verified_then_sync(user)
 
         record_audit_event(
             actor=user,
@@ -326,6 +328,9 @@ class AccountView(APIView):
         return Response(_account_payload(request.user))
 
     def patch(self, request: Request) -> Response:
+        refused = _typed_institution_refused(request.user, request.data)
+        if refused is not None:
+            return refused
         serializer = AccountSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -338,9 +343,7 @@ class AccountView(APIView):
             user.save(update_fields=user_fields)
 
         profile = user.profile
-        profile_fields = [
-            f for f in ("institution", "academic_title") if f in data
-        ]
+        profile_fields = [f for f in ("academic_title",) if f in data]
         if profile_fields:
             for field in profile_fields:
                 setattr(profile, field, data[field])
@@ -352,6 +355,23 @@ class AccountView(APIView):
         return Response(_account_payload(user))
 
 
+def _typed_institution_refused(user: User, data) -> Response | None:
+    """A 400 when a write tries to set an institution the email does not prove.
+
+    The institution is derived (:mod:`apps.accounts.institution`); a request may
+    resend the one it was shown, never change it.
+    """
+    if "institution" not in data:
+        return None
+    reason = institution.refusal(user, str(data.get("institution") or ""))
+    if reason is None:
+        return None
+    return Response(
+        {"institution": [reason], "code": institution.REFUSAL_CODE},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
 def _account_payload(user: User) -> dict[str, object]:
     profile = user.profile
     return {
@@ -359,7 +379,7 @@ def _account_payload(user: User) -> dict[str, object]:
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,
-        "institution": profile.institution,
+        **institution_fields(user),
         "academic_title": profile.academic_title,
         "is_verified": profile.is_verified,
         "pending_email": email_verification.pending_email(user),
@@ -689,6 +709,12 @@ class MyProfileView(RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user.profile
+
+    def update(self, request, *args, **kwargs):
+        refused = _typed_institution_refused(request.user, request.data)
+        if refused is not None:
+            return refused
+        return super().update(request, *args, **kwargs)
 
 
 class LabProfileView(RetrieveUpdateAPIView):
@@ -1226,7 +1252,7 @@ class ImportAuthorView(APIView):
         store_author_works(request.user, draft, source=source)
         return Response(
             {
-                "draft": dataclasses.asdict(draft),
+                "draft": _draft_payload(request.user, draft),
                 "interests": draft.to_interests(),
             }
         )
@@ -1443,8 +1469,17 @@ class SynthesizeView(APIView):
             max_areas_per_cluster=cluster_topic_cap(request.user),
         )
         return Response(
-            {"draft": dataclasses.asdict(draft), "interests": interests}
+            {"draft": _draft_payload(request.user, draft), "interests": interests}
         )
+
+
+def _draft_payload(user: User, draft) -> dict:
+    """A draft as the client sees it, carrying only the institution the account's
+    verified email proves — an author record or résumé may name one, but naming
+    is not proof (:mod:`apps.accounts.institution`)."""
+    payload = dataclasses.asdict(draft)
+    payload["institution"] = institution.sync(user)
+    return payload
 
 
 def _as_str_list(value) -> list[str]:
@@ -1562,16 +1597,19 @@ class MyDepartmentsView(APIView):
                 {"name": ["A department name is required."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        institution = str(request.data.get("institution", "")).strip()
-        result = create_department_workspace(
-            request.user, name, institution=institution
-        )
+        # A department sits at its creator's verified institution; a typed one
+        # that differs is refused, the same rule as a person's own.
+        refused = _typed_institution_refused(request.user, request.data)
+        if refused is not None:
+            return refused
+        held = institution.sync(request.user)
+        result = create_department_workspace(request.user, name, institution=held)
         record_audit_event(
             actor=request.user,
             action="department.create",
             target_type="department",
             target_id=str(result.department.id),
-            metadata={"name": name, "institution": institution},
+            metadata={"name": name, "institution": held},
         )
         return Response(
             _department_row(result.department, request.user),

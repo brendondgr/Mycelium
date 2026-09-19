@@ -192,7 +192,10 @@ class Profile(models.Model):
     """One per user: research identity, career stage, and interest embedding.
 
     ``academic_title`` and ``institution`` are person-global account attributes
-    (briefing §3 USER); ``interests`` and ``embedding`` are the interest
+    (briefing §3 USER). ``institution`` is never typed: it mirrors what the
+    verified email proves (``apps.accounts.institution.sync``), and is empty
+    until the address is verified or when it is a personal one. ``interests``
+    and ``embedding`` are the interest
     relevance target used in scoring. The embedding dimension is intentionally
     left unlocked until the scoring phase (briefing §9).
     """

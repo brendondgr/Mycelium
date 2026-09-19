@@ -44,7 +44,7 @@ def test_create_department_makes_caller_owner(client: APIClient) -> None:
 
     response = client.post(
         "/api/auth/departments/",
-        {"name": "Molecular Systems", "institution": "Northgate University"},
+        {"name": "Molecular Systems"},
         format="json",
     )
 
@@ -54,7 +54,8 @@ def test_create_department_makes_caller_owner(client: APIClient) -> None:
     assert response.data["can_manage"] is True
 
     dept = Department.objects.get(owner=user)
-    assert dept.institution == "Northgate University"
+    # No address, so no proved institution (test_institution_from_email).
+    assert dept.institution == ""
     assert DeptMembership.objects.filter(
         department=dept, user=user, role=DeptMembership.Role.OWNER
     ).exists()

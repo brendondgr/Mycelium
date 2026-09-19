@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db.models.signals import post_save, pre_save
-from django.dispatch import receiver
+from django.dispatch import Signal, receiver
 
 from .embedding import apply_embedding
 from .models import (
@@ -11,6 +11,10 @@ from .models import (
     LabWatchPreference,
     Profile,
 )
+
+#: Sent (with ``user=``) after an address is proved and the account's
+#: institution re-derived — by a verification code or an emailed invitation.
+email_verified = Signal()
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
