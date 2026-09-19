@@ -1,0 +1,286 @@
+{
+ "clean": {
+  "checks": {
+   "stated_field_without_a_yes": 0,
+   "change_without_a_confirmation": 0,
+   "personal_in_lab_reports": 0,
+   "questions_over_the_daily_cap": 7,
+   "quoted_words_outside_the_buffer": 0,
+   "observations_after_opt_out": 0,
+   "observations_of_unlinked_people": 0,
+   "declined_asked_again_within_30_days": 0,
+   "covered_topic_asked": 0,
+   "rule_written_observations": 0
+  },
+  "examples": {
+   "stated_field_without_a_yes": [],
+   "change_without_a_confirmation": [],
+   "personal_in_lab_reports": [],
+   "questions_over_the_daily_cap": [
+    "user:601:2026-09-19:3",
+    "user:610:2026-09-19:3",
+    "user:616:2026-09-19:3",
+    "user:612:2026-09-19:3",
+    "user:611:2026-09-19:5"
+   ],
+   "quoted_words_outside_the_buffer": [],
+   "observations_after_opt_out": [],
+   "observations_of_unlinked_people": [],
+   "declined_asked_again_within_30_days": [],
+   "covered_topic_asked": [],
+   "rule_written_observations": []
+  },
+  "info": {
+   "free_tier_speakers_paused": {
+    "count": 0,
+    "examples": []
+   }
+  },
+  "validation_precision": {
+   "precision": 0.48,
+   "answered_yes": 12,
+   "answered_no": 13,
+   "verdicts": {
+    "defer": 5,
+    "confirmed": 10,
+    "rejected": 13,
+    "corrected": 2
+   },
+   "by": {
+    "kind": {
+     "current_curiosity": {
+      "yes": 5,
+      "no": 6,
+      "precision": 0.4545
+     },
+     "enduring_interest": {
+      "yes": 1,
+      "no": 0,
+      "precision": 1.0
+     },
+     "learning_goal": {
+      "yes": 6,
+      "no": 7,
+      "precision": 0.4615
+     }
+    },
+    "surface": {
+     "dm": {
+      "yes": 12,
+      "no": 13,
+      "precision": 0.48
+     }
+    },
+    "force": {
+     "decision": {
+      "yes": 0,
+      "no": 1,
+      "precision": 0.0
+     },
+     "fact": {
+      "yes": 1,
+      "no": 1,
+      "precision": 0.5
+     },
+     "possibility": {
+      "yes": 0,
+      "no": 1,
+      "precision": 0.0
+     },
+     "preference": {
+      "yes": 11,
+      "no": 10,
+      "precision": 0.5238
+     }
+    },
+    "heard_in": {
+     "channel": {
+      "yes": 12,
+      "no": 13,
+      "precision": 0.48
+     }
+    },
+    "lab": {
+     "97": {
+      "yes": 3,
+      "no": 5,
+      "precision": 0.375
+     },
+     "98": {
+      "yes": 5,
+      "no": 3,
+      "precision": 0.625
+     },
+     "99": {
+      "yes": 4,
+      "no": 5,
+      "precision": 0.4444
+     }
+    }
+   }
+  },
+  "maintenance": {
+   "profile_edits": 6,
+   "people_with_edits": 6,
+   "profile_edits_per_person_per_30d": 0.25,
+   "questions_asked": 42,
+   "questions_answered": 30,
+   "changes": 44,
+   "changes_undone": 1,
+   "undo_rate": 0.0227
+  },
+  "cap_hits": [
+   {
+    "user": "amb_a0_zeno",
+    "day": "2026-09-19",
+    "asked": 3
+   },
+   {
+    "user": "amb_b2_priya",
+    "day": "2026-09-19",
+    "asked": 3
+   },
+   {
+    "user": "amb_b3_cyra",
+    "day": "2026-09-19",
+    "asked": 5
+   },
+   {
+    "user": "amb_b4_dev",
+    "day": "2026-09-19",
+    "asked": 3
+   },
+   {
+    "user": "amb_c0_mateo",
+    "day": "2026-09-19",
+    "asked": 3
+   },
+   {
+    "user": "amb_c1_umar",
+    "day": "2026-09-19",
+    "asked": 3
+   },
+   {
+    "user": "amb_c5_elin",
+    "day": "2026-09-19",
+    "asked": 3
+   }
+  ]
+ },
+ "injections": [
+  {
+   "check": "stated_field_without_a_yes",
+   "injection": "inject_profile_edit",
+   "own_delta": 1,
+   "moved": {
+    "stated_field_without_a_yes": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  },
+  {
+   "check": "stated_field_without_a_yes",
+   "injection": "inject_state_edit",
+   "own_delta": 1,
+   "moved": {
+    "stated_field_without_a_yes": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  },
+  {
+   "check": "change_without_a_confirmation",
+   "injection": "inject_unconfirmed_change",
+   "own_delta": 1,
+   "moved": {
+    "change_without_a_confirmation": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  },
+  {
+   "check": "personal_in_lab_reports",
+   "injection": "inject_personal_in_lab_report",
+   "own_delta": 1,
+   "moved": {
+    "personal_in_lab_reports": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  },
+  {
+   "check": "questions_over_the_daily_cap",
+   "injection": "inject_over_cap",
+   "own_delta": 1,
+   "moved": {
+    "questions_over_the_daily_cap": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  },
+  {
+   "check": "quoted_words_outside_the_buffer",
+   "injection": "inject_quotation",
+   "own_delta": 1,
+   "moved": {
+    "quoted_words_outside_the_buffer": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  },
+  {
+   "check": "observations_after_opt_out",
+   "injection": "inject_after_opt_out",
+   "own_delta": 1,
+   "moved": {
+    "observations_after_opt_out": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  },
+  {
+   "check": "observations_of_unlinked_people",
+   "injection": "inject_unlinked",
+   "own_delta": 1,
+   "moved": {
+    "observations_of_unlinked_people": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  },
+  {
+   "check": "declined_asked_again_within_30_days",
+   "injection": "inject_declined_again",
+   "own_delta": 1,
+   "moved": {
+    "declined_asked_again_within_30_days": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  },
+  {
+   "check": "covered_topic_asked",
+   "injection": "inject_covered",
+   "own_delta": 1,
+   "moved": {
+    "covered_topic_asked": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  },
+  {
+   "check": "rule_written_observations",
+   "injection": "inject_rule_origin",
+   "own_delta": 1,
+   "moved": {
+    "rule_written_observations": 1
+   },
+   "caught": true,
+   "cross_talk": []
+  }
+ ],
+ "detected": 11,
+ "cross_talk": 0,
+ "restored_equal": true,
+ "seconds": 4.5
+}

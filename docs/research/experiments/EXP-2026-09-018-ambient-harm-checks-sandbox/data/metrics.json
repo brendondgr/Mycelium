@@ -1,0 +1,12 @@
+{
+  "clean_nonzero_checks": [
+    "questions_over_the_daily_cap"
+  ],
+  "clean_cap_hits": 7,
+  "injections": 11,
+  "detected": 11,
+  "cross_talk": 0,
+  "restored_equal": true,
+  "seconds": 4.5,
+  "sandbox_validation_precision": 0.48
+}
