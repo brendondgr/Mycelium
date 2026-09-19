@@ -231,6 +231,15 @@ class SearchView(APIView):
                 if project is None:
                     return Response({"detail": "No such project."}, status=404)
                 query = matcher.query_for_project(request.user, project, **options)
+            elif data.get("slots") is not None:
+                # Edited slots replace whatever the words would have read as;
+                # reading them again would be a model call thrown away.
+                query = matcher.Query(
+                    "manual",
+                    [],
+                    need_fields=matcher._fields_of([request.user]),
+                    **options,
+                )
             else:
                 query = matcher.query_for_text(
                     request.user, data.get("text") or "", **options

@@ -430,3 +430,29 @@ def test_saved_people_drop_anyone_no_longer_reachable(world, settings, monkeypat
     assert [p["username"] for p in saved] == ["bo"]
     consent.update(people["bo"], open=False, audience=Audience.INSTITUTION)
     assert _client(ada).get("/api/collab/saved/").json()["people"] == []
+
+
+def test_manual_search_with_edited_slots_does_not_read_the_words_again(
+    world, settings, monkeypatch
+):
+    from apps.collab import slots as slot_reader
+
+    ada, _, _ = world
+    settings.COLLAB_SEARCH_ENABLED = True
+    monkeypatch.setattr(matcher, "_default_complete", _model())
+
+    def boom(*args, **kwargs):
+        raise AssertionError("the slot reader ran for slots already given")
+
+    monkeypatch.setattr(slot_reader, "extract", boom)
+    response = _client(ada).post(
+        "/api/collab/search/",
+        {
+            "entry": "manual",
+            "text": "someone for spatial interpolation",
+            "slots": [{"facet": "method", "text": "kriging"}],
+        },
+        format="json",
+    )
+    assert response.status_code == 200
+    assert [s["text"] for s in response.json()["slots"]] == ["kriging"]

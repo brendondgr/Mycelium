@@ -380,6 +380,24 @@ def method(key: str) -> Method:
     return next(m for m in METHODS if m.key == key)
 
 
+def _unique_name(rng: random.Random, used: set[str]) -> str:
+    """A name nobody in the world has yet. Once the given x family pairs run
+    out (past about 570 people) a middle initial is added — drawn only then, so
+    every smaller world is exactly what it always was."""
+    if len(used) < len(GIVEN) * len(FAMILY):
+        while True:
+            name = f"{rng.choice(GIVEN)} {rng.choice(FAMILY)}"
+            if name not in used:
+                used.add(name)
+                return name
+    while True:
+        initial = rng.choice("ABCDEFGHJKLMNPRSTVW")
+        name = f"{rng.choice(GIVEN)} {initial}. {rng.choice(FAMILY)}"
+        if name not in used:
+            used.add(name)
+            return name
+
+
 def build(*, seed: int = 20260918, people: int = 120) -> World:
     """The world for a seed and a size. Pure: no database, no model."""
     rng = random.Random(seed)
@@ -391,11 +409,7 @@ def build(*, seed: int = 20260918, people: int = 120) -> World:
     for index in range(people):
         home = field_keys[index % len(field_keys)]
         institution = INSTITUTIONS[(index // len(field_keys)) % len(INSTITUTIONS)][0]
-        while True:
-            name = f"{rng.choice(GIVEN)} {rng.choice(FAMILY)}"
-            if name not in used_names:
-                used_names.add(name)
-                break
+        name = _unique_name(rng, used_names)
         own_methods = rng.sample(by_field[home], k=min(2, len(by_field[home])))
         # One method they publish with and never declare.
         extra = [m for m in by_field[home] if m not in own_methods]
@@ -405,7 +419,7 @@ def build(*, seed: int = 20260918, people: int = 120) -> World:
         )
         other_fields = [f for f in field_keys if f != home]
         declared_only = rng.choice(PROBLEMS[rng.choice(other_fields)])
-        slug = name.lower().replace(" ", ".")
+        slug = name.lower().replace(".", "").replace(" ", ".")
         person = Person(
             key=f"p{index:04d}",
             name=name,

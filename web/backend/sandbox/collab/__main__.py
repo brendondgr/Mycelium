@@ -31,6 +31,9 @@ def main() -> int:
             "sweep",
             "calls",
             "consent",
+            "match",
+            "panel",
+            "browser-prep",
         ],
     )
     parser.add_argument(
@@ -51,6 +54,15 @@ def main() -> int:
     )
     parser.add_argument(
         "--coverage-cosine", type=float, help="Override COLLAB_COVERAGE_COSINE."
+    )
+    parser.add_argument(
+        "--seekers", type=int, default=120, help="For panel: how many seekers."
+    )
+    parser.add_argument(
+        "--read-calls",
+        type=int,
+        default=30,
+        help="For panel: how many seeded calls to read requirements from.",
     )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
@@ -127,6 +139,29 @@ def main() -> int:
             Path(args.out).write_text(text)
         print(text)
         return 1 if failures else 0
+
+    if args.command == "browser-prep":
+        import os
+
+        from . import panel_sim
+
+        report["browser"] = panel_sim.prepare_browser(
+            world,
+            seed=args.seed,
+            password=os.environ.get("SANDBOX_PASSWORD", "sandbox-only"),
+        )
+        print(json.dumps(report, indent=1, default=str))
+        return 0
+
+    if args.command == "panel":
+        from . import panel_sim
+
+        report.update(panel_sim.main(world, args))
+        text = json.dumps(report, indent=1, sort_keys=True, default=str)
+        if args.out:
+            Path(args.out).write_text(text)
+        print(text)
+        return 1 if report["invariant_failures"] else 0
 
     if args.command == "consent":
         from . import consent_sim
