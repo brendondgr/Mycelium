@@ -84,6 +84,18 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
             update({ listening_discord: on }, on ? "Listening is on." : "Listening is off.")
           }
         />
+        {data.slack_linked ? (
+          <Toggle
+            id="ambient-listening-slack"
+            label="Listen on Slack"
+            help="Read what you say in Slack channels Mylo was added to and in your messages to Mylo there. Off by default."
+            checked={Boolean(data.listening.slack)}
+            disabled={readOnly && !data.listening.slack}
+            onChange={(on) =>
+              update({ listening_slack: on }, on ? "Listening on Slack is on." : "Listening on Slack is off.")
+            }
+          />
+        ) : null}
         <Toggle
           id="ambient-questions"
           label="Mylo's questions"

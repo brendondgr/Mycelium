@@ -241,6 +241,7 @@ class SlackStatusView(APIView):
                         "name": workspace.name,
                         "has_channel": bool(workspace.updates_channel_id),
                         "listening": bool(source and source.listening),
+                        "primary": workspace.reports_primary,
                     }
                     if workspace
                     else None
@@ -258,7 +259,8 @@ class SlackUnlinkView(APIView):
 
 
 class SlackListeningView(APIView):
-    """A lab manager turns listening on or off for the lab's workspace."""
+    """A lab manager's switches for the lab's workspace: ``on`` (listening)
+    and ``primary`` (the lab's posts go to Slack rather than Discord)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -276,9 +278,19 @@ class SlackListeningView(APIView):
                 {"detail": "Link a Slack workspace to this lab first."},
                 status=status.HTTP_409_CONFLICT,
             )
-        on = bool(request.data.get("on"))
-        return Response(
-            set_workspace_listening(
-                workspace.team_id, on=on, changed_by=request.user, lab=lab
+        out = {}
+        if "on" in request.data:
+            out.update(
+                set_workspace_listening(
+                    workspace.team_id,
+                    on=bool(request.data.get("on")),
+                    changed_by=request.user,
+                    lab=lab,
+                )
             )
-        )
+        if "primary" in request.data:
+            # Where the lab's posts go when it is on both platforms (rule 15).
+            workspace.reports_primary = bool(request.data.get("primary"))
+            workspace.save(update_fields=["reports_primary", "updated_at"])
+        out["primary"] = workspace.reports_primary
+        return Response(out)

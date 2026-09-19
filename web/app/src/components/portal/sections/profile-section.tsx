@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { usePortal } from "@/components/portal/portal-context";
 import { LabSettingsSection } from "@/components/portal/sections/lab-settings-section";
+import { SlackPersonCard } from "@/components/portal/ambient/slack-cards";
 import {
   ProfileEditorModal,
   type ProfileEditorTab,
@@ -884,6 +885,7 @@ export function ProfileSection() {
         <div className="flex flex-col gap-[22px]">
           <ResearchFocusCard onOrganize={() => setEditorTab("interests")} />
           <DiscordCard />
+          <SlackPersonCard />
           <EligibilityCard onEdit={() => setEditorTab("eligibility")} />
         </div>
 
