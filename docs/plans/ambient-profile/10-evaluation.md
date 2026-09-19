@@ -89,6 +89,53 @@ runs, never quote a metric that is not in `manifest.yaml` and `RESULTS.md`.
 - **OD-10a** Pilot size and duration. Recommendation: one lab, four weeks,
   every member consenting individually.
 
+## Brief as built (2026-09-19)
+
+Implemented overnight on the owner's instruction. Everything that can be built
+or measured without real people is done. The pilot itself is pre-registered,
+not run.
+
+- **Measures and harm checks as code** (`apps/ambient/evaluation.py`, command
+  `evaluate_ambient` in the content app, which passes the stored lab reports
+  in because the ambient app may not import content).
+  - Validation precision is yes over yes-or-no, by understanding kind, force,
+    where it was heard, lab, and where it was answered.
+  - Maintenance covers profile edits per person per 30 days, questions asked
+    against answered, and the undo rate.
+  - There are ten harm checks, each a count plus up to five ids and never
+    text: stated field without a yes; change without a confirmation (made
+    disjoint from the first, so one violation counts once); personal row in a
+    lab report; over the daily question cap; a quotation of 30 or more
+    characters in anything Mylo wrote; an observation surviving an opt-out;
+    an observation of a never-linked speaker; a declined topic re-asked
+    inside 30 days; a covered topic asked; a rule-written observation.
+  - A person who lapsed to free is counted, not flagged, because their
+    understanding is paused by design.
+- **Instrumentation** (steps 11 and 12). `export_ambient_dataset --salt`
+  writes JSON Lines of answers, observation verdicts and decisions with their
+  trace, with person ids replaced by a salted hash. The only text is Mylo's
+  own; a correction a person typed is left out. The run-analytics PDF's
+  Listening section gains the day's observations (and how many a rule wrote,
+  which must be zero), findings worth asking, questions asked and answered,
+  yes, no and not now, changes applied and undone, and proposals raised.
+- **Validated:**
+  - EXP-2026-09-018: 11 of 11 injected violations caught, 0 cross-talk. The
+    sandbox record reads zero apart from 7 question-cap hits that the
+    harnesses made on purpose.
+  - EXP-2026-09-019: the drift ablation (step 8). At 0.15 nothing declared is
+    displaced; 0.30 is the largest weight within the bars. Declared slates
+    move a little whenever an exploration exists, whatever its weight (Q-053).
+    It is persona-level, because the LongEval harness has no people and the
+    hook is inert there.
+- **Pre-registered, not run:** EXP-2026-09-020 (steps 6, 7, 9, 10 and 13). It
+  covers extraction precision on Stage A data (the gate for server
+  listening), validation precision (the primary number), the replay, the
+  question budget, the attribution sweep and the go/no-go, with every bar
+  fixed. The owner confirms the thresholds before the pilot starts.
+  OD-10a is adopted: one lab, four weeks.
+- **Not built, deliberately:** concept merging (9a), which is measured in
+  collaboration-network CN-08.
+
 ## Discussion gate
 
 No step in this plan is implemented until the implementing agent has presented,

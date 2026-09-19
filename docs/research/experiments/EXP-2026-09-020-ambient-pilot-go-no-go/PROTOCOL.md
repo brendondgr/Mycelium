@@ -66,6 +66,23 @@ for how drift is compared).
 - **Rule:** keep two a week if the answer rate drops by no more than 15
   percentage points and precision by no more than 0.10. Otherwise one.
 
+## 5. Attribution floor and margin (Plan 10 experiment 9)
+
+- **Sample:** every message in the pilot that attribution resolved or left
+  unresolved on a project, plus every correction people made (Plan 03's
+  "this was a different project"). The author labels a random 200, stratified
+  by channel, with the true project or "none". They are labelled the same night
+  from the buffer, like §1.
+- **Sweep:** floor from 0.40 to 0.80 in steps of 0.05, and margin from 0.10 to
+  0.40 in steps of 0.05, replayed through `attribution.score` on the stored
+  signals. The ranges bracket the shipped `AMBIENT_ATTRIBUTION_FLOOR` of 0.6
+  and `AMBIENT_ATTRIBUTION_MARGIN` of 0.25.
+- **Operating point:** the one with the fewest wrong-project attributions at
+  an unresolved rate of 0.40 or less. Report the whole grid. Wrong project is
+  the cost that matters.
+- Concept merging (Plan 10 9a) is shared with collaboration-network CN-08 and
+  is measured there.
+
 ## Go / no-go (Plan 10 step 13)
 
 **Go** past the pilot only when all three hold:

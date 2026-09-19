@@ -1,6 +1,6 @@
 # Ambient Profile — Plan Series
 
-**Status:** Plans 01–09 shipped; 10 onward in progress.
+**Status:** Plans 01–10 built (10's pilot pre-registered, not run); 11 in progress.
 **Correlation ID:** `20260917-ambient-profile`
 **Owner:** Brendon (product direction); plans are working documents and are
 deleted as their work ships, with the outcome recorded in `docs/changelog.md`.
@@ -172,13 +172,12 @@ buffer runs on its own Redis with persistence off (`redis-ambient`). Plans 04
 onward were built without a stop at each discussion gate, on the owner's
 instruction; each plan's judgement calls are in its changelog entries.
 
-**Owed before `AMBIENT_DRIFT_ENABLED` is ever turned on:** the evaluation
-harness before/after the Plan 05 ranking hook (`fusion.combine_clusters`'s
-`cluster_weights`). Tonight's run could not finish re-embedding the harness's
-pooled corpus on the shared CPU within its 45-minute cap; the hook is exactly
-inert while drift is off, which a unit test pins
-(`test_without_exploration_weights_the_merge_is_byte_identical`), and Plan 10's
-drift ablation (its EXP 8) is where the harness runs with drift on.
+**Before `AMBIENT_DRIFT_ENABLED` is turned on:** the drift ablation is done.
+EXP-2026-09-019 ran it persona-level: at the default 0.15 no declared paper
+leaves the top 25, and 0.30 is the largest weight within the bars. The LongEval
+harness has no people, so the Plan 05 hook is inert there, which a unit test
+pins. Still open: Q-053, why a declared theme's slate moves slightly whenever
+an exploration exists, whatever its weight.
 
 **Build order (decided 2026-09-18):** the collaboration-network series is built
 first (CN-01 to CN-06). This series then resumes at Plan 04, which, like Plans
@@ -208,7 +207,7 @@ the correlation id named in the row.
 | 07 | Web transparency — **shipped 2026-09-19** | `apps/ambient/review.py`, `AppliedChange`, `/api/ambient/` change, understanding, settings and lab endpoints; `components/portal/ambient/*` and `/app/mylo-and-you`: questions answerable on the web, what changed with undo, faded and declined, what Mylo knows, the switches, the lab and project cards, the bell. Validated in a browser in EXP-2026-09-016 (three defects found and fixed; run 4 clean, WCAG 2.1 AA by axe). Record: `20260917-ambient-profile-07` |
 | 08 | Applying changes — **shipped 2026-09-19** | `apps/ambient/apply.py` (a yes carried into the declared profile at the next nightly run, through the contract, with provenance and exact undo), `apps/content/ambient_proposals.py` (developments proposed to a project's editors as reflection proposals; accepting applies and records an undoable change). Validated in EXP-2026-09-016. Record: `20260917-ambient-profile-08` |
 | 09 | Reports and notifications — **shipped 2026-09-19** | `apps/content/weekly_changes.py`: the weekly's code-rendered "What changed" with `[O#]` citations the verifier resolves, personal and project streams scoped by the query, the interpretation line only while drift is on, the daily's "Changed today", the bell for conversation proposals. Validated in EXP-2026-09-017. Record: `20260917-ambient-profile-09` |
-| 10 | [Evaluation](10-evaluation.md) | The replay experiment and the validation-record metrics, under the research rules |
+| 10 | Evaluation — **built 2026-09-19; pilot pre-registered** | `apps/ambient/evaluation.py` and `evaluate_ambient` (validation precision, maintenance, ten harm checks), `export_ambient_dataset`, the run-analytics counters. Validated in EXP-2026-09-018 (harm checks) and EXP-2026-09-019 (drift ablation); the pilot and its go/no-go are EXP-2026-09-020, not yet run. Record: `20260917-ambient-profile-10` |
 | 11 | [Other platforms](11-other-platforms.md) | Slack, Teams, transcripts as adapters over the same ledger |
 
 ## Cross-cutting open decisions
