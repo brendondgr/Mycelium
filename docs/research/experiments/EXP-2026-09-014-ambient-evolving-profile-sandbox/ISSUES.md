@@ -42,3 +42,13 @@ declared items displaced from a top 25 on average (max 1); at weight 1.0, 8.0
 
 **Run 3** reruns the registered protocol with the scoped checks, the added
 measure, and the immediate opt-out, from a worktree pinned at that commit.
+
+## Run 3 — registered, valid
+
+Worktree `8d47faf`, 07:11–07:22 UTC. One invariant violation:
+`evidence_of_deleted` (1) — on the night a person asked Mylo to forget one
+observation, a confirmed edge still cited it until the next night's retraction
+pass. Same class as run 2's opt-out gap, for "forget that" and platform
+deletions. **Fixed after the run** (`reconcile._drop_derived`: the pointers
+leave edges and findings in the same transaction as the observation), with a
+unit test; run 4 (post hoc) confirms.

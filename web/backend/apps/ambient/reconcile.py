@@ -115,6 +115,30 @@ def message_edited(source: Source, external_id: str, text: str, *, edited_at=Non
     return len(stale)
 
 
+def _drop_derived(user, observation_ids) -> None:
+    """Take removed evidence out of what was built on it — now, not tonight.
+
+    The knowledge core's conversational edges lose the pointers (a pending edge
+    left with none is deleted), and findings stop citing them. The nightly
+    retraction pass then does the rest — developments, and re-deciding
+    (EXP-2026-09-014: until tonight, an edge could cite deleted evidence).
+    """
+    from apps.knowledge.service import drop_evidence
+
+    from .models import Finding
+
+    ids = {int(pk) for pk in observation_ids}
+    if not ids:
+        return
+    if user is not None:
+        drop_evidence(user, [f"obs:{pk}" for pk in sorted(ids)])
+    for finding in Finding.objects.filter(user=user) if user is not None else []:
+        kept = [pk for pk in finding.observation_ids if pk not in ids]
+        if kept != finding.observation_ids:
+            finding.observation_ids = kept
+            finding.save(update_fields=["observation_ids", "updated_at"])
+
+
 @transaction.atomic
 def message_deleted(source: Source, external_id: str) -> Retraction | None:
     """A message was deleted on the platform. Its evidence goes with it."""
@@ -133,6 +157,7 @@ def message_deleted(source: Source, external_id: str) -> Retraction | None:
     speaker = ref.speaker if ref is not None else None
     if observations:
         Observation.objects.filter(pk__in=observation_ids).delete()
+        _drop_derived(speaker, observation_ids)
 
     if ref is not None:
         # A tombstone, not a row: the id stays so the same message arriving
@@ -174,6 +199,7 @@ def forget_observations(
     ids = [row.pk for row in rows]
     project_ids = sorted({str(row.project_id) for row in rows if row.project_id})
     Observation.objects.filter(pk__in=ids).delete()
+    _drop_derived(user, ids)
     return Retraction.objects.create(
         reason=reason,
         user=user,

@@ -420,3 +420,17 @@ def test_opting_out_with_deletion_removes_every_derived_influence(ada, imaging):
     assert ProjectDevelopment.objects.get().status == ProjectDevelopment.Status.REJECTED
     # Their own declared profile is theirs and stays.
     assert Profile.objects.get(user=ada).interests["areas"] == ["medical imaging"]
+
+
+def test_forget_that_takes_the_evidence_out_at_once(ada):
+    """EXP-2026-09-014 run 3: until the next night an edge could still cite a
+    deleted observation. Now the pointer goes with the observation."""
+    cp = _concept("conformal prediction")
+    _consistent(ada, cp)
+    _night()
+    confirm(ada, cp.pk, "interested_in")
+    first = Observation.objects.filter(speaker=ada).order_by("observed_at").first()
+    reconcile.forget_observations(ada, [first.pk])
+    edge = Edge.objects.get(user=ada, tier="conversational")
+    assert f"obs:{first.pk}" not in edge.evidence and len(edge.evidence) == 1
+    assert first.pk not in Finding.objects.get(user=ada).observation_ids

@@ -16,7 +16,12 @@ import json
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from apps.ambient import read as ambient
+from apps.ambient.read import (
+    changes_to_announce,
+    mark_announced,
+    mark_asked,
+    questions_to_deliver,
+)
 from apps.content.delivery import send_time
 from apps.content.models import Notification
 from apps.integrations.services.outbox import enqueue_dm
@@ -45,7 +50,7 @@ class Command(BaseCommand):
         today = timezone.localdate(now)
         sent = 0
         delivered = []
-        for question in ambient.questions_to_deliver():
+        for question in questions_to_deliver():
             enqueue_dm(
                 dedupe_key=f"ambient-question-{question.id}",
                 kind="ambient_question",
@@ -69,10 +74,10 @@ class Command(BaseCommand):
             )
             delivered.append(question.id)
             sent += 1
-        ambient.mark_asked(delivered, now=now)
+        mark_asked(delivered, now=now)
 
         announced = []
-        for suggestion in ambient.changes_to_announce():
+        for suggestion in changes_to_announce():
             key = suggestion.choice.split(":", 1)[0]
             title = APPLIED_TITLES.get(
                 key, "A change you confirmed took effect: {topic}"
@@ -87,5 +92,5 @@ class Command(BaseCommand):
                 },
             )
             announced.append(suggestion.pk)
-        ambient.mark_announced(announced, now=now)
+        mark_announced(announced, now=now)
         self.stdout.write(json.dumps({"questions": sent, "announced": len(announced)}))
