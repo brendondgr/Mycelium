@@ -45,11 +45,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-09-014` | 2026-09-19 | Does the evolving profile keep its promises over eight simulated weeks, and do exploration themes stay beside the declared ones? | complete | — | — | [folder](experiments/EXP-2026-09-014-ambient-evolving-profile-sandbox/RESULTS.md) |
 | `EXP-2026-09-015` | 2026-09-19 | Does Mylo read replies in people's own words right, never turn a no into a yes, and catch "stop asking"? | complete | — | — | [folder](experiments/EXP-2026-09-015-ambient-dialogue-replies-sandbox/RESULTS.md) |
 | `EXP-2026-09-016` | 2026-09-19 | Do the ambient web pages work in a real browser, from the keyboard, and pass WCAG 2.1 AA checks? | complete | — | — | [folder](experiments/EXP-2026-09-016-ambient-web-browser-a11y/RESULTS.md) |
+| `EXP-2026-09-017` | 2026-09-19 | Does what changed reach the right reports, and only them? | complete | — | — | [folder](experiments/EXP-2026-09-017-ambient-reports-routing-sandbox/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 33 |
+| complete | 34 |
 | planned | 3 |
-| **total** | **36** |
+| **total** | **37** |

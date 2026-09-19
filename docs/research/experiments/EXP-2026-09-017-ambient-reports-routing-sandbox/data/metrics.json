@@ -1,0 +1,36 @@
+{
+  "run1": {
+    "label": "registered @3955910",
+    "violations_total": 11,
+    "rows_expected": 98,
+    "rows_missing": 0,
+    "rows_duplicated": 8,
+    "rows_leaked": 3,
+    "o_citations": 98,
+    "o_unresolved": 0,
+    "model_sentences_citing_o": 0,
+    "interpretation_ok": true,
+    "dailies": 24,
+    "daily_mismatch": 0,
+    "lab_development_lines": 0,
+    "weeklies": 24,
+    "seconds": 23.8
+  },
+  "run2": {
+    "label": "harness row matching + undo mark @2babb96",
+    "violations_total": 0,
+    "rows_expected": 97,
+    "rows_missing": 0,
+    "rows_duplicated": 0,
+    "rows_leaked": 0,
+    "o_citations": 97,
+    "o_unresolved": 0,
+    "model_sentences_citing_o": 0,
+    "interpretation_ok": true,
+    "dailies": 24,
+    "daily_mismatch": 0,
+    "lab_development_lines": 0,
+    "weeklies": 24,
+    "seconds": 19.8
+  }
+}

@@ -9,66 +9,69 @@
 id: EXP-2026-09-017
 slug: ambient-reports-routing-sandbox
 title: "Does what changed reach the right reports, and only them?"
-status: planned # planned | running | complete | failed | superseded
+status: complete
 date_started: 2026-09-19
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-09-19
+authors: [brendondgr]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Ambient Plan 09 sandbox validation: the weekly's "What changed" and the
+  daily's "Changed today" reach exactly the reports they should (personal to
+  the person; shared lab project changes to the lab and each member; unshared
+  ones to members only), every [O#] resolves, and the interpretation line
+  appears only when explorations move the ranking.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Pre-registered: H1 zero routing violations; H2 every [O#] resolves; H3 the
+  interpretation line absent with drift off and present exactly for people
+  with a confirmed, not-undone exploration with drift on; H4 dailies carry
+  "Changed today" iff the rule says so and no lab daily carries a development
+  line; H5 under 60 minutes. OUTCOME: run 1 reported 11 violations, all the
+  harness's substring matching; run 2 (row matching; an undo in the same week
+  now a mark) 0 violations. The model's use of [O#] was not exercised (no
+  feed items in the sandbox).
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 6ac1afc
+  commit: 2babb96
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  entrypoint: "manage.py shell < docs/research/experiments/EXP-2026-09-017-ambient-reports-routing-sandbox/code/run.py (DATABASE_URL pointing at mycelium_sandbox_ambrep)"
+  dirty: false
 config:
-  path: <path to the config file, or null>
+  path: docs/research/experiments/EXP-2026-09-017-ambient-reports-routing-sandbox/code/run.py
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: EXP-2026-09-016 run 4's end state (mycelium_sandbox_ambweb), copied to mycelium_sandbox_ambrep
+  version: "seed 20260919; 21 people, 3 labs, 6 lab projects (3 shared); 45 changes this week in run 2"
+  split: test
+  n_examples: 48 # 24 weeklies + 24 dailies
   qrels: null
   hash: null
-  card: null # docs/research/datasets/cards/<name>.md
-seeds: []
-n_runs: 1
+  card: null
+seeds: [20260919]
+n_runs: 2
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "backend service of compose.yaml"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
-
-# --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+  hardware: "20 CPU cores, 62 GB RAM; local model via llm-tunnel (weekly_report component)"
+  wall_clock_hours: 0.01
+  estimated_cost_usd: 0.0
 
 # --- Results block -----------------------------------------------------------
-# Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
+  primary: violations_total
+  values:
+    run1_violations_total: 11
+    run2_violations_total: 0
+    run2_rows_expected: 97
+    run2_rows_missing: 0
+    run2_rows_leaked: 0
+    run2_o_unresolved: 0
+    run2_model_sentences_citing_o: 0
+    run2_daily_mismatch: 0
 baselines_compared: []
 statistical_test: null
 
@@ -78,4 +81,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-09-016, EXP-2026-09-015]

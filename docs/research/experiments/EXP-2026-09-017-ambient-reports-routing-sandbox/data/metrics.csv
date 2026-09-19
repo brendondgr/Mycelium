@@ -1,0 +1,3 @@
+run,violations_total,rows_expected,rows_missing,rows_duplicated,rows_leaked,o_citations,o_unresolved,model_sentences_citing_o,interpretation_ok,dailies,daily_mismatch,lab_development_lines,weeklies,seconds
+run1,11,98,0,8,3,98,0,0,True,24,0,0,24,23.8
+run2,0,97,0,0,0,97,0,0,True,24,0,0,24,19.8
