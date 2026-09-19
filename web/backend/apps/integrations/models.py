@@ -334,6 +334,9 @@ class SlackWorkspace(models.Model):
     )
     # Where the lab's reports go: the channel the lab was linked from.
     updates_channel_id = models.CharField(max_length=32, blank=True, default="")
+    # A lab on both Discord and Slack chooses where its posts go (Plan 11,
+    # rule 15). Off: Discord stays the lab's surface; on: Slack does.
+    reports_primary = models.BooleanField(default=False)
     installed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

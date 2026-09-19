@@ -1,0 +1,218 @@
+"""Reports on Slack (ambient Plan 11, step 5 and rule 15).
+
+The reports are written once, by the same pipeline. This module only sends
+them to where a reader or a lab lives:
+
+- **a person** linked on Slack and not on Discord gets their daily or weekly
+  as a Slack DM, on the same cadence, at the same local hour. A person linked
+  on both keeps Discord, the surface they linked first.
+- **a lab** gets its daily and weekly posts in its Slack updates channel when
+  the lab has no Discord updates channel, or when its workspace is marked
+  primary for reports (``SlackWorkspace.reports_primary``). In that case the
+  Discord senders skip the lab (:func:`slack_is_primary`).
+
+The post is the same overview the Discord embed carries, as Block Kit, plus a
+link to the full report on the web. Slack gets no PDF attachment: a file
+upload needs a scope this app does not ask for.
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+from datetime import date
+
+from django.conf import settings
+
+from apps.content import delivery
+
+logger = logging.getLogger(__name__)
+
+
+def _enabled() -> bool:
+    return bool(getattr(settings, "SLACK_ENABLED", False))
+
+
+def _mrkdwn(text: str) -> str:
+    """Discord markdown to Slack mrkdwn: bold, and links."""
+    text = re.sub(r"\*\*([^*]+)\*\*", r"*\1*", text or "")
+    return re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", r"<\2|\1>", text)
+
+
+def embed_to_blocks(embed: dict, *, link: str = "") -> list[dict]:
+    """A report embed as Block Kit. Pure; tested on its own."""
+    blocks: list[dict] = [
+        {
+            "type": "header",
+            "text": {"type": "plain_text", "text": str(embed.get("title", ""))[:150]},
+        }
+    ]
+    if embed.get("description"):
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": _mrkdwn(embed["description"])[:2900],
+                },
+            }
+        )
+    for field in embed.get("fields") or []:
+        text = f"*{_mrkdwn(field.get('name', ''))}*\n{_mrkdwn(field.get('value', ''))}"
+        blocks.append(
+            {"type": "section", "text": {"type": "mrkdwn", "text": text[:2900]}}
+        )
+    if link:
+        blocks.append(
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Read the full report"},
+                        "url": link,
+                        "action_id": "open_report",
+                    }
+                ],
+            }
+        )
+    return blocks[:50]
+
+
+def _report_link() -> str:
+    base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
+    return f"{base}/app/reports"
+
+
+def slack_only(user) -> bool:
+    from apps.integrations.models import DiscordIdentity, SlackIdentity
+
+    return (
+        SlackIdentity.objects.filter(user=user, state="active").exists()
+        and not DiscordIdentity.objects.filter(user=user, state="active").exists()
+    )
+
+
+def lab_workspace(lab):
+    from apps.integrations.models import SlackWorkspace
+
+    return (
+        SlackWorkspace.objects.filter(lab=lab, active=True)
+        .exclude(updates_channel_id="")
+        .first()
+    )
+
+
+def slack_is_primary(lab) -> bool:
+    """Whether this lab's posts go to Slack instead of Discord."""
+    if not _enabled():
+        return False
+    workspace = lab_workspace(lab)
+    return bool(workspace and workspace.reports_primary)
+
+
+def _lab_on_slack(lab) -> bool:
+    from apps.integrations.services import resolve
+
+    workspace = lab_workspace(lab)
+    if workspace is None:
+        return False
+    return workspace.reports_primary or not resolve.get_updates_channel_for_lab(lab)
+
+
+def send(*, on: date | None = None) -> dict:
+    """Queue today's Slack reports. Never raises; a no-op while Slack is off."""
+    if not _enabled():
+        return {"enabled": False}
+    counts = {"people": 0, "labs": 0, "errors": 0}
+    _people(on, counts)
+    _labs(on, counts)
+    return counts
+
+
+def _people(on, counts) -> None:
+    from apps.content import discord_embeds
+    from apps.content.daily_report import compile_report_for_user
+    from apps.content.tasks import select_users
+    from apps.content.weekly_send import _monday, _weekly_body
+    from apps.integrations.services.slack_outbox import enqueue_dm
+
+    for user in select_users(None):
+        try:
+            if not slack_only(user):
+                continue
+            local = on or delivery.local_today(user)
+            kinds = delivery.push_kinds(delivery.user_cadence(user), local)
+            if delivery.WEEKLY in kinds:
+                data, weekly = _weekly_body(user, is_lab=False)
+                if weekly is None:
+                    continue
+                embed = discord_embeds.personal_report_embed(data, data.stats, "weekly")
+                key = f"slack_weekly_report:{user.pk}:{_monday(local).isoformat()}"
+            elif delivery.DAILY in kinds:
+                data = compile_report_for_user(user)
+                if data.stats.is_quiet:
+                    continue
+                embed = discord_embeds.personal_report_embed(data, data.stats)
+                key = f"slack_daily_report:{user.pk}:{local.isoformat()}"
+            else:
+                continue
+            _row, created = enqueue_dm(
+                user=user,
+                dedupe_key=key,
+                kind="report",
+                text=str(embed.get("title", "Your Mylo report")),
+                blocks=embed_to_blocks(embed, link=_report_link()),
+                subject_type="report",
+                subject_id=str(user.pk),
+                not_before=delivery.send_time(user, local),
+            )
+            counts["people"] += int(created)
+        except Exception:  # noqa: BLE001 - one reader never sinks the batch
+            counts["errors"] += 1
+            logger.warning("slack report failed for %s", user, exc_info=True)
+
+
+def _labs(on, counts) -> None:
+    from apps.accounts.models import Lab
+    from apps.billing.entitlements import Feature, lab_has_feature
+    from apps.content import discord_embeds
+    from apps.content.daily_report import compile_report_for_lab
+    from apps.content.weekly_send import _monday, _weekly_body
+    from apps.integrations.services.slack_outbox import enqueue_channel
+
+    for lab in Lab.objects.filter(slack_workspaces__active=True).distinct():
+        try:
+            if not _lab_on_slack(lab) or not lab_has_feature(lab, Feature.BOT_SERVER):
+                continue
+            workspace = lab_workspace(lab)
+            local = on or delivery.local_today(lab)
+            kinds = delivery.push_kinds(delivery.lab_cadence(lab), local)
+            if delivery.WEEKLY in kinds:
+                data, weekly = _weekly_body(lab, is_lab=True)
+                if weekly is None:
+                    continue
+                embed = discord_embeds.lab_post_embed(data, data.stats, "weekly")
+                key = f"slack_lab_weekly:{lab.pk}:{_monday(local).isoformat()}"
+            elif delivery.DAILY in kinds:
+                data = compile_report_for_lab(lab)
+                if data.stats.is_quiet:
+                    continue
+                embed = discord_embeds.lab_post_embed(data, data.stats)
+                key = f"slack_lab_daily:{lab.pk}:{local.isoformat()}"
+            else:
+                continue
+            _row, created = enqueue_channel(
+                workspace=workspace,
+                dedupe_key=key,
+                kind="lab_report",
+                text=str(embed.get("title", "Mylo report")),
+                blocks=embed_to_blocks(embed, link=_report_link()),
+                subject_type="lab_report",
+                subject_id=str(lab.pk),
+                not_before=delivery.send_time(lab, local),
+            )
+            counts["labs"] += int(created)
+        except Exception:  # noqa: BLE001
+            counts["errors"] += 1
+            logger.warning("slack lab report failed for %s", lab, exc_info=True)

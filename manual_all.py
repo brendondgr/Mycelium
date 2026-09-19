@@ -361,6 +361,17 @@ def deliberate_ambient(base: list[str]) -> None:
         _notify("warn", "Ambient deliberation failed", message, stage="ambient")
 
 
+def send_slack_reports(base: list[str]) -> None:
+    """Queue today's Slack reports (ambient Plan 11; non-fatal, a no-op while
+    SLACK_ENABLED is off). The reports themselves were written by the stages."""
+    print("\n=== Slack · Queueing today's reports… ===", flush=True)
+    code = run_manage("send_slack_reports", [], intro=None, base=base)
+    if code != 0:
+        message = f"Queueing Slack reports exited with code {code}."
+        print(f"note: {message}", flush=True)
+        _notify("warn", "Slack reports not queued", message, stage="slack")
+
+
 def deliver_ambient_questions(base: list[str]) -> None:
     """Send tonight's ambient questions and ring the bell (non-fatal).
 
@@ -744,6 +755,7 @@ def main() -> int:
     )
     _write_run_state(ok=True, scrape_ran=scrape_ran, stages_run=stages_run)
     deliver_ambient_questions(base)
+    send_slack_reports(base)
     facet_author_works(base)
     report_run_complete(compile_analytics(base), scrape_ran=scrape_ran)
     return 0

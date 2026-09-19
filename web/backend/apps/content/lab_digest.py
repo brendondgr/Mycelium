@@ -83,6 +83,12 @@ def eligible_labs(labs, *, on: date | None = None, kind: str = delivery.DAILY) -
             continue
         if not lab_has_feature(lab, Feature.BOT_SERVER):
             continue
+        # Ambient Plan 11: a lab whose Slack workspace is its primary surface
+        # gets its posts there (``slack_reports``), not twice.
+        from apps.content.slack_reports import slack_is_primary
+
+        if slack_is_primary(lab):
+            continue
         link = resolve.get_guild_link_for_lab(lab)
         if link is None or link.state != resolve.GUILD_ACTIVE:
             continue
