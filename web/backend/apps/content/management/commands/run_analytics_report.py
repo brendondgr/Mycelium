@@ -97,8 +97,33 @@ class Command(BaseCommand):
             f"{payload['llm']['failures']} failed, "
             f"{payload['llm']['total_tokens']:,} token(s); "
             f"{payload['delivery']['briefings_generated']} report(s) generated, "
-            f"{payload['delivery']['reports_delivered']} delivered."
+            f"{self._delivery_phrase(payload['delivery'])}."
         )
+
+    @staticmethod
+    def _delivery_phrase(delivery: dict) -> str:
+        """How far today's Discord messages got, without implying loss.
+
+        This runs minutes after the nightly queues its rows, and every row is held
+        until its recipient's local send hour — so ``reports_delivered`` is
+        structurally zero here and reporting it alone read as a total delivery
+        failure every single night. Say what is actually true: queued, waiting for
+        a send hour that has not arrived yet, and only then delivered or failed.
+        """
+        queued = delivery["reports_queued"] + delivery["digests_queued"]
+        delivered = delivery["reports_delivered"] + delivery["digests_delivered"]
+        failed = delivery["reports_failed"] + delivery["digests_failed"]
+        scheduled = delivery["reports_scheduled"] + delivery["digests_scheduled"]
+        if not queued:
+            return "0 queued for Discord"
+        parts = [f"{queued} queued for Discord"]
+        if scheduled:
+            parts.append(f"{scheduled} awaiting a send hour")
+        if delivered:
+            parts.append(f"{delivered} delivered")
+        if failed:
+            parts.append(f"{failed} failed")
+        return ", ".join(parts)
 
     # -- steps -------------------------------------------------------------- #
     def _resolve_day(self, raw: str | None) -> date:
