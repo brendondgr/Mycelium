@@ -44,11 +44,11 @@ SUNDAY = date(2026, 9, 27)
 @pytest.mark.parametrize(
     ("cadence", "day", "expected"),
     [
-        (WatchCadence.DAILY, MONDAY, {delivery.WEEKLY}),
+        (WatchCadence.DAILY, MONDAY, {delivery.DAILY}),
         (WatchCadence.DAILY, TUESDAY, {delivery.DAILY}),
         (WatchCadence.DAILY, FRIDAY, {delivery.DAILY}),
-        (WatchCadence.DAILY, SATURDAY, set()),
-        (WatchCadence.DAILY, SUNDAY, set()),
+        (WatchCadence.DAILY, SATURDAY, {delivery.DAILY}),
+        (WatchCadence.DAILY, SUNDAY, {delivery.DAILY}),
         (WatchCadence.WEEKLY, MONDAY, {delivery.WEEKLY}),
         (WatchCadence.WEEKLY, TUESDAY, set()),
         (WatchCadence.WEEKLY, FRIDAY, set()),
@@ -60,21 +60,26 @@ def test_the_cadence_matrix(cadence, day, expected) -> None:
     assert delivery.push_kinds(cadence, day) == expected
 
 
-def test_daily_cadence_monday_gets_weekly_not_daily() -> None:
-    """Invariant 3: Monday is one delivery per target, not two."""
+def test_daily_cadence_gets_a_daily_on_monday_never_the_weekly() -> None:
+    """Someone who chose "Daily digest" is never sent a weekly instead."""
     kinds = delivery.push_kinds(WatchCadence.DAILY, MONDAY)
-    assert kinds == {delivery.WEEKLY}
-    assert delivery.DAILY not in kinds
+    assert kinds == {delivery.DAILY}
+    assert delivery.WEEKLY not in kinds
 
 
-def test_no_discord_rows_on_weekend() -> None:
-    """Invariant 2 — including for someone opted into urgent alerts."""
+def test_daily_cadence_covers_the_weekend() -> None:
+    """Daily means every day: sign-up promises a message, not four of seven."""
     for day in (SATURDAY, SUNDAY):
-        for cadence in (WatchCadence.DAILY, WatchCadence.WEEKLY):
-            assert delivery.push_kinds(cadence, day, urgent_opt_in=True) == set()
+        assert delivery.push_kinds(WatchCadence.DAILY, day) == {delivery.DAILY}
 
 
-def test_urgent_alerts_are_the_only_weekday_exception_for_weekly_cadence() -> None:
+def test_weekly_cadence_is_silent_every_day_but_monday() -> None:
+    """The weekend is not special for a weekly reader — every non-Monday is quiet."""
+    for day in (TUESDAY, FRIDAY, SATURDAY, SUNDAY):
+        assert delivery.push_kinds(WatchCadence.WEEKLY, day) == set()
+
+
+def test_urgent_alerts_are_the_only_between_monday_exception() -> None:
     """Open decision OD2: opt-in, off by default, and never a second daily."""
     assert delivery.push_kinds(WatchCadence.WEEKLY, TUESDAY) == set()
     assert delivery.push_kinds(WatchCadence.WEEKLY, TUESDAY, urgent_opt_in=True) == {
@@ -155,7 +160,16 @@ def test_daily_cadence_user_is_a_tuesday_recipient(reader: User) -> None:
 
 
 @pytest.mark.django_db
-def test_nobody_is_a_recipient_on_a_weekend(reader: User) -> None:
+def test_a_daily_reader_is_a_recipient_at_the_weekend(reader: User) -> None:
+    """The weekend blackout is gone: "Daily digest" covers Saturday and Sunday."""
+    assert [u.id for u in eligible_recipients(None, on=SATURDAY)] == [reader.id]
+    assert [u.id for u in eligible_recipients(None, on=SUNDAY)] == [reader.id]
+
+
+@pytest.mark.django_db
+def test_a_weekly_reader_is_not_a_recipient_at_the_weekend(reader: User) -> None:
+    reader.watch.cadence = WatchCadence.WEEKLY
+    reader.watch.save(update_fields=["cadence"])
     assert eligible_recipients(None, on=SATURDAY) == []
     assert eligible_recipients(None, on=SUNDAY) == []
 

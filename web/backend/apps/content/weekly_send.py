@@ -62,7 +62,9 @@ def eligible_weekly_recipients(usernames: list[str] | None, *, on: date | None =
     """Who gets a weekly DM this Monday.
 
     The same four gates as the daily, with the cadence one asking for the weekly
-    instead: both cadences qualify on a Monday, which is the point.
+    instead — so this is the weekly-cadence readers, and only them. A daily
+    subscriber's Monday is a daily like any other day; the weekly is the *other*
+    option at sign-up, not a thing that lands on top of the one they chose.
     """
     from apps.content.tasks import select_users
 

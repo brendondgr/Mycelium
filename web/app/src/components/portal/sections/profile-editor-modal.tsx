@@ -518,8 +518,8 @@ function ProfileEditorForm({
         </div>
         <p className="text-[12.5px] leading-5 text-[var(--text-secondary)]">
           {cadence === "daily"
-            ? "A daily report Tuesday to Friday, and the weekly on Monday. No weekend messages."
-            : "One weekly report on Monday morning. No weekend messages."}
+            ? "A daily report every morning, weekends included."
+            : "One weekly report on Monday morning, and nothing in between."}
         </p>
       </EditorSection>
 

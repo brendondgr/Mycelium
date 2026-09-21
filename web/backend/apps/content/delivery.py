@@ -17,12 +17,17 @@ cadence decides is only whether a Discord message leaves the building. A
 weekly-cadence reader opening the web app on a Wednesday sees exactly what a
 daily-cadence reader sees; they simply were not interrupted about it.
 
-**Monday is the weekly, for everybody** (plan D3). A daily-cadence target gets
-dailies Tuesday through Friday and the weekly on Monday — the weekly *replaces*
-Monday's daily rather than arriving beside it, so Monday is one delivery, not two.
-A weekly-cadence target gets the Monday weekly and nothing else. Nobody is posted
-to on Saturday or Sunday; the weekend's findings arrive in Monday's weekly under
-"Since Friday", and the web has had them all along.
+**The stored choice is the whole rule.** Onboarding asks one question — "Daily
+digest" or "Weekly digest", under the promise *"Mylo messages you on Discord daily
+or weekly"* — and this module honours exactly that. Daily means every day,
+weekends included. Weekly means Monday, and nothing else.
+
+Two earlier rules sat on top of that choice and are gone, because between them they
+made "Daily" mean four days out of seven. A weekend blackout dropped Saturday and
+Sunday for everyone, and a "Monday is the weekly, for everybody" rule replaced a
+daily subscriber's Monday with a weekly they had not chosen — so someone who asked
+for a daily digest got dailies Tuesday through Friday plus one weekly. The setting
+they picked is the only thing that decides now.
 
 The one crack in "weekly means Monday" is :data:`URGENT` (open decision OD2): an
 opt-in, off by default, for the single case where waiting until Monday is a real
@@ -49,9 +54,8 @@ URGENT = "urgent"
 CADENCE_DAILY = "daily"
 CADENCE_WEEKLY = "weekly"
 
-#: ``date.weekday()`` values. Monday is 0; Saturday and Sunday are 5 and 6.
+#: ``date.weekday()`` value. Monday is 0 — the one day the weekly goes out.
 MONDAY = 0
-SATURDAY = 5
 
 #: Fallbacks when a target has no watch row yet, or an unreadable zone name. The
 #: user default is 8 and the lab default is 9 (open decision OD3): a lab channel
@@ -87,16 +91,14 @@ def push_kinds(
     UTC+11 is already on Monday while the run host is still on Sunday, and the
     weekly is a Monday-morning artefact in the reader's week, not the server's.
     """
-    weekday = local_date.weekday()
-    if weekday >= SATURDAY:
-        # Invariant 2. Nothing at all, including urgent alerts: a weekend ping is
-        # exactly the interruption the cadence setting exists to prevent.
-        return set()
-    if weekday == MONDAY:
-        # Invariant 3: the weekly replaces Monday's daily rather than joining it.
-        return {WEEKLY}
     if normalise_cadence(cadence) == CADENCE_DAILY:
+        # Daily means daily. The weekend is not an exception, and Monday is not
+        # one either — a daily subscriber never receives the weekly.
         return {DAILY}
+    if local_date.weekday() == MONDAY:
+        return {WEEKLY}
+    # Weekly cadence, between Mondays: silent unless they asked to hear about a
+    # deadline that moved (OD2).
     return {URGENT} if urgent_opt_in else set()
 
 

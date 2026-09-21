@@ -55,11 +55,13 @@ def check_cadence_matrix() -> Check:
 
     monday = date(2026, 9, 21)
     expected = {
-        ("daily", 0): {delivery.WEEKLY},
+        # Daily means every day — Monday and the weekend included.
+        ("daily", 0): {delivery.DAILY},
         ("daily", 1): {delivery.DAILY},
         ("daily", 4): {delivery.DAILY},
-        ("daily", 5): set(),
-        ("daily", 6): set(),
+        ("daily", 5): {delivery.DAILY},
+        ("daily", 6): {delivery.DAILY},
+        # Weekly means Monday, and nothing else.
         ("weekly", 0): {delivery.WEEKLY},
         ("weekly", 2): set(),
         ("weekly", 5): set(),

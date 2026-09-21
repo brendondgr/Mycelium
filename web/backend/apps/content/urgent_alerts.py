@@ -12,8 +12,9 @@ Every clause of the rule is load-bearing, and the rule is narrow on purpose:
   surprised by a message they asked not to receive.
 * **Weekly cadence only.** A daily-cadence reader hears about a moved deadline in
   the next morning's daily, so a second message would be the same news twice.
-* **Weekdays only.** ``push_kinds`` returns nothing at the weekend for anyone
-  (invariant 2), and this reads that answer rather than deciding its own.
+* **Between Mondays only.** ``push_kinds`` answers ``URGENT`` for a weekly-cadence
+  reader on any day that is not their Monday, and this reads that answer rather
+  than deciding its own. Monday itself carries the weekly, which already says it.
 * **A deadline that actually moved**, on an item the reader **saved**, due inside
   their **own buffer**. Three filters, and the alert engine already applies all
   three — this module sends what ``deadline_moved`` fired, it does not re-derive

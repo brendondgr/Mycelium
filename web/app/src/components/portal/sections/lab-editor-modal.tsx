@@ -488,8 +488,8 @@ function LabEditorForm({
         </div>
         <p className="text-[12.5px] leading-5 text-[var(--text-secondary)]">
           {cadence === "daily"
-            ? "A daily post Tuesday to Friday, and the weekly on Monday. Nothing at the weekend."
-            : "One weekly post on Monday morning. Nothing at the weekend."}
+            ? "A daily post every morning, weekends included."
+            : "One weekly post on Monday morning, and nothing in between."}
           {" Posts land at the lab's send hour, set on the lab's settings page."}
         </p>
       </EditorSection>
