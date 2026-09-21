@@ -16,7 +16,13 @@
  */
 
 import type { SectionKey } from "@/lib/portal/routes";
-import { FEATURE, type MyDepartment, type MyLab } from "@/lib/portal/types";
+import {
+  FEATURE,
+  type LabMember,
+  type LabRole,
+  type MyDepartment,
+  type MyLab,
+} from "@/lib/portal/types";
 import type { WorkspaceScope } from "@/lib/portal/workspace";
 
 export type NavItem = {
@@ -47,6 +53,45 @@ export type NavGroup = { label: string; items: NavItem[] };
 /** A member with owner/admin/PI rights may edit the lab configuration. */
 export function canManageLab(lab: Pick<MyLab, "is_lead" | "role">): boolean {
   return lab.is_lead || lab.role === "owner" || lab.role === "admin";
+}
+
+/**
+ * Lab roles ranked, mirroring ``apps.accounts.permissions.LAB_ROLE_RANK``.
+ *
+ * The server is the authority; this exists so the UI can hide a control it
+ * knows will be refused rather than offer it and show a 403. Keep the two in
+ * step — a drift here is a button that lies, not a security hole.
+ */
+export const LAB_ROLE_RANK: Record<LabRole, number> = {
+  owner: 3,
+  admin: 2,
+  member: 1,
+  viewer: 0,
+};
+
+/** Whether the caller may hand out `role` — strictly below their own. */
+export function canGrantLabRole(
+  lab: Pick<MyLab, "is_lead" | "role">,
+  role: LabRole,
+): boolean {
+  return LAB_ROLE_RANK[lab.role] > LAB_ROLE_RANK[role];
+}
+
+/** The roles the caller may assign, highest first. */
+export function grantableLabRoles(
+  lab: Pick<MyLab, "is_lead" | "role">,
+): LabRole[] {
+  return (["admin", "member", "viewer"] as LabRole[]).filter((role) =>
+    canGrantLabRole(lab, role),
+  );
+}
+
+/** Whether the caller may act on this member at all — re-role or remove them. */
+export function outranksLabMember(
+  lab: Pick<MyLab, "is_lead" | "role">,
+  member: Pick<LabMember, "role">,
+): boolean {
+  return LAB_ROLE_RANK[lab.role] > LAB_ROLE_RANK[member.role];
 }
 
 /** Whether the caller may administer a department. */

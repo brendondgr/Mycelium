@@ -110,6 +110,7 @@ from .services import (
     remove_lab_member,
     set_lab_department_inclusion,
     set_lab_member_role,
+    transfer_lab_ownership,
 )
 
 INVALID_CREDENTIALS_MESSAGE = "Invalid username or password."
@@ -1058,6 +1059,33 @@ class LabMemberDetailView(APIView):
             )
         remove_lab_member(lab, target, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class LabTransferOwnershipView(APIView):
+    """The owner hands the lab to another member and steps down to admin.
+
+    Its own route rather than a role edit, because it is one decision and the
+    intermediate states — two owners, or none — are not ones a lab should be
+    able to sit in. It cannot be undone from this side: the outgoing owner
+    becomes an admin, and an admin cannot grant ownership, so only the new owner
+    can hand it back.
+    """
+
+    def post(self, request: Request, slug: str) -> Response:
+        lab = get_object_or_404(Lab, slug=slug)
+        # The service re-checks that the actor owns the lab; this is the cheap
+        # membership gate so a stranger gets 403 rather than 404-by-probe.
+        if not user_has_lab_access(request.user, lab):
+            raise PermissionDenied("You do not have access to this lab.")
+        username = str(request.data.get("username", "")).strip()
+        if not username:
+            return Response(
+                {"username": ["Name the member who should own the lab."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        target = get_object_or_404(User, username=username)
+        membership = transfer_lab_ownership(lab, target, actor=request.user)
+        return Response(LabMemberSerializer(membership).data)
 
 
 # -- Lab invitations -----------------------------------------------------------

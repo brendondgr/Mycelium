@@ -84,6 +84,18 @@ urlpatterns = [
         views.LabMemberDetailView.as_view(),
         name="lab-member-detail-no-slash",
     ),
+    # Handing a lab over is its own route, not a role edit: the in-between state
+    # — two owners, or none — is one nobody should be able to leave a lab in.
+    path(
+        "labs/<slug:slug>/transfer-ownership/",
+        views.LabTransferOwnershipView.as_view(),
+        name="lab-transfer-ownership",
+    ),
+    path(
+        "labs/<slug:slug>/transfer-ownership",
+        views.LabTransferOwnershipView.as_view(),
+        name="lab-transfer-ownership-no-slash",
+    ),
     # Both slash and no-slash variants: the browser reaches these through the
     # Next `/api` proxy, which strips the trailing slash — and Django's
     # APPEND_SLASH cannot redirect a POST/PATCH, so a slash-only route 500s.

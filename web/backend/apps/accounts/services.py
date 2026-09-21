@@ -376,6 +376,77 @@ def set_lab_member_role(
     return membership
 
 
+@transaction.atomic
+def transfer_lab_ownership(lab: Lab, new_owner: User, *, actor: User) -> LabMembership:
+    """Hand ``lab`` to ``new_owner``; ``actor`` steps down to admin.
+
+    The case this exists for: the person who created the account and stood the
+    lab up is often not the person who runs it. Ownership moves in one step
+    rather than by two role edits, because the in-between state — two owners, or
+    none — is one nobody should be able to leave a lab sitting in.
+
+    Both marks of authority move together. ``role=OWNER`` is what the permission
+    checks read; ``is_lead=True`` is the PI badge the roster and the lab profile
+    read. Splitting them is how a lab ends up with an owner who is not its PI,
+    so every other lead is cleared and the lab keeps exactly one.
+
+    **Irreversible by design**, and not by a flag: the outgoing owner becomes an
+    admin, and an admin cannot grant ownership (see ``permissions.LAB_ROLE_RANK``).
+    Only the new owner can hand it back.
+
+    Raises ``ValidationError`` if the target is not a member or has not verified
+    their address — they are about to hold the lab — and ``PermissionDenied`` if
+    the actor is not its current owner.
+    """
+    from .permissions import LAB_ROLE_RANK
+
+    current = LabMembership.objects.filter(lab=lab, user=actor).first()
+    if current is None or current.role != LabMembership.Role.OWNER:
+        raise PermissionDenied("Only the lab's owner can transfer it.")
+    if new_owner == actor:
+        raise ValidationError({"username": ["They already own this lab."]})
+
+    incoming = LabMembership.objects.filter(lab=lab, user=new_owner).first()
+    if incoming is None:
+        raise ValidationError(
+            {"username": ["Add them to the lab before handing it over."]}
+        )
+    if not getattr(getattr(new_owner, "profile", None), "is_verified", False):
+        raise ValidationError(
+            {
+                "username": [
+                    "They need to verify their email before they can own a lab."
+                ]
+            }
+        )
+
+    # Exactly one lead, exactly one owner, and the old owner left as an admin
+    # rather than removed — handing the lab over is not leaving it.
+    LabMembership.objects.filter(lab=lab, is_lead=True).exclude(
+        pk=incoming.pk
+    ).update(is_lead=False)
+    incoming.role = LabMembership.Role.OWNER
+    incoming.is_lead = True
+    incoming.save(update_fields=["role", "is_lead"])
+    current.role = LabMembership.Role.ADMIN
+    current.is_lead = False
+    current.save(update_fields=["role", "is_lead"])
+
+    record_audit_event(
+        actor=actor,
+        action="lab.ownership.transfer",
+        target_type="lab",
+        target_id=str(lab.id),
+        metadata={
+            "from_user_id": actor.id,
+            "to_user_id": new_owner.id,
+            "from_role_now": LabMembership.Role.ADMIN,
+            "rank_granted": LAB_ROLE_RANK[LabMembership.Role.OWNER],
+        },
+    )
+    return incoming
+
+
 def remove_lab_member(lab: Lab, user: User, *, actor: User | None = None) -> None:
     """Remove a lab member; defer their seat unless they remain effective (L3)."""
     from apps.billing.seat_sync import paying_scope_for_lab

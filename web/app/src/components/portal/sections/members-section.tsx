@@ -102,7 +102,12 @@ export function MembersSection() {
       ) : (
         <Card className="overflow-hidden">
           {members.map((member) => (
-            <MemberRow key={member.username} member={member} />
+            <MemberRow
+              key={member.username}
+              member={member}
+              lab={currentLab}
+              viewer={user.username}
+            />
           ))}
         </Card>
       )}

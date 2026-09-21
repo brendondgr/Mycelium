@@ -442,12 +442,48 @@ refused as on the account endpoint). Writes are **scoped to the columns
 that changed** — a full-row update once let one concurrent save clobber another's
 columns.
 
+### `POST /api/auth/labs/<slug>/transfer-ownership/`
+
+Hand a lab to another member: `{ "username": "..." }`. The caller must be the
+lab's current **owner**; the target must already be a member and have a verified
+email. The new owner gets `role=owner` and the PI badge (`is_lead`), the caller
+drops to `admin`, and the lab keeps exactly one of each. Returns the new owner's
+member row.
+
+**Irreversible from the caller's side**, and not by a flag: an admin cannot
+grant ownership (see the role rule below), so only the new owner can hand it
+back. `400` if the target is not a member, is unverified, or is the caller;
+`403` if the caller is not the owner. Registered with and without the trailing
+slash.
+
+### Lab roles: authority runs downward
+
+`PATCH /api/auth/labs/<slug>/members/<username>/` and its `DELETE` obey one
+rule, ranked `owner > admin > member > viewer`: an actor may only act on a
+target **below** them, and may only grant a role **below** their own. So the PI
+alone creates admins, the PI alone creates owners (and only through the transfer
+route), and an admin can neither re-role nor remove another admin or the owner.
+A refusal is `403` with `reason` `role_above_you`, and is recorded as
+`lab.member.role.refused`.
+
 ### `GET` / `PATCH` `/api/auth/watch/me/`
 
 What Mylo keeps an eye on: `{ "topics": [...], "categories": [...], "cadence":
-"daily|weekly" }`. Created on first access with defaults. `topics` and
+"daily|weekly" }`. The cadence is the whole delivery rule: **daily** means a
+Discord message every day, weekends included; **weekly** means Monday only.
+Created on first access with defaults. `topics` and
 `categories` are deduped string lists; the topic count is capped by the caller's
 entitlement. An unknown cadence or non-list value returns `400`.
+
+### `POST /api/auth/register/`
+
+Adds `pending_invite: bool` to the created-account body: true when a live email
+invitation is waiting for the address that just registered and no `invite_token`
+was posted. The organisation is deliberately **not** named — nothing has proved
+the caller owns that address yet — and the membership is granted when they
+verify it, not here. With `SIGNUP_REQUIRE_INSTITUTION_EMAIL` on (default off),
+an address that resolves to no institution is refused with `reason`
+`institution_required`; an invited address is exempt.
 
 ## Workspace
 

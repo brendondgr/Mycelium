@@ -108,6 +108,7 @@ import {
   revokeLabInvite,
   setDiscordDailyReport,
   setLabMemberRole,
+  transferLabOwnership,
   setLabPlanInclusion,
   testDiscordDm,
   inviteToLab,
@@ -1240,7 +1241,16 @@ export function useLabMemberMutations(slug: string) {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["portal", "invitations"] }),
   });
-  return { add, remove, setRole, cancelInvite };
+  // Handing the lab over also moves the caller's own role, so the switcher's
+  // copy of this lab is stale the moment it succeeds.
+  const transfer = useMutation({
+    mutationFn: (username: string) => transferLabOwnership(slug, username),
+    onSuccess: () => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
+    },
+  });
+  return { add, remove, setRole, cancelInvite, transfer };
 }
 
 /** A department's plan state. */

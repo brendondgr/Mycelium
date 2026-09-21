@@ -99,6 +99,11 @@ Paths are relative to the repository root.
 | Email verification (the six-digit code that activates an account) | `web/backend/apps/accounts/email_verification.py`, model `EmailVerification` |
 | A person's institution, derived from the verified email (the resolver, the one writer of `Profile.institution`, the refusal of a typed one) | `web/backend/apps/accounts/institution.py`; the `email_verified` signal in `signals.py` re-derives the collaboration affiliation |
 | Password reset by emailed link | `web/backend/apps/accounts/password_reset.py` |
+| Who may grant which lab role, and act on whom | `LAB_ROLE_RANK` / `lab_role_rank` / `user_can_grant_lab_role` / `user_outranks_lab_member` in `web/backend/apps/accounts/permissions.py` — authority runs strictly downward, so only the PI creates admins and ownership never moves by a role edit |
+| Handing a lab to its real PI | `transfer_lab_ownership` in `web/backend/apps/accounts/services.py`, `LabTransferOwnershipView`, route `POST /api/auth/labs/<slug>/transfer-ownership/`; irreversible because the outgoing owner becomes an admin and an admin cannot grant ownership |
+| Removing a member / changing a role, from the app | `MemberRow` in `web/app/src/components/portal/sections/member-row.tsx` (role select, Remove, Make PI, both confirms); `useLabMemberMutations` in `web/app/src/lib/portal/hooks.ts`; the client-side mirror of the rank rule is `LAB_ROLE_RANK`/`grantableLabRoles`/`outranksLabMember` in `lib/portal/nav.ts` |
+| An invitation claimed by address rather than by link | `invites.pending_for_email` / `invites.claim_for_verified_email`; sign-up reports `pending_invite` without naming the org, and the claim lands on email verification (`email_verification.verify`) |
+| Placing an account the affiliation directory cannot | `institution.grant` / `revoke_grant`, `Profile.institution_granted{,_by,_at}`, command `grant_institution --user <name> --institution <name> [--revoke]`; a grant wins over the derived value and is audited |
 | What an unverified account may not do | `require_verified_email` in `web/backend/apps/accounts/permissions.py` — guards lab/department creation, both profiles, and issuing invitations. Redeeming one is *not* gated: it guards standing an org up, not being brought into one |
 | Interests contract (v2 clusters) | `web/backend/apps/accounts/interests.py` |
 | Profile / lab intake & synthesis | `web/backend/apps/accounts/intake/` — `synthesize.py`, `lab.py`, `clusters.py`, `agent.py` |
@@ -337,6 +342,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `send_daily_discord_reports` | DM the personal PDF report |
 | `send_lab_digests` | Post a lab's summary + report PDF |
 | `resend_user_report` | Re-render one person's report and DM it again (`--user`) |
+| `grant_institution` | Place an account at an institution its email cannot prove (`--user`, `--institution`, `--actor`, `--revoke`); the name must exist in the affiliation directory |
 | `repost_lab_report` | Re-render one lab's report and re-post it (`--lab`) |
 | `render_sample_report` | Render a sample report PDF from synthetic data, for reviewing its formatting (`--kind personal\|lab`) |
 | `run_reminder_tick` | Fire due reminders |

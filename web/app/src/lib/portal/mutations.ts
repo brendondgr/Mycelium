@@ -16,6 +16,7 @@ import type {
   DiscordStatus,
   IngestLinkResult,
   InvitationAction,
+  LabMember,
   LabProfileData,
   MyDepartment,
   MyLab,
@@ -829,6 +830,36 @@ export function updateLabProfile(
     buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "profile"),
     payload,
     "Could not save the lab's purpose and goals.",
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Roster management
+// ---------------------------------------------------------------------------
+//
+// The backend has had these for a while; nothing in the app called them, so a
+// PI had no way to remove anyone. Authority runs strictly downward server-side
+// (only the PI creates admins, ownership moves by transfer alone), and the UI
+// mirrors that by hiding what it cannot do rather than offering a control that
+// will 403.
+
+/**
+ * Hand the lab to another member; you become an admin.
+ *
+ * One call rather than two role edits, because the in-between state — two
+ * owners, or none — is not one a lab should sit in. It cannot be undone from
+ * this side: an admin cannot grant ownership, so only the new owner can hand it
+ * back.
+ */
+export async function transferLabOwnership(
+  slug: string,
+  username: string,
+): Promise<LabMember> {
+  return sendJson<LabMember>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "transfer-ownership"),
+    { username },
+    "Could not transfer the lab.",
   );
 }
 
