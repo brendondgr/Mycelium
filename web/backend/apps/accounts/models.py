@@ -192,10 +192,12 @@ class Profile(models.Model):
     """One per user: research identity, career stage, and interest embedding.
 
     ``academic_title`` and ``institution`` are person-global account attributes
-    (briefing §3 USER). ``institution`` is never typed: it mirrors what the
-    verified email proves (``apps.accounts.institution.sync``), and is empty
-    until the address is verified or when it is a personal one. ``interests``
-    and ``embedding`` are the interest
+    (briefing §3 USER). ``institution`` is never typed **by its subject**: it is
+    either proved — it mirrors what the verified email resolves to
+    (``apps.accounts.institution.sync``) — or granted by a named operator
+    (``institution_granted``), which is recorded with who granted it and when.
+    A proved value is empty until the address is verified, or when it is a
+    personal one. ``interests`` and ``embedding`` are the interest
     relevance target used in scoring. The embedding dimension is intentionally
     left unlocked until the scoring phase (briefing §9).
     """
@@ -212,6 +214,21 @@ class Profile(models.Model):
         default=AcademicTitle.RESEARCHER,
     )
     institution = models.CharField(max_length=255, blank=True, default="")
+    #: An institution granted by a named operator, for the case the derivation
+    #: cannot serve: a real affiliation held on an address the directory does not
+    #: place (a collaborator using a personal mailbox, an institute missing from
+    #: the list). It does not loosen "never typed" — the subject still cannot set
+    #: it; someone accountable does, and the grant records who and when.
+    #: ``institution.sync`` prefers this over the derived value.
+    institution_granted = models.CharField(max_length=255, blank=True, default="")
+    institution_granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="institution_grants_made",
+    )
+    institution_granted_at = models.DateTimeField(null=True, blank=True)
     orcid = models.CharField(
         max_length=40,
         blank=True,

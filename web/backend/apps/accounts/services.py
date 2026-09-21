@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.serializers import ValidationError
 
 from .models import (
@@ -325,12 +326,44 @@ def add_lab_member(
 def set_lab_member_role(
     lab: Lab, user: User, role: str, *, actor: User | None = None
 ) -> LabMembership:
-    """Change a lab member's permission role (owner/admin/member/viewer)."""
+    """Change a lab member's permission role (owner/admin/member/viewer).
+
+    Authority runs strictly downward — see ``permissions.LAB_ROLE_RANK``. The
+    check lives here rather than only in the view so that every caller inherits
+    it; a service that quietly skips the rule is how an escalation hole reopens.
+
+    ``actor=None`` is a trusted internal call (sign-up provisioning, invite
+    redemption, ownership transfer) and is not rank-checked. Those paths decide
+    authority themselves before they get here.
+    """
+    from .permissions import user_can_grant_lab_role, user_outranks_lab_member
+
     if role not in dict(LabMembership.Role.choices):
         raise ValidationError({"role": ["Unknown role."]})
     membership = LabMembership.objects.filter(lab=lab, user=user).first()
     if membership is None:
         raise ValidationError({"detail": ["That user is not a member of this lab."]})
+
+    if actor is not None:
+        refused = None
+        if not user_outranks_lab_member(actor, lab, user):
+            refused = "You cannot change the role of someone at or above your own."
+        elif not user_can_grant_lab_role(actor, lab, role):
+            refused = (
+                "Only the lab's PI can grant that role."
+                if role == LabMembership.Role.ADMIN
+                else "Ownership is handed over by transfer, not by a role change."
+            )
+        if refused is not None:
+            record_audit_event(
+                actor=actor,
+                action="lab.member.role.refused",
+                target_type="lab",
+                target_id=str(lab.id),
+                metadata={"user_id": user.id, "role": role},
+            )
+            raise PermissionDenied(refused)
+
     membership.role = role
     membership.save(update_fields=["role"])
     record_audit_event(

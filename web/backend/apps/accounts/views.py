@@ -1,6 +1,7 @@
 import dataclasses
 import json
 
+from django.conf import settings
 from django.contrib.auth import (
     authenticate,
     login,
@@ -71,6 +72,7 @@ from .permissions import (
     user_can_manage_lab,
     user_has_department_access,
     user_has_lab_access,
+    user_outranks_lab_member,
 )
 from .serializers import (
     AccountSerializer,
@@ -233,6 +235,22 @@ def register_view(request: Request) -> Response:
                 {"email": [str(exc)], "reason": exc.reason},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+    elif settings.SIGNUP_REQUIRE_INSTITUTION_EMAIL and not institution.resolve_email(
+        data["email"]
+    ):
+        # Only when the operator has asked for it, and never to someone who was
+        # invited by name — that is how a collaborator at an institute the
+        # directory has never heard of still gets in.
+        return Response(
+            {
+                "email": [
+                    "Use your institution's email address. A personal address "
+                    "cannot be placed at a university."
+                ],
+                "reason": "institution_required",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     with transaction.atomic():
         user = User.objects.create_user(
@@ -288,7 +306,15 @@ def register_view(request: Request) -> Response:
         email_verification.issue(user, user.email)
 
     login(request, user)  # set the session immediately, same as login_view
-    return Response(user_to_dict(user), status=status.HTTP_201_CREATED)
+    payload = user_to_dict(user)
+    # Someone invited by email who signed up here instead of through their link
+    # is told an invitation is waiting, and joins the moment they verify (see
+    # ``invites.claim_for_verified_email``). The org is deliberately *not* named:
+    # at this point nothing has proved they own the address, and "who was invited
+    # where" is not a stranger's to read. They see the lab once they verify.
+    if joined is None:
+        payload["pending_invite"] = invites.pending_for_email(user.email) is not None
+    return Response(payload, status=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])
@@ -1013,6 +1039,17 @@ class LabMemberDetailView(APIView):
     def delete(self, request: Request, slug: str, username: str) -> Response:
         lab = self._managed_lab(slug)
         target = get_object_or_404(User, username=username)
+        # Removing someone is an exercise of authority over them, so it obeys the
+        # same downward rule as re-roling them: an admin may drop members and
+        # viewers, never another admin and never the PI. Leaving this on
+        # "manager" alone let an admin evict the owner, which is the same hole
+        # the role edit had, wearing a different verb.
+        if request.user != target and not user_outranks_lab_member(
+            request.user, lab, target
+        ):
+            raise PermissionDenied(
+                "You cannot remove someone at or above your own role."
+            )
         owners = LabMembership.objects.filter(lab=lab, role=LabMembership.Role.OWNER)
         if owners.filter(user=target).exists() and owners.count() == 1:
             return Response(

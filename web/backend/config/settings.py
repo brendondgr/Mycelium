@@ -250,6 +250,18 @@ SIGNUP_CODE_FAILURE_WINDOW_SECONDS = env.int(
 )
 SIGNUP_CODE_LOCKOUT_SECONDS = env.int("SIGNUP_CODE_LOCKOUT_SECONDS", default=3600)
 
+# Whether sign-up refuses an address that places the account at no institution
+# (``apps.accounts.institution``). Off by default: a personal address proves no
+# affiliation, which is already enough to keep anyone from being *listed* at a
+# university they cannot receive mail at, and refusing the sign-up outright is a
+# stronger rule than that. Turn it on to require an institutional address.
+# An invited address is exempt either way — being asked for by name is its own
+# affiliation proof, and it is how someone at an institute missing from the
+# directory gets in at all.
+SIGNUP_REQUIRE_INSTITUTION_EMAIL = env.bool(
+    "SIGNUP_REQUIRE_INSTITUTION_EMAIL", default=False
+)
+
 # Sign-up with a valid access code grants this personal tier instead of Free, so
 # everyone who gets past the invite gate lands on the intelligence line rather
 # than the on-demand baseline. Must be a tier sold to a personal scope

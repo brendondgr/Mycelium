@@ -21,6 +21,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 
 #: The refusal code an API returns for an institution a request tried to type.
 REFUSAL_CODE = "institution_from_email"
@@ -81,14 +82,28 @@ def verified(user) -> Institution | None:
     return resolve_email(user.email)
 
 
-def sync(user) -> str:
-    """Write ``Profile.institution`` from the verified address; return it.
+def granted(user) -> str:
+    """The institution an operator granted this account, or ``""``."""
+    profile = getattr(user, "profile", None)
+    return (getattr(profile, "institution_granted", "") or "") if profile else ""
 
-    The one writer of the field. Saves only that column, and only when it
-    changed, so it is safe to call on every read that needs the answer.
+
+def sync(user) -> str:
+    """Write ``Profile.institution`` from the grant, else the verified address.
+
+    Still the one writer of the field, and still never the subject: a value here
+    is either *proved* (an address they answered resolves to it) or *granted* (a
+    named operator said so, recorded on the profile and in the audit log). A
+    grant wins, because it exists precisely for the accounts the derivation
+    cannot place — otherwise re-syncing on every verification would erase it.
+
+    Saves only that column, and only when it changed, so it is safe to call on
+    every read that needs the answer.
     """
-    found = verified(user)
-    name = found.name if found else ""
+    name = granted(user)
+    if not name:
+        found = verified(user)
+        name = found.name if found else ""
     profile = user.profile
     if profile.institution != name:
         profile.institution = name
@@ -96,6 +111,74 @@ def sync(user) -> str:
         # surface, so the profile's pre-save re-embedding has nothing to do.
         type(profile).objects.filter(pk=profile.pk).update(institution=name)
     return name
+
+
+def grant(user, name: str, *, actor=None) -> str:
+    """Grant ``user`` an institution the directory would not give them.
+
+    ``name`` is resolved against the affiliation directory, so a grant can only
+    name an institution Mycelium already knows — an operator may place someone,
+    not invent somewhere. Returns the canonical name that was written.
+    """
+    from .services import record_audit_event
+
+    wanted = (name or "").strip()
+    if not wanted:
+        raise ValueError("An institution name is required.")
+    canonical = next(
+        (
+            found.name
+            for found in directory().values()
+            if found.name.casefold() == wanted.casefold()
+        ),
+        None,
+    )
+    if canonical is None:
+        raise ValueError(
+            f"{wanted!r} is not in the affiliation directory. "
+            "Add it to web/scripts/data/research-institutions.json first."
+        )
+    profile = user.profile
+    profile.institution_granted = canonical
+    profile.institution_granted_by = actor
+    profile.institution_granted_at = timezone.now()
+    type(profile).objects.filter(pk=profile.pk).update(
+        institution_granted=canonical,
+        institution_granted_by=actor,
+        institution_granted_at=profile.institution_granted_at,
+    )
+    record_audit_event(
+        actor=actor,
+        action="account.institution.grant",
+        target_type="user",
+        target_id=str(user.pk),
+        metadata={"institution": canonical},
+    )
+    return sync(user)
+
+
+def revoke_grant(user, *, actor=None) -> str:
+    """Drop a grant, falling the account back to whatever its address proves."""
+    from .services import record_audit_event
+
+    profile = user.profile
+    previous = profile.institution_granted
+    profile.institution_granted = ""
+    profile.institution_granted_by = None
+    profile.institution_granted_at = None
+    type(profile).objects.filter(pk=profile.pk).update(
+        institution_granted="",
+        institution_granted_by=None,
+        institution_granted_at=None,
+    )
+    record_audit_event(
+        actor=actor,
+        action="account.institution.grant.revoked",
+        target_type="user",
+        target_id=str(user.pk),
+        metadata={"institution": previous},
+    )
+    return sync(user)
 
 
 def verified_then_sync(user) -> None:
@@ -120,13 +203,22 @@ def refusal(user, typed: str) -> str | None:
     client that resends what it was shown does not break.
     """
     typed = (typed or "").strip()
-    held = found.name if (found := verified(user)) else ""
+    # A grant is what the account actually holds, so resending it is the same
+    # no-op as resending a derived value — otherwise the one account that needed
+    # an exception could not save its own profile form.
+    awarded = granted(user)
+    held = awarded or (found.name if (found := verified(user)) else "")
     pending = resolve_email(user.email)
     if not typed or typed.casefold() in {
         held.casefold(),
         (pending.name if pending else held).casefold(),
     }:
         return None
+    if awarded:
+        return (
+            f"Your institution is set to {awarded} by an administrator. "
+            "Ask them to change it."
+        )
     if held:
         return (
             f"Your institution comes from your verified email: {held}. To be "

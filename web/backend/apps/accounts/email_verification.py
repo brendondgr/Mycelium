@@ -44,7 +44,7 @@ from django.utils.crypto import salted_hmac
 
 from apps.core.mail import send_email
 
-from . import institution
+from . import institution, invites
 from .models import EmailVerification
 
 logger = logging.getLogger(__name__)
@@ -203,6 +203,13 @@ def verify(
         # The proved address decides the institution — a change code can move
         # a person to another one, or to none.
         institution.verified_then_sync(user)
+
+    # An invitation addressed to the address they just proved is claimed now.
+    # Someone who was invited but signed up on their own — rather than through
+    # the link — would otherwise sit outside the lab that asked for them with
+    # nothing to tell either party why. Deferred to commit, and never allowed to
+    # fail the verification it rides on.
+    transaction.on_commit(lambda: invites.claim_for_verified_email(user))
 
     return verification
 

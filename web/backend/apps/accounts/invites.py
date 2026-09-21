@@ -549,6 +549,62 @@ def preview_payload(invite: OrgInvite) -> dict:
     }
 
 
+def pending_for_email(email: str) -> OrgInvite | None:
+    """The live email invite waiting for ``email``, or ``None``.
+
+    Exists because an invited person who ignores the link and signs up on their
+    own was, until now, silently stranded outside the org that asked for them:
+    :func:`register_view` redeems only when an ``invite_token`` is posted, and
+    ``claim_pending_invitations`` covers the legacy ``LabInvitation`` model, not
+    this one. Matching on the typed address closes that.
+
+    Deliberately **not** exposed as its own endpoint. "Does this address have an
+    invitation?" answered to anyone who asks is an enumeration oracle over who
+    has been invited where; the answer is only ever given to someone who has
+    already registered that address, and the org is only named once they have
+    proved the mailbox.
+    """
+    value = str(email or "").strip().lower()
+    if not value:
+        return None
+    invite = (
+        OrgInvite.objects.select_related("lab", "department", "created_by")
+        .filter(
+            kind=OrgInvite.Kind.EMAIL,
+            email=value,
+            revoked_at__isnull=True,
+            expires_at__gt=timezone.now(),
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    if invite is None or invite.used_count >= invite.max_uses or invite.org is None:
+        return None
+    return invite
+
+
+def claim_for_verified_email(user) -> OrgInvite | None:
+    """Redeem the invite addressed to ``user``'s just-proved address, if any.
+
+    The mailbox is the proof. A pending invite matched at sign-up is only a
+    *claim* — anyone who can type an address could have made it — so the
+    membership is granted here, once a code mailed to that address has come
+    back, which is the same standard the token path already meets.
+
+    Never raises: a seat ceiling, a revoked invite or a race that spent the last
+    use must not turn a successful verification into a failed one. The invite is
+    simply left unspent and the person is still verified.
+    """
+    invite = pending_for_email(getattr(user, "email", ""))
+    if invite is None:
+        return None
+    try:
+        return redeem(invite, user)
+    except (InviteError, ValidationError):
+        logger.warning("pending invite claim failed for %s", user, exc_info=True)
+        return None
+
+
 def is_live(invite: OrgInvite) -> bool:
     return (
         invite.revoked_at is None

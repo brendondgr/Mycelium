@@ -333,3 +333,203 @@ def test_signing_up_with_the_access_code_still_verifies_by_email(
     # No invitation, so no membership anywhere.
     assert not LabMembership.objects.filter(user=joined).exists()
     assert not DeptMembership.objects.filter(user=joined).exists()
+
+
+# --------------------------------------------------------------------------- #
+# Signing up beside the invitation, rather than through it (plan phase 1)
+# --------------------------------------------------------------------------- #
+#
+# The case that prompted this: two people were invited to PULSE Lab, both went to
+# the sign-up page instead of their link, and both landed outside the lab with
+# nothing telling anyone why. Registration only ever redeemed a posted
+# ``invite_token``, so a matching address was simply never noticed.
+
+
+def _invite_for(owner: User, lab: Lab, address: str) -> OrgInvite:
+    return invites.create_invite(
+        creator=owner, lab=lab, kind=OrgInvite.Kind.EMAIL, email=address
+    )
+
+
+@pytest.mark.django_db
+def test_signup_reports_a_waiting_invitation_without_naming_the_org(
+    client, settings, owner, lab
+) -> None:
+    """They are told to verify; they are not told who invited them.
+
+    Nothing has proved this caller owns the address yet, and "who was invited
+    where" is not a stranger's to read.
+    """
+    _invite_for(owner, lab, "newcomer@uni.edu")
+
+    response = _register(client, access_code=settings.SIGNUP_ACCESS_CODE)
+
+    assert response.status_code == 201, response.data
+    assert response.data["pending_invite"] is True
+    assert lab.name not in str(response.data)
+    assert lab.slug not in str(response.data)
+
+
+@pytest.mark.django_db
+def test_a_waiting_invitation_is_not_spent_before_the_address_is_proved(
+    client, settings, owner, lab
+) -> None:
+    """The claim is only a claim until a code mailed there comes back."""
+    invite = _invite_for(owner, lab, "newcomer@uni.edu")
+
+    _register(client, access_code=settings.SIGNUP_ACCESS_CODE)
+
+    joined = User.objects.get(username="newcomer")
+    assert not LabMembership.objects.filter(user=joined, lab=lab).exists()
+    invite.refresh_from_db()
+    assert invite.used_count == 0
+
+
+@pytest.mark.django_db
+def test_verifying_the_address_joins_the_lab_that_invited_them(
+    client, settings, owner, lab
+) -> None:
+    """The whole point: nobody has to re-send anything."""
+    from apps.accounts import email_verification
+
+    invite = _invite_for(owner, lab, "newcomer@uni.edu")
+    _register(client, access_code=settings.SIGNUP_ACCESS_CODE)
+    joined = User.objects.get(username="newcomer")
+
+    _verify_now(joined, email_verification)
+
+    assert LabMembership.objects.filter(user=joined, lab=lab).exists()
+    invite.refresh_from_db()
+    assert invite.used_count == 1
+
+
+@pytest.mark.django_db
+def test_verifying_without_any_invitation_changes_nothing(
+    client, settings
+) -> None:
+    from apps.accounts import email_verification
+
+    _register(client, access_code=settings.SIGNUP_ACCESS_CODE)
+    joined = User.objects.get(username="newcomer")
+
+    _verify_now(joined, email_verification)
+
+    assert joined.profile.is_verified is True
+    assert not LabMembership.objects.filter(user=joined).exists()
+
+
+@pytest.mark.django_db
+def test_an_invitation_to_another_address_is_not_claimed(
+    client, settings, owner, lab
+) -> None:
+    """Matching is on the proved address, never on the person."""
+    from apps.accounts import email_verification
+
+    _invite_for(owner, lab, "someone.else@uni.edu")
+    _register(client, access_code=settings.SIGNUP_ACCESS_CODE)
+    joined = User.objects.get(username="newcomer")
+
+    _verify_now(joined, email_verification)
+
+    assert not LabMembership.objects.filter(user=joined, lab=lab).exists()
+
+
+@pytest.mark.django_db
+def test_a_revoked_invitation_is_never_claimed(client, settings, owner, lab) -> None:
+    from apps.accounts import email_verification
+
+    invite = _invite_for(owner, lab, "newcomer@uni.edu")
+    invite.revoked_at = timezone.now()
+    invite.save(update_fields=["revoked_at"])
+
+    _register(client, access_code=settings.SIGNUP_ACCESS_CODE)
+    joined = User.objects.get(username="newcomer")
+    _verify_now(joined, email_verification)
+
+    assert not LabMembership.objects.filter(user=joined, lab=lab).exists()
+
+
+@pytest.mark.django_db
+def test_an_expired_invitation_is_never_claimed(client, settings, owner, lab) -> None:
+    from apps.accounts import email_verification
+
+    invite = _invite_for(owner, lab, "newcomer@uni.edu")
+    invite.expires_at = timezone.now() - timedelta(days=1)
+    invite.save(update_fields=["expires_at"])
+
+    _register(client, access_code=settings.SIGNUP_ACCESS_CODE)
+    joined = User.objects.get(username="newcomer")
+    _verify_now(joined, email_verification)
+
+    assert not LabMembership.objects.filter(user=joined, lab=lab).exists()
+
+
+def _verify_now(user: User, email_verification) -> None:
+    """Answer the outstanding sign-up code the way the real endpoint would."""
+    row = EmailVerification.objects.filter(
+        user=user, purpose=EmailVerification.Purpose.SIGNUP, consumed_at=None
+    ).latest("created_at")
+    code = "123456"
+    row.code_hash = email_verification._hash(row.pk, code)
+    row.save(update_fields=["code_hash"])
+    email_verification.verify(user, code)
+
+
+# --------------------------------------------------------------------------- #
+# Requiring an institutional address (plan phase 2, off by default)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.django_db
+def test_a_personal_address_is_accepted_while_the_rule_is_off(
+    client, settings
+) -> None:
+    """The default. A personal address proves no institution; it is not refused."""
+    settings.SIGNUP_REQUIRE_INSTITUTION_EMAIL = False
+
+    response = _register(
+        client, email="someone@gmail.com", access_code=settings.SIGNUP_ACCESS_CODE
+    )
+
+    assert response.status_code == 201, response.data
+
+
+@pytest.mark.django_db
+def test_a_personal_address_is_refused_while_the_rule_is_on(client, settings) -> None:
+    settings.SIGNUP_REQUIRE_INSTITUTION_EMAIL = True
+
+    response = _register(
+        client, email="someone@gmail.com", access_code=settings.SIGNUP_ACCESS_CODE
+    )
+
+    assert response.status_code == 400
+    assert response.data["reason"] == "institution_required"
+    assert not User.objects.filter(username="newcomer").exists()
+
+
+@pytest.mark.django_db
+def test_an_institutional_address_passes_the_rule(client, settings) -> None:
+    settings.SIGNUP_REQUIRE_INSTITUTION_EMAIL = True
+
+    response = _register(
+        client, email="someone@fsu.edu", access_code=settings.SIGNUP_ACCESS_CODE
+    )
+
+    assert response.status_code == 201, response.data
+
+
+@pytest.mark.django_db
+def test_an_invited_address_is_exempt_from_the_rule(client, settings, owner, lab):
+    """How someone at an institute the directory has never heard of still gets in."""
+    settings.SIGNUP_REQUIRE_INSTITUTION_EMAIL = True
+    invite = invites.create_invite(
+        creator=owner, lab=lab, kind=OrgInvite.Kind.EMAIL, email="someone@gmail.com"
+    )
+
+    response = _register(
+        client, email="someone@gmail.com", invite_token=invite.token
+    )
+
+    assert response.status_code == 201, response.data
+    joined = User.objects.get(username="newcomer")
+    assert LabMembership.objects.filter(user=joined, lab=lab).exists()

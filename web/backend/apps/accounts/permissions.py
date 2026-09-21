@@ -43,6 +43,60 @@ def user_can_manage_lab(user: UserOrAnon, lab: Lab) -> bool:
     ).exists()
 
 
+#: Lab roles, ranked. Authority runs strictly downward: an actor may only act on
+#: a target *below* them, and may only grant a role *below* their own.
+#:
+#: Before this, ``user_can_manage_lab`` (owner **or** admin) was the only gate on
+#: role edits, and ``set_lab_member_role`` accepted every role — so any admin
+#: could mint an owner, including themselves, or quietly appoint another admin.
+#: Two consequences, both bad: a lab could be taken from its PI by someone the PI
+#: promoted, and "transfer ownership is irreversible" was unimplementable,
+#: because a demoted owner could simply set themselves back.
+#:
+#: The rank rule gives the product what it asked for without special cases: only
+#: the PI (owner) creates admins, only the PI creates owners — and that last one
+#: only through :func:`apps.accounts.services.transfer_lab_ownership`, never a
+#: plain role edit.
+LAB_ROLE_RANK: dict[str, int] = {
+    LabMembership.Role.OWNER: 3,
+    LabMembership.Role.ADMIN: 2,
+    LabMembership.Role.MEMBER: 1,
+    LabMembership.Role.VIEWER: 0,
+}
+
+
+def lab_role_rank(user: UserOrAnon, lab: Lab) -> int:
+    """``user``'s authority in ``lab``; ``-1`` for a non-member.
+
+    ``-1`` rather than ``0`` because a viewer is a member with the least
+    authority, and a stranger is not a member at all — they must not compare
+    equal to the bottom role.
+    """
+    if not user.is_authenticated:
+        return -1
+    membership = LabMembership.objects.filter(user=user, lab=lab).first()
+    if membership is None:
+        return -1
+    return LAB_ROLE_RANK.get(membership.role, 0)
+
+
+def user_can_grant_lab_role(user: UserOrAnon, lab: Lab, role: str) -> bool:
+    """Whether ``user`` may hand out ``role`` in ``lab``.
+
+    Strictly below their own rank, so nobody can clone their own authority and
+    an owner is only ever made by the transfer route.
+    """
+    granted = LAB_ROLE_RANK.get(role)
+    if granted is None:
+        return False
+    return lab_role_rank(user, lab) > granted
+
+
+def user_outranks_lab_member(user: UserOrAnon, lab: Lab, target: User) -> bool:
+    """Whether ``user`` may act on ``target`` at all — remove them, or re-role them."""
+    return lab_role_rank(user, lab) > lab_role_rank(target, lab)
+
+
 def user_can_edit_lab_profile(user: UserOrAnon, lab: Lab) -> bool:
     """A lab's interest profile is edited by its lead PI or owner/admin (brief G)."""
     if not user.is_authenticated:
