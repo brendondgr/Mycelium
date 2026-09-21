@@ -856,9 +856,9 @@ function DiscordCard() {
 
 export function ProfileSection() {
   const { currentLab } = usePortal();
-  // `null` = closed. Opening carries which tab to land on, so a card's own
-  // affordance ("Organize", "Adjust") drops the user straight into that surface
-  // instead of the editor's default tab.
+  // `null` = closed. Opening carries which *destination* to land on — the editor
+  // resolves it to a tab plus a scroll position — so a card's own affordance
+  // ("Organize", "Adjust") drops the user on that block rather than at the top.
   const [editorTab, setEditorTab] = React.useState<ProfileEditorTab | null>(null);
 
   // In a lab workspace, the Profile slot is the lab's configuration (managers
