@@ -119,6 +119,9 @@ temp/
 # Documentation builds
 docs/_build/
 
+# Grant drafts (private until submitted; the repo is going public)
+docs/grants/
+
 # Editors
 .vscode/
 .idea/
