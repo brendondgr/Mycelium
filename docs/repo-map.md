@@ -27,6 +27,7 @@ Paths are relative to the repository root.
 | Section backgrounds (tinted ground + botanical motif) | `web/landing/src/components/site/SectionGround.astro` — pick a different motif per section; leave plain sections between |
 | The motif artwork (roots, moss overhang, leaf vine, canopy, spores, filaments) | `web/landing/src/components/site/motifs/` |
 | Landing styles, scroll reveals | `web/landing/src/styles/global.css` (rules) + the two inline scripts in `web/landing/src/layouts/PublicLayout.astro` (arming flag + IntersectionObserver); no framework JS |
+| Front-page redesign preview (review only, `noindex`, not linked) — three candidate homepages on one URL with a switcher and review notes | `web/landing/src/pages/redesign.astro` → `/redesign`; concepts in `web/landing/src/components/redesign/`, notes in `web/landing/src/data/redesign.ts`; `MyloRig.astro` inlines the animation rig from `web/art/Mylo/svg/mylo.svg`. Delete all three once a direction is chosen |
 | Artwork masters & sync | `web/art/`, `web/scripts/sync-art-assets.mjs` (derivatives are git-ignored) |
 | Mylo animation rig (vector) | `web/art/Mylo/svg/` — `mylo.svg`: ~70 hand-authored shapes placed by measuring the character sheet, plus the animation CSS, in one file; states are attributes on the root element (`data-anim`, `data-prop`, `data-facing`). `trace/draw.py` + `trace/rig.css` regenerate it (`trace/run.sh`); `rig-demo.html` exercises it; see the folder README |
 

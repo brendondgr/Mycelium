@@ -7,10 +7,14 @@ import { siteName, siteTagline } from "@/data/site";
 interface Props {
   title?: string;
   description?: string;
+  /** Drop the shared header and footer — for pages that bring their own chrome
+   *  (the `/redesign` preview). Everything else, motion scripts included, stays. */
+  bare?: boolean;
 }
 
 const {
   title,
+  bare = false,
   description = `${siteTagline}. Mycelium connects lab goals, literature, evidence, grants, fellowships, and next actions for research teams.`,
 } = Astro.props;
 
@@ -32,6 +36,7 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <slot name="head" />
     <script is:inline>
       /*
         Arms the scroll reveals, in <head> so the flag lands before the first
@@ -57,11 +62,11 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
   </head>
   <body class="mycelium-network-bg text-foreground">
     <a class="skip-link" href="#main-content">Skip to main content</a>
-    <SiteHeader />
+    {!bare && <SiteHeader />}
     <main id="main-content">
       <slot />
     </main>
-    <SiteFooter />
+    {!bare && <SiteFooter />}
     <script is:inline>
       /*
         The reveal observer.

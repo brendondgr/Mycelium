@@ -1,0 +1,424 @@
+---
+/**
+ * The review chrome for `/redesign`: a floating switcher pinned to the bottom
+ * of the screen (each concept owns the top with its own navigation), and a
+ * native <dialog> holding the audit and each concept's rationale.
+ *
+ * State lives in the URL — `?concept=night&theme=dark` — so a particular view
+ * can be linked and survives a reload.
+ */
+import { audit, concepts, recommendation } from "@/data/redesign";
+---
+
+<div class="review-bar" role="region" aria-label="Redesign preview controls">
+  <span class="review-tag">Preview</span>
+
+  <div class="review-seg" role="radiogroup" aria-label="Concept">
+    {
+      concepts.map((c, i) => (
+        <button
+          type="button"
+          role="radio"
+          class="review-opt"
+          data-concept-btn={c.id}
+          aria-checked={i === 0 ? "true" : "false"}
+          title={c.oneLine}
+        >
+          <span class="review-letter">{c.letter}</span>
+          <span class="review-name">{c.name}</span>
+        </button>
+      ))
+    }
+  </div>
+
+  <button type="button" class="review-btn" data-theme-btn aria-pressed="false" title="Toggle dark theme (A and C)">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 12.5A6.5 6.5 0 0 1 7.5 4.5a6.5 6.5 0 1 0 8 8Z" /></svg>
+    <span class="sr-only">Dark theme</span>
+  </button>
+  <button type="button" class="review-btn review-btn-text" data-notes-open>Notes</button>
+  <a class="review-btn review-btn-text" href="/" target="_blank" rel="noopener">Live&nbsp;↗</a>
+</div>
+
+<dialog class="review-notes" aria-labelledby="review-notes-title">
+  <div class="review-notes-inner">
+    <header class="review-notes-head">
+      <div>
+        <p class="review-kicker">Front page redesign · review notes</p>
+        <h2 id="review-notes-title">Three directions, one audit</h2>
+      </div>
+      <button type="button" class="review-btn" data-notes-close aria-label="Close notes">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15" /></svg>
+      </button>
+    </header>
+
+    <section>
+      <h3>Recommendation</h3>
+      <p class="review-reco">{recommendation}</p>
+    </section>
+
+    <section>
+      <h3>What reads as dated on the live page</h3>
+      <ol class="review-audit">
+        {audit.map((a) => (
+          <li><strong>{a.title}.</strong> {a.detail}</li>
+        ))}
+      </ol>
+    </section>
+
+    {
+      concepts.map((c) => (
+        <section class="review-concept" data-notes-for={c.id}>
+          <h3>
+            <span class="review-letter">{c.letter}</span> {c.name}
+          </h3>
+          <p>{c.oneLine}</p>
+          <h4>What changes</h4>
+          <ul>{c.changes.map((x) => <li>{x}</li>)}</ul>
+          <h4>Motion</h4>
+          <ul>{c.motion.map((x) => <li>{x}</li>)}</ul>
+          <p><strong>Cost:</strong> {c.cost}</p>
+          <p><strong>Risk:</strong> {c.risk}</p>
+        </section>
+      ))
+    }
+
+    <p class="review-foot">
+      Every concept uses the existing tokens (<code>web/packages/config/src/theme.css</code>),
+      Fraunces + Inter, the scroll-reveal system, and the real feed cards. Every animation
+      stops under <code>prefers-reduced-motion</code> and leaves the finished state.
+    </p>
+  </div>
+</dialog>
+
+<script is:inline>
+  (function () {
+    var root = document.documentElement;
+    var params = new URLSearchParams(location.search);
+    var ids = ["living", "night", "guide"];
+
+    function setConcept(id, push) {
+      if (ids.indexOf(id) < 0) id = "living";
+      root.setAttribute("data-concept", id);
+      document.querySelectorAll("[data-concept-btn]").forEach(function (b) {
+        b.setAttribute("aria-checked", b.getAttribute("data-concept-btn") === id ? "true" : "false");
+      });
+      if (push) {
+        params.set("concept", id);
+        history.replaceState(null, "", "?" + params.toString());
+        window.scrollTo({ top: 0, behavior: "instant" });
+      }
+    }
+
+    function setTheme(dark, push) {
+      if (dark) root.setAttribute("data-theme", "dark");
+      else root.removeAttribute("data-theme");
+      var b = document.querySelector("[data-theme-btn]");
+      if (b) b.setAttribute("aria-pressed", dark ? "true" : "false");
+      if (push) {
+        if (dark) params.set("theme", "dark");
+        else params.delete("theme");
+        history.replaceState(null, "", "?" + params.toString());
+      }
+    }
+
+    setConcept(params.get("concept") || "living", false);
+    setTheme(params.get("theme") === "dark", false);
+
+    document.querySelectorAll("[data-concept-btn]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        setConcept(b.getAttribute("data-concept-btn"), true);
+      });
+    });
+    var themeBtn = document.querySelector("[data-theme-btn]");
+    themeBtn.addEventListener("click", function () {
+      setTheme(themeBtn.getAttribute("aria-pressed") !== "true", true);
+    });
+
+    var dlg = document.querySelector(".review-notes");
+    document.querySelector("[data-notes-open]").addEventListener("click", function () {
+      dlg.showModal();
+      var cur = dlg.querySelector('[data-notes-for="' + root.getAttribute("data-concept") + '"]');
+      if (cur) cur.scrollIntoView({ block: "nearest" });
+    });
+    document.querySelector("[data-notes-close]").addEventListener("click", function () {
+      dlg.close();
+    });
+    dlg.addEventListener("click", function (e) {
+      if (e.target === dlg) dlg.close();
+    });
+  })();
+</script>
+
+<style is:global>
+  /* Only the selected concept renders. Default (no script yet): the first. */
+  .concept {
+    display: none;
+  }
+  html:not([data-concept]) .concept[data-concept-id="living"],
+  html[data-concept="living"] .concept[data-concept-id="living"],
+  html[data-concept="night"] .concept[data-concept-id="night"],
+  html[data-concept="guide"] .concept[data-concept-id="guide"] {
+    display: block;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+</style>
+
+<style>
+  .review-bar {
+    position: fixed;
+    left: 50%;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 90;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: calc(100vw - 1.5rem);
+    padding: 0.35rem;
+    border-radius: 9999px;
+    background: #20281c;
+    color: #f2ebdd;
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 6%) inset,
+      0 18px 40px rgb(10 14 8 / 35%);
+    font-size: 0.8rem;
+  }
+
+  .review-tag {
+    padding-inline: 0.7rem 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #d3ae66;
+  }
+
+  .review-seg {
+    display: flex;
+    gap: 0.15rem;
+    padding: 0.2rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 6%);
+  }
+
+  .review-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.25rem;
+    padding: 0 0.85rem 0 0.35rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    color: #c9c1b2;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 200ms ease, color 200ms ease;
+  }
+
+  .review-opt:hover {
+    color: #f2ebdd;
+  }
+
+  .review-opt[aria-checked="true"] {
+    background: #f2ebdd;
+    color: #20281c;
+  }
+
+  .review-letter {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 1.6rem;
+    block-size: 1.6rem;
+    border-radius: 9999px;
+    background: rgb(141 166 111 / 25%);
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+  }
+
+  .review-opt[aria-checked="true"] .review-letter {
+    background: #5e7a3e;
+    color: #fffdf8;
+  }
+
+  .review-btn {
+    display: inline-grid;
+    place-items: center;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    color: #f2ebdd;
+    font: inherit;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .review-btn:hover {
+    background: rgb(255 255 255 / 8%);
+  }
+
+  .review-btn[aria-pressed="true"] {
+    background: rgb(184 217 154 / 18%);
+    color: #b8d99a;
+  }
+
+  .review-btn-text {
+    padding-inline: 0.8rem;
+  }
+
+  .review-btn svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  @media (max-width: 720px) {
+    .review-name,
+    .review-tag {
+      display: none;
+    }
+
+    .review-opt {
+      padding-right: 0.35rem;
+    }
+  }
+
+  .review-notes {
+    /* Tailwind's preflight zeroes every margin, including a modal's centring. */
+    margin: auto;
+    width: min(46rem, calc(100vw - 2rem));
+    max-height: min(88vh, 60rem);
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    background: var(--card);
+    color: var(--text-primary);
+    box-shadow: 0 30px 80px rgb(20 26 16 / 35%);
+  }
+
+  .review-notes::backdrop {
+    background: rgb(22 27 20 / 55%);
+    backdrop-filter: blur(3px);
+  }
+
+  .review-notes-inner {
+    padding: 1.75rem clamp(1.25rem, 4vw, 2.25rem) 2rem;
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  .review-notes-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .review-notes-head .review-btn {
+    color: var(--text-secondary);
+  }
+
+  .review-kicker {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brand-primary-hover);
+  }
+
+  .review-notes h2 {
+    margin: 0.35rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  .review-notes section {
+    margin-top: 1.6rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--divider);
+  }
+
+  .review-notes h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 0.6rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .review-notes h4 {
+    margin: 1rem 0 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .review-notes p {
+    margin: 0.4rem 0 0;
+    color: var(--text-secondary);
+  }
+
+  .review-notes ul,
+  .review-notes ol {
+    margin: 0;
+    padding-left: 1.2rem;
+    list-style: disc;
+    color: var(--text-secondary);
+  }
+
+  .review-notes ol {
+    list-style: decimal;
+  }
+
+  .review-notes li + li {
+    margin-top: 0.35rem;
+  }
+
+  .review-notes strong {
+    color: var(--text-primary);
+  }
+
+  .review-concept .review-letter {
+    background: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+    color: var(--brand-primary-hover);
+  }
+
+  .review-reco {
+    padding: 0.9rem 1rem;
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--brand-secondary) 14%, transparent);
+    color: var(--text-primary) !important;
+  }
+
+  .review-foot {
+    margin-top: 1.6rem !important;
+    font-size: 0.82rem;
+    color: var(--text-muted) !important;
+  }
+
+  .review-foot code {
+    font-size: 0.78rem;
+  }
+</style>
