@@ -87,7 +87,7 @@ def test_a_department_with_no_plan_holds_every_feature() -> None:
 @pytest.mark.django_db
 @ungated
 def test_the_bulk_resolver_covers_everyone_not_just_the_baseline() -> None:
-    """``users_with_feature`` bypasses ``effective_features``, so it needs its own branch.
+    """``users_with_feature`` bypasses ``effective_features``; it needs its own branch.
 
     The nightly run selects targets through here. Had it kept filtering by tier while
     the per-user path returned everything, the two would disagree and a reader would

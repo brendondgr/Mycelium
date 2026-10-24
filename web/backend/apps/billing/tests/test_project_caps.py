@@ -11,7 +11,7 @@ from apps.billing.entitlements import (
     lab_project_cap,
     personal_project_cap,
 )
-from apps.billing.models import Seat, Subscription, Tier
+from apps.billing.models import Subscription, Tier
 
 
 @pytest.fixture

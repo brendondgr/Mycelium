@@ -1,7 +1,6 @@
 """Project recommendation payload: interest-matched fellowships + short-list digest."""
 
 import pytest
-from django.contrib.auth.models import User
 from django.utils import timezone
 
 from apps.accounts.models import Lab
@@ -78,9 +77,11 @@ def test_digest_caps_each_area(project):
     for i in range(15):
         _score(project, _item(ContentItem.Type.PAPER, f"p{i}"), rank=i + 1)
     for i in range(8):
-        _score(project, _item(ContentItem.Type.GRANT, f"g{i}", deadline_date=FUTURE), rank=i + 1)
+        grant = _item(ContentItem.Type.GRANT, f"g{i}", deadline_date=FUTURE)
+        _score(project, grant, rank=i + 1)
     for i in range(8):
-        _score(project, _item(ContentItem.Type.FELLOWSHIP, f"f{i}", deadline_date=FUTURE), rank=i + 1)
+        fellowship = _item(ContentItem.Type.FELLOWSHIP, f"f{i}", deadline_date=FUTURE)
+        _score(project, fellowship, rank=i + 1)
 
     full = _recommendations_payload(
         {"target_project": project}, user=None

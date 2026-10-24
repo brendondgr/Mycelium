@@ -1378,7 +1378,9 @@ SLACK_OUTBOX_BATCH_LIMIT = env.int("SLACK_OUTBOX_BATCH_LIMIT", default=50)
 AMBIENT_TRANSCRIPTS_ENABLED = env.bool("AMBIENT_TRANSCRIPTS_ENABLED", default=False)
 AMBIENT_TRANSCRIPT_TTL_HOURS = env.int("AMBIENT_TRANSCRIPT_TTL_HOURS", default=3)
 AMBIENT_TRANSCRIPT_WEIGHT = env.float("AMBIENT_TRANSCRIPT_WEIGHT", default=0.3)
-AMBIENT_TRANSCRIPT_MAX_BYTES = env.int("AMBIENT_TRANSCRIPT_MAX_BYTES", default=2_000_000)
+AMBIENT_TRANSCRIPT_MAX_BYTES = env.int(
+    "AMBIENT_TRANSCRIPT_MAX_BYTES", default=2_000_000
+)
 
 # --- Microsoft Teams (ambient Plan 11) ----------------------------------------------
 # Off by default: the messaging endpoint answers 404 until it is on. Every

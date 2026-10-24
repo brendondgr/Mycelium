@@ -6,10 +6,10 @@ import pytest
 from django.contrib.auth.models import User
 
 from apps.accounts.models import LabMembership
+from apps.accounts.services import detach_lab_from_department
 from apps.billing.entitlements import Tier, effective_tier
 from apps.billing.models import Seat
 from apps.billing.period import end_lapsed_seats
-from apps.accounts.services import detach_lab_from_department
 from apps.billing.services import (
     activate_department_subscription,
     activate_lab_subscription,
@@ -72,7 +72,7 @@ def test_detached_lab_member_falls_back_to_lab_plan_after_lapse() -> None:
 
 @pytest.mark.django_db
 def test_excluded_lab_without_own_plan_drops_to_free() -> None:
-    """No lab plan to fall back to → the member correctly drops to Free (no phantom seat)."""
+    """No lab plan to fall back to → the member drops to Free (no phantom seat)."""
     _head, dept = _dept("head")
     pi = User.objects.create_user(username="pi", password="p")
     lab = create_lab_workspace(pi, "Sub Lab").lab  # NOT activated — no own plan

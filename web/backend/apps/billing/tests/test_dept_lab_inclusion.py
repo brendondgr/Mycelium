@@ -4,7 +4,7 @@ import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
-from apps.accounts.models import DeptMembership, LabMembership
+from apps.accounts.models import DeptMembership
 from apps.accounts.services import plan_member_ids
 from apps.billing.seat_sync import paying_scope_for_lab
 from apps.billing.services import (

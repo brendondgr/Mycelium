@@ -106,7 +106,8 @@ def test_including_lab_in_active_department_moves_members_to_dept() -> None:
     assert effective_tier(founder) == Tier.LAB
 
     attach_lab_to_department(lab, dept)
-    assert effective_tier(founder) == Tier.LAB  # attach alone doesn't move them (opt-in)
+    # Attaching alone doesn't move them (inclusion is opt-in).
+    assert effective_tier(founder) == Tier.LAB
 
     set_lab_plan_inclusion(lab, True)
 

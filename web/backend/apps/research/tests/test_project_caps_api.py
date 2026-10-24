@@ -18,6 +18,10 @@ def _sub(user: User, tier: str) -> None:
     Subscription.objects.create(tier=tier, scope_user=user)
 
 
+def _create_status(client: APIClient, name: str) -> int:
+    return client.post("/api/projects/", {"name": name}, format="json").status_code
+
+
 # --------------------------------------------------------------------------- #
 # Personal caps
 # --------------------------------------------------------------------------- #
@@ -27,8 +31,8 @@ def _sub(user: User, tier: str) -> None:
 def test_free_user_capped_at_two_personal_projects(client: APIClient) -> None:
     user = User.objects.create_user(username="free", password="p")
     client.force_authenticate(user)
-    assert client.post("/api/projects/", {"name": "One"}, format="json").status_code == 201
-    assert client.post("/api/projects/", {"name": "Two"}, format="json").status_code == 201
+    assert _create_status(client, "One") == 201
+    assert _create_status(client, "Two") == 201
     blocked = client.post("/api/projects/", {"name": "Three"}, format="json")
     assert blocked.status_code == 403
     assert blocked.data["code"] == "project_cap_reached"
@@ -44,7 +48,7 @@ def test_spore_user_gets_five_personal_projects(client: APIClient) -> None:
         assert client.post(
             "/api/projects/", {"name": f"P{i}"}, format="json"
         ).status_code == 201
-    assert client.post("/api/projects/", {"name": "P6"}, format="json").status_code == 403
+    assert _create_status(client, "P6") == 403
 
 
 @pytest.mark.django_db
@@ -53,12 +57,12 @@ def test_archiving_frees_a_personal_slot(client: APIClient) -> None:
     client.force_authenticate(user)
     p1 = client.post("/api/projects/", {"name": "One"}, format="json").data
     client.post("/api/projects/", {"name": "Two"}, format="json")
-    assert client.post("/api/projects/", {"name": "Three"}, format="json").status_code == 403
+    assert _create_status(client, "Three") == 403
 
     # Archive one → a slot opens.
     archived = client.post(f"/api/projects/{p1['id']}/archive/")
     assert archived.status_code == 200 and archived.data["is_archived"] is True
-    assert client.post("/api/projects/", {"name": "Three"}, format="json").status_code == 201
+    assert _create_status(client, "Three") == 201
 
 
 # --------------------------------------------------------------------------- #

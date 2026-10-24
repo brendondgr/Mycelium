@@ -72,7 +72,9 @@ def mark_project_seed_inflight(project_id) -> None:
     try:
         caches[_CACHE_ALIAS].set(_project_key(project_id), "1", timeout=ttl)
     except Exception:  # pragma: no cover - Redis down: degrade, never raise
-        logger.warning("could not set project-seed flag for %s", project_id, exc_info=True)
+        logger.warning(
+            "could not set project-seed flag for %s", project_id, exc_info=True
+        )
 
 
 def clear_project_seed_inflight(project_id) -> None:
@@ -80,7 +82,9 @@ def clear_project_seed_inflight(project_id) -> None:
     try:
         caches[_CACHE_ALIAS].delete(_project_key(project_id))
     except Exception:  # pragma: no cover - Redis down: degrade, never raise
-        logger.warning("could not clear project-seed flag for %s", project_id, exc_info=True)
+        logger.warning(
+            "could not clear project-seed flag for %s", project_id, exc_info=True
+        )
 
 
 def is_project_seed_inflight(project_id) -> bool:
@@ -88,7 +92,9 @@ def is_project_seed_inflight(project_id) -> bool:
     try:
         return bool(caches[_CACHE_ALIAS].get(_project_key(project_id)))
     except Exception:  # pragma: no cover - Redis down: degrade, never raise
-        logger.warning("could not read project-seed flag for %s", project_id, exc_info=True)
+        logger.warning(
+            "could not read project-seed flag for %s", project_id, exc_info=True
+        )
         return False
 
 

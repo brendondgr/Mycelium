@@ -155,7 +155,7 @@ def test_final_score_is_max_cluster_and_argmax_is_attribution() -> None:
 
 
 def test_breadth_bonus_is_cluster_scoped_not_cross_cluster() -> None:
-    """One interest in each of 3 clusters must NOT out-breadth a strong single cluster."""
+    """One interest in each of 3 clusters must NOT out-breadth one strong cluster."""
     clusters = {"c-a": ["a"], "c-b": ["b"], "c-c": ["c"], "c-med": _MED}
     spanner, focused = _item(), _item()
     ids = {str(spanner.id): spanner, str(focused.id): focused}
@@ -180,7 +180,7 @@ def test_breadth_bonus_is_cluster_scoped_not_cross_cluster() -> None:
 
 
 def test_within_cluster_breadth_still_wins() -> None:
-    """3 interests within one cluster still outrank a 1-interest match at equal strength."""
+    """3 interests in one cluster still outrank a 1-interest match at equal strength."""
     clusters = {"c-big": ["a", "b", "c"], "c-ocean": _OCEAN}
     broad, narrow = _item(), _item()
     ids = {str(broad.id): broad, str(narrow.id): narrow}

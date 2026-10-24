@@ -1271,7 +1271,10 @@ class DeptLabDetailView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         set_lab_department_inclusion(
-            department, lab, bool(request.data.get("included_in_plan")), actor=request.user
+            department,
+            lab,
+            bool(request.data.get("included_in_plan")),
+            actor=request.user,
         )
         return Response(department_labs_payload(department))
 

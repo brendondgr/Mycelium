@@ -105,10 +105,26 @@ def test_stub_index_reproduces_the_orm_ranking(monkeypatch) -> None:
     interests = [_interest("graph neural networks"), _interest("protein folding")]
 
     payloads = [
-        ("11111111-1111-1111-1111-111111111111", "Graph neural networks for protein contact maps", 0.91),
-        ("22222222-2222-2222-2222-222222222222", "Protein folding with diffusion models", 0.84),
-        ("33333333-3333-3333-3333-333333333333", "Graph attention over citation networks", 0.77),
-        ("44444444-4444-4444-4444-444444444444", "Unrelated work on supply chain logistics", 0.40),
+        (
+            "11111111-1111-1111-1111-111111111111",
+            "Graph neural networks for protein contact maps",
+            0.91,
+        ),
+        (
+            "22222222-2222-2222-2222-222222222222",
+            "Protein folding with diffusion models",
+            0.84,
+        ),
+        (
+            "33333333-3333-3333-3333-333333333333",
+            "Graph attention over citation networks",
+            0.77,
+        ),
+        (
+            "44444444-4444-4444-4444-444444444444",
+            "Unrelated work on supply chain logistics",
+            0.40,
+        ),
     ]
 
     def run(make) -> tuple[dict, dict]:

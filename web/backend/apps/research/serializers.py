@@ -434,7 +434,8 @@ class ProjectUpdateSerializer(serializers.Serializer):
         if bad:
             raise serializers.ValidationError(f"unknown categories: {', '.join(bad)}")
         # Preserve a stable order and dedupe.
-        return [c for c in ("papers", "grants", "fellowships", "conferences") if c in out]
+        order = ("papers", "grants", "fellowships", "conferences")
+        return [c for c in order if c in out]
 
     def update(self, instance: Project, validated: dict) -> Project:
         if "name" in validated:

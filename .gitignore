@@ -195,3 +195,6 @@ scripts/research/.venv/
 # (web/backend/sandbox/). Experiments record a pointer and a hash instead.
 data/sandbox/
 data/sandbox-browser/
+
+# Claude Code session worktrees are local checkouts, never tracked content.
+.claude/worktrees/

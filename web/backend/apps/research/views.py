@@ -166,7 +166,9 @@ class ProjectListView(ListCreateAPIView):
         # atomically: the count-then-create runs under a row lock on the scope
         # owner so two concurrent creates can't both slip past the last slot.
         if lab_slug and dept_slug:
-            raise ValidationError("A project belongs to a lab OR a department, not both.")
+            raise ValidationError(
+                "A project belongs to a lab OR a department, not both."
+            )
 
         with transaction.atomic():
             if lab_slug:
