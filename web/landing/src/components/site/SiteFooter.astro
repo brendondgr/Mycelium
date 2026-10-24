@@ -38,7 +38,7 @@ const year = new Date().getFullYear();
     </div>
 
     <div class="footer-base">
-      <p>© {year} {siteName}.</p>
+      <p>© {year} {siteName} · <a href={`${sourceRepoUrl}/blob/main/LICENSE`} rel="noopener">MIT licensed</a></p>
       <p>Grown nightly from public sources.</p>
     </div>
   </div>
@@ -128,5 +128,11 @@ const year = new Date().getFullYear();
 
   .footer-base p {
     margin: 0;
+  }
+
+  .footer-base a {
+    color: var(--text-secondary);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
   }
 </style>

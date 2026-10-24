@@ -1,11 +1,11 @@
 ---
 /**
- * The front page's opening: the name first, then the promise, then Mylo.
+ * The front page's opening: the name first, then the promise.
  *
  * Mycelium grows up from the bottom edge on load and pulses of light travel
  * along it; spores drift past the copy. The threads are grown at build time
- * (`lib/mycelium.ts`). Mylo is the painted scout from the character sheet —
- * never the vector rig.
+ * (`lib/mycelium.ts`). Mylo is deliberately not drawn here — the name and the
+ * network carry the opening.
  */
 import Spores from "@/components/site/Spores.astro";
 import { growThreads } from "@/lib/mycelium";
@@ -63,18 +63,6 @@ const letters = [..."Mycelium"];
     <p class="nf-note">{primaryCta.note}</p>
   </div>
 
-  <div class="mylo">
-    <div class="mylo-glow" aria-hidden="true"></div>
-    <img
-      src="/images/mylo-scout-358.webp"
-      srcset="/images/mylo-scout-240.webp 240w, /images/mylo-scout-358.webp 358w"
-      sizes="(min-width: 1024px) 11rem, 8.5rem"
-      width="358"
-      height="491"
-      alt="Mylo, the Mycelium mushroom scout, holding a magnifying glass and a field notebook"
-      fetchpriority="high"
-    />
-  </div>
 </section>
 
 <style>
@@ -84,9 +72,10 @@ const letters = [..."Mycelium"];
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: max(100svh, 50rem);
+    justify-content: center;
+    min-height: max(100svh, 44rem);
     margin-top: calc(-1 * var(--header-h));
-    padding: calc(var(--header-h) + 4.5rem) 1rem 0;
+    padding: calc(var(--header-h) + 3rem) 1rem 6rem;
     overflow: clip;
     background:
       radial-gradient(50rem 30rem at 50% 105%, rgb(141 166 111 / 18%), transparent 70%),
@@ -239,18 +228,6 @@ const letters = [..."Mycelium"];
     .lede { animation-delay: 1000ms !important; }
     .copy > .nf-ctas { animation-delay: 1120ms !important; }
     .copy > .nf-note { animation-delay: 1220ms !important; }
-
-    .mylo {
-      animation: nf-in 1.4s var(--nf-ease) 1.3s both;
-    }
-
-    .mylo img {
-      animation: hero-float 7s ease-in-out 2.8s infinite;
-    }
-
-    .mylo-glow {
-      animation: hero-breathe 6s ease-in-out 2.8s infinite;
-    }
   }
 
   @keyframes hero-letter {
@@ -260,36 +237,5 @@ const letters = [..."Mycelium"];
       filter: blur(10px);
       text-shadow: 0 0 40px rgb(184 217 154 / 90%);
     }
-  }
-
-  @keyframes hero-float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-7px); }
-  }
-
-  /* --------------------------------------------------------------- mylo */
-  .mylo {
-    position: relative;
-    width: clamp(8.5rem, 13vw, 11rem);
-    margin-top: auto;
-    padding-top: 2.5rem;
-  }
-
-  .mylo img {
-    position: relative;
-    display: block;
-    width: 100%;
-    height: auto;
-    filter: drop-shadow(0 0 22px rgb(184 217 154 / 22%));
-  }
-
-  .mylo-glow {
-    position: absolute;
-    left: 50%;
-    bottom: -2rem;
-    width: 24rem;
-    height: 16rem;
-    transform: translateX(-50%);
-    background: radial-gradient(closest-side, rgb(211 174 102 / 22%), rgb(184 217 154 / 8%) 55%, transparent);
   }
 </style>

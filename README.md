@@ -165,3 +165,7 @@ Start at [`docs/`](docs/README.md). The short version:
 - **Agent guidance** — [`CLAUDE.md`](CLAUDE.md) and
   [`docs/skills/`](docs/skills/index.md).
 - **History** — [`docs/changelog.md`](docs/changelog.md).
+
+## License
+
+Mycelium is open source under the [MIT License](LICENSE).

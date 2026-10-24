@@ -168,14 +168,14 @@ The public site should explain what Mycelium does, who it serves, why it is diff
 
 **The public site is dark — "Night Forest".** It runs on the dark-forest palette (`data-theme="dark"` on every public page): a deep night ground, mycelium threads that grow up from the bottom of the hero and carry slow pulses of light, drifting spores, and entrance animations as content arrives. It is the most animated surface Mycelium has, and it should still read as a professional research product — the glow stays sage and, sparingly, gold.
 
-**Mylo on the public site is painted art only** (`web/art/Mylo/MyloScout.png`, `MyloHeadshot-e1.png`), animated as an image (fade, float, glow). The vector rig in `web/art/Mylo/svg/` is not used anywhere.
+**Mylo on the public site is painted art only** (`web/art/Mylo/MyloHeadshot-e1.png`, `MyloScout.png`), animated as an image (fade, float, glow), and only where he is acting as a guide — the report header, Mylo's reasons. The vector rig in `web/art/Mylo/svg/` is not used anywhere.
 
 **Mycelium is open source, and there is no pricing page.** Every conversion is one of two ways in: sign up on the hosted site for free with a sign-up code, or run it yourself. No plans, tiers, trials or prices appear on the public site.
 
 The front page moves through:
 
 - Sticky night-glass navigation
-- Hero: the **Mycelium** wordmark first, then "While you sleep, Mylo reads the field.", the two ways in, and painted Mylo standing in the threads
+- Hero: the **Mycelium** wordmark first, then "While you sleep, Mylo reads the field." and the two ways in. No Mylo figure on the opening screen — the user removed it; the name and the network carry it
 - The 06:00 report writing itself — the output before the pitch
 - The four feeds, as tabs over the workspace's own cards
 - Every recommendation shows its work — a spotlight that tours one card's parts in order (the item, its theme, its summary, why it fits, why it might not) and follows the reader's hover

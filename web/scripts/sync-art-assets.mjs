@@ -41,16 +41,6 @@ const ASSETS = [
     quality: 80,
   },
   {
-    // Full-body painted Mylo, cut out of the character sheet with a
-    // transparent ground so he can stand in the dark front-page hero. The
-    // master is only 358 px wide; never upscale it.
-    src: "art/Mylo/MyloScout.png",
-    name: "mylo-scout",
-    out: "landing/public/images",
-    widths: [358, 240],
-    quality: 86,
-  },
-  {
     // Transparent head cut-out — Mylo's avatar on dark surfaces (report
     // header, sign-off), where the cream portrait square would read as a hole.
     src: "art/Mylo/MyloHeadshot-e1.png",
