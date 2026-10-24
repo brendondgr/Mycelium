@@ -29,6 +29,7 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
       <a class="nav-link nav-source" href={sourceRepoUrl} rel="noopener">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path></svg>
         Source
+        <span class="nf-soon nf-soon-under-link">Coming soon</span>
       </a>
     </nav>
 
@@ -57,7 +58,7 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
                 </li>
               ))
             }
-            <li><a href={sourceRepoUrl} rel="noopener">Source code</a></li>
+            <li><a href={sourceRepoUrl} rel="noopener">Source code <span class="nf-soon nf-soon-inline">Coming soon</span></a></li>
           </ul>
           <div class="mobile-actions">
             <a class="nf-btn nf-btn-line" href={appLoginUrl}>Log in</a>

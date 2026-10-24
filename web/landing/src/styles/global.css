@@ -576,3 +576,51 @@ body {
     stroke-dashoffset: 0;
   }
 }
+
+/*
+ * "Coming soon" — a small, steady tag under anything that points at the source
+ * repository, which is not public yet. Remove the tags (search `nf-soon`) on
+ * the day it is. A button carrying one is wrapped in `.nf-soon-wrap` so the tag
+ * can hang centred below it without moving the layout.
+ */
+.nf-soon-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.nf-soon {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 0.4rem);
+  transform: translateX(-50%);
+  padding: 0.05rem 0.45rem;
+  border-radius: 9999px;
+  background: rgb(184 217 154 / 14%);
+  box-shadow: 0 0 0 1px rgb(184 217 154 / 35%);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.45;
+  text-transform: uppercase;
+  color: var(--nf-glow);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Leave room for a hanging tag before the line under a button row. */
+.nf-ctas:has(.nf-soon) + .nf-note {
+  margin-top: 2.1rem;
+}
+
+.nf-soon-under-link {
+  top: calc(100% - 0.3rem);
+}
+
+.nf-soon-inline {
+  position: static;
+  display: inline-block;
+  margin-left: 0.4rem;
+  transform: none;
+  vertical-align: middle;
+}
+

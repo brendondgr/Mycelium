@@ -33,19 +33,63 @@ import { primaryCta, sourceRepoUrl } from "@/data/site";
         <h3>{ways.selfHost.title}</h3>
         <p class="way-desc">{ways.selfHost.description}</p>
         <div class="term" role="group" aria-label="Commands to run Mycelium yourself">
-          <div class="term-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="term-bar">
+            <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
+            <button type="button" class="copy" data-copy={ways.selfHost.commands.join("\n")}>
+              <svg class="copy-icon" viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"></rect><path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path></svg>
+              <svg class="check-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>
+              <span class="copy-label" aria-live="polite">Copy</span>
+            </button>
+          </div>
           <pre><code>{ways.selfHost.commands.map((c, i) => (
             <span class="cmd" style={`--i:${i}`}><span class="prompt" aria-hidden="true">$ </span>{c}</span>
           ))}<span class="term-caret" aria-hidden="true"></span></code></pre>
         </div>
-        <a class="nf-btn nf-btn-line" href={sourceRepoUrl} rel="noopener">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path></svg>
-          View the source
-        </a>
+        <span class="nf-soon-wrap">
+          <a class="nf-btn nf-btn-line" href={sourceRepoUrl} rel="noopener">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path></svg>
+            View the source
+          </a>
+          <span class="nf-soon">Coming soon</span>
+        </span>
       </article>
     </div>
   </div>
 </section>
+
+<script is:inline>
+  /* Copy the three commands to the clipboard; the label confirms it. */
+  (function () {
+    document.querySelectorAll("#self-host .copy").forEach(function (btn) {
+      var label = btn.querySelector(".copy-label");
+      var reset;
+      btn.addEventListener("click", function () {
+        var text = btn.getAttribute("data-copy");
+        var done = function (ok) {
+          btn.toggleAttribute("data-copied", ok);
+          label.textContent = ok ? "Copied" : "Press Ctrl+C";
+          clearTimeout(reset);
+          reset = setTimeout(function () {
+            btn.removeAttribute("data-copied");
+            label.textContent = "Copy";
+          }, 1800);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+        } else {
+          /* No async clipboard (plain-HTTP origins): select the commands instead. */
+          var code = btn.closest(".term").querySelector("code");
+          var range = document.createRange();
+          range.selectNodeContents(code);
+          var sel = getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          done(false);
+        }
+      });
+    });
+  })();
+</script>
 
 <style>
   #self-host {
@@ -154,16 +198,69 @@ import { primaryCta, sourceRepoUrl } from "@/data/site";
 
   .term-bar {
     display: flex;
-    gap: 0.35rem;
-    padding: 0.6rem 0.8rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.5rem 0.4rem 0.8rem;
     border-bottom: 1px solid var(--divider);
   }
 
-  .term-bar span {
+  .dots {
+    display: flex;
+    gap: 0.35rem;
+  }
+
+  .dots span {
     width: 0.55rem;
     height: 0.55rem;
     border-radius: 9999px;
     background: var(--border);
+  }
+
+  .copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2rem;
+    padding: 0 0.7rem;
+    border: 1px solid rgb(184 217 154 / 25%);
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 200ms ease, border-color 200ms ease, background-color 200ms ease;
+  }
+
+  .copy:hover {
+    color: var(--text-primary);
+    border-color: rgb(184 217 154 / 55%);
+    background: rgb(184 217 154 / 6%);
+  }
+
+  .copy svg {
+    width: 0.95rem;
+    height: 0.95rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .check-icon,
+  .copy[data-copied] .copy-icon {
+    display: none;
+  }
+
+  .copy[data-copied] .check-icon {
+    display: block;
+  }
+
+  .copy[data-copied] {
+    color: var(--nf-glow);
+    border-color: rgb(184 217 154 / 55%);
   }
 
   pre {
