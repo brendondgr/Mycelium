@@ -21,8 +21,11 @@ supply some of those judgments.
 | Output | Venue | Rank (ICORE2026) | Contribution | Submit | Present | Review |
 |---|---|---|---|---|---|---|
 | Software paper | JOSS | Journal; CORE does not rank journals | A citable record of the software | Rolling; earliest is six months after the repository goes public | — | Open, on GitHub |
-| Experience paper | US-RSE'27, Papers track | Not ranked | Lessons from building and running an open, laptop-scale AI research tool for a real department | ~late May 2027 | ~October 2027 | Peer-reviewed; the call does not say whether it is anonymous |
-| Research paper | ACM IUI 2028 | **A** | Whether a researcher-steered hypothesis engine with topic memory produces more useful directions than the same engine running on its own | ~August 2027 (IUI 2027's was August 20, 2026) | ~February–March 2028 | Anonymous |
+| Experience paper | US-RSE'27, Papers track | Not ranked | Lessons from building and running an open, laptop-scale AI research tool for a real department | Mid-April 2027 (tentative) | October 25–27, 2027, Ann Arbor | Peer-reviewed; the call does not say whether it is anonymous |
+| Research paper | ACM IUI 2028 | **A** | Whether a researcher-steered hypothesis engine with topic memory produces more useful directions than the same engine running on its own | ~August 2027 (IUI 2027's was August 20, 2026; nothing published for 2028 yet) | ~February–March 2028 | Double-blind |
+
+Every other venue that fits, and what each accepts, is in
+[`venue-tracks.md`](venue-tracks.md).
 
 ## 1. JOSS: the software
 
@@ -39,6 +42,11 @@ supply some of those judgments.
   of the assistance, and confirmation of human review.
 - Related publications must be declared, whether published, in review or about
   to be submitted.
+- The paper is 750–1,750 words, with sections for: Summary, Statement of need,
+  State of the field, Software design, Research impact statement, and the
+  AI-usage disclosure ([paper format](https://joss.readthedocs.io/en/latest/paper.html)).
+  Since January 2026 JOSS judges research impact and open-source practice
+  rather than developer time, and wants the human work shown.
 
 **What Mycelium needs:**
 
@@ -66,8 +74,12 @@ carry over to 2027):
 - Up to 10 pages excluding references, in the IEEE template.
 - Peer-reviewed for "quality, relevance, and novelty".
 - Published in the conference proceedings on Zenodo.
-- Authors are invited to submit to a journal special issue afterwards.
+- Papers and talks may be extended into a special issue of *Future Generation
+  Computer Systems* afterwards, with 40% new content.
 - It must be original work, not published elsewhere.
+- USRSE'27 is in Ann Arbor, October 25–27, 2027, with papers, talks, notebooks,
+  birds-of-a-feather sessions, workshops and tutorials due mid-April 2027
+  (tentative, [dates page](https://us-rse.org/usrse27/about/dates/)).
 
 **What it is:** lessons from building and running an open, laptop-scale AI
 research tool for a real department. It is a community paper, not a CS research
@@ -93,8 +105,8 @@ each class of hardware. Under the research record's rules these are recorded as
 an experiment ([`../AGENT_INSTRUCTIONS.md`](../AGENT_INSTRUCTIONS.md)) before
 they appear in the paper.
 
-**Timeline:** draft March–May 2027, submit about late May, present about
-October 2027.
+**Timeline:** draft February–April 2027, submit mid-April (tentative), present
+October 25–27, 2027 in Ann Arbor.
 
 ## 3. IUI 2028: the hypothesis engine study
 
@@ -163,9 +175,12 @@ compared with the same engine generating directions on its own?
 
 - The "AI scientist" field is crowded and moving fast. The paper stands only on
   evidence that collaboration beats autonomy, not on the claim alone.
-- If the build or the study slips past August 2027: an IUI posters and demos
-  submission (deadline about November) for an early version, then IUI 2029 or
-  CSCW (rank A). CHIIR (rank B) is the best fit if rank matters less.
+- If the build or the study slips past August 2027: CSCW (rank A), which now
+  takes papers at any time with no deadlines, or IUI 2029. An IUI posters and
+  demos submission (deadline about November) can show an early version. CHIIR
+  (rank B) is the best fit if rank matters less.
+- IUI 2027 asked for papers of about 8,000 words, reviewed double-blind
+  including videos and supplements, and published in the ACM Digital Library.
 
 ## How this fits the grant proposal
 

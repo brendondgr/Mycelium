@@ -19,6 +19,7 @@ experiment. It is the contract, and `make validate-research` checks it.
 | [`datasets/DATASETS.md`](datasets/DATASETS.md) | What data, what licence, how to get it? |
 | [`paper/OUTLINE.md`](paper/OUTLINE.md) | What is the paper, and which venue? |
 | [`paper/publication-plan.md`](paper/publication-plan.md) | What are we submitting in 2027–28, where, and when? |
+| [`paper/venue-tracks.md`](paper/venue-tracks.md) | What does each venue accept, and which Mycelium papers fit it? |
 
 `CLAIMS.md` is the highest-value file here. Its `unsupported` rows are the
 experiment backlog.
