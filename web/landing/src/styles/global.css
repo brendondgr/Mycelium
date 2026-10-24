@@ -578,10 +578,10 @@ body {
 }
 
 /*
- * "Coming soon" — a small, steady tag under anything that points at the source
- * repository, which is not public yet. Remove the tags (search `nf-soon`) on
- * the day it is. A button carrying one is wrapped in `.nf-soon-wrap` so the tag
- * can hang centred below it without moving the layout.
+ * "Soon" — a small badge perched on the top-right corner of anything that
+ * points at the source repository, which is not public yet. Remove the badges
+ * (search `nf-soon`) on the day it is. A button carrying one is wrapped in
+ * `.nf-soon-wrap` so the badge can overhang its corner.
  */
 .nf-soon-wrap {
   position: relative;
@@ -590,37 +590,26 @@ body {
 
 .nf-soon {
   position: absolute;
-  left: 50%;
-  top: calc(100% + 0.4rem);
-  transform: translateX(-50%);
-  padding: 0.05rem 0.45rem;
+  top: -0.45rem;
+  right: -0.55rem;
+  padding: 0.1rem 0.4rem;
   border-radius: 9999px;
-  background: rgb(184 217 154 / 14%);
-  box-shadow: 0 0 0 1px rgb(184 217 154 / 35%);
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  line-height: 1.45;
+  background: var(--nf-glow);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
   text-transform: uppercase;
-  color: var(--nf-glow);
+  color: var(--nf-night);
   white-space: nowrap;
+  box-shadow: 0 0 0 2px var(--nf-night);
   pointer-events: none;
-}
-
-/* Leave room for a hanging tag before the line under a button row. */
-.nf-ctas:has(.nf-soon) + .nf-note {
-  margin-top: 2.1rem;
-}
-
-.nf-soon-under-link {
-  top: calc(100% - 0.3rem);
 }
 
 .nf-soon-inline {
   position: static;
   display: inline-block;
   margin-left: 0.4rem;
-  transform: none;
   vertical-align: middle;
+  box-shadow: none;
 }
-
