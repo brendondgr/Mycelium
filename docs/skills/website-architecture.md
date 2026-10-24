@@ -49,10 +49,12 @@ Before generating web code, define:
 
 ## Route expectations
 
-**Public** (`web/landing/src/pages/`) — five pages only: `index`, `product`,
-`pricing`, `about`, `contact`. Adding a sixth needs a reason; `/solutions`,
-`/resources`, `/research`, and `/demo` were removed as stubs that duplicated the
-homepage. Every "Start free" CTA points at the real `/signup`.
+**Public** (`web/landing/src/pages/`) — four pages only: `index`, `product`,
+`about`, `contact`. Adding a fifth needs a reason; `/solutions`, `/resources`,
+`/research`, and `/demo` were removed as stubs that duplicated the homepage, and
+`/pricing` was removed for the open-source release (it redirects to `/`). Every
+"Sign up" CTA points at the real `/signup` (free with a sign-up code); the other
+way in is self-hosting, linked to `/#self-host` and the source repository.
 
 **Authenticated** (`web/app/src/app/app/`) — the workspace is **scope-switched,
 not slug-routed**. Routes are flat under `(workspace)` and the active scope

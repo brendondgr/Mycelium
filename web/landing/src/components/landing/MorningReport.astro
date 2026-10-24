@@ -1,0 +1,240 @@
+---
+/**
+ * The 06:00 report, writing itself line by line as it scrolls into view.
+ * Sample content. Positions and verdicts appear here because a report is one
+ * ordered pass through a day; the feed cards further down carry neither.
+ */
+import { reportLines } from "@/data/landing";
+---
+
+<section id="report" class="nf-section" aria-labelledby="report-heading">
+  <div class="nf-wrap grid">
+    <div class="reveal">
+      <p class="nf-eyebrow">The 06:00 report</p>
+      <h2 id="report-heading" class="nf-h2">The first thing you see is the output</h2>
+      <p class="nf-sub">
+        One written pass through the night, ordered by theme. Each item says where it
+        sits within its theme, a verdict, and the reason it might not be worth your
+        time. Gold is kept for deadlines.
+      </p>
+      <p class="sample">Sample content · fictional lab</p>
+    </div>
+
+    <article class="doc reveal" aria-label="Sample daily report">
+      <header class="doc-head">
+        <span class="avatar"><img src="/images/mylo-head-96.webp" alt="" width="40" height="40" /></span>
+        <div>
+          <p class="doc-title">Daily report</p>
+          <p class="doc-meta">Tuesday · 06:00 · Clinical NLP Lab</p>
+        </div>
+      </header>
+      <ol class="doc-body" data-reveal-group data-reveal-step="320">
+        {
+          reportLines.map((l) => (
+            <li class={`reveal line line-${l.kind}`}>
+              {l.kind === "item" ? (
+                <>
+                  <span class="item-title">{l.text}</span>
+                  <span class="item-meta">
+                    {l.rank}
+                    <span class={`verdict verdict-${l.verdict?.toLowerCase()}`}>{l.verdict}</span>
+                  </span>
+                </>
+              ) : l.kind === "deadline" ? (
+                <>
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2"></path></svg>
+                  <span>{l.text}</span>
+                </>
+              ) : (
+                l.text
+              )}
+            </li>
+          ))
+        }
+        <li class="reveal caret" aria-hidden="true"></li>
+      </ol>
+    </article>
+  </div>
+</section>
+
+<style>
+  .grid {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  @media (min-width: 1024px) {
+    .grid {
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 4.5rem;
+    }
+  }
+
+  .sample {
+    display: inline-block;
+    margin: 1.5rem 0 0;
+    padding: 0.3rem 0.75rem;
+    border: 1px dashed var(--border);
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .doc {
+    border: 1px solid var(--border);
+    border-radius: 1.4rem;
+    background: linear-gradient(180deg, var(--surface-alt), var(--surface) 30%);
+    box-shadow:
+      0 30px 80px rgb(0 0 0 / 45%),
+      0 0 0 1px rgb(184 217 154 / 4%) inset;
+    overflow: hidden;
+  }
+
+  .doc-head {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem 1.4rem;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 50% 40%, #3a4a30, #253021);
+    box-shadow: 0 0 0 1px rgb(184 217 154 / 25%);
+  }
+
+  .avatar img {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+
+  .doc-title {
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .doc-meta {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .doc-body {
+    display: grid;
+    gap: 0.7rem;
+    margin: 0;
+    padding: 1.4rem 1.4rem 1.6rem;
+    list-style: none;
+    font-size: 0.93rem;
+    line-height: 1.6;
+  }
+
+  .line-lead {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.15rem;
+    font-style: italic;
+    line-height: 1.45;
+    color: var(--text-primary);
+  }
+
+  .line-theme {
+    margin-top: 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brand-primary-hover);
+  }
+
+  .line-item {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--divider);
+    border-radius: 0.8rem;
+    background: rgb(255 255 255 / 2%);
+  }
+
+  .item-title {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .item-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .verdict {
+    padding: 0.05rem 0.55rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .verdict-read {
+    background: var(--brand-primary);
+    color: var(--primary-foreground);
+  }
+
+  .verdict-skim {
+    background: color-mix(in srgb, var(--brand-secondary) 40%, transparent);
+    color: var(--text-primary);
+  }
+
+  .line-caveat {
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--border);
+    font-size: 0.87rem;
+    color: var(--text-secondary);
+  }
+
+  .line-deadline {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.4rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.8rem;
+    background: color-mix(in srgb, var(--brand-accent-soft) 60%, transparent);
+    color: #f2e3c2;
+  }
+
+  .line-deadline svg {
+    flex: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.15rem;
+    fill: none;
+    stroke: var(--brand-accent);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+
+  .caret {
+    width: 0.55rem;
+    height: 1.1rem;
+    border-radius: 2px;
+    background: var(--nf-glow);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .caret {
+      animation: report-blink 1.1s steps(1) infinite;
+    }
+  }
+
+  @keyframes report-blink {
+    50% { opacity: 0; }
+  }
+</style>

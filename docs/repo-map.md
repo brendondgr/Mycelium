@@ -18,17 +18,19 @@ Paths are relative to the repository root.
 
 | Task | Path |
 |---|---|
-| A marketing page | `web/landing/src/pages/*.astro` — five pages: `index`, `product`, `pricing`, `about`, `contact` |
-| Landing copy & capability claims | `web/landing/src/data/{landing,product,pricing,pricingComparison,site}.ts` |
-| Landing components | `web/landing/src/components/{landing,site,pricing}/` |
-| Landing feed preview — the four cards, mirroring the app's feeds | `web/landing/src/components/landing/feed/{Paper,Grant,Fellowship,Conference}Card.astro` + shared `ClusterRow`, `ActionBar`, `Reason`, `SourceRow`, `Glyph`; `FeedCard.astro` picks by kind, `LiveFeed.astro` supplies the section header, search bar and filter rail |
+| A marketing page | `web/landing/src/pages/*.astro` — four pages: `index`, `product`, `about`, `contact`. There is no pricing page (removed for the open-source release); `/pricing` redirects to `/` in `astro.config.mjs` |
+| Landing copy & capability claims | `web/landing/src/data/{landing,product,site}.ts`; `site.ts` holds the nav, the sign-up CTA ("free with a sign-up code") and `sourceRepoUrl` |
+| Landing components | `web/landing/src/components/{landing,site}/` |
+| Front page sections (Night Forest) | `web/landing/src/components/landing/` — `HomeHero` (wordmark, build-time threads, painted Mylo), `MorningReport`, `FeedTabs`, `ShowsItsWork` (spotlight that tours the card's parts; hover a note to move it), `WhatItCovers`, `OneNight`, `TwoWays` (`#self-host`), `FinalCta` |
+| Mycelium threads & spores (seeded, grown at build time) | `web/landing/src/lib/mycelium.ts`; `components/site/Spores.astro` |
+| Shared Night Forest classes (`nf-*`), dark theme switch | `web/landing/src/styles/global.css`; `data-theme="dark"` on `<html>` in `PublicLayout.astro` |
+| Landing feed preview — the four cards, mirroring the app's feeds | `web/landing/src/components/landing/feed/{Paper,Grant,Fellowship,Conference}Card.astro` + shared `ClusterRow`, `ActionBar`, `Reason`, `SourceRow`, `Glyph`; `FeedCard.astro` picks by kind; `FeedTabs.astro` (front page) shows two per feed behind CSS-only tabs |
 | Landing feed preview content & shapes | `web/landing/src/data/feed-preview.ts` — fictional content, real field set; carries **no** verdict or position, because the app's cards draw none |
-| Landing feed preview styles (plain-CSS port of the app's card classes) | `web/landing/src/styles/feed-card.css` — global, imported once by `LiveFeed.astro` |
+| Landing feed preview styles (plain-CSS port of the app's card classes) | `web/landing/src/styles/feed-card.css` — global, imported by `FeedTabs.astro` and `ShowsItsWork.astro` |
 | Section backgrounds (tinted ground + botanical motif) | `web/landing/src/components/site/SectionGround.astro` — pick a different motif per section; leave plain sections between |
 | The motif artwork (roots, moss overhang, leaf vine, canopy, spores, filaments) | `web/landing/src/components/site/motifs/` |
 | Landing styles, scroll reveals | `web/landing/src/styles/global.css` (rules) + the two inline scripts in `web/landing/src/layouts/PublicLayout.astro` (arming flag + IntersectionObserver); no framework JS |
-| Front-page redesign preview (review only, `noindex`, not linked) — three candidate homepages on one URL with a switcher and review notes | `web/landing/src/pages/redesign.astro` → `/redesign`; concepts in `web/landing/src/components/redesign/`, notes in `web/landing/src/data/redesign.ts`; `MyloRig.astro` inlines the animation rig from `web/art/Mylo/svg/mylo.svg`. Delete all three once a direction is chosen |
-| Artwork masters & sync | `web/art/`, `web/scripts/sync-art-assets.mjs` (derivatives are git-ignored) |
+| Artwork masters & sync | `web/art/`, `web/scripts/sync-art-assets.mjs` (derivatives are git-ignored). Mylo on the public site is painted only — `MyloScout.png` (full body, cut from the character sheet) and `MyloHeadshot-e1.png` (transparent head); the vector rig in `web/art/Mylo/svg/` is not to be used |
 | Mylo animation rig (vector) | `web/art/Mylo/svg/` — `mylo.svg`: ~70 hand-authored shapes placed by measuring the character sheet, plus the animation CSS, in one file; states are attributes on the root element (`data-anim`, `data-prop`, `data-facing`). `trace/draw.py` + `trace/rig.css` regenerate it (`trace/run.sh`); `rig-demo.html` exercises it; see the folder README |
 
 ## Frontend — authenticated app

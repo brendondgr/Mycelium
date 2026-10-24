@@ -1,22 +1,22 @@
 ---
-import { FeatureStrip } from "@/components/landing/FeatureStrip";
+import FeedTabs from "@/components/landing/FeedTabs.astro";
 import FinalCta from "@/components/landing/FinalCta.astro";
-import HeroSection from "@/components/landing/HeroSection.astro";
-import LiveFeed from "@/components/landing/LiveFeed.astro";
-import MeetMylo from "@/components/landing/MeetMylo.astro";
-import PipelineSection from "@/components/landing/PipelineSection.astro";
-import RoleSwitcher from "@/components/landing/RoleSwitcher.astro";
-import TrustBand from "@/components/landing/TrustBand.astro";
+import HomeHero from "@/components/landing/HomeHero.astro";
+import MorningReport from "@/components/landing/MorningReport.astro";
+import OneNight from "@/components/landing/OneNight.astro";
+import ShowsItsWork from "@/components/landing/ShowsItsWork.astro";
+import TwoWays from "@/components/landing/TwoWays.astro";
+import WhatItCovers from "@/components/landing/WhatItCovers.astro";
 import PublicLayout from "@/layouts/PublicLayout.astro";
 ---
 
 <PublicLayout>
-  <HeroSection />
-  <FeatureStrip />
-  <LiveFeed />
-  <PipelineSection />
-  <RoleSwitcher />
-  <TrustBand />
-  <MeetMylo />
+  <HomeHero />
+  <MorningReport />
+  <FeedTabs />
+  <ShowsItsWork />
+  <WhatItCovers />
+  <OneNight />
+  <TwoWays />
   <FinalCta />
 </PublicLayout>

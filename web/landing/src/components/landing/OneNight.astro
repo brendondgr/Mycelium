@@ -1,0 +1,133 @@
+---
+/**
+ * How it works, told as one night. The line down the timeline grows with the
+ * scroll (scroll-driven CSS; drawn in full where unsupported) and warms from
+ * sage at 22:00 to gold at 06:00.
+ */
+import { night } from "@/data/landing";
+---
+
+<section class="nf-section" aria-labelledby="night-heading">
+  <div class="nf-wrap grid">
+    <div class="head reveal">
+      <p class="nf-eyebrow">How it works</p>
+      <h2 id="night-heading" class="nf-h2">One night, four steps</h2>
+      <p class="nf-sub">The same loop runs every night, whether the lab is two people or twenty.</p>
+    </div>
+    <ol class="night">
+      {
+        night.map((s) => (
+          <li class="reveal">
+            <span class="time">{s.time}</span>
+            <h3>{s.title}</h3>
+            <p>{s.description}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .grid {
+    display: grid;
+    gap: 3rem;
+  }
+
+  @media (min-width: 1024px) {
+    .grid {
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 5rem;
+    }
+
+    .head {
+      position: sticky;
+      top: calc(var(--header-h) + 4rem);
+      align-self: start;
+    }
+  }
+
+  .night {
+    position: relative;
+    display: grid;
+    gap: 3rem;
+    margin: 0;
+    padding: 0 0 0 3rem;
+    list-style: none;
+  }
+
+  .night::before {
+    content: "";
+    position: absolute;
+    left: 0.45rem;
+    top: 0.6rem;
+    bottom: 0.6rem;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, rgb(141 166 111 / 25%), var(--brand-primary) 55%, var(--brand-accent));
+    transform-origin: top;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .night::before {
+        animation: night-grow linear both;
+        animation-timeline: view();
+        animation-range: entry 20% cover 60%;
+      }
+    }
+  }
+
+  @keyframes night-grow {
+    from { transform: scaleY(0); }
+  }
+
+  .night li {
+    position: relative;
+  }
+
+  .night li::before {
+    content: "";
+    position: absolute;
+    left: -3rem;
+    top: 0.35rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 9999px;
+    background: var(--nf-night);
+    border: 2px solid var(--brand-primary);
+    box-shadow: 0 0 14px rgb(184 217 154 / 35%);
+  }
+
+  .night li:last-child::before {
+    border-color: var(--brand-accent);
+    box-shadow: 0 0 18px rgb(211 174 102 / 55%);
+  }
+
+  .time {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.6rem;
+    font-weight: 300;
+    color: var(--nf-glow);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .night li:last-child .time {
+    color: var(--brand-accent);
+  }
+
+  h3 {
+    margin: 0.3rem 0 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .night p {
+    max-width: 32rem;
+    margin: 0.45rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+</style>

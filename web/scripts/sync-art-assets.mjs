@@ -33,28 +33,31 @@ const webRoot = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const ASSETS = [
   // ---- Public site (web/landing) -----------------------------------------
   {
-    // Full-bleed hero background.
-    src: "art/frontpage/mylo-hero-rework.png",
-    name: "mylo-hero",
-    out: "landing/public/images",
-    widths: [1600, 900],
-    quality: 74,
-  },
-  {
-    // Section background, sitting under a 60–76% cream scrim.
-    src: "art/frontpage/ConnectedWorkspace.png",
-    name: "connected-workspace",
-    out: "landing/public/images",
-    widths: [1600, 900],
-    quality: 70,
-  },
-  {
     // Circular portrait, displayed at most ~304 CSS px.
     src: "art/Mylo/MyloHeadshot.png",
     name: "mylo-headshot",
     out: "landing/public/images",
     widths: [512, 256],
     quality: 80,
+  },
+  {
+    // Full-body painted Mylo, cut out of the character sheet with a
+    // transparent ground so he can stand in the dark front-page hero. The
+    // master is only 358 px wide; never upscale it.
+    src: "art/Mylo/MyloScout.png",
+    name: "mylo-scout",
+    out: "landing/public/images",
+    widths: [358, 240],
+    quality: 86,
+  },
+  {
+    // Transparent head cut-out — Mylo's avatar on dark surfaces (report
+    // header, sign-off), where the cream portrait square would read as a hole.
+    src: "art/Mylo/MyloHeadshot-e1.png",
+    name: "mylo-head",
+    out: "landing/public/images",
+    widths: [192, 96],
+    quality: 84,
   },
   {
     // About-page concept art.

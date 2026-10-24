@@ -13,7 +13,7 @@ const appBaseUrl = (import.meta.env.PUBLIC_APP_URL ?? "").replace(/\/$/, "");
 export const appLoginUrl = `${appBaseUrl}/login`;
 
 /**
- * The primary conversion target for the whole public site. Every "Start free"
+ * The primary conversion target for the whole public site. Every "Sign up"
  * button points here — the real signup the gateway already routes — rather
  * than at a lead-capture placeholder.
  */
@@ -21,9 +21,20 @@ export const appSignupUrl = `${appBaseUrl}/signup`;
 
 export const primaryCta = {
   href: appSignupUrl,
-  label: "Start free",
+  label: "Sign up",
   /** Used under hero and final-CTA buttons, never as the button label. */
-  note: "14-day trial · no credit card",
+  note: "Free with a sign-up code · open source",
+} as const;
+
+/**
+ * Where the source lives. Mycelium is being released as open source, so the
+ * second way in — after signing up here — is running it yourself.
+ */
+export const sourceRepoUrl = "https://github.com/brendondgr/Mycelium";
+
+export const selfHostCta = {
+  href: "/#self-host",
+  label: "Run it yourself",
 } as const;
 
 export const secondaryCta = {
@@ -40,19 +51,20 @@ export const contactEmail = "hello@mycelium.example";
 export const primaryNav = [
   { href: "/", label: "Home" },
   { href: "/product", label: "Product" },
-  { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ] as const;
 
 export const footerNav = {
   product: [
     { href: "/product", label: "How it works" },
-    { href: "/pricing", label: "Pricing" },
-    { href: appSignupUrl, label: "Start free" },
+    { href: "/#self-host", label: "Self-host" },
+    { href: sourceRepoUrl, label: "Source code" },
   ],
   company: [
     { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
     { href: appLoginUrl, label: "Log in" },
+    { href: appSignupUrl, label: "Sign up" },
   ],
 } as const;

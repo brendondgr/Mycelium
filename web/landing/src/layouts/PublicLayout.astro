@@ -7,14 +7,10 @@ import { siteName, siteTagline } from "@/data/site";
 interface Props {
   title?: string;
   description?: string;
-  /** Drop the shared header and footer — for pages that bring their own chrome
-   *  (the `/redesign` preview). Everything else, motion scripts included, stays. */
-  bare?: boolean;
 }
 
 const {
   title,
-  bare = false,
   description = `${siteTagline}. Mycelium connects lab goals, literature, evidence, grants, fellowships, and next actions for research teams.`,
 } = Astro.props;
 
@@ -22,7 +18,11 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
 ---
 
 <!doctype html>
-<html lang="en">
+<!--
+  The public site is dark by design: the Night Forest palette, not a toggle.
+  `data-theme="dark"` re-points every token in @mycelium/config/theme.css.
+-->
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -33,10 +33,9 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <slot name="head" />
     <script is:inline>
       /*
         Arms the scroll reveals, in <head> so the flag lands before the first
@@ -62,11 +61,11 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
   </head>
   <body class="mycelium-network-bg text-foreground">
     <a class="skip-link" href="#main-content">Skip to main content</a>
-    {!bare && <SiteHeader />}
+    <SiteHeader />
     <main id="main-content">
       <slot />
     </main>
-    {!bare && <SiteFooter />}
+    <SiteFooter />
     <script is:inline>
       /*
         The reveal observer.

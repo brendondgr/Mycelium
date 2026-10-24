@@ -1,0 +1,392 @@
+---
+/**
+ * Every recommendation shows its work — one real paper card, taken apart.
+ *
+ * A spotlight frames one part of the card at a time and dims the rest, and the
+ * matching numbered note lights beside it. When the section scrolls into view
+ * it tours the parts in reading order on its own; the moment a reader hovers or
+ * focuses a note — or points at the card — the tour hands over and follows
+ * them, and it resumes a few seconds after they leave.
+ *
+ * Without JavaScript the notes still read as a numbered list beside the card;
+ * the spotlight simply never appears. Under reduced motion there is no tour and
+ * the frame jumps rather than glides.
+ */
+import FeedCard from "@/components/landing/FeedCard.astro";
+import { anatomy } from "@/data/landing";
+import { feedTabs } from "@/data/feed-preview";
+import "@/styles/feed-card.css";
+
+const paper = feedTabs[0].items[0];
+---
+
+<section class="nf-section" aria-labelledby="work-heading">
+  <div class="nf-wrap">
+    <div class="nf-head-center reveal">
+      <p class="nf-eyebrow">Why labs trust it</p>
+      <h2 id="work-heading" class="nf-h2">Every recommendation shows its work</h2>
+      <p class="nf-sub">
+        A generic assistant asks you to trust an answer. Mycelium hands you the item, the
+        reason, and the part it is not sure about. Hover a note to find it on the card.
+      </p>
+    </div>
+
+    <div class="work" data-work>
+      <div class="stage reveal" data-stage>
+        <ul class="stage-list"><FeedCard item={paper} /></ul>
+        <div class="spot" data-spot aria-hidden="true"><span class="spot-n" data-spot-n></span></div>
+      </div>
+
+      <ol class="notes" data-reveal-group data-reveal-step="110">
+        {
+          anatomy.map((a, i) => (
+            <li class="reveal">
+              <button type="button" class="note" data-step={a.id} data-targets={a.targets.join(",")} aria-describedby={`work-note-${a.id}`}>
+                <span class="note-n" aria-hidden="true">{i + 1}</span>
+                <span class="note-body">
+                  <span class="note-label">{a.label}</span>
+                  <span class="note-text" id={`work-note-${a.id}`}>{a.note}</span>
+                </span>
+                <span class="note-bar" aria-hidden="true"></span>
+              </button>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  (function () {
+    var root = document.querySelector("[data-work]");
+    if (!root) return;
+    var stage = root.querySelector("[data-stage]");
+    var spot = root.querySelector("[data-spot]");
+    var spotN = root.querySelector("[data-spot-n]");
+    var notes = Array.prototype.slice.call(root.querySelectorAll(".note"));
+    if (!stage || !spot || !notes.length) return;
+
+    var reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var STEP_MS = 3200;
+    var current = 0;
+    var timer = null;
+    var resumeTimer = null;
+    var inView = false;
+    var userDriving = false;
+
+    function targetsOf(note) {
+      var sels = note.getAttribute("data-targets").split(",");
+      var els = [];
+      sels.forEach(function (s) {
+        stage.querySelectorAll(s).forEach(function (el) { els.push(el); });
+      });
+      return els;
+    }
+
+    /* The union of a step's elements, in the stage's own coordinates. */
+    function boxOf(note) {
+      var s = stage.getBoundingClientRect();
+      var box = null;
+      targetsOf(note).forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (!r.width && !r.height) return;
+        if (!box) box = { l: r.left, t: r.top, r: r.right, b: r.bottom };
+        else {
+          box.l = Math.min(box.l, r.left);
+          box.t = Math.min(box.t, r.top);
+          box.r = Math.max(box.r, r.right);
+          box.b = Math.max(box.b, r.bottom);
+        }
+      });
+      if (!box) return null;
+      var pad = 8;
+      return {
+        left: box.l - s.left - pad,
+        top: box.t - s.top - pad,
+        width: box.r - box.l + pad * 2,
+        height: box.b - box.t + pad * 2,
+      };
+    }
+
+    function show(i) {
+      current = i;
+      var note = notes[i];
+      var box = boxOf(note);
+      if (!box) return;
+      spot.style.left = box.left + "px";
+      spot.style.top = box.top + "px";
+      spot.style.width = box.width + "px";
+      spot.style.height = box.height + "px";
+      spotN.textContent = String(i + 1);
+      root.setAttribute("data-active", note.getAttribute("data-step"));
+      notes.forEach(function (n, j) {
+        n.setAttribute("aria-pressed", j === i ? "true" : "false");
+      });
+    }
+
+    function tick() {
+      show((current + 1) % notes.length);
+    }
+
+    function startTour() {
+      if (reduced || timer || userDriving || !inView) return;
+      root.setAttribute("data-touring", "");
+      /* Restart the active note's progress bar from zero. */
+      show(current);
+      timer = setInterval(tick, STEP_MS);
+    }
+
+    function stopTour() {
+      clearInterval(timer);
+      timer = null;
+      root.removeAttribute("data-touring");
+    }
+
+    function takeOver(i) {
+      userDriving = true;
+      clearTimeout(resumeTimer);
+      stopTour();
+      if (typeof i === "number" && i !== current) show(i);
+    }
+
+    function release() {
+      clearTimeout(resumeTimer);
+      resumeTimer = setTimeout(function () {
+        userDriving = false;
+        startTour();
+      }, 5000);
+    }
+
+    notes.forEach(function (note, i) {
+      note.addEventListener("mouseenter", function () { takeOver(i); });
+      note.addEventListener("focus", function () { takeOver(i); });
+      note.addEventListener("click", function () { takeOver(i); });
+    });
+
+    /* Pointing at a part of the card selects its note. */
+    stage.addEventListener("mousemove", function (e) {
+      for (var i = notes.length - 1; i >= 0; i--) {
+        var box = boxOf(notes[i]);
+        if (!box) continue;
+        var s = stage.getBoundingClientRect();
+        var x = e.clientX - s.left;
+        var y = e.clientY - s.top;
+        if (x >= box.left && x <= box.left + box.width && y >= box.top && y <= box.top + box.height) {
+          takeOver(i);
+          return;
+        }
+      }
+    });
+
+    root.addEventListener("mouseleave", release);
+    root.addEventListener("focusout", function (e) {
+      if (!root.contains(e.relatedTarget)) release();
+    });
+
+    root.setAttribute("data-ready", "");
+    show(0);
+
+    /* Layout moves under the spotlight: fonts land, the card's entrance
+       transform settles, the viewport resizes. Re-measure each time. */
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { show(current); });
+    stage.addEventListener("transitionend", function (e) {
+      if (e.target !== spot) show(current);
+    });
+    if ("ResizeObserver" in window) new ResizeObserver(function () { show(current); }).observe(stage);
+
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (entries) {
+        inView = entries[0].isIntersecting;
+        if (inView) startTour();
+        else stopTour();
+      }, { threshold: 0.45 }).observe(root);
+    }
+  })();
+</script>
+
+<style>
+  .work {
+    display: grid;
+    gap: 2.5rem;
+    margin-top: 3.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .work {
+      grid-template-columns: 1.25fr 1fr;
+      gap: 3.5rem;
+      align-items: center;
+    }
+  }
+
+  /* --------------------------------------------------------------- stage */
+  .stage {
+    position: relative;
+    border-radius: 1rem;
+    overflow: clip;
+    box-shadow:
+      0 0 0 1px rgb(184 217 154 / 14%),
+      0 0 70px rgb(141 166 111 / 12%);
+  }
+
+  .stage-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* The card holds still here so the spotlight stays on what it frames. */
+  .stage :global(.fc-card),
+  .stage :global(.fc-card:hover) {
+    transform: none;
+  }
+
+  .spot {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    border: 1.5px solid var(--nf-glow);
+    border-radius: 0.7rem;
+    /* Everything outside the frame dims; the stage clips the shadow. */
+    box-shadow:
+      0 0 0 200vmax rgb(8 11 7 / 58%),
+      0 0 24px rgb(184 217 154 / 45%),
+      inset 0 0 18px rgb(184 217 154 / 12%);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      left 620ms var(--nf-ease),
+      top 620ms var(--nf-ease),
+      width 620ms var(--nf-ease),
+      height 620ms var(--nf-ease),
+      opacity 400ms ease;
+  }
+
+  .work[data-ready] .spot {
+    opacity: 1;
+  }
+
+  .spot-n {
+    position: absolute;
+    left: -0.75rem;
+    top: -0.75rem;
+    display: grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 9999px;
+    background: var(--nf-glow);
+    color: #10140e;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 0 14px rgb(184 217 154 / 70%);
+  }
+
+  /* --------------------------------------------------------------- notes */
+  .notes {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .note {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.95rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.9rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    transition:
+      background-color 260ms ease,
+      border-color 260ms ease,
+      opacity 260ms ease;
+  }
+
+  .work[data-ready] .note {
+    opacity: 0.62;
+  }
+
+  .work[data-ready] .note[aria-pressed="true"],
+  .note:hover,
+  .note:focus-visible {
+    opacity: 1;
+  }
+
+  .note[aria-pressed="true"] {
+    border-color: rgb(184 217 154 / 28%);
+    background: rgb(184 217 154 / 7%);
+  }
+
+  .note-n {
+    display: inline-grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border: 1px solid rgb(184 217 154 / 45%);
+    border-radius: 9999px;
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    color: var(--nf-glow);
+    transition: background-color 260ms ease, color 260ms ease, box-shadow 260ms ease;
+  }
+
+  .note[aria-pressed="true"] .note-n {
+    background: var(--nf-glow);
+    color: #10140e;
+    box-shadow: 0 0 14px rgb(184 217 154 / 60%);
+  }
+
+  .note-body {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .note-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .note-text {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  /* While touring, the active note fills a hairline as its turn runs out. */
+  .note-bar {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--nf-glow);
+    transform: scaleX(0);
+    transform-origin: left;
+    opacity: 0;
+  }
+
+  .work[data-touring] .note[aria-pressed="true"] .note-bar {
+    opacity: 0.7;
+    animation: work-fill 3.2s linear both;
+  }
+
+  @keyframes work-fill {
+    to { transform: scaleX(1); }
+  }
+</style>

@@ -15,6 +15,11 @@ const publicHostname = process.env.PUBLIC_HOSTNAME?.trim();
 
 export default defineConfig({
   integrations: [mdx(), react()],
+  // The pricing page was removed when Mycelium moved to an open-source
+  // release; old links land on the front page rather than a 404.
+  redirects: {
+    "/pricing": "/",
+  },
   vite: {
     plugins: [tailwindcss()],
     server: {

@@ -53,7 +53,7 @@ run from the repository root. Implementation files and install state belong unde
 ## Service Boundaries
 
 - `web/`: Node workspace root and install state.
-- `web/landing/`: Astro public site — marketing, pricing, explanation. No private
+- `web/landing/`: Astro public site — marketing and explanation. No private
   data and no framework JavaScript shipped.
 - `web/app/`: Next.js App Router authenticated workspace.
 - `web/packages/config/`: shared Tailwind v4 tokens used by both.

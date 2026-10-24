@@ -359,3 +359,220 @@ html[data-reveal="armed"] .reveal.is-revealed :is(.pipeline-node, .match-node) {
     0 20px 50px rgb(94 122 62 / 14%);
 }
 
+
+/*
+ * Night Forest — the public site's shared vocabulary.
+ *
+ * The public site runs on the dark-forest palette (`data-theme="dark"` on
+ * <html>, set in PublicLayout), so every token below is already the night
+ * value. These classes are the pieces each section shares: the content width,
+ * section rhythm, the eyebrow / heading / sub-copy trio, and the two button
+ * styles. Glow is kept to the sage `--ring` and, sparingly, gold — the style
+ * guide rules out neon.
+ */
+:root {
+  --nf-night: #10140e;
+  --nf-glow: #b8d99a;
+  --nf-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --header-h: 4.25rem;
+}
+
+body {
+  background: var(--nf-night);
+}
+
+.nf-wrap {
+  width: 100%;
+  max-width: 74rem;
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 3vw, 2rem);
+}
+
+.nf-section {
+  position: relative;
+  padding: 6rem 0;
+}
+
+@media (min-width: 1024px) {
+  .nf-section {
+    padding: 8rem 0;
+  }
+}
+
+.nf-eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-primary-hover);
+}
+
+.nf-h2 {
+  margin: 0.8rem 0 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-optical-sizing: auto;
+  font-size: clamp(2rem, 4.4vw, 3.2rem);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+.nf-sub {
+  margin: 1rem 0 0;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.nf-head-center {
+  max-width: 42rem;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.nf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding-inline: 1.6rem;
+  border-radius: 9999px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    background-color 240ms ease,
+    box-shadow 240ms ease,
+    border-color 240ms ease,
+    color 240ms ease;
+}
+
+.nf-btn-sm {
+  min-height: 2.5rem;
+  padding-inline: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.nf-btn-solid {
+  background: var(--brand-primary);
+  color: var(--primary-foreground);
+  box-shadow:
+    0 0 0 1px rgb(184 217 154 / 30%),
+    0 0 30px rgb(141 166 111 / 28%);
+}
+
+.nf-btn-solid:hover {
+  background: var(--brand-primary-hover);
+  box-shadow:
+    0 0 0 1px rgb(184 217 154 / 50%),
+    0 0 44px rgb(141 166 111 / 42%);
+}
+
+.nf-btn-line {
+  border: 1px solid rgb(184 217 154 / 30%);
+  color: var(--text-primary);
+}
+
+.nf-btn-line:hover {
+  border-color: rgb(184 217 154 / 65%);
+  background: rgb(184 217 154 / 6%);
+}
+
+.nf-btn svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nf-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 2.2rem;
+}
+
+.nf-note {
+  margin: 0.9rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Drifting spores (see Spores.astro). Still under reduced motion. */
+.nf-spores {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.nf-spores span {
+  position: absolute;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 9999px;
+  background: var(--nf-glow);
+  box-shadow: 0 0 8px rgb(184 217 154 / 80%);
+  opacity: 0.45;
+}
+
+.nf-spores .is-gold {
+  background: var(--brand-accent);
+  box-shadow: 0 0 8px rgb(211 174 102 / 80%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nf-spores span {
+    animation: nf-rise var(--dur) linear var(--delay) infinite;
+  }
+}
+
+@keyframes nf-rise {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: translate3d(14px, -30vh, 0);
+    opacity: 0.35;
+  }
+
+  75% {
+    opacity: 0.75;
+  }
+
+  100% {
+    transform: translate3d(-8px, -60vh, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes nf-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(4px);
+  }
+}
+
+@keyframes nf-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}

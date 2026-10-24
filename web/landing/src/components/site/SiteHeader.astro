@@ -1,122 +1,67 @@
 ---
-import { appLoginUrl, primaryCta, primaryNav, siteName } from "@/data/site";
+import { appLoginUrl, primaryCta, primaryNav, siteName, sourceRepoUrl } from "@/data/site";
 
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 ---
 
-<header
-  class="sticky top-0 z-40 border-b border-border/70 bg-[color-mix(in_srgb,var(--background)_88%,transparent)] backdrop-blur-md"
->
-  <div
-    class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8"
-  >
-    <a
-      class="inline-flex min-h-11 items-center gap-2 rounded-md font-display text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-      href="/"
-    >
-      <img src="/logo-colored.svg" alt="" width="32" height="32" class="size-8 shrink-0" />
+{/*
+  Sticky night-glass header. The front-page hero pulls itself up underneath
+  (negative margin of --header-h) so its threads glow through the glass.
+*/}
+<header class="site-header">
+  <div class="nf-wrap header-row">
+    <a class="brand" href="/">
+      <img src="/logo-colored.svg" alt="" width="30" height="30" />
       <span>{siteName}</span>
     </a>
 
-    <nav class="hidden items-center gap-1 lg:flex" aria-label="Primary">
+    <nav class="header-nav" aria-label="Primary">
       {
         primaryNav.map((item) => {
           const active = currentPath === item.href;
           return (
-            <a
-              class="nav-link relative rounded-md px-3 py-2 text-sm font-medium transition"
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              data-active={active ? "true" : undefined}
-            >
+            <a class="nav-link" href={item.href} aria-current={active ? "page" : undefined}>
               {item.label}
             </a>
           );
         })
       }
+      <a class="nav-link nav-source" href={sourceRepoUrl} rel="noopener">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path></svg>
+        Source
+      </a>
     </nav>
 
-    <div class="flex items-center gap-2 sm:gap-3">
-      <a
-        class="hidden min-h-11 items-center rounded-full px-4 text-sm font-medium text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] sm:inline-flex"
-        href={appLoginUrl}
-      >
-        Log in
-      </a>
-      <a
-        class="hidden min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-brand-primary-hover sm:inline-flex"
-        href={primaryCta.href}
-      >
-        {primaryCta.label}
-      </a>
+    <div class="header-cta">
+      <a class="login" href={appLoginUrl}>Log in</a>
+      <a class="nf-btn nf-btn-solid nf-btn-sm signup" href={primaryCta.href}>{primaryCta.label}</a>
 
       <!--
         Native <details> disclosure rather than a React island: keyboard
         operable and it announces its own expanded state, without shipping any
         JavaScript. Keeps the public site at zero framework runtime.
       -->
-      <details class="mobile-nav relative lg:hidden">
-        <summary
-          class="inline-flex size-11 cursor-pointer list-none items-center justify-center rounded-md border border-border bg-card text-[var(--text-primary)] transition hover:bg-secondary"
-          aria-label="Menu"
-        >
-          <svg
-            class="icon-open size-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            aria-hidden="true"
-          >
-            <path d="M4 7h16M4 12h16M4 17h16"></path>
-          </svg>
-          <svg
-            class="icon-close size-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            aria-hidden="true"
-          >
-            <path d="M6 6l12 12M18 6L6 18"></path>
-          </svg>
+      <details class="mobile-nav">
+        <summary aria-label="Menu">
+          <svg class="icon-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+          <svg class="icon-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
         </summary>
-
-        <nav
-          class="absolute right-0 top-[calc(100%+0.65rem)] z-50 w-[min(84vw,17rem)] rounded-xl border border-border bg-card p-2 shadow-[0_20px_48px_rgb(46_54_39/14%)]"
-          aria-label="Mobile"
-        >
-          <ul class="flex flex-col">
+        <nav class="mobile-panel" aria-label="Mobile">
+          <ul>
             {
               primaryNav.map((item) => (
                 <li>
-                  <a
-                    class="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-secondary"
-                    href={item.href}
-                    aria-current={currentPath === item.href ? "page" : undefined}
-                  >
+                  <a href={item.href} aria-current={currentPath === item.href ? "page" : undefined}>
                     {item.label}
                   </a>
                 </li>
               ))
             }
+            <li><a href={sourceRepoUrl} rel="noopener">Source code</a></li>
           </ul>
-
-          <div class="mt-2 flex flex-col gap-2 border-t border-divider pt-3">
-            <a
-              class="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 text-sm font-medium text-[var(--text-primary)]"
-              href={appLoginUrl}
-            >
-              Log in
-            </a>
-            <a
-              class="inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground"
-              href={primaryCta.href}
-            >
-              {primaryCta.label}
-            </a>
+          <div class="mobile-actions">
+            <a class="nf-btn nf-btn-line" href={appLoginUrl}>Log in</a>
+            <a class="nf-btn nf-btn-solid" href={primaryCta.href}>{primaryCta.label}</a>
           </div>
         </nav>
       </details>
@@ -125,32 +70,154 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 </header>
 
 <style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    border-bottom: 1px solid rgb(184 217 154 / 10%);
+    background: rgb(16 20 14 / 62%);
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    height: var(--header-h);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 2.75rem;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+
+  .header-nav {
+    display: none;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  @media (min-width: 1024px) {
+    .header-nav {
+      display: flex;
+    }
+  }
+
   .nav-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
     color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 200ms ease, background-color 200ms ease;
   }
 
-  .nav-link::after {
-    content: "";
-    position: absolute;
-    left: 0.75rem;
-    right: 0.75rem;
-    bottom: 0.3rem;
-    height: 1px;
-    background: var(--brand-primary);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 220ms ease;
+  .nav-link:hover {
+    color: var(--text-primary);
+    background: rgb(184 217 154 / 7%);
   }
 
-  .nav-link:hover,
-  .nav-link[data-active="true"] {
+  .nav-link[aria-current="page"] {
     color: var(--text-primary);
   }
 
-  .nav-link:hover::after,
-  .nav-link:focus-visible::after,
-  .nav-link[data-active="true"]::after {
-    transform: scaleX(1);
+  .nav-link[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0.15rem;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    border-radius: 9999px;
+    background: var(--nf-glow);
+    box-shadow: 0 0 8px var(--nf-glow);
+  }
+
+  .nav-source svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .header-cta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .login {
+    display: none;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+
+  .login:hover {
+    color: var(--text-primary);
+  }
+
+  @media (min-width: 640px) {
+    .login {
+      display: inline-flex;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .signup {
+      display: none;
+    }
+  }
+
+  .mobile-nav {
+    position: relative;
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-nav {
+      display: none;
+    }
+  }
+
+  .mobile-nav summary {
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    color: var(--text-primary);
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .mobile-nav summary svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
   }
 
   /* Safari still paints the default disclosure triangle without this. */
@@ -165,5 +232,48 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 
   .mobile-nav[open] .icon-close {
     display: block;
+  }
+
+  .mobile-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.65rem);
+    z-index: 50;
+    width: min(84vw, 17rem);
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--card);
+    box-shadow: 0 20px 48px rgb(0 0 0 / 45%);
+  }
+
+  .mobile-panel ul {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mobile-panel li a {
+    display: block;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.6rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+
+  .mobile-panel li a:hover {
+    background: var(--surface-alt);
+  }
+
+  .mobile-actions {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--divider);
   }
 </style>

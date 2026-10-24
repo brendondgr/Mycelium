@@ -67,7 +67,7 @@ store** — only to the public site and, through the Next.js proxy, the Django A
 
 | Concern | Owner | Notes |
 |---|---|---|
-| Public content | `web/landing/` (Astro) | Marketing, pricing, explanation; no private data |
+| Public content | `web/landing/` (Astro) | Marketing, explanation, sign-up and self-hosting routes; no private data |
 | Authenticated app behavior | `web/app/` (Next.js) | Session-gated UI; calls the API via a same-origin proxy |
 | Backend orchestration | `web/backend/` (Django + DRF) | Auth, permissions, business logic, admin, audit, API contracts |
 | Background work | Celery worker + Beat | Reminder ticks, outbox drain, project-profile recompute, seeding |

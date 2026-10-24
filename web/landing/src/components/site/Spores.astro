@@ -1,0 +1,28 @@
+---
+/**
+ * Spores drifting up through a section. Give the section `relative isolate`
+ * and `overflow: clip`; styles live in global.css (`.nf-spores`).
+ */
+import { scatterSpores } from "@/lib/mycelium";
+
+interface Props {
+  seed: number;
+  count?: number;
+  /** Highest starting point, in percent of the section's height. */
+  maxBottom?: number;
+}
+
+const { seed, count = 24, maxBottom = 60 } = Astro.props;
+const spores = scatterSpores(seed, count, maxBottom);
+---
+
+<div class="nf-spores" aria-hidden="true">
+  {
+    spores.map((s) => (
+      <span
+        class={s.gold ? "is-gold" : undefined}
+        style={`left:${s.left}%; bottom:${s.bottom}%; --s:${s.size}px; --dur:${s.dur}s; --delay:${s.delay}s`}
+      />
+    ))
+  }
+</div>

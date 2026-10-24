@@ -1,0 +1,222 @@
+---
+/**
+ * The two ways in: the hosted site with a sign-up code, or running the open
+ * source yourself. `#self-host` is linked from the hero and the footer.
+ */
+import { ways } from "@/data/landing";
+import { primaryCta, sourceRepoUrl } from "@/data/site";
+---
+
+<section id="self-host" class="nf-section" aria-labelledby="ways-heading">
+  <div class="nf-wrap">
+    <div class="nf-head-center reveal">
+      <p class="nf-eyebrow">Open source</p>
+      <h2 id="ways-heading" class="nf-h2">Two ways in, both free</h2>
+      <p class="nf-sub">Use the hosted workspace with a sign-up code, or run the whole thing on your own machine.</p>
+    </div>
+
+    <div class="ways" data-reveal-group data-reveal-step="140">
+      <article class="way reveal">
+        <p class="way-kicker">Hosted</p>
+        <h3>{ways.hosted.title}</h3>
+        <p class="way-desc">{ways.hosted.description}</p>
+        <ol class="steps">
+          {ways.hosted.steps.map((s, i) => (
+            <li><span aria-hidden="true">{i + 1}</span>{s}</li>
+          ))}
+        </ol>
+        <a class="nf-btn nf-btn-solid" href={primaryCta.href}>{primaryCta.label}</a>
+      </article>
+
+      <article class="way reveal">
+        <p class="way-kicker">Self-hosted</p>
+        <h3>{ways.selfHost.title}</h3>
+        <p class="way-desc">{ways.selfHost.description}</p>
+        <div class="term" role="group" aria-label="Commands to run Mycelium yourself">
+          <div class="term-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+          <pre><code>{ways.selfHost.commands.map((c, i) => (
+            <span class="cmd" style={`--i:${i}`}><span class="prompt" aria-hidden="true">$ </span>{c}</span>
+          ))}<span class="term-caret" aria-hidden="true"></span></code></pre>
+        </div>
+        <a class="nf-btn nf-btn-line" href={sourceRepoUrl} rel="noopener">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path></svg>
+          View the source
+        </a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<style>
+  #self-host {
+    scroll-margin-top: var(--header-h);
+  }
+
+  /* minmax(0, …) so the terminal's long clone line scrolls inside the
+     terminal instead of widening the whole page on a phone. */
+  .ways {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    margin-top: 3rem;
+  }
+
+  @media (min-width: 900px) {
+    .ways {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+  }
+
+  .way {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    border: 1px solid var(--border);
+    border-radius: 1.4rem;
+    background:
+      radial-gradient(26rem 14rem at 0% 0%, rgb(141 166 111 / 10%), transparent 70%),
+      var(--surface);
+    transition: border-color 300ms ease, box-shadow 300ms ease, transform 300ms var(--nf-ease);
+  }
+
+  .way:hover {
+    border-color: rgb(184 217 154 / 35%);
+    box-shadow: 0 0 50px rgb(141 166 111 / 12%);
+    transform: translateY(-3px);
+  }
+
+  .way-kicker {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--nf-glow);
+  }
+
+  h3 {
+    margin: -0.4rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.7rem;
+    font-weight: 400;
+    color: var(--text-primary);
+  }
+
+  .way-desc {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+
+  .steps {
+    display: grid;
+    gap: 0.6rem;
+    width: 100%;
+    margin: 0.25rem 0 0.5rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .steps li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.93rem;
+    color: var(--text-primary);
+  }
+
+  .steps span {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 1.7rem;
+    height: 1.7rem;
+    border: 1px solid rgb(184 217 154 / 45%);
+    border-radius: 9999px;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 0.85rem;
+    color: var(--nf-glow);
+  }
+
+  .term {
+    width: 100%;
+    margin: 0.25rem 0 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+    background: #0b0e0a;
+    overflow: hidden;
+  }
+
+  .term-bar {
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .term-bar span {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 9999px;
+    background: var(--border);
+  }
+
+  pre {
+    margin: 0;
+    padding: 0.9rem 1rem 1rem;
+    overflow-x: auto;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.75;
+    color: #e6eedb;
+  }
+
+  code {
+    display: grid;
+  }
+
+  .prompt {
+    color: var(--nf-glow);
+  }
+
+  .term-caret {
+    display: inline-block;
+    width: 0.5rem;
+    height: 1rem;
+    margin-top: 0.15rem;
+    background: var(--nf-glow);
+  }
+
+  /* The commands type in one after another once the card arrives. */
+  :global(html[data-reveal="armed"]) .way .cmd,
+  :global(html[data-reveal="armed"]) .way .term-caret {
+    opacity: 0;
+  }
+
+  :global(html[data-reveal="armed"]) .way:global(.is-revealed) .cmd {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    animation: ways-type 900ms steps(28, end) both;
+    animation-delay: calc(var(--reveal-delay, 0ms) + 500ms + var(--i) * 950ms);
+  }
+
+  :global(html[data-reveal="armed"]) .way:global(.is-revealed) .term-caret {
+    opacity: 1;
+    animation:
+      nf-in 1ms linear calc(var(--reveal-delay, 0ms) + 3.4s) both,
+      ways-blink 1.1s steps(1) calc(var(--reveal-delay, 0ms) + 3.4s) infinite;
+  }
+
+  @keyframes ways-type {
+    from { clip-path: inset(0 100% 0 0); }
+  }
+
+  @keyframes ways-blink {
+    50% { opacity: 0; }
+  }
+</style>
