@@ -4,6 +4,10 @@ Deadlines, page limits, and checklist requirements, tracked from day one rather
 than assembled the week before submission. Every field a venue's reproducibility
 checklist asks for is already a manifest field, by design.
 
+The committed 2027–28 submissions (JOSS, US-RSE'27, IUI 2028) are planned in
+[`publication-plan.md`](publication-plan.md); this file tracks readiness for the
+venues below.
+
 Distance estimates come from [`../../research-audit.md`](../../research-audit.md)
 §6.5 and assume one person working full-time.
 

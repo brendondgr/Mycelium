@@ -18,6 +18,7 @@ experiment. It is the contract, and `make validate-research` checks it.
 | [`RELATED_WORK.md`](RELATED_WORK.md) | Who else has done this, and has anyone scooped us? |
 | [`datasets/DATASETS.md`](datasets/DATASETS.md) | What data, what licence, how to get it? |
 | [`paper/OUTLINE.md`](paper/OUTLINE.md) | What is the paper, and which venue? |
+| [`paper/publication-plan.md`](paper/publication-plan.md) | What are we submitting in 2027–28, where, and when? |
 
 `CLAIMS.md` is the highest-value file here. Its `unsupported` rows are the
 experiment backlog.
