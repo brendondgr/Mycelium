@@ -23,7 +23,8 @@ registered and presenting, so a trip before the grant starts needs other money.
   engine.
 
 The committed submissions are in [`publication-plan.md`](publication-plan.md):
-JOSS, US-RSE'27 and IUI 2028. This file covers everything else that fits.
+JOSS, US-RSE'27, IUI 2028 and the SIGIR 2027 demo. This file covers everything
+else that fits.
 
 ## Deadlines in the next three months
 
@@ -165,8 +166,8 @@ Relevant 2027 topics: energy efficiency and inference cost; mixed-initiative
 interaction; human-AI collaboration; user studies; transparency and
 explainability; **scientific literature search and discovery**.
 
-- **Demo or resource paper for SIGIR 2027: Mycelium.** A\* and domestic. Watch for
-  the 2027 calls.
+- **Demo for SIGIR 2027: Mycelium.** Committed. A\* and domestic. Watch for the
+  2027 call.
 - **Full paper for SIGIR 2028: small models against large ones, measured
   properly.** Skip 2027: the evidence isn't ready.
 - **Low-resource environments track: laptop-scale research tools for labs
