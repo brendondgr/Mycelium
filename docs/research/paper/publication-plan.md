@@ -38,8 +38,11 @@ Every other venue that fits, and what each accepts, is in
 - The repository must have been public for more than six months before
   submission, with active development across that period.
 - There must be evidence that the software is used for research.
-- A web-based tool is in scope only if it is built around, and exposes, a core
-  library.
+- A web-based tool is in scope if it either exposes a core library through
+  the web interface, or shows a high level of rigour in domain modelling and
+  testing. JOSS's own example of the second is an MVC app built with a
+  framework such as Django, which is what Mycelium is. Reviewers must be able
+  to run it on their own machines.
 - The submission must carry an AI-usage disclosure: the tools used, the nature
   of the assistance, and confirmation of human review.
 - Related publications must be declared, whether published, in review or about
@@ -52,16 +55,27 @@ Every other venue that fits, and what each accepts, is in
 
 **What Mycelium needs:**
 
-- **Go public.** The repository is private (created 2026-05-31), so the
-  six-month clock has not started. Going public in November 2026 makes the
-  earliest submission about May 2027.
-- **A core library.** Package the recommendation, extraction and briefing tools
-  as a library, and build the web app on top of it.
+- **Go public by November 15, 2026.** The repository is private (created
+  2026-05-31), so the six-month clock has not started. November 15 makes the
+  earliest submission about May 16, 2027. Waiting until just before the SIGIR
+  deadline in February would push JOSS to August, into the IUI deadline. JOSS
+  checks how commits are spread over time, so develop steadily in public, not
+  in bursts.
+- **Rigour or a core library.** Either show rigorous domain modelling and tests
+  in the Django app, or package the recommendation, extraction and briefing
+  tools as a library under it. The first needs less restructuring.
 - **Open-source practice.** Tests that run on a CPU with small fixtures,
-  continuous integration, tagged releases and a changelog.
-- **Evidence of research use.** Document the Department of Scientific Computing
-  pilot.
-- **The AI-usage disclosure.**
+  continuous integration, tagged releases, a changelog, and public issues and
+  pull requests.
+- **Evidence of research use.** Two months in one department is thin. Document
+  the Department of Scientific Computing pilot, and aim for at least one lab
+  outside it running Mycelium by May 2027. The SIGIR demo and US-RSE papers
+  will also count.
+- **The AI-usage disclosure.** JOSS treats an incomplete disclosure as a
+  possible ethical breach and looks hard at rapid AI-assisted code, so keep an
+  AI-use log from now on.
+- **Don't submit early.** A desk rejection is public and comes with advice to
+  wait six months before resubmitting.
 
 **How it differs from the other two papers:** a JOSS paper describes the
 software and must not report research results, so it does not overlap with
@@ -153,8 +167,10 @@ compared with the same engine generating directions on its own?
 
 | When | What |
 |---|---|
-| Nov 2026 – Jan 2027 | Build the prototype on Mycelium |
-| Feb 2027 | IRB submission; pilot with 3–4 people |
+| Nov 2026 – Jan 2027 | Build the prototype on Mycelium. Both authors complete CITI human-subjects training and FSU conflict-of-interest disclosures (CAMS) |
+| Dec 2026 | Ask FSU's Office for Human Subjects Protection (OHSP) for a pre-submission consultation: exempt category 3, or expedited because of screen and log recording? |
+| By ~Jan 15, 2027 | Submit to the IRB through RAMP, using FSU's templates (an information sheet rather than full consent if exempt) |
+| Feb – early Mar 2027 | Approval. FSU's figures: exempt clearance often within 2 weeks, expedited within 4. Approval cannot be retroactive, so even the 3–4 person pilot waits for it |
 | Mar – May 2027 | Run the study |
 | Jun – Jul 2027 | Analyse and write |
 | ~Aug 2027 | Submit to IUI 2028 |
@@ -166,12 +182,22 @@ compared with the same engine generating directions on its own?
   `make new-experiment` and fill `PROTOCOL.md` before the first session. The
   pre-registration also strengthens the paper.
 - **IRB.** It needs review before any participant session.
-- **Anonymity.** IUI review is anonymous, but by then the repository, the JOSS
-  paper and the US-RSE paper will all name Mycelium. The submission renames the
-  system, links an anonymized copy of the code, and cites the team's own papers
-  in the third person.
+- **Anonymity.** IUI desk-rejects submissions that reveal their authors,
+  including through videos and supplements. A public, named Mycelium is allowed,
+  but the paper must not reveal that the authors built it. Cite Mycelium's
+  papers in the third person, give the hypothesis engine its own name in the
+  submission, link code only through an anonymized mirror, and scrub the video
+  of logos, usernames and voices. Any related submission still under review in
+  August (JOSS, for example) must be uploaded in anonymized form.
+- **Reviewers' note.** IUI asks for a short note giving the human-subjects
+  context. Make the PDF accessible (alt text, tagged PDF) and caption any video.
 - **Compensation.** Payments to participants before the grant starts cannot
-  come from the grant.
+  come from the grant. FSU allows research gift cards only through its approved
+  vendors, and a participant paid $600 or more in a year needs a 1099.
+- **Cost.** An article charge probably applies: the report found FSU absent
+  from ACM Open, which we could not re-check. The 2027 rate is $500 for ACM/SIG
+  members and $750 otherwise, and 2028 may cost more. Registration has been at
+  the full rate, one paper per registration, presented in person.
 
 **Risks and fallbacks:**
 
@@ -214,21 +240,24 @@ pre-submission research prompt in
 
 | Submission | Still needed |
 |---|---|
-| **All four** | Settle the licence (the repository says MIT; the grant letter says Apache 2.0). Clean the repository (secrets scan, real names in seed data) and make it public |
-| **SIGIR 2027 demo** | Watch for the 2027 call and confirm the format. Build a stable demo instance with made-up profiles and no pilot data. Script and record a 3–5 minute video. Write the 4 pages: the problem, the system, what the demo shows, how it differs from existing tools (Scholar Inbox already covers the paper-feed framing, so lead with opportunities, openness and laptop scale), and where to get it. Find money for the July trip |
+| **All four** | Settle the licence (the repository says MIT; the grant letter says Apache 2.0). Clean the repository (secrets scan, real names in seed data) and make it public by November 15. Set up accounts at least a month before any deadline: ORCID, OpenReview (a profile can take up to two weeks), PCS, and ACM, SIGIR and SIGCHI membership (SIGIR travel grants need SIGIR membership). Start a deployment log and an AI-use log now. Ask FSU Libraries whether FSU is joining ACM Open |
+| **SIGIR 2027 demo** | Watch for the 2027 call and confirm the format. Build a stable demo instance with made-up profiles and no pilot data. Script and record a 3–5 minute video. Write the 4 pages: the problem, the system, what the demo shows, how it differs from existing tools (Scholar Inbox already covers the paper-feed framing, so lead with opportunities, openness and laptop scale), and where to get it, with a small evaluation (laptop latency and memory, early usage figures) rather than a user study. Ask the demo chairs whether a CHI 2027 demo on the same system would count as prior publication. After acceptance, apply for a SIGIR student travel grant in its roughly two-week window, and don't register before the decision (SIGIR 2025's covered registration plus a $1,200 stipend). Bring a laptop running the local version in case the venue's network fails |
 | **US-RSE'27 paper** | Record pilot usage numbers (with consent) as an experiment. Measure run times on a laptop, a lab server and a cluster (a NAIRR start-up allocation could supply the cluster). Draft February–April in the IEEE template, with the fit statement, and keep it distinct from the JOSS paper |
-| **JOSS** | Start the six-month clock by making the repository public. Package the core library (recommendation, extraction, briefing). Add tests that run on a CPU, continuous integration and tagged releases. Develop in the open through issues and pull requests. Document the department pilot as research use. Write the 750–1,750-word paper with the AI-usage disclosure |
-| **IUI 2028 paper** | Build the hypothesis engine (November–January). Pre-register the study in the research record and get IRB approval (February). Recruit 16–24 participants and find compensation that is not grant money. Run the study (March–May), analyse and write (June–July), anonymize, and watch for the IUI 2028 call |
+| **JOSS** | Start the six-month clock by making the repository public. Show rigorous design and tests in the Django app, or package a core library. Add tests that run on a CPU, continuous integration and tagged releases. Develop in the open through issues and pull requests. Document the department pilot as research use. Write the 750–1,750-word paper with the AI-usage disclosure |
+| **IUI 2028 paper** | Build the hypothesis engine (November–January). Pre-register the study in the research record. Complete CITI training, and submit to the IRB by about January 15 so approval lands by early March. Recruit 16–24 participants and find compensation that is not grant money. Run the study (March–May), analyse and write (June–July), anonymize, and watch for the IUI 2028 call |
 
 ## Calendar
 
 | When | What |
 |---|---|
-| Nov 2026 | Settle the licence, clean the repository, make it public (the JOSS clock starts). Start building the hypothesis engine. File a NAIRR start-up request |
-| Dec 2026 – Jan 2027 | Build the engine. Build the demo instance and record the video. Optional: a CHI 2027 interactive demo (due January 21) if the engine is presentable |
-| ~Feb 2027 | **Submit the SIGIR 2027 demo.** IRB submission and a 3–4 person pilot of the study |
+| By Nov 15, 2026 | Settle the licence, clean the repository, **make it public** (the JOSS clock starts). Accounts and memberships. CITI training. Ask FSU Libraries about ACM Open. Start the deployment and AI-use logs. File a NAIRR start-up request. Start building the hypothesis engine |
+| Nov – Dec 2026 | Build the engine. Build the demo instance (made-up profiles only) and record the video. Draft the IRB protocol; consult OHSP in December |
+| Jan 2027 | **Submit to the IRB by about January 15.** Optional: a CHI 2027 interactive demo (due January 21), only if the engine is presentable and the SIGIR demo chairs confirm it won't count against the SIGIR demo. Watch for the SIGIR demo call |
+| ~Feb 2027 | **Submit the SIGIR 2027 demo** (SIGIR 2026's were due February 12) |
+| Mar 2027 | IRB approval expected; recruit, pilot with 3–4 people |
 | Mar – May 2027 | Run the IUI study. Draft the US-RSE paper; **submit it in mid-April** |
-| ~May 2027 | **JOSS: earliest submission**, if the repository went public in November |
+| Apr 2027 | SIGIR decisions, then the roughly two-week window for student travel grants. Camera-ready and author registration around April 30 |
+| ~May 16, 2027 | **JOSS: earliest submission**, if the repository went public by November 15 and the research-use evidence is documented |
 | Jul 18–24, 2027 | **Present the demo at SIGIR**, San Jose |
 | ~Aug 2027 | **Submit to IUI 2028** |
 | Oct 25–27, 2027 | **Present at US-RSE'27**, Ann Arbor |
@@ -242,11 +271,15 @@ grant starts, so it needs department or university travel money, or a SIGIR
 student travel grant (the venue review reported that SIGIR 2027 promises more
 fully funded ones for its 50th edition). The hypothesis engine and its first
 study begin before the grant. The grant funds the open release, evaluation
-across the pilot labs, and the two budgeted trips. The proposal itself is kept
+across the pilot labs, and the two budgeted trips. Its $1,500 open-access line
+covers an IUI article charge. The proposal itself is kept
 out of git, in `docs/grants/`.
 
 ## Sources
 
+- [`presubmission-checklists.md`](presubmission-checklists.md): the full
+  checklists, calendar and open questions this plan draws on, from the
+  2026-10-25 deep-research run, with its own sources
 - [JOSS submission requirements](https://joss.readthedocs.io/en/latest/submitting.html)
 - [US-RSE'26 participation tracks](https://us-rse.org/usrse26/participate/)
 - [ICORE conference rankings portal](https://portal.core.edu.au/conf-ranks/)

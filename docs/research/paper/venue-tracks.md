@@ -54,8 +54,9 @@ and references. Since January 2026, JOSS judges research impact, intellectual
 contribution and open-source practice rather than developer time, wants the
 human work shown, and keeps short-lived, single-use code out of scope.
 
-- **Mycelium's core library** (recommendation, extraction and briefing tools).
-  This is the committed submission.
+- **Mycelium.** The committed submission. A web app qualifies through a core
+  library or through rigorous domain modelling and testing; JOSS's example of
+  the second is a Django-style app, so Mycelium may not need restructuring.
 - **Later, a released tool as its own package.** The hypothesis engine, for
   example, once it is mature and used outside its own study.
 

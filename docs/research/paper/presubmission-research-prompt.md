@@ -55,7 +55,8 @@ Explore beyond the categories below wherever something matters.
    summary, statement of need, state of the field, software design, research
    impact, and an AI-usage disclosure. The repository must have been public for
    more than six months with active development, there must be evidence of
-   research use, and a web tool must be built around a core library.
+   research use, and a web tool must either expose a core library or show
+   rigorous domain modelling and testing.
 4. **ACM IUI 2028, full paper** (deadline expected around August 2027; nothing
    published for 2028 yet). IUI 2027 asked for about 8,000 words, double-blind
    review including videos and supplements, and published in the ACM Digital
