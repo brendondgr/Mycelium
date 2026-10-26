@@ -168,4 +168,5 @@ Start at [`docs/`](docs/README.md). The short version:
 
 ## License
 
-Mycelium is open source under the [MIT License](LICENSE).
+Mycelium is open source under the [Apache License 2.0](LICENSE). See
+[`NOTICE`](NOTICE) for attribution.
