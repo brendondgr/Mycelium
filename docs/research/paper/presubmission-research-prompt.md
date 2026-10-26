@@ -33,8 +33,7 @@ Explore beyond the categories below wherever something matters.
   Profile changes are proposed to the person rather than made silently.
 - It has been in prototype use in one university department for about two
   months. The repository is private now and will be made public, under the name
-  Mycelium, before any submission. The licence (MIT or Apache 2.0) is being
-  finalised.
+  Mycelium, before any submission, under the Apache 2.0 licence.
 - A new tool on top of it, a **hypothesis engine**, is being built. The
   researcher steers it with continuous feedback, and it keeps a memory report
   per topic across its literature reviews. It will be evaluated in a within-

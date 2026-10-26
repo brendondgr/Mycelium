@@ -194,10 +194,11 @@ compared with the same engine generating directions on its own?
 - **Compensation.** Payments to participants before the grant starts cannot
   come from the grant. FSU allows research gift cards only through its approved
   vendors, and a participant paid $600 or more in a year needs a 1099.
-- **Cost.** An article charge probably applies: the report found FSU absent
-  from ACM Open, which we could not re-check. The 2027 rate is $500 for ACM/SIG
-  members and $750 otherwise, and 2028 may cost more. Registration has been at
-  the full rate, one paper per registration, presented in person.
+- **Cost.** No article charge: FSU Libraries confirmed on 2026-10-25 that FSU
+  is in ACM Open, and ACM waives the charge when the corresponding author's
+  institution participates. Make an FSU author the corresponding author.
+  Registration has been at the full rate, one paper per registration,
+  presented in person.
 
 **Risks and fallbacks:**
 
@@ -240,7 +241,7 @@ pre-submission research prompt in
 
 | Submission | Still needed |
 |---|---|
-| **All four** | Settle the licence (the repository says MIT; the grant letter says Apache 2.0). Clean the repository (secrets scan, real names in seed data) and make it public by November 15. Set up accounts at least a month before any deadline: ORCID, OpenReview (a profile can take up to two weeks), PCS, and ACM, SIGIR and SIGCHI membership (SIGIR travel grants need SIGIR membership). Start a deployment log and an AI-use log now. Ask FSU Libraries whether FSU is joining ACM Open |
+| **All four** | The licence is settled: Apache 2.0 (decided 2026-10-25). Clean the repository (secrets scan, real names in seed data) and make it public by November 15. Set up accounts at least a month before any deadline: ORCID (Brendon has one; confirm Olmo's), OpenReview (a profile can take up to two weeks), PCS, and ACM, SIGIR and SIGCHI membership (SIGIR travel grants need SIGIR membership). Start a deployment log and an AI-use log now. FSU is in ACM Open, so ACM article charges are waived |
 | **SIGIR 2027 demo** | Watch for the 2027 call and confirm the format. Build a stable demo instance with made-up profiles and no pilot data. Script and record a 3–5 minute video. Write the 4 pages: the problem, the system, what the demo shows, how it differs from existing tools (Scholar Inbox already covers the paper-feed framing, so lead with opportunities, openness and laptop scale), and where to get it, with a small evaluation (laptop latency and memory, early usage figures) rather than a user study. Ask the demo chairs whether a CHI 2027 demo on the same system would count as prior publication. After acceptance, apply for a SIGIR student travel grant in its roughly two-week window, and don't register before the decision (SIGIR 2025's covered registration plus a $1,200 stipend). Bring a laptop running the local version in case the venue's network fails |
 | **US-RSE'27 paper** | Record pilot usage numbers (with consent) as an experiment. Measure run times on a laptop, a lab server and a cluster (a NAIRR start-up allocation could supply the cluster). Draft February–April in the IEEE template, with the fit statement, and keep it distinct from the JOSS paper |
 | **JOSS** | Start the six-month clock by making the repository public. Show rigorous design and tests in the Django app, or package a core library. Add tests that run on a CPU, continuous integration and tagged releases. Develop in the open through issues and pull requests. Document the department pilot as research use. Write the 750–1,750-word paper with the AI-usage disclosure |
@@ -250,7 +251,7 @@ pre-submission research prompt in
 
 | When | What |
 |---|---|
-| By Nov 15, 2026 | Settle the licence, clean the repository, **make it public** (the JOSS clock starts). Accounts and memberships. CITI training. Ask FSU Libraries about ACM Open. Start the deployment and AI-use logs. File a NAIRR start-up request. Start building the hypothesis engine |
+| By Nov 15, 2026 | Clean the repository and **make it public** under Apache 2.0 (the JOSS clock starts). Accounts and memberships. CITI training. Start the deployment and AI-use logs. File a NAIRR start-up request. Start building the hypothesis engine |
 | Nov – Dec 2026 | Build the engine. Build the demo instance (made-up profiles only) and record the video. Draft the IRB protocol; consult OHSP in December |
 | Jan 2027 | **Submit to the IRB by about January 15.** Optional: a CHI 2027 interactive demo (due January 21), only if the engine is presentable and the SIGIR demo chairs confirm it won't count against the SIGIR demo. Watch for the SIGIR demo call |
 | ~Feb 2027 | **Submit the SIGIR 2027 demo** (SIGIR 2026's were due February 12) |
@@ -271,8 +272,9 @@ grant starts, so it needs department or university travel money, or a SIGIR
 student travel grant (the venue review reported that SIGIR 2027 promises more
 fully funded ones for its 50th edition). The hypothesis engine and its first
 study begin before the grant. The grant funds the open release, evaluation
-across the pilot labs, and the two budgeted trips. Its $1,500 open-access line
-covers an IUI article charge. The proposal itself is kept
+across the pilot labs, and the two budgeted trips. With FSU in ACM Open, the
+budget's $1,500 open-access line is not needed for the IUI paper. The proposal
+itself is kept
 out of git, in `docs/grants/`.
 
 ## Sources
@@ -280,6 +282,9 @@ out of git, in `docs/grants/`.
 - [`presubmission-checklists.md`](presubmission-checklists.md): the full
   checklists, calendar and open questions this plan draws on, from the
   2026-10-25 deep-research run, with its own sources
+- [`submission-steps.html`](submission-steps.html): the steps for SIGIR,
+  US-RSE and IUI as a timeline and checklists; a local copy of the
+  [published page](https://claude.ai/artifact/25adGmiX6jQxFenP1rui6p)
 - [JOSS submission requirements](https://joss.readthedocs.io/en/latest/submitting.html)
 - [US-RSE'26 participation tracks](https://us-rse.org/usrse26/participate/)
 - [ICORE conference rankings portal](https://portal.core.edu.au/conf-ranks/)

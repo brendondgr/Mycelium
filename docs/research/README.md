@@ -21,6 +21,7 @@ experiment. It is the contract, and `make validate-research` checks it.
 | [`paper/publication-plan.md`](paper/publication-plan.md) | What are we submitting in 2027–28, where, and when? |
 | [`paper/venue-tracks.md`](paper/venue-tracks.md) | What does each venue accept, and which Mycelium papers fit it? |
 | [`paper/presubmission-checklists.md`](paper/presubmission-checklists.md) | What must we do before, at and after each submission? |
+| [`paper/submission-steps.html`](paper/submission-steps.html) | The same steps as a page: a timeline plus checklists for SIGIR, US-RSE and IUI (open in a browser) |
 
 `CLAIMS.md` is the highest-value file here. Its `unsupported` rows are the
 experiment backlog.
