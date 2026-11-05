@@ -1,10 +1,11 @@
 # Mylo Opportunity Announcements — implementation plan
 
-Status: **final plan, awaiting approval** (revision 5, 2026-11-05). Every
+Status: **approved, in progress** (revision 5, approved 2026-11-05). Every
 behaviour below was reviewed against the prototype in the Discord test server
 (`1507798835311673616`, category *Mylo Opportunities (prototype)*) and the
 *Mylo Announcements Mockup* canvas. All review questions are answered (see
-**Answered in review**). Nothing is built until this plan is approved.
+**Answered in review**). Phase 0 is done; progress is recorded per phase in
+`docs/changelog.md`.
 
 ## Objective
 
