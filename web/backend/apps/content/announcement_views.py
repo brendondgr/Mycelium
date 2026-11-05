@@ -10,6 +10,10 @@
   target's forums, so a manager can see where posts land. Managers only.
 * ``POST /api/announcements/create-channels/?binding=<id>`` — "Create them for me"
   for one server binding. That binding's own managers only.
+* ``GET  /api/announcements/department-opportunities/?department=<id>`` — the
+  department's Opportunities page: its slate's department-level items only, each
+  with its reasons (quoted evidence), the labs that could lead, its checks, and
+  its Discord thread once announced. Any member may read it.
 
 Every Discord link carries the server, the channel's name and the thread URL, so
 the web can render it as the Discord logo plus ``#channel`` opening in a new tab.
@@ -17,6 +21,7 @@ the web can render it as the Discord logo plus ``#channel`` opening in a new tab
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -192,6 +197,7 @@ def _announced_row(ann: Announcement, names: dict[str, str]) -> dict:
         },
         "interested": len(followers(ann)),
         "discord": _discord_links(ann, names),
+        "dept_reasons": (ann.alignment or {}).get("dept_reasons") or [],
     }
 
 
@@ -240,6 +246,106 @@ class AnnouncementsView(APIView):
                 "held": held,
                 "closing_soon": _closing_soon(kind, obj, row, names),
                 "servers": [_server(b) for b in bindings],
+            }
+        )
+
+
+class DepartmentOpportunitiesView(APIView):
+    """Department-level calls on the department's slate (plan "What a department
+    sees"). Nothing else is listed: no reason, no department item."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.query_params.get("department"):
+            return Response(
+                {"detail": "Pass ?department=<id>."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        kind, obj, error = _target(request)
+        if error is not None:
+            return error
+        from apps.content import dept_level, lab_fit, usability
+
+        today = timezone.localdate()
+        row = _settings_row(kind, obj)
+        target = announce.Target(kind, obj, row)
+        names = _channel_names(_bindings(kind, obj))
+        # The slate's department-level items, plus everything already announced
+        # to the department (a manager can announce a search result off-slate).
+        items_by_id = {
+            r.content_id: r.content
+            for r in announce.slate_rows(target, today)
+            if dept_level.reasons(r.content.metadata)
+        }
+        announced = {
+            a.content_id: a
+            for a in Announcement.objects.filter(
+                target_department=obj, content__isnull=False
+            )
+            .select_related("content")
+            .prefetch_related("posts")
+        }
+        for content_id, ann in announced.items():
+            if ann.state == Announcement.State.POSTED:
+                items_by_id.setdefault(content_id, ann.content)
+        reader = usability.reader_for_department(
+            obj, min_award=announce._min_award(target)
+        )
+        members = announce._members(target)
+        counts = usability.fellowship_counts(
+            [m.id for m in members],
+            [i for i in items_by_id.values() if i.type == "fellowship"],
+            today,
+        )
+        labs = lab_fit.candidates(obj)
+        items = []
+        for item in items_by_id.values():
+            if not dept_level.reasons(item.metadata):
+                continue
+            ann = announced.get(item.id)
+            fit = lab_fit.rank(item, labs)
+            checks = usability.assess(
+                item,
+                replace(
+                    reader,
+                    suited=tuple(lab["name"] for lab in fit),
+                    suited_are_labs=True,
+                    fellowship_counts=counts.get(str(item.id)),
+                ),
+                today,
+            )
+            facts = announce_facts.facts_for(item, today)
+            blocked = usability.blocking(checks)
+            items.append(
+                {
+                    "content_id": str(item.id),
+                    "category": item.type,
+                    "title": announce_facts.item_title(item),
+                    "url": announce_facts.item_url(item),
+                    "funder": announce_facts.item_host(item),
+                    "deadline": facts.get("deadline", ""),
+                    "reasons": [
+                        rs.as_dict() for rs in dept_level.reasons(item.metadata)
+                    ],
+                    "labs": [{"name": lab["name"], "why": lab["why"]} for lab in fit],
+                    "checks": [c.as_dict() for c in checks],
+                    "held": blocked.label if blocked else "",
+                    "announced": bool(
+                        ann and ann.state == Announcement.State.POSTED
+                    ),
+                    "discord": _discord_links(ann, names) if ann else [],
+                }
+            )
+        # Announced first, then what could still be, then what Mylo held back.
+        items.sort(
+            key=lambda i: (bool(i["held"]), not i["announced"], i["deadline"] or "9")
+        )
+        return Response(
+            {
+                "department": {"id": str(obj.pk), "name": obj.name},
+                "announcements_on": row.enabled,
+                "items": items,
             }
         )
 
@@ -373,17 +479,27 @@ class AnnouncementTestView(APIView):
 
         results = []
         for binding in _bindings(kind, obj):
+            # One test thread per forum: a department's kinds share one.
+            forums: dict[str, list] = {}
             for purpose, route in resolve.routes_for_binding(binding).items():
-                if purpose not in ("grants", "fellowships", "conferences"):
-                    continue
+                if purpose in ("grants", "fellowships", "conferences"):
+                    forums.setdefault(route.channel_id, []).append((purpose, route))
+            for channel_id, entries in forums.items():
+                purposes = [purpose for purpose, _route in entries]
+                route = entries[0][1]
+                what = (
+                    purposes[0]
+                    if len(purposes) == 1
+                    else ", ".join(purposes[:-1]) + " and " + purposes[-1]
+                )
                 try:
                     resp = discord_api.create_forum_thread(
-                        route.channel_id,
+                        channel_id,
                         name=f"[Test] Mylo announcements for {obj.name}",
                         embed={
                             "title": "This is a test post",
                             "description": (
-                                f"New {purpose} for **{obj.name}** will appear in this "
+                                f"New {what} for **{obj.name}** will appear in this "
                                 "forum, one thread each. You can delete this thread."
                             ),
                             "color": 0x5E7A3E,
@@ -395,8 +511,8 @@ class AnnouncementTestView(APIView):
                 results.append(
                     {
                         "guild_name": binding.guild.guild_name_cache,
-                        "purpose": purpose,
-                        "channel_id": route.channel_id,
+                        "purpose": purposes[0],
+                        "channel_id": channel_id,
                         "channel_name": route.channel_name,
                         "ok": ok,
                     }

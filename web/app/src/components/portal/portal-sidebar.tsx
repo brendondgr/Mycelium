@@ -132,8 +132,8 @@ export function PortalSidebar() {
 
       {scope.kind === "department" ? (
         <p className="-mt-3 mb-[18px] px-3.5 text-[11px] leading-relaxed text-[var(--text-muted)]">
-          Research feeds are matched to a lab or to you — a department
-          doesn&apos;t have its own.
+          Research feeds are matched to a lab or to you. A department&apos;s
+          Opportunities lists the calls only a department can take on.
         </p>
       ) : null}
 

@@ -10,6 +10,7 @@ import {
 
 import {
   fetchAnnouncements,
+  fetchDeptOpportunities,
   fetchAdminLab,
   fetchAdminLabs,
   fetchAdminUser,
@@ -1601,6 +1602,16 @@ export function useAnnouncements(target: AnnouncementTarget | null) {
   });
 }
 
+
+/** A department's Opportunities page; disabled without a department. */
+export function useDeptOpportunities(departmentId: string | null) {
+  return useQuery({
+    queryKey: ["portal", "dept-opportunities", departmentId ?? "none"],
+    queryFn: () => fetchDeptOpportunities(departmentId as string),
+    enabled: Boolean(departmentId),
+    staleTime: 60_000,
+  });
+}
 
 /** Save announcement settings, then refresh the announcements read. */
 export function useSaveAnnouncementSettings(target: AnnouncementTarget) {

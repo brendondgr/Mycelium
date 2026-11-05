@@ -239,7 +239,9 @@ def test_the_web_search_card_carries_the_same_links(fake) -> None:
 
 
 @pytest.mark.django_db
-def test_the_nightly_check_catches_a_deletion_the_gateway_missed(fake, monkeypatch) -> None:
+def test_the_nightly_check_catches_a_deletion_the_gateway_missed(
+    fake, monkeypatch
+) -> None:
     from apps.integrations.services import discord_api
     from apps.integrations.services.discord_api import RawResponse
 

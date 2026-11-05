@@ -1952,6 +1952,40 @@ export type AnnouncedItem = {
   };
   interested: number;
   discord: DiscordThreadLink[];
+  /** A department post's reasons; empty for a lab. */
+  dept_reasons: DeptReason[];
+};
+
+/** Why a call is one only a department can take on, with the sentence it matched. */
+export type DeptReason = {
+  key: "institutional_selection" | "department_applicant" | "department_programme";
+  label: string;
+  evidence: string;
+  field: string;
+  rule: string;
+};
+
+export type DeptOpportunity = {
+  content_id: string;
+  category: "grant" | "fellowship" | "conference";
+  title: string;
+  url: string;
+  funder: string;
+  deadline: string;
+  reasons: DeptReason[];
+  /** Labs that could lead (lab-fit); a department page never names people. */
+  labs: { name: string; why: string }[];
+  checks: UsabilityCheck[];
+  /** The failed hard check's label when Mylo held it back; empty otherwise. */
+  held: string;
+  announced: boolean;
+  discord: DiscordThreadLink[];
+};
+
+export type DeptOpportunitiesResponse = {
+  department: { id: string; name: string };
+  announcements_on: boolean;
+  items: DeptOpportunity[];
 };
 
 export type HeldBackItem = {

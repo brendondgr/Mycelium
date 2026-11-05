@@ -32,7 +32,7 @@ import json
 from django.core.management.base import BaseCommand
 
 from apps.content.opportunities import run_daily_opportunities_batch
-from apps.content.tasks import select_targets, select_users
+from apps.content.tasks import select_departments, select_targets, select_users
 
 
 class Command(BaseCommand):
@@ -85,9 +85,10 @@ class Command(BaseCommand):
         # A full run also matches each entitled lab and in-cap project, matching the
         # Celery task and the briefing/digest stages; a --user run stays user-scoped.
         labs, projects = select_targets(usernames)
+        departments = select_departments(usernames)
         self.stdout.write(
             f"Matching opportunities for {len(users)} user(s), {len(labs)} lab(s), "
-            f"{len(projects)} project(s)…"
+            f"{len(projects)} project(s), {len(departments)} department(s)…"
         )
 
         # ``--no-llm`` forces the deterministic fallback by injecting a complete
@@ -98,6 +99,7 @@ class Command(BaseCommand):
             users,
             labs=labs,
             projects=projects,
+            departments=departments,
             areas=("grants", "conferences", "fellowships"),
             prune=not options["no_prune"],
             persist=not options["dry_run"],

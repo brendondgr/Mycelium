@@ -35,7 +35,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.content import announce_editor as editor
-from apps.content import announce_facts, usability
+from apps.content import announce_facts, dept_level, usability
 from apps.content.clustering import IMPLICIT_CLUSTER_ID
 from apps.content.liveness import is_live
 from apps.content.models import (
@@ -119,8 +119,8 @@ def target_entitled(target: Target) -> bool:
 
 
 def enabled_targets() -> list[Target]:
-    """Every lab (and, once supported, department) with announcements switched on
-    and a plan that covers them."""
+    """Every lab and department with announcements switched on and a plan that
+    covers them."""
     out = []
     rows = AnnouncementSettings.objects.filter(enabled=True).select_related(
         "target_lab__profile", "target_department__profile"
@@ -212,6 +212,9 @@ def select(
         ).values_list("content_id", flat=True)
     )
     fresh = [r for r in rows if r.content_id not in announced]
+    if target.kind == "department":
+        # A department hears only about calls a lab could not take on alone.
+        fresh = [r for r in fresh if dept_level.reasons(r.content.metadata)]
     if target.settings.seeded_at is None:
         # A seed slot spent on a closed, too-late or ineligible call is a slot
         # wasted, so the seed takes the best rows that would actually be posted.
@@ -267,20 +270,24 @@ def label_for(item: ContentItem, today: date, *, seeding: bool) -> str:
 
 
 def _members(target: Target) -> list:
-    if target.kind != "lab":
-        return []
+    """The people whose eligibility a fellowship count reads: the lab's members, or
+    the department's effective membership (direct members and its labs')."""
     from django.contrib.auth import get_user_model
 
-    return list(
-        get_user_model()
-        .objects.filter(lab_memberships__lab=target.obj)
-        .select_related("profile")
-        .order_by("username")
-    )
+    users = get_user_model().objects.select_related("profile").order_by("username")
+    if target.kind == "lab":
+        return list(users.filter(lab_memberships__lab=target.obj))
+    from apps.accounts.services import effective_member_ids
+
+    return list(users.filter(id__in=effective_member_ids(target.obj)))
 
 
-def align(target: Target, row: RelevanceScore, members: list) -> dict:
-    """The theme, the projects and the people — facts only."""
+def align(
+    target: Target, row: RelevanceScore, members: list, labs: list | None = None
+) -> dict:
+    """The theme, the projects and the people — facts only. For a department the
+    "people" are its labs (``labs``: :func:`lab_fit.candidates`, computed once per
+    run by the caller)."""
     from apps.core.people import display_name
 
     _rank, cluster_id, theme = best_slot(row.signals)
@@ -304,6 +311,27 @@ def align(target: Target, row: RelevanceScore, members: list) -> dict:
                 if (pr.signals or {}).get("suggested") and pr.target_project
             }
         )[:3]
+
+    if target.kind == "department":
+        from apps.content import lab_fit
+
+        if labs is None:
+            labs = lab_fit.candidates(target.obj)
+        fit = lab_fit.rank(row.content, labs)
+        return {
+            "cluster_id": cluster_id,
+            "theme": theme,
+            "theme_notes": notes,
+            "projects": [],
+            "people": [
+                {"id": f"l{i}", "lab_id": lab["lab_id"], "name": lab["name"],
+                 "why": lab["why"], "fit": lab["fit"]}
+                for i, lab in enumerate(fit, start=1)
+            ],
+            "dept_reasons": [
+                r.as_dict() for r in dept_level.reasons(row.content.metadata)
+            ],
+        }
 
     by_username = {m.get_username(): m for m in members}
     people = []
@@ -373,6 +401,7 @@ def prepare(
     members: list,
     fellowship_counts: dict,
     complete: Callable[[str], str | None] | None,
+    labs: list | None = None,
 ) -> Prepared:
     from dataclasses import replace
 
@@ -381,12 +410,11 @@ def prepare(
 
     item = row.content
     meta = item.metadata or {}
-    alignment = align(target, row, members)
+    alignment = align(target, row, members, labs)
     reader = replace(
         reader,
-        suited=tuple(p["name"] for p in alignment["people"])
-        if target.kind == "lab"
-        else None,
+        suited=tuple(p["name"] for p in alignment["people"]),
+        suited_are_labs=target.kind == "department",
         fellowship_counts=fellowship_counts.get(str(item.id)),
     )
     checks = usability.assess(item, reader, today)
@@ -410,6 +438,7 @@ def prepare(
         ],
         checks=[c.as_dict() for c in checks],
         next_step_hint=_next_step_hint(checks, facts["deadline"], reader.buffer_days),
+        dept_reasons=alignment.get("dept_reasons", []),
     )
     interests = getattr(getattr(target.obj, "profile", None), "interests", None) or {}
     areas = next(
@@ -486,6 +515,11 @@ def run_target(
         else usability.reader_for_department(target.obj, min_award=_min_award(target))
     )
     members = _members(target)
+    labs = None
+    if target.kind == "department":
+        from apps.content import lab_fit
+
+        labs = lab_fit.candidates(target.obj)
     counts = usability.fellowship_counts(
         [m.id for m in members],
         [
@@ -520,6 +554,7 @@ def run_target(
             members=members,
             fellowship_counts=counts,
             complete=complete,
+            labs=labs,
         )
         if prepared.held is not None:
             outcome.held.append(prepared)
@@ -630,7 +665,10 @@ def list_items(target: Target, today: date) -> list[ContentItem]:
     its members saved for it."""
     from apps.content.models import SavedOpportunity
 
-    items = {r.content_id: r.content for r in slate_rows(target, today)}
+    rows = slate_rows(target, today)
+    if target.kind == "department":
+        rows = [r for r in rows if dept_level.reasons(r.content.metadata)]
+    items = {r.content_id: r.content for r in rows}
     for ann in Announcement.objects.filter(
         **target.announcement_filter,
         state=Announcement.State.POSTED,

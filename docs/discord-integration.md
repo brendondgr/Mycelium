@@ -121,7 +121,7 @@ Guild membership, guild ownership, and Discord roles grant nothing.
 ## Opportunity announcements
 
 One forum thread per newly fitting grant, fellowship or conference, in each server
-binding of a lab (and, from Phase 7, a department) that routes that kind. Behind
+binding of a lab or a department that routes that kind. Behind
 `OPPORTUNITY_ANNOUNCEMENTS_ENABLED` (off), the `OPPORTUNITY_ANNOUNCEMENTS` plan
 feature (Lab and Canopy) and the `BOT_SERVER` add-on.
 
@@ -173,6 +173,15 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   Threads to rename, retag, archive and unarchive its threads; Manage Channels only
   for **Create them for me** and for adding its tags to a forum you chose; Manage
   Roles only for the "who can start posts" rules.
+
+* **Departments** hear only about calls a lab could not take on alone
+  (`apps/content/dept_level.py`: institutional selection, department applicant,
+  department-scale programme). A department has one `#dept-opportunities` forum
+  routing all three kinds, tagged by kind and reason; its post adds *Why it's here*
+  (the reason and the quoted sentence) and names *Labs that could lead*
+  (`lab_fit.py`), never people, and never tags anyone. A department fellowship
+  shows counts only; each member who may be eligible gets one DM. A department is
+  scored only while its announcements are on.
 
 ## Developer-portal setup (one time)
 

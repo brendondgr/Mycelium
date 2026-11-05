@@ -98,8 +98,18 @@ export function AnnouncementsCard({
             Opportunity announcements
           </h3>
           <p className="m-0 mt-1 max-w-[470px] text-[13.5px] text-[var(--text-secondary)]">
-            One Discord thread per new grant, fellowship or conference that fits{" "}
-            {name}, in its own forum. Papers stay in the daily report.
+            {"lab" in target ? (
+              <>
+                One Discord thread per new grant, fellowship or conference that fits{" "}
+                {name}, in its own forum. Papers stay in the daily report.
+              </>
+            ) : (
+              <>
+                One Discord thread per call only {name} can take on as a department,
+                naming the labs that could lead. Calls a lab can apply for alone stay
+                with the labs.
+              </>
+            )}
           </p>
         </div>
         <label className="inline-flex min-h-[44px] items-center gap-2.5 text-[14px] font-medium text-[var(--text-primary)]">
@@ -188,12 +198,14 @@ export function AnnouncementsCard({
           title="Closing-soon list every morning"
           detail="Grants and fellowships closing in the next 14 days, one post each, replaced daily."
         />
-        <Toggle
-          checked={settings.strong_match_tagging}
-          onChange={(v) => set("strong_match_tagging", v)}
-          title="Tag people when an item fits them closely"
-          detail="Off by default. When on, a post names members whose interests match it strongly."
-        />
+        {"lab" in target ? (
+          <Toggle
+            checked={settings.strong_match_tagging}
+            onChange={(v) => set("strong_match_tagging", v)}
+            title="Tag people when an item fits them closely"
+            detail="Off by default. When on, a post names members whose interests match it strongly."
+          />
+        ) : null}
       </div>
 
       {"lab" in target ? <WhoApplies slug={target.lab} /> : null}
@@ -346,7 +358,9 @@ function ServerBlock({ server }: { server: AnnouncementServer }) {
             {create.isPending ? "Creating…" : "Create them for me"}
           </button>
           <span className="text-[12.5px] text-[var(--text-secondary)]">
-            Makes a category with three forums. Or pick existing forums with{" "}
+            {server.target_kind === "department"
+              ? "Makes a category with one #dept-opportunities forum."
+              : "Makes a category with three forums."} Or pick existing forums with{" "}
             <code>/setup</code> in Discord.
           </span>
           {create.data && !create.data.ok ? (

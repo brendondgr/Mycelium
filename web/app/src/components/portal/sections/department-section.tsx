@@ -8,6 +8,7 @@ import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
+import { AnnouncementsCard } from "@/components/portal/sections/announcements-card";
 import { DeptPlanCard } from "@/components/portal/sections/org-plan-card";
 import { OrgInviteCard } from "@/components/portal/sections/org-invite-card";
 import { usePortal } from "@/components/portal/portal-context";
@@ -60,6 +61,11 @@ export function DepartmentSection() {
           <DeptPlanCard deptId={deptId} />
         </div>
       </div>
+      {canManage ? (
+        <div className="mt-4">
+          <AnnouncementsCard target={{ department: deptId }} name={deptName} />
+        </div>
+      ) : null}
     </div>
   );
 }

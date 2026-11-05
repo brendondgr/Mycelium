@@ -108,3 +108,40 @@ def test_targeted_suggestions_run_stays_user_scoped(
     assert scored["users"] == [user]
     assert scored["labs"] == []
     assert scored["projects"] == []
+
+
+@pytest.mark.django_db
+def test_daily_opportunities_scores_departments_with_announcements_on(
+    monkeypatch, lab_setup
+) -> None:
+    """A department has no feed of its own: it is scored only while its
+    announcements are on, because its slate exists only for that channel."""
+    from django.utils import timezone
+
+    from apps.accounts.models import Department
+    from apps.content.models import AnnouncementSettings
+    from apps.content.opportunities import OppBatchResult
+
+    _user, lab, _project = lab_setup
+    head = User.objects.create_user(username="head", password="p")
+    on = Department.objects.create(owner=head, name="Earth Sciences")
+    off = Department.objects.create(owner=head, name="Biology")
+    AnnouncementSettings.objects.create(
+        target_department=on, enabled=True, seeded_at=timezone.now()
+    )
+    AnnouncementSettings.objects.create(target_department=off, enabled=False)
+    monkeypatch.setattr("apps.content.announce.target_entitled", lambda t: True)
+    sink = {}
+
+    def fake(users, *, labs=(), projects=(), departments=(), **kwargs):
+        sink["departments"] = list(departments)
+        return OppBatchResult(ingest={}, results=[])
+
+    monkeypatch.setattr(
+        "apps.content.management.commands.run_daily_opportunities."
+        "run_daily_opportunities_batch",
+        fake,
+    )
+    call_command("run_daily_opportunities", "--no-prune", "--no-llm")
+
+    assert sink["departments"] == [on]

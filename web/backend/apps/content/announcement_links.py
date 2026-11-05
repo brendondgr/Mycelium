@@ -169,14 +169,19 @@ def announce_options(user, guild_id: str, items) -> dict[str, list[dict]]:
             deleted_at__isnull=True,
         ).select_related("announcement")
     }
+    from apps.content import dept_level
+
     out: dict[str, list[dict]] = {}
     for item in items:
         purpose = _KIND_PURPOSE.get(item.type)
         if purpose is None:
             continue
+        dept_ok = bool(dept_level.reasons(item.metadata))
         for binding in managed:
             if (binding.id, str(item.id)) in posted:
                 continue
+            if binding.department_id and not dept_ok:
+                continue  # no reason, no department post
             route = resolve.get_route(binding, purpose)
             if route is None:
                 continue
@@ -219,6 +224,17 @@ def manual_announce(
     route = resolve.get_route(binding, purpose)
     if route is None:
         return ("no_route", {"message": f"This server has no {purpose} forum set up."})
+    from apps.content import dept_level
+
+    if binding.department_id and not dept_level.reasons(item.metadata):
+        return (
+            "not_department_level",
+            {
+                "message": "A department channel carries only calls a lab can't take "
+                "on alone (a limited submission, a department applicant, or a "
+                "department-scale programme). This one stays with the labs."
+            },
+        )
 
     existing = discussed_in_guild([item.id], guild_id).get(str(item.id))
     target_filter = (
@@ -265,14 +281,21 @@ def manual_announce(
         row = announce.RelevanceScore.objects.filter(
             **target.persist_kwargs, content=item
         ).first() or announce.RelevanceScore(content=item, signals={}, score=0)
+        members = announce._members(target)
+        today = timezone.localdate()
+        counts = (
+            announce.usability.fellowship_counts([m.id for m in members], [item], today)
+            if item.type == ContentItem.Type.FELLOWSHIP
+            else {}
+        )
         prepared = announce.prepare(
             target,
             row,
-            timezone.localdate(),
+            today,
             seeding=False,
             reader=reader,
-            members=announce._members(target),
-            fellowship_counts={},
+            members=members,
+            fellowship_counts=counts,
             complete=editor._model_complete,
         )
         ann = announce._record(target, prepared, Announcement.State.POSTED, "")

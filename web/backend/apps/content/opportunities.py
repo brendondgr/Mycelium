@@ -1341,6 +1341,7 @@ def run_daily_opportunities_batch(
     *,
     labs=(),
     projects=(),
+    departments=(),
     areas: tuple[str, ...] = ("grants", "conferences", "fellowships"),
     prune: bool = True,
     persist: bool = True,
@@ -1502,10 +1503,17 @@ def run_daily_opportunities_batch(
     # Lab + project targets: grants + conferences only (no fellowships here). A
     # project only runs the areas it has opted into (``goals.watch_categories``);
     # a lab runs them all (its own watch config gates upstream).
-    from .targets import project_watch_categories, target_for_lab, target_for_project
+    from .targets import (
+        project_watch_categories,
+        target_for_department,
+        target_for_lab,
+        target_for_project,
+    )
 
     inst_areas = tuple(a for a in areas if a != "fellowships")
     inst_units = [(target_for_lab(lab), inst_areas) for lab in labs]
+    # Departments with announcements on: their slates feed the department channel.
+    inst_units += [(target_for_department(d), inst_areas) for d in departments]
     for project in projects:
         chosen = set(project_watch_categories(project))
         inst_units.append(
@@ -1619,14 +1627,17 @@ def run_daily_opportunities_batch(
     # for the day's new arrivals. Serial (the LLM slice is small; a target's
     # new-fellowship count on any given day is tiny), keeping this out of the
     # eligibility-coupled pool above.
-    if "fellowships" in areas and (labs or projects):
+    if "fellowships" in areas and (labs or projects or departments):
         from .targets import (
             project_watch_categories,
+            target_for_department,
             target_for_lab,
             target_for_project,
         )
 
         fellowship_targets = [target_for_lab(lab) for lab in labs]
+        # A department's fellowships are its nomination programmes (dept_level).
+        fellowship_targets += [target_for_department(d) for d in departments]
         for project in projects:
             if "fellowships" not in project_watch_categories(project):
                 continue

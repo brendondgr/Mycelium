@@ -34,7 +34,7 @@ from apps.accounts.embedding import build_canonical_text
 class MatchTarget:
     """Everything the matcher needs about the thing it is scoring for."""
 
-    kind: str  # "user" | "lab" | "project"
+    kind: str  # "user" | "lab" | "project" | "department"
     key: str  # username / slug / project id — for logs, signals, result labels
     interests: dict
     watch_topics: list[str]
@@ -102,6 +102,28 @@ def target_for_lab(lab) -> MatchTarget:
         profile_meta={},
         persist_kwargs={"target_lab": lab},
         # Institutional surfaces keep ``areas`` in the vector so the lab stays broad.
+        embedding_text=build_canonical_text(
+            statement=interests.get("statement", ""),
+            areas=interests.get("areas", []),
+            keywords=interests.get("keywords", []),
+        ),
+    )
+
+
+def target_for_department(department) -> MatchTarget:
+    """A department: its own interest profile, scored under ``target_department``.
+
+    Opportunities only: a department's slates feed its announcement channel, which
+    carries calls only a department can take on (``apps.content.dept_level``).
+    """
+    interests = _lab_interests(getattr(department, "profile", None))
+    return MatchTarget(
+        kind="department",
+        key=str(department.pk),
+        interests=interests,
+        watch_topics=[],
+        profile_meta={},
+        persist_kwargs={"target_department": department},
         embedding_text=build_canonical_text(
             statement=interests.get("statement", ""),
             areas=interests.get("areas", []),

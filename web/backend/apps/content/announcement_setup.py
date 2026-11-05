@@ -3,8 +3,9 @@
 Configures **one binding** — the lab or department being set up in this server —
 so running it for a lab never touches the department's channels, and the reverse.
 
-* **Create them for me** makes a category with three forums (``#grants``,
-  ``#fellowships``, ``#conferences``), each sorted by recent activity so an updated
+* **Create them for me** makes a category with three forums for a lab (``#grants``,
+  ``#fellowships``, ``#conferences``) or one ``#dept-opportunities`` forum for a
+  department, each sorted by recent activity so an updated
   thread rises, and carrying Mylo's tags. Nothing is created unless a manager asks.
 * **Use channels I already have** binds an existing forum per kind, after proving
   Mylo can start a thread in it.
@@ -20,7 +21,12 @@ from __future__ import annotations
 
 from django.utils import timezone
 
-from apps.content.discord_announcements import FORUM_TAGS, KINDS, PURPOSE_KIND
+from apps.content.discord_announcements import (
+    DEPT_FORUM_TAGS,
+    FORUM_TAGS,
+    KINDS,
+    PURPOSE_KIND,
+)
 from apps.content.models import AnnouncementSettings
 from apps.integrations.services import discord_api, resolve
 
@@ -40,6 +46,12 @@ _TOPICS = {
     "conferences": "Venues that fit {name}, announced once their submission dates are "
     "published. Anyone can reply.",
 }
+DEPT_FORUM = "dept-opportunities"
+_DEPT_TOPIC = (
+    "Calls only {name} as a department can take on: limited submissions, "
+    "department applicants, training programmes and centres. Each names the labs "
+    "that could lead. Anyone can reply."
+)
 
 
 def settings_for_binding(binding) -> AnnouncementSettings:
@@ -71,7 +83,8 @@ def state(binding) -> dict:
 # Channels
 # --------------------------------------------------------------------------- #
 def create_forums(binding, *, actor=None) -> tuple[bool, str]:
-    """Make the category and three forums for this binding; ``(ok, message)``."""
+    """Make the category and its forums for this binding — three for a lab, one
+    ``#dept-opportunities`` for a department; ``(ok, message)``."""
     name = resolve.binding_name(binding)
     guild_id = binding.guild.guild_id
     shared = len(resolve.bindings_for_guild(guild_id)) > 1
@@ -83,35 +96,42 @@ def create_forums(binding, *, actor=None) -> tuple[bool, str]:
         if cat.status not in (200, 201):
             return False, _refusal(cat)
         made = []
-        for purpose in PURPOSES:
+        # A department gets one forum for every kind; a lab one per kind.
+        forums = (
+            [(DEPT_FORUM, PURPOSES, _DEPT_TOPIC, DEPT_FORUM_TAGS)]
+            if binding.department_id
+            else [(p, (p,), _TOPICS[p], FORUM_TAGS[p]) for p in PURPOSES]
+        )
+        for forum_name, purposes, topic, forum_tags in forums:
             resp = discord_api.create_guild_channel(
                 guild_id,
                 {
-                    "name": purpose,
+                    "name": forum_name,
                     "type": FORUM,
                     "parent_id": cat.json["id"],
-                    "topic": _TOPICS[purpose].format(name=name)[:1024],
+                    "topic": topic.format(name=name)[:1024],
                     "default_forum_layout": 1,
                     "default_sort_order": 0,  # recent activity: updates rise
                     "available_tags": [
-                        {"name": t, "emoji_name": e} for t, e in FORUM_TAGS[purpose]
+                        {"name": t, "emoji_name": e} for t, e in forum_tags
                     ],
                 },
             )
             if resp.status not in (200, 201):
                 return False, _refusal(resp)
             tags = {t["name"]: t["id"] for t in resp.json.get("available_tags") or []}
-            resolve.set_route(
-                binding,
-                purpose,
-                resp.json["id"],
-                verified_at=timezone.now(),
-                channel_type=FORUM,
-                forum_tag_ids=tags,
-                created_by_mylo=True,
-                channel_name=purpose,
-                actor=actor,
-            )
+            for purpose in purposes:
+                resolve.set_route(
+                    binding,
+                    purpose,
+                    resp.json["id"],
+                    verified_at=timezone.now(),
+                    channel_type=FORUM,
+                    forum_tag_ids=tags,
+                    created_by_mylo=True,
+                    channel_name=forum_name,
+                    actor=actor,
+                )
             made.append(f"<#{resp.json['id']}>")
     except discord_api.DiscordHTTPError:
         return False, "I couldn't reach Discord just now. Try again in a moment."

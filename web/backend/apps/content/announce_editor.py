@@ -36,7 +36,8 @@ department. You get one opportunity and facts about it that code has already che
 Decide whether it deserves its own post, then write it. Rules:
 - Write plain, specific sentences for researchers. No hype, no exclamation marks.
 - Never write a digit: no dates, amounts, counts or percentages. Code adds those.
-- Only name people from the PEOPLE list, by their id. Never invent anyone.
+- Only name people (or, for a department, labs) from the list given, by their
+  id. Never invent anyone, and never name a person in a department post.
 - Say why it matters to this team's stated theme and projects, not in general.
 - "next_step" is one concrete action the team could take this week.
 - If a check failed or the fit is weak, set "announce" to false and give a short \
@@ -66,6 +67,8 @@ class Packet:
     people: list[dict] = field(default_factory=list)  # [{"id", "name", "why"}]
     checks: list[dict] = field(default_factory=list)  # usability checks
     next_step_hint: str = ""
+    #: Department posts: why only a department can take this on, with evidence.
+    dept_reasons: list[dict] = field(default_factory=list)
 
     def prompt(self) -> str:
         lines = [
@@ -83,7 +86,12 @@ class Packet:
             "CHECKS (already verified by code):",
         ]
         lines += [f"  - {c['status']}: {c['label']}" for c in self.checks]
-        lines.append("PEOPLE:")
+        if self.dept_reasons:
+            lines.append("WHY ONLY A DEPARTMENT CAN TAKE IT ON:")
+            lines += [f"  - {r['label']}: {r['evidence']}" for r in self.dept_reasons]
+        # A department post names labs, never people; the list is labelled so.
+        dept = self.target_kind == "department"
+        lines.append("LABS THAT COULD LEAD:" if dept else "PEOPLE:")
         if self.people:
             lines += [f"  - {p['id']}: {p['name']} — {p['why']}" for p in self.people]
         else:

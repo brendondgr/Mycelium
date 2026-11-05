@@ -3,6 +3,7 @@ import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import type {
   AnnouncementsResponse,
   AnnouncementTarget,
+  DeptOpportunitiesResponse,
   AdminLabDetail,
   AdminLabsPage,
   AdminUserDetail,
@@ -721,6 +722,16 @@ export function announcementQuery(target: AnnouncementTarget): string {
   return "lab" in target
     ? `?lab=${encodeURIComponent(target.lab)}`
     : `?department=${encodeURIComponent(target.department)}`;
+}
+
+/** A department's Opportunities page: department-level items only. */
+export async function fetchDeptOpportunities(
+  departmentId: string,
+): Promise<DeptOpportunitiesResponse> {
+  return getJson<DeptOpportunitiesResponse>(
+    `${buildApiUrl(getPublicApiBase(), "announcements", "department-opportunities")}?department=${encodeURIComponent(departmentId)}`,
+    "Could not load the department's opportunities.",
+  );
 }
 
 /** What Mylo announced, held back, and lists as closing soon, plus the servers. */

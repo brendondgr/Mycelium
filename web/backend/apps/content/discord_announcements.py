@@ -74,6 +74,19 @@ FORUM_TAGS = {
         ("Closed", "🔒"),
     ],
 }
+#: A department has one forum for every kind, so its tags say the kind and the
+#: department-level reason instead of the label (plan "What a department sees").
+DEPT_FORUM_TAGS = [
+    ("Grant", "💰"),
+    ("Fellowship", "🎓"),
+    ("Conference", "🗣️"),
+    ("Institutional selection", "🏛️"),
+    ("Department applicant", "🏫"),
+    ("Department-scale programme", "🧪"),
+    ("Updated", "🚨"),
+    ("Daily list", "🗓️"),
+    ("Closed", "🔒"),
+]
 LABEL_TAG = {
     Announcement.Label.NEW_CALL: "New call",
     Announcement.Label.NEWLY_RELEVANT: "Newly relevant",
@@ -149,6 +162,14 @@ def build_embed(
         why = f"**{headline}**\n{why}"
     if why:
         fields.append(_field("Why it matters", why))
+    reasons = (announcement.alignment or {}).get("dept_reasons") or []
+    if announcement.target_department_id and reasons:
+        fields.append(
+            _field(
+                "Why it's here",
+                "\n".join(f"**{r['label']}**\n> {r['evidence']}" for r in reasons),
+            )
+        )
     usable = [
         f"{_STATUS_ICON.get(c['status'], '•')} {c['label']}"
         for c in announcement.checks or []
@@ -160,7 +181,9 @@ def build_embed(
     if people:
         fields.append(
             _field(
-                "Who should look",
+                "Labs that could lead"
+                if announcement.target_department_id
+                else "Who should look",
                 "\n".join(
                     f"**{p['name']}**" + (f" · {p['why']}" if p.get("why") else "")
                     for p in people
@@ -262,7 +285,7 @@ def route_for(binding, kind: str):
 def ensure_forum_tags(route) -> dict:
     """Make sure the forum carries Mylo's tags; return ``{name: id}``. Best effort:
     a forum Mylo may not edit simply gets posts without tags."""
-    wanted = FORUM_TAGS.get(route.purpose, [])
+    wanted = forum_tags_for(route)
     have = dict(route.forum_tag_ids or {})
     if all(name in have for name, _emoji in wanted):
         return have
@@ -296,9 +319,30 @@ def ensure_forum_tags(route) -> dict:
     return have
 
 
+def forum_tags_for(route) -> list[tuple[str, str]]:
+    """The tags a route's forum carries: per kind for a lab, one shared set for a
+    department's single forum."""
+    if route.binding.department_id:
+        return DEPT_FORUM_TAGS
+    return FORUM_TAGS.get(route.purpose, [])
+
+
 def _tags(route, names: list[str]) -> list[str]:
     ids = route.forum_tag_ids or {}
-    return [ids[n] for n in names if n in ids]
+    return [ids[n] for n in names if n in ids][:5]  # Discord applies at most five
+
+
+def _post_tags(announcement: Announcement, *extra: str) -> list[str]:
+    """Tag names for a thread: the label for a lab; the kind and each
+    department-level reason for a department."""
+    if announcement.target_department_id:
+        kind = KINDS.get(announcement.category, ("",))[0]
+        reasons = (announcement.alignment or {}).get("dept_reasons") or []
+        names = [kind, *(r["label"] for r in reasons)]
+    else:
+        names = [_label_tag(announcement)]
+    # At most five: a kind, three reasons and one status tag.
+    return [*(n for n in names if n), *extra]
 
 
 def _label_tag(announcement: Announcement) -> str:
@@ -362,22 +406,86 @@ def post(
             mode=resolve.OUTBOX_MODE.FORUM_THREAD,
             extra={
                 "name": thread_name(announcement),
-                "applied_tags": _tags(
-                    route, [t for t in [_label_tag(announcement)] if t]
-                ),
+                "applied_tags": _tags(route, _post_tags(announcement)),
             },
         )
         row.outbox_key = outbox_row.dedupe_key
         row.thread_name = thread_name(announcement)
         row.save(update_fields=["outbox_key", "thread_name", "updated_at"])
         posts.append(row)
+    if posts:
+        notify_eligible(announcement, posts[0])
     if drain:
         flush()
     return posts
 
 
+def notify_eligible(announcement: Announcement, post_row: AnnouncementPost) -> int:
+    """A department fellowship shows counts only; each member who may be eligible
+    is told privately, once (plan "What a department sees")."""
+    if not (
+        announcement.target_department_id
+        and announcement.category == ContentItem.Type.FELLOWSHIP
+        and announcement.content is not None
+    ):
+        return 0
+    from apps.content import announce
+    from apps.content.fellowships import eligibility_from_profile, evaluate_eligibility
+
+    target = announce.Target(
+        "department", announcement.target_department, _settings_for(announcement)
+    )
+    metadata = announcement.content.metadata or {}
+    iso = timezone.localdate().isoformat()
+    sent = 0
+    for user in announce._members(target):
+        profile = getattr(user, "profile", None)
+        if profile is None:
+            continue
+        verdict = evaluate_eligibility(metadata, eligibility_from_profile(profile), iso)
+        if verdict["tier"] == "not_eligible":
+            continue
+        if resolve.active_identity_for_user(user) is None:
+            continue
+        _row, created = outbox.enqueue_dm(
+            dedupe_key=f"ann-eligible:{announcement.id}:{user.id}",
+            kind="announcement_eligible",
+            user=user,
+            embed=_eligible_embed(announcement),
+            components=buttons(
+                post_row.id, (announcement.snapshot or {}).get("url", "")
+            ),
+            subject_type="announcement",
+            subject_id=str(announcement.id),
+        )
+        sent += int(created)
+    return sent
+
+
+def _eligible_embed(announcement: Announcement) -> dict:
+    snap = announcement.snapshot or {}
+    facts = announcement.facts or {}
+    lines = [
+        f"{_target_name(announcement)} was told about this fellowship, and your "
+        "profile suggests you may be eligible. Only you were told that."
+    ]
+    if facts.get("deadline"):
+        lines.append(f"Due **{long_date(date.fromisoformat(facts['deadline']))}**.")
+    embed = {
+        "author": {"name": "Mylo · Fellowship"},
+        "title": (snap.get("title") or "Fellowship")[:256],
+        "description": "\n".join(lines)[:4096],
+        "color": SAGE,
+    }
+    if snap.get("url"):
+        embed["url"] = snap["url"]
+    return embed
+
+
 def _strong_match_line(announcement: Announcement) -> tuple[str, dict | None]:
     """Strong-match tagging, off unless the target turned it on (plan D7)."""
+    if announcement.target_department_id:
+        return "", None  # a department post names labs, never tags people
     settings_row = _settings_for(announcement)
     if settings_row is None or not settings_row.strong_match_tagging:
         return "", None
@@ -576,7 +684,7 @@ def _update_thread(changed, today: date, target) -> bool:
     embed = build_embed(announcement, changes=changed.changes, updated_on=today)
     for p in posts:
         route = route_for(p.binding, announcement.category)
-        tag_names = [t for t in [_label_tag(announcement), "Updated"] if t]
+        tag_names = _post_tags(announcement, "Updated")
         name = thread_name(announcement, updated_on=today)
         key = f"announce-update:{p.id}:{today.isoformat()}"
         resolve.enqueue_outbox(
@@ -626,7 +734,7 @@ def _close(announcement: Announcement) -> None:
         if not p.thread_id or p.closed_at:
             continue
         route = route_for(p.binding, announcement.category)
-        tags = [t for t in [_label_tag(announcement), "Closed"] if t]
+        tags = _post_tags(announcement, "Closed")
         resolve.enqueue_outbox(
             dedupe_key=f"announce-close:{p.id}",
             kind="announcement_close",
@@ -703,7 +811,10 @@ def _closing_soon(target, kind: str, rows, today: date) -> int:
             embed=closing_soon_embed(target.name, kind, rows, today),
             mode=resolve.OUTBOX_MODE.FORUM_THREAD,
             extra={
-                "name": f"⏳ Closing soon: next {CLOSING_WINDOW_DAYS} days "
+                # A department's kinds share one forum, so its lists say the kind.
+                "name": "⏳ Closing soon"
+                + (f" · {KINDS[kind][0]}s" if binding.department_id else "")
+                + f": next {CLOSING_WINDOW_DAYS} days "
                 f"({today:%a}, {today:%b} {today.day})",
                 "applied_tags": _tags(route, ["Daily list"]),
             },

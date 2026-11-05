@@ -297,6 +297,11 @@ urlpatterns = [
                 announcement_views.AnnouncementCreateChannelsView,
                 "announcement-create-channels",
             ),
+            (
+                "announcements/department-opportunities",
+                announcement_views.DepartmentOpportunitiesView,
+                "announcement-department-opportunities",
+            ),
         )
         for slash, route in ((True, f"{route_base}/"), (False, route_base))
     ],

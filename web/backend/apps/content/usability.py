@@ -57,6 +57,8 @@ class Reader:
     fellowship_counts: tuple[int, int] | None = None
     #: Display names of the people Mylo thinks should look, or None if not known.
     suited: tuple[str, ...] | None = None
+    #: A department's ``suited`` names labs (lab-fit), not people (member-fit).
+    suited_are_labs: bool = False
 
 
 # --------------------------------------------------------------------------- #
@@ -80,7 +82,7 @@ def assess(item: ContentItem, reader: Reader, today: date) -> list[Check]:
     if item.type == ContentItem.Type.FELLOWSHIP and reader.fellowship_counts:
         checks.append(_fellowship_check(*reader.fellowship_counts))
     if reader.suited is not None:
-        checks.append(_team_check(reader.suited))
+        checks.append(_team_check(reader.suited, labs=reader.suited_are_labs))
     return checks
 
 
@@ -302,12 +304,16 @@ def _fellowship_check(may_be_eligible: int, checked: int) -> Check:
                  "facets")
 
 
-def _team_check(suited: tuple[str, ...]) -> Check:
+def _team_check(suited: tuple[str, ...], *, labs: bool = False) -> Check:
+    source = "lab_fit" if labs else "member_fit"
     if not suited:
-        return Check("team", WARN, "Nobody's profile matches it closely", "member_fit")
+        nobody = "No lab's profile" if labs else "Nobody's profile"
+        return Check("team", WARN, f"{nobody} matches it closely", source)
     if len(suited) == 1:
-        return Check("team", OK, f"{suited[0]} could lead", "member_fit")
-    return Check("team", OK, f"{len(suited)} people could take it on", "member_fit")
+        return Check("team", OK, f"{suited[0]} could lead", source)
+    if labs:
+        return Check("team", OK, f"{len(suited)} labs could lead", source)
+    return Check("team", OK, f"{len(suited)} people could take it on", source)
 
 
 # --------------------------------------------------------------------------- #
