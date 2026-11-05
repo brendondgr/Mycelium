@@ -10,6 +10,9 @@
   target's forums, so a manager can see where posts land. Managers only.
 * ``POST /api/announcements/create-channels/?binding=<id>`` — "Create them for me"
   for one server binding. That binding's own managers only.
+* ``POST /api/announcements/link-click/`` — ``{thread_url, surface}``: a web link
+  into a thread was opened (plan Phase 8 measurement). Recorded only for a reader
+  who can see that lab or department; always 204, so a link never waits on it.
 * ``GET  /api/announcements/department-opportunities/?department=<id>`` — the
   department's Opportunities page: its slate's department-level items only, each
   with its reasons (quoted evidence), the labs that could lead, its checks, and
@@ -248,6 +251,47 @@ class AnnouncementsView(APIView):
                 "servers": [_server(b) for b in bindings],
             }
         )
+
+
+#: Where a web link into Discord can be opened from.
+LINK_SURFACES = {"announced", "closing_soon", "card", "search", "dept_page"}
+
+
+class LinkClickView(APIView):
+    """Count one opened thread link (Discord itself reports no link clicks)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.content.models import AnnouncementPost, AnnouncementReaction
+
+        url = str(request.data.get("thread_url") or "")
+        surface = str(request.data.get("surface") or "")
+        thread_id = url.rstrip("/").rsplit("/", 1)[-1]
+        if surface not in LINK_SURFACES or not thread_id.isdigit():
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        post = (
+            AnnouncementPost.objects.filter(thread_id=thread_id)
+            .select_related(
+                "announcement__target_lab", "announcement__target_department"
+            )
+            .first()
+        )
+        if post is not None:
+            ann = post.announcement
+            allowed = (
+                user_has_lab_access(request.user, ann.target_lab)
+                if ann.target_lab_id
+                else user_has_department_access(request.user, ann.target_department)
+            )
+            if allowed:
+                AnnouncementReaction.objects.create(
+                    announcement=ann,
+                    user=request.user,
+                    kind=AnnouncementReaction.Kind.LINK_CLICK,
+                    reason=surface,
+                )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class DepartmentOpportunitiesView(APIView):

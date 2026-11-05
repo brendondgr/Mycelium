@@ -92,7 +92,7 @@ export function AnnouncedPanel({
               <span className="flex flex-wrap items-center gap-x-2 text-[13px] text-[var(--text-secondary)]">
                 {item.deadline ? <span>{shortDate(item.deadline)}</span> : null}
                 {item.interested ? <span>{item.interested} interested</span> : null}
-                <DiscordLink links={item.discord} fallbackChannel={FORUM[item.category]} />
+                <DiscordLink links={item.discord} fallbackChannel={FORUM[item.category]} surface="announced" />
               </span>
             </li>
           ))}
@@ -214,7 +214,7 @@ function AnnouncedRow({ row }: { row: AnnouncedItem }) {
           </span>
         ) : null}
         <span>{row.interested ? `${row.interested} interested` : "No reactions yet"}</span>
-        <DiscordLink links={row.discord} fallbackChannel={FORUM[row.category]} className="ml-auto" />
+        <DiscordLink links={row.discord} fallbackChannel={FORUM[row.category]} surface="announced" className="ml-auto" />
       </div>
     </li>
   );
@@ -263,7 +263,7 @@ export function ClosingSoonPanel({
                   item.title
                 )}
                 {item.discord.length ? (
-                  <DiscordLink links={item.discord} fallbackChannel={FORUM[item.category]} className="ml-1" />
+                  <DiscordLink links={item.discord} fallbackChannel={FORUM[item.category]} surface="closing_soon" className="ml-1" />
                 ) : null}
               </span>
             </li>

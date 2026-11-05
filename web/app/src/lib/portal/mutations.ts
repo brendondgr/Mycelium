@@ -1347,6 +1347,36 @@ export function sendAnnouncementTest(
   );
 }
 
+/** Where a web link into a Discord thread was opened from (Phase 8 measurement). */
+export type DiscordLinkSurface =
+  | "announced"
+  | "closing_soon"
+  | "card"
+  | "search"
+  | "dept_page";
+
+/**
+ * Count one opened thread link. Best effort and fire-and-forget: `keepalive`
+ * lets it finish after the new tab takes focus, and a failure is swallowed so a
+ * link never waits on, or breaks over, measurement.
+ */
+export function recordDiscordLinkClick(
+  threadUrl: string,
+  surface: DiscordLinkSurface,
+): void {
+  const csrfToken = readCsrfToken();
+  void fetch(buildApiUrl(getPublicApiBase(), "announcements", "link-click"), {
+    method: "POST",
+    credentials: "include",
+    keepalive: true,
+    headers: {
+      "Content-Type": "application/json",
+      ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+    },
+    body: JSON.stringify({ thread_url: threadUrl, surface }),
+  }).catch(() => undefined);
+}
+
 /** "Create them for me" for one server binding. */
 export function createAnnouncementChannels(
   bindingId: number,

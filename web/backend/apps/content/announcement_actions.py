@@ -409,6 +409,12 @@ def remind_set(
         AnnouncementReaction.objects.create(
             announcement=ann, user=user, kind=AnnouncementReaction.Kind.INTERESTED
         )
+    AnnouncementReaction.objects.create(
+        announcement=ann,
+        user=user,
+        kind=AnnouncementReaction.Kind.REMIND,
+        reason=f"{where}:{','.join(offsets)}"[:500],
+    )
     labels = ", ".join(dict((v, lbl) for v, lbl, _d in CHOICES)[o] for o in offsets)
     if where == "thread":
         for offset in offsets:

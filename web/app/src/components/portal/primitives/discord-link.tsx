@@ -2,6 +2,10 @@
 
 import * as React from "react";
 
+import {
+  recordDiscordLinkClick,
+  type DiscordLinkSurface,
+} from "@/lib/portal/mutations";
 import type { DiscordThreadLink } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +45,7 @@ export function DiscordLink({
   links,
   fallbackChannel = "",
   what = "thread",
+  surface,
   className,
 }: {
   /** Oldest server first; the first is the main link. */
@@ -49,12 +54,16 @@ export function DiscordLink({
   fallbackChannel?: string;
   /** What the link opens, for its accessible name: "thread" or "channel". */
   what?: "thread" | "channel";
+  /** Where the link sits; when set, an opened thread is counted (Phase 8). */
+  surface?: DiscordLinkSurface;
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
   const menuId = React.useId();
   if (links.length === 0) return null;
   const [first, ...rest] = links;
+  const counted = (url: string) =>
+    surface && what === "thread" ? () => recordDiscordLinkClick(url, surface) : undefined;
   const label = channelLabel(first, fallbackChannel);
   return (
     <span className={cn("relative inline-flex items-center gap-1", className)}>
@@ -62,6 +71,7 @@ export function DiscordLink({
         href={first.thread_url}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={counted(first.thread_url)}
         aria-label={`Open ${label} ${what} in Discord${rest.length ? ` (${first.guild_name})` : ""} (new tab)`}
         className="inline-flex min-h-[28px] items-center gap-1.5 rounded-full px-1 text-[13px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
@@ -92,6 +102,7 @@ export function DiscordLink({
                     href={link.thread_url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={counted(link.thread_url)}
                     aria-label={`Open ${channelLabel(link, fallbackChannel)} ${what} in Discord (${link.guild_name}) (new tab)`}
                     className="flex min-h-[36px] items-center gap-2 rounded-lg px-2 text-[13px] text-[var(--text-primary)] hover:bg-surface-alt"
                   >

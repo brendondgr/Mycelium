@@ -132,7 +132,7 @@ export function SearchResultCard({ item }: { item: SearchResultItem }) {
         {item.discord?.length ? (
           <span className="inline-flex items-center gap-1 text-[13px] text-[var(--text-secondary)]">
             Discussed in Discord
-            <DiscordLink links={item.discord} />
+            <DiscordLink links={item.discord} surface="search" />
           </span>
         ) : null}
       </div>

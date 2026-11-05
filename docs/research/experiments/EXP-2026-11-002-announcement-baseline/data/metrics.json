@@ -1,0 +1,102 @@
+{
+  "detector_version": "v2",
+  "route_health": {
+    "failing": 0,
+    "ok": 6,
+    "routes": 6,
+    "unchecked": 0
+  },
+  "targets": {
+    "department:482a0314-ad76-434e-8530-41aa4d995e6f": {
+      "dept_reasons": {
+        "institutional_selection": 3
+      },
+      "held": 0,
+      "held_by_class": {},
+      "interested_people": 0,
+      "interested_rate": 0.0,
+      "kind": "department",
+      "lab_fit_all_scores": [
+        0.542,
+        0.5682,
+        0.5878,
+        0.5994,
+        0.6113,
+        0.6144,
+        0.6153,
+        0.6347,
+        0.6721
+      ],
+      "lab_fit_floor": 0.45,
+      "lab_fit_top": [
+        0.6144,
+        null,
+        null
+      ],
+      "labs_named": {
+        "0": 2,
+        "1": 1
+      },
+      "labs_with_vector": 1,
+      "link_click_people": 0,
+      "link_clicks": 0,
+      "link_clicks_by_surface": {},
+      "name": "Department of Scientific Computing",
+      "not_for_us": 0,
+      "not_for_us_rate": 0.0,
+      "not_for_us_reasons": [],
+      "posted": 3,
+      "posted_by_kind": {
+        "fellowship": 3
+      },
+      "posted_by_origin": {
+        "manual": 2,
+        "nightly": 1
+      },
+      "remind_rate": 0.0,
+      "scored_dept_level": 9,
+      "scored_rows": 709,
+      "seeded_seen": 1,
+      "slate_dept_level": 1,
+      "slate_dept_level_rate": 0.0769,
+      "slate_rows": 13,
+      "with_interested": 0,
+      "with_remind": 0
+    },
+    "lab:test-lab": {
+      "dept_reasons": {},
+      "held": 0,
+      "held_by_class": {},
+      "interested_people": 2,
+      "interested_rate": 0.3333,
+      "kind": "lab",
+      "lab_fit_top": [],
+      "labs_named": {},
+      "link_click_people": 0,
+      "link_clicks": 0,
+      "link_clicks_by_surface": {},
+      "name": "Test Lab",
+      "not_for_us": 0,
+      "not_for_us_rate": 0.0,
+      "not_for_us_reasons": [],
+      "posted": 6,
+      "posted_by_kind": {
+        "conference": 1,
+        "fellowship": 2,
+        "grant": 3
+      },
+      "posted_by_origin": {
+        "manual": 1,
+        "nightly": 5
+      },
+      "remind_rate": 0.0,
+      "seeded_seen": 8,
+      "with_interested": 2,
+      "with_remind": 0
+    }
+  },
+  "window": {
+    "since": "2026-11-05",
+    "until": "2026-11-05"
+  }
+}

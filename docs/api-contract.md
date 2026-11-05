@@ -83,6 +83,7 @@ routes clients depend on most.
 | `announcements/test/?lab=\|department=` | POST | A labelled test thread in each forum (once per forum: a department's kinds share one); `{"results": [{"guild_name", "purpose", "channel_name", "ok"}]}`. Managers only |
 | `announcements/create-channels/?binding=<id>` | POST | "Create them for me" for one server binding (a category and three forums for a lab, one `dept-opportunities` forum for a department). That binding's managers only; 409 with `message` when Discord refuses |
 | `announcements/department-opportunities/?department=<id>` | GET | The department's Opportunities page: `department`, `announcements_on`, and `items` — department-level slate items only, each with `reasons` (`key`, `label`, quoted `evidence`), `labs` that could lead (`name`, `why`; never people), `checks`, `announced` and a `discord` list of links. Department members read (403 otherwise; 400 without `department`) |
+| `announcements/link-click/` | POST | `{thread_url, surface}` (`announced`, `closing_soon`, `card`, `search`, `dept_page`): a web link into an announcement thread was opened. Recorded as a `link_click` reaction only for a reader who can see that lab or department; always 204 so a link never waits on it |
 | `opportunities/grants/` | GET | Ranked grants |
 | `opportunities/conferences/` | GET | Ranked conferences |
 | `opportunities/ranking-reference/` | GET | Static hover copy for conference rank badges |

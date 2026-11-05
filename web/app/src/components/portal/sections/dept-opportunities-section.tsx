@@ -224,6 +224,7 @@ function DeptOpportunityCard({ item }: { item: DeptOpportunity }) {
             <DiscordLink
               links={item.discord}
               fallbackChannel="dept-opportunities"
+              surface="dept_page"
               className="ml-auto"
             />
           ) : (

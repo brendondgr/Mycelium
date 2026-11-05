@@ -298,6 +298,11 @@ urlpatterns = [
                 "announcement-create-channels",
             ),
             (
+                "announcements/link-click",
+                announcement_views.LinkClickView,
+                "announcement-link-click",
+            ),
+            (
                 "announcements/department-opportunities",
                 announcement_views.DepartmentOpportunitiesView,
                 "announcement-department-opportunities",

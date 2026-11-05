@@ -267,3 +267,35 @@ def test_a_carried_forward_body_loses_its_opportunity_sections():
     assert "## Grants" not in out and "## Conferences" not in out
     assert "old line" not in out
     assert out.startswith("Intro.\n\n## Papers") and out.endswith("announced\n")
+
+
+@pytest.mark.django_db
+def test_an_opened_thread_link_is_counted_only_for_someone_who_can_see_it(world):
+    from apps.content.models import AnnouncementPost, AnnouncementReaction
+
+    lab, _binding, _owner, member = world
+    _post_some(lab)
+    post = AnnouncementPost.objects.exclude(thread_id="").get()
+    url = f"https://discord.com/channels/g1/{post.thread_id}"
+
+    resp = _client(member).post(
+        "/api/announcements/link-click",
+        {"thread_url": url, "surface": "announced"},
+        format="json",
+    )
+    outsider = _client(User.objects.create_user("outsider")).post(
+        "/api/announcements/link-click/",
+        {"thread_url": url, "surface": "announced"},
+        format="json",
+    )
+    junk = _client(member).post(
+        "/api/announcements/link-click",
+        {"thread_url": url, "surface": "elsewhere"},
+        format="json",
+    )
+
+    assert (resp.status_code, outsider.status_code, junk.status_code) == (204,) * 3
+    clicks = AnnouncementReaction.objects.filter(
+        kind=AnnouncementReaction.Kind.LINK_CLICK
+    )
+    assert [(c.user, c.reason) for c in clicks] == [(member, "announced")]

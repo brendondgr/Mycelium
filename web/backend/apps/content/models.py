@@ -1942,12 +1942,16 @@ class AnnouncementPost(models.Model):
 
 class AnnouncementReaction(models.Model):
     """One person's reaction to one announcement. Append-only: the latest row of
-    ``interested`` / ``unfollow`` per person decides whether they follow it."""
+    ``interested`` / ``unfollow`` per person decides whether they follow it.
+    ``remind`` (a Remind me choice) and ``link_click`` (a web link into the thread;
+    ``reason`` holds the surface) are measurement only (plan Phase 8)."""
 
     class Kind(models.TextChoices):
         INTERESTED = "interested", "Interested"
         UNFOLLOW = "unfollow", "Stopped following"
         NOT_FOR_US = "not_for_us", "Not for us"
+        REMIND = "remind", "Remind me"
+        LINK_CLICK = "link_click", "Opened the thread from the web"
 
     announcement = models.ForeignKey(
         Announcement, on_delete=models.CASCADE, related_name="reactions"

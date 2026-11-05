@@ -1,0 +1,81 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-11-002
+slug: announcement-baseline
+title: Announcement measures baseline and department lab-fit floor
+status: complete
+date_started: 2026-11-05
+date_completed: 2026-11-05
+authors: [brendondgr]
+
+purpose: >
+  Plan Phase 8: measure what opportunity announcements are doing (Interested and
+  Remind me rates, Not-for-us reasons, web link clicks, route health, held-back
+  reasons) and the department path (reason mix, slate yield, lab-fit scores)
+  before any threshold is tuned. Supports C-029; raises Q-055 and Q-056.
+
+hypothesis: >
+  Exploratory for engagement (no real users yet). Stated expectation: bge-small
+  cosines are compressed, so the lab-fit floor 0.45 admits every department-level
+  call and does not discriminate. OUTCOME: held. All nine calls admitted for PULSE
+  Lab, three unsuited (precision 0.667); the groups overlap (lowest suiting
+  0.568, highest unsuited 0.599). Floor unchanged per the decision rule.
+
+code:
+  commit: a80d225
+  branch: mylo-announcements
+  entrypoint: "DATABASE_URL=…/mycelium_ann uv run --no-sync --directory web/backend python manage.py announcement_metrics --since 2026-11-05 --until 2026-11-05 --json <exp>/data/metrics.json; uv run --no-sync --project web/backend python <exp>/summarize.py"
+  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+config:
+  path: web/backend/apps/content/lab_fit.py
+  hash: null
+data:
+  name: Mycelium dev database copy mycelium_ann after the Phase 4–7 test-server smoke runs
+  version: pg_dump of the dev database taken 2026-11-05; corpus collected 2026-08/09
+  split: dev
+  n_examples: 9
+  qrels: null
+  hash: null
+  card: null
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: null
+compute:
+  hardware: "Fedora 44 workstation (CPU only)"
+  wall_clock_hours: 0.05
+  estimated_cost_usd: 0
+
+metrics:
+  primary: lab_fit_precision_at_floor
+  values:
+    lab_fit_precision_at_floor: 0.6667
+    lab_fit_admitted_at_floor: 9
+    lab_fit_admitted_suiting: 6
+    lab_fit_lowest_suits_score: 0.5682
+    lab_fit_highest_unsuited_score: 0.5994
+    lab_fit_floor: 0.45
+    dept_slate_rows: 13
+    dept_slate_dept_level: 1
+    dept_slate_dept_level_rate: 0.0769
+    dept_scored_rows: 709
+    dept_scored_dept_level: 9
+    dept_posted: 3
+    lab_posted: 6
+    lab_interested_rate_test_activity: 0.3333
+    route_health_ok: 6
+    route_health_routes: 6
+baselines_compared: []
+statistical_test: null
+
+supports_claims: [C-029]
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-001]

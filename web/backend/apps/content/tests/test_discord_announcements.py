@@ -381,6 +381,11 @@ def test_remind_me_offers_only_future_choices_and_sets_them(fake) -> None:
         AnnouncementNudge.objects.filter(user=ana).values_list("offset", flat=True)
     ) == {"2d", "1w"}
     assert ana in discord_announcements.followers(ann)  # counts as Interested
+    # Recorded for measurement, without disturbing who follows it.
+    remind = AnnouncementReaction.objects.get(
+        announcement=ann, kind=AnnouncementReaction.Kind.REMIND
+    )
+    assert remind.user == ana and remind.reason == "thread:2d,1w"
 
 
 @pytest.mark.django_db

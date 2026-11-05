@@ -182,6 +182,10 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   (`lab_fit.py`), never people, and never tags anyone. A department fellowship
   shows counts only; each member who may be eligible gets one DM. A department is
   scored only while its announcements are on.
+* **Measurement** (`manage.py announcement_metrics`): Interested, Remind me and Not
+  for us per post, web link clicks by surface (Discord reports no link-button
+  clicks), route health, and the department reason mix and lab-fit scores. Record
+  a run as an experiment before changing any threshold (EXP-2026-11-002).
 
 ## Developer-portal setup (one time)
 

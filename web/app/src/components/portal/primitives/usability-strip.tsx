@@ -140,7 +140,7 @@ export function UsabilityStrip({
       {announced?.length ? (
         <p className="m-0 flex flex-wrap items-center gap-1 text-[13px] text-[var(--text-secondary)]">
           Announced
-          <DiscordLink links={announced} fallbackChannel={fallbackChannel} />
+          <DiscordLink links={announced} fallbackChannel={fallbackChannel} surface="card" />
         </p>
       ) : null}
     </section>
