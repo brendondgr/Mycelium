@@ -45,8 +45,12 @@ def _denied(verdict) -> tuple[str, dict]:
 # --------------------------------------------------------------------------- #
 # /mylo search
 # --------------------------------------------------------------------------- #
-def search(discord_user_id: str, query: str) -> tuple[str, dict]:
+def search(discord_user_id: str, query: str, guild_id: str = "") -> tuple[str, dict]:
     """The portal's own search, run for the person who asked.
+
+    Run in a server (``guild_id``), a result already announced in one of that
+    server's bindings links to its thread, and a manager of a binding here can
+    announce one that is not. In a DM there are no links (plan D15).
 
     Reuses ``search_service.search_for_user`` rather than calling ``run_search``
     directly, so Mylo and the website cannot disagree about the same query. Note
@@ -73,11 +77,23 @@ def search(discord_user_id: str, query: str) -> tuple[str, dict]:
             "message": f"Nothing in the corpus matches **{query}** yet.",
         }
 
+    from apps.content import announcement_links
+
+    discussed = announcement_links.discussed_in_guild([i.id for i in items], guild_id)
+    options = announcement_links.announce_options(verdict.user, guild_id, items)
+    rows = []
+    for item in items:
+        row = _search_row(item, context)
+        row["content_id"] = str(item.id)
+        link = discussed.get(str(item.id))
+        row["thread_url"] = link["thread_url"] if link else ""
+        row["announce"] = [] if link else options.get(str(item.id), [])
+        rows.append(row)
     return "ok", {
         "query": query,
         "count": context.result.count,
         "confidence": context.result.confidence,
-        "results": [_search_row(item, context) for item in items],
+        "results": rows,
     }
 
 

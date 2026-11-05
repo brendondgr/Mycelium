@@ -94,3 +94,41 @@ class AnnouncementButtonTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SearchLinkTests(unittest.TestCase):
+    def test_announce_buttons_only_for_rows_with_options(self):
+        from mylo.bot.cogs.mylo_commands import _announce_view
+
+        async def build():
+            return _announce_view(
+                [
+                    {"content_id": "c1", "announce": [
+                        {"binding_id": 7, "purpose": "grants"}]},
+                    {"content_id": "c2", "announce": []},
+                ]
+            )
+
+        view = _run(build())
+        self.assertEqual([b.custom_id for b in view.children], ["annx:7:c1"])
+        self.assertIsNone(_run(self._none()))
+
+    async def _none(self):
+        from mylo.bot.cogs.mylo_commands import _announce_view
+
+        return _announce_view([{"content_id": "c1", "announce": []}])
+
+    def test_announce_to_is_routed_to_the_manual_announce(self):
+        calls = []
+
+        async def manual(*args):
+            calls.append(args)
+            return ("ok", {"message": "📣 Posted → https://discord.com/channels/1/2"})
+
+        interaction = _interaction("annx:7:c1")
+        interaction.message = None
+        cog = AnnouncementsCog(bot=SimpleNamespace())
+        with mock.patch.object(module.linking, "announcement_manual", manual):
+            _run(cog.on_interaction(interaction))
+        self.assertEqual(calls, [("111", "1507", "7", "c1")])
+        self.assertIn("Posted", interaction.followup.sent[0][0])

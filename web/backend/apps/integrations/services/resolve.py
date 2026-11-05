@@ -1197,6 +1197,20 @@ def _settle_unsendable(
     )
 
 
+def channels_found_gone(*, kind_prefix: str) -> list[str]:
+    """Channel ids whose queued sends failed because the channel no longer exists
+    (Discord's Unknown Channel), for producers of ``kind_prefix``."""
+    return list(
+        DiscordOutboxMessage.objects.filter(
+            kind__startswith=kind_prefix,
+            status=DiscordOutboxMessage.Status.FAILED,
+            last_error_reason="channel_gone",
+        )
+        .values_list("channel_id", flat=True)
+        .distinct()
+    )
+
+
 def get_outbox_by_key(dedupe_key: str) -> DiscordOutboxMessage | None:
     return DiscordOutboxMessage.objects.filter(dedupe_key=dedupe_key).first()
 

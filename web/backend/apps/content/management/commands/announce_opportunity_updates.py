@@ -42,6 +42,10 @@ class Command(BaseCommand):
         )
         for target in announce.enabled_targets():
             try:
+                if not dry_run:
+                    from apps.content import discord_announcements
+
+                    discord_announcements.verify_threads(target)
                 plan = announce_updates.plan(target, today)
                 self._print(plan, dry_run)
                 if not dry_run:

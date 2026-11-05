@@ -159,6 +159,16 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   by starting and deleting a thread), who can start posts (everyone, managers only,
   or chosen roles — replies stay open to everyone), and **Turn on**, which runs the
   activation seed and the closing-soon list straight away.
+* **Search links** (`apps/content/announcement_links.py`): `/mylo search` passes
+  the server it ran in; a result announced in one of that server's bindings shows
+  "💬 Already discussed here → thread", and a manager of a binding there gets
+  "📣 Announce to …" (`annx:<binding>:<content>`, gate action `ann_manual`), which
+  posts once and is removed from the result. A DM, or a server without
+  announcements, shows neither. The web search card's `discord` list does the same
+  for every server the reader's labs and departments are bound in. A thread deleted
+  by hand is marked `deleted_at` — by the gateway's raw thread-delete event, by a
+  send that finds it gone, or by the nightly `verify_threads` backstop — and is
+  never linked again; announcing it again starts a fresh thread.
 * **Permissions Mylo needs:** Send Messages and Embed Links in the forums; Manage
   Threads to rename, retag, archive and unarchive its threads; Manage Channels only
   for **Create them for me** and for adding its tags to a forum you chose; Manage

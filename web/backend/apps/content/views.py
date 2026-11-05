@@ -1780,6 +1780,8 @@ class SearchView(APIView):
             offset=_parse_offset(params),
         )
         result = context.result
+        from apps.content.announcement_links import discussed_for_user
+
         serializer = SearchResultSerializer(
             result.items,
             many=True,
@@ -1787,6 +1789,9 @@ class SearchView(APIView):
                 "saved_ids": context.saved_ids,
                 "saved_labs": context.saved_labs,
                 "ignored_ids": context.ignored_ids,
+                "discord_links": discussed_for_user(
+                    request.user, [item.id for item in result.items]
+                ),
             },
         )
         return Response(

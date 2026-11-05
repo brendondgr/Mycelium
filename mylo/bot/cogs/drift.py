@@ -59,5 +59,18 @@ class DriftCog(commands.Cog, name="Drift"):
             log.exception("could not record channel deletion for %s", channel.id)
 
 
+    @commands.Cog.listener()
+    async def on_raw_thread_delete(self, payload: discord.RawThreadDeleteEvent) -> None:
+        """A thread is gone. If it was an announcement, it is never linked again.
+
+        The raw event fires whether or not the thread was cached, which after a
+        restart it usually is not.
+        """
+        try:
+            await linking.thread_deleted(str(payload.thread_id))
+        except Exception:  # noqa: BLE001
+            log.exception("could not record thread deletion for %s", payload.thread_id)
+
+
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(DriftCog(bot))

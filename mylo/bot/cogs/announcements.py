@@ -113,6 +113,9 @@ class AnnouncementsCog(commands.Cog, name="Announcements"):
             if interaction.type != discord.InteractionType.component:
                 return
             custom_id = str((interaction.data or {}).get("custom_id") or "")
+            if custom_id.startswith("annx:"):
+                await self._manual(interaction, custom_id)
+                return
             if not custom_id.startswith("ann:"):
                 return
             _, post_id, action = custom_id.split(":", 2)
@@ -135,6 +138,32 @@ class AnnouncementsCog(commands.Cog, name="Announcements"):
             await interaction.followup.send(payload["message"], ephemeral=True)
         except Exception:  # noqa: BLE001 — a listener never kills the gateway
             log.exception("could not handle an announcement button")
+
+
+    async def _manual(self, interaction: discord.Interaction, custom_id: str) -> None:
+        """"Announce to #…" from a search result: post once, then drop the button."""
+        _, binding_id, content_id = custom_id.split(":", 2)
+        # A deferred *update*: the original response stays the search message, so
+        # the pressed button can be removed from it below.
+        await interaction.response.defer()
+        _status, payload = await linking.announcement_manual(
+            str(interaction.user.id),
+            str(interaction.guild_id or ""),
+            binding_id,
+            content_id,
+        )
+        await interaction.followup.send(payload["message"], ephemeral=True)
+        message = getattr(interaction, "message", None)
+        if message is None:
+            return
+        try:
+            view = discord.ui.View.from_message(message)
+            for item in list(view.children):
+                if getattr(item, "custom_id", None) == custom_id:
+                    view.remove_item(item)
+            await interaction.edit_original_response(view=view)
+        except (discord.HTTPException, ValueError):
+            pass
 
 
 async def setup(bot: commands.Bot) -> None:

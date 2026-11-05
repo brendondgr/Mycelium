@@ -1348,6 +1348,10 @@ class SearchResultSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
     score = serializers.SerializerMethodField()
     matched_on = serializers.SerializerMethodField()
+    # "Discussed in Discord": the threads announcing this item in the servers of
+    # the reader's own labs and departments (``announcement_links``).
+    discord = serializers.SerializerMethodField()
+    discord_thread_url = serializers.SerializerMethodField()
     cluster = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
     saved_labs = serializers.SerializerMethodField()
@@ -1414,6 +1418,13 @@ class SearchResultSerializer(serializers.Serializer):
         # Search deliberately still returns ignored hits (see SearchContext); the
         # flag is what lets the card show the state and offer the way back.
         return str(item.id) in self.context.get("ignored_ids", set())
+
+    def get_discord(self, item: ContentItem) -> list[dict]:
+        return (self.context.get("discord_links") or {}).get(str(item.id), [])
+
+    def get_discord_thread_url(self, item: ContentItem) -> str:
+        links = self.get_discord(item)
+        return links[0]["thread_url"] if links else ""
 
     def get_authors(self, item: ContentItem) -> list:
         authors = self._meta(item).get("authors")

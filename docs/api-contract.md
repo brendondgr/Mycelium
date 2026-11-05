@@ -1410,7 +1410,12 @@ per-type facet appears **only when exactly one `type` is selected**, is capped t
 its top values, and ignores its own selection. `pool_truncated` is true when
 matches exist beyond the bounded relevance pool. `score` is the fused rank weight
 — for ordering, not display. `ignored` reports whether the caller has manually
-ignored the item; search still returns it either way (see below).
+ignored the item; search still returns it either way (see below). `discord` lists
+the threads that announced the item in the servers of the reader's own labs and
+departments (`[{"guild_id", "guild_name", "channel_id", "thread_id",
+"thread_url"}]`, oldest binding first, threads deleted by hand left out), and
+`discord_thread_url` is the first of them or `""` — the card's "Discussed in
+Discord" link.
 
 ## Saves, ignores, deadlines, notifications
 

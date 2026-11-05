@@ -107,8 +107,10 @@ _ACTIONS: dict[str, _Action] = {
     # one "not for us" speaks for the team, so it needs management.
     "ann_follow": _Action(lab_permission="access", bucket="announcements"),
     "ann_not_for_us": _Action(lab_permission="manage", bucket="announcements"),
-    # Announcement setup in `/setup` is the same right as choosing any channel.
+    # Announcement setup in `/setup` is the same right as choosing any channel,
+    # and so is posting a search result to the team's forum by hand.
     "ann_setup": _Action(lab_permission="manage", lab_feature="bot_server"),
+    "ann_manual": _Action(lab_permission="manage", lab_feature="bot_server"),
 }
 
 _DEFAULT_ACTION = _Action()

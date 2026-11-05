@@ -468,8 +468,12 @@ def _bind_setup_channel_sync(
 # `apps.content.discord_commands`, which starts every call at the authorization gate.
 # Nothing here branches on permission — that would be a second place for the policy
 # to live, and the two would eventually disagree.
-async def search(discord_user_id: str, query: str) -> tuple[str, dict]:
-    return await mycelium.db(_search_sync, str(discord_user_id), query or "")
+async def search(
+    discord_user_id: str, query: str, guild_id: str = ""
+) -> tuple[str, dict]:
+    return await mycelium.db(
+        _search_sync, str(discord_user_id), query or "", str(guild_id or "")
+    )
 
 
 async def digest(discord_user_id: str, lab_slug: str = "") -> tuple[str, dict]:
@@ -500,10 +504,10 @@ async def manageable_reminders(
     )
 
 
-def _search_sync(discord_user_id: str, query: str) -> tuple[str, dict]:
+def _search_sync(discord_user_id: str, query: str, guild_id: str) -> tuple[str, dict]:
     from apps.content import discord_commands
 
-    return discord_commands.search(discord_user_id, query)
+    return discord_commands.search(discord_user_id, query, guild_id)
 
 
 def _digest_sync(discord_user_id: str, lab_slug: str) -> tuple[str, dict]:
@@ -731,3 +735,35 @@ def _activate_announcements_sync(guild_id, binding_id) -> dict:
     if refusal is not None:
         return {"posted": 0, "reason": "no_binding"}
     return setup.activate_now(binding)
+
+
+async def announcement_manual(
+    discord_user_id: str, guild_id: str, binding_id: str, content_id: str
+) -> tuple[str, dict]:
+    """"Announce to #…" from a search result."""
+    return await mycelium.db(
+        _announcement_manual_sync,
+        str(discord_user_id),
+        str(guild_id),
+        str(binding_id),
+        str(content_id),
+    )
+
+
+def _announcement_manual_sync(discord_user_id, guild_id, binding_id, content_id):
+    from apps.content import announcement_links
+
+    return announcement_links.manual_announce(
+        discord_user_id, guild_id, binding_id, content_id
+    )
+
+
+async def thread_deleted(thread_id: str) -> int:
+    """A thread was deleted in Discord; if Mylo posted it, never link it again."""
+    return await mycelium.db(_thread_deleted_sync, str(thread_id))
+
+
+def _thread_deleted_sync(thread_id: str) -> int:
+    from apps.content.discord_announcements import mark_thread_deleted
+
+    return mark_thread_deleted(thread_id)

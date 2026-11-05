@@ -1922,6 +1922,9 @@ class AnnouncementPost(models.Model):
     update_log = models.JSONField(default=list, blank=True)
     posted_at = models.DateTimeField(null=True, blank=True)
     closed_at = models.DateTimeField(null=True, blank=True)
+    # Someone deleted the thread by hand (gateway event, or a send found it gone).
+    # Never linked again and never updated; the decision itself stands.
+    deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

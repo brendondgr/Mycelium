@@ -319,10 +319,13 @@ def bindings_for(announcement: Announcement) -> list:
     return resolve.bindings_for_department(announcement.target_department)
 
 
-def post(announcement: Announcement, *, drain: bool = True) -> list[AnnouncementPost]:
-    """Queue one thread per live binding that routes this kind."""
+def post(
+    announcement: Announcement, *, drain: bool = True, bindings=None
+) -> list[AnnouncementPost]:
+    """Queue one thread per live binding that routes this kind (or only in
+    ``bindings``, for a manager's manual announce from search)."""
     posts = []
-    for binding in bindings_for(announcement):
+    for binding in bindings if bindings is not None else bindings_for(announcement):
         route = route_for(binding, announcement.category)
         if route is None:
             continue
@@ -332,10 +335,17 @@ def post(announcement: Announcement, *, drain: bool = True) -> list[Announcement
             binding=binding,
             defaults={"channel_id": route.channel_id},
         )
-        if row.outbox_key:
+        key = f"announce:{binding.id}:{announcement.content_id or announcement.id}"
+        if row.deleted_at is not None:
+            # Its thread was deleted by hand and someone asked for it again: a
+            # fresh thread under a fresh key (the old send stays in the history).
+            key = resolve.next_resend_key(key)
+            row.thread_id, row.outbox_key, row.deleted_at = "", "", None
+            row.update_log, row.closed_at, row.channel_id = [], None, route.channel_id
+            row.save()
+        elif row.outbox_key:
             posts.append(row)
             continue
-        key = f"announce:{binding.id}:{announcement.content_id or announcement.id}"
         content, allowed = _strong_match_line(announcement)
         outbox_row, _ = resolve.enqueue_outbox(
             dedupe_key=key,
@@ -398,8 +408,50 @@ def flush() -> None:
     sync_thread_ids()
 
 
+def mark_thread_deleted(thread_id: str) -> int:
+    """A thread Mylo posted was deleted by hand: never link or update it again."""
+    now = timezone.now()
+    count = AnnouncementPost.objects.filter(
+        thread_id=str(thread_id), deleted_at__isnull=True
+    ).update(deleted_at=now, updated_at=now)
+    ClosingSoonPost.objects.filter(
+        thread_id=str(thread_id), replaced_at__isnull=True
+    ).update(replaced_at=now)
+    return count
+
+
+def verify_threads(target) -> int:
+    """Nightly backstop for the gateway's thread-delete event, which a restart can
+    miss: ask Discord for each open thread of ``target`` and mark the ones that are
+    gone. Returns how many were found deleted."""
+    from apps.integrations.services import discord_api
+
+    posts = AnnouncementPost.objects.filter(
+        deleted_at__isnull=True, closed_at__isnull=True
+    ).exclude(thread_id="")
+    posts = posts.filter(
+        **(
+            {"announcement__target_lab": target.obj}
+            if target.kind == "lab"
+            else {"announcement__target_department": target.obj}
+        )
+    )
+    gone = 0
+    for post in posts:
+        try:
+            resp = discord_api.get_channel(post.thread_id)
+        except discord_api.DiscordHTTPError:
+            continue  # a blip is not a deletion
+        if resp.status == 404:
+            gone += mark_thread_deleted(post.thread_id)
+    return gone
+
+
 def sync_thread_ids() -> int:
-    """A created thread's id comes back on its outbox row; record it."""
+    """A created thread's id comes back on its outbox row; record it. A send that
+    found its thread gone marks the post deleted."""
+    for channel_id in resolve.channels_found_gone(kind_prefix="announcement"):
+        mark_thread_deleted(channel_id)
     updated = 0
     for row in AnnouncementPost.objects.filter(thread_id="").exclude(outbox_key=""):
         sent = resolve.get_outbox_by_key(row.outbox_key)
@@ -488,7 +540,11 @@ def _update_thread(changed, today: date, target) -> bool:
     """Queue the in-place update for every thread of one announcement. ``False``
     when it must wait: a thread not created yet, or one already updated today."""
     announcement = changed.announcement
-    posts = list(announcement.posts.select_related("binding__guild"))
+    posts = list(
+        announcement.posts.filter(deleted_at__isnull=True).select_related(
+            "binding__guild"
+        )
+    )
     if not posts or any(not p.thread_id for p in posts):
         return False
     if any(
@@ -564,7 +620,9 @@ def _update_thread(changed, today: date, target) -> bool:
 
 
 def _close(announcement: Announcement) -> None:
-    for p in announcement.posts.select_related("binding"):
+    for p in announcement.posts.filter(deleted_at__isnull=True).select_related(
+        "binding"
+    ):
         if not p.thread_id or p.closed_at:
             continue
         route = route_for(p.binding, announcement.category)
@@ -719,7 +777,7 @@ def send_due_nudges(today: date) -> int:
             f"⏳ **{days} day{'s' if days != 1 else ''} left.** {title} closes "
             f"**{long_date(due)}**. {line}"
         )
-        for p in ann.posts.exclude(thread_id=""):
+        for p in ann.posts.exclude(thread_id="").filter(deleted_at__isnull=True):
             resolve.enqueue_outbox(
                 dedupe_key=f"nudge:{nudge.id}:{due_iso}:{p.id}",
                 kind="announcement_nudge",
