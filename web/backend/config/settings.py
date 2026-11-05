@@ -603,6 +603,12 @@ FELLOWSHIP_CONSTRAINT_EXTRACTION = env.bool(
 # accumulated matches a feed returns, a payload backstop since an accumulating feed
 # grows between prunes. Items still leave the feed when pruned at their deadline.
 OPPORTUNITY_FEED_MAX = env.int("OPPORTUNITY_FEED_MAX", default=250)
+# Opportunity announcements (plan 20261105-mylo-opportunity-announcements): one
+# Discord thread per newly fitting grant, fellowship or conference. Off until
+# every phase has shipped; the dry run works either way.
+OPPORTUNITY_ANNOUNCEMENTS_ENABLED = env.bool(
+    "OPPORTUNITY_ANNOUNCEMENTS_ENABLED", default=False
+)
 
 # How long a *dateless* conference may go unseen by the collector before the
 # nightly prune deletes it. A conference with no deadline and no event date is

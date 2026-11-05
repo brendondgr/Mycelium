@@ -30,6 +30,7 @@ from apps.content.deadlines_projection import deadline_specs_for
 from apps.content.models import ContentDeadline, ContentItem, SavedOpportunity
 
 OK, WARN, BLOCK, UNKNOWN = "ok", "warn", "block", "unknown"
+NO_SUBMISSION_DEADLINE = "No submission deadline published yet"
 _RANK = {BLOCK: 3, WARN: 2, UNKNOWN: 1, OK: 0}
 
 
@@ -143,8 +144,7 @@ def _deadline_check(item: ContentItem, today: date) -> tuple[date | None, Check]
         return None, Check("deadline", BLOCK, "The last deadline has passed",
                            "deadline_date")
     if item.type == ContentItem.Type.CONFERENCE:
-        return None, Check("deadline", BLOCK, "No submission deadline published yet",
-                           "deadlines")
+        return None, Check("deadline", BLOCK, NO_SUBMISSION_DEADLINE, "deadlines")
     return None, Check("deadline", UNKNOWN, "No deadline listed", "deadline_date")
 
 
@@ -381,3 +381,34 @@ def reader_for_user(user) -> Reader:
     from apps.content.timeline_settings import effective_timeline
 
     return Reader(buffer_days=effective_timeline(reader=user).buffer_days)
+
+
+def fellowship_counts(member_ids: list, items: list, today: date) -> dict:
+    """``{content_id: (may_be_eligible, checked)}`` over members with a profile.
+
+    Counts only: who is or is not eligible never appears on a lab surface.
+    """
+    from django.contrib.auth import get_user_model
+
+    from apps.content.fellowships import eligibility_from_profile, evaluate_eligibility
+
+    if not member_ids or not items:
+        return {}
+    users = get_user_model().objects.filter(id__in=member_ids).select_related("profile")
+    eligs = [
+        eligibility_from_profile(user.profile)
+        for user in users
+        if getattr(user, "profile", None) is not None
+    ]
+    if not eligs:
+        return {}
+    iso = today.isoformat()
+    out = {}
+    for item in items:
+        metadata = item.metadata or {}
+        fine = sum(
+            evaluate_eligibility(metadata, elig, iso)["tier"] != "not_eligible"
+            for elig in eligs
+        )
+        out[str(item.id)] = (fine, len(eligs))
+    return out

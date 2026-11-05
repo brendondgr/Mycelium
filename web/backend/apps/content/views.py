@@ -816,34 +816,6 @@ def _ineligible_members(roster: dict, scores: list[RelevanceScore]) -> dict[str,
     return out
 
 
-def _fellowship_counts(member_ids: list, fellowships: list) -> dict:
-    """``{content_id: (may_be_eligible, checked)}`` over the members with a profile.
-
-    Counts only: who is or is not eligible is never part of a lab surface.
-    """
-    from .fellowships import eligibility_from_profile, evaluate_eligibility
-
-    if not member_ids or not fellowships:
-        return {}
-    today = timezone.now().date().isoformat()
-    eligs = [
-        eligibility_from_profile(user.profile)
-        for user in User.objects.filter(id__in=member_ids).select_related("profile")
-        if getattr(user, "profile", None) is not None
-    ]
-    if not eligs:
-        return {}
-    out = {}
-    for score in fellowships:
-        metadata = score.content.metadata or {}
-        fine = sum(
-            evaluate_eligibility(metadata, elig, today)["tier"] != "not_eligible"
-            for elig in eligs
-        )
-        out[str(score.content_id)] = (fine, len(eligs))
-    return out
-
-
 def _member_sort_key(row: dict):
     """Strip order: the members Mylo reasoned about first, then the rest.
 
@@ -1205,8 +1177,10 @@ def _recommendations_payload(
         opp_context["usability_suited"] = {
             cid: [row["name"] for row in rows[:3]] for cid, rows in recommended.items()
         }
-        opp_context["usability_fellowship_counts"] = _fellowship_counts(
-            list(member_ids), fellowships
+        opp_context["usability_fellowship_counts"] = usability.fellowship_counts(
+            list(member_ids),
+            [score.content for score in fellowships],
+            timezone.now().date(),
         )
     return {
         "generated_at": _generated_at(scores),

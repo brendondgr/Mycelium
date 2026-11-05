@@ -1729,3 +1729,238 @@ class ReflectionProposal(models.Model):
 
     def __str__(self) -> str:
         return f"proposal[{self.kind}] {self.project} ({self.status})"
+
+
+# --------------------------------------------------------------------------- #
+# Opportunity announcements (plan 20261105-mylo-opportunity-announcements)
+# --------------------------------------------------------------------------- #
+class AnnouncementSettings(models.Model):
+    """How one lab or department wants its opportunities announced.
+
+    One row per target. ``daily_cap = -1`` means no limit. ``activated_at`` is set
+    when announcements are first switched on; ``seeded_at`` once the activation
+    seed (the ``activation_seed`` best open items) has been chosen, after which
+    only new slate entrants are announced.
+    """
+
+    class Nudge(models.TextChoices):
+        NONE = "none", "No reminder"
+        TWO_DAYS = "2d", "2 days before"
+        ONE_WEEK = "1w", "1 week before"
+        TWO_WEEKS = "2w", "2 weeks before"
+        THREE_WEEKS = "3w", "3 weeks before"
+        ONE_MONTH = "1m", "1 month before"
+        TWO_MONTHS = "2m", "2 months before"
+
+    target_lab = models.OneToOneField(
+        "accounts.Lab",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="announcement_settings",
+    )
+    target_department = models.OneToOneField(
+        "accounts.Department",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="announcement_settings",
+    )
+    enabled = models.BooleanField(default=False)
+    grants = models.BooleanField(default=True)
+    fellowships = models.BooleanField(default=True)
+    conferences = models.BooleanField(default=True)
+    daily_cap = models.IntegerField(default=-1, help_text="-1 means no limit.")
+    default_nudge = models.CharField(
+        max_length=4, choices=Nudge.choices, default=Nudge.TWO_WEEKS
+    )
+    closing_soon_list = models.BooleanField(default=True)
+    strong_match_tagging = models.BooleanField(default=False)
+    save_on_interest = models.BooleanField(default=True)
+    activation_seed = models.PositiveSmallIntegerField(default=6)
+    min_award = models.DecimalField(
+        max_digits=14, decimal_places=2, null=True, blank=True
+    )
+    activated_at = models.DateTimeField(null=True, blank=True)
+    seeded_at = models.DateTimeField(null=True, blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=exactly_one("target_lab", "target_department"),
+                name="announcement_settings_one_target",
+            )
+        ]
+
+    def __str__(self) -> str:
+        target = self.target_lab_id or self.target_department_id
+        return f"AnnouncementSettings({target})"
+
+
+class Announcement(models.Model):
+    """One decision about one opportunity for one lab or department.
+
+    Unique per (target, item): an item is announced to a target at most once, and
+    everything that follows — the thread in each server, updates, reactions —
+    hangs off this row. ``content`` is SET_NULL with a snapshot, so a pruned item
+    keeps a readable history.
+    """
+
+    class State(models.TextChoices):
+        POSTED = "posted", "Posted"
+        SKIPPED = "skipped", "Held back"
+        SEEDED_SEEN = "seeded_seen", "Passed over at activation"
+        CLOSED = "closed", "Closed"
+
+    class Label(models.TextChoices):
+        NEW_CALL = "new_call", "New call"
+        NEWLY_RELEVANT = "newly_relevant", "Newly relevant"
+        ALREADY_OPEN = "already_open", "Already open"
+
+    class Origin(models.TextChoices):
+        NIGHTLY = "nightly", "Nightly"
+        MANUAL = "manual", "Manual"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    target_lab = models.ForeignKey(
+        "accounts.Lab",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="announcements",
+    )
+    target_department = models.ForeignKey(
+        "accounts.Department",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="announcements",
+    )
+    content = models.ForeignKey(
+        ContentItem,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="announcements",
+    )
+    snapshot = models.JSONField(default=dict, blank=True)  # title, url, funder
+    category = models.CharField(max_length=20)  # ContentItem.Type
+    origin = models.CharField(
+        max_length=16, choices=Origin.choices, default=Origin.NIGHTLY
+    )
+    state = models.CharField(max_length=16, choices=State.choices)
+    label = models.CharField(max_length=16, choices=Label.choices, blank=True)
+    skip_reason = models.CharField(max_length=300, blank=True, default="")
+    dept_reasons = models.JSONField(default=list, blank=True)
+    checks = models.JSONField(default=list, blank=True)
+    alignment = models.JSONField(default=dict, blank=True)
+    write_up = models.JSONField(default=dict, blank=True)
+    write_up_key = models.CharField(max_length=64, blank=True, default="")
+    facts = models.JSONField(default=dict, blank=True)
+    facts_fingerprint = models.CharField(max_length=64, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=exactly_one("target_lab", "target_department"),
+                name="announcement_one_target",
+            ),
+            models.UniqueConstraint(
+                fields=["target_lab", "content"],
+                condition=Q(target_lab__isnull=False, content__isnull=False),
+                name="announcement_unique_lab_item",
+            ),
+            models.UniqueConstraint(
+                fields=["target_department", "content"],
+                condition=Q(target_department__isnull=False, content__isnull=False),
+                name="announcement_unique_department_item",
+            ),
+        ]
+        indexes = [models.Index(fields=["state", "category"])]
+
+    def __str__(self) -> str:
+        title = (self.snapshot or {}).get("title", "")[:40]
+        return f"Announcement({self.category}, {self.state}, {title})"
+
+
+class AnnouncementPost(models.Model):
+    """Where one announcement was posted: one thread in one server binding."""
+
+    announcement = models.ForeignKey(
+        Announcement, on_delete=models.CASCADE, related_name="posts"
+    )
+    binding = models.ForeignKey(
+        "integrations.DiscordTargetBinding",
+        on_delete=models.CASCADE,
+        related_name="announcement_posts",
+    )
+    channel_id = models.CharField(max_length=32)  # the forum
+    thread_id = models.CharField(max_length=32, blank=True, default="")
+    thread_name = models.CharField(max_length=100, blank=True, default="")
+    outbox_key = models.CharField(max_length=200, blank=True, default="")
+    # [{"on": "2026-11-05", "changes": [...], "reply_id": "..."}] — one per update.
+    update_log = models.JSONField(default=list, blank=True)
+    posted_at = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["announcement", "binding"], name="announcement_post_unique"
+            )
+        ]
+
+    def __str__(self) -> str:
+        where = self.thread_id or "queued"
+        return f"AnnouncementPost({self.announcement_id} → {where})"
+
+
+class AnnouncementReaction(models.Model):
+    """One person's reaction to one announcement. Append-only: the latest row of
+    ``interested`` / ``unfollow`` per person decides whether they follow it."""
+
+    class Kind(models.TextChoices):
+        INTERESTED = "interested", "Interested"
+        UNFOLLOW = "unfollow", "Stopped following"
+        NOT_FOR_US = "not_for_us", "Not for us"
+
+    announcement = models.ForeignKey(
+        Announcement, on_delete=models.CASCADE, related_name="reactions"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="announcement_reactions",
+    )
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    reason = models.CharField(max_length=500, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["announcement", "user", "created_at"])]
+
+    def __str__(self) -> str:
+        return f"AnnouncementReaction({self.kind}, user={self.user_id})"

@@ -72,6 +72,9 @@ class Feature:
     TEAM_WORKSPACE = "team_workspace"
     MEMBER_PROFILES = "member_profiles"
     SHARED_EVIDENCE_GRAPH = "shared_evidence_graph"
+    # One Discord thread per newly fitting grant, fellowship or conference. Posting
+    # also needs BOT_SERVER, the add-on that puts Mylo in the server.
+    OPPORTUNITY_ANNOUNCEMENTS = "opportunity_announcements"
 
     # The department line — Canopy only.
     DEPARTMENT_ROUTING = "department_routing"
@@ -112,6 +115,7 @@ _LAB = _SPORE | {
     Feature.TEAM_WORKSPACE,
     Feature.MEMBER_PROFILES,
     Feature.SHARED_EVIDENCE_GRAPH,
+    Feature.OPPORTUNITY_ANNOUNCEMENTS,
 }
 # Canopy adds department scope plus the two Canopy-only power features.
 _CANOPY = _LAB | {

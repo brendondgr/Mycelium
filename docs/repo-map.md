@@ -176,6 +176,9 @@ Files below are inside `web/backend/apps/content/`.
 | Nightly run analytics | `run_analytics.py`, `analytics_report_pdf.py`, `management/commands/run_analytics_report.py`; the Listening section reads `apps.ambient.read.listening_totals` and is omitted when nothing is listening |
 | Reminders | `reminders.py`, `reminders_tick.py`, `reminders_views.py`, `reminders_discord.py`, `reminders_announce.py`, `reminder_access.py` |
 | Deadline projection | `deadlines_projection.py` |
+| Opportunity announcements: which slate entrants a lab or department hears about, the six-item activation seed, never-twice (`Announcement`, `AnnouncementPost`, `AnnouncementReaction`, `AnnouncementSettings` in `models.py`) | `announce.py` (select, check, align, record); nightly commands `announce_opportunities` (`--dry-run`, `--llm`, `--lab`) and `announce_opportunity_updates` in `manual_all.py`, both inert while `OPPORTUNITY_ANNOUNCEMENTS_ENABLED` is off |
+| The bounded editor behind each announcement: closed packet, verifier (no digits, only offered people), template fallback | `announce_editor.py` (`edit`, `verify`, `template`, `RUBRIC_VERSION`) |
+| What an announcement showed and whether its call changed (facts snapshot, fingerprint, "What changed" lines); the closing-soon list | `announce_facts.py`; the nightly plan of changed / closed / closing-soon items is `announce_updates.py` |
 | "Can we use this?" — open, deadline vs buffer, who may apply, country, award, eligibility counts, team coverage (record fields only; missing → `unknown`) | `usability.py` (`assess`, `Reader`, `reader_for_lab/department/user`); the serializer field is `_OpportunitySerializer.get_usability` |
 | Is an opportunity still worth showing (feeds + prune share it) | `liveness.py` |
 | Unified search | `search.py`, `search_service.py`, `query_embedding.py` |
