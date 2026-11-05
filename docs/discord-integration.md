@@ -118,6 +118,52 @@ authorization. Every action terminates in the existing
 `apps.accounts.permissions` (`user_can_manage_lab`, `user_can_manage_department`).
 Guild membership, guild ownership, and Discord roles grant nothing.
 
+## Opportunity announcements
+
+One forum thread per newly fitting grant, fellowship or conference, in each server
+binding of a lab (and, from Phase 7, a department) that routes that kind. Behind
+`OPPORTUNITY_ANNOUNCEMENTS_ENABLED` (off), the `OPPORTUNITY_ANNOUNCEMENTS` plan
+feature (Lab and Canopy) and the `BOT_SERVER` add-on.
+
+* **Engine** (`apps/content/announce*.py`): slate entrants only, never twice; the
+  first run seeds the six best open items (kinds interleaved) and passes over the
+  rest for good; a bounded editor writes each post behind a verifier (no digits,
+  only offered people) with a template fallback.
+* **Delivery** (`apps/content/discord_announcements.py`) produces outbox rows in
+  two thread modes: `forum_thread` (start a thread; its id lands on
+  `AnnouncementPost.thread_id`) and `thread_update` (one retry-safe unit: patch the
+  thread, edit its opening post, reply, then an optional `after_patch`). A changed
+  call **updates its own thread in place** — unarchived, renamed `[🚨 Update <Mon
+  D>] <title>`, tagged *Updated*, opening post edited with *What changed*, and a
+  reply tagging exactly the people following it — at most once a thread per night.
+  Forums Mylo creates sort by recent activity, so that reply moves the thread to
+  the top. Finished calls are tagged *Closed* and archived. The closing-soon list is
+  a new thread each morning in `#grants` and `#fellowships`; yesterday's is
+  deleted, and a day with nothing closing posts nothing and still takes it down.
+* **Buttons** (`mylo/bot/cogs/announcements.py`, persistent ids
+  `ann:<post>:<action>` handled by an `on_interaction` listener) →
+  `apps/content/announcement_actions.py`, each through the gate's `ann_follow` /
+  `ann_not_for_us` actions against the post's own lab or department.
+  *Interested* reacts, saves, sets the target's default nudge (2 weeks, a tag in the
+  thread) and DMs the full details with *Change reminder* / *Open the thread* /
+  *Stop following*. *Remind me* is an ephemeral picker (2 days … 2 months, 2 weeks
+  preselected, past choices hidden, up to five): by DM it is an ordinary
+  `ReminderSubscription` (so it follows a moved date and shows on the Reminders
+  page); as a thread tag it is an `AnnouncementNudge`, whose fire date is computed
+  nightly from the current deadline. One tag per person per night, and a nudge
+  whose moment has already passed is never sent late. *Not for us* is managers
+  only and keeps the reason.
+* **`/setup` step** (`📣 Opportunity announcements…` in the `/setup` menu →
+  `apps/content/announcement_setup.py`) configures one binding: **Create them for
+  me** (a category and three tagged forums), or pick existing forums (each proven
+  by starting and deleting a thread), who can start posts (everyone, managers only,
+  or chosen roles — replies stay open to everyone), and **Turn on**, which runs the
+  activation seed and the closing-soon list straight away.
+* **Permissions Mylo needs:** Send Messages and Embed Links in the forums; Manage
+  Threads to rename, retag, archive and unarchive its threads; Manage Channels only
+  for **Create them for me** and for adding its tags to a forum you chose; Manage
+  Roles only for the "who can start posts" rules.
+
 ## Developer-portal setup (one time)
 
 * Application → both `GUILD_INSTALL` (0) and `USER_INSTALL` (1) integration types.

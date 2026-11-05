@@ -586,3 +586,148 @@ def _channel_deleted_sync(guild_id: str, channel_id: str) -> str:
     # Returns which routes held it ("deadlines", "updates,grants", …), or "" for the
     # common case of a channel Mylo never used.
     return resolve.clear_channel_by_id(guild_id, channel_id) or "not_bound"
+
+
+# --------------------------------------------------------------------------- #
+# Opportunity announcements: the thread buttons and the `/setup` step
+# --------------------------------------------------------------------------- #
+# The decisions live in `apps.content.announcement_actions` and
+# `apps.content.announcement_setup`; both start at the authorization gate.
+async def announcement_action(
+    discord_user_id: str,
+    post_id: str,
+    action: str,
+    *,
+    guild_id: str = "",
+    offsets: list[str] | None = None,
+    where: str = "dm",
+    reason: str = "",
+) -> tuple[str, dict]:
+    return await mycelium.db(
+        _announcement_action_sync,
+        str(discord_user_id),
+        str(post_id),
+        str(action),
+        str(guild_id or ""),
+        list(offsets or []),
+        str(where or "dm"),
+        str(reason or ""),
+    )
+
+
+def _announcement_action_sync(
+    discord_user_id, post_id, action, guild_id, offsets, where, reason
+) -> tuple[str, dict]:
+    from apps.content import announcement_actions as actions
+
+    if action == "interested":
+        return actions.interested(discord_user_id, post_id, guild_id)
+    if action == "remind":
+        return actions.remind_options(discord_user_id, post_id, guild_id)
+    if action == "remind_set":
+        return actions.remind_set(discord_user_id, post_id, offsets, where, guild_id)
+    if action == "notforus":
+        return actions.not_for_us(discord_user_id, post_id, reason, guild_id)
+    if action == "unfollow":
+        return actions.unfollow(discord_user_id, post_id, guild_id)
+    return ("unknown", {"message": "That button is no longer used."})
+
+
+async def announcement_setup(
+    discord_user_id: str,
+    guild_id: str,
+    binding_id,
+    op: str,
+    *,
+    purpose: str = "",
+    channel_id: str = "",
+    policy: str = "",
+    role_ids: list[str] | None = None,
+    bot_user_id: str = "",
+) -> tuple[str, dict]:
+    """One operation of the announcements step for one binding."""
+    return await mycelium.db(
+        _announcement_setup_sync,
+        str(discord_user_id),
+        str(guild_id),
+        binding_id,
+        str(op),
+        str(purpose),
+        str(channel_id),
+        str(policy),
+        list(role_ids or []),
+        str(bot_user_id),
+    )
+
+
+def _announcement_setup_sync(
+    discord_user_id, guild_id, binding_id, op, purpose, channel_id, policy, role_ids,
+    bot_user_id,
+) -> tuple[str, dict]:
+    from apps.content import announcement_setup as setup
+    from apps.integrations.services import gate, resolve
+
+    binding, refusal = _pick_binding(resolve, guild_id, binding_id)
+    if refusal is not None:
+        return refusal
+    verdict = gate.authorize(
+        discord_user_id=discord_user_id,
+        action="ann_setup",
+        guild_id=guild_id,
+        binding_id=binding.id,
+    )
+    if not verdict.ok:
+        return (str(verdict.denial), {"message": verdict.message})
+    actor = verdict.user
+    ok, message = True, ""
+    if op == "create":
+        ok, message = setup.create_forums(binding, actor=actor)
+    elif op == "use":
+        if channel_id:
+            ok, message = setup.use_forum(binding, purpose, channel_id, actor=actor)
+        else:
+            message = setup.clear_forum(binding, purpose, actor=actor)
+    elif op == "policy":
+        ok, message = setup.set_poster_policy(
+            binding,
+            policy,
+            role_ids=role_ids,
+            manager_discord_ids=setup.manager_discord_ids(binding),
+            bot_user_id=bot_user_id,
+        )
+    elif op in ("on", "off"):
+        if op == "on" and not setup.state(binding)["routes"]:
+            ok, message = False, "Choose or create the forums first."
+        else:
+            _row, first = setup.switch(binding, on=(op == "on"), actor=actor)
+            message = (
+                "Announcements are **on**. Mylo is posting the six most relevant open "
+                "items and the closing-soon list now; after that, only new ones."
+                if first
+                else ("Announcements are **on**." if op == "on" else
+                      "Announcements are **off**. Existing threads stay.")
+            )
+            payload = {**setup.state(binding), "message": message, "activate": first}
+            return ("ok", payload)
+    elif op != "state":
+        return ("unknown", {"message": "Unknown setup step."})
+    payload = {**setup.state(binding), "message": message}
+    return ("ok" if ok else "refused", payload)
+
+
+async def activate_announcements(guild_id: str, binding_id) -> dict:
+    """Run the activation seed for one binding (called after switching on)."""
+    return await mycelium.db(_activate_announcements_sync, str(guild_id), binding_id)
+
+
+def _activate_announcements_sync(guild_id, binding_id) -> dict:
+    from apps.content import announce
+    from apps.content import announcement_setup as setup
+    from apps.integrations.services import resolve
+
+    if not announce.enabled():
+        return {"posted": 0, "reason": "switched_off"}
+    binding, refusal = _pick_binding(resolve, guild_id, binding_id)
+    if refusal is not None:
+        return {"posted": 0, "reason": "no_binding"}
+    return setup.activate_now(binding)

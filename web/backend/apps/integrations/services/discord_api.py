@@ -231,6 +231,111 @@ def create_message(
     )
 
 
+def _mentions(allowed_mentions: dict | None) -> dict:
+    """The same ``parse: []`` rule as :func:`create_message`: only named users."""
+    mentions: dict = {"parse": []}
+    if allowed_mentions and allowed_mentions.get("users"):
+        mentions["users"] = [str(u) for u in allowed_mentions["users"]]
+    return mentions
+
+
+def _message_body(content, embed, components, allowed_mentions) -> dict:
+    body: dict = {"allowed_mentions": _mentions(allowed_mentions)}
+    if content:
+        body["content"] = content
+    if embed:
+        body["embeds"] = [embed]
+    if components is not None:
+        body["components"] = components
+    return body
+
+
+def create_forum_thread(
+    forum_id: str,
+    *,
+    name: str,
+    applied_tags: list[str] | None = None,
+    content: str = "",
+    embed: dict | None = None,
+    components: list | None = None,
+    allowed_mentions: dict | None = None,
+) -> RawResponse:
+    """Start a thread in a forum channel; its opening post is the message. The
+    response is the thread (a channel), whose ``id`` is also the post's id."""
+    body = {
+        "name": name[:100],
+        "message": _message_body(content, embed, components, allowed_mentions),
+    }
+    if applied_tags:
+        body["applied_tags"] = [str(t) for t in applied_tags][:5]
+    return _request(
+        "POST",
+        f"/channels/{forum_id}/threads",
+        auth=("Bot", _bot_token()),
+        json_body=body,
+    )
+
+
+def edit_message(
+    channel_id: str,
+    message_id: str,
+    *,
+    content: str | None = None,
+    embed: dict | None = None,
+    components: list | None = None,
+    allowed_mentions: dict | None = None,
+) -> RawResponse:
+    body = _message_body(content, embed, components, allowed_mentions)
+    if content == "":
+        body["content"] = ""
+    return _request(
+        "PATCH",
+        f"/channels/{channel_id}/messages/{message_id}",
+        auth=("Bot", _bot_token()),
+        json_body=body,
+    )
+
+
+def modify_channel(channel_id: str, fields: dict) -> RawResponse:
+    """PATCH a channel or thread: ``name``, ``applied_tags``, ``archived``,
+    ``available_tags``, ``default_sort_order`` and so on."""
+    return _request(
+        "PATCH",
+        f"/channels/{channel_id}",
+        auth=("Bot", _bot_token()),
+        json_body=fields,
+    )
+
+
+def delete_channel(channel_id: str) -> RawResponse:
+    return _request("DELETE", f"/channels/{channel_id}", auth=("Bot", _bot_token()))
+
+
+def get_channel(channel_id: str) -> RawResponse:
+    return _request("GET", f"/channels/{channel_id}", auth=("Bot", _bot_token()))
+
+
+def create_guild_channel(guild_id: str, fields: dict) -> RawResponse:
+    return _request(
+        "POST",
+        f"/guilds/{guild_id}/channels",
+        auth=("Bot", _bot_token()),
+        json_body=fields,
+    )
+
+
+def set_permission_overwrite(
+    channel_id: str, overwrite_id: str, *, kind: int, allow: int, deny: int
+) -> RawResponse:
+    """``kind`` 0 = role, 1 = member."""
+    return _request(
+        "PUT",
+        f"/channels/{channel_id}/permissions/{overwrite_id}",
+        auth=("Bot", _bot_token()),
+        json_body={"type": kind, "allow": str(allow), "deny": str(deny)},
+    )
+
+
 def create_message_with_attachment(
     channel_id: str,
     *,

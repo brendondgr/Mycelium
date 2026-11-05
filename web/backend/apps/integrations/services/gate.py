@@ -102,6 +102,13 @@ _ACTIONS: dict[str, _Action] = {
     # permission to opt out.
     "listening": _Action(lab_permission="manage", lab_feature="bot_server"),
     "listening_self": _Action(),
+    # Opportunity announcement buttons, checked against the post's own lab or
+    # department (``binding_id``). Following one is open to any member; marking
+    # one "not for us" speaks for the team, so it needs management.
+    "ann_follow": _Action(lab_permission="access", bucket="announcements"),
+    "ann_not_for_us": _Action(lab_permission="manage", bucket="announcements"),
+    # Announcement setup in `/setup` is the same right as choosing any channel.
+    "ann_setup": _Action(lab_permission="manage", lab_feature="bot_server"),
 }
 
 _DEFAULT_ACTION = _Action()

@@ -197,6 +197,31 @@ class SetupView(discord.ui.View):
     ) -> None:
         await self._apply(interaction, kind="updates", channel_id="")
 
+    @discord.ui.button(
+        label="Opportunity announcements…",
+        style=discord.ButtonStyle.primary,
+        emoji="📣",
+        row=2,
+    )
+    async def announcements(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+        status, payload = await linking.announcement_setup(
+            str(self.user_id), self.guild_id, self.binding_id, "state"
+        )
+        if status != "ok":
+            await interaction.followup.send(payload["message"], ephemeral=True)
+            return
+        view = AnnouncementsView(self.user_id, self.guild_id, self.binding_id, payload)
+        view.name = self.state.get("lab_name", "")
+        view.message = await interaction.followup.send(
+            _render_announcements(self.state.get("lab_name", ""), payload),
+            view=view,
+            ephemeral=True,
+            wait=True,
+        )
+
     # -- listening --------------------------------------------------------- #
 
     async def _apply_listening(
@@ -336,6 +361,147 @@ class SetupView(discord.ui.View):
         await interaction.edit_original_response(
             content=f"{_render_status(self.state)}\n\n{note}", view=self
         )
+
+
+def _render_announcements(name: str, state: dict) -> str:
+    routes = state.get("routes") or {}
+
+    def line(purpose: str) -> str:
+        channel = routes.get(purpose)
+        return f"<#{channel}>" if channel else "_not set_"
+
+    policy = {
+        "everyone": "Everyone (default)",
+        "managers": "Managers only",
+        "roles": "Chosen roles",
+    }.get(state.get("poster_policy") or "everyone", "Everyone (default)")
+    status = "**on**" if state.get("enabled") else "_off_"
+    return (
+        f"**Opportunity announcements for {name or 'this binding'}:** {status}\n"
+        "One forum thread per new grant, fellowship or conference. **Create them for "
+        "me** makes a category with three forums; or pick forums you already have.\n"
+        f"• **Grants:** {line('grants')}\n"
+        f"• **Fellowships:** {line('fellowships')}\n"
+        f"• **Conferences:** {line('conferences')}\n"
+        f"• **Who can start posts:** {policy}. Anyone can always reply in a thread."
+    )
+
+
+_FORUMS = [discord.ChannelType.forum]
+
+
+class AnnouncementsView(discord.ui.View):
+    """The announcements step, for one binding."""
+
+    def __init__(self, user_id: int, guild_id: str, binding_id, state: dict) -> None:
+        super().__init__(timeout=300)
+        self.user_id, self.guild_id, self.binding_id = user_id, guild_id, binding_id
+        self.state = state
+        self.message: discord.Message | None = None
+        self.name = ""
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message(
+                "This setup menu isn't yours — run `/setup` to open your own.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def _run(self, interaction: discord.Interaction, op: str, **kw) -> None:
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+        bot_id = str(interaction.client.user.id) if interaction.client.user else ""
+        status, payload = await linking.announcement_setup(
+            str(self.user_id), self.guild_id, self.binding_id, op,
+            bot_user_id=bot_id, **kw,
+        )
+        if "routes" in payload:
+            self.state = payload
+        note = payload.get("message", "")
+        await interaction.edit_original_response(
+            content=f"{_render_announcements(self.name, self.state)}\n\n{note}",
+            view=self,
+        )
+        if payload.get("activate"):
+            result = await linking.activate_announcements(self.guild_id, self.binding_id)
+            done = (
+                f"📣 Posted {result.get('posted', 0)} open item(s) and the closing-soon "
+                "list."
+                if "reason" not in result
+                else "Announcements will start with tonight's run."
+            )
+            await interaction.followup.send(done, ephemeral=True)
+
+    @discord.ui.select(cls=discord.ui.ChannelSelect, channel_types=_FORUMS,
+                       placeholder="Grants forum…", row=0)
+    async def grants(self, interaction, select):
+        await self._run(interaction, "use", purpose="grants",
+                        channel_id=str(select.values[0].id))
+
+    @discord.ui.select(cls=discord.ui.ChannelSelect, channel_types=_FORUMS,
+                       placeholder="Fellowships forum…", row=1)
+    async def fellowships(self, interaction, select):
+        await self._run(interaction, "use", purpose="fellowships",
+                        channel_id=str(select.values[0].id))
+
+    @discord.ui.select(cls=discord.ui.ChannelSelect, channel_types=_FORUMS,
+                       placeholder="Conferences forum…", row=2)
+    async def conferences(self, interaction, select):
+        await self._run(interaction, "use", purpose="conferences",
+                        channel_id=str(select.values[0].id))
+
+    @discord.ui.select(
+        placeholder="Who can start posts?",
+        options=[
+            discord.SelectOption(label="Everyone", value="everyone",
+                                 description="Default. Anyone can reply either way."),
+            discord.SelectOption(label="Managers only", value="managers"),
+            discord.SelectOption(label="Pick roles…", value="roles"),
+        ],
+        row=3,
+    )
+    async def posters(self, interaction, select):
+        choice = select.values[0]
+        if choice == "roles":
+            view = RolePicker(self)
+            await interaction.response.send_message(
+                "Which roles may start posts?", view=view, ephemeral=True
+            )
+            return
+        await self._run(interaction, "policy", policy=choice)
+
+    @discord.ui.button(label="Create them for me", style=discord.ButtonStyle.primary, row=4)
+    async def create(self, interaction, _button):
+        await self._run(interaction, "create")
+
+    @discord.ui.button(label="Turn on", style=discord.ButtonStyle.success, row=4)
+    async def turn_on(self, interaction, _button):
+        await self._run(interaction, "on")
+
+    @discord.ui.button(label="Turn off", style=discord.ButtonStyle.secondary, row=4)
+    async def turn_off(self, interaction, _button):
+        await self._run(interaction, "off")
+
+
+class RolePicker(discord.ui.View):
+    def __init__(self, parent: AnnouncementsView) -> None:
+        super().__init__(timeout=180)
+        self.parent = parent
+
+    @discord.ui.select(cls=discord.ui.RoleSelect, placeholder="Roles…",
+                       min_values=1, max_values=10)
+    async def roles(self, interaction, select):
+        await interaction.response.defer()
+        bot_id = str(interaction.client.user.id) if interaction.client.user else ""
+        _status, payload = await linking.announcement_setup(
+            str(self.parent.user_id), self.parent.guild_id, self.parent.binding_id,
+            "policy", policy="roles", role_ids=[str(r.id) for r in select.values],
+            bot_user_id=bot_id,
+        )
+        await interaction.edit_original_response(content=payload.get("message", ""),
+                                                 view=None)
 
 
 class BindingPicker(discord.ui.View):

@@ -408,9 +408,23 @@ class DiscordOutboxMessage(models.Model):
         DM = "dm", "Direct message"
         CHANNEL = "channel", "Channel"
 
+    class Mode(models.TextChoices):
+        MESSAGE = "message", "Post a message"
+        # Start a thread in the forum ``channel_id``; ``extra`` holds ``name`` and
+        # ``applied_tags``. The thread's id lands in ``discord_message_id``.
+        FORUM_THREAD = "forum_thread", "Start a forum thread"
+        # Change an existing thread in one retry-safe unit, in order: ``patch``
+        # the thread (unarchive, rename, tags), ``edit`` its opening post, then
+        # ``reply`` (``content``/``embed``/``allowed_mentions``) if there is one.
+        # Every step but the reply is idempotent, so a retry is harmless.
+        THREAD_UPDATE = "thread_update", "Update a thread"
+        DELETE_CHANNEL = "delete_channel", "Delete a channel"
+
     dedupe_key = models.CharField(max_length=200, unique=True)
     kind = models.CharField(max_length=40)  # reminder | daily_report | lab_digest | …
     target_type = models.CharField(max_length=16, choices=Target.choices)
+    mode = models.CharField(max_length=16, choices=Mode.choices, default=Mode.MESSAGE)
+    extra = models.JSONField(null=True, blank=True)
     # DM: whose identity to resolve *at send time* — a cached dm_channel_id can go
     # stale between enqueue and delivery, so the channel is never frozen here.
     recipient_user = models.ForeignKey(
@@ -614,6 +628,7 @@ class SlackOutboxMessage(models.Model):
     class Target(models.TextChoices):
         DM = "dm", "Direct message"
         CHANNEL = "channel", "Channel"
+
 
     dedupe_key = models.CharField(max_length=200, unique=True)
     kind = models.CharField(max_length=40)

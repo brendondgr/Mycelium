@@ -395,8 +395,8 @@ def prepare(
     packet = editor.Packet(
         item_id=str(item.id),
         kind=item.type,
-        title=meta.get("title") or "Untitled",
-        funder=meta.get("funder") or meta.get("sponsor") or meta.get("venue") or "",
+        title=announce_facts.item_title(item),
+        funder=announce_facts.item_host(item),
         summary=_summary(meta),
         target_name=target.name,
         target_kind=target.kind,
@@ -463,11 +463,10 @@ class Outcome:
 
 
 def snapshot(item: ContentItem) -> dict:
-    meta = item.metadata or {}
     return {
-        "title": meta.get("title") or "Untitled",
-        "url": item.source_url or meta.get("external_url") or meta.get("website") or "",
-        "funder": meta.get("funder") or meta.get("sponsor") or meta.get("venue") or "",
+        "title": announce_facts.item_title(item),
+        "url": announce_facts.item_url(item),
+        "funder": announce_facts.item_host(item),
     }
 
 
@@ -643,4 +642,5 @@ def list_items(target: Target, today: date) -> list[ContentItem]:
             target_lab=target.obj
         ).select_related("content"):
             items.setdefault(saved.content_id, saved.content)
-    return list(items.values())
+    # A saved row outlives its pruned item (SET_NULL); only live items count.
+    return [item for item in items.values() if item is not None]

@@ -1964,3 +1964,74 @@ class AnnouncementReaction(models.Model):
 
     def __str__(self) -> str:
         return f"AnnouncementReaction({self.kind}, user={self.user_id})"
+
+
+class ClosingSoonPost(models.Model):
+    """One day's closing-soon thread in one binding's forum (plan D11). The next
+    morning's thread replaces it, and this row is how yesterday's is found."""
+
+    binding = models.ForeignKey(
+        "integrations.DiscordTargetBinding",
+        on_delete=models.CASCADE,
+        related_name="closing_soon_posts",
+    )
+    category = models.CharField(max_length=20)  # grant | fellowship
+    on_date = models.DateField()
+    outbox_key = models.CharField(max_length=200)
+    thread_id = models.CharField(max_length=32, blank=True, default="")
+    replaced_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-on_date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["binding", "category", "on_date"],
+                name="closing_soon_post_unique_day",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"ClosingSoonPost({self.binding_id}, {self.category}, {self.on_date})"
+
+
+class AnnouncementNudge(models.Model):
+    """A reminder about one announcement for one person, posted as a tag in the
+    thread: the default nudge *Interested* sets, or a *Remind me* choice of "tag me
+    in the thread". (A *Remind me* by DM is an ordinary ``ReminderSubscription``.)
+
+    The fire date is computed each night from the call's *current* deadline, so a
+    nudge follows a moved date; ``fired_for`` records which deadline it already
+    fired for, so it never fires twice for the same one.
+    """
+
+    class Source(models.TextChoices):
+        INTERESTED = "interested", "Interested (default nudge)"
+        REMIND = "remind", "Remind me"
+
+    announcement = models.ForeignKey(
+        Announcement, on_delete=models.CASCADE, related_name="nudges"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="announcement_nudges",
+    )
+    offset = models.CharField(max_length=4, choices=AnnouncementSettings.Nudge.choices)
+    source = models.CharField(max_length=16, choices=Source.choices)
+    active = models.BooleanField(default=True)
+    fired_for = models.JSONField(default=list, blank=True)  # ["2027-01-14", ...]
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["announcement", "user", "offset"],
+                name="announcement_nudge_unique",
+            )
+        ]
+
+    def __str__(self) -> str:
+        who = f"{self.announcement_id}, {self.user_id}"
+        return f"AnnouncementNudge({who}, {self.offset})"

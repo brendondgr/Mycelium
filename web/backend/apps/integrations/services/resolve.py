@@ -970,6 +970,7 @@ OUTBOX_FAILED = DiscordOutboxMessage.Status.FAILED
 OUTBOX_DEAD = DiscordOutboxMessage.Status.DEAD
 OUTBOX_DM = DiscordOutboxMessage.Target.DM
 OUTBOX_CHANNEL = DiscordOutboxMessage.Target.CHANNEL
+OUTBOX_MODE = DiscordOutboxMessage.Mode
 
 
 def next_resend_key(base: str) -> str:
@@ -1014,6 +1015,8 @@ def enqueue_outbox(
     now: datetime | None = None,
     not_before: datetime | None = None,
     components: list | None = None,
+    mode: str = DiscordOutboxMessage.Mode.MESSAGE,
+    extra: dict | None = None,
 ) -> tuple[DiscordOutboxMessage, bool]:
     """Queue one message. Returns ``(row, created)``.
 
@@ -1042,6 +1045,8 @@ def enqueue_outbox(
             "content": content,
             "embed": embed,
             "components": components,
+            "mode": mode,
+            "extra": extra,
             "allowed_mentions": allowed_mentions,
             "attachment_path": attachment_path,
             "attachment_filename": attachment_filename,
@@ -1190,6 +1195,10 @@ def _settle_unsendable(
             "updated_at",
         ]
     )
+
+
+def get_outbox_by_key(dedupe_key: str) -> DiscordOutboxMessage | None:
+    return DiscordOutboxMessage.objects.filter(dedupe_key=dedupe_key).first()
 
 
 def get_outbox_message(pk) -> DiscordOutboxMessage | None:

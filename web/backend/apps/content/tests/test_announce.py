@@ -499,3 +499,35 @@ def test_the_seed_skips_fellowships_nobody_is_eligible_for() -> None:
     _outcome, posted = _run(target)
 
     assert {p.content_id for p in posted} == {grant_a.id, grant_b.id}
+
+
+@pytest.mark.django_db
+def test_a_saved_item_that_was_pruned_does_not_break_the_list() -> None:
+    from apps.content.models import SavedOpportunity
+
+    target = _lab()
+    item = _item(deadline="2026-11-12", title="Near grant")
+    _slate(target, item, 1)
+    gone = _item(title="Pruned")
+    SavedOpportunity.objects.create(
+        target_lab=target.obj, content=gone, area="grant", title="Pruned",
+        user=User.objects.create_user("saver"),
+    )
+    gone.delete()
+
+    plan = announce_updates.plan(target, TODAY)
+
+    assert [r.title for r in plan.closing_soon["grant"]] == ["Near grant"]
+
+
+def test_conference_titles_use_the_name_and_a_new_acronym_only() -> None:
+    from apps.content.announce_facts import item_title
+
+    def conf(**meta):
+        return ContentItem(type=ContentItem.Type.CONFERENCE, metadata=meta)
+
+    trust = conf(name="Trustworthy Models (TrustFMI)", acronym="TrustFMI2026")
+    assert item_title(trust) == "Trustworthy Models (TrustFMI)"
+    assert item_title(conf(name="Architectural Support for PL", acronym="ASPLOS")) \
+        == "ASPLOS: Architectural Support for PL"
+    assert item_title(conf(acronym="IGARSS")) == "IGARSS"

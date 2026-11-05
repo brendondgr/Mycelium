@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -32,6 +33,40 @@ _FIELD_LABELS = {
     "applicants": "Who may apply",
     "eligibility": "Eligibility text",
 }
+
+
+def item_title(item: ContentItem) -> str:
+    """Grants and fellowships carry ``title``; conferences carry ``name`` and an
+    ``acronym``."""
+    meta = item.metadata or {}
+    if meta.get("title"):
+        return str(meta["title"])
+    name, acronym = str(meta.get("name") or ""), str(meta.get("acronym") or "")
+    base = re.sub(r"[\s'’-]*\d{2,4}$", "", acronym).casefold()
+    if name and base and base not in name.casefold():
+        return f"{acronym}: {name}"
+    return name or acronym or "Untitled"
+
+
+def item_url(item: ContentItem) -> str:
+    meta = item.metadata or {}
+    return (
+        item.source_url
+        or meta.get("source_url")
+        or meta.get("external_url")
+        or meta.get("website")
+        or meta.get("url")
+        or ""
+    )
+
+
+def item_host(item: ContentItem) -> str:
+    """Who offers it: the funder, or for a conference where it is held."""
+    meta = item.metadata or {}
+    if item.type == ContentItem.Type.CONFERENCE:
+        place = ", ".join(str(x) for x in (meta.get("city"), meta.get("country")) if x)
+        return place or str(meta.get("place_text") or "")
+    return str(meta.get("funder") or meta.get("sponsor") or "")
 
 
 def facts_for(item: ContentItem, today: date) -> dict:
@@ -182,17 +217,13 @@ def closing_soon(items, today: date, *, window_days: int = 14) -> list[ClosingSo
             continue
         when = date.fromisoformat(due)
         if today <= when <= horizon:
-            meta = item.metadata or {}
             out.append(
                 ClosingSoon(
                     content_id=str(item.id),
                     kind=item.type,
-                    title=meta.get("title") or "Untitled",
-                    url=item.source_url
-                    or meta.get("source_url")
-                    or meta.get("external_url")
-                    or "",
-                    funder=meta.get("funder") or meta.get("sponsor") or "",
+                    title=item_title(item),
+                    url=item_url(item),
+                    funder=item_host(item),
                     due=when,
                     days=(when - today).days,
                 )
