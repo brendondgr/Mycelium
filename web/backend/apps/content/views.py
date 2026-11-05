@@ -1177,6 +1177,14 @@ def _recommendations_payload(
         opp_context["usability_suited"] = {
             cid: [row["name"] for row in rows[:3]] for cid, rows in recommended.items()
         }
+        from apps.content.announcement_links import for_target
+
+        lab_target = target_filter.get("target_lab") or getattr(
+            target_filter.get("target_project"), "scope_lab", None
+        )
+        opp_context["announcements"] = (
+            for_target({"target_lab": lab_target}, content_ids) if lab_target else {}
+        )
         opp_context["usability_fellowship_counts"] = usability.fellowship_counts(
             list(member_ids),
             [score.content for score in fellowships],

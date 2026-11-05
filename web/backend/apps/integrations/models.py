@@ -342,6 +342,8 @@ class DiscordChannelRoute(models.Model):
     )
     purpose = models.CharField(max_length=16, choices=Purpose.choices)
     channel_id = models.CharField(max_length=32)
+    # The channel's name when Mylo last saw it, for "#grants" links on the web.
+    channel_name = models.CharField(max_length=100, blank=True, default="")
     # Discord channel type: 0 text, 15 forum. Null when not read yet.
     channel_type = models.PositiveSmallIntegerField(null=True, blank=True)
     # Forum tag name → id, as Mylo last read or created them.

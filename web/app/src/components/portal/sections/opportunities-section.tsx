@@ -30,6 +30,7 @@ import {
   type GrantFilterState,
 } from "@/components/portal/sections/grant-filters";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
+import { HeldBack, heldReason } from "@/components/portal/primitives/held-back";
 import { HiddenByFilters } from "@/components/portal/primitives/hidden-by-filters";
 import {
   FeedSearchBar,
@@ -44,6 +45,7 @@ import {
 } from "@/lib/portal/use-infinite-reveal";
 import { TeamFitLine } from "@/components/portal/collab/team-fit-line";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
+import { UsabilityStrip } from "@/components/portal/primitives/usability-strip";
 import type {
   GrantOpportunity,
   MyLab,
@@ -251,6 +253,15 @@ export function GrantRow({
         )
       ) : null}
 
+      {forLab || grant.usability ? (
+        <UsabilityStrip
+          usability={grant.usability}
+          people={recommendedFor?.map((m) => ({ name: m.name, why: m.reason }))}
+          announced={grant.announcement?.discord}
+          fallbackChannel="grants"
+        />
+      ) : null}
+
       <TeamFitLine
         contentId={grant.content_id}
         fit={grant.team_fit}
@@ -258,7 +269,7 @@ export function GrantRow({
         forLab={forLab}
       />
 
-      <RecommendedFor members={recommendedFor} />
+      {forLab || grant.usability ? null : <RecommendedFor members={recommendedFor} />}
 
       <SourceRow
         license={grant.license}
@@ -405,17 +416,27 @@ function GrantsFeed({
     [scoped],
   );
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const visible = React.useMemo(
+  const filtered = React.useMemo(
     () => filterAndSortGrants(scoped, filters, today),
     [scoped, filters, today],
+  );
+  // On a lab feed, what fails a hard check moves to "Mylo held back".
+  const labFeed = recommendedFor !== undefined;
+  const held = React.useMemo(
+    () => (labFeed ? filtered.filter((g) => heldReason(g.usability)) : []),
+    [filtered, labFeed],
+  );
+  const visible = React.useMemo(
+    () => (held.length ? filtered.filter((g) => !heldReason(g.usability)) : filtered),
+    [filtered, held],
   );
 
   // What the rail's facets took out of the scoped feed — see `HiddenByFilters`.
   const hidden = React.useMemo(() => {
-    if (visible.length === scoped.length) return [];
-    const shown = new Set(visible.map((grant) => grant.content_id));
+    if (filtered.length === scoped.length) return [];
+    const shown = new Set(filtered.map((grant) => grant.content_id));
     return scoped.filter((grant) => !shown.has(grant.content_id));
-  }, [scoped, visible]);
+  }, [scoped, filtered]);
 
   const clearAll = () => {
     setFilters(DEFAULT_GRANT_FILTERS);
@@ -552,9 +573,14 @@ function GrantsFeed({
 
           {/* Outside the branch above on purpose — see the conferences feed. */}
           {!isLoading && !isError ? (
-            <HiddenByFilters count={hidden.length} noun="grants">
-              <GrantsList grants={hidden} recommendedFor={recommendedFor} />
-            </HiddenByFilters>
+            <>
+              <HeldBack count={held.length} noun="grants">
+                <GrantsList grants={held} recommendedFor={recommendedFor} />
+              </HeldBack>
+              <HiddenByFilters count={hidden.length} noun="grants">
+                <GrantsList grants={hidden} recommendedFor={recommendedFor} />
+              </HiddenByFilters>
+            </>
           ) : null}
         </div>
       </div>

@@ -429,6 +429,7 @@ def set_route(
     channel_type: int | None = None,
     forum_tag_ids: dict | None = None,
     created_by_mylo: bool | None = None,
+    channel_name: str | None = None,
     actor=None,
 ) -> DiscordChannelRoute:
     """Bind (channel-verified) ``purpose`` for one binding to ``channel_id``."""
@@ -451,6 +452,9 @@ def set_route(
     if created_by_mylo is not None:
         route.created_by_mylo = created_by_mylo
         fields.append("created_by_mylo")
+    if channel_name is not None:
+        route.channel_name = channel_name[:100]
+        fields.append("channel_name")
     if fields:
         route.save(update_fields=[*fields, "updated_at"])
     audit.discord_audit(
@@ -1386,6 +1390,7 @@ def binding_health(binding) -> dict:
         },
         "routes": {
             purpose: {**_route_health(route), "channel_type": route.channel_type,
+                      "channel_name": route.channel_name,
                       "poster_policy": route.poster_policy}
             for purpose, route in routes.items()
         },

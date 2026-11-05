@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { AnnouncementsCard } from "@/components/portal/sections/announcements-card";
 import { DiscordHealthCard } from "@/components/portal/sections/discord-health-card";
 import { CloseIcon, EditIcon, TargetIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
@@ -100,6 +101,7 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
             isVerified={user.isVerified}
           />
           <DiscordSyncCard lab={lab} />
+          <AnnouncementsCard target={{ lab: lab.slug }} name={lab.name} />
           <SlackLabCard slug={lab.slug} />
           <TeamsLabCard slug={lab.slug} />
           <DiscordHealthCard lab={lab} />

@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  fetchAnnouncements,
   fetchAdminLab,
   fetchAdminLabs,
   fetchAdminUser,
@@ -135,6 +136,9 @@ import {
   updateProjectFocus,
   updateReminder,
   uploadLabLogo,
+  createAnnouncementChannels,
+  saveAnnouncementSettings,
+  sendAnnouncementTest,
 } from "@/lib/portal/mutations";
 import {
   PERSONAL_SLUG,
@@ -151,6 +155,10 @@ import {
   type SearchSort,
 } from "@/lib/portal/types";
 import type { OrgKind } from "@/lib/auth-types";
+import type {
+  AnnouncementSettings,
+  AnnouncementTarget,
+} from "@/lib/portal/types";
 
 export type SearchInput = {
   q: string;
@@ -1579,4 +1587,41 @@ export function useOrgInvites(kind: OrgKind, id: string) {
     onSuccess: invalidate,
   });
   return { list, create, createMany, revoke };
+}
+
+
+/** A lab's or department's announcements; disabled without a target. */
+export function useAnnouncements(target: AnnouncementTarget | null) {
+  const key = target ? ("lab" in target ? `lab:${target.lab}` : `dept:${target.department}`) : "none";
+  return useQuery({
+    queryKey: ["portal", "announcements", key],
+    queryFn: () => fetchAnnouncements(target as AnnouncementTarget),
+    enabled: Boolean(target),
+    staleTime: 60_000,
+  });
+}
+
+
+/** Save announcement settings, then refresh the announcements read. */
+export function useSaveAnnouncementSettings(target: AnnouncementTarget) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Partial<AnnouncementSettings>) =>
+      saveAnnouncementSettings(target, patch),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["portal", "announcements"] }),
+  });
+}
+
+export function useSendAnnouncementTest(target: AnnouncementTarget) {
+  return useMutation({ mutationFn: () => sendAnnouncementTest(target) });
+}
+
+export function useCreateAnnouncementChannels() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (bindingId: number) => createAnnouncementChannels(bindingId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["portal", "announcements"] }),
+  });
 }

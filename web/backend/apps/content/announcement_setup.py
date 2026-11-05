@@ -109,6 +109,7 @@ def create_forums(binding, *, actor=None) -> tuple[bool, str]:
                 channel_type=FORUM,
                 forum_tag_ids=tags,
                 created_by_mylo=True,
+                channel_name=purpose,
                 actor=actor,
             )
             made.append(f"<#{resp.json['id']}>")
@@ -165,6 +166,7 @@ def use_forum(
         verified_at=timezone.now(),
         channel_type=FORUM,
         created_by_mylo=False,
+        channel_name=str(info.json.get("name") or ""),
         actor=actor,
     )
     from apps.content.discord_announcements import ensure_forum_tags
@@ -321,3 +323,24 @@ def activate_now(binding, *, complete="default") -> dict:
     plan.changed, plan.to_close = [], []  # activation posts only the list
     discord_announcements.apply_updates(plan, today)
     return {"posted": len(outcome.posted), "held": len(outcome.held)}
+
+
+def activate_target(kind: str, target_id: str) -> dict:
+    """``activate_now`` for a lab or department named by id, from any binding of it
+    (the seed posts to all of them)."""
+    from apps.accounts.models import Department, Lab
+    from apps.content import announce
+
+    if not announce.enabled():
+        return {"posted": 0, "reason": "switched_off"}
+    obj = (Lab if kind == "lab" else Department).objects.filter(pk=target_id).first()
+    if obj is None:
+        return {"posted": 0, "reason": "no_target"}
+    bindings = (
+        resolve.bindings_for_lab(obj)
+        if kind == "lab"
+        else resolve.bindings_for_department(obj)
+    )
+    if not bindings:
+        return {"posted": 0, "reason": "no_binding"}
+    return activate_now(bindings[0])

@@ -382,6 +382,8 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     # eligibility counts and team coverage, each read from a record field by
     # ``apps.content.usability``. Present only when the view passed a reader.
     usability = serializers.SerializerMethodField()
+    # Where the lab (or department) announced this item in Discord, or null.
+    announcement = serializers.SerializerMethodField()
 
     def _meta(self, score: RelevanceScore) -> dict:
         return (score.content.metadata or {}) if score.content_id else {}
@@ -391,6 +393,9 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
 
     def get_content_id(self, score: RelevanceScore) -> str:
         return str(score.content_id)
+
+    def get_announcement(self, score: RelevanceScore) -> dict | None:
+        return (self.context.get("announcements") or {}).get(str(score.content_id))
 
     def get_usability(self, score: RelevanceScore) -> dict | None:
         from dataclasses import replace

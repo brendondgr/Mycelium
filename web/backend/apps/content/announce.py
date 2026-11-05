@@ -644,3 +644,93 @@ def list_items(target: Target, today: date) -> list[ContentItem]:
             items.setdefault(saved.content_id, saved.content)
     # A saved row outlives its pruned item (SET_NULL); only live items count.
     return [item for item in items.values() if item is not None]
+
+
+# --------------------------------------------------------------------------- #
+# The lab report's one line per kind (plan D6)
+# --------------------------------------------------------------------------- #
+_KIND_NOUN = {
+    ContentItem.Type.GRANT: ("grant", "grants"),
+    ContentItem.Type.FELLOWSHIP: ("fellowship", "fellowships"),
+    ContentItem.Type.CONFERENCE: ("conference", "conferences"),
+}
+
+
+def announcements_live(lab) -> bool:
+    """Announcements are on, switched on deployment-wide, covered by the plan, and
+    routed somewhere: only then does the report hand opportunities to Discord."""
+    from apps.integrations.services import resolve
+
+    row = AnnouncementSettings.objects.filter(target_lab=lab, enabled=True).first()
+    if row is None or not enabled() or not target_entitled(Target("lab", lab, row)):
+        return False
+    return any(
+        resolve.get_route(b, purpose)
+        for b in resolve.bindings_for_lab(lab)
+        for purpose in ("grants", "fellowships", "conferences")
+    )
+
+
+def report_line(lab, on: date) -> str:
+    """``## Opportunities`` with one line per kind posted ``on``, linking to the
+    forum it went to (Markdown; the web shows Discord links with Discord's logo)."""
+    from apps.integrations.services import resolve
+
+    posted = Announcement.objects.filter(
+        target_lab=lab, state=Announcement.State.POSTED, created_at__date=on
+    )
+    bindings = resolve.bindings_for_lab(lab)
+    parts = []
+    for kind, (one, many) in _KIND_NOUN.items():
+        count = posted.filter(category=kind).count()
+        if not count:
+            continue
+        route = next(
+            (r for b in bindings if (r := resolve.get_route(b, many)) is not None),
+            None,
+        )
+        noun = one if count == 1 else many
+        where = ""
+        if route is not None:
+            url = f"https://discord.com/channels/{route.binding.guild.guild_id}/{route.channel_id}"
+            where = f" → [#{route.channel_name or many}]({url})"
+        parts.append(f"**{count} {noun}** announced{where}")
+    from apps.content.models import AnnouncementPost
+
+    updated = (
+        AnnouncementPost.objects.filter(
+            announcement__target_lab=lab, update_log__contains=[{"on": on.isoformat()}]
+        )
+        .values("announcement")
+        .distinct()
+        .count()
+    )
+    if updated:
+        parts.append(
+            f"**{updated} update{'s' if updated != 1 else ''}** to announced calls"
+        )
+    if not parts:
+        return ""
+    return "## Opportunities\n\n" + " · ".join(parts)
+
+
+_OPPORTUNITY_HEADINGS = (
+    "## grants",
+    "## fellowships",
+    "## conferences",
+    "## opportunities",
+)
+
+
+def report_body(body: str, line: str) -> str:
+    """``body`` without its grant, fellowship and conference sections (a quiet day
+    carries yesterday's body forward, which may still list them), plus ``line``."""
+    kept: list[str] = []
+    skipping = False
+    for row in (body or "").splitlines():
+        if row.startswith("## "):
+            skipping = row.strip().casefold().startswith(_OPPORTUNITY_HEADINGS)
+        if not skipping:
+            kept.append(row)
+    text = "\n".join(kept).rstrip()
+    return f"{text}\n\n{line}\n" if line else f"{text}\n"

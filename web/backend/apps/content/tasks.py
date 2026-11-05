@@ -340,3 +340,22 @@ def recompute_project_profiles(project_ids: list[str] | None = None) -> dict:
                 exc_info=True,
             )
     return {"recomputed": done}
+
+
+@shared_task(name="apps.content.activate_announcements")
+def activate_announcements(kind: str, target_id: str) -> dict:
+    """Post a target's activation seed and closing-soon list (plan D5), off the
+    request that switched announcements on: the editor is a model call per item."""
+    from apps.content import announcement_setup
+
+    return announcement_setup.activate_target(kind, target_id)
+
+
+def enqueue_activation(kind: str, target_id) -> bool:
+    """Best effort: a missing broker means tonight's run does the seed instead."""
+    try:
+        activate_announcements.delay(kind, str(target_id))
+        return True
+    except Exception:
+        logger.warning("could not enqueue announcement activation", exc_info=True)
+        return False

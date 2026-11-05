@@ -9,6 +9,7 @@ import {
   SparkleIcon,
 } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
+import { DiscordLink } from "@/components/portal/primitives/discord-link";
 import { ClusterBadge } from "@/components/portal/primitives/cluster-badge";
 import { Pill, type PillTone } from "@/components/portal/primitives/pill";
 import { IgnoreButton } from "@/components/portal/sections/opportunity-bits";
@@ -116,17 +117,25 @@ export function SearchResultCard({ item }: { item: SearchResultItem }) {
         </p>
       ) : null}
 
-      {item.url ? (
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3.5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          Open {meta.label.toLowerCase()}
-          <ArrowRightIcon size={14} />
-        </a>
-      ) : null}
+      <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+        {item.url ? (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Open {meta.label.toLowerCase()}
+            <ArrowRightIcon size={14} />
+          </a>
+        ) : null}
+        {item.discord?.length ? (
+          <span className="inline-flex items-center gap-1 text-[13px] text-[var(--text-secondary)]">
+            Discussed in Discord
+            <DiscordLink links={item.discord} />
+          </span>
+        ) : null}
+      </div>
     </Card>
   );
 }

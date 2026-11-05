@@ -2,7 +2,10 @@
 
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import { ensureCsrfCookie, readCsrfToken } from "@/lib/auth-client";
+import { announcementQuery } from "@/lib/portal/client";
 import type {
+  AnnouncementSettings,
+  AnnouncementTarget,
   AdminLabDetail,
   AdminLabUpdate,
   AdminUserDetail,
@@ -97,7 +100,7 @@ function isProjectCapError(body: unknown): body is ProjectCapErrorBody {
 }
 
 async function sendJson<T>(
-  method: "POST" | "PATCH" | "DELETE",
+  method: "POST" | "PATCH" | "PUT" | "DELETE",
   url: string,
   body: unknown,
   fallbackMessage: string,
@@ -821,7 +824,13 @@ export function updateLabProfile(
   payload: Partial<
     Pick<
       LabProfileData,
-      "statement" | "areas" | "funding_needs" | "strategic_needs" | "interests"
+      | "statement"
+      | "areas"
+      | "funding_needs"
+      | "strategic_needs"
+      | "interests"
+      | "institution_type"
+      | "country"
     >
   >,
 ): Promise<LabProfileData> {
@@ -1309,5 +1318,43 @@ export function revokeDeptInvite(
     ),
     undefined,
     "Could not withdraw the invitation.",
+  );
+}
+
+
+/** Save a lab's or department's announcement settings (managers only). */
+export function saveAnnouncementSettings(
+  target: AnnouncementTarget,
+  patch: Partial<AnnouncementSettings>,
+): Promise<AnnouncementSettings> {
+  return sendJson<AnnouncementSettings>(
+    "PUT",
+    `${buildApiUrl(getPublicApiBase(), "announcements", "settings")}${announcementQuery(target)}`,
+    patch,
+    "Could not save the announcement settings.",
+  );
+}
+
+/** Post a clearly labelled test thread in each forum. */
+export function sendAnnouncementTest(
+  target: AnnouncementTarget,
+): Promise<{ results: { guild_name: string; purpose: string; channel_name: string; ok: boolean }[] }> {
+  return sendJson(
+    "POST",
+    `${buildApiUrl(getPublicApiBase(), "announcements", "test")}${announcementQuery(target)}`,
+    undefined,
+    "Could not send a test post.",
+  );
+}
+
+/** "Create them for me" for one server binding. */
+export function createAnnouncementChannels(
+  bindingId: number,
+): Promise<{ ok: boolean; message: string }> {
+  return sendJson(
+    "POST",
+    `${buildApiUrl(getPublicApiBase(), "announcements", "create-channels")}?binding=${bindingId}`,
+    undefined,
+    "Could not create the forums.",
   );
 }

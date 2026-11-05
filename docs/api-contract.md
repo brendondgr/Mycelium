@@ -78,6 +78,10 @@ routes clients depend on most.
 | `briefings/<YYYY-MM-DD>/` | GET | One archived personal report |
 | `labs/<slug>/briefings/` | GET | A lab's retained report history |
 | `labs/<slug>/briefings/<YYYY-MM-DD>/` | GET | One archived lab report |
+| `announcements/?lab=<slug>\|department=<id>` | GET | Opportunity announcements: `settings`, `can_manage`, `feature_on`, `announced` (each with `checks`, `write_up`, `interested`, `updated_on` and a `discord` list of links), `held` (with `reason`), `closing_soon` (next 14 days, with links), and `servers` (one per binding, with `announcement_routes`). Members read (403 otherwise; 400 without a target) |
+| `announcements/settings/?lab=\|department=` | GET, PUT | Announcement settings (`enabled`, the three kinds, `daily_cap` with `-1` for no limit, `default_nudge` `none\|2d\|1w\|2w\|3w\|1m\|2m`, `closing_soon_list`, `strong_match_tagging`, `save_on_interest`, `activation_seed`, `min_award`). Managers write; 400 with per-field messages. The first switch-on returns `activating: true` and queues the activation seed |
+| `announcements/test/?lab=\|department=` | POST | A labelled test thread in each forum; `{"results": [{"guild_name", "purpose", "channel_name", "ok"}]}`. Managers only |
+| `announcements/create-channels/?binding=<id>` | POST | "Create them for me" for one server binding (a category and three forums). That binding's managers only; 409 with `message` when Discord refuses |
 | `opportunities/grants/` | GET | Ranked grants |
 | `opportunities/conferences/` | GET | Ranked conferences |
 | `opportunities/ranking-reference/` | GET | Static hover copy for conference rank badges |
@@ -1153,6 +1157,11 @@ requirement slots and who already covers each. `covered_by` is `"you"` on a
 reader's own feed, `"lab"` on a lab or project feed — where a lab-mate is named
 only on what their profile states — and `null` for a gap. A `role` is a kind of
 partner, shown and never matched. Names resolve at read time.
+
+`announcement` (lab and project feeds) is where the lab announced the item in
+Discord — `{"label", "posted_at", "discord": [link…]}` — or `null`. A Discord link
+is always `{"guild_id", "guild_name", "channel_id", "channel_name", "thread_url"}`;
+the web renders it as the Discord logo plus `#channel`, opening in a new tab.
 
 `usability` (every opportunity card, `null` when the view has no reader) is the
 "Can we use this?" strip, computed by `apps/content/usability.py` from record

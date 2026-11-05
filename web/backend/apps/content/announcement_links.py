@@ -42,11 +42,12 @@ def _live_posts():
     )
 
 
-def _link(post: AnnouncementPost) -> dict:
+def _link(post: AnnouncementPost, names: dict[str, str] | None = None) -> dict:
     return {
         "guild_id": post.binding.guild.guild_id,
         "guild_name": post.binding.guild.guild_name_cache,
         "channel_id": post.channel_id,
+        "channel_name": (names or {}).get(post.channel_id, ""),
         "thread_id": post.thread_id,
         "thread_url": (
             f"https://discord.com/channels/{post.binding.guild.guild_id}/{post.thread_id}"
@@ -59,6 +60,7 @@ def discussed_in_guild(content_ids: Iterable, guild_id: str) -> dict[str, dict]:
     if not guild_id:
         return {}
     ids = [str(c) for c in content_ids]
+    names = _route_names()
     out: dict[str, dict] = {}
     for post in (
         _live_posts()
@@ -67,7 +69,7 @@ def discussed_in_guild(content_ids: Iterable, guild_id: str) -> dict[str, dict]:
         )
         .order_by("id")
     ):
-        out.setdefault(str(post.announcement.content_id), _link(post))
+        out.setdefault(str(post.announcement.content_id), _link(post, names))
     return out
 
 
@@ -94,9 +96,53 @@ def discussed_for_user(user, content_ids: Iterable) -> dict[str, list[dict]]:
         )
         .order_by("binding__activated_at", "id")
     )
+    names = _route_names()
     for post in posts:
-        out.setdefault(str(post.announcement.content_id), []).append(_link(post))
+        out.setdefault(str(post.announcement.content_id), []).append(_link(post, names))
     return out
+
+
+def for_target(target_filter: dict, content_ids: Iterable) -> dict[str, dict]:
+    """``{content_id: {"label", "posted_at", "discord": [link, …]}}`` for the items
+    a lab (or department) announced: the feed card's "Announced" row."""
+    lab = target_filter.get("target_lab")
+    dept = target_filter.get("target_department")
+    if lab is None and dept is None:
+        return {}
+    field = (
+        {"announcement__target_lab": lab}
+        if lab is not None
+        else {"announcement__target_department": dept}
+    )
+    ids = [str(c) for c in content_ids]
+    names = _route_names()
+    out: dict[str, dict] = {}
+    for post in (
+        _live_posts()
+        .filter(**field, announcement__content_id__in=ids)
+        .order_by("binding__activated_at", "id")
+    ):
+        cid = str(post.announcement.content_id)
+        row = out.setdefault(
+            cid,
+            {
+                "label": post.announcement.label,
+                "posted_at": post.posted_at,
+                "discord": [],
+            },
+        )
+        row["discord"].append(_link(post, names))
+    return out
+
+
+def _route_names() -> dict[str, str]:
+    from apps.integrations.models import DiscordChannelRoute
+
+    return dict(
+        DiscordChannelRoute.objects.exclude(channel_name="").values_list(
+            "channel_id", "channel_name"
+        )
+    )
 
 
 def announce_options(user, guild_id: str, items) -> dict[str, list[dict]]:

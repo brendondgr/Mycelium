@@ -71,6 +71,10 @@ export type LabProfileData = {
   interests: Record<string, unknown>;
   embedding_text: string;
   updated_at: string;
+  /** Who applies: read by the "Can we use this?" applicant and country checks. */
+  institution_type?: "" | "higher_ed" | "nonprofit" | "government" | "company";
+  /** ISO 3166-1 alpha-2, upper-case, or "". */
+  country?: string;
 };
 
 export type ProjectScope = "user" | "lab" | "department";
@@ -556,6 +560,14 @@ type OpportunityBase = {
   deadline_kind: string;
   /** Every addressable per-kind deadline (the reminder composer picks from these). */
   addressable_deadlines: DeadlineOption[];
+  /** "Can we use this?" — checks read from record fields; null without a reader. */
+  usability?: Usability | null;
+  /** Where the lab announced it in Discord (lab and project feeds), or null. */
+  announcement?: {
+    label: string;
+    posted_at: string | null;
+    discord: DiscordThreadLink[];
+  } | null;
   status_summary: string;
   /** Whether the user has saved this to their (personal) deadlines. */
   saved: boolean;
@@ -1254,6 +1266,9 @@ export type SearchResultItem = {
   /** The attributed research-interest cluster this result best fits, or null/
    * absent on a single/no-cluster profile. */
   cluster?: { id: string; label: string } | null;
+  /** "Discussed in Discord": threads in the reader's labs' servers. */
+  discord?: DiscordThreadLink[];
+  discord_thread_url?: string;
 };
 
 export type SearchFacetBucket = { value: string; count: number };
@@ -1862,3 +1877,135 @@ export type ReflectionProposal = {
   expires_on: string;
   created_at: string;
 };
+
+// --------------------------------------------------------------------------- //
+// Opportunity announcements (GET /api/announcements/?lab=|department=)
+// --------------------------------------------------------------------------- //
+
+/** One "Can we use this?" check, read from a record field (never a percentage). */
+export type UsabilityCheck = {
+  key:
+    | "open"
+    | "deadline"
+    | "feasible"
+    | "applicant"
+    | "country"
+    | "award"
+    | "eligibility"
+    | "team";
+  status: "ok" | "warn" | "block" | "unknown";
+  label: string;
+  field: string;
+};
+
+export type Usability = {
+  verdict: "ok" | "warn" | "block" | "unknown";
+  checks: UsabilityCheck[];
+};
+
+/** A link into a Discord thread or channel: shown as the Discord logo + #channel. */
+export type DiscordThreadLink = {
+  guild_id: string;
+  guild_name: string;
+  channel_id: string;
+  channel_name?: string;
+  thread_id?: string;
+  thread_url: string;
+};
+
+export type AnnouncementSettings = {
+  enabled: boolean;
+  grants: boolean;
+  fellowships: boolean;
+  conferences: boolean;
+  daily_cap: number;
+  default_nudge: "none" | "2d" | "1w" | "2w" | "3w" | "1m" | "2m";
+  closing_soon_list: boolean;
+  strong_match_tagging: boolean;
+  save_on_interest: boolean;
+  activation_seed: number;
+  min_award: number | null;
+  activated_at: string | null;
+  activating?: boolean;
+};
+
+export type AnnouncedItem = {
+  id: string;
+  content_id: string | null;
+  category: "grant" | "fellowship" | "conference";
+  label: string;
+  label_text: string;
+  state: "posted" | "closed";
+  origin: "nightly" | "manual";
+  title: string;
+  url: string;
+  funder: string;
+  posted_at: string;
+  updated_on: string[];
+  deadline: string;
+  checks: UsabilityCheck[];
+  write_up: {
+    headline: string;
+    why_it_matters: string;
+    who_should_look: { name: string; why: string }[];
+    next_step: string;
+  };
+  interested: number;
+  discord: DiscordThreadLink[];
+};
+
+export type HeldBackItem = {
+  id: string;
+  content_id: string | null;
+  category: string;
+  title: string;
+  url: string;
+  reason: string;
+  created_at: string;
+};
+
+export type ClosingSoonItem = {
+  content_id: string;
+  category: "grant" | "fellowship";
+  title: string;
+  url: string;
+  funder: string;
+  due: string;
+  days: number;
+  discord: DiscordThreadLink[];
+};
+
+export type AnnouncementRoute = {
+  bound: boolean;
+  channel_id: string;
+  channel_name: string;
+  ok: boolean | null;
+  verified_at: string | null;
+  channel_type: number | null;
+  poster_policy: "everyone" | "managers" | "roles";
+};
+
+export type AnnouncementServer = {
+  binding_id: number;
+  state: "active" | "pending_setup" | "kicked";
+  guild_id: string;
+  guild_name: string;
+  target_kind: "lab" | "department";
+  checked_at: string | null;
+  addon_ok: boolean | null;
+  announcement_routes: Partial<
+    Record<"grants" | "fellowships" | "conferences", AnnouncementRoute>
+  >;
+};
+
+export type AnnouncementsResponse = {
+  settings: AnnouncementSettings;
+  can_manage: boolean;
+  feature_on: boolean;
+  announced: AnnouncedItem[];
+  held: HeldBackItem[];
+  closing_soon: ClosingSoonItem[];
+  servers: AnnouncementServer[];
+};
+
+export type AnnouncementTarget = { lab: string } | { department: string };

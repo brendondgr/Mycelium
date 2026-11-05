@@ -1,6 +1,8 @@
 import { ApiError } from "@/lib/api-error";
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
 import type {
+  AnnouncementsResponse,
+  AnnouncementTarget,
   AdminLabDetail,
   AdminLabsPage,
   AdminUserDetail,
@@ -710,5 +712,23 @@ export async function fetchDeptInvites(id: string): Promise<OrgInvite[]> {
   return getJson<OrgInvite[]>(
     buildApiUrl(getPublicApiBase(), "auth", "departments", id, "invites"),
     "Could not load this department's invitations.",
+  );
+}
+
+
+/** `?lab=<slug>` or `?department=<id>` for the announcements endpoints. */
+export function announcementQuery(target: AnnouncementTarget): string {
+  return "lab" in target
+    ? `?lab=${encodeURIComponent(target.lab)}`
+    : `?department=${encodeURIComponent(target.department)}`;
+}
+
+/** What Mylo announced, held back, and lists as closing soon, plus the servers. */
+export async function fetchAnnouncements(
+  target: AnnouncementTarget,
+): Promise<AnnouncementsResponse> {
+  return getJson<AnnouncementsResponse>(
+    `${buildApiUrl(getPublicApiBase(), "announcements")}${announcementQuery(target)}`,
+    "Could not load announcements.",
   );
 }
