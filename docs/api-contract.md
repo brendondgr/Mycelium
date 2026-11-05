@@ -53,7 +53,7 @@ routes clients depend on most.
 | `intake/clusters/` | POST | Propose / sort / instruct interest clusters |
 | `intake/confirm/` | POST | Validate + save interests |
 | `labs/` | GET, POST | The caller's lab memberships; create a lab |
-| `labs/<slug>/profile/` | GET, PATCH | Lab interest profile |
+| `labs/<slug>/profile/` | GET, PATCH | Lab interest profile, plus `institution_type` (`higher_ed` \| `nonprofit` \| `government` \| `company` \| `""`) and `country` (two-letter code, upper-cased; 400 otherwise). The department profile takes the same two fields |
 | `labs/<slug>/watch/` | GET, PATCH | Lab watch preference |
 | `labs/<slug>/intake/synthesize/` | POST | Lab profile synthesis |
 | `labs/<slug>/logo/` | GET, POST, PUT, DELETE | Lab logo, served through the API |
@@ -1153,6 +1153,17 @@ requirement slots and who already covers each. `covered_by` is `"you"` on a
 reader's own feed, `"lab"` on a lab or project feed — where a lab-mate is named
 only on what their profile states — and `null` for a gap. A `role` is a kind of
 partner, shown and never matched. Names resolve at read time.
+
+`usability` (every opportunity card, `null` when the view has no reader) is the
+"Can we use this?" strip, computed by `apps/content/usability.py` from record
+fields only: `{"verdict": "ok" | "warn" | "block" | "unknown", "checks": [{"key",
+"status", "label", "field"}]}`. Keys: `open`, `deadline`, `feasible` (against the
+deadline buffer), `applicant` and `country` (against the lab's or department's
+profile `institution_type` and `country`), `award` (against an award minimum),
+`eligibility` (fellowships, a count of people who may be eligible, never names) and
+`team` (how many people the strip already names). A missing field gives `unknown`,
+never `ok`. A personal feed carries only `open`, `deadline` and `feasible`; lab and
+project feeds carry the rest.
 
 **There is no `match_percent` anywhere in this API.** It implied a measurement
 nobody made: a language model was asked to guess a similarity, and the result was

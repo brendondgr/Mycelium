@@ -176,6 +176,7 @@ Files below are inside `web/backend/apps/content/`.
 | Nightly run analytics | `run_analytics.py`, `analytics_report_pdf.py`, `management/commands/run_analytics_report.py`; the Listening section reads `apps.ambient.read.listening_totals` and is omitted when nothing is listening |
 | Reminders | `reminders.py`, `reminders_tick.py`, `reminders_views.py`, `reminders_discord.py`, `reminders_announce.py`, `reminder_access.py` |
 | Deadline projection | `deadlines_projection.py` |
+| "Can we use this?" — open, deadline vs buffer, who may apply, country, award, eligibility counts, team coverage (record fields only; missing → `unknown`) | `usability.py` (`assess`, `Reader`, `reader_for_lab/department/user`); the serializer field is `_OpportunitySerializer.get_usability` |
 | Is an opportunity still worth showing (feeds + prune share it) | `liveness.py` |
 | Unified search | `search.py`, `search_service.py`, `query_embedding.py` |
 | High-signal alerts | `high_signal.py` |
