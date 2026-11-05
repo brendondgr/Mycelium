@@ -3,7 +3,10 @@
 Status: **proposal, not started**. Revision 2 (2026-11-05) adds the review
 feedback: no daily cap, updates replace their thread, Interested and Remind me
 are per person, a morning closing-soon list, opt-in channel creation, poster
-permissions, strong-match tagging, and search links into threads. Prototype
+permissions, strong-match tagging, and search links into threads. Revision 3
+replaces the activation roundup with threads, sets the reminder choices, adds
+a live validation step for search, and defines how department routing decides
+what goes where. Prototype
 posts are in the Discord test server (`1507798835311673616`, category *Mylo
 Opportunities (prototype)*, including `#mylo-previews` for DM and
 only-you-can-see screens). The web mockup is the *Mylo Announcements Mockup*
@@ -34,13 +37,13 @@ channel. This plan changes how opportunities reach a lab, not how papers do.
 | D2 | What counts as "new" | **Entered the target's per-theme slate *and* never announced to that target before.** Posts are labelled **New call** (source posted ≤ 14 days ago) or **Newly relevant** | Keeps the slate rule: "new" is about what the reader is shown, not what was ingested |
 | D3 | Departments | **A real `department` match target over `DeptProfile`**, for grants, fellowships, and conferences only, plus lab-fit ("which labs should look") | Departments have no feeds today. A union of their labs' slates would announce one call N times |
 | D4 | "Agent" scope | **A bounded editor agent.** It decides whether to post and writes the post. It may drop an item but never add one, and it never writes a date, an amount, or an eligibility verdict | The model explains; the code decides the facts |
-| D5 | Volume | **No cap.** The setting `daily_cap` defaults to `-1` (unlimited). The one guard kept: on first activation, a single **"What's open now" roundup** instead of announcing the whole slate | Reviewed: a cap hides real items. The roundup stops activation from posting ~40 threads at once |
+| D5 | Volume | **No cap.** The setting `daily_cap` defaults to `-1` (unlimited). **No roundup:** on first activation, the current open slate is posted as ordinary threads, labelled **Already open**, in deadline order, with no tags | Reviewed: a cap hides real items, and the roundup was dropped. Threads keep everything in one shape |
 | D6 | Opportunities in the digest | Once announcements are on, the digest keeps **one line per kind** ("2 grants announced → #grants") | So the same item isn't in two places |
 | D7 | Mentions | A post tags someone in only two cases: **(a)** the update and deadline posts for an item they marked *Interested*, and **(b)** **strong-match tagging**, which names members whose interests fit an item very closely. Strong-match tagging is **off by default**, a per-lab switch | The person asked for it, or the lab switched it on |
 | D8 | Tier | `OPPORTUNITY_ANNOUNCEMENTS`, **Lab and Canopy (department)**, read through `billing.entitlements`; also requires `BOT_SERVER` | Org-scoped Discord delivery |
 | D9 | A changed call | **Delete the old thread. Post a new one titled `[🚨 Update <Mon D>] <title>`,** with a *What changed* block first and the Interested people tagged | Reviewed. One live thread per item, always current |
-| D10 | Deadline nudges | **Only for people who asked.** *Interested* gives a default nudge **14 days** before, tagged in the thread. *Remind me* opens a picker only that person sees (lead times, DM or thread), and it overrides the default. No other nudges go to the channel | Reviewed. A nudge nobody asked for is noise |
-| D11 | Daily list | Every morning, a **"Closing soon: next 14 days"** post in `#grants` and `#fellowships` (not conferences). It replaces yesterday's list, and nothing is posted on a day with nothing closing | Reviewed. One full list people can scan, in the roundup's format |
+| D10 | Deadline nudges | **Only for people who asked.** *Interested* gives a default nudge **2 weeks** before, tagged in the thread. *Remind me* opens a picker only that person sees, and it overrides the default. The picker offers **2 days, 1 week, 2 weeks (preselected), 3 weeks, 1 month, 2 months**, several at once, delivered by DM or as a tag in the thread. Choices already past are hidden. No other nudges go to the channel | Reviewed. A nudge nobody asked for is noise |
+| D11 | Daily list | Every morning, a **"Closing soon: next 14 days"** post in `#grants` and `#fellowships` (not conferences). It replaces yesterday's list, and nothing is posted on a day with nothing closing | Reviewed. One full list people can scan |
 | D12 | Channel creation | Mylo creates the category and forums **only when a manager asks** ("Create them for me" in `/setup`, or the toggle on the website). It shows exactly what it will create first. Otherwise managers pick existing channels | Reviewed. Never changes a server unasked |
 | D13 | Who can post | **Anyone can always reply in a thread.** Setup asks who can *start* new posts in the forums: **everyone (default)**, lab managers only, or chosen roles. Applied as forum permission overwrites | Reviewed. Lets a lab keep the forums Mylo-only or open them up |
 
@@ -165,9 +168,11 @@ calls `mylo/linking.py`, and the logic lives in `apps/content`.
   An unlinked Discord user gets an ephemeral "link your account" prompt, and
   nothing is recorded anonymously. If DMs are closed, a one-time ephemeral
   message says so; the follow and the thread-tag nudge still work.
-- **🔔 Remind me.** An **ephemeral picker**: lead times (30, 14, 7, or 2 days,
-  several allowed, 14 preselected) and *where* (DM by default, or a tag in the
-  thread). It creates a **personal** `ReminderSubscription` through the
+- **🔔 Remind me.** An **ephemeral picker**: lead times (2 days, 1 week,
+  2 weeks, 3 weeks, 1 month, 2 months; several allowed; 2 weeks preselected;
+  each shows its date; any already past is hidden) and *where* (DM by default,
+  or a tag in the thread). "1 month" and "2 months" are calendar months back
+  from the deadline. It creates a **personal** `ReminderSubscription` through the
   existing reminders code, so it shows on the Reminders page and moves with the
   deadline. Clicking it also counts as *Interested*.
 - **🚫 Not for us.** Managers only. Adds a lab-scope `IgnoredItem` (the item
@@ -193,6 +198,51 @@ via `discord_commands.search`). Two changes:
 The web search card gets the same link ("Discussed in Discord") when the
 reader's lab has a thread for the item.
 
+**This must work against real data, not only in tests.** Phase 4 ends with a
+live check in the test server (see Phase 4's validation).
+
+## How department routing works
+
+The question to answer is "why would a department see this, rather than its
+labs?" A department forum that repeats its labs' posts is noise, so an item
+only goes there for a reason a lab can't act on alone.
+
+**An item goes to `#dept-opportunities` when it enters the department's own
+slate (scored against `DeptProfile`) and at least one of these holds:**
+
+| Reason (forum tag) | How it's decided, all in code | Example |
+| --- | --- | --- |
+| **Limited submission** | The solicitation caps proposals per institution, read with deterministic extraction (the requirement-slots pattern) from the record's eligibility text | NSF MRI: labs can't each apply; someone picks |
+| **Infrastructure** | The mechanism is facilities, instruments, or shared computing: funding instrument plus keyword extraction, or an award ceiling above `DEPT_INFRA_MIN_AWARD` | NSF Mid-scale RI-1 |
+| **Training** | Training-grant mechanisms (traineeships, REU sites, T32-style programmes) and institution-nominated fellowships | A graduate traineeship |
+| **Centre** | Centre and institute calls, multi-PI with a lead institution | A science and technology centre |
+| **Multi-lab** | Lab-fit finds **two or more** of the department's labs above the lab-fit floor | Horizon ocean carbon: Ocean ML and Atmospheric Chemistry |
+
+**Everything else stays with the labs.** A call that fits exactly one lab is
+posted only in that lab's channel. It is never posted to the department, so
+there is no duplicate post. The department's web page can still list it under
+"In your labs" as a count, with no Discord post.
+
+**When both post, they link to each other.** For a multi-lab item, each lab's
+thread gets one line, "🏛️ The department is discussing this too → thread", and
+the department post names the labs. Nothing is posted twice in the same
+server.
+
+**Two server layouts are supported:**
+
+1. **Separate servers.** The department has its own server and each lab has
+   its own. Links between them work for anyone in both.
+2. **One department server.** Each lab is a category in the department's
+   server (with its own forums), plus a *Department* category. To support
+   this, routes belong to a **target** (lab or department) rather than to a
+   guild link. One guild can then hold the department's routes and the routes
+   of any lab that belongs to that department. A lab outside the department
+   can never route into its server.
+
+**Fellowships at department level** are training and nomination programmes
+only. A department post gives counts ("4 people across 2 labs may be eligible")
+and never names people. Each eligible person is told by DM, as in a lab.
+
 ## Data model (new)
 
 These go under `apps/content` unless noted.
@@ -216,7 +266,9 @@ These go under `apps/content` unless noted.
   - `closing_soon_list` (default on for grants and fellowships).
   - `strong_match_tagging` (default **off**).
   - `save_on_interest` (default on), an award preference, and `backfill_done_at`.
-- **`apps/integrations`: `DiscordChannelRoute`.** Fields: guild link, purpose
+- **`apps/integrations`: `DiscordChannelRoute`.** Belongs to a **target** (lab
+  XOR department) as well as a guild link, so one department server can host
+  its labs' routes. Fields: guild link, target, purpose
   (`grants` / `fellowships` / `conferences` / `deadlines` / `updates`), channel
   id, channel type, forum tag ids, `created_by_mylo`, `poster_policy`
   (`everyone` / `managers` / `roles`), `poster_role_ids`, `verified_at`, and
@@ -246,7 +298,7 @@ closed round). A missing field yields `unknown`, never `ok`.
 **Phase 2: Announcement engine (dry run).** Models,
 `announce_opportunities --dry-run` in `manual_all.py`, the agent, the verifier,
 the template fallback, the change detector, and the closing-soon composer.
-*Validate:* tests for entrant-only selection, never-twice, the roundup guard, a
+*Validate:* tests for entrant-only selection, never-twice, activation posting the open slate once as *Already open*, a
 cap of `-1` meaning unlimited, change detection (a moved date counts; a
 re-scrape with identical facts doesn't), and verifier rejection. Then one dry
 run against live data, reviewed by hand.
@@ -261,7 +313,7 @@ run against live data, reviewed by hand.
 - Drift detection for the new routes.
 
 *Validate:* the backend suite plus `uv run python -m unittest discover -s mylo`.
-Then a manual smoke run in the test server: opt-in create → roundup → next-night
+Then a manual smoke run in the test server: opt-in create → *Already open* threads → next-night
 entrants → Interested (DM arrives) → Remind me (picker, then DM at the chosen
 time with a clock override) → a forced change (old thread gone,
 `[🚨 Update]` posted, interested people tagged) → closing-soon list replaced the
@@ -269,8 +321,20 @@ next morning → close.
 
 **Phase 4: Search links.** Guild id through `linking.py`, `thread_url` on
 search rows, the manager "Announce" action, and the web search link.
-*Validate:* command tests for a search in an announcing guild, in another guild,
-and in a DM.
+*Validate (unit):* command tests for a search in an announcing guild, in
+another guild, and in a DM, plus a thread that was replaced by an update (the
+link must point to the new thread) and one that was deleted.
+*Validate (live, required before the phase is done):* in the test server,
+against real data, run the real `/mylo search` and record the results in the
+phase's changelog entry:
+1. A query whose top results include announced items shows "Already discussed
+   here" on exactly those items.
+2. Every thread link opens the right thread.
+3. The same query in a DM and in a server without announcements shows no
+   thread links.
+4. After a forced update, the link follows the new `[🚨 Update]` thread.
+5. "Announce to #grants" posts one thread, then disappears from that result.
+6. The web search card shows the same links for the same items.
 
 **Phase 5: Web surfaces.** See below.
 *Validate:* `tsc --noEmit` and eslint in `web/app`, then a browser check at
@@ -346,9 +410,13 @@ new and what's due", instead of adding pages beside them.
 
 ## Acceptance
 
-- Activation gives exactly one roundup. After that, every slate entrant gets
-  its own thread, with no cap by default, and the same item is never announced
-  twice.
+- Activation posts the open slate as *Already open* threads. After that, every
+  slate entrant gets its own thread, with no cap by default, and the same item
+  is never announced twice.
+- `/mylo search` links to existing threads, verified live in the test server
+  against real data (Phase 4).
+- A department post always carries a reason tag. An item that fits one lab is
+  never posted to the department.
 - A changed call shows up as `[🚨 Update <date>]` within one nightly run. The
   old thread is gone (or archived, per Q1), and only the people who marked it
   Interested are tagged.
