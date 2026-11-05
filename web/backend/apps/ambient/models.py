@@ -31,8 +31,8 @@ class Platform(models.TextChoices):
 class Source(models.Model):
     """One connected surface, and the consent its owner gave.
 
-    A Discord guild ``Source`` is created from an existing
-    :class:`~apps.integrations.models.DiscordGuildLink` when a lab manager turns
+    A Discord guild ``Source`` is created from a server's lab binding
+    (:class:`~apps.integrations.models.DiscordTargetBinding`) when a lab manager turns
     listening on; a DM source is personal and has no lab. Consent here is the
     *server's* half — the person's half is :class:`ListeningConsent`, and
     :mod:`.eligibility` requires both.

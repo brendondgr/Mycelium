@@ -89,7 +89,7 @@ def eligible_labs(labs, *, on: date | None = None, kind: str = delivery.DAILY) -
 
         if slack_is_primary(lab):
             continue
-        link = resolve.get_guild_link_for_lab(lab)
+        link = resolve.primary_server_for_lab(lab, "updates")
         if link is None or link.state != resolve.GUILD_ACTIVE:
             continue
         if not resolve.get_updates_channel_for_lab(lab):

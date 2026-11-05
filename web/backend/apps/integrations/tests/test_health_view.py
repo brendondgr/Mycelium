@@ -11,7 +11,8 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Lab, LabMembership
-from apps.integrations.models import DiscordGuildLink, DiscordIdentity
+from apps.integrations.models import DiscordIdentity
+from apps.integrations.testing import bind
 
 from .base import clear_discord_cache, discord_test_settings
 
@@ -64,14 +65,13 @@ def test_an_unlinked_lab_renders_an_empty_state_not_an_error(client) -> None:
 @pytest.mark.django_db
 def test_it_names_which_channel_is_unreachable(client) -> None:
     lab, owner = _lab_with_manager()
-    DiscordGuildLink.objects.create(
+    bind(
         lab=lab,
         guild_id="g1",
-        state=DiscordGuildLink.State.ACTIVE,
-        updates_channel_id="c-updates",
-        updates_channel_ok=False,
-        announcement_channel_id="c-deadlines",
-        announcement_channel_ok=True,
+        updates="c-updates",
+        updates_ok=False,
+        deadlines="c-deadlines",
+        deadlines_ok=True,
     )
     client.force_authenticate(owner)
 
@@ -109,9 +109,9 @@ def test_the_roster_says_who_is_reachable_and_who_is_not(client) -> None:
 def test_a_lapsed_addon_is_reported_as_its_own_cause(client) -> None:
     """Distinct from a broken channel: nothing is wrong, the plan just lapsed."""
     lab, owner = _lab_with_manager()
-    DiscordGuildLink.objects.create(
-        lab=lab, guild_id="g1", state=DiscordGuildLink.State.ACTIVE, addon_ok=False
-    )
+    binding = bind(lab=lab, guild_id="g1")
+    binding.addon_ok = False
+    binding.save(update_fields=["addon_ok"])
     client.force_authenticate(owner)
 
     assert client.get(f"{URL}?lab=neuro").data["addon"]["active"] is False

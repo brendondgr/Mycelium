@@ -19,8 +19,11 @@ three gates — each member still opts in for themselves, and their effective ti
 must be paid — which is why the menu says "your members choose for themselves"
 instead of implying the switch is the whole decision.
 
-Authority: the server must already be activated (``/activate-lab``) and the caller a
-**linked** lab admin/PI — config actions still terminate in ``user_can_manage_lab``.
+Authority: the server must already be activated (``/activate-lab`` or
+``/activate-department``) and the caller a **linked** manager of the lab or
+department being configured — config actions still terminate in
+``apps.accounts.permissions``. A server can hold several labs and a department; when
+it does, `/setup` first asks which one, and each is configured on its own.
 All policy + ORM work lives in :mod:`mylo.linking` and :mod:`mylo.listening`; this
 cog is the adapter.
 """
@@ -97,6 +100,7 @@ class SetupView(discord.ui.View):
         self.user_id = user_id
         self.guild_id = guild_id
         self.state = state
+        self.binding_id = state.get("binding_id")
         self.message: discord.Message | None = None
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -127,7 +131,11 @@ class SetupView(discord.ui.View):
         # Defer silently (component ack); the preflight can exceed 3s.
         await interaction.response.defer()
         status, payload = await linking.bind_setup_channel(
-            str(self.user_id), self.guild_id, kind=kind, channel_id=channel_id
+            str(self.user_id),
+            self.guild_id,
+            kind=kind,
+            channel_id=channel_id,
+            binding_id=self.binding_id,
         )
         if status in ("ok", "cleared"):
             self.state = {
@@ -330,35 +338,103 @@ class SetupView(discord.ui.View):
         )
 
 
+class BindingPicker(discord.ui.View):
+    """Which lab or department to configure, when a server holds more than one."""
+
+    def __init__(self, user_id: int, guild_id: str, bindings: list[dict]) -> None:
+        super().__init__(timeout=120)
+        self.user_id = user_id
+        self.guild_id = guild_id
+        options = [
+            discord.SelectOption(
+                label=(b["name"] or "Unnamed")[:100],
+                description="Department" if b["kind"] == "department" else "Lab",
+                value=str(b["binding_id"]),
+            )
+            for b in bindings[:25]
+        ]
+        select = discord.ui.Select(placeholder="Lab or department…", options=options)
+        select.callback = self._picked  # type: ignore[method-assign]
+        self.add_item(select)
+        self.select = select
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message(
+                "This setup menu isn't yours — run `/setup` to open your own.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def _picked(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
+        await _open_menu(
+            interaction,
+            self.user_id,
+            self.guild_id,
+            int(self.select.values[0]),
+            edit=True,
+        )
+
+
+async def _open_menu(
+    interaction: discord.Interaction,
+    user_id: int,
+    guild_id: str,
+    binding_id: int | None,
+    *,
+    edit: bool = False,
+) -> None:
+    status, payload = await linking.setup_state(str(user_id), guild_id, binding_id)
+    if status == "choose":
+        view: discord.ui.View = BindingPicker(user_id, guild_id, payload["bindings"])
+        await interaction.followup.send(
+            payload["message"], view=view, ephemeral=True
+        )
+        return
+    if status != "ok":
+        if edit:
+            await interaction.edit_original_response(
+                content=payload["message"], view=None
+            )
+        else:
+            await interaction.followup.send(payload["message"], ephemeral=True)
+        return
+    # Listening belongs to a lab's own server; a department binding has none.
+    if payload.get("target_kind") == "lab":
+        payload = {**payload, **await listening.listening_state(guild_id)}
+    else:
+        payload = {**payload, "available": False}
+    view = SetupView(user_id, guild_id, payload)
+    if edit:
+        await interaction.edit_original_response(
+            content=_render_status(payload), view=view
+        )
+        view.message = await interaction.original_response()
+    else:
+        view.message = await interaction.followup.send(
+            _render_status(payload), view=view, ephemeral=True, wait=True
+        )
+
+
 class SetupCog(commands.Cog, name="Setup"):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     @app_commands.command(
         name="setup",
-        description="Choose where this server's lab reminders and updates post.",
+        description="Choose where this server's lab or department messages post.",
     )
     @app_commands.guild_only()
     async def setup(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
-        status, payload = await linking.setup_state(
-            str(interaction.user.id),
+        await _open_menu(
+            interaction,
+            interaction.user.id,
             str(interaction.guild_id) if interaction.guild_id else "",
+            None,
         )
-        if status != "ok":
-            await interaction.followup.send(payload["message"], ephemeral=True)
-            return
-        # One extra hop so the menu opens showing the listening section as it
-        # actually is, rather than as "off" until somebody touches it.
-        payload = {
-            **payload,
-            **await listening.listening_state(str(interaction.guild_id)),
-        }
-        view = SetupView(interaction.user.id, str(interaction.guild_id), payload)
-        message = await interaction.followup.send(
-            _render_status(payload), view=view, ephemeral=True, wait=True
-        )
-        view.message = message
 
 
 async def setup(bot: commands.Bot) -> None:

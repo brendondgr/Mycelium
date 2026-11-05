@@ -70,30 +70,53 @@ no Mylo database, schema, or migration history.
      server → the calling guild is bound `ACTIVE`. The **manager authority is proven
      at issue time** (`user_can_manage_lab` on the website), so the redeemer needs no
      linked identity; the code carries the authority into Discord. Redemption is
-     lockout-guarded (shared with Path B) and one-guild-one-lab / one-lab-one-guild
-     conflict-guarded. **No billing/add-on gate applies** — Mylo is already in the
+     lockout-guarded (shared with Path B). **No billing/add-on gate applies** — Mylo is already in the
      server (a slash command only runs where the bot is present) and a manager issued
      the code, so a valid code binds it; any billing checks live on the delivery path,
      not activation. `verified_via_code_grant` stays whatever the install set it to
      (True for a prior website install).
 
+* **Departments:** `/activate-department code:<code>` does the same for a department.
+  The code comes from `POST discord/department-code?department=<id>`
+  (department-manager-gated). It binds the department only, never its labs.
+
+  **Servers, bindings, routes.** A server (`DiscordGuildLink`) records install and
+  presence only. Each lab or department activated in it is a
+  **`DiscordTargetBinding`** (lab XOR department, unique per server), and each
+  binding has its own **`DiscordChannelRoute`** rows (`deadlines`, `updates`, and the
+  opportunity forums `grants` / `fellowships` / `conferences`). A department server
+  can hold the department and several labs, and a lab can also have a server of its
+  own; binding a lab into its department's server needs the lab's own code. Each
+  binding is configured and switched off on its own
+  (`POST discord/bindings/<id>/remove`, that binding's own managers only), and
+  removing one leaves every other binding working. A kicked server silences its
+  bindings without deleting their routes. The older lab features (deadline
+  reminders, the lab digest, weekly and report re-sends) read the lab's **primary**
+  binding — its oldest live binding with the route in question — so they behave
+  exactly as they did with one server per lab. Server-scoped commands that need a
+  lab (listening, `lab_digest`) find it only when the server holds exactly one lab
+  binding; otherwise the lab must be named.
+
   **`/activate` is personal-only** (`code:` → Path B identity). **`/activate-lab`**
-  is the lab flow above. No `default_member_permissions` gates either — the code is
-  the authority. After the server is `ACTIVE`, the top-level **`/setup`** command is
-  the *post-activation* step: an interactive menu (native channel pickers + turn-off
-  buttons) to choose, or opt out of, two independent optional channels —
-  **deadline announcements** (`announcement_channel_id`) and **daily/weekly updates**
-  (`updates_channel_id`). Each selection is preflighted (post-a-confirmation) before
-  binding. `/setup` requires the server to be `ACTIVE` **and** the caller to be a
-  *linked* lab manager (config actions still terminate in `user_can_manage_lab`).
+  and **`/activate-department`** are the server flows above. No
+  `default_member_permissions` gates them — the code is the authority. After a
+  binding is `ACTIVE`, the top-level **`/setup`** command is the *post-activation*
+  step for one binding: an interactive menu (native channel pickers + turn-off
+  buttons) to choose, or opt out of, two independent optional channels — **deadline
+  announcements** (route `deadlines`) and **daily/weekly updates** (route
+  `updates`). In a server with several bindings it first asks which lab or
+  department to configure. Each selection is preflighted (post-a-confirmation)
+  before binding. `/setup` requires an `ACTIVE` binding **and** the caller to be a
+  *linked* manager of that binding's lab or department (the gate's `binding_id`
+  check terminates in `user_can_manage_lab` / `user_can_manage_department`).
   The **Lab settings** card shows the live sync state (`discord/guild/status`), and
   the profile card's **Test** button re-runs the DM reachability probe on demand
   (`discord/probe`).
 
 **Authorization invariant:** a Discord identity is authentication, never
 authorization. Every action terminates in the existing
-`apps.accounts.permissions` (`user_can_manage_lab`). Guild membership, guild
-ownership, and Discord roles grant nothing.
+`apps.accounts.permissions` (`user_can_manage_lab`, `user_can_manage_department`).
+Guild membership, guild ownership, and Discord roles grant nothing.
 
 ## Developer-portal setup (one time)
 
@@ -226,8 +249,8 @@ posted; forged `guild_id` on the redirect → ignored. Manager clicks **Activate
 in the server → guild bound `ACTIVE` (the pending install's row flips); no linked
 identity **and no billing add-on** required — the bot is already present and a manager
 issued the code. Reused/expired code → rejected; bad code → rejected + counts to
-lockout; 6 bad attempts → lockout; guild already bound to another lab, or lab to
-another guild → `CONFLICT`, not consumed; plaintext code in zero logs / zero DB
+lockout; 6 bad attempts → lockout; a server that already holds another lab or a department gains a second
+binding, and the same lab redeemed in a second server gains one there (no conflict); plaintext code in zero logs / zero DB
 columns; bot kicked → sweep sets `KICKED`. **Post-activation `/setup`** — before activation → "run
 `/activate-lab` first"; linked non-manager → denied; a linked admin/PI sees the menu,
 picks a deadline channel and an updates channel independently (each preflighted

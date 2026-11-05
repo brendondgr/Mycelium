@@ -14,7 +14,8 @@ deliberately issued the code, so a valid code in that server is enough to bind i
 
 Code policy: 10 numeric digits (~33 bits) shown grouped ``XXXXX-XXXXX``. Lower entropy
 than the Path B identity code is acceptable here: a guessed code only binds a *guild*
-(reversible, conflict-guarded), not a user's account, and redemption is lockout-guarded
+(reversible, one binding among possibly several), not a user's account, and
+redemption is lockout-guarded
 (shared with Path B, keyed on the redeemer's snowflake) over a short TTL. Only the
 sha256 is stored; the plaintext is never persisted or logged.
 """
@@ -121,5 +122,45 @@ def redeem(
         )
 
     # bad/expired/used → counts toward lockout.
+    state.record_failure(discord_user_id)
+    return RedeemResult(_CONSUME_MAP[result.outcome])
+
+
+# --------------------------------------------------------------------------- #
+# Departments (`/activate-department code:`) — the same code policy and lockout
+# --------------------------------------------------------------------------- #
+def issue_department_code(user, department) -> str:
+    """Create a code for ``department``; return the plaintext.
+
+    The caller is responsible for the ``user_can_manage_department`` check. The code
+    binds the department only — never its labs, which need their own codes.
+    """
+    plaintext = generate_plaintext()
+    expires_at = timezone.now() + timezone.timedelta(
+        seconds=settings.DISCORD_ACTIVATION_TTL_SECONDS
+    )
+    resolve.store_department_activation_code(
+        department, user, hash_code(plaintext), expires_at
+    )
+    return format_for_display(plaintext)
+
+
+def redeem_department(
+    code_input: str, discord_user_id: str, guild_id: str, guild_name: str = ""
+) -> RedeemResult:
+    """Redeem a department code for a guild. Lockout-guarded and single-use."""
+    discord_user_id = str(discord_user_id)
+    if state.is_locked_out(discord_user_id):
+        return RedeemResult(RedeemOutcome.LOCKED_OUT)
+
+    result = resolve.consume_department_activation_code(
+        hash_code(normalize(code_input)), discord_user_id, guild_id, guild_name
+    )
+    name = result.department.name if result.department else ""
+    if result.outcome is LabConsumeOutcome.OK:
+        state.clear_failures(discord_user_id)
+        return RedeemResult(RedeemOutcome.OK, lab_name=name)
+    if result.outcome is LabConsumeOutcome.CONFLICT:
+        return RedeemResult(RedeemOutcome.CONFLICT, lab_name=name)
     state.record_failure(discord_user_id)
     return RedeemResult(_CONSUME_MAP[result.outcome])

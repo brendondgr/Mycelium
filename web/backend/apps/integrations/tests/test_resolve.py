@@ -17,6 +17,7 @@ from apps.integrations.models import (
 )
 from apps.integrations.services import activation, resolve
 from apps.integrations.services.resolve import ConsumeOutcome
+from apps.integrations.testing import bind
 
 from .base import clear_discord_cache, discord_test_settings
 
@@ -100,49 +101,66 @@ class GuildBindingTests(TestCase):
         self.installer = User.objects.create_user("installer", password="x")
 
     def test_bind_guild_from_exchange_object(self):
-        link = resolve.bind_guild(
+        binding = resolve.bind_guild(
             self.lab,
             {"id": "guild-1", "name": "Server One"},
             installed_by=self.installer,
         )
+        link = binding.guild
         self.assertEqual(link.state, DiscordGuildLink.State.PENDING_SETUP)
+        self.assertEqual(binding.state, "pending_setup")
+        self.assertEqual(binding.lab, self.lab)
         self.assertTrue(link.verified_via_code_grant)
         self.assertEqual(link.guild_id, "guild-1")
+        self.assertEqual(link.guild_name_cache, "Server One")
 
     def test_guild_binding_ignores_redirect_params_entirely(self):
         # bind_guild is only ever fed the *exchange* guild object; there is no code
         # path that reads a redirect-supplied guild_id. Proof: the bound id is the
         # exchange id, and a different "hint" cannot change it.
         resolve.bind_guild(self.lab, {"id": "authoritative"}, installed_by=None)
+        resolve.confirm_guild("authoritative", confirmed_by=self.installer)
         self.assertEqual(resolve.resolve_lab_for_guild("authoritative"), self.lab)
         self.assertIsNone(resolve.resolve_lab_for_guild("forged-hint"))
 
-    def test_second_lab_binding_a_bound_guild_is_rejected(self):
+    def test_a_second_lab_installing_into_a_bound_guild_gets_its_own_binding(self):
         resolve.bind_guild(self.lab, {"id": "guild-x"})
+        resolve.bind_guild(self.lab2, {"id": "guild-x"})
+        resolve.confirm_guild("guild-x", confirmed_by=self.installer)
+        labs = {b.lab for b in resolve.bindings_for_guild("guild-x")}
+        self.assertEqual(labs, {self.lab, self.lab2})
+        # Two labs in one server: no command can guess which one is meant.
+        self.assertIsNone(resolve.resolve_lab_for_guild("guild-x"))
+
+    def test_an_install_with_no_guild_is_refused(self):
         with self.assertRaises(resolve.GuildConflict):
-            resolve.bind_guild(self.lab2, {"id": "guild-x"})
+            resolve.bind_guild(self.lab, {})
 
     def test_unverified_guild_link_is_unusable(self):
         # A link that never went through the code grant cannot be confirmed ACTIVE.
-        link = DiscordGuildLink.objects.create(
-            lab=self.lab, guild_id="guild-u", verified_via_code_grant=False
+        binding = bind(
+            lab=self.lab, state="pending_setup", guild_id="guild-u", verified=False
         )
         confirmed = resolve.confirm_guild("guild-u", confirmed_by=self.installer)
         self.assertIsNone(confirmed)
-        link.refresh_from_db()
-        self.assertEqual(link.state, DiscordGuildLink.State.PENDING_SETUP)
+        binding.refresh_from_db()
+        binding.guild.refresh_from_db()
+        self.assertEqual(binding.guild.state, DiscordGuildLink.State.PENDING_SETUP)
+        self.assertEqual(binding.state, "pending_setup")
 
     def test_confirm_verified_guild_goes_active(self):
         resolve.bind_guild(self.lab, {"id": "guild-v"})
         link = resolve.confirm_guild("guild-v", confirmed_by=self.installer)
         self.assertEqual(link.state, DiscordGuildLink.State.ACTIVE)
         self.assertIsNotNone(link.confirmed_at)
+        self.assertTrue(resolve.lab_guild_is_active(self.lab))
 
     def test_kick_marks_link(self):
         resolve.bind_guild(self.lab, {"id": "guild-k"})
         resolve.mark_guild_kicked("guild-k")
         link = resolve.get_guild_link("guild-k")
         self.assertEqual(link.state, DiscordGuildLink.State.KICKED)
+        self.assertFalse(resolve.lab_guild_is_active(self.lab))
 
 
 @discord_test_settings

@@ -99,3 +99,23 @@ def test_inclusion_toggle_requires_the_field() -> None:
         f"/api/auth/departments/{dept.id}/labs/{lab.slug}/", {}, format="json"
     )
     assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_department_plan_features_reach_only_included_labs(settings) -> None:
+    """A department plan's lab features (``BOT_SERVER`` here) cover a lab only once
+    the lab is opted into the plan, matching seat billing."""
+    from apps.billing.addons import set_mylo_included
+    from apps.billing.entitlements import Feature, lab_has_feature
+
+    settings.BILLING_ENFORCE_ENTITLEMENTS = True
+    _head, dept = _dept("head")
+    set_mylo_included(activate_department_subscription(dept), True)
+    pi = User.objects.create_user(username="pi", password="p")
+    lab = create_lab_workspace(pi, "Sub Lab").lab
+    attach_lab_to_department(lab, dept)
+
+    assert not lab_has_feature(lab, Feature.BOT_SERVER)
+    lab.department_plan_included = True
+    lab.save(update_fields=["department_plan_included"])
+    assert lab_has_feature(lab, Feature.BOT_SERVER)

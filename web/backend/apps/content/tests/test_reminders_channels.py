@@ -25,9 +25,9 @@ from apps.content.reminders_discord import (
     preflight_channel,
 )
 from apps.content.reminders_tick import run_tick
-from apps.integrations.models import DiscordGuildLink
 from apps.integrations.services import discord_api, resolve
 from apps.integrations.services.discord_api import RawResponse
+from apps.integrations.testing import bind
 
 _Kind = SavedOpportunity.DeadlineKind
 _Area = SavedOpportunity.Area
@@ -82,9 +82,9 @@ def test_lab_has_timezone_defaults() -> None:
 @pytest.mark.django_db
 def test_guild_link_channel_fields_default_blank() -> None:
     lab = Lab.objects.create(name="Lab", slug="lab")
-    link = DiscordGuildLink.objects.create(lab=lab, guild_id="g1")
-    assert link.announcement_channel_id == ""
-    assert link.channel_verified_at is None
+    binding = bind(lab=lab, state="pending_setup", guild_id="g1")
+    assert resolve.route_channel(binding, "deadlines") == ""
+    assert resolve.get_announcement_channel_for_lab(lab) == ""
 
 
 # --------------------------------------------------------------------------- #
@@ -145,18 +145,12 @@ def test_preflight_channel_no_bot_token_is_unreachable(settings) -> None:
 @pytest.mark.django_db
 def test_set_and_get_announcement_channel() -> None:
     lab = Lab.objects.create(name="Lab", slug="lab")
-    DiscordGuildLink.objects.create(lab=lab, guild_id="g1")
+    binding = bind(lab=lab, state="pending_setup", guild_id="g1")
     when = datetime(2026, 7, 16, 12, 0, tzinfo=UTC)
-    resolve.set_announcement_channel("g1", "chan-42", verified_at=when)
+    resolve.set_route(binding, "deadlines", "chan-42", verified_at=when)
 
     assert resolve.get_announcement_channel_for_lab(lab) == "chan-42"
-    link = DiscordGuildLink.objects.get(guild_id="g1")
-    assert link.channel_verified_at == when
-
-
-@pytest.mark.django_db
-def test_set_announcement_channel_unknown_guild_is_noop() -> None:
-    assert resolve.set_announcement_channel("nope", "c", verified_at=None) is None
+    assert resolve.get_route(binding, "deadlines").verified_at == when
 
 
 # --------------------------------------------------------------------------- #

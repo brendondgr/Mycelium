@@ -45,6 +45,8 @@ class DiscordGuildStatusSerializer(serializers.Serializer):
     manager activated it with ``/activate-lab``); ``state`` carries the nuance so
     the UI can distinguish "installed, run /activate-lab" (pending_setup) and
     "Mylo was removed" (kicked) from "not connected" (no link at all).
+
+    Reads :class:`~.services.resolve.LabServer` — the lab's primary binding.
     """
 
     synced = serializers.SerializerMethodField()

@@ -147,6 +147,8 @@ routes clients depend on most.
 | `guild/start/` `guild-callback/` | POST / GET | Guild (server) install |
 | `status/` `guild/status/` `health/` `probe/` | GET | Link state and reachability |
 | `code/` `lab-code/` | POST | Mint a personal / lab activation code |
+| `department-code/` | POST | Mint a department activation code (`?department=<id>`, department managers only) |
+| `bindings/<id>/remove/` | POST | Switch one server binding off (that binding's own lab or department managers only) |
 | `daily-report/` | POST | Toggle the daily PDF DM |
 | `disconnect/` | POST | Unlink |
 
@@ -1675,8 +1677,13 @@ returns `{code, expires_in, expires_at, activation_channel, invite_url, command}
 the portal cannot quote a renamed command, and `expires_at` is absolute so a
 countdown does not depend on the browser's clock. Redemption is by the gateway,
 so the portal polls `status/` while a code is live to notice it landed.
+`department-code/` mints the department twin, redeemed with
+`/activate-department`. `bindings/<id>/remove/` switches off one lab-or-department
+binding in one server; other bindings, in that server and elsewhere, keep working.
 `status/`, `guild/status/`, `health/`, and `probe/` report link and reachability
-state. `daily-report/` toggles `DiscordIdentity.daily_report_opt_out` (the
+state; `guild/status/` and `health/` describe the lab's primary server, and
+`health/` also returns `servers`, one entry per server the lab is bound in (each
+with `binding_id`, `state`, `guild_name`, `channels`, and `routes`). `daily-report/` toggles `DiscordIdentity.daily_report_opt_out` (the
 profile card's "Daily research report" switch). `disconnect/` unlinks.
 
 Slash commands are served by the persistent gateway process (`mylo/`), not by an

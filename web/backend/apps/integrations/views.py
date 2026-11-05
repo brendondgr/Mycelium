@@ -23,6 +23,7 @@ from datetime import timedelta
 from urllib.parse import urlsplit, urlunsplit
 
 from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import HttpResponseRedirect
 from django.utils import timezone
 from rest_framework import status
@@ -301,6 +302,61 @@ class DiscordLabActivationCodeView(APIView):
         )
 
 
+def _manager_department_or_error(request):
+    """Resolve ?department=<id> and enforce department-manager authority."""
+    raw = request.GET.get("department", "")
+    try:
+        department = resolve.get_department_by_id(raw) if raw else None
+    except (ValueError, DjangoValidationError):
+        department = None
+    if department is None:
+        return None, Response(
+            {"detail": "unknown department"}, status=status.HTTP_404_NOT_FOUND
+        )
+    if not resolve.web_user_can_manage_department(request.user, department):
+        return None, Response(
+            {"detail": "not a manager of this department"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return department, None
+
+
+class DiscordDepartmentActivationCodeView(APIView):
+    """Issue a department activation code (the website half of
+    `/activate-department`). Manager-only; binds the department, never its labs."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        department, error = _manager_department_or_error(request)
+        if error is not None:
+            return error
+        from .services import lab_activation
+
+        code = lab_activation.issue_department_code(request.user, department)
+        return Response(
+            {"code": code, "expires_in": settings.DISCORD_ACTIVATION_TTL_SECONDS}
+        )
+
+
+class DiscordBindingRemoveView(APIView):
+    """Switch one server binding off. Manager of *that binding's* target only; every
+    other binding — in this server and in the target's other servers — carries on."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, binding_id: int):
+        binding = resolve.get_binding(binding_id)
+        if binding is None or not resolve.web_user_can_manage_binding(
+            request.user, binding
+        ):
+            return Response(
+                {"detail": "unknown binding"}, status=status.HTTP_404_NOT_FOUND
+            )
+        resolve.remove_binding(binding, actor=request.user)
+        return Response({"removed": True, "binding_id": binding.id})
+
+
 class DiscordHealthView(APIView):
     """Why Mylo can or cannot reach this lab and its people.
 
@@ -337,6 +393,7 @@ class DiscordHealthView(APIView):
                 ),
                 "channels": health["channels"] if health else _empty_channels(),
                 "addon": {"active": health["addon_ok"] if health else None},
+                "servers": health["servers"] if health else [],
                 "members": resolve.lab_member_reachability(lab),
             }
         )
@@ -357,10 +414,10 @@ class DiscordGuildStatusView(APIView):
         lab, error = _manager_lab_or_error(request)
         if error is not None:
             return error
-        link = resolve.get_guild_link_for_lab(lab)
-        if link is None:
+        server = resolve.primary_server_for_lab(lab)
+        if server is None:
             return Response(DiscordGuildStatusSerializer.empty())
-        return Response(DiscordGuildStatusSerializer(link).data)
+        return Response(DiscordGuildStatusSerializer(server).data)
 
 
 class DiscordGuildStartView(APIView):
@@ -429,7 +486,7 @@ class DiscordGuildCallbackView(APIView):
             return _return("bot_server_required")
         except resolve.GuildConflict:
             return Response(
-                {"detail": "This server is already linked to another lab."},
+                {"detail": "Discord didn't say which server Mylo was added to."},
                 status=status.HTTP_409_CONFLICT,
             )
         except (ValueError, discord_api.DiscordHTTPError):

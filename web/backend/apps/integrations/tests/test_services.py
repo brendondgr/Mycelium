@@ -83,9 +83,11 @@ class OAuthGuildLinkTests(TestCase):
         token = {"access_token": "AT", "guild": {"id": "g-1", "name": "Guild"}}
         with mock.patch.object(discord_api, "exchange_code", return_value=token), \
              mock.patch.object(discord_api, "create_message") as msg:
-            link = oauth.complete_guild_link(
+            binding = oauth.complete_guild_link(
                 self.lab, "code", installed_by=self.installer
             )
+        link = binding.guild
+        self.assertEqual(binding.lab, self.lab)
         self.assertEqual(link.guild_id, "g-1")
         self.assertTrue(link.verified_via_code_grant)
         self.assertEqual(link.state, DiscordGuildLink.State.PENDING_SETUP)

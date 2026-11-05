@@ -367,8 +367,8 @@ class PathCViewTests(TestCase):
         self.assertEqual(link.state, DiscordGuildLink.State.PENDING_SETUP)
         self.assertTrue(link.verified_via_code_grant)
 
-    def test_guild_callback_conflict_409(self):
-        # g-77 already bound to another lab.
+    def test_guild_callback_into_a_server_with_another_lab_adds_a_binding(self):
+        # g-77 already serves another lab; a server can hold several.
         other = Lab.objects.create(name="Other", slug="other")
         resolve.bind_guild(other, {"id": "g-77"})
         resolve.bind_identity(self.manager, "d-mgr", method=resolve.LINK_OAUTH)
@@ -382,7 +382,10 @@ class PathCViewTests(TestCase):
             resp = self.client.get(
                 reverse("discord-guild-callback"), {"code": "c", "state": state}
             )
-        self.assertEqual(resp.status_code, 409)
+        self.assertEqual(resp.status_code, 302)
+        rows = resolve.bindings_for_guild("g-77", include_pending=True)
+        labs = {b.lab.slug for b in rows}
+        self.assertEqual(labs, {"other", "lab"})
 
     def test_guild_callback_refused_without_addon(self):
         # A lab without the Mylo-server add-on is bounced with an upgrade cue,

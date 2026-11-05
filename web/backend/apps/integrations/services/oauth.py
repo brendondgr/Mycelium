@@ -152,7 +152,7 @@ def complete_user_link(user, code: str, *, actor=None, request=None) -> DiscordI
 def complete_guild_link(lab, code: str, *, installed_by=None, request=None):
     """Exchange the code and bind the guild from the authoritative ``guild`` object.
 
-    Raises ``resolve.GuildConflict`` if the guild/lab is already otherwise bound,
+    Adds a pending lab binding to the server (a server can hold several). Raises
     ``discord_api.DiscordHTTPError`` on a Discord failure, or ``ValueError`` if the
     exchange returned no guild (code grant not actually completed).
     """
@@ -167,9 +167,9 @@ def complete_guild_link(lab, code: str, *, installed_by=None, request=None):
     guild = token.get("guild")
     if not guild or not guild.get("id"):
         raise ValueError("token exchange returned no guild object")
-    link = resolve.bind_guild(lab, guild, installed_by=installed_by)
+    binding = resolve.bind_guild(lab, guild, installed_by=installed_by)
     _post_setup_nudge(guild)
-    return link
+    return binding
 
 
 def _post_setup_nudge(guild: dict) -> None:

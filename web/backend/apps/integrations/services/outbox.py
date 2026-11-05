@@ -354,13 +354,12 @@ def _on_permanent(message, verdict: Classification) -> None:
         Reason.CHANNEL_GONE,
         Reason.GUILD_GONE,
     )
-    if verdict.reason in channel_failures and message.lab_id:
-        # The daily summary and the report chunks that follow it share one binding,
-        # so a failure in either says the same thing about the updates channel.
-        updates_kinds = ("lab_digest", "lab_report")
-        kind = "updates" if message.kind in updates_kinds else "deadlines"
-        resolve.set_channel_health_for_lab(
-            message.lab, kind=kind, ok=False, error_code=verdict.error_code
+    if verdict.reason in channel_failures and message.channel_id:
+        # Every route posting to this channel learns it at once: the daily summary
+        # and the report chunks that follow it share one updates route, and a lab
+        # bound in two servers never shares a channel id across them.
+        resolve.set_channel_health_by_channel(
+            message.channel_id, ok=False, error_code=verdict.error_code
         )
 
 

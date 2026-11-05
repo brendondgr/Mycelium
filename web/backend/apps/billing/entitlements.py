@@ -491,10 +491,13 @@ def bot_server_addon() -> AddOn | None:
 
 
 def _lab_subscriptions(lab) -> QuerySet[Subscription]:
-    """Active subscriptions covering a lab: its own plan or its department's."""
+    """Active subscriptions covering a lab: its own plan, or its department's when
+    the department head has opted the lab into that plan
+    (``Lab.department_plan_included``). Seat billing honours the same flag, so a
+    department never pays for a capability in a lab it excluded."""
     query = Q(scope_lab=lab)
     dept_id = getattr(lab, "department_id", None)
-    if dept_id:
+    if dept_id and getattr(lab, "department_plan_included", False):
         query |= Q(scope_department_id=dept_id)
     return (
         Subscription.objects.filter(status=Subscription.Status.ACTIVE)

@@ -263,7 +263,7 @@ def _resolve_mentions(raw, lab) -> list[dict]:
     role_ids: set[str] = set()
     member_names: dict[str, str] = {}
     if (needs_roles or needs_members) and lab is not None:
-        link = discord_resolve.get_guild_link_for_lab(lab)
+        link = discord_resolve.primary_server_for_lab(lab, "deadlines")
         if not (link and link.guild_id):
             raise ReminderError("This lab has no Discord server linked.")
         if needs_roles:
@@ -587,7 +587,7 @@ class LabMentionTargetsView(APIView):
         if not user_can_edit_lab_profile(request.user, lab):
             return _bad("Only a lab PI or admin can view mention targets.", 403)
 
-        link = discord_resolve.get_guild_link_for_lab(lab)
+        link = discord_resolve.primary_server_for_lab(lab, "deadlines")
         if not (link and link.guild_id):
             return Response(
                 {
@@ -647,7 +647,7 @@ class LabReminderChannelsView(APIView):
         if not user_can_edit_lab_profile(request.user, lab):
             return _bad("Only a lab PI or admin can view lab channels.", 403)
 
-        link = discord_resolve.get_guild_link_for_lab(lab)
+        link = discord_resolve.primary_server_for_lab(lab, "deadlines")
         default_id = link.announcement_channel_id if link else ""
         channels: list[dict] = []
         if link and link.guild_id:

@@ -53,6 +53,8 @@ class GateResult:
     ok: bool
     user: object | None = None
     lab: object | None = None
+    department: object | None = None
+    binding: object | None = None
     denial: Denial | None = None
     message: str = ""
 
@@ -120,8 +122,14 @@ def authorize(
     lab_slug: str = "",
     guild_id: str = "",
     subject_id: str = "",
+    binding_id: int | str | None = None,
 ) -> GateResult:
-    """Run the five stages for one interaction. Never raises."""
+    """Run the five stages for one interaction. Never raises.
+
+    ``binding_id`` names one lab-or-department binding in a server (untrusted, like
+    ``lab_slug``): the check then runs against *that binding's* target, so a
+    department manager can configure the department's binding and nobody else's.
+    """
     spec = _ACTIONS.get(action, _DEFAULT_ACTION)
 
     # 1 — who. The only trusted input in this function.
@@ -140,7 +148,18 @@ def authorize(
     # 3 — what they may touch. A lab named by an untrusted argument is resolved and
     # then checked; failing either way gives the same answer.
     lab = None
-    if spec.lab_permission:
+    department = None
+    binding = None
+    if spec.lab_permission and binding_id not in (None, ""):
+        binding = _resolve_binding(binding_id, guild_id=guild_id)
+        if binding is None or not _has_binding_permission(
+            user, binding, spec.lab_permission
+        ):
+            return _deny(
+                action, discord_user_id, Denial.FORBIDDEN, _FORBIDDEN, user=user
+            )
+        lab, department = binding.lab, binding.department
+    elif spec.lab_permission:
         lab = _resolve_lab(lab_slug=lab_slug, guild_id=guild_id)
         if lab is None or not _has_lab_permission(user, lab, spec.lab_permission):
             return _deny(
@@ -148,6 +167,12 @@ def authorize(
             )
 
     # 4 — whether the plan covers it, checked here rather than trusted from install.
+    if spec.lab_feature and department is not None:
+        allowed, message = _department_entitled(department, spec.lab_feature)
+        if not allowed:
+            return _deny(
+                action, discord_user_id, Denial.NOT_ENTITLED, message, user=user
+            )
     if spec.lab_feature and lab is not None:
         allowed, message = _lab_entitled(lab, spec.lab_feature)
         if not allowed:
@@ -161,7 +186,9 @@ def authorize(
             )
 
     _audit(action, discord_user_id, "allowed", user=user, lab=lab, subject=subject_id)
-    return GateResult(ok=True, user=user, lab=lab)
+    return GateResult(
+        ok=True, user=user, lab=lab, department=department, binding=binding
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -186,6 +213,46 @@ def _resolve_lab(*, lab_slug: str, guild_id: str):
     if guild_id:
         return resolve.resolve_lab_for_guild(str(guild_id))
     return None
+
+
+def _resolve_binding(binding_id, *, guild_id: str):
+    """The binding named by an untrusted id — only if it sits in *this* server."""
+    try:
+        binding = resolve.get_binding(int(binding_id))
+    except (TypeError, ValueError):
+        return None
+    if binding is None or binding.state != resolve.BINDING_ACTIVE:
+        return None
+    if guild_id and binding.guild.guild_id != str(guild_id):
+        return None
+    return binding
+
+
+def _has_binding_permission(user, binding, level: str) -> bool:
+    if binding.lab_id:
+        return _has_lab_permission(user, binding.lab, level)
+    from apps.accounts.permissions import (
+        user_can_edit_dept_profile,
+        user_can_manage_department,
+        user_has_department_access,
+    )
+
+    if level == "manage":
+        return user_can_manage_department(user, binding.department)
+    if level == "edit":
+        return user_can_edit_dept_profile(user, binding.department)
+    return user_has_department_access(user, binding.department)
+
+
+def _department_entitled(department, feature: str) -> tuple[bool, str]:
+    from apps.billing.entitlements import department_has_feature
+
+    if department_has_feature(department, feature):
+        return True, ""
+    return False, (
+        f"**{department.name}**'s plan doesn't include Mylo in Discord. A department "
+        "admin can add the Mylo bot add-on from the department's settings in Mycelium."
+    )
 
 
 def _has_lab_permission(user, lab, level: str) -> bool:

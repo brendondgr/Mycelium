@@ -1,4 +1,4 @@
-"""``/activate`` and ``/activate-lab`` — the two linking commands.
+"""``/activate``, ``/activate-lab`` and ``/activate-department`` — the linking commands.
 
 * ``/activate code:<XXXX-XXXX>`` → **Path B identity linking** (bind the caller's
   own Discord account to their Mycelium profile). Usable in **any** server Mylo is
@@ -8,11 +8,13 @@
   server* to the lab that issued the 10-digit code on the website) so Mylo can post
   that lab's reminders/announcements here. No linked identity required — the
   manager-issued code carries the authority.
+* ``/activate-department code:<XXXXX-XXXXX>`` → the same for a department. A server
+  can hold a department and several labs, each its own binding.
 
 Every branch replies **ephemerally** (success, expiry, bad code, wrong channel,
 lockout, conflict): the invocation is visible only to the invoker, so a code is never
 shoulder-surfable and an error never echoes it into the channel. Policy (channel
-gate, lockout, the Mylo-server add-on, one-guild-one-lab) lives in :mod:`mylo.linking`
+gate, lockout, bindings) lives in :mod:`mylo.linking`
 → ``apps.integrations``; the bot holds none of its own.
 """
 
@@ -73,6 +75,28 @@ class LinkCog(commands.Cog, name="Link"):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         _, message = await linking.activate_lab(
+            str(interaction.user.id),
+            code=code,
+            guild_id=str(interaction.guild_id) if interaction.guild_id else "",
+            guild_name=interaction.guild.name if interaction.guild else "",
+        )
+        await interaction.followup.send(message, ephemeral=True)
+
+    @app_commands.command(
+        name="activate-department",
+        description="Connect this server to a department using its 10-digit code.",
+    )
+    @app_commands.describe(
+        code="The XXXXX-XXXXX code from the department's settings in Mycelium.",
+    )
+    @app_commands.guild_only()
+    async def activate_department(
+        self,
+        interaction: discord.Interaction,
+        code: str,
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+        _, message = await linking.activate_department(
             str(interaction.user.id),
             code=code,
             guild_id=str(interaction.guild_id) if interaction.guild_id else "",

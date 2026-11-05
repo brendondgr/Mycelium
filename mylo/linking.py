@@ -12,10 +12,14 @@ Three jobs, three commands:
 * ``/activate-lab code:`` → **Path C server activation** (redeem a lab's 10-digit
   code, issued on the website, to bind *this guild* to that lab). No linked identity
   required — the manager-issued code carries the authority.
-* ``/setup``              → the *after-activation* interactive step: choose (or turn
-  off) the deadline-announcements channel and the daily/weekly-updates channel —
-  both optional. Requires the server to be activated AND the caller to be a linked
-  lab manager (config actions still terminate in ``user_can_manage_lab``).
+* ``/activate-department code:`` → the same for a department. A server can hold a
+  department and several labs; each is its own *binding*, set up and switched off
+  on its own.
+* ``/setup``              → the *after-activation* interactive step for one binding:
+  choose (or turn off) the deadline-announcements channel and the daily/weekly-
+  updates channel — both optional. In a server with several bindings the caller
+  first picks which lab or department to configure. Requires the binding to be
+  active AND the caller to be a linked manager *of that binding's target*.
 """
 
 from __future__ import annotations
@@ -102,15 +106,58 @@ async def activate_lab(
     )
 
 
-async def setup_state(discord_user_id: str, guild_id: str) -> tuple[str, dict]:
-    """Auth + current channel bindings for rendering the `/setup` menu."""
+async def activate_department(
+    discord_user_id: str,
+    *,
+    code: str | None = None,
+    guild_id: str = "",
+    guild_name: str = "",
+) -> tuple[str, str]:
+    """``/activate-department code:`` — bind the issuing department in *this guild*."""
+    code = (code or "").strip()
+    if not guild_id:
+        return (
+            "no_guild",
+            "Run `/activate-department` inside your Discord server, not in a DM.",
+        )
+    if not code:
+        return (
+            "no_code",
+            "Add the department's 10-digit code: `/activate-department "
+            "code:<XXXXX-XXXXX>`. Generate it from the department's settings in "
+            "Mycelium.",
+        )
+    return await mycelium.db(
+        _activate_department_code_sync,
+        str(discord_user_id),
+        str(guild_id),
+        str(guild_name),
+        code,
+    )
+
+
+async def setup_state(
+    discord_user_id: str, guild_id: str, binding_id: int | None = None
+) -> tuple[str, dict]:
+    """Auth + current channel bindings for rendering the `/setup` menu.
+
+    Returns ``("choose", {"bindings": [...]})`` when the server holds several
+    bindings and none was named, so the cog can ask which one to configure.
+    """
     if not guild_id:
         return ("no_guild", {"message": "Run `/setup` inside your Discord server, not in a DM."})
-    return await mycelium.db(_setup_state_sync, str(discord_user_id), str(guild_id))
+    return await mycelium.db(
+        _setup_state_sync, str(discord_user_id), str(guild_id), binding_id
+    )
 
 
 async def bind_setup_channel(
-    discord_user_id: str, guild_id: str, *, kind: str, channel_id: str
+    discord_user_id: str,
+    guild_id: str,
+    *,
+    kind: str,
+    channel_id: str,
+    binding_id: int | None = None,
 ) -> tuple[str, dict]:
     """Bind (or, with an empty ``channel_id``, clear) one of the two `/setup` channels.
 
@@ -123,6 +170,7 @@ async def bind_setup_channel(
         str(guild_id),
         str(kind),
         str(channel_id),
+        binding_id,
     )
 
 
@@ -189,8 +237,9 @@ def _activate_lab_code_sync(
         return (
             "ok",
             f"✅ This server is now connected to **{result.lab_name}**.\n"
-            "Next, run `/setup` to choose where deadline reminders and daily/weekly "
-            "updates post — both optional.",
+            "Next, run `/setup` to choose where its deadline reminders and "
+            "daily/weekly updates post — both optional. A server can hold several "
+            "labs and a department; each is set up on its own.",
         )
     portal = mycelium.portal_url()
     lab = result.lab_name or "this lab"
@@ -203,10 +252,40 @@ def _activate_lab_code_sync(
         O.ALREADY_USED: "That lab code has already been used. Generate a fresh one "
         f"from the lab's settings in Mycelium: {portal}",
         O.CONFLICT: (
-            f"Either this server is already connected to a different lab, or **{lab}** "
-            "is already connected to another server. Disconnect the existing link in "
-            "Mycelium first, then run `/activate-lab` again."
+            f"I couldn't tell which server to connect **{lab}** to. Run "
+            "`/activate-lab` inside the server itself."
         ),
+    }
+    return (result.outcome.value, messages[result.outcome])
+
+
+def _activate_department_code_sync(
+    discord_user_id: str, guild_id: str, guild_name: str, code: str
+) -> tuple[str, str]:
+    from apps.integrations.services import lab_activation
+
+    result = lab_activation.redeem_department(
+        code, discord_user_id, guild_id, guild_name
+    )
+    O = lab_activation.RedeemOutcome
+    if result.outcome is O.OK:
+        return (
+            "ok",
+            "✅ This server is now connected to the department "
+            f"**{result.lab_name}**.\nRun `/setup` and pick the department to choose "
+            "its channels. Labs in this server are connected and configured "
+            "separately, with their own codes.",
+        )
+    portal = mycelium.portal_url()
+    messages = {
+        O.LOCKED_OUT: "Too many attempts. Try again in about an hour.",
+        O.NOT_FOUND: "That department code isn't valid. Generate a fresh one from the "
+        f"department's settings in Mycelium: {portal}",
+        O.EXPIRED: "That department code has expired. Generate a fresh one from the "
+        f"department's settings in Mycelium: {portal}",
+        O.ALREADY_USED: "That department code has already been used. Generate a fresh "
+        f"one from the department's settings in Mycelium: {portal}",
+        O.CONFLICT: "Run `/activate-department` inside the server itself.",
     }
     return (result.outcome.value, messages[result.outcome])
 
@@ -218,71 +297,113 @@ _CHANNEL_LABELS = {"deadlines": "Deadline announcements", "updates": "Daily/week
 _CHANNEL_PURPOSE = {"deadlines": "deadline reminders", "updates": "daily and weekly updates"}
 
 
-def _setup_gate(resolve, link, discord_user_id: str) -> tuple[str, dict] | None:
-    """Common `/setup` guard: server must be ACTIVE and the caller a linked manager.
+_NOT_ACTIVE = {
+    "message": "This server isn't connected to a lab or department yet. A lab admin "
+    "or PI runs `/activate-lab code:<code>` (or a department admin "
+    "`/activate-department code:<code>`) first — generate the code from the lab's or "
+    "department's settings in Mycelium."
+}
 
-    The activation state is checked here because it is a *Discord* fact — this guild
-    is not yet bound to any lab — and saying so plainly is the whole point of the
-    message. Everything after that (is this person linked, may they manage this lab,
-    does the lab's plan cover Mylo, is anyone hammering the command) goes through the
-    single authorization gate, so `/setup` cannot drift from what the slash commands
-    enforce.
+
+def _binding_summary(resolve, binding) -> dict:
+    return {
+        "binding_id": binding.id,
+        "kind": binding.target_kind,
+        "name": resolve.binding_name(binding),
+    }
+
+
+def _pick_binding(resolve, guild_id: str, binding_id):
+    """``(binding, None)``, or ``(None, (status, payload))`` explaining why not.
+
+    With one binding in the server it is the answer, exactly as before bindings
+    existed; with several the caller must name one.
     """
-    if link is None or link.state != resolve.GUILD_ACTIVE:
-        return (
-            "not_active",
-            {"message": "This server isn't connected to a lab yet. A lab admin or PI "
-             "runs `/activate-lab code:<code>` first — generate the code from the "
-             "lab's settings in Mycelium."},
+    bindings = resolve.bindings_for_guild(guild_id)
+    if not bindings:
+        return None, ("not_active", dict(_NOT_ACTIVE))
+    if binding_id in (None, ""):
+        if len(bindings) == 1:
+            return bindings[0], None
+        return None, (
+            "choose",
+            {
+                "message": "This server holds more than one lab or department. "
+                "Which one are you setting up?",
+                "bindings": [_binding_summary(resolve, b) for b in bindings],
+            },
         )
+    for binding in bindings:
+        if str(binding.id) == str(binding_id):
+            return binding, None
+    return None, ("not_active", dict(_NOT_ACTIVE))
+
+
+def _setup_gate(resolve, guild_id: str, binding_id, discord_user_id: str):
+    """Common `/setup` guard: an active binding, and the caller a linked manager of
+    *that binding's* target.
+
+    Activation is checked here because it is a *Discord* fact — this guild holds no
+    binding yet — and saying so plainly is the whole point of the message.
+    Everything after that (is this person linked, may they manage this lab or
+    department, does its plan cover Mylo, is anyone hammering the command) goes
+    through the single authorization gate, so `/setup` cannot drift from what the
+    slash commands enforce.
+    """
+    binding, refusal = _pick_binding(resolve, guild_id, binding_id)
+    if refusal is not None:
+        return None, refusal
 
     from apps.integrations.services import gate
 
     verdict = gate.authorize(
         discord_user_id=discord_user_id,
         action="setup",
-        guild_id=link.guild_id,
+        guild_id=guild_id,
+        binding_id=binding.id,
     )
     if not verdict.ok:
-        return (str(verdict.denial), {"message": verdict.message})
-    return None
+        return None, (str(verdict.denial), {"message": verdict.message})
+    return binding, None
 
 
-def _state_payload(link) -> dict:
+def _state_payload(resolve, binding) -> dict:
     return {
-        "lab_name": link.lab.name,
-        "deadlines_channel_id": link.announcement_channel_id or "",
-        "updates_channel_id": link.updates_channel_id or "",
+        "binding_id": binding.id,
+        "target_kind": binding.target_kind,
+        "lab_name": resolve.binding_name(binding),
+        "deadlines_channel_id": resolve.route_channel(binding, "deadlines"),
+        "updates_channel_id": resolve.route_channel(binding, "updates"),
     }
 
 
-def _setup_state_sync(discord_user_id: str, guild_id: str) -> tuple[str, dict]:
-    from apps.integrations.services import resolve
-
-    link = resolve.get_guild_link(guild_id)
-    gate = _setup_gate(resolve, link, discord_user_id)
-    if gate is not None:
-        return gate
-    return ("ok", _state_payload(link))
-
-
-def _bind_setup_channel_sync(
-    discord_user_id: str, guild_id: str, kind: str, channel_id: str
+def _setup_state_sync(
+    discord_user_id: str, guild_id: str, binding_id=None
 ) -> tuple[str, dict]:
     from apps.integrations.services import resolve
 
-    link = resolve.get_guild_link(guild_id)
-    gate = _setup_gate(resolve, link, discord_user_id)
-    if gate is not None:
-        return gate
-    lab_name = link.lab.name
+    binding, refusal = _setup_gate(resolve, guild_id, binding_id, discord_user_id)
+    if refusal is not None:
+        return refusal
+    return ("ok", _state_payload(resolve, binding))
+
+
+def _bind_setup_channel_sync(
+    discord_user_id: str, guild_id: str, kind: str, channel_id: str, binding_id=None
+) -> tuple[str, dict]:
+    from apps.integrations.services import resolve
+
+    binding, refusal = _setup_gate(resolve, guild_id, binding_id, discord_user_id)
+    if refusal is not None:
+        return refusal
+    lab_name = resolve.binding_name(binding)
     label = _CHANNEL_LABELS.get(kind, kind)
+    actor = resolve.resolve_user(discord_user_id)
 
     # Opt-out: an empty channel clears the binding.
     if not channel_id:
-        (resolve.clear_announcement_channel if kind == "deadlines"
-         else resolve.clear_updates_channel)(guild_id)
-        payload = _state_payload(resolve.get_guild_link(guild_id))
+        resolve.clear_route(binding, kind, actor=actor)
+        payload = _state_payload(resolve, binding)
         payload["message"] = f"🔕 {label} turned off for **{lab_name}**."
         return ("cleared", payload)
 
@@ -291,9 +412,13 @@ def _bind_setup_channel_sync(
 
     from apps.content.reminders_discord import preflight_channel
 
-    outcome = preflight_channel(channel_id, purpose=_CHANNEL_PURPOSE.get(kind, "updates"))
+    outcome = preflight_channel(
+        channel_id,
+        purpose=_CHANNEL_PURPOSE.get(kind, "updates"),
+        owner=binding.target_kind,
+    )
     if not outcome.ok:
-        payload = _state_payload(link)
+        payload = _state_payload(resolve, binding)
         if outcome.not_configured:
             # Not the channel's fault, and not this server's fault: Mylo has no bot
             # token configured on the Mycelium side, so it can't post *anywhere*.
@@ -326,12 +451,10 @@ def _bind_setup_channel_sync(
         )
         return ("channel_error", payload)
 
-    now = timezone.now()
-    if kind == "deadlines":
-        resolve.set_announcement_channel(guild_id, channel_id, verified_at=now)
-    else:
-        resolve.set_updates_channel(guild_id, channel_id, verified_at=now)
-    payload = _state_payload(resolve.get_guild_link(guild_id))
+    resolve.set_route(
+        binding, kind, channel_id, verified_at=timezone.now(), actor=actor
+    )
+    payload = _state_payload(resolve, binding)
     payload["message"] = (
         f"✅ {label} for **{lab_name}** → <#{channel_id}> (I sent a confirmation there)."
     )
@@ -460,6 +583,6 @@ def _guild_removed_sync(guild_id: str) -> str:
 def _channel_deleted_sync(guild_id: str, channel_id: str) -> str:
     from apps.integrations.services import resolve
 
-    # Returns which binding held it ("deadlines"/"updates"), or "" for the common
-    # case of a channel Mylo never used.
+    # Returns which routes held it ("deadlines", "updates,grants", …), or "" for the
+    # common case of a channel Mylo never used.
     return resolve.clear_channel_by_id(guild_id, channel_id) or "not_bound"

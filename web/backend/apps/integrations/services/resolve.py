@@ -23,15 +23,18 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import Lab, LabMembership
-from apps.accounts.permissions import user_can_manage_lab
+from apps.accounts.models import Department, Lab, LabMembership
+from apps.accounts.permissions import user_can_manage_department, user_can_manage_lab
 
 from ..models import (
     DiscordActivationCode,
+    DiscordChannelRoute,
+    DiscordDepartmentActivationCode,
     DiscordGuildLink,
     DiscordIdentity,
     DiscordLabActivationCode,
     DiscordOutboxMessage,
+    DiscordTargetBinding,
 )
 from . import audit
 
@@ -47,6 +50,8 @@ LINK_ACTIVATION_CODE = DiscordIdentity.LinkMethod.ACTIVATION_CODE
 GUILD_ACTIVE = DiscordGuildLink.State.ACTIVE
 GUILD_PENDING = DiscordGuildLink.State.PENDING_SETUP
 GUILD_KICKED = DiscordGuildLink.State.KICKED
+BINDING_ACTIVE = DiscordTargetBinding.State.ACTIVE
+ROUTE_PURPOSES = tuple(DiscordChannelRoute.Purpose.values)
 
 
 class IdentityConflict(Exception):
@@ -54,7 +59,7 @@ class IdentityConflict(Exception):
 
 
 class GuildConflict(Exception):
-    """The guild (or lab) is already bound to a different lab (→ 409)."""
+    """The OAuth install returned no usable guild (→ 409)."""
 
 
 # --------------------------------------------------------------------------- #
@@ -302,7 +307,7 @@ def update_identity_tokens(
 
 
 # --------------------------------------------------------------------------- #
-# Guild ↔ Lab
+# Servers, labs, departments
 # --------------------------------------------------------------------------- #
 def get_lab_by_id(lab_id) -> Lab | None:
     return Lab.objects.filter(id=lab_id).first()
@@ -321,173 +326,296 @@ def web_user_can_manage_lab(user, lab) -> bool:
     return user_can_manage_lab(user, lab)
 
 
+def web_user_can_manage_department(user, department) -> bool:
+    return user_can_manage_department(user, department)
+
+
+def web_user_can_manage_binding(user, binding) -> bool:
+    """A binding is managed by its own target's managers — never the other kind."""
+    if binding.lab_id:
+        return user_can_manage_lab(user, binding.lab)
+    return user_can_manage_department(user, binding.department)
+
+
 def get_guild_link(guild_id: str) -> DiscordGuildLink | None:
     return DiscordGuildLink.objects.filter(guild_id=str(guild_id)).first()
 
 
-def get_guild_link_for_lab(lab) -> DiscordGuildLink | None:
-    return DiscordGuildLink.objects.filter(lab=lab).first()
+def get_department_by_id(department_id) -> Department | None:
+    return Department.objects.filter(id=department_id).first()
+
+
+# --------------------------------------------------------------------------- #
+# Bindings: one lab or department in one server
+# --------------------------------------------------------------------------- #
+def _live_bindings():
+    """Bindings Mylo may post for: the binding is ACTIVE and Mylo is still in the
+    server. ``PENDING_SETUP`` is not live (nobody claimed it yet), and a ``KICKED``
+    guild silences every binding in it without deleting their configuration, so a
+    re-install picks up where it left off."""
+    return DiscordTargetBinding.objects.filter(
+        state=DiscordTargetBinding.State.ACTIVE,
+        guild__state=DiscordGuildLink.State.ACTIVE,
+    ).select_related("guild", "lab", "department")
+
+
+def get_binding(binding_id) -> DiscordTargetBinding | None:
+    return (
+        DiscordTargetBinding.objects.filter(id=binding_id)
+        .select_related("guild", "lab", "department")
+        .first()
+    )
+
+
+def bindings_for_lab(lab) -> list[DiscordTargetBinding]:
+    """Every live binding of ``lab``, oldest activation first."""
+    return list(_live_bindings().filter(lab=lab))
+
+
+def bindings_for_department(department) -> list[DiscordTargetBinding]:
+    return list(_live_bindings().filter(department=department))
+
+
+def bindings_for_guild(guild_id: str, *, include_pending: bool = False):
+    """The bindings in one server — labs first, then the department — by activation."""
+    qs = DiscordTargetBinding.objects.filter(guild__guild_id=str(guild_id)).exclude(
+        state=DiscordTargetBinding.State.REMOVED
+    )
+    if not include_pending:
+        qs = qs.filter(state=DiscordTargetBinding.State.ACTIVE)
+    return list(qs.select_related("guild", "lab", "department"))
+
+
+def all_bindings_for_lab(lab) -> list[DiscordTargetBinding]:
+    """Every non-removed binding of ``lab`` (live or not), for the portal's list."""
+    return list(
+        DiscordTargetBinding.objects.filter(lab=lab)
+        .exclude(state=DiscordTargetBinding.State.REMOVED)
+        .select_related("guild")
+    )
+
+
+def binding_is_live(binding) -> bool:
+    return bool(
+        binding
+        and binding.state == DiscordTargetBinding.State.ACTIVE
+        and binding.guild.state == DiscordGuildLink.State.ACTIVE
+    )
+
+
+def binding_name(binding) -> str:
+    return binding.target.name if binding.target is not None else ""
+
+
+def routes_for_binding(binding) -> dict[str, DiscordChannelRoute]:
+    return {r.purpose: r for r in binding.routes.all()}
+
+
+def route_channel(binding, purpose: str) -> str:
+    row = binding.routes.filter(purpose=purpose).first()
+    return row.channel_id if row else ""
+
+
+def get_route(binding, purpose: str) -> DiscordChannelRoute | None:
+    return binding.routes.filter(purpose=purpose).first()
+
+
+def set_route(
+    binding,
+    purpose: str,
+    channel_id: str,
+    *,
+    verified_at,
+    channel_type: int | None = None,
+    forum_tag_ids: dict | None = None,
+    created_by_mylo: bool | None = None,
+    actor=None,
+) -> DiscordChannelRoute:
+    """Bind (channel-verified) ``purpose`` for one binding to ``channel_id``."""
+    route, _ = DiscordChannelRoute.objects.update_or_create(
+        binding=binding,
+        purpose=purpose,
+        defaults={
+            "channel_id": str(channel_id),
+            "verified_at": verified_at,
+            "ok": True,
+        },
+    )
+    fields = []
+    if channel_type is not None:
+        route.channel_type = channel_type
+        fields.append("channel_type")
+    if forum_tag_ids is not None:
+        route.forum_tag_ids = forum_tag_ids
+        fields.append("forum_tag_ids")
+    if created_by_mylo is not None:
+        route.created_by_mylo = created_by_mylo
+        fields.append("created_by_mylo")
+    if fields:
+        route.save(update_fields=[*fields, "updated_at"])
+    audit.discord_audit(
+        action=(
+            "discord.guild.channel_bound"
+            if purpose == "deadlines"
+            else f"discord.guild.{purpose}_channel_bound"
+        ),
+        actor=actor,
+        guild_id=binding.guild.guild_id,
+        metadata={"channel_id": str(channel_id), "binding_id": binding.id},
+    )
+    return route
+
+
+def set_route_poster_policy(binding, purpose: str, *, policy: str, role_ids=()) -> bool:
+    rows = DiscordChannelRoute.objects.filter(binding=binding, purpose=purpose)
+    updated = rows.update(
+        poster_policy=policy,
+        poster_role_ids=[str(r) for r in role_ids],
+        updated_at=timezone.now(),
+    )
+    return bool(updated)
+
+
+def clear_route(binding, purpose: str, *, actor=None) -> bool:
+    """Opt one binding out of ``purpose`` — delete its route."""
+    deleted, _ = DiscordChannelRoute.objects.filter(
+        binding=binding, purpose=purpose
+    ).delete()
+    if deleted:
+        audit.discord_audit(
+            action="discord.guild.channel_cleared",
+            actor=actor,
+            guild_id=binding.guild.guild_id,
+            metadata={"kind": purpose, "binding_id": binding.id},
+        )
+    return bool(deleted)
+
+
+# --------------------------------------------------------------------------- #
+# The lab's primary server — what the pre-binding features still read
+# --------------------------------------------------------------------------- #
+@dataclass
+class LabServer:
+    """A lab's primary binding flattened to what the older lab features read.
+
+    Lab deadline reminders, the lab digest, the weekly and report re-sends were all
+    built for one server per lab, and keep exactly that behaviour: they use the
+    lab's *primary* binding — its oldest live binding that has the route in question,
+    else its oldest binding at all. New features (opportunity announcements) post to
+    every binding instead.
+    """
+
+    binding: DiscordTargetBinding
+    state: str
+    guild_id: str
+    guild_name_cache: str
+    verified_via_code_grant: bool
+    confirmed_at: datetime | None
+    announcement_channel_id: str
+    updates_channel_id: str
+
+
+def _binding_state(binding) -> str:
+    if binding.guild.state == DiscordGuildLink.State.KICKED:
+        return DiscordGuildLink.State.KICKED
+    if binding.state == DiscordTargetBinding.State.ACTIVE:
+        return DiscordGuildLink.State.ACTIVE
+    return DiscordGuildLink.State.PENDING_SETUP
+
+
+def _primary_binding(lab, purpose: str | None = None):
+    rows = all_bindings_for_lab(lab)
+    if not rows:
+        return None
+    live = [b for b in rows if binding_is_live(b)]
+    pool = live or rows
+    if purpose:
+        with_route = [b for b in pool if route_channel(b, purpose)]
+        if with_route:
+            return with_route[0]
+    return pool[0]
+
+
+def primary_server_for_lab(lab, purpose: str | None = None) -> LabServer | None:
+    binding = _primary_binding(lab, purpose)
+    if binding is None:
+        return None
+    return LabServer(
+        binding=binding,
+        state=_binding_state(binding),
+        guild_id=binding.guild.guild_id,
+        guild_name_cache=binding.guild.guild_name_cache,
+        verified_via_code_grant=binding.guild.verified_via_code_grant,
+        confirmed_at=binding.activated_at,
+        announcement_channel_id=route_channel(binding, "deadlines"),
+        updates_channel_id=route_channel(binding, "updates"),
+    )
 
 
 def lab_guild_is_active(lab) -> bool:
-    """Whether the lab has a live, claimed Discord server bound.
+    """Whether the lab has at least one live, claimed Discord binding.
 
     ``PENDING_SETUP`` is not live — the bot sits in the guild but no manager has
-    claimed the link, so nothing may be posted on the lab's behalf yet; ``KICKED``
-    is plainly dead. Callers outside this boundary ask through here rather than
-    comparing ``link.state`` themselves, so the meaning of "synced" is defined once.
+    claimed it, so nothing may be posted on the lab's behalf yet; ``KICKED`` is
+    plainly dead. Callers outside this boundary ask through here rather than
+    comparing states themselves, so the meaning of "synced" is defined once.
     """
-    link = get_guild_link_for_lab(lab)
-    return bool(link and link.state == DiscordGuildLink.State.ACTIVE)
+    return _live_bindings().filter(lab=lab).exists()
 
 
 def resolve_lab_for_guild(guild_id: str) -> Lab | None:
-    link = get_guild_link(guild_id)
-    return link.lab if link else None
-
-
-def set_announcement_channel(
-    guild_id: str, channel_id: str, *, verified_at
-) -> DiscordGuildLink | None:
-    """Bind (channel-verified) the default announcement channel for a guild's lab."""
-    link = get_guild_link(guild_id)
-    if link is None:
-        return None
-    link.announcement_channel_id = str(channel_id)
-    link.channel_verified_at = verified_at
-    link.save(
-        update_fields=[
-            "announcement_channel_id",
-            "channel_verified_at",
-            "updated_at",
-        ]
-    )
-    audit.discord_audit(
-        action="discord.guild.channel_bound",
-        guild_id=guild_id,
-        metadata={"channel_id": str(channel_id)},
-    )
-    return link
+    """The lab a server-scoped command means when none is named: the server's only
+    live lab binding. ``None`` when it has none or several (a department server with
+    several labs) — the caller then has to name the lab."""
+    labs = [b.lab for b in bindings_for_guild(guild_id) if b.lab_id]
+    return labs[0] if len(labs) == 1 else None
 
 
 def get_announcement_channel_for_lab(lab) -> str:
-    """The lab's verified default announcement channel id, or '' if none bound."""
-    link = get_guild_link_for_lab(lab)
-    return link.announcement_channel_id if link else ""
-
-
-def clear_announcement_channel(guild_id: str) -> DiscordGuildLink | None:
-    """Opt out of deadline announcements — unbind the channel for a guild's lab."""
-    link = get_guild_link(guild_id)
-    if link is None:
-        return None
-    link.announcement_channel_id = ""
-    link.channel_verified_at = None
-    link.save(
-        update_fields=["announcement_channel_id", "channel_verified_at", "updated_at"]
-    )
-    audit.discord_audit(
-        action="discord.guild.channel_cleared",
-        guild_id=guild_id,
-        metadata={"kind": "deadlines"},
-    )
-    return link
-
-
-def set_updates_channel(
-    guild_id: str, channel_id: str, *, verified_at
-) -> DiscordGuildLink | None:
-    """Bind (channel-verified) the daily/weekly-updates channel for a guild's lab."""
-    link = get_guild_link(guild_id)
-    if link is None:
-        return None
-    link.updates_channel_id = str(channel_id)
-    link.updates_channel_verified_at = verified_at
-    link.save(
-        update_fields=[
-            "updates_channel_id",
-            "updates_channel_verified_at",
-            "updated_at",
-        ]
-    )
-    audit.discord_audit(
-        action="discord.guild.updates_channel_bound",
-        guild_id=guild_id,
-        metadata={"channel_id": str(channel_id)},
-    )
-    return link
+    """The lab's verified deadline-announcement channel id, or '' if none bound."""
+    binding = _primary_binding(lab, "deadlines")
+    return route_channel(binding, "deadlines") if binding else ""
 
 
 def get_updates_channel_for_lab(lab) -> str:
     """The lab's verified daily/weekly-updates channel id, or '' if none bound."""
-    link = get_guild_link_for_lab(lab)
-    return link.updates_channel_id if link else ""
+    binding = _primary_binding(lab, "updates")
+    return route_channel(binding, "updates") if binding else ""
 
 
-def clear_updates_channel(guild_id: str) -> DiscordGuildLink | None:
-    """Opt out of daily/weekly updates — unbind the updates channel."""
-    link = get_guild_link(guild_id)
-    if link is None:
-        return None
-    link.updates_channel_id = ""
-    link.updates_channel_verified_at = None
-    link.save(
-        update_fields=[
-            "updates_channel_id",
-            "updates_channel_verified_at",
-            "updated_at",
-        ]
-    )
-    audit.discord_audit(
-        action="discord.guild.channel_cleared",
-        guild_id=guild_id,
-        metadata={"kind": "updates"},
-    )
-    return link
+# --------------------------------------------------------------------------- #
+# Install, activation, removal
+# --------------------------------------------------------------------------- #
+def _ensure_guild(guild_id: str, guild_name: str = "") -> DiscordGuildLink:
+    guild, _ = DiscordGuildLink.objects.get_or_create(guild_id=str(guild_id))
+    if guild_name:
+        guild.guild_name_cache = guild_name[:100]
+    return guild
 
 
-def bind_guild(lab, guild: dict, *, installed_by=None) -> DiscordGuildLink:
-    """Create/refresh a PENDING_SETUP guild link from the authoritative exchange.
+def bind_guild(lab, guild: dict, *, installed_by=None) -> DiscordTargetBinding:
+    """Record an OAuth install for ``lab``: the server plus a PENDING_SETUP binding.
 
     ``guild`` is the object from the OAuth code-grant token response — never the
-    forgeable redirect params. Enforces one-guild-one-lab (``GuildConflict`` → 409).
+    forgeable redirect params. A server can hold several bindings, so an install
+    into a server that already serves another lab or a department is not a conflict.
     """
     guild_id = str(guild.get("id") or "")
     if not guild_id:
         raise GuildConflict("token exchange returned no guild")
 
-    existing_for_guild = get_guild_link(guild_id)
-    if existing_for_guild and existing_for_guild.lab_id != lab.id:
-        audit.discord_audit(
-            action="discord.guild.rejected",
-            actor=installed_by,
-            guild_id=guild_id,
-            metadata={"reason": "guild_bound_to_other_lab"},
-        )
-        raise GuildConflict(guild_id)
-
-    existing_for_lab = get_guild_link_for_lab(lab)
-    if existing_for_lab and existing_for_lab.guild_id != guild_id:
-        audit.discord_audit(
-            action="discord.guild.rejected",
-            actor=installed_by,
-            guild_id=guild_id,
-            metadata={"reason": "lab_bound_to_other_guild"},
-        )
-        raise GuildConflict(f"lab already bound to guild {existing_for_lab.guild_id}")
-
-    link, _ = DiscordGuildLink.objects.get_or_create(
-        lab=lab, defaults={"guild_id": guild_id}
-    )
-    link.guild_id = guild_id
-    link.guild_name_cache = (guild.get("name") or "")[:100]
+    link = _ensure_guild(guild_id, guild.get("name") or "")
     link.verified_via_code_grant = True
     if installed_by is not None:
         link.installed_by = installed_by
-    # A fresh (re)install returns to PENDING_SETUP unless already ACTIVE.
     if link.state == DiscordGuildLink.State.KICKED:
         link.state = DiscordGuildLink.State.PENDING_SETUP
     link.save()
+
+    binding, _ = DiscordTargetBinding.objects.get_or_create(guild=link, lab=lab)
+    if binding.state == DiscordTargetBinding.State.REMOVED:
+        binding.state = DiscordTargetBinding.State.PENDING_SETUP
+        binding.save(update_fields=["state", "updated_at"])
 
     audit.discord_audit(
         action="discord.guild.installed",
@@ -501,26 +629,68 @@ def bind_guild(lab, guild: dict, *, installed_by=None) -> DiscordGuildLink:
         guild_id=guild_id,
         metadata={"lab_id": str(lab.id)},
     )
-    return link
+    return binding
 
 
 def confirm_guild(guild_id: str, *, confirmed_by) -> DiscordGuildLink | None:
+    """Claim every pending binding in an OAuth-installed server."""
     link = get_guild_link(guild_id)
     if not link:
         return None
     if not link.verified_via_code_grant:
         # Never usable: an unverified link cannot be confirmed.
         return None
+    now = timezone.now()
     link.state = DiscordGuildLink.State.ACTIVE
-    link.confirmed_at = timezone.now()
+    link.confirmed_at = now
     link.save(update_fields=["state", "confirmed_at", "updated_at"])
+    link.bindings.filter(state=DiscordTargetBinding.State.PENDING_SETUP).update(
+        state=DiscordTargetBinding.State.ACTIVE,
+        activated_at=now,
+        activated_by=confirmed_by,
+        updated_at=now,
+    )
     audit.discord_audit(
         action="discord.guild.confirmed",
         actor=confirmed_by,
         guild_id=guild_id,
-        metadata={"lab_id": str(link.lab_id)},
+        metadata={},
     )
     return link
+
+
+def _activate_binding(
+    guild_id: str, guild_name: str, *, lab=None, department=None, confirmer=None
+) -> DiscordTargetBinding:
+    now = timezone.now()
+    link = _ensure_guild(guild_id, guild_name)
+    if link.installed_by_id is None and confirmer is not None:
+        link.installed_by = confirmer
+    link.state = DiscordGuildLink.State.ACTIVE
+    link.confirmed_at = link.confirmed_at or now
+    link.save()
+    binding, _ = DiscordTargetBinding.objects.get_or_create(
+        guild=link, lab=lab, department=department
+    )
+    binding.state = DiscordTargetBinding.State.ACTIVE
+    binding.activated_at = now
+    if confirmer is not None:
+        binding.activated_by = confirmer
+    binding.save()
+    return binding
+
+
+def remove_binding(binding, *, actor=None) -> None:
+    """Switch one binding off. Its routes are kept, so re-activating restores them;
+    every other binding in the server, and the target's other servers, carry on."""
+    binding.state = DiscordTargetBinding.State.REMOVED
+    binding.save(update_fields=["state", "updated_at"])
+    audit.discord_audit(
+        action="discord.binding.removed",
+        actor=actor,
+        guild_id=binding.guild.guild_id,
+        metadata={"binding_id": binding.id, "target": binding.target_kind},
+    )
 
 
 def mark_guild_kicked(guild_id: str) -> None:
@@ -532,12 +702,12 @@ def mark_guild_kicked(guild_id: str) -> None:
     audit.discord_audit(
         action="discord.guild.kicked",
         guild_id=guild_id,
-        metadata={"lab_id": str(link.lab_id)},
+        metadata={},
     )
 
 
 def active_guild_ids() -> list[str]:
-    """guild_ids of every link the reconcile sweep should still expect to see."""
+    """guild_ids of every server the reconcile sweep should still expect to see."""
     return list(
         DiscordGuildLink.objects.exclude(
             state=DiscordGuildLink.State.KICKED
@@ -649,14 +819,15 @@ class LabConsumeOutcome(enum.StrEnum):
     NOT_FOUND = "not_found"
     EXPIRED = "expired"
     ALREADY_USED = "already_used"
-    CONFLICT = "conflict"  # code valid, but this guild/lab is bound elsewhere
+    CONFLICT = "conflict"  # code valid, but there is no server to bind it to
 
 
 @dataclass
 class LabCodeResult:
     outcome: LabConsumeOutcome
     lab: Lab | None = None
-    guild_link: DiscordGuildLink | None = None
+    binding: DiscordTargetBinding | None = None
+    department: Department | None = None
 
 
 def store_lab_activation_code(lab, user, code_hash: str, expires_at: datetime) -> None:
@@ -675,90 +846,117 @@ def store_lab_activation_code(lab, user, code_hash: str, expires_at: datetime) -
     )
 
 
+def store_department_activation_code(
+    department, user, code_hash: str, expires_at: datetime
+) -> None:
+    """The department twin of :func:`store_lab_activation_code`."""
+    now = timezone.now()
+    DiscordDepartmentActivationCode.objects.filter(
+        department=department, consumed_at__isnull=True, expires_at__gt=now
+    ).update(consumed_at=now)
+    DiscordDepartmentActivationCode.objects.create(
+        department=department,
+        issued_by=user,
+        code_hash=code_hash,
+        expires_at=expires_at,
+    )
+    audit.discord_audit(
+        action="discord.department_activate.issued",
+        actor=user,
+        metadata={"department_id": str(department.id)},
+    )
+
+
+def _consume_code(model, target_field: str, code_hash: str, now):
+    """Lock and return the live code row for ``code_hash``, or the outcome why not."""
+    row = (
+        model.objects.select_for_update()
+        .filter(code_hash=code_hash, consumed_at__isnull=True, expires_at__gt=now)
+        .select_related(target_field)
+        .order_by("-created_at")
+        .first()
+    )
+    if row is not None:
+        return row, None
+    any_row = model.objects.filter(code_hash=code_hash).order_by("-created_at").first()
+    if any_row is None:
+        return None, LabConsumeOutcome.NOT_FOUND
+    if any_row.consumed_at is not None:
+        return None, LabConsumeOutcome.ALREADY_USED
+    return None, LabConsumeOutcome.EXPIRED
+
+
+def _mark_consumed(row, discord_user_id: str, guild_id: str, now) -> None:
+    row.consumed_at = now
+    row.consumed_by_discord_id = discord_user_id
+    row.consumed_guild_id = guild_id
+    row.save(
+        update_fields=["consumed_at", "consumed_by_discord_id", "consumed_guild_id"]
+    )
+
+
 def consume_lab_activation_code(
     code_hash: str, discord_user_id: str, guild_id: str, guild_name: str = ""
 ) -> LabCodeResult:
-    """Atomically redeem a lab code and bind *this guild* to *that lab* (ACTIVE).
+    """Atomically redeem a lab code and bind *that lab* in *this guild* (ACTIVE).
 
-    Enforces one-guild-one-lab (and one-lab-one-guild): if this guild is already
-    bound to a different lab, or the lab to a different guild, returns ``CONFLICT``
-    and does **not** consume the code (so the manager can resolve it and retry).
-    The bind is ``verified_via_code_grant`` untouched — the code carries authority,
-    not the forgeable OAuth redirect. No linked identity is required of the redeemer.
+    A server holds many bindings and a lab can be bound in many servers, so neither
+    is a conflict any more; redeeming in a server where the lab is already bound
+    simply re-activates that binding. The code carries the authority — the
+    redeemer needs no linked identity.
     """
     discord_user_id = str(discord_user_id)
     guild_id = str(guild_id or "")
     now = timezone.now()
     with transaction.atomic():
-        row = (
-            DiscordLabActivationCode.objects.select_for_update()
-            .filter(code_hash=code_hash, consumed_at__isnull=True, expires_at__gt=now)
-            .select_related("lab")
-            .order_by("-created_at")
-            .first()
-        )
+        row, outcome = _consume_code(DiscordLabActivationCode, "lab", code_hash, now)
         if row is None:
-            any_row = (
-                DiscordLabActivationCode.objects.filter(code_hash=code_hash)
-                .order_by("-created_at")
-                .first()
-            )
-            if any_row is None:
-                return LabCodeResult(LabConsumeOutcome.NOT_FOUND)
-            if any_row.consumed_at is not None:
-                return LabCodeResult(LabConsumeOutcome.ALREADY_USED)
-            return LabCodeResult(LabConsumeOutcome.EXPIRED)
-
+            return LabCodeResult(outcome)
         lab = row.lab
         if not guild_id:
             return LabCodeResult(LabConsumeOutcome.CONFLICT, lab=lab)
-
-        existing_for_guild = get_guild_link(guild_id)
-        if existing_for_guild and existing_for_guild.lab_id != lab.id:
-            audit.discord_audit(
-                action="discord.guild.rejected",
-                guild_id=guild_id,
-                metadata={"reason": "guild_bound_to_other_lab", "via": "lab_code"},
-            )
-            return LabCodeResult(LabConsumeOutcome.CONFLICT, lab=lab)
-        existing_for_lab = get_guild_link_for_lab(lab)
-        if existing_for_lab and existing_for_lab.guild_id != guild_id:
-            audit.discord_audit(
-                action="discord.guild.rejected",
-                guild_id=guild_id,
-                metadata={"reason": "lab_bound_to_other_guild", "via": "lab_code"},
-            )
-            return LabCodeResult(LabConsumeOutcome.CONFLICT, lab=lab)
-
         confirmer = resolve_user(discord_user_id)  # may be None (identity optional)
-        link, _ = DiscordGuildLink.objects.get_or_create(
-            lab=lab, defaults={"guild_id": guild_id}
-        )
-        link.guild_id = guild_id
-        link.guild_name_cache = (guild_name or "")[:100]
-        if link.installed_by_id is None and confirmer is not None:
-            link.installed_by = confirmer
-        link.state = DiscordGuildLink.State.ACTIVE
-        link.confirmed_at = now
-        link.save()
-
-        row.consumed_at = now
-        row.consumed_by_discord_id = discord_user_id
-        row.consumed_guild_id = guild_id
-        row.save(
-            update_fields=[
-                "consumed_at",
-                "consumed_by_discord_id",
-                "consumed_guild_id",
-            ]
-        )
+        binding = _activate_binding(guild_id, guild_name, lab=lab, confirmer=confirmer)
+        _mark_consumed(row, discord_user_id, guild_id, now)
         audit.discord_audit(
             action="discord.lab_activate.consumed",
             actor=confirmer,
             guild_id=guild_id,
-            metadata={"lab_id": str(lab.id), "verified_via_code_grant": False},
+            metadata={"lab_id": str(lab.id), "binding_id": binding.id},
         )
-        return LabCodeResult(LabConsumeOutcome.OK, lab=lab, guild_link=link)
+        return LabCodeResult(LabConsumeOutcome.OK, lab=lab, binding=binding)
+
+
+def consume_department_activation_code(
+    code_hash: str, discord_user_id: str, guild_id: str, guild_name: str = ""
+) -> LabCodeResult:
+    """Atomically redeem a department code and bind *that department* here."""
+    discord_user_id = str(discord_user_id)
+    guild_id = str(guild_id or "")
+    now = timezone.now()
+    with transaction.atomic():
+        row, outcome = _consume_code(
+            DiscordDepartmentActivationCode, "department", code_hash, now
+        )
+        if row is None:
+            return LabCodeResult(outcome)
+        department = row.department
+        if not guild_id:
+            return LabCodeResult(LabConsumeOutcome.CONFLICT, department=department)
+        confirmer = resolve_user(discord_user_id)
+        binding = _activate_binding(
+            guild_id, guild_name, department=department, confirmer=confirmer
+        )
+        _mark_consumed(row, discord_user_id, guild_id, now)
+        audit.discord_audit(
+            action="discord.department_activate.consumed",
+            actor=confirmer,
+            guild_id=guild_id,
+            metadata={"department_id": str(department.id), "binding_id": binding.id},
+        )
+        return LabCodeResult(
+            LabConsumeOutcome.OK, department=department, binding=binding
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -1046,124 +1244,140 @@ def outbox_attachment_paths_for_settled() -> list[str]:
 
 
 # --------------------------------------------------------------------------- #
-# Guild-link health (Workstream E)
+# Route health (Workstream E)
 # --------------------------------------------------------------------------- #
-def set_channel_health(
-    guild_id: str,
-    *,
-    kind: str,
-    ok: bool | None,
-    error_code: int | None = None,
-) -> DiscordGuildLink | None:
-    """Record whether Mylo can still post to a bound channel.
+def set_route_health(
+    route, *, ok: bool | None, error_code: int | None = None
+) -> DiscordChannelRoute:
+    """Record whether Mylo can still post to one bound channel.
 
-    ``kind`` is ``"deadlines"`` or ``"updates"``. Mirrors
-    :func:`set_identity_dm` for people: reachability is *measured* and stored, never
-    inferred at read time, so the portal can explain a silence instead of a lab
-    discovering it by noticing nothing arrived.
+    Mirrors :func:`set_identity_dm` for people: reachability is *measured* and
+    stored, never inferred at read time, so the portal can explain a silence instead
+    of a lab discovering it by noticing nothing arrived.
     """
-    link = get_guild_link(guild_id)
-    if link is None:
-        return None
-    field = "updates_channel_ok" if kind == "updates" else "announcement_channel_ok"
-    setattr(link, field, ok)
-    link.channel_checked_at = timezone.now()
-    fields = [field, "channel_checked_at", "updated_at"]
+    now = timezone.now()
+    route.ok = ok
+    route.checked_at = now
+    route.save(update_fields=["ok", "checked_at", "updated_at"])
+    binding = route.binding
+    binding.channel_checked_at = now
+    fields = ["channel_checked_at", "updated_at"]
     if error_code is not None:
-        link.last_error_code = error_code
+        binding.last_error_code = error_code
         fields.append("last_error_code")
-    link.save(update_fields=fields)
+    binding.save(update_fields=fields)
     if ok is False:
         audit.discord_audit(
             action="discord.guild.channel_unreachable",
-            guild_id=guild_id,
-            metadata={"kind": kind, "error_code": error_code},
+            guild_id=binding.guild.guild_id,
+            metadata={
+                "kind": route.purpose,
+                "error_code": error_code,
+                "binding_id": binding.id,
+            },
         )
-    return link
+    return route
 
 
-def set_channel_health_for_lab(lab, *, kind: str, ok: bool | None, error_code=None):
-    """``set_channel_health`` reached from a lab rather than a guild id."""
-    link = get_guild_link_for_lab(lab)
-    if link is None:
-        return None
-    return set_channel_health(
-        link.guild_id, kind=kind, ok=ok, error_code=error_code
+def set_channel_health_by_channel(
+    channel_id: str, *, ok: bool | None, error_code: int | None = None
+) -> int:
+    """``set_route_health`` for every route posting to ``channel_id``; returns how
+    many. A permanent outbox failure knows the channel, not which binding."""
+    rows = list(
+        DiscordChannelRoute.objects.filter(channel_id=str(channel_id)).select_related(
+            "binding__guild"
+        )
     )
+    for route in rows:
+        set_route_health(route, ok=ok, error_code=error_code)
+    return len(rows)
 
 
 def clear_channel_by_id(guild_id: str, channel_id: str) -> str:
-    """Unbind whichever slot held ``channel_id``; return which one ("" if neither).
-
-    Used when Discord tells us a channel was deleted: we know the id, not which of
-    the two roles it was playing.
-    """
-    link = get_guild_link(guild_id)
-    if link is None:
-        return ""
-    channel_id = str(channel_id)
-    if link.announcement_channel_id == channel_id:
-        clear_announcement_channel(guild_id)
-        set_channel_health(guild_id, kind="deadlines", ok=False)
-        return "deadlines"
-    if link.updates_channel_id == channel_id:
-        clear_updates_channel(guild_id)
-        set_channel_health(guild_id, kind="updates", ok=False)
-        return "updates"
-    return ""
+    """Unbind every route in this server that used ``channel_id``; return the
+    purposes it held (comma-joined, '' if none). Discord tells us a channel was
+    deleted by id, not by which role it was playing."""
+    rows = list(
+        DiscordChannelRoute.objects.filter(
+            binding__guild__guild_id=str(guild_id), channel_id=str(channel_id)
+        ).select_related("binding__guild")
+    )
+    purposes = []
+    for route in rows:
+        set_route_health(route, ok=False)
+        clear_route(route.binding, route.purpose)
+        purposes.append(route.purpose)
+    return ",".join(sorted(set(purposes)))
 
 
-def set_addon_ok(lab, *, ok: bool) -> DiscordGuildLink | None:
-    """Record whether the lab's Mylo add-on was live at the last delivery check."""
-    link = get_guild_link_for_lab(lab)
-    if link is None or link.addon_ok == ok:
-        return link
-    link.addon_ok = ok
-    link.save(update_fields=["addon_ok", "updated_at"])
+def set_addon_ok(binding, *, ok: bool) -> DiscordTargetBinding:
+    """Record whether the target's Mylo add-on was live at the last check."""
+    if binding.addon_ok == ok:
+        return binding
+    binding.addon_ok = ok
+    binding.save(update_fields=["addon_ok", "updated_at"])
     if not ok:
         audit.discord_audit(
             action="discord.guild.addon_lapsed",
-            guild_id=link.guild_id,
-            metadata={"lab_id": str(lab.id)},
+            guild_id=binding.guild.guild_id,
+            metadata={"binding_id": binding.id, "target": binding.target_kind},
         )
-    return link
+    return binding
 
 
-def active_guild_links():
-    """Every non-KICKED link, with its lab — the reconcile sweep's candidate set."""
+def active_bindings():
+    """Every binding in a server Mylo is still in — the reconcile sweep's set."""
     return list(
-        DiscordGuildLink.objects.exclude(
-            state=DiscordGuildLink.State.KICKED
-        ).select_related("lab")
+        DiscordTargetBinding.objects.filter(state=DiscordTargetBinding.State.ACTIVE)
+        .exclude(guild__state=DiscordGuildLink.State.KICKED)
+        .select_related("guild", "lab", "department")
+        .prefetch_related("routes")
     )
 
 
-def guild_health_for_lab(lab) -> dict | None:
-    """The lab's Discord health, flattened for the portal. ``None`` when unlinked."""
-    link = get_guild_link_for_lab(lab)
-    if link is None:
-        return None
+def _route_health(route) -> dict:
+    if route is None:
+        return {"bound": False, "channel_id": "", "ok": None, "verified_at": None}
     return {
-        "state": link.state,
-        "guild_name": link.guild_name_cache,
-        "checked_at": link.channel_checked_at,
-        "addon_ok": link.addon_ok,
-        "last_error_code": link.last_error_code,
+        "bound": True,
+        "channel_id": route.channel_id,
+        "ok": route.ok,
+        "verified_at": route.verified_at,
+    }
+
+
+def binding_health(binding) -> dict:
+    routes = routes_for_binding(binding)
+    return {
+        "binding_id": binding.id,
+        "state": _binding_state(binding),
+        "guild_id": binding.guild.guild_id,
+        "guild_name": binding.guild.guild_name_cache,
+        "checked_at": binding.channel_checked_at,
+        "addon_ok": binding.addon_ok,
+        "last_error_code": binding.last_error_code,
         "channels": {
-            "announcements": {
-                "bound": bool(link.announcement_channel_id),
-                "channel_id": link.announcement_channel_id,
-                "ok": link.announcement_channel_ok,
-                "verified_at": link.channel_verified_at,
-            },
-            "updates": {
-                "bound": bool(link.updates_channel_id),
-                "channel_id": link.updates_channel_id,
-                "ok": link.updates_channel_ok,
-                "verified_at": link.updates_channel_verified_at,
-            },
+            "announcements": _route_health(routes.get("deadlines")),
+            "updates": _route_health(routes.get("updates")),
+        },
+        "routes": {
+            purpose: {**_route_health(route), "channel_type": route.channel_type,
+                      "poster_policy": route.poster_policy}
+            for purpose, route in routes.items()
         },
     }
+
+
+def guild_health_for_lab(lab) -> dict | None:
+    """The lab's Discord health for the portal: its primary server, flattened, plus
+    every server it is bound in. ``None`` when unlinked."""
+    binding = _primary_binding(lab)
+    if binding is None:
+        return None
+    health = binding_health(binding)
+    health["servers"] = [binding_health(b) for b in all_bindings_for_lab(lab)]
+    return health
 
 
 def member_reachability(users) -> dict:
