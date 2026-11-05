@@ -1,11 +1,10 @@
 # Mylo Opportunity Announcements — implementation plan
 
-Status: **final plan, not started** (revision 4, 2026-11-05). Every behaviour
-below was reviewed against the prototype in the Discord test server
+Status: **final plan, awaiting approval** (revision 5, 2026-11-05). Every
+behaviour below was reviewed against the prototype in the Discord test server
 (`1507798835311673616`, category *Mylo Opportunities (prototype)*) and the
-*Mylo Announcements Mockup* canvas. Four questions remain (see **Open
-questions**). Nothing is built until they are answered and Phase 0 is signed
-off.
+*Mylo Announcements Mockup* canvas. All review questions are answered (see
+**Answered in review**). Nothing is built until this plan is approved.
 
 ## Objective
 
@@ -27,11 +26,11 @@ Papers are unchanged: they stay in the daily or weekly report.
 | D2 | **"New" = entered the target's per-theme slate and never announced to that target.** Posts are labelled *New call* (source posted ≤ 14 days ago), *Newly relevant*, or *Already open* (see D5). |
 | D3 | **Departments are their own target** (`DeptProfile`) and see only department-level calls (see **What a department sees**). |
 | D4 | **A bounded editor agent** decides whether to post and writes the headline, *Why it matters*, and *Next step*. Code supplies every date, amount, and eligibility check. A verifier enforces this, and a template is the fallback. |
-| D5 | **No cap** (`daily_cap = -1`). **No roundup:** when announcements are first switched on, every currently open slate item is posted as an *Already open* thread, in deadline order, with no tags. |
+| D5 | **No cap** (`daily_cap = -1`). **Activation seeds six:** when announcements are first switched on, Mylo posts the **six most relevant open items** for that lab or department, labelled *Already open*, with no tags. It also posts the closing-soon list straight away. From the next night on, only new entrants are posted. |
 | D6 | With announcements on, the daily report keeps one line per kind ("2 grants announced → #grants") instead of listing them. |
 | D7 | Tags happen only for: (a) people who clicked *Interested* (on updates and their default nudge), and (b) **strong-match tagging**, which is **off by default** per target. |
 | D8 | Feature `OPPORTUNITY_ANNOUNCEMENTS` on Lab and Canopy plans, plus `BOT_SERVER`, read through `billing.entitlements`. |
-| D9 | **A changed call replaces its thread:** a new thread titled `[🚨 Update <Mon D>] <title>` with *What changed* first, interested people tagged, and the old thread removed (see Q1). |
+| D9 | **A changed call updates its existing thread in place.** Mylo edits the opening post to the current facts with *What changed* at the top, renames the thread `[🚨 Update <Mon D>] <title>`, adds the `Updated` tag, and replies in the thread tagging the interested people. The reply bumps the thread to the top of the forum. The thread, its link, and its discussion are kept; nothing is deleted or reposted. |
 | D10 | **Nudges only for people who asked.** *Interested* gives a default **2 weeks before** tag in the thread. *Remind me* opens a picker only that person sees: **2 days, 1 week, 2 weeks (preselected), 3 weeks, 1 month, 2 months**, several allowed, sent by **DM (default)** or as a thread tag. Choices already past are hidden. |
 | D11 | **Closing-soon list** every morning in `#grants` and `#fellowships`: everything on the list closing within 14 days, as one thread that replaces yesterday's. Nothing is posted on a day with nothing closing. |
 | D12 | Mylo **creates channels only when a manager asks** ("Create them for me", with a preview). Otherwise managers pick existing channels. |
@@ -41,21 +40,16 @@ Papers are unchanged: they stay in the daily or weekly report.
 | D16 | **Lab and department are fully separate.** A lab can have its own server, can *also* have a category in its department's server, or both. A department can have its own server. Each binding is set up, configured, and switched off on its own, and none depends on another. There are **no cross-links** between a lab's posts and a department's posts. |
 | D17 | **On the web, every link into Discord shows the Discord logo and the channel name, and opens in a new tab.** This replaces text such as "Open thread in #grants" and "Open thread in #dept-opportunities". |
 
-## Open questions (answer before Phase 1)
+## Answered in review
 
-- **Q1. Deleting a thread people replied in.** D9 removes the old thread.
-  Recommendation: delete it when there are no human replies; otherwise lock it,
-  archive it, rename it `[Superseded]`, and link to it from the update.
-- **Q2. "Manny".** Is it Mylo's current digest or a person posting papers by
-  hand? If it's a person, Phase 9 adds a "Mylo, file this" command.
-- **Q3. Activation.** D5 posts everything already open as *Already open*
-  threads, which can be dozens. The alternative is to post nothing on day one
-  and start with the next night's entrants.
-- **Q4. Limited-submission calls.** A PI writes the proposal, but the
-  institution must choose which proposals go in. Recommendation: treat these
-  as department-level, because a lab cannot apply without that selection. The
-  alternative is to keep them with labs and only flag "internal selection
-  needed".
+- **Q1. Changed calls:** update the existing thread in place and bump it,
+  rather than deleting or archiving it (D9).
+- **Q2. "Manny"** was Mylo. The digest people aren't reading is Mylo's own
+  daily report, which D6 slims down. No paper-filing command is needed.
+- **Q3. Activation:** start with the next night's entrants, seeded with the
+  six most relevant open items and the closing-soon list (D5).
+- **Q4. Limited-submission calls** count as department-level (*Institutional
+  selection*).
 
 ## Labs, departments, and servers (D16)
 
@@ -106,7 +100,7 @@ one of these:
 | Reason (forum tag) | What qualifies | How it's detected (code, with the quoted evidence stored) |
 | --- | --- | --- |
 | **Department applicant** | The applying unit must be a department, institution, or academic unit, not an individual PI's group. Examples: department transformation, curriculum, or departmental training programmes | Applicant-type and eligibility-text patterns |
-| **Institutional selection** (per Q4) | A limited submission or institutional nomination: someone above the lab must choose | "Limit on the number of proposals per organization", "nominated by the institution", and similar patterns |
+| **Institutional selection** | A limited submission or institutional nomination: someone above the lab must choose | "Limit on the number of proposals per organization", "nominated by the institution", and similar patterns |
 | **Department-scale programme** | Training programmes (traineeships, REU sites), centres or institutes with a lead institution, and shared facilities run for the unit | Mechanism and funding-instrument patterns |
 
 - **Fit to two or more labs is not a reason.** Labs can apply for those
@@ -132,6 +126,13 @@ scoring, member-fit, and team-fit, and before reports are sent.
    for grants, fellowships, and conferences. Drop items that already have an
    `Announcement` for that target. For a department, keep only items with a
    department-level reason.
+
+   **First run for a target (D5):** don't announce the whole slate. Take the
+   six best-ranked open items across the enabled kinds, interleaving kinds by
+   slate position so one kind can't fill all six. They go through steps 2–5
+   as *Already open*, and the closing-soon list is posted the same night.
+   Everything else already on the slate is marked as seen, so it is never
+   announced later. The number is a setting, `activation_seed = 6`.
 2. **Check usability (code, `apps/content/usability.py`).** Each check gives
    `ok` / `warn` / `block` / `unknown`, a label, and the field it read:
    - open, and next round
@@ -155,15 +156,28 @@ scoring, member-fit, and team-fit, and before reports are sent.
 5. **Post.** For each of the target's live bindings, `discord_announcements.py`
    enqueues a forum thread on the outbox, with dedupe key
    `announce:<binding>:<item>`, and writes an `AnnouncementPost`. The outbox
-   gains **create-forum-thread** and **delete-thread** modes.
+   gains three modes: **create-forum-thread**, **edit-message** (the thread's
+   opening post), and **update-thread** (name, tags, unarchive). Forums Mylo
+   creates sort by **recent activity**, so an updated thread rises to the top.
 
 Then **`announce_opportunity_updates`** runs:
 
-- **Changed call.** A change in deadline, round, award, eligibility, or status
-  (compared with a fingerprint of the facts the post showed) produces the
-  `[🚨 Update <Mon D>]` thread in every binding. It tags the people who are
-  currently interested and removes the old thread (Q1). Old thread ids go in
-  `superseded_thread_ids`.
+- **Changed call (D9).** A change in deadline, round, award, eligibility, or
+  status is detected by comparing against a fingerprint of the facts the post
+  showed. In every binding, Mylo then updates the same thread:
+  1. Unarchive the thread if it was archived.
+  2. Edit the opening post to the current facts, with *What changed* (old
+     value struck through, new value in bold) above *Why it matters*.
+  3. Rename the thread to `[🚨 Update <Mon D>] <title>`; a later update
+     replaces the date.
+  4. Add the `Updated` tag.
+  5. Post a reply, `🚨 Update <Mon D>: <one-line change>`, tagging the people
+     who are currently interested.
+
+  The reply is what bumps the thread to the top of the forum. Each update is
+  appended to the post's `update_log`, so the thread's history stays readable.
+  Discord limits how often a thread can be renamed, so updates are coalesced
+  to at most one per thread per night.
 - **Conferences** are announced the night they first gain a submission
   deadline.
 - **Nudges** go out at each person's chosen time and place, and move with the
@@ -177,8 +191,9 @@ Then **`announce_opportunity_updates`** runs:
 - **Announcement thread:** the title, then *Why it matters*, *Can we use
   this?*, *Who should look*, and *Next step*, with buttons **👍 Interested ·
   🔔 Remind me · 🚫 Not for us · View the call**. No percentages ever.
-- **Update thread:** the same, prefixed `[🚨 Update <Mon D>]`, with a first line
-  tagging the interested people and *What changed* above *Why it matters*.
+- **An updated thread:** the same thread, renamed `[🚨 Update <Mon D>] <title>`.
+  Its opening post now shows *What changed* above *Why it matters*, and a new
+  reply tags the interested people. The thread's link never changes.
 - **Closing-soon thread:** one dated list, replaced every morning.
 - **Buttons** are persistent ids `ann:<post>:<action>` in a new `announcements`
   cog. Each goes `mylo/linking.py` → `apps/content`, through `gate.py`
@@ -232,15 +247,15 @@ Under `apps/content` unless noted.
 - **`Announcement`:**
   - Target: lab XOR department.
   - `content` (SET_NULL plus a snapshot), `category`, `origin`
-    (`nightly` / `manual`), `state` (`posted` / `skipped` / `superseded` /
-    `closed`), and `label`.
+    (`nightly` / `manual`), `state` (`posted` / `skipped` / `seeded_seen` /
+    `closed`; `seeded_seen` marks slate items passed over at activation), and `label`.
   - `dept_reasons` JSON (with evidence).
   - `checks`, `alignment`, `write_up` plus fingerprint, and
     `facts_fingerprint`.
   - Unique on (target, content).
 - **`AnnouncementPost`:** announcement, `apps.integrations` binding,
-  `thread_id`, `superseded_thread_ids`, `posted_at`, `closed_at`. Unique on
-  (announcement, binding).
+  `thread_id`, `update_log` JSON (date, what changed, reply message id),
+  `posted_at`, `closed_at`. Unique on (announcement, binding).
 - **`AnnouncementReaction`:** announcement, user, kind (`interested` /
   `not_for_us` / `unfollow`), reason. Append-only.
 - **`AnnouncementSettings`** (one per target):
@@ -250,6 +265,7 @@ Under `apps/content` unless noted.
   - `closing_soon_list = on`
   - `strong_match_tagging = off`
   - `save_on_interest = on`
+  - `activation_seed = 6`
   - an award preference, and `activated_at`
 - **`apps/integrations`:**
   - `DiscordGuildLink`: server only.
@@ -268,13 +284,16 @@ Each phase ships green on its own behind `OPPORTUNITY_ANNOUNCEMENTS_ENABLED`
 (default off). Backend commands use `uv run --project web/backend …`, and
 vector tests need the Compose Postgres.
 
-**Phase 0: Sign-off.** Answer Q1–Q4. Bring the test-server prototype in line
-with this plan:
-- remove the *Multi-lab* department example, its forum tag, and the lab
-  thread's pointer to it
-- re-tag MRI with *Institutional selection*
-- keep Mid-scale RI only if its record shows a department-level reason
-- add the Discord logo links to the mockup
+**Phase 0: Bring the prototype in line, then sign off.** Changes to the test
+server and mockup:
+- Switch the forums to recent-activity sort.
+- Show the Genesis update the D9 way: one thread updated in place with a
+  tagging reply.
+- Remove the *Multi-lab* department example, its forum tag, and the lab
+  thread's pointer to it.
+- Re-tag MRI with *Institutional selection*.
+- Keep Mid-scale RI only if its record shows a department-level reason.
+- Add the Discord logo links to the mockup.
 
 *Done when* you approve the prototype as the target.
 
@@ -304,9 +323,13 @@ records (an EU call, a US-only call, a closed round, missing fields giving
 **Phase 3: Engine (dry run).** Models, `announce_opportunities --dry-run`, the
 agent, the verifier, the template fallback, the change detector, and the
 closing-soon composer.
-*Validate:* tests for entrant-only selection, never-twice, *Already open* on
-activation (per Q3), `-1` meaning unlimited, a moved date counting as a change
-but an identical re-scrape not, and verifier rejection. Then a dry run on live
+*Validate:* tests for:
+- entrant-only selection, and never-twice
+- activation posting exactly six (kinds interleaved), with the rest of the
+  slate never announced later
+- `-1` meaning unlimited
+- a moved date counting as a change, but an identical re-scrape not
+- verifier rejection Then a dry run on live
 data, read by hand.
 
 **Phase 4: Discord delivery for labs.** The outbox thread modes, the `/setup`
@@ -314,24 +337,27 @@ announcements step (create or pick, who can post), the `announcements` cog
 with all four buttons, the Interested DM, the Remind me picker, the update
 stage, nudges, the closing-soon list, and drift detection for routes.
 *Validate:* the suites, then the test-server smoke run:
-1. opt-in create → *Already open*
-2. next-night entrants
+1. opt-in create → six *Already open* threads plus the closing-soon list
+2. next-night entrants only
 3. Interested → DM
 4. Remind me → DM at the chosen time (clock override)
-5. a forced change → `[🚨 Update]`, old thread gone, interested people tagged
-6. the closing-soon list replaced the next morning
-7. a lab bound in two servers gets one DM and one reminder per person
+5. a forced change → same thread renamed `[🚨 Update]`, opening post edited,
+   tagging reply posted, thread at the top of the forum, earlier replies
+   intact
+6. an archived thread reopens when its call changes
+7. the closing-soon list replaced the next morning
+8. a lab bound in two servers gets one DM and one reminder per person
 
 **Phase 5: Search links (D15).** Guild id through `linking.py`, `thread_url`
 on search rows, manager announce, and the web "Discussed in Discord" link.
-*Validate (unit):* an announcing server, another server, a DM, a replaced
-thread, and a deleted thread.
+*Validate (unit):* an announcing server, another server, a DM, an updated
+thread, and a thread someone deleted by hand (no link, and no error).
 *Validate (live, required):* run the real `/mylo search` against real data in
 the test server and record the results in the changelog:
 1. Announced items, and only those, show "Already discussed here".
 2. Every link opens the right thread.
 3. A DM, or a server without announcements, shows no links.
-4. After a forced update, the link follows the new thread.
+4. After a forced update, the same link opens the updated thread.
 5. "Announce to #…" posts once and then disappears from that result.
 6. The web search card shows the same links.
 
@@ -355,9 +381,6 @@ precision, and a test-server smoke run:
 reasons, link clicks, route health, and department-reason precision, recorded
 as an experiment before any threshold changes.
 
-**Phase 9 (only if Q2 says a person posts papers by hand):** a "Mylo, file
-this" command.
-
 ## Interfaces that change
 
 - **API** (record in `docs/api-contract.md`):
@@ -375,8 +398,8 @@ this" command.
 - **`manual_all.py`:** two new stages.
 - **Docs:** `repo-map.md`, `discord-integration.md` (bindings, routes, poster
   policy, department activation, the permissions needed: Manage Channels and
-  Manage Roles only for opt-in creation and poster rules, Manage Threads for
-  replacement), and `architecture.md`.
+  Manage Roles only for opt-in creation and poster rules, Manage Threads to
+  rename, retag, and unarchive threads on update), and `architecture.md`.
 
 ## Security and trust
 
@@ -389,7 +412,7 @@ this" command.
 - `allowed_mentions` lists exactly the users being tagged: never `everyone`,
   never roles.
 - Audit events for: binding, unbinding, settings, channel creation, poster
-  policy, test posts, Not for us, manual announce, and thread replacement.
+  policy, test posts, Not for us, manual announce, and thread updates.
 - The agent sees only its packet, with no web access and no other target's
   data.
 
@@ -401,8 +424,11 @@ this" command.
   carries that reason.
 - New slate entrants each get a thread (no cap), and no item is announced twice
   to the same target.
-- A changed call becomes `[🚨 Update <date>]` within one night, tagging only
-  the people interested in it.
+- Activation posts six *Already open* threads and the closing-soon list, and
+  never more.
+- A changed call updates its existing thread within one night: it's renamed
+  `[🚨 Update <date>]` and moved to the top, with a reply tagging only the
+  people interested in it. Its link and discussion survive.
 - Interested produces a DM. Remind me fires at the chosen time and place and
   follows deadline moves.
 - `/mylo search` links to existing threads, verified live (Phase 5).
