@@ -69,6 +69,25 @@ _AREA_LABEL = {
 }
 
 
+def _announce_view(results: list[dict]) -> discord.ui.View | None:
+    """"Announce to #…" buttons for a manager, one per binding that has not posted
+    a result. Handled by the announcements cog (``annx:``), which posts once."""
+    view = discord.ui.View(timeout=600)
+    for index, row in enumerate(results, start=1):
+        for option in row.get("announce") or []:
+            if len(view.children) >= 20:
+                break
+            view.add_item(
+                discord.ui.Button(
+                    label=f"{index}. Announce to {option['purpose']}"[:80],
+                    style=discord.ButtonStyle.secondary,
+                    emoji="📣",
+                    custom_id=f"annx:{option['binding_id']}:{row['content_id']}",
+                )
+            )
+    return view if view.children else None
+
+
 class MyloCog(commands.Cog, name="Mylo"):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -257,7 +276,11 @@ class MyloCog(commands.Cog, name="Mylo"):
     @app_commands.describe(query="What to look for.")
     async def search(self, interaction: discord.Interaction, query: str) -> None:
         await interaction.response.defer(ephemeral=True)
-        status, payload = await linking.search(str(interaction.user.id), query)
+        status, payload = await linking.search(
+            str(interaction.user.id),
+            query,
+            str(interaction.guild_id) if interaction.guild_id else "",
+        )
         if status != "ok":
             await interaction.followup.send(
                 payload.get("message", "Something went wrong."), ephemeral=True
@@ -280,13 +303,20 @@ class MyloCog(commands.Cog, name="Mylo"):
             value = " · ".join(bits) or _AREA_LABEL.get(row["type"], row["type"])
             if row["url"]:
                 value = f"[Open]({row['url']}) · {value}"
-            embed.add_field(name=name, value=value, inline=False)
+            if row.get("thread_url"):
+                # Already announced in this server: point at the conversation.
+                value += f"\n💬 Already discussed here → [thread]({row['thread_url']})"
+            embed.add_field(name=name, value=value[:1024], inline=False)
 
         if payload.get("confidence") == "low":
             # Search never abstains, so a weak match still returns something. Saying
             # so is the difference between a useful result and a misleading one.
             embed.set_footer(text="Nothing matched closely — these are the nearest.")
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        view = _announce_view(payload["results"])
+        if view is None:
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
     # ----------------------------------------------------------------- digest
     @mylo.command(name="digest", description="Your compiled research report.")

@@ -43,6 +43,17 @@ def select_users(usernames: list[str] | None) -> list[User]:
     return [u for u in users if u.id in entitled]
 
 
+def select_departments(usernames: list[str] | None) -> list:
+    """Departments to score on a full run: those with announcements switched on and
+    a plan that covers them. A department is otherwise never scored — it has no
+    feed of its own; its slate exists only for its announcement channel."""
+    if usernames:
+        return []
+    from apps.content import announce
+
+    return [t.obj for t in announce.enabled_targets() if t.kind == "department"]
+
+
 def select_targets(usernames: list[str] | None) -> tuple[list, list]:
     """The labs and projects to also match on a full run.
 
@@ -179,6 +190,7 @@ def run_daily_opportunities(
     """
     users = select_users(usernames)
     labs, projects = select_targets(usernames)
+    departments = select_departments(usernames)
     runlog = new_run_log(settings.DAILY_SUGGESTIONS_LOG_DIR, label="opportunities")
     runlog.line(
         f"daily opportunities start: {len(users)} user(s), {len(labs)} lab(s), "
@@ -189,6 +201,7 @@ def run_daily_opportunities(
         batch = run_daily_opportunities_batch(
             users,
             labs=labs,
+            departments=departments,
             projects=projects,
             areas=("grants", "conferences", "fellowships"),
             prune=prune,
@@ -340,3 +353,22 @@ def recompute_project_profiles(project_ids: list[str] | None = None) -> dict:
                 exc_info=True,
             )
     return {"recomputed": done}
+
+
+@shared_task(name="apps.content.activate_announcements")
+def activate_announcements(kind: str, target_id: str) -> dict:
+    """Post a target's activation seed and closing-soon list (plan D5), off the
+    request that switched announcements on: the editor is a model call per item."""
+    from apps.content import announcement_setup
+
+    return announcement_setup.activate_target(kind, target_id)
+
+
+def enqueue_activation(kind: str, target_id) -> bool:
+    """Best effort: a missing broker means tonight's run does the seed instead."""
+    try:
+        activate_announcements.delay(kind, str(target_id))
+        return True
+    except Exception:
+        logger.warning("could not enqueue announcement activation", exc_info=True)
+        return False

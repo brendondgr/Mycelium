@@ -1,0 +1,94 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `scripts/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-001
+slug: dept-level-precision
+title: Precision of the department-level call detector
+status: complete
+date_started: 2026-11-05
+date_completed: 2026-11-05
+authors: [brendondgr]
+
+purpose: >
+  Before departments get their own announcement channel, measure how often the
+  department-level detector (apps/content/dept_level.py) is right when it says a
+  call is one only a department can take on (institutional selection, department
+  applicant, department-scale programme). Supports C-028.
+
+hypothesis: >
+  Exploratory. Stated expectation: the NIH activity-code rule is near-exact and
+  the free-text institutional-selection rules misfire on per-PI or per-project
+  limits. OUTCOME: both held (codes 25/25 correct; four of eighteen
+  institutional-selection firings wrong). v1 0.833 overall; five rules removed;
+  v2 1.0 on the same sample (48/48 on re-run), biased by construction.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: fd06e88
+  branch: mylo-announcements
+  entrypoint: "DATABASE_URL=…/mycelium_ann uv run --project web/backend python docs/research/experiments/EXP-2026-11-001-dept-level-precision/score.py {dump,score,check}"
+  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+config:
+  path: web/backend/apps/content/dept_level.py
+  hash: null
+data:
+  name: Mycelium opportunity corpus (dev database copy mycelium_ann)
+  version: pg_dump of the dev database taken 2026-11-05; corpus collected 2026-08/09
+  split: dev
+  n_examples: 66
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: null
+compute:
+  hardware: "Fedora 44 workstation (CPU only)"
+  wall_clock_hours: 0.05
+  estimated_cost_usd: 0
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+# llm:
+#   model: "<provider>/<model>@<version-or-date>"
+#   temperature: 0.0
+#   max_tokens: 2048
+#   prompt_files: []
+#   prompt_hash: null
+#   total_input_tokens: 0
+#   total_output_tokens: 0
+#   nondeterminism_note: >
+#     Provider-side nondeterminism remains even at temperature 0; report
+#     mean ± std over n_runs.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: precision_overall_v1
+  values:
+    precision_overall_v1: 0.8333
+    precision_institutional_selection_v1: 0.7778
+    precision_department_programme_v1: 0.8478
+    precision_department_applicant_v1: 1.0
+    firings_v1: 66
+    precision_overall_v2_same_sample: 1.0
+    firings_v2_rerun: 48
+    n_records: 3901
+baselines_compared: []
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: [C-028]
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: []

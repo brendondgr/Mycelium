@@ -70,30 +70,122 @@ no Mylo database, schema, or migration history.
      server → the calling guild is bound `ACTIVE`. The **manager authority is proven
      at issue time** (`user_can_manage_lab` on the website), so the redeemer needs no
      linked identity; the code carries the authority into Discord. Redemption is
-     lockout-guarded (shared with Path B) and one-guild-one-lab / one-lab-one-guild
-     conflict-guarded. **No billing/add-on gate applies** — Mylo is already in the
+     lockout-guarded (shared with Path B). **No billing/add-on gate applies** — Mylo is already in the
      server (a slash command only runs where the bot is present) and a manager issued
      the code, so a valid code binds it; any billing checks live on the delivery path,
      not activation. `verified_via_code_grant` stays whatever the install set it to
      (True for a prior website install).
 
+* **Departments:** `/activate-department code:<code>` does the same for a department.
+  The code comes from `POST discord/department-code?department=<id>`
+  (department-manager-gated). It binds the department only, never its labs.
+
+  **Servers, bindings, routes.** A server (`DiscordGuildLink`) records install and
+  presence only. Each lab or department activated in it is a
+  **`DiscordTargetBinding`** (lab XOR department, unique per server), and each
+  binding has its own **`DiscordChannelRoute`** rows (`deadlines`, `updates`, and the
+  opportunity forums `grants` / `fellowships` / `conferences`). A department server
+  can hold the department and several labs, and a lab can also have a server of its
+  own; binding a lab into its department's server needs the lab's own code. Each
+  binding is configured and switched off on its own
+  (`POST discord/bindings/<id>/remove`, that binding's own managers only), and
+  removing one leaves every other binding working. A kicked server silences its
+  bindings without deleting their routes. The older lab features (deadline
+  reminders, the lab digest, weekly and report re-sends) read the lab's **primary**
+  binding — its oldest live binding with the route in question — so they behave
+  exactly as they did with one server per lab. Server-scoped commands that need a
+  lab (listening, `lab_digest`) find it only when the server holds exactly one lab
+  binding; otherwise the lab must be named.
+
   **`/activate` is personal-only** (`code:` → Path B identity). **`/activate-lab`**
-  is the lab flow above. No `default_member_permissions` gates either — the code is
-  the authority. After the server is `ACTIVE`, the top-level **`/setup`** command is
-  the *post-activation* step: an interactive menu (native channel pickers + turn-off
-  buttons) to choose, or opt out of, two independent optional channels —
-  **deadline announcements** (`announcement_channel_id`) and **daily/weekly updates**
-  (`updates_channel_id`). Each selection is preflighted (post-a-confirmation) before
-  binding. `/setup` requires the server to be `ACTIVE` **and** the caller to be a
-  *linked* lab manager (config actions still terminate in `user_can_manage_lab`).
+  and **`/activate-department`** are the server flows above. No
+  `default_member_permissions` gates them — the code is the authority. After a
+  binding is `ACTIVE`, the top-level **`/setup`** command is the *post-activation*
+  step for one binding: an interactive menu (native channel pickers + turn-off
+  buttons) to choose, or opt out of, two independent optional channels — **deadline
+  announcements** (route `deadlines`) and **daily/weekly updates** (route
+  `updates`). In a server with several bindings it first asks which lab or
+  department to configure. Each selection is preflighted (post-a-confirmation)
+  before binding. `/setup` requires an `ACTIVE` binding **and** the caller to be a
+  *linked* manager of that binding's lab or department (the gate's `binding_id`
+  check terminates in `user_can_manage_lab` / `user_can_manage_department`).
   The **Lab settings** card shows the live sync state (`discord/guild/status`), and
   the profile card's **Test** button re-runs the DM reachability probe on demand
   (`discord/probe`).
 
 **Authorization invariant:** a Discord identity is authentication, never
 authorization. Every action terminates in the existing
-`apps.accounts.permissions` (`user_can_manage_lab`). Guild membership, guild
-ownership, and Discord roles grant nothing.
+`apps.accounts.permissions` (`user_can_manage_lab`, `user_can_manage_department`).
+Guild membership, guild ownership, and Discord roles grant nothing.
+
+## Opportunity announcements
+
+One forum thread per newly fitting grant, fellowship or conference, in each server
+binding of a lab or a department that routes that kind. Behind
+`OPPORTUNITY_ANNOUNCEMENTS_ENABLED` (off), the `OPPORTUNITY_ANNOUNCEMENTS` plan
+feature (Lab and Canopy) and the `BOT_SERVER` add-on.
+
+* **Engine** (`apps/content/announce*.py`): slate entrants only, never twice; the
+  first run seeds the six best open items (kinds interleaved) and passes over the
+  rest for good; a bounded editor writes each post behind a verifier (no digits,
+  only offered people) with a template fallback.
+* **Delivery** (`apps/content/discord_announcements.py`) produces outbox rows in
+  two thread modes: `forum_thread` (start a thread; its id lands on
+  `AnnouncementPost.thread_id`) and `thread_update` (one retry-safe unit: patch the
+  thread, edit its opening post, reply, then an optional `after_patch`). A changed
+  call **updates its own thread in place** — unarchived, renamed `[🚨 Update <Mon
+  D>] <title>`, tagged *Updated*, opening post edited with *What changed*, and a
+  reply tagging exactly the people following it — at most once a thread per night.
+  Forums Mylo creates sort by recent activity, so that reply moves the thread to
+  the top. Finished calls are tagged *Closed* and archived. The closing-soon list is
+  a new thread each morning in `#grants` and `#fellowships`; yesterday's is
+  deleted, and a day with nothing closing posts nothing and still takes it down.
+* **Buttons** (`mylo/bot/cogs/announcements.py`, persistent ids
+  `ann:<post>:<action>` handled by an `on_interaction` listener) →
+  `apps/content/announcement_actions.py`, each through the gate's `ann_follow` /
+  `ann_not_for_us` actions against the post's own lab or department.
+  *Interested* reacts, saves, sets the target's default nudge (2 weeks, a tag in the
+  thread) and DMs the full details with *Change reminder* / *Open the thread* /
+  *Stop following*. *Remind me* is an ephemeral picker (2 days … 2 months, 2 weeks
+  preselected, past choices hidden, up to five): by DM it is an ordinary
+  `ReminderSubscription` (so it follows a moved date and shows on the Reminders
+  page); as a thread tag it is an `AnnouncementNudge`, whose fire date is computed
+  nightly from the current deadline. One tag per person per night, and a nudge
+  whose moment has already passed is never sent late. *Not for us* is managers
+  only and keeps the reason.
+* **`/setup` step** (`📣 Opportunity announcements…` in the `/setup` menu →
+  `apps/content/announcement_setup.py`) configures one binding: **Create them for
+  me** (a category and three tagged forums), or pick existing forums (each proven
+  by starting and deleting a thread), who can start posts (everyone, managers only,
+  or chosen roles — replies stay open to everyone), and **Turn on**, which runs the
+  activation seed and the closing-soon list straight away.
+* **Search links** (`apps/content/announcement_links.py`): `/mylo search` passes
+  the server it ran in; a result announced in one of that server's bindings shows
+  "💬 Already discussed here → thread", and a manager of a binding there gets
+  "📣 Announce to …" (`annx:<binding>:<content>`, gate action `ann_manual`), which
+  posts once and is removed from the result. A DM, or a server without
+  announcements, shows neither. The web search card's `discord` list does the same
+  for every server the reader's labs and departments are bound in. A thread deleted
+  by hand is marked `deleted_at` — by the gateway's raw thread-delete event, by a
+  send that finds it gone, or by the nightly `verify_threads` backstop — and is
+  never linked again; announcing it again starts a fresh thread.
+* **Permissions Mylo needs:** Send Messages and Embed Links in the forums; Manage
+  Threads to rename, retag, archive and unarchive its threads; Manage Channels only
+  for **Create them for me** and for adding its tags to a forum you chose; Manage
+  Roles only for the "who can start posts" rules.
+
+* **Departments** hear only about calls a lab could not take on alone
+  (`apps/content/dept_level.py`: institutional selection, department applicant,
+  department-scale programme). A department has one `#dept-opportunities` forum
+  routing all three kinds, tagged by kind and reason; its post adds *Why it's here*
+  (the reason and the quoted sentence) and names *Labs that could lead*
+  (`lab_fit.py`), never people, and never tags anyone. A department fellowship
+  shows counts only; each member who may be eligible gets one DM. A department is
+  scored only while its announcements are on.
+* **Measurement** (`manage.py announcement_metrics`): Interested, Remind me and Not
+  for us per post, web link clicks by surface (Discord reports no link-button
+  clicks), route health, and the department reason mix and lab-fit scores. Record
+  a run as an experiment before changing any threshold (EXP-2026-11-002).
 
 ## Developer-portal setup (one time)
 
@@ -226,8 +318,8 @@ posted; forged `guild_id` on the redirect → ignored. Manager clicks **Activate
 in the server → guild bound `ACTIVE` (the pending install's row flips); no linked
 identity **and no billing add-on** required — the bot is already present and a manager
 issued the code. Reused/expired code → rejected; bad code → rejected + counts to
-lockout; 6 bad attempts → lockout; guild already bound to another lab, or lab to
-another guild → `CONFLICT`, not consumed; plaintext code in zero logs / zero DB
+lockout; 6 bad attempts → lockout; a server that already holds another lab or a department gains a second
+binding, and the same lab redeemed in a second server gains one there (no conflict); plaintext code in zero logs / zero DB
 columns; bot kicked → sweep sets `KICKED`. **Post-activation `/setup`** — before activation → "run
 `/activate-lab` first"; linked non-manager → denied; a linked admin/PI sees the menu,
 picks a deadline channel and an updates channel independently (each preflighted

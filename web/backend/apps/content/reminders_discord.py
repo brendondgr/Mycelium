@@ -372,7 +372,7 @@ def list_guild_members(guild_id: str) -> list[dict]:
 
 
 def preflight_channel(
-    channel_id: str, *, purpose: str = "deadline reminders"
+    channel_id: str, *, purpose: str = "deadline reminders", owner: str = "lab"
 ) -> SendOutcome:
     """Verify a channel by posting a visible confirmation (the real proof).
 
@@ -389,7 +389,7 @@ def preflight_channel(
         return SendOutcome(ok=False, unreachable=True, not_configured=True)
     embed = {
         "title": "Mylo is set up here ✅",
-        "description": f"This channel will receive this lab's {purpose}.",
+        "description": f"This channel will receive this {owner}'s {purpose}.",
         "color": BRAND_COLOR,
     }
     try:

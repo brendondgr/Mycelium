@@ -27,8 +27,9 @@ from apps.content.daily_report_send import eligible_recipients
 from apps.content.lab_digest import eligible_labs
 from apps.content.models import ContentItem, RelevanceScore
 from apps.content.tests.entitle import entitle_user
-from apps.integrations.models import DiscordGuildLink, DiscordOutboxMessage
+from apps.integrations.models import DiscordOutboxMessage
 from apps.integrations.services import resolve
+from apps.integrations.testing import bind
 from apps.integrations.tests.base import discord_test_settings, grant_bot_server
 
 MONDAY = date(2026, 9, 21)
@@ -216,12 +217,7 @@ def test_a_weekly_cadence_lab_channel_is_quiet_until_monday(db) -> None:
             lab=lab, defaults={"cadence": WatchCadence.WEEKLY}
         )
         grant_bot_server(lab)
-        DiscordGuildLink.objects.create(
-            lab=lab,
-            guild_id="g-pulse",
-            state=DiscordGuildLink.State.ACTIVE,
-            updates_channel_id="chan-1",
-        )
+        bind(lab=lab, guild_id="g-pulse", updates="chan-1")
         lab.refresh_from_db()
 
         assert eligible_labs([lab], on=TUESDAY) == []

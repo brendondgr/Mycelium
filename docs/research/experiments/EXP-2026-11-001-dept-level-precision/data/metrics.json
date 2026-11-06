@@ -1,0 +1,180 @@
+{
+  "population_records": 3901,
+  "judgments": "agent-labelled (Claude), not human",
+  "precision": {
+    "v1": {
+      "department_applicant": {
+        "fired": 2,
+        "correct": 2,
+        "precision": 1.0
+      },
+      "department_programme": {
+        "fired": 46,
+        "correct": 39,
+        "precision": 0.8478
+      },
+      "institutional_selection": {
+        "fired": 18,
+        "correct": 14,
+        "precision": 0.7778
+      },
+      "overall": {
+        "fired": 66,
+        "correct": 55,
+        "precision": 0.8333
+      }
+    },
+    "v2": {
+      "department_applicant": {
+        "fired": 2,
+        "correct": 2,
+        "precision": 1.0
+      },
+      "department_programme": {
+        "fired": 32,
+        "correct": 32,
+        "precision": 1.0
+      },
+      "institutional_selection": {
+        "fired": 13,
+        "correct": 13,
+        "precision": 1.0
+      },
+      "overall": {
+        "fired": 47,
+        "correct": 47,
+        "precision": 1.0
+      }
+    }
+  },
+  "per_rule_v1": {
+    "code_p30": {
+      "fired": 3,
+      "correct": 3,
+      "precision": 1.0
+    },
+    "code_p50": {
+      "fired": 1,
+      "correct": 1,
+      "precision": 1.0
+    },
+    "code_r25": {
+      "fired": 12,
+      "correct": 12,
+      "precision": 1.0
+    },
+    "code_s10": {
+      "fired": 3,
+      "correct": 3,
+      "precision": 1.0
+    },
+    "code_t32": {
+      "fired": 7,
+      "correct": 7,
+      "precision": 1.0
+    },
+    "code_t34": {
+      "fired": 1,
+      "correct": 1,
+      "precision": 1.0
+    },
+    "code_t35": {
+      "fired": 1,
+      "correct": 1,
+      "precision": 1.0
+    },
+    "code_u54": {
+      "fired": 1,
+      "correct": 1,
+      "precision": 1.0
+    },
+    "core_facility": {
+      "fired": 8,
+      "correct": 5,
+      "precision": 0.625
+    },
+    "institutional_limits": {
+      "fired": 1,
+      "correct": 1,
+      "precision": 1.0
+    },
+    "institutional_training": {
+      "fired": 5,
+      "correct": 2,
+      "precision": 0.4
+    },
+    "internal_competition": {
+      "fired": 1,
+      "correct": 1,
+      "precision": 1.0
+    },
+    "limit_on_number": {
+      "fired": 3,
+      "correct": 0,
+      "precision": 0.0
+    },
+    "limited_submission": {
+      "fired": 1,
+      "correct": 1,
+      "precision": 1.0
+    },
+    "no_more_than": {
+      "fired": 2,
+      "correct": 1,
+      "precision": 0.5
+    },
+    "nominated_by": {
+      "fired": 3,
+      "correct": 3,
+      "precision": 1.0
+    },
+    "org_may_submit": {
+      "fired": 7,
+      "correct": 7,
+      "precision": 1.0
+    },
+    "red_program": {
+      "fired": 2,
+      "correct": 2,
+      "precision": 1.0
+    },
+    "research_traineeship": {
+      "fired": 1,
+      "correct": 1,
+      "precision": 1.0
+    },
+    "reu_site": {
+      "fired": 1,
+      "correct": 1,
+      "precision": 1.0
+    },
+    "shared_instrumentation": {
+      "fired": 1,
+      "correct": 1,
+      "precision": 1.0
+    },
+    "stc": {
+      "fired": 1,
+      "correct": 0,
+      "precision": 0.0
+    }
+  },
+  "removed_rules": [
+    "core_facility",
+    "institutional_training",
+    "limit_on_number",
+    "no_more_than",
+    "stc"
+  ],
+  "labels": {
+    "correct": 55,
+    "incorrect": 8,
+    "unclear": 3
+  },
+  "v2_detector_rerun": {
+    "fired": 48,
+    "unlabelled": 0,
+    "labelled_wrong": 0,
+    "precision": 1.0
+  }
+}

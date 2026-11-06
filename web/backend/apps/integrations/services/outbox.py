@@ -169,6 +169,10 @@ def deliver_one(message) -> Classification:
         if not channel_id:
             return Classification(Verdict.PERMANENT, Reason.NO_ACCESS)
 
+    mode = getattr(message, "mode", "") or resolve.OUTBOX_MODE.MESSAGE
+    if mode != resolve.OUTBOX_MODE.MESSAGE:
+        return _deliver_thread_mode(message, channel_id, mode)
+
     payload = _payload(message)
     try:
         if message.attachment_path:
@@ -198,6 +202,81 @@ def deliver_one(message) -> Classification:
     if verdict.ok:
         message.discord_message_id = str(resp.json.get("id") or "")
     return verdict
+
+
+def _deliver_thread_mode(message, channel_id: str, mode: str) -> Classification:
+    """Forum threads, thread updates and channel deletes (opportunity
+    announcements). Each step's verdict is classified like a message's; the first
+    step that fails decides the row's fate."""
+    extra = message.extra or {}
+
+    def verdict_of(resp):
+        return classify(
+            status=resp.status,
+            error_code=discord_api._err_code(resp.json),
+            retry_after=resp.retry_after,
+        )
+
+    try:
+        if mode == resolve.OUTBOX_MODE.FORUM_THREAD:
+            resp = discord_api.create_forum_thread(
+                channel_id,
+                name=extra.get("name") or "Opportunity",
+                applied_tags=extra.get("applied_tags") or [],
+                content=message.content or "",
+                embed=message.embed or None,
+                components=message.components or None,
+                allowed_mentions=message.allowed_mentions or None,
+            )
+            verdict = verdict_of(resp)
+            if verdict.ok:
+                message.discord_message_id = str(resp.json.get("id") or "")
+            return verdict
+
+        if mode == resolve.OUTBOX_MODE.DELETE_CHANNEL:
+            resp = discord_api.delete_channel(channel_id)
+            if resp.status == 404:  # already gone is what we wanted
+                return Classification(Verdict.OK)
+            return verdict_of(resp)
+
+        # THREAD_UPDATE
+        if extra.get("patch"):
+            verdict = verdict_of(discord_api.modify_channel(channel_id, extra["patch"]))
+            if not verdict.ok:
+                return verdict
+        edit = extra.get("edit")
+        if edit:
+            verdict = verdict_of(
+                discord_api.edit_message(
+                    channel_id,
+                    str(edit.get("message_id") or channel_id),
+                    content=edit.get("content"),
+                    embed=edit.get("embed"),
+                    components=edit.get("components"),
+                )
+            )
+            if not verdict.ok:
+                return verdict
+        if message.content or message.embed:
+            resp = discord_api.create_message(
+                channel_id,
+                content=message.content or "",
+                embed=message.embed or None,
+                allowed_mentions=message.allowed_mentions or None,
+                nonce=message.nonce,
+            )
+            verdict = verdict_of(resp)
+            if not verdict.ok:
+                return verdict
+            message.discord_message_id = str(resp.json.get("id") or "")
+        if extra.get("after_patch"):
+            # e.g. archive *after* the edit: an archived thread refuses edits.
+            return verdict_of(
+                discord_api.modify_channel(channel_id, extra["after_patch"])
+            )
+        return Classification(Verdict.OK)
+    except discord_api.DiscordHTTPError as exc:
+        return classify_exception(exc)
 
 
 def _payload(message) -> dict:
@@ -354,13 +433,12 @@ def _on_permanent(message, verdict: Classification) -> None:
         Reason.CHANNEL_GONE,
         Reason.GUILD_GONE,
     )
-    if verdict.reason in channel_failures and message.lab_id:
-        # The daily summary and the report chunks that follow it share one binding,
-        # so a failure in either says the same thing about the updates channel.
-        updates_kinds = ("lab_digest", "lab_report")
-        kind = "updates" if message.kind in updates_kinds else "deadlines"
-        resolve.set_channel_health_for_lab(
-            message.lab, kind=kind, ok=False, error_code=verdict.error_code
+    if verdict.reason in channel_failures and message.channel_id:
+        # Every route posting to this channel learns it at once: the daily summary
+        # and the report chunks that follow it share one updates route, and a lab
+        # bound in two servers never shares a channel id across them.
+        resolve.set_channel_health_by_channel(
+            message.channel_id, ok=False, error_code=verdict.error_code
         )
 
 

@@ -1,6 +1,6 @@
 """Discord integration data model — all in Mycelium's Postgres.
 
-Three tables, one per link concern:
+One table per link concern:
 
 * ``DiscordIdentity``   — a Mycelium user's Discord identity (Path A/B). An
   *authentication* artifact only; it confers no authorization (see the plan §7 and
@@ -11,8 +11,12 @@ Three tables, one per link concern:
   code a lab manager issues on the website and redeems in a guild via
   ``/activate-lab`` to bind *that guild* to *that lab*. The manager authority lives
   at issuance; the code carries it into Discord (no linked identity required).
-* ``DiscordGuildLink``  — a Discord server bound to a Lab (Path C). One guild ↔ one
-  lab, gated on real Mycelium lab authority.
+* ``DiscordDepartmentActivationCode`` — the same, for a department
+  (``/activate-department``).
+* ``DiscordGuildLink``  — a Discord server Mylo is in (install and presence only).
+* ``DiscordTargetBinding`` — one lab or department activated in one server. A server
+  holds many; a lab or department can be bound in many servers.
+* ``DiscordChannelRoute`` — where one binding posts one kind of thing.
 
 Auditing reuses ``apps.accounts.services.record_audit_event`` — no table here.
 """
@@ -148,19 +152,57 @@ class DiscordLabActivationCode(models.Model):
         return f"DiscordLabActivationCode(lab={self.lab_id}, {state})"
 
 
+class DiscordDepartmentActivationCode(models.Model):
+    """The department twin of :class:`DiscordLabActivationCode`.
+
+    A department manager issues it on the website; ``/activate-department code:``
+    redeems it in a guild and binds *that guild* to *that department*. The authority
+    comes from the department, never from the server, so a department cannot bind
+    its labs and a lab cannot bind its department.
+    """
+
+    department = models.ForeignKey(
+        "accounts.Department",
+        on_delete=models.CASCADE,
+        related_name="discord_department_codes",
+    )
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="discord_department_codes_issued",
+    )
+    code_hash = models.CharField(max_length=64, db_index=True)  # sha256 hex
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    consumed_by_discord_id = models.CharField(max_length=32, blank=True)
+    consumed_guild_id = models.CharField(max_length=32, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["code_hash", "expires_at"])]
+
+    def __str__(self) -> str:
+        state = "consumed" if self.consumed_at else "live"
+        dept = self.department_id
+        return f"DiscordDepartmentActivationCode(department={dept}, {state})"
+
+
 class DiscordGuildLink(models.Model):
-    """A Discord server bound to a Lab. One guild ↔ one lab."""
+    """A Discord server Mylo is in: install, verification, and presence only.
+
+    It no longer names a lab. What the server is *for* lives on its
+    :class:`DiscordTargetBinding` rows — one per lab or department activated in it —
+    so a department server can hold the department and several labs while those
+    labs keep servers of their own.
+    """
 
     class State(models.TextChoices):
         PENDING_SETUP = "pending_setup", "Pending setup"  # installed, unclaimed
-        ACTIVE = "active", "Active"  # confirmed by a lab manager
+        ACTIVE = "active", "Active"  # at least one binding was confirmed
         KICKED = "kicked", "Kicked"
 
-    lab = models.OneToOneField(
-        "accounts.Lab",
-        on_delete=models.CASCADE,
-        related_name="discord_link",
-    )
     guild_id = models.CharField(max_length=32, unique=True, db_index=True)
     guild_name_cache = models.CharField(max_length=100, blank=True)
     installed_by = models.ForeignKey(
@@ -177,34 +219,159 @@ class DiscordGuildLink(models.Model):
     state = models.CharField(
         max_length=16, choices=State.choices, default=State.PENDING_SETUP
     )
-    # Deadline-announcements channel for lab reminders (Discord reminders R4). Bound
-    # and channel-scope-verified at `/setup` by posting a real confirmation (Discord
-    # computes channel overwrites for us); blank until a channel is bound. Optional:
-    # a blank value is an explicit opt-out of deadline announcements.
-    announcement_channel_id = models.CharField(max_length=32, blank=True, default="")
-    channel_verified_at = models.DateTimeField(null=True, blank=True)
-    # Daily/weekly-updates channel — an independent, optional `/setup` binding (blank
-    # = opt-out). Config only for now; recurring delivery to it is a follow-up.
-    updates_channel_id = models.CharField(max_length=32, blank=True, default="")
-    updates_channel_verified_at = models.DateTimeField(null=True, blank=True)
-    # Live reachability of each bound channel, mirroring DiscordIdentity.dm_ok:
-    # null = not checked, True = Mylo can post there, False = it cannot (deleted,
-    # made private, or an overwrite denies posting). Written by the reconcile sweep,
-    # by a permanent outbox failure, and by a gateway channel-delete event — three
-    # sources for one fact, because none of them alone is reliable.
-    announcement_channel_ok = models.BooleanField(null=True, blank=True)
-    updates_channel_ok = models.BooleanField(null=True, blank=True)
-    channel_checked_at = models.DateTimeField(null=True, blank=True)
     last_error_code = models.IntegerField(null=True, blank=True)
-    # Whether the lab's Mylo add-on was live at the last check. A lapse stops
-    # scheduled delivery and nothing else — see `lab_digest.eligible_labs`.
-    addon_ok = models.BooleanField(null=True, blank=True)
     installed_at = models.DateTimeField(auto_now_add=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
-        return f"DiscordGuildLink(lab={self.lab_id}, state={self.state})"
+        return f"DiscordGuildLink(guild={self.guild_id}, state={self.state})"
+
+
+class DiscordTargetBinding(models.Model):
+    """One lab **or** one department, activated in one server.
+
+    A guild holds many bindings and a target can be bound in many guilds; each is
+    set up, configured and switched off on its own. Authority to create one comes
+    from that target's own activation code, so binding a lab into its department's
+    server needs the lab's code.
+    """
+
+    class State(models.TextChoices):
+        # Installed via OAuth, not yet claimed by a manager.
+        PENDING_SETUP = "pending_setup", "Pending setup"
+        ACTIVE = "active", "Active"
+        REMOVED = "removed", "Removed"  # switched off by a manager
+
+    guild = models.ForeignKey(
+        DiscordGuildLink, on_delete=models.CASCADE, related_name="bindings"
+    )
+    lab = models.ForeignKey(
+        "accounts.Lab",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="discord_bindings",
+    )
+    department = models.ForeignKey(
+        "accounts.Department",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="discord_bindings",
+    )
+    state = models.CharField(
+        max_length=16, choices=State.choices, default=State.PENDING_SETUP
+    )
+    activated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="discord_bindings_activated",
+    )
+    activated_at = models.DateTimeField(null=True, blank=True)
+    # Whether the target's Mylo add-on was live at the last check. A lapse stops
+    # scheduled delivery to this binding and nothing else.
+    addon_ok = models.BooleanField(null=True, blank=True)
+    channel_checked_at = models.DateTimeField(null=True, blank=True)
+    last_error_code = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["activated_at", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(lab__isnull=False, department__isnull=True)
+                    | models.Q(lab__isnull=True, department__isnull=False)
+                ),
+                name="discord_binding_one_target",
+            ),
+            models.UniqueConstraint(
+                fields=["guild", "lab"],
+                condition=models.Q(lab__isnull=False),
+                name="discord_binding_unique_guild_lab",
+            ),
+            models.UniqueConstraint(
+                fields=["guild", "department"],
+                condition=models.Q(department__isnull=False),
+                name="discord_binding_unique_guild_department",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        target = (
+            f"lab={self.lab_id}" if self.lab_id else f"department={self.department_id}"
+        )
+        return f"DiscordTargetBinding(guild={self.guild_id}, {target}, {self.state})"
+
+    @property
+    def target(self):
+        return self.lab if self.lab_id else self.department
+
+    @property
+    def target_kind(self) -> str:
+        return "lab" if self.lab_id else "department"
+
+
+class DiscordChannelRoute(models.Model):
+    """Where one binding posts one kind of thing.
+
+    ``deadlines`` and ``updates`` are the two text channels `/setup` has always
+    configured; ``grants``, ``fellowships`` and ``conferences`` are the forums
+    opportunity announcements post into. Blank ``channel_id`` never exists — an
+    unbound purpose has no row.
+    """
+
+    class Purpose(models.TextChoices):
+        DEADLINES = "deadlines", "Deadline announcements"
+        UPDATES = "updates", "Daily/weekly updates"
+        GRANTS = "grants", "Grants"
+        FELLOWSHIPS = "fellowships", "Fellowships"
+        CONFERENCES = "conferences", "Conferences"
+
+    class PosterPolicy(models.TextChoices):
+        EVERYONE = "everyone", "Everyone"
+        MANAGERS = "managers", "Managers only"
+        ROLES = "roles", "Chosen roles"
+
+    binding = models.ForeignKey(
+        DiscordTargetBinding, on_delete=models.CASCADE, related_name="routes"
+    )
+    purpose = models.CharField(max_length=16, choices=Purpose.choices)
+    channel_id = models.CharField(max_length=32)
+    # The channel's name when Mylo last saw it, for "#grants" links on the web.
+    channel_name = models.CharField(max_length=100, blank=True, default="")
+    # Discord channel type: 0 text, 15 forum. Null when not read yet.
+    channel_type = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Forum tag name → id, as Mylo last read or created them.
+    forum_tag_ids = models.JSONField(default=dict, blank=True)
+    created_by_mylo = models.BooleanField(default=False)
+    poster_policy = models.CharField(
+        max_length=16, choices=PosterPolicy.choices, default=PosterPolicy.EVERYONE
+    )
+    poster_role_ids = models.JSONField(default=list, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    # Live reachability: null = not checked, True = Mylo can post, False = it
+    # cannot. Written by the reconcile sweep, a permanent outbox failure, and a
+    # gateway channel-delete event — three sources for one fact.
+    ok = models.BooleanField(null=True, blank=True)
+    checked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["binding", "purpose"], name="discord_route_unique_purpose"
+            )
+        ]
+
+    def __str__(self) -> str:
+        where = f"{self.purpose} → {self.channel_id}"
+        return f"DiscordChannelRoute({self.binding_id}, {where})"
 
 
 class DiscordOutboxMessage(models.Model):
@@ -243,9 +410,23 @@ class DiscordOutboxMessage(models.Model):
         DM = "dm", "Direct message"
         CHANNEL = "channel", "Channel"
 
+    class Mode(models.TextChoices):
+        MESSAGE = "message", "Post a message"
+        # Start a thread in the forum ``channel_id``; ``extra`` holds ``name`` and
+        # ``applied_tags``. The thread's id lands in ``discord_message_id``.
+        FORUM_THREAD = "forum_thread", "Start a forum thread"
+        # Change an existing thread in one retry-safe unit, in order: ``patch``
+        # the thread (unarchive, rename, tags), ``edit`` its opening post, then
+        # ``reply`` (``content``/``embed``/``allowed_mentions``) if there is one.
+        # Every step but the reply is idempotent, so a retry is harmless.
+        THREAD_UPDATE = "thread_update", "Update a thread"
+        DELETE_CHANNEL = "delete_channel", "Delete a channel"
+
     dedupe_key = models.CharField(max_length=200, unique=True)
     kind = models.CharField(max_length=40)  # reminder | daily_report | lab_digest | …
     target_type = models.CharField(max_length=16, choices=Target.choices)
+    mode = models.CharField(max_length=16, choices=Mode.choices, default=Mode.MESSAGE)
+    extra = models.JSONField(null=True, blank=True)
     # DM: whose identity to resolve *at send time* — a cached dm_channel_id can go
     # stale between enqueue and delivery, so the channel is never frozen here.
     recipient_user = models.ForeignKey(
@@ -449,6 +630,7 @@ class SlackOutboxMessage(models.Model):
     class Target(models.TextChoices):
         DM = "dm", "Direct message"
         CHANNEL = "channel", "Channel"
+
 
     dedupe_key = models.CharField(max_length=200, unique=True)
     kind = models.CharField(max_length=40)

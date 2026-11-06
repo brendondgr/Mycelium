@@ -72,6 +72,9 @@ class Feature:
     TEAM_WORKSPACE = "team_workspace"
     MEMBER_PROFILES = "member_profiles"
     SHARED_EVIDENCE_GRAPH = "shared_evidence_graph"
+    # One Discord thread per newly fitting grant, fellowship or conference. Posting
+    # also needs BOT_SERVER, the add-on that puts Mylo in the server.
+    OPPORTUNITY_ANNOUNCEMENTS = "opportunity_announcements"
 
     # The department line — Canopy only.
     DEPARTMENT_ROUTING = "department_routing"
@@ -112,6 +115,7 @@ _LAB = _SPORE | {
     Feature.TEAM_WORKSPACE,
     Feature.MEMBER_PROFILES,
     Feature.SHARED_EVIDENCE_GRAPH,
+    Feature.OPPORTUNITY_ANNOUNCEMENTS,
 }
 # Canopy adds department scope plus the two Canopy-only power features.
 _CANOPY = _LAB | {
@@ -491,10 +495,13 @@ def bot_server_addon() -> AddOn | None:
 
 
 def _lab_subscriptions(lab) -> QuerySet[Subscription]:
-    """Active subscriptions covering a lab: its own plan or its department's."""
+    """Active subscriptions covering a lab: its own plan, or its department's when
+    the department head has opted the lab into that plan
+    (``Lab.department_plan_included``). Seat billing honours the same flag, so a
+    department never pays for a capability in a lab it excluded."""
     query = Q(scope_lab=lab)
     dept_id = getattr(lab, "department_id", None)
-    if dept_id:
+    if dept_id and getattr(lab, "department_plan_included", False):
         query |= Q(scope_department_id=dept_id)
     return (
         Subscription.objects.filter(status=Subscription.Status.ACTIVE)

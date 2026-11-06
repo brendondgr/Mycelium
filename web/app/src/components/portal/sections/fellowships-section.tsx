@@ -29,6 +29,7 @@ import {
   type FellowshipFilterState,
 } from "@/components/portal/sections/fellowship-filters";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
+import { HeldBack, heldReason } from "@/components/portal/primitives/held-back";
 import { HiddenByFilters } from "@/components/portal/primitives/hidden-by-filters";
 import {
   FeedSearchBar,
@@ -37,6 +38,7 @@ import {
 } from "@/components/portal/primitives/feed-search-bar";
 import { usePortal } from "@/components/portal/portal-context";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
+import { UsabilityStrip } from "@/components/portal/primitives/usability-strip";
 import { useFellowships, useLabRecommendations } from "@/lib/portal/hooks";
 import {
   revealDelay,
@@ -374,7 +376,16 @@ export function FellowshipRow({
         </div>
       ) : null}
 
-      <RecommendedFor members={recommendedFor} />
+      {item.usability ? (
+        <UsabilityStrip
+          usability={item.usability}
+          people={recommendedFor?.map((m) => ({ name: m.name, why: m.reason }))}
+          announced={item.announcement?.discord}
+          fallbackChannel="fellowships"
+        />
+      ) : (
+        <RecommendedFor members={recommendedFor} />
+      )}
 
       <SourceRow
         license={item.license}
@@ -641,17 +652,27 @@ function FellowshipsFeed({
     [scoped],
   );
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const visible = React.useMemo(
+  const filtered = React.useMemo(
     () => filterAndSortFellowships(scoped, filters, today),
     [scoped, filters, today],
+  );
+  // On a lab feed, what fails a hard check moves to "Mylo held back".
+  const labFeed = recommendedFor !== undefined;
+  const held = React.useMemo(
+    () => (labFeed ? filtered.filter((x) => heldReason(x.usability)) : []),
+    [filtered, labFeed],
+  );
+  const visible = React.useMemo(
+    () => (held.length ? filtered.filter((x) => !heldReason(x.usability)) : filtered),
+    [filtered, held],
   );
 
   // What the rail's facets took out of the scoped feed — see `HiddenByFilters`.
   const hidden = React.useMemo(() => {
-    if (visible.length === scoped.length) return [];
-    const shown = new Set(visible.map((item) => item.content_id));
+    if (filtered.length === scoped.length) return [];
+    const shown = new Set(filtered.map((item) => item.content_id));
     return scoped.filter((item) => !shown.has(item.content_id));
-  }, [scoped, visible]);
+  }, [scoped, filtered]);
 
   const clearAll = () => {
     setFilters(DEFAULT_FELLOWSHIP_FILTERS);
@@ -797,9 +818,14 @@ function FellowshipsFeed({
 
           {/* Outside the branch above on purpose — see the conferences feed. */}
           {!isLoading && !isError ? (
-            <HiddenByFilters count={hidden.length} noun="fellowships">
-              <FellowshipList items={hidden} recommendedFor={recommendedFor} />
-            </HiddenByFilters>
+            <>
+              <HeldBack count={held.length} noun="fellowships">
+                <FellowshipList items={held} recommendedFor={recommendedFor} />
+              </HeldBack>
+              <HiddenByFilters count={hidden.length} noun="fellowships">
+                <FellowshipList items={hidden} recommendedFor={recommendedFor} />
+              </HiddenByFilters>
+            </>
           ) : null}
         </div>
       </div>

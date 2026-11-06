@@ -7,12 +7,13 @@
  * answer lives here once and both render it.
  *
  * The department case is the reason this is a model rather than a pair of JSX
- * branches. A department has **no research feeds**: `apps/content/targets.py`
- * builds `user`, `lab` and `project` match targets and no department one, and
- * every feed route scopes on `?lab=`. So Papers / Grants / Fellowships /
- * Conferences are absent from a department's navigation rather than present and
- * permanently empty — an entry that always shows nothing teaches people the
- * product is broken.
+ * branches. A department has **no research feeds**: every feed route scopes on
+ * `?lab=`, so Papers / Grants / Fellowships / Conferences are absent from a
+ * department's navigation rather than present and permanently empty — an entry
+ * that always shows nothing teaches people the product is broken. What it has
+ * instead is one **Opportunities** page: the calls only a department can take on
+ * (`apps/content/dept_level.py`), scored for it only while its announcements are
+ * on.
  */
 
 import type { SectionKey } from "@/lib/portal/routes";
@@ -155,6 +156,7 @@ export function navGroupsFor(ctx: NavContext): NavGroup[] {
       label: "Workspace",
       items: [
         { key: "overview", label: "Overview", icon: "overview" },
+        { key: "deptOpportunities", label: "Opportunities", icon: "grants" },
         { key: "labs", label: "Labs", icon: "labs" },
         { key: "members", label: "Members", icon: "members" },
         ...(manage

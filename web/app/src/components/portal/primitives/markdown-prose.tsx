@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { ArrowRightIcon } from "@/components/portal/icons";
+import { DiscordMark, isDiscordUrl } from "@/components/portal/primitives/discord-link";
 import type { Verdict } from "@/lib/portal/types";
 import {
   ReportEntry,
@@ -81,14 +82,21 @@ function renderInline(rawText: string, keyBase: string): React.ReactNode[] {
         );
       }
     } else if (match[3] !== undefined) {
+      // A link into Discord (the report's "announced → #grants" line) carries
+      // Discord's mark and says where it opens (plan D17).
+      const discord = isDiscordUrl(match[4]);
       nodes.push(
         <a
           key={`${keyBase}-a${i}`}
           href={match[4]}
           target="_blank"
           rel="noopener noreferrer"
-          className={LINK_CLASS}
+          className={cn(LINK_CLASS, discord && "inline-flex items-center gap-1 align-middle")}
+          aria-label={
+            discord ? `Open ${match[3]} in Discord (new tab)` : undefined
+          }
         >
+          {discord ? <DiscordMark size={14} /> : null}
           {renderInline(match[3], `${keyBase}-a${i}`)}
         </a>,
       );

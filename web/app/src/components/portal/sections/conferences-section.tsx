@@ -35,6 +35,7 @@ import {
   type ConferenceFilterState,
 } from "@/components/portal/sections/conference-filters";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
+import { HeldBack, heldReason } from "@/components/portal/primitives/held-back";
 import { HiddenByFilters } from "@/components/portal/primitives/hidden-by-filters";
 import {
   FeedSearchBar,
@@ -52,6 +53,7 @@ import {
   useInfiniteReveal,
 } from "@/lib/portal/use-infinite-reveal";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
+import { UsabilityStrip } from "@/components/portal/primitives/usability-strip";
 import type {
   ConferenceOpportunity,
   ConferenceRanking,
@@ -587,7 +589,16 @@ export function ConferenceCard({
         </div>
       ) : null}
 
-      <RecommendedFor members={recommendedFor} />
+      {conf.usability ? (
+        <UsabilityStrip
+          usability={conf.usability}
+          people={recommendedFor?.map((m) => ({ name: m.name, why: m.reason }))}
+          announced={conf.announcement?.discord}
+          fallbackChannel="conferences"
+        />
+      ) : (
+        <RecommendedFor members={recommendedFor} />
+      )}
 
       <SourceRow
         license={conf.license}
@@ -734,18 +745,28 @@ function ConferencesFeed({
     [scoped],
   );
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const visible = React.useMemo(
+  const filtered = React.useMemo(
     () => filterAndSortConferences(scoped, filters, today),
     [scoped, filters, today],
+  );
+  // On a lab feed, what fails a hard check moves to "Mylo held back".
+  const labFeed = recommendedFor !== undefined;
+  const held = React.useMemo(
+    () => (labFeed ? filtered.filter((x) => heldReason(x.usability)) : []),
+    [filtered, labFeed],
+  );
+  const visible = React.useMemo(
+    () => (held.length ? filtered.filter((x) => !heldReason(x.usability)) : filtered),
+    [filtered, held],
   );
 
   // What the rail's facets took out of the scoped feed, kept so the reader can
   // look at it rather than having to widen a filter to find out what was there.
   const hidden = React.useMemo(() => {
-    if (visible.length === scoped.length) return [];
-    const shown = new Set(visible.map((conf) => conf.content_id));
+    if (filtered.length === scoped.length) return [];
+    const shown = new Set(filtered.map((conf) => conf.content_id));
     return scoped.filter((conf) => !shown.has(conf.content_id));
-  }, [scoped, visible]);
+  }, [scoped, filtered]);
 
   const clearAll = () => {
     setFilters(DEFAULT_CONFERENCE_FILTERS);
@@ -902,6 +923,18 @@ function ConferencesFeed({
           {/* Outside the branch above on purpose: when the facets hide *every*
               row the reader lands on the empty state, and that is precisely the
               moment they need to see what was taken out. */}
+          {!isLoading && !isError ? (
+            <HeldBack count={held.length} noun="conferences">
+              {held.map((conf) => (
+                <ConferenceCard
+                  key={conf.content_id}
+                  conf={conf}
+                  recommendedFor={recommendedFor?.[conf.content_id]}
+                  ignorable
+                />
+              ))}
+            </HeldBack>
+          ) : null}
           {!isLoading && !isError ? (
             <HiddenByFilters count={hidden.length} noun="conferences">
               {hidden.map((conf) => (

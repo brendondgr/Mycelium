@@ -19,6 +19,7 @@ from apps.content.pipeline import recommend_for_lab, recommend_for_project
 from apps.content.targets import (
     project_interests,
     project_watch_topics,
+    target_for_department,
     target_for_lab,
     target_for_project,
     target_for_user,
@@ -117,6 +118,26 @@ def test_target_for_lab_reads_curated_columns_and_watch():
     assert target.persist_kwargs == {"target_lab": lab}
     # Institutional surfaces keep areas in the embedded text (unlike a person).
     assert "Knowledge Graphs" in target.embedding_text
+
+
+@pytest.mark.django_db
+def test_target_for_department_mirrors_a_lab_under_its_own_fk():
+    from apps.accounts.models import Department
+
+    head = User.objects.create_user("head")
+    dept = Department.objects.create(owner=head, name="Earth Sciences")
+    dept.profile.statement = "Ocean and climate science."
+    dept.profile.areas = ["Ocean Forecasting"]
+    dept.profile.save()
+
+    target = target_for_department(dept)
+
+    assert target.kind == "department"
+    assert target.key == str(dept.pk)
+    assert target.interests["areas"] == ["Ocean Forecasting"]
+    assert target.watch_topics == []  # opportunities only; no paper search
+    assert target.persist_kwargs == {"target_department": dept}
+    assert "Ocean Forecasting" in target.embedding_text
 
 
 def test_project_interests_prefers_explicit_focus():
@@ -425,3 +446,49 @@ def test_refit_lab_scores_over_existing_store(pgvector):
     assert result.status == "ok"
     assert result.areas["papers"]["status"] == "ok"
     assert RelevanceScore.objects.filter(target_lab=lab).exists()
+
+
+@pytest.mark.django_db
+def test_daily_opportunities_batch_matches_department(pgvector):
+    """Parity: a department is matched like a lab, under ``target_department``."""
+    from datetime import UTC, datetime
+
+    from apps.accounts.models import Department
+    from apps.content.opportunities import run_daily_opportunities_batch
+
+    embeddings.set_embedder(_fake_embed)
+    head = User.objects.create_user("head")
+    dept = Department.objects.create(owner=head, name="Graph Department")
+    dept.profile.areas = ["graph"]
+    dept.profile.save()
+    _seed_grants(
+        [
+            (
+                "grants",
+                {
+                    "id": "g",
+                    "title": "graph theory award",
+                    "sponsor": "NSF",
+                    "deadline_date": "2026-12-01",
+                    "url": "https://example.org/funding_opps/g",
+                    "matched_topics": "graph",
+                },
+            )
+        ],
+        embedder=_fake_embed,
+        today="2026-07-05",
+    )
+    ContentItem.objects.filter(type=ContentItem.Type.GRANT).update(
+        created_at=datetime(2026, 7, 5, 12, tzinfo=UTC)
+    )
+
+    batch = run_daily_opportunities_batch(
+        [], departments=[dept], areas=("grants",), prune=False,
+        complete=lambda _p: None, today="2026-07-05",
+    )
+
+    ok = [r for r in batch.results if r.status == "ok" and r.username == str(dept.pk)]
+    assert ok, batch.results
+    assert RelevanceScore.objects.filter(
+        target_department=dept, content__type="grant"
+    ).exists()

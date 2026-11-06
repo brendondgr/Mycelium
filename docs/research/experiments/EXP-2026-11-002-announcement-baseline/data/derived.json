@@ -1,0 +1,15 @@
+{
+  "lab_fit_floor": 0.45,
+  "labelled_calls": 9,
+  "labs_labelled": 1,
+  "admitted_at_floor": 9,
+  "admitted_suiting": 6,
+  "lab_fit_precision_at_floor": 0.6667,
+  "lowest_suits_score": 0.5682,
+  "highest_unsuited_score": 0.5994,
+  "separable": false,
+  "score_range": [
+    0.542,
+    0.6721
+  ]
+}

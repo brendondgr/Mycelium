@@ -11,9 +11,10 @@ import pytest
 from django.contrib.auth.models import User
 
 from apps.accounts.models import Lab, LabMembership
-from apps.integrations.models import DiscordGuildLink, DiscordIdentity
+from apps.integrations.models import DiscordIdentity
 from apps.integrations.services import gate, state
 from apps.integrations.services.gate import Denial
+from apps.integrations.testing import bind
 
 from .base import clear_discord_cache, discord_test_settings, grant_bot_server
 
@@ -211,9 +212,7 @@ def test_the_guild_supplies_the_lab_when_no_slug_is_given(db) -> None:
     user = _linked("guild-manager")
     lab = _lab()
     LabMembership.objects.create(user=user, lab=lab, role=LabMembership.Role.ADMIN)
-    DiscordGuildLink.objects.create(
-        lab=lab, guild_id="g-1", state=DiscordGuildLink.State.ACTIVE
-    )
+    bind(lab=lab, guild_id="g-1")
 
     result = gate.authorize(
         discord_user_id=SNOWFLAKE, action="setup", guild_id="g-1"

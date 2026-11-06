@@ -8,17 +8,18 @@ import { EditIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
 import { LabEditorModal } from "@/components/portal/sections/lab-editor-modal";
 import { MyloReportCard } from "@/components/portal/sections/mylo-report-card";
-import { MyloFoundCard } from "@/components/portal/sections/mylo-found-card";
 import {
-  DeadlinesPanel,
-  TopPapersPanel,
-} from "@/components/portal/sections/overview-panels";
+  AnnouncedPanel,
+  ClosingSoonPanel,
+} from "@/components/portal/sections/announced-panel";
+import { MyloFoundCard } from "@/components/portal/sections/mylo-found-card";
+import { TopPapersPanel } from "@/components/portal/sections/overview-panels";
 import { LabEditor } from "@/components/portal/sections/lab-onboarding";
 import {
+  useAnnouncements,
   useLabDailyBriefing,
   useLabProfile,
   useLabRecommendations,
-  useLabSaves,
 } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
 
@@ -51,7 +52,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
   const profileQuery = useLabProfile(lab.slug);
   const recQuery = useLabRecommendations(lab.slug);
   const briefingQuery = useLabDailyBriefing(lab.slug);
-  const savesQuery = useLabSaves(lab.slug);
+  const announcementsQuery = useAnnouncements({ lab: lab.slug });
   const [editing, setEditing] = React.useState(false);
 
   const profile = profileQuery.data;
@@ -137,19 +138,28 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
 
         {/* Right: what Mylo found + top papers + nearest deadlines. */}
         <div className="flex flex-col gap-[22px] lg:min-h-0 lg:overflow-y-auto lg:pr-1">
-          <MyloFoundCard
-            windowCounts={rec?.window_counts}
-            isLoading={recQuery.isLoading}
-          />
+          {announcementsQuery.data?.settings.enabled ? (
+            <AnnouncedPanel
+              data={announcementsQuery.data}
+              isLoading={announcementsQuery.isLoading}
+              isError={announcementsQuery.isError}
+            />
+          ) : (
+            <MyloFoundCard
+              windowCounts={rec?.window_counts}
+              isLoading={recQuery.isLoading}
+            />
+          )}
 
           <TopPapersPanel
             suggestions={rec?.papers ?? []}
             isLoading={recQuery.isLoading}
             recommendedFor={rec?.recommended_for}
           />
-          <DeadlinesPanel
-            items={savesQuery.data?.items ?? []}
-            isLoading={savesQuery.isLoading}
+          <ClosingSoonPanel
+            items={announcementsQuery.data?.closing_soon ?? []}
+            isLoading={announcementsQuery.isLoading}
+            isError={announcementsQuery.isError}
           />
           <LabChangesCard slug={lab.slug} />
         </div>

@@ -312,8 +312,8 @@ export function WorkspaceSheet() {
 
                 {scope.kind === "department" ? (
                   <p className="px-3 pb-2 pt-1 text-[11.5px] leading-relaxed text-[var(--text-muted)]">
-                    Research feeds are matched to a lab or to you — a department
-                    doesn&apos;t have its own.
+                    Research feeds are matched to a lab or to you. A department&apos;s
+                    Opportunities lists the calls only a department can take on.
                   </p>
                 ) : null}
               </div>

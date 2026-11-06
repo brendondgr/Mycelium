@@ -285,6 +285,20 @@ class Profile(models.Model):
         return f"Profile<{self.user}>"
 
 
+class InstitutionType(models.TextChoices):
+    """What kind of organisation a lab or department belongs to.
+
+    Read by opportunity usability checks (``apps.content.usability``) to compare a
+    call's applicant types against who would actually apply. Blank means "not
+    said", which makes that check ``unknown`` rather than guessing.
+    """
+
+    HIGHER_ED = "higher_ed", "University or college"
+    NONPROFIT = "nonprofit", "Non-profit research institute"
+    GOVERNMENT = "government", "Government lab or agency"
+    COMPANY = "company", "Company"
+
+
 class _InterestSurface(models.Model):
     """Shared interest-profile fields for labs and departments (brief Phase D).
 
@@ -318,6 +332,17 @@ class _InterestSurface(models.Model):
         blank=True,
         default="",
         help_text="Canonical text the embedding hook (re)embeds; vector dim deferred.",
+    )
+    # Who would apply: compared against a call's applicant types and the countries
+    # it funds. Both optional; blank makes those checks say "unknown".
+    institution_type = models.CharField(
+        max_length=16, choices=InstitutionType.choices, blank=True, default=""
+    )
+    country = models.CharField(
+        max_length=2,
+        blank=True,
+        default="",
+        help_text="ISO 3166-1 alpha-2 code of the applying institution, e.g. US.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

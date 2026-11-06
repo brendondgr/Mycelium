@@ -1,0 +1,473 @@
+{
+ "conference_two_rounds": {
+  "acronym": "ASPLOS",
+  "acronym_variants": [],
+  "cfp_text": "",
+  "city": "Crete",
+  "contributing_sources": [
+   "ccf_deadlines"
+  ],
+  "country": "Greece",
+  "country_code": "GR",
+  "dblp_found": false,
+  "dblp_key": "conf/asplos",
+  "deadline_date": "2026-09-10",
+  "deadlines_structured": [
+   {
+    "basis": "AoE",
+    "extension_count": 0,
+    "instant": "2026-04-16T11:59:59Z",
+    "is_estimated": false,
+    "kind": "submission",
+    "raw": "2026-04-15 23:59:59",
+    "round_label": "April Cycle Submission Deadline",
+    "source": "ccf_deadlines"
+   },
+   {
+    "basis": "AoE",
+    "extension_count": 0,
+    "instant": "2026-09-10T11:59:59Z",
+    "is_estimated": false,
+    "kind": "submission",
+    "raw": "2026-09-09 23:59:59",
+    "round_label": "September Cycle Submission Deadline",
+    "source": "ccf_deadlines"
+   }
+  ],
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "event_dates_text": "April 11-15, 2027",
+  "event_end": "",
+  "event_start": "",
+  "extraction_attempts": 1,
+  "extraction_page_hash": "795e34dc0c55fa611cbbf792ca7250f6",
+  "extraction_status": "ok",
+  "field_codes": [
+   "DS"
+  ],
+  "first_seen": "2026-08-17T03:47:20.674790+00:00",
+  "indexed_years": 0,
+  "is_hybrid": false,
+  "is_virtual": false,
+  "last_seen": "2026-08-17T03:47:20.674790+00:00",
+  "license": "MIT",
+  "name": "International Conference on Architectural Support for Programming Languages and Operating Systems",
+  "name_variants": [
+   "Computer Architecture/Parallel Programming/Storage Technology"
+  ],
+  "open": true,
+  "parent_instance_key": null,
+  "place_text": "Crete, Greece",
+  "prune_after": "2026-09-10",
+  "quality_warnings": [],
+  "rank_badges": [
+   {
+    "edition": "",
+    "rank": "A",
+    "system": "ccf"
+   },
+   {
+    "edition": "",
+    "rank": "A*",
+    "system": "core"
+   },
+   {
+    "edition": "",
+    "rank": "A",
+    "system": "thcpl"
+   }
+  ],
+  "rankings": {
+   "ccf": {
+    "edition": "",
+    "rank": "A"
+   },
+   "core": {
+    "edition": "",
+    "rank": "A*"
+   },
+   "thcpl": {
+    "edition": "",
+    "rank": "A"
+   }
+  },
+  "record_kind": "conference",
+  "red_flags": [],
+  "search_text_hash": "0254fa89677483b70da92f111f8967db2d90718b11e0c1f29857a24638919bdc",
+  "search_text_source": "extracted",
+  "series_key": "conf/asplos",
+  "source_links": [
+   {
+    "source": "ccf_deadlines",
+    "url": "https://www.asplos-conference.org/asplos2027/cfp/"
+   }
+  ],
+  "summary_source": "extracted",
+  "topic_codes": [
+   "DS"
+  ],
+  "topics": [
+   "Computer Architecture/Parallel Programming/Storage Technology"
+  ],
+  "trust_tier": "A",
+  "url": "https://www.asplos-conference.org/asplos2027/cfp/",
+  "year_label": "2027"
+ },
+ "eu_horizon": {
+  "action_types": [
+   "HORIZON Innovation Actions"
+  ],
+  "activity_codes": [],
+  "agency_code": "EC",
+  "amount": "\u20ac5,000,000\u2013\u20ac93,000,000",
+  "applicant_types": [],
+  "assistance_listings": [],
+  "award_ceiling": 93000000.0,
+  "award_floor": 5000000.0,
+  "categories": [
+   "RePowerEU",
+   "PART-COPROGR",
+   "DigitalAgenda",
+   "AI"
+  ],
+  "contributing_sources": [
+   "eu_portal"
+  ],
+  "cost_sharing": null,
+  "currency": "EUR",
+  "dates_inferred": false,
+  "deadline_date": "2026-09-15",
+  "deadline_text": "2026-09-15T00:00:00.000+0000",
+  "due_dates": [
+   "2026-09-15"
+  ],
+  "eligibility": "Online Manual is your guide on the procedures from proposal submission to managing your grant.\n\nHorizon Europe Programme Guide contains the detailed guidance to the structure, budget and political priorities of Horizon Europe.\n\nFunding & Tenders Portal FAQ \u2013 find the answers to most frequently asked questions on submission of proposals, evaluation and grant management.\n\nResearch Enquiry Service \u2013 ask questions about any aspect of European research in general and the EU Research Framework Programmes in particular.\n\nNational Contact Points (NCPs) \u2013 get guidance, practical information and assistance on participation in Horizon Europe. There are also NCPs in many non-EU and non-associated countries (\u2018third-countries\u2019).\n\nEnterprise Europe Network \u2013 contact your EEN national contact for advice to businesses with special focus on SMEs. The support includes guidance on the EU research funding.\n\nIT Helpdesk \u2013 contact the Funding & Tenders Portal IT helpdesk for questions such as forgotten passwords, access rights and roles, technical aspects of submission of proposals, etc.\n\nEuropean IPR Helpdesk assists you on intellectual property issues.\n\nCEN-CENELEC Research Helpdesk and ETSI Research Helpdesk \u2013 the European Standards Organisations advise you how to tackle standardisation in your project proposal.\n\nThe European Charter for Researchers and the Code of Conduct for their recruitment \u2013 consult the general principles and requirements specifying the roles, responsibilities and entitlements of researchers, employers and funders of researchers.\n\nPartner Search help you find a partner organisation for your proposal.\n\n\">\nGeneral conditions\n\n1. Admissibility Conditions: Proposal page limit and layout\n\n\ufeffdescribed in Annex A and Annex E of the Horizon Europe Work Programme General Annexes.\n\nProposal page limits and layout: described in Part B of the Application Form available in the Submission System.\n\n2. Eligible Countries\n\ndescribed in Annex B of the Work Programme General Annexes.\n\nA number of non-EU/non-Associated Countries that are not automatically eligible for funding have made specific provisions for making funding available for their participants in Horizon Europe projects. See the information in the Horizon Europe Programme Guide.\n\n3. Other Eligible Conditions\n\nIf projects use satellite-based earth observation, positioning, navigation and/or related timing data and services, beneficiaries must make use of Copernicus and/or Galileo/EGNOS (other data and services may additionally be used).\n\ndescribed in Annex B of the Work Programme General Annexes.\n\n4. Financial and operational capacity and exclusion\n\ndescribed in Annex C of the Work Programme General Annexes.\n\n5a. Evaluation and award: Award criteria, scoring and thresholds\n\nare described in Annex D of the Work Programme General Annexes.\n\n5b. Evaluation and award: Submission and evaluation processes\n\nare described in Annex F of the Work Programme General Annexes and the Online Manual.\n\n5c. Evaluation and award: Indicative timeline for evaluation and grant agreement\n\ndescribed in Annex F of the Work Programme General Annexes.\n\n6. Legal and financial set-up of the grants\n\nThe granting authority may, up to 4 years after the end of the action, object to a transfer of ownership or to the exclusive licensing of results, as set out in the specific provision of Annex 5.\n\nEligible costs will take the form of a lump sum as defined in the Decision of 7 July 2021 authorising the use of lump sum contributions under the Horizon Europe Programme \u2013 the Framework Programme for Research and Innovation (2021-2027) \u2013 and in actions under the Research and Training Programme of the European Atomic Energy Community (2021-2025) [[This decision is available on the Funding and Tenders Portal, in the reference documents section for Horizon Europe, under \u2018Simplified costs decisions\u2019 or through this link: https://ec.europa.eu/info/funding-tenders/opportunities/docs/2021-2027/horizon/guidance/ls-decision_he_en.pdf]].\n\ndescribed in Annex G of the Work Programme General Annexes.\n\nSpecific conditions\n\ndescribed in the [specific topic of the Work Programme]\n\nApplication and evaluation forms and model grant agreement (MGA):\n\nApplication form templates \u2014 the application form specific to this call is available in the Submission System\n\nStandard application form (HE RIA, IA)\n\nEvaluation form templates \u2014 will be used with the necessary adaptations\n\nStandard evaluation form (HE RIA, IA)\n\nGuidance\n\nHE Programme Guide\n\nModel Grant Agreements (MGA)\n\nLump Sum MGA\n\nCall-specific instructions\n\nDetailed budget table (HE LS)\n\nGuidance: \"Lump sums - what do I need to know?\"\n\nAdditional documents:\n\nHE Main Work Programme 2026-2027 \u2013 1. General Introduction\n\nHE Main Work Programme 2026-2027 \u2013 8. Climate, Energy and Mobility\n\nHE Main Work Programme 2026-2027 \u2013 15. General Annexes\n\nHE Programme Guide\n\nHE Framework Programme 2021/695\n\nHE Specific Programme Decision 2021/764\n\nEU Financial Regulation 2024/2509\n\nDecision authorising the use of lump sum contributions under the Horizon Europe Programme\n\nRules for Legal Entity Validation, LEAR Appointment and Financial Capacity Assessment\n\nEU Grants AGA \u2014 Annotated Model Grant Agreement\n\nFunding & Tenders Portal Online Manual\n\nFunding & Tenders Portal Terms and Conditions\n\nFunding & Tenders Portal Privacy Statement",
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "expected_awards": 21,
+  "extraction_attempts": 1,
+  "extraction_status": "ok",
+  "first_seen": "2026-08-17T03:47:20.674790+00:00",
+  "funder": "European Commission",
+  "funder_canonical": "European Commission",
+  "funder_subunit": "43108390",
+  "funding_instruments": [],
+  "last_seen": "2026-08-17T03:47:20.674790+00:00",
+  "license": "\u00a9 European Union, reuse authorised under Commission Decision 2011/833/EU (free reuse with source attribution)",
+  "loi_date": "",
+  "loi_date_text": "",
+  "opportunity_category": "",
+  "opportunity_number": "HORIZON-CL5-2026-09-D4-02",
+  "original_deadline": "",
+  "participating_units": [],
+  "prune_after": "2026-09-15",
+  "published_on": "2026-05-05",
+  "record_kind": "topic",
+  "related_numbers": [],
+  "search_text_source": "extracted",
+  "status": "open",
+  "summary_source": "extracted",
+  "title": "Low disturbance prefabrication approaches for deep renovation of multi-storey buildings (Built4People Partnership)",
+  "topic_keywords": [
+   "HORIZON-CL5-2026-09-D4-02",
+   "HORIZON-CL5-2026-09",
+   "RePowerEU",
+   "PART-COPROGR",
+   "DigitalAgenda",
+   "AI"
+  ],
+  "total_program_funding": 223200000.0
+ },
+ "fellowship_closed": {
+  "amount_currency": "USD",
+  "amount_kind": "up_to",
+  "amount_max": 3500,
+  "amount_min": null,
+  "amount_note": "Up to $3,500 stipend. Up to $2,500 for round-trip travel to a West African country.",
+  "amount_raw": "Up to $3,500 + Travel",
+  "award_class": "fellowship",
+  "blurb": "2-3 month fellowship for graduate research in West Africa.",
+  "contact_email": "west.african.research.association@gmail.com",
+  "deadline": {
+   "date": "",
+   "previous_date": "",
+   "raw": "Suspended",
+   "type": "suspended"
+  },
+  "deadline_date": "",
+  "deadline_type": "suspended",
+  "description": "Fellowships support graduate research travel to a West African country to enhance transatlantic exchange and collaboration. The fellowships offer support for 2-3 months.",
+  "eligibility": [
+   "U.S. citizens who are currently enrolled in graduate programs at institutions of higher education in the United States.",
+   "Preparing a doctoral research proposal or carrying out research related to the completion of another terminal degree program (e.g., MFA or MPH).",
+   "It is advisable that applicants be conversant in an African language spoken where they will be conducting research."
+  ],
+  "external_url": "https://www.westafricanresearchassociation.org/fellowships/pre-doctoral-fellowship/",
+  "facets": {
+   "award_type": [
+    "Fellowship/Grant",
+    "Research/Study Abroad",
+    "Short-Term Travel"
+   ],
+   "citizenship": [
+    "US Citizens, Nationals, or Permanent Residents"
+   ],
+   "field": [
+    "Social Sciences",
+    "Sciences/Engineering/Math",
+    "Professional Programs",
+    "Fine Arts",
+    "Humanities"
+   ],
+   "limits": [],
+   "other": [],
+   "stage": [
+    "Master's",
+    "Early Years of Doctoral Program",
+    "Dissertation Research"
+   ]
+  },
+  "first_seen": "2026-07-10T18:17:35.804237+00:00",
+  "flags": {
+   "doctoral": true,
+   "masters": true,
+   "open_to_international": false,
+   "postdoc": false,
+   "requires_us_citizenship": true
+  },
+  "last_seen": "2026-07-14T14:11:38.623868+00:00",
+  "next_kind": "",
+  "note": "",
+  "prune_after": "",
+  "status": "closed",
+  "status_summary": "Award suspended / not currently accepting",
+  "title": "Boston University / West African Research Association (WARA) - Short-Term Travel Fellowship",
+  "website": "https://www.westafricanresearchassociation.org/fellowships/pre-doctoral-fellowship/"
+ },
+ "fellowship_open": {
+  "amount_currency": "USD",
+  "amount_kind": "exact",
+  "amount_max": 75000,
+  "amount_min": 75000,
+  "amount_note": "$70,000 stipend and health insurance. Up to $5,000 research/travel funds. Office space and access to Harvard University library and resources.",
+  "amount_raw": "$75,000",
+  "award_class": "fellowship",
+  "blurb": "One-year fellowship for research to prepare a dissertation in Japanese studies for publication.",
+  "contact_email": "rijspostdoc@fas.harvard.edu",
+  "deadline": {
+   "date": "2026-12",
+   "previous_date": "2025-12-19",
+   "raw": "Anticipated 12/2026 ( Previous deadline 12/19/2025 )",
+   "type": "anticipated"
+  },
+  "deadline_date": "2026-12-01",
+  "deadline_type": "anticipated",
+  "description": "Fellowships offer recent PhDs in Japanese Studies an opportunity to turn their dissertation into publishable manuscripts. Postdoctoral fellows will also be expected to give a presentation at the RIJS Japan Forum lecture series. Residence in the Cambridge/Boston area and participation in Institute activities are required. Fellowship offers support for one academic year.",
+  "eligibility": [
+   "Received their PhD degree in 2021, or later, in Japanese studies in any area of the humanities or social sciences.",
+   "Completed all requirements for the PhD degree by June of fellowship year."
+  ],
+  "external_url": "https://rijs.fas.harvard.edu/postdoctoral/rijs",
+  "facets": {
+   "award_type": [
+    "Fellowship/Grant"
+   ],
+   "citizenship": [
+    "US Citizens, Nationals, or Permanent Residents",
+    "International Students"
+   ],
+   "field": [
+    "Social Sciences",
+    "Humanities"
+   ],
+   "limits": [
+    "Annual stipend of at least $10,000"
+   ],
+   "other": [],
+   "stage": [
+    "Postdoctoral/Post-graduate"
+   ]
+  },
+  "first_seen": "2026-07-10T18:17:35.804237+00:00",
+  "flags": {
+   "doctoral": false,
+   "masters": false,
+   "open_to_international": true,
+   "postdoc": true,
+   "requires_us_citizenship": false
+  },
+  "last_seen": "2026-07-20T18:05:59.734663+00:00",
+  "next_kind": "application",
+  "note": "",
+  "prune_after": "",
+  "status": "open",
+  "status_summary": "Anticipated",
+  "title": "Harvard University - Reischauer Institute of Japanese Studies - Postdoctoral Fellowship",
+  "website": "https://rijs.fas.harvard.edu/postdoctoral/rijs"
+ },
+ "nih_missing_fields": {
+  "action_types": [],
+  "activity_codes": [
+   "R34"
+  ],
+  "agency_code": "HHS",
+  "amount": "",
+  "applicant_types": [],
+  "assistance_listings": [],
+  "award_ceiling": null,
+  "award_floor": null,
+  "categories": [],
+  "contributing_sources": [
+   "nih_guide"
+  ],
+  "cost_sharing": null,
+  "currency": "USD",
+  "dates_inferred": false,
+  "deadline_date": "2026-12-04",
+  "deadline_text": "Not Applicable",
+  "due_dates": [
+   "2026-12-04"
+  ],
+  "eligibility": "",
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "expected_awards": null,
+  "extraction_attempts": 1,
+  "extraction_status": "ok",
+  "first_seen": "2026-08-17T03:47:20.674790+00:00",
+  "funder": "National Institutes of Health",
+  "funder_canonical": "National Institutes of Health",
+  "funder_subunit": "NIAID",
+  "funding_instruments": [],
+  "last_seen": "2026-08-17T03:47:20.674790+00:00",
+  "license": "US Government Work \u2014 no copyright (17 U.S.C. \u00a7 105); public domain",
+  "loi_date": "",
+  "loi_date_text": "30 days prior to the application due date",
+  "opportunity_category": "PAR",
+  "opportunity_number": "PAR-25-099",
+  "original_deadline": "",
+  "participating_units": [],
+  "prune_after": "2026-12-04",
+  "published_on": "2024-12-30",
+  "record_kind": "standalone",
+  "related_numbers": [],
+  "search_text_source": "extracted",
+  "status": "open",
+  "summary_source": "extracted",
+  "title": "Planning for Product Development Strategy (R34 Clinical Trial Not Allowed)",
+  "topic_keywords": [],
+  "total_program_funding": null
+ },
+ "nsf_us_only": {
+  "action_types": [],
+  "activity_codes": [],
+  "agency_code": "NSF",
+  "amount": "",
+  "applicant_types": [
+   "Others (see text field entitled \"Additional Information on Eligibility\" for clarification)"
+  ],
+  "assistance_listings": [
+   "47.074"
+  ],
+  "award_ceiling": null,
+  "award_floor": null,
+  "categories": [
+   "Science and Technology and other Research and Development"
+  ],
+  "contributing_sources": [
+   "grants_gov"
+  ],
+  "cost_sharing": false,
+  "currency": "USD",
+  "dates_inferred": false,
+  "deadline_date": "",
+  "deadline_text": "",
+  "due_dates": [],
+  "eligibility": "*Who May Submit Proposals: Proposals may only be submitted by the following:\n-Non-profit, non-academic organizations: Independent museums, observatories, research laboratories, professional societies and similar organizations located in the U.S. that are directly associated with educational or research activities.\n-Institutions of Higher Education (IHEs): Two- and four-year IHEs (including community colleges) accredited in, and having a campus located in the US, acting on behalf of their faculty members. Special Instructions for International Branch Campuses of US IHEs: If the proposal includes funding to be provided to an international branch campus of a US institution of higher education (including through use of sub-awards and consultant arrangements), the proposer must explain the benefit(s) to the project of performance at the international branch campus, and justify why the project activities cannot be performed at the US campus.",
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "expected_awards": 20,
+  "extraction_attempts": 1,
+  "extraction_status": "ok",
+  "first_seen": "2026-08-17T03:47:20.674790+00:00",
+  "funder": "U.S. National Science Foundation",
+  "funder_canonical": "National Science Foundation",
+  "funder_subunit": "NSF",
+  "funding_instruments": [
+   "Grant"
+  ],
+  "last_seen": "2026-08-17T03:47:20.674790+00:00",
+  "license": "US Government Work \u2014 no copyright (17 U.S.C. \u00a7 105); public domain",
+  "loi_date": "",
+  "loi_date_text": "",
+  "opportunity_category": "Discretionary",
+  "opportunity_number": "24-547",
+  "original_deadline": "",
+  "participating_units": [],
+  "prune_after": "",
+  "published_on": "2024-02-17",
+  "record_kind": "standalone",
+  "related_numbers": [],
+  "search_text_source": "extracted",
+  "status": "open",
+  "summary_source": "extracted",
+  "title": "Plant Genome Research Program",
+  "topic_keywords": [],
+  "total_program_funding": 30000000.0
+ },
+ "small_business_only": {
+  "action_types": [],
+  "activity_codes": [],
+  "agency_code": "DOI",
+  "amount": "",
+  "applicant_types": [
+   "Small businesses",
+   "Individuals"
+  ],
+  "assistance_listings": [
+   "15.681"
+  ],
+  "award_ceiling": null,
+  "award_floor": null,
+  "categories": [
+   "Agriculture"
+  ],
+  "contributing_sources": [
+   "grants_gov"
+  ],
+  "cost_sharing": false,
+  "currency": "USD",
+  "dates_inferred": false,
+  "deadline_date": "2029-03-07",
+  "deadline_text": "Mar 07, 2029 12:00:00 AM EST",
+  "due_dates": [
+   "2029-03-07"
+  ],
+  "eligibility": "Applicants must be private individuals or small business entities. Pre-application coordination is required. Environmental impact information is not required for this program. This program is eligible for coverage under E.O. 12372, \"Intergovernmental Review of Federal Programs.\" An applicant should consult the office or official designated as the single point of contact in his or her State for more information on the process the State requires to be followed in applying for assistance, if the State has selected the program for review.",
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "expected_awards": null,
+  "extraction_attempts": 1,
+  "extraction_status": "ok",
+  "first_seen": "2026-08-17T03:47:20.674790+00:00",
+  "funder": "Fish and Wildlife Service",
+  "funder_canonical": "Fish and Wildlife Service",
+  "funder_subunit": "DOI-FWS",
+  "funding_instruments": [
+   "Cooperative Agreement"
+  ],
+  "last_seen": "2026-08-17T03:47:20.674790+00:00",
+  "license": "US Government Work \u2014 no copyright (17 U.S.C. \u00a7 105); public domain",
+  "loi_date": "",
+  "loi_date_text": "",
+  "opportunity_category": "Discretionary",
+  "opportunity_number": "F24AS00298",
+  "original_deadline": "",
+  "participating_units": [],
+  "prune_after": "2029-03-07",
+  "published_on": "2024-03-06",
+  "record_kind": "standalone",
+  "related_numbers": [],
+  "search_text_source": "extracted",
+  "status": "open",
+  "summary_source": "extracted",
+  "title": "F24AS00298 Cooperative Agriculture",
+  "topic_keywords": [],
+  "total_program_funding": null
+ }
+}

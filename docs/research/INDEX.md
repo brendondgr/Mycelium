@@ -50,11 +50,13 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-09-019` | 2026-09-19 | How much may a confirmed exploration weigh before it moves the declared slates? | complete | — | — | [folder](experiments/EXP-2026-09-019-ambient-drift-weight-ablation/RESULTS.md) |
 | `EXP-2026-09-020` | 2026-09-19 | Ambient pilot: is Mylo making changes people agree with, and do they make the recommendations better? | planned | — | — | [folder](experiments/EXP-2026-09-020-ambient-pilot-go-no-go/RESULTS.md) |
 | `EXP-2026-09-021` | 2026-09-19 | Do Slack and Teams change anything past the adapter? | complete | — | — | [folder](experiments/EXP-2026-09-021-ambient-platforms-parity-sandbox/RESULTS.md) |
+| `EXP-2026-11-001` | 2026-11-05 | Precision of the department-level call detector | complete | precision_overall_v1 0.8333 | C-028 | [folder](experiments/EXP-2026-11-001-dept-level-precision/RESULTS.md) |
+| `EXP-2026-11-002` | 2026-11-05 | Announcement measures baseline and department lab-fit floor | complete | lab_fit_precision_at_floor 0.6667 | C-029 | [folder](experiments/EXP-2026-11-002-announcement-baseline/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 37 |
+| complete | 39 |
 | planned | 4 |
-| **total** | **41** |
+| **total** | **43** |

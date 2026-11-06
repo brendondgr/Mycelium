@@ -21,10 +21,10 @@ from apps.accounts.models import Lab, WatchPreference
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.content.report_resend import repost_lab_report, resend_user_report
 from apps.integrations.models import (
-    DiscordGuildLink,
     DiscordIdentity,
     DiscordOutboxMessage,
 )
+from apps.integrations.testing import bind
 from apps.integrations.tests.base import (
     clear_discord_cache,
     discord_test_settings,
@@ -212,12 +212,7 @@ def test_the_command_names_a_username_it_cannot_find() -> None:
 def _lab(slug="neuro", *, channel="updates-chan") -> Lab:
     lab = Lab.objects.create(name=f"Lab {slug}", slug=slug)
     grant_bot_server(lab)
-    DiscordGuildLink.objects.create(
-        lab=lab,
-        guild_id=f"g-{slug}",
-        state=DiscordGuildLink.State.ACTIVE,
-        updates_channel_id=channel,
-    )
+    bind(lab=lab, guild_id=f"g-{slug}", updates=channel)
     return lab
 
 

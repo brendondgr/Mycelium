@@ -15,12 +15,12 @@ from django.utils import timezone
 from apps.accounts.models import Lab, LabMembership
 from apps.content.models import Notification
 from apps.integrations.models import (
-    DiscordGuildLink,
     DiscordIdentity,
     DiscordOutboxMessage,
 )
 from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse
+from apps.integrations.testing import bind
 
 _Kind = Notification.Kind
 
@@ -120,7 +120,7 @@ def test_a_failed_channel_post_tells_the_lab_managers_only(
 ) -> None:
     """Members can't rebind a channel, so pinging them would be pure noise."""
     lab = Lab.objects.create(name="Lab", slug="lab")
-    DiscordGuildLink.objects.create(lab=lab, guild_id="g1")
+    bind(lab=lab, state="pending_setup", guild_id="g1")
     owner = User.objects.create_user("owner")
     member = User.objects.create_user("member")
     LabMembership.objects.create(

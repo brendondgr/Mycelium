@@ -29,6 +29,7 @@ INITIAL_EXTENSIONS: tuple[str, ...] = (
     "mylo.bot.cogs.setup",
     "mylo.bot.cogs.drift",
     "mylo.bot.cogs.listen",
+    "mylo.bot.cogs.announcements",
 )
 
 

@@ -378,6 +378,12 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     source_links = serializers.SerializerMethodField()
     summary_source = serializers.SerializerMethodField()
     search_text_source = serializers.SerializerMethodField()
+    # "Can we use this?" — open, deadline, buffer, who may apply, country, award,
+    # eligibility counts and team coverage, each read from a record field by
+    # ``apps.content.usability``. Present only when the view passed a reader.
+    usability = serializers.SerializerMethodField()
+    # Where the lab (or department) announced this item in Discord, or null.
+    announcement = serializers.SerializerMethodField()
 
     def _meta(self, score: RelevanceScore) -> dict:
         return (score.content.metadata or {}) if score.content_id else {}
@@ -387,6 +393,33 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
 
     def get_content_id(self, score: RelevanceScore) -> str:
         return str(score.content_id)
+
+    def get_announcement(self, score: RelevanceScore) -> dict | None:
+        return (self.context.get("announcements") or {}).get(str(score.content_id))
+
+    def get_usability(self, score: RelevanceScore) -> dict | None:
+        from dataclasses import replace
+        from datetime import date
+
+        from django.utils import timezone
+
+        from . import usability
+
+        reader = self.context.get("usability_reader")
+        if reader is None or not score.content_id:
+            return None
+        cid = str(score.content_id)
+        suited_map = self.context.get("usability_suited")
+        suited = suited_map.get(cid, ()) if suited_map is not None else None
+        counts = (self.context.get("usability_fellowship_counts") or {}).get(cid)
+        reader = replace(
+            reader,
+            suited=tuple(suited) if suited is not None else None,
+            fellowship_counts=counts,
+        )
+        today = self._today()
+        day = date.fromisoformat(today) if today else timezone.localdate()
+        return usability.summary(usability.assess(score.content, reader, day))
 
     def get_url(self, score: RelevanceScore) -> str:
         return self._meta(score).get("website") or (
@@ -1320,6 +1353,10 @@ class SearchResultSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
     score = serializers.SerializerMethodField()
     matched_on = serializers.SerializerMethodField()
+    # "Discussed in Discord": the threads announcing this item in the servers of
+    # the reader's own labs and departments (``announcement_links``).
+    discord = serializers.SerializerMethodField()
+    discord_thread_url = serializers.SerializerMethodField()
     cluster = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
     saved_labs = serializers.SerializerMethodField()
@@ -1386,6 +1423,13 @@ class SearchResultSerializer(serializers.Serializer):
         # Search deliberately still returns ignored hits (see SearchContext); the
         # flag is what lets the card show the state and offer the way back.
         return str(item.id) in self.context.get("ignored_ids", set())
+
+    def get_discord(self, item: ContentItem) -> list[dict]:
+        return (self.context.get("discord_links") or {}).get(str(item.id), [])
+
+    def get_discord_thread_url(self, item: ContentItem) -> str:
+        links = self.get_discord(item)
+        return links[0]["thread_url"] if links else ""
 
     def get_authors(self, item: ContentItem) -> list:
         authors = self._meta(item).get("authors")

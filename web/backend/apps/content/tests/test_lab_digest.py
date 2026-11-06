@@ -22,9 +22,10 @@ from apps.content.lab_digest import (
     queue_lab_report,
 )
 from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
-from apps.integrations.models import DiscordGuildLink, DiscordOutboxMessage
+from apps.integrations.models import DiscordOutboxMessage
 from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse
+from apps.integrations.testing import bind
 from apps.integrations.tests.base import (
     clear_discord_cache,
     discord_test_settings,
@@ -49,12 +50,7 @@ def _lab(slug="neuro", *, addon=True, channel="updates-chan", state=None):
     lab = Lab.objects.create(name=f"Lab {slug}", slug=slug)
     if addon:
         grant_bot_server(lab)
-    DiscordGuildLink.objects.create(
-        lab=lab,
-        guild_id=f"g-{slug}",
-        state=state or DiscordGuildLink.State.ACTIVE,
-        updates_channel_id=channel,
-    )
+    bind(lab=lab, guild_id=f"g-{slug}", updates=channel, guild_state=state)
     return lab
 
 
@@ -112,7 +108,7 @@ def test_a_blank_channel_is_a_silent_opt_out(db) -> None:
 
 @pytest.mark.django_db
 def test_a_kicked_guild_is_not_posted_to(db) -> None:
-    lab = _lab(state=DiscordGuildLink.State.KICKED)
+    lab = _lab(state="kicked")
     assert eligible_labs([lab], on=TODAY) == []
 
 

@@ -16,6 +16,7 @@ from apps.accounts.permissions import user_can_manage_lab, user_has_lab_access
 from apps.core.people import display_name, initials
 from apps.research.models import Project
 
+from . import usability
 from .collaboration import record_event
 from .liveness import is_live
 from .models import (
@@ -621,6 +622,7 @@ class _OpportunityFeedView(APIView):
             # attributed cluster carries a frozen label in its own signals, so a
             # feed built with no live map named one theme and left the rest blank.
             "cluster_labels": _user_cluster_labels(request.user),
+            "usability_reader": usability.reader_for_user(request.user),
         }
         return Response(
             {
@@ -1107,6 +1109,7 @@ def _recommendations_payload(
     user,
     member_ids=(),
     digest: bool = False,
+    reader=None,
 ) -> dict:
     """The combined papers + grants + conferences + fellowships a lab / project matched.
 
@@ -1166,6 +1169,27 @@ def _recommendations_payload(
     scores = [*papers, *grants, *conferences, *fellowships]
     content_ids = [s.content_id for s in scores]
     interested = _interested_members(list(member_ids), content_ids)
+    recommended = _recommended_for(scores, list(member_ids), interested)
+    if reader is not None:
+        # The "Can we use this?" strip: team coverage reads the same people the
+        # strip already names, and fellowship counts never name anyone.
+        opp_context["usability_reader"] = reader
+        opp_context["usability_suited"] = {
+            cid: [row["name"] for row in rows[:3]] for cid, rows in recommended.items()
+        }
+        from apps.content.announcement_links import for_target
+
+        lab_target = target_filter.get("target_lab") or getattr(
+            target_filter.get("target_project"), "scope_lab", None
+        )
+        opp_context["announcements"] = (
+            for_target({"target_lab": lab_target}, content_ids) if lab_target else {}
+        )
+        opp_context["usability_fellowship_counts"] = usability.fellowship_counts(
+            list(member_ids),
+            [score.content for score in fellowships],
+            timezone.now().date(),
+        )
     return {
         "generated_at": _generated_at(scores),
         "counts": counts,
@@ -1187,7 +1211,7 @@ def _recommendations_payload(
             fellowships, many=True, context=opp_context
         ).data,
         "interested": interested,
-        "recommended_for": _recommended_for(scores, list(member_ids), interested),
+        "recommended_for": recommended,
     }
 
 
@@ -1209,7 +1233,10 @@ class LabRecommendationsView(APIView):
         )
         return Response(
             _recommendations_payload(
-                {"target_lab": lab}, user=request.user, member_ids=member_ids
+                {"target_lab": lab},
+                user=request.user,
+                member_ids=member_ids,
+                reader=usability.reader_for_lab(lab),
             )
         )
 
@@ -1242,6 +1269,11 @@ class ProjectRecommendationsView(APIView):
                 user=request.user,
                 member_ids=member_ids,
                 digest=digest,
+                reader=(
+                    usability.reader_for_lab(project.scope_lab)
+                    if project.scope_lab_id is not None
+                    else usability.reader_for_user(request.user)
+                ),
             )
         )
 
@@ -1756,6 +1788,8 @@ class SearchView(APIView):
             offset=_parse_offset(params),
         )
         result = context.result
+        from apps.content.announcement_links import discussed_for_user
+
         serializer = SearchResultSerializer(
             result.items,
             many=True,
@@ -1763,6 +1797,9 @@ class SearchView(APIView):
                 "saved_ids": context.saved_ids,
                 "saved_labs": context.saved_labs,
                 "ignored_ids": context.ignored_ids,
+                "discord_links": discussed_for_user(
+                    request.user, [item.id for item in result.items]
+                ),
             },
         )
         return Response(

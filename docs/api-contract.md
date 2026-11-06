@@ -53,7 +53,7 @@ routes clients depend on most.
 | `intake/clusters/` | POST | Propose / sort / instruct interest clusters |
 | `intake/confirm/` | POST | Validate + save interests |
 | `labs/` | GET, POST | The caller's lab memberships; create a lab |
-| `labs/<slug>/profile/` | GET, PATCH | Lab interest profile |
+| `labs/<slug>/profile/` | GET, PATCH | Lab interest profile, plus `institution_type` (`higher_ed` \| `nonprofit` \| `government` \| `company` \| `""`) and `country` (two-letter code, upper-cased; 400 otherwise). The department profile takes the same two fields |
 | `labs/<slug>/watch/` | GET, PATCH | Lab watch preference |
 | `labs/<slug>/intake/synthesize/` | POST | Lab profile synthesis |
 | `labs/<slug>/logo/` | GET, POST, PUT, DELETE | Lab logo, served through the API |
@@ -78,6 +78,12 @@ routes clients depend on most.
 | `briefings/<YYYY-MM-DD>/` | GET | One archived personal report |
 | `labs/<slug>/briefings/` | GET | A lab's retained report history |
 | `labs/<slug>/briefings/<YYYY-MM-DD>/` | GET | One archived lab report |
+| `announcements/?lab=<slug>\|department=<id>` | GET | Opportunity announcements: `settings`, `can_manage`, `feature_on`, `announced` (each with `checks`, `write_up`, `interested`, `updated_on`, `dept_reasons` and a `discord` list of links), `held` (with `reason`), `closing_soon` (next 14 days, with links), and `servers` (one per binding, with `announcement_routes`). Members read (403 otherwise; 400 without a target) |
+| `announcements/settings/?lab=\|department=` | GET, PUT | Announcement settings (`enabled`, the three kinds, `daily_cap` with `-1` for no limit, `default_nudge` `none\|2d\|1w\|2w\|3w\|1m\|2m`, `closing_soon_list`, `strong_match_tagging`, `save_on_interest`, `activation_seed`, `min_award`). Managers write; 400 with per-field messages. The first switch-on returns `activating: true` and queues the activation seed |
+| `announcements/test/?lab=\|department=` | POST | A labelled test thread in each forum (once per forum: a department's kinds share one); `{"results": [{"guild_name", "purpose", "channel_name", "ok"}]}`. Managers only |
+| `announcements/create-channels/?binding=<id>` | POST | "Create them for me" for one server binding (a category and three forums for a lab, one `dept-opportunities` forum for a department). That binding's managers only; 409 with `message` when Discord refuses |
+| `announcements/department-opportunities/?department=<id>` | GET | The department's Opportunities page: `department`, `announcements_on`, and `items` — department-level slate items only, each with `reasons` (`key`, `label`, quoted `evidence`), `labs` that could lead (`name`, `why`; never people), `checks`, `announced` and a `discord` list of links. Department members read (403 otherwise; 400 without `department`) |
+| `announcements/link-click/` | POST | `{thread_url, surface}` (`announced`, `closing_soon`, `card`, `search`, `dept_page`): a web link into an announcement thread was opened. Recorded as a `link_click` reaction only for a reader who can see that lab or department; always 204 so a link never waits on it |
 | `opportunities/grants/` | GET | Ranked grants |
 | `opportunities/conferences/` | GET | Ranked conferences |
 | `opportunities/ranking-reference/` | GET | Static hover copy for conference rank badges |
@@ -147,6 +153,8 @@ routes clients depend on most.
 | `guild/start/` `guild-callback/` | POST / GET | Guild (server) install |
 | `status/` `guild/status/` `health/` `probe/` | GET | Link state and reachability |
 | `code/` `lab-code/` | POST | Mint a personal / lab activation code |
+| `department-code/` | POST | Mint a department activation code (`?department=<id>`, department managers only) |
+| `bindings/<id>/remove/` | POST | Switch one server binding off (that binding's own lab or department managers only) |
 | `daily-report/` | POST | Toggle the daily PDF DM |
 | `disconnect/` | POST | Unlink |
 
@@ -1152,6 +1160,22 @@ reader's own feed, `"lab"` on a lab or project feed — where a lab-mate is name
 only on what their profile states — and `null` for a gap. A `role` is a kind of
 partner, shown and never matched. Names resolve at read time.
 
+`announcement` (lab and project feeds) is where the lab announced the item in
+Discord — `{"label", "posted_at", "discord": [link…]}` — or `null`. A Discord link
+is always `{"guild_id", "guild_name", "channel_id", "channel_name", "thread_url"}`;
+the web renders it as the Discord logo plus `#channel`, opening in a new tab.
+
+`usability` (every opportunity card, `null` when the view has no reader) is the
+"Can we use this?" strip, computed by `apps/content/usability.py` from record
+fields only: `{"verdict": "ok" | "warn" | "block" | "unknown", "checks": [{"key",
+"status", "label", "field"}]}`. Keys: `open`, `deadline`, `feasible` (against the
+deadline buffer), `applicant` and `country` (against the lab's or department's
+profile `institution_type` and `country`), `award` (against an award minimum),
+`eligibility` (fellowships, a count of people who may be eligible, never names) and
+`team` (how many people the strip already names). A missing field gives `unknown`,
+never `ok`. A personal feed carries only `open`, `deadline` and `feasible`; lab and
+project feeds carry the rest.
+
 **There is no `match_percent` anywhere in this API.** It implied a measurement
 nobody made: a language model was asked to guess a similarity, and the result was
 rendered beside a real embedding cosine with no way for a reader to tell which
@@ -1397,7 +1421,12 @@ per-type facet appears **only when exactly one `type` is selected**, is capped t
 its top values, and ignores its own selection. `pool_truncated` is true when
 matches exist beyond the bounded relevance pool. `score` is the fused rank weight
 — for ordering, not display. `ignored` reports whether the caller has manually
-ignored the item; search still returns it either way (see below).
+ignored the item; search still returns it either way (see below). `discord` lists
+the threads that announced the item in the servers of the reader's own labs and
+departments (`[{"guild_id", "guild_name", "channel_id", "thread_id",
+"thread_url"}]`, oldest binding first, threads deleted by hand left out), and
+`discord_thread_url` is the first of them or `""` — the card's "Discussed in
+Discord" link.
 
 ## Saves, ignores, deadlines, notifications
 
@@ -1675,8 +1704,13 @@ returns `{code, expires_in, expires_at, activation_channel, invite_url, command}
 the portal cannot quote a renamed command, and `expires_at` is absolute so a
 countdown does not depend on the browser's clock. Redemption is by the gateway,
 so the portal polls `status/` while a code is live to notice it landed.
+`department-code/` mints the department twin, redeemed with
+`/activate-department`. `bindings/<id>/remove/` switches off one lab-or-department
+binding in one server; other bindings, in that server and elsewhere, keep working.
 `status/`, `guild/status/`, `health/`, and `probe/` report link and reachability
-state. `daily-report/` toggles `DiscordIdentity.daily_report_opt_out` (the
+state; `guild/status/` and `health/` describe the lab's primary server, and
+`health/` also returns `servers`, one entry per server the lab is bound in (each
+with `binding_id`, `state`, `guild_name`, `channels`, and `routes`). `daily-report/` toggles `DiscordIdentity.daily_report_opt_out` (the
 profile card's "Daily research report" switch). `disconnect/` unlinks.
 
 Slash commands are served by the persistent gateway process (`mylo/`), not by an

@@ -222,7 +222,7 @@ def repost_lab_report(
     if not lab_has_feature(lab, Feature.BOT_SERVER):
         outcome.blocked_by = "the lab's plan does not include the Discord bot add-on"
         return outcome
-    link = resolve.get_guild_link_for_lab(lab)
+    link = resolve.primary_server_for_lab(lab, "updates")
     if link is None or link.state != resolve.GUILD_ACTIVE:
         outcome.blocked_by = "the lab's Discord server link is not active"
         return outcome

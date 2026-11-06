@@ -252,6 +252,21 @@ CONTAINER_STAGES = [
         [],
         "Deciding what today changes for each project…",
     ),
+    # After scoring (member fit is written with it) and before the briefings,
+    # whose lab report slims each opportunity kind to one "announced → #channel"
+    # line. Both commands exit 0 even when a target fails, so an announcement
+    # problem never stops the briefings, and both do nothing while
+    # OPPORTUNITY_ANNOUNCEMENTS_ENABLED is off.
+    (
+        "announce_opportunities",
+        [],
+        "Announcing newly fitting grants, fellowships and conferences…",
+    ),
+    (
+        "announce_opportunity_updates",
+        [],
+        "Updating announced opportunities and the closing-soon lists…",
+    ),
     ("generate_daily_briefing", [], "Writing each user's and lab's daily briefing…"),
     (
         "send_daily_discord_reports",

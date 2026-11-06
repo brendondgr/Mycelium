@@ -198,6 +198,14 @@ class ProfileSerializer(_ContractInterestsMixin):
         ]
 
 
+def _country_code(value: str) -> str:
+    """Two ASCII letters, upper-cased, or blank."""
+    code = (value or "").strip().upper()
+    if code and (len(code) != 2 or not code.isascii() or not code.isalpha()):
+        raise serializers.ValidationError("Use a two-letter country code, e.g. US.")
+    return code
+
+
 class LabProfileSerializer(_ContractInterestsMixin):
     # The logo lives on the Lab (LabProfile is OneToOne to it); surface it here
     # read-only so the lab-config editor can show the current mark. Uploads go
@@ -215,12 +223,17 @@ class LabProfileSerializer(_ContractInterestsMixin):
             "funding_needs",
             "strategic_needs",
             "interests",
+            "institution_type",
+            "country",
             "has_logo",
             "logo_version",
             "embedding_text",
             "updated_at",
         ]
         read_only_fields = ["has_logo", "logo_version", "embedding_text", "updated_at"]
+
+    def validate_country(self, value: str) -> str:
+        return _country_code(value)
 
 
 class DeptProfileSerializer(_ContractInterestsMixin):
@@ -232,10 +245,15 @@ class DeptProfileSerializer(_ContractInterestsMixin):
             "funding_needs",
             "strategic_needs",
             "interests",
+            "institution_type",
+            "country",
             "embedding_text",
             "updated_at",
         ]
         read_only_fields = ["embedding_text", "updated_at"]
+
+    def validate_country(self, value: str) -> str:
+        return _country_code(value)
 
 
 class WatchPreferenceSerializer(serializers.ModelSerializer):

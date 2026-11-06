@@ -4,7 +4,8 @@ Without a gateway ``GUILD_DELETE``/deauthorize event, we reconcile state on a
 schedule instead:
 
 * Guild presence: ask the bot which guilds it is in; any non-KICKED
-  ``DiscordGuildLink`` whose guild is absent → KICKED. Guarded: if the guild-list
+  ``DiscordGuildLink`` whose guild is absent → KICKED (which silences every
+  binding in it). Guarded: if the guild-list
   call fails we skip the sweep entirely rather than mark everyone kicked on a blip.
 * Token health: OAuth identities with soon-expiring tokens are refreshed;
   ``invalid_grant`` (the user deauthorized us) → REVOKED.
@@ -77,7 +78,7 @@ def reconcile() -> dict:
 
 
 def _reconcile_guild_health() -> dict:
-    """Re-verify each active link's channels and its lab's Mylo add-on.
+    """Re-verify each live binding's channels and its target's Mylo add-on.
 
     Channel existence is checked with the guild's channel list rather than by
     posting: ``preflight_channel`` proves postability by sending a real message,
@@ -87,39 +88,45 @@ def _reconcile_guild_health() -> dict:
 
     The add-on check is the hole the brief named: it was verified once, when the bot
     was first added, and never again. A lab that stopped paying kept receiving
-    delivery indefinitely.
+    delivery indefinitely. Each binding is checked against its *own* target, so a
+    lapsed lab plan silences that lab's bindings and nothing else.
     """
     from apps.billing.entitlements import Feature, lab_has_feature
 
     summary = {"channels_checked": 0, "channels_lost": 0, "addons_lapsed": 0}
-    for link in resolve.active_guild_links():
-        bound = {
-            "deadlines": link.announcement_channel_id,
-            "updates": link.updates_channel_id,
-        }
-        if any(bound.values()):
-            try:
-                channels = discord_api.get_guild_channels(link.guild_id)
-                present = {str(c.get("id")) for c in channels}
-            except discord_api.DiscordHTTPError:
-                # Same guard as the guild sweep: a blip must not mark every lab's
-                # channels dead. Leave the last known state and try again tomorrow.
-                present = None
+    channels_by_guild: dict[str, set[str] | None] = {}
+    for binding in resolve.active_bindings():
+        routes = list(binding.routes.all())
+        guild_id = binding.guild.guild_id
+        if routes:
+            if guild_id not in channels_by_guild:
+                try:
+                    channels = discord_api.get_guild_channels(guild_id)
+                    channels_by_guild[guild_id] = {str(c.get("id")) for c in channels}
+                except discord_api.DiscordHTTPError:
+                    # Same guard as the guild sweep: a blip must not mark every
+                    # binding's channels dead. Keep the last state; retry tomorrow.
+                    channels_by_guild[guild_id] = None
+            present = channels_by_guild[guild_id]
             if present is not None:
-                for kind, channel_id in bound.items():
-                    if not channel_id:
-                        continue
+                for route in routes:
                     summary["channels_checked"] += 1
-                    alive = channel_id in present
-                    resolve.set_channel_health(
-                        link.guild_id, kind=kind, ok=alive
-                    )
+                    alive = route.channel_id in present
+                    resolve.set_route_health(route, ok=alive)
                     if not alive:
                         summary["channels_lost"] += 1
 
-        entitled = lab_has_feature(link.lab, Feature.BOT_SERVER)
-        if link.addon_ok is not entitled:
-            resolve.set_addon_ok(link.lab, ok=entitled)
+        entitled = _binding_entitled(binding, lab_has_feature, Feature.BOT_SERVER)
+        if binding.addon_ok is not entitled:
+            resolve.set_addon_ok(binding, ok=entitled)
             if not entitled:
                 summary["addons_lapsed"] += 1
     return summary
+
+
+def _binding_entitled(binding, lab_has_feature, feature) -> bool:
+    if binding.lab_id:
+        return lab_has_feature(binding.lab, feature)
+    from apps.billing.entitlements import department_has_feature
+
+    return department_has_feature(binding.department, feature)

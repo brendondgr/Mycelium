@@ -7,7 +7,7 @@ and again when Mylo tries to deliver it. Every reminder test that is about somet
 entitled, or it would be asserting the gate instead of its own subject.
 
 These are deliberately the real objects (a ``Subscription`` row, a
-``DiscordIdentity``, a ``DiscordGuildLink``) rather than a monkeypatched access
+``DiscordIdentity``, a server binding) rather than a monkeypatched access
 function, so a test proving "the DM went out" still proves the whole path.
 
 Not named ``test_*`` so pytest treats this as a helper module, not a suite.
@@ -16,7 +16,8 @@ Not named ``test_*`` so pytest treats this as a helper module, not a suite.
 from __future__ import annotations
 
 from apps.billing.models import Subscription, Tier
-from apps.integrations.models import DiscordGuildLink, DiscordIdentity
+from apps.integrations.models import DiscordIdentity, DiscordTargetBinding
+from apps.integrations.testing import bind
 
 _next_snowflake = iter(range(700_000_000, 700_999_999))
 
@@ -50,19 +51,15 @@ def entitle_user(user, *, tier: str = Tier.SPORE, discord_user_id: str = ""):
 def entitle_lab(lab, *, tier: str = Tier.LAB, guild_id: str = "", channel: str = ""):
     """Satisfy both halves of the lab reminder gate: a paid plan + a live guild link.
 
-    Reuses an existing guild link when the test already made one (the usual case —
+    Reuses an existing binding when the test already made one (the usual case —
     lab tests bind a channel themselves), only promoting it to ACTIVE.
     """
     Subscription.objects.create(
         tier=tier, scope_lab=lab, status=Subscription.Status.ACTIVE
     )
-    link = DiscordGuildLink.objects.filter(lab=lab).first()
-    if link is None:
-        link = DiscordGuildLink.objects.create(
-            lab=lab,
-            guild_id=guild_id or str(next(_next_snowflake)),
-            announcement_channel_id=channel,
-        )
-    link.state = DiscordGuildLink.State.ACTIVE
-    link.save(update_fields=["state"])
+    binding = DiscordTargetBinding.objects.filter(lab=lab).first()
+    if binding is None:
+        bind(lab=lab, guild_id=guild_id, deadlines=channel)
+    else:
+        bind(lab=lab, guild_id=binding.guild.guild_id)
     return lab

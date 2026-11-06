@@ -21,9 +21,10 @@ from apps.content.reminders import ReminderError, create_subscription
 from apps.content.reminders_discord import send_lab_channel
 from apps.content.reminders_tick import run_tick
 from apps.content.tests.entitle import entitle_lab, paid_plan
-from apps.integrations.models import DiscordGuildLink, DiscordIdentity
+from apps.integrations.models import DiscordIdentity
 from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse
+from apps.integrations.testing import bind
 
 TODAY = date(2026, 7, 16)
 _Kind = SavedOpportunity.DeadlineKind
@@ -64,9 +65,7 @@ def _lab(*, channel="default-chan"):
     mention resolution and channel routing. ``test_reminder_access`` owns the gate.
     """
     lab = Lab.objects.create(name="Lab", slug="lab")
-    DiscordGuildLink.objects.create(
-        lab=lab, guild_id="g1", announcement_channel_id=channel
-    )
+    bind(lab=lab, state="pending_setup", guild_id="g1", deadlines=channel)
     return entitle_lab(lab)
 
 

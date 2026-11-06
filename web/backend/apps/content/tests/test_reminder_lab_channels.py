@@ -12,9 +12,9 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Lab, LabMembership
-from apps.integrations.models import DiscordGuildLink
 from apps.integrations.services import discord_api
 from apps.integrations.services.discord_api import RawResponse
+from apps.integrations.testing import bind
 
 
 @pytest.fixture
@@ -56,9 +56,7 @@ def _manager(lab, username="pi") -> User:
 @pytest.mark.django_db
 def test_lists_postable_channels_and_labels_default(client, transport) -> None:
     lab = Lab.objects.create(name="Lab", slug="lab")
-    DiscordGuildLink.objects.create(
-        lab=lab, guild_id="g1", announcement_channel_id="400"
-    )
+    bind(lab=lab, state="pending_setup", guild_id="g1", deadlines="400")
     user = _manager(lab)
     client.force_authenticate(user)
 
@@ -85,7 +83,7 @@ def test_unlinked_guild_returns_empty_not_error(client) -> None:
 @pytest.mark.django_db
 def test_non_manager_is_forbidden(client, transport) -> None:
     lab = Lab.objects.create(name="Lab", slug="lab")
-    DiscordGuildLink.objects.create(lab=lab, guild_id="g1")
+    bind(lab=lab, state="pending_setup", guild_id="g1")
     member = User.objects.create_user("member")
     LabMembership.objects.create(
         user=member, lab=lab, role=LabMembership.Role.MEMBER
@@ -108,9 +106,7 @@ def test_unknown_lab_is_404(client) -> None:
 def test_discord_failure_degrades_to_empty(client, monkeypatch, settings) -> None:
     settings.DISCORD_BOT_TOKEN = "test-token"
     lab = Lab.objects.create(name="Lab", slug="lab")
-    DiscordGuildLink.objects.create(
-        lab=lab, guild_id="g1", announcement_channel_id="400"
-    )
+    bind(lab=lab, state="pending_setup", guild_id="g1", deadlines="400")
     user = _manager(lab)
     client.force_authenticate(user)
 

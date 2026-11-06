@@ -22,9 +22,9 @@ from apps.content.models import (
 from apps.content.reminders import create_subscription
 from apps.content.reminders_announce import announce_deadline_changes
 from apps.content.tests.entitle import entitle_lab, paid_plan
-from apps.integrations.models import DiscordGuildLink
 from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse
+from apps.integrations.testing import bind
 
 TODAY = date(2026, 9, 5)
 NOW = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
@@ -191,9 +191,7 @@ def transport(monkeypatch, settings):
 @pytest.mark.django_db
 def test_lab_deadline_move_posts_to_channel(transport) -> None:
     lab = Lab.objects.create(name="Lab", slug="lab")
-    DiscordGuildLink.objects.create(
-        lab=lab, guild_id="g1", announcement_channel_id="chan-1"
-    )
+    bind(lab=lab, state="pending_setup", guild_id="g1", deadlines="chan-1")
     entitle_lab(lab)  # a lab off-plan is not posted to at all
     LabMembership.objects.create(user=User.objects.create_user("m"), lab=lab)
     item = _content(date(2026, 11, 12))

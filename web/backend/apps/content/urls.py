@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from django.urls import path, register_converter
 
-from . import reminders_views, views
+from . import announcement_views, reminders_views, views
 
 
 class IsoDateConverter:
@@ -277,4 +277,37 @@ urlpatterns = [
         "suggestions/<uuid:pk>/dismiss",
         views.MemberSuggestionDismissView.as_view(),
     ),
+    # Opportunity announcements (plan 20261105-mylo-opportunity-announcements).
+    *[
+        path(route, view.as_view(), **({"name": name} if slash else {}))
+        for route_base, view, name in (
+            ("announcements", announcement_views.AnnouncementsView, "announcements"),
+            (
+                "announcements/settings",
+                announcement_views.AnnouncementSettingsView,
+                "announcement-settings",
+            ),
+            (
+                "announcements/test",
+                announcement_views.AnnouncementTestView,
+                "announcement-test",
+            ),
+            (
+                "announcements/create-channels",
+                announcement_views.AnnouncementCreateChannelsView,
+                "announcement-create-channels",
+            ),
+            (
+                "announcements/link-click",
+                announcement_views.LinkClickView,
+                "announcement-link-click",
+            ),
+            (
+                "announcements/department-opportunities",
+                announcement_views.DepartmentOpportunitiesView,
+                "announcement-department-opportunities",
+            ),
+        )
+        for slash, route in ((True, f"{route_base}/"), (False, route_base))
+    ],
 ]

@@ -983,12 +983,17 @@ def generate_briefing_for_lab(
 
     shared = report_projects_for_lab(lab)
     changed = changed_today(reader=lab, projects=shared, is_lab=True)
+    # With announcements live, each grant, fellowship and conference already has
+    # its own thread: the report keeps papers and one line per kind (plan D6).
+    from .announce import announcements_live, report_body, report_line
+
+    announcing = announcements_live(lab)
     briefing = _write_briefing(
         owner={"lab": lab},
         target=target_for_lab(lab),
         target_filter={"target_lab": lab},
         watch=getattr(lab, "watch", None),
-        allow=LAB_BRIEFING_CATEGORIES,
+        allow=("papers",) if announcing else LAB_BRIEFING_CATEGORIES,
         member_names=_lab_member_names(lab),
         projects=shared,
         hidden_projects=hidden_lab_projects(lab),
@@ -1001,6 +1006,12 @@ def generate_briefing_for_lab(
         attention=with_changed_today(attention_section(blocks), changed),
         alert_summaries=summaries,
     )
+    if announcing:
+        line = report_line(lab, timezone.localdate())
+        body = report_body(briefing.body or "", line)
+        if body != briefing.body:
+            briefing.body = body
+            briefing.save(update_fields=["body"])
     return record_run_stats(briefing)
 
 

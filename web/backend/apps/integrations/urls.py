@@ -32,6 +32,16 @@ urlpatterns = [
         "discord/lab-code", views.DiscordLabActivationCodeView, "discord-lab-code"
     ),
     *_both(
+        "discord/department-code",
+        views.DiscordDepartmentActivationCodeView,
+        "discord-department-code",
+    ),
+    *_both(
+        "discord/bindings/<int:binding_id>/remove",
+        views.DiscordBindingRemoveView,
+        "discord-binding-remove",
+    ),
+    *_both(
         "discord/guild/status", views.DiscordGuildStatusView, "discord-guild-status"
     ),
     *_both("discord/health", views.DiscordHealthView, "discord-health"),

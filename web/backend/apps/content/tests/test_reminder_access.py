@@ -35,7 +35,7 @@ from apps.content.reminder_access import (
 from apps.content.reminders import ReminderAccessError, create_subscription
 from apps.content.reminders_discord import send_lab_channel, send_personal_dm
 from apps.content.tests.entitle import entitle_lab, entitle_user, link_discord
-from apps.integrations.models import DiscordGuildLink
+from apps.integrations.testing import bind
 
 DUE = date(2026, 12, 1)
 _Kind = SavedOpportunity.DeadlineKind
@@ -195,12 +195,7 @@ def _managed_lab(username="owner", *, slug="lab"):
 @pytest.mark.django_db
 def test_a_free_lab_cannot_hold_reminders(client) -> None:
     lab, owner = _managed_lab()
-    DiscordGuildLink.objects.create(
-        lab=lab,
-        guild_id="g1",
-        announcement_channel_id="chan",
-        state=DiscordGuildLink.State.ACTIVE,
-    )
+    bind(lab=lab, guild_id="g1", deadlines="chan")
     entitle_user(owner)  # the manager personally qualifies; the lab does not
     client.force_authenticate(owner)
 
@@ -232,9 +227,7 @@ def test_an_unclaimed_server_does_not_count_as_synced() -> None:
     Subscription.objects.create(
         tier=Tier.LAB, scope_lab=lab, status=Subscription.Status.ACTIVE
     )
-    DiscordGuildLink.objects.create(
-        lab=lab, guild_id="g1", state=DiscordGuildLink.State.PENDING_SETUP
-    )
+    bind(lab=lab, state="pending_setup", guild_id="g1")
 
     access = lab_reminder_access(lab)
 

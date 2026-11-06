@@ -288,7 +288,8 @@ def _manager_gate(guild_id: str, discord_user_id: str):
                 "not_active",
                 {
                     "message": "This server isn't connected to a lab yet. A lab "
-                    "admin or PI runs `/activate-lab code:<code>` first."
+                    "admin or PI runs `/activate-lab code:<code>` first. (Listening "
+                    "works in a server that holds exactly one lab.)"
                 },
             ),
         )

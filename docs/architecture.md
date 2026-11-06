@@ -93,6 +93,14 @@ venue-registry refresh (`refresh_dblp_registry`), is also in-container but sits 
 its own slower cadence and **must precede** the conference collection, because the
 collector's resolve stage joins against that cache for venue identity and ranks.
 
+**Opportunity announcements** run as two in-container stages after scoring and
+before the briefings: `announce_opportunities` (one Discord forum thread per newly
+fitting grant, fellowship or conference, per server binding) and
+`announce_opportunity_updates` (changed calls updated in place, nudges, the
+closing-soon list, closing finished threads). Both exit 0 when a target fails, so
+they never stop the run, and both do nothing while
+`OPPORTUNITY_ANNOUNCEMENTS_ENABLED` is off.
+
 ## Backend app boundaries
 
 | App | Responsibility |
