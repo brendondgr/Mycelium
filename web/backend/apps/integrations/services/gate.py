@@ -107,6 +107,8 @@ _ACTIONS: dict[str, _Action] = {
     # one "not for us" speaks for the team, so it needs management.
     "ann_follow": _Action(lab_permission="access", bucket="announcements"),
     "ann_not_for_us": _Action(lab_permission="manage", bucket="announcements"),
+    # Remind me without a Mycelium account: see authorize_guest.
+    "ann_remind_guest": _Action(bucket="announcements"),
     # Announcement setup in `/setup` is the same right as choosing any channel,
     # and so is posting a search result to the team's forum by hand.
     "ann_setup": _Action(lab_permission="manage", lab_feature="bot_server"),
@@ -197,6 +199,54 @@ def authorize(
     _audit(action, discord_user_id, "allowed", user=user, lab=lab, subject=subject_id)
     return GateResult(
         ok=True, user=user, lab=lab, department=department, binding=binding
+    )
+
+
+def authorize_guest(
+    *,
+    discord_user_id: str,
+    action: str,
+    guild_id: str,
+    binding_id: int | str | None,
+    subject_id: str = "",
+) -> GateResult:
+    """The gate for the one thing anyone in a server may do without a Mycelium
+    account: set a reminder on an announcement posted there.
+
+    Stages 2 and 4 run as in :func:`authorize` (rate limit and lockout; the plan
+    still covers the binding's lab or department). Stage 3 shrinks to "the post's
+    binding is active and sits in the server the click came from": a guest touches
+    only their own reminders, so being in the server is enough. ``ok`` with
+    ``user=None``. Never raises.
+    """
+    spec = _ACTIONS.get(action, _DEFAULT_ACTION)
+    if state.is_locked_out(str(discord_user_id)):
+        return _deny(action, discord_user_id, Denial.RATE_LIMITED, _LOCKED)
+    if not _within_rate(discord_user_id, spec.bucket):
+        return _deny(action, discord_user_id, Denial.RATE_LIMITED, _RATE_LIMITED)
+    binding = (
+        _resolve_binding(binding_id, guild_id=guild_id)
+        if guild_id and binding_id not in (None, "")
+        else None
+    )
+    if binding is None:
+        return _deny(action, discord_user_id, Denial.FORBIDDEN, _FORBIDDEN)
+    feature = "bot_server"
+    if binding.department_id:
+        allowed, message = _department_entitled(binding.department, feature)
+    else:
+        allowed, message = _lab_entitled(binding.lab, feature)
+    if not allowed:
+        return _deny(action, discord_user_id, Denial.NOT_ENTITLED, message)
+    _audit(
+        action, discord_user_id, "allowed_guest", lab=binding.lab, subject=subject_id
+    )
+    return GateResult(
+        ok=True,
+        user=None,
+        lab=binding.lab,
+        department=binding.department,
+        binding=binding,
     )
 
 

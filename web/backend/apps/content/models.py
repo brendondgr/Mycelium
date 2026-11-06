@@ -2003,9 +2003,11 @@ class ClosingSoonPost(models.Model):
 
 
 class AnnouncementNudge(models.Model):
-    """A reminder about one announcement for one person, posted as a tag in the
-    thread: the default nudge *Interested* sets, or a *Remind me* choice of "tag me
-    in the thread". (A *Remind me* by DM is an ordinary ``ReminderSubscription``.)
+    """A reminder about one announcement for one person: the default nudge
+    *Interested* sets, or a *Remind me* choice. A member's *Remind me* by DM is an
+    ordinary ``ReminderSubscription`` instead; a **guest** (anyone in the server
+    with no Mycelium account) has only nudges, keyed on ``discord_user_id`` with
+    ``user`` empty, delivered as a thread tag or a DM (``delivery``).
 
     The fire date is computed each night from the call's *current* deadline, so a
     nudge follows a moved date; ``fired_for`` records which deadline it already
@@ -2019,13 +2021,23 @@ class AnnouncementNudge(models.Model):
     announcement = models.ForeignKey(
         Announcement, on_delete=models.CASCADE, related_name="nudges"
     )
+    class Delivery(models.TextChoices):
+        THREAD = "thread", "Tag in the thread"
+        DM = "dm", "Direct message"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="announcement_nudges",
     )
+    discord_user_id = models.CharField(max_length=32, blank=True, default="")
     offset = models.CharField(max_length=4, choices=AnnouncementSettings.Nudge.choices)
     source = models.CharField(max_length=16, choices=Source.choices)
+    delivery = models.CharField(
+        max_length=8, choices=Delivery.choices, default=Delivery.THREAD
+    )
     active = models.BooleanField(default=True)
     fired_for = models.JSONField(default=list, blank=True)  # ["2027-01-14", ...]
     created_at = models.DateTimeField(auto_now_add=True)
@@ -2035,10 +2047,20 @@ class AnnouncementNudge(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["announcement", "user", "offset"],
+                condition=Q(user__isnull=False),
                 name="announcement_nudge_unique",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["announcement", "discord_user_id", "offset"],
+                condition=Q(user__isnull=True),
+                name="announcement_nudge_guest_unique",
+            ),
+            models.CheckConstraint(
+                condition=Q(user__isnull=False) | ~Q(discord_user_id=""),
+                name="announcement_nudge_has_someone",
+            ),
         ]
 
     def __str__(self) -> str:
-        who = f"{self.announcement_id}, {self.user_id}"
+        who = f"{self.announcement_id}, {self.user_id or self.discord_user_id}"
         return f"AnnouncementNudge({who}, {self.offset})"

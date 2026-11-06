@@ -22,6 +22,7 @@ from django.utils import timezone
 from apps.content import dept_level
 from apps.content.models import (
     Announcement,
+    AnnouncementNudge,
     AnnouncementReaction,
     AnnouncementSettings,
     ContentItem,
@@ -70,7 +71,7 @@ def compute(since: date, until: date | None = None) -> dict:
     anns = list(
         Announcement.objects.filter(created_at__gte=start, created_at__lt=end)
         .select_related("target_lab", "target_department", "content")
-        .prefetch_related("reactions", "posts")
+        .prefetch_related("reactions", "posts", "nudges")
     )
     targets: dict[str, dict] = {}
     for ann in anns:
@@ -93,6 +94,7 @@ def compute(since: date, until: date | None = None) -> dict:
                 "with_interested": 0,
                 "interested_people": 0,
                 "with_remind": 0,
+                "guest_reminder_people": 0,
                 "not_for_us": 0,
                 "not_for_us_reasons": [],
                 "link_clicks": 0,
@@ -115,7 +117,13 @@ def compute(since: date, until: date | None = None) -> dict:
             }
             t["with_interested"] += bool(interested)
             t["interested_people"] += len(interested)
-            t["with_remind"] += any(
+            guests = {
+                n.discord_user_id
+                for n in ann.nudges.all()
+                if n.user_id is None and n.source == AnnouncementNudge.Source.REMIND
+            }
+            t["guest_reminder_people"] += len(guests)
+            t["with_remind"] += bool(guests) or any(
                 r.kind == AnnouncementReaction.Kind.REMIND for r in reactions
             )
             for r in reactions:

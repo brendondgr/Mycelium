@@ -3,8 +3,12 @@
 Every press goes through the one authorization gate first
 (:func:`apps.integrations.services.gate.authorize`): identity, rate limit, then
 membership of *the post's own lab or department* through
-``apps.accounts.permissions``. Being in the Discord server grants nothing. The bot
-calls these through :mod:`mylo.linking` and relays the returned message.
+``apps.accounts.permissions``. The one exception is **Remind me**: anyone in the
+server may set a reminder for themselves without a Mycelium account
+(:func:`gate.authorize_guest` — rate limit, the post's binding sits in this
+server, the plan covers it). A guest's reminder is a nudge keyed on their Discord
+id, by DM or as a thread tag, with a *Stop reminding me* button. The bot calls
+these through :mod:`mylo.linking` and relays the returned message.
 
 * **Interested** — a reaction, a personal save (when the target keeps
   ``save_on_interest``), the target's default nudge as a tag in the thread, and a
@@ -14,6 +18,7 @@ calls these through :mod:`mylo.linking` and relays the returned message.
   page) or as a tag in the thread. It counts as Interested.
 * **Not for us** — managers only; the reason is kept as data.
 * **Stop following** — from the DM.
+* **Stop reminding me** — from a reminder DM; anyone, for their own reminders.
 """
 
 from __future__ import annotations
@@ -70,6 +75,28 @@ def _gate(discord_user_id: str, post: AnnouncementPost, action: str, guild_id: s
     )
 
 
+def _remind_gate(discord_user_id: str, post: AnnouncementPost, guild_id: str):
+    """``(verdict, guest)``: a member goes through the normal gate; anyone else in
+    the server — no Mycelium account, or not a member of this lab — through the
+    guest gate, which lets them set reminders for themselves and nothing more."""
+    from apps.integrations.services import gate
+
+    verdict = _gate(discord_user_id, post, "ann_follow", guild_id)
+    if verdict.ok or verdict.denial not in (
+        gate.Denial.NOT_LINKED,
+        gate.Denial.FORBIDDEN,
+    ):
+        return verdict, False
+    guest = gate.authorize_guest(
+        discord_user_id=discord_user_id,
+        action="ann_remind_guest",
+        guild_id=guild_id,
+        binding_id=post.binding_id,
+        subject_id=str(post.announcement_id),
+    )
+    return guest, True
+
+
 def _load(post_id) -> AnnouncementPost | None:
     try:
         return (
@@ -99,6 +126,17 @@ def interested(discord_user_id: str, post_id, guild_id: str = "") -> tuple[str, 
         return _GONE
     verdict = _gate(discord_user_id, post, "ann_follow", guild_id)
     if not verdict.ok:
+        from apps.integrations.services import gate
+
+        if verdict.denial in (gate.Denial.NOT_LINKED, gate.Denial.FORBIDDEN):
+            return (
+                str(verdict.denial),
+                {
+                    "message": "**Interested** is for members of this lab with a "
+                    "Mycelium account. You can still press **🔔 Remind me**: it "
+                    "works for anyone here, no account needed."
+                },
+            )
         return (str(verdict.denial), {"message": verdict.message})
     user, ann = verdict.user, post.announcement
     already = _is_following(ann, user)
@@ -352,7 +390,7 @@ def remind_options(
     post = _load(post_id)
     if post is None:
         return _GONE
-    verdict = _gate(discord_user_id, post, "ann_follow", guild_id)
+    verdict, _guest = _remind_gate(discord_user_id, post, guild_id)
     if not verdict.ok:
         return (str(verdict.denial), {"message": verdict.message})
     due = _due(post.announcement)
@@ -398,12 +436,14 @@ def remind_set(
     post = _load(post_id)
     if post is None:
         return _GONE
-    verdict = _gate(discord_user_id, post, "ann_follow", guild_id)
+    verdict, guest = _remind_gate(discord_user_id, post, guild_id)
     if not verdict.ok:
         return (str(verdict.denial), {"message": verdict.message})
     offsets = [o for o in offsets if o in _OFFSET_UNITS][:5]
     if not offsets:
         return ("invalid", {"message": "Pick at least one time."})
+    if guest:
+        return _guest_remind(str(discord_user_id), post, offsets, where)
     user, ann = verdict.user, post.announcement
     if not _is_following(ann, user):
         AnnouncementReaction.objects.create(
@@ -435,6 +475,76 @@ def remind_set(
         "ok",
         {"message": f"🔔 I'll DM you {labels}. It's on your Reminders page too."},
     )
+
+
+def _guest_remind(
+    discord_user_id: str, post: AnnouncementPost, offsets: list[str], where: str
+) -> tuple[str, dict]:
+    """A reminder for someone with no Mycelium account (or not in this lab): nudges
+    keyed on their Discord id, fired from the call's current deadline each night."""
+    ann = post.announcement
+    if _due(ann) is None:
+        return (
+            "no_date",
+            {"message": "This call has no dated deadline to remind you about."},
+        )
+    delivery = (
+        AnnouncementNudge.Delivery.THREAD
+        if where == "thread"
+        else AnnouncementNudge.Delivery.DM
+    )
+    for offset in offsets:
+        nudge, _ = AnnouncementNudge.objects.update_or_create(
+            announcement=ann,
+            user=None,
+            discord_user_id=discord_user_id,
+            offset=offset,
+            defaults={
+                "source": AnnouncementNudge.Source.REMIND,
+                "delivery": delivery,
+                "active": True,
+            },
+        )
+        _arm(nudge)
+    labels = ", ".join(dict((v, lbl) for v, lbl, _d in CHOICES)[o] for o in offsets)
+    how = "tag you in the thread" if where == "thread" else "DM you"
+    return (
+        "ok",
+        {
+            "message": f"🔔 I'll {how} {labels}. No Mycelium account needed. "
+            "Each reminder has a **Stop reminding me** button."
+        },
+    )
+
+
+def unremind(discord_user_id: str, post_id, guild_id: str = "") -> tuple[str, dict]:
+    """Stop every reminder this person set on this call. Anyone, for their own
+    reminders only, from anywhere (the button rides on a DM)."""
+    from apps.integrations.services import gate, resolve
+
+    post = _load(post_id)
+    if post is None:
+        return _GONE
+    if not gate._within_rate(str(discord_user_id), "announcements"):
+        return ("rate_limited", {"message": gate._RATE_LIMITED})
+    ann = post.announcement
+    stopped = AnnouncementNudge.objects.filter(
+        announcement=ann,
+        user__isnull=True,
+        discord_user_id=str(discord_user_id),
+        active=True,
+    ).update(active=False)
+    user = resolve.resolve_user(str(discord_user_id))
+    if user is not None:
+        stopped += AnnouncementNudge.objects.filter(
+            announcement=ann,
+            user=user,
+            source=AnnouncementNudge.Source.REMIND,
+            active=True,
+        ).update(active=False)
+    if not stopped:
+        return ("ok", {"message": "You have no reminders left on this call."})
+    return ("ok", {"message": "🔕 Done. No more reminders about this call."})
 
 
 def _dm_reminder(ann: Announcement, user, offsets: list[str]) -> str:

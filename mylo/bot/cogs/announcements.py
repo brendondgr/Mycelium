@@ -10,6 +10,8 @@ and every decision is the backend's (:mod:`mylo.linking` →
 * **Remind me** → a picker only the presser sees (several times, DM or thread).
 * **Not for us** → a short form asking why (managers only; the backend checks).
 * **Stop following** (DM) → done.
+* **Stop reminding me** (a reminder DM) → done; works without a Mycelium account,
+  like **Remind me** itself.
 """
 
 from __future__ import annotations

@@ -634,6 +634,8 @@ def _announcement_action_sync(
         return actions.not_for_us(discord_user_id, post_id, reason, guild_id)
     if action == "unfollow":
         return actions.unfollow(discord_user_id, post_id, guild_id)
+    if action == "unremind":
+        return actions.unremind(discord_user_id, post_id, guild_id)
     return ("unknown", {"message": "That button is no longer used."})
 
 

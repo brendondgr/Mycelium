@@ -73,7 +73,8 @@ def enqueue_dm(
     *,
     dedupe_key: str,
     kind: str,
-    user,
+    user=None,
+    discord_user_id: str = "",
     content: str = "",
     embed: dict | None = None,
     attachment_path: str = "",
@@ -91,12 +92,16 @@ def enqueue_dm(
 
     ``not_before`` holds the row until the recipient's local send hour
     (:func:`apps.content.delivery.send_time`); see :func:`resolve.enqueue_outbox`.
+
+    ``discord_user_id`` instead of ``user`` DMs someone with no Mycelium account
+    (a guest's announcement reminder).
     """
     return resolve.enqueue_outbox(
         dedupe_key=dedupe_key,
         kind=kind,
         target_type=resolve.OUTBOX_DM,
         recipient_user=user,
+        recipient_discord_id=discord_user_id,
         content=content,
         embed=embed,
         attachment_path=attachment_path,
@@ -305,6 +310,8 @@ def _dm_channel_for(message) -> tuple[str, Classification | None]:
     so it must not consume retries.
     """
     user = message.recipient_user
+    if user is None and message.recipient_discord_id:
+        return _guest_dm_channel(message.recipient_discord_id)
     if user is None:
         return "", Classification(Verdict.PERMANENT, Reason.NO_ACCESS)
 
@@ -338,6 +345,27 @@ def _dm_channel_for(message) -> tuple[str, Classification | None]:
     if not channel_id:
         return "", Classification(Verdict.PERMANENT, Reason.NO_ACCESS)
     resolve.set_identity_dm(identity, dm_ok=True, dm_channel_id=channel_id)
+    return channel_id, None
+
+
+def _guest_dm_channel(discord_user_id: str) -> tuple[str, Classification | None]:
+    """The DM channel for someone with no Mycelium identity: opened on every send,
+    since there is no identity row to cache it on (Discord returns the same
+    channel each time)."""
+    try:
+        opened = discord_api.open_dm_raw(discord_user_id)
+    except discord_api.DiscordHTTPError as exc:
+        return "", classify_exception(exc)
+    verdict = classify(
+        status=opened.status,
+        error_code=discord_api._err_code(opened.json),
+        retry_after=opened.retry_after,
+    )
+    if not verdict.ok:
+        return "", verdict
+    channel_id = str(opened.json.get("id") or "")
+    if not channel_id:
+        return "", Classification(Verdict.PERMANENT, Reason.NO_ACCESS)
     return channel_id, None
 
 

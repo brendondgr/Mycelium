@@ -436,6 +436,9 @@ class DiscordOutboxMessage(models.Model):
         blank=True,
         related_name="discord_outbox",
     )
+    # DM to someone with no Mycelium account (an announcement reminder set by a
+    # guest): their Discord user id, opened at send time like any other DM.
+    recipient_discord_id = models.CharField(max_length=32, blank=True, default="")
     channel_id = models.CharField(max_length=32, blank=True, default="")
     # Provenance for a channel send: which lab's binding produced it, so a permanent
     # failure can flag that binding and reach the right managers.

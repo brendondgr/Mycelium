@@ -153,6 +153,15 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   nightly from the current deadline. One tag per person per night, and a nudge
   whose moment has already passed is never sent late. *Not for us* is managers
   only and keeps the reason.
+* **Reminders need no Mycelium account.** *Remind me* is the one button anyone in
+  the server may use: someone with no account (or not in that lab) goes through
+  `gate.authorize_guest` (rate limit and lockout, the post's binding sits in the
+  server the click came from, the plan covers it; no membership check). Their
+  reminder is an `AnnouncementNudge` keyed on `discord_user_id` with no `user`,
+  delivered as a thread tag or a DM (`delivery`); the outbox DMs a bare Discord id
+  through `recipient_discord_id`. Every reminder DM carries *Stop reminding me*
+  (`ann:<post>:unremind`, own reminders only). *Interested* still needs a member,
+  and tells a guest to use *Remind me* instead.
 * **`/setup` step** (`📣 Opportunity announcements…` in the `/setup` menu →
   `apps/content/announcement_setup.py`) configures one binding: **Create them for
   me** (a category and three tagged forums), or pick existing forums (each proven

@@ -843,6 +843,53 @@ def arm_nudge(nudge: AnnouncementNudge, today: date) -> None:
             nudge.save(update_fields=["fired_for", "updated_at"])
 
 
+def _dm_nudge(nudge, ann, due: date, days: int, title: str, due_iso: str) -> None:
+    """A reminder by DM, with a link to the thread and a way to stop."""
+    post = (
+        ann.posts.exclude(thread_id="")
+        .filter(deleted_at__isnull=True)
+        .select_related("binding__guild")
+        .order_by("id")
+        .first()
+    )
+    buttons_row = []
+    if post is not None:
+        buttons_row.append(
+            {"type": 2, "style": 5, "label": "Open the thread", "url": thread_url(post)}
+        )
+        buttons_row.append(
+            {
+                "type": 2,
+                "style": 2,
+                "label": "Stop reminding me",
+                "emoji": {"name": "🔕"},
+                "custom_id": f"ann:{post.id}:unremind",
+            }
+        )
+    snap = ann.snapshot or {}
+    embed = {
+        "author": {"name": "Mylo · Reminder"},
+        "title": (title or "This call")[:256],
+        "description": (
+            f"⏳ **{days} day{'s' if days != 1 else ''} left.** "
+            f"It closes **{long_date(due)}**."
+        ),
+        "color": GOLD,
+    }
+    if snap.get("url"):
+        embed["url"] = snap["url"]
+    outbox.enqueue_dm(
+        dedupe_key=f"nudge-dm:{nudge.id}:{due_iso}",
+        kind="announcement_nudge",
+        user=nudge.user,
+        discord_user_id="" if nudge.user_id else nudge.discord_user_id,
+        embed=embed,
+        components=[{"type": 1, "components": buttons_row}] if buttons_row else None,
+        subject_type="announcement_nudge",
+        subject_id=str(nudge.id),
+    )
+
+
 def send_due_nudges(today: date) -> int:
     """Tag each person in the thread on the day their nudge falls due, computed
     from the call's *current* deadline so a moved date moves the nudge."""
@@ -856,6 +903,8 @@ def send_due_nudges(today: date) -> int:
         .order_by("id")
     )
     for nudge in nudges:
+        if nudge.user_id is None and not nudge.discord_user_id:
+            continue
         ann = nudge.announcement
         if ann.content is None:
             continue
@@ -866,16 +915,20 @@ def send_due_nudges(today: date) -> int:
         if today < due - timedelta(days=NUDGE_DAYS.get(nudge.offset, 14)):
             continue
         if (
-            nudge.user not in followers(ann)
-            and nudge.source == AnnouncementNudge.Source.INTERESTED
+            nudge.source == AnnouncementNudge.Source.INTERESTED
+            and nudge.user not in followers(ann)
         ):
             nudge.active = False
             nudge.save(update_fields=["active", "updated_at"])
             continue
-        line, allowed = mentions_for([nudge.user])
+        if nudge.user_id is not None:
+            line, allowed = mentions_for([nudge.user])
+        else:  # a guest: no Mycelium account, only their Discord id
+            line = f"<@{nudge.discord_user_id}>"
+            allowed = {"users": [nudge.discord_user_id]}
         if not line:
             continue
-        pair = (nudge.announcement_id, nudge.user_id, due_iso)
+        pair = (nudge.announcement_id, nudge.user_id or nudge.discord_user_id, due_iso)
         if pair in tagged_tonight:
             # Two of one person's nudges due the same night: one tag says it.
             nudge.fired_for = [*(nudge.fired_for or []), due_iso]
@@ -884,6 +937,12 @@ def send_due_nudges(today: date) -> int:
         tagged_tonight.add(pair)
         days = (due - today).days
         title = (ann.snapshot or {}).get("title") or "This call"
+        if nudge.delivery == AnnouncementNudge.Delivery.DM:
+            _dm_nudge(nudge, ann, due, days, title, due_iso)
+            nudge.fired_for = [*(nudge.fired_for or []), due_iso]
+            nudge.save(update_fields=["fired_for", "updated_at"])
+            sent += 1
+            continue
         text = (
             f"⏳ **{days} day{'s' if days != 1 else ''} left.** {title} closes "
             f"**{long_date(due)}**. {line}"
