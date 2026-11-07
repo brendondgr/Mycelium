@@ -101,7 +101,8 @@ Paths are relative to the repository root.
 | Session auth, CSRF, `/me`, labs, invitations, watch | `web/backend/apps/accounts/{views,urls,serializers}.py` |
 | Permission rules | `web/backend/apps/accounts/permissions.py` |
 | Workspace provisioning at signup | `web/backend/apps/accounts/provisioning.py` |
-| Invite-only sign-up gate | `web/backend/apps/accounts/signup_gate.py` |
+| Who may sign up (`signup.mode`: closed / invite / code / domain / open) and whether email must be verified; `GET /api/auth/signup-policy/` | `web/backend/apps/accounts/signup_policy.py`; tests `apps/accounts/tests/test_signup_modes.py`; the form reads it in `web/app/src/components/auth/signup-form.tsx` |
+| The code mode's brute-force gate (shared code, shadow ban) | `web/backend/apps/accounts/signup_gate.py` |
 | Join invitations (emailed to one address, or a share link with a use budget + expiry) | `web/backend/apps/accounts/invites.py`, models `OrgInvite` / `OrgInviteRedemption`; `create_invites` + `screen_address` are the batch path (≤15 addresses, per-address refusals) |
 | Invite → sign-up, end to end, both org kinds | `web/backend/apps/accounts/tests/test_invite_signup_flow.py` |
 | Email verification (the six-digit code that activates an account) | `web/backend/apps/accounts/email_verification.py`, model `EmailVerification` |
@@ -346,7 +347,8 @@ Files below are inside `web/backend/apps/content/`.
 | Pool contrast against the **production** store (not LongEval) | `docs/research/experiments/EXP-2026-08-013-production-pool-contrast/code/` — `production_pool.py` builds the union-pool variants on top of the deployed `_build_pool`/`fuse_interest`; `run.py` scores them against the real `ContentItem` rows over a compose `postgres`. Nothing under `apps/content` is modified |
 | Research record (experiments, claims, figures) | `docs/research/` — start at [`research/README.md`](research/README.md) |
 | Research-record tooling | `ops/research/` — `new_experiment.py`, `validate_research.py`, `generate_index.py`, `build_figures.py`, `manifest.schema.json`; driven by the root `Makefile` |
-| First-time setup (`make setup`: writes `.env`, builds, migrates, first admin) | `ops/setup/bootstrap.py` |
+| First-time setup (`make setup [PROFILE=…]`: picks a profile and writes `mycelium.toml`, writes `.env`, builds, migrates, first admin) | `ops/setup/bootstrap.py` |
+| Changing the instance configuration (`ops/mycelium config` / `make config ARGS=…`: profiles, init, show, explain, get, set, unset, validate, diff, recommend; all `--json`) | `ops/setup/config_cli.py`; tests `web/backend/apps/core/test_config_cli.py` |
 | Admin bootstrap (`make admin NAME=…`) | `ops/setup/create_admin.py` |
 | Every root command | `Makefile` (`make help`) |
 | README banner (generated, committed) | `docs/assets/header.svg`, written by `ops/readme/make_header.py` from `web/art/logo/logo-colored.svg`; re-run it when the logo or the README's first sentence changes |

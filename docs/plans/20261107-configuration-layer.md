@@ -257,7 +257,7 @@ in any profile; the profile is only the starting point.
    code (all five modes); drop the hardcoded fallback; `verify_email` off makes
    accounts active at creation; admin-created accounts are always active;
    `[email].provider` selects Resend, SMTP or none.
-4. **CLI.** `ops/mycelium config init|show|explain|set|validate|diff|recommend`,
+4. **CLI.** ✅ `ops/mycelium config init|show|explain|set|validate|diff|recommend`,
    all with `--json`. `make setup` asks for (or takes) the profile.
 5. **Agent skill.** `docs/skills/configure.md`: interview → `config recommend
    --json` → show the proposed file with reasons → `config set` on agreement.

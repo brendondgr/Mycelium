@@ -11,7 +11,7 @@ RESEARCH_RUN := uv run --project ops/research
 SCRIPTS := ops/research
 
 .DEFAULT_GOAL := help
-.PHONY: help setup up down restart build status logs migrate admin gpu-up \
+.PHONY: help setup config up down restart build status logs migrate admin gpu-up \
 	test test-mylo lint nightly \
 	new-experiment validate-research research-index figures figures-check research-ci
 
@@ -21,8 +21,11 @@ help: ## Show these targets
 
 # ── Setup and the stack ──────────────────────────────────────────────────────
 
-setup: ## First run: write .env, build and start the stack, create the first admin
-	@$(PYTHON) ops/setup/bootstrap.py
+setup: ## First run: pick a profile, write .env, build, create the first admin [PROFILE=lab]
+	@$(PYTHON) ops/setup/bootstrap.py $(if $(PROFILE),--profile $(PROFILE))
+
+config: ## Read or change mycelium.toml: make config ARGS="show" (see `make config ARGS=-h`)
+	@$(PYTHON) ops/setup/config_cli.py $(or $(ARGS),show)
 
 up: ## Start the stack (detached) and apply migrations
 	@$(STACK) start

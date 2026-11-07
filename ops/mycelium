@@ -10,6 +10,7 @@ Usage:
     mycelium build           rebuild images then start
     mycelium migrate         apply database migrations against the running stack
     mycelium install-service copy .service files to /etc/systemd/system/ and enable boot startup
+    mycelium config ...      read, explain, change and check mycelium.toml (`mycelium config -h`)
 
 Flags:
     --keep-cache   skip the frontend cache wipe on start/restart/build
@@ -692,6 +693,13 @@ def main() -> int:
     if action == "install-service":
         return cmd_install_service()
 
+    if action == "config":
+        # Host-side and stdlib-only: works before the stack (or uv) exists.
+        sys.path.insert(0, str(ROOT / "ops" / "setup"))
+        from config_cli import main as config_main
+
+        return config_main(args[1:])
+
     base = _compose()
 
     opts = {"clear_cache": clear_cache, "migrate": migrate}
@@ -711,7 +719,8 @@ def main() -> int:
     if fn is None:
         print(f"Unknown command: {action!r}", file=sys.stderr)
         print(
-            "Valid commands: start, stop, restart, status, logs, build, migrate, install-service",
+            "Valid commands: start, stop, restart, status, logs, build, migrate, "
+            "install-service, config",
             file=sys.stderr,
         )
         return 1

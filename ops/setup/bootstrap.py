@@ -4,7 +4,9 @@
 Steps, each safe to re-run:
 
 1. Check that Docker Compose is installed.
-2. Write ``.env`` if it does not exist. Compose already loads ``.env.example``
+2. Write ``mycelium.toml`` for a deployment profile if it does not exist
+   (``--profile``, ``MYCELIUM_PROFILE``, a question, or ``lab``), then ``.env``
+   if it does not exist. Compose already loads ``.env.example``
    for every default, so ``.env`` holds only what is yours: generated secrets
    (Django secret key, the sign-up code, the Discord token-encryption key, the
    first admin's password) and the language-model endpoint, which nothing can
@@ -20,9 +22,12 @@ Usage:
     python3 ops/setup/bootstrap.py --yes            # take defaults, ask nothing
     python3 ops/setup/bootstrap.py --env-only       # write .env files, start nothing
     python3 ops/setup/bootstrap.py --admin alice --email alice@example.org
+    python3 ops/setup/bootstrap.py --profile personal   # just you
 
 The model endpoint can also come from the environment, which is how an agent
-should pass it: ``LLM_BASE_URL``, ``LLM_API_KEY`` and ``LLM_MODEL``.
+should pass it: ``LLM_BASE_URL``, ``LLM_API_KEY`` and ``LLM_MODEL``; the profile
+comes from ``--profile`` or ``MYCELIUM_PROFILE``. ``ops/mycelium config`` changes
+anything afterwards.
 """
 
 from __future__ import annotations
@@ -37,6 +42,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import config_cli  # noqa: E402  (stdlib-only; reads web/backend/config/instance.py)
+
 ENV = ROOT / ".env"
 ENV_MYLO = ROOT / ".env-mylo"
 ENV_MYLO_EXAMPLE = ROOT / ".env-mylo.example"
@@ -124,6 +132,45 @@ def write_env(interactive: bool) -> None:
         print("    endpoint answers. Set LLM_* in .env, then `make restart`.")
 
 
+def write_config(interactive: bool, profile: str | None) -> None:
+    if config_cli.CONFIG.exists():
+        print(f"  · {config_cli.CONFIG.name} exists, leaving it as it is")
+        return
+    instance = config_cli.inst
+    chosen = profile or os.environ.get("MYCELIUM_PROFILE", "").strip()
+    if not chosen and interactive:
+        print("  Who will use this instance?")
+        for index, name in enumerate(instance.PROFILE_NAMES, 1):
+            mark = " (default)" if name == instance.DEFAULT_PROFILE else ""
+            print(f"    {index}. {name:<12} {instance.PROFILE_HELP[name]}{mark}")
+        answer = input("  Choose 1-4 or a name [lab]: ").strip().lower()
+        if answer.isdigit() and 1 <= int(answer) <= len(instance.PROFILE_NAMES):
+            chosen = instance.PROFILE_NAMES[int(answer) - 1]
+        else:
+            chosen = answer
+    chosen = chosen or instance.DEFAULT_PROFILE
+    if chosen not in instance.PROFILES:
+        print(f"  · unknown profile {chosen!r}; using {instance.DEFAULT_PROFILE}")
+        chosen = instance.DEFAULT_PROFILE
+    config_cli.CONFIG.write_text(instance.render(chosen))
+    print(f"  ✓ wrote {config_cli.CONFIG.name} ({chosen} profile — "
+          "`ops/mycelium config show` to review, `config set` to change)")
+
+
+def sign_up_hint() -> str:
+    try:
+        cfg = config_cli.resolve()
+    except config_cli.inst.ConfigError:
+        return ""
+    return {
+        "closed": "sign-up is closed; create accounts with `make admin NAME=…`.",
+        "invite": "others join through an invite from inside the app.",
+        "code": "new accounts sign up with SIGNUP_ACCESS_CODE from .env.",
+        "domain": "anyone at signup.allowed_domains can sign up.",
+        "open": "anyone who can reach it can sign up.",
+    }[cfg["signup.mode"]]
+
+
 def write_env_mylo() -> None:
     if ENV_MYLO.exists():
         print("  · .env-mylo exists, leaving it as it is")
@@ -144,6 +191,11 @@ def main() -> int:
     parser.add_argument("--env-only", action="store_true", help="write the .env files and stop")
     parser.add_argument("--admin", default="admin", help="username for the first admin (default: admin)")
     parser.add_argument("--email", default="", help="email for the first admin")
+    parser.add_argument(
+        "--profile",
+        choices=config_cli.inst.PROFILE_NAMES,
+        help="deployment profile for a new mycelium.toml (default: lab)",
+    )
     args = parser.parse_args()
     interactive = sys.stdin.isatty() and not args.yes
 
@@ -152,6 +204,7 @@ def main() -> int:
         return 1
 
     say("2/4  Configuration")
+    write_config(interactive, args.profile)
     write_env(interactive)
     write_env_mylo()
     if args.env_only:
@@ -173,8 +226,9 @@ def main() -> int:
 
     print(
         f"\nMycelium is running at {GATEWAY}\n"
-        f"  Sign in as '{args.admin}' with ADMIN_USER_PASS from .env;"
-        " new accounts sign up with SIGNUP_ACCESS_CODE.\n"
+        f"  Sign in as '{args.admin}' with ADMIN_USER_PASS from .env; "
+        f"{sign_up_hint()}\n"
+        "  `ops/mycelium config show` prints the instance configuration.\n"
         "  `make help` lists everything else."
     )
     return 0
