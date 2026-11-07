@@ -35,7 +35,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Mycelium",
-  description: "Lab intelligence for research teams.",
+  description: "An academic research assistant any lab can run on its own computers.",
 };
 
 export default function RootLayout({

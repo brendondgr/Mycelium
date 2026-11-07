@@ -1,7 +1,8 @@
 # Mycelium Goals
 
-Mycelium should grow from a clear product foundation into a secure, useful lab
-intelligence platform: helping research labs understand their goals, people,
+Mycelium should grow from a clear product foundation into a secure, useful,
+open-source academic research assistant that any lab can run on its own
+computers: helping research labs understand their goals, people,
 projects, literature, evidence, funding opportunities, and next actions as one
 connected system.
 
@@ -33,8 +34,10 @@ These ordering rules apply throughout the first draft and should not be reversed
 
 These hold throughout and should stay true of every change:
 
-- Mycelium is a lab intelligence platform for research teams, not a generic paper
-  search tool or chatbot.
+- Mycelium is an open-source academic research assistant that any lab can run on
+  its own computers, not a generic paper search tool or chatbot. It is the
+  grounding layer (corpus, profiles, graph, feeds, evaluation harness) that
+  research tools are built on.
 - Primary users: principal investigators, students, postdocs, research staff,
   grant writers, collaborators, and lab administrators.
 - The core promise: connect lab context with literature, evidence, funding,
@@ -165,3 +168,25 @@ In rough order, against the November 14 target:
    permission/session/CSRF security review.
 6. Run the first-draft review against the product brief and write the gap
    analysis.
+
+## Tools on the grounding layer
+
+Planned, not built. Each one reads the lab's context from Mycelium and is held
+to a public benchmark before it is called working. Results go in
+`docs/research/` like any other experiment.
+
+| Tool | What it reads from Mycelium | Proven against |
+|---|---|---|
+| Claim and citation-stance engine: does a later paper support, dispute, or only mention a claim? Built together with the hypothesis engine, since contested or unresolved claims are the best seeds for a hypothesis. Also closes the claims-and-evidence gap above | Corpus, retrieval, the graph | SciCite and MultiCite, plus a hand-labelled sample |
+| Systematic-review screening: rank thousands of abstracts so reviewers read the likely includes first | The ranking stack and `eval/` | CLEF TAR and SYNERGY, scored as work saved at 95% recall |
+| Expertise finder: who works on X, which teams could go after this call | Author import, co-authorship, collaborator search, grant matching | Recovering held-out collaborations or funded teams |
+| Literature-mined domain databases: structured facts pulled from papers at scale | The schema-based extraction with deterministic checks already used for grants | Precision against an existing curated database |
+| Internal funding and limited-submission matching | The grant feed and the eligibility rule engine | Low compute; a quick win |
+
+The hypothesis engine is evaluated with a time split: freeze the corpus at a
+date, ask for hypotheses, then score them against what was published after that
+date. The corpus and graph carry dates, so the split is possible.
+
+Deliberately left out: protein structure and docking (strong open tools exist),
+generic "chat with your PDFs" (commoditized and blind to lab context), and AI
+peer review (funder and journal policies restrict it).

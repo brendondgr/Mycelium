@@ -1,8 +1,10 @@
 # Mycelium Purpose
 
-Mycelium is a lab intelligence platform for research teams. It helps labs understand their own goals, people, projects, papers, funding needs, and opportunities as one connected research ecosystem.
+Mycelium is an open-source academic research assistant that any lab can run on its own computers. It helps labs understand their own goals, people, projects, papers, funding needs, and opportunities as one connected research ecosystem.
 
 The product is built around a simple idea: research groups do not only need another place to store papers or ask generic AI questions. They need a living profile of the lab that can connect literature, claims, evidence, methods, datasets, grants, fellowships, deadlines, skills, and member interests into practical guidance.
+
+Underneath, Mycelium is a grounding layer: the paper and opportunity corpus, lab and member profiles, the knowledge graph, the opportunity feeds, and the evaluation harness that measures retrieval. Research tools are built on top of that layer and read the lab's context from it. The feeds, daily reports, reminders, and Mylo in Discord are the first of those tools; the next ones are listed in [`goals.md`](goals.md#tools-on-the-grounding-layer). A tool earns its place when it is better with the lab's context behind it and can be proven against a public benchmark.
 
 Mycelium should help a lab answer questions like:
 

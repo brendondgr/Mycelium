@@ -4,7 +4,7 @@ import { requireOnboardedUser } from "@/lib/auth-server";
 
 export const metadata = {
   title: "Workspace · Mycelium",
-  description: "Your lab intelligence dashboard.",
+  description: "Your lab's research workspace.",
 };
 
 /**

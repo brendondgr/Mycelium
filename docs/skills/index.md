@@ -27,7 +27,8 @@ from those rather than writing interaction plumbing from memory.
 
 ## Project defaults
 
-- Mycelium is a lab intelligence platform for research teams — profiles,
+- Mycelium is an open-source academic research assistant any lab can run on its
+  own computers — profiles,
   literature monitoring, grants, fellowships, conferences, reports, and
   reminders. It is not a paper search tool or a chatbot.
 - Canonical direction lives in [`../purpose.md`](../purpose.md),

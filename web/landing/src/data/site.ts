@@ -1,6 +1,6 @@
 export const siteName = "Mycelium";
 
-export const siteTagline = "Living intelligence for research labs";
+export const siteTagline = "An academic research assistant any lab can run on its own computers";
 
 // This site and the authenticated app share one origin behind the nginx
 // gateway (`/` → landing, `/login`, `/signup` and `/app` → Next), so app links

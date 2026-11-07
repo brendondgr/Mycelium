@@ -14,7 +14,7 @@ Use this guidance at the start of every Mycelium session before planning, editin
 
 ## Project Defaults
 
-- Treat Mycelium as a lab intelligence platform for research teams, not a generic chatbot or paper search tool.
+- Treat Mycelium as an open-source academic research assistant that any lab can run on its own computers: the grounding layer (corpus, profiles, graph, feeds, evaluation harness) that research tools are built on. It is not a generic chatbot or paper search tool.
 - Keep the product grounded in lab profiles, member profiles, research goals, evidence graphs, literature monitoring, grants, fellowships, reports, and strategic action plans.
 - Keep documentation in `docs/` unless a tool-specific entrypoint requires a small pointer file elsewhere.
 - Keep implementation boundaries clear: public site, authenticated app, backend API, worker jobs, infrastructure, and data stores have distinct responsibilities.

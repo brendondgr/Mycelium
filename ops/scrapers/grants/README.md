@@ -12,7 +12,7 @@ This phase is intentionally small: CSV source sampling only, no database.
 ```text
 ops/scrapers/grants/
   grants_controller.py
-  grants-README.md
+  README.md
   retrievers/
     grants_gov.py
     nih_reporter.py
