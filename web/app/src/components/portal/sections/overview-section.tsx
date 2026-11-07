@@ -1,99 +1,87 @@
 "use client";
 
+import * as React from "react";
+
 import { usePortal } from "@/components/portal/portal-context";
 import {
+  useConferences,
   useDailyBriefing,
   useDailyReport,
   useDeadlines,
+  useFellowships,
+  useGrants,
   useWindowCounts,
 } from "@/lib/portal/hooks";
 
 import { MyloReportCard } from "@/components/portal/sections/mylo-report-card";
 import { MyloFoundCard } from "@/components/portal/sections/mylo-found-card";
-import {
-  DeadlinesPanel,
-  TopPapersPanel,
-} from "@/components/portal/sections/overview-panels";
+import { DeadlinesPanel } from "@/components/portal/sections/overview-panels";
 import { LabOverviewSection } from "@/components/portal/sections/lab-overview-section";
-
-/** Derive time-of-day greeting word from the hour (0–23). */
-function timeOfDay(hour: number): "morning" | "afternoon" | "evening" {
-  if (hour < 12) return "morning";
-  if (hour < 18) return "afternoon";
-  return "evening";
-}
-
-/** First word (first name) from a full display name. */
-function firstName(name: string): string {
-  return name.split(" ")[0] ?? name;
-}
+import {
+  ClosingSoon,
+  FoldedReport,
+  MyloAsks,
+  OverviewHead,
+  ProjectPulse,
+  TodayByTheme,
+  overviewItems,
+} from "@/components/portal/sections/overview-layout";
 
 /**
- * The Overview section — the landing view of the portal dashboard. Two columns:
- * left holds Mylo's weekly report (scrollable, so a long write-up doesn't push
- * the page taller than the screen); right holds what Mylo found this year, the
- * top research papers (with Mylo's verdict), and the nearest deadlines.
+ * The Overview — the landing view of the workspace, in the split layout
+ * chosen in `/labs`. The page scrolls as one: the main column holds Mylo's
+ * written report and this week's new items grouped by theme across all four
+ * feeds; the side column holds what closes soon, Mylo's questions, project
+ * pulse, what Mylo found, and the reader's saved deadlines.
  */
 export function OverviewSection() {
-  const { user, scopeLabel, currentLab } = usePortal();
+  const { scopeLabel, currentLab } = usePortal();
   const briefingQuery = useDailyBriefing();
   const windowCountsQuery = useWindowCounts();
   const dailyReportQuery = useDailyReport();
   const deadlinesQuery = useDeadlines();
+  const grantsQuery = useGrants();
+  const fellowshipsQuery = useFellowships();
+  const conferencesQuery = useConferences();
+
+  const items = React.useMemo(
+    () =>
+      overviewItems({
+        papers: dailyReportQuery.data?.suggestions,
+        grants: grantsQuery.data?.items,
+        fellowships: fellowshipsQuery.data?.items,
+        conferences: conferencesQuery.data?.items,
+      }),
+    [dailyReportQuery.data, grantsQuery.data, fellowshipsQuery.data, conferencesQuery.data],
+  );
+  const feedsLoading =
+    dailyReportQuery.isLoading || grantsQuery.isLoading || fellowshipsQuery.isLoading || conferencesQuery.isLoading;
 
   // When a lab is the active workspace, its overview replaces the personal one.
-  // Editing that lab is the overview's own "Edit profile" dialog — it no longer
-  // takes over this page with a re-run of the setup flow.
   if (currentLab) {
     return <LabOverviewSection lab={currentLab} />;
   }
 
-  const now = new Date();
-  const greeting = timeOfDay(now.getHours());
-  const first = firstName(user.name || user.username);
-  const dateLabel = now.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-
   return (
-    <div className="flex h-full flex-col">
-      {/* Greeting */}
-      <div className="mb-[22px] shrink-0">
-        <h1 className="m-0 mb-[6px] font-serif text-[31px] font-semibold leading-[1.12] tracking-[-0.015em] text-[var(--text-primary)]">
-          Good {greeting}, {first}
-        </h1>
-        <p className="m-0 text-[14px] text-[var(--text-secondary)]">
-          {dateLabel} · You&apos;re viewing {scopeLabel}
-        </p>
-      </div>
-
-      {/* Report left; what Mylo found + papers + deadlines right. Each column is
-          its own scroll region at `lg` so the two sides scroll independently. */}
-      <div className="grid grid-cols-1 gap-[22px] lg:min-h-0 lg:flex-1 lg:grid-cols-[1.5fr_1fr]">
-        {/* Left: the folded-in Mylo Report (was a standalone Daily page). */}
-        <MyloReportCard
-          data={briefingQuery.data}
-          isLoading={briefingQuery.isLoading}
-          scrollable
-        />
-
-        {/* Right: what Mylo found + top papers + nearest deadlines. */}
-        <div className="flex flex-col gap-[22px] lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+    <div className="ws-overview" data-layout="split">
+      <OverviewHead subject="your" />
+      <p className="ws-meta-text ws-overview-scope">You&apos;re viewing {scopeLabel}.</p>
+      <div className="ws-split">
+        <div className="ws-split-main">
+          <FoldedReport>
+            <MyloReportCard data={briefingQuery.data} isLoading={briefingQuery.isLoading} />
+          </FoldedReport>
+          <TodayByTheme items={items} isLoading={feedsLoading} />
+        </div>
+        <div className="ws-split-side">
+          <ClosingSoon items={items} isLoading={feedsLoading} />
+          <MyloAsks />
+          <ProjectPulse />
           <MyloFoundCard
             windowCounts={windowCountsQuery.data?.window_counts}
             isLoading={windowCountsQuery.isLoading}
           />
-
-          <TopPapersPanel
-            suggestions={dailyReportQuery.data?.suggestions ?? []}
-            isLoading={dailyReportQuery.isLoading}
-          />
-          <DeadlinesPanel
-            items={deadlinesQuery.data?.items ?? []}
-            isLoading={deadlinesQuery.isLoading}
-          />
+          <DeadlinesPanel items={deadlinesQuery.data?.items ?? []} isLoading={deadlinesQuery.isLoading} />
         </div>
       </div>
     </div>

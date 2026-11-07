@@ -13,7 +13,15 @@ import {
   ClosingSoonPanel,
 } from "@/components/portal/sections/announced-panel";
 import { MyloFoundCard } from "@/components/portal/sections/mylo-found-card";
-import { TopPapersPanel } from "@/components/portal/sections/overview-panels";
+import {
+  ClosingSoon,
+  FoldedReport,
+  ForEachPerson,
+  OverviewHead,
+  ProjectPulse,
+  TodayByTheme,
+  overviewItems,
+} from "@/components/portal/sections/overview-layout";
 import { LabEditor } from "@/components/portal/sections/lab-onboarding";
 import {
   useAnnouncements,
@@ -22,17 +30,6 @@ import {
   useLabRecommendations,
 } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
-
-/** Time-of-day greeting word from the hour (0–23). */
-function timeOfDay(hour: number): "morning" | "afternoon" | "evening" {
-  if (hour < 12) return "morning";
-  if (hour < 18) return "afternoon";
-  return "evening";
-}
-
-function firstName(name: string): string {
-  return name.split(" ")[0] ?? name;
-}
 
 function canManage(lab: MyLab): boolean {
   return lab.is_lead || lab.role === "owner" || lab.role === "admin";
@@ -48,7 +45,7 @@ function canManage(lab: MyLab): boolean {
  * up yet" note.
  */
 export function LabOverviewSection({ lab }: { lab: MyLab }) {
-  const { user, scopeLabel } = usePortal();
+  const { scopeLabel } = usePortal();
   const profileQuery = useLabProfile(lab.slug);
   const recQuery = useLabRecommendations(lab.slug);
   const briefingQuery = useLabDailyBriefing(lab.slug);
@@ -57,15 +54,6 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
 
   const profile = profileQuery.data;
   const manage = canManage(lab);
-
-  const now = new Date();
-  const greeting = timeOfDay(now.getHours());
-  const first = firstName(user.name || user.username);
-  const dateLabel = now.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
 
   const profileEmpty =
     !profileQuery.isLoading &&
@@ -83,12 +71,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
     }
     return (
       <div>
-        <Greeting
-          greeting={greeting}
-          first={first}
-          dateLabel={dateLabel}
-          scopeLabel={scopeLabel}
-        />
+        <OverviewHead subject="the lab's" />
         <Card className="p-6">
           <p className="text-[14px] text-[var(--text-secondary)]">
             This lab hasn&apos;t set up its research profile yet. Once a lab lead
@@ -101,66 +84,64 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
   }
 
   const rec = recQuery.data;
+  const items = overviewItems({
+    papers: rec?.papers,
+    grants: rec?.grants,
+    fellowships: rec?.fellowships,
+    conferences: rec?.conferences,
+    recommendedFor: rec?.recommended_for,
+  });
+  const announcing = Boolean(announcementsQuery.data?.settings.enabled);
 
   return (
-    <div className="flex h-full flex-col">
-      <Greeting
-        greeting={greeting}
-        first={first}
-        dateLabel={dateLabel}
-        scopeLabel={scopeLabel}
+    <div className="ws-overview" data-layout="split">
+      <OverviewHead
+        subject="the lab's"
         action={
           manage ? (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-[7px] rounded-full border border-border bg-surface px-4 py-[9px] text-[13px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
+            <button type="button" onClick={() => setEditing(true)} className="ws-btn ws-btn-line">
               <EditIcon size={14} />
-              Edit profile
+              Edit lab profile
             </button>
           ) : null
         }
       />
+      <p className="ws-meta-text ws-overview-scope">You&apos;re viewing {scopeLabel}.</p>
 
-      {/* Report left; what Mylo found + papers + deadlines right. Each column is
-          its own scroll region at `lg` — structurally identical to the personal
-          overview so the two sides scroll independently. */}
-      <div className="grid grid-cols-1 gap-[22px] lg:min-h-0 lg:flex-1 lg:grid-cols-[1.5fr_1fr]">
-        {/* Left: the lab's written Mylo Report. */}
-        <MyloReportCard
-          data={briefingQuery.data}
-          isLoading={briefingQuery.isLoading}
-          title="Lab Mylo Report"
-          statsSubject="the lab"
-          scrollable
-        />
-
-        {/* Right: what Mylo found + top papers + nearest deadlines. */}
-        <div className="flex flex-col gap-[22px] lg:min-h-0 lg:overflow-y-auto lg:pr-1">
-          {announcementsQuery.data?.settings.enabled ? (
-            <AnnouncedPanel
-              data={announcementsQuery.data}
-              isLoading={announcementsQuery.isLoading}
-              isError={announcementsQuery.isError}
+      <div className="ws-split">
+        <div className="ws-split-main">
+          <FoldedReport>
+            <MyloReportCard
+              data={briefingQuery.data}
+              isLoading={briefingQuery.isLoading}
+              title="Lab Mylo Report"
+              statsSubject="the lab"
             />
+          </FoldedReport>
+          <TodayByTheme items={items} isLoading={recQuery.isLoading} />
+        </div>
+
+        <div className="ws-split-side">
+          {announcing ? (
+            <>
+              <AnnouncedPanel
+                data={announcementsQuery.data}
+                isLoading={announcementsQuery.isLoading}
+                isError={announcementsQuery.isError}
+              />
+              {/* The same list Mylo posts in Discord each morning. */}
+              <ClosingSoonPanel
+                items={announcementsQuery.data?.closing_soon ?? []}
+                isLoading={announcementsQuery.isLoading}
+                isError={announcementsQuery.isError}
+              />
+            </>
           ) : (
-            <MyloFoundCard
-              windowCounts={rec?.window_counts}
-              isLoading={recQuery.isLoading}
-            />
+            <ClosingSoon items={items} isLoading={recQuery.isLoading} />
           )}
-
-          <TopPapersPanel
-            suggestions={rec?.papers ?? []}
-            isLoading={recQuery.isLoading}
-            recommendedFor={rec?.recommended_for}
-          />
-          <ClosingSoonPanel
-            items={announcementsQuery.data?.closing_soon ?? []}
-            isLoading={announcementsQuery.isLoading}
-            isError={announcementsQuery.isError}
-          />
+          <ForEachPerson items={items} isLoading={recQuery.isLoading} />
+          <ProjectPulse />
+          <MyloFoundCard windowCounts={rec?.window_counts} isLoading={recQuery.isLoading} />
           <LabChangesCard slug={lab.slug} />
         </div>
       </div>
@@ -168,35 +149,6 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
       {editing ? (
         <LabEditorModal lab={lab} onClose={() => setEditing(false)} />
       ) : null}
-    </div>
-  );
-}
-
-function Greeting({
-  greeting,
-  first,
-  dateLabel,
-  scopeLabel,
-  action,
-}: {
-  greeting: string;
-  first: string;
-  dateLabel: string;
-  scopeLabel: string;
-  /** Trailing control (the manager-only "Edit profile" button). */
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="mb-[22px] flex shrink-0 flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
-        <h1 className="m-0 mb-[6px] font-serif text-[31px] font-semibold leading-[1.12] tracking-[-0.015em] text-[var(--text-primary)]">
-          Good {greeting}, {first}
-        </h1>
-        <p className="m-0 text-[14px] text-[var(--text-secondary)]">
-          {dateLabel} · You&apos;re viewing {scopeLabel}
-        </p>
-      </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }

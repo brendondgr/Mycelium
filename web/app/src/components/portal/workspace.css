@@ -2291,6 +2291,29 @@ html[data-motion="none"] *::after {
   color: var(--text-secondary);
 }
 
+.ws-overview {
+  max-width: var(--ws-maxw);
+  margin: 0 auto;
+}
+
+.ws-fold {
+  position: relative;
+}
+
+.ws-fold:not([data-open]) .ws-fold-body {
+  max-height: 600px;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 78%, transparent);
+}
+
+.ws-fold-btn {
+  margin-top: 8px;
+}
+
+.ws-overview-scope {
+  margin: calc(var(--d-gap) * -0.5) 0 var(--d-gap);
+}
+
 .ws-feedpage {
   max-width: var(--ws-maxw);
   margin: 0 auto;
