@@ -525,7 +525,7 @@ export type StructuredDeadline = {
 };
 
 /** Fields shared by a matched grant and a matched conference. */
-type OpportunityBase = {
+export type OpportunityBase = {
   content_id: string;
   title: string;
   url: string;

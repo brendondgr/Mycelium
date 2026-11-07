@@ -2278,6 +2278,10 @@ html[data-motion="none"] *::after {
   z-index: 55;
 }
 
+.ws-detail-actions {
+  align-items: flex-start;
+}
+
 .ws-feedpage {
   max-width: var(--ws-maxw);
   margin: 0 auto;

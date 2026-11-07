@@ -2,12 +2,8 @@
 
 import * as React from "react";
 
-import { Card } from "@/components/portal/primitives/card";
-import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
 import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
-import { EmptyState } from "@/components/portal/primitives/empty-state";
-import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { type ExtraDeadline } from "@/components/portal/primitives/deadline-list";
 import {
   SourceRow,
@@ -22,27 +18,10 @@ import {
   UpdatedTag,
   formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
-import {
-  DEFAULT_GRANT_FILTERS,
-  GrantFilters,
-  deriveGrantFilterOptions,
-  filterAndSortGrants,
-  type GrantFilterState,
-} from "@/components/portal/sections/grant-filters";
-import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
-import { HeldBack, heldReason } from "@/components/portal/primitives/held-back";
-import { HiddenByFilters } from "@/components/portal/primitives/hidden-by-filters";
-import {
-  FeedSearchBar,
-  clusterOptions,
-  matchesQuery,
-} from "@/components/portal/primitives/feed-search-bar";
+import { DetailSection } from "@/components/portal/feed/parts";
+import { OpportunityFeed, type OpportunityFeedConfig } from "@/components/portal/feed/opportunity-feed";
 import { usePortal } from "@/components/portal/portal-context";
 import { useGrants, useLabRecommendations } from "@/lib/portal/hooks";
-import {
-  revealDelay,
-  useInfiniteReveal,
-} from "@/lib/portal/use-infinite-reveal";
 import { TeamFitLine } from "@/components/portal/collab/team-fit-line";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
 import { UsabilityStrip } from "@/components/portal/primitives/usability-strip";
@@ -286,55 +265,97 @@ export function GrantRow({
   );
 }
 
-function GrantSkeleton() {
-  return (
-    <Card className="animate-pulse p-5">
-      <div className="flex items-center justify-between">
-        <span className="h-5 w-20 rounded-full bg-surface-alt" />
-        <span className="h-6 w-24 rounded-full bg-surface-alt" />
-      </div>
-      <span className="mt-3 block h-4 w-3/4 rounded bg-surface-alt" />
-      <span className="mt-2 block h-3 w-1/2 rounded bg-surface-alt" />
-      <span className="mt-3 block h-3 w-full rounded bg-surface-alt" />
-    </Card>
-  );
-}
-
-function GrantsList({
-  grants,
-  recommendedFor,
-}: {
-  grants: GrantOpportunity[];
-  recommendedFor?: Record<string, RecommendedMember[]>;
-}) {
-  return (
-    <div className="space-y-3.5">
-      {grants.map((grant, index) => (
-        <RevealOnScroll
-          key={grant.content_id}
-          delay={revealDelay(index, GRANT_PAGE_SIZE)}
-        >
-          <GrantRow
-            grant={grant}
-            recommendedFor={recommendedFor?.[grant.content_id]}
-            forLab={recommendedFor !== undefined}
-            ignorable
-          />
-        </RevealOnScroll>
-      ))}
-    </div>
-  );
+/** "Posted Jul 6, 2026" for a card. */
+function postedLabel(iso: string): string {
+  return iso ? `Posted ${formatDate(iso)}` : "";
 }
 
 /**
- * The Grants page: matched funding opportunities in a scannable, detail-forward
- * row format, with a left-hand filter rail (match strength, deadline, sponsor,
- * matched topic, source, sort) that narrows the already-fetched feed in memory.
- * The list scrolls infinitely — slices reveal themselves as the reader nears the
- * bottom. Fellowships and Conferences live on their own pages.
+ * The Grants page — one scrolling page of matched funding, grouped by theme,
+ * with the opened call pinned on the right (see `OpportunityFeed`). The grant's
+ * own parts: sponsor and amount on the card, a sponsor filter, the description,
+ * team fit, and every application round behind the Deadlines menu.
  */
-/** How many grants each infinite-scroll slice reveals. */
-const GRANT_PAGE_SIZE = 25;
+const GRANTS_CONFIG: OpportunityFeedConfig<GrantOpportunity> = {
+  title: "Grants",
+  kicker: "Opportunities",
+  noun: "grants",
+  idPrefix: "grants",
+  placeholder: "Search grants by title, sponsor, or description…",
+  icon: <BankIcon size={26} className="text-accent" />,
+  label: (g) => g.sponsor,
+  facts: (g) =>
+    g.amount || g.posted ? (
+      <span className="ws-facts">
+        {g.amount ? (
+          <span className="ws-fact">
+            <BankIcon size={13} aria-hidden="true" /> {g.amount}
+          </span>
+        ) : null}
+        {g.posted ? <span className="ws-meta-text">{postedLabel(g.posted)}</span> : null}
+      </span>
+    ) : null,
+  text: (g) => [g.title, g.description, g.reason, g.sponsor, g.matched_topics, g.opportunity_number].join(" "),
+  facets: (grants) => {
+    const sponsors = new Map<string, number>();
+    for (const g of grants) if (g.sponsor) sponsors.set(g.sponsor, (sponsors.get(g.sponsor) ?? 0) + 1);
+    const top = [...sponsors].sort((a, b) => b[1] - a[1]).slice(0, 10);
+    return top.length > 1
+      ? [
+          {
+            id: "sponsor",
+            label: "Sponsor",
+            mode: "multi" as const,
+            options: top.map(([sponsor]) => ({
+              value: sponsor,
+              label: sponsor,
+              test: (g: GrantOpportunity) => g.sponsor === sponsor,
+            })),
+          },
+        ]
+      : [];
+  },
+  sorts: [
+    {
+      value: "posted",
+      label: "Recently posted",
+      cmp: (a, b) => (b.posted || "").localeCompare(a.posted || ""),
+    },
+  ],
+  detail: (g, { forLab }) => (
+    <>
+      <DetailSection title="Team fit">
+        <TeamFitLine contentId={g.content_id} fit={g.team_fit} title={g.title} forLab={forLab} />
+      </DetailSection>
+      {g.description ? (
+        <DetailSection title="About this call">
+          <p>{g.description}</p>
+        </DetailSection>
+      ) : null}
+      {g.loi_date || (g.original_deadline && g.original_deadline !== g.deadline_date) ? (
+        <DetailSection title="Key dates">
+          <div className="ws-meta-text">{grantDeadlineFootnote(g)}</div>
+        </DetailSection>
+      ) : null}
+    </>
+  ),
+  actionBar: (g) => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return { extraDeadlines: grantExtraRounds(g, today), deadlineFootnote: grantDeadlineFootnote(g) };
+  },
+  primaryLink: "View call",
+  emptyTitle: "Your grant matches are on their way",
+  emptyDescription:
+    "Once Mylo's nightly funding scan runs against your research profile, your best-fit grants — each with its deadline and why it fits — will appear here.",
+};
+
+const LAB_GRANTS_CONFIG: OpportunityFeedConfig<GrantOpportunity> = {
+  ...GRANTS_CONFIG,
+  emptyTitle: "No lab grant matches yet",
+  emptyDescription:
+    "Once Mylo has run for this lab, funding opportunities matched to its purpose will appear here.",
+};
 
 export function OpportunitiesSection() {
   const { currentLab } = usePortal();
@@ -349,8 +370,9 @@ function LabGrantsFeed({ lab }: { lab: MyLab }) {
   const { data, isLoading, isError } = useLabRecommendations(lab.slug);
   const grants = React.useMemo(() => data?.grants ?? [], [data]);
   return (
-    <GrantsFeed
-      grants={grants}
+    <OpportunityFeed
+      config={LAB_GRANTS_CONFIG}
+      items={grants}
       isLoading={isLoading}
       isError={isError}
       recommendedFor={data?.recommended_for}
@@ -362,228 +384,5 @@ function LabGrantsFeed({ lab }: { lab: MyLab }) {
 function PersonalOpportunities() {
   const { data, isLoading, isError } = useGrants();
   const grants = React.useMemo(() => data?.items ?? [], [data]);
-  return <GrantsFeed grants={grants} isLoading={isLoading} isError={isError} />;
-}
-
-/**
- * The shared Grants feed body — the keyword search and cluster chips at the top,
- * the filter rail, the infinite-scroll card list, and the
- * end-of-feed marker — used identically by the personal page and a lab workspace. `labName`, when
- * set, marks the lab variant and only swaps the surrounding copy; the structure,
- * filters, and card layout are the same in both.
- */
-function GrantsFeed({
-  grants,
-  isLoading,
-  isError,
-  recommendedFor,
-  labName,
-}: {
-  grants: GrantOpportunity[];
-  isLoading: boolean;
-  isError: boolean;
-  /** Lab-only: content id → the members Mylo judges each grant is for. */
-  recommendedFor?: Record<string, RecommendedMember[]>;
-  labName?: string;
-}) {
-  const [filters, setFilters] = React.useState<GrantFilterState>(
-    DEFAULT_GRANT_FILTERS,
-  );
-  const [query, setQuery] = React.useState("");
-  const [selectedCluster, setSelectedCluster] = React.useState<string | null>(
-    null,
-  );
-
-  const clusters = React.useMemo(() => clusterOptions(grants), [grants]);
-
-  // The top-of-page search and cluster chips scope the feed first; the rail's
-  // facets then narrow whatever that scope left, so its counts read against the
-  // theme the reader is looking at rather than the whole run.
-  const scoped = React.useMemo(() => {
-    const needle = query.trim();
-    if (!needle && !selectedCluster) return grants;
-    return grants.filter((g) => {
-      if (selectedCluster && g.cluster?.id !== selectedCluster) return false;
-      return matchesQuery(
-        [g.title, g.description, g.reason, g.sponsor, g.matched_topics],
-        needle,
-      );
-    });
-  }, [grants, query, selectedCluster]);
-
-  const options = React.useMemo(
-    () => deriveGrantFilterOptions(scoped),
-    [scoped],
-  );
-  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const filtered = React.useMemo(
-    () => filterAndSortGrants(scoped, filters, today),
-    [scoped, filters, today],
-  );
-  // On a lab feed, what fails a hard check moves to "Mylo held back".
-  const labFeed = recommendedFor !== undefined;
-  const held = React.useMemo(
-    () => (labFeed ? filtered.filter((g) => heldReason(g.usability)) : []),
-    [filtered, labFeed],
-  );
-  const visible = React.useMemo(
-    () => (held.length ? filtered.filter((g) => !heldReason(g.usability)) : filtered),
-    [filtered, held],
-  );
-
-  // What the rail's facets took out of the scoped feed — see `HiddenByFilters`.
-  const hidden = React.useMemo(() => {
-    if (filtered.length === scoped.length) return [];
-    const shown = new Set(filtered.map((grant) => grant.content_id));
-    return scoped.filter((grant) => !shown.has(grant.content_id));
-  }, [scoped, filtered]);
-
-  const clearAll = () => {
-    setFilters(DEFAULT_GRANT_FILTERS);
-    setQuery("");
-    setSelectedCluster(null);
-  };
-
-  // Filters always search the full feed; the result set then streams in as the
-  // reader scrolls, so reaching the bottom widens the list instead of ending it.
-  const resetKey = React.useMemo(
-    () => ({ filters, query, selectedCluster }),
-    [filters, query, selectedCluster],
-  );
-  const {
-    visible: displayed,
-    hasMore,
-    remaining,
-    sentinelRef,
-    revealMore,
-  } = useInfiniteReveal(visible, GRANT_PAGE_SIZE, resetKey);
-
-  const showRail = !isLoading && !isError && grants.length > 0;
-
-  const subtitle = isLoading
-    ? labName
-      ? `Matching funding to ${labName}…`
-      : "Matching funding to your research…"
-    : grants.length > 0
-      ? labName
-        ? `${grants.length} grant${
-            grants.length === 1 ? "" : "s"
-          } Mylo matched to ${labName}.`
-        : `${grants.length} grant${
-            grants.length === 1 ? "" : "s"
-          } matched your research profile and timeline.`
-      : labName
-        ? `Funding matched to ${labName}.`
-        : "Funding matched to your research profile and timeline.";
-
-  return (
-    <div>
-      <SectionHeader
-        eyebrow="Opportunities"
-        title="Grants"
-        subtitle={subtitle}
-      />
-
-      {grants.length > 0 && !isLoading && !isError ? (
-        <FeedSearchBar
-          query={query}
-          onQueryChange={setQuery}
-          placeholder="Search grants by title, sponsor, or description…"
-          clusters={clusters}
-          selectedCluster={selectedCluster}
-          onClusterChange={setSelectedCluster}
-        />
-      ) : null}
-
-      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-        {showRail ? (
-          <GrantFilters
-            options={options}
-            filters={filters}
-            onChange={setFilters}
-            resultCount={visible.length}
-            totalCount={scoped.length}
-          />
-        ) : null}
-
-        <div className="min-w-0 flex-1">
-          {isLoading ? (
-            <div className="space-y-3.5">
-              <GrantSkeleton />
-              <GrantSkeleton />
-              <GrantSkeleton />
-            </div>
-          ) : isError ? (
-            <EmptyState
-              icon={<BankIcon size={26} className="text-accent" />}
-              title={
-                labName
-                  ? "Couldn't load this feed"
-                  : "Couldn't load your grants"
-              }
-              description={
-                labName
-                  ? "Something went wrong loading the lab's funding matches. Please try again in a moment."
-                  : "Something went wrong fetching your funding matches. Please try again in a moment."
-              }
-            />
-          ) : grants.length === 0 ? (
-            <EmptyState
-              icon={<BankIcon size={26} className="text-accent" />}
-              badge={labName ? undefined : "Coming soon"}
-              title={
-                labName
-                  ? "No lab grant matches yet"
-                  : "Your grant matches are on their way"
-              }
-              description={
-                labName
-                  ? "Once Mylo has run for this lab, funding opportunities matched to its purpose will appear here."
-                  : "Once Mylo's nightly funding scan runs against your research profile, your best-fit grants — each with a percent-match score, its deadline, and why it fits — will appear here, newest strong matches pinned to the top."
-              }
-            />
-          ) : visible.length === 0 ? (
-            <EmptyState
-              icon={<BankIcon size={26} className="text-accent" />}
-              title="No grants match these filters"
-              description="Try a different search term, another cluster, or widen your filters to see more of your matched funding opportunities."
-              action={
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                >
-                  Clear all filters
-                </button>
-              }
-            />
-          ) : (
-            <>
-              <GrantsList grants={displayed} recommendedFor={recommendedFor} />
-              <FeedSentinel
-                sentinelRef={sentinelRef}
-                hasMore={hasMore}
-                remaining={remaining}
-                onRevealMore={revealMore}
-                totalShown={displayed.length}
-                noun="grants"
-              />
-            </>
-          )}
-
-          {/* Outside the branch above on purpose — see the conferences feed. */}
-          {!isLoading && !isError ? (
-            <>
-              <HeldBack count={held.length} noun="grants">
-                <GrantsList grants={held} recommendedFor={recommendedFor} />
-              </HeldBack>
-              <HiddenByFilters count={hidden.length} noun="grants">
-                <GrantsList grants={hidden} recommendedFor={recommendedFor} />
-              </HiddenByFilters>
-            </>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
+  return <OpportunityFeed config={GRANTS_CONFIG} items={grants} isLoading={isLoading} isError={isError} />;
 }
