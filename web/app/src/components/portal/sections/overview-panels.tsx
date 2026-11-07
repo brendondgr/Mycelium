@@ -1,5 +1,6 @@
 "use client";
 
+import { LinesSkeleton } from "@/components/portal/skeleton";
 import { usePortal } from "@/components/portal/portal-context";
 import {
   ArrowRightIcon,
@@ -67,9 +68,7 @@ export function TopPapersPanel({
         onView={() => goToSection("papers")}
       />
       {isLoading ? (
-        <p className="text-sm text-[var(--text-secondary)]">
-          Gathering today&apos;s papers…
-        </p>
+        <LinesSkeleton rows={3} />
       ) : top.length === 0 ? (
         <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
           <DocumentIcon size={16} />
@@ -168,9 +167,7 @@ export function DeadlinesPanel({
     <Card className="p-5">
       <PanelHeader title="Deadlines" onView={() => goToSection("saves")} />
       {isLoading ? (
-        <p className="text-sm text-[var(--text-secondary)]">
-          Loading your deadlines…
-        </p>
+        <LinesSkeleton rows={2} />
       ) : items.length === 0 ? (
         <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
           <CalendarIcon size={16} />

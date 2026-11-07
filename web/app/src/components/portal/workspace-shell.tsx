@@ -14,6 +14,8 @@ import {
 import { WorkspaceGround } from "@/components/portal/motion/workspace-ground";
 import { SectionStage } from "@/components/portal/section-stage";
 
+import "./workspace.css";
+
 /**
  * The authenticated workspace chrome: header, sidebar, and mobile tabs wrapped
  * around the active route. Each `/app/*` page renders into the `SectionStage`,
