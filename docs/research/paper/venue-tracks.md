@@ -23,8 +23,9 @@ registered and presenting, so a trip before the grant starts needs other money.
   engine.
 
 The committed submissions are in [`publication-plan.md`](publication-plan.md):
-JOSS, US-RSE'27, IUI 2028 and the SIGIR 2027 demo. This file covers everything
-else that fits.
+JOSS, US-RSE'27, IUI 2028 and the NAACL 2027 demo, plus an open choice at
+SIGIR 2027 between a demo and a short paper (updated 2026-11-07). This file
+covers everything else that fits.
 
 ## Deadlines in the next three months
 
@@ -36,8 +37,10 @@ else that fits.
 | Nov 9, 2026 | IUI 2027 workshops (for example HIMAS, on human-AI collaboration) | An early hypothesis-engine design | Published via CEUR |
 | Nov 10, 2026 | IUI 2027 posters and demos (4 pp plus video; not anonymous) | A Mycelium demo | Helsinki, February 2027 |
 | Dec 1 or 6, 2026 | CHIIR 2027 doctoral consortium | The graduate student's research programme | The track page and homepage give different dates |
+| **Dec 4, 2026** | **NAACL 2027 system demonstrations** (6 pp plus video; single-blind) | **Committed:** Mycelium's language and knowledge-graph layer | San Francisco, June 2027 (domestic); notification Feb 10 |
 | Jan 21, 2027 | CHI 2027 interactive demos, student research competition, posters | A Mycelium demo; formative work on the hypothesis engine | Pittsburgh, May 2027 (domestic) |
-| ~Feb 2027 (prev. Feb 12) | SIGIR 2027 demo or resource paper | Mycelium as an open resource | San Jose, July 2027 (domestic); the 2027 pages are placeholders |
+| Feb 4 (abstract), Feb 11, 2027 | SIGIR 2027 demo, resource or reproducibility paper | **Open:** the demo, as NAACL's fallback | San Jose, July 2027 (domestic) |
+| TBD (prev. Feb 12) | SIGIR 2027 short paper | **Open:** the reranking negative results | Double-anonymous |
 | ~Feb–Mar 2027 (prev. Feb 9 / Mar 30) | PEARC27 full or short paper, poster | Running Mycelium from a laptop to a cluster | Raleigh, July 2027 (driveable) |
 
 ## Research-software venues
@@ -157,18 +160,25 @@ reproducibility and resources. Nothing mentions scholarly literature or funding.
 
 | Track | Length | Review | Deadline |
 |---|---|---|---|
-| Full paper | 9 pp | Double-anonymous (OpenReview) | Jan 21, 2027 (marked proposed) |
-| Short / reproducibility / perspectives | 4 / 9 / 9 pp | Double-anonymous | prev. Feb 12 |
-| **Resource** | 6 pp | **Single-anonymous; must be available** | prev. Feb 12 |
-| **Demo** | 4 pp plus video or live link | **Single-anonymous** | prev. Feb 12 |
+| Full paper | 9 pp | Double-anonymous (OpenReview) | Jan 21, 2027 (abstract Jan 14) |
+| Short | 4 pp | Double-anonymous | TBD (prev. Feb 12) |
+| Reproducibility / perspectives | 9 / 9 pp | Double-anonymous | Feb 11 / Feb 4, 2027 (abstracts Feb 4 / Jan 28) |
+| **Resource** | 6 pp | **Single-anonymous; must be available** | Feb 11, 2027 (abstract Feb 4) |
+| **Demo** | 4 pp plus video or live link | **Single-anonymous** | Feb 11, 2027 (abstract Feb 4) |
 | Low-resource environments | 2-page proposal | — | prev. Feb 19 |
+
+Dates as posted on the tracks page on 2026-11-07; page limits and review
+types are still SIGIR 2026's. Notifications April 5 (perspectives April 12).
 
 Relevant 2027 topics: energy efficiency and inference cost; mixed-initiative
 interaction; human-AI collaboration; user studies; transparency and
 explainability; **scientific literature search and discovery**.
 
-- **Demo for SIGIR 2027: Mycelium.** Committed. A\* and domestic. Watch for the
-  2027 call.
+- **SIGIR 2027: open, the demo or a short paper.** No longer the committed demo
+  (that moved to NAACL on 2026-11-07). Either the demo as NAACL's fallback,
+  submittable only if NAACL rejects on February 10, or a short paper on the
+  reranking negative results (C-013, C-015, C-017). Decide by about January
+  28; see [`publication-plan.md`](publication-plan.md) section 5.
 - **Full paper for SIGIR 2028: small models against large ones, measured
   properly.** Skip 2027: the evidence isn't ready.
 - **Low-resource environments track: laptop-scale research tools for labs
@@ -258,6 +268,29 @@ this year.** Still open, all due **January 21, 2027** unless noted:
 - **Student research competition: the graduate student, as sole author, on
   formative work for the hypothesis engine.**
 
+## Natural language processing
+
+### NAACL (rank A; 2027 in San Francisco, June 1–5)
+
+| Track | Length | Review | Deadline |
+|---|---|---|---|
+| Main conference | ARR | Double-blind | Passed (ARR, Oct 12, 2026; commitment Dec 23) |
+| Industry | — | — | Passed (Oct 31 or Nov 13, 2026) |
+| **System demonstrations** | 6 pp plus references and appendix; video of about 2 minutes | **Single-blind** (prev.) | **Dec 4, 2026**; notification Feb 10, camera-ready Mar 3 |
+
+Dates from the NAACL 2027 homepage. The 2027 demo call page returned 404 on
+2026-11-06, so length, review and video come from the NAACL 2025, ACL 2026 and
+EACL 2027 calls. Demos are archival in the ACL Anthology and must not be under
+review elsewhere at the same time. Scholar Inbox, which covers the
+personalized paper feed, was an ACL 2025 System Demonstration, so a Mycelium
+demo here leads with the language and knowledge-graph layer, not the feed.
+
+- **Demo for NAACL 2027: Mycelium's grounding layer.** Committed. Lab
+  conversation read into a consented, retractable knowledge graph, with
+  citations checked by code. See [`publication-plan.md`](publication-plan.md)
+  section 4.
+- **EACL 2027 demos:** passed (Sep 22, 2026).
+
 ## AI for science and metascience
 
 ### Metascience 2027 (Montreal, June 14–16, 2027; not ranked; no proceedings)
@@ -315,6 +348,10 @@ posting one during review.
 - RecSys: [RecSys 2026 call](https://recsys.acm.org/recsys26/call/), [RecSys 2027](https://recsys.acm.org/recsys27/)
 - SIGIR: [2027 full papers](https://sigir2027.org/pages/submit-full.html),
   [2027 tracks](https://sigir2027.org/pages/submit-tracks.html)
+- NAACL and ACL demos: [NAACL 2027](https://2027.naacl.org/),
+  [NAACL 2025 demo call](https://2025.naacl.org/calls/demo/),
+  [ACL 2026 demo call](https://2026.aclweb.org/calls/system_demonstration/),
+  [EACL 2027 demo call](https://2027.eacl.org/calls/demos/)
 - ECIR: [ECIR 2027](https://www.ecir2027.co.uk/)
 - CHIIR: [CHIIR 2027](https://chiir2027.github.io/)
 - IUI: [IUI 2027 call for papers](https://iui.acm.org/2027/call-for-papers/),
