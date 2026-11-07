@@ -177,7 +177,11 @@ const letters = [..."Mycelium"];
   .wordmark {
     margin: 0.6rem 0 0;
     font-family: "Fraunces", Georgia, serif;
-    font-optical-sizing: auto;
+    /* Pinned, not `auto`: auto maps 152px to Fraunces' opsz 144, whose "e"
+       crossbar is a hairline that vanishes, so the name read "Mycclium". The
+       crossbar holds at opsz 72 across the whole 64–152px range. */
+    font-optical-sizing: none;
+    font-variation-settings: "opsz" 72;
     font-size: clamp(4rem, 13vw, 9.5rem);
     font-weight: 400;
     line-height: 0.95;
