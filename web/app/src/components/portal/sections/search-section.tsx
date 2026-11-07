@@ -4,18 +4,15 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { SearchIcon } from "@/components/portal/icons";
-import { Card } from "@/components/portal/primitives/card";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
-import { SectionHeader } from "@/components/portal/primitives/section-header";
+import { FeedListSkeleton } from "@/components/portal/skeleton";
 import { SearchResultCard } from "@/components/portal/sections/search-result-card";
-import { useSearchResults } from "@/lib/portal/hooks";
+import { useDailyReport, useSearchResults } from "@/lib/portal/hooks";
 import type {
   SearchContentType,
-  SearchFacetBucket,
   SearchFacets,
   SearchSort,
 } from "@/lib/portal/types";
-import { cn } from "@/lib/utils";
 
 const SORTS: { value: SearchSort; label: string }[] = [
   { value: "relevance", label: "Relevance" },
@@ -176,199 +173,181 @@ export function SearchSection() {
           poolTruncated ? " (top matches)" : ""
         }`;
 
-  return (
-    <div className="portal-fade-up">
-      <SectionHeader eyebrow="Everything" title="Search" subtitle={subtitle} />
+  const groups = React.useMemo(() => {
+    // Grouped by kind when the reader hasn't narrowed to one kind; within a
+    // group the backend's order (relevance, date or deadline) is kept.
+    if (types.length === 1) return [{ key: types[0], label: TYPE_LABELS[types[0]] ?? types[0], items: results }];
+    const order = ["paper", "grant", "fellowship", "conference"];
+    const rank = (k: string) => (order.includes(k) ? order.indexOf(k) : order.length);
+    const map = new Map<string, typeof results>();
+    for (const r of results) {
+      const k = r.type ?? "other";
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(r);
+    }
+    return [...map]
+      .sort((x, y) => rank(x[0]) - rank(y[0]))
+      .map(([key, items]) => ({ key, label: TYPE_LABELS[key] ?? "Other", items }));
+  }, [results, types]);
 
-      {/* Query box + sort */}
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <label className="relative min-w-0 flex-1">
-          <span className="sr-only">Search the content library</span>
-          <SearchIcon
-            size={16}
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"
-          />
+  const suggestions = useSearchSuggestions();
+
+  return (
+    <div className="ws-search" data-entry={hasQuery ? "compact" : "centered"}>
+      <div className="ws-search-entry">
+        {hasQuery ? (
+          <h1 className="ws-h ws-page-title ws-search-title-compact">Search</h1>
+        ) : (
+          <>
+            <p className="ws-kicker">Search</p>
+            <h1 className="ws-h ws-page-title">The whole library, ranked for you.</h1>
+          </>
+        )}
+        <label className="ws-search-box">
+          <SearchIcon size={18} aria-hidden="true" className="ws-search-icon" />
+          <span className="ws-sr">Search the content library</span>
           <input
             type="search"
             value={text}
             onChange={(event) => setText(event.target.value)}
             autoFocus
-            placeholder="Search papers, grants, fellowships, conferences…"
-            className="w-full rounded-full border border-border bg-surface py-2.5 pl-10 pr-4 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-[var(--text-muted)]"
+            placeholder="Papers, grants, fellowships, conferences — a title, an author, an idea…"
           />
         </label>
-        <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-          <span className="hidden sm:inline">Sort</span>
-          <select
-            value={sort}
-            onChange={(event) => setSort(event.target.value as SearchSort)}
-            className="rounded-full border border-border bg-surface px-3.5 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {SORTS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
+        {!hasQuery && suggestions.length ? (
+          <div className="ws-chips ws-suggest" role="group" aria-label="Suggested searches">
+            {suggestions.map((s) => (
+              <button key={s} type="button" className="ws-chip" onClick={() => setText(s)}>
+                {s}
+              </button>
             ))}
-          </select>
-        </label>
+          </div>
+        ) : null}
       </div>
 
       {!hasQuery ? (
-        <EmptyState
-          icon={<SearchIcon size={24} />}
-          title="What are you looking for?"
-          description="Search the whole content library by keyword or concept — an exact title, an author, a funding topic, or an idea in your own words."
-        />
+        <p className="ws-meta-text ws-search-hint">
+          Search the whole library by keyword or concept — an exact title, an author, a funding topic, or an idea in
+          your own words.{suggestions.length ? " Your themes above are a place to start." : ""}
+        </p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
-          {/* Filters — sticky on desktop, scroll within if the list runs long. */}
-          <aside className="min-w-0 space-y-5 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
-            <FacetGroup
-              title="Type"
-              buckets={facets.type}
-              active={types}
-              labelFor={(value) => TYPE_LABELS[value] ?? value}
-              onToggle={toggleType}
-            />
-            {perType ? (
-              <FacetGroup
-                title={perType.title}
-                buckets={perTypeBuckets}
-                active={facetFilters[perType.key] ?? []}
-                labelFor={
-                  perType.key === "award_class" ? titleCase : undefined
-                }
-                onToggle={(value) => toggleFacet(perType.key, value)}
-              />
-            ) : null}
-            {hasFilters ? (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                Clear filters
-              </button>
-            ) : null}
-          </aside>
-
-          {/* Results */}
-          <div className="min-w-0">
-            {confidence === "low" && results.length > 0 ? (
-              <Card className="mb-4 border-dashed p-3.5 text-sm text-[var(--text-secondary)]">
-                These are best-effort matches — try refining your wording or
-                removing filters for a closer fit.
-              </Card>
-            ) : null}
-
-            {query.isLoading ? (
-              <div className="space-y-4">
-                {[0, 1, 2].map((index) => (
-                  <SkeletonCard key={index} />
-                ))}
-              </div>
-            ) : query.isError ? (
-              <EmptyState
-                icon={<SearchIcon size={24} />}
-                title="Search is unavailable"
-                description="Something went wrong running that search. Please try again in a moment."
-              />
-            ) : results.length === 0 ? (
-              <EmptyState
-                icon={<SearchIcon size={24} />}
-                title={`No results for “${q}”`}
-                description={
-                  hasFilters
-                    ? "Nothing matched with these filters. Try clearing them or broadening your search."
-                    : "Try different or broader terms — search covers papers, grants, fellowships, and conferences."
-                }
-              />
-            ) : (
-              <>
-                <div className="space-y-4">
-                  {results.map((item) => (
-                    <SearchResultCard key={item.content_id} item={item} />
-                  ))}
-                </div>
-                {query.hasNextPage ? (
-                  <div className="mt-6 flex justify-center">
+        <>
+          <div className="ws-toolbar ws-search-tools">
+            <div className="ws-chips ws-chips-wrap" role="group" aria-label="Kinds">
+              {facets.type.map((bucket) => (
+                <button
+                  key={bucket.value}
+                  type="button"
+                  className="ws-chip"
+                  aria-pressed={types.includes(bucket.value)}
+                  onClick={() => toggleType(bucket.value)}
+                >
+                  {TYPE_LABELS[bucket.value] ?? bucket.value}
+                  <span className="ws-count">{bucket.count.toLocaleString()}</span>
+                </button>
+              ))}
+              {perType
+                ? perTypeBuckets.slice(0, 8).map((bucket) => (
                     <button
+                      key={`${perType.key}-${bucket.value}`}
                       type="button"
-                      onClick={() => query.fetchNextPage()}
-                      disabled={query.isFetchingNextPage}
-                      className="rounded-full border border-border bg-surface-alt px-5 py-2 text-sm font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="ws-chip"
+                      aria-pressed={(facetFilters[perType.key] ?? []).includes(bucket.value)}
+                      onClick={() => toggleFacet(perType.key, bucket.value)}
                     >
-                      {query.isFetchingNextPage ? "Loading…" : "Load more"}
+                      <span className="ws-meta-text">{perType.title}:</span>{" "}
+                      {perType.key === "award_class" ? titleCase(bucket.value) : bucket.value}
                     </button>
-                  </div>
-                ) : null}
-              </>
-            )}
+                  ))
+                : null}
+              {hasFilters ? (
+                <button type="button" className="ws-link" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
+            <label className="ws-sort">
+              <span className="ws-sr">Sort by</span>
+              <select value={sort} onChange={(event) => setSort(event.target.value as SearchSort)}>
+                {SORTS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-        </div>
+
+          <p className="ws-meta-text ws-result-count" aria-live="polite">
+            {subtitle}
+          </p>
+
+          {confidence === "low" && results.length > 0 ? (
+            <p className="ws-note ws-note-quiet ws-note-text">
+              These are best-effort matches — try refining your wording or removing filters for a closer fit.
+            </p>
+          ) : null}
+
+          {query.isLoading ? (
+            <FeedListSkeleton count={3} />
+          ) : query.isError ? (
+            <EmptyState
+              icon={<SearchIcon size={24} />}
+              title="Search is unavailable"
+              description="Something went wrong running that search. Please try again in a moment."
+            />
+          ) : results.length === 0 ? (
+            <EmptyState
+              icon={<SearchIcon size={24} />}
+              title={`No results for “${q}”`}
+              description={
+                hasFilters
+                  ? "Nothing matched with these filters. Try clearing them or broadening your search."
+                  : "Try different or broader terms — search covers papers, grants, fellowships, and conferences."
+              }
+            />
+          ) : (
+            <div className="ws-result-groups">
+              {groups.map((g) => (
+                <section key={g.key} className="ws-feed-group" aria-label={g.label}>
+                  {groups.length > 1 ? (
+                    <h2 className="ws-group-label">
+                      {g.label} <span className="ws-count">{g.items.length}</span>
+                    </h2>
+                  ) : null}
+                  <div className="space-y-4">
+                    {g.items.map((item) => (
+                      <SearchResultCard key={item.content_id} item={item} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+              {query.hasNextPage ? (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => query.fetchNextPage()}
+                    disabled={query.isFetchingNextPage}
+                    className="ws-btn ws-btn-line"
+                  >
+                    {query.isFetchingNextPage ? "Loading…" : "Load more"}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 
-function FacetGroup({
-  title,
-  buckets,
-  active,
-  labelFor,
-  onToggle,
-}: {
-  title: string;
-  buckets: SearchFacetBucket[];
-  active: string[];
-  labelFor?: (value: string) => string;
-  onToggle: (value: string) => void;
-}) {
-  if (buckets.length === 0) return null;
-  return (
-    <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
-        {title}
-      </p>
-      <div className="flex flex-wrap gap-1.5 lg:flex-col lg:items-start">
-        {buckets.map((bucket) => {
-          const on = active.includes(bucket.value);
-          return (
-            <button
-              key={bucket.value}
-              type="button"
-              onClick={() => onToggle(bucket.value)}
-              aria-pressed={on}
-              className={cn(
-                "inline-flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                on
-                  ? "border-primary bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] font-semibold text-primary"
-                  : "border-border bg-surface text-[var(--text-secondary)] hover:bg-surface-alt",
-              )}
-            >
-              <span className="truncate">
-                {labelFor ? labelFor(bucket.value) : bucket.value}
-              </span>
-              <span className="shrink-0 text-xs text-[var(--text-secondary)]">
-                {bucket.count.toLocaleString()}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function SkeletonCard() {
-  return (
-    <Card className="p-5">
-      <div className="animate-pulse space-y-3">
-        <div className="h-4 w-20 rounded bg-surface-alt" />
-        <div className="h-5 w-3/4 rounded bg-surface-alt" />
-        <div className="h-3 w-full rounded bg-surface-alt" />
-        <div className="h-3 w-5/6 rounded bg-surface-alt" />
-      </div>
-    </Card>
-  );
+/** Suggested searches: the reader's own themes, from today's matches. */
+function useSearchSuggestions(): string[] {
+  const { data } = useDailyReport();
+  return React.useMemo(() => {
+    const labels = new Set<string>();
+    for (const s of data?.suggestions ?? []) if (s.cluster?.label) labels.add(s.cluster.label);
+    return [...labels].slice(0, 6);
+  }, [data]);
 }

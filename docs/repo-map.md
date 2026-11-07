@@ -59,7 +59,7 @@ Paths are relative to the repository root.
 | A feed card's Deadlines button + dropdown (alerts per round) | `web/app/src/components/portal/primitives/deadline-list.tsx` (`DeadlineMenu`) |
 | A feed card's source row + "View …" button | `web/app/src/components/portal/primitives/source-footer.tsx` (`SourceRow`, `ViewLink`) |
 | The report's ranked entry (title, insight, note, match rail, deadline strip) | `web/app/src/components/portal/primitives/report-entry.tsx`; its print half is `_entry_row` in `web/backend/apps/content/daily_report_pdf.py` |
-| Decorative motion (vines, threads, seedlings, ring sweep) | `web/app/src/components/portal/motion/` (reduced-motion + in-view-once hooks), `portal/leaf-vine.tsx`, keyframes in `web/app/src/app/globals.css` |
+| Decorative motion (threads, seedlings, ring sweep) | `web/app/src/components/portal/motion/` (reduced-motion + in-view-once hooks), keyframes in `web/app/src/app/globals.css`; the sidebar and search vines are gone |
 | Feed card scroll entrance (predictive, fires ahead of the reader) | `web/app/src/components/portal/motion/reveal-on-scroll.tsx` |
 | Workspace background (still contour map) | `web/app/src/components/portal/motion/workspace-ground.tsx`, mounted in `portal/workspace-shell.tsx`; styles `.ws-ground` in `web/app/src/app/globals.css` |
 | Workspace appearance: Night Forest default, density, motion | tokens and `--d-*` density variables in `web/app/src/app/globals.css`; applied before paint by `components/layout/theme-script.tsx`; client hooks `lib/portal/theme.ts`, `lib/portal/appearance.ts` |

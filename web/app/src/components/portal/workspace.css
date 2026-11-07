@@ -2291,6 +2291,27 @@ html[data-motion="none"] *::after {
   color: var(--text-secondary);
 }
 
+.ws-search {
+  max-width: var(--ws-maxw);
+  margin: 0 auto;
+}
+
+.ws-search-tools {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.ws-search-hint {
+  max-width: 46rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.ws-result-groups {
+  display: grid;
+  gap: var(--d-section);
+}
+
 .ws-overview {
   max-width: var(--ws-maxw);
   margin: 0 auto;
