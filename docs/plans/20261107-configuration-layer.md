@@ -26,6 +26,29 @@ through a CLI or the user's own agent — not by editing Python.
    No instance-wide settings editor in the UI.
 4. **Default profile is `lab`** when setup runs without one.
 
+Second round (2026-11-07):
+
+5. **Every sign-up mode exists and is selectable**: `invite` (link or email),
+   `code` (shared access code), `domain` (any address at an allowed domain),
+   `open` (anyone), plus `closed`. A profile picks a default; the operator can
+   change it. `domain` needs working email, so `config validate` refuses it
+   without a provider.
+6. **Email is configurable, not assumed.** `[email].provider = "none" |
+   "resend" | "smtp"`, with Resend as the documented first choice and any SMTP
+   server as the general case.
+7. **Verification is optional.** `[signup].verify_email` can be off; then an
+   account is active the moment it is created. An account an admin creates is
+   always active. An invite code or link must work with no mail server at all,
+   and nothing in sign-up may require Discord.
+8. **Nightly spend**: one `nightly.model_calls` budget the run shares out and
+   degrades to (deterministic scoring past it), with the individual caps kept
+   as fine-tuning knobs.
+9. **The hosted instance is the `institution` template.** Today's
+   configuration — access code, verified email through Resend, Spore at
+   sign-up, today's caps — is what an operator serving a whole school should
+   get. The `institution` profile reproduces it; the hosted server is a
+   separate deployment that keeps it.
+
 ## Audit (Phase 0)
 
 ### What actually restricts a self-hoster today
@@ -166,8 +189,12 @@ clusters = 3               # ... today's numbers, moved out of Python
 
 [signup]
 mode = "invite"            # closed | invite | code | domain | open
-allowed_domains = []
-verify_email = true
+allowed_domains = []       # used by mode = "domain"
+verify_email = false       # on: mailed code before orgs/invites; needs [email]
+
+[email]
+provider = "none"          # none | resend | smtp  (keys and passwords in .env)
+from = ""
 
 [features]
 ambient = false
@@ -182,17 +209,18 @@ llm_concurrency = 12
 Key names are a draft; the CLI's `explain` text and the comments in the
 generated file are the documentation.
 
-### Profiles (draft numbers — to confirm)
+### Profiles (`institution` = today's hosted configuration; `department` to confirm)
 
 | | personal | lab | department | institution |
 | --- | --- | --- | --- | --- |
-| clusters × topics | unlimited | unlimited | 6 × 10 | 4 × 5 |
-| watch topics | unlimited | unlimited | 20 | 20 |
-| personal / lab / dept projects | unlimited | unlimited | 5 / 10 / 30 | 3 / 10 / 30 |
-| lab members | unlimited | unlimited | unlimited | unlimited |
-| sign-up | closed after admin | invite | invite or domain | domain |
-| billing | off | off | off | off (may switch on) |
-| nightly budgets | host-sized | generous | budgeted | budgeted |
+| clusters × topics | unlimited | unlimited | *to confirm* | 6 × 10 (Spore today) |
+| watch topics | unlimited | unlimited | *to confirm* | 20 |
+| personal / lab / dept projects | unlimited | unlimited | *to confirm* | 5 / 10 / 30 |
+| lab members | unlimited | unlimited | unlimited | 15 per lab plan |
+| sign-up | closed after admin | invite | invite | code |
+| verify email | off | off | off | on (Resend) |
+| billing | off | off | off | today's (see open question) |
+| nightly budgets | host-sized | generous | budgeted | today's |
 
 ## Phases
 
@@ -206,8 +234,10 @@ generated file are the documentation.
    `ambient/eligibility.py` and `collab/matcher.py` call it instead of reading
    tiers. Billing off also creates orgs active and seats nobody. The first
    admin no longer lands on Free.
-3. **Sign-up policy.** `[signup].mode` replaces the bare access code; drop the
-   hardcoded fallback; reconcile `verify_email` with email being off.
+3. **Sign-up and email policy.** `[signup].mode` replaces the bare access
+   code (all five modes); drop the hardcoded fallback; `verify_email` off makes
+   accounts active at creation; admin-created accounts are always active;
+   `[email].provider` selects Resend, SMTP or none.
 4. **CLI.** `ops/mycelium config init|show|explain|set|validate|diff|recommend`,
    all with `--json`. `make setup` asks for (or takes) the profile.
 5. **Agent skill.** `docs/skills/configure.md`: interview → `config recommend
@@ -222,14 +252,10 @@ generated file are the documentation.
 
 ## Open questions
 
-1. Profile numbers for `department` and `institution` (the draft above).
-2. Sign-up modes: should `open` (no code, no invite) exist? Should `domain`
-   admit anyone with an allowed address without an invite?
-3. Email verification when email is off: auto-verify, verify by admin
-   approval, or refuse to start an invite/domain profile without email?
-4. Nightly cost: expose the individual knobs only, or add one
-   `nightly.model_calls_per_night` budget the run degrades to?
-5. `PI_CAPS` is published but never enforced: drop it, or enforce it as
+1. **`institution` and billing.** Today the hosted instance has subscription
+   rows (orgs start inactive, seats, a 15-member lab ceiling) but feature
+   gating off. Should the `institution` profile keep that subscription layer,
+   or carry today's numbers as flat limits with billing off?
+2. **`department` numbers**: between `lab` (unlimited) and `institution`.
+3. **`PI_CAPS`** is published but never enforced: drop it, or enforce it as
    `lab_leads`?
-6. Hosted instance: keep today's behaviour (`billing.mode = "subscriptions"`,
-   Spore at sign-up, current caps) or move it to a profile?
