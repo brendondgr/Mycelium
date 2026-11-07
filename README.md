@@ -111,33 +111,51 @@ cd Mycelium
 make setup
 ```
 
-`make setup` asks for your model endpoint, then:
+`make setup` asks who the instance is for and where your model endpoint is,
+then:
 
-1. writes `.env` with freshly generated secrets;
-2. builds and starts the stack, and applies the database migrations;
-3. creates the first admin account.
+1. writes `mycelium.toml` for that profile — `personal`, `lab` (the default),
+   `department` or `institution`;
+2. writes `.env` with freshly generated secrets;
+3. builds and starts the stack, and applies the database migrations;
+4. creates the first admin account.
 
 The first build takes several minutes. When it finishes, open
 **http://localhost:11050** and sign in as `admin` with the `ADMIN_USER_PASS` from
-`.env`. Anyone else signs up with the `SIGNUP_ACCESS_CODE` from the same file.
+`.env`. How everyone else gets in depends on the profile: on `lab`, you invite
+them from inside the app.
 
 Agents and scripts can run `make setup` without a terminal. Pass the endpoint as
-`LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL` in the environment and nothing is
-asked.
+`LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL` in the environment (and the profile
+as `PROFILE=…`) and nothing is asked.
 
 ## Configuration
 
-Compose loads [`.env.example`](.env.example) first and your `.env` second, so
-`.env` holds only what you change. Every variable is documented in
-`.env.example`; these are the ones worth knowing on day one:
+What your instance allows lives in **`mycelium.toml`**: who may sign up, whether
+email is sent and verified, whether billing exists, how much each person and lab
+may track, optional features, and a cap on nightly model calls. Out of the box
+there are **no limits and no billing**; every limit is off until you give it a
+number. Change it with one command, or let your own agent do it
+([`docs/skills/configure.md`](docs/skills/configure.md)):
+
+```bash
+ops/mycelium config show                    # what is in effect, and why
+ops/mycelium config set signup.mode open    # anyone who can reach it may join
+ops/mycelium config set limits.clusters 6   # turn one limit on
+ops/mycelium config validate
+```
+
+[`docs/configuration.md`](docs/configuration.md) explains every section and
+profile. Secrets stay in `.env`, which Compose loads after
+[`.env.example`](.env.example):
 
 | Variable | What it does |
 |---|---|
 | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | The model behind profile drafting and the written reasons. Without a reachable endpoint, Mycelium falls back to deterministic drafts |
-| `SIGNUP_ACCESS_CODE` | The code a new account must enter. Sign-up is invite-only |
 | `ADMIN_USER_PASS` | The first admin's password, read by `make admin` |
+| `SIGNUP_ACCESS_CODE` | The shared code, if you choose `signup.mode = "code"` |
+| `RESEND_API_KEY` / `EMAIL_HOST_PASSWORD` | Mail credentials, if `email.provider` is `resend` or `smtp` |
 | `PUBLIC_HOSTNAME` | Your domain, if you serve Mycelium beyond localhost |
-| `EMAIL_ENABLED` | Off by default. Turn it on, with a Resend key, to send verification and invitation emails |
 
 Mylo's Discord bot reads its token and channel ids from `.env-mylo`. While those
 are blank, the bot stays off. Setup is described in
@@ -274,6 +292,7 @@ are in [`docs/goals.md`](docs/goals.md#tools-on-the-grounding-layer).
   - [`goals.md`](docs/goals.md)
   - [`styles.md`](docs/styles.md)
 - Reference:
+  - [`configuration.md`](docs/configuration.md) — running your own instance
   - [`architecture.md`](docs/architecture.md)
   - [`api-contract.md`](docs/api-contract.md)
 - Guidance for coding agents:

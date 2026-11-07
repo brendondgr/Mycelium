@@ -53,8 +53,8 @@ These hold throughout and should stay true of every change:
 ## Built
 
 **Foundation & identity.** Monorepo, service boundaries, Compose stack, and
-secrets management. Session auth with CSRF, an invite-only sign-up gate with a
-shadow-ban lockout, users, labs, departments, memberships, permission roles,
+secrets management. Session auth with CSRF, a configurable sign-up gate (its
+shared-code mode has a shadow-ban lockout), users, labs, departments, memberships, permission roles,
 academic titles, audit events, and lab invitations. Object-level permissions on
 the profile, lab, department, project, and reminder surfaces.
 
@@ -114,8 +114,12 @@ introductions through consenting co-authors, "outside my network", and team
 proposals. Six harm checks run daily. Built and validated on synthetic worlds;
 outward search ships switched off (`COLLAB_SEARCH_ENABLED`).
 
-**Operations & commerce.** Tiered subscriptions with per-seat billing for labs
-and departments, add-ons, and entitlements enforced in the API, both daily
+**Operations & commerce.** One instance configuration (`mycelium.toml`, see
+[`configuration.md`](configuration.md)) with four deployment profiles, five
+sign-up modes, optional email verification, every limit off unless set, a
+nightly model-call budget, and a CLI and agent skill to change it. Billing is a
+module that file switches on: tiered subscriptions with per-seat billing for
+labs and departments, add-ons, and entitlements enforced in the API, both daily
 pipelines, and the frontend. A staff-only admin API for rosters, plan
 assignment, and watch quotas. Discord identity linking by three paths, guild
 activation, slash commands, a durable outbox with drift detection, and a host

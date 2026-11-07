@@ -10,11 +10,18 @@ leaving the decision only in code or chat.
 
 ## First-time setup
 
-On a fresh clone, run `make setup`. It writes `.env` with generated secrets,
-builds and starts the stack, applies migrations, and creates the first admin.
-Without a terminal it asks nothing, so an agent passes the model endpoint as
-`LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL` in the environment. `make help`
+On a fresh clone, run `make setup`. It writes `mycelium.toml` for a deployment
+profile, writes `.env` with generated secrets, builds and starts the stack,
+applies migrations, and creates the first admin. Without a terminal it asks
+nothing, so an agent passes the model endpoint as `LLM_BASE_URL`, `LLM_API_KEY`
+and `LLM_MODEL` in the environment (and `PROFILE=…`, default `lab`). `make help`
 lists every other command; `make test` runs the backend suite.
+
+Operator policy — sign-up, email, billing, limits, optional features, the
+nightly budget — lives in `mycelium.toml`, not in code or `.env.example`. Change
+it with `ops/mycelium config` and follow `docs/skills/configure.md` when a user
+asks to set up or reconfigure their instance. A new operator-facing setting is
+added as a key in `web/backend/config/instance.py`, not as a bare env var.
 
 ## Navigating the code
 

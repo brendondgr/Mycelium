@@ -404,6 +404,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 |---|---|
 | `docs/purpose.md`, `docs/goals.md`, `docs/styles.md` | Canonical product direction |
 | `docs/architecture.md` | Stack, boundaries, data ownership, configuration |
+| `docs/configuration.md` | Operator guide to `mycelium.toml`: profiles, layers, every section, common changes |
 | `docs/api-contract.md` | HTTP surface |
 | `docs/repo-map.md` | This file |
 | `docs/discord-integration.md` | Discord identity & lab linking reference |
