@@ -68,8 +68,8 @@ docker compose up
 
 Nginx serves everything on a single origin at **http://localhost:11050** —
 landing at `/`, the app at `/app/*`, `/login`, `/signup`, and Django at `/api/*`
-and `/admin/*`. `python run.py` wraps the same thing (`up`, `down`, `restart`,
-`logs`, `status`, `--build`).
+and `/admin/*`. `ops/mycelium` wraps the same thing (`start`, `stop`, `restart`,
+`logs`, `status`, `build`).
 
 Host-published ports follow `11050 + 100·n`: landing `11150`, app `11250`,
 Django `11350`, Postgres `11450`, Redis `11550`, Neo4j `11650`/`11750`, MinIO
@@ -91,7 +91,7 @@ Root commands:
 
 ## Running the stack
 
-`scripts/mycelium` is the one entry point for the whole environment — it drives
+`ops/mycelium` is the one entry point for the whole environment — it drives
 the systemd units when they are installed and Docker Compose when they are not.
 
 | Command | What it does |
@@ -129,7 +129,7 @@ Both are read by `web/backend/config/settings.py`.
 ## The daily run
 
 The nightly pipeline is a **host** systemd timer, not Celery Beat.
-`mylo-daily.timer` fires `manual_all.py` at 07:00; it scrapes the opportunity
+`mylo-daily.timer` fires `ops/nightly/manual_all.py` at 07:00; it scrapes the opportunity
 sources on the host, then runs each backend stage in order inside the container:
 
 `run_daily_suggestions` → `run_daily_opportunities --no-prune` →
@@ -140,7 +140,7 @@ The daily run re-ranks the **whole** corpus for every target, then reports what
 entered each Top-25. An item is "new" when it enters a slate, not when it was
 ingested — so a changed research focus promotes whatever now fits. Cost is
 contained by carry-forward, not by narrowing the scan: a verdict Mylo has already
-written is reused, never re-billed. Refitting (`manual_mylo.py` / `run_refitting`)
+written is reused, never re-billed. Refitting (`ops/nightly/manual_mylo.py` / `run_refitting`)
 stays a separate on-demand pass at sign-up and after profile edits, because it
 deliberately re-sends every surfaced item to the model — which a nightly run must
 never do.

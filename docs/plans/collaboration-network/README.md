@@ -213,7 +213,7 @@ These rules hold either way; what keeps them safe is structure, not care:
    `web/app/src/lib/portal/collab/`. The shared `lib/portal/{types,client,hooks,mutations}.ts`
    files are not touched by this series.
 5. **Nightly stages are separate commands.** Each series adds its own
-   management commands; edits to `manual_all.py` are merged one at a time.
+   management commands; edits to `ops/nightly/manual_all.py` are merged one at a time.
 6. **Separate verification environments.** Each track works in its own git
    worktree with its own container mount and its own test database — two
    pytest runs against one test database produce false failures. The dev

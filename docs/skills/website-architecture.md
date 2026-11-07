@@ -26,7 +26,7 @@ Browser
      -> Django      /api/*, /admin/*
                     -> Postgres + pgvector, Redis, Celery worker + beat
 Host (outside the gateway)
-  -> mylo-daily.timer  -> manual_all.py   (the nightly research run)
+  -> mylo-daily.timer  -> ops/nightly/manual_all.py   (the nightly research run)
   -> mylo-bot.service  -> python -m mylo.bot (the Discord gateway)
 ```
 

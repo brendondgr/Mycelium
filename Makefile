@@ -5,8 +5,8 @@
 # It exists so that recording an experiment costs one command, because a
 # convention that costs more than that is a convention people skip.
 
-RESEARCH_RUN := uv run --project scripts/research
-SCRIPTS := scripts/research
+RESEARCH_RUN := uv run --project ops/research
+SCRIPTS := ops/research
 
 .DEFAULT_GOAL := help
 .PHONY: help new-experiment validate-research research-index figures figures-check research-ci

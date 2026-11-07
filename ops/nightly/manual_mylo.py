@@ -31,21 +31,21 @@ model, so if the endpoint is unreachable the run aborts before touching anything
 rather than re-scoring on deterministic fallbacks. Re-run once the model is back.
 
 Every flag is passed straight through to ``run_refitting`` — the same code path as
-``utils/manual/manual_refitting.py`` and any future scheduler. Because each refit
+``ops/nightly/manual_refitting.py`` and any future scheduler. Because each refit
 issues a round of LLM calls for every user, cap the run with ``--max`` when
 smoke-testing so you don't overwhelm the model host. Any ``--user`` filter also
 scopes the report refresh, so the two stages stay in step.
 
 Usage:
-    python manual_mylo.py                          # all users, top-10 LLM, refresh reports
-    python manual_mylo.py --max 5                  # first 5 active users only
-    python manual_mylo.py --user brendondgr        # one user (refit + report)
-    python manual_mylo.py --llm-limit all          # send every surfaced item to the model
-    python manual_mylo.py --areas papers grants    # a subset of areas
-    python manual_mylo.py --dry-run                # refit but persist nothing (no report refresh)
-    python manual_mylo.py --help                   # this message
+    python ops/nightly/manual_mylo.py                          # all users, top-10 LLM, refresh reports
+    python ops/nightly/manual_mylo.py --max 5                  # first 5 active users only
+    python ops/nightly/manual_mylo.py --user brendondgr        # one user (refit + report)
+    python ops/nightly/manual_mylo.py --llm-limit all          # send every surfaced item to the model
+    python ops/nightly/manual_mylo.py --areas papers grants    # a subset of areas
+    python ops/nightly/manual_mylo.py --dry-run                # refit but persist nothing (no report refresh)
+    python ops/nightly/manual_mylo.py --help                   # this message
 
-The stack must be up first (``python run.py up``). Requires Docker Compose. This
+The stack must be up first (``mycelium start``). Requires Docker Compose. This
 matches the *existing* corpus, so seed it first (``manual_all.py`` / the daily
 jobs) if the store is empty.
 """
@@ -55,7 +55,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "utils" / "manual"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _runner import ensure_ready, run_manage  # noqa: E402
 
 

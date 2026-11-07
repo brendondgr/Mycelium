@@ -10,7 +10,7 @@ This phase is intentionally small: CSV source sampling only, no database.
 ## Directory Structure
 
 ```text
-utils/grants/
+ops/scrapers/grants/
   grants_controller.py
   grants-README.md
   retrievers/
@@ -40,21 +40,21 @@ data/grants/
 Run all sources with the default 10-record sample:
 
 ```sh
-uv run --project web/backend python utils/grants/grants_controller.py
+uv run --project web/backend python ops/scrapers/grants/grants_controller.py
 ```
 
 Run all sources with a 5-record sample:
 
 ```sh
-uv run --project web/backend python utils/grants/grants_controller.py --limit 5
+uv run --project web/backend python ops/scrapers/grants/grants_controller.py --limit 5
 ```
 
 Run one source:
 
 ```sh
-uv run --project web/backend python utils/grants/grants_controller.py --limit 10 --sources grants_gov
-uv run --project web/backend python utils/grants/grants_controller.py --limit 10 --sources nih_reporter
-uv run --project web/backend python utils/grants/grants_controller.py --limit 10 --sources nsf_awards
+uv run --project web/backend python ops/scrapers/grants/grants_controller.py --limit 10 --sources grants_gov
+uv run --project web/backend python ops/scrapers/grants/grants_controller.py --limit 10 --sources nih_reporter
+uv run --project web/backend python ops/scrapers/grants/grants_controller.py --limit 10 --sources nsf_awards
 ```
 
 Options:

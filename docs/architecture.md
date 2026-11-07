@@ -42,11 +42,17 @@ reserved, not as working infrastructure.
 
 ```text
 mycelium/
-├── CLAUDE.md, README.md, package.json, compose.yaml, .env.example   # root orchestration
-├── run.py, manual_all.py, manual_mylo.py, scrape_fellowships.py     # host runners
-├── mycelium*.service, mylo-daily.{service,timer}, mylo-bot.service  # systemd units
+├── CLAUDE.md, README.md, Makefile, package.json, compose.yaml, .env.example   # root orchestration
+├── ops/                           # everything that runs on the host, outside the containers
+│   ├── mycelium                   # stack manager CLI (start/stop/status/install-service)
+│   ├── compose.gpu.yaml           # GPU override for the embedding containers
+│   ├── setup/                     # create_admin.py, bootstrap.py (`make setup`)
+│   ├── nightly/                   # manual_all.py (the nightly run), manual_mylo.py, per-stage runners
+│   ├── scrapers/                  # scrape_fellowships.py, grants/ (dormant Grants.gov/NIH/NSF clients)
+│   ├── systemd/                   # unit templates installed by `mycelium install-service`
+│   ├── loadtest/                  # onboarding load test
+│   └── research/                  # research-record tooling behind `make validate-research`
 ├── mylo/                          # host Discord bot package + daily-run observability
-├── utils/                         # per-stage manual runners, vendored grants prototype
 ├── eval/                          # retrieval evaluation harness (own uv project)
 ├── docs/                          # direction, reference, skills, changelog
 └── web/
@@ -71,7 +77,7 @@ store** — only to the public site and, through the Next.js proxy, the Django A
 | Authenticated app behavior | `web/app/` (Next.js) | Session-gated UI; calls the API via a same-origin proxy |
 | Backend orchestration | `web/backend/` (Django + DRF) | Auth, permissions, business logic, admin, audit, API contracts |
 | Background work | Celery worker + Beat | Reminder ticks, outbox drain, project-profile recompute, seeding |
-| Scheduled pipeline | Host `mylo-daily.timer` → `manual_all.py` | The nightly research run (see below) |
+| Scheduled pipeline | Host `mylo-daily.timer` → `ops/nightly/manual_all.py` | The nightly research run (see below) |
 | Discord gateway | Host `mylo-bot.service` → `python -m mylo.bot` | Slash commands, drift events, run observability |
 | Data storage | Postgres / Redis | Durable records, vectors, queue/cache |
 
@@ -83,10 +89,10 @@ Single-origin routing through Nginx at `http://localhost:11050`:
 | `/login`, `/signup`, `/app/*`, `/_next/*` | Next.js app |
 | `/api/*`, `/admin/*` | Django |
 
-**Why the nightly run is split across host and container.** `manual_all.py` runs
+**Why the nightly run is split across host and container.** `ops/nightly/manual_all.py` runs
 on the host but executes almost every stage *inside* the backend container, where
 the database and the PDF renderer are. Exactly one stage is genuinely host-bound:
-the Illinois Fellowship Finder scrape (`scrape_fellowships.py`), which drives
+the Illinois Fellowship Finder scrape (`ops/scrapers/scrape_fellowships.py`), which drives
 Playwright the container does not carry. The grants/conferences collector is pure
 HTTP and runs in-container like everything else. A third stage, the weekly dblp
 venue-registry refresh (`refresh_dblp_registry`), is also in-container but sits on
@@ -111,7 +117,7 @@ they never stop the run, and both do nothing while
 | `content` | The matching and delivery layer — the largest app. Deduplicated `ContentItem`s, per-target `RelevanceScore`s, the four feeds, clustering and fusion, the daily briefing and PDF report, saves, addressable deadlines, reminders, notifications, unified search, member fit, and the Discord digest producers |
 | `billing` | Subscriptions, per-seat billing, add-ons, and tier-based entitlement resolution. `entitlements.py` is the single read path; an expired plan reverts to Free at read time with no cleanup job. **Feature gating is currently off** (`BILLING_ENFORCE_ENTITLEMENTS=false`): every capability resolves as granted for everyone, while plans, prices and the numeric caps stay live |
 | `integrations` | Discord identity and lab linking: OAuth, activation codes, guild install, the durable outbox, and the single ORM boundary in `services/resolve.py` |
-| `ambient` | The evidence ledger for what Mylo understands from the lab's own conversation: connected surfaces and their consent, one person's per-platform opt-in, the transient raw-message buffer, the adapter contract, retention and deletion. **Ships off** (`AMBIENT_ENABLED=false`). Imports `integrations` and `research`; `content` reads it only through `ambient/read.py`, which an AST test enforces. Raw message text never reaches Postgres — it lives in Redis under a TTL and is deleted once a window has been read. The Mylo gateway writes to it only through `ambient/service.py`, in process, the way `integrations/services/resolve.py` already works; there is no HTTP ingest endpoint. Each message is attributed to a project on arrival from cheap deterministic signals, with a floor and a margin and an honest "unresolved" (`attribution.py`); the read re-scores what that left unresolved with semantic similarity and re-checks every speaker's eligibility first. `ProjectAttention` (7- and 28-day shares per person per project) is derived nightly. Project editors see and correct attributions at `/api/ambient/`. **Reading and deciding are split (Plan 04):** an hourly Beat task reads conversations that have gone quiet — within the buffer's TTL — into grounded observations (model-written, no quotes, no rule-based fallback) and links each topic to a concept through `knowledge/service.py`; a nightly step in `manual_all.py` decides, per person and topic, one outcome (ignore, record, suggest, capability, propose, ask) from consistency across days and conversations, what the person already holds, and what they declined, and has the model explain it from its own notes. Deciding ships off (`AMBIENT_DELIBERATE_ENABLED=false`). **The evolving layer (Plan 05)** sits beside the declared profile and never inside it: suggestions become *pending* conversational edges in `apps/knowledge` (ranking nothing until the person says yes), told project facts become active `ProjectDevelopment`s with undo, ambient ones pending; confirmed explorations can join a person's paper search as their own down-weighted themes (`AMBIENT_DRIFT_ENABLED`, off); confirmed preferences, direction and learning goals reach the prompts; closed blockers and dropped methods reach the alerts; each report carries a `context_version`. **Asking and changing (Plans 06–09):**
+| `ambient` | The evidence ledger for what Mylo understands from the lab's own conversation: connected surfaces and their consent, one person's per-platform opt-in, the transient raw-message buffer, the adapter contract, retention and deletion. **Ships off** (`AMBIENT_ENABLED=false`). Imports `integrations` and `research`; `content` reads it only through `ambient/read.py`, which an AST test enforces. Raw message text never reaches Postgres — it lives in Redis under a TTL and is deleted once a window has been read. The Mylo gateway writes to it only through `ambient/service.py`, in process, the way `integrations/services/resolve.py` already works; there is no HTTP ingest endpoint. Each message is attributed to a project on arrival from cheap deterministic signals, with a floor and a margin and an honest "unresolved" (`attribution.py`); the read re-scores what that left unresolved with semantic similarity and re-checks every speaker's eligibility first. `ProjectAttention` (7- and 28-day shares per person per project) is derived nightly. Project editors see and correct attributions at `/api/ambient/`. **Reading and deciding are split (Plan 04):** an hourly Beat task reads conversations that have gone quiet — within the buffer's TTL — into grounded observations (model-written, no quotes, no rule-based fallback) and links each topic to a concept through `knowledge/service.py`; a nightly step in `ops/nightly/manual_all.py` decides, per person and topic, one outcome (ignore, record, suggest, capability, propose, ask) from consistency across days and conversations, what the person already holds, and what they declined, and has the model explain it from its own notes. Deciding ships off (`AMBIENT_DELIBERATE_ENABLED=false`). **The evolving layer (Plan 05)** sits beside the declared profile and never inside it: suggestions become *pending* conversational edges in `apps/knowledge` (ranking nothing until the person says yes), told project facts become active `ProjectDevelopment`s with undo, ambient ones pending; confirmed explorations can join a person's paper search as their own down-weighted themes (`AMBIENT_DRIFT_ENABLED`, off); confirmed preferences, direction and learning goals reach the prompts; closed blockers and dropped methods reach the alerts; each report carries a `context_version`. **Asking and changing (Plans 06–09):**
 - Nightly questions (`dialogue.py`) are answered by button or in the person's own words. A reader model maps a reply to a choice, and a chosen no is never recorded as a yes.
 - Every answer is an append-only `ValidationRecord`.
 - A yes that edits the declared profile is applied at the next nightly run through the interests contract, with provenance and an exact undo (`apply.py`, the only writer of `Profile.interests` here).
@@ -294,7 +300,7 @@ what re-ranking nightly costs is retrieval. Items that drop out of a ranking are
 and their slate place but keep the verdict, so an item that dips out and returns
 costs no second model call.
 
-Refitting (`refit_*`, `run_refitting`, `manual_mylo.py`) is still a separate
+Refitting (`refit_*`, `run_refitting`, `ops/nightly/manual_mylo.py`) is still a separate
 on-demand pass, run at sign-up and after a profile or focus edit. What makes it
 different is `reuse_prior=False`: it re-sends every surfaced item to the model,
 which is what a profile edit wants and what a nightly run must never do.
@@ -384,14 +390,37 @@ index therefore computes the identical ranking. See `docs/evaluation.md`.
 
 | Goal | Command |
 |---|---|
-| Full stack, single origin | `docker compose up` (or `python run.py`) → `http://localhost:11050` |
+| Full stack, single origin | `docker compose up` (or `make up`) → `http://localhost:11050` |
 | Backend + data services only | `docker compose up backend` |
 | Host dev gateway | `npm run dev` |
 | Backend management command | `uv run --project web/backend python web/backend/manage.py <cmd>` |
 | Backend tests | `npm run test` (or `uv run --directory web/backend python -m pytest`) |
-| GPU embedding | `docker compose -f compose.yaml -f compose.gpu.yaml up` |
+| GPU embedding | `docker compose -f compose.yaml -f ops/compose.gpu.yaml up` |
 
 Without `DATABASE_URL`, Django uses SQLite for quick checks — but pgvector tests
 skip there, so anything touching vectors needs the Compose Postgres. Embedding
 migrations depend on `core.0001_enable_pgvector`, so a fresh database provisions
 the `vector` type before any table that uses it.
+
+## The embedding model cache
+
+The FastEmbed/ONNX model (`qdrant/bge-small-en-v1.5-onnx-q`, ~65–90 MB) downloads
+lazily on first use into `data/models/fastembed/`, which `FASTEMBED_CACHE_PATH`
+in `compose.yaml` points the backend and worker at through the `.:/app` bind
+mount. It is git-ignored with the rest of `data/`, survives container recreates,
+and re-downloads if deleted. Warm it once before a large concurrent run (a burst
+of first requests can race the download):
+
+```bash
+docker compose exec -T backend uv run --project web/backend python -c \
+  "from apps.scraper.embedding import get_default_embedder; get_default_embedder()(['warm up'])"
+```
+
+GPU embedding needs the GPU flavour of fastembed, because plain `fastembed`
+depends on the CPU-only `onnxruntime`: `uv sync --project web/backend --extra
+embeddings-gpu` for the backend, `uv sync --no-group embeddings-cpu --group
+embeddings-gpu` for the root runner env, or the `ops/compose.gpu.yaml` override for
+containers (needs the nvidia-container-toolkit). `manage.py embedding_device
+--benchmark` reports what is actually running; a CPU fallback is silent by
+design. Both paths run the same graph, so stored vectors stay valid when the
+device changes.

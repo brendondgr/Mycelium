@@ -1,14 +1,14 @@
 """Shared plumbing for the manual pipeline triggers.
 
-Every ``manual_*.py`` wrapper in this directory — and the root ``manual_all.py``
+Every ``manual_*.py`` wrapper in this directory — and ``ops/nightly/manual_all.py``
 orchestrator — does the same thing: run one backend ``manage.py`` command inside
 the running ``backend`` container via Docker Compose, so it uses the real
 Postgres, Redis, embedding model, and LLM. This module centralizes Compose
 discovery, the "is the stack up?" guard, and command execution so the wrappers
 stay thin and behave identically.
 
-The repository root is two levels up from ``utils/manual/`` (this file lives at
-``<root>/utils/manual/_runner.py``).
+The repository root is two levels up (this file lives at
+``<root>/ops/nightly/_runner.py``).
 """
 
 from __future__ import annotations
@@ -74,7 +74,7 @@ def ensure_ready() -> list[str]:
     if not backend_is_running(base):
         sys.exit(
             "The backend service is not running. Start the stack first:\n"
-            "    python run.py up"
+            "    mycelium start"
         )
     return base
 

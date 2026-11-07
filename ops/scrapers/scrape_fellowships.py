@@ -16,12 +16,12 @@ host-orchestration rewrite beyond the script name. Unlike Pivot-RP's own
 grant/conference scrape, this needs no saved SSO session at all — the listing
 and detail pages are public.
 
-    uv run scrape_fellowships.py scrape   # browser scrape -> data/pivot/pivot_fellowships.json
-    uv run scrape_fellowships.py import   # data/pivot/pivot_fellowships.json -> content store
+    uv run ops/scrapers/scrape_fellowships.py scrape   # browser scrape -> data/pivot/pivot_fellowships.json
+    uv run ops/scrapers/scrape_fellowships.py import   # data/pivot/pivot_fellowships.json -> content store
 
 Run from the repo root: the root pyproject.toml provides the environment
 (Chromium is auto-installed on first scrape — no ``uv sync --extra`` needed).
-The stack must be up (``python run.py up``) so ``DATABASE_URL`` resolves.
+The stack must be up (``mycelium start``) so ``DATABASE_URL`` resolves.
 Pruning is **not** done here — ``manual_all.py``'s dedicated
 ``prune_opportunities`` container stage is the one place every opportunity
 type's expiry runs, so a moved deadline is always seen by the reminder tick
@@ -41,7 +41,7 @@ import os
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 PIVOT_DIR = ROOT / "data" / "pivot"
 OUT_PATH = PIVOT_DIR / "pivot_fellowships.json"
 

@@ -54,7 +54,7 @@ A finished experiment folder is immutable. Corrections are appended to the
 | `make figures` | Re-run every `make_figures.py` and re-promote paper figures |
 | `make research-ci` | The full check — validation plus index and figure staleness |
 
-Tooling lives in [`../../scripts/research/`](../../scripts/research/) as its own
+Tooling lives in [`../../ops/research/`](../../ops/research/) as its own
 small `uv` project, so validation stays fast enough for a pre-commit hook.
 
 ## What does *not* live here

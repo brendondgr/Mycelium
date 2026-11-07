@@ -864,7 +864,7 @@ def build_config(argv: list[str] | None = None) -> Config:
                    help="Fraction of users who enable all four match areas.")
     p.add_argument("--synthesize", action="store_true",
                    help="Also POST a résumé to /intake/synthesize (extra LLM load).")
-    p.add_argument("--out-dir", type=Path, default=Path("loadtest_results"),
+    p.add_argument("--out-dir", type=Path, default=Path("data/loadtest"),
                    help="Directory for the CSV reports.")
     p.add_argument("--run-id", default="",
                    help="Run identifier (used in usernames + filenames). Auto if blank.")

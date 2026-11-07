@@ -11,17 +11,17 @@ inside the ``backend`` container so it uses the real Postgres, Redis, and the
 embedding model. Any extra arguments are passed straight through to that command.
 
 Usage:
-    python utils/manual/manual_search.py                    # all users, synchronous
-    python utils/manual/manual_search.py --user brendondgr  # just one user (repeatable)
-    python utils/manual/manual_search.py --no-llm           # deterministic fallback, no model
-    python utils/manual/manual_search.py --dry-run          # run but don't persist scores
-    python utils/manual/manual_search.py --async            # hand off to the Celery worker
-    python utils/manual/manual_search.py --help             # full list of pass-through flags
+    python ops/nightly/manual_search.py                    # all users, synchronous
+    python ops/nightly/manual_search.py --user brendondgr  # just one user (repeatable)
+    python ops/nightly/manual_search.py --no-llm           # deterministic fallback, no model
+    python ops/nightly/manual_search.py --dry-run          # run but don't persist scores
+    python ops/nightly/manual_search.py --async            # hand off to the Celery worker
+    python ops/nightly/manual_search.py --help             # full list of pass-through flags
 
-The stack must be up first (``python run.py up``). Requires Docker Compose.
+The stack must be up first (``mycelium start``). Requires Docker Compose.
 
 To run search, opportunity matching, and refitting back to back for everyone in
-one shot, use the root ``manual_all.py`` orchestrator instead.
+one shot, use ``ops/nightly/manual_all.py`` orchestrator instead.
 """
 
 from __future__ import annotations

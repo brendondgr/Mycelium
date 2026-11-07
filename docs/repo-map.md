@@ -180,7 +180,7 @@ Files below are inside `web/backend/apps/content/`.
 | Nightly run analytics | `run_analytics.py`, `analytics_report_pdf.py`, `management/commands/run_analytics_report.py`; the Listening section reads `apps.ambient.read.listening_totals` and is omitted when nothing is listening |
 | Reminders | `reminders.py`, `reminders_tick.py`, `reminders_views.py`, `reminders_discord.py`, `reminders_announce.py`, `reminder_access.py` |
 | Deadline projection | `deadlines_projection.py` |
-| Opportunity announcements: which slate entrants a lab or department hears about, the six-item activation seed, never-twice (`Announcement`, `AnnouncementPost`, `AnnouncementReaction`, `AnnouncementSettings` in `models.py`) | `announce.py` (select, check, align, record); nightly commands `announce_opportunities` (`--dry-run`, `--llm`, `--lab`) and `announce_opportunity_updates` in `manual_all.py`, both inert while `OPPORTUNITY_ANNOUNCEMENTS_ENABLED` is off |
+| Opportunity announcements: which slate entrants a lab or department hears about, the six-item activation seed, never-twice (`Announcement`, `AnnouncementPost`, `AnnouncementReaction`, `AnnouncementSettings` in `models.py`) | `announce.py` (select, check, align, record); nightly commands `announce_opportunities` (`--dry-run`, `--llm`, `--lab`) and `announce_opportunity_updates` in `ops/nightly/manual_all.py`, both inert while `OPPORTUNITY_ANNOUNCEMENTS_ENABLED` is off |
 | The department path: is a call one only a department can take on (institutional selection, department applicant, department-scale programme, each with the sentence it matched), which of its labs could lead, and scoring a department | `apps/content/dept_level.py` (detector v2; precision in `docs/research/experiments/EXP-2026-11-001-dept-level-precision`), `lab_fit.py` (lab-profile cosine), `targets.target_for_department`; scored only while its announcements are on (`tasks.select_departments`); `discord_announcements.notify_eligible` DMs each member who may be eligible for a department fellowship |
 | Measuring announcements (Interested / Remind me / Not for us rates, web link clicks by surface, route health, held-back reasons, department slate yield and lab-fit scores) | `apps/content/announce_metrics.py` + `manage.py announcement_metrics --since --until --json`; `remind` and `link_click` reactions on `AnnouncementReaction`; web clicks from `DiscordLink`'s `surface` prop via `recordDiscordLinkClick` (`POST /api/announcements/link-click/`). Baseline: `docs/research/experiments/EXP-2026-11-002-announcement-baseline` |
 | Remind me without a Mycelium account (guest reminders) | `gate.authorize_guest` in `apps/integrations/services/gate.py`; `_remind_gate` / `_guest_remind` / `unremind` in `apps/content/announcement_actions.py`; delivery in `discord_announcements.send_due_nudges` / `_dm_nudge`; `recipient_discord_id` on `DiscordOutboxMessage` |
@@ -228,7 +228,7 @@ Files below are inside `web/backend/apps/content/`.
 | The hourly read: attribution's second look, extraction, concept linking, deleting the text | `web/backend/apps/ambient/reading.py`, task `apps.ambient.read_conversations`, command `read_ambient`; one `ExtractionRun` per window (counts and codes, never text) |
 | Deciding what observations mean — consistency, coverage, declines, budget, one outcome per topic | `web/backend/apps/ambient/deliberate.py` (pure, no model), model `Finding` |
 | Mylo's explanation of a finding, written from its own notes | `web/backend/apps/ambient/explain.py` |
-| The nightly deliberation step | command `deliberate_ambient`, called by `deliberate_ambient()` in `manual_all.py` (non-fatal; off unless `AMBIENT_DELIBERATE_ENABLED`) |
+| The nightly deliberation step | command `deliberate_ambient`, called by `deliberate_ambient()` in `ops/nightly/manual_all.py` (non-fatal; off unless `AMBIENT_DELIBERATE_ENABLED`) |
 | Findings becoming understanding: pending conversational edges, project developments, fading, retraction fan-out | `web/backend/apps/ambient/evolve.py` (run by `deliberate_ambient`) |
 | Meeting transcripts: one meeting, one window (parse, who-was-who, developments only, lower weight) | `web/backend/apps/ambient/transcripts.py`, model `TranscriptMeeting`, adapter `adapters/transcript.py`, `POST /api/ambient/transcripts/`, the project page's `transcript-card.tsx` |
 | The measures and harm checks (Plan 10), the labelled record as a dataset | `web/backend/apps/ambient/evaluation.py`, commands `evaluate_ambient` (content app) and `export_ambient_dataset` |
@@ -258,7 +258,7 @@ Files below are inside `web/backend/apps/content/`.
 | Declared profiles, labs, and projects mirrored into edges | `web/backend/apps/knowledge/projection.py`; save hooks in `signals.py`, tasks `apps.knowledge.project_subject` and `apps.knowledge.sweep` (Beat, 04:15), command `project_declared_edges` |
 | What each of a person's own papers shows, facet by facet (sentences, terms, field-neutral method, per-facet vectors) | `web/backend/apps/knowledge/works.py`, model `WorkFacets` |
 | A person's papers as demonstrated edges, per work and rolled up; the OpenAlex field ruler on concepts | `web/backend/apps/knowledge/demonstrated.py` |
-| Reading people's papers end to end (DOI field lookups, reading, vectors, edges) | `web/backend/apps/knowledge/papers.py`; queued on import (`service.queue_work_facets`, task `apps.knowledge.facet_user_works`), nightly via `facet_author_works` in `manual_all.py` |
+| Reading people's papers end to end (DOI field lookups, reading, vectors, edges) | `web/backend/apps/knowledge/papers.py`; queued on import (`service.queue_work_facets`, task `apps.knowledge.facet_user_works`), nightly via `facet_author_works` in `ops/nightly/manual_all.py` |
 | A work's co-authors by id and its OpenAlex field | `web/backend/apps/accounts/author_works.py` (`store_author_works`, `enrich_fields`); `AuthorWork.coauthor_ids`, `openalex_field_id` |
 | Reading the graph from anywhere else — **one of two doors** | `web/backend/apps/knowledge/read.py` (`own_edges`, `ranking_edges`, `lab_declared_edges`, `discoverable_edges`, `project_edges`, `undeclared_project_concepts` — Q1, `backing` — Q2); the AST guard is `apps/knowledge/tests/test_import_boundary.py` |
 | Running the knowledge and collaboration pipeline at scale on a fake world, against planted truth | `web/backend/sandbox/collab/` — `python -m sandbox.collab all` (people and papers), `calls` (planted funding calls), `consent`, `match`, `panel` and `browser-prep`, `graph`, `bench` (one check per plan); its own database `mycelium_sandbox` (and `mycelium_bench` for `bench`); results under `docs/research/experiments/` (`EXP-2026-09-005` to `-011`) |
@@ -268,7 +268,7 @@ Files below are inside `web/backend/apps/content/`.
 
 | Task | Path |
 |---|---|
-| What a funding call asks a team to bring (requirement slots: problem, method, data, partner role; required or not) | `web/backend/apps/collab/slots.py`, model `RequirementSlots`; nightly `extract_requirement_slots` in `manual_all.py` before scoring |
+| What a funding call asks a team to bring (requirement slots: problem, method, data, partner role; required or not) | `web/backend/apps/collab/slots.py`, model `RequirementSlots`; nightly `extract_requirement_slots` in `ops/nightly/manual_all.py` before scoring |
 | Which of a call's slots the reader or their lab covers (Q3: `coverage.for_call`) | `web/backend/apps/collab/coverage.py` — reads the knowledge core only through `apps.knowledge.read` |
 | The team-fit line stored on each grant score (`signals["team_fit"]`) | `web/backend/apps/collab/team_fit.py`; phase 4 of `run_daily_opportunities_batch`; backfill `annotate_team_fit` |
 | Whether a person can be found, by whom, until when; their verified institution and country; the weekly appearance cap | `web/backend/apps/collab/consent.py` (`update`, `mutually_visible`, `may_appear`), `affiliation.py` (the `VerifiedAffiliation` row, from `apps/accounts/institution.py`'s resolver); `SEEKER_CEILING` in `consent.py` (no search past the seeker's country), models `CollaborationSetting`, `VerifiedAffiliation`, `Appearance`; `GET/PUT /api/collab/settings/` |
@@ -295,7 +295,7 @@ Files below are inside `web/backend/apps/content/`.
 | Discord OAuth, API calls, outbox | `web/backend/apps/integrations/services/` |
 | Slack (ambient Plan 11): events, buttons, install, link codes, outbox | `web/backend/apps/integrations/slack_views.py`, `services/slack_events.py`, `slack_link.py`, `slack_outbox.py`, `slack_api.py`; `services/slack_resolve.py` is Slack's single ORM boundary; the adapter is `apps/ambient/adapters/slack.py` |
 | Microsoft Teams (ambient Plan 11): Bot Framework endpoint, token checks, outbox | `web/backend/apps/integrations/teams_views.py`, `services/teams_auth.py` (RS256 against Microsoft's keys), `teams_events.py`, `teams_outbox.py`, `teams_api.py`; `services/teams_resolve.py` is its ORM boundary; the adapter is `apps/ambient/adapters/teams.py` |
-| Reports on Slack for Slack-only readers and labs | `web/backend/apps/content/slack_reports.py`, command `send_slack_reports` (in `manual_all.py`) |
+| Reports on Slack for Slack-only readers and labs | `web/backend/apps/content/slack_reports.py`, command `send_slack_reports` (in `ops/nightly/manual_all.py`) |
 | Where the OAuth `redirect_uri` comes from (and why it must not vary) | `_redirect_uri` in `web/backend/apps/integrations/services/oauth.py`, `DISCORD_CALLBACK_ORIGIN` in `web/backend/config/settings.py`; print what to register with `manage.py discord_check` |
 | The portal's "link with a code" panel (join → copy command → wait) | `ActivationCodePanel` in `web/app/src/components/portal/sections/profile-section.tsx`; the command and invite come from `DiscordActivationCodeView` |
 | Paper source scrapers | `web/backend/apps/scraper/sources/`, `ingest.py`, `window.py` |
@@ -323,18 +323,18 @@ Files below are inside `web/backend/apps/content/`.
 
 | Task | Path |
 |---|---|
-| Full-stack start/stop | `scripts/mycelium` (start/stop/restart/status/migrate — wipes frontend caches, waits for the API, applies migrations, restarts Mylo), `run.py`, `compose.yaml`, `compose.gpu.yaml` |
-| Nightly research run | `manual_all.py` (fired by `mylo-daily.timer`) |
-| On-demand re-score everyone | `manual_mylo.py` |
-| Illinois fellowship scrape → import (host, Playwright) | `scrape_fellowships.py` |
-| Per-stage manual runners | `utils/manual/` |
+| Full-stack start/stop | `ops/mycelium` (start/stop/restart/status/migrate — wipes frontend caches, waits for the API, applies migrations, restarts Mylo), `Makefile` (`make up`/`down`/`status`), `compose.yaml`, `ops/compose.gpu.yaml` |
+| Nightly research run | `ops/nightly/manual_all.py` (fired by `mylo-daily.timer`) |
+| On-demand re-score everyone | `ops/nightly/manual_mylo.py` |
+| Illinois fellowship scrape → import (host, Playwright) | `ops/scrapers/scrape_fellowships.py` |
+| Per-stage manual runners | `ops/nightly/` |
 | Mylo Discord bot & run observability | `mylo/` — `bot/`, `config.py`, `reporting.py`, `analytics.py`, `runstate.py`, `linking.py`, `listening.py` |
 | Hearing a conversation and handing it to the ledger | `mylo/bot/cogs/listen.py` (Stage A: DMs, mentions, reactions on Mylo's posts, edits, deletions, the *Tell Mylo about this* action; Stage B behind `MYLO_LISTEN_ENABLED` **and** the Message Content intent, both off) + `mylo/listening.py` |
 | Turning listening on for a server, excluding channels, the pinned notice | `/setup`'s Listening section in `mylo/bot/cogs/setup.py`; one person's own opt-in is `/mylo listening` in `mylo/bot/cogs/mylo_commands.py` |
-| systemd units | `mycelium.service`, `mycelium-update.service`, `mylo-daily.{service,timer}`, `mylo-bot.service` |
+| systemd units | `ops/systemd/` — `mycelium.service`, `mycelium-update.service`, `mylo-daily.{service,timer}`, `mylo-bot.service`; installed by `ops/mycelium install-service` |
 | Gateway routing | `web/infra/nginx/default.conf` |
 | Env contract | `.env.example`, `.env-mylo.example` |
-| Onboarding load test | `loadtest.py`, `loadtest_interests.py`; guide in [`loadtest.md`](loadtest.md) |
+| Onboarding load test | `ops/loadtest/loadtest.py`, `ops/loadtest/loadtest_interests.py`; guide in [`loadtest.md`](loadtest.md) |
 | Retrieval evaluation | `eval/` — `run.py`, `report.py`, `collections.toml`, `configs/`, `harness/`; results in `eval/results/`, guide in [`evaluation.md`](evaluation.md) |
 | Frozen eval subset + embedding-matrix slicing | `eval/freeze_subset.py`, `eval/harness/subset.py`; the id list is `eval/subsets/*.txt` (committed) |
 | Candidate ladder stages (SPLADE, ColBERT, cross-encoder, LLM rerank) — **not production** | `eval/harness/{ladder,neural,llm_rerank}.py`, encoded by `eval/encode_ladder.py`; measured in `EXP-2026-08-008` |
@@ -343,8 +343,8 @@ Files below are inside `web/backend/apps/content/`.
 | LLM query expansion for the reranker (candidate, refuted) | `eval/expand_queries.py`; cached at `data/eval-cache/expansions/`, measured in `EXP-2026-08-010` |
 | Pool contrast against the **production** store (not LongEval) | `docs/research/experiments/EXP-2026-08-013-production-pool-contrast/code/` — `production_pool.py` builds the union-pool variants on top of the deployed `_build_pool`/`fuse_interest`; `run.py` scores them against the real `ContentItem` rows over a compose `postgres`. Nothing under `apps/content` is modified |
 | Research record (experiments, claims, figures) | `docs/research/` — start at [`research/README.md`](research/README.md) |
-| Research-record tooling | `scripts/research/` — `new_experiment.py`, `validate_research.py`, `generate_index.py`, `build_figures.py`, `manifest.schema.json`; driven by the root `Makefile` |
-| Admin bootstrap | `create_admin.py` |
+| Research-record tooling | `ops/research/` — `new_experiment.py`, `validate_research.py`, `generate_index.py`, `build_figures.py`, `manifest.schema.json`; driven by the root `Makefile` |
+| Admin bootstrap | `ops/setup/create_admin.py` |
 
 ## Management commands
 
@@ -376,7 +376,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `discord_check` | Print the OAuth redirect URIs to register in the Developer Portal, and how that origin resolved |
 | `scan_literature` | Paper ingestion only |
 | `collect_opportunities` | Open collector end to end (collect → map → ingest → extract → embed) for grants/conferences, in-container; nightly invocation is `--new-only --no-prune` |
-| `refresh_dblp_registry` | Refresh the dblp venue registry cache the conference resolve stage joins against (weekly cadence, self-throttled from `manual_all.py`; must run before collection) |
+| `refresh_dblp_registry` | Refresh the dblp venue registry cache the conference resolve stage joins against (weekly cadence, self-throttled from `ops/nightly/manual_all.py`; must run before collection) |
 | `reset_opportunities` | ORM-level wipe of grant / conference items before a re-populate (`--types`); leaves fellowships, papers, users, and saves alone |
 | `annotate_member_fit` | Backfill the "who is this for?" layer |
 | `recompute_project_profiles` | Rebuild project team vectors |

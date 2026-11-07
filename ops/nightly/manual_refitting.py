@@ -23,20 +23,20 @@ model instead — use it to give a user full LLM feedback after an LLM outage, a
 higher GPU cost.
 
 Usage:
-    python utils/manual/manual_refitting.py                              # all users, top-10 LLM
-    python utils/manual/manual_refitting.py --user brendondgr --max 1    # one user, one refit
-    python utils/manual/manual_refitting.py --user brendondgr --llm-limit all  # full LLM coverage
-    python utils/manual/manual_refitting.py --max 5                      # first 5 active users
-    python utils/manual/manual_refitting.py --no-llm                     # deterministic fallback
-    python utils/manual/manual_refitting.py --dry-run                    # run but don't persist
-    python utils/manual/manual_refitting.py --areas papers grants        # subset of areas
-    python utils/manual/manual_refitting.py --help                       # full flag list
+    python ops/nightly/manual_refitting.py                              # all users, top-10 LLM
+    python ops/nightly/manual_refitting.py --user brendondgr --max 1    # one user, one refit
+    python ops/nightly/manual_refitting.py --user brendondgr --llm-limit all  # full LLM coverage
+    python ops/nightly/manual_refitting.py --max 5                      # first 5 active users
+    python ops/nightly/manual_refitting.py --no-llm                     # deterministic fallback
+    python ops/nightly/manual_refitting.py --dry-run                    # run but don't persist
+    python ops/nightly/manual_refitting.py --areas papers grants        # subset of areas
+    python ops/nightly/manual_refitting.py --help                       # full flag list
 
-The stack must be up first (``python run.py up``). Requires Docker Compose. Refitting
+The stack must be up first (``mycelium start``). Requires Docker Compose. Refitting
 matches the *existing* corpus, so seed papers/opportunities first (``scan_literature``,
 the open-source opportunity collector, and the daily jobs) if the store is empty.
 
-Refitting is **on-demand only**: the root ``manual_all.py`` daily orchestrator
+Refitting is **on-demand only**: ``ops/nightly/manual_all.py`` daily orchestrator
 deliberately does not refit, because a refit is the whole-corpus *replace* pass —
 it re-scores (and can rewrite or drop) recommendations Mylo already wrote, which
 the daily run must never do. Run this script only when a full re-personalization

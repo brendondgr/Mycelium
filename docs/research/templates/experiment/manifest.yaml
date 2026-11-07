@@ -1,6 +1,6 @@
 # The machine-readable half of the record. `make new-experiment` fills the id,
 # slug, dates, and git block; you fill the rest. Validated against
-# `scripts/research/manifest.schema.json` by `make validate-research`.
+# `ops/research/manifest.schema.json` by `make validate-research`.
 #
 # Do not invent a value you do not have. A back-filled experiment with three
 # honest fields is worth more than one with ten plausible ones — write `unknown`

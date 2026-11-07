@@ -16,7 +16,7 @@ Usage:
 Set the password first in your repo-root ``.env``:
     ADMIN_USER_PASS=your-strong-password
 
-The stack must be up (``python run.py up``); this uses the same Docker Compose
+The stack must be up (``mycelium start``); this uses the same Docker Compose
 path as the other manual runners. Re-running is safe — an existing user is
 promoted to staff+superuser and their password reset to the current value.
 """
@@ -26,7 +26,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "utils" / "manual"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "nightly"))
 from _runner import ensure_ready, run_manage  # noqa: E402
 
 

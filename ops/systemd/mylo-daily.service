@@ -18,7 +18,7 @@ WorkingDirectory=__MYCELIUM_ROOT__
 # scrape stage shells out to `uv` and `docker` by name, so keep them on PATH.
 # ~/.local/bin is included for hosts where uv installs there instead of /usr/bin.
 Environment=PATH=__MYCELIUM_HOME__/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=__MYCELIUM_ROOT__/.venv/bin/python __MYCELIUM_ROOT__/manual_all.py
+ExecStart=__MYCELIUM_ROOT__/.venv/bin/python __MYCELIUM_ROOT__/ops/nightly/manual_all.py
 
 # The full run (scan + embed + LLM scoring for every user) can take well over an
 # hour. Bound it generously so a genuinely hung run is eventually killed and the

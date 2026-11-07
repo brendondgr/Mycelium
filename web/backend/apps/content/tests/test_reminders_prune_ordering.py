@@ -126,7 +126,7 @@ def test_delete_with_missing_projection_row_marks_stale(user) -> None:
 def test_tick_runs_before_prune_in_the_daily_chain() -> None:
     """Assert the ordering config, not just the behavior."""
     root = Path(__file__).resolve().parents[5]
-    source = (root / "manual_all.py").read_text()
+    source = (root / "ops" / "nightly" / "manual_all.py").read_text()
     # Anchor to the outer list close (``]`` at line start); inner ``[]`` args have
     # indented brackets, so a plain ``\n]`` matches only the outer bracket.
     match = re.search(r"CONTAINER_STAGES\s*=\s*\[(.*?)\n\]", source, re.DOTALL)

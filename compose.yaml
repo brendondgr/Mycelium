@@ -113,10 +113,10 @@ services:
       AMBIENT_CACHE_URL: redis://redis-ambient:6379/0
       NEO4J_URI: bolt://neo4j:7687
       S3_ENDPOINT_URL: http://minio:9000
-      # Persist the FastEmbed/ONNX model on the bind-mounted disk (repo `models/`)
+      # Persist the FastEmbed/ONNX model on the bind-mounted disk (repo `data/models/`, gitignored)
       # instead of the container's ephemeral /tmp, so it downloads once and
       # survives restarts/recreates.
-      FASTEMBED_CACHE_PATH: /app/models/fastembed
+      FASTEMBED_CACHE_PATH: /app/data/models/fastembed
       # PUBLIC_HOSTNAME (set in .env) is the external hostname this stack is
       # reachable at — e.g. a Cloudflare tunnel domain. Without it in
       # ALLOWED_HOSTS Django answers every proxied request with a 400
@@ -176,8 +176,8 @@ services:
       AMBIENT_CACHE_URL: redis://redis-ambient:6379/0
       NEO4J_URI: bolt://neo4j:7687
       S3_ENDPOINT_URL: http://minio:9000
-      # Share the same persistent model cache as the backend (repo `models/`).
-      FASTEMBED_CACHE_PATH: /app/models/fastembed
+      # Share the same persistent model cache as the backend (repo `data/models/`, gitignored).
+      FASTEMBED_CACHE_PATH: /app/data/models/fastembed
     depends_on:
       backend-deps:
         condition: service_completed_successfully

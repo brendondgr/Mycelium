@@ -12,7 +12,7 @@ Layout:
                    domains: a deliberately slow, robots-aware HTTP client,
                    run-scoped raw payload storage, and pure text/date helpers.
     grants/        the six funding-opportunity adapters, dedupe, and SQLite
-                   store, vendored from ``utils/grants/collect/``.
+                   store, vendored from ``utils/grants/collect/`` in the original prototype.
     conferences/   the conference CFP adapters (minus WikiCFP — plan D5),
                    the registry (dblp identity, CORE rankings), trust-tier
                    resolution, dedupe, and SQLite store, vendored from

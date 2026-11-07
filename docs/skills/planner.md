@@ -21,7 +21,7 @@ sequenced work breakdowns for Mycelium before coding.
 - Background work splits two ways, and a plan must say which it means: **Celery +
   Redis** for in-app jobs (reminder ticks, Discord outbox drain, profile
   recompute, project seeding) and the **host `mylo-daily.timer`** running
-  `manual_all.py` for the nightly research pipeline.
+  `ops/nightly/manual_all.py` for the nightly research pipeline.
 - Data: Postgres is the source of truth and pgvector on the same database is the
   semantic index. There is no separate vector store, no graph store in use, and
   no object storage in use — Neo4j and MinIO run in Compose but nothing reads

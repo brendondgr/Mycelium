@@ -239,8 +239,8 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   ```bash
   # regenerate the export, then install into the OUT-OF-HOME venv.
   # NOTE: use a real file, not <(...) — sudo can't read the process-sub fd.
-  uv export --no-hashes --format requirements-txt > .mylo-requirements.txt
-  sudo uv pip install --python /opt/mylo-bot/venv/bin/python -r .mylo-requirements.txt
+  uv export --no-hashes --format requirements-txt > data/mylo-requirements.txt
+  sudo uv pip install --python /opt/mylo-bot/venv/bin/python -r data/mylo-requirements.txt
   sudo restorecon -Rv /opt/mylo-bot          # relabel new site-packages -> lib_t
   sudo systemctl restart mylo-bot.service
   ```
@@ -250,7 +250,7 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   ```bash
   sudo dnf install -y python3.13
   sudo uv venv --python /usr/bin/python3.13 /opt/mylo-bot/venv
-  sudo uv pip install --python /opt/mylo-bot/venv/bin/python -r .mylo-requirements.txt
+  sudo uv pip install --python /opt/mylo-bot/venv/bin/python -r data/mylo-requirements.txt
   sudo restorecon -Rv /opt/mylo-bot
   ```
 

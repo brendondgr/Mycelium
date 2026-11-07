@@ -13,7 +13,7 @@ Stages, in order:
        through the open collector (``collect_opportunities``: collect -> map
        -> ingest -> extract -> embed, pure HTTP against public registries —
        no login, no session, no SSO). The Illinois Graduate College Fellowship
-       Finder still scrapes **on the host** (``uv run scrape_fellowships.py
+       Finder still scrapes **on the host** (``uv run ops/scrapers/scrape_fellowships.py
        scrape``), because it is the one opportunity source that still
        needs a real browser. Neither half can block the other or the rest of
        the night: a failed collector run warns, reports to Discord, and
@@ -102,7 +102,7 @@ nothing to do with the reader's work.
 Items that fall out of a ranking are **retired, not deleted** — they leave the feed
 but keep their verdict, so an item that dips out for a day and returns costs no
 second model call. Refitting (``run_refitting`` /
-``utils/manual/manual_refitting.py``) remains a distinct on-demand pass: it also
+``ops/nightly/manual_refitting.py``) remains a distinct on-demand pass: it also
 re-sends every surfaced item to the model, which is what a profile edit wants and
 what a nightly run must never do.
 
@@ -160,16 +160,16 @@ Pivot-RP scrape ever did.
 Each stage runs for all users with default settings; this script takes no
 pass-through flags on purpose, so "collect and recommend everything for
 everyone" stays one predictable command. For a targeted run, call the
-per-stage scripts in utils/manual/, run
+per-stage scripts in ops/nightly/, run
 ``uv run --project web/backend python web/backend/manage.py
-collect_opportunities`` directly, or ``uv run scrape_fellowships.py`` for
+collect_opportunities`` directly, or ``uv run ops/scrapers/scrape_fellowships.py`` for
 fellowships.
 
 Usage:
-    python manual_all.py        # collect → rank → slate → diff → report
-    python manual_all.py --help # this message
+    python ops/nightly/manual_all.py        # collect → rank → slate → diff → report
+    python ops/nightly/manual_all.py --help # this message
 
-The stack must be up first (``python run.py up``). Requires Docker Compose, plus
+The stack must be up first (``mycelium start``). Requires Docker Compose, plus
 ``uv`` on PATH for the host-side fellowship scrape.
 """
 
@@ -180,7 +180,7 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "utils" / "manual"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _runner import ensure_ready, have_uv, run_host, run_manage  # noqa: E402
 
 # The Discord error reporter and the shared run-state writer are optional
@@ -196,7 +196,7 @@ except Exception:  # noqa: BLE001
     write_run_state = None  # type: ignore[assignment]
 
 HOST = socket.gethostname()
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 
 #: Where ``scrape_fellowships.py scrape`` writes its JSON (still named after
 #: Pivot-RP's own layout — see that script's module docstring). Grants and
@@ -517,7 +517,7 @@ def _scrape_fellowships() -> bool:
         _notify("warn", "Fellowship scrape skipped", message, stage="scrape")
         return False
 
-    if run_host(["uv", "run", "scrape_fellowships.py", "scrape"]) != 0:
+    if run_host(["uv", "run", "ops/scrapers/scrape_fellowships.py", "scrape"]) != 0:
         message = (
             "The Illinois fellowship scrape did not complete. The later "
             "stages will match the fellowships already in the store."
@@ -534,7 +534,7 @@ def _scrape_fellowships() -> bool:
 
     _purge_stale_pivot_json()
 
-    if run_host(["uv", "run", "scrape_fellowships.py", "import"]) != 0:
+    if run_host(["uv", "run", "ops/scrapers/scrape_fellowships.py", "import"]) != 0:
         message = (
             "Importing the scraped fellowship listing failed; the later "
             "stages will match whatever is already in the store."
@@ -575,7 +575,7 @@ def _collect_grants_and_conferences(base: list[str]) -> bool:
             "Grant/conference collection failed",
             message,
             stage="scrape",
-            action=f"Check the backend logs on {HOST} (`python run.py logs`).",
+            action=f"Check the backend logs on {HOST} (`mycelium logs`).",
         )
         return False
     return True
@@ -677,8 +677,8 @@ def main() -> int:
         sys.exit(
             "manual_all.py takes no arguments; it always collects every source and "
             "runs every stage for all users.\nFor a targeted run, call the per-stage "
-            "scripts in utils/manual/, `manage.py collect_opportunities` directly, "
-            "or `uv run scrape_fellowships.py` for fellowships."
+            "scripts in ops/nightly/, `manage.py collect_opportunities` directly, "
+            "or `uv run ops/scrapers/scrape_fellowships.py` for fellowships."
         )
 
     # Resolve Compose and confirm the stack is up once, up front, so we don't get
@@ -692,7 +692,7 @@ def main() -> int:
             "Daily run could not start — stack not ready",
             str(exc.code) if exc.code else "The backend stack is not up.",
             stage="startup",
-            action=f"Run `python run.py up` on {HOST}.",
+            action=f"Run `mycelium start` on {HOST}.",
         )
         _write_run_state(ok=False, scrape_ran=False, stages_run=[], failed_stage="startup", exit_code=1)
         raise
@@ -751,7 +751,7 @@ def main() -> int:
                 "were skipped.",
                 stage=command,
                 fields={"Exit code": str(code)},
-                action=f"Check the backend logs on {HOST} (`python run.py logs`).",
+                action=f"Check the backend logs on {HOST} (`mycelium logs`).",
             )
             _write_run_state(
                 ok=False,

@@ -1,6 +1,6 @@
 # Onboarding load test
 
-`loadtest.py` (repo root) stress-tests Mycelium's **server-side compute** by
+`ops/loadtest/loadtest.py` (repo root) stress-tests Mycelium's **server-side compute** by
 simulating many users onboarding concurrently over a time window. It replays the
 exact API the browser uses, so the load lands on the real hot paths:
 
@@ -9,7 +9,7 @@ exact API the browser uses, so the load lands on the real hot paths:
 - **LLM recommendation generation** — the match step scores candidates with the model.
 
 Fake users are built **deterministically** from a static interest catalog
-(`loadtest_interests.py`, ~144 interests across 24 fields) — the LLM is exercised
+(`ops/loadtest/loadtest_interests.py`, ~144 interests across 24 fields) — the LLM is exercised
 by the *recommendation* step, not by user generation. The harness is a pure HTTP
 client; cleanup is a Django management command (`loadtest_purge`).
 
@@ -55,7 +55,7 @@ the window if a late starter is still processing), then all fake users are delet
    default and needs no change.
 
 3. **Warm the embedding model (first run only).** The match step embeds text with
-   FastEmbed/ONNX. The model persists in `models/fastembed/` (bind-mounted, set via
+   FastEmbed/ONNX. The model persists in `data/models/fastembed/` (bind-mounted, set via
    `FASTEMBED_CACHE_PATH` in `compose.yaml`) so it downloads once. If it is missing
    (e.g. right after a container recreate wiped an old `/tmp` cache), a burst of
    concurrent first-requests can race the download and return `HTTP 500`. Warm it
@@ -76,16 +76,16 @@ so most runs need no URL flag:
 
 ```bash
 # default: 500 users over 30 minutes
-uv run loadtest.py --users 500 --window 30m
+uv run ops/loadtest/loadtest.py --users 500 --window 30m
 
 # quick smoke test (2 users, 20s window)
-uv run loadtest.py --users 2 --window 20
+uv run ops/loadtest/loadtest.py --users 2 --window 20
 
 # also exercise the LLM profile-fill (résumé synthesis)
-uv run loadtest.py --users 200 --window 15m --synthesize
+uv run ops/loadtest/loadtest.py --users 200 --window 15m --synthesize
 
 # override the target only when it differs (e.g. bare dev server / nginx)
-uv run loadtest.py --users 500 --window 30m --base-url http://127.0.0.1:8000/api
+uv run ops/loadtest/loadtest.py --users 500 --window 30m --base-url http://127.0.0.1:8000/api
 ```
 
 ### Key flags
@@ -99,7 +99,7 @@ uv run loadtest.py --users 500 --window 30m --base-url http://127.0.0.1:8000/api
 | `--seed` | 1337 | RNG seed — reproducible user mix and schedule |
 | `--all-categories-fraction` | 0.8 | fraction of users who enable all four match areas |
 | `--synthesize` | off | also POST a résumé to `/intake/synthesize` (extra LLM load) |
-| `--out-dir` | `loadtest_results` | where CSV reports are written |
+| `--out-dir` | `data/loadtest/` | where CSV reports are written |
 | `--run-id` | auto | tag for usernames + filenames (`lt_<run-id>_NNNNN`) |
 | `--no-cleanup` | off | keep the fake users (purge manually) |
 | `--purge-cmd` | host `manage.py loadtest_purge` | how cleanup deletes the users |
@@ -122,17 +122,17 @@ mean/p95 latency, error count and breakdown, and throughput.
   (matched / genuine-LLM / deterministic-fallback), **user failures by stage**, an
   **error breakdown** (stage + status), and **likely-cause hints**, plus wall-clock
   and throughput.
-- `loadtest_results/loadtest_<run-id>.log` — **the full run log**: the start config,
+- `data/loadtest/loadtest_<run-id>.log` — **the full run log**: the start config,
   every failed request with its **full response body** (or the exception), each
   user's failure stage, the mirrored summary, and cleanup. This is the file to read
   when the "failed" count is high. Pass `--log-requests` to also log every successful
   request.
-- `loadtest_results/operations_<run-id>.csv` — **one row per HTTP request**
+- `data/loadtest/operations_<run-id>.csv` — **one row per HTTP request**
   (run_id, user_idx, username, stage, area, method, status_code, ok, latency_ms,
   started_at, error).
-- `loadtest_results/summary_<run-id>.csv` — one row per aggregate metric.
+- `data/loadtest/summary_<run-id>.csv` — one row per aggregate metric.
 
-`loadtest_results/` is git-ignored.
+`data/loadtest/` is git-ignored.
 
 ### Diagnosing failures
 

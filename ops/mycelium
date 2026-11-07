@@ -575,9 +575,9 @@ def cmd_install_service() -> int:
     print()
     any_missing = False
     for name in SERVICE_FILES:
-        src = ROOT / name
+        src = ROOT / "ops" / "systemd" / name
         if not src.exists():
-            print(red(f"  ✗ {name} not found in repo root ({src})"))
+            print(red(f"  ✗ {name} not found in ops/systemd ({src})"))
             any_missing = True
     if any_missing:
         return 1
@@ -593,7 +593,7 @@ def cmd_install_service() -> int:
     print(dim(f"  installing for user {user} from {ROOT}"))
 
     for name in SERVICE_FILES:
-        src = ROOT / name
+        src = ROOT / "ops" / "systemd" / name
         dst = SYSTEMD_DIR / name
         rendered = _render_unit(src, user, home)
         if "__MYCELIUM_" in rendered:

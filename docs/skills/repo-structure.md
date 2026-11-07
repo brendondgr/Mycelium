@@ -14,28 +14,29 @@ top-level areas move. For the *why* behind the boundaries, see
 - Keep project documentation in `docs/`.
 - Keep web frontend, backend, and infrastructure implementation under `web/`,
   separated by service boundary.
-- Keep editable orchestration config at the repository root: `compose.yaml`,
-  `.env.example`, `package.json`, the systemd units, and the host runners.
+- Keep the repository root to what a reader expects there: the README, licence,
+  contributing guide, `CLAUDE.md`, `Makefile`, `compose.yaml`, `package.json`,
+  the Python project files, and the env templates. Everything that runs on the
+  host goes in `ops/`; runtime state goes in the git-ignored `data/`.
 - Build and run workflows should be designed from the repository root.
-- Prefer a named module over a catch-all. Two catch-alls exist and are grandfathered:
-  root `utils/` (per-stage manual runners and a vendored grants prototype) and
-  `web/scripts/` (the dev gateway and the art sync). Do not add new ones.
+- Prefer a named module over a catch-all. `web/scripts/` (the dev gateway and the
+  art sync) is grandfathered; do not add new catch-alls, and do not add scripts
+  to the root.
 
 ## Actual layout
 
 ```text
 mycelium/
-├── CLAUDE.md, README.md, package.json, compose.yaml, compose.gpu.yaml, .env.example
-├── run.py, manual_all.py, manual_mylo.py, scrape_fellowships.py, create_admin.py, loadtest.py
-├── mycelium*.service, mylo-daily.{service,timer}, mylo-bot.service
+├── CLAUDE.md, README.md, CONTRIBUTING.md, LICENSE, NOTICE
+├── Makefile, package.json, compose.yaml, pyproject.toml, uv.lock, .env.example, .env-mylo.example
+├── ops/                       # host-side: stack CLI, setup, nightly run, scrapers, systemd, loadtest, research tooling
 ├── mylo/                      # host Discord bot + daily-run observability
-├── utils/                     # per-stage manual runners, vendored grants prototype
-├── models/                    # downloaded embedding model cache
+├── eval/                      # retrieval evaluation harness (own uv project)
 ├── docs/
 │   ├── purpose.md, goals.md, styles.md
 │   ├── architecture.md, api-contract.md, repo-map.md
 │   ├── discord-integration.md, loadtest.md, research-audit.md, changelog.md
-│   ├── skills/, chats/, Resources/
+│   ├── skills/, plans/, research/
 └── web/
     ├── package.json, package-lock.json, node_modules/
     ├── landing/               # Astro public site
@@ -62,7 +63,7 @@ run from the repository root. Implementation files and install state belong unde
   `research`, `content`, `billing`, `integrations`, `adminpanel`, `scraper`.
 - `web/backend` workers: Celery tasks for reminder ticks, the Discord outbox
   drain, project-profile recompute, and project seeding.
-- Host runners: the nightly research pipeline (`manual_all.py`, fired by
+- Host runners: the nightly research pipeline (`ops/nightly/manual_all.py`, fired by
   `mylo-daily.timer`) and the Discord gateway (`mylo/`) run on the host, not in
   Celery.
 - `web/infra/`: Nginx gateway config.
