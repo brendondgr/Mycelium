@@ -1,172 +1,211 @@
 # Mycelium
 
-## Research record
+Mycelium is an open-source academic research assistant that any lab can run on
+its own computers. It keeps a profile of your lab and its members, reads new
+papers, grants, fellowships and conference calls every night, and leaves each
+person and each lab a short report of what is worth their time, with the reason
+written next to every item.
 
-This is a research repository. All experiments, results, figures, and findings
-live in [`docs/research/`](docs/research/). Nothing that will appear in a paper
-is recorded anywhere else. Before running an experiment, read
-[`docs/research/AGENT_INSTRUCTIONS.md`](docs/research/AGENT_INSTRUCTIONS.md).
+Underneath, Mycelium is a grounding layer: the paper and opportunity corpus, lab
+and member profiles, a knowledge graph of who works on what, the recommendation
+feeds, and an evaluation harness that measures retrieval quality. Research tools
+are built on top of that layer. The feeds and reports are the first of them.
 
----
+If you want to **use** it, start at [Quickstart](#quickstart). If you want to
+**check the research**, start at [Research and evaluation](#research-and-evaluation).
 
-Mycelium is a lab intelligence platform for research teams. It builds a living
-profile of a lab and its members, ingests literature and funding sources every
-day, scores what it finds against that profile, and delivers the result as an
-in-app feed, a written daily report, and a Discord digest.
+## What it does today
 
-What is running today:
+- **Profiles.** Import a person's publications from OpenAlex, Semantic Scholar,
+  Google Scholar or ORCID, optionally add a résumé, and Mycelium drafts themed
+  research interests that the person edits and approves. Labs, departments and
+  projects get profiles of their own.
+- **Four feeds.** Research papers, grants, fellowships and conferences, each
+  ranked for a person, a lab or a project, each item with a written reason it
+  fits.
+- **A daily report.** A sectioned morning briefing per person and per lab, in the
+  app and as a PDF.
+- **Deadlines and reminders.** Save an item and get reminded before its
+  deadlines, in the app or in Discord.
+- **Search** across the whole corpus, combining full-text, vector and fuzzy
+  matching.
+- **Mylo in Discord.** Mylo, Mycelium's mushroom-scout mascot, is also its
+  Discord bot. It links accounts, posts lab digests and opportunity
+  announcements, and answers `/mylo` slash commands.
+- **Labs and departments.** Shared workspaces with roles, invitations,
+  collaborative projects and reading lists.
 
-- **Personal and lab workspaces** — session auth, labs, departments, memberships,
-  roles, projects (with team collaboration, collections, and shared reading
-  lists), and an invite-only sign-up gate.
-- **Interest profiles** — author import (OpenAlex / Semantic Scholar / Google
-  Scholar / ORCID) plus optional résumé parsing, LLM synthesis into themed
-  interest clusters, and an editing surface for people, labs, and projects.
-- **Four recommendation feeds** — research papers, grants, fellowships, and
-  conferences, each scored for a user, a lab, or a project, each with a percent
-  match and a written reason.
-- **Daily report** — a sectioned written briefing per user and per lab, served
-  in-app, DM'd as a PDF, and posted to a lab's Discord channel.
-- **Deadline reminders** — saved items, addressable deadlines, and Discord-
-  delivered reminders with lead times, snoozing, and a manage page.
-- **Unified search** over the whole corpus, fusing full-text, vector, and fuzzy
-  channels.
-- **Billing & entitlements** — tiered plans with per-seat billing for labs and
-  departments, enforced in the API, the daily pipelines, and the frontend.
-- **Discord integration** — identity linking, guild activation, slash commands, a
-  durable outbox, and drift detection.
-- **Platform admin** — a staff-only roster with subscription and quota writes.
+Everything is self-hosted. The language model is any OpenAI-compatible endpoint
+you point it at, such as a local vLLM or Ollama server or a hosted API, and the
+embedding model runs on your CPU or GPU.
 
-## Stack
+## Quickstart
+
+You need Docker with the Compose plugin and Python 3. [uv](https://docs.astral.sh/uv/)
+is needed only for the host tools: tests, the nightly run and the research record.
+
+```bash
+git clone https://github.com/brendondgr/Mycelium.git
+cd Mycelium
+make setup
+```
+
+`make setup` asks for your model endpoint, then:
+
+1. writes `.env` with freshly generated secrets;
+2. builds and starts the stack, and applies the database migrations;
+3. creates the first admin account.
+
+The first build takes several minutes. When it finishes, open
+**http://localhost:11050** and sign in as `admin` with the `ADMIN_USER_PASS` from
+`.env`. Anyone else signs up with the `SIGNUP_ACCESS_CODE` from the same file.
+
+Agents and scripts can run `make setup` without a terminal. Pass the endpoint as
+`LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL` in the environment and nothing is
+asked.
+
+## Configuration
+
+Compose loads [`.env.example`](.env.example) first and your `.env` second, so
+`.env` holds only what you change. Every variable is documented in
+`.env.example`; these are the ones worth knowing on day one:
+
+| Variable | What it does |
+|---|---|
+| `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | The model behind profile drafting and the written reasons. Without a reachable endpoint, Mycelium falls back to deterministic drafts |
+| `SIGNUP_ACCESS_CODE` | The code a new account must enter. Sign-up is invite-only |
+| `ADMIN_USER_PASS` | The first admin's password, read by `make admin` |
+| `PUBLIC_HOSTNAME` | Your domain, if you serve Mycelium beyond localhost |
+| `EMAIL_ENABLED` | Off by default. Turn it on, with a Resend key, to send verification and invitation emails |
+
+Mylo's Discord bot reads its token and channel ids from `.env-mylo`. While those
+are blank, the bot stays off. Setup is described in
+[`docs/discord-integration.md`](docs/discord-integration.md).
+
+## Day-to-day commands
+
+Every root command is a `make` target. `make help` lists them all.
+
+| Command | What it does |
+|---|---|
+| `make up` / `make down` | Start or stop the stack. Starting waits for the API and applies migrations |
+| `make restart` | A full reset: clears the frontend build caches and restarts Mylo last |
+| `make build` | Rebuild the images, then start |
+| `make status` | Container state, Mylo state, and the health of each endpoint |
+| `make logs` | Follow the stack's logs |
+| `make admin NAME=alice` | Create or promote an admin |
+| `make nightly` | Run the nightly research pipeline once, now |
+| `make test` / `make test-mylo` | The backend and the Mylo test suites |
+| `make lint` | Astro check, Next.js eslint, backend ruff |
+| `make gpu-up` | Start with CUDA embeddings (needs the nvidia-container-toolkit) |
+
+Nginx serves everything from one origin, http://localhost:11050:
+
+- the landing site at `/`
+- the app at `/app`
+- the API at `/api`
+- Django admin at `/admin`
+
+For frontend work with hot reload, `npm run dev` starts a development gateway on
+the same port.
+
+### The nightly run
+
+`make nightly` runs [`ops/nightly/manual_all.py`](ops/nightly/manual_all.py).
+It collects every source, re-ranks the whole corpus for every person, lab and
+project, and reports only what newly entered each top slate. A written reason
+is reused rather than regenerated, so a quiet night costs almost nothing in
+model calls. To run it every morning, install the systemd units with
+`sudo python3 ops/mycelium install-service`. That also starts the stack and
+the Discord bot at boot.
+
+## How it's built
 
 | Layer | Technology | Location |
 |---|---|---|
-| Public marketing site | Astro 6, Tailwind v4, MDX (zero framework JS shipped) | `web/landing/` |
-| Authenticated app | Next.js 16 (App Router), React 19, Tailwind v4, Radix UI, TanStack Query/Table | `web/app/` |
-| Shared design tokens | Tailwind v4 theme | `web/packages/config/` |
-| Backend API | Django 5 + Django REST Framework | `web/backend/` |
-| Background work | Celery + Celery Beat | `web/backend/` (`worker`, `beat` services) |
-| Relational store | PostgreSQL 17 + pgvector | `postgres` service |
-| Cache / broker | Redis 8 | `redis` service |
+| Public site | Astro 6, Tailwind v4 (no framework JavaScript shipped) | `web/landing/` |
+| App | Next.js 16 (App Router), React 19, Tailwind v4, Radix UI | `web/app/` |
+| API | Django 5 + Django REST Framework | `web/backend/` |
+| Background jobs | Celery + Redis in the stack; the nightly run as a host systemd timer | `web/backend/`, `ops/nightly/` |
+| Data | PostgreSQL 17 with pgvector, holding records, the knowledge graph and vectors alike | `postgres` service |
 | Embeddings | fastembed / ONNX Runtime, CPU or CUDA | `web/backend/apps/scraper/embedding.py` |
-| LLM | any OpenAI-compatible endpoint (vLLM is the reference target) | `web/backend/apps/core/llm.py` |
-| Edge gateway | Nginx, single origin | `web/infra/nginx/` |
-| Python deps & commands | `uv` | `web/backend/` |
-| Node workspace | npm workspaces | `web/` |
+| Language model | Any OpenAI-compatible endpoint | `web/backend/apps/core/llm.py` |
+| Discord bot | discord.py | `mylo/` |
+| Gateway | Nginx, single origin | `web/infra/nginx/` |
 
-Neo4j and MinIO run in `compose.yaml` and have settings entries, but no
-application code reads them yet — the graph and object-storage phases are not
-built. `cytoscape` is likewise declared in `web/app` but unused.
+Neo4j and MinIO run in `compose.yaml` but nothing reads them. The graph lives in
+Postgres, and files live on disk.
 
-## Running locally
+## Repository layout
 
-The whole stack is Docker Compose:
-
-```bash
-docker compose up
+```text
+web/      the app: public site, authenticated app, Django API, Nginx config
+mylo/     the Mylo Discord bot and the nightly run's error reporting
+ops/      everything that runs on the host: stack manager, setup, nightly run,
+          scrapers, systemd units, load test, research-record tooling
+eval/     the retrieval evaluation harness
+docs/     direction, architecture, the research record, the changelog
 ```
 
-Nginx serves everything on a single origin at **http://localhost:11050** —
-landing at `/`, the app at `/app/*`, `/login`, `/signup`, and Django at `/api/*`
-and `/admin/*`. `ops/mycelium` wraps the same thing (`start`, `stop`, `restart`,
-`logs`, `status`, `build`).
+[`docs/repo-map.md`](docs/repo-map.md) maps every feature to the file that holds
+it.
 
-Host-published ports follow `11050 + 100·n`: landing `11150`, app `11250`,
-Django `11350`, Postgres `11450`, Redis `11550`, Neo4j `11650`/`11750`, MinIO
-`11850`/`11950`. Only the gateway is needed for normal use; the rest exist for
-host tooling.
+## Research and evaluation
 
-Root commands:
+Mycelium is also a research project, and its record lives in
+[`docs/research/`](docs/research/):
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Dev gateway + Astro + Next.js + Django on http://localhost:11050 |
-| `npm run dev:landing` | Astro only, port 4321 |
-| `npm run dev:web` | Next.js only, port 3001 (bypasses the gateway) |
-| `npm run dev:backend` | Django only, port 8000 |
-| `npm run build` | Build shared config, landing, and app |
-| `npm run lint` | Astro check, Next.js eslint, backend ruff |
-| `npm run test` | Backend pytest |
-| `npm run compose:up` / `compose:down` | Full Compose stack |
+- Every experiment, baseline and ablation, with its protocol, results and
+  figures, is listed in [`INDEX.md`](docs/research/INDEX.md).
+- What the project can and cannot claim is in
+  [`CLAIMS.md`](docs/research/CLAIMS.md).
+- The rules for recording a run are in
+  [`AGENT_INSTRUCTIONS.md`](docs/research/AGENT_INSTRUCTIONS.md).
 
-## Running the stack
-
-`ops/mycelium` is the one entry point for the whole environment — it drives
-the systemd units when they are installed and Docker Compose when they are not.
-
-| Command | What it does |
-|---|---|
-| `mycelium restart` | The full cycle: stop, wipe the frontend build caches, start, wait for the API, apply migrations, restart Mylo, report endpoint health |
-| `mycelium start` / `stop` | Same steps, one direction only |
-| `mycelium build` | Rebuild images, then the full start cycle |
-| `mycelium migrate` | Apply migrations against an already-running stack |
-| `mycelium status` | Container state, Mylo state, live endpoint health |
-| `mycelium logs` | Follow combined Compose logs |
-| `mycelium install-service` | Install and enable the host systemd units (needs `sudo`) |
-
-A restart is a full environment reset, not just a container bounce. Node modules
-and art assets are re-synced by the `web-deps` service on every start; the Next
-and Astro caches are deleted while the stack is down, so the dev servers never
-serve modules compiled against an older schema. Migrations are applied only
-after the API answers — the backend container migrates itself before serving, so
-waiting for health is what keeps two `migrate` processes off the same DDL lock.
-Mylo restarts last, so the bot never attaches to a database it is newer than.
-
-Pass `--keep-cache` to skip the cache wipe (a faster restart when nothing
-frontend-facing changed) or `--no-migrate` to bring the stack up without
-touching the database.
-
-Backend management commands run through `uv`:
+Retrieval quality is a regression suite. Any change to ranking is re-measured
+with the harness in [`eval/`](eval/README.md):
 
 ```bash
-uv run --project web/backend python web/backend/manage.py <command>
+uv run --project eval eval/run.py --config eval/configs/fusion_dense_pool.toml --collection sci-2026-train
 ```
 
-Configuration comes from a git-ignored root `.env` (every variable is documented
-in `.env.example`) plus `.env-mylo` for the Discord bot's token and channel ids.
-Both are read by `web/backend/config/settings.py`.
+Scaffold a new experiment with `make new-experiment SLUG=<slug>`, and check the
+record with `make validate-research`.
 
-## The daily run
+## Roadmap
 
-The nightly pipeline is a **host** systemd timer, not Celery Beat.
-`mylo-daily.timer` fires `ops/nightly/manual_all.py` at 07:00; it scrapes the opportunity
-sources on the host, then runs each backend stage in order inside the container:
+These tools are planned, not built. Each will read the lab's context from
+Mycelium and be held to a public benchmark before it is called working. Details
+are in [`docs/goals.md`](docs/goals.md#tools-on-the-grounding-layer).
 
-`run_daily_suggestions` → `run_daily_opportunities --no-prune` →
-`run_reminder_tick` → `prune_opportunities` → `generate_daily_briefing` →
-`send_daily_discord_reports` → `send_lab_digests`
-
-The daily run re-ranks the **whole** corpus for every target, then reports what
-entered each Top-25. An item is "new" when it enters a slate, not when it was
-ingested — so a changed research focus promotes whatever now fits. Cost is
-contained by carry-forward, not by narrowing the scan: a verdict Mylo has already
-written is reused, never re-billed. Refitting (`ops/nightly/manual_mylo.py` / `run_refitting`)
-stays a separate on-demand pass at sign-up and after profile edits, because it
-deliberately re-sends every surfaced item to the model — which a nightly run must
-never do.
-
-Other host units: `mycelium.service` (stack up at boot), `mycelium-update.service`
-(image pull + rolling restart), `mylo-bot.service` (the persistent Discord
-gateway, `python -m mylo.bot`).
+- **A claim and citation-stance engine**, built alongside a hypothesis engine. It
+  asks whether a later paper supports, disputes or only mentions a claim, and is
+  scored on SciCite and MultiCite.
+- **Systematic-review screening.** Ranks thousands of abstracts so reviewers read
+  the likely includes first. Scored on CLEF TAR and SYNERGY as the work saved at
+  95% recall.
+- **An expertise finder.** Answers who works on a topic and which teams could
+  go after a call. Scored by recovering held-out collaborations.
+- **Literature-mined domain databases.** Structured facts pulled from papers at
+  scale. Scored by precision against a curated database.
+- **Internal funding and limited-submission matching.**
 
 ## Documentation
 
-Start at [`docs/`](docs/README.md). The short version:
+- Start at [`docs/README.md`](docs/README.md).
+- Direction:
+  - [`purpose.md`](docs/purpose.md)
+  - [`goals.md`](docs/goals.md)
+  - [`styles.md`](docs/styles.md)
+- Reference:
+  - [`architecture.md`](docs/architecture.md)
+  - [`api-contract.md`](docs/api-contract.md)
+- Guidance for coding agents:
+  - [`CLAUDE.md`](CLAUDE.md)
+  - [`docs/skills/`](docs/skills/index.md)
 
-- **Direction** — [`docs/purpose.md`](docs/purpose.md),
-  [`docs/goals.md`](docs/goals.md), [`docs/styles.md`](docs/styles.md).
-- **Navigation** — [`docs/repo-map.md`](docs/repo-map.md) maps a task to a path.
-  Read it before searching the tree.
-- **Reference** — [`docs/architecture.md`](docs/architecture.md),
-  [`docs/api-contract.md`](docs/api-contract.md),
-  [`docs/discord-integration.md`](docs/discord-integration.md),
-  [`docs/loadtest.md`](docs/loadtest.md),
-  [`docs/research-audit.md`](docs/research-audit.md).
-- **Agent guidance** — [`CLAUDE.md`](CLAUDE.md) and
-  [`docs/skills/`](docs/skills/index.md).
-- **History** — [`docs/changelog.md`](docs/changelog.md).
+## Contributing and license
 
-## License
-
-Mycelium is open source under the [Apache License 2.0](LICENSE). See
-[`NOTICE`](NOTICE) for attribution.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the checks a change is expected to
+pass and how experiments are recorded. Mycelium is released under the
+[Apache License 2.0](LICENSE). See [`NOTICE`](NOTICE).
