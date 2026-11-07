@@ -10,11 +10,11 @@ leaving the decision only in code or chat.
 
 ## First-time setup
 
-On a fresh clone, run `make setup` (pass the model endpoint as `LLM_BASE_URL`,
-`LLM_API_KEY`, `LLM_MODEL` in the environment and add `ARGS`-free `--yes` via
-`python3 ops/setup/bootstrap.py --yes` when no one can answer prompts). It writes
-`.env`, builds and starts the stack, applies migrations, and creates the first
-admin. `make help` lists every other command; `make test` runs the backend suite.
+On a fresh clone, run `make setup`. It writes `.env` with generated secrets,
+builds and starts the stack, applies migrations, and creates the first admin.
+Without a terminal it asks nothing, so an agent passes the model endpoint as
+`LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL` in the environment. `make help`
+lists every other command; `make test` runs the backend suite.
 
 ## Navigating the code
 
