@@ -2283,6 +2283,29 @@ html[data-motion="none"] *::after {
   z-index: 55;
 }
 
+.ws-feedpage {
+  max-width: var(--ws-maxw);
+  margin: 0 auto;
+}
+
+/* A page's own tools under its head (search box, sort, filters). */
+.ws-feed-note {
+  margin-top: var(--d-section);
+  font-size: 0.86em;
+  color: var(--text-muted);
+}
+
+/* Phones: one Filters button and a sheet, instead of a wrapping row of menus. */
+@media (max-width: 639px) {
+  .ws-facetbar {
+    display: none;
+  }
+
+  .ws-filters-btn {
+    display: inline-flex;
+  }
+}
+
 .ws-main :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
