@@ -2,23 +2,12 @@
 
 import * as React from "react";
 
-import { Card } from "@/components/portal/primitives/card";
-import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
 import { MatchCard } from "@/components/portal/primitives/match-card";
 import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
-import { EmptyState } from "@/components/portal/primitives/empty-state";
-import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { InfoPopover } from "@/components/portal/primitives/info-popover";
 import { type ExtraDeadline } from "@/components/portal/primitives/deadline-list";
-import {
-  SourceRow,
-  ViewLink,
-} from "@/components/portal/primitives/source-footer";
-import {
-  AlertTriangleIcon,
-  CheckIcon,
-  ConferenceIcon,
-} from "@/components/portal/icons";
+import { SourceRow, ViewLink } from "@/components/portal/primitives/source-footer";
+import { AlertTriangleIcon, CheckIcon, ConferenceIcon } from "@/components/portal/icons";
 import {
   CardActionBar,
   MyloReason,
@@ -27,31 +16,11 @@ import {
   UpdatedTag,
 } from "@/components/portal/sections/opportunity-bits";
 import { shortRoundLabel } from "@/components/portal/reminder-composer";
-import {
-  ConferenceFilters,
-  DEFAULT_CONFERENCE_FILTERS,
-  deriveConferenceFilterOptions,
-  filterAndSortConferences,
-  type ConferenceFilterState,
-} from "@/components/portal/sections/conference-filters";
-import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
-import { HeldBack, heldReason } from "@/components/portal/primitives/held-back";
-import { HiddenByFilters } from "@/components/portal/primitives/hidden-by-filters";
-import {
-  FeedSearchBar,
-  clusterOptions,
-  matchesQuery,
-} from "@/components/portal/primitives/feed-search-bar";
+import { DetailSection } from "@/components/portal/feed/parts";
+import { OpportunityFeed, type OpportunityFeedConfig } from "@/components/portal/feed/opportunity-feed";
+import type { Facet } from "@/components/portal/feed/toolbar";
 import { usePortal } from "@/components/portal/portal-context";
-import {
-  useConferences,
-  useLabRecommendations,
-  useRankingReference,
-} from "@/lib/portal/hooks";
-import {
-  revealDelay,
-  useInfiniteReveal,
-} from "@/lib/portal/use-infinite-reveal";
+import { useConferences, useLabRecommendations, useRankingReference } from "@/lib/portal/hooks";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
 import { UsabilityStrip } from "@/components/portal/primitives/usability-strip";
 import type {
@@ -63,8 +32,6 @@ import type {
   StructuredDeadline,
 } from "@/lib/portal/types";
 
-/** How many conferences each infinite-scroll slice reveals. */
-const CONFERENCE_PAGE_SIZE = 24;
 
 /**
  * A small green "still accepting" pill for an open submission window (abstract
@@ -615,37 +582,159 @@ export function ConferenceCard({
   );
 }
 
-function CardSkeleton() {
-  return (
-    <Card className="animate-pulse p-5">
-      <div className="flex items-center justify-between">
-        <span className="h-6 w-24 rounded-full bg-surface-alt" />
-        <span className="h-6 w-20 rounded-full bg-surface-alt" />
-      </div>
-      <span className="mt-3 block h-4 w-3/4 rounded bg-surface-alt" />
-      <span className="mt-2 block h-3 w-1/2 rounded bg-surface-alt" />
-      <span className="mt-3 block h-3 w-full rounded bg-surface-alt" />
-    </Card>
-  );
+function localToday(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-function formatWhen(iso: string | null): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+function rankValues(c: ConferenceOpportunity): string[] {
+  return c.rank_badges.map((b) => `${b.system} ${b.rank}`);
 }
 
 /**
- * The Conferences page: calls for papers matched to the researcher, in
- * recommendation order, one card per row like Papers / Grants / Fellowships
- * (Mylo's verdict and any "New" tag lead each card). A left-hand filter rail
- * (submission status, abstract/paper open,
- * deadline & event-date windows, continent, country, subject, new/saved, sort)
- * narrows the already-fetched feed in memory — instant, no refetch. The results
- * scroll infinitely, revealing a slice at a time as the reader nears the bottom,
- * matching the Grants / Fellowships pattern.
+ * The Conferences page — the shared feed (see `OpportunityFeed`) with a
+ * conference's own parts: the submission deadline ("Submit by …"), where and
+ * when, its ranking and any red flags on the card; submission, region and
+ * ranking filters; and the dates, windows, ranking and scope in the opened
+ * venue. A caveat about the date itself stays directly under it.
  */
+const CONFERENCES_CONFIG: OpportunityFeedConfig<ConferenceOpportunity> = {
+  title: "Conferences",
+  kicker: "Opportunities",
+  noun: "conferences",
+  idPrefix: "conferences",
+  placeholder: "Search conferences by name, place, or topic…",
+  icon: <ConferenceIcon size={26} className="text-accent" />,
+  label: (c) => [c.acronym, c.year_label].filter(Boolean).join(" "),
+  deadlinePrefix: () => "Submit by ",
+  facts: (c) => {
+    const where = c.location || c.country;
+    return where || c.event_dates ? (
+      <span className="ws-facts">
+        {c.event_dates ? <span className="ws-fact">{c.event_dates}</span> : null}
+        {where ? <span className="ws-meta-text">{where}</span> : null}
+      </span>
+    ) : null;
+  },
+  cardExtra: (c) => (
+    <>
+      <QualityWarningNote warnings={c.quality_warnings} />
+      {c.rank_badges.length || c.red_flags.length || c.abstract_open || c.manuscript_open ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {c.abstract_open ? <OpenChip label="Abstract open" /> : null}
+          {c.manuscript_open ? <OpenChip label="Full paper open" /> : null}
+          <RankBadgeRow badges={c.rank_badges} />
+          <RedFlagsBadge flags={c.red_flags} />
+        </div>
+      ) : null}
+    </>
+  ),
+  text: (c) =>
+    [c.title, c.acronym, c.description, c.reason, c.location, c.country, c.keywords, c.matched_subjects, c.scope].join(" "),
+  facets: (items) => {
+    const facets: Facet<ConferenceOpportunity>[] = [
+      {
+        id: "submissions",
+        label: "Submissions",
+        mode: "multi",
+        options: [
+          { value: "abstract", label: "Abstract open", test: (c) => c.abstract_open },
+          { value: "paper", label: "Full paper open", test: (c) => c.manuscript_open },
+          { value: "closed", label: "Attend only", test: (c) => !c.abstract_open && !c.manuscript_open },
+        ],
+      },
+    ];
+    const countries = new Map<string, number>();
+    for (const c of items) if (c.country) countries.set(c.country, (countries.get(c.country) ?? 0) + 1);
+    const top = [...countries].sort((a, b) => b[1] - a[1]).slice(0, 10);
+    if (top.length > 1) {
+      facets.push({
+        id: "region",
+        label: "Where",
+        mode: "multi",
+        options: top.map(([country]) => ({ value: country, label: country, test: (c) => c.country === country })),
+      });
+    }
+    const ranks = new Map<string, number>();
+    for (const c of items) for (const r of rankValues(c)) ranks.set(r, (ranks.get(r) ?? 0) + 1);
+    if (ranks.size) {
+      facets.push({
+        id: "rank",
+        label: "Ranking",
+        mode: "multi",
+        options: [
+          ...[...ranks.keys()].sort().map((r) => ({ value: r, label: r, test: (c: ConferenceOpportunity) => rankValues(c).includes(r) })),
+          { value: "unranked", label: "Not ranked", test: (c: ConferenceOpportunity) => c.rank_badges.length === 0 },
+        ],
+      });
+    }
+    return facets;
+  },
+  sorts: [
+    {
+      value: "event",
+      label: "Event date soonest",
+      cmp: (a, b) => (a.event_date || "9999").localeCompare(b.event_date || "9999"),
+    },
+  ],
+  detail: (c) => (
+    <>
+      <DetailSection title="When and where">
+        <dl className="ws-dates">
+          {c.event_dates ? (
+            <div>
+              <dt>Event</dt>
+              <dd>{c.event_dates}</dd>
+            </div>
+          ) : null}
+          {c.location || c.country ? (
+            <div>
+              <dt>Place</dt>
+              <dd>{c.location && c.country && !c.location.includes(c.country) ? `${c.location}, ${c.country}` : c.location || c.country}</dd>
+            </div>
+          ) : null}
+          {c.deadlines ? (
+            <div>
+              <dt>Deadlines</dt>
+              <dd>{c.deadlines}</dd>
+            </div>
+          ) : null}
+        </dl>
+        <QualityWarningNote warnings={c.quality_warnings} />
+      </DetailSection>
+      {c.rank_badges.length || c.red_flags.length ? (
+        <DetailSection title="The venue">
+          <div className="flex flex-wrap items-center gap-2">
+            <RankBadgeRow badges={c.rank_badges} />
+            <RedFlagsBadge flags={c.red_flags} />
+          </div>
+        </DetailSection>
+      ) : null}
+      {c.description || c.scope ? (
+        <DetailSection title="About">
+          <p>{c.description || c.scope}</p>
+        </DetailSection>
+      ) : null}
+      {c.keywords ? (
+        <DetailSection title="Topics">
+          <p className="ws-meta-text">{c.keywords}</p>
+        </DetailSection>
+      ) : null}
+    </>
+  ),
+  actionBar: (c) => ({ extraDeadlines: passedConferenceRounds(c.deadlines_structured, localToday()) }),
+  primaryLink: "Conference site",
+  emptyTitle: "Your conference matches are on their way",
+  emptyDescription:
+    "Once Mylo's nightly scan runs against your research profile, venues that fit — each with its submission deadline and why it fits — will appear here.",
+};
+
+const LAB_CONFERENCES_CONFIG: OpportunityFeedConfig<ConferenceOpportunity> = {
+  ...CONFERENCES_CONFIG,
+  emptyTitle: "No lab conference matches yet",
+  emptyDescription: "Once Mylo has run for this lab, venues matched to its research will appear here.",
+};
+
 export function ConferencesSection() {
   const { currentLab } = usePortal();
   if (currentLab) {
@@ -659,11 +748,11 @@ function LabConferencesFeed({ lab }: { lab: MyLab }) {
   const { data, isLoading, isError } = useLabRecommendations(lab.slug);
   const conferences = React.useMemo(() => data?.conferences ?? [], [data]);
   return (
-    <ConferencesFeed
-      conferences={conferences}
+    <OpportunityFeed
+      config={LAB_CONFERENCES_CONFIG}
+      items={conferences}
       isLoading={isLoading}
       isError={isError}
-      generatedAt={data?.generated_at ?? null}
       recommendedFor={data?.recommended_for}
       labName={lab.name}
     />
@@ -673,282 +762,5 @@ function LabConferencesFeed({ lab }: { lab: MyLab }) {
 function PersonalConferences() {
   const { data, isLoading, isError } = useConferences();
   const conferences = React.useMemo(() => data?.items ?? [], [data]);
-  return (
-    <ConferencesFeed
-      conferences={conferences}
-      isLoading={isLoading}
-      isError={isError}
-      generatedAt={data?.generated_at ?? null}
-    />
-  );
-}
-
-/**
- * The shared Conferences feed body — the keyword search and cluster chips at the
- * top, the filter rail, infinite-scroll card list,
- * and end-of-feed marker — used identically by the personal page and a lab workspace. `labName`, when
- * set, marks the lab variant and only swaps the surrounding copy; the structure,
- * filters, and card layout are the same in both.
- */
-function ConferencesFeed({
-  conferences,
-  isLoading,
-  isError,
-  generatedAt,
-  recommendedFor,
-  labName,
-}: {
-  conferences: ConferenceOpportunity[];
-  isLoading: boolean;
-  isError: boolean;
-  generatedAt: string | null;
-  /** Lab-only: content id → the members Mylo judges each conference is for. */
-  recommendedFor?: Record<string, RecommendedMember[]>;
-  labName?: string;
-}) {
-  const [filters, setFilters] = React.useState<ConferenceFilterState>(
-    DEFAULT_CONFERENCE_FILTERS,
-  );
-  const [query, setQuery] = React.useState("");
-  const [selectedCluster, setSelectedCluster] = React.useState<string | null>(
-    null,
-  );
-
-  const clusters = React.useMemo(
-    () => clusterOptions(conferences),
-    [conferences],
-  );
-
-  // The top-of-page search and cluster chips scope the feed first; the rail's
-  // facets then narrow whatever that scope left, so its counts read against the
-  // theme the reader is looking at rather than the whole run.
-  const scoped = React.useMemo(() => {
-    const needle = query.trim();
-    if (!needle && !selectedCluster) return conferences;
-    return conferences.filter((conf) => {
-      if (selectedCluster && conf.cluster?.id !== selectedCluster) return false;
-      return matchesQuery(
-        [
-          conf.title,
-          conf.description,
-          conf.reason,
-          conf.location,
-          conf.matched_subjects,
-        ],
-        needle,
-      );
-    });
-  }, [conferences, query, selectedCluster]);
-
-  const options = React.useMemo(
-    () => deriveConferenceFilterOptions(scoped),
-    [scoped],
-  );
-  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const filtered = React.useMemo(
-    () => filterAndSortConferences(scoped, filters, today),
-    [scoped, filters, today],
-  );
-  // On a lab feed, what fails a hard check moves to "Mylo held back".
-  const labFeed = recommendedFor !== undefined;
-  const held = React.useMemo(
-    () => (labFeed ? filtered.filter((x) => heldReason(x.usability)) : []),
-    [filtered, labFeed],
-  );
-  const visible = React.useMemo(
-    () => (held.length ? filtered.filter((x) => !heldReason(x.usability)) : filtered),
-    [filtered, held],
-  );
-
-  // What the rail's facets took out of the scoped feed, kept so the reader can
-  // look at it rather than having to widen a filter to find out what was there.
-  const hidden = React.useMemo(() => {
-    if (filtered.length === scoped.length) return [];
-    const shown = new Set(filtered.map((conf) => conf.content_id));
-    return scoped.filter((conf) => !shown.has(conf.content_id));
-  }, [scoped, filtered]);
-
-  const clearAll = () => {
-    setFilters(DEFAULT_CONFERENCE_FILTERS);
-    setQuery("");
-    setSelectedCluster(null);
-  };
-
-  // Filters always search the full feed; the result set then streams in as the
-  // reader scrolls, so reaching the bottom widens the list instead of ending it.
-  const resetKey = React.useMemo(
-    () => ({ filters, query, selectedCluster }),
-    [filters, query, selectedCluster],
-  );
-  const {
-    visible: displayed,
-    hasMore,
-    remaining,
-    sentinelRef,
-    revealMore,
-  } = useInfiniteReveal(visible, CONFERENCE_PAGE_SIZE, resetKey);
-
-  const showRail = !isLoading && !isError && conferences.length > 0;
-
-  const subtitle: React.ReactNode = (() => {
-    if (isLoading) {
-      return labName
-        ? `Gathering conferences that fit ${labName}…`
-        : "Gathering conferences that fit your work…";
-    }
-    if (conferences.length > 0) {
-      const when = formatWhen(generatedAt);
-      const count = `${conferences.length} conference${
-        conferences.length === 1 ? "" : "s"
-      }`;
-      const lead = labName
-        ? `${count}, matched to ${labName}`
-        : `${count}, ranked by fit`;
-      return when ? `${lead} · gathered ${when}.` : `${lead}.`;
-    }
-    return labName
-      ? `Conferences and calls for papers matched to ${labName}, best fit first.`
-      : "Conferences and calls for papers matched to your research, best fit first.";
-  })();
-
-  return (
-    <div>
-      <SectionHeader
-        eyebrow="Opportunities"
-        title="Conferences"
-        subtitle={subtitle}
-      />
-
-      {conferences.length > 0 && !isLoading && !isError ? (
-        <FeedSearchBar
-          query={query}
-          onQueryChange={setQuery}
-          placeholder="Search conferences by title, location, or subject…"
-          clusters={clusters}
-          selectedCluster={selectedCluster}
-          onClusterChange={setSelectedCluster}
-        />
-      ) : null}
-
-      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-        {showRail ? (
-          <ConferenceFilters
-            options={options}
-            filters={filters}
-            onChange={setFilters}
-            resultCount={visible.length}
-            totalCount={scoped.length}
-          />
-        ) : null}
-
-        <div className="min-w-0 flex-1">
-          {isLoading ? (
-            <div className="space-y-3.5">
-              <CardSkeleton />
-              <CardSkeleton />
-              <CardSkeleton />
-              <CardSkeleton />
-            </div>
-          ) : isError ? (
-            <EmptyState
-              icon={<ConferenceIcon size={28} />}
-              title={
-                labName
-                  ? "Couldn't load this feed"
-                  : "Couldn't load your conferences"
-              }
-              description={
-                labName
-                  ? "Something went wrong loading the lab's conference matches. Please try again in a moment."
-                  : "Something went wrong fetching your conference matches. Please try again in a moment."
-              }
-            />
-          ) : conferences.length === 0 ? (
-            <EmptyState
-              icon={<ConferenceIcon size={28} />}
-              badge={labName ? undefined : "Coming soon"}
-              title={
-                labName
-                  ? "No lab conference matches yet"
-                  : "Your conference matches are on their way"
-              }
-              description={
-                labName
-                  ? "Once Mylo has run for this lab, conferences and calls for papers matching its purpose will appear here."
-                  : "Once Mylo's nightly scan of calls for papers runs against your research profile, the venues that best fit your work — each with his read on it and its submission deadline — will appear here as cards."
-              }
-            />
-          ) : visible.length === 0 ? (
-            <EmptyState
-              icon={<ConferenceIcon size={28} />}
-              title="No conferences match these filters"
-              description="Try a different search term, another cluster, or widen your filters to see more of your matched conferences."
-              action={
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                >
-                  Clear all filters
-                </button>
-              }
-            />
-          ) : (
-            <>
-              <div className="space-y-3.5">
-                {displayed.map((conf, index) => (
-                  <RevealOnScroll
-                    key={conf.content_id}
-                    delay={revealDelay(index, CONFERENCE_PAGE_SIZE, 45)}
-                  >
-                    <ConferenceCard
-                      conf={conf}
-                      recommendedFor={recommendedFor?.[conf.content_id]}
-                      ignorable
-                    />
-                  </RevealOnScroll>
-                ))}
-              </div>
-              <FeedSentinel
-                sentinelRef={sentinelRef}
-                hasMore={hasMore}
-                remaining={remaining}
-                onRevealMore={revealMore}
-                totalShown={displayed.length}
-                noun="conferences"
-              />
-            </>
-          )}
-
-          {/* Outside the branch above on purpose: when the facets hide *every*
-              row the reader lands on the empty state, and that is precisely the
-              moment they need to see what was taken out. */}
-          {!isLoading && !isError ? (
-            <HeldBack count={held.length} noun="conferences">
-              {held.map((conf) => (
-                <ConferenceCard
-                  key={conf.content_id}
-                  conf={conf}
-                  recommendedFor={recommendedFor?.[conf.content_id]}
-                  ignorable
-                />
-              ))}
-            </HeldBack>
-          ) : null}
-          {!isLoading && !isError ? (
-            <HiddenByFilters count={hidden.length} noun="conferences">
-              {hidden.map((conf) => (
-                <ConferenceCard
-                  key={conf.content_id}
-                  conf={conf}
-                  recommendedFor={recommendedFor?.[conf.content_id]}
-                  ignorable
-                />
-              ))}
-            </HiddenByFilters>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
+  return <OpportunityFeed config={CONFERENCES_CONFIG} items={conferences} isLoading={isLoading} isError={isError} />;
 }
