@@ -344,7 +344,9 @@ Files below are inside `web/backend/apps/content/`.
 | Pool contrast against the **production** store (not LongEval) | `docs/research/experiments/EXP-2026-08-013-production-pool-contrast/code/` — `production_pool.py` builds the union-pool variants on top of the deployed `_build_pool`/`fuse_interest`; `run.py` scores them against the real `ContentItem` rows over a compose `postgres`. Nothing under `apps/content` is modified |
 | Research record (experiments, claims, figures) | `docs/research/` — start at [`research/README.md`](research/README.md) |
 | Research-record tooling | `ops/research/` — `new_experiment.py`, `validate_research.py`, `generate_index.py`, `build_figures.py`, `manifest.schema.json`; driven by the root `Makefile` |
-| Admin bootstrap | `ops/setup/create_admin.py` |
+| First-time setup (`make setup`: writes `.env`, builds, migrates, first admin) | `ops/setup/bootstrap.py` |
+| Admin bootstrap (`make admin NAME=…`) | `ops/setup/create_admin.py` |
+| Every root command | `Makefile` (`make help`) |
 
 ## Management commands
 

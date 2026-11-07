@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create (or promote) a Mycelium superuser admin from the repo root.
+"""Create (or promote) a Mycelium superuser admin. `make admin NAME=<user>` runs this.
 
 A thin wrapper over the ``create_admin`` management command so an operator can mint
 the first admin without knowing the ``uv``/``manage.py`` incantation. It runs the
@@ -9,9 +9,9 @@ supplied from ``.env`` (see ``compose.yaml``'s ``env_file``). The password is re
 only from that variable; it is never a command-line argument and never printed.
 
 Usage:
-    python create_admin.py <username>
-    python create_admin.py alice --email alice@example.org --first-name Alice
-    python create_admin.py --help
+    python ops/setup/create_admin.py <username>
+    python ops/setup/create_admin.py alice --email alice@example.org --first-name Alice
+    python ops/setup/create_admin.py --help
 
 Set the password first in your repo-root ``.env``:
     ADMIN_USER_PASS=your-strong-password
@@ -38,7 +38,7 @@ def main() -> int:
     if not argv or argv[0].startswith("-"):
         print(
             "A username is required. Example:\n"
-            "    python create_admin.py alice\n"
+            "    python ops/setup/create_admin.py alice\n"
             "Set ADMIN_USER_PASS in your .env first. See --help for details.",
             file=sys.stderr,
         )

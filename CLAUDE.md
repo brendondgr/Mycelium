@@ -8,6 +8,14 @@ Keep work aligned with those documents unless the user explicitly changes the
 product direction. When direction changes, update the canonical docs instead of
 leaving the decision only in code or chat.
 
+## First-time setup
+
+On a fresh clone, run `make setup` (pass the model endpoint as `LLM_BASE_URL`,
+`LLM_API_KEY`, `LLM_MODEL` in the environment and add `ARGS`-free `--yes` via
+`python3 ops/setup/bootstrap.py --yes` when no one can answer prompts). It writes
+`.env`, builds and starts the stack, applies migrations, and creates the first
+admin. `make help` lists every other command; `make test` runs the backend suite.
+
 ## Navigating the code
 
 To find where something lives, read `docs/repo-map.md` first — it maps every task
