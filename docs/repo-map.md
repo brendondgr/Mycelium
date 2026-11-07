@@ -334,6 +334,7 @@ Files below are inside `web/backend/apps/content/`.
 | systemd units | `ops/systemd/` — `mycelium.service`, `mycelium-update.service`, `mylo-daily.{service,timer}`, `mylo-bot.service`; installed by `ops/mycelium install-service` |
 | Gateway routing | `web/infra/nginx/default.conf` |
 | Env contract | `.env.example`, `.env-mylo.example` |
+| Instance configuration (`mycelium.toml`: profiles, billing switch, limits, sign-up, email, features, nightly budgets) | `web/backend/config/instance.py` (keys, profiles, merge, render); template `mycelium.example.toml`; tests `web/backend/apps/core/test_instance_config.py` |
 | Onboarding load test | `ops/loadtest/loadtest.py`, `ops/loadtest/loadtest_interests.py`; guide in [`loadtest.md`](loadtest.md) |
 | Retrieval evaluation | `eval/` — `run.py`, `report.py`, `collections.toml`, `configs/`, `harness/`; results in `eval/results/`, guide in [`evaluation.md`](evaluation.md) |
 | Frozen eval subset + embedding-matrix slicing | `eval/freeze_subset.py`, `eval/harness/subset.py`; the id list is `eval/subsets/*.txt` (committed) |

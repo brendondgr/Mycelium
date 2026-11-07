@@ -30,6 +30,40 @@ def env_str(name: str, default: str = "") -> str:
     return (env(name, default="") or "").strip() or default
 
 
+# The instance configuration (config/instance.py): defaults → deployment profile →
+# mycelium.toml → environment. Every operator-facing policy — billing, limits,
+# sign-up, email, optional features, nightly cost controls — resolves there, and
+# the names below re-export it under the settings the code already reads. The
+# environment still wins, under the same variable names as before. Read after
+# `.env` is loaded so its values count as environment.
+from .instance import ConfigError as _ConfigError  # noqa: E402
+from .instance import resolve as _resolve_instance  # noqa: E402
+
+try:
+    INSTANCE = _resolve_instance(ROOT_DIR.parent)
+except _ConfigError as _exc:  # fail at boot, with the key that is wrong
+    raise SystemExit(f"Invalid Mycelium configuration: {_exc}") from None
+_cfg = INSTANCE.values
+INSTANCE_PROFILE = INSTANCE.profile
+BILLING_MODE = _cfg["billing.mode"]
+#: The billing module only decides anything while this is true.
+BILLING_ENABLED = BILLING_MODE == "subscriptions"
+INSTANCE_LIMITS = {
+    key.removeprefix("limits."): value
+    for key, value in _cfg.items()
+    if key.startswith("limits.") and not key.startswith("limits.tiers.")
+}
+INSTANCE_TIER_LIMITS = {}
+for _key, _value in _cfg.items():
+    if _key.startswith("limits.tiers."):
+        _tier, _name = _key.removeprefix("limits.tiers.").split(".")
+        INSTANCE_TIER_LIMITS.setdefault(_tier, {})[_name] = _value
+SIGNUP_MODE = _cfg["signup.mode"]
+SIGNUP_ALLOWED_DOMAINS = _cfg["signup.allowed_domains"]
+SIGNUP_VERIFY_EMAIL = _cfg["signup.verify_email"]
+EMAIL_PROVIDER = _cfg["email.provider"]
+NIGHTLY_MODEL_CALLS = _cfg["nightly.model_calls"]
+
 # The external hostname this stack is served at (Cloudflare tunnel, reverse
 # proxy, real domain) — the single knob for public routing. Every absolute URL
 # Django hands to a browser derives from PUBLIC_BASE_URL, so nothing sends a
@@ -243,7 +277,7 @@ PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=3600)
 # blocked one — and a correct code is refused too. The counters live in Redis
 # (apps.accounts.signup_gate) so a ban survives a web restart and is shared
 # across processes.
-SIGNUP_ACCESS_CODE = env_str("SIGNUP_ACCESS_CODE", "251253")
+SIGNUP_ACCESS_CODE = env_str("SIGNUP_ACCESS_CODE")
 SIGNUP_CODE_MAX_FAILURES = env.int("SIGNUP_CODE_MAX_FAILURES", default=3)
 SIGNUP_CODE_FAILURE_WINDOW_SECONDS = env.int(
     "SIGNUP_CODE_FAILURE_WINDOW_SECONDS", default=3600
@@ -258,23 +292,21 @@ SIGNUP_CODE_LOCKOUT_SECONDS = env.int("SIGNUP_CODE_LOCKOUT_SECONDS", default=360
 # An invited address is exempt either way — being asked for by name is its own
 # affiliation proof, and it is how someone at an institute missing from the
 # directory gets in at all.
-SIGNUP_REQUIRE_INSTITUTION_EMAIL = env.bool(
-    "SIGNUP_REQUIRE_INSTITUTION_EMAIL", default=False
-)
+SIGNUP_REQUIRE_INSTITUTION_EMAIL = _cfg["signup.require_institution_email"]
 
 # Sign-up with a valid access code grants this personal tier instead of Free, so
 # everyone who gets past the invite gate lands on the intelligence line rather
 # than the on-demand baseline. Must be a tier sold to a personal scope
 # (apps.billing.tiers.PERSONAL_TIERS) — provisioning validates it and will refuse
 # a team tier here. Set to "free" to restore the old behaviour.
-SIGNUP_GRANT_TIER = env_str("SIGNUP_GRANT_TIER", "spore")
+SIGNUP_GRANT_TIER = _cfg["billing.signup_tier"]
 
 # Feature gating master switch. Off (the default) makes
 # apps.billing.entitlements resolve every capability as granted, for every user
 # and every lab, whatever their tier or add-ons. Plans, prices, invoices and the
 # numeric caps below are untouched — this only stops a tier from *withholding* a
 # feature. Turn it on to sell tiered capability again.
-BILLING_ENFORCE_ENTITLEMENTS = env.bool("BILLING_ENFORCE_ENTITLEMENTS", default=False)
+BILLING_ENFORCE_ENTITLEMENTS = BILLING_ENABLED and _cfg["billing.enforce_features"]
 
 # Email: console backend in dev (messages print to the runserver console). A real
 # transactional provider is wired in via this env var for non-dev environments.
@@ -392,11 +424,11 @@ CELERY_BEAT_SCHEDULE = {
 # How many per-(user, area) grant/conference LLM scoring calls run concurrently
 # in the daily opportunity batch. The model call is the slow step, so scoring
 # units one at a time dominates the runtime; the endpoint handles many at once.
-OPPORTUNITY_LLM_CONCURRENCY = env.int("OPPORTUNITY_LLM_CONCURRENCY", default=12)
+OPPORTUNITY_LLM_CONCURRENCY = _cfg["nightly.llm_concurrency"]
 # How many précis and per-theme write-up calls may be in flight for one target
 # (apps.content.comprehension / cluster_fit / theme_run). Themes run side by side
 # and share this budget. vLLM batches concurrent requests.
-WRITEUP_LLM_CONCURRENCY = env.int("WRITEUP_LLM_CONCURRENCY", default=12)
+WRITEUP_LLM_CONCURRENCY = _cfg["nightly.writeup_concurrency"]
 
 # Where the daily suggestion run writes its verbose, timestamped log (one file
 # per run). Under the repo's data/ dir by default so it is readable on the host.
@@ -542,7 +574,7 @@ CLUSTER_ADMIT_HARD_FLOOR = env.float("CLUSTER_ADMIT_HARD_FLOOR", default=0.35)
 # reader who just redesigned their profile would degrade everyone else's report.
 # Funded by slate position (entrants first at equal position); whatever does not
 # fit is written deterministically and carries to the next run.
-CLUSTER_WRITEUP_BUDGET = env.int("CLUSTER_WRITEUP_BUDGET", default=40)
+CLUSTER_WRITEUP_BUDGET = _cfg["nightly.cluster_writeup_budget"]
 CLUSTER_FIT_BATCH = env.int("CLUSTER_FIT_BATCH", default=12)
 
 # Papers sign-up hybrid (apps.content.onboarding_match). A brand-new user is first
@@ -606,9 +638,7 @@ OPPORTUNITY_FEED_MAX = env.int("OPPORTUNITY_FEED_MAX", default=250)
 # Opportunity announcements (plan 20261105-mylo-opportunity-announcements): one
 # Discord thread per newly fitting grant, fellowship or conference. Off until
 # every phase has shipped; the dry run works either way.
-OPPORTUNITY_ANNOUNCEMENTS_ENABLED = env.bool(
-    "OPPORTUNITY_ANNOUNCEMENTS_ENABLED", default=False
-)
+OPPORTUNITY_ANNOUNCEMENTS_ENABLED = _cfg["features.announcements"]
 
 # How long a *dateless* conference may go unseen by the collector before the
 # nightly prune deletes it. A conference with no deadline and no event date is
@@ -637,7 +667,7 @@ HIGH_SIGNAL_FLOOR = env.int("HIGH_SIGNAL_FLOOR", default=90)
 HIGH_SIGNAL_WEEKLY_CAP = env.int("HIGH_SIGNAL_WEEKLY_CAP", default=2)
 HIGH_SIGNAL_DEADLINE_MIN_DAYS = env.int("HIGH_SIGNAL_DEADLINE_MIN_DAYS", default=7)
 HIGH_SIGNAL_DEADLINE_MAX_DAYS = env.int("HIGH_SIGNAL_DEADLINE_MAX_DAYS", default=120)
-HIGH_SIGNAL_DELIVERY_ENABLED = env.bool("HIGH_SIGNAL_DELIVERY_ENABLED", default=False)
+HIGH_SIGNAL_DELIVERY_ENABLED = _cfg["features.high_signal"]
 
 # How many days of written daily briefings the Reports page keeps (the
 # `prune_briefings` stage of the daily run deletes anything older). Flat for every
@@ -691,7 +721,7 @@ FANOUT_ASYNC = env.bool("FANOUT_ASYNC", default=False)
 # the whole layer to that same deterministic ranking.
 MEMBER_FIT_COSINE_FLOOR = env.float("MEMBER_FIT_COSINE_FLOOR", default=0.35)
 MEMBER_FIT_MAX_MEMBERS = env.int("MEMBER_FIT_MAX_MEMBERS", default=3)
-MEMBER_FIT_LLM_LIMIT = env.int("MEMBER_FIT_LLM_LIMIT", default=10)
+MEMBER_FIT_LLM_LIMIT = _cfg["nightly.member_fit_llm_limit"]
 # Recompute a project's team profile immediately when its membership changes.
 TEAM_PROFILE_AUTORECOMPUTE = env.bool("TEAM_PROFILE_AUTORECOMPUTE", default=True)
 
@@ -851,7 +881,7 @@ EMBEDDING_BATCH_SIZE_GPU = env.int("EMBEDDING_BATCH_SIZE_GPU", default=256)
 # medically-themed programmes with no topical connection (Q-031).
 # RERANK_DEPTH is the depth every experiment used; RERANK_MAX_PAIRS bounds a
 # multi-interest profile so a nightly run cannot become an afternoon.
-RERANK_ENABLED = env.bool("RERANK_ENABLED", default=False)
+RERANK_ENABLED = _cfg["features.rerank"]
 RERANK_MODEL = env("RERANK_MODEL", default="Xenova/ms-marco-MiniLM-L-6-v2")
 RERANK_DEVICE = env("RERANK_DEVICE", default="")
 RERANK_DEVICE_ID = env("RERANK_DEVICE_ID", default="")
@@ -878,7 +908,7 @@ TYPESAFE_RERANK_CONTENT_TYPES = env.list(
     "TYPESAFE_RERANK_CONTENT_TYPES",
     default=["paper", "grant", "conference", "fellowship"],
 )
-TYPESAFE_RERANK_CONCURRENCY = env.int("TYPESAFE_RERANK_CONCURRENCY", default=12)
+TYPESAFE_RERANK_CONCURRENCY = _cfg["nightly.rerank_concurrency"]
 
 # ---------------------------------------------------------------------------
 # Project alerts (apps.content.matchers, apps.content.alerts).
@@ -896,7 +926,7 @@ TYPESAFE_RERANK_CONCURRENCY = env.int("TYPESAFE_RERANK_CONCURRENCY", default=12)
 # regardless of this flag. That is the whole reason the flag is per-mechanism
 # rather than per-feature.
 # ---------------------------------------------------------------------------
-PROJECT_ALERTS_ENABLED = env.bool("PROJECT_ALERTS_ENABLED", default=False)
+PROJECT_ALERTS_ENABLED = _cfg["features.project_alerts"]
 PROJECT_ALERT_OVERLAP_THRESHOLD = env.float(
     "PROJECT_ALERT_OVERLAP_THRESHOLD", default=0.62
 )
@@ -1097,33 +1127,36 @@ RESEND_TIMEOUT_SECONDS = env.int("RESEND_TIMEOUT_SECONDS", default=15)
 # The verified sending identity. The domain must be verified in Resend and carry
 # SPF + DKIM, or mail is accepted by the API and then dropped or spam-filed by
 # the receiving side — the failure is silent from here.
-DEFAULT_FROM_EMAIL = env_str(
-    "DEFAULT_FROM_EMAIL", "Mycelium <mycelium@mail.brendondgr.com>"
-)
+DEFAULT_FROM_EMAIL = _cfg["email.from"]
 SERVER_EMAIL = env_str("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 # Optional Reply-To for product mail. Blank means replies go to DEFAULT_FROM_EMAIL,
 # which is an unmonitored no-reply address.
-EMAIL_REPLY_TO = env_str("EMAIL_REPLY_TO")
+EMAIL_REPLY_TO = _cfg["email.reply_to"]
 EMAIL_SUBJECT_PREFIX = env_str("EMAIL_SUBJECT_PREFIX")
 
 # The master switch, default OFF. Real mail is irreversible: a mistimed loop in
 # development emails real people at their real addresses, and there is no recall.
 # So sending is opt-in per deployment rather than on by default, and the console
 # backend below makes an un-configured environment loud instead of silent.
-EMAIL_ENABLED = env.bool("EMAIL_ENABLED", default=False)
+EMAIL_ENABLED = EMAIL_PROVIDER != "none"
 
 # Backend resolution, in order of specificity:
 #   1. An explicit EMAIL_BACKEND always wins (tests pin locmem this way).
-#   2. Enabled with a key  → Resend.
-#   3. Anything else       → console, so a developer sees the message body.
-EMAIL_BACKEND = env_str(
-    "EMAIL_BACKEND",
-    (
-        "apps.core.mail.backend.ResendEmailBackend"
-        if EMAIL_ENABLED and RESEND_API_KEY
-        else "django.core.mail.backends.console.EmailBackend"
-    ),
-)
+#   2. email.provider = "resend" with a key → Resend.
+#   3. email.provider = "smtp"              → Django's SMTP backend.
+#   4. Anything else                        → console, so a developer sees the body.
+EMAIL_HOST = _cfg["email.smtp_host"]
+EMAIL_PORT = _cfg["email.smtp_port"]
+EMAIL_HOST_USER = _cfg["email.smtp_user"]
+EMAIL_HOST_PASSWORD = env_str("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = _cfg["email.smtp_tls"]
+if EMAIL_PROVIDER == "resend" and RESEND_API_KEY:
+    _email_backend = "apps.core.mail.backend.ResendEmailBackend"
+elif EMAIL_PROVIDER == "smtp" and EMAIL_HOST:
+    _email_backend = "django.core.mail.backends.smtp.EmailBackend"
+else:
+    _email_backend = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = env_str("EMAIL_BACKEND", _email_backend)
 
 # Absolute origin for links written into email (reset links, invitation links).
 # Same reasoning as DISCORD_APP_BASE_URL: these are composed outside any HTTP
@@ -1139,7 +1172,7 @@ EMAIL_APP_BASE_URL = outbound_base_url(env_str("EMAIL_APP_BASE_URL", PUBLIC_BASE
 # means reading what people say to each other — a decision a deployment makes
 # deliberately, never one it inherits from a default.
 # ---------------------------------------------------------------------------
-AMBIENT_ENABLED = env.bool("AMBIENT_ENABLED", default=False)
+AMBIENT_ENABLED = _cfg["features.ambient"]
 
 # How long raw message text may sit in the buffer before it expires, in hours.
 # The buffer is deleted explicitly once a window has been read; this TTL is the
@@ -1195,15 +1228,13 @@ AMBIENT_THREAD_OVERRIDE = env.float("AMBIENT_THREAD_OVERRIDE", default=0.9)
 AMBIENT_WINDOW_HOURS = env.int("AMBIENT_WINDOW_HOURS", default=4)
 AMBIENT_WINDOW_MAX_MESSAGES = env.int("AMBIENT_WINDOW_MAX_MESSAGES", default=40)
 AMBIENT_WINDOW_QUIET_MINUTES = env.int("AMBIENT_WINDOW_QUIET_MINUTES", default=60)
-AMBIENT_EXTRACT_DAILY_CAP_PER_LAB = env.int(
-    "AMBIENT_EXTRACT_DAILY_CAP_PER_LAB", default=200
-)
-AMBIENT_EXTRACT_CONCURRENCY = env.int("AMBIENT_EXTRACT_CONCURRENCY", default=8)
+AMBIENT_EXTRACT_DAILY_CAP_PER_LAB = _cfg["nightly.ambient_extract_per_lab"]
+AMBIENT_EXTRACT_CONCURRENCY = _cfg["nightly.ambient_extract_concurrency"]
 # Deciding, nightly. Ships OFF and separate from AMBIENT_ENABLED: with it off,
 # observations accumulate and nothing is decided about anybody. Deliberation is
 # pure over the ledger (no model call); the explanations it asks for are
 # model-written, at most AMBIENT_EXPLAIN_NIGHTLY_CAP a night.
-AMBIENT_DELIBERATE_ENABLED = env.bool("AMBIENT_DELIBERATE_ENABLED", default=False)
+AMBIENT_DELIBERATE_ENABLED = _cfg["features.ambient_deliberate"]
 AMBIENT_LOOKBACK_DAYS = env.int("AMBIENT_LOOKBACK_DAYS", default=28)
 AMBIENT_HALF_LIFE_DAYS = env.float("AMBIENT_HALF_LIFE_DAYS", default=21.0)
 # The consistency test (Plans 04 and 06): distinct days, how far apart the first
@@ -1222,7 +1253,7 @@ AMBIENT_COVERED_SIMILARITY = env.float("AMBIENT_COVERED_SIMILARITY", default=0.8
 AMBIENT_DECLINE_REST_DAYS = env.int("AMBIENT_DECLINE_REST_DAYS", default=30)
 # A declared cluster nobody has talked about for this long is a swap candidate.
 AMBIENT_STALE_DAYS = env.int("AMBIENT_STALE_DAYS", default=90)
-AMBIENT_EXPLAIN_NIGHTLY_CAP = env.int("AMBIENT_EXPLAIN_NIGHTLY_CAP", default=200)
+AMBIENT_EXPLAIN_NIGHTLY_CAP = _cfg["nightly.ambient_explain"]
 # The evolving profile (Plan 05). A confirmed exploration joins a person's
 # paper search as its own theme, weighted at AMBIENT_DRIFT_WEIGHT of a declared
 # theme in the global ranking so it can never crowd one (apps.content
@@ -1231,7 +1262,7 @@ AMBIENT_EXPLAIN_NIGHTLY_CAP = env.int("AMBIENT_EXPLAIN_NIGHTLY_CAP", default=200
 # AMBIENT_EXPLORATION_REVIEW_DAYS. The project a person spent most of their
 # week on leads their report, with AMBIENT_ATTENTION_EXTRA_ITEMS more items,
 # once its 7-day share reaches AMBIENT_ATTENTION_LEAD_SHARE.
-AMBIENT_DRIFT_ENABLED = env.bool("AMBIENT_DRIFT_ENABLED", default=False)
+AMBIENT_DRIFT_ENABLED = _cfg["features.ambient_drift"]
 AMBIENT_DRIFT_WEIGHT = env.float("AMBIENT_DRIFT_WEIGHT", default=0.15)
 AMBIENT_EXPLORATION_REVIEW_DAYS = env.int("AMBIENT_EXPLORATION_REVIEW_DAYS", default=30)
 AMBIENT_ATTENTION_LEAD_SHARE = env.float("AMBIENT_ATTENTION_LEAD_SHARE", default=0.4)
@@ -1266,12 +1297,8 @@ KNOWLEDGE_PROJECT_ON_SAVE = env.bool("KNOWLEDGE_PROJECT_ON_SAVE", default=True)
 # reads whatever is still unread within these caps (one model call per work)
 # and looks up the OpenAlex field of works from other sources by DOI.
 KNOWLEDGE_FACET_ON_IMPORT = env.bool("KNOWLEDGE_FACET_ON_IMPORT", default=True)
-KNOWLEDGE_WORK_FACETS_NIGHTLY_CAP = env.int(
-    "KNOWLEDGE_WORK_FACETS_NIGHTLY_CAP", default=200
-)
-KNOWLEDGE_FIELD_LOOKUPS_NIGHTLY_CAP = env.int(
-    "KNOWLEDGE_FIELD_LOOKUPS_NIGHTLY_CAP", default=200
-)
+KNOWLEDGE_WORK_FACETS_NIGHTLY_CAP = _cfg["nightly.knowledge_work_facets"]
+KNOWLEDGE_FIELD_LOOKUPS_NIGHTLY_CAP = _cfg["nightly.knowledge_field_lookups"]
 
 # ---------------------------------------------------------------------------
 # Collaboration matching (apps.collab)
@@ -1285,7 +1312,7 @@ KNOWLEDGE_FIELD_LOOKUPS_NIGHTLY_CAP = env.int(
 COLLAB_COVERAGE_COSINE = env.float("COLLAB_COVERAGE_COSINE", default=0.80)
 # Calls whose slots are read per night (one model call each, ever); new calls
 # are read on arrival within the same budget.
-COLLAB_SLOTS_NIGHTLY_CAP = env.int("COLLAB_SLOTS_NIGHTLY_CAP", default=200)
+COLLAB_SLOTS_NIGHTLY_CAP = _cfg["nightly.collab_slots"]
 # Being findable (plan CN-04). Off by default; turning it on lasts this many
 # months, with a reminder this many days before it ends. A person is shown to
 # at most COLLAB_APPEARANCE_CAP distinct seekers a week, so the most sought-
@@ -1299,7 +1326,7 @@ COLLAB_APPEARANCE_CAP = env.int("COLLAB_APPEARANCE_CAP", default=10)
 # lane's slot at COLLAB_LANE_MATCH_COSINE and counts as "different" below
 # COLLAB_LANE_DIFFER_COSINE. The model reads each lane's shortlist and may drop
 # a candidate, never add one.
-COLLAB_SEARCH_ENABLED = env.bool("COLLAB_SEARCH_ENABLED", default=False)
+COLLAB_SEARCH_ENABLED = _cfg["features.collab_search"]
 COLLAB_MAX_SCOPE = env("COLLAB_MAX_SCOPE", default="institution")
 COLLAB_LANE_MATCH_COSINE = env.float("COLLAB_LANE_MATCH_COSINE", default=0.70)
 # A slot against one of a person's concepts (a short phrase) — higher than the
@@ -1364,7 +1391,7 @@ LOGGING = {
 # Off by default: the events endpoint answers 404 until it is on and a signing
 # secret is set. Workspaces install the app through Slack's OAuth (client id and
 # secret); requests are verified by signature before anything is read.
-SLACK_ENABLED = env.bool("SLACK_ENABLED", default=False)
+SLACK_ENABLED = _cfg["features.slack"]
 SLACK_SIGNING_SECRET = env_str("SLACK_SIGNING_SECRET", "")
 SLACK_CLIENT_ID = env_str("SLACK_CLIENT_ID", "")
 SLACK_CLIENT_SECRET = env_str("SLACK_CLIENT_SECRET", "")
@@ -1381,7 +1408,7 @@ SLACK_OUTBOX_BATCH_LIMIT = env.int("SLACK_OUTBOX_BATCH_LIMIT", default=50)
 # buffer's own ceiling). Speech is cheap: what a meeting yields weighs
 # AMBIENT_TRANSCRIPT_WEIGHT of the same thing said in writing, and only project
 # developments (decisions, blockers, commitments) are kept.
-AMBIENT_TRANSCRIPTS_ENABLED = env.bool("AMBIENT_TRANSCRIPTS_ENABLED", default=False)
+AMBIENT_TRANSCRIPTS_ENABLED = _cfg["features.ambient_transcripts"]
 AMBIENT_TRANSCRIPT_TTL_HOURS = env.int("AMBIENT_TRANSCRIPT_TTL_HOURS", default=3)
 AMBIENT_TRANSCRIPT_WEIGHT = env.float("AMBIENT_TRANSCRIPT_WEIGHT", default=0.3)
 AMBIENT_TRANSCRIPT_MAX_BYTES = env.int(
@@ -1393,7 +1420,7 @@ AMBIENT_TRANSCRIPT_MAX_BYTES = env.int(
 # request carries a Bot Framework JWT, verified (RS256, issuer, audience = the
 # app id, the serviceUrl claim) against Microsoft's published keys before
 # anything is read.
-TEAMS_ENABLED = env.bool("TEAMS_ENABLED", default=False)
+TEAMS_ENABLED = _cfg["features.teams"]
 TEAMS_APP_ID = env_str("TEAMS_APP_ID", "")
 TEAMS_APP_PASSWORD = env_str("TEAMS_APP_PASSWORD", "")
 TEAMS_OPENID_CONFIG_URL = env_str(

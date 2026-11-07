@@ -244,7 +244,7 @@ in any profile; the profile is only the starting point.
 ## Phases
 
 0. **Audit** — this document. ✅
-1. **Config loader.** A typed loader (`web/backend/config/instance.py`) that
+1. **Config loader.** ✅ A typed loader (`web/backend/config/instance.py`) that
    reads defaults → profile → `mycelium.toml` → env, validates, and records the
    source of every value. `settings.py` reads it; env names keep working.
 2. **Limits off the tier dicts.** One resolver answers "what is this user's /

@@ -155,3 +155,6 @@ ops/research/.venv/
 
 # Claude Code session worktrees are local checkouts, never tracked content.
 .claude/worktrees/
+
+# Instance configuration (generated per deployment; the template is committed)
+mycelium.toml

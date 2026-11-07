@@ -160,11 +160,25 @@ graph phase has not started.
 
 ## Configuration & secrets
 
+- **Operator policy lives in `mycelium.toml`** at the repo root (git-ignored;
+  `mycelium.example.toml` is the committed `lab` template). It holds billing,
+  limits, sign-up, email, optional features and nightly cost controls, resolved
+  by `web/backend/config/instance.py` in four layers: built-in defaults →
+  deployment profile (`personal` / `lab` / `department` / `institution`) →
+  `mycelium.toml` → environment variables. Each key still answers to its old
+  environment name (`AMBIENT_ENABLED`, `SIGNUP_GRANT_TIER`, ...), and
+  `settings.py` re-exports the resolved values under those names. An invalid
+  file stops the process at boot with the key that is wrong. `instance.py` is
+  standard-library only so host tooling reads the same definitions. Secrets
+  never go in the file.
 - Settings load through **django-environ**. `config/settings.py` reads the root
   `.env` **and** `.env-mylo` (the Discord bot's token and channel ids — Django
   needs them too), then falls back to environment variables and safe defaults
   (SQLite when `DATABASE_URL` is unset).
-- `.env.example` documents every variable. Real `.env` files are git-ignored.
+- `.env.example` documents every *environment-only* variable (secrets,
+  infrastructure, tuning); keys governed by `mycelium.toml` are listed there as
+  pointers only, because a value in an env_file would override the file. Real
+  `.env` files are git-ignored.
 - `compose.yaml` overrides per-service URLs so containers reach `postgres:5432`
   and `redis:6379` on the Compose network, while host tooling uses the published
   `11450` / `11550` ports.
@@ -180,7 +194,7 @@ graph phase has not started.
 | Embedding | `EMBEDDING_DEVICE` (`auto`/`cuda`/`cpu`), `EMBEDDING_BATCH_SIZE_CPU`, `EMBEDDING_BATCH_SIZE_GPU` |
 | Sign-up gate | `SIGNUP_ACCESS_CODE`, `SIGNUP_CODE_MAX_FAILURES`, `SIGNUP_CODE_FAILURE_WINDOW_SECONDS`, `SIGNUP_CODE_LOCKOUT_SECONDS` |
 | Discord (`.env-mylo`) | `DISCORD_API_KEY`, `ERROR_CHANNEL`, `ACTIVATION_CHANNEL`, `SUMMARY_CHANNEL` |
-| Email | `EMAIL_ENABLED`, `RESEND_API_KEY`, `DEFAULT_FROM_EMAIL`, `EMAIL_REPLY_TO`, `EMAIL_APP_BASE_URL` |
+| Email | `[email]` in `mycelium.toml` (`provider` = `none`/`resend`/`smtp`, `from`, `reply_to`, `smtp_*`); secrets `RESEND_API_KEY`, `EMAIL_HOST_PASSWORD`; `EMAIL_APP_BASE_URL`. The old `EMAIL_ENABLED=true` still means `resend` |
 | Run analytics | `RUN_ANALYTICS_JSON_PATH`, `RUN_ANALYTICS_PDF_DIR`, `RUN_ANALYTICS_RETENTION_DAYS` |
 | Opportunity collector | `COLLECT_CONTACT` |
 | Knowledge core | `KNOWLEDGE_MERGE_COSINE`, `KNOWLEDGE_MAX_SURFACE_CHARS`, `KNOWLEDGE_PROJECT_ON_SAVE`, `KNOWLEDGE_SWEEP_HOUR`, `KNOWLEDGE_FACET_ON_IMPORT`, `KNOWLEDGE_WORK_FACETS_NIGHTLY_CAP`, `KNOWLEDGE_FIELD_LOOKUPS_NIGHTLY_CAP` |
@@ -211,7 +225,7 @@ templated product mail, rendering a matched HTML and plain-text pair from
 delivery to survive an outage should copy the durable outbox in
 `apps/integrations/services/outbox.py` rather than reinvent it.
 
-`EMAIL_ENABLED` defaults to **off** and unset falls back to Django's console
+`email.provider` defaults to **`none`** and unset falls back to Django's console
 backend, because real mail is irreversible and a development mistake reaches real
 addresses. Two operational cautions: the sending domain must carry SPF, DKIM and
 (for Gmail) DMARC or the API accepts a message that is then silently dropped, and
