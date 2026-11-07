@@ -49,6 +49,8 @@ export type OpportunityFeedConfig<T extends OpportunityBase> = {
   label: (item: T) => string;
   /** A line of key facts on the card (amount, where and when). */
   facts?: (item: T) => React.ReactNode;
+  /** A feed's own mark on the card, before the checks (an eligibility badge). */
+  cardExtra?: (item: T) => React.ReactNode;
   /** Prefix for the deadline pill, e.g. "Submit by ". */
   deadlinePrefix?: (item: T) => string;
   /** What the search box looks through. */
@@ -60,6 +62,8 @@ export type OpportunityFeedConfig<T extends OpportunityBase> = {
   /** The deadline rows and footnote behind the opened item's Deadlines menu. */
   actionBar?: (item: T) => Partial<React.ComponentProps<typeof CardActionBar>>;
   primaryLink: string;
+  /** The heading for rows with no theme (default "Other matches"). */
+  otherLabel?: string;
   emptyTitle: string;
   emptyDescription: string;
 };
@@ -164,8 +168,11 @@ export function OpportunityFeed<T extends OpportunityBase>({
   isError,
   recommendedFor,
   labName,
+  banner,
 }: {
   config: OpportunityFeedConfig<T>;
+  /** A note under the page head (e.g. "set your career stage"). */
+  banner?: React.ReactNode;
   items: T[];
   isLoading: boolean;
   isError: boolean;
@@ -197,7 +204,7 @@ export function OpportunityFeed<T extends OpportunityBase>({
     PAGE_SIZE,
     resetKey,
   );
-  const groups = groupByTheme(shown, (i) => i.cluster);
+  const groups = groupByTheme(shown, (i) => i.cluster, config.otherLabel);
   const readable = React.useMemo(() => [...listed, ...held], [listed, held]);
   const reader = useReader(readable, opportunityId, groups[0]?.items[0] ?? held[0]);
 
@@ -266,13 +273,16 @@ export function OpportunityFeed<T extends OpportunityBase>({
             byMylo={i.origin === "llm"}
             caveat={i.caveat}
             extra={
-              checks.length ? (
-                <ul className="flex flex-wrap gap-1.5" aria-label="Can we use this?">
-                  {checks.map((c) => (
-                    <CheckPill key={c.key} check={c} />
-                  ))}
-                </ul>
-              ) : null
+              <>
+                {config.cardExtra?.(i)}
+                {checks.length ? (
+                  <ul className="flex flex-wrap gap-1.5" aria-label="Can we use this?">
+                    {checks.map((c) => (
+                      <CheckPill key={c.key} check={c} />
+                    ))}
+                  </ul>
+                ) : null}
+              </>
             }
             members={recommendedFor?.[i.content_id]}
             theme={i.cluster ?? null}
@@ -334,6 +344,7 @@ export function OpportunityFeed<T extends OpportunityBase>({
   return (
     <div className="ws-feedpage" data-layout="reader" data-filters="bar">
       <PageHead kicker={labName ?? config.kicker} title={config.title} lede={lede} />
+      {items.length > 0 && !isError ? banner : null}
 
       {isError ? (
         <EmptyState

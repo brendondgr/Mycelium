@@ -2,17 +2,10 @@
 
 import * as React from "react";
 
-import { Card } from "@/components/portal/primitives/card";
-import { RevealOnScroll } from "@/components/portal/motion/reveal-on-scroll";
-import { MatchCard } from "@/components/portal/primitives/match-card";
 import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
-import { EmptyState } from "@/components/portal/primitives/empty-state";
-import { SectionHeader } from "@/components/portal/primitives/section-header";
+import { MatchCard } from "@/components/portal/primitives/match-card";
 import { type ExtraDeadline } from "@/components/portal/primitives/deadline-list";
-import {
-  SourceRow,
-  ViewLink,
-} from "@/components/portal/primitives/source-footer";
+import { SourceRow, ViewLink } from "@/components/portal/primitives/source-footer";
 import { BankIcon, SparkleIcon } from "@/components/portal/icons";
 import {
   CardActionBar,
@@ -21,37 +14,14 @@ import {
   NewTag,
   formatIsoDate,
 } from "@/components/portal/sections/opportunity-bits";
-import {
-  DEFAULT_FELLOWSHIP_FILTERS,
-  FellowshipFilters,
-  deriveFellowshipFilterOptions,
-  filterAndSortFellowships,
-  type FellowshipFilterState,
-} from "@/components/portal/sections/fellowship-filters";
-import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
-import { HeldBack, heldReason } from "@/components/portal/primitives/held-back";
-import { HiddenByFilters } from "@/components/portal/primitives/hidden-by-filters";
-import {
-  FeedSearchBar,
-  clusterOptions,
-  matchesQuery,
-} from "@/components/portal/primitives/feed-search-bar";
+import { DetailSection } from "@/components/portal/feed/parts";
+import { OpportunityFeed, type OpportunityFeedConfig } from "@/components/portal/feed/opportunity-feed";
+import type { Facet } from "@/components/portal/feed/toolbar";
 import { usePortal } from "@/components/portal/portal-context";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
 import { UsabilityStrip } from "@/components/portal/primitives/usability-strip";
 import { useFellowships, useLabRecommendations } from "@/lib/portal/hooks";
-import {
-  revealDelay,
-  useInfiniteReveal,
-} from "@/lib/portal/use-infinite-reveal";
-import type {
-  FellowshipOpportunity,
-  MyLab,
-  RecommendedMember,
-} from "@/lib/portal/types";
-
-/** How many fellowships each infinite-scroll slice reveals. */
-const FELLOWSHIP_PAGE_SIZE = 25;
+import type { FellowshipOpportunity, MyLab, RecommendedMember } from "@/lib/portal/types";
 
 // --------------------------------------------------------------------------- //
 // Deadline display helpers
@@ -440,119 +410,156 @@ function StageNotice() {
 }
 
 // --------------------------------------------------------------------------- //
-// Loading skeleton
+// The feed page
 // --------------------------------------------------------------------------- //
 
-function FellowshipSkeleton() {
-  return (
-    <Card className="animate-pulse p-5">
-      <div className="flex items-center justify-between">
-        <span className="h-5 w-24 rounded-full bg-surface-alt" />
-        <span className="h-6 w-20 rounded-full bg-surface-alt" />
+const TIER_ORDER = ["qualified", "conditional", "unverified"] as const;
+
+function listFacet(
+  id: string,
+  label: string,
+  items: FellowshipOpportunity[],
+  values: (item: FellowshipOpportunity) => string[],
+  limit = 10,
+): Facet<FellowshipOpportunity>[] {
+  const counts = new Map<string, number>();
+  for (const item of items) for (const v of values(item)) if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
+  const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, limit);
+  if (top.length < 2) return [];
+  return [
+    {
+      id,
+      label,
+      mode: "multi",
+      options: top.map(([value]) => ({ value, label: value, test: (item) => values(item).includes(value) })),
+    },
+  ];
+}
+
+/**
+ * The Fellowships page — the shared feed (see `OpportunityFeed`) with a
+ * fellowship's own parts: the eligibility verdict on the card, amount and
+ * stages as its facts, eligibility / stage / citizenship / award-type filters,
+ * and the eligibility, fields and limits in the opened award. Awards not tied
+ * to one theme group under "Open to you".
+ */
+const FELLOWSHIPS_CONFIG: OpportunityFeedConfig<FellowshipOpportunity> = {
+  title: "Fellowships",
+  kicker: "Opportunities",
+  noun: "fellowships",
+  idPrefix: "fellowships",
+  placeholder: "Search fellowships by title, field, or description…",
+  icon: <SparkleIcon size={26} className="text-accent" />,
+  label: (f) =>
+    [AWARD_CLASS_LABELS[f.award_class] ?? "", f.deadline_type === "rolling" ? "Rolling" : ""]
+      .filter(Boolean)
+      .join(" · "),
+  facts: (f) =>
+    f.amount || f.stages.length ? (
+      <span className="ws-facts">
+        {f.amount ? (
+          <span className="ws-fact">
+            <BankIcon size={13} aria-hidden="true" /> {f.amount}
+          </span>
+        ) : null}
+        {f.stages.length ? <span className="ws-meta-text">{f.stages.slice(0, 3).join(" / ")}</span> : null}
+      </span>
+    ) : null,
+  cardExtra: (f) =>
+    f.tier ? (
+      <div className="flex">
+        <EligibilityBadge item={f} />
       </div>
-      <span className="mt-3 block h-4 w-3/4 rounded bg-surface-alt" />
-      <span className="mt-2 block h-3 w-1/3 rounded bg-surface-alt" />
-      <span className="mt-3 block h-3 w-full rounded bg-surface-alt" />
-      <span className="mt-2 block h-3 w-5/6 rounded bg-surface-alt" />
-    </Card>
-  );
-}
+    ) : null,
+  text: (f) => [f.title, f.description, f.reason, f.fields.join(" "), f.stages.join(" "), f.eligibility.join(" ")].join(" "),
+  facets: (items) => {
+    const facets: Facet<FellowshipOpportunity>[] = [];
+    const tiers = TIER_ORDER.filter((t) => items.some((f) => f.tier === t));
+    if (tiers.length > 1) {
+      facets.push({
+        id: "tier",
+        label: "Eligibility",
+        mode: "multi",
+        options: tiers.map((t) => ({ value: t, label: TIER_BADGES[t].label, test: (f) => f.tier === t })),
+      });
+    }
+    facets.push(...listFacet("stage", "Stage", items, (f) => f.stages));
+    facets.push(...listFacet("citizenship", "Citizenship", items, (f) => f.citizenship));
+    facets.push(
+      ...listFacet("award", "Award type", items, (f) => [AWARD_CLASS_LABELS[f.award_class] ?? f.award_class]),
+    );
+    return facets;
+  },
+  detail: (f) => (
+    <>
+      {f.eligibility.length || f.limits.length ? (
+        <DetailSection title="Who can apply">
+          <ul className="ws-meta-list">
+            {[...f.eligibility, ...f.limits].map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </DetailSection>
+      ) : null}
+      {f.stages.length || f.citizenship.length ? (
+        <DetailSection title="Stage and citizenship">
+          <dl className="ws-dates">
+            {f.stages.length ? (
+              <div>
+                <dt>Stage</dt>
+                <dd>{f.stages.join(", ")}</dd>
+              </div>
+            ) : null}
+            {f.citizenship.length ? (
+              <div>
+                <dt>Citizenship</dt>
+                <dd>{f.citizenship.join(", ")}</dd>
+              </div>
+            ) : null}
+            {f.amount ? (
+              <div>
+                <dt>Award</dt>
+                <dd>
+                  {f.amount}
+                  {f.amount_note ? ` · ${f.amount_note}` : ""}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        </DetailSection>
+      ) : null}
+      {f.fields.length ? (
+        <DetailSection title="Fields">
+          <p>{f.fields.join(", ")}</p>
+        </DetailSection>
+      ) : null}
+      {f.description ? (
+        <DetailSection title="About this award">
+          <p>{f.description}</p>
+        </DetailSection>
+      ) : null}
+      {f.contact_email ? (
+        <p className="ws-meta-text">
+          Contact: <a href={`mailto:${f.contact_email}`}>{f.contact_email}</a>
+        </p>
+      ) : null}
+    </>
+  ),
+  actionBar: (f) => ({ extraDeadlines: fellowshipSoftRounds(f) }),
+  primaryLink: "View award",
+  otherLabel: "Open to you",
+  emptyTitle: "Your fellowship matches are on their way",
+  emptyDescription:
+    "Once your fellowship eligibility is set in your profile (citizenship, academic stage, and research fields), Mycelium will match you against the fellowship database and surface the best fits here.",
+};
 
-// --------------------------------------------------------------------------- //
-// Animated list wrapper
-// --------------------------------------------------------------------------- //
+const LAB_FELLOWSHIPS_CONFIG: OpportunityFeedConfig<FellowshipOpportunity> = {
+  ...FELLOWSHIPS_CONFIG,
+  emptyTitle: "No lab fellowship matches yet",
+  emptyDescription:
+    "Once Mylo has run for this lab, fellowships matched to its shared research profile will appear here — each naming the members it suits best.",
+};
 
-/**
- * A band's heading, and the one line that says what the band is.
- *
- * The "open to you" band needs the sentence more than the matched one does: a
- * reader who has just read a list of awards chosen for their research needs to
- * be told, plainly, that the next list was not.
- */
-function BandHeading({ band }: { band: "matched" | "open" }) {
-  const copy =
-    band === "matched"
-      ? {
-          title: "Matched to your themes",
-          note: "Ranked by how well each award fits the strand it sits under.",
-        }
-      : {
-          title: "Open to you",
-          note:
-            "Eligible, but not tied to any one strand of your work — listed " +
-            "once, in no particular topical order.",
-        };
-  return (
-    <div className="pt-2">
-      <h3 className="font-serif text-base font-semibold text-[var(--text-primary)]">
-        {copy.title}
-      </h3>
-      <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{copy.note}</p>
-    </div>
-  );
-}
-
-function FellowshipList({
-  items,
-  recommendedFor,
-}: {
-  items: FellowshipOpportunity[];
-  recommendedFor?: Record<string, RecommendedMember[]>;
-}) {
-  // Two bands, in order: the awards chosen for the reader's research lead, and
-  // the ones they merely qualify for follow, labelled as such. Eligibility is a
-  // hard gate under both — this only decides presentation. A feed whose rows
-  // carry no band at all (a single-theme profile, or rows written before the
-  // split existed) renders as one list, exactly as it did.
-  const matched = items.filter((item) => item.band === "matched");
-  const open = items.filter((item) => item.band === "open");
-  const banded = matched.length > 0 && open.length > 0;
-
-  const row = (item: FellowshipOpportunity, index: number) => (
-    <RevealOnScroll
-      key={item.content_id}
-      delay={revealDelay(index, FELLOWSHIP_PAGE_SIZE)}
-    >
-      <FellowshipRow
-        item={item}
-        recommendedFor={recommendedFor?.[item.content_id]}
-        ignorable
-      />
-    </RevealOnScroll>
-  );
-
-  if (!banded) {
-    return <div className="space-y-3.5">{items.map(row)}</div>;
-  }
-
-  return (
-    <div className="space-y-3.5">
-      <BandHeading band="matched" />
-      {matched.map(row)}
-      <BandHeading band="open" />
-      {open.map(row)}
-    </div>
-  );
-}
-
-// --------------------------------------------------------------------------- //
-// Section root
-// --------------------------------------------------------------------------- //
-
-/**
- * The Fellowships page — one page, two scopes.
- *
- * A lab's Fellowships feed is structurally identical to the personal one: the
- * same filter rail, the same infinite-scroll list, the same card. It has to be —
- * a lab has no citizenship or career stage, so its fellowships are ranked on
- * research fit exactly the way its papers, grants and conferences are, and there
- * is no reason for the page to look like a different product. `labName` swaps the
- * copy and nothing else.
- *
- * The one lab-only addition is the recommendation strip on each card: who in the
- * lab Mylo judges the fellowship most applicable to, and — for members who opted
- * into sharing it — who is personally eligible.
- */
 export function FellowshipsSection() {
   const { currentLab } = usePortal();
   if (currentLab) {
@@ -566,7 +573,8 @@ function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
   const { data, isLoading, isError } = useLabRecommendations(lab.slug);
   const items = React.useMemo(() => data?.fellowships ?? [], [data]);
   return (
-    <FellowshipsFeed
+    <OpportunityFeed
+      config={LAB_FELLOWSHIPS_CONFIG}
       items={items}
       isLoading={isLoading}
       isError={isError}
@@ -579,256 +587,17 @@ function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
 function PersonalFellowships() {
   const { data, isLoading, isError } = useFellowships();
   const items = React.useMemo(() => data?.items ?? [], [data]);
+  // `stage_set === false` means nothing placed this reader on the career
+  // ladder, so the stage gate stayed silent for their whole feed. Default to
+  // true while loading, so the notice never flashes on a feed that has one.
+  const stageSet = data?.stage_set ?? true;
   return (
-    <FellowshipsFeed
+    <OpportunityFeed
+      config={FELLOWSHIPS_CONFIG}
       items={items}
       isLoading={isLoading}
       isError={isError}
-      // `stage_set === false` means nothing placed this reader on the career
-      // ladder, so the stage gate stayed silent for their whole feed. Default to
-      // true while loading, so the notice never flashes on a feed that has one.
-      stageSet={data?.stage_set ?? true}
+      banner={stageSet ? null : <StageNotice />}
     />
-  );
-}
-
-/**
- * The shared Fellowships feed body — the keyword search and cluster chips at the
- * top, the filter rail (tier, deadline, field,
- * stage, citizenship, award type, saved/new, sort), the loading/empty/error
- * states, and the infinite-scroll card list — used identically by the personal
- * page and a lab workspace. `labName`, when set, marks the lab variant and only
- * swaps the surrounding copy.
- */
-function FellowshipsFeed({
-  items,
-  isLoading,
-  isError,
-  recommendedFor,
-  labName,
-  stageSet = true,
-}: {
-  items: FellowshipOpportunity[];
-  isLoading: boolean;
-  isError: boolean;
-  recommendedFor?: Record<string, RecommendedMember[]>;
-  labName?: string;
-  /** Personal feed only: whether the reader's career stage resolved. */
-  stageSet?: boolean;
-}) {
-  const [filters, setFilters] = React.useState<FellowshipFilterState>(
-    DEFAULT_FELLOWSHIP_FILTERS,
-  );
-  const [query, setQuery] = React.useState("");
-  const [selectedCluster, setSelectedCluster] = React.useState<string | null>(
-    null,
-  );
-
-  const clusters = React.useMemo(() => clusterOptions(items), [items]);
-
-  // The top-of-page search and cluster chips scope the feed first; the rail's
-  // facets then narrow whatever that scope left, so its counts read against the
-  // theme the reader is looking at rather than the whole run.
-  const scoped = React.useMemo(() => {
-    const needle = query.trim();
-    if (!needle && !selectedCluster) return items;
-    return items.filter((item) => {
-      if (selectedCluster && item.cluster?.id !== selectedCluster) return false;
-      return matchesQuery(
-        [
-          item.title,
-          item.description,
-          item.reason,
-          item.fields.join(" "),
-          item.stages.join(" "),
-        ],
-        needle,
-      );
-    });
-  }, [items, query, selectedCluster]);
-
-  const options = React.useMemo(
-    () => deriveFellowshipFilterOptions(scoped),
-    [scoped],
-  );
-  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const filtered = React.useMemo(
-    () => filterAndSortFellowships(scoped, filters, today),
-    [scoped, filters, today],
-  );
-  // On a lab feed, what fails a hard check moves to "Mylo held back".
-  const labFeed = recommendedFor !== undefined;
-  const held = React.useMemo(
-    () => (labFeed ? filtered.filter((x) => heldReason(x.usability)) : []),
-    [filtered, labFeed],
-  );
-  const visible = React.useMemo(
-    () => (held.length ? filtered.filter((x) => !heldReason(x.usability)) : filtered),
-    [filtered, held],
-  );
-
-  // What the rail's facets took out of the scoped feed — see `HiddenByFilters`.
-  const hidden = React.useMemo(() => {
-    if (filtered.length === scoped.length) return [];
-    const shown = new Set(filtered.map((item) => item.content_id));
-    return scoped.filter((item) => !shown.has(item.content_id));
-  }, [scoped, filtered]);
-
-  const clearAll = () => {
-    setFilters(DEFAULT_FELLOWSHIP_FILTERS);
-    setQuery("");
-    setSelectedCluster(null);
-  };
-
-  // Filters always search the full feed; the result set then streams in as the
-  // reader scrolls, so reaching the bottom widens the list instead of ending it.
-  const resetKey = React.useMemo(
-    () => ({ filters, query, selectedCluster }),
-    [filters, query, selectedCluster],
-  );
-  const { visible: displayed, hasMore, remaining, sentinelRef, revealMore } =
-    useInfiniteReveal(visible, FELLOWSHIP_PAGE_SIZE, resetKey);
-
-  const showRail = !isLoading && !isError && items.length > 0;
-
-  // The old copy promised "fellowships you're eligible for, matched to your
-  // stage" unconditionally. Eligibility filtering is only as good as what we know
-  // about the reader: with no career stage on file the stage gate never fires,
-  // and claiming otherwise is the kind of false confidence that made a postdoc
-  // award on a student's feed read as vetted.
-  const subtitle = isLoading
-    ? labName
-      ? `Matching fellowships to ${labName}…`
-      : "Checking your eligibility…"
-    : items.length > 0
-      ? labName
-        ? `${items.length} fellowship${
-            items.length === 1 ? "" : "s"
-          } Mylo matched to ${labName}.`
-        : `${items.length} fellowship${
-            items.length === 1 ? "" : "s"
-          } matched to your research${
-            stageSet ? ", career stage, and timeline" : " and timeline"
-          }.`
-      : labName
-        ? `Fellowships matched to ${labName}.`
-        : "Fellowships matched to your research, eligibility, and timeline.";
-
-  return (
-    <div>
-      <SectionHeader
-        eyebrow="Opportunities"
-        title="Fellowships"
-        subtitle={subtitle}
-      />
-
-      {!labName && !stageSet && !isLoading && !isError && items.length > 0 ? (
-        <StageNotice />
-      ) : null}
-
-      {items.length > 0 && !isLoading && !isError ? (
-        <FeedSearchBar
-          query={query}
-          onQueryChange={setQuery}
-          placeholder="Search fellowships by title, field, or description…"
-          clusters={clusters}
-          selectedCluster={selectedCluster}
-          onClusterChange={setSelectedCluster}
-        />
-      ) : null}
-
-      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-        {showRail ? (
-          <FellowshipFilters
-            options={options}
-            filters={filters}
-            onChange={setFilters}
-            resultCount={visible.length}
-            totalCount={scoped.length}
-          />
-        ) : null}
-
-        <div className="min-w-0 flex-1">
-          {isLoading ? (
-            <div className="space-y-3.5">
-              <FellowshipSkeleton />
-              <FellowshipSkeleton />
-              <FellowshipSkeleton />
-            </div>
-          ) : isError ? (
-            <EmptyState
-              icon={<SparkleIcon size={26} className="text-accent" />}
-              title={
-                labName
-                  ? "Couldn't load this feed"
-                  : "Couldn't load your fellowships"
-              }
-              description={
-                labName
-                  ? "Something went wrong loading the lab's fellowship matches. Please try again in a moment."
-                  : "Something went wrong fetching your fellowship matches. Please try again in a moment."
-              }
-            />
-          ) : items.length === 0 ? (
-            labName ? (
-              <EmptyState
-                icon={<SparkleIcon size={26} className="text-accent" />}
-                title="No lab fellowship matches yet"
-                description="Once Mylo has run for this lab, fellowships matched to its shared research profile will appear here — each naming the members it suits best."
-              />
-            ) : (
-              <EmptyState
-                icon={<SparkleIcon size={26} className="text-accent" />}
-                badge="Coming soon"
-                title="Your fellowship matches are on their way"
-                description="Once your Fellowship eligibility is set in your profile (citizenship, academic stage, and research fields), Mycelium will match you against the fellowship database and surface the best fits here."
-              />
-            )
-          ) : visible.length === 0 ? (
-            <EmptyState
-              icon={<SparkleIcon size={26} className="text-accent" />}
-              title="No fellowships match these filters"
-              description="Try a different search term, another cluster, or widen your filters to see more of your matched fellowships."
-              action={
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                >
-                  Clear all filters
-                </button>
-              }
-            />
-          ) : (
-            <>
-              <FellowshipList
-                items={displayed}
-                recommendedFor={recommendedFor}
-              />
-              <FeedSentinel
-                sentinelRef={sentinelRef}
-                hasMore={hasMore}
-                remaining={remaining}
-                onRevealMore={revealMore}
-                totalShown={displayed.length}
-                noun="fellowships"
-              />
-            </>
-          )}
-
-          {/* Outside the branch above on purpose — see the conferences feed. */}
-          {!isLoading && !isError ? (
-            <>
-              <HeldBack count={held.length} noun="fellowships">
-                <FellowshipList items={held} recommendedFor={recommendedFor} />
-              </HeldBack>
-              <HiddenByFilters count={hidden.length} noun="fellowships">
-                <FellowshipList items={hidden} recommendedFor={recommendedFor} />
-              </HiddenByFilters>
-            </>
-          ) : null}
-        </div>
-      </div>
-    </div>
   );
 }

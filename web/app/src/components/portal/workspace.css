@@ -2282,6 +2282,15 @@ html[data-motion="none"] *::after {
   align-items: flex-start;
 }
 
+.ws-meta-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 1.1em;
+  list-style: disc;
+  color: var(--text-secondary);
+}
+
 .ws-feedpage {
   max-width: var(--ws-maxw);
   margin: 0 auto;
