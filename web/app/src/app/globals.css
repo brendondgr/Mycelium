@@ -33,6 +33,8 @@
 :root {
   --radius: 0.75rem;
   --raise: #efe7d7;
+  /* Muted text dark enough for AA on cream cards (the shared sheet's #7f8775 is 3.7:1). */
+  --text-muted: #687060;
   --glass: rgb(255 253 248 / 74%);
   --header-glass: rgb(248 244 236 / 82%);
   --border-soft: rgb(94 122 62 / 20%);
@@ -42,13 +44,14 @@
   --gold: #8c6a2a;
   --gold-soft: rgb(201 163 90 / 18%);
   --focus: #5e7a3e;
-  /* Caution text ("check this"), passes AA on cream. */
+  /* Caution text ("check this"); passes AA on cream. */
   --warn: #8a6420;
 }
 
 [data-theme="dark"] {
   --background: #10140e;
   --raise: #253021;
+  --text-muted: #9e988b;
   --glass: rgb(29 36 26 / 62%);
   --header-glass: rgb(16 20 14 / 78%);
   --border-soft: rgb(141 166 111 / 18%);
@@ -157,19 +160,9 @@ body {
   }
 }
 
-/* A gentle sway for the active sidebar leaf-vine, like a breeze through leaves. */
-@keyframes leaf-vine-breeze {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(0.7deg);
-  }
-}
-
 /*
- * The mycelium motion kit — the decorative layer shared by the growing sidebar
- * vine, the feed's reaching thread, the empty-state seedling, and the stat-card
+ * The mycelium motion kit — the decorative layer shared by
+ * the feed's reaching thread, the empty-state seedling, and the stat-card
  * root line. Three rules hold across all of them:
  *
  *   1. Every element that carries one of these is aria-hidden and
@@ -462,9 +455,6 @@ html[data-rail="expanded"] .ws-rail {
      as the card taking time to arrive. */
   .portal-fade-up {
     animation: portal-fade-up 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both;
-  }
-  .leaf-vine-breeze {
-    animation: leaf-vine-breeze 3.5s ease-in-out infinite alternate;
   }
 
   /* Feed thread — the trunk, its two branches, and the three nodes, all on one

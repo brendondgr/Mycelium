@@ -2,26 +2,14 @@
 
 import { LinesSkeleton } from "@/components/portal/skeleton";
 import { usePortal } from "@/components/portal/portal-context";
-import {
-  ArrowRightIcon,
-  CalendarIcon,
-  DocumentIcon,
-} from "@/components/portal/icons";
+import { ArrowRightIcon, CalendarIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
-import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
-import { Avatar } from "@/components/portal/primitives/avatar";
-import type {
-  RecommendedMember,
-  SavedDeadline,
-  Suggestion,
-} from "@/lib/portal/types";
+import type { SavedDeadline } from "@/lib/portal/types";
 
 /**
- * The Overview's right-column panels — top papers and nearest deadlines — shared
- * by the personal and lab overviews so both render identically. Each is fed by
- * props (the personal daily report / saved deadlines, or a lab's recommendations
- * / shared saves), keeping them free of any scope-specific data fetching. They
- * live in their own module to avoid an import cycle between the two overviews.
+ * The overview's saved-deadlines panel, fed by props so it stays free of any
+ * scope-specific data fetching. The rest of the overview lives in
+ * `overview-layout.tsx`.
  */
 
 /** Small panel header with a "view all" affordance to the full section. */
@@ -47,107 +35,6 @@ function PanelHeader({ title, onView }: { title: string; onView: () => void }) {
   );
 }
 
-/** The Overview's right column, top: the top three daily papers + %. */
-export function TopPapersPanel({
-  suggestions,
-  isLoading,
-  recommendedFor,
-}: {
-  suggestions: Suggestion[];
-  isLoading: boolean;
-  /** Lab-only: content id → who Mylo judges each paper is for. */
-  recommendedFor?: Record<string, RecommendedMember[]>;
-}) {
-  const { goToSection } = usePortal();
-  const top = suggestions.slice(0, 3);
-
-  return (
-    <Card className="p-5">
-      <PanelHeader
-        title="Research Papers"
-        onView={() => goToSection("papers")}
-      />
-      {isLoading ? (
-        <LinesSkeleton rows={3} />
-      ) : top.length === 0 ? (
-        <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-          <DocumentIcon size={16} />
-          Your first paper matches will appear here after tonight&apos;s scan.
-        </div>
-      ) : (
-        <ul className="space-y-3">
-          {top.map((paper) => (
-            <li
-              key={paper.content_id}
-              className="flex items-start justify-between gap-3"
-            >
-              <div className="flex min-w-0 items-start gap-2.5">
-                {paper.rank ? (
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_13%,transparent)] text-[11px] font-semibold text-primary">
-                    {paper.rank}
-                  </span>
-                ) : null}
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium leading-snug text-[var(--text-primary)]">
-                    {paper.headline || paper.title}
-                  </span>
-                  <ForMembers members={recommendedFor?.[paper.content_id]} />
-                </span>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                {paper.cluster ? (
-                  <>
-                    <span
-                      aria-hidden="true"
-                      title={paper.cluster.label}
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{
-                        backgroundColor: `var(${clusterAccentVar(paper.cluster.id)})`,
-                      }}
-                    />
-                    <span className="sr-only">
-                      {paper.cluster.label} cluster
-                    </span>
-                  </>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
-/**
- * The overview's compact form of the "who is this for?" layer: just the faces
- * and names, no rationale — the feed card carries the full strip. Renders
- * nothing on a personal overview, which never passes the map.
- */
-function ForMembers({ members }: { members?: RecommendedMember[] }) {
-  if (!members || members.length === 0) return null;
-  const shown = members.slice(0, 3);
-  return (
-    <span className="mt-1 flex flex-wrap items-center gap-1">
-      <span className="text-[11px] text-[var(--text-secondary)]">For</span>
-      {shown.map((member) => (
-        <span
-          key={member.username}
-          title={member.reason || member.name}
-          className="inline-flex items-center gap-1 rounded-full bg-surface-alt px-1.5 py-[1px] text-[11px] font-medium text-[var(--text-secondary)]"
-        >
-          <Avatar initials={member.initials} seed={member.username} size={14} />
-          {member.name}
-        </span>
-      ))}
-      {members.length > shown.length ? (
-        <span className="text-[11px] text-[var(--text-secondary)]">
-          +{members.length - shown.length}
-        </span>
-      ) : null}
-    </span>
-  );
-}
 
 /** The Overview's right column, below papers: the soonest saved deadlines. */
 export function DeadlinesPanel({
