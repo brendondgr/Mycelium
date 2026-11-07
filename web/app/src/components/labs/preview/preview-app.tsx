@@ -15,21 +15,28 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Presentation,
+  LogOut,
   ScrollText,
   Search,
+  Settings,
+  Sparkles,
+  UserRound,
+  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
 
-import type { LabsState, PageKey } from "@/components/labs/schema";
+import type { LabsState, OptionValue, PageKey } from "@/components/labs/schema";
 import { SCOPES, type Scope } from "@/components/labs/preview/fixtures";
 import { Ground } from "@/components/labs/preview/ground";
 import { ItemDetail, PreviewContext, useDismiss, type Detail } from "@/components/labs/preview/parts";
 import { FeedPage } from "@/components/labs/preview/pages/feed";
 import { OverviewPage } from "@/components/labs/preview/pages/overview";
 import { SearchPage } from "@/components/labs/preview/pages/search";
+import { SettingsPage } from "@/components/labs/preview/pages/settings";
+import { PageSkeleton } from "@/components/labs/preview/skeleton";
 
-type NavEntry = { key: string; label: string; icon: LucideIcon; page?: PageKey };
+type NavEntry = { key: string; label: string; icon: LucideIcon; page?: PageKey; section?: string };
 
 const NAV: { label: string; items: NavEntry[] }[] = [
   {
@@ -52,9 +59,14 @@ const NAV: { label: string; items: NavEntry[] }[] = [
     label: "Lab",
     items: [
       { key: "projects", label: "Projects", icon: FolderKanban },
+      { key: "members", label: "Members", icon: Users, page: "settings", section: "members" },
       { key: "saves", label: "Saves", icon: Bookmark },
       { key: "reports", label: "Reports", icon: ScrollText },
     ],
+  },
+  {
+    label: "Settings",
+    items: [{ key: "settings", label: "Settings", icon: Settings, page: "settings", section: "account" }],
   },
 ];
 
@@ -159,6 +171,86 @@ function NavList({
   );
 }
 
+/**
+ * The avatar opens the account menu: the one obvious door to settings, from
+ * any page, at any width.
+ */
+function AccountMenu({
+  theme,
+  setTheme,
+  goSettings,
+}: {
+  theme: string;
+  setTheme: (v: string) => void;
+  goSettings: (section: string) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  const close = React.useCallback(() => setOpen(false), []);
+  useDismiss(open, close, ref);
+  const item = (section: string, label: string, Icon: LucideIcon) => (
+    <button
+      type="button"
+      role="menuitem"
+      className="lx-menu-item"
+      onClick={() => {
+        setOpen(false);
+        goSettings(section);
+      }}
+    >
+      <Icon size={15} aria-hidden="true" className="lx-menu-icon" />
+      <span className="lx-menu-name">{label}</span>
+    </button>
+  );
+  return (
+    <div className="lx-account" ref={ref}>
+      <button
+        type="button"
+        className="lx-me"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account menu for Ama Owusu"
+        onClick={() => setOpen((v) => !v)}
+      >
+        AO
+      </button>
+      {open ? (
+        <div className="lx-menu lx-menu-right" role="menu" aria-label="Account">
+          <div className="lx-menu-who">
+            <span className="lx-menu-name">Ama Owusu</span>
+            <span className="lx-menu-hint">ama.owusu@university.edu</span>
+          </div>
+          {item("account", "Account", UserRound)}
+          {item("notifications", "Notifications", Bell)}
+          {item("mylo", "Mylo & you", Sparkles)}
+          <div className="lx-menu-sep" role="separator" />
+          <p className="lx-menu-label">Pulse Lab</p>
+          {item("lab", "Lab settings", Settings)}
+          {item("members", "Members", Users)}
+          <div className="lx-menu-sep" role="separator" />
+          <div className="lx-menu-theme">
+            <span className="lx-menu-hint">Theme</span>
+            <span className="lx-seg" role="radiogroup" aria-label="Theme">
+              {[
+                ["night", "Night"],
+                ["day", "Day"],
+              ].map(([v, l]) => (
+                <button key={v} type="button" role="radio" aria-checked={theme === v} onClick={() => setTheme(v)}>
+                  {l}
+                </button>
+              ))}
+            </span>
+          </div>
+          <button type="button" role="menuitem" className="lx-menu-item" onClick={() => setOpen(false)}>
+            <LogOut size={15} aria-hidden="true" className="lx-menu-icon" />
+            <span className="lx-menu-name">Sign out</span>
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Placeholder({ label }: { label: string }) {
   return (
     <div className="lx-placeholder lx-rise">
@@ -174,9 +266,12 @@ function Placeholder({ label }: { label: string }) {
 export function PreviewApp({
   state,
   setPage,
+  setGlobal,
 }: {
   state: LabsState;
   setPage: (page: PageKey) => void;
+  /** Lets the preview's own settings page change a Labs option. */
+  setGlobal: (id: string, value: OptionValue) => void;
 }) {
   const g = state.global;
   const [scope, setScope] = React.useState<Scope>(SCOPES[1]);
@@ -185,6 +280,7 @@ export function PreviewApp({
   const [other, setOther] = React.useState<string | null>(null);
   const [detail, setDetail] = React.useState<Detail | null>(null);
   const [expanded, setExpanded] = React.useState<string | null>(null);
+  const [section, setSection] = React.useState("account");
   const mainRef = React.useRef<HTMLDivElement>(null);
   const detailRef = React.useRef<HTMLDivElement>(null);
 
@@ -204,13 +300,29 @@ export function PreviewApp({
   }
 
   const current = other ?? state.page;
+  // Members is a section of Settings; light whichever one the reader chose.
+  const navCurrent = current === "settings" && section === "members" ? "members" : current;
 
-  const go = (key: string) => {
+  // A page "loads" whenever the page or the workspace changes: placeholders
+  // first, then the content fades in where they stood.
+  const delay = g.loading === "skeleton" ? Number(g.loadDelay) : 0;
+  const loadKey = `${current}|${section}|${scope.id}`;
+  const [loaded, setLoaded] = React.useState<{ key: string; done: boolean }>({ key: "", done: false });
+  if (loaded.key !== loadKey) setLoaded({ key: loadKey, done: delay === 0 });
+  const loading = !loaded.done && delay > 0;
+  React.useEffect(() => {
+    if (loaded.done) return;
+    const t = window.setTimeout(() => setLoaded((l) => (l.key === loadKey ? { ...l, done: true } : l)), delay);
+    return () => window.clearTimeout(t);
+  }, [loaded, loadKey, delay]);
+
+  const go = (key: string, sectionOverride?: string) => {
     const entry = ALL_NAV.find((n) => n.key === key);
     setNavOpen(false);
     setDetail(null);
     if (entry?.page) {
       setOther(null);
+      if (entry.page === "settings") setSection(sectionOverride ?? entry.section ?? "account");
       setPage(entry.page);
     } else {
       setOther(key);
@@ -245,12 +357,24 @@ export function PreviewApp({
     other !== null ? (
       <Placeholder label={ALL_NAV.find((n) => n.key === other)?.label ?? other} />
     ) : state.page === "overview" ? (
-      <OverviewPage o={pageOptions.overview} scope={scope} deadline={pageOptions.grants.deadline as string} />
+      <OverviewPage o={pageOptions.overview} scope={scope} deadline={pageOptions.grants.deadline as string} go={go} />
+    ) : state.page === "settings" ? (
+      <SettingsPage key={section} o={pageOptions.settings} g={g} setGlobal={setGlobal} initial={section} />
     ) : state.page === "search" ? (
       <SearchPage o={pageOptions.search} />
     ) : (
       <FeedPage key={state.page} feed={state.page} o={pageOptions[state.page]} />
     );
+  const skeletonKind =
+    other !== null
+      ? "page"
+      : state.page === "overview" || state.page === "search" || state.page === "settings"
+        ? state.page
+        : "feed";
+  const readerSkeleton =
+    skeletonKind === "feed" && state.page !== "overview" && state.page !== "search" && state.page !== "settings"
+      ? pageOptions[state.page].layout === "reader"
+      : false;
 
   const style = {
     "--lx-bg-strength": Number(g.backgroundStrength) / 100,
@@ -315,7 +439,17 @@ export function PreviewApp({
             <Bell size={17} aria-hidden="true" />
             <span className="lx-bell-dot" aria-hidden="true" />
           </button>
-          <span className="lx-me" aria-label="Signed in as Ama Owusu">AO</span>
+          {pageOptions.settings.accountMenu ? (
+            <AccountMenu
+              theme={g.theme as string}
+              setTheme={(v) => setGlobal("theme", v)}
+              goSettings={(sec) => go("settings", sec)}
+            />
+          ) : (
+            <button type="button" className="lx-me" aria-label="Settings" onClick={() => go("settings")}>
+              AO
+            </button>
+          )}
         </header>
 
         <div className="lx-body">
@@ -339,12 +473,12 @@ export function PreviewApp({
           ) : null}
           {g.nav === "rail" ? (
             <aside className="lx-rail">
-              <NavList current={current} go={go} collapsed={railCollapsed} />
+              <NavList current={navCurrent} go={go} collapsed={railCollapsed} />
             </aside>
           ) : null}
           <div className="lx-main" ref={mainRef}>
-            <div className="lx-content" key={`${current}-${scope.id}`}>
-              {page}
+            <div className="lx-content" key={loading ? `skeleton-${loadKey}` : loadKey} aria-busy={loading}>
+              {loading ? <PageSkeleton kind={skeletonKind} reader={readerSkeleton} /> : page}
             </div>
           </div>
         </div>
@@ -374,7 +508,7 @@ export function PreviewApp({
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
-            <NavList current={current} go={go} />
+            <NavList current={navCurrent} go={go} />
           </div>
         </div>
 

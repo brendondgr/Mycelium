@@ -785,6 +785,9 @@
 }
 
 .lx-main {
+  /* A size container, so a page can be exactly as tall as the visible area
+     (100cqh) — what lets the reading pane fill the height and scroll alone. */
+  container-type: size;
   flex: 1;
   min-width: 0;
   overflow-y: auto;
@@ -1263,22 +1266,26 @@
 }
 
 /* How much each item shows follows density. */
-.lx-app[data-density="compact"] .lx-why,
-.lx-app[data-density="compact"] .lx-compact-why {
+/* The clamp sits on the text alone, never on the line that also carries
+   Mylo's portrait: a clamped box lays its children out vertically, which put
+   the portrait on a line of its own. */
+.lx-clamp {
+  min-width: 0;
+}
+
+.lx-app[data-density="compact"] .lx-clamp,
+.lx-app[data-density="comfortable"] .lx-compact-why .lx-clamp {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
 }
 
-.lx-app[data-density="comfortable"] .lx-compact-why {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
+.lx-app[data-density="comfortable"] .lx-compact-why .lx-clamp {
   -webkit-line-clamp: 2;
 }
 
-.lx-item[data-expanded] .lx-why {
+.lx-item[data-expanded] .lx-clamp {
   display: block;
   -webkit-line-clamp: unset;
 }
@@ -1596,7 +1603,9 @@
 }
 
 .lx-compact-why {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
   margin: 0;
   font-size: 0.92em;
   color: var(--lx-text-2);
@@ -1958,7 +1967,7 @@
 }
 
 .lx-compact-why .lx-mylo-mark {
-  margin: 0 6px -3px 0;
+  margin-top: 2px;
 }
 
 .lx-item-foot {
@@ -2423,6 +2432,548 @@
 
   .lx-sort select {
     max-width: 128px;
+  }
+}
+
+/* ============================================ preview: full-height reader */
+
+/*
+ * List + reading pane on a wide screen is an app layout, not a document: the
+ * head and toolbar stay put, and the list and the opened item each fill the
+ * remaining height and scroll on their own. 100cqh is the scroll area's
+ * content height (see .lx-main).
+ */
+@container lxapp (min-width: 980px) {
+  .lx-main:has(> .lx-content > .lx-feedpage[data-layout="reader"]) {
+    padding-bottom: 14px;
+  }
+
+  .lx-feedpage[data-layout="reader"] {
+    display: flex;
+    flex-direction: column;
+    height: 100cqh;
+  }
+
+  .lx-feedpage[data-layout="reader"] > .lx-page-head {
+    margin-bottom: calc(var(--lx-section) * 0.6);
+  }
+
+  .lx-feedpage[data-layout="reader"] .lx-feed-body {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .lx-feedpage[data-layout="reader"] .lx-feed-body[data-rail] {
+    align-items: stretch;
+  }
+
+  .lx-feedpage[data-layout="reader"] .lx-filter-rail {
+    position: static;
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .lx-feedpage[data-layout="reader"] .lx-feed-wrap {
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .lx-feedpage[data-layout="reader"] .lx-feed {
+    min-height: 0;
+    padding: 2px 6px 24px 2px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--lx-border) transparent;
+  }
+
+  .lx-feedpage[data-layout="reader"] .lx-reading-pane {
+    position: static;
+    height: 100%;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--lx-border) transparent;
+  }
+
+  .lx-feedpage[data-layout="reader"] .lx-feed-group .lx-group-label {
+    position: sticky;
+    top: -2px;
+    z-index: 1;
+    padding: 6px 0;
+    background: var(--lx-bg);
+  }
+}
+
+/* The opened item cross-fades when the reader picks another. */
+@media (prefers-reduced-motion: no-preference) {
+  .lx-app:not([data-motion="none"]) .lx-reading-pane .lx-detail-body {
+    animation: lx-fade 0.28s ease both;
+  }
+}
+
+/* ======================================================= preview: skeleton */
+
+.lx-skel {
+  display: block;
+  max-width: 100%;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lx-raise) 85%, transparent);
+}
+
+.lx-skel-pill {
+  border-radius: 999px;
+}
+
+.lx-skel-round {
+  flex: none;
+  border-radius: 50%;
+}
+
+.lx-skel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lx-skel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lx-skel-center {
+  align-items: center;
+  padding: calc(var(--lx-section) * 1.2) 0 var(--lx-section);
+}
+
+.lx-grow {
+  flex: 1;
+}
+
+.lx-skel-toolbar {
+  margin-bottom: 10px;
+}
+
+.lx-skel-card {
+  gap: 10px;
+}
+
+.lx-skel-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lx-skel-note {
+  align-items: center;
+}
+
+.lx-skeleton .lx-feed-items {
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lx-app:not([data-motion="none"]) .lx-skel {
+    background:
+      linear-gradient(
+        100deg,
+        transparent 30%,
+        color-mix(in srgb, var(--lx-text) 7%, transparent) 50%,
+        transparent 70%
+      )
+      0 0 / 220% 100%,
+      color-mix(in srgb, var(--lx-raise) 85%, transparent);
+    animation: lx-shimmer 1.4s linear infinite;
+  }
+
+  .lx-app:not([data-motion="none"]) .lx-skeleton {
+    animation: lx-fade 0.2s ease both;
+  }
+}
+
+@keyframes lx-shimmer {
+  from {
+    background-position: 120% 0, 0 0;
+  }
+  to {
+    background-position: -120% 0, 0 0;
+  }
+}
+
+/* ================================================ preview: overview panels */
+
+.lx-split-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-section);
+  min-width: 0;
+}
+
+.lx-panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.lx-report td:last-child {
+  max-width: 0;
+  width: 60%;
+  padding-left: 16px;
+  text-align: left;
+}
+
+.lx-report-lead {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lx-theme-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lx-row-kind {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lx-kind-chip {
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lx-raise) 90%, transparent);
+  color: var(--lx-text-2);
+  font-size: 0.74em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lx-person-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lx-person-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--lx-divider);
+}
+
+.lx-person-list li:first-child {
+  padding-top: 2px;
+  border-top: 0;
+}
+
+.lx-person-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lx-person-first {
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--lx-text-2);
+  font: inherit;
+  font-size: 0.9em;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lx-person-first:hover {
+  color: var(--lx-link);
+}
+
+.lx-asks {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lx-asks li + li {
+  padding-top: 14px;
+  border-top: 1px solid var(--lx-divider);
+}
+
+.lx-ask-q {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 3px;
+  font-weight: 600;
+  color: var(--lx-text);
+}
+
+.lx-asks .lx-meta-text {
+  display: block;
+  margin: 0;
+}
+
+.lx-ask-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.lx-ask-done {
+  margin: 8px 0 0;
+  font-size: 0.88em;
+  font-weight: 600;
+  color: var(--lx-link);
+}
+
+.lx-btn-sm {
+  padding: 4px 12px;
+  font-size: 0.84em;
+}
+
+.lx-page-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* =================================================== preview: account menu */
+
+.lx-account {
+  position: relative;
+}
+
+button.lx-me {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button.lx-me:hover,
+button.lx-me[aria-expanded="true"] {
+  box-shadow: 0 0 0 2px var(--lx-bg), 0 0 0 4px color-mix(in srgb, var(--lx-glow) 60%, transparent);
+}
+
+.lx-menu-right {
+  right: 0;
+  left: auto;
+  min-width: 250px;
+  transform-origin: top right;
+}
+
+.lx-menu-who {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 8px 10px;
+  border-bottom: 1px solid var(--lx-divider);
+  margin-bottom: 4px;
+}
+
+.lx-menu-icon {
+  flex: none;
+  color: var(--lx-muted);
+}
+
+.lx-menu-sep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--lx-divider);
+}
+
+.lx-menu-theme {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+}
+
+.lx-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--lx-border-soft);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lx-raise) 50%, transparent);
+}
+
+.lx-seg button {
+  padding: 4px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lx-text-2);
+  font: inherit;
+  font-size: 0.86em;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lx-seg button[aria-checked="true"] {
+  background: var(--lx-primary);
+  color: var(--lx-primary-ink);
+}
+
+/* ======================================================= preview: settings */
+
+.lx-settings-grid {
+  display: grid;
+  gap: var(--lx-section);
+  align-items: start;
+}
+
+.lx-settings-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.lx-nav-blurb {
+  display: block;
+  font-size: 0.8em;
+  font-weight: 400;
+  color: var(--lx-muted);
+  white-space: normal;
+}
+
+.lx-settings-nav .lx-nav-item {
+  align-items: flex-start;
+}
+
+.lx-settings-nav .lx-nav-item svg {
+  margin-top: 2px;
+}
+
+.lx-settings[data-layout="single"] .lx-settings-section + .lx-settings-section {
+  margin-top: var(--lx-section);
+}
+
+.lx-settings[data-layout="single"] > .lx-chips {
+  margin-bottom: var(--lx-section);
+}
+
+.lx-settings-section > .lx-meta-text {
+  display: block;
+  margin: 2px 0 14px;
+}
+
+.lx-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 20px;
+  padding: 12px 0;
+  border-top: 1px solid var(--lx-divider);
+}
+
+.lx-form-label {
+  display: block;
+  font-weight: 600;
+}
+
+.lx-form-hint {
+  display: block;
+  font-size: 0.86em;
+  color: var(--lx-muted);
+}
+
+.lx-form-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lx-input {
+  min-width: 220px;
+  padding: 7px 12px;
+  border: 1px solid var(--lx-border);
+  border-radius: max(6px, calc(var(--lx-r) - 4px));
+  background: var(--lx-bg);
+  color: var(--lx-text);
+  font: inherit;
+}
+
+.lx-input:focus {
+  border-color: var(--lx-primary);
+  outline: none;
+}
+
+.lx-readonly {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--lx-text-2);
+}
+
+.lx-readonly svg {
+  color: var(--lx-link);
+}
+
+.lx-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--lx-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lx-raise) 80%, transparent);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.lx-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--lx-text-2);
+  transition: transform 0.15s;
+}
+
+.lx-switch[aria-checked="true"] {
+  border-color: var(--lx-primary);
+  background: var(--lx-primary);
+}
+
+.lx-switch[aria-checked="true"] span {
+  background: var(--lx-primary-ink);
+  transform: translateX(16px);
+}
+
+.lx-note-quiet {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.lx-note-quiet .lx-note-text {
+  margin: 0;
+}
+
+@container lxapp (min-width: 760px) {
+  .lx-settings-grid {
+    grid-template-columns: 250px minmax(0, 1fr);
   }
 }
 

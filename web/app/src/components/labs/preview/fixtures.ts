@@ -777,3 +777,30 @@ export function themeOf(id: string): Theme {
 export function memberOf(id: string): Member {
   return MEMBERS.find((m) => m.id === id) ?? MEMBERS[0];
 }
+
+/** What Mylo is unsure of and asks rather than assumes ("Mylo & you"). */
+export const MYLO_ASKS = [
+  {
+    id: "a1",
+    question: "Is the triage-agent pilot still being written up?",
+    context: "Two papers this week cite the same audit, and the project has had no edits in 12 days.",
+    answers: ["Still writing", "Submitted"],
+  },
+  {
+    id: "a2",
+    question: "Should I watch “SWOT validation” for Ama?",
+    context: "It came up in 4 of her saved papers but is not one of her topics.",
+    answers: ["Watch it", "Not now"],
+  },
+];
+
+export const KIND_LABEL: Record<FeedKind, string> = {
+  paper: "Paper",
+  grant: "Grant",
+  fellowship: "Fellowship",
+  conference: "Conference",
+};
+
+export function allItems(): FeedItem[] {
+  return [...PAPERS, ...GRANTS, ...FELLOWSHIPS, ...CONFERENCES];
+}

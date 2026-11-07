@@ -374,7 +374,7 @@ export function FeedCard({
       {has("reason") ? (
         <p className="lx-why">
           {item.byMylo ? <MyloMark /> : null}
-          <span>
+          <span className="lx-clamp">
             <span className="lx-sr">{item.byMylo ? "Mylo's reason: " : "Why it matched: "}</span>
             {item.reason}
           </span>

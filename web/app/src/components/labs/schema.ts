@@ -51,7 +51,7 @@ export type OptionDef =
 
 export type OptionValue = string | boolean | number | string[];
 
-export type PageKey = "overview" | FeedKey | "search";
+export type PageKey = "overview" | FeedKey | "search" | "settings";
 
 export type FeedKey = "papers" | "grants" | "fellowships" | "conferences";
 
@@ -210,6 +210,27 @@ export const GLOBAL_OPTIONS: OptionDef[] = [
     ],
     default: "full",
   },
+  {
+    kind: "choice",
+    id: "loading",
+    label: "While a page loads",
+    choices: [
+      { value: "skeleton", label: "Placeholder cards", hint: "The page's shape first, then content fades in" },
+      { value: "instant", label: "Nothing", hint: "Content appears when it is ready" },
+    ],
+    default: "skeleton",
+  },
+  {
+    kind: "range",
+    id: "loadDelay",
+    label: "Simulated load time",
+    help: "Only in Labs — how long the preview pretends a page takes.",
+    min: 0,
+    max: 2000,
+    step: 100,
+    unit: " ms",
+    default: 700,
+  },
 ];
 
 /**
@@ -317,12 +338,15 @@ export const PAGES: PageDef[] = [
         label: "Sections shown",
         choices: [
           { value: "note", label: "Mylo's note" },
+          { value: "report", label: "This morning's report" },
           { value: "today", label: "Today, by theme" },
           { value: "closing", label: "Closing soon" },
-          { value: "found", label: "What Mylo found" },
+          { value: "people", label: "For each person" },
+          { value: "asks", label: "Mylo is asking" },
           { value: "projects", label: "Project pulse" },
+          { value: "found", label: "What Mylo found" },
         ],
-        default: ["note", "today", "closing", "found"],
+        default: ["note", "report", "today", "closing", "people", "asks", "projects", "found"],
       },
       {
         kind: "choice",
@@ -379,6 +403,24 @@ export const PAGES: PageDef[] = [
         default: "grouped",
       },
       { kind: "toggle", id: "suggestions", label: "Suggest queries from my themes", default: true },
+    ],
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    route: "/app/account",
+    options: [
+      {
+        kind: "choice",
+        id: "layout",
+        label: "Layout",
+        choices: [
+          { value: "sectioned", label: "Sections + panel", hint: "A list of sections, one open at a time" },
+          { value: "single", label: "One long page", hint: "Every section stacked, with a jump list" },
+        ],
+        default: "sectioned",
+      },
+      { kind: "toggle", id: "accountMenu", label: "Account menu on the avatar", default: true },
     ],
   },
 ];
