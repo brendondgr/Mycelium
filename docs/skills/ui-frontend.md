@@ -19,7 +19,7 @@ Avoid generic SaaS-blue styling, harsh neon AI visuals, and decorative clutter.
 ## Brand Palette
 
 Use semantic color tokens. These values come from the Mylo/Mycelium direction in
-`docs/chats/color-scheme.md`.
+`docs/styles.md`.
 
 ```text
 Light theme:

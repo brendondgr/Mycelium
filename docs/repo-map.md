@@ -30,7 +30,7 @@ Paths are relative to the repository root.
 | Section backgrounds (tinted ground + botanical motif) | `web/landing/src/components/site/SectionGround.astro` — pick a different motif per section; leave plain sections between |
 | The motif artwork (roots, moss overhang, leaf vine, canopy, spores, filaments) | `web/landing/src/components/site/motifs/` |
 | Landing styles, scroll reveals | `web/landing/src/styles/global.css` (rules) + the two inline scripts in `web/landing/src/layouts/PublicLayout.astro` (arming flag + IntersectionObserver); no framework JS |
-| Artwork masters & sync | `web/art/`, `web/scripts/sync-art-assets.mjs` (derivatives are git-ignored). Mylo on the public site is painted only — `MyloHeadshot-e1.png` (transparent head, the report avatar); `MyloScout.png` (full body, cut from the character sheet) is kept as a master but not synced or shown; the vector rig in `web/art/Mylo/svg/` is not to be used |
+| Artwork masters & sync | `web/art/` (incl. the Mylo character sheet `Mylo/myloCharacterCard.png` and `logo/Logos.png`), `web/scripts/sync-art-assets.mjs` (derivatives are git-ignored). Mylo on the public site is painted only — `MyloHeadshot-e1.png` (transparent head, the report avatar); `MyloScout.png` (full body, cut from the character sheet) is kept as a master but not synced or shown; the vector rig in `web/art/Mylo/svg/` is not to be used |
 | Mylo animation rig (vector) | `web/art/Mylo/svg/` — `mylo.svg`: ~70 hand-authored shapes placed by measuring the character sheet, plus the animation CSS, in one file; states are attributes on the root element (`data-anim`, `data-prop`, `data-facing`). `trace/draw.py` + `trace/rig.css` regenerate it (`trace/run.sh`); `rig-demo.html` exercises it; see the folder README |
 
 ## Frontend — authenticated app
@@ -408,4 +408,3 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `docs/skills/` | Canonical agent guidance — start at `skills/index.md` |
 | `docs/changelog.md` | Append-only project history |
 | `docs/plans/` | Implementation plans (working documents, deleted when shipped); `plans/ambient-profile/` is the sequenced series for the self-maintaining profile and `plans/collaboration-network/` the one for collaborator matching; both build on the shared knowledge core (`apps/knowledge`, shipped as plans CN-01 and CN-02; `apps/collab` since CN-03). Start at each `README.md` |
-| `docs/chats/`, `docs/Resources/` | Source conversations and the project brief |

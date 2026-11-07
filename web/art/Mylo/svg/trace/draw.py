@@ -1,7 +1,7 @@
 """Draw Mylo as a small, clean SVG whose shapes sit where the character sheet
 has them.
 
-The front view of docs/Resources/myloCharacterCard.png is segmented into
+The front view of web/art/Mylo/myloCharacterCard.png is segmented into
 regions (cap, gills, face, lenses, eyes, mouth, collar, badge, belly, straps,
 satchel, arms, boots, sprout). Each region is *measured* — a handful of outline
 points, a centre, a radius, a median colour — and those numbers place plain
@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, '..', '..', '..', '..', '..'))
-SRC = os.path.join(REPO, 'docs', 'Resources', 'myloCharacterCard.png')
+SRC = os.path.join(REPO, 'web', 'art', 'Mylo', 'myloCharacterCard.png')
 OUT = os.path.join(HERE, '..', 'mylo.svg')
 UP = 4
 

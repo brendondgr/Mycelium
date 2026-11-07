@@ -13,9 +13,7 @@ and exportable reports.
 
 **Status of this document:** current as of **August 4, 2026**. It records what is
 built and what is next. It is not a task tracker — see
-[`changelog.md`](changelog.md) for what happened and
-[`chats/mycelium_roadmap.md`](chats/mycelium_roadmap.md) for the original
-week-by-week roadmap this project was sequenced against.
+[`changelog.md`](changelog.md) for what happened.
 
 ## Build sequence rules
 

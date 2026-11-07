@@ -4,7 +4,7 @@
 27 KB — and split into parts that can move. The shapes are hand-authored
 (smooth curves through a few points, circles, ellipses, rounded rectangles),
 but where each one sits was *measured* from the front view of his character
-sheet (`docs/Resources/myloCharacterCard.png`): the cap's dome and brim, the
+sheet (`web/art/Mylo/myloCharacterCard.png`): the cap's dome and brim, the
 gills under it, each lens and eye, the mouth, the collar and badge, the straps,
 the arms, the boots, the seven leaves of the shoulder sprout, the cap's spots.
 Colours are the sheet's own, sampled from the same regions.

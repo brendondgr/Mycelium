@@ -43,9 +43,6 @@ thin entrypoints pointing back at it. The repository-level instruction file is
 
 - [`changelog.md`](changelog.md) — append-only record of what changed and why.
   Add an entry for any session that changes tracked files; never edit a past one.
-- [`chats/`](chats/) — the source conversations that set product, architecture,
-  and visual direction.
-- [`Resources/`](Resources/) — the original project brief and brand assets.
 
 ## Conventions
 
