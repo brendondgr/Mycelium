@@ -1627,6 +1627,13 @@ export type AdminLabRow = {
 /** A single lab's full admin view (GET /admin/labs/<slug>/). */
 export type AdminLabDetail = AdminLabRow & {
   timezone: string;
+  /** Staff overrides (null = none) and the limits in effect (null = unlimited). */
+  limits: {
+    project_limit: number | null;
+    member_limit: number | null;
+    project_cap: number | null;
+    member_cap: number | null;
+  };
   leads: { username: string; name: string; role: LabRole; is_lead: boolean }[];
   watch_topics: string[];
   watch_categories: string[];
@@ -1653,6 +1660,9 @@ export type AdminLabUpdate = {
   expires_at?: string | null;
   is_comped?: boolean;
   mylo_included?: boolean;
+  /** Per-lab overrides of the instance limits; null clears the override. */
+  project_limit?: number | null;
+  member_limit?: number | null;
 };
 
 /** A department the caller owns or is a direct member of. */

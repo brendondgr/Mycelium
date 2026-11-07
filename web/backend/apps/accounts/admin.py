@@ -57,13 +57,15 @@ class ProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
-    list_display = ("name", "owner", "institution", "created_at")
+    list_display = ("name", "owner", "institution", "project_limit", "created_at")
     search_fields = ("name", "institution", "owner__username")
 
 
 @admin.register(Lab)
 class LabAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "department", "created_at")
+    list_display = (
+        "name", "slug", "department", "project_limit", "member_limit", "created_at",
+    )
     list_filter = ("department",)
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}

@@ -93,7 +93,7 @@ const LAB_ENDINGS: { value: string; label: string }[] = [
 ];
 
 /** Highest watch-topic override the API accepts (mirrors the server ceiling). */
-const WATCH_LIMIT_MAX = 50;
+const WATCH_LIMIT_MAX = 200;
 
 const TIER_LABEL: Record<AdminTier, string> = {
   free: "Free",
@@ -1099,9 +1099,38 @@ function LabEditor({ slug, onClose }: { slug: string; onClose: () => void }) {
   );
 }
 
+/** "" for no override, else the number as typed. */
+function limitInput(value: number | null): string {
+  return value === null ? "" : String(value);
+}
+
+/** A typed override: blank clears it (null); otherwise a whole number ≥ 0. */
+function parseLimit(text: string): number | null | undefined {
+  const trimmed = text.trim();
+  if (trimmed === "") return null;
+  const value = Number(trimmed);
+  return Number.isInteger(value) && value >= 0 ? value : undefined;
+}
+
+function capLabel(cap: number | null): string {
+  return cap === null ? "unlimited" : String(cap);
+}
+
 function LabEditorForm({ detail }: { detail: AdminLabDetail }) {
   const update = useUpdateAdminLab();
   const sub = detail.subscription;
+  // With billing off the plan fields decide nothing, so only the limits show.
+  const { data: entitlements } = useEntitlements();
+  const billingOff = entitlements?.billing_mode === "off";
+  const [projectLimit, setProjectLimit] = React.useState(
+    limitInput(detail.limits.project_limit),
+  );
+  const [memberLimit, setMemberLimit] = React.useState(
+    limitInput(detail.limits.member_limit),
+  );
+  const parsedProject = parseLimit(projectLimit);
+  const parsedMember = parseLimit(memberLimit);
+  const limitsInvalid = parsedProject === undefined || parsedMember === undefined;
 
   const [tier, setTier] = React.useState<AdminLabTier>(
     sub?.tier === "canopy" ? "canopy" : "lab",
@@ -1115,7 +1144,12 @@ function LabEditorForm({ detail }: { detail: AdminLabDetail }) {
   const customDateMissing = ending === "custom" && endDate === "";
 
   const buildPatch = (): AdminLabUpdate => {
-    const patch: AdminLabUpdate = { tier, status, mylo_included: mylo };
+    const limits: AdminLabUpdate = {
+      project_limit: parsedProject ?? null,
+      member_limit: parsedMember ?? null,
+    };
+    if (billingOff) return limits;
+    const patch: AdminLabUpdate = { ...limits, tier, status, mylo_included: mylo };
     if (ending === "never") {
       // The free case: no end date, and comped so the plan page strikes the price.
       patch.duration_days = null;
@@ -1132,7 +1166,7 @@ function LabEditorForm({ detail }: { detail: AdminLabDetail }) {
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (customDateMissing) return;
+    if (customDateMissing || limitsInvalid) return;
     setSaved(false);
     update.mutate(
       { slug: detail.slug, patch: buildPatch() },
@@ -1144,6 +1178,48 @@ function LabEditorForm({ detail }: { detail: AdminLabDetail }) {
     <form onSubmit={onSubmit} className="space-y-4">
       <LabMeta detail={detail} />
 
+      <fieldset className="space-y-3">
+        <legend className="mb-1 block text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
+          Limits for this lab
+        </legend>
+        <Field
+          label="Active projects"
+          htmlFor="admin-lab-project-limit"
+          hint={`Blank uses the instance value. In effect now: ${capLabel(detail.limits.project_cap)}.`}
+        >
+          <input
+            id="admin-lab-project-limit"
+            type="number"
+            min={0}
+            inputMode="numeric"
+            className={INPUT_CLASS}
+            value={projectLimit}
+            placeholder="Instance default"
+            aria-invalid={parsedProject === undefined}
+            onChange={(event) => setProjectLimit(event.target.value)}
+          />
+        </Field>
+        <Field
+          label="Members"
+          htmlFor="admin-lab-member-limit"
+          hint={`Blank uses the instance value. In effect now: ${capLabel(detail.limits.member_cap)}; ${detail.member_count} today. Lowering it never removes anyone.`}
+        >
+          <input
+            id="admin-lab-member-limit"
+            type="number"
+            min={0}
+            inputMode="numeric"
+            className={INPUT_CLASS}
+            value={memberLimit}
+            placeholder="Instance default"
+            aria-invalid={parsedMember === undefined}
+            onChange={(event) => setMemberLimit(event.target.value)}
+          />
+        </Field>
+      </fieldset>
+
+      {billingOff ? null : (
+        <>
       <Field
         label="Plan tier"
         htmlFor="admin-lab-tier"
@@ -1246,10 +1322,12 @@ function LabEditorForm({ detail }: { detail: AdminLabDetail }) {
           Without it the lab can&apos;t add Mylo to a Discord server or activate one.
         </p>
       </fieldset>
+        </>
+      )}
 
       <SaveRow
         pending={update.isPending}
-        disabled={customDateMissing}
+        disabled={customDateMissing || limitsInvalid}
         error={update.isError ? (update.error as Error)?.message : null}
         saved={saved && !update.isPending}
       />

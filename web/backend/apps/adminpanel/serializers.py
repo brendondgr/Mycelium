@@ -24,7 +24,7 @@ from .services import personal_subscription
 
 #: The override can never usefully exceed the WatchPreference structural ceiling
 #: (WatchPreferenceSerializer._MAX_ITEMS = 50), so cap the grant there.
-WATCH_TOPIC_LIMIT_MAX = 50
+WATCH_TOPIC_LIMIT_MAX = 200  # matches the watch serializer's sanity bound
 
 
 def _tier_choices(allowed: frozenset[str]) -> list[tuple[str, str]]:
@@ -211,9 +211,22 @@ class AdminLabDetailSerializer(AdminLabRowSerializer):
     """One lab's full admin view — the row plus its leads and watch configuration."""
 
     timezone = serializers.CharField(read_only=True)
+    limits = serializers.SerializerMethodField()
     leads = serializers.SerializerMethodField()
     watch_topics = serializers.SerializerMethodField()
     watch_categories = serializers.SerializerMethodField()
+
+    def get_limits(self, lab) -> dict:
+        """This lab's staff overrides and the limits in effect (``None`` =
+        unlimited) — the override if set, else the instance/tier value."""
+        from apps.billing.entitlements import lab_member_cap, lab_project_cap
+
+        return {
+            "project_limit": lab.project_limit,
+            "member_limit": lab.member_limit,
+            "project_cap": lab_project_cap(lab),
+            "member_cap": lab_member_cap(lab),
+        }
 
     def get_leads(self, lab) -> list[dict]:
         memberships = (
@@ -260,6 +273,13 @@ class AdminLabUpdateSerializer(serializers.Serializer):
     expires_at = serializers.DateTimeField(required=False, allow_null=True)
     is_comped = serializers.BooleanField(required=False)
     mylo_included = serializers.BooleanField(required=False)
+    # Per-lab overrides of the instance limits; null clears the override.
+    project_limit = serializers.IntegerField(
+        min_value=0, max_value=10_000, required=False, allow_null=True
+    )
+    member_limit = serializers.IntegerField(
+        min_value=0, max_value=100_000, required=False, allow_null=True
+    )
 
     def validate(self, attrs: dict) -> dict:
         if not attrs:

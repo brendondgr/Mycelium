@@ -1770,11 +1770,17 @@ send at least one:
   sent as `null` clears the expiry. Omit both to leave it untouched. Expiry is
   enforced at read time: a lapsed plan reverts to Free and nothing is deleted.
 - `subscription_status` — `active` | `past_due` | `canceled`.
-- `watch_topic_limit` — 0–50, or `null` to clear back to the tier cap.
+- `watch_topic_limit` — 0–200, or `null` to clear back to the instance (or tier) limit.
 
 `400` on an empty body, on `duration_days` + `expires_at` together, or on an
 out-of-range limit.
 
 ### `GET | PATCH /api/admin/labs/[<slug>/]`
 
-The same roster / detail / plan-assignment pattern for labs.
+The same roster / detail / plan-assignment pattern for labs. The detail also
+carries `limits: { project_limit, member_limit, project_cap, member_cap }` —
+the lab's staff overrides (`null` = none) and the limits in effect (`null` =
+unlimited). PATCH `project_limit` / `member_limit` (≥ 0, or `null` to clear) set
+the overrides, which win over `mycelium.toml`; a limits-only PATCH touches no
+plan. A department's project override is set in Django admin
+(`Department.project_limit`).

@@ -396,9 +396,19 @@ def within_member_cap(seat_count: int, tier: str) -> bool:
     return within(seat_count, member_cap(tier))
 
 
-def lab_member_cap() -> int | None:
-    """Members per lab (``limits.lab_members``). Applies in both billing modes;
-    under subscriptions an active plan's seat ceiling applies on top."""
+def _override(obj, field: str) -> int | None:
+    """A staff-set per-object limit (``Lab.project_limit`` ...), or ``None``."""
+    value = getattr(obj, field, None)
+    return value if isinstance(value, int) else None
+
+
+def lab_member_cap(lab=None) -> int | None:
+    """Members per lab: the lab's staff override if set, else
+    ``limits.lab_members``. Applies in both billing modes; under subscriptions an
+    active plan's seat ceiling applies on top."""
+    override = _override(lab, "member_limit")
+    if override is not None:
+        return override
     return instance_limit("lab_members")
 
 
@@ -437,8 +447,12 @@ def personal_project_cap(user: User) -> int | None:
 
 
 def lab_project_cap(lab) -> int | None:
-    """``limits.lab_projects``; under subscriptions only while the lab carries the
+    """The lab's staff override if set (it wins outright); else
+    ``limits.lab_projects``, under subscriptions only while the lab carries the
     team-workspace feature (an unentitled lab gets 0)."""
+    override = _override(lab, "project_limit")
+    if override is not None:
+        return override
     if billing_enabled() and not lab_has_feature(lab, Feature.TEAM_WORKSPACE):
         return 0
     return instance_limit("lab_projects")
@@ -473,8 +487,12 @@ def department_has_feature(department, feature: str) -> bool:
 
 
 def department_project_cap(department) -> int | None:
-    """``limits.department_projects``; under subscriptions only while the
+    """The department's staff override if set (it wins outright); else
+    ``limits.department_projects``, under subscriptions only while the
     department carries department routing (otherwise 0)."""
+    override = _override(department, "project_limit")
+    if override is not None:
+        return override
     if billing_enabled() and not department_has_feature(
         department, Feature.DEPARTMENT_ROUTING
     ):

@@ -186,6 +186,27 @@ def apply_lab_update(*, admin: User, lab, data: dict) -> Subscription:
     ``data`` is the serializer's ``validated_data``: only keys the client sent are
     present, which is how "leave alone" is told from "set to null".
     """
+    override_fields = [f for f in ("project_limit", "member_limit") if f in data]
+    if override_fields:
+        for field in override_fields:
+            setattr(lab, field, data[field])
+        lab.save(update_fields=[*override_fields, "updated_at"])
+        record_audit_event(
+            actor=admin,
+            action="admin.lab_limits.set",
+            target_type="lab",
+            target_id=str(lab.pk),
+            metadata={field: data[field] for field in override_fields},
+        )
+        subscription_keys = {
+            "tier", "status", "duration_days", "expires_at", "is_comped",
+            "mylo_included",
+        }
+        if not subscription_keys & data.keys():
+            # A limits-only edit touches no plan: with billing off there may be
+            # nothing worth a plan row's audit trail at all.
+            return ensure_lab_subscription(lab)
+
     sub = ensure_lab_subscription(lab)
 
     if "tier" in data:

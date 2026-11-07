@@ -344,3 +344,67 @@ def test_unrelated_edit_does_not_reseat_a_live_plan(
     assert resp.data["subscription"]["mylo_included"] is True
     leaving.refresh_from_db()
     assert leaving.ends_at == date(2030, 1, 1)
+
+
+# --------------------------------------------------------------------------- #
+# Per-lab limit overrides
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.django_db
+def test_limits_only_patch_sets_overrides_and_touches_no_plan(client, superuser, lab):
+    client.force_authenticate(superuser)
+    before = Subscription.objects.get(scope_lab=lab)
+    response = client.patch(
+        detail_url(lab), {"project_limit": 3, "member_limit": 8}, format="json"
+    )
+    assert response.status_code == 200, response.content
+    limits = response.json()["limits"]
+    assert limits == {
+        "project_limit": 3,
+        "member_limit": 8,
+        "project_cap": 3,
+        "member_cap": 8,
+    }
+    after = Subscription.objects.get(scope_lab=lab)
+    assert (after.status, after.tier) == (before.status, before.tier)
+    assert AuditEvent.objects.filter(action="admin.lab_limits.set").exists()
+
+
+@pytest.mark.django_db
+def test_null_clears_an_override(client, superuser, lab):
+    lab.project_limit = 3
+    lab.save()
+    client.force_authenticate(superuser)
+    response = client.patch(detail_url(lab), {"project_limit": None}, format="json")
+    assert response.status_code == 200
+    lab.refresh_from_db()
+    assert lab.project_limit is None
+    # Back to the suite's institution value for an unentitled lab under billing.
+    assert response.json()["limits"]["project_cap"] == 0
+
+
+@pytest.mark.django_db
+def test_override_wins_over_the_instance_limit(billing_off, lab):
+    from apps.accounts.models import Department
+    from apps.billing.entitlements import (
+        department_project_cap,
+        lab_member_cap,
+        lab_project_cap,
+    )
+
+    assert lab_project_cap(lab) is None and lab_member_cap(lab) is None
+    lab.project_limit, lab.member_limit = 2, 4
+    assert lab_project_cap(lab) == 2 and lab_member_cap(lab) == 4
+
+    dept = Department.objects.create(owner=lab.memberships.first().user, name="D")
+    assert department_project_cap(dept) is None
+    dept.project_limit = 7
+    assert department_project_cap(dept) == 7
+
+
+@pytest.mark.django_db
+def test_negative_override_is_refused(client, superuser, lab):
+    client.force_authenticate(superuser)
+    response = client.patch(detail_url(lab), {"member_limit": -1}, format="json")
+    assert response.status_code == 400

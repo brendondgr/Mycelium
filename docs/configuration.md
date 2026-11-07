@@ -68,8 +68,10 @@ withhold features.
 **`[limits]`** — each is `"unlimited"` or a number, and a number turns on that
 one limit: `clusters`, `topics_per_cluster`, `watch_topics`,
 `personal_projects`, `lab_projects`, `department_projects`, `lab_members`,
-`lab_leads`. An admin can still give one person a different watch limit from the
-admin page.
+`lab_leads`. Staff can override a limit for one object without touching the
+file: a person's watch limit and a lab's project and member limits on the admin
+page, a department's project limit in Django admin (`/admin/`, the
+department's `project_limit`). An override wins over the file.
 
 **`[signup]`** — `mode` is one of `closed`, `invite`, `code` (the shared
 `SIGNUP_ACCESS_CODE`), `domain` (any address at `allowed_domains`) or `open`.

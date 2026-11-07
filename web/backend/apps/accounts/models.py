@@ -36,6 +36,9 @@ class Department(models.Model):
     )
     name = models.CharField(max_length=200)
     institution = models.CharField(max_length=255, blank=True, default="")
+    # Staff override of the instance's limits.department_projects for this one
+    # department (null = use the instance/tier value). Set from Django admin.
+    project_limit = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -82,6 +85,11 @@ class Lab(models.Model):
     # Served through the API (LabLogoView), never via MEDIA_URL directly.
     logo = models.FileField(upload_to="lab-logos/", null=True, blank=True)
     logo_content_type = models.CharField(max_length=64, blank=True, default="")
+    # Staff overrides of the instance's limits.lab_projects / limits.lab_members
+    # for this one lab (null = use the instance/tier value). Set from the admin
+    # page; an override wins outright, like Profile.watch_topic_limit.
+    project_limit = models.PositiveIntegerField(null=True, blank=True)
+    member_limit = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
